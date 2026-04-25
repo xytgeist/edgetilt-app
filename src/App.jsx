@@ -34,36 +34,23 @@ function App() {
   const [verificationSuccess, setVerificationSuccess] = useState(false)
 
   useEffect(() => {
+    // Simple detection – just show the reset form when the magic link arrives
     const hash = window.location.hash
-
-    // Handle email verification (signup confirmation)
-    if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
-      setVerificationSuccess(true)
-      window.history.replaceState({}, document.title, '/')
-      setIsChecking(false)
-      return
-    }
-
-    // Show reset password form if landing on /reset-password (with or without token)
-    if (window.location.pathname === '/reset-password' || hash.includes('type=recovery')) {
+    if (hash.includes('type=recovery') || hash.includes('access_token')) {
       setCurrentView('reset-password')
       window.history.replaceState({}, document.title, '/reset-password')
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        checkWhitelistOnLoad(session.user.email)
-      } else {
-        setIsChecking(false)
-      }
+      if (session?.user) checkWhitelist(session.user.email)
+      else setIsChecking(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        checkWhitelistOnLoad(session.user.email)
-      } else {
+      if (session?.user) checkWhitelist(session.user.email)
+      else {
         setIsAllowed(false)
         setIsChecking(false)
       }
@@ -72,48 +59,24 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Separate function for initial load (with error handling)
-  const checkWhitelistOnLoad = async (userEmail) => {
-    try {
-      const { data, error } = await supabase.from('allowed_emails').select('email').eq('email', userEmail).single()
-      
-      if (error) {
-        console.error("Whitelist check error:", error)
-        setIsAllowed(false)
-      } else {
-        setIsAllowed(!!data)
-      }
-    } catch (err) {
-      console.error("Whitelist check exception:", err)
-      setIsAllowed(false)
-    }
-    setIsChecking(false)
-  }
-
-  // Full check used after login attempt (shows error if not whitelisted)
-  const checkWhitelistAfterLogin = async (userEmail) => {
+  const checkWhitelist = async (userEmail) => {
     const { data } = await supabase.from('allowed_emails').select('email').eq('email', userEmail).single()
-    
-    if (data) {
-      setIsAllowed(true)
-      setLoginError('')
-    } else {
-      setIsAllowed(false)
-      setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
-    }
+    setIsAllowed(!!data)
     setIsChecking(false)
   }
 
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoginError('')
-    
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    
     if (error) {
       alert(error.message)
     } else {
-      await checkWhitelistAfterLogin(email)
+      // Check whitelist after successful login
+      const { data } = await supabase.from('allowed_emails').select('email').eq('email', email).single()
+      if (!data) {
+        setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
+      }
     }
   }
 
@@ -123,7 +86,7 @@ function App() {
       email, 
       password,
       options: {
-        emailRedirectTo: 'https://lvslotpro.com'   // ← Reverted to non-www (working version)
+        emailRedirectTo: 'https://lvslotpro.com'
       }
     })
     if (error) alert("Error: " + error.message)
@@ -135,7 +98,7 @@ function App() {
     if (!forgotEmail) return alert("Please enter your email")
 
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: 'https://lvslotpro.com/reset-password'   // ← Reverted to non-www (working version)
+      redirectTo: 'https://lvslotpro.com/reset-password'
     })
 
     if (error) alert("Error: " + error.message)
@@ -151,40 +114,13 @@ function App() {
     if (newPassword !== confirmPassword) return setResetError("Passwords do not match")
     if (newPassword.length < 6) return setResetError("Password must be at least 6 characters")
 
-    try {
-      // Extract tokens from URL hash
-      const hash = window.location.hash.substring(1)
-      const params = new URLSearchParams(hash)
-      const accessToken = params.get('access_token')
-      const refreshToken = params.get('refresh_token')
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
 
-      if (!accessToken || !refreshToken) {
-        setResetError("Invalid or expired reset link. Please request a new one.")
-        return
-      }
-
-      // Establish the session from the recovery tokens
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      })
-
-      if (sessionError) {
-        setResetError("Invalid or expired reset link. Please request a new one.")
-        return
-      }
-
-      // Now update the password
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-
-      if (error) {
-        setResetError("Error: " + error.message)
-      } else {
-        setResetMessage("✅ Password updated successfully!")
-        setTimeout(() => window.location.href = 'https://lvslotpro.com', 2000)
-      }
-    } catch (err) {
-      setResetError("Error: " + err.message)
+    if (error) {
+      setResetError("Error: " + error.message)
+    } else {
+      setResetMessage("✅ Password updated successfully!")
+      setTimeout(() => window.location.href = 'https://lvslotpro.com', 2000)
     }
   }
 

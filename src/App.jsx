@@ -71,10 +71,21 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Separate function for initial load (no error message)
+  // Separate function for initial load (with error handling)
   const checkWhitelistOnLoad = async (userEmail) => {
-    const { data } = await supabase.from('allowed_emails').select('email').eq('email', userEmail).single()
-    setIsAllowed(!!data)
+    try {
+      const { data, error } = await supabase.from('allowed_emails').select('email').eq('email', userEmail).single()
+      
+      if (error) {
+        console.error("Whitelist check error:", error)
+        setIsAllowed(false)
+      } else {
+        setIsAllowed(!!data)
+      }
+    } catch (err) {
+      console.error("Whitelist check exception:", err)
+      setIsAllowed(false)
+    }
     setIsChecking(false)
   }
 

@@ -34,17 +34,19 @@ function App() {
   const [verificationSuccess, setVerificationSuccess] = useState(false)
 
   useEffect(() => {
-    // Simple detection – just show the reset form when the magic link arrives
     const hash = window.location.hash
-    if (hash.includes('type=recovery') || hash.includes('access_token')) {
-      setCurrentView('reset-password')
-      window.history.replaceState({}, document.title, '/reset-password')
-    }
 
-    // Handle verification success
+    // Handle verification success FIRST
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
       setVerificationSuccess(true)
       window.history.replaceState({}, document.title, '/')
+      return
+    }
+
+    // Only trigger reset password for actual recovery links
+    if (hash.includes('type=recovery')) {
+      setCurrentView('reset-password')
+      window.history.replaceState({}, document.title, '/reset-password')
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {

@@ -76,38 +76,20 @@ function App() {
   }
 
   const handleLogin = async () => {
-    console.log('=== handleLogin START ===')
-    console.log('email:', email)
-    console.log('password length:', password.length)
     setLoginError('')
 
-    try {
-      console.log('Calling signInWithPassword...')
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      console.log('signInWithPassword result - data:', data)
-      console.log('signInWithPassword result - error:', error)
-      
-      if (error) {
-        console.log('Showing error alert:', error.message)
-        alert(error.message)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      alert(error.message)
+    } else {
+      const { data: whitelistData } = await supabase.from('allowed_emails').select('email').eq('email', email).single()
+      if (whitelistData) {
+        setUser(data.user)
+        setIsAllowed(true)
       } else {
-        console.log('Login successful, checking whitelist...')
-        const { data: whitelistData } = await supabase.from('allowed_emails').select('email').eq('email', email).single()
-        console.log('Whitelist check result:', whitelistData)
-        if (whitelistData) {
-          console.log('User is whitelisted, setting user and isAllowed = true')
-          setUser(data.user)
-          setIsAllowed(true)
-        } else {
-          setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
-        }
+        setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
       }
-    } catch (err) {
-      console.error('Exception in handleLogin:', err)
-      alert('Error: ' + err.message)
     }
-    
-    console.log('=== handleLogin END ===')
   }
 
   const handleSignUp = async (e) => {

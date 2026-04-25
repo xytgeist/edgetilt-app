@@ -78,11 +78,23 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoginError('')
+
+    // If we already have a session from verification, just check whitelist
+    if (user) {
+      const { data } = await supabase.from('allowed_emails').select('email').eq('email', email || user.email).single()
+      if (data) {
+        setIsAllowed(true)
+      } else {
+        setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
+      }
+      return
+    }
+
+    // Otherwise, do normal login
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       alert(error.message)
     } else {
-      // Check whitelist after successful login
       const { data } = await supabase.from('allowed_emails').select('email').eq('email', email).single()
       if (!data) {
         setLoginError("Unauthorized - please contact Ryan to be whitelisted.")

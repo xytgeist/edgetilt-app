@@ -27,12 +27,20 @@ function App() {
   const [resetMessage, setResetMessage] = useState('')
   const [resetError, setResetError] = useState('')
 
-  // New: Login error for non-whitelisted users
+  // New states for verification + whitelist error
   const [loginError, setLoginError] = useState('')
+  const [verificationSuccess, setVerificationSuccess] = useState(false)
 
   useEffect(() => {
-    // Simple detection – just show the reset form when the magic link arrives
     const hash = window.location.hash
+
+    // Handle email verification (signup confirmation)
+    if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
+      setVerificationSuccess(true)
+      window.history.replaceState({}, document.title, '/')
+    }
+
+    // Handle password reset (unchanged)
     if (hash.includes('type=recovery') || hash.includes('access_token')) {
       setCurrentView('reset-password')
       window.history.replaceState({}, document.title, '/reset-password')
@@ -61,7 +69,7 @@ function App() {
     
     if (data) {
       setIsAllowed(true)
-      setLoginError('') // Clear any previous error
+      setLoginError('')
     } else {
       setIsAllowed(false)
       setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
@@ -71,7 +79,7 @@ function App() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    setLoginError('') // Clear previous error on new attempt
+    setLoginError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) alert(error.message)
   }
@@ -127,7 +135,7 @@ function App() {
 
   if (isChecking) return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">Loading...</div>
 
-  // Reset Password Page
+  // Reset Password Page (unchanged)
   if (currentView === 'reset-password') {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
@@ -158,6 +166,12 @@ function App() {
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
         <div className="bg-gray-900 p-8 rounded-3xl max-w-sm w-full">
           <h2 className="text-2xl font-bold text-white mb-6 text-center">Las Vegas Slot Pro</h2>
+
+          {verificationSuccess && (
+            <div className="mb-6 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center font-medium">
+              ✅ Account Verified - have fun!
+            </div>
+          )}
 
           {!showForgotPassword ? (
             <form onSubmit={handleLogin} className="space-y-4">

@@ -79,6 +79,8 @@ function App() {
     e.preventDefault()
     setLoginError('')
 
+    console.log('handleLogin called, user:', user)
+
     // If we have a session (from verification), check whitelist using session email
     if (user) {
       const emailToCheck = email || user.email
@@ -207,7 +209,13 @@ function App() {
             <form onSubmit={handleLogin} className="space-y-4">
               <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold">Log In</button>
+              <button 
+                type="button" 
+                onClick={handleLogin}
+                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold"
+              >
+                Log In
+              </button>
 
               {loginError && (
                 <div className="mt-3 p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">

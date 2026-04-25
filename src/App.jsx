@@ -79,7 +79,6 @@ function App() {
     e.preventDefault()
     setLoginError('')
 
-    // Always use normal login with form values
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       alert(error.message)
@@ -184,7 +183,13 @@ function App() {
             <form onSubmit={handleLogin} className="space-y-4">
               <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold">Log In</button>
+              <button 
+                type="button" 
+                onClick={handleLogin}
+                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold"
+              >
+                Log In
+              </button>
 
               {loginError && (
                 <div className="mt-3 p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">

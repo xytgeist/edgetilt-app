@@ -123,7 +123,7 @@ function App() {
       email, 
       password,
       options: {
-        emailRedirectTo: 'https://www.lvslotpro.com'   // ← Changed to www to match reset password
+        emailRedirectTo: 'https://lvslotpro.com'
       }
     })
     if (error) alert("Error: " + error.message)

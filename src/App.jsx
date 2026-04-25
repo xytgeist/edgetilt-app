@@ -40,6 +40,7 @@ function App() {
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
       setVerificationSuccess(true)
       window.history.replaceState({}, document.title, '/')
+      setIsChecking(false)  // Force exit loading state
       return
     }
 

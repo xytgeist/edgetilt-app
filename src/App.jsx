@@ -66,12 +66,8 @@ function App() {
         emailRedirectTo: 'https://lvslotpro.com'
       }
     })
-    if (error) {
-      alert("Error: " + error.message)
-      console.error(error)
-    } else {
-      alert("✅ Account creation attempted. Check your email (including spam).")
-    }
+    if (error) alert("Error: " + error.message)
+    else alert("✅ Account created! Please check your email for the confirmation link.")
   }
 
   const handleForgotPassword = async (e) => {
@@ -84,7 +80,7 @@ function App() {
 
     if (error) alert("Error: " + error.message)
     else {
-      alert("Reset link sent! Check your inbox/spam.")
+      alert("Reset link sent! Check your inbox (and spam folder).")
       setShowForgotPassword(false)
       setForgotEmail('')
     }

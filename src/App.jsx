@@ -123,7 +123,7 @@ function App() {
       email, 
       password,
       options: {
-        emailRedirectTo: 'https://lvslotpro.com'
+        emailRedirectTo: 'https://www.lvslotpro.com'   // ← Changed to www to match reset password
       }
     })
     if (error) alert("Error: " + error.message)
@@ -135,7 +135,7 @@ function App() {
     if (!forgotEmail) return alert("Please enter your email")
 
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: 'https://lvslotpro.com/reset-password'
+      redirectTo: 'https://www.lvslotpro.com/reset-password'
     })
 
     if (error) alert("Error: " + error.message)

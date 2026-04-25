@@ -40,16 +40,8 @@ function App() {
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
       setVerificationSuccess(true)
       window.history.replaceState({}, document.title, '/')
-      
-      // Check session and whitelist after verification
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          checkWhitelist(session.user.email)
-        } else {
-          setIsChecking(false)
-        }
-      })
+      setIsAllowed(false)  // Force them to the login form
+      setIsChecking(false)
       return
     }
 

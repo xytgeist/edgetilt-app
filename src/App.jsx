@@ -40,7 +40,7 @@ function App() {
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
       setVerificationSuccess(true)
       window.history.replaceState({}, document.title, '/')
-      setIsAllowed(false)  // Force them to the login form
+      setIsAllowed(false)
       setIsChecking(false)
       return
     }
@@ -82,7 +82,18 @@ function App() {
     // If we have a session (from verification), check whitelist using session email
     if (user) {
       const emailToCheck = email || user.email
-      const { data } = await supabase.from('allowed_emails').select('email').eq('email', emailToCheck).single()
+      console.log('Checking whitelist for:', emailToCheck)
+      
+      const { data, error } = await supabase.from('allowed_emails').select('email').eq('email', emailToCheck).single()
+      
+      console.log('Whitelist result:', { data, error })
+      
+      if (error) {
+        console.error('Whitelist query error:', error)
+        setLoginError("Error checking whitelist. Please try again.")
+        return
+      }
+      
       if (data) {
         setIsAllowed(true)
       } else {

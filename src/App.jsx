@@ -79,9 +79,10 @@ function App() {
     e.preventDefault()
     setLoginError('')
 
-    // If we already have a session from verification, just check whitelist
+    // If we have a session (from verification), check whitelist using session email
     if (user) {
-      const { data } = await supabase.from('allowed_emails').select('email').eq('email', email || user.email).single()
+      const emailToCheck = email || user.email
+      const { data } = await supabase.from('allowed_emails').select('email').eq('email', emailToCheck).single()
       if (data) {
         setIsAllowed(true)
       } else {
@@ -90,7 +91,7 @@ function App() {
       return
     }
 
-    // Otherwise, do normal login
+    // Normal login flow
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       alert(error.message)

@@ -36,10 +36,11 @@ function App() {
   useEffect(() => {
     const hash = window.location.hash
 
-    // Handle email verification (signup confirmation) FIRST
+    // Handle email verification (signup confirmation)
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
       setVerificationSuccess(true)
       window.history.replaceState({}, document.title, '/')
+      setIsChecking(false) // Force exit loading state after verification
       return
     }
 

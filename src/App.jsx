@@ -36,12 +36,15 @@ function App() {
   useEffect(() => {
     const hash = window.location.hash
 
+    // Handle email verification (signup confirmation) FIRST
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
       setVerificationSuccess(true)
       window.history.replaceState({}, document.title, '/')
+      return
     }
 
-    if (hash.includes('type=recovery') || hash.includes('access_token')) {
+    // Only trigger reset password for actual recovery links
+    if (hash.includes('type=recovery')) {
       setCurrentView('reset-password')
       window.history.replaceState({}, document.title, '/reset-password')
     }
@@ -98,7 +101,6 @@ function App() {
     if (error) {
       alert(error.message)
     } else {
-      // Check whitelist after successful Supabase login
       await checkWhitelistAfterLogin(email)
     }
   }

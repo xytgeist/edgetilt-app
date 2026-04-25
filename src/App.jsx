@@ -27,12 +27,6 @@ function App() {
   const [resetMessage, setResetMessage] = useState('')
   const [resetError, setResetError] = useState('')
 
-  // Login error (only shown after failed login attempt)
-  const [loginError, setLoginError] = useState('')
-
-  // Verification success message
-  const [verificationSuccess, setVerificationSuccess] = useState(false)
-
   useEffect(() => {
     // Simple detection – just show the reset form when the magic link arrives
     const hash = window.location.hash
@@ -67,30 +61,8 @@ function App() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    setLoginError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      alert(error.message)
-    } else {
-      // Check whitelist after successful login
-      const { data } = await supabase.from('allowed_emails').select('email').eq('email', email).single()
-      if (!data) {
-        setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
-      }
-    }
-  }
-
-  const handleSignUp = async (e) => {
-    e.preventDefault()
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: {
-        emailRedirectTo: 'https://lvslotpro.com'
-      }
-    })
-    if (error) alert("Error: " + error.message)
-    else alert("✅ Account created! Please check your email for the confirmation link.")
+    if (error) alert(error.message)
   }
 
   const handleForgotPassword = async (e) => {
@@ -163,32 +135,11 @@ function App() {
         <div className="bg-gray-900 p-8 rounded-3xl max-w-sm w-full">
           <h2 className="text-2xl font-bold text-white mb-6 text-center">Las Vegas Slot Pro</h2>
 
-          {verificationSuccess && (
-            <div className="mb-6 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center font-medium">
-              ✅ Account Verified - have fun!
-            </div>
-          )}
-
           {!showForgotPassword ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold">Log In</button>
-
-              {loginError && (
-                <div className="mt-3 p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">
-                  {loginError}
-                </div>
-              )}
-
-              <button 
-                type="button" 
-                onClick={handleSignUp}
-                className="w-full bg-gray-700 hover:bg-gray-600 border border-orange-600 py-4 rounded-2xl font-bold text-white mt-2"
-              >
-                Create Account
-              </button>
-
               <div className="text-center pt-2">
                 <button type="button" onClick={() => setShowForgotPassword(true)} className="text-orange-400 hover:text-orange-300 text-sm underline">Forgot Password?</button>
               </div>

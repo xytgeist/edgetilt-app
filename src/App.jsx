@@ -75,8 +75,7 @@ function App() {
     setIsChecking(false)
   }
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
+  const handleLogin = async () => {
     setLoginError('')
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -185,7 +184,7 @@ function App() {
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <button 
                 type="button" 
-                onClick={() => alert('Button clicked!')}
+                onClick={handleLogin}
                 className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold"
               >
                 Log In

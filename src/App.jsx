@@ -101,7 +101,7 @@ function App() {
       email, 
       password,
       options: {
-        emailRedirectTo: 'https://lvslotpro-calc-test-5p5t8ui8k-xytgeists-projects.vercel.app'
+        emailRedirectTo: 'https://lvslotpro-calc-tx18.vercel.app/'
       }
     })
     if (error) alert("Error: " + error.message)

@@ -58,7 +58,8 @@ function dynamicPlusEvCounter(mustHit, payout, spi, baseRTP, reset) {
   const spinsToBreakEven = payout / lossPerSpin
   const rawCounter = mustHit - (spinsToBreakEven / spi)
   const clamped = Math.min(mustHit, Math.max(reset, rawCounter))
-  return Math.round(clamped)
+  // Round up so the displayed threshold is the first whole number at or above +EV.
+  return Math.ceil(clamped)
 }
 
 function StackUpPays({ onBack }) {
@@ -270,7 +271,7 @@ function StackUpPays({ onBack }) {
               {/* +EV tick aligned to slider min→max (same scale as the range input) */}
               <div className="relative w-full h-5 mb-0.5" aria-hidden>
                 <div
-                  className="absolute -top-0.5 -translate-x-1/2 text-[10px] italic text-emerald-400 whitespace-nowrap"
+                  className="absolute -top-0.5 -translate-x-1/2 text-[11px] italic text-emerald-400 whitespace-nowrap"
                   style={{ left: `${bePct}%` }}
                 >
                   {dynamicBe}

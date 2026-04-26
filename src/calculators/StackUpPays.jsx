@@ -145,14 +145,19 @@ function StackUpPays({ onBack }) {
       })
     }
 
-    // Stop policy: take the best positive checkpoint (max EV) across the lookahead.
-    const positiveCheckpoints = checkpoints.filter(c => c.ev > 0)
-    const bestPositive = positiveCheckpoints.reduce((best, c) => {
+    // Stop policy (conservative combo handling):
+    // - If the very first leg to the next event is not +EV, do not treat as a playable combo.
+    // - If first leg is +EV, choose the best positive checkpoint while average RTP stays >= 100.
+    const firstCheckpoint = checkpoints.length > 0 ? checkpoints[0] : null
+    const canEnter = !!firstCheckpoint && firstCheckpoint.ev > 0
+    const validPositiveCheckpoints = canEnter
+      ? checkpoints.filter(c => c.ev > 0 && (1 + (c.ev / c.spins)) * 100 >= 100)
+      : []
+    const bestPositive = validPositiveCheckpoints.reduce((best, c) => {
       if (!best) return c
       return c.ev > best.ev ? c : best
     }, null)
-    const fallbackCheckpoint = checkpoints.length > 0 ? checkpoints[0] : null
-    const chosen = bestPositive || fallbackCheckpoint
+    const chosen = bestPositive || null
     const projectedSessionEV = chosen ? chosen.ev : 0
     const projectedSpinsToStop = chosen ? chosen.spins : 0
     const projectedHitsToStop = chosen ? chosen.hits : 0

@@ -56,21 +56,9 @@ function dynamicPlusEvCounter(mustHit, payout, spi, baseRTP, reset) {
 
 function meterRtpWithFloor(meter, baseRTP, getMeterRTP) {
   const dynamicPlusEV = dynamicPlusEvCounter(meter.mustHit, meter.payout, meter.spi, baseRTP, meter.reset)
-  let meterRTP
-
-  if (meter.counter >= dynamicPlusEV) {
-    meterRTP = getMeterRTP(meter.counter, meter.mustHit, meter.payout, meter.spi, baseRTP)
-  } else {
-    const plusEV_RTP = getMeterRTP(dynamicPlusEV, meter.mustHit, meter.payout, meter.spi, baseRTP)
-    const denom = Math.max(0.0001, dynamicPlusEV - meter.reset)
-    const p_mid = (meter.mid - meter.reset) / denom
-    const midRTP = baseRTP * 100
-    const reset_RTP = (midRTP - p_mid * plusEV_RTP) / Math.max(0.0001, (1 - p_mid))
-    const progress = (meter.counter - meter.reset) / denom
-    meterRTP = reset_RTP + progress * (plusEV_RTP - reset_RTP)
-  }
-
-  return Math.max(baseRTP * 100, meterRTP)
+  // For Current EV/RTP, do not grant RTP boost until meter reaches +EV threshold.
+  if (meter.counter < dynamicPlusEV) return baseRTP * 100
+  return Math.max(baseRTP * 100, getMeterRTP(meter.counter, meter.mustHit, meter.payout, meter.spi, baseRTP))
 }
 
 function StackUpPays({ onBack }) {

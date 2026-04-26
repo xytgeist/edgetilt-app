@@ -40,6 +40,12 @@ const MIDPOINT = {
   mini: 100,
 }
 
+/** Where to draw the +EV tick (0–100%) along the range min→max. */
+function plusEvMarkerPercent(min, max, plusEv) {
+  if (max <= min) return 0
+  return Math.min(100, Math.max(0, ((plusEv - min) / (max - min)) * 100))
+}
+
 function StackUpPays({ onBack }) {
   const [mega, setMega] = useState(300)
   const [grand, setGrand] = useState(225)
@@ -210,7 +216,7 @@ function StackUpPays({ onBack }) {
           </div>
         </div>
 
-        {/* Meters - with break-even in parentheses */}
+        {/* Meters — gold tick = approx +EV; number in ( ) matches tick position */}
         <div className="bg-slate-900 p-5 rounded-3xl mb-6 space-y-2.5">
           {[
             { label: 'Mega',  value: mega,  setter: setMega,  accent: 'accent-red-500',    text: 'text-red-400',   min: 250, be: PLUS_EV.mega },
@@ -218,7 +224,10 @@ function StackUpPays({ onBack }) {
             { label: 'Major', value: major, setter: setMajor, accent: 'accent-purple-500', text: 'text-purple-400', min: 150, be: PLUS_EV.major },
             { label: 'Minor', value: minor, setter: setMinor, accent: 'accent-green-500',  text: 'text-green-400',  min: 100, be: PLUS_EV.minor },
             { label: 'Mini',  value: mini,  setter: setMini,  accent: 'accent-blue-500',   text: 'text-blue-400',   min: 75,  be: PLUS_EV.mini },
-          ].map((m, i) => (
+          ].map((m, i) => {
+            const mustHit = MUST_HIT[m.label.toLowerCase()]
+            const bePct = plusEvMarkerPercent(m.min, mustHit, m.be)
+            return (
             <div key={i}>
               <div className="flex justify-between mb-0.5">
                 <div className={`font-semibold ${m.text}`}>
@@ -226,16 +235,26 @@ function StackUpPays({ onBack }) {
                 </div>
                 <div className={`font-mono text-lg font-bold ${m.text}`}>{m.value}</div>
               </div>
+              {/* +EV tick aligned to slider min→max (same scale as the range input) */}
+              <div className="relative w-full h-2 mb-0.5" aria-hidden>
+                <div className="absolute left-0 right-0 top-1.5 h-0.5 bg-slate-700/60 rounded" />
+                <div
+                  className="absolute top-0.5 w-0.5 h-2.5 -translate-x-1/2 rounded-sm bg-amber-400 ring-1 ring-amber-400/30 shadow"
+                  style={{ left: `${bePct}%` }}
+                  title={`Approx. +EV — counter at or above ${m.be} (meter in +EV territory)`}
+                />
+              </div>
               <input
                 type="range"
                 min={m.min}
-                max={MUST_HIT[m.label.toLowerCase()]}
+                max={mustHit}
                 value={m.value}
                 onChange={(e) => m.setter(Number(e.target.value))}
-                className={`w-full ${m.accent}`}
+                className={`w-full ${m.accent} relative z-10`}
               />
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Current EV */}

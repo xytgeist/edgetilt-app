@@ -35,6 +35,7 @@ function App() {
 
   useEffect(() => {
     const hash = window.location.hash
+    const hashParams = new URLSearchParams(hash.replace('#', ''))
 
     // Handle verification success FIRST
     if (hash.includes('type=signup') || hash.includes('type=confirmation')) {
@@ -48,6 +49,17 @@ function App() {
     // Only trigger reset password for actual recovery links
     if (hash.includes('type=recovery')) {
       setCurrentView('reset-password')
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+
+      // Ensure recovery links create an auth session before password update.
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        })
+      }
+
       window.history.replaceState({}, document.title, '/reset-password')
     }
 
@@ -114,7 +126,7 @@ function App() {
     if (!forgotEmail) return alert("Please enter your email")
 
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: '$window.location.origin/reset-password'
+      redirectTo: `${window.location.origin}/reset-password`
     })
 
     if (error) alert("Error: " + error.message)

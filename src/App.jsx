@@ -20,10 +20,14 @@ function App() {
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotMessage, setForgotMessage] = useState('')
+  const [forgotError, setForgotError] = useState('')
   const [showCreateAccount, setShowCreateAccount] = useState(false)
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
+  const [signupMessage, setSignupMessage] = useState('')
+  const [signupError, setSignupError] = useState('')
 
   // Reset password states
   const [newPassword, setNewPassword] = useState('')
@@ -33,6 +37,10 @@ function App() {
 
   // Login error (only shown after failed login attempt)
   const [loginError, setLoginError] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [isSigningUp, setIsSigningUp] = useState(false)
+  const [isSendingReset, setIsSendingReset] = useState(false)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   // Verification success message
   const [verificationSuccess, setVerificationSuccess] = useState(false)
@@ -91,13 +99,40 @@ function App() {
     setIsChecking(false)
   }
 
-  const handleLogin = async () => {
+  const getFriendlyErrorMessage = (error, context = 'general') => {
+    const message = error?.message || 'Unknown error'
+    const lower = message.toLowerCase()
+
+    if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('fetch')) {
+      return 'Network error. Check your connection and try again.'
+    }
+
+    if (lower.includes('rate limit') || lower.includes('too many requests')) {
+      return 'Too many attempts. Please wait a few minutes and try again.'
+    }
+
+    if (context === 'login' && (lower.includes('email not confirmed') || lower.includes('not confirmed'))) {
+      return 'Please verify your email before logging in.'
+    }
+
+    if (context === 'reset' && (lower.includes('session missing') || lower.includes('invalid') || lower.includes('expired') || lower.includes('jwt'))) {
+      return 'This reset link is invalid or expired. Please request a new one.'
+    }
+
+    return message
+  }
+
+  const handleLogin = async (e) => {
+    e?.preventDefault()
+    if (isLoggingIn) return
+    setIsLoggingIn(true)
     setLoginError('')
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     
     if (error) {
-      alert(error.message)
+      setLoginError(getFriendlyErrorMessage(error, 'login'))
+      setIsLoggingIn(false)
       return
     }
 
@@ -107,17 +142,23 @@ function App() {
       setUser(data.user)
       setIsAllowed(true)
     } else {
-      setLoginError("Unauthorized - please contact Ryan to be whitelisted.")
+      await supabase.auth.signOut()
+      setLoginError("Your account is not yet approved. Contact Ryan to be whitelisted.")
     }
+    setIsLoggingIn(false)
   }
 
   const handleSignUp = async (e) => {
     e.preventDefault()
-    if (!signupEmail || !signupPassword || !signupConfirmPassword) return alert("Please fill in all fields")
-    if (signupPassword !== signupConfirmPassword) return alert("Passwords do not match")
-    if (signupPassword.length < 6) return alert("Password must be at least 6 characters")
+    if (isSigningUp) return
+    setSignupError('')
+    setSignupMessage('')
+    if (!signupEmail || !signupPassword || !signupConfirmPassword) return setSignupError("Please fill in all fields")
+    if (signupPassword !== signupConfirmPassword) return setSignupError("Passwords do not match")
+    if (signupPassword.length < 6) return setSignupError("Password must be at least 6 characters")
+    setIsSigningUp(true)
 
-    const { error } = await supabase.auth.signUp({ 
+    const { data, error } = await supabase.auth.signUp({ 
       email: signupEmail, 
       password: signupPassword,
       options: {
@@ -125,47 +166,78 @@ function App() {
 
       }
     })
-    if (error) alert("Error: " + error.message)
-    else {
-      alert("✅ Account created! Please check your email for the confirmation link.")
-      setShowCreateAccount(false)
-      setSignupEmail('')
-      setSignupPassword('')
-      setSignupConfirmPassword('')
+    if (error) {
+      const message = error.message?.toLowerCase() || ''
+      if (message.includes('already registered') || message.includes('already exists') || message.includes('user already')) {
+        setSignupError("Account already exists. Please log in or use Forgot Password.")
+      } else {
+        setSignupError(getFriendlyErrorMessage(error))
+      }
+      setIsSigningUp(false)
+      return
     }
+
+    // Supabase can return a user with no identities when the email already exists.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setSignupError("Account already exists. Please log in or use Forgot Password.")
+      setIsSigningUp(false)
+      return
+    }
+
+    setSignupMessage("✅ Account created! Please check your email for the confirmation link.")
+    setSignupEmail('')
+    setSignupPassword('')
+    setSignupConfirmPassword('')
+    setIsSigningUp(false)
   }
 
   const handleForgotPassword = async (e) => {
     e.preventDefault()
-    if (!forgotEmail) return alert("Please enter your email")
+    if (isSendingReset) return
+    if (!forgotEmail) return setForgotError("Please enter your email")
+    setIsSendingReset(true)
+    setForgotError('')
+    setForgotMessage('')
 
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
       redirectTo: `${window.location.origin}/reset-password`
     })
 
-    if (error) alert("Error: " + error.message)
-    else {
-      alert("Reset link sent! Check inbox/spam and click it QUICKLY.")
-      setShowForgotPassword(false)
+    if (error) {
+      setForgotError(getFriendlyErrorMessage(error))
+    } else {
+      setForgotMessage("If an account exists for that email, a reset link has been sent.")
       setForgotEmail('')
     }
+    setIsSendingReset(false)
   }
 
   const handlePasswordReset = async (e) => {
     e.preventDefault()
+    if (isUpdatingPassword) return
+    setResetError('')
     if (newPassword !== confirmPassword) return setResetError("Passwords do not match")
     if (newPassword.length < 6) return setResetError("Password must be at least 6 characters")
+    setIsUpdatingPassword(true)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setResetError("This reset link is invalid or expired. Please request a new one.")
+      setIsUpdatingPassword(false)
+      return
+    }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword })
 
     if (error) {
-      setResetError("Error: " + error.message)
+      setResetError(getFriendlyErrorMessage(error, 'reset'))
     } else {
       setResetMessage("✅ Password updated successfully!")
       setTimeout(() => {
         window.location.href = window.location.origin
       }, 2000)
     }
+    setIsUpdatingPassword(false)
   }
 
   const handleLogout = async () => {
@@ -190,7 +262,7 @@ function App() {
             <form onSubmit={handlePasswordReset} className="space-y-4">
               <input type="password" placeholder="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold">Update Password</button>
+              <button type="submit" disabled={isUpdatingPassword} className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isUpdatingPassword ? 'Updating...' : 'Update Password'}</button>
             </form>
           )}
 
@@ -218,11 +290,11 @@ function App() {
               <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <button 
-                type="button" 
-                onClick={handleLogin}
-                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold"
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Log In
+                {isLoggingIn ? 'Logging In...' : 'Log In'}
               </button>
 
               {loginError && (
@@ -233,7 +305,12 @@ function App() {
 
               <button 
                 type="button" 
-                onClick={() => setShowCreateAccount(true)}
+                onClick={() => {
+                  setShowCreateAccount(true)
+                  setShowForgotPassword(false)
+                  setSignupError('')
+                  setSignupMessage('')
+                }}
                 className="w-full bg-gray-700 hover:bg-gray-600 border border-orange-600 py-4 rounded-2xl font-bold text-white"
               >
                 Signup
@@ -248,13 +325,21 @@ function App() {
               <input type="email" placeholder="Email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
               <input type="password" placeholder="Confirm Password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold">Create Account</button>
-              <button type="button" onClick={() => setShowCreateAccount(false)} className="w-full text-gray-400 hover:text-white py-3 text-sm">← Back to Login</button>
+              {signupError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">{signupError}</div>}
+              {signupMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center">{signupMessage}</div>}
+              <button type="submit" disabled={isSigningUp} className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isSigningUp ? 'Creating Account...' : 'Create Account'}</button>
+              <button type="button" onClick={() => {
+                setShowCreateAccount(false)
+                setSignupError('')
+                setSignupMessage('')
+              }} className="w-full text-gray-400 hover:text-white py-3 text-sm">← Back to Login</button>
             </form>
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <input type="email" placeholder="Enter your email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold">Send Reset Link</button>
+              {forgotError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">{forgotError}</div>}
+              {forgotMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center">{forgotMessage}</div>}
+              <button type="submit" disabled={isSendingReset} className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isSendingReset ? 'Sending...' : 'Send Reset Link'}</button>
               <button type="button" onClick={() => setShowForgotPassword(false)} className="w-full text-gray-400 hover:text-white py-3 text-sm">← Back to Login</button>
             </form>
           )}

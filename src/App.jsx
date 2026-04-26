@@ -101,7 +101,7 @@ function App() {
       email, 
       password,
       options: {
-        emailRedirectTo: 'https://lvslotpro-calc-tx18.vercel.app/'
+        emailRedirectTo: window.location.origin
       }
     })
     if (error) alert("Error: " + error.message)

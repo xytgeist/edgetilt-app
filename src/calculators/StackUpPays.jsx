@@ -46,6 +46,21 @@ function plusEvMarkerPercent(min, max, plusEv) {
   return Math.min(100, Math.max(0, ((plusEv - min) / (max - min)) * 100))
 }
 
+/**
+ * Dynamic +EV counter based on current base RTP:
+ * meterEV = payout - (1 - baseRTP) * spinsRemaining
+ * Solve meterEV = 0 for counter.
+ */
+function dynamicPlusEvCounter(mustHit, payout, spi, baseRTP, reset) {
+  const lossPerSpin = 1 - baseRTP
+  if (lossPerSpin <= 0) return reset
+
+  const spinsToBreakEven = payout / lossPerSpin
+  const rawCounter = mustHit - (spinsToBreakEven / spi)
+  const clamped = Math.min(mustHit, Math.max(reset, rawCounter))
+  return Math.round(clamped)
+}
+
 function StackUpPays({ onBack }) {
   const [mega, setMega] = useState(300)
   const [grand, setGrand] = useState(225)
@@ -91,27 +106,28 @@ function StackUpPays({ onBack }) {
     const baseRTP = overallRTP / 100
 
     const meterData = [
-      { label: 'Mega',  counter: mega,  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega, plusEV: PLUS_EV.mega, reset: 250, mid: MIDPOINT.mega },
-      { label: 'Grand', counter: grand, mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand, plusEV: PLUS_EV.grand, reset: 200, mid: MIDPOINT.grand },
-      { label: 'Major', counter: major, mustHit: MUST_HIT.major, payout: AVG_PAYOUT.major, spi: SPINS_PER_INCREMENT.major, plusEV: PLUS_EV.major, reset: 150, mid: MIDPOINT.major },
-      { label: 'Minor', counter: minor, mustHit: MUST_HIT.minor, payout: AVG_PAYOUT.minor, spi: SPINS_PER_INCREMENT.minor, plusEV: PLUS_EV.minor, reset: 100, mid: MIDPOINT.minor },
-      { label: 'Mini',  counter: mini,  mustHit: MUST_HIT.mini,  payout: AVG_PAYOUT.mini,  spi: SPINS_PER_INCREMENT.mini, plusEV: PLUS_EV.mini, reset: 75,  mid: MIDPOINT.mini },
+      { label: 'Mega',  counter: mega,  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega, reset: 250, mid: MIDPOINT.mega },
+      { label: 'Grand', counter: grand, mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand, reset: 200, mid: MIDPOINT.grand },
+      { label: 'Major', counter: major, mustHit: MUST_HIT.major, payout: AVG_PAYOUT.major, spi: SPINS_PER_INCREMENT.major, reset: 150, mid: MIDPOINT.major },
+      { label: 'Minor', counter: minor, mustHit: MUST_HIT.minor, payout: AVG_PAYOUT.minor, spi: SPINS_PER_INCREMENT.minor, reset: 100, mid: MIDPOINT.minor },
+      { label: 'Mini',  counter: mini,  mustHit: MUST_HIT.mini,  payout: AVG_PAYOUT.mini,  spi: SPINS_PER_INCREMENT.mini, reset: 75,  mid: MIDPOINT.mini },
     ]
 
     let sumExtras = 0
     let meterEVs = []
 
     meterData.forEach(m => {
+      const dynamicPlusEV = dynamicPlusEvCounter(m.mustHit, m.payout, m.spi, baseRTP, m.reset)
       let meterRTP
 
-      if (m.counter >= m.plusEV) {
+      if (m.counter >= dynamicPlusEV) {
         meterRTP = getMeterRTP(m.counter, m.mustHit, m.payout, m.spi, baseRTP)
       } else {
-        const plusEV_RTP = getMeterRTP(m.plusEV, m.mustHit, m.payout, m.spi, baseRTP)
-        const p_mid = (m.mid - m.reset) / (m.plusEV - m.reset)
+        const plusEV_RTP = getMeterRTP(dynamicPlusEV, m.mustHit, m.payout, m.spi, baseRTP)
+        const p_mid = (m.mid - m.reset) / (dynamicPlusEV - m.reset)
         const midRTP = baseRTP * 100
         const reset_RTP = (midRTP - p_mid * plusEV_RTP) / (1 - p_mid)
-        const progress = (m.counter - m.reset) / (m.plusEV - m.reset)
+        const progress = (m.counter - m.reset) / (dynamicPlusEV - m.reset)
         meterRTP = reset_RTP + progress * (plusEV_RTP - reset_RTP)
       }
 
@@ -227,19 +243,19 @@ function StackUpPays({ onBack }) {
         {/* Meters — gold tick = approx +EV; number in ( ) matches tick position */}
         <div className="bg-slate-900 p-5 rounded-3xl mb-6 space-y-2.5">
           {[
-            { label: 'Mega',  value: mega,  setter: setMega,  accent: 'accent-red-500',    text: 'text-red-400',   min: 250, be: PLUS_EV.mega },
-            { label: 'Grand', value: grand, setter: setGrand, accent: 'accent-orange-500', text: 'text-orange-400', min: 200, be: PLUS_EV.grand },
-            { label: 'Major', value: major, setter: setMajor, accent: 'accent-purple-500', text: 'text-purple-400', min: 150, be: PLUS_EV.major },
-            { label: 'Minor', value: minor, setter: setMinor, accent: 'accent-green-500',  text: 'text-green-400',  min: 100, be: PLUS_EV.minor },
-            { label: 'Mini',  value: mini,  setter: setMini,  accent: 'accent-blue-500',   text: 'text-blue-400',   min: 75,  be: PLUS_EV.mini },
+            { label: 'Mega',  value: mega,  setter: setMega,  accent: 'accent-red-500',    text: 'text-red-400',   min: 250, mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega },
+            { label: 'Grand', value: grand, setter: setGrand, accent: 'accent-orange-500', text: 'text-orange-400', min: 200, mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand },
+            { label: 'Major', value: major, setter: setMajor, accent: 'accent-purple-500', text: 'text-purple-400', min: 150, mustHit: MUST_HIT.major, payout: AVG_PAYOUT.major, spi: SPINS_PER_INCREMENT.major },
+            { label: 'Minor', value: minor, setter: setMinor, accent: 'accent-green-500',  text: 'text-green-400',  min: 100, mustHit: MUST_HIT.minor, payout: AVG_PAYOUT.minor, spi: SPINS_PER_INCREMENT.minor },
+            { label: 'Mini',  value: mini,  setter: setMini,  accent: 'accent-blue-500',   text: 'text-blue-400',   min: 75,  mustHit: MUST_HIT.mini,  payout: AVG_PAYOUT.mini,  spi: SPINS_PER_INCREMENT.mini },
           ].map((m, i) => {
-            const mustHit = MUST_HIT[m.label.toLowerCase()]
-            const bePct = plusEvMarkerPercent(m.min, mustHit, m.be)
+            const dynamicBe = dynamicPlusEvCounter(m.mustHit, m.payout, m.spi, overallRTP / 100, m.min)
+            const bePct = plusEvMarkerPercent(m.min, m.mustHit, dynamicBe)
             return (
             <div key={i}>
               <div className="flex justify-between mb-0.5">
                 <div className={`font-semibold ${m.text}`}>
-                  {m.label} <span className="text-slate-500 font-normal">({m.be})</span>
+                  {m.label} <span className="text-slate-500 font-normal">({dynamicBe})</span>
                 </div>
                 <div className={`font-mono text-lg font-bold ${m.text}`}>{m.value}</div>
               </div>
@@ -249,12 +265,12 @@ function StackUpPays({ onBack }) {
                   className="absolute -top-0.5 -translate-x-1/2 text-[10px] italic text-emerald-400 whitespace-nowrap"
                   style={{ left: `${bePct}%` }}
                 >
-                  {m.be}
+                  {dynamicBe}
                 </div>
                 <div
                   className="absolute top-2 -translate-x-1/2 text-[12px] leading-none text-emerald-400"
                   style={{ left: `${bePct}%` }}
-                  title={`Approx. +EV — counter at or above ${m.be} (meter in +EV territory)`}
+                  title={`Approx. +EV — counter at or above ${dynamicBe} (meter in +EV territory)`}
                 >
                   ▼
                 </div>
@@ -262,7 +278,7 @@ function StackUpPays({ onBack }) {
               <input
                 type="range"
                 min={m.min}
-                max={mustHit}
+                max={m.mustHit}
                 value={m.value}
                 onChange={(e) => m.setter(Number(e.target.value))}
                 className={`w-full ${m.accent} relative z-10`}

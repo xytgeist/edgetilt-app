@@ -9,6 +9,13 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// Mobile-first: min 16px text (iOS won’t auto-zoom), ~48px min tap height, notched device padding
+const mobileShell = 'min-h-dvh bg-gray-950 flex items-center justify-center overflow-y-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]'
+const inputBase = 'w-full min-h-12 text-base text-white bg-gray-800 rounded-2xl border-0 px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 touch-manipulation'
+const btnPrimary = 'w-full min-h-12 text-base font-bold touch-manipulation active:scale-[0.99] transition-transform'
+const btnSecondary = 'w-full min-h-12 text-base font-bold touch-manipulation active:scale-[0.99] transition-transform'
+const linkBtn = 'w-full min-h-12 text-base text-gray-400 hover:text-white touch-manipulation py-3 text-center flex items-center justify-center active:scale-[0.99]'
+
 function App() {
   const [user, setUser] = useState(null)
   const [email, setEmail] = useState('')
@@ -245,28 +252,50 @@ function App() {
     window.location.reload()
   }
 
-  if (isChecking) return <div className="min-h-screen bg-gray-950 flex items-center justify-center text-white">Loading...</div>
+  if (isChecking) return <div className={`${mobileShell} text-white`}>Loading...</div>
 
   // Reset Password Page
   if (currentView === 'reset-password') {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="bg-gray-900 p-8 rounded-3xl max-w-sm w-full">
+      <div className={mobileShell}>
+        <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full">
           <h2 className="text-2xl font-bold text-white mb-6 text-center">Reset Your Password</h2>
 
-          {resetError && <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-2xl text-red-300 text-center">{resetError}</div>}
+          {resetError && <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-2xl text-red-300 text-sm text-center">{resetError}</div>}
 
           {resetMessage ? (
-            <div className="text-center py-8 text-emerald-400 text-lg font-medium">{resetMessage}</div>
+            <div className="text-center py-8 text-emerald-400 text-base font-medium leading-relaxed">{resetMessage}</div>
           ) : (
             <form onSubmit={handlePasswordReset} className="space-y-4">
-              <input type="password" placeholder="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <input type="password" placeholder="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <button type="submit" disabled={isUpdatingPassword} className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isUpdatingPassword ? 'Updating...' : 'Update Password'}</button>
+              <input
+                type="password"
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={inputBase}
+                autoComplete="new-password"
+                inputMode="text"
+                enterKeyHint="next"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={inputBase}
+                autoComplete="new-password"
+                inputMode="text"
+                enterKeyHint="go"
+                required
+              />
+              <button type="submit" disabled={isUpdatingPassword} className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}>
+                {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+              </button>
             </form>
           )}
 
-          <button onClick={() => window.location.href = window.location.origin} className="mt-6 w-full text-gray-400 hover:text-white py-3 text-sm">← Back to Login</button>
+          <button onClick={() => { window.location.href = window.location.origin }} className={`${linkBtn} text-sm sm:text-base mt-4`}>← Back to Login</button>
         </div>
       </div>
     )
@@ -275,30 +304,53 @@ function App() {
   // Login Screen
   if (!user || !isAllowed) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="bg-gray-900 p-8 rounded-3xl max-w-sm w-full">
+      <div className={mobileShell}>
+        <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full">
           <h2 className="text-2xl font-bold text-white mb-6 text-center">Las Vegas Slot Pro</h2>
 
           {verificationSuccess && (
-            <div className="mb-6 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center font-medium">
+            <div className="mb-6 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm sm:text-base font-medium leading-relaxed">
               ✅ Account Verified - have fun!
             </div>
           )}
 
           {!showForgotPassword && !showCreateAccount ? (
             <form onSubmit={handleLogin} className="space-y-4">
-              <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputBase}
+                autoComplete="email"
+                inputMode="email"
+                enterKeyHint="next"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputBase}
+                autoComplete="current-password"
+                inputMode="text"
+                enterKeyHint="go"
+                required
+              />
               <button 
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 {isLoggingIn ? 'Logging In...' : 'Log In'}
               </button>
 
               {loginError && (
-                <div className="mt-3 p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">
+                <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
                   {loginError}
                 </div>
               )}
@@ -311,36 +363,88 @@ function App() {
                   setSignupError('')
                   setSignupMessage('')
                 }}
-                className="w-full bg-gray-700 hover:bg-gray-600 border border-orange-600 py-4 rounded-2xl font-bold text-white"
+                className={`${btnSecondary} bg-gray-700 hover:bg-gray-600 border border-orange-600 rounded-2xl text-white`}
               >
                 Signup
               </button>
 
-              <div className="text-center pt-2">
-                <button type="button" onClick={() => setShowForgotPassword(true)} className="text-orange-400 hover:text-orange-300 text-sm underline">Forgot Password?</button>
+              <div className="pt-1">
+                <button type="button" onClick={() => setShowForgotPassword(true)} className="w-full min-h-12 text-base text-orange-400 hover:text-orange-300 touch-manipulation py-3 text-center">
+                  Forgot Password?
+                </button>
               </div>
             </form>
           ) : showCreateAccount ? (
             <form onSubmit={handleSignUp} className="space-y-4">
-              <input type="email" placeholder="Email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <input type="password" placeholder="Password" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              <input type="password" placeholder="Confirm Password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              {signupError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">{signupError}</div>}
-              {signupMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center">{signupMessage}</div>}
-              <button type="submit" disabled={isSigningUp} className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isSigningUp ? 'Creating Account...' : 'Create Account'}</button>
+              <input
+                type="email"
+                placeholder="Email"
+                value={signupEmail}
+                onChange={(e) => setSignupEmail(e.target.value)}
+                className={inputBase}
+                autoComplete="email"
+                inputMode="email"
+                enterKeyHint="next"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={signupPassword}
+                onChange={(e) => setSignupPassword(e.target.value)}
+                className={inputBase}
+                autoComplete="new-password"
+                inputMode="text"
+                enterKeyHint="next"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Confirm Password"
+                value={signupConfirmPassword}
+                onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                className={inputBase}
+                autoComplete="new-password"
+                inputMode="text"
+                enterKeyHint="go"
+                required
+              />
+              {signupError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">{signupError}</div>}
+              {signupMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">{signupMessage}</div>}
+              <button type="submit" disabled={isSigningUp} className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}>
+                {isSigningUp ? 'Creating Account...' : 'Create Account'}
+              </button>
               <button type="button" onClick={() => {
                 setShowCreateAccount(false)
                 setSignupError('')
                 setSignupMessage('')
-              }} className="w-full text-gray-400 hover:text-white py-3 text-sm">← Back to Login</button>
+              }} className={`${linkBtn} text-sm sm:text-base`}>← Back to Login</button>
             </form>
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-4">
-              <input type="email" placeholder="Enter your email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="w-full p-4 bg-gray-800 rounded-2xl text-white" required />
-              {forgotError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center">{forgotError}</div>}
-              {forgotMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center">{forgotMessage}</div>}
-              <button type="submit" disabled={isSendingReset} className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isSendingReset ? 'Sending...' : 'Send Reset Link'}</button>
-              <button type="button" onClick={() => setShowForgotPassword(false)} className="w-full text-gray-400 hover:text-white py-3 text-sm">← Back to Login</button>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className={inputBase}
+                autoComplete="email"
+                inputMode="email"
+                enterKeyHint="go"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+              />
+              {forgotError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">{forgotError}</div>}
+              {forgotMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">{forgotMessage}</div>}
+              <button type="submit" disabled={isSendingReset} className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}>
+                {isSendingReset ? 'Sending...' : 'Send Reset Link'}
+              </button>
+              <button type="button" onClick={() => setShowForgotPassword(false)} className={`${linkBtn} text-sm sm:text-base`}>← Back to Login</button>
             </form>
           )}
         </div>
@@ -350,15 +454,15 @@ function App() {
 
   // Dashboard
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-dvh bg-gray-950 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       {currentView === 'dashboard' ? (
-        <div className="max-w-lg mx-auto px-4 py-8">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-black text-white tracking-tight">Las Vegas Slot Pro</h1>
-            <p className="text-zinc-400 mt-3">Select a calculator</p>
+        <div className="max-w-lg mx-auto px-4 py-6 sm:py-8 pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <div className="text-center mb-10 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Las Vegas Slot Pro</h1>
+            <p className="text-zinc-400 mt-3 text-base">Select a calculator</p>
           </div>
 
-          <button onClick={() => setCurrentView('phoenix')} className="w-full bg-gray-900 hover:bg-gray-800 transition-colors p-8 rounded-3xl text-left flex items-center gap-5 mb-4 h-28">
+          <button onClick={() => setCurrentView('phoenix')} className="w-full bg-gray-900 hover:bg-gray-800 transition-colors p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation active:scale-[0.99]">
             <img src="/phoenix-link-logo.png" alt="Phoenix" className="w-16 h-16 rounded-xl flex-shrink-0" />
             <div>
               <div className="font-semibold text-2xl text-orange-400">Phoenix Link EV Calc</div>
@@ -366,7 +470,7 @@ function App() {
             </div>
           </button>
 
-          <button onClick={() => setCurrentView('buffalo')} className="w-full bg-gradient-to-br from-amber-600 via-orange-600 to-red-700 hover:from-amber-500 hover:via-orange-500 hover:to-red-600 p-8 rounded-3xl text-left flex items-center gap-5 mb-4 h-28 transition-all active:scale-[0.985]">
+          <button onClick={() => setCurrentView('buffalo')} className="w-full bg-gradient-to-br from-amber-600 via-orange-600 to-red-700 hover:from-amber-500 hover:via-orange-500 hover:to-red-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]">
             <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-inner flex-shrink-0">
               <img src="/buffalo-icon.png" alt="Buffalo" className="w-14 h-14 object-contain" />
             </div>
@@ -376,7 +480,7 @@ function App() {
             </div>
           </button>
 
-          <button onClick={() => setCurrentView('stackup')} className="w-full bg-gradient-to-br from-cyan-600 via-sky-600 to-blue-700 hover:from-cyan-500 hover:via-sky-500 hover:to-blue-600 p-8 rounded-3xl text-left flex items-center gap-5 mb-4 h-28 transition-all active:scale-[0.985]">
+          <button onClick={() => setCurrentView('stackup')} className="w-full bg-gradient-to-br from-cyan-600 via-sky-600 to-blue-700 hover:from-cyan-500 hover:via-sky-500 hover:to-blue-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]">
             <img src="/stackup-icon.jpg" alt="Stack Up Pays" className="w-16 h-16 object-cover rounded-2xl shadow-lg flex-shrink-0" />
             <div>
               <div className="font-semibold text-2xl text-cyan-100">Stack Up Pays</div>
@@ -384,7 +488,7 @@ function App() {
             </div>
           </button>
 
-          <button onClick={() => setCurrentView('mhb')} className="w-full bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-700 hover:from-purple-500 hover:via-violet-500 hover:to-fuchsia-600 p-8 rounded-3xl text-left flex items-center gap-5 mb-4 h-28 transition-all active:scale-[0.985]">
+          <button onClick={() => setCurrentView('mhb')} className="w-full bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-700 hover:from-purple-500 hover:via-violet-500 hover:to-fuchsia-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]">
             <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-400 to-fuchsia-400 shadow-inner flex-shrink-0 text-5xl">🎰</div>
             <div>
               <div className="font-semibold text-2xl text-purple-100">Must Hit By Jackpot</div>
@@ -392,8 +496,8 @@ function App() {
             </div>
           </button>
 
-          <div className="mt-12 text-center">
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 text-sm underline transition-colors">Logout</button>
+          <div className="mt-10 sm:mt-12 text-center">
+            <button onClick={handleLogout} className="min-h-12 inline-flex items-center justify-center text-base text-gray-400 hover:text-red-400 underline touch-manipulation transition-colors px-4 py-2">Logout</button>
           </div>
         </div>
       ) : currentView === 'phoenix' ? (

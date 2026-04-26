@@ -237,7 +237,6 @@ function StackUpPays({ onBack }) {
               </div>
               {/* +EV tick aligned to slider min→max (same scale as the range input) */}
               <div className="relative w-full h-5 mb-0.5" aria-hidden>
-                <div className="absolute left-0 right-0 top-4 h-0.5 bg-slate-700/60 rounded" />
                 <div
                   className="absolute -top-0.5 -translate-x-1/2 text-[10px] italic text-emerald-400 whitespace-nowrap"
                   style={{ left: `${bePct}%` }}
@@ -245,10 +244,12 @@ function StackUpPays({ onBack }) {
                   {m.be}
                 </div>
                 <div
-                  className="absolute top-2.5 w-0.5 h-2.5 -translate-x-1/2 rounded-sm bg-emerald-400 ring-1 ring-emerald-400/30 shadow"
+                  className="absolute top-2 -translate-x-1/2 text-[12px] leading-none text-emerald-400"
                   style={{ left: `${bePct}%` }}
                   title={`Approx. +EV — counter at or above ${m.be} (meter in +EV territory)`}
-                />
+                >
+                  ▼
+                </div>
               </div>
               <input
                 type="range"

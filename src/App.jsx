@@ -128,14 +128,38 @@ function App() {
     e.preventDefault()
     if (newPassword !== confirmPassword) return setResetError("Passwords do not match")
     if (newPassword.length < 6) return setResetError("Password must be at least 6 characters")
-
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-
-    if (error) {
-      setResetError("Error: " + error.message)
-    } else {
-      setResetMessage("✅ Password updated successfully!")
-      setTimeout(() => window.location.href = 'https://lvslotpro.com', 2000)
+  
+    try {
+      const hash = window.location.hash.substring(1)
+      const params = new URLSearchParams(hash)
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+  
+      if (!accessToken || !refreshToken) {
+        setResetError("Invalid or expired reset link. Please request a new one.")
+        return
+      }
+  
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      })
+  
+      if (sessionError) {
+        setResetError("Invalid or expired reset link. Please request a new one.")
+        return
+      }
+  
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+  
+      if (error) {
+        setResetError("Error: " + error.message)
+      } else {
+        setResetMessage("✅ Password updated successfully!")
+        setTimeout(() => window.location.href = window.location.origin, 2000)
+      }
+    } catch (err) {
+      setResetError("Error: " + err.message)
     }
   }
 

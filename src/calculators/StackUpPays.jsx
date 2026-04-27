@@ -159,92 +159,70 @@ function StackUpPays({ onBack }) {
     const { baseRTP: calibratedBaseRTP } = getCalibrationFromCycle(overallRTP, meterData)
     const baseSpinRTP = calibratedBaseRTP / 100
 
-    // Event-driven combo simulation:
-    // Move forward to each expected next must-hit event, advancing all meters in between.
-    // If starting below +EV, estimate cost (negative EV) to reach +EV.
-    // If starting above +EV, play until state RTP falls below 100%.
+    // Strategy:
+    // 1) Use current state RTP as the edge rate.
+    // 2) Project only spins-until-stop (first state where RTP drops below 100%).
+    // 3) Expected bets won = spinsUntilStop * (currentRTP - 100%).
     const simMeters = meterData.map(m => ({ ...m }))
     const maxEvents = 60
-    let cumulativeEV = 0
-    let cumulativeSpins = 0
+    let projectedSpinsToStop = 0
     let hits = 0
-    let reachedPositive = stateRTP >= 100
-    let spinsUntilPositive = reachedPositive ? 0 : null
+    let spinsUntilPositive = null
     const steps = []
     const spinEpsilon = 0.0001
 
-    for (let eventIndex = 0; eventIndex < maxEvents; eventIndex += 1) {
-      const rtpBeforeEvent = getCalibratedStateRTP(overallRTP, simMeters)
+    if (stateRTP >= 100) {
+      for (let eventIndex = 0; eventIndex < maxEvents; eventIndex += 1) {
+        const rtpBeforeEvent = getCalibratedStateRTP(overallRTP, simMeters)
+        if (rtpBeforeEvent < 100) break
 
-      if (reachedPositive && rtpBeforeEvent < 100) break
-      if (!reachedPositive && rtpBeforeEvent >= 100) {
-        reachedPositive = true
-        spinsUntilPositive = cumulativeSpins
-        break
+        let hitIndex = -1
+        let spinsToHit = Number.POSITIVE_INFINITY
+
+        simMeters.forEach((m, idx) => {
+          const spins = Math.max(0, (m.mustHit - m.counter) * m.spi)
+          if (spins < spinsToHit) {
+            spinsToHit = spins
+            hitIndex = idx
+          }
+        })
+
+        if (!Number.isFinite(spinsToHit) || hitIndex < 0) break
+        const safeSpins = Math.max(spinEpsilon, spinsToHit)
+
+        projectedSpinsToStop += safeSpins
+
+        // Advance all meters as expected during those spins.
+        simMeters.forEach(m => {
+          m.counter = Math.min(m.mustHit, m.counter + (safeSpins / m.spi))
+        })
+
+        // Soonest meter hits and resets.
+        simMeters[hitIndex].counter = simMeters[hitIndex].reset
+        hits += 1
+        const rtpAfterEvent = getCalibratedStateRTP(overallRTP, simMeters)
+
+        steps.push({
+          step: eventIndex + 1,
+          hit: simMeters[hitIndex].label,
+          spins: safeSpins,
+          legRTP: rtpBeforeEvent,
+          cumulativeSpins: projectedSpinsToStop,
+          rtpAfterEvent,
+          counters: {
+            mega: Number(simMeters[0].counter.toFixed(1)),
+            grand: Number(simMeters[1].counter.toFixed(1)),
+            major: Number(simMeters[2].counter.toFixed(1)),
+            minor: Number(simMeters[3].counter.toFixed(1)),
+            mini: Number(simMeters[4].counter.toFixed(1)),
+          },
+        })
+
+        if (rtpAfterEvent < 100) break
       }
-
-      let hitIndex = -1
-      let spinsToHit = Number.POSITIVE_INFINITY
-
-      simMeters.forEach((m, idx) => {
-        const spins = Math.max(0, (m.mustHit - m.counter) * m.spi)
-        if (spins < spinsToHit) {
-          spinsToHit = spins
-          hitIndex = idx
-        }
-      })
-
-      if (!Number.isFinite(spinsToHit) || hitIndex < 0) break
-      const safeSpins = Math.max(spinEpsilon, spinsToHit)
-
-      // Keep leg EV consistent with calibrated state-RTP model.
-      const legRTP = rtpBeforeEvent
-      const legEV = safeSpins * ((legRTP / 100) - 1)
-
-      cumulativeEV += legEV
-      cumulativeSpins += safeSpins
-
-      // Advance all meters as expected during those spins.
-      simMeters.forEach(m => {
-        m.counter = Math.min(m.mustHit, m.counter + (safeSpins / m.spi))
-      })
-
-      // Soonest meter hits and resets.
-      simMeters[hitIndex].counter = simMeters[hitIndex].reset
-      hits += 1
-      const rtpAfterEvent = getCalibratedStateRTP(overallRTP, simMeters)
-
-      if (!reachedPositive && rtpAfterEvent >= 100) {
-        reachedPositive = true
-        spinsUntilPositive = cumulativeSpins
-        // If we started negative, Average Case is the cost to reach playable state.
-        break
-      }
-
-      if (reachedPositive && rtpAfterEvent < 100) {
-        // Started playable: stop once state drops below +EV.
-        break
-      }
-
-      steps.push({
-        step: eventIndex + 1,
-        hit: simMeters[hitIndex].label,
-        spins: safeSpins,
-        legEV,
-        legRTP,
-        cumulativeEV,
-        counters: {
-          mega: Number(simMeters[0].counter.toFixed(1)),
-          grand: Number(simMeters[1].counter.toFixed(1)),
-          major: Number(simMeters[2].counter.toFixed(1)),
-          minor: Number(simMeters[3].counter.toFixed(1)),
-          mini: Number(simMeters[4].counter.toFixed(1)),
-        },
-      })
     }
 
-    const projectedSessionEV = cumulativeEV
-    const projectedSpinsToStop = cumulativeSpins
+    const projectedSessionEV = projectedSpinsToStop * ((stateRTP / 100) - 1)
     const projectedHitsToStop = hits
 
     setCurrentRTP(Math.round(stateRTP * 10) / 10)
@@ -466,7 +444,7 @@ function StackUpPays({ onBack }) {
                 <div className="space-y-1">
                   {simulationSteps.slice(0, 6).map((s) => (
                     <div key={s.step} className="leading-relaxed">
-                      <span className="text-slate-400">#{s.step}</span> hit <span className="text-cyan-300">{s.hit}</span> in {Math.round(s.spins)} spins, leg {s.legEV.toFixed(1)}x ({s.legRTP.toFixed(1)}%), cumulative {s.cumulativeEV.toFixed(1)}x
+                      <span className="text-slate-400">#{s.step}</span> hit <span className="text-cyan-300">{s.hit}</span> in {Math.round(s.spins)} spins, leg RTP {s.legRTP.toFixed(1)}%, state after {s.rtpAfterEvent.toFixed(1)}%
                     </div>
                   ))}
                 </div>

@@ -281,36 +281,44 @@ function StackUpPays({ onBack }) {
         </div>
 
         {/* Bet Size + Denomination + RTP Override */}
-        <div className="bg-slate-900 p-5 rounded-3xl mb-6 grid grid-cols-3 gap-4">
-          <div className="relative">
+        <div className="bg-slate-900 p-5 rounded-3xl mb-6 grid grid-cols-3 gap-3 sm:gap-4">
+          <div>
             <label className="block text-slate-400 text-xs mb-1">Bet Size</label>
-            <div className="absolute left-4 top-10 text-2xl text-slate-400">$</div>
-            <input
-              type="text"
-              value={betSize}
-              onChange={(e) => setBetSize(e.target.value.replace(/[^0-9.]/g, ''))}
-              onBlur={(e) => setBetSize(parseFloat(e.target.value) || 25)}
-              className="w-full pl-8 p-3.5 bg-slate-800 rounded-2xl text-2xl font-bold text-center"
-            />
+            <div className="flex h-14 items-stretch gap-1 rounded-2xl bg-slate-800 px-2.5 focus-within:ring-2 focus-within:ring-cyan-500/25">
+              <span className="flex shrink-0 items-center pl-0.5 text-2xl font-bold leading-none text-slate-400" aria-hidden>
+                $
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={betSize}
+                onChange={(e) => setBetSize(e.target.value.replace(/[^0-9.]/g, ''))}
+                onBlur={(e) => setBetSize(parseFloat(e.target.value) || 25)}
+                className="min-w-0 flex-1 bg-transparent text-center text-2xl font-bold leading-none text-white outline-none focus:ring-0"
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-slate-400 text-xs mb-1">Denomination</label>
-            <select 
-              value={denom} 
-              onChange={(e) => setDenom(parseFloat(e.target.value))} 
-              className="w-full p-3.5 bg-slate-800 rounded-2xl text-2xl font-bold text-center"
+            <select
+              value={denom}
+              onChange={(e) => setDenom(parseFloat(e.target.value))}
+              className="h-14 w-full cursor-pointer rounded-2xl border-0 bg-slate-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-cyan-500/25"
             >
-              {[0.01,0.02,0.05,0.10,0.25,1,2,5,10,25,50,100].map(d => (
-                <option key={d} value={d}>${d}</option>
+              {[0.01, 0.02, 0.05, 0.1, 0.25, 1, 2, 5, 10, 25, 50, 100].map((d) => (
+                <option key={d} value={d}>
+                  ${d}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
             <label className="block text-slate-400 text-xs mb-1">RTP %</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
+              inputMode="decimal"
               value={rtpInput}
               onChange={(e) => {
                 const next = e.target.value.replace(/[^0-9.]/g, '')
@@ -327,12 +335,12 @@ function StackUpPays({ onBack }) {
                 setOverallRTP(safeRtp)
                 setRtpInput(String(safeRtp))
               }}
-              className="w-full p-3.5 bg-slate-800 rounded-2xl text-center text-xl font-bold" 
+              className="h-14 w-full rounded-2xl border-0 bg-slate-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-cyan-500/25"
             />
           </div>
         </div>
 
-        {/* Meters — gold tick = approx +EV; number in ( ) matches tick position */}
+        {/* Meters — green labels + arrow = approx +EV threshold (same scale as slider) */}
         <div className="bg-slate-900 p-5 rounded-3xl mb-6 space-y-2.5">
           {[
             { label: 'Mega',  value: mega,  setter: setMega,  accent: 'accent-red-500',    text: 'text-red-400',   min: RESET.mega,  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega },
@@ -346,10 +354,12 @@ function StackUpPays({ onBack }) {
             return (
             <div key={i}>
               <div className="flex justify-between mb-0.5">
-                <div className={`font-semibold ${m.text}`}>
-                  {m.label} <span className="text-slate-500 font-normal">({dynamicBe})</span>
+                <div className={`font-semibold ${m.text}`}>{m.label}</div>
+                <div className={`font-mono text-base sm:text-lg font-bold tabular-nums ${m.text}`}>
+                  <span>{m.value}</span>
+                  <span className="text-slate-500 font-semibold">/</span>
+                  <span className="opacity-80">{m.mustHit}</span>
                 </div>
-                <div className={`font-mono text-lg font-bold ${m.text}`}>{m.value}</div>
               </div>
               {/* +EV tick aligned to slider min→max (same scale as the range input) */}
               <div className="relative w-full h-5 mb-0.5" aria-hidden>

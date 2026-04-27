@@ -295,14 +295,14 @@ function BuffaloLink({ onBack }) {
                   <label className="text-gray-400 text-xs">Buffalos per Spin</label>
                   <span className="text-amber-400 font-bold">{buffalosPerSpin.toFixed(1)}</span>
                 </div>
-                <input type="range" min="1.5" max="1.9" step="0.1" value={buffalosPerSpin} onChange={(e) => setBuffalosPerSpin(parseFloat(e.target.value))} className="w-full accent-amber-500" />
+                <input type="range" min="1.5" max="1.9" step="0.1" value={buffalosPerSpin} onChange={(e) => setBuffalosPerSpin(parseFloat(e.target.value))} className="w-full range-touch" style={{ '--range-accent': '#f59e0b' }} />
               </div>
               <div>
                 <div className="flex justify-between mb-1">
                   <label className="text-gray-400 text-xs">Midpoint Factor</label>
                   <span className="text-amber-400 font-bold">{midpointFactor.toFixed(2)}</span>
                 </div>
-                <input type="range" min="0" max="1" step="0.05" value={midpointFactor} onChange={(e) => setMidpointFactor(parseFloat(e.target.value))} className="w-full accent-amber-500" />
+                <input type="range" min="0" max="1" step="0.05" value={midpointFactor} onChange={(e) => setMidpointFactor(parseFloat(e.target.value))} className="w-full range-touch" style={{ '--range-accent': '#f59e0b' }} />
               </div>
             </div>
           )}
@@ -391,7 +391,8 @@ function BuffaloLink({ onBack }) {
                 step="1"
                 value={scoutPercentage}
                 onChange={(e) => setScoutPercentage(Number(e.target.value))}
-                className="w-full accent-amber-500"
+                className="w-full range-touch"
+                style={{ '--range-accent': '#f59e0b' }}
               />
             </div>
           </div>

@@ -408,7 +408,8 @@ function PhoenixLink({ onBack }) {
                   step="1" 
                   value={scoutPercentage} 
                   onChange={(e) => setScoutPercentage(Number(e.target.value))} 
-                  className="w-full accent-orange-500" 
+                  className="w-full range-touch" 
+                  style={{ '--range-accent': '#f97316' }} 
                 />
               </div>
             </div>

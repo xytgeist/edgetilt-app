@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 
 const MUST_HIT = {
   mega: 350,
@@ -445,6 +446,8 @@ function StackUpPays({ onBack }) {
             <div className="text-xs text-slate-400 mt-1">to scout ({scoutPercentage}% of expected profit)</div>
           </div>
         </div>
+
+        <CalculatorDisclaimer className="border-slate-800/80" />
       </div>
 
       {/* Info Modal */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -481,6 +482,8 @@ function BuffaloLink({ onBack }) {
             </table>
           </div>
         </div>
+
+        <CalculatorDisclaimer />
       </div>
 
       {/* Info Modal */}

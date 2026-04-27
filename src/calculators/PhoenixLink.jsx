@@ -11,6 +11,7 @@ import {
   Legend,
 } from 'chart.js'
 import { createClient } from '@supabase/supabase-js'
+import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
@@ -499,6 +500,8 @@ function PhoenixLink({ onBack }) {
             </table>
           </div>
         </div>
+
+        <CalculatorDisclaimer />
       </div>
 
       {/* Info Modal */}

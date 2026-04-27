@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 
 function MHBCalculator({ onBack }) {
   // Main fields
@@ -249,7 +250,9 @@ function MHBCalculator({ onBack }) {
           </div>
         </div>
 
-        <div className="text-center text-slate-500 text-sm mt-12">
+        <CalculatorDisclaimer className="mt-8" />
+
+        <div className="text-center text-slate-500 text-xs mt-6">
           MHB Calculator • Purple Edition
         </div>
       </div>

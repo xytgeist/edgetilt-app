@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
+import { formatDenomLabel } from '../utils/formatDenomLabel'
 
 const MUST_HIT = {
   mega: 350,
@@ -43,6 +44,27 @@ const RESET = {
 
 /** Denoms available in the UI (no options above $2). */
 const DENOM_OPTIONS = [0.01, 0.02, 0.05, 0.1, 0.25, 1, 2]
+
+/** Pay table % range from the manufacturer: lowest → highest denomination. */
+const PAY_TABLE_RTP_MIN = 86.09
+const PAY_TABLE_RTP_MAX = 94.16
+
+const DENOM_MIN = DENOM_OPTIONS[0]
+const DENOM_MAX = DENOM_OPTIONS[DENOM_OPTIONS.length - 1]
+
+/**
+ * Map denomination to long-run pay table % (linear between min and max denom).
+ * Lowest avail. denom = PAY_TABLE_RTP_MIN, highest = PAY_TABLE_RTP_MAX.
+ */
+function rtpForDenom(denom) {
+  if (DENOM_MAX <= DENOM_MIN) return PAY_TABLE_RTP_MIN
+  const t = (denom - DENOM_MIN) / (DENOM_MAX - DENOM_MIN)
+  const raw = PAY_TABLE_RTP_MIN + t * (PAY_TABLE_RTP_MAX - PAY_TABLE_RTP_MIN)
+  return Math.round(raw * 100) / 100
+}
+
+const DEFAULT_STACKUP_DENOM = 0.1
+const DEFAULT_STACKUP_RTP = rtpForDenom(DEFAULT_STACKUP_DENOM)
 
 /** Where to draw the +EV tick (0–100%) along the range min→max. */
 function plusEvMarkerPercent(min, max, plusEv) {
@@ -118,9 +140,9 @@ function StackUpPays({ onBack }) {
   const [mini, setMini] = useState(100)
 
   const [betSize, setBetSize] = useState(25)
-  const [denom, setDenom] = useState(0.10)
-  const [overallRTP, setOverallRTP] = useState(89)
-  const [rtpInput, setRtpInput] = useState('89')
+  const [denom, setDenom] = useState(DEFAULT_STACKUP_DENOM)
+  const [overallRTP, setOverallRTP] = useState(DEFAULT_STACKUP_RTP)
+  const [rtpInput, setRtpInput] = useState(DEFAULT_STACKUP_RTP.toFixed(2))
 
   const [evAvg, setEvAvg] = useState(0)
   const [currentRTP, setCurrentRTP] = useState(89)
@@ -140,17 +162,11 @@ function StackUpPays({ onBack }) {
     }
   }, [denom])
 
-  // Auto-update RTP when denomination changes
+  // Auto-update RTP from manufacturer pay table scale when denomination changes
   useEffect(() => {
-    let base = 91
-    if (denom <= 0.02) base = 88
-    else if (denom === 0.05) base = 88.5
-    else if (denom === 0.10) base = 89
-    else if (denom === 0.25) base = 90
-    else if (denom >= 0.50) base = 92
-
-    setOverallRTP(base)
-    setRtpInput(String(base))
+    const r = rtpForDenom(denom)
+    setOverallRTP(r)
+    setRtpInput(r.toFixed(2))
   }, [denom])
 
   const calculate = () => {
@@ -317,7 +333,7 @@ function StackUpPays({ onBack }) {
             >
               {DENOM_OPTIONS.map((d) => (
                 <option key={d} value={d}>
-                  ${d}
+                  ${formatDenomLabel(d)}
                 </option>
               ))}
             </select>
@@ -340,14 +356,17 @@ function StackUpPays({ onBack }) {
               }}
               onBlur={() => {
                 const parsed = parseFloat(rtpInput)
-                const safeRtp = Number.isFinite(parsed) && parsed > 0 ? parsed : 89
+                const safeRtp = Number.isFinite(parsed) && parsed > 0 ? parsed : rtpForDenom(denom)
                 setOverallRTP(safeRtp)
-                setRtpInput(String(safeRtp))
+                setRtpInput(safeRtp.toFixed(2))
               }}
               className="h-14 w-full rounded-2xl border-0 bg-slate-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-cyan-500/25"
             />
           </div>
         </div>
+        <p className="mt-2 text-center text-[11px] leading-snug text-slate-500">
+          {`Pay table (mfr.): ${PAY_TABLE_RTP_MIN}% at $${formatDenomLabel(DENOM_MIN)} → ${PAY_TABLE_RTP_MAX}% at $${formatDenomLabel(DENOM_MAX)}. RTP in between scales linearly with denomination. You can still override manually.`}
+        </p>
 
         {/* Meters — green labels + arrow = approx +EV threshold (same scale as slider) */}
         <div className="bg-slate-900 p-5 rounded-3xl mb-6 space-y-2.5">

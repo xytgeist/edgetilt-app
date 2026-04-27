@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
+import { formatDenomLabel } from '../utils/formatDenomLabel'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -261,8 +262,10 @@ function BuffaloLink({ onBack }) {
             <div>
               <label className="block text-gray-400 mb-1 text-xs">Denomination</label>
               <select value={denom} onChange={(e) => setDenom(parseFloat(e.target.value))} className="w-full p-3 bg-gray-800 rounded-2xl text-2xl font-bold text-center">
-                {[0.01,0.02,0.05,0.10,0.25,1,2,5,10,25,50,100].map(d => (
-                  <option key={d} value={d}>${d}</option>
+                {[0.01,0.02,0.05,0.10,0.25,1,2,5,10,25,50,100].map((d) => (
+                  <option key={d} value={d}>
+                    ${formatDenomLabel(d)}
+                  </option>
                 ))}
               </select>
             </div>

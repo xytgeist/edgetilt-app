@@ -177,37 +177,36 @@ function StackUpPays({ onBack }) {
         const rtpBeforeEvent = getCalibratedStateRTP(overallRTP, simMeters)
         if (rtpBeforeEvent < 100) break
 
-        let hitIndex = -1
-        let spinsToHit = Number.POSITIVE_INFINITY
-
-        simMeters.forEach((m, idx) => {
-          const spins = Math.max(0, (m.mustHit - m.counter) * m.spi)
-          if (spins < spinsToHit) {
-            spinsToHit = spins
-            hitIndex = idx
-          }
-        })
-
-        if (!Number.isFinite(spinsToHit) || hitIndex < 0) break
-        const safeSpins = Math.max(spinEpsilon, spinsToHit)
+        // Smooth next-hit modeling:
+        // use expected-first-hit instead of hard "earliest meter always hits",
+        // which avoids discontinuous jumps from tiny meter changes.
+        const spinsToHitArr = simMeters.map((m) => Math.max(spinEpsilon, (m.mustHit - m.counter) * m.spi))
+        const rates = spinsToHitArr.map((s) => 1 / s)
+        const rateSum = rates.reduce((a, b) => a + b, 0)
+        if (!Number.isFinite(rateSum) || rateSum <= 0) break
+        const probs = rates.map((r) => r / rateSum)
+        const safeSpins = Math.max(spinEpsilon, 1 / rateSum)
 
         // Use per-leg RTP (before the event) for EV accumulation.
         projectedSessionEV += safeSpins * ((rtpBeforeEvent / 100) - 1)
         projectedSpinsToStop += safeSpins
 
         // Advance all meters as expected during those spins.
-        simMeters.forEach(m => {
-          m.counter = Math.min(m.mustHit, m.counter + (safeSpins / m.spi))
+        simMeters.forEach((m, idx) => {
+          const advanced = Math.min(m.mustHit, m.counter + (safeSpins / m.spi))
+          // Expected reset blend: meter resets with probability it is first to hit.
+          m.counter = probs[idx] * m.reset + (1 - probs[idx]) * advanced
         })
 
-        // Soonest meter hits and resets.
-        simMeters[hitIndex].counter = simMeters[hitIndex].reset
+        // One expected event occurs per leg.
         hits += 1
         const rtpAfterEvent = getCalibratedStateRTP(overallRTP, simMeters)
+        const likelyHitIndex = probs.reduce((best, p, idx) => (p > probs[best] ? idx : best), 0)
+        const likelyHit = simMeters[likelyHitIndex]?.label || 'Unknown'
 
         steps.push({
           step: eventIndex + 1,
-          hit: simMeters[hitIndex].label,
+          hit: likelyHit,
           spins: safeSpins,
           legRTP: rtpBeforeEvent,
           cumulativeSpins: projectedSpinsToStop,

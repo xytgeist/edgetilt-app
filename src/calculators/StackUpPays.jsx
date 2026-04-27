@@ -401,13 +401,34 @@ function StackUpPays({ onBack }) {
           </div>
 
           <div className={`mt-6 p-4 rounded-2xl text-center font-bold ${isAlreadyPositive ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>
-            {isAlreadyPositive ? '✅ PLAY — Strong +EV' : '❌ Still -EV — Keep Waiting'}
+            {isAlreadyPositive
+              ? currentRTP >= 110
+                ? '✅ PLAY — Strong +EV'
+                : '✅ PLAY — +EV'
+              : '❌ Still -EV — Keep Waiting'}
           </div>
         </div>
 
         {/* Acquisition Fee */}
         <div className="bg-slate-900 p-6 rounded-3xl mb-8">
           <h2 className="text-xl font-semibold text-cyan-400 mb-4">Acquisition Fee Calculator</h2>
+          <p className="text-slate-400 text-sm mb-4">Fair finder's fee for scout</p>
+
+          <div className="mb-5">
+            <div className="flex justify-between mb-1">
+              <span className="text-slate-400 text-xs">Scout share</span>
+              <span className="text-cyan-400 font-bold">{scoutPercentage}%</span>
+            </div>
+            <input
+              type="range"
+              min="10"
+              max="15"
+              step="1"
+              value={scoutPercentage}
+              onChange={(e) => setScoutPercentage(Number(e.target.value))}
+              className="w-full accent-cyan-500 touch-manipulation"
+            />
+          </div>
 
           <div className="bg-slate-800 rounded-2xl p-5 text-center mb-4">
             <div className="text-slate-400 text-sm">Expected Profit (Projected Session)</div>
@@ -417,11 +438,11 @@ function StackUpPays({ onBack }) {
           </div>
 
           <div className="bg-slate-800 rounded-2xl p-5 text-center">
-            <div className="text-slate-400 text-sm">Recommended Scout Fee</div>
-            <div className="text-5xl font-black text-emerald-400">
+            <div className="text-slate-400 text-sm">Recommended Finder's Fee</div>
+            <div className="text-4xl font-bold text-emerald-400">
               ${((evAvg * betSize) * (scoutPercentage / 100)).toFixed(0)}
             </div>
-            <div className="text-xs text-slate-400 mt-1">{scoutPercentage}% of expected profit</div>
+            <div className="text-xs text-slate-400 mt-1">to scout ({scoutPercentage}% of expected profit)</div>
           </div>
         </div>
 

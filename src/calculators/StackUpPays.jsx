@@ -377,6 +377,9 @@ function StackUpPays({ onBack }) {
             </div>
             )
           })}
+          <div className="pt-1 text-[11px] italic text-slate-400 leading-relaxed">
+            Green arrow values show each meter's standalone +EV threshold, independent of the other meters.
+          </div>
         </div>
 
         {/* Current EV */}

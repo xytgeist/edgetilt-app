@@ -391,6 +391,12 @@ function StackUpPays({ onBack }) {
             <div className="text-slate-400 text-sm">Average Case (Projected Session)</div>
             <div className={`text-4xl font-bold ${evAvg >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{evAvg.toFixed(1)}×</div>
             <div className="text-sm text-slate-300">${(evAvg * betSize).toFixed(0)}</div>
+            <div className="mt-2 text-xs text-slate-400">
+              Expected spins before stop: <span className="font-semibold text-cyan-300">{Math.round(projectedSpins).toLocaleString()}</span>
+            </div>
+            <div className="mt-1 text-[11px] italic text-slate-500 leading-relaxed">
+              Expected spins before stop means the projected number of spins until the machine's calibrated current RTP drops below 100%, at which point play is stopped.
+            </div>
           </div>
 
           <div className={`mt-6 p-4 rounded-2xl text-center font-bold ${isAlreadyPositive ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>

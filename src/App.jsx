@@ -584,36 +584,36 @@ function App() {
           </div>
 
           <button onClick={() => setCurrentView('phoenix')} className="w-full bg-gray-900 hover:bg-gray-800 transition-colors p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation active:scale-[0.99]">
-            <img src="/phoenix-link-logo.png" alt="Phoenix" className="w-16 h-16 rounded-xl flex-shrink-0" />
-            <div>
-              <div className="font-semibold text-2xl text-orange-400">Phoenix Link EV Calc</div>
-              <div className="text-base text-gray-400">Must-hit counter bonus analyzer</div>
+            <img src="/phoenix-link-logo.png" alt="Phoenix" className="h-16 w-16 flex-shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1">
+              <div className="line-clamp-2 font-semibold text-2xl leading-snug text-orange-400">Phoenix Link EV Calc</div>
+              <div className="mt-0.5 line-clamp-2 text-base leading-snug text-gray-400">Must-hit counter bonus analyzer</div>
             </div>
           </button>
 
           <button onClick={() => setCurrentView('buffalo')} className="w-full bg-gradient-to-br from-amber-600 via-orange-600 to-red-700 hover:from-amber-500 hover:via-orange-500 hover:to-red-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]">
-            <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-inner flex-shrink-0">
-              <img src="/buffalo-icon.png" alt="Buffalo" className="w-14 h-14 object-contain" />
+            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-inner">
+              <img src="/buffalo-icon.png" alt="Buffalo" className="h-14 w-14 object-contain" />
             </div>
-            <div>
-              <div className="font-semibold text-2xl text-amber-100">Buffalo Link EV Calc</div>
-              <div className="text-base text-amber-200">Midpoint-based counter analyzer</div>
+            <div className="min-w-0 flex-1">
+              <div className="line-clamp-2 font-semibold text-2xl leading-snug text-amber-100">Buffalo Link EV Calc</div>
+              <div className="mt-0.5 line-clamp-2 text-base leading-snug text-amber-200">Midpoint-based counter analyzer</div>
             </div>
           </button>
 
           <button onClick={() => setCurrentView('stackup')} className="w-full bg-gradient-to-br from-cyan-600 via-sky-600 to-blue-700 hover:from-cyan-500 hover:via-sky-500 hover:to-blue-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]">
-            <img src="/stackup-icon.jpg" alt="Stack Up Pays" className="w-16 h-16 object-cover rounded-2xl shadow-lg flex-shrink-0" />
-            <div>
-              <div className="font-semibold text-2xl text-cyan-100">Stack Up Pays</div>
-              <div className="text-base text-cyan-200">Ascending Fortunes • 5-meter analyzer</div>
+            <img src="/stackup-icon.jpg" alt="Stack Up Pays" className="h-16 w-16 flex-shrink-0 rounded-2xl object-cover shadow-lg" />
+            <div className="min-w-0 flex-1">
+              <div className="line-clamp-2 font-semibold text-2xl leading-snug text-cyan-100">Stack Up Pays</div>
+              <div className="mt-0.5 line-clamp-2 text-base leading-snug text-cyan-200">Ascending Fortunes • 5-meter analyzer</div>
             </div>
           </button>
 
           <button onClick={() => setCurrentView('mhb')} className="w-full bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-700 hover:from-purple-500 hover:via-violet-500 hover:to-fuchsia-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]">
-            <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-400 to-fuchsia-400 shadow-inner flex-shrink-0 text-5xl">🎰</div>
-            <div>
-              <div className="font-semibold text-2xl text-purple-100">Must Hit By Jackpot</div>
-              <div className="text-base text-purple-200">Progressive must-hit analyzer</div>
+            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-400 to-fuchsia-400 text-5xl shadow-inner">🎰</div>
+            <div className="min-w-0 flex-1">
+              <div className="line-clamp-2 font-semibold text-2xl leading-snug text-purple-100">Must Hit By Jackpot</div>
+              <div className="mt-0.5 line-clamp-2 text-base leading-snug text-purple-200">Progressive must-hit analyzer</div>
             </div>
           </button>
 

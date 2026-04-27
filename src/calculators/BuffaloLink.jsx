@@ -248,20 +248,29 @@ function BuffaloLink({ onBack }) {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
+            <div>
               <label className="block text-gray-400 mb-1 text-xs">Bet Size</label>
-              <div className="absolute left-4 top-9 text-2xl font-bold text-gray-400 pointer-events-none">$</div>
-              <input
-                type="text"
-                value={betSize}
-                onChange={handleFloatChange(setBetSize, 25)}
-                onBlur={handleFloatBlur(setBetSize, 25)}
-                className="w-full pl-8 p-3 bg-gray-800 rounded-2xl text-2xl font-bold text-center"
-              />
+              <div className="flex h-14 items-stretch gap-1 rounded-2xl bg-gray-800 px-2.5 focus-within:ring-2 focus-within:ring-amber-500/30">
+                <span className="flex shrink-0 items-center pl-0.5 text-2xl font-bold leading-none text-gray-400" aria-hidden>
+                  $
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={betSize}
+                  onChange={handleFloatChange(setBetSize, 25)}
+                  onBlur={handleFloatBlur(setBetSize, 25)}
+                  className="min-w-0 flex-1 border-0 bg-transparent text-center text-2xl font-bold leading-none text-white outline-none focus:ring-0"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-gray-400 mb-1 text-xs">Denomination</label>
-              <select value={denom} onChange={(e) => setDenom(parseFloat(e.target.value))} className="w-full p-3 bg-gray-800 rounded-2xl text-2xl font-bold text-center">
+              <select
+                value={denom}
+                onChange={(e) => setDenom(parseFloat(e.target.value))}
+                className="h-14 w-full cursor-pointer rounded-2xl border-0 bg-gray-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-amber-500/30"
+              >
                 {[0.01,0.02,0.05,0.10,0.25,1,2,5,10,25,50,100].map((d) => (
                   <option key={d} value={d}>
                     ${formatDenomLabel(d)}
@@ -410,7 +419,7 @@ function BuffaloLink({ onBack }) {
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 text-center">
             <div className="text-gray-400 text-sm mb-1">Recommended Finder's Fee</div>
-            <div className="text-5xl font-black text-green-400">
+            <div className="text-4xl font-bold text-green-400">
               ${(((useFullRunForFee ? evFullRun : evAvg) * betSize) * (scoutPercentage / 100)).toFixed(2)}
             </div>
             <div className="text-xs text-gray-400 mt-1">to scout ({scoutPercentage}% of expected profit)</div>

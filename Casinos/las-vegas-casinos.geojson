@@ -1,0 +1,2527 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-04-28T08:37:25Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/1599958",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3600",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "3",
+        "ele": "646",
+        "gnis:feature_id": "2472978",
+        "layer": "3",
+        "name": "Bellagio",
+        "type": "multipolygon",
+        "website": "https://www.bellagio.com",
+        "wikidata": "Q25007",
+        "wikipedia": "en:Bellagio (resort)",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1765694,
+          36.1122875
+        ]
+      },
+      "id": "relation/1599958"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/7651719",
+        "amenity": "casino",
+        "building": "commercial",
+        "name": "The Orleans Hotel & Casino",
+        "type": "multipolygon",
+        "wikidata": "Q3356472",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2018244,
+          36.1034719
+        ]
+      },
+      "id": "relation/7651719"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/7655651",
+        "addr:city": "Las Vegas",
+        "addr:state": "NV",
+        "addr:street": "West Flamingo Road",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "25",
+        "name": "Palms",
+        "name:en": "palms",
+        "opening_hours": "24/7",
+        "start_date": "2001",
+        "tourism": "hotel",
+        "type": "multipolygon",
+        "wikipedia": "en:Palms Casino Resort",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1959218,
+          36.114404
+        ]
+      },
+      "id": "relation/7655651"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/7770314",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3355",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "building": "yes",
+        "ele": "638",
+        "gnis:feature_id": "2472802",
+        "internet_access": "wlan",
+        "name": "The Venetian Las Vegas",
+        "name:ko": "베네치안호텔 테마여행",
+        "opening_hours": "24/7",
+        "operator": "Las Vegas Sands",
+        "rooms": "4049",
+        "tourism": "hotel",
+        "type": "multipolygon",
+        "website": "https://www.venetian.com/",
+        "wheelchair": "yes",
+        "wikidata": "Q1049209",
+        "wikipedia": "en:The Venetian Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1694338,
+          36.1217005
+        ]
+      },
+      "id": "relation/7770314"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/8086330",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3850",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "yes",
+        "check_date": "2024-12-08",
+        "contact:phone": "+1-877-750-5464",
+        "gambling": "slot_machines;casino",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "internet_access:ssid": "MGMResorts-WiFi",
+        "name": "Excalibur Hotel & Casino",
+        "name:en": "Excalibur Hotel & Casino",
+        "name:zh": "神劍飯店",
+        "opening_hours": "24/7",
+        "payment:american_express": "yes",
+        "payment:credit_cards": "yes",
+        "payment:visa": "yes",
+        "smoking": "separated",
+        "source": "survey",
+        "tourism": "hotel",
+        "type": "multipolygon",
+        "website": "https://www.excalibur.com/",
+        "wikidata": "Q1064873",
+        "wikipedia": "en:Excalibur Hotel and Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1755221,
+          36.0988646
+        ]
+      },
+      "id": "relation/8086330"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/27523549",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "4000",
+        "addr:postcode": "89103",
+        "addr:state": "NV",
+        "addr:street": "West Flamingo Road",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Gold Coast Hotel & Casino",
+        "operator": "W Flamingo Rd,",
+        "tourism": "hotel",
+        "wikidata": "Q3109997",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.192924,
+          36.1167019
+        ]
+      },
+      "id": "way/27523549"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/27738460",
+        "addr:city": "Henderson",
+        "addr:housenumber": "1301",
+        "addr:postcode": "89014",
+        "addr:state": "NV",
+        "addr:street": "West Sunset Road",
+        "amenity": "casino",
+        "brand": "Station Casinos",
+        "brand:wikidata": "Q7604227",
+        "building": "commercial",
+        "name": "Sunset Station",
+        "phone": "+1-702-547-7777",
+        "tourism": "hotel",
+        "wikidata": "Q7641354",
+        "wikipedia": "en:Sunset Station (hotel and casino)",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0403493,
+          36.0604746
+        ]
+      },
+      "id": "way/27738460"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/27858544",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3900",
+        "addr:postcode": "89119",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "yes",
+        "building:colour": "black",
+        "building:material": "glass",
+        "ele": "655",
+        "gnis:feature_id": "2473139",
+        "height": "111",
+        "internet_access": "wlan",
+        "layer": "3",
+        "name": "Luxor Las Vegas",
+        "name:en": "Luxor Las Vegas",
+        "name:ko": "스핑크스 호텔",
+        "name:zh": "盧克索飯店;卢克索酒店",
+        "name:zh-Hans": "卢克索酒店",
+        "name:zh-Hant": "盧克索飯店",
+        "opening_hours": "24/7",
+        "phone": "+1 702-262-4000",
+        "roof:colour": "black",
+        "roof:height": "111",
+        "roof:material": "glass",
+        "roof:shape": "pyramidal",
+        "start_date": "1993",
+        "tourism": "hotel",
+        "website": "https://www.luxor.com/en.html?ecid=GMB_Hotel_Luxor#/",
+        "wheelchair": "yes",
+        "wikidata": "Q637389",
+        "wikipedia": "en:Luxor Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1758043,
+          36.0954709
+        ]
+      },
+      "id": "way/27858544"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/33957359",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3400",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "construction",
+        "building:levels": "1",
+        "construction": "hotel",
+        "ele": "643",
+        "fixme": "Building outline needs to better match, inside area could use a notable update as well to follow simple indoor mapping schema to match actual interior locations, and update restaurants, etc that no longer exist",
+        "gnis:feature_id": "2472731",
+        "layer": "1",
+        "name": "Hard Rock Las Vegas",
+        "opening_date": "2027-10-01",
+        "opening_hours": "24/7 closed",
+        "roof:colour": "#F7BE81",
+        "roof:material": "concrete",
+        "roof:shape": "flat",
+        "wikidata": "Q135556408",
+        "wikipedia": "en:Hard Rock Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1760762,
+          36.1217463
+        ]
+      },
+      "id": "way/33957359"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/33959894",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3300",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "building": "yes",
+        "ele": "636",
+        "email": "ti-general@treasureisland.com",
+        "gnis:feature_id": "2472799",
+        "name": "Treasure Island Hotel and Casino",
+        "phone": "+1-702-894-7111",
+        "roof:colour": "grey",
+        "roof:material": "concrete",
+        "roof:shape": "flat",
+        "tourism": "hotel",
+        "website": "https://www.treasureisland.com/",
+        "wikidata": "Q1360313",
+        "wikipedia": "en:Treasure Island Hotel and Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1715061,
+          36.1245746
+        ]
+      },
+      "id": "way/33959894"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/33974140",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3655",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "building": "retail",
+        "building:levels": "5",
+        "ele": "642",
+        "gnis:feature_id": "2472755",
+        "name": "Paris Las Vegas",
+        "name:etymology:wikidata": "Q90",
+        "name:etymology:wikipedia": "en:Paris",
+        "tourism": "hotel",
+        "website": "http://www.parislasvegas.com",
+        "wikidata": "Q691491",
+        "wikipedia": "en:Paris Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1706739,
+          36.1122234
+        ]
+      },
+      "id": "way/33974140"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/52175576",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3730",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "yes",
+        "height": "20 m",
+        "internet_access": "yes",
+        "internet_access:fee": "no",
+        "layer": "1",
+        "name": "Aria Resort & Casino",
+        "name:en": "Aria Resort & Casino",
+        "name:zh": "阿麗雅賭場酒店",
+        "start_date": "2009",
+        "tourism": "hotel",
+        "website": "http://www.arialasvegas.com/",
+        "wikidata": "Q654279",
+        "wikipedia": "en:Aria Resort and Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1776548,
+          36.1070177
+        ]
+      },
+      "id": "way/52175576"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/100519310",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Ellis Island Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1634674,
+          36.1130697
+        ]
+      },
+      "id": "way/100519310"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/115080290",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3770",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "building": "yes",
+        "building:levels": "3",
+        "ele": "650",
+        "gnis:feature_id": "2472735",
+        "location": "surface",
+        "name": "Park MGM",
+        "name:en": "Park MGM",
+        "name:zh": "蒙地卡羅賭場度假村",
+        "tourism": "hotel",
+        "website": "https://parkmgm.mgmresorts.com",
+        "wikidata": "Q1854509",
+        "wikipedia": "en:Park MGM",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1752444,
+          36.1047337
+        ]
+      },
+      "id": "way/115080290"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/115661793",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3790",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "air_conditioning": "yes",
+        "alt_name": "New York New York",
+        "amenity": "casino",
+        "building": "commercial",
+        "building:levels": "2",
+        "check_date": "2024-12-12",
+        "ele": "650",
+        "gambling": "slot_machines;casino",
+        "gnis:feature_id": "2472739",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "internet_access:ssid": "MGMResorts-WiFi",
+        "name": "New York New York Hotel and Casino",
+        "name:en": "New York New York Hotel and Casino",
+        "name:ko": "자유의 여신상 호텔",
+        "opening_hours": "24/7",
+        "operator": "MGM International",
+        "phone": "+1-866-815-4365",
+        "rooms": "2024",
+        "source": "survey",
+        "start_date": "1997",
+        "tourism": "hotel",
+        "website": "https://newyorknewyork.mgmresorts.com",
+        "wheelchair": "yes",
+        "wikidata": "Q1429071",
+        "wikipedia": "en:New York-New York Hotel and Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1745923,
+          36.1021538
+        ]
+      },
+      "id": "way/115661793"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/115672893",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3570",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "2",
+        "ele": "644",
+        "gnis:feature_id": "2472987",
+        "layer": "1",
+        "name": "Caesars Palace",
+        "name:en": "Caesars Palace",
+        "name:zh": "凱薩宮酒店",
+        "tourism": "hotel",
+        "website": "http://www.caesarspalace.com",
+        "wheelchair": "yes",
+        "wikidata": "Q569978",
+        "wikipedia": "en:Caesars Palace",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.176653,
+          36.1166247
+        ]
+      },
+      "id": "way/115672893"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/115771295",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3535",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "5",
+        "ele": "641",
+        "name": "The LINQ",
+        "phone": "+1-800-634-6441",
+        "tourism": "hotel",
+        "website": "https://www.caesars.com/linq",
+        "wheelchair": "yes",
+        "wikidata": "Q779373",
+        "wikipedia": "en:The Linq",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1711504,
+          36.1183503
+        ]
+      },
+      "id": "way/115771295"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/116660358",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3950",
+        "addr:postcode": "89119",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "yes",
+        "ele": "656",
+        "gambling": "slot_machines",
+        "gnis:feature_id": "2473142",
+        "internet_access": "wlan",
+        "layer": "2",
+        "location": "surface",
+        "name": "Mandalay Bay",
+        "name:en": "Mandalay Bay",
+        "name:zh": "曼德勒海灣拉斯維加斯德拉諾度假飯店",
+        "opening_hours": "24/7",
+        "phone": "+1-702-632-7777",
+        "smoking": "separated",
+        "start_date": "1999",
+        "website": "https://mandalaybay.mgmresorts.com",
+        "wheelchair": "yes",
+        "wikidata": "Q1368043",
+        "wikipedia": "en:Mandalay Bay",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1755287,
+          36.0923949
+        ]
+      },
+      "id": "way/116660358"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/116761428",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3555",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "4",
+        "ele": "642",
+        "gnis:feature_id": "2473077",
+        "location": "surface",
+        "name": "Flamingo Las Vegas",
+        "name:en": "Flamingo Las Vegas",
+        "name:zh": "火鶴飯店",
+        "tourism": "hotel",
+        "website": "http://www.flamingolasvegas.com",
+        "wheelchair": "yes",
+        "wikidata": "Q1426968",
+        "wikipedia": "en:Flamingo Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1714963,
+          36.116422
+        ]
+      },
+      "id": "way/116761428"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/116770006",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3799",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "yes",
+        "building:levels": "2",
+        "contact:phone": "+1 877-880-0880",
+        "ele": "646",
+        "gambling": "slot_machines;table_games",
+        "gnis:feature_id": "2472729",
+        "internet_access": "wlan",
+        "name": "Hotel MGM Grand Las Vegas",
+        "name:en": "Hotel MGM Grand Las Vegas",
+        "opening_hours": "24/7",
+        "roof:colour": "grey",
+        "roof:shape": "flat",
+        "smoking": "separated",
+        "tourism": "hotel",
+        "website": "http://www.mgmgrand.com",
+        "wheelchair": "yes",
+        "wikidata": "Q713960",
+        "wikipedia": "en:MGM Grand Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1698497,
+          36.1027124
+        ]
+      },
+      "id": "way/116770006"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/116867081",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3645",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "3",
+        "ele": "640",
+        "gnis:feature_id": "2472977",
+        "name": "Horseshoe Las Vegas",
+        "tourism": "hotel",
+        "website": "https://www.caesars.com/horseshoe-las-vegas",
+        "wikidata": "Q805467",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1689115,
+          36.1134826
+        ]
+      },
+      "id": "way/116867081"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/116876230",
+        "addr:housenumber": "3700",
+        "addr:postcode": "89103",
+        "addr:state": "NV",
+        "addr:street": "West Flamingo Road",
+        "amenity": "casino",
+        "building": "commercial",
+        "contact:phone": "+1 702-746-7671",
+        "layer": "1",
+        "name": "Rio All Suite Hotel and Casino",
+        "opening_hours": "24/7",
+        "tourism": "hotel",
+        "website": "http://www.riolasvegas.com",
+        "wikidata": "Q739914",
+        "wikipedia": "en:Rio Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1873397,
+          36.1175325
+        ]
+      },
+      "id": "way/116876230"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/128622185",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3475",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "building": "yes",
+        "ele": "641",
+        "gnis:feature_id": "2473086",
+        "name": "Harrah's Showroom",
+        "name:en": "Harrah's Las Vegas",
+        "tourism": "hotel",
+        "website": "http://www.harrahslasvegas.com",
+        "wikidata": "Q1580067",
+        "wikipedia": "en:Harrah's Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1710518,
+          36.1193194
+        ]
+      },
+      "id": "way/128622185"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/135291730",
+        "addr:city": "Las Vegas",
+        "addr:state": "NV",
+        "amenity": "casino",
+        "building": "commercial",
+        "layer": "-1",
+        "name": "Encore Beach Club",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1644666,
+          36.1283119
+        ]
+      },
+      "id": "way/135291730"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/135332959",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "2880",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "contact:facebook": "https://www.facebook.com/circuscircus/",
+        "contact:instagram": "https://www.instagram.com/circusvegas/",
+        "contact:twitter": "https://twitter.com/CircusVegas",
+        "email": "GuestRelations@CircusCircus.com",
+        "name": "Circus Circus Las Vegas",
+        "name:zh": "馬戲城賭場飯店",
+        "phone": "+1 702 734 0410",
+        "start_date": "1968",
+        "tourism": "hotel",
+        "website": "https://www.circuscircus.com/",
+        "wikidata": "Q1092961",
+        "wikipedia": "en:Circus Circus Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1650626,
+          36.1376786
+        ]
+      },
+      "id": "way/135332959"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/135453935",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "2535",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "internet_access": "wlan",
+        "layer": "1",
+        "name": "Sahara Las Vegas Hotel & Casino",
+        "opening_hours": "24/7",
+        "phone": "+1-702-761-7000",
+        "tourism": "hotel",
+        "website": "https://saharalasvegas.com/",
+        "wikidata": "Q1147483",
+        "wikipedia": "en:Sahara Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1565378,
+          36.1423354
+        ]
+      },
+      "id": "way/135453935"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/135456188",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "2000",
+        "addr:postcode": "89104",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "contact:phone": "+1 702-380-7777",
+        "location": "surface",
+        "name": "The Strat",
+        "official_name": "Strat Hotel, Casino, and Tower",
+        "opening_hours": "24/7",
+        "tourism": "hotel",
+        "website": "https://stratospherehotel.com/",
+        "wheelchair": "yes",
+        "wikidata": "Q845846",
+        "wikipedia": "en:The Strat",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.156284,
+          36.1476979
+        ]
+      },
+      "id": "way/135456188"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/135562000",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "221",
+        "addr:postcode": "89145",
+        "addr:state": "NV",
+        "addr:street": "North Rampart Boulevard",
+        "amenity": "casino",
+        "building": "retail",
+        "internet_access": "wlan",
+        "name": "Rampart Casino",
+        "opening_hours": "24/7",
+        "phone": "+1-702-869-7777",
+        "start_date": "1999",
+        "website": "http://www.rampartcasino.com/",
+        "wikidata": "Q7290016",
+        "wikipedia": "en:JW Marriott Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2915012,
+          36.1760666
+        ]
+      },
+      "id": "way/135562000"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/180250495",
+        "addr:housenumber": "2890",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Tix4Tonight - Slots A Fun",
+        "opening_hours": "24/7",
+        "phone": "+1-702-849-4868",
+        "source": "Bing",
+        "website": "https://www.tix4tonight.com/",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1631249,
+          36.1359991
+        ]
+      },
+      "id": "way/180250495"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/180584269",
+        "addr:city": "Las Vegas",
+        "addr:county": "Clark",
+        "addr:housenumber": "3325",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "hotel",
+        "internet_access": "wlan",
+        "name": "The Palazzo",
+        "operator": "Las Vegas Sands",
+        "phone": "+1-702-607-7777",
+        "tourism": "hotel",
+        "website": "https://www.palazzo.com/",
+        "wikidata": "Q1514587",
+        "wikipedia": "en:The Palazzo",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.168162,
+          36.1241811
+        ]
+      },
+      "id": "way/180584269"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/204346639",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "600",
+        "addr:postcode": "89101",
+        "addr:state": "NV",
+        "addr:street": "Fremont Street",
+        "amenity": "casino",
+        "building": "hotel",
+        "name": "El Cortez Hotel & Casino",
+        "short_name": "El Cortez",
+        "tourism": "hotel",
+        "website": "http://elcortezhotellasvegas.com/",
+        "wikidata": "Q5351073",
+        "wikipedia": "en:El Cortez (Las Vegas)",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1388363,
+          36.1691932
+        ]
+      },
+      "id": "way/204346639"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/204714499",
+        "addr:housenumber": "217",
+        "addr:postcode": "89101",
+        "addr:state": "NV",
+        "addr:street": "North Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Gold Spike",
+        "opening_hours": "24/7",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1405648,
+          36.1709707
+        ]
+      },
+      "id": "way/204714499"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/217616283",
+        "addr:city": "Henderson",
+        "addr:country": "US",
+        "addr:housenumber": "2000",
+        "addr:postcode": "89002",
+        "addr:state": "NV",
+        "addr:street": "South Boulder Highway",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Wildfire Casino",
+        "phone": "+1-702-558-6454",
+        "review": "no",
+        "source": "Bing",
+        "website": "https://www.wildfiregaming.com/wildfires/wildfire-boulder/",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9413786,
+          36.0049808
+        ]
+      },
+      "id": "way/217616283"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/222428373",
+        "addr:city": "Henderson",
+        "addr:country": "US",
+        "addr:housenumber": "725",
+        "addr:postcode": "89015",
+        "addr:state": "NV",
+        "addr:street": "South Racetrack Road",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Club Fortune Casino",
+        "review": "no",
+        "source": "Bing",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9482081,
+          36.0177556
+        ]
+      },
+      "id": "way/222428373"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/248694487",
+        "amenity": "casino",
+        "building": "yes",
+        "building:levels": "4",
+        "name": "Longhorn Casino",
+        "opening_hours": "Mo-Su 00:00-24:00",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0591469,
+          36.1070849
+        ]
+      },
+      "id": "way/248694487"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/263131445",
+        "amenity": "casino",
+        "name": "Jerry's Nugget Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1326256,
+          36.1931973
+        ]
+      },
+      "id": "way/263131445"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/265978333",
+        "addr:city": "Henderson",
+        "addr:housenumber": "140",
+        "addr:postcode": "89015",
+        "addr:state": "NV",
+        "addr:street": "South Water Street",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "The Pass Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9832798,
+          36.032207
+        ]
+      },
+      "id": "way/265978333"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/265984806",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Rainbow Club Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9837219,
+          36.0326884
+        ]
+      },
+      "id": "way/265984806"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/265986409",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Emerald Island Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9846302,
+          36.0325108
+        ]
+      },
+      "id": "way/265986409"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/276982350",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "9777",
+        "addr:postcode": "89183",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building:levels": "25",
+        "contact:phone": "+1 702-797-8075",
+        "internet_access": "wlan",
+        "landuse": "commercial",
+        "name": "South Point Hotel, Casino & Spa",
+        "opening_hours": "24/7",
+        "tourism": "hotel",
+        "website": "http://www.southpoint.com",
+        "wikidata": "Q1637090",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1761257,
+          36.0117306
+        ]
+      },
+      "id": "way/276982350"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/367054910",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3131",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "name": "Encore Casino at Wynn"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.165362,
+          36.1289345
+        ]
+      },
+      "id": "node/367054910"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/397861154",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "255",
+        "addr:postcode": "89169",
+        "addr:state": "NV",
+        "addr:street": "East Flamingo Road",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "3",
+        "name": "Tuscany Suites & Casino",
+        "tourism": "hotel",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1602554,
+          36.1131545
+        ]
+      },
+      "id": "way/397861154"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/406129673",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3227",
+        "addr:postcode": "89030",
+        "addr:state": "NV",
+        "addr:street": "Civic Center Drive",
+        "amenity": "casino",
+        "building": "yes",
+        "email": "admin@lucklyclublv.com",
+        "gambling": "slot_machines;casino;betting",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "Lucky Club Hotel & Casino",
+        "opening_hours": "24/7",
+        "phone": "+1-702-399-3297",
+        "tourism": "hotel",
+        "website": "https://luckyclublv.com/",
+        "wikidata": "Q11763353",
+        "wikipedia": "en:Ojos Locos Sports Cantina y Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1211285,
+          36.2187275
+        ]
+      },
+      "id": "way/406129673"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/412107635",
+        "addr:city": "Henderson",
+        "addr:housenumber": "920",
+        "addr:postcode": "89011",
+        "addr:state": "NV",
+        "addr:street": "North Boulder Highway",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Jokers Wild Casino",
+        "opening_hours": "24/7",
+        "operator": "Boyd Gaming",
+        "operator:website": "https://www.boydgaming.com/",
+        "phone": "+1 702-564-8100",
+        "website": "https://jokerswild.boydgaming.com/",
+        "wheelchair": "yes",
+        "wikidata": "Q4261152",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9946779,
+          36.0519974
+        ]
+      },
+      "id": "way/412107635"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/444666222",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "9090",
+        "addr:postcode": "89145",
+        "addr:state": "NV",
+        "addr:street": "Alta Drive",
+        "amenity": "casino",
+        "building": "yes",
+        "ele": "823",
+        "gnis:feature_id": "2472790",
+        "name": "Suncoast Hotel and Casino",
+        "opening_hours": "24/7",
+        "website": "https://www.suncoast.com/",
+        "wikidata": "Q4261374",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2912844,
+          36.169095
+        ]
+      },
+      "id": "way/444666222"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/472813789",
+        "addr:housenumber": "9777",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "South Point",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1750307,
+          36.0112357
+        ]
+      },
+      "id": "way/472813789"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/495449303",
+        "amenity": "casino",
+        "name": "Caesars Palace Complex",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.176653,
+          36.1166247
+        ]
+      },
+      "id": "way/495449303"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501328472",
+        "addr:city": "Las Vegas",
+        "addr:country": "US",
+        "addr:housenumber": "128",
+        "addr:postcode": "89101",
+        "addr:state": "NV",
+        "addr:street": "Fremont Street",
+        "amenity": "casino",
+        "landuse": "commercial",
+        "name": "Binion's Gambling Hall and Hotel",
+        "old_name": "Binion’s Horseshoe",
+        "opening_hours": "24/7",
+        "phone": "+1 702 382 1600",
+        "website": "https://www.binions.com/",
+        "wikidata": "Q17999512",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1442789,
+          36.171538
+        ]
+      },
+      "id": "way/501328472"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501387177",
+        "addr:city": "North Las Vegas",
+        "addr:housenumber": "1821",
+        "addr:postcode": "89030",
+        "addr:state": "NV",
+        "addr:street": "North Las Vegas Boulevard",
+        "amenity": "casino",
+        "contact:phone": "+1 702-399-3000",
+        "name": "Jerry's Nugget Casino",
+        "wikidata": "Q6183154",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1326256,
+          36.1931973
+        ]
+      },
+      "id": "way/501387177"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501597284",
+        "amenity": "casino",
+        "landuse": "commercial",
+        "name": "The Palazzo",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.168162,
+          36.1241811
+        ]
+      },
+      "id": "way/501597284"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501625341",
+        "amenity": "casino",
+        "landuse": "commercial",
+        "name": "MGM Grand",
+        "opening_hours": "24/7",
+        "wheelchair": "yes",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1683278,
+          36.1044666
+        ]
+      },
+      "id": "way/501625341"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501647021",
+        "amenity": "casino",
+        "landuse": "residential",
+        "name": "Treasure Island",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1713879,
+          36.1245633
+        ]
+      },
+      "id": "way/501647021"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501653273",
+        "amenity": "casino",
+        "landuse": "residential",
+        "name": "Encore Beach Club",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1660768,
+          36.1293989
+        ]
+      },
+      "id": "way/501653273"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/501940847",
+        "addr:housenumber": "12300",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard S",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "The M Resort",
+        "tourism": "hotel",
+        "website": "https://www.themresort.com/",
+        "wikidata": "Q264858",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1694896,
+          35.965152
+        ]
+      },
+      "id": "way/501940847"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/526008465",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Cannery Casino",
+        "tourism": "hotel",
+        "website": "https://www.cannerycasino.com/",
+        "wikidata": "Q4261179",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1186657,
+          36.2382697
+        ]
+      },
+      "id": "way/526008465"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/555455589",
+        "addr:city": "Henderson",
+        "addr:housenumber": "1445",
+        "addr:postcode": "89074",
+        "addr:state": "NV",
+        "addr:street": "American Pacific Drive",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Jackpot Joanie's",
+        "phone": "+1 702-405-8093",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0491401,
+          36.0413521
+        ]
+      },
+      "id": "way/555455589"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/699874292",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "200",
+        "addr:postcode": "89101",
+        "addr:state": "NV",
+        "addr:street": "Fremont Street Experience",
+        "amenity": "casino",
+        "building": "hotel",
+        "building:levels": "15",
+        "height": "54",
+        "loc_name": "Fremont Hotel and Casino",
+        "name": "Fremont Hotel & Casino Las Vegas",
+        "phone": "+1 702-385-3232",
+        "tourism": "hotel",
+        "wikidata": "Q1136841",
+        "wikipedia": "en:Fremont Hotel and Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1431314,
+          36.1710479
+        ]
+      },
+      "id": "way/699874292"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/733889743",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Dotty's",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0211814,
+          36.1967243
+        ]
+      },
+      "id": "way/733889743"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/747408645",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Aliante Casino",
+        "wikidata": "Q4725573",
+        "wikipedia": "en:Aliante Casino and Hotel",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1799046,
+          36.2925527
+        ]
+      },
+      "id": "way/747408645"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/817915717",
+        "addr:city": "Henderson",
+        "addr:housenumber": "1500",
+        "addr:postcode": "89002",
+        "addr:state": "NV",
+        "addr:street": "Railroad Pass Casino Road",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Railroad Pass Casino",
+        "phone": "+1-702-294-5000",
+        "smoking": "yes",
+        "website": "https://www.railroadpass.com",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.9119529,
+          35.9725294
+        ]
+      },
+      "id": "way/817915717"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/943068964",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "2839",
+        "addr:postcode": "89102",
+        "addr:state": "NV",
+        "addr:street": "West Sahara Avenue",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Dotty's Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.181439,
+          36.1438505
+        ]
+      },
+      "id": "way/943068964"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/959656976",
+        "amenity": "casino",
+        "building": "commercial",
+        "name": "Dotty's Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2261491,
+          36.022611
+        ]
+      },
+      "id": "way/959656976"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/972129019",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3000",
+        "addr:state": "NV",
+        "addr:street": "South Las Vegas Boulevard",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "hotel",
+        "internet_access": "wlan",
+        "layer": "1",
+        "name": "Resorts World Las Vegas",
+        "name:ja": "リゾート・ワールド・ラスベガス",
+        "tourism": "hotel",
+        "website": "https://www.rwlasvegas.com",
+        "wheelchair": "yes",
+        "wikidata": "Q14705265",
+        "wikipedia": "en:Resorts World Las Vegas",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1664305,
+          36.1336887
+        ]
+      },
+      "id": "way/972129019"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1001527858",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "4801",
+        "addr:postcode": "89119",
+        "addr:state": "NV",
+        "addr:street": "South Eastern Avenue",
+        "amenity": "casino",
+        "building": "yes",
+        "building:levels": "1",
+        "name": "Dotty's",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1194536,
+          36.1019126
+        ]
+      },
+      "id": "way/1001527858"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1013396356",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Dotty's Casino",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0624904,
+          36.1871811
+        ]
+      },
+      "id": "way/1013396356"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1017960602",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "4301",
+        "addr:postcode": "89110",
+        "addr:state": "NV",
+        "addr:street": "Bonanza Road",
+        "air_conditioning": "yes",
+        "amenity": "casino",
+        "building": "yes",
+        "email": "bonanzalounge@aol.com",
+        "gambling": "slot_machines;betting;casino",
+        "name": "Bonanza Lounge & Casino",
+        "opening_hours": "24/7",
+        "phone": "+1-702-452-7955",
+        "smoking": "yes",
+        "source": "bonanzaloungelasvegas.com;local knowledge",
+        "website": "http://bonanzaloungelasvegas.com/",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0829604,
+          36.1728389
+        ]
+      },
+      "id": "way/1017960602"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1017968822",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "740",
+        "addr:postcode": "89107",
+        "addr:state": "NV",
+        "addr:street": "South Decatur Boulevard",
+        "amenity": "casino",
+        "building": "commercial",
+        "building:levels": "3",
+        "name": "Arizona Charlies Decatur",
+        "wikidata": "Q4791275",
+        "wikipedia": "en:Arizona Charlie's Decatur",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2074725,
+          36.1634409
+        ]
+      },
+      "id": "way/1017968822"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1018431813",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Jackpot Joanie's",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2161773,
+          36.1262898
+        ]
+      },
+      "id": "way/1018431813"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1019620432",
+        "addr:city": "Henderson",
+        "addr:housenumber": "1741",
+        "addr:postcode": "89011",
+        "addr:state": "NV",
+        "addr:street": "Boulder Highway",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Skyline Hotel and Casino",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0082335,
+          36.0622915
+        ]
+      },
+      "id": "way/1019620432"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1019621357",
+        "addr:city": "Henderson",
+        "addr:housenumber": "642",
+        "addr:postcode": "89015",
+        "addr:state": "NV",
+        "addr:street": "South Boulder Highway",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "La Villita Casino",
+        "opening_hours": "24/7",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.971253,
+          36.0317385
+        ]
+      },
+      "id": "way/1019621357"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1019621362",
+        "addr:city": "Henderson",
+        "addr:housenumber": "754",
+        "addr:postcode": "89015",
+        "addr:state": "NV",
+        "addr:street": "South Boulder Highway",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Dotty's Casino",
+        "phone": "+1-866-547-6310",
+        "source": "microsoft/BuildingFootprints",
+        "website": "https://www.dottys.com/",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.969919,
+          36.0296005
+        ]
+      },
+      "id": "way/1019621362"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1062406731",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "6390",
+        "addr:postcode": "89146",
+        "addr:state": "NV",
+        "addr:street": "West Sahara Avenue",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Jackpot Joanie's Casino",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.232622,
+          36.144399
+        ]
+      },
+      "id": "way/1062406731"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1062820464",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "6000",
+        "addr:postcode": "89146",
+        "addr:state": "NV",
+        "addr:street": "West Charleston Boulevard",
+        "amenity": "casino",
+        "building": "retail",
+        "name": "Dotty's Casino",
+        "wikidata": "Q16974104",
+        "wikipedia": "en:Dotty's",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2229324,
+          36.1596165
+        ]
+      },
+      "id": "way/1062820464"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1089608756",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "PT's",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0827202,
+          36.0034956
+        ]
+      },
+      "id": "way/1089608756"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1167572518",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Dotty's",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0785321,
+          36.2616802
+        ]
+      },
+      "id": "way/1167572518"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1186537967",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Jackpot Joanie's",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.3154522,
+          36.0716026
+        ]
+      },
+      "id": "way/1186537967"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1235629977",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "4350",
+        "addr:postcode": "89115",
+        "addr:state": "NV",
+        "addr:street": "Las Vegas Boulevard North",
+        "amenity": "casino",
+        "building": "yes",
+        "min_age": "21",
+        "name": "Dotty's Casino",
+        "opening_hours": "24/7",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0552166,
+          36.2394673
+        ]
+      },
+      "id": "way/1235629977"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1244109351",
+        "addr:city": "Las Vegas",
+        "addr:country": "US",
+        "addr:housenumber": "8699",
+        "addr:postcode": "89117",
+        "addr:state": "NV",
+        "addr:street": "West Charleston Boulevard",
+        "amenity": "casino",
+        "building": "commercial",
+        "name": "Dotty's",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.284195,
+          36.1586342
+        ]
+      },
+      "id": "way/1244109351"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1247385655",
+        "addr:city": "Las Vegas",
+        "addr:postcode": "89108",
+        "addr:state": "NV",
+        "amenity": "casino",
+        "building": "commercial",
+        "name": "Jackpot Joanie's",
+        "source": "microsoft/BuildingFootprints",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2420132,
+          36.1999326
+        ]
+      },
+      "id": "way/1247385655"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1250687029",
+        "addr:city": "Henderson",
+        "addr:housenumber": "1195",
+        "addr:postcode": "89014",
+        "addr:state": "NV",
+        "addr:street": "West Sunset Road",
+        "amenity": "casino",
+        "building": "yes",
+        "name": "Wildfire",
+        "phone": "+1-702-454-0544",
+        "website": "https://www.wildfiregaming.com/",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0368508,
+          36.063216
+        ]
+      },
+      "id": "way/1250687029"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1255028421",
+        "amenity": "casino",
+        "landuse": "commercial",
+        "name": "Planet Hollywood",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1716743,
+          36.1101566
+        ]
+      },
+      "id": "way/1255028421"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1398028259",
+        "amenity": "casino"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.27992,
+          36.0786765
+        ]
+      },
+      "id": "node/1398028259"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1423439012",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "4000",
+        "addr:postcode": "89109",
+        "addr:state": "NV",
+        "addr:street": "Linq Lane",
+        "amenity": "casino",
+        "building": "commercial",
+        "check_date": "2024-10-26",
+        "name": "Stage Door Casino",
+        "opening_hours": "24/7",
+        "smoking": "yes",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1683782,
+          36.1149518
+        ]
+      },
+      "id": "way/1423439012"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3623467361",
+        "addr:housenumber": "3131",
+        "addr:postcode": "89109",
+        "addr:street": "South Las Vegas Boulevard",
+        "amenity": "casino",
+        "name": "Wynn Las Vegas Casino",
+        "opening_hours": "24/7",
+        "phone": "+1-877-770-7000",
+        "website": "https://www.wynnlasvegas.com/",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.165818,
+          36.1263781
+        ]
+      },
+      "id": "node/3623467361"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6340697787",
+        "amenity": "casino",
+        "name": "NoMad High Limit Casino"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1757177,
+          36.1046533
+        ]
+      },
+      "id": "node/6340697787"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8268352605",
+        "amenity": "casino",
+        "name": "Best Western Plus Casino Royale",
+        "opening_hours": "Mo-Su,PH 00:00+"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1717851,
+          36.1203339
+        ]
+      },
+      "id": "node/8268352605"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8568261456",
+        "amenity": "casino",
+        "name": "Just Play",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1737787,
+          36.1616233
+        ]
+      },
+      "id": "node/8568261456"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8595840797",
+        "amenity": "casino",
+        "name": "Red Dragon Gaming & Spirits",
+        "note": "Temporarily closed",
+        "opening_hours": "closed"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1882863,
+          36.1456816
+        ]
+      },
+      "id": "node/8595840797"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8747398807",
+        "amenity": "casino",
+        "name": "Pat's Pub",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2046255,
+          36.1449493
+        ]
+      },
+      "id": "node/8747398807"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8747504696",
+        "amenity": "casino",
+        "name": "Dotty's",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.207654,
+          36.1464826
+        ]
+      },
+      "id": "node/8747504696"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10740248173",
+        "addr:city": "Henderson",
+        "addr:housenumber": "560",
+        "addr:postcode": "89014",
+        "addr:state": "NV",
+        "addr:street": "Marks Street",
+        "amenity": "casino",
+        "name": "Dotty's Casino",
+        "phone": "+1 702-433-8941"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0359666,
+          36.0619406
+        ]
+      },
+      "id": "node/10740248173"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10743602130",
+        "addr:city": "Henderson",
+        "addr:housenumber": "4451",
+        "addr:postcode": "89014",
+        "addr:state": "NV",
+        "addr:street": "East Sunset Road",
+        "amenity": "casino",
+        "name": "Wildfire Casino",
+        "operator": "Station Casinos",
+        "phone": "+1 702-685-2100"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0743462,
+          36.0695152
+        ]
+      },
+      "id": "node/10743602130"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10964370742",
+        "amenity": "casino",
+        "name": "Dotty's"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0641903,
+          36.110959
+        ]
+      },
+      "id": "node/10964370742"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11463511334",
+        "addr:housenumber": "3535",
+        "addr:street": "Las Vegas Boulevard South",
+        "amenity": "casino",
+        "name": "The LINQ Hotel + Experience",
+        "phone": "+1-800-634-6441",
+        "website": "https://caesars.com/linq"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1710968,
+          36.1183434
+        ]
+      },
+      "id": "node/11463511334"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12398251906",
+        "amenity": "casino",
+        "name": "Caesars Palace Poker Room"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1749003,
+          36.117932
+        ]
+      },
+      "id": "node/12398251906"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12585920307",
+        "addr:city": "Henderson",
+        "addr:housenumber": "3720",
+        "addr:postcode": "89120",
+        "addr:state": "NV",
+        "addr:street": "East Sunset Road",
+        "addr:unit": "101",
+        "amenity": "casino",
+        "gambling": "slot_machines",
+        "name": "Miz Lola's Spirits & Gaming",
+        "opening_hours": "24/7",
+        "phone": "+1-702-898-5652",
+        "smoking": "yes",
+        "website": "https://mizlolas.com/",
+        "wheelchair": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0940811,
+          36.0721512
+        ]
+      },
+      "id": "node/12585920307"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12586112665",
+        "addr:city": "Henderson",
+        "addr:housenumber": "2823",
+        "addr:postcode": "89014",
+        "addr:state": "NV",
+        "addr:street": "North Green Valley Parkway",
+        "amenity": "casino",
+        "name": "Dotty's"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.0839269,
+          36.0726645
+        ]
+      },
+      "id": "node/12586112665"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12766255093",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "10670",
+        "addr:postcode": "89141",
+        "addr:state": "NV",
+        "addr:street": "Southern Highlands Parkway",
+        "addr:unit": "105",
+        "amenity": "casino",
+        "name": "Jackpot Joanie's",
+        "opening_hours": "24/7",
+        "phone": "+1-702-589-9475",
+        "website": "https://www.jackpotjoanies.com/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.2069127,
+          35.9953484
+        ]
+      },
+      "id": "node/12766255093"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13062673905",
+        "addr:city": "Las Vegas",
+        "addr:housenumber": "3375",
+        "addr:postcode": "89120",
+        "addr:state": "NV",
+        "addr:street": "East Russell Road",
+        "amenity": "casino",
+        "name": "Jackpot Joanie's"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -115.1014437,
+          36.0848322
+        ]
+      },
+      "id": "node/13062673905"
+    }
+  ]
+}

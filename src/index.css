@@ -129,8 +129,8 @@ input[type="range"].range-touch-target {
   border: 2px solid #ffffff !important;
 }
 
-/* Hover indicator: apply white rounded border unless it's selected */
-.react-datepicker__day:not([aria-disabled=true]):hover:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected) {
+/* Hover indicator: apply white rounded border unless it's selected or today */
+.react-datepicker__day:not([aria-disabled=true]):hover:not(.react-datepicker__day--today):not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected) {
   background: transparent !important;
   border: 2px solid #ffffff !important;
 }

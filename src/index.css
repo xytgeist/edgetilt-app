@@ -148,4 +148,15 @@ input[type="range"].range-touch-target {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
+  border: none !important;
+}
+
+/* Selected day indicator: purple outline (works even when fill styling is overridden). */
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected,
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--keyboard-selected:hover {
+  background: transparent !important;
+  outline: 2px solid #7c3aed !important; /* violet-600 */
+  outline-offset: -2px !important;
 }

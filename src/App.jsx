@@ -590,30 +590,54 @@ function AppShell({ onLogout, supabaseClient }) {
 
   const OffersCalendar = () => {
     const fileInputRef = useRef(null)
+    const longPressTimerRef = useRef(null)
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [error, setError] = useState('')
     const [uploadMessage, setUploadMessage] = useState('')
-    const [filter, setFilter] = useState('all')
-    const [viewMode, setViewMode] = useState('list')
+    const [showForm, setShowForm] = useState(false)
+    const [editingId, setEditingId] = useState(null)
+    const [selectedDays, setSelectedDays] = useState([])
     const [cursorMonth, setCursorMonth] = useState(() => {
       const n = new Date()
       return new Date(n.getFullYear(), n.getMonth(), 1)
     })
-    const [dayFilter, setDayFilter] = useState(null)
-    const [editingId, setEditingId] = useState(null)
     const [draft, setDraft] = useState(() => emptyOfferDraft())
 
-    const countByDay = useMemo(() => {
-      const m = {}
+    const offerTypeMeta = useMemo(
+      () => ({
+        free_play: { label: 'Free play', dot: 'bg-violet-400', chip: 'bg-violet-500/15 text-violet-200 border-violet-500/40' },
+        hotel: { label: 'Hotel stay', dot: 'bg-sky-400', chip: 'bg-sky-500/15 text-sky-200 border-sky-500/40' },
+        dining: { label: 'Dining credit', dot: 'bg-emerald-400', chip: 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40' },
+        gift: { label: 'Gift day', dot: 'bg-amber-400', chip: 'bg-amber-500/15 text-amber-200 border-amber-500/40' },
+        multiplier: { label: 'Tier multiplier', dot: 'bg-fuchsia-400', chip: 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-500/40' },
+        tournament: { label: 'Tournament', dot: 'bg-rose-400', chip: 'bg-rose-500/15 text-rose-200 border-rose-500/40' },
+        drawing: { label: 'Drawing', dot: 'bg-cyan-400', chip: 'bg-cyan-500/15 text-cyan-200 border-cyan-500/40' },
+        other: { label: 'Other', dot: 'bg-zinc-400', chip: 'bg-zinc-500/15 text-zinc-200 border-zinc-500/40' }
+      }),
+      []
+    )
+
+    const dayBuckets = useMemo(() => {
+      const map = {}
       for (const ev of events) {
-        const k = localDateKeyFromIso(ev.start_at)
-        m[k] = (m[k] || 0) + 1
+        const key = localDateKeyFromIso(ev.start_at)
+        if (!map[key]) map[key] = []
+        map[key].push(ev)
       }
-      return m
+      return map
     }, [events])
+
+    const dayTypeDots = useMemo(() => {
+      const map = {}
+      for (const [dayKey, dayEvents] of Object.entries(dayBuckets)) {
+        const seen = new Set(dayEvents.map((ev) => ev.offer_type || 'other'))
+        map[dayKey] = Array.from(seen).slice(0, 4)
+      }
+      return map
+    }, [dayBuckets])
 
     const calendarCells = useMemo(() => {
       const y = cursorMonth.getFullYear()
@@ -629,6 +653,7 @@ function AppShell({ onLogout, supabaseClient }) {
     }, [cursorMonth])
 
     const monthTitle = cursorMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })
+    const todayKey = localDateKeyFromDate(new Date())
 
     const loadEvents = async () => {
       setLoading(true)
@@ -638,7 +663,7 @@ function AppShell({ onLogout, supabaseClient }) {
           .from('offer_events')
           .select('id,casino_name,offer_type,title,start_at,end_at,value_amount,value_text,notes,created_at')
           .order('start_at', { ascending: true })
-          .limit(300)
+          .limit(500)
         if (e) throw e
         setEvents(data || [])
       } catch (e) {
@@ -653,13 +678,25 @@ function AppShell({ onLogout, supabaseClient }) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    const cancelEdit = () => {
+    const closeForm = () => {
+      setShowForm(false)
       setEditingId(null)
       setDraft(emptyOfferDraft())
     }
 
+    const openForm = (dayKey = null) => {
+      setShowForm(true)
+      setEditingId(null)
+      if (dayKey) {
+        setDraft((d) => ({ ...emptyOfferDraft(), startAt: `${dayKey}T12:00` }))
+      } else {
+        setDraft(emptyOfferDraft())
+      }
+    }
+
     const beginEdit = (ev) => {
       setEditingId(ev.id)
+      setShowForm(true)
       setDraft({
         casinoName: ev.casino_name || '',
         offerType: ev.offer_type || 'free_play',
@@ -672,6 +709,10 @@ function AppShell({ onLogout, supabaseClient }) {
         notes: ev.notes || ''
       })
       setError('')
+    }
+
+    const toggleSelectedDay = (dayKey) => {
+      setSelectedDays((current) => (current.includes(dayKey) ? current.filter((d) => d !== dayKey) : [...current, dayKey]))
     }
 
     const saveEvent = async () => {
@@ -692,10 +733,10 @@ function AppShell({ onLogout, supabaseClient }) {
           value_text: draft.valueText.trim() || null,
           notes: draft.notes.trim() || null
         }
+
         if (editingId) {
           const { error: e } = await supabaseClient.from('offer_events').update(payload).eq('id', editingId)
           if (e) throw e
-          cancelEdit()
         } else {
           const { data: sessionData } = await supabaseClient.auth.getSession()
           const user = sessionData?.session?.user
@@ -706,8 +747,8 @@ function AppShell({ onLogout, supabaseClient }) {
             source_type: 'manual'
           })
           if (e) throw e
-          setDraft(emptyOfferDraft())
         }
+        closeForm()
         await loadEvents()
       } catch (e) {
         setError(e?.message || 'Failed to save offer.')
@@ -722,7 +763,7 @@ function AppShell({ onLogout, supabaseClient }) {
         setError(e?.message || 'Failed to delete event.')
         return
       }
-      if (editingId === id) cancelEdit()
+      if (editingId === id) closeForm()
       await loadEvents()
     }
 
@@ -763,31 +804,35 @@ function AppShell({ onLogout, supabaseClient }) {
       }
     }
 
-    const filtered = useMemo(() => {
-      return events.filter((ev) => {
-        if (filter !== 'all' && ev.offer_type !== filter) return false
-        if (dayFilter && localDateKeyFromIso(ev.start_at) !== dayFilter) return false
-        return true
-      })
-    }, [events, filter, dayFilter])
+    const filteredEvents = useMemo(() => {
+      if (selectedDays.length === 0) return events
+      const selectedSet = new Set(selectedDays)
+      return events.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
+    }, [events, selectedDays])
 
-    const dayFilterLabel =
-      dayFilter &&
-      (() => {
-        const [yy, mm, dd] = dayFilter.split('-').map(Number)
-        return new Date(yy, mm - 1, dd).toLocaleDateString(undefined, {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        })
-      })()
+    const startDayPress = (dayKey) => {
+      longPressTimerRef.current = window.setTimeout(() => {
+        openForm(dayKey)
+      }, 500)
+    }
+
+    const endDayPress = () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current)
+        longPressTimerRef.current = null
+      }
+    }
+
+    const hasVisibleTime = (iso) => {
+      const d = new Date(iso)
+      return d.getHours() !== 0 || d.getMinutes() !== 0
+    }
 
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="max-w-lg mx-auto px-4 py-6 pb-28 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <div className="mb-5">
           <div className="text-white text-2xl font-black tracking-tight">Offers Calendar</div>
-          <div className="text-zinc-400 text-sm mt-0.5">List, month view, edit offers, and photo uploads for future AI import</div>
+          <div className="text-zinc-400 text-sm mt-0.5">Monthly view with event-type dots and day filtering</div>
         </div>
 
         {error && (
@@ -802,291 +847,133 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
-        <div className="flex rounded-2xl bg-zinc-800/80 p-1 mb-4">
-          <button
-            type="button"
-            onClick={() => setViewMode('list')}
-            className={`flex-1 min-h-11 rounded-xl text-sm font-semibold touch-manipulation ${
-              viewMode === 'list' ? 'bg-zinc-700 text-white' : 'text-zinc-400'
-            }`}
-          >
-            List
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('month')}
-            className={`flex-1 min-h-11 rounded-xl text-sm font-semibold touch-manipulation ${
-              viewMode === 'month' ? 'bg-zinc-700 text-white' : 'text-zinc-400'
-            }`}
-          >
-            Month
-          </button>
-        </div>
-
-        {viewMode === 'month' && (
-          <div className="bg-zinc-900 rounded-3xl p-5 mb-4">
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <button
-                type="button"
-                onClick={() =>
-                  setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))
-                }
-                className="min-h-10 min-w-10 rounded-xl bg-zinc-800 text-zinc-200 font-bold touch-manipulation"
-                aria-label="Previous month"
-              >
-                ‹
-              </button>
-              <div className="text-white font-bold text-center flex-1 truncate">{monthTitle}</div>
-              <button
-                type="button"
-                onClick={() =>
-                  setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))
-                }
-                className="min-h-10 min-w-10 rounded-xl bg-zinc-800 text-zinc-200 font-bold touch-manipulation"
-                aria-label="Next month"
-              >
-                ›
-              </button>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-zinc-500 uppercase tracking-wide">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((w) => (
-                <div key={w} className="py-1">
-                  {w}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1 mt-1">
-              {calendarCells.map((cell, idx) => {
-                if (!cell) {
-                  return <div key={`e-${idx}`} className="h-12" />
-                }
-                const key = localDateKeyFromDate(cell)
-                const n = countByDay[key] || 0
-                const isSelected = dayFilter === key
-                return (
-                  <button
-                    key={`${key}-${idx}`}
-                    type="button"
-                    onClick={() => {
-                      setDayFilter(key)
-                      setViewMode('list')
-                    }}
-                    className={`h-12 rounded-xl text-sm font-medium touch-manipulation flex flex-col items-center justify-center gap-0.5 ${
-                      isSelected
-                        ? 'bg-cyan-600 text-white'
-                        : n > 0
-                          ? 'bg-cyan-900/35 text-zinc-100 hover:bg-cyan-900/50'
-                          : 'bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <span>{cell.getDate()}</span>
-                    {n > 0 ? (
-                      <span className="text-[10px] leading-none font-semibold text-cyan-200">{n} offer{n !== 1 ? 's' : ''}</span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
-            <p className="text-zinc-500 text-xs mt-3 leading-relaxed">
-              Tap a day to jump to the list filtered to that date (by offer start).
-            </p>
-          </div>
-        )}
-
-        {viewMode === 'list' && dayFilter && (
-          <div className="flex items-center justify-between gap-3 mb-4 rounded-2xl bg-zinc-800/80 px-4 py-3">
-            <span className="text-zinc-200 text-sm">
-              Filter: <span className="font-semibold text-white">{dayFilterLabel}</span>
-            </span>
+        <div className="bg-black rounded-3xl p-4 mb-4 border border-zinc-800">
+          <div className="flex items-center justify-between gap-2 mb-3">
             <button
               type="button"
-              onClick={() => setDayFilter(null)}
-              className="text-cyan-300 text-sm font-semibold touch-manipulation"
+              onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+              className="min-h-10 min-w-10 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <div className="text-white text-3xl font-black tracking-tight text-center flex-1 truncate">{monthTitle}</div>
+            <button
+              type="button"
+              onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+              className="min-h-10 min-w-10 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-zinc-500">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
+              <div key={`${w}-${idx}`} className="py-1">
+                {w}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 mt-1">
+            {calendarCells.map((cell, idx) => {
+              if (!cell) return <div key={`empty-${idx}`} className="h-14" />
+              const key = localDateKeyFromDate(cell)
+              const isToday = key === todayKey
+              const isSelected = selectedDays.includes(key)
+              const dots = dayTypeDots[key] || []
+              return (
+                <button
+                  key={`${key}-${idx}`}
+                  type="button"
+                  onMouseDown={() => startDayPress(key)}
+                  onMouseUp={endDayPress}
+                  onMouseLeave={endDayPress}
+                  onTouchStart={() => startDayPress(key)}
+                  onTouchEnd={endDayPress}
+                  onClick={() => toggleSelectedDay(key)}
+                  className={`h-14 rounded-2xl text-base touch-manipulation flex flex-col items-center justify-center gap-1 border ${
+                    isSelected
+                      ? 'border-violet-400 text-white'
+                      : isToday
+                        ? 'border-zinc-500 text-zinc-100'
+                        : 'border-transparent text-zinc-200'
+                  }`}
+                >
+                  <span>{cell.getDate()}</span>
+                  <span className="h-2 flex items-center gap-1">
+                    {dots.map((t) => (
+                      <span key={`${key}-${t}`} className={`h-1.5 w-1.5 rounded-full ${offerTypeMeta[t]?.dot || 'bg-zinc-400'}`} />
+                    ))}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {selectedDays.length > 0 && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-zinc-900 px-4 py-3">
+            <div className="text-zinc-300 text-sm">
+              {selectedDays.length} day{selectedDays.length > 1 ? 's' : ''} selected
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDays([])}
+              className="text-violet-300 text-sm font-semibold touch-manipulation"
             >
               Clear
             </button>
           </div>
         )}
 
-        <div className="bg-zinc-900 rounded-3xl p-5 mb-4">
-          <div className="text-white font-bold mb-2">Import from photo</div>
-          <p className="text-zinc-500 text-xs mb-3 leading-relaxed">
-            Upload a mailer or app screenshot. Files go to your private storage folder; a row is recorded for future AI
-            parsing.
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => void handleImportPhoto(e)}
-          />
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full min-h-12 rounded-2xl border border-zinc-600 bg-zinc-800 text-zinc-100 font-semibold hover:bg-zinc-700 disabled:opacity-60 touch-manipulation"
-          >
-            {uploading ? 'Uploading…' : 'Choose photo'}
-          </button>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-5 mb-4">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="text-white font-bold">{editingId ? 'Edit offer' : 'Add offer'}</div>
-            {editingId && (
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="text-zinc-400 text-sm font-semibold touch-manipulation shrink-0"
-              >
-                Cancel edit
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-zinc-400 text-xs mb-1">Casino</label>
-              <input
-                value={draft.casinoName}
-                onChange={(e) => setDraft((d) => ({ ...d, casinoName: e.target.value }))}
-                className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-                placeholder="e.g. Bellagio"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 text-xs mb-1">Type</label>
-              <select
-                value={draft.offerType}
-                onChange={(e) => setDraft((d) => ({ ...d, offerType: e.target.value }))}
-                className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-              >
-                <option value="free_play">Free play</option>
-                <option value="hotel">Hotel stay</option>
-                <option value="dining">Dining credit</option>
-                <option value="gift">Gift day</option>
-                <option value="multiplier">Tier multiplier</option>
-                <option value="tournament">Tournament</option>
-                <option value="drawing">Drawing</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <label className="block text-zinc-400 text-xs mb-1">Title</label>
-            <input
-              value={draft.title}
-              onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-              className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-              placeholder="e.g. Weekly Free Play"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="block text-zinc-400 text-xs mb-1">Start</label>
-              <input
-                type="datetime-local"
-                value={draft.startAt}
-                onChange={(e) => setDraft((d) => ({ ...d, startAt: e.target.value }))}
-                className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
-              <input
-                type="datetime-local"
-                value={draft.endAt}
-                onChange={(e) => setDraft((d) => ({ ...d, endAt: e.target.value }))}
-                className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="block text-zinc-400 text-xs mb-1">Value amount ($)</label>
-              <input
-                type="number"
-                value={draft.valueAmount}
-                onChange={(e) => setDraft((d) => ({ ...d, valueAmount: e.target.value }))}
-                className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-                placeholder="e.g. 150"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-400 text-xs mb-1">Value text</label>
-              <input
-                value={draft.valueText}
-                onChange={(e) => setDraft((d) => ({ ...d, valueText: e.target.value }))}
-                className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-                placeholder="e.g. $150 FP + gift"
-              />
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <label className="block text-zinc-400 text-xs mb-1">Notes</label>
-            <textarea
-              value={draft.notes}
-              onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-              className="w-full min-h-20 bg-zinc-800 rounded-2xl px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-cyan-500/30"
-              placeholder="Any restrictions, swipe times, or details"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={saveEvent}
-            disabled={saving}
-            className="mt-4 w-full min-h-12 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
-          >
-            {saving ? 'Saving…' : editingId ? 'Update offer' : 'Save offer'}
-          </button>
-        </div>
-
-        <div className="bg-zinc-900 rounded-3xl p-5">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-white font-bold">{dayFilter ? 'Offers (filtered)' : 'Upcoming offers'}</div>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="h-10 bg-zinc-800 rounded-xl px-3 text-zinc-100 text-sm outline-none"
-            >
-              <option value="all">All</option>
-              <option value="free_play">Free play</option>
-              <option value="hotel">Hotel</option>
-              <option value="dining">Dining</option>
-              <option value="gift">Gift</option>
-              <option value="multiplier">Multiplier</option>
-              <option value="tournament">Tournament</option>
-              <option value="drawing">Drawing</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
+        <div className="bg-zinc-900 rounded-3xl p-4">
+          <div className="text-white font-bold mb-3">Events</div>
           {loading ? (
             <div className="text-zinc-400 text-sm">Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div className="text-zinc-500 text-sm">
-              {events.length === 0 ? 'No offers yet.' : 'No offers match this filter.'}
-            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="text-zinc-500 text-sm">No events for the current filter.</div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((e) => (
-                <div
-                  key={e.id}
-                  className={`rounded-2xl p-4 ${
-                    editingId === e.id ? 'bg-cyan-900/25 ring-1 ring-cyan-500/40' : 'bg-zinc-800/70'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-zinc-200 font-semibold truncate">{e.title}</div>
-                      <div className="text-zinc-500 text-xs mt-0.5 uppercase tracking-wide">{e.offer_type}</div>
+              {filteredEvents.map((e) => {
+                const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
+                const showTime = hasVisibleTime(e.start_at) || !!e.end_at
+                const timeLabel = showTime
+                  ? new Date(e.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                  : ''
+                const dayLabel = new Date(e.start_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
+                const dayNum = new Date(e.start_at).getDate()
+                return (
+                  <div key={e.id} className="bg-zinc-800/80 rounded-2xl p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 shrink-0 text-center">
+                        <div className="text-zinc-500 text-[10px] font-semibold tracking-wide">{dayLabel}</div>
+                        <div className="text-zinc-100 text-2xl leading-tight">{dayNum}</div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${meta.chip}`}>
+                            {meta.label}
+                          </span>
+                        </div>
+                        <div className="text-zinc-100 text-lg mt-1 leading-tight break-words">
+                          {timeLabel ? `${timeLabel} ` : ''}
+                          {e.title}
+                        </div>
+                        <div className="text-zinc-400 text-sm mt-1">{e.casino_name}</div>
+                        {(e.value_amount !== null || e.value_text) && (
+                          <div className="text-emerald-300 text-sm mt-1">
+                            {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
+                            {e.value_amount !== null && e.value_text ? ' • ' : ''}
+                            {e.value_text || ''}
+                          </div>
+                        )}
+                        {e.notes && <div className="text-zinc-400 text-sm mt-1 leading-relaxed">{e.notes}</div>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="mt-2 flex justify-end gap-3">
                       <button
                         type="button"
                         onClick={() => beginEdit(e)}
@@ -1103,24 +990,161 @@ function AppShell({ onLogout, supabaseClient }) {
                       </button>
                     </div>
                   </div>
-                  <div className="text-zinc-300 text-sm mt-2">{e.casino_name}</div>
-                  <div className="text-zinc-400 text-xs mt-1">
-                    {new Date(e.start_at).toLocaleString()}
-                    {e.end_at ? ` → ${new Date(e.end_at).toLocaleString()}` : ''}
-                  </div>
-                  {(e.value_amount !== null || e.value_text) && (
-                    <div className="text-emerald-300 text-sm mt-1">
-                      {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
-                      {e.value_amount !== null && e.value_text ? ' • ' : ''}
-                      {e.value_text || ''}
-                    </div>
-                  )}
-                  {e.notes && <div className="text-zinc-400 text-sm mt-2 leading-relaxed">{e.notes}</div>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
+
+        <div className="fixed bottom-[max(4.8rem,calc(env(safe-area-inset-bottom)+4.3rem))] left-1/2 w-full max-w-lg -translate-x-1/2 px-4 z-20 pointer-events-none">
+          <button
+            type="button"
+            onClick={() => openForm(null)}
+            className="w-full min-h-12 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-lg pointer-events-auto touch-manipulation"
+          >
+            Add Event
+          </button>
+        </div>
+
+        {showForm && (
+          <div className="fixed inset-0 z-30 bg-black/70 backdrop-blur-[1px] px-4 py-6 overflow-y-auto">
+            <div className="max-w-lg mx-auto bg-zinc-900 rounded-3xl p-5 border border-zinc-700">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="text-white font-bold text-lg">{editingId ? 'Edit event' : 'Add event'}</div>
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="text-zinc-400 hover:text-zinc-200 text-sm font-semibold touch-manipulation"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="text-white font-semibold mb-1">Import from photo</div>
+                <p className="text-zinc-500 text-xs mb-3 leading-relaxed">
+                  Upload a mailer screenshot now; AI extraction can map details into this form in a future update.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => void handleImportPhoto(e)}
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full min-h-11 rounded-2xl border border-zinc-600 bg-zinc-800 text-zinc-100 font-semibold hover:bg-zinc-700 disabled:opacity-60 touch-manipulation"
+                >
+                  {uploading ? 'Uploading…' : 'Choose photo'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-zinc-400 text-xs mb-1">Casino</label>
+                  <input
+                    value={draft.casinoName}
+                    onChange={(e) => setDraft((d) => ({ ...d, casinoName: e.target.value }))}
+                    className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="e.g. Bellagio"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-xs mb-1">Type</label>
+                  <select
+                    value={draft.offerType}
+                    onChange={(e) => setDraft((d) => ({ ...d, offerType: e.target.value }))}
+                    className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  >
+                    <option value="free_play">Free play</option>
+                    <option value="hotel">Hotel stay</option>
+                    <option value="dining">Dining credit</option>
+                    <option value="gift">Gift day</option>
+                    <option value="multiplier">Tier multiplier</option>
+                    <option value="tournament">Tournament</option>
+                    <option value="drawing">Drawing</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <label className="block text-zinc-400 text-xs mb-1">Title</label>
+                <input
+                  value={draft.title}
+                  onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                  className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  placeholder="e.g. Weekly Free Play"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-zinc-400 text-xs mb-1">Start</label>
+                  <input
+                    type="datetime-local"
+                    value={draft.startAt}
+                    onChange={(e) => setDraft((d) => ({ ...d, startAt: e.target.value }))}
+                    className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={draft.endAt}
+                    onChange={(e) => setDraft((d) => ({ ...d, endAt: e.target.value }))}
+                    className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-zinc-400 text-xs mb-1">Value amount ($)</label>
+                  <input
+                    type="number"
+                    value={draft.valueAmount}
+                    onChange={(e) => setDraft((d) => ({ ...d, valueAmount: e.target.value }))}
+                    className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="e.g. 150"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-400 text-xs mb-1">Value text</label>
+                  <input
+                    value={draft.valueText}
+                    onChange={(e) => setDraft((d) => ({ ...d, valueText: e.target.value }))}
+                    className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="e.g. $150 FP + gift"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <label className="block text-zinc-400 text-xs mb-1">Notes</label>
+                <textarea
+                  value={draft.notes}
+                  onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+                  className="w-full min-h-20 bg-zinc-800 rounded-2xl px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  placeholder="Any restrictions, swipe times, or details"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={saveEvent}
+                disabled={saving}
+                className="mt-4 w-full min-h-12 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
+              >
+                {saving ? 'Saving…' : editingId ? 'Update event' : 'Save event'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

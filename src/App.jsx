@@ -630,8 +630,8 @@ function AppShell({ onLogout, supabaseClient }) {
     })
     const [draft, setDraft] = useState(() => emptyOfferDraft())
     const [allDay, setAllDay] = useState(true)
-    const [useCustomCasino, setUseCustomCasino] = useState(false)
-    const [useCustomTitle, setUseCustomTitle] = useState(false)
+    const [showCasinoSuggestions, setShowCasinoSuggestions] = useState(false)
+    const [showTitleSuggestions, setShowTitleSuggestions] = useState(false)
 
     const offerTypeMeta = useMemo(
       () => ({
@@ -710,8 +710,8 @@ function AppShell({ onLogout, supabaseClient }) {
       setEditingId(null)
       setDraft(emptyOfferDraft())
       setAllDay(true)
-      setUseCustomCasino(false)
-      setUseCustomTitle(false)
+      setShowCasinoSuggestions(false)
+      setShowTitleSuggestions(false)
     }
 
     const openForm = (dayKey = null) => {
@@ -721,13 +721,13 @@ function AppShell({ onLogout, supabaseClient }) {
         // Default to an all-day event when opening from a calendar day
         setDraft((d) => ({ ...emptyOfferDraft(), startAt: `${dayKey}T00:00` }))
         setAllDay(true)
-        setUseCustomCasino(false)
-        setUseCustomTitle(false)
+        setShowCasinoSuggestions(false)
+        setShowTitleSuggestions(false)
       } else {
         setDraft(emptyOfferDraft())
         setAllDay(true)
-        setUseCustomCasino(false)
-        setUseCustomTitle(false)
+        setShowCasinoSuggestions(false)
+        setShowTitleSuggestions(false)
       }
     }
 
@@ -750,8 +750,8 @@ function AppShell({ onLogout, supabaseClient }) {
         valueText: ev.value_text || '',
         notes: ev.notes || ''
       })
-      setUseCustomCasino(false)
-      setUseCustomTitle(false)
+      setShowCasinoSuggestions(false)
+      setShowTitleSuggestions(false)
       setError('')
     }
 
@@ -891,6 +891,18 @@ function AppShell({ onLogout, supabaseClient }) {
         a.localeCompare(b)
       )
     }, [events])
+
+    const filteredCasinoOptions = useMemo(() => {
+      const q = draft.casinoName.trim().toLowerCase()
+      if (!q) return casinoNameOptions.slice(0, 8)
+      return casinoNameOptions.filter((name) => name.toLowerCase().includes(q)).slice(0, 8)
+    }, [casinoNameOptions, draft.casinoName])
+
+    const filteredTitleOptions = useMemo(() => {
+      const q = draft.title.trim().toLowerCase()
+      if (!q) return titleOptions.slice(0, 8)
+      return titleOptions.filter((name) => name.toLowerCase().includes(q)).slice(0, 8)
+    }, [titleOptions, draft.title])
 
     const startDayPress = (dayKey) => {
       longPressTimerRef.current = window.setTimeout(() => {
@@ -1144,52 +1156,43 @@ function AppShell({ onLogout, supabaseClient }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-zinc-400 text-xs mb-1">Casino</label>
-                  {useCustomCasino ? (
-                    <div className="space-y-2">
-                      <input
-                        value={draft.casinoName}
-                        onChange={(e) => setDraft((d) => ({ ...d, casinoName: e.target.value }))}
-                        className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                        placeholder="e.g. Bellagio"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setUseCustomCasino(false)}
-                        className="text-xs text-zinc-400 hover:text-zinc-200"
-                      >
-                        Back to list
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <select
-                        value={draft.casinoName || ''}
-                        onChange={(e) => {
-                          if (e.target.value === '__custom__') {
-                            setUseCustomCasino(true)
-                            setDraft((d) => ({ ...d, casinoName: '' }))
-                            return
-                          }
-                          setDraft((d) => ({ ...d, casinoName: e.target.value }))
-                        }}
-                        className="w-full h-12 appearance-none bg-zinc-800 rounded-2xl pl-3 pr-10 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                      >
-                        <option value="">Select casino</option>
-                        {casinoNameOptions.map((name) => (
-                          <option key={name} value={name}>
+                  <div className="relative">
+                    <input
+                      value={draft.casinoName}
+                      onChange={(e) => {
+                        setDraft((d) => ({ ...d, casinoName: e.target.value }))
+                        setShowCasinoSuggestions(true)
+                      }}
+                      onFocus={() => setShowCasinoSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowCasinoSuggestions(false), 120)}
+                      className="w-full h-12 appearance-none bg-zinc-800 rounded-2xl pl-3 pr-10 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                      placeholder="e.g. Bellagio"
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm"
+                    >
+                      ▾
+                    </span>
+                    {showCasinoSuggestions && filteredCasinoOptions.length > 0 && (
+                      <div className="absolute z-30 mt-1 w-full max-h-44 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
+                        {filteredCasinoOptions.map((name) => (
+                          <button
+                            key={name}
+                            type="button"
+                            onMouseDown={(ev) => ev.preventDefault()}
+                            onClick={() => {
+                              setDraft((d) => ({ ...d, casinoName: name }))
+                              setShowCasinoSuggestions(false)
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                          >
                             {name}
-                          </option>
+                          </button>
                         ))}
-                        <option value="__custom__">Custom...</option>
-                      </select>
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm"
-                      >
-                        ▾
-                      </span>
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-zinc-400 text-xs mb-1">Type</label>
@@ -1220,52 +1223,43 @@ function AppShell({ onLogout, supabaseClient }) {
 
               <div className="mt-3">
                 <label className="block text-zinc-400 text-xs mb-1">Title</label>
-                {useCustomTitle ? (
-                  <div className="space-y-2">
-                    <input
-                      value={draft.title}
-                      onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                      className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                      placeholder="e.g. Weekly Free Play"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setUseCustomTitle(false)}
-                      className="text-xs text-zinc-400 hover:text-zinc-200"
-                    >
-                      Back to list
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <select
-                      value={draft.title || ''}
-                      onChange={(e) => {
-                        if (e.target.value === '__custom__') {
-                          setUseCustomTitle(true)
-                          setDraft((d) => ({ ...d, title: '' }))
-                          return
-                        }
-                        setDraft((d) => ({ ...d, title: e.target.value }))
-                      }}
-                      className="w-full h-12 appearance-none bg-zinc-800 rounded-2xl pl-3 pr-10 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                    >
-                      <option value="">Select title</option>
-                      {titleOptions.map((title) => (
-                        <option key={title} value={title}>
+                <div className="relative">
+                  <input
+                    value={draft.title}
+                    onChange={(e) => {
+                      setDraft((d) => ({ ...d, title: e.target.value }))
+                      setShowTitleSuggestions(true)
+                    }}
+                    onFocus={() => setShowTitleSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowTitleSuggestions(false), 120)}
+                    className="w-full h-12 appearance-none bg-zinc-800 rounded-2xl pl-3 pr-10 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="e.g. Weekly Free Play"
+                  />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm"
+                  >
+                    ▾
+                  </span>
+                  {showTitleSuggestions && filteredTitleOptions.length > 0 && (
+                    <div className="absolute z-30 mt-1 w-full max-h-44 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
+                      {filteredTitleOptions.map((title) => (
+                        <button
+                          key={title}
+                          type="button"
+                          onMouseDown={(ev) => ev.preventDefault()}
+                          onClick={() => {
+                            setDraft((d) => ({ ...d, title }))
+                            setShowTitleSuggestions(false)
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                        >
                           {title}
-                        </option>
+                        </button>
                       ))}
-                      <option value="__custom__">Custom...</option>
-                    </select>
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm"
-                    >
-                      ▾
-                    </span>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-3">

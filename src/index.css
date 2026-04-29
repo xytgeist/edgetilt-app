@@ -15,6 +15,19 @@ input[type="range"].range-touch-target {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Hide browser-native datalist/list picker glyph so custom chevron is the only indicator. */
+input[list]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+input[list]::-webkit-list-button {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* react-datepicker dark theme (used in Offers modal) */
 .offer-datepicker.react-datepicker {
   background-color: #18181b; /* zinc-900 */

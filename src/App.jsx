@@ -870,6 +870,12 @@ function AppShell({ onLogout, supabaseClient }) {
       return events.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
     }, [events, selectedDays])
 
+    const casinoNameOptions = useMemo(() => {
+      return Array.from(new Set(events.map((ev) => ev.casino_name?.trim()).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b)
+      )
+    }, [events])
+
     const startDayPress = (dayKey) => {
       longPressTimerRef.current = window.setTimeout(() => {
         openForm(dayKey)
@@ -1123,9 +1129,15 @@ function AppShell({ onLogout, supabaseClient }) {
                   <input
                     value={draft.casinoName}
                     onChange={(e) => setDraft((d) => ({ ...d, casinoName: e.target.value }))}
+                    list="offers-casino-options"
                     className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
                     placeholder="e.g. Bellagio"
                   />
+                  <datalist id="offers-casino-options">
+                    {casinoNameOptions.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-zinc-400 text-xs mb-1">Type</label>

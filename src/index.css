@@ -14,3 +14,42 @@ input[type="range"].range-touch-target {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* react-datepicker dark theme (used in Offers modal) */
+.offer-datepicker.react-datepicker {
+  background-color: #18181b; /* zinc-900 */
+  border: 1px solid rgba(63, 63, 70, 0.9);
+  border-radius: 16px;
+  color: #fff;
+  padding: 8px;
+}
+
+.offer-datepicker .react-datepicker__header {
+  background: transparent;
+  border-bottom: 0;
+  color: #fff;
+}
+
+.offer-datepicker .react-datepicker__current-month,
+.offer-datepicker .react-datepicker__day-name {
+  color: #e4e4e7; /* zinc-200 */
+}
+
+.offer-datepicker .react-datepicker__day {
+  color: #e4e4e7;
+}
+
+.offer-datepicker .react-datepicker__day:hover {
+  background-color: rgba(124, 58, 237, 0.15); /* violet-600/15 */
+}
+
+.offer-datepicker .react-datepicker__day--selected,
+.offer-datepicker .react-datepicker__day--keyboard-selected {
+  background-color: #7c3aed; /* violet-600 */
+  color: #fff;
+}
+
+.offer-datepicker .react-datepicker__time-list-item--selected {
+  background-color: #7c3aed;
+  color: #fff;
+}

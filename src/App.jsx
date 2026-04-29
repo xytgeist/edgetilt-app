@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, forwardRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import PhoenixLink from './calculators/PhoenixLink'
 import BuffaloLink from './calculators/BuffaloLink'
 import StackUpPays from './calculators/StackUpPays'
@@ -76,18 +78,34 @@ function toDatetimeLocalValue(iso) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`
 }
 
-function splitDatetimeLocalValue(v) {
-  if (!v) return { date: '', time: '' }
-  const [date, timeMaybe] = String(v).split('T')
-  const time = (timeMaybe || '').slice(0, 5) // 'HH:mm'
-  return { date, time }
+function dateFromDatetimeLocalValue(v) {
+  if (!v) return null
+  const [datePart, timePart = '00:00'] = String(v).split('T')
+  const [y, m, d] = datePart.split('-').map(Number)
+  const [hh, mm] = timePart.split(':').map(Number)
+  if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return null
+  return new Date(y, m - 1, d, hh, mm)
 }
 
-function combineDatetimeLocalValue(date, time) {
-  if (!date) return ''
-  const t = time || '00:00'
-  return `${date}T${t}`
+function datetimeLocalValueFromDate(d) {
+  if (!d) return ''
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(
+    d.getMinutes()
+  )}`
 }
+
+const DateTimeInput = forwardRef(({ value, onClick, placeholder }, ref) => {
+  return (
+    <input
+      ref={ref}
+      value={value || ''}
+      onClick={onClick}
+      readOnly
+      placeholder={placeholder}
+      className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer box-border"
+    />
+  )
+})
 
 function emptyOfferDraft() {
   return {
@@ -1088,74 +1106,40 @@ function AppShell({ onLogout, supabaseClient }) {
                 />
               </div>
 
-              {(() => {
-                const { date: startDate, time: startTime } = splitDatetimeLocalValue(draft.startAt)
-                const { date: endDate, time: endTime } = splitDatetimeLocalValue(draft.endAt)
-                return (
-                  <>
-                    <div className="mt-3">
-                      <label className="block text-zinc-400 text-xs mb-1">Start</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="min-w-0">
-                          <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => {
-                              const v = combineDatetimeLocalValue(e.target.value, startTime)
-                              setDraft((d) => ({ ...d, startAt: v }))
-                            }}
-                            className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <input
-                            type="time"
-                            value={startTime}
-                            onChange={(e) => {
-                              const v = combineDatetimeLocalValue(startDate, e.target.value)
-                              setDraft((d) => ({ ...d, startAt: v }))
-                            }}
-                            step="900"
-                            className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                          />
-                        </div>
-                      </div>
-                    </div>
+              <div className="mt-3">
+                <label className="block text-zinc-400 text-xs mb-1">Start</label>
+                <DatePicker
+                  selected={dateFromDatetimeLocalValue(draft.startAt)}
+                  onChange={(d) => setDraft((cur) => ({ ...cur, startAt: d ? datetimeLocalValueFromDate(d) : '' }))}
+                  showTimeSelect
+                  timeIntervals={15}
+                  timeCaption="Time"
+                  dateFormat="MMM d, yyyy h:mm aa"
+                  popperPlacement="bottom-start"
+                  wrapperClassName="w-full"
+                  calendarClassName="offer-datepicker"
+                  placeholderText="Select start"
+                  customInput={<DateTimeInput />}
+                />
+              </div>
 
-                    <div className="mt-3">
-                      <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="min-w-0">
-                          <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => {
-                              const dateV = e.target.value
-                              const v = dateV ? combineDatetimeLocalValue(dateV, endTime) : ''
-                              setDraft((d) => ({ ...d, endAt: v }))
-                            }}
-                            className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <input
-                            type="time"
-                            value={endDate ? endTime : ''}
-                            onChange={(e) => {
-                              const timeV = e.target.value
-                              const v = endDate ? combineDatetimeLocalValue(endDate, timeV) : ''
-                              setDraft((d) => ({ ...d, endAt: v }))
-                            }}
-                            step="900"
-                            className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
-                            disabled={!endDate}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )
-              })()}
+              <div className="mt-3">
+                <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
+                <DatePicker
+                  selected={dateFromDatetimeLocalValue(draft.endAt)}
+                  onChange={(d) => setDraft((cur) => ({ ...cur, endAt: d ? datetimeLocalValueFromDate(d) : '' }))}
+                  showTimeSelect
+                  timeIntervals={15}
+                  timeCaption="Time"
+                  dateFormat="MMM d, yyyy h:mm aa"
+                  popperPlacement="bottom-start"
+                  wrapperClassName="w-full"
+                  calendarClassName="offer-datepicker"
+                  placeholderText="Select end"
+                  isClearable
+                  customInput={<DateTimeInput />}
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div>

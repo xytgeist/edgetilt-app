@@ -989,16 +989,16 @@ function AppShell({ onLogout, supabaseClient }) {
             <button
               type="button"
               onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-              className="min-h-10 min-w-10 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+              className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
               aria-label="Previous month"
             >
               ‹
             </button>
-            <div className="text-white text-2xl font-black tracking-tight text-center flex-1 truncate">{monthTitle}</div>
+            <div className="text-white text-xl font-black tracking-tight text-center flex-1 truncate">{monthTitle}</div>
             <button
               type="button"
               onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-              className="min-h-10 min-w-10 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+              className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
               aria-label="Next month"
             >
               ›
@@ -1015,7 +1015,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
           <div className="grid grid-cols-7 gap-1 mt-1">
             {calendarCells.map((cell, idx) => {
-              if (!cell) return <div key={`empty-${idx}`} className="h-12" />
+              if (!cell) return <div key={`empty-${idx}`} className="h-10" />
               const key = localDateKeyFromDate(cell)
               const isToday = key === todayKey
               const isSelected = selectedDays.includes(key)
@@ -1030,7 +1030,7 @@ function AppShell({ onLogout, supabaseClient }) {
                   onTouchStart={() => startDayPress(key)}
                   onTouchEnd={endDayPress}
                   onClick={() => toggleSelectedDay(key)}
-                  className={`h-12 rounded-2xl text-sm touch-manipulation flex flex-col items-center justify-center gap-0.5 border ${
+                  className={`h-10 rounded-2xl text-sm touch-manipulation flex flex-col items-center justify-center gap-0.5 border ${
                     isSelected
                       ? 'border-violet-400 text-white'
                       : isToday
@@ -1067,7 +1067,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="text-white font-bold mb-2">Events</div>
-          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 pb-16">
             {loading ? (
               <div className="text-zinc-400 text-sm">Loading…</div>
             ) : filteredEvents.length === 0 ? (
@@ -1169,15 +1169,14 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         </div>
 
-        <div className="mt-3 bg-gradient-to-t from-gray-950 via-gray-950/95 to-transparent pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={() => openForm(null)}
-            className="w-full min-h-12 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-lg touch-manipulation"
-          >
-            Add Event
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => openForm(null)}
+          aria-label="Add event"
+          className="fixed right-20 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 h-12 w-12 rounded-full bg-zinc-900/95 text-white text-2xl shadow-lg backdrop-blur touch-manipulation"
+        >
+          +
+        </button>
 
         {showForm && (
           <div className="fixed inset-0 z-30 bg-black/70 backdrop-blur-[1px] px-4 py-6 overflow-y-auto">

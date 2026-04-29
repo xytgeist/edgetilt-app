@@ -615,6 +615,8 @@ function AppShell({ onLogout, supabaseClient }) {
   const OffersCalendar = () => {
     const fileInputRef = useRef(null)
     const longPressTimerRef = useRef(null)
+    const casinoFieldRef = useRef(null)
+    const titleFieldRef = useRef(null)
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -703,6 +705,21 @@ function AppShell({ onLogout, supabaseClient }) {
     useEffect(() => {
       void loadEvents()
       // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    useEffect(() => {
+      const handlePointerDown = (event) => {
+        const target = event.target
+        if (casinoFieldRef.current && !casinoFieldRef.current.contains(target)) {
+          setShowCasinoSuggestions(false)
+        }
+        if (titleFieldRef.current && !titleFieldRef.current.contains(target)) {
+          setShowTitleSuggestions(false)
+        }
+      }
+
+      document.addEventListener('pointerdown', handlePointerDown)
+      return () => document.removeEventListener('pointerdown', handlePointerDown)
     }, [])
 
     const closeForm = () => {
@@ -1156,7 +1173,7 @@ function AppShell({ onLogout, supabaseClient }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-zinc-400 text-xs mb-1">Casino</label>
-                  <div className="relative">
+                  <div ref={casinoFieldRef} className="relative">
                     <input
                       value={draft.casinoName}
                       onChange={(e) => {
@@ -1226,7 +1243,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
               <div className="mt-3">
                 <label className="block text-zinc-400 text-xs mb-1">Title</label>
-                <div className="relative">
+                <div ref={titleFieldRef} className="relative">
                   <input
                     value={draft.title}
                     onChange={(e) => {

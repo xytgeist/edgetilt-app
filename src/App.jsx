@@ -829,7 +829,10 @@ function AppShell({ onLogout, supabaseClient }) {
     }
 
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 pb-28 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div
+        className="max-w-lg mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 flex flex-col overflow-hidden"
+        style={{ height: 'calc(100dvh - 5.25rem - env(safe-area-inset-bottom))' }}
+      >
         <div className="mb-5">
           <div className="text-white text-2xl font-black tracking-tight">Offers Calendar</div>
           <div className="text-zinc-400 text-sm mt-0.5">Monthly view with event-type dots and day filtering</div>
@@ -928,79 +931,81 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
-        <div className="bg-zinc-900 rounded-3xl p-4">
+        <div className="bg-zinc-900 rounded-3xl p-4 flex-1 min-h-0 flex flex-col">
           <div className="text-white font-bold mb-3">Events</div>
-          {loading ? (
-            <div className="text-zinc-400 text-sm">Loading…</div>
-          ) : filteredEvents.length === 0 ? (
-            <div className="text-zinc-500 text-sm">No events for the current filter.</div>
-          ) : (
-            <div className="space-y-3">
-              {filteredEvents.map((e) => {
-                const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
-                const showTime = hasVisibleTime(e.start_at) || !!e.end_at
-                const timeLabel = showTime
-                  ? new Date(e.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-                  : ''
-                const dayLabel = new Date(e.start_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
-                const dayNum = new Date(e.start_at).getDate()
-                return (
-                  <div key={e.id} className="bg-zinc-800/80 rounded-2xl p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 shrink-0 text-center">
-                        <div className="text-zinc-500 text-[10px] font-semibold tracking-wide">{dayLabel}</div>
-                        <div className="text-zinc-100 text-2xl leading-tight">{dayNum}</div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${meta.chip}`}>
-                            {meta.label}
-                          </span>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            {loading ? (
+              <div className="text-zinc-400 text-sm">Loading…</div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="text-zinc-500 text-sm">No events for the current filter.</div>
+            ) : (
+              <div className="space-y-3">
+                {filteredEvents.map((e) => {
+                  const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
+                  const showTime = hasVisibleTime(e.start_at) || !!e.end_at
+                  const timeLabel = showTime
+                    ? new Date(e.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                    : ''
+                  const dayLabel = new Date(e.start_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
+                  const dayNum = new Date(e.start_at).getDate()
+                  return (
+                    <div key={e.id} className="bg-zinc-800/80 rounded-2xl p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 shrink-0 text-center">
+                          <div className="text-zinc-500 text-[10px] font-semibold tracking-wide">{dayLabel}</div>
+                          <div className="text-zinc-100 text-2xl leading-tight">{dayNum}</div>
                         </div>
-                        <div className="text-zinc-100 text-lg mt-1 leading-tight break-words">
-                          {timeLabel ? `${timeLabel} ` : ''}
-                          {e.title}
-                        </div>
-                        <div className="text-zinc-400 text-sm mt-1">{e.casino_name}</div>
-                        {(e.value_amount !== null || e.value_text) && (
-                          <div className="text-emerald-300 text-sm mt-1">
-                            {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
-                            {e.value_amount !== null && e.value_text ? ' • ' : ''}
-                            {e.value_text || ''}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
+                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${meta.chip}`}>
+                              {meta.label}
+                            </span>
                           </div>
-                        )}
-                        {e.notes && <div className="text-zinc-400 text-sm mt-1 leading-relaxed">{e.notes}</div>}
+                          <div className="text-zinc-100 text-lg mt-1 leading-tight break-words">
+                            {timeLabel ? `${timeLabel} ` : ''}
+                            {e.title}
+                          </div>
+                          <div className="text-zinc-400 text-sm mt-1">{e.casino_name}</div>
+                          {(e.value_amount !== null || e.value_text) && (
+                            <div className="text-emerald-300 text-sm mt-1">
+                              {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
+                              {e.value_amount !== null && e.value_text ? ' • ' : ''}
+                              {e.value_text || ''}
+                            </div>
+                          )}
+                          {e.notes && <div className="text-zinc-400 text-sm mt-1 leading-relaxed">{e.notes}</div>}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => beginEdit(e)}
+                          className="text-cyan-300 hover:text-cyan-200 text-xs font-semibold touch-manipulation"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteEvent(e.id)}
+                          className="text-red-300 hover:text-red-200 text-xs font-semibold touch-manipulation"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
-                    <div className="mt-2 flex justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => beginEdit(e)}
-                        className="text-cyan-300 hover:text-cyan-200 text-xs font-semibold touch-manipulation"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteEvent(e.id)}
-                        className="text-red-300 hover:text-red-200 text-xs font-semibold touch-manipulation"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="fixed bottom-[max(4.8rem,calc(env(safe-area-inset-bottom)+4.3rem))] left-1/2 w-full max-w-lg -translate-x-1/2 px-4 z-20 pointer-events-none">
+        <div className="mt-3 rounded-3xl border border-zinc-800 bg-zinc-950/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => openForm(null)}
-            className="w-full min-h-12 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-lg pointer-events-auto touch-manipulation"
+            className="w-full min-h-12 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold shadow-lg touch-manipulation"
           >
             Add Event
           </button>

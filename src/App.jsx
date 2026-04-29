@@ -113,33 +113,26 @@ function GoogleIcon() {
   )
 }
 
-function TabButton({ active, onClick, label, icon }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 touch-manipulation ${
-        active ? 'text-white' : 'text-zinc-400'
-      }`}
-      aria-current={active ? 'page' : undefined}
-    >
-      <span className={`text-xl leading-none ${active ? 'opacity-100' : 'opacity-80'}`} aria-hidden>
-        {icon}
-      </span>
-      <span className={`text-[11px] leading-none ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
-    </button>
-  )
-}
-
 function AppShell({ onLogout, supabaseClient }) {
   const [tab, setTab] = useState('home')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo' | 'stackup' | 'mhb' | null
   const [intelView, setIntelView] = useState({ screen: 'home', cityId: null, casinoId: null })
 
   const openCalculator = (key) => {
     setActiveCalculator(key)
     setTab('calculators')
+    setMenuOpen(false)
   }
+
+  const navItems = [
+    { id: 'home', label: 'Home', icon: '🏠' },
+    { id: 'calculators', label: 'Calcs', icon: '🧮' },
+    { id: 'offers', label: 'Offers', icon: '📅' },
+    { id: 'guides', label: 'Guides', icon: '📘' },
+    { id: 'intel', label: 'Intel', icon: '📍' },
+    { id: 'team', label: 'Team', icon: '🤝' }
+  ]
 
   const LocalIntel = () => {
     const [cities, setCities] = useState([])
@@ -831,7 +824,7 @@ function AppShell({ onLogout, supabaseClient }) {
     return (
       <div
         className="max-w-lg mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 flex flex-col overflow-hidden"
-        style={{ height: 'calc(100dvh - 5.25rem - env(safe-area-inset-bottom))' }}
+        style={{ height: 'calc(100dvh - env(safe-area-inset-bottom) - 0.5rem)' }}
       >
 
         {error && (
@@ -846,7 +839,7 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
-        <div className="bg-black rounded-3xl p-3 mb-3 border border-zinc-800">
+        <div className="mb-2">
           <div className="flex items-center justify-between gap-2 mb-2">
             <button
               type="button"
@@ -913,7 +906,7 @@ function AppShell({ onLogout, supabaseClient }) {
         </div>
 
         {selectedDays.length > 0 && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-zinc-900 px-4 py-3">
+          <div className="mb-3 flex items-center justify-between gap-3 px-1 py-1">
             <div className="text-zinc-300 text-sm">
               {selectedDays.length} day{selectedDays.length > 1 ? 's' : ''} selected
             </div>
@@ -927,8 +920,8 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
-        <div className="bg-zinc-900 rounded-3xl p-4 flex-1 min-h-0 flex flex-col">
-          <div className="text-white font-bold mb-3">Events</div>
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="text-white font-bold mb-2">Events</div>
           <div className="flex-1 min-h-0 overflow-y-auto pr-1">
             {loading ? (
               <div className="text-zinc-400 text-sm">Loading…</div>
@@ -945,7 +938,7 @@ function AppShell({ onLogout, supabaseClient }) {
                   const dayLabel = new Date(e.start_at).toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
                   const dayNum = new Date(e.start_at).getDate()
                   return (
-                    <div key={e.id} className="bg-zinc-800/80 rounded-2xl p-3">
+                    <div key={e.id} className="bg-violet-500/18 rounded-2xl p-3">
                       <div className="flex items-start gap-3">
                         <div className="w-12 shrink-0 text-center">
                           <div className="text-zinc-500 text-[10px] font-semibold tracking-wide">{dayLabel}</div>
@@ -997,7 +990,7 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         </div>
 
-        <div className="mt-3 rounded-3xl border border-zinc-800 bg-zinc-950/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mt-3 bg-gradient-to-t from-gray-950 via-gray-950/95 to-transparent pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={() => openForm(null)}
@@ -1372,29 +1365,50 @@ function AppShell({ onLogout, supabaseClient }) {
   }
 
   return (
-    <div className="min-h-dvh bg-gray-950 pb-[max(5rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-dvh bg-gray-950">
       {renderTabContent()}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800/80 bg-zinc-950/95 backdrop-blur">
-        <div className="mx-auto max-w-lg px-3 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
-          <div className="flex">
-            <TabButton active={tab === 'home'} onClick={() => setTab('home')} label="Home" icon="🏠" />
-            <TabButton
-              active={tab === 'calculators'}
-              onClick={() => {
-                setTab('calculators')
-                if (activeCalculator) setActiveCalculator(null)
-              }}
-              label="Calcs"
-              icon="🧮"
-            />
-            <TabButton active={tab === 'offers'} onClick={() => setTab('offers')} label="Offers" icon="📅" />
-            <TabButton active={tab === 'guides'} onClick={() => setTab('guides')} label="Guides" icon="📘" />
-            <TabButton active={tab === 'intel'} onClick={() => setTab('intel')} label="Intel" icon="📍" />
-            <TabButton active={tab === 'team'} onClick={() => setTab('team')} label="Team" icon="🤝" />
+      {menuOpen && (
+        <button
+          type="button"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 bg-black/35"
+        />
+      )}
+
+      <div className="fixed right-4 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 flex flex-col items-end gap-2">
+        {menuOpen && (
+          <div className="w-44 rounded-2xl bg-zinc-950/95 backdrop-blur px-2 py-2 shadow-xl">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setTab(item.id)
+                  if (item.id === 'calculators' && activeCalculator) setActiveCalculator(null)
+                  setMenuOpen(false)
+                }}
+                className={`w-full rounded-xl px-3 py-2.5 text-left text-sm flex items-center gap-2 touch-manipulation ${
+                  tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-900'
+                }`}
+              >
+                <span aria-hidden>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
           </div>
-        </div>
-      </nav>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="Open navigation menu"
+          className="h-12 w-12 rounded-full bg-zinc-900/95 text-white text-xl shadow-lg backdrop-blur touch-manipulation"
+        >
+          {menuOpen ? '×' : '☰'}
+        </button>
+      </div>
     </div>
   )
 }

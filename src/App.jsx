@@ -1173,9 +1173,9 @@ function AppShell({ onLogout, supabaseClient }) {
           type="button"
           onClick={() => openForm(null)}
           aria-label="Add event"
-          className="fixed right-[4.25rem] bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 flex h-12 w-12 items-center justify-center rounded-full bg-violet-600 text-white text-3xl leading-none shadow-lg touch-manipulation hover:bg-violet-500"
+          className="fixed right-[4.25rem] bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 grid h-12 w-12 place-items-center rounded-full bg-violet-600 text-white shadow-lg touch-manipulation hover:bg-violet-500"
         >
-          +
+          <span aria-hidden className="block leading-none text-[2rem] -translate-y-px">+</span>
         </button>
 
         {showForm && (
@@ -1717,9 +1717,11 @@ function AppShell({ onLogout, supabaseClient }) {
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="Open navigation menu"
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900/95 text-white text-xl leading-none shadow-lg backdrop-blur touch-manipulation"
+          className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900/95 text-white shadow-lg backdrop-blur touch-manipulation"
         >
-          {menuOpen ? '×' : '☰'}
+          <span aria-hidden className="block leading-none text-2xl -translate-y-px">
+            {menuOpen ? '×' : '☰'}
+          </span>
         </button>
       </div>
     </div>

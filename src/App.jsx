@@ -833,10 +833,6 @@ function AppShell({ onLogout, supabaseClient }) {
         className="max-w-lg mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 flex flex-col overflow-hidden"
         style={{ height: 'calc(100dvh - 5.25rem - env(safe-area-inset-bottom))' }}
       >
-        <div className="mb-5">
-          <div className="text-white text-2xl font-black tracking-tight">Offers Calendar</div>
-          <div className="text-zinc-400 text-sm mt-0.5">Monthly view with event-type dots and day filtering</div>
-        </div>
 
         {error && (
           <div className="mb-4 p-4 rounded-3xl bg-red-900/40 border border-red-500/40 text-red-200 text-sm leading-relaxed">
@@ -850,8 +846,8 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
-        <div className="bg-black rounded-3xl p-4 mb-4 border border-zinc-800">
-          <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="bg-black rounded-3xl p-3 mb-3 border border-zinc-800">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <button
               type="button"
               onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
@@ -860,7 +856,7 @@ function AppShell({ onLogout, supabaseClient }) {
             >
               ‹
             </button>
-            <div className="text-white text-3xl font-black tracking-tight text-center flex-1 truncate">{monthTitle}</div>
+            <div className="text-white text-2xl font-black tracking-tight text-center flex-1 truncate">{monthTitle}</div>
             <button
               type="button"
               onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
@@ -871,7 +867,7 @@ function AppShell({ onLogout, supabaseClient }) {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-zinc-500">
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-zinc-500">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
               <div key={`${w}-${idx}`} className="py-1">
                 {w}
@@ -881,7 +877,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
           <div className="grid grid-cols-7 gap-1 mt-1">
             {calendarCells.map((cell, idx) => {
-              if (!cell) return <div key={`empty-${idx}`} className="h-14" />
+              if (!cell) return <div key={`empty-${idx}`} className="h-12" />
               const key = localDateKeyFromDate(cell)
               const isToday = key === todayKey
               const isSelected = selectedDays.includes(key)
@@ -896,7 +892,7 @@ function AppShell({ onLogout, supabaseClient }) {
                   onTouchStart={() => startDayPress(key)}
                   onTouchEnd={endDayPress}
                   onClick={() => toggleSelectedDay(key)}
-                  className={`h-14 rounded-2xl text-base touch-manipulation flex flex-col items-center justify-center gap-1 border ${
+                  className={`h-12 rounded-2xl text-sm touch-manipulation flex flex-col items-center justify-center gap-0.5 border ${
                     isSelected
                       ? 'border-violet-400 text-white'
                       : isToday

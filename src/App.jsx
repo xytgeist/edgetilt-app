@@ -1075,23 +1075,23 @@ function AppShell({ onLogout, supabaseClient }) {
                 />
               </div>
 
-              <div className="mt-3">
+              <div className="mt-3 w-full overflow-hidden">
                 <label className="block text-zinc-400 text-xs mb-1">Start</label>
                 <input
                   type="datetime-local"
                   value={draft.startAt}
                   onChange={(e) => setDraft((d) => ({ ...d, startAt: e.target.value }))}
-                  className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  className="w-full max-w-full min-w-0 box-border h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
                 />
               </div>
 
-              <div className="mt-3">
+              <div className="mt-3 w-full overflow-hidden">
                 <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
                 <input
                   type="datetime-local"
                   value={draft.endAt}
                   onChange={(e) => setDraft((d) => ({ ...d, endAt: e.target.value }))}
-                  className="w-full h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
+                  className="w-full max-w-full min-w-0 box-border h-12 bg-zinc-800 rounded-2xl px-3 text-zinc-100 outline-none focus:ring-2 focus:ring-violet-500/30"
                 />
               </div>
 

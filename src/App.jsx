@@ -785,7 +785,15 @@ function AppShell({ onLogout, supabaseClient }) {
         closeForm()
         await loadEvents()
       } catch (e) {
-        setError(e?.message || 'Failed to save offer.')
+        // Supabase errors are often structured; logging helps diagnose "Load failed" cases.
+        // eslint-disable-next-line no-console
+        console.error('saveEvent error:', e)
+        const parts = []
+        if (e?.message) parts.push(e.message)
+        if (e?.code) parts.push(`code: ${e.code}`)
+        if (e?.details) parts.push(`details: ${e.details}`)
+        if (e?.hint) parts.push(`hint: ${e.hint}`)
+        setError(parts.join('\n') || 'Failed to save offer.')
       } finally {
         setSaving(false)
       }

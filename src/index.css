@@ -53,3 +53,29 @@ input[type="range"].range-touch-target {
   background-color: #7c3aed;
   color: #fff;
 }
+
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}
+
+.offer-datepicker .react-datepicker__time-list {
+  background-color: #18181b !important;
+  border-left: 1px solid rgba(63, 63, 70, 0.9);
+}
+
+.offer-datepicker .react-datepicker__time-container {
+  background-color: #18181b !important;
+}
+
+.offer-datepicker .react-datepicker__time-list-item {
+  color: #e4e4e7 !important;
+}
+
+.offer-datepicker .react-datepicker__time-list-item:hover {
+  background-color: rgba(124, 58, 237, 0.15) !important;
+}
+
+.offer-datepicker .react-datepicker__time-list-item--selected {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+}

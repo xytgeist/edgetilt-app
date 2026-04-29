@@ -629,6 +629,8 @@ function AppShell({ onLogout, supabaseClient }) {
       return new Date(n.getFullYear(), n.getMonth(), 1)
     })
     const [draft, setDraft] = useState(() => emptyOfferDraft())
+    const [startAllDay, setStartAllDay] = useState(true)
+    const [endAllDay, setEndAllDay] = useState(true)
 
     const offerTypeMeta = useMemo(
       () => ({
@@ -706,21 +708,34 @@ function AppShell({ onLogout, supabaseClient }) {
       setShowForm(false)
       setEditingId(null)
       setDraft(emptyOfferDraft())
+      setStartAllDay(true)
+      setEndAllDay(true)
     }
 
     const openForm = (dayKey = null) => {
       setShowForm(true)
       setEditingId(null)
       if (dayKey) {
-        setDraft((d) => ({ ...emptyOfferDraft(), startAt: `${dayKey}T12:00` }))
+        // Default to an all-day event when opening from a calendar day
+        setDraft((d) => ({ ...emptyOfferDraft(), startAt: `${dayKey}T00:00` }))
+        setStartAllDay(true)
+        setEndAllDay(true)
       } else {
         setDraft(emptyOfferDraft())
+        setStartAllDay(true)
+        setEndAllDay(true)
       }
     }
 
     const beginEdit = (ev) => {
       setEditingId(ev.id)
       setShowForm(true)
+      const st = new Date(ev.start_at)
+      const stHasVisibleTime = st.getHours() !== 0 || st.getMinutes() !== 0
+      const en = ev.end_at ? new Date(ev.end_at) : null
+      const enHasVisibleTime = en ? en.getHours() !== 0 || en.getMinutes() !== 0 : false
+      setStartAllDay(!stHasVisibleTime)
+      setEndAllDay(!enHasVisibleTime)
       setDraft({
         casinoName: ev.casino_name || '',
         offerType: ev.offer_type || 'free_play',
@@ -962,7 +977,7 @@ function AppShell({ onLogout, supabaseClient }) {
               <div className="space-y-3">
                 {filteredEvents.map((e) => {
                   const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
-                  const showTime = hasVisibleTime(e.start_at) || !!e.end_at
+      const showTime = hasVisibleTime(e.start_at) || (e.end_at ? hasVisibleTime(e.end_at) : false)
                   const timeLabel = showTime
                     ? new Date(e.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
                     : ''
@@ -1107,34 +1122,78 @@ function AppShell({ onLogout, supabaseClient }) {
               </div>
 
               <div className="mt-3">
-                <label className="block text-zinc-400 text-xs mb-1">Start</label>
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <label className="block text-zinc-400 text-xs">Start</label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={startAllDay}
+                      onChange={(e) => {
+                        const v = e.target.checked
+                        setStartAllDay(v)
+                        setDraft((cur) => {
+                          if (!v || !cur.startAt) return cur
+                          const dt = dateFromDatetimeLocalValue(cur.startAt)
+                          if (!dt) return cur
+                          const midnight = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0)
+                          return { ...cur, startAt: datetimeLocalValueFromDate(midnight) }
+                        })
+                      }}
+                      className="h-4 w-4 accent-violet-600"
+                    />
+                    <span className="text-zinc-400 text-[11px] leading-none">All day</span>
+                  </label>
+                </div>
                 <DatePicker
                   selected={dateFromDatetimeLocalValue(draft.startAt)}
                   onChange={(d) => setDraft((cur) => ({ ...cur, startAt: d ? datetimeLocalValueFromDate(d) : '' }))}
-                  showTimeSelect
+                  showTimeSelect={!startAllDay}
                   timeIntervals={15}
                   timeCaption="Time"
-                  dateFormat="MMM d, yyyy h:mm aa"
+                  dateFormat={startAllDay ? 'MMM d, yyyy' : 'MMM d, yyyy h:mm aa'}
                   popperPlacement="bottom-start"
                   wrapperClassName="w-full"
                   calendarClassName="offer-datepicker"
+                  withPortal
                   placeholderText="Select start"
                   customInput={<DateTimeInput />}
                 />
               </div>
 
               <div className="mt-3">
-                <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <label className="block text-zinc-400 text-xs">End (optional)</label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={endAllDay}
+                      onChange={(e) => {
+                        const v = e.target.checked
+                        setEndAllDay(v)
+                        setDraft((cur) => {
+                          if (!v || !cur.endAt) return cur
+                          const dt = dateFromDatetimeLocalValue(cur.endAt)
+                          if (!dt) return cur
+                          const midnight = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0)
+                          return { ...cur, endAt: datetimeLocalValueFromDate(midnight) }
+                        })
+                      }}
+                      className="h-4 w-4 accent-violet-600"
+                    />
+                    <span className="text-zinc-400 text-[11px] leading-none">All day</span>
+                  </label>
+                </div>
                 <DatePicker
                   selected={dateFromDatetimeLocalValue(draft.endAt)}
                   onChange={(d) => setDraft((cur) => ({ ...cur, endAt: d ? datetimeLocalValueFromDate(d) : '' }))}
-                  showTimeSelect
+                  showTimeSelect={!endAllDay}
                   timeIntervals={15}
                   timeCaption="Time"
-                  dateFormat="MMM d, yyyy h:mm aa"
+                  dateFormat={endAllDay ? 'MMM d, yyyy' : 'MMM d, yyyy h:mm aa'}
                   popperPlacement="bottom-start"
                   wrapperClassName="w-full"
                   calendarClassName="offer-datepicker"
+                  withPortal
                   placeholderText="Select end"
                   isClearable
                   customInput={<DateTimeInput />}

@@ -888,6 +888,20 @@ function AppShell({ onLogout, supabaseClient }) {
       return d.getHours() !== 0 || d.getMinutes() !== 0
     }
 
+    const startSelected = dateFromDatetimeLocalValue(draft.startAt)
+    const endSelected = dateFromDatetimeLocalValue(draft.endAt)
+    const sameDayStartEnd =
+      !!startSelected &&
+      !!endSelected &&
+      startSelected.getFullYear() === endSelected.getFullYear() &&
+      startSelected.getMonth() === endSelected.getMonth() &&
+      startSelected.getDate() === endSelected.getDate()
+    const endMinTime =
+      !startSelected || !sameDayStartEnd
+        ? new Date(0, 0, 0, 0, 0)
+        : new Date(0, 0, 0, startSelected.getHours(), startSelected.getMinutes())
+    const endMaxTime = new Date(0, 0, 0, 23, 45)
+
     return (
       <div
         className="max-w-lg mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 flex flex-col overflow-hidden"
@@ -1169,8 +1183,16 @@ function AppShell({ onLogout, supabaseClient }) {
                   </label>
                 </div>
                 <DatePicker
-                  selected={dateFromDatetimeLocalValue(draft.startAt)}
-                  onChange={(d) => setDraft((cur) => ({ ...cur, startAt: d ? datetimeLocalValueFromDate(d) : '' }))}
+                  selected={startSelected}
+                  onChange={(d) =>
+                    setDraft((cur) => {
+                      if (!d) return { ...cur, startAt: '' }
+                      const nextStart = datetimeLocalValueFromDate(d)
+                      const curEnd = dateFromDatetimeLocalValue(cur.endAt)
+                      const shouldClearEnd = !!curEnd && curEnd.getTime() < d.getTime()
+                      return { ...cur, startAt: nextStart, endAt: shouldClearEnd ? '' : cur.endAt }
+                    })
+                  }
                   showTimeSelect={!allDay}
                   timeIntervals={15}
                   timeCaption="Time"
@@ -1187,12 +1209,15 @@ function AppShell({ onLogout, supabaseClient }) {
               <div className="mt-3">
                 <label className="block text-zinc-400 text-xs mb-1">End (optional)</label>
                 <DatePicker
-                  selected={dateFromDatetimeLocalValue(draft.endAt)}
+                  selected={endSelected}
                   onChange={(d) => setDraft((cur) => ({ ...cur, endAt: d ? datetimeLocalValueFromDate(d) : '' }))}
                   showTimeSelect={!allDay}
                   timeIntervals={15}
                   timeCaption="Time"
                   dateFormat={allDay ? 'MMM d, yyyy' : 'MMM d, yyyy h:mm aa'}
+                  minDate={startSelected || undefined}
+                  minTime={!allDay && startSelected ? endMinTime : undefined}
+                  maxTime={!allDay && startSelected ? endMaxTime : undefined}
                   popperPlacement="bottom-start"
                   wrapperClassName="w-full"
                   calendarClassName="offer-datepicker"

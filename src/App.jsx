@@ -794,7 +794,15 @@ function AppShell({ onLogout, supabaseClient }) {
         if (Number.isNaN(startDt.getTime())) throw new Error('Start date/time is invalid.')
         const endDt = draft.endAt ? new Date(draft.endAt) : null
         if (endDt && Number.isNaN(endDt.getTime())) throw new Error('End date/time is invalid.')
-        if (endDt && endDt.getTime() < startDt.getTime()) {
+        const normalizedStart = allDay
+          ? new Date(startDt.getFullYear(), startDt.getMonth(), startDt.getDate(), 0, 0, 0, 0)
+          : startDt
+        const normalizedEnd = endDt
+          ? allDay
+            ? new Date(endDt.getFullYear(), endDt.getMonth(), endDt.getDate(), 0, 0, 0, 0)
+            : endDt
+          : null
+        if (normalizedEnd && normalizedEnd.getTime() < normalizedStart.getTime()) {
           throw new Error('End date/time must be later than (or the same as) start.')
         }
 
@@ -802,8 +810,8 @@ function AppShell({ onLogout, supabaseClient }) {
           casino_name: draft.casinoName.trim(),
           offer_type: draft.offerType,
           title: draft.title.trim(),
-          start_at: startDt.toISOString(),
-          end_at: endDt ? endDt.toISOString() : null,
+          start_at: normalizedStart.toISOString(),
+          end_at: normalizedEnd ? normalizedEnd.toISOString() : null,
           value_amount: draft.valueAmount !== '' ? Number(draft.valueAmount) : null,
           value_text: draft.valueText.trim() || null,
           notes: draft.notes.trim() || null
@@ -1328,7 +1336,15 @@ function AppShell({ onLogout, supabaseClient }) {
                             const dt = dateFromDatetimeLocalValue(cur.startAt)
                             if (!dt) return cur
                             const midnight = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0)
-                            return { ...cur, startAt: datetimeLocalValueFromDate(midnight), endAt: cur.endAt ? datetimeLocalValueFromDate(dateFromDatetimeLocalValue(cur.endAt) || midnight) : cur.endAt }
+                            const curEnd = dateFromDatetimeLocalValue(cur.endAt)
+                            const endMidnight = curEnd
+                              ? new Date(curEnd.getFullYear(), curEnd.getMonth(), curEnd.getDate(), 0, 0, 0, 0)
+                              : null
+                            return {
+                              ...cur,
+                              startAt: datetimeLocalValueFromDate(midnight),
+                              endAt: endMidnight ? datetimeLocalValueFromDate(endMidnight) : cur.endAt
+                            }
                           }
                           return cur
                         })

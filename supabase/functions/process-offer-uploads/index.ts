@@ -469,7 +469,6 @@ Deno.serve(async (req) => {
             start_at: parsed.start_at,
             end_at: parsed.end_at,
             value_amount: parsed.value_amount ?? null,
-            value_text: null,
             notes: parsed.notes ?? null,
             source_type: 'image_ai',
             source_image_path: upload.storage_path,

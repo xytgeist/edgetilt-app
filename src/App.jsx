@@ -743,7 +743,11 @@ function AppShell({ onLogout, supabaseClient }) {
       ],
       []
     )
-    const uploadSpinnerMessage = uploadingMessageOrder[uploadingTick] || uploadSpinnerMessages[0]
+    const uploadMessageIndex = Math.min(uploadingTick, Math.max(0, uploadingMessageOrder.length - 1))
+    const uploadBaseMessage = uploadingMessageOrder[uploadMessageIndex] || uploadSpinnerMessages[0]
+    const atLastUploadMessage = uploadingMessageOrder.length > 0 && uploadMessageIndex === uploadingMessageOrder.length - 1
+    const uploadEllipsis = atLastUploadMessage ? '.'.repeat((uploadingTick % 3) + 1) : ''
+    const uploadSpinnerMessage = `${uploadBaseMessage}${uploadEllipsis}`
 
     useEffect(() => {
       if (!uploading) {
@@ -755,7 +759,7 @@ function AppShell({ onLogout, supabaseClient }) {
       setUploadingMessageOrder(order)
       setUploadingTick(0)
       const id = window.setInterval(() => {
-        setUploadingTick((n) => (n < order.length - 1 ? n + 1 : n))
+        setUploadingTick((n) => n + 1)
       }, 1600)
       return () => window.clearInterval(id)
     }, [uploading, uploadSpinnerMessages])
@@ -1065,7 +1069,6 @@ function AppShell({ onLogout, supabaseClient }) {
           start_at: normalizedStart.toISOString(),
           end_at: normalizedEnd ? normalizedEnd.toISOString() : null,
           value_amount: draft.valueAmount !== '' ? Number(draft.valueAmount) : null,
-          value_text: null,
           notes: draft.notes.trim() || null
         }
         payloadDebug = payload

@@ -120,6 +120,25 @@ function emptyOfferDraft() {
   }
 }
 
+/** Normalizes AI / Edge Function JSON (snake or camel) into the add-event form shape. */
+function draftFromAiReviewPayload(raw) {
+  if (!raw || typeof raw !== 'object') return emptyOfferDraft()
+  const o = raw
+  const va = o.valueAmount ?? o.value_amount
+  const ot = o.offerType ?? o.offer_type ?? 'free_play'
+  const allowedTypes = new Set(['free_play', 'hotel', 'dining', 'gift', 'multiplier', 'tournament', 'drawing', 'other'])
+  return {
+    casinoName: String(o.casinoName ?? o.casino_name ?? ''),
+    offerType: allowedTypes.has(ot) ? ot : 'free_play',
+    title: String(o.title ?? ''),
+    startAt: String(o.startAt ?? o.start_at ?? ''),
+    endAt: String(o.endAt ?? o.end_at ?? ''),
+    valueAmount: va !== undefined && va !== null ? String(va) : '',
+    valueText: String(o.valueText ?? o.value_text ?? ''),
+    notes: String(o.notes ?? '')
+  }
+}
+
 function OAuthDivider() {
   return (
     <div className="relative py-1">
@@ -623,6 +642,9 @@ function AppShell({ onLogout, supabaseClient }) {
     const [uploading, setUploading] = useState(false)
     const [error, setError] = useState('')
     const [uploadMessage, setUploadMessage] = useState('')
+    const [reviewQueue, setReviewQueue] = useState([])
+    const [completingReviewItemId, setCompletingReviewItemId] = useState(null)
+    const [reviewSourceImagePath, setReviewSourceImagePath] = useState(null)
     const [showForm, setShowForm] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [selectedDays, setSelectedDays] = useState([])
@@ -715,8 +737,29 @@ function AppShell({ onLogout, supabaseClient }) {
       }
     }
 
+    const loadReviewQueue = async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from('offer_ai_review_items')
+          .select('id,upload_id,batch_id,draft,warnings,created_at, offer_uploads ( file_name, storage_path )')
+          .eq('status', 'open')
+          .order('created_at', { ascending: false })
+        if (error) {
+          if (error.code === '42P01' || String(error.message || '').toLowerCase().includes('relation')) {
+            setReviewQueue([])
+            return
+          }
+          throw error
+        }
+        setReviewQueue(data || [])
+      } catch {
+        setReviewQueue([])
+      }
+    }
+
     useEffect(() => {
       void loadEvents()
+      void loadReviewQueue()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -764,6 +807,8 @@ function AppShell({ onLogout, supabaseClient }) {
       setAllDay(true)
       setShowCasinoSuggestions(false)
       setShowTitleSuggestions(false)
+      setCompletingReviewItemId(null)
+      setReviewSourceImagePath(null)
     }
 
     const toggleExpandedEvent = (eventId) => {
@@ -771,6 +816,8 @@ function AppShell({ onLogout, supabaseClient }) {
     }
 
     const openForm = (dayKey = null) => {
+      setCompletingReviewItemId(null)
+      setReviewSourceImagePath(null)
       setShowForm(true)
       setEditingId(null)
       if (dayKey) {
@@ -788,6 +835,8 @@ function AppShell({ onLogout, supabaseClient }) {
     }
 
     const beginEdit = (ev) => {
+      setCompletingReviewItemId(null)
+      setReviewSourceImagePath(null)
       setEditingId(ev.id)
       setShowForm(true)
       const st = new Date(ev.start_at)
@@ -809,6 +858,41 @@ function AppShell({ onLogout, supabaseClient }) {
       setShowCasinoSuggestions(false)
       setShowTitleSuggestions(false)
       setError('')
+    }
+
+    const beginReviewItem = (item) => {
+      const row = draftFromAiReviewPayload(item.draft || {})
+      const st = row.startAt ? dateFromDatetimeLocalValue(row.startAt) : null
+      const en = row.endAt ? dateFromDatetimeLocalValue(row.endAt) : null
+      const stHasVisibleTime = st ? st.getHours() !== 0 || st.getMinutes() !== 0 : false
+      const enHasVisibleTime = en ? en.getHours() !== 0 || en.getMinutes() !== 0 : false
+      setAllDay(!(stHasVisibleTime || enHasVisibleTime))
+      setDraft({ ...emptyOfferDraft(), ...row })
+      setCompletingReviewItemId(item.id)
+      const up = item.offer_uploads
+      const path = Array.isArray(up) ? up[0]?.storage_path : up?.storage_path
+      setReviewSourceImagePath(path || null)
+      setEditingId(null)
+      setShowForm(true)
+      setShowCasinoSuggestions(false)
+      setShowTitleSuggestions(false)
+      setError('')
+    }
+
+    const skipReviewItem = async (id) => {
+      try {
+        const { error } = await supabaseClient
+          .from('offer_ai_review_items')
+          .update({ status: 'skipped', resolved_at: new Date().toISOString() })
+          .eq('id', id)
+        if (error) {
+          if (error.code === '42P01') return
+          throw error
+        }
+        await loadReviewQueue()
+      } catch (e) {
+        setError(e?.message || 'Could not update review item.')
+      }
     }
 
     const toggleSelectedDay = (dayKey) => {
@@ -859,15 +943,34 @@ function AppShell({ onLogout, supabaseClient }) {
           const { data: sessionData } = await supabaseClient.auth.getSession()
           const user = sessionData?.session?.user
           if (!user) throw new Error('Sign in to save offers to your calendar.')
-          const { error: e } = await supabaseClient.from('offer_events').insert({
+          const pendingReviewId = completingReviewItemId
+          const pendingImg = reviewSourceImagePath
+          const insertPayload = {
             ...payload,
             user_id: user.id,
-            source_type: 'manual'
-          })
+            source_type: pendingReviewId ? 'image_ai' : 'manual',
+            source_image_path: pendingReviewId ? pendingImg : null
+          }
+          const { data: inserted, error: e } = await supabaseClient.from('offer_events').insert(insertPayload).select('id').single()
           if (e) throw e
+          if (pendingReviewId && inserted?.id) {
+            const { error: revErr } = await supabaseClient
+              .from('offer_ai_review_items')
+              .update({
+                status: 'resolved',
+                resolved_at: new Date().toISOString(),
+                resolved_event_id: inserted.id
+              })
+              .eq('id', pendingReviewId)
+            if (revErr) {
+              // eslint-disable-next-line no-console
+              console.warn('Could not mark AI review item resolved:', revErr)
+            }
+          }
         }
         closeForm()
         await loadEvents()
+        await loadReviewQueue()
       } catch (e) {
         // Supabase errors are often structured; logging helps diagnose "Load failed" cases.
         // eslint-disable-next-line no-console
@@ -901,10 +1004,10 @@ function AppShell({ onLogout, supabaseClient }) {
       await loadEvents()
     }
 
-    const handleImportPhoto = async (ev) => {
-      const file = ev.target.files?.[0]
+    const handleImportPhotos = async (ev) => {
+      const files = Array.from(ev.target.files || []).filter((f) => f.type.startsWith('image/'))
       ev.target.value = ''
-      if (!file) return
+      if (!files.length) return
       setUploading(true)
       setError('')
       setUploadMessage('')
@@ -912,26 +1015,57 @@ function AppShell({ onLogout, supabaseClient }) {
         const { data: sessionData } = await supabaseClient.auth.getSession()
         const user = sessionData?.session?.user
         if (!user) throw new Error('Sign in to upload mailer photos.')
-        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
-        const safeName = `${crypto.randomUUID()}${ext}`
-        const path = `${user.id}/${safeName}`
-        const { error: upErr } = await supabaseClient.storage.from('offer-mailers').upload(path, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-        if (upErr) throw upErr
-        const { error: rowErr } = await supabaseClient.from('offer_uploads').insert({
-          storage_path: path,
-          file_name: file.name,
-          mime_type: file.type || null,
-          status: 'uploaded'
-        })
-        if (rowErr) throw rowErr
-        setUploadMessage('Photo saved. AI parsing for auto-filled offers is coming soon.')
+
+        let batchId = null
+        const { data: batchRow, error: batchErr } = await supabaseClient
+          .from('offer_import_batches')
+          .insert({ status: 'awaiting_parse' })
+          .select('id')
+          .single()
+        if (!batchErr && batchRow?.id) {
+          batchId = batchRow.id
+        }
+
+        let uploaded = 0
+        for (const file of files) {
+          const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+          const safeName = `${crypto.randomUUID()}${ext}`
+          const path = `${user.id}/${safeName}`
+          const { error: upErr } = await supabaseClient.storage.from('offer-mailers').upload(path, file, {
+            cacheControl: '3600',
+            upsert: false
+          })
+          if (upErr) throw upErr
+          const row = {
+            storage_path: path,
+            file_name: file.name,
+            mime_type: file.type || null,
+            status: 'queued',
+            ...(batchId ? { batch_id: batchId } : {})
+          }
+          const { error: rowErr } = await supabaseClient.from('offer_uploads').insert(row)
+          if (rowErr) throw rowErr
+          uploaded += 1
+        }
+
+        if (batchId) {
+          await supabaseClient.from('offer_import_batches').update({ status: 'awaiting_parse' }).eq('id', batchId)
+          // Fire-and-forget parse kickoff; queued rows remain safe if function is not deployed yet.
+          const { error: invokeErr } = await supabaseClient.functions.invoke('process-offer-uploads', {
+            body: { batchId }
+          })
+          setUploadMessage(
+            invokeErr
+              ? `Uploaded ${uploaded} image(s). They are queued; deploy function process-offer-uploads to auto-parse.`
+              : `Uploaded ${uploaded} image(s). AI parsing started; partial matches will appear under Needs your input.`
+          )
+        } else {
+          setUploadMessage(`Uploaded ${uploaded} image(s) (queued). Batch table missing — run supabase/offer_ai_import.sql to enable batch metadata.`)
+        }
       } catch (err) {
         setError(
           err?.message ||
-            'Upload failed. Run supabase/offer_uploads.sql and storage_offer_mailers.sql if the table or bucket is missing.'
+            'Upload failed. Run supabase/offer_uploads.sql, offer_ai_import.sql, and storage_offer_mailers.sql if tables or bucket are missing.'
         )
       } finally {
         setUploading(false)
@@ -1097,6 +1231,49 @@ function AppShell({ onLogout, supabaseClient }) {
         {uploadMessage && (
           <div className="mb-4 p-4 rounded-3xl bg-emerald-900/30 border border-emerald-500/40 text-emerald-100 text-sm leading-relaxed">
             {uploadMessage}
+          </div>
+        )}
+
+        {reviewQueue.length > 0 && (
+          <div className="mb-4 rounded-3xl border border-amber-500/35 bg-amber-950/35 p-4">
+            <div className="text-amber-100 font-semibold text-sm">Needs your input ({reviewQueue.length})</div>
+            <p className="mt-1 text-amber-100/80 text-xs leading-relaxed">
+              Partial OCR results — complete the form for each image, or skip. Successful images from the same batch can
+              already be on your calendar.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {reviewQueue.map((item) => {
+                const up = item.offer_uploads
+                const fileName = Array.isArray(up) ? up[0]?.file_name : up?.file_name
+                const warns = (item.warnings || []).filter(Boolean)
+                return (
+                  <li key={item.id} className="rounded-2xl bg-zinc-900/90 px-3 py-2.5 border border-zinc-700/80">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0 text-sm font-medium text-zinc-100 truncate">{fileName || 'Image'}</div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => beginReviewItem(item)}
+                          className="text-cyan-300 hover:text-cyan-200 text-xs font-semibold touch-manipulation"
+                        >
+                          Complete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void skipReviewItem(item.id)}
+                          className="text-zinc-400 hover:text-zinc-300 text-xs font-semibold touch-manipulation"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </div>
+                    {warns.length > 0 && (
+                      <div className="mt-1 text-[11px] leading-snug text-amber-200/85">{warns.join(' · ')}</div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         )}
 
@@ -1672,16 +1849,18 @@ function AppShell({ onLogout, supabaseClient }) {
               </div>
 
               <div className="mb-4">
-                <div className="text-white font-semibold mb-1">Import from photo</div>
+                <div className="text-white font-semibold mb-1">Import from photos (bulk)</div>
                 <p className="text-zinc-500 text-xs mb-3 leading-relaxed">
-                  Upload a mailer screenshot now; AI extraction can map details into this form in a future update.
+                  Choose one or more mailer images. They are stored and queued for OCR. When the worker runs, confident
+                  rows become events; partial parses appear below for you to finish.
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(e) => void handleImportPhoto(e)}
+                  onChange={(e) => void handleImportPhotos(e)}
                 />
                 <button
                   type="button"
@@ -1689,7 +1868,7 @@ function AppShell({ onLogout, supabaseClient }) {
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full min-h-11 rounded-2xl border border-zinc-600 bg-zinc-800 text-zinc-100 font-semibold hover:bg-zinc-700 disabled:opacity-60 touch-manipulation"
                 >
-                  {uploading ? 'Uploading…' : 'Choose photo'}
+                  {uploading ? 'Uploading…' : 'Choose photo(s)'}
                 </button>
               </div>
 

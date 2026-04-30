@@ -637,7 +637,9 @@ function AppShell({ onLogout, supabaseClient }) {
     const [expandedEventId, setExpandedEventId] = useState(null)
     const notesPreviewRefs = useRef({})
     const [notesOverflowById, setNotesOverflowById] = useState({})
-    const [showAgenda, setShowAgenda] = useState(false)
+    /** 'auto' = week in landscape, month in portrait; 'month' | 'week' | 'agenda' = forced */
+    const [calendarMode, setCalendarMode] = useState('auto')
+    const [weekDetailEvent, setWeekDetailEvent] = useState(null)
     const [viewMenuOpen, setViewMenuOpen] = useState(false)
     const viewMenuRef = useRef(null)
     const [isLandscape, setIsLandscape] = useState(() =>
@@ -942,33 +944,15 @@ function AppShell({ onLogout, supabaseClient }) {
     }, [events, selectedDays])
 
     const activeCalendarView = useMemo(() => {
-      if (showAgenda) return 'agenda'
+      if (calendarMode === 'agenda') return 'agenda'
+      if (calendarMode === 'week') return 'week'
+      if (calendarMode === 'month') return 'month'
       return isLandscape ? 'week' : 'month'
-    }, [showAgenda, isLandscape])
+    }, [calendarMode, isLandscape])
 
-    const unlockOrientation = () => {
-      if (typeof window === 'undefined') return
-      try {
-        window.screen?.orientation?.unlock?.()
-      } catch {
-        // No-op: not all browsers support unlock.
-      }
-    }
-
-    const requestLandscapeOrientation = async () => {
-      setShowAgenda(false)
-      if (typeof window === 'undefined') return
-      const lock = window.screen?.orientation?.lock
-      if (!lock) {
-        setError('Your browser does not allow forcing landscape. Please rotate your phone manually.')
-        return
-      }
-      try {
-        await lock.call(window.screen.orientation, 'landscape')
-      } catch {
-        setError('Could not force landscape on this device/browser. Please rotate your phone manually.')
-      }
-    }
+    useEffect(() => {
+      if (activeCalendarView !== 'week') setWeekDetailEvent(null)
+    }, [activeCalendarView])
 
     const startOfWeekMonday = (d) => {
       const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -1083,15 +1067,16 @@ function AppShell({ onLogout, supabaseClient }) {
     }, [activeCalendarView, selectedDays.length])
 
     const isWeekView = activeCalendarView === 'week'
+    const weekLayoutFullBleed = isWeekView && isLandscape
 
     return (
       <div
         className={`flex flex-col overflow-hidden px-4 pt-[max(0.5rem,env(safe-area-inset-top))] ${
-          isWeekView
+          weekLayoutFullBleed
             ? 'w-full max-w-none h-[100dvh] pb-[max(4rem,env(safe-area-inset-bottom))] box-border'
             : 'max-w-lg mx-auto pb-2'
         }`}
-        style={isWeekView ? undefined : { height: 'calc(100dvh - env(safe-area-inset-bottom) - 0.5rem)' }}
+        style={weekLayoutFullBleed ? undefined : { height: 'calc(100dvh - env(safe-area-inset-bottom) - 0.5rem)' }}
       >
 
         {error && (
@@ -1142,8 +1127,7 @@ function AppShell({ onLogout, supabaseClient }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowAgenda(false)
-                        unlockOrientation()
+                        setCalendarMode('month')
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
@@ -1153,7 +1137,7 @@ function AppShell({ onLogout, supabaseClient }) {
                     <button
                       type="button"
                       onClick={() => {
-                        void requestLandscapeOrientation()
+                        setCalendarMode('week')
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
@@ -1163,8 +1147,7 @@ function AppShell({ onLogout, supabaseClient }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowAgenda(true)
-                        unlockOrientation()
+                        setCalendarMode('agenda')
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
@@ -1256,13 +1239,15 @@ function AppShell({ onLogout, supabaseClient }) {
                         <div key={`wk-${ev.id}-${ev._startCol}`} className="grid grid-cols-7 gap-0.5">
                           <button
                             type="button"
-                            onClick={() => beginEdit(ev)}
-                            className={`${meta.card} h-5 rounded-md px-1.5 text-left text-[9px] text-zinc-100 truncate touch-manipulation`}
+                            onClick={() => setWeekDetailEvent(ev)}
+                            className={`${meta.card} flex h-8 min-h-0 items-center gap-1 overflow-hidden rounded-lg pl-2 pr-2 text-left text-[11px] leading-tight touch-manipulation`}
                             style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
                           >
-                            {ev.casino_name || 'Event'}
+                            <span className="min-w-0 flex-1 truncate font-bold text-zinc-100">{ev.casino_name || 'Event'}</span>
                             {(ev.value_amount !== null || ev.value_text) && (
-                              <span className="text-zinc-300"> • {ev.value_amount !== null ? `$${Number(ev.value_amount).toFixed(0)}` : ev.value_text}</span>
+                              <span className="shrink-0 truncate font-semibold tabular-nums text-emerald-400">
+                                {ev.value_amount !== null ? `$${Number(ev.value_amount).toFixed(0)}` : ev.value_text}
+                              </span>
                             )}
                           </button>
                         </div>
@@ -1405,6 +1390,110 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         </div>
         )}
+
+        {weekDetailEvent &&
+          (() => {
+            const e = weekDetailEvent
+            const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
+            const startDate = new Date(e.start_at)
+            const endDate = e.end_at ? new Date(e.end_at) : null
+            const showTime = hasVisibleTime(e.start_at) || (e.end_at ? hasVisibleTime(e.end_at) : false)
+            const isMultiDay =
+              !!endDate &&
+              new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime() !==
+                new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime()
+            const dateRangeLabel = isMultiDay
+              ? `${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+              : ''
+            const timeLabel = showTime
+              ? new Date(e.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+              : ''
+            const dayLabel = startDate.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
+            const dayNum = startDate.getDate()
+            return (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="week-detail-heading"
+                className="fixed inset-0 z-[45] flex items-end justify-center bg-black/75 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[1px] sm:items-center sm:pb-6"
+                onClick={() => setWeekDetailEvent(null)}
+              >
+                <div
+                  className={`w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-3xl border border-zinc-700 p-5 shadow-2xl ${meta.card}`}
+                  onClick={(ev) => ev.stopPropagation()}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div id="week-detail-heading" className="text-white font-bold text-lg">
+                      Event details
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setWeekDetailEvent(null)}
+                      className="text-zinc-400 hover:text-zinc-200 text-sm font-semibold touch-manipulation"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 shrink-0 text-center">
+                      <div className="text-zinc-500 text-[10px] font-semibold tracking-wide">{dayLabel}</div>
+                      <div className="text-zinc-100 text-2xl font-black leading-tight">{dayNum}</div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.dot}`} />
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${meta.chip}`}
+                        >
+                          {meta.label}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-lg font-semibold leading-snug text-zinc-100">
+                        {timeLabel ? `${timeLabel} ` : ''}
+                        {e.title}
+                      </div>
+                      {dateRangeLabel && <div className="mt-1 text-sm text-zinc-300">{dateRangeLabel}</div>}
+                      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                        <span className="font-bold text-zinc-100">{e.casino_name || '—'}</span>
+                        {(e.value_amount !== null || e.value_text) && (
+                          <span className="font-semibold tabular-nums text-emerald-400">
+                            {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
+                            {e.value_amount !== null && e.value_text ? ' • ' : ''}
+                            {e.value_text || ''}
+                          </span>
+                        )}
+                      </div>
+                      {e.notes && (
+                        <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-400">{e.notes}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-zinc-700/80 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWeekDetailEvent(null)
+                        beginEdit(e)
+                      }}
+                      className="text-cyan-300 hover:text-cyan-200 text-sm font-semibold touch-manipulation"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWeekDetailEvent(null)
+                        deleteEvent(e.id)
+                      }}
+                      className="text-red-300 hover:text-red-200 text-sm font-semibold touch-manipulation"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
         <button
           type="button"

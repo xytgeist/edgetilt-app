@@ -510,7 +510,7 @@ Deno.serve(async (req) => {
           const hasCasino = !!(parsed.casino_name && parsed.casino_name.trim())
           const hasTitle = !!(parsed.title && parsed.title.trim())
           const hasStart = !!parsed.start_at
-          const hasRequiredFields = hasTitle && hasStart
+          const hasRequiredFields = hasCasino && hasTitle && hasStart
           const shouldAutoCreate = confidence >= AUTO_CREATE_CONFIDENCE && hasRequiredFields
 
           if (shouldAutoCreate) {
@@ -531,7 +531,7 @@ Deno.serve(async (req) => {
 
             const eventRow = {
               user_id: userId,
-              casino_name: hasCasino ? parsed.casino_name : 'Unknown casino',
+              casino_name: parsed.casino_name,
               offer_type: parsed.offer_type ?? 'other',
               title: parsed.title,
               start_at: parsed.start_at,
@@ -541,9 +541,6 @@ Deno.serve(async (req) => {
               source_type: 'image_ai',
               source_image_path: upload.storage_path,
               ai_confidence: Number((confidence * 100).toFixed(2))
-            }
-            if (!hasCasino) {
-              eventRow.notes = [eventRow.notes, 'AI note: casino name was not clear in image.'].filter(Boolean).join('\n')
             }
             const { error: eventError } = await admin.from('offer_events').insert(eventRow)
             if (eventError) throw eventError

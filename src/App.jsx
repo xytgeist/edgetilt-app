@@ -669,6 +669,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const [uploadingTick, setUploadingTick] = useState(0)
     const [error, setError] = useState('')
     const [uploadMessage, setUploadMessage] = useState('')
     const [reviewQueue, setReviewQueue] = useState([])
@@ -700,6 +701,26 @@ function AppShell({ onLogout, supabaseClient }) {
       typeof window !== 'undefined' ? window.matchMedia('(orientation: landscape)').matches : false
     )
     const [weekAnchor, setWeekAnchor] = useState(() => new Date())
+    const uploadSpinnerMessages = useMemo(
+      () => [
+        'Doing funky stuff... one sec.',
+        'Teaching robots to read casino mailers...',
+        'Summoning OCR goblins...',
+        'Sorting winners from weird blurry photos...',
+        'Almost there, polishing your events...'
+      ],
+      []
+    )
+    const uploadSpinnerMessage = uploadSpinnerMessages[uploadingTick % uploadSpinnerMessages.length]
+
+    useEffect(() => {
+      if (!uploading) {
+        setUploadingTick(0)
+        return undefined
+      }
+      const id = window.setInterval(() => setUploadingTick((n) => n + 1), 1600)
+      return () => window.clearInterval(id)
+    }, [uploading])
 
     const offerTypeMeta = useMemo(
       () => ({
@@ -1063,6 +1084,7 @@ function AppShell({ onLogout, supabaseClient }) {
       const files = Array.from(ev.target.files || []).filter((f) => f.type.startsWith('image/'))
       ev.target.value = ''
       if (!files.length) return
+      closeForm()
       setUploading(true)
       setError('')
       setUploadMessage('')
@@ -1114,6 +1136,18 @@ function AppShell({ onLogout, supabaseClient }) {
               ? `Uploaded ${uploaded} image(s). They are queued; deploy function process-offer-uploads to auto-parse.`
               : `Uploaded ${uploaded} image(s). AI parsing started; partial matches will appear under Needs your input.`
           )
+          window.setTimeout(() => {
+            void loadEvents()
+            void loadReviewQueue()
+          }, 2500)
+          window.setTimeout(() => {
+            void loadEvents()
+            void loadReviewQueue()
+          }, 7000)
+          window.setTimeout(() => {
+            void loadEvents()
+            void loadReviewQueue()
+          }, 14000)
         } else {
           setUploadMessage(`Uploaded ${uploaded} image(s) (queued). Batch table missing — run supabase/offer_ai_import.sql to enable batch metadata.`)
         }
@@ -2176,6 +2210,20 @@ function AppShell({ onLogout, supabaseClient }) {
               >
                 {saving ? 'Saving…' : editingId ? 'Update event' : 'Save event'}
               </button>
+            </div>
+          </div>
+        )}
+        {uploading && (
+          <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center px-6">
+            <div className="w-full max-w-sm rounded-3xl border border-violet-500/40 bg-zinc-950/95 p-5 shadow-2xl shadow-black/60">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-violet-400 animate-pulse" />
+                <span className="text-violet-200 text-xs font-semibold uppercase tracking-wide">Bulk import in progress</span>
+              </div>
+              <div className="text-white text-base font-semibold leading-relaxed">{uploadSpinnerMessage}</div>
+              <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full w-1/2 animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-cyan-400" />
+              </div>
             </div>
           </div>
         )}

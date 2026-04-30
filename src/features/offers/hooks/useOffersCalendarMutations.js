@@ -3,30 +3,35 @@ import { dateFromDatetimeLocalValue, draftFromAiReviewPayload } from '../utils'
 
 export default function useOffersCalendarMutations({
   supabaseClient,
-  draft,
-  allDay,
-  editingId,
-  completingReviewItemId,
-  completingReviewUploadId,
-  propagateCasinoOnSave,
-  propagateTitleOnSave,
-  propagateValueOnSave,
-  reviewSourceImagePath,
-  calendarMode,
-  setCalendarMode,
-  setCursorMonth,
-  setWeekAnchor,
-  setSelectedDays,
-  setSaving,
-  setError,
-  setNotice,
-  setUploading,
-  closeForm,
-  loadEvents,
-  loadReviewQueue,
-  refreshImportResults,
-  setActiveImportBatchId
+  state,
+  setters,
+  actions
 }) {
+  const {
+    draft,
+    allDay,
+    editingId,
+    completingReviewItemId,
+    completingReviewUploadId,
+    propagateCasinoOnSave,
+    propagateTitleOnSave,
+    propagateValueOnSave,
+    reviewSourceImagePath,
+    calendarMode
+  } = state
+  const {
+    setCalendarMode,
+    setCursorMonth,
+    setWeekAnchor,
+    setSelectedDays,
+    setSaving,
+    setError,
+    setNotice,
+    setUploading,
+    setActiveImportBatchId
+  } = setters
+  const { closeForm, loadEvents, loadReviewQueue, refreshImportResults } = actions
+
   const applyCurrentFieldsToAssociatedReviewItems = useCallback(async () => {
     if (!completingReviewUploadId || !completingReviewItemId) return
     try {

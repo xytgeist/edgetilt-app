@@ -714,29 +714,35 @@ function AppShell({ onLogout, supabaseClient }) {
 
     const { applyCurrentFieldsToAssociatedReviewItems, saveEvent, handleImportPhotos } = useOffersCalendarMutations({
       supabaseClient,
-      draft,
-      allDay,
-      editingId,
-      completingReviewItemId,
-      completingReviewUploadId,
-      propagateCasinoOnSave,
-      propagateTitleOnSave,
-      propagateValueOnSave,
-      reviewSourceImagePath,
-      calendarMode,
-      setCalendarMode,
-      setCursorMonth,
-      setWeekAnchor,
-      setSelectedDays,
-      setSaving,
-      setError,
-      setNotice,
-      setUploading,
-      closeForm,
-      loadEvents,
-      loadReviewQueue,
-      refreshImportResults,
-      setActiveImportBatchId
+      state: {
+        draft,
+        allDay,
+        editingId,
+        completingReviewItemId,
+        completingReviewUploadId,
+        propagateCasinoOnSave,
+        propagateTitleOnSave,
+        propagateValueOnSave,
+        reviewSourceImagePath,
+        calendarMode
+      },
+      setters: {
+        setCalendarMode,
+        setCursorMonth,
+        setWeekAnchor,
+        setSelectedDays,
+        setSaving,
+        setError,
+        setNotice,
+        setUploading,
+        setActiveImportBatchId
+      },
+      actions: {
+        closeForm,
+        loadEvents,
+        loadReviewQueue,
+        refreshImportResults
+      }
     })
 
     const filteredEvents = useMemo(() => {

@@ -637,7 +637,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const [expandedEventId, setExpandedEventId] = useState(null)
     const notesPreviewRefs = useRef({})
     const [notesOverflowById, setNotesOverflowById] = useState({})
-    const [calendarViewOverride, setCalendarViewOverride] = useState('auto')
+    const [showAgenda, setShowAgenda] = useState(false)
     const [viewMenuOpen, setViewMenuOpen] = useState(false)
     const viewMenuRef = useRef(null)
     const [isLandscape, setIsLandscape] = useState(() =>
@@ -942,11 +942,33 @@ function AppShell({ onLogout, supabaseClient }) {
     }, [events, selectedDays])
 
     const activeCalendarView = useMemo(() => {
-      if (calendarViewOverride === 'agenda' || calendarViewOverride === 'week' || calendarViewOverride === 'month') {
-        return calendarViewOverride
-      }
+      if (showAgenda) return 'agenda'
       return isLandscape ? 'week' : 'month'
-    }, [calendarViewOverride, isLandscape])
+    }, [showAgenda, isLandscape])
+
+    const unlockOrientation = () => {
+      if (typeof window === 'undefined') return
+      try {
+        window.screen?.orientation?.unlock?.()
+      } catch {
+        // No-op: not all browsers support unlock.
+      }
+    }
+
+    const requestLandscapeOrientation = async () => {
+      setShowAgenda(false)
+      if (typeof window === 'undefined') return
+      const lock = window.screen?.orientation?.lock
+      if (!lock) {
+        setError('Your browser does not allow forcing landscape. Please rotate your phone manually.')
+        return
+      }
+      try {
+        await lock.call(window.screen.orientation, 'landscape')
+      } catch {
+        setError('Could not force landscape on this device/browser. Please rotate your phone manually.')
+      }
+    }
 
     const startOfWeekMonday = (d) => {
       const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -1114,27 +1136,18 @@ function AppShell({ onLogout, supabaseClient }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setCalendarViewOverride('auto')
+                        setShowAgenda(false)
+                        unlockOrientation()
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                     >
-                      Auto
+                      Calendar
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setCalendarViewOverride('month')
-                        setViewMenuOpen(false)
-                      }}
-                      className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
-                    >
-                      Month
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCalendarViewOverride('week')
+                        void requestLandscapeOrientation()
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
@@ -1144,7 +1157,8 @@ function AppShell({ onLogout, supabaseClient }) {
                     <button
                       type="button"
                       onClick={() => {
-                        setCalendarViewOverride('agenda')
+                        setShowAgenda(true)
+                        unlockOrientation()
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"

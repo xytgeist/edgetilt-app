@@ -1315,6 +1315,22 @@ function AppShell({ onLogout, supabaseClient }) {
         : new Date(0, 0, 0, startSelected.getHours(), startSelected.getMinutes())
     const endMaxTime = new Date(0, 0, 0, 23, 45)
     const listEvents = activeCalendarView === 'agenda' ? upcomingEvents : filteredEvents
+    const listRows = useMemo(() => {
+      if (activeCalendarView === 'agenda') return listEvents.map((e) => ({ type: 'event', event: e }))
+      const today = new Date()
+      const todayStartMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+      const rows = []
+      let insertedTodayDivider = false
+      for (const e of listEvents) {
+        const startsTodayOrLater = new Date(e.start_at).getTime() >= todayStartMs
+        if (!insertedTodayDivider && startsTodayOrLater) {
+          rows.push({ type: 'today-divider' })
+          insertedTodayDivider = true
+        }
+        rows.push({ type: 'event', event: e })
+      }
+      return rows
+    }, [activeCalendarView, listEvents])
 
     useEffect(() => {
       if (activeCalendarView !== 'month' && selectedDays.length > 0) {
@@ -1723,7 +1739,19 @@ function AppShell({ onLogout, supabaseClient }) {
               </div>
             ) : (
               <div className="space-y-2">
-                {listEvents.map((e) => {
+                {listRows.map((row, rowIdx) => {
+                  if (row.type === 'today-divider') {
+                    return (
+                      <div key={`today-divider-${rowIdx}`} className="flex items-center gap-2 px-1 py-1">
+                        <div className="h-px flex-1 bg-zinc-700/70" />
+                        <div className="rounded-full border border-violet-500/40 bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
+                          Today
+                        </div>
+                        <div className="h-px flex-1 bg-zinc-700/70" />
+                      </div>
+                    )
+                  }
+                  const e = row.event
                   const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
                   const isExpanded = expandedEventId === e.id
                   const startDate = new Date(e.start_at)

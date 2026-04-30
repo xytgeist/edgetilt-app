@@ -705,8 +705,6 @@ function AppShell({ onLogout, supabaseClient }) {
     const [propagateCasinoOnSave, setPropagateCasinoOnSave] = useState(false)
     const [propagateTitleOnSave, setPropagateTitleOnSave] = useState(false)
     const [propagateValueOnSave, setPropagateValueOnSave] = useState(false)
-    const [overwriteCasinoOnSave, setOverwriteCasinoOnSave] = useState(false)
-    const [overwriteValueOnSave, setOverwriteValueOnSave] = useState(false)
     const [reviewSourceImagePath, setReviewSourceImagePath] = useState(null)
     const [reviewSourceImageUrl, setReviewSourceImageUrl] = useState('')
     const [reviewSourceImageLoading, setReviewSourceImageLoading] = useState(false)
@@ -969,8 +967,6 @@ function AppShell({ onLogout, supabaseClient }) {
       setPropagateCasinoOnSave(false)
       setPropagateTitleOnSave(false)
       setPropagateValueOnSave(false)
-      setOverwriteCasinoOnSave(false)
-      setOverwriteValueOnSave(false)
       setReviewSourceImagePath(null)
       setReviewSourceImageUrl('')
       setReviewSourceImageLoading(false)
@@ -986,8 +982,6 @@ function AppShell({ onLogout, supabaseClient }) {
       setPropagateCasinoOnSave(false)
       setPropagateTitleOnSave(false)
       setPropagateValueOnSave(false)
-      setOverwriteCasinoOnSave(false)
-      setOverwriteValueOnSave(false)
       setReviewSourceImagePath(null)
       setReviewSourceImageUrl('')
       setReviewSourceImageLoading(false)
@@ -1013,8 +1007,6 @@ function AppShell({ onLogout, supabaseClient }) {
       setPropagateCasinoOnSave(false)
       setPropagateTitleOnSave(false)
       setPropagateValueOnSave(false)
-      setOverwriteCasinoOnSave(false)
-      setOverwriteValueOnSave(false)
       setReviewSourceImagePath(null)
       setReviewSourceImageUrl('')
       setReviewSourceImageLoading(false)
@@ -1051,8 +1043,6 @@ function AppShell({ onLogout, supabaseClient }) {
       setPropagateCasinoOnSave(false)
       setPropagateTitleOnSave(false)
       setPropagateValueOnSave(false)
-      setOverwriteCasinoOnSave(false)
-      setOverwriteValueOnSave(false)
       const up = item.offer_uploads
       const path = Array.isArray(up) ? up[0]?.storage_path : up?.storage_path
       setReviewSourceImagePath(path || null)
@@ -1133,13 +1123,13 @@ function AppShell({ onLogout, supabaseClient }) {
           const sameType = (target.offerType || 'other') === (draft.offerType || 'other')
           if (sameType && !merged.offerType && draft.offerType) merged.offerType = draft.offerType
           if (sameType && propagateCasinoOnSave && draft.casinoName?.trim()) {
-            if (overwriteCasinoOnSave || !merged.casinoName?.trim()) merged.casinoName = draft.casinoName.trim()
+            merged.casinoName = draft.casinoName.trim()
           }
           if (sameType && propagateTitleOnSave && draft.title?.trim()) {
             merged.title = draft.title.trim()
           }
           if (sameType && propagateValueOnSave && draft.valueAmount !== '') {
-            if (overwriteValueOnSave || !merged.valueAmount || merged.valueAmount === '') merged.valueAmount = draft.valueAmount
+            merged.valueAmount = draft.valueAmount
           }
 
           const nextDraft = {
@@ -2271,28 +2261,30 @@ function AppShell({ onLogout, supabaseClient }) {
                 </button>
               </div>
 
-              <div className="mb-4">
-                <div className="text-white font-semibold mb-1">Import from photos (bulk)</div>
-                <p className="text-zinc-400 text-xs mb-3 leading-relaxed">
-                  We&apos;ll use AI to auto-magically create events from your casino mailers. <span aria-hidden>🤖</span>
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => void handleImportPhotos(e)}
-                />
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full min-h-11 rounded-2xl border border-zinc-600 bg-zinc-800 text-zinc-100 font-semibold hover:bg-zinc-700 disabled:opacity-60 touch-manipulation"
-                >
-                  {uploading ? 'Uploading…' : 'Choose photo(s)'}
-                </button>
-              </div>
+              {!completingReviewItemId && (
+                <div className="mb-4">
+                  <div className="text-white font-semibold mb-1">Import from photos (bulk)</div>
+                  <p className="text-zinc-400 text-xs mb-3 leading-relaxed">
+                    We&apos;ll use AI to auto-magically create events from your casino mailers. <span aria-hidden>🤖</span>
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => void handleImportPhotos(e)}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full min-h-11 rounded-2xl border border-zinc-600 bg-zinc-800 text-zinc-100 font-semibold hover:bg-zinc-700 disabled:opacity-60 touch-manipulation"
+                  >
+                    {uploading ? 'Uploading…' : 'Choose photo(s)'}
+                  </button>
+                </div>
+              )}
 
               {completingReviewItemId && (
                 <div className="mb-4 rounded-2xl border border-amber-700/60 bg-amber-950/30 p-3">
@@ -2577,27 +2569,6 @@ function AppShell({ onLogout, supabaseClient }) {
                       className="h-4 w-4 accent-violet-500"
                     />
                     Value amount
-                  </label>
-                  <div className="mt-2 text-[11px] text-zinc-500">Overwrite behavior</div>
-                  <label className="mt-1 flex items-center gap-2 text-zinc-300 text-[11px]">
-                    <input
-                      type="checkbox"
-                      checked={overwriteCasinoOnSave}
-                      onChange={(e) => setOverwriteCasinoOnSave(e.target.checked)}
-                      className="h-3.5 w-3.5 accent-violet-500"
-                      disabled={!propagateCasinoOnSave}
-                    />
-                    Overwrite casino if already populated
-                  </label>
-                  <label className="mt-1 flex items-center gap-2 text-zinc-300 text-[11px]">
-                    <input
-                      type="checkbox"
-                      checked={overwriteValueOnSave}
-                      onChange={(e) => setOverwriteValueOnSave(e.target.checked)}
-                      className="h-3.5 w-3.5 accent-violet-500"
-                      disabled={!propagateValueOnSave}
-                    />
-                    Overwrite value if already populated
                   </label>
                 </div>
               )}

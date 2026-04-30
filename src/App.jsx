@@ -990,6 +990,10 @@ function AppShell({ onLogout, supabaseClient }) {
             }
           }
         }
+        const focusDate = new Date(normalizedStart.getFullYear(), normalizedStart.getMonth(), normalizedStart.getDate())
+        setCursorMonth(new Date(focusDate.getFullYear(), focusDate.getMonth(), 1))
+        setSelectedDays([localDateKeyFromDate(focusDate)])
+        if (calendarMode === 'agenda') setCalendarMode('month')
         closeForm()
         await loadEvents()
         await loadReviewQueue()

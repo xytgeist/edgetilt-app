@@ -1411,6 +1411,23 @@ function AppShell({ onLogout, supabaseClient }) {
           return { ...ev, _startCol: startCol, _span: endCol - startCol + 1 }
         })
     }, [events, weekStartMs, weekEndMs])
+    const weekEventLanes = useMemo(() => {
+      const lanes = []
+      for (const ev of weekEvents) {
+        let placed = false
+        for (const lane of lanes) {
+          const last = lane[lane.length - 1]
+          const lastEndCol = last._startCol + last._span - 1
+          if (ev._startCol > lastEndCol) {
+            lane.push(ev)
+            placed = true
+            break
+          }
+        }
+        if (!placed) lanes.push([ev])
+      }
+      return lanes
+    }, [weekEvents])
 
     const upcomingEvents = useMemo(() => {
       const now = new Date()
@@ -1771,10 +1788,9 @@ function AppShell({ onLogout, supabaseClient }) {
                     </div>
                   ) : (
                     <>
-                      {weekEvents.map((ev) => {
-                        const meta = offerTypeMeta[ev.offer_type] || offerTypeMeta.other
+                      {weekEventLanes.map((lane, laneIdx) => {
                         return (
-                          <div key={`wk-${ev.id}-${ev._startCol}`} className="relative min-h-[3.75rem]">
+                          <div key={`wk-lane-${laneIdx}`} className="relative min-h-[3.75rem]">
                             <div
                               aria-hidden
                               className="pointer-events-none absolute inset-0 z-0 grid grid-cols-7 gap-0"
@@ -1788,7 +1804,7 @@ function AppShell({ onLogout, supabaseClient }) {
                                 const dk = localDateKeyFromDate(d)
                                 return (
                                   <button
-                                    key={`row-${ev.id}-day-${i}`}
+                                    key={`row-lane-${laneIdx}-day-${i}`}
                                     type="button"
                                     aria-label={`Add event on ${dk}`}
                                     className="min-h-full touch-manipulation touch-none bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
@@ -1803,24 +1819,30 @@ function AppShell({ onLogout, supabaseClient }) {
                               })}
                             </div>
                             <div className="pointer-events-none relative z-[2] grid grid-cols-7 gap-0">
-                              <button
-                                type="button"
-                                onClick={() => setWeekDetailEvent(ev)}
-                                className={`pointer-events-auto ${meta.card} flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
-                                style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
-                              >
-                                <span className="w-full truncate text-left font-bold text-zinc-100">
-                                  {ev.casino_name || 'Event'}
-                                </span>
-                                {ev.title ? (
-                                  <span className="w-full truncate text-left italic text-zinc-300">{ev.title}</span>
-                                ) : null}
-                                {ev.value_amount !== null && (
-                                  <span className="w-full truncate text-left font-semibold tabular-nums text-emerald-400">
-                                    {ev.value_amount !== null ? `$${Number(ev.value_amount).toFixed(0)}` : ''}
-                                  </span>
-                                )}
-                              </button>
+                              {lane.map((ev) => {
+                                const meta = offerTypeMeta[ev.offer_type] || offerTypeMeta.other
+                                return (
+                                  <button
+                                    key={`wk-${ev.id}-${ev._startCol}`}
+                                    type="button"
+                                    onClick={() => setWeekDetailEvent(ev)}
+                                    className={`pointer-events-auto ${meta.card} flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
+                                    style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
+                                  >
+                                    <span className="w-full truncate text-left font-bold text-zinc-100">
+                                      {ev.casino_name || 'Event'}
+                                    </span>
+                                    {ev.title ? (
+                                      <span className="w-full truncate text-left italic text-zinc-300">{ev.title}</span>
+                                    ) : null}
+                                    {ev.value_amount !== null && (
+                                      <span className="w-full truncate text-left font-semibold tabular-nums text-emerald-400">
+                                        {ev.value_amount !== null ? `$${Number(ev.value_amount).toFixed(0)}` : ''}
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
                             </div>
                           </div>
                         )

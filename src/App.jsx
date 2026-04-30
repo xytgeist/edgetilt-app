@@ -671,7 +671,6 @@ function AppShell({ onLogout, supabaseClient }) {
     const [uploading, setUploading] = useState(false)
     const [uploadingTick, setUploadingTick] = useState(0)
     const [error, setError] = useState('')
-    const [uploadMessage, setUploadMessage] = useState('')
     const [reviewQueue, setReviewQueue] = useState([])
     const [completingReviewItemId, setCompletingReviewItemId] = useState(null)
     const [reviewSourceImagePath, setReviewSourceImagePath] = useState(null)
@@ -1087,7 +1086,6 @@ function AppShell({ onLogout, supabaseClient }) {
       closeForm()
       setUploading(true)
       setError('')
-      setUploadMessage('')
       try {
         const { data: sessionData } = await supabaseClient.auth.getSession()
         const user = sessionData?.session?.user
@@ -1131,11 +1129,9 @@ function AppShell({ onLogout, supabaseClient }) {
           const { error: invokeErr } = await supabaseClient.functions.invoke('process-offer-uploads', {
             body: { batchId, timezoneOffsetMinutes: new Date().getTimezoneOffset() }
           })
-          setUploadMessage(
-            invokeErr
-              ? `Uploaded ${uploaded} image(s). They are queued; deploy function process-offer-uploads to auto-parse.`
-              : `Uploaded ${uploaded} image(s). AI parsing started; partial matches will appear under Needs your input.`
-          )
+          if (invokeErr) {
+            setError('Uploaded successfully, but AI parsing could not be started right now. Try again in a moment.')
+          }
           window.setTimeout(() => {
             void loadEvents()
             void loadReviewQueue()
@@ -1149,7 +1145,7 @@ function AppShell({ onLogout, supabaseClient }) {
             void loadReviewQueue()
           }, 14000)
         } else {
-          setUploadMessage(`Uploaded ${uploaded} image(s) (queued). Batch table missing — run supabase/offer_ai_import.sql to enable batch metadata.`)
+          setError('Uploaded successfully, but batch metadata is unavailable. Run supabase/offer_ai_import.sql.')
         }
       } catch (err) {
         setError(
@@ -1314,12 +1310,6 @@ function AppShell({ onLogout, supabaseClient }) {
         {error && (
           <div className="mb-4 p-4 rounded-3xl bg-red-900/40 border border-red-500/40 text-red-200 text-sm leading-relaxed">
             {error}
-          </div>
-        )}
-
-        {uploadMessage && (
-          <div className="mb-4 p-4 rounded-3xl bg-emerald-900/30 border border-emerald-500/40 text-emerald-100 text-sm leading-relaxed">
-            {uploadMessage}
           </div>
         )}
 
@@ -2221,9 +2211,6 @@ function AppShell({ onLogout, supabaseClient }) {
                 <span className="text-violet-200 text-xs font-semibold uppercase tracking-wide">Bulk import in progress</span>
               </div>
               <div className="text-white text-base font-semibold leading-relaxed">{uploadSpinnerMessage}</div>
-              <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full w-1/2 animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-cyan-400" />
-              </div>
             </div>
           </div>
         )}

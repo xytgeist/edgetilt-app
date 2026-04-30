@@ -1274,7 +1274,7 @@ function AppShell({ onLogout, supabaseClient }) {
                               key={`empty-day-${i}`}
                               type="button"
                               aria-label={`Add event on ${dk}`}
-                              className="min-h-full touch-manipulation bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
+                              className="min-h-full touch-manipulation touch-none bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
                               onMouseDown={() => startDayPress(dk)}
                               onMouseUp={endDayPress}
                               onMouseLeave={endDayPress}
@@ -1311,7 +1311,7 @@ function AppShell({ onLogout, supabaseClient }) {
                                     key={`row-${ev.id}-day-${i}`}
                                     type="button"
                                     aria-label={`Add event on ${dk}`}
-                                    className="min-h-full touch-manipulation bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
+                                    className="min-h-full touch-manipulation touch-none bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
                                     onMouseDown={() => startDayPress(dk)}
                                     onMouseUp={endDayPress}
                                     onMouseLeave={endDayPress}
@@ -1322,11 +1322,11 @@ function AppShell({ onLogout, supabaseClient }) {
                                 )
                               })}
                             </div>
-                            <div className="relative z-[2] grid grid-cols-7 gap-0">
+                            <div className="pointer-events-none relative z-[2] grid grid-cols-7 gap-0">
                               <button
                                 type="button"
                                 onClick={() => setWeekDetailEvent(ev)}
-                                className={`${meta.card} flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
+                                className={`pointer-events-auto ${meta.card} flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
                                 style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
                               >
                                 <span className="w-full truncate text-left font-bold text-zinc-100">
@@ -1364,7 +1364,7 @@ function AppShell({ onLogout, supabaseClient }) {
                                 key={`footer-day-${i}`}
                                 type="button"
                                 aria-label={`Add event on ${dk}`}
-                                className="min-h-full touch-manipulation bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
+                                className="min-h-full touch-manipulation touch-none bg-transparent outline-none hover:bg-zinc-800/15 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500/30"
                                 onMouseDown={() => startDayPress(dk)}
                                 onMouseUp={endDayPress}
                                 onMouseLeave={endDayPress}

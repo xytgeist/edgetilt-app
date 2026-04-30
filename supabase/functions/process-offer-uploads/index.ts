@@ -20,7 +20,6 @@ type ParsedOffer = {
   start_at?: string
   end_at?: string | null
   value_amount?: number | null
-  value_text?: string | null
   notes?: string | null
 }
 
@@ -136,7 +135,6 @@ Return strict JSON (no markdown, no prose) with this shape:
   "start_at": "ISO8601 datetime or null",
   "end_at": "ISO8601 datetime or null",
   "value_amount": number or null,
-  "value_text": "string or null",
   "notes": "string or null"
 }
 
@@ -200,7 +198,6 @@ Rules:
     start_at: maybeIso(parsed.start_at) ?? undefined,
     end_at: maybeIso(parsed.end_at),
     value_amount: numberOrNull(parsed.value_amount),
-    value_text: textOrNull(parsed.value_text),
     notes: textOrNull(parsed.notes)
   }
 }
@@ -263,7 +260,7 @@ function normalizeToAllDayIfNeeded(offer: ParsedOffer, timezoneOffsetMinutes?: n
 }
 
 function enforceOfferTypeConsistency(offer: ParsedOffer): ParsedOffer {
-  const inferred = inferOfferTypeFromText([offer.title, offer.value_text, offer.notes])
+  const inferred = inferOfferTypeFromText([offer.title, offer.notes])
   if (!inferred || inferred === offer.offer_type) return offer
   return {
     ...offer,
@@ -318,7 +315,6 @@ function toDraftPayload(offer: ParsedOffer): Record<string, unknown> {
     start_at: offer.start_at ?? '',
     end_at: offer.end_at ?? '',
     value_amount: offer.value_amount ?? null,
-    value_text: offer.value_text ?? '',
     notes: offer.notes ?? ''
   }
 }
@@ -473,7 +469,7 @@ Deno.serve(async (req) => {
             start_at: parsed.start_at,
             end_at: parsed.end_at,
             value_amount: parsed.value_amount ?? null,
-            value_text: parsed.value_text ?? null,
+            value_text: null,
             notes: parsed.notes ?? null,
             source_type: 'image_ai',
             source_image_path: upload.storage_path,

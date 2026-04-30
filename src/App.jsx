@@ -122,6 +122,15 @@ function normalizeLoadedEvent(ev) {
   return next
 }
 
+function shuffledCopy(items) {
+  const arr = [...items]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
 const DateTimeInput = forwardRef(({ value, onClick, placeholder }, ref) => {
   return (
     <input
@@ -143,7 +152,6 @@ function emptyOfferDraft() {
     startAt: '',
     endAt: '',
     valueAmount: '',
-    valueText: '',
     notes: ''
   }
 }
@@ -162,7 +170,6 @@ function draftFromAiReviewPayload(raw) {
     startAt: String(o.startAt ?? o.start_at ?? ''),
     endAt: String(o.endAt ?? o.end_at ?? ''),
     valueAmount: va !== undefined && va !== null ? String(va) : '',
-    valueText: String(o.valueText ?? o.value_text ?? ''),
     notes: String(o.notes ?? ''),
     hasSpecificTime: o.hasSpecificTime === true || o.has_specific_time === true
   }
@@ -670,6 +677,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const [saving, setSaving] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [uploadingTick, setUploadingTick] = useState(0)
+    const [uploadingMessageOrder, setUploadingMessageOrder] = useState([])
     const [error, setError] = useState('')
     const [reviewQueue, setReviewQueue] = useState([])
     const [completingReviewItemId, setCompletingReviewItemId] = useState(null)
@@ -706,20 +714,39 @@ function AppShell({ onLogout, supabaseClient }) {
         'Teaching robots to read casino mailers...',
         'Summoning OCR goblins...',
         'Sorting winners from weird blurry photos...',
-        'Almost there, polishing your events...'
+        'Almost there, polishing your events...',
+        'WTF is that image quality...',
+        'Please no more dick pics...',
+        'Translating casino hieroglyphics...',
+        'OCR is squinting aggressively...',
+        'Convincing AI this is not a tournament...',
+        'Unblurring the blur. Sort of.',
+        'Cooking events with extra chaos...',
+        'Stealing dates from tiny print...',
+        'Checking if this is free play or free pain...',
+        'Shaking snacks out of these pixels...',
+        'Bribing the parser with virtual coffee...',
+        'Reading mailers so you do not have to...',
+        'Almost done. Nobody panic.'
       ],
       []
     )
-    const uploadSpinnerMessage = uploadSpinnerMessages[uploadingTick % uploadSpinnerMessages.length]
+    const uploadSpinnerMessage = uploadingMessageOrder[uploadingTick] || uploadSpinnerMessages[0]
 
     useEffect(() => {
       if (!uploading) {
         setUploadingTick(0)
+        setUploadingMessageOrder([])
         return undefined
       }
-      const id = window.setInterval(() => setUploadingTick((n) => n + 1), 1600)
+      const order = shuffledCopy(uploadSpinnerMessages)
+      setUploadingMessageOrder(order)
+      setUploadingTick(0)
+      const id = window.setInterval(() => {
+        setUploadingTick((n) => (n < order.length - 1 ? n + 1 : n))
+      }, 1600)
       return () => window.clearInterval(id)
-    }, [uploading])
+    }, [uploading, uploadSpinnerMessages])
 
     const offerTypeMeta = useMemo(
       () => ({
@@ -776,7 +803,7 @@ function AppShell({ onLogout, supabaseClient }) {
       try {
         const { data, error: e } = await supabaseClient
           .from('offer_events')
-          .select('id,casino_name,offer_type,title,start_at,end_at,value_amount,value_text,notes,created_at,source_type,source_image_path')
+          .select('id,casino_name,offer_type,title,start_at,end_at,value_amount,notes,created_at,source_type,source_image_path')
           .order('start_at', { ascending: true })
           .limit(500)
         if (e) throw e
@@ -909,7 +936,6 @@ function AppShell({ onLogout, supabaseClient }) {
         endAt: ev.end_at ? toDatetimeLocalValue(ev.end_at) : '',
         valueAmount:
           ev.value_amount !== null && ev.value_amount !== undefined ? String(ev.value_amount) : '',
-        valueText: ev.value_text || '',
         notes: ev.notes || ''
       })
       setShowCasinoSuggestions(false)
@@ -1027,7 +1053,7 @@ function AppShell({ onLogout, supabaseClient }) {
           start_at: normalizedStart.toISOString(),
           end_at: normalizedEnd ? normalizedEnd.toISOString() : null,
           value_amount: draft.valueAmount !== '' ? Number(draft.valueAmount) : null,
-          value_text: draft.valueText.trim() || null,
+          value_text: null,
           notes: draft.notes.trim() || null
         }
         payloadDebug = payload
@@ -1083,8 +1109,7 @@ function AppShell({ onLogout, supabaseClient }) {
           offer_type: draft?.offerType,
           startAt: draft?.startAt,
           endAt: draft?.endAt,
-          valueAmount: draft?.valueAmount,
-          valueText: draft?.valueText
+          valueAmount: draft?.valueAmount
         })
         const parts = []
         if (e?.message) parts.push(e.message)
@@ -1635,11 +1660,9 @@ function AppShell({ onLogout, supabaseClient }) {
                                 {ev.title ? (
                                   <span className="w-full truncate text-left italic text-zinc-300">{ev.title}</span>
                                 ) : null}
-                                {(ev.value_amount !== null || ev.value_text) && (
+                                {ev.value_amount !== null && (
                                   <span className="w-full truncate text-left font-semibold tabular-nums text-emerald-400">
                                     {ev.value_amount !== null ? `$${Number(ev.value_amount).toFixed(0)}` : ''}
-                                    {ev.value_amount !== null && ev.value_text ? ' · ' : ''}
-                                    {ev.value_text || ''}
                                   </span>
                                 )}
                               </button>
@@ -1796,11 +1819,9 @@ function AppShell({ onLogout, supabaseClient }) {
                           {dateRangeLabel && <div className="text-zinc-300 text-xs mt-0.5">{dateRangeLabel}</div>}
                           <div className={`mt-0.5 flex items-center gap-2 text-xs min-w-0 ${isExpanded ? 'flex-wrap' : ''}`}>
                             <span className={`text-zinc-400 min-w-0 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>{e.casino_name}</span>
-                            {(e.value_amount !== null || e.value_text) && (
+                            {e.value_amount !== null && (
                               <span className={`text-emerald-300 min-w-0 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>
                                 {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
-                                {e.value_amount !== null && e.value_text ? ' • ' : ''}
-                                {e.value_text || ''}
                               </span>
                             )}
                           </div>
@@ -1920,11 +1941,9 @@ function AppShell({ onLogout, supabaseClient }) {
                       {dateRangeLabel && <div className="mt-1 text-sm text-zinc-300">{dateRangeLabel}</div>}
                       <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                         <span className="font-bold text-zinc-100">{e.casino_name || '—'}</span>
-                        {(e.value_amount !== null || e.value_text) && (
+                        {e.value_amount !== null && (
                           <span className="font-semibold tabular-nums text-emerald-400">
                             {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
-                            {e.value_amount !== null && e.value_text ? ' • ' : ''}
-                            {e.value_text || ''}
                           </span>
                         )}
                       </div>

@@ -637,6 +637,13 @@ function AppShell({ onLogout, supabaseClient }) {
     const [expandedEventId, setExpandedEventId] = useState(null)
     const notesPreviewRefs = useRef({})
     const [notesOverflowById, setNotesOverflowById] = useState({})
+    const [calendarViewOverride, setCalendarViewOverride] = useState('auto')
+    const [viewMenuOpen, setViewMenuOpen] = useState(false)
+    const viewMenuRef = useRef(null)
+    const [isLandscape, setIsLandscape] = useState(() =>
+      typeof window !== 'undefined' ? window.matchMedia('(orientation: landscape)').matches : false
+    )
+    const [weekAnchor, setWeekAnchor] = useState(() => new Date())
 
     const offerTypeMeta = useMemo(
       () => ({
@@ -719,10 +726,22 @@ function AppShell({ onLogout, supabaseClient }) {
         if (titleFieldRef.current && !titleFieldRef.current.contains(target)) {
           setShowTitleSuggestions(false)
         }
+        if (viewMenuRef.current && !viewMenuRef.current.contains(target)) {
+          setViewMenuOpen(false)
+        }
       }
 
       document.addEventListener('pointerdown', handlePointerDown)
       return () => document.removeEventListener('pointerdown', handlePointerDown)
+    }, [])
+
+    useEffect(() => {
+      if (typeof window === 'undefined') return undefined
+      const media = window.matchMedia('(orientation: landscape)')
+      const sync = () => setIsLandscape(media.matches)
+      sync()
+      media.addEventListener('change', sync)
+      return () => media.removeEventListener('change', sync)
     }, [])
 
     useEffect(() => {
@@ -922,6 +941,62 @@ function AppShell({ onLogout, supabaseClient }) {
       return events.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
     }, [events, selectedDays])
 
+    const activeCalendarView = useMemo(() => {
+      if (calendarViewOverride === 'agenda' || calendarViewOverride === 'week' || calendarViewOverride === 'month') {
+        return calendarViewOverride
+      }
+      return isLandscape ? 'week' : 'month'
+    }, [calendarViewOverride, isLandscape])
+
+    const startOfWeekMonday = (d) => {
+      const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const day = dt.getDay()
+      const diff = day === 0 ? -6 : 1 - day
+      dt.setDate(dt.getDate() + diff)
+      dt.setHours(0, 0, 0, 0)
+      return dt
+    }
+
+    const weekStart = useMemo(() => startOfWeekMonday(weekAnchor), [weekAnchor])
+    const weekDays = useMemo(() => {
+      return Array.from({ length: 7 }, (_, idx) => {
+        const d = new Date(weekStart)
+        d.setDate(weekStart.getDate() + idx)
+        return d
+      })
+    }, [weekStart])
+    const weekTitle = `${weekDays[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${weekDays[6].toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    })}`
+    const weekStartMs = weekDays[0].getTime()
+    const weekEndMs = new Date(weekDays[6].getFullYear(), weekDays[6].getMonth(), weekDays[6].getDate(), 23, 59, 59, 999).getTime()
+
+    const weekEvents = useMemo(() => {
+      return events
+        .map((ev) => {
+          const st = new Date(ev.start_at)
+          const enRaw = ev.end_at ? new Date(ev.end_at) : st
+          const en = Number.isNaN(enRaw.getTime()) ? st : enRaw
+          const startDay = new Date(st.getFullYear(), st.getMonth(), st.getDate()).getTime()
+          const endDay = new Date(en.getFullYear(), en.getMonth(), en.getDate(), 23, 59, 59, 999).getTime()
+          return { ...ev, _startMs: startDay, _endMs: endDay }
+        })
+        .filter((ev) => ev._endMs >= weekStartMs && ev._startMs <= weekEndMs)
+        .sort((a, b) => a._startMs - b._startMs)
+        .map((ev) => {
+          const startCol = Math.max(0, Math.floor((ev._startMs - weekStartMs) / 86400000))
+          const endCol = Math.min(6, Math.floor((ev._endMs - weekStartMs) / 86400000))
+          return { ...ev, _startCol: startCol, _span: endCol - startCol + 1 }
+        })
+    }, [events, weekStartMs, weekEndMs])
+
+    const upcomingEvents = useMemo(() => {
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+      return events.filter((ev) => new Date(ev.start_at).getTime() >= todayStart)
+    }, [events])
+
     const casinoNameOptions = useMemo(() => {
       return Array.from(new Set(events.map((ev) => ev.casino_name?.trim()).filter(Boolean))).sort((a, b) =>
         a.localeCompare(b)
@@ -977,6 +1052,13 @@ function AppShell({ onLogout, supabaseClient }) {
         ? new Date(0, 0, 0, 0, 0)
         : new Date(0, 0, 0, startSelected.getHours(), startSelected.getMinutes())
     const endMaxTime = new Date(0, 0, 0, 23, 45)
+    const listEvents = activeCalendarView === 'agenda' ? upcomingEvents : filteredEvents
+
+    useEffect(() => {
+      if (activeCalendarView !== 'month' && selectedDays.length > 0) {
+        setSelectedDays([])
+      }
+    }, [activeCalendarView, selectedDays.length])
 
     return (
       <div
@@ -997,72 +1079,182 @@ function AppShell({ onLogout, supabaseClient }) {
         )}
 
         <div className="mb-2">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-              className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
-              aria-label="Previous month"
-            >
-              ‹
-            </button>
-            <div className="text-white text-xl font-black tracking-tight text-center flex-1 truncate">{monthTitle}</div>
-            <button
-              type="button"
-              onClick={() => setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-              className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
-              aria-label="Next month"
-            >
-              ›
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-zinc-500">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
-              <div key={`${w}-${idx}`} className="py-1">
-                {w}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeCalendarView === 'agenda') return
+                  if (activeCalendarView === 'week') {
+                    setWeekAnchor((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7))
+                    return
+                  }
+                  setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+                }}
+                className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+                aria-label={
+                  activeCalendarView === 'agenda' ? 'Agenda view' : activeCalendarView === 'week' ? 'Previous week' : 'Previous month'
+                }
+              >
+                ‹
+              </button>
+              <div className="text-white text-xl font-black tracking-tight text-center flex-1 truncate">
+                {activeCalendarView === 'agenda' ? 'Agenda' : activeCalendarView === 'week' ? weekTitle : monthTitle}
               </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 mt-1">
-            {calendarCells.map((cell, idx) => {
-              if (!cell) return <div key={`empty-${idx}`} className="h-10" />
-              const key = localDateKeyFromDate(cell)
-              const isToday = key === todayKey
-              const isSelected = selectedDays.includes(key)
-              const dots = dayTypeDots[key] || []
-              return (
+              <div ref={viewMenuRef} className="relative">
                 <button
-                  key={`${key}-${idx}`}
                   type="button"
-                  onMouseDown={() => startDayPress(key)}
-                  onMouseUp={endDayPress}
-                  onMouseLeave={endDayPress}
-                  onTouchStart={() => startDayPress(key)}
-                  onTouchEnd={endDayPress}
-                  onClick={() => toggleSelectedDay(key)}
-                  className={`h-10 rounded-2xl text-sm touch-manipulation flex flex-col items-center justify-center gap-0.5 border ${
-                    isSelected
-                      ? 'border-violet-400 text-white'
-                      : isToday
-                        ? 'border-zinc-500 text-zinc-100'
-                        : 'border-transparent text-zinc-200'
-                  }`}
+                  onClick={() => setViewMenuOpen((v) => !v)}
+                  className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+                  aria-label="Calendar display options"
                 >
-                  <span>{cell.getDate()}</span>
-                  <span className="h-2 flex items-center gap-1">
-                    {dots.map((t) => (
-                      <span key={`${key}-${t}`} className={`h-1.5 w-1.5 rounded-full ${offerTypeMeta[t]?.dot || 'bg-zinc-400'}`} />
-                    ))}
-                  </span>
+                  ⋯
                 </button>
-              )
-            })}
-          </div>
-        </div>
+                {viewMenuOpen && (
+                  <div className="absolute right-0 top-10 z-20 w-28 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarViewOverride('auto')
+                        setViewMenuOpen(false)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                    >
+                      Auto
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarViewOverride('month')
+                        setViewMenuOpen(false)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                    >
+                      Month
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarViewOverride('week')
+                        setViewMenuOpen(false)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                    >
+                      Week
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarViewOverride('agenda')
+                        setViewMenuOpen(false)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                    >
+                      Agenda
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeCalendarView === 'agenda') return
+                  if (activeCalendarView === 'week') {
+                    setWeekAnchor((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7))
+                    return
+                  }
+                  setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+                }}
+                className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
+                aria-label={activeCalendarView === 'week' ? 'Next week' : 'Next month'}
+              >
+                ›
+              </button>
+            </div>
 
-        {selectedDays.length > 0 && (
+            {activeCalendarView === 'agenda' ? null : activeCalendarView === 'month' ? (
+              <>
+                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-zinc-500">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, idx) => (
+                    <div key={`${w}-${idx}`} className="py-1">
+                      {w}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 mt-1">
+                  {calendarCells.map((cell, idx) => {
+                    if (!cell) return <div key={`empty-${idx}`} className="h-10" />
+                    const key = localDateKeyFromDate(cell)
+                    const isToday = key === todayKey
+                    const isSelected = selectedDays.includes(key)
+                    const dots = dayTypeDots[key] || []
+                    return (
+                      <button
+                        key={`${key}-${idx}`}
+                        type="button"
+                        onMouseDown={() => startDayPress(key)}
+                        onMouseUp={endDayPress}
+                        onMouseLeave={endDayPress}
+                        onTouchStart={() => startDayPress(key)}
+                        onTouchEnd={endDayPress}
+                        onClick={() => toggleSelectedDay(key)}
+                        className={`h-10 rounded-2xl text-sm touch-manipulation flex flex-col items-center justify-center gap-0.5 border ${
+                          isSelected
+                            ? 'border-violet-400 text-white'
+                            : isToday
+                              ? 'border-zinc-500 text-zinc-100'
+                              : 'border-transparent text-zinc-200'
+                        }`}
+                      >
+                        <span>{cell.getDate()}</span>
+                        <span className="h-2 flex items-center gap-1">
+                          {dots.map((t) => (
+                            <span key={`${key}-${t}`} className={`h-1.5 w-1.5 rounded-full ${offerTypeMeta[t]?.dot || 'bg-zinc-400'}`} />
+                          ))}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-2xl bg-zinc-900/60 p-1.5">
+                <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-semibold text-zinc-500">
+                  {weekDays.map((d) => (
+                    <div key={d.toISOString()} className="py-0.5">
+                      {d.toLocaleDateString(undefined, { weekday: 'short' })}
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-0.5 mt-0.5 max-h-52 overflow-y-auto">
+                  {weekEvents.length === 0 ? (
+                    <div className="text-zinc-500 text-xs px-1 py-2">No events this week.</div>
+                  ) : (
+                    weekEvents.map((ev) => {
+                      const meta = offerTypeMeta[ev.offer_type] || offerTypeMeta.other
+                      return (
+                        <div key={`wk-${ev.id}-${ev._startCol}`} className="grid grid-cols-7 gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => beginEdit(ev)}
+                            className={`${meta.card} h-5 rounded-md px-1.5 text-left text-[9px] text-zinc-100 truncate touch-manipulation`}
+                            style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
+                          >
+                            {ev.casino_name || 'Event'}
+                            {(ev.value_amount !== null || ev.value_text) && (
+                              <span className="text-zinc-300"> • {ev.value_amount !== null ? `$${Number(ev.value_amount).toFixed(0)}` : ev.value_text}</span>
+                            )}
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+        {activeCalendarView === 'month' && selectedDays.length > 0 && (
           <div className="mb-3 flex items-center justify-between gap-3 px-1 py-1">
             <div className="text-zinc-300 text-sm">
               {selectedDays.length} day{selectedDays.length > 1 ? 's' : ''} selected
@@ -1078,15 +1270,17 @@ function AppShell({ onLogout, supabaseClient }) {
         )}
 
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="text-white font-bold mb-2">Events</div>
+          <div className="text-white font-bold mb-2">{activeCalendarView === 'agenda' ? 'Agenda' : 'Events'}</div>
           <div className="flex-1 min-h-0 overflow-y-auto pr-1 pb-16">
             {loading ? (
               <div className="text-zinc-400 text-sm">Loading…</div>
-            ) : filteredEvents.length === 0 ? (
-              <div className="text-zinc-500 text-sm">No events for the current filter.</div>
+            ) : listEvents.length === 0 ? (
+              <div className="text-zinc-500 text-sm">
+                {activeCalendarView === 'agenda' ? 'No upcoming events.' : 'No events for the current filter.'}
+              </div>
             ) : (
               <div className="space-y-2">
-                {filteredEvents.map((e) => {
+                {listEvents.map((e) => {
                   const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
                   const isExpanded = expandedEventId === e.id
                   const startDate = new Date(e.start_at)

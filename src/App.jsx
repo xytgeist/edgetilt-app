@@ -1082,10 +1082,16 @@ function AppShell({ onLogout, supabaseClient }) {
       }
     }, [activeCalendarView, selectedDays.length])
 
+    const isWeekView = activeCalendarView === 'week'
+
     return (
       <div
-        className="max-w-lg mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 flex flex-col overflow-hidden"
-        style={{ height: 'calc(100dvh - env(safe-area-inset-bottom) - 0.5rem)' }}
+        className={`flex flex-col overflow-hidden px-4 pt-[max(0.5rem,env(safe-area-inset-top))] ${
+          isWeekView
+            ? 'w-full max-w-none h-[100dvh] pb-[max(4rem,env(safe-area-inset-bottom))] box-border'
+            : 'max-w-lg mx-auto pb-2'
+        }`}
+        style={isWeekView ? undefined : { height: 'calc(100dvh - env(safe-area-inset-bottom) - 0.5rem)' }}
       >
 
         {error && (
@@ -1100,8 +1106,8 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
-        <div className="mb-2">
-            <div className="flex items-center justify-between gap-2 mb-2">
+        <div className={isWeekView ? 'flex flex-1 min-h-0 flex-col gap-2' : 'mb-2'}>
+            <div className={`flex shrink-0 items-center justify-between gap-2 ${isWeekView ? '' : 'mb-2'}`}>
               <button
                 type="button"
                 onClick={() => {
@@ -1232,15 +1238,15 @@ function AppShell({ onLogout, supabaseClient }) {
                 </div>
               </>
             ) : (
-              <div className="rounded-2xl bg-zinc-900/60 p-1.5">
-                <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-semibold text-zinc-500">
+              <div className={`flex min-h-0 flex-col rounded-2xl bg-zinc-900/60 p-1.5 ${isWeekView ? 'flex-1' : ''}`}>
+                <div className="grid shrink-0 grid-cols-7 gap-0.5 text-center text-[9px] font-semibold text-zinc-500">
                   {weekDays.map((d) => (
                     <div key={d.toISOString()} className="py-0.5">
                       {d.toLocaleDateString(undefined, { weekday: 'short' })}
                     </div>
                   ))}
                 </div>
-                <div className="space-y-0.5 mt-0.5 max-h-52 overflow-y-auto">
+                <div className="mt-0.5 flex min-h-0 flex-1 flex-col space-y-0.5 overflow-y-auto">
                   {weekEvents.length === 0 ? (
                     <div className="text-zinc-500 text-xs px-1 py-2">No events this week.</div>
                   ) : (
@@ -1283,6 +1289,7 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
+        {!isWeekView && (
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="text-white font-bold mb-2">{activeCalendarView === 'agenda' ? 'Agenda' : 'Events'}</div>
           <div className="flex-1 min-h-0 overflow-y-auto pr-1 pb-16">
@@ -1397,6 +1404,7 @@ function AppShell({ onLogout, supabaseClient }) {
             )}
           </div>
         </div>
+        )}
 
         <button
           type="button"

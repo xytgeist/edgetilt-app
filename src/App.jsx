@@ -1235,11 +1235,25 @@ function AppShell({ onLogout, supabaseClient }) {
             ) : (
               <div className={`flex min-h-0 flex-col rounded-2xl bg-zinc-900/60 p-1.5 ${isWeekView ? 'flex-1' : ''}`}>
                 <div className="grid shrink-0 grid-cols-7 gap-0 divide-x divide-zinc-500/20 border-b border-zinc-600/25 text-center text-[9px] font-semibold text-zinc-500">
-                  {weekDays.map((d) => (
-                    <div key={d.toISOString()} className="py-0.5">
-                      {d.toLocaleDateString(undefined, { weekday: 'short' })}
-                    </div>
-                  ))}
+                  {weekDays.map((d) => {
+                    const dayKey = localDateKeyFromDate(d)
+                    return (
+                      <button
+                        key={d.toISOString()}
+                        type="button"
+                        className="touch-manipulation py-1 text-zinc-400 outline-none hover:bg-zinc-800/40 focus-visible:ring-2 focus-visible:ring-violet-500/40"
+                        onMouseDown={() => startDayPress(dayKey)}
+                        onMouseUp={endDayPress}
+                        onMouseLeave={endDayPress}
+                        onTouchStart={() => startDayPress(dayKey)}
+                        onTouchEnd={endDayPress}
+                        onTouchCancel={endDayPress}
+                      >
+                        <div>{d.toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                        <div className="text-[8px] font-normal text-zinc-500">{d.getDate()}</div>
+                      </button>
+                    )
+                  })}
                 </div>
                 <div className="mt-0.5 flex min-h-0 flex-1 flex-col space-y-0.5 overflow-y-auto">
                   {weekEvents.length === 0 ? (
@@ -1316,12 +1330,9 @@ function AppShell({ onLogout, supabaseClient }) {
               <p id="week-portrait-hint-title" className="text-lg font-bold tracking-tight text-zinc-50">
                 Rotate phone for better Week view
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Week view has more room in landscape. Tap outside, press OK, or rotate your device to dismiss.
-              </p>
               <button
                 type="button"
-                className="mt-6 w-full min-h-12 rounded-2xl bg-violet-600 text-base font-bold text-white shadow-lg shadow-violet-900/30 hover:bg-violet-500 touch-manipulation"
+                className="mt-8 w-full min-h-12 rounded-2xl bg-violet-600 text-base font-bold text-white shadow-lg shadow-violet-900/30 hover:bg-violet-500 touch-manipulation"
                 onClick={() => setShowWeekPortraitHint(false)}
               >
                 OK
@@ -1486,11 +1497,11 @@ function AppShell({ onLogout, supabaseClient }) {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="week-detail-heading"
-                className="fixed inset-0 z-[45] flex items-end justify-center bg-black/75 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[1px] sm:items-center sm:pb-6"
+                className="fixed inset-0 z-[55] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-[1px]"
                 onClick={() => setWeekDetailEvent(null)}
               >
                 <div
-                  className={`w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-3xl border border-zinc-700 p-5 shadow-2xl ${meta.card}`}
+                  className={`w-full max-w-lg max-h-[min(85dvh,calc(100dvh-6rem))] overflow-y-auto rounded-3xl border border-zinc-700 p-5 shadow-2xl ${meta.card}`}
                   onClick={(ev) => ev.stopPropagation()}
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">

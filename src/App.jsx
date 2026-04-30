@@ -645,6 +645,8 @@ function AppShell({ onLogout, supabaseClient }) {
     const [reviewQueue, setReviewQueue] = useState([])
     const [completingReviewItemId, setCompletingReviewItemId] = useState(null)
     const [reviewSourceImagePath, setReviewSourceImagePath] = useState(null)
+    const [reviewSourceImageUrl, setReviewSourceImageUrl] = useState('')
+    const [reviewSourceImageLoading, setReviewSourceImageLoading] = useState(false)
     const [showForm, setShowForm] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [selectedDays, setSelectedDays] = useState([])
@@ -809,6 +811,8 @@ function AppShell({ onLogout, supabaseClient }) {
       setShowTitleSuggestions(false)
       setCompletingReviewItemId(null)
       setReviewSourceImagePath(null)
+      setReviewSourceImageUrl('')
+      setReviewSourceImageLoading(false)
     }
 
     const toggleExpandedEvent = (eventId) => {
@@ -818,6 +822,8 @@ function AppShell({ onLogout, supabaseClient }) {
     const openForm = (dayKey = null) => {
       setCompletingReviewItemId(null)
       setReviewSourceImagePath(null)
+      setReviewSourceImageUrl('')
+      setReviewSourceImageLoading(false)
       setShowForm(true)
       setEditingId(null)
       if (dayKey) {
@@ -837,6 +843,8 @@ function AppShell({ onLogout, supabaseClient }) {
     const beginEdit = (ev) => {
       setCompletingReviewItemId(null)
       setReviewSourceImagePath(null)
+      setReviewSourceImageUrl('')
+      setReviewSourceImageLoading(false)
       setEditingId(ev.id)
       setShowForm(true)
       const st = new Date(ev.start_at)
@@ -860,7 +868,7 @@ function AppShell({ onLogout, supabaseClient }) {
       setError('')
     }
 
-    const beginReviewItem = (item) => {
+    const beginReviewItem = async (item) => {
       const row = draftFromAiReviewPayload(item.draft || {})
       const st = row.startAt ? dateFromDatetimeLocalValue(row.startAt) : null
       const en = row.endAt ? dateFromDatetimeLocalValue(row.endAt) : null
@@ -872,11 +880,25 @@ function AppShell({ onLogout, supabaseClient }) {
       const up = item.offer_uploads
       const path = Array.isArray(up) ? up[0]?.storage_path : up?.storage_path
       setReviewSourceImagePath(path || null)
+      setReviewSourceImageUrl('')
       setEditingId(null)
       setShowForm(true)
       setShowCasinoSuggestions(false)
       setShowTitleSuggestions(false)
       setError('')
+      if (!path) return
+      setReviewSourceImageLoading(true)
+      try {
+        const { data, error: signedErr } = await supabaseClient.storage.from('offer-mailers').createSignedUrl(path, 60 * 30)
+        if (signedErr) throw signedErr
+        setReviewSourceImageUrl(data?.signedUrl || '')
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Could not create signed URL for review image:', e)
+        setReviewSourceImageUrl('')
+      } finally {
+        setReviewSourceImageLoading(false)
+      }
     }
 
     const skipReviewItem = async (id) => {
@@ -1871,6 +1893,31 @@ function AppShell({ onLogout, supabaseClient }) {
                   {uploading ? 'Uploading…' : 'Choose photo(s)'}
                 </button>
               </div>
+
+              {completingReviewItemId && (
+                <div className="mb-4 rounded-2xl border border-amber-700/60 bg-amber-950/30 p-3">
+                  <div className="text-amber-100 text-xs font-semibold mb-2">Source image for this AI draft</div>
+                  {reviewSourceImageLoading ? (
+                    <div className="text-amber-200/80 text-xs">Loading image preview...</div>
+                  ) : reviewSourceImageUrl ? (
+                    <a
+                      href={reviewSourceImageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block"
+                      title="Open full image"
+                    >
+                      <img
+                        src={reviewSourceImageUrl}
+                        alt="Source upload for AI draft"
+                        className="w-full max-h-64 object-contain rounded-xl border border-amber-700/50 bg-black/20"
+                      />
+                    </a>
+                  ) : (
+                    <div className="text-amber-200/80 text-xs">Image preview unavailable. You can still complete this draft manually.</div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

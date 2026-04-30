@@ -703,6 +703,8 @@ function AppShell({ onLogout, supabaseClient }) {
     const [completingReviewItemId, setCompletingReviewItemId] = useState(null)
     const [completingReviewUploadId, setCompletingReviewUploadId] = useState(null)
     const [applyToAssociatedOnSave, setApplyToAssociatedOnSave] = useState(false)
+    const [overwriteCasinoOnSave, setOverwriteCasinoOnSave] = useState(false)
+    const [overwriteValueOnSave, setOverwriteValueOnSave] = useState(false)
     const [reviewSourceImagePath, setReviewSourceImagePath] = useState(null)
     const [reviewSourceImageUrl, setReviewSourceImageUrl] = useState('')
     const [reviewSourceImageLoading, setReviewSourceImageLoading] = useState(false)
@@ -963,6 +965,8 @@ function AppShell({ onLogout, supabaseClient }) {
       setCompletingReviewItemId(null)
       setCompletingReviewUploadId(null)
       setApplyToAssociatedOnSave(false)
+      setOverwriteCasinoOnSave(false)
+      setOverwriteValueOnSave(false)
       setReviewSourceImagePath(null)
       setReviewSourceImageUrl('')
       setReviewSourceImageLoading(false)
@@ -976,6 +980,8 @@ function AppShell({ onLogout, supabaseClient }) {
       setCompletingReviewItemId(null)
       setCompletingReviewUploadId(null)
       setApplyToAssociatedOnSave(false)
+      setOverwriteCasinoOnSave(false)
+      setOverwriteValueOnSave(false)
       setReviewSourceImagePath(null)
       setReviewSourceImageUrl('')
       setReviewSourceImageLoading(false)
@@ -999,6 +1005,8 @@ function AppShell({ onLogout, supabaseClient }) {
       setCompletingReviewItemId(null)
       setCompletingReviewUploadId(null)
       setApplyToAssociatedOnSave(false)
+      setOverwriteCasinoOnSave(false)
+      setOverwriteValueOnSave(false)
       setReviewSourceImagePath(null)
       setReviewSourceImageUrl('')
       setReviewSourceImageLoading(false)
@@ -1033,6 +1041,8 @@ function AppShell({ onLogout, supabaseClient }) {
       const uploadId = item.upload_id || null
       setCompletingReviewUploadId(uploadId)
       setApplyToAssociatedOnSave(false)
+      setOverwriteCasinoOnSave(false)
+      setOverwriteValueOnSave(false)
       const up = item.offer_uploads
       const path = Array.isArray(up) ? up[0]?.storage_path : up?.storage_path
       setReviewSourceImagePath(path || null)
@@ -1094,18 +1104,23 @@ function AppShell({ onLogout, supabaseClient }) {
       if (!completingReviewUploadId || !completingReviewItemId) return
       try {
         setNotice('')
+        const { data: sessionData } = await supabaseClient.auth.getSession()
+        const user = sessionData?.session?.user
+        if (!user) throw new Error('Sign in to apply fields across associated items.')
         const { data: rows, error: rowsErr } = await supabaseClient
           .from('offer_ai_review_items')
-          .select('id,draft')
+          .select('id,draft,upload_id,offer_uploads(storage_path)')
           .eq('upload_id', completingReviewUploadId)
           .eq('status', 'open')
           .neq('id', completingReviewItemId)
         if (rowsErr) throw rowsErr
 
         let changedCount = 0
+        let createdCount = 0
         for (const row of rows || []) {
           const target = draftFromAiReviewPayload(row.draft || {})
           const merged = { ...target }
+          const sameType = (target.offerType || 'other') === (draft.offerType || 'other')
           if (!merged.casinoName?.trim() && draft.casinoName?.trim()) merged.casinoName = draft.casinoName.trim()
           if (!merged.offerType && draft.offerType) merged.offerType = draft.offerType
           if (!merged.title?.trim() && draft.title?.trim()) merged.title = draft.title.trim()
@@ -1113,6 +1128,8 @@ function AppShell({ onLogout, supabaseClient }) {
           if (!merged.endAt && draft.endAt) merged.endAt = draft.endAt
           if ((!merged.valueAmount || merged.valueAmount === '') && draft.valueAmount !== '') merged.valueAmount = draft.valueAmount
           if (!merged.notes?.trim() && draft.notes?.trim()) merged.notes = draft.notes.trim()
+          if (sameType && overwriteCasinoOnSave && draft.casinoName?.trim()) merged.casinoName = draft.casinoName.trim()
+          if (sameType && overwriteValueOnSave && draft.valueAmount !== '') merged.valueAmount = draft.valueAmount
 
           const nextDraft = {
             casino_name: merged.casinoName || '',
@@ -1121,7 +1138,8 @@ function AppShell({ onLogout, supabaseClient }) {
             start_at: merged.startAt || '',
             end_at: merged.endAt || '',
             value_amount: merged.valueAmount !== '' ? Number(merged.valueAmount) : null,
-            notes: merged.notes || ''
+            notes: merged.notes || '',
+            has_specific_time: merged.hasSpecificTime === true
           }
 
           const prevDraft = row.draft || {}
@@ -1137,15 +1155,73 @@ function AppShell({ onLogout, supabaseClient }) {
           const nextNorm = JSON.stringify(nextDraft)
           if (prevNorm === nextNorm) continue
 
-          const { error: updateErr } = await supabaseClient
-            .from('offer_ai_review_items')
-            .update({ draft: nextDraft })
-            .eq('id', row.id)
-          if (updateErr) throw updateErr
-          changedCount += 1
+          const hasRequiredFields = !!(merged.casinoName?.trim() && merged.title?.trim() && merged.startAt)
+          let createdFromAssociated = false
+          if (hasRequiredFields) {
+            const associatedAllDay = merged.hasSpecificTime !== true
+            const startDt = dateFromDatetimeLocalValue(merged.startAt)
+            const endDt = merged.endAt ? dateFromDatetimeLocalValue(merged.endAt) : null
+            if (startDt && (!merged.endAt || endDt)) {
+              const normalizedStart = associatedAllDay
+                ? new Date(startDt.getFullYear(), startDt.getMonth(), startDt.getDate(), 0, 0, 0, 0)
+                : startDt
+              const normalizedEnd = endDt
+                ? associatedAllDay
+                  ? new Date(endDt.getFullYear(), endDt.getMonth(), endDt.getDate(), 0, 0, 0, 0)
+                  : endDt
+                : null
+              if (!normalizedEnd || normalizedEnd.getTime() >= normalizedStart.getTime()) {
+                const up = row.offer_uploads
+                const associatedStoragePath = Array.isArray(up) ? up[0]?.storage_path : up?.storage_path
+                const insertPayload = {
+                  user_id: user.id,
+                  casino_name: merged.casinoName.trim(),
+                  offer_type: merged.offerType || 'other',
+                  title: merged.title.trim(),
+                  start_at: normalizedStart.toISOString(),
+                  end_at: normalizedEnd ? normalizedEnd.toISOString() : null,
+                  value_amount: merged.valueAmount !== '' ? Number(merged.valueAmount) : null,
+                  notes: merged.notes?.trim() || null,
+                  source_type: 'image_ai',
+                  source_image_path: associatedStoragePath || reviewSourceImagePath || null
+                }
+                const { data: inserted, error: insertErr } = await supabaseClient
+                  .from('offer_events')
+                  .insert(insertPayload)
+                  .select('id')
+                  .single()
+                if (!insertErr && inserted?.id) {
+                  const { error: resolveErr } = await supabaseClient
+                    .from('offer_ai_review_items')
+                    .update({
+                      status: 'resolved',
+                      resolved_at: new Date().toISOString(),
+                      resolved_event_id: inserted.id
+                    })
+                    .eq('id', row.id)
+                  if (!resolveErr) {
+                    createdFromAssociated = true
+                    createdCount += 1
+                  }
+                }
+              }
+            }
+          }
+
+          if (!createdFromAssociated) {
+            const { error: updateErr } = await supabaseClient
+              .from('offer_ai_review_items')
+              .update({ draft: nextDraft })
+              .eq('id', row.id)
+            if (updateErr) throw updateErr
+            changedCount += 1
+          }
         }
-        if (changedCount > 0) {
-          setNotice(`Updated ${changedCount} associated item${changedCount > 1 ? 's' : ''}.`)
+        if (createdCount > 0 || changedCount > 0) {
+          const parts = []
+          if (createdCount > 0) parts.push(`Created ${createdCount} event${createdCount > 1 ? 's' : ''}`)
+          if (changedCount > 0) parts.push(`updated ${changedCount} draft${changedCount > 1 ? 's' : ''}`)
+          setNotice(`${parts.join(' and ')} for associated items.`)
           window.setTimeout(() => setNotice(''), 3200)
         } else {
           setNotice('No associated items changed (they may already be filled).')
@@ -2466,13 +2542,43 @@ function AppShell({ onLogout, supabaseClient }) {
                   <input
                     type="checkbox"
                     checked={applyToAssociatedOnSave}
-                    onChange={(e) => setApplyToAssociatedOnSave(e.target.checked)}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setApplyToAssociatedOnSave(checked)
+                      if (!checked) {
+                        setOverwriteCasinoOnSave(false)
+                        setOverwriteValueOnSave(false)
+                      }
+                    }}
                     className="h-4 w-4 accent-violet-500"
                   />
                   <span className="text-xs font-semibold leading-relaxed">
                     Apply missing fields to all associated items from this image when I save
                   </span>
                 </label>
+              )}
+              {completingReviewItemId && !editingId && applyToAssociatedOnSave && (
+                <div className="mt-2 rounded-2xl border border-zinc-700 bg-zinc-900/70 px-3 py-2">
+                  <div className="text-[11px] text-zinc-400 mb-2">Optional overwrite (same Type only)</div>
+                  <label className="flex items-center gap-2 text-zinc-200 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={overwriteCasinoOnSave}
+                      onChange={(e) => setOverwriteCasinoOnSave(e.target.checked)}
+                      className="h-4 w-4 accent-violet-500"
+                    />
+                    Overwrite casino name on same Type items
+                  </label>
+                  <label className="mt-2 flex items-center gap-2 text-zinc-200 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={overwriteValueOnSave}
+                      onChange={(e) => setOverwriteValueOnSave(e.target.checked)}
+                      className="h-4 w-4 accent-violet-500"
+                    />
+                    Overwrite value amount on same Type items
+                  </label>
+                </div>
               )}
               {completingReviewItemId && !editingId && (
                 <button

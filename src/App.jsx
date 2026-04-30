@@ -94,6 +94,34 @@ function datetimeLocalValueFromDate(d) {
   )}`
 }
 
+function isUtcMidnightIso(iso) {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  return d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0
+}
+
+function coerceUtcMidnightToLocalMidnight(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const offsetMin = new Date().getTimezoneOffset()
+  const utcMs =
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0) + offsetMin * 60 * 1000
+  return new Date(utcMs).toISOString()
+}
+
+function normalizeLoadedEvent(ev) {
+  if (!ev || ev.source_type !== 'image_ai') return ev
+  const next = { ...ev }
+  if (isUtcMidnightIso(next.start_at)) {
+    next.start_at = coerceUtcMidnightToLocalMidnight(next.start_at)
+  }
+  if (next.end_at && isUtcMidnightIso(next.end_at)) {
+    next.end_at = coerceUtcMidnightToLocalMidnight(next.end_at)
+  }
+  return next
+}
+
 const DateTimeInput = forwardRef(({ value, onClick, placeholder }, ref) => {
   return (
     <input
@@ -728,11 +756,11 @@ function AppShell({ onLogout, supabaseClient }) {
       try {
         const { data, error: e } = await supabaseClient
           .from('offer_events')
-          .select('id,casino_name,offer_type,title,start_at,end_at,value_amount,value_text,notes,created_at')
+          .select('id,casino_name,offer_type,title,start_at,end_at,value_amount,value_text,notes,created_at,source_type,source_image_path')
           .order('start_at', { ascending: true })
           .limit(500)
         if (e) throw e
-        setEvents(data || [])
+        setEvents((data || []).map(normalizeLoadedEvent))
       } catch (e) {
         setError(e?.message || 'Failed to load offers.')
       } finally {

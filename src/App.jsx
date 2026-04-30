@@ -685,6 +685,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const longPressTimerRef = useRef(null)
     const casinoFieldRef = useRef(null)
     const titleFieldRef = useRef(null)
+    const importSyncRunningRef = useRef(false)
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -692,6 +693,10 @@ function AppShell({ onLogout, supabaseClient }) {
     const [uploadingTick, setUploadingTick] = useState(0)
     const [uploadingMessageOrder, setUploadingMessageOrder] = useState([])
     const [syncingImportResults, setSyncingImportResults] = useState(false)
+    const [activeImportBatchId, setActiveImportBatchId] = useState(() => {
+      if (typeof window === 'undefined') return null
+      return window.localStorage.getItem('offers_active_import_batch_id')
+    })
     const [error, setError] = useState('')
     const [notice, setNotice] = useState('')
     const [reviewQueue, setReviewQueue] = useState([])
@@ -817,6 +822,15 @@ function AppShell({ onLogout, supabaseClient }) {
     const monthTitle = cursorMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' })
     const todayKey = localDateKeyFromDate(new Date())
 
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+      if (activeImportBatchId) {
+        window.localStorage.setItem('offers_active_import_batch_id', activeImportBatchId)
+      } else {
+        window.localStorage.removeItem('offers_active_import_batch_id')
+      }
+    }, [activeImportBatchId])
+
     const loadEvents = async () => {
       setLoading(true)
       setError('')
@@ -855,17 +869,36 @@ function AppShell({ onLogout, supabaseClient }) {
       }
     }
 
-    const refreshImportResults = async (attempts = 18, intervalMs = 2500) => {
+    const refreshImportResults = async (batchId = null, attempts = 18, intervalMs = 2500) => {
+      if (importSyncRunningRef.current) return
+      importSyncRunningRef.current = true
       setSyncingImportResults(true)
       try {
         for (let i = 0; i < attempts; i++) {
           await Promise.all([loadEvents(), loadReviewQueue()])
+          if (batchId) {
+            const { data: batchRow, error: batchErr } = await supabaseClient
+              .from('offer_import_batches')
+              .select('status')
+              .eq('id', batchId)
+              .maybeSingle()
+            if (!batchErr && batchRow?.status) {
+              const doneStatuses = new Set(['completed', 'completed_with_errors', 'failed'])
+              if (doneStatuses.has(batchRow.status)) {
+                // One extra sync pass after completion to avoid stale UI.
+                await Promise.all([loadEvents(), loadReviewQueue()])
+                setActiveImportBatchId(null)
+                break
+              }
+            }
+          }
           if (i < attempts - 1) {
             await new Promise((resolve) => window.setTimeout(resolve, intervalMs))
           }
         }
       } finally {
         setSyncingImportResults(false)
+        importSyncRunningRef.current = false
       }
     }
 
@@ -874,6 +907,13 @@ function AppShell({ onLogout, supabaseClient }) {
       void loadReviewQueue()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    useEffect(() => {
+      if (!activeImportBatchId) return
+      if (importSyncRunningRef.current) return
+      void refreshImportResults(activeImportBatchId, 24, 2500)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeImportBatchId])
 
     useEffect(() => {
       const handlePointerDown = (event) => {
@@ -1240,6 +1280,7 @@ function AppShell({ onLogout, supabaseClient }) {
         }
 
         if (batchId) {
+          setActiveImportBatchId(batchId)
           await supabaseClient.from('offer_import_batches').update({ status: 'awaiting_parse' }).eq('id', batchId)
           // Fire-and-forget parse kickoff; queued rows remain safe if function is not deployed yet.
           const { error: invokeErr } = await supabaseClient.functions.invoke('process-offer-uploads', {
@@ -1248,7 +1289,7 @@ function AppShell({ onLogout, supabaseClient }) {
           if (invokeErr) {
             setError('Uploaded successfully, but AI parsing could not be started right now. Try again in a moment.')
           }
-          void refreshImportResults()
+          void refreshImportResults(batchId)
         } else {
           setError('Uploaded successfully, but batch metadata is unavailable. Run supabase/offer_ai_import.sql.')
         }

@@ -10,6 +10,7 @@ const OFFER_TYPES = new Set(['free_play', 'hotel', 'dining', 'gift', 'multiplier
 type ParsedOffer = {
   confidence?: number
   warnings?: string[]
+  has_specific_time?: boolean
   casino_name?: string
   offer_type?: string
   title?: string
@@ -104,6 +105,7 @@ Return strict JSON (no markdown, no prose) with this shape:
 {
   "confidence": 0.0-1.0,
   "warnings": ["optional warning strings"],
+  "has_specific_time": true or false,
   "casino_name": "string or null",
   "offer_type": "free_play|hotel|dining|gift|multiplier|tournament|drawing|other",
   "title": "string or null",
@@ -118,6 +120,7 @@ Rules:
 - Use local date text from the flyer and infer year if needed.
 - If a field is uncertain, keep it null and add a warning.
 - confidence should reflect how complete and reliable the extraction is.
+- Set has_specific_time to true ONLY when an explicit clock time is visible in the image.
 `.trim()
 
   const res = await fetch('https://api.openai.com/v1/responses', {
@@ -160,6 +163,7 @@ Rules:
   return {
     confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
     warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map((w) => String(w)) : [],
+    has_specific_time: parsed.has_specific_time === true,
     casino_name: textOrNull(parsed.casino_name) ?? undefined,
     offer_type: normalizeOfferType(parsed.offer_type),
     title: textOrNull(parsed.title) ?? undefined,
@@ -168,6 +172,25 @@ Rules:
     value_amount: numberOrNull(parsed.value_amount),
     value_text: textOrNull(parsed.value_text),
     notes: textOrNull(parsed.notes)
+  }
+}
+
+function normalizeToAllDayIfNeeded(offer: ParsedOffer): ParsedOffer {
+  const keepTime = offer.has_specific_time === true
+  if (keepTime) return offer
+
+  const normalize = (iso?: string | null): string | null | undefined => {
+    if (!iso) return iso
+    const dt = new Date(iso)
+    if (Number.isNaN(dt.getTime())) return iso
+    const midnight = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0)
+    return midnight.toISOString()
+  }
+
+  return {
+    ...offer,
+    start_at: normalize(offer.start_at) ?? undefined,
+    end_at: normalize(offer.end_at) ?? null
   }
 }
 
@@ -289,7 +312,8 @@ Deno.serve(async (req) => {
         const { data: fileBlob, error: fileError } = await admin.storage.from(bucketId).download(upload.storage_path)
         if (fileError || !fileBlob) throw fileError || new Error('Image download failed.')
 
-        const parsed = await parseOfferFromImage(openaiApiKey, upload.mime_type || 'image/jpeg', new Uint8Array(await fileBlob.arrayBuffer()))
+        const parsedRaw = await parseOfferFromImage(openaiApiKey, upload.mime_type || 'image/jpeg', new Uint8Array(await fileBlob.arrayBuffer()))
+        const parsed = normalizeToAllDayIfNeeded(parsedRaw)
         const confidence = Number.isFinite(parsed.confidence) ? Math.max(0, Math.min(1, Number(parsed.confidence))) : 0
         const warnings = Array.isArray(parsed.warnings) ? parsed.warnings.filter(Boolean) : []
         const hasRequiredFields = !!(parsed.casino_name && parsed.title && parsed.start_at)

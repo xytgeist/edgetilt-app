@@ -62,7 +62,7 @@ export default function OfferFormModal({
           </button>
         </div>
 
-        {!completingReviewItemId && (
+        {!completingReviewItemId && !editingId && (
           <div className="mb-4">
             <div className="text-white font-semibold mb-1">Import from photos (bulk)</div>
             <p className="text-zinc-400 text-xs mb-3 leading-relaxed">

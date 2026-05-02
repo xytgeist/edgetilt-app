@@ -25,3 +25,6 @@ dist-ssr
 
 supabase/.temp/
 supabase/.branches/
+
+# Per-machine offsets for transcript export (scripts/cursor-chat-export.mjs)
+.cursor/chat-export-state-*.json

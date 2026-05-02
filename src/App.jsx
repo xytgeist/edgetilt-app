@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import 'react-datepicker/dist/react-datepicker.css'
 import PhoenixLink from './calculators/PhoenixLink'
@@ -19,6 +19,7 @@ import WeekEventDetailModal from './features/offers/components/WeekEventDetailMo
 import AddEventFab from './features/offers/components/AddEventFab'
 import useOffersCalendarState from './features/offers/hooks/useOffersCalendarState'
 import useOffersCalendarMutations from './features/offers/hooks/useOffersCalendarMutations'
+import GuidesScreen from './features/guides/GuidesScreen'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -100,6 +101,30 @@ function AppShell({ onLogout, supabaseClient }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo' | 'stackup' | 'mhb' | null
   const [intelView, setIntelView] = useState({ screen: 'home', cityId: null, casinoId: null })
+  const [communityPosts, setCommunityPosts] = useState([])
+  const [communityFeedLoading, setCommunityFeedLoading] = useState(false)
+
+  const loadCommunityFeed = useCallback(async () => {
+    setCommunityFeedLoading(true)
+    try {
+      const { data, error } = await supabaseClient
+        .from('community_feed_posts')
+        .select('id,title,body,game_title,created_at')
+        .order('created_at', { ascending: false })
+        .limit(40)
+      if (error) {
+        setCommunityPosts([])
+        return
+      }
+      setCommunityPosts(data || [])
+    } finally {
+      setCommunityFeedLoading(false)
+    }
+  }, [supabaseClient])
+
+  useEffect(() => {
+    if (tab === 'home') void loadCommunityFeed()
+  }, [tab, loadCommunityFeed])
 
   const openCalculator = (key) => {
     setActiveCalculator(key)
@@ -1590,7 +1615,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
           <div className="bg-zinc-900 rounded-3xl p-5 mb-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-white font-bold">Feed (placeholder)</div>
+              <div className="text-white font-bold">Community feed</div>
               <button
                 onClick={() => setTab('offers')}
                 className="text-cyan-300 text-sm font-semibold hover:text-cyan-200"
@@ -1598,17 +1623,42 @@ function AppShell({ onLogout, supabaseClient }) {
                 View offers →
               </button>
             </div>
-            <div className="space-y-3">
-              {[
-                { title: 'Big win post', body: 'Photo + caption + tags (coming soon).' },
-                { title: 'News/update', body: 'Machine changes, rules, resets (coming soon).' },
-              ].map((p) => (
-                <div key={p.title} className="rounded-2xl bg-zinc-800/70 p-4">
-                  <div className="text-zinc-200 font-semibold">{p.title}</div>
-                  <div className="text-zinc-400 text-sm mt-1 leading-relaxed">{p.body}</div>
-                </div>
-              ))}
-            </div>
+            <p className="text-zinc-500 text-xs mb-3 leading-relaxed">
+              Questions posted from <span className="text-zinc-400">Guides → Ask community</span> land here once{' '}
+              <code className="text-zinc-400">community_feed_posts</code> is applied in Supabase.
+            </p>
+            {communityFeedLoading ? (
+              <div className="text-zinc-500 text-sm py-2">Loading feed…</div>
+            ) : communityPosts.length === 0 ? (
+              <div className="rounded-2xl bg-zinc-800/70 p-4 text-zinc-400 text-sm leading-relaxed">
+                No posts yet. Open a guide card and use <span className="text-zinc-200 font-semibold">Ask community</span>, or run{' '}
+                <code className="text-amber-200/90">supabase/community_feed_posts.sql</code> if inserts fail.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {communityPosts.map((p) => (
+                  <div key={p.id} className="rounded-2xl bg-zinc-800/70 p-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div className="text-zinc-200 font-semibold">{p.title}</div>
+                      {p.game_title ? (
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-amber-400/90 shrink-0">{p.game_title}</span>
+                      ) : null}
+                    </div>
+                    <div className="text-zinc-400 text-sm mt-2 leading-relaxed whitespace-pre-wrap">{p.body}</div>
+                    <div className="text-zinc-600 text-[11px] mt-2">
+                      {p.created_at
+                        ? new Date(p.created_at).toLocaleString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })
+                        : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )
@@ -1616,39 +1666,12 @@ function AppShell({ onLogout, supabaseClient }) {
 
     if (tab === 'guides') {
       return (
-        <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
-          <div className="mb-6">
-            <div className="text-white text-2xl font-black tracking-tight">Guides</div>
-            <div className="text-zinc-400 text-sm mt-0.5">How-to playbooks (skeleton)</div>
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { id: 'stackup', title: 'Stack Up Pays (Ascending Fortunes)', subtitle: 'What to look for + meter workflow' },
-              { id: 'phoenix', title: 'Phoenix Link', subtitle: 'Counter basics + volatility notes' },
-              { id: 'buffalo', title: 'Buffalo Link', subtitle: 'Midpoint method + walk-away' },
-            ].map((g) => (
-              <div key={g.id} className="bg-zinc-900 rounded-3xl p-5">
-                <div className="text-white font-bold text-lg">{g.title}</div>
-                <div className="text-zinc-400 text-sm mt-1">{g.subtitle}</div>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => openCalculator(g.id)}
-                    className="flex-1 min-h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold touch-manipulation"
-                  >
-                    Open calculator
-                  </button>
-                  <button
-                    onClick={() => setTab('intel')}
-                    className="flex-1 min-h-11 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-bold touch-manipulation"
-                  >
-                    Ask locals
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <GuidesScreen
+          supabaseClient={supabaseClient}
+          onOpenCalculator={openCalculator}
+          onNavigateHome={() => setTab('home')}
+          onCommunityPosted={loadCommunityFeed}
+        />
       )
     }
 

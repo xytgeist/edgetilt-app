@@ -250,3 +250,210 @@ Unregister-ScheduledTask -TaskName 'LVSlotPro_CursorChatExport_Desktop' -Confirm
 ```
 
 **Rule of thumb:** run **only the Laptop** register script on the laptop, and **only the Desktop** register script on the desktop, so each machine writes its own log file.
+
+---
+
+## Chat export (2026-05-02T03:01:40.321Z)
+
+_Source: `2d78ab45-ccb2-4a9f-8278-96a34c5e2dd9` — lines 29–30_
+
+### User
+
+how can i check how often it runs
+
+### Assistant
+
+Here are practical ways to see **how often** it runs.
+
+### Task Scheduler (GUI)
+1. **Win** → type **Task Scheduler** → open it.
+2. **Task Scheduler Library** (left tree).
+3. Click **`LVSlotPro_CursorChatExport_Laptop`** or **`...Desktop`**.
+4. Open the **Triggers** tab — you should see something like **“At …”** with **“Repeat task every: 30 minutes”** (wording varies slightly by Windows version).
+5. **History** tab (if enabled) shows past runs; if History is disabled, use PowerShell below.
+
+### PowerShell (triggers + repetition)
+```powershell
+Get-ScheduledTask -TaskName 'LVSlotPro_CursorChatExport_Laptop' |
+  Select-Object -ExpandProperty Triggers |
+  Format-List *
+```
+Look for **`Repetition`** → **`Interval`** (e.g. `PT30M` = every 30 minutes) and **`Duration`**.
+
+For the desktop task, use `LVSlotPro_CursorChatExport_Desktop`.
+
+### Last / next run times
+```powershell
+Get-ScheduledTaskInfo -TaskName 'LVSlotPro_CursorChatExport_Laptop' |
+  Format-List LastRunTime, NextRunTime, NumberOfMissedRuns, TaskName
+```
+
+### Command-line summary
+```powershell
+schtasks /Query /TN "LVSlotPro_CursorChatExport_Laptop" /V /FO LIST
+```
+Scroll for **Repeat: Every** and **Next Run Time**.
+
+---
+
+**What you should see:** repeat **every 30 minutes**, because that’s what `Register-CursorChatExportScheduledTask-*.ps1` sets (`RepetitionInterval` 30 minutes). If anything looks different, say which task name you opened and we can interpret it.
+
+---
+
+## Chat export (2026-05-02T04:31:41.916Z)
+
+_Source: `6136d03a-cc00-40e9-bc48-0d1327e25a99` — lines 1–8_
+
+### User
+
+read in the lastest messages from session-chat-export-desktop to understand what we've been doing
+
+### Assistant
+
+Here is what **`session-chat-export-desktop.md`** shows you were doing, in order through the latest export.
+
+### Cursor chat export (setup)
+- **`Register-CursorChatExportScheduledTask-Desktop.ps1`** only registers the task; it does not create **`session-chat-export-desktop.md`**.
+- The markdown is produced when **`Run-CursorChatExport-Desktop.ps1`** (or the scheduled task) runs **`cursor-chat-export.mjs`**.
+- A bug was fixed: project slugs under `.cursor/projects/` had **spaces** in path segments (e.g. `Ryan Franklin`), so transcripts were not found and no file was written. **Spaces in segments are normalized to hyphens**; after that, export worked.
+
+### Product context
+- You pointed the assistant at **`20260430_SESSION_HANDOFF.md`**: PhoenixLinkCalc / Machine Pro Club stack (Vite, React, Supabase, offers, machines/guides schema, constraints around **https://www.machinepro.club/** and licensing).
+
+### AP Guides UI
+- You specified a **Guides** experience: search, **+EV-focused cards** (image, volatility, distributor, popularity, added/updated), calculator button, **“Ask community”** → form → **home feed**, expand for full markdown guide; **Buffalo Link** as first example (public/original copy, not scraped paywall content).
+- Implementation included **`GuidesScreen`**, **`buffaloLinkGuideDemo.js`**, **`community_feed_posts`** migration, optional **`guides_machine_card_fields.sql`**, **`App.jsx`** wiring, **`react-markdown`**, home feed from **`community_feed_posts`**.
+- You reported the **hamburger “Guides” item** still looked old; it was updated to **AP Guides** with hint text, wider menu, clearing calculator when leaving Calcs, matching screen title.
+
+### Latest request (end of export)
+- You asked: **“ok, please do a card for phoenix link”**.
+- The assistant described adding **`phoenixLinkGuideDemo.js`**, merging Phoenix into **`GuidesScreen`** when there is no DB row, orange accents for Phoenix, hero **`/phoenix-link-logo.png`**, calculator mapping **`phoenix-link` → `phoenix`**, sorted cards (Buffalo then Phoenix).
+
+So the thread left off with **Phoenix Link** being added as a second demo card alongside Buffalo, with the same patterns and Supabase overrides when real rows exist. If you want to continue from here, say whether you want to verify those files in the repo, adjust copy/UI, or wire more machines.
+
+### User
+
+great...just wanted you to know where we left off...we actually did the phoenix link card already as well as a card for stack up pays
+
+### Assistant
+
+Noted — the desktop export stopped before those landed. Verifying the repo for Phoenix Link and Stack Up Pays so our context matches the code.
+
+### Assistant
+
+Thanks for the correction — the desktop export ended right after the Phoenix Link write-up, so it never reflected **Stack Up Pays** or the final merged state.
+
+In the repo now I see all three demos wired in **`GuidesScreen.jsx`**: **`buffaloLinkGuideDemo.js`**, **`phoenixLinkGuideDemo.js`**, and **`stackUpPaysGuideDemo.js`** (`stack-up-pays` with cyan styling, `/stackup-icon.jpg`, calculator mapping to **`stackup`**). I will treat **Buffalo Link, Phoenix Link, and Stack Up Pays** as the current demo card set unless Supabase rows override them.
+
+Whenever you want to extend guides (another title, seed data, or feed tweaks), we can pick up from there.
+
+---
+
+## Chat export (2026-05-02T07:01:40.376Z)
+
+_Source: `59774193-29d3-41af-a4a4-47a4f2877a68` — lines 1–3_
+
+### User
+
+read our session chat backup (laptop) to catch up to where we left off
+
+### Assistant
+
+Reading the laptop session chat backup.
+
+### Assistant
+
+Here is a concise catch-up from **`session-chat-export-laptop.md`**.
+
+### Project context (from earlier in the thread)
+- **PhoenixLinkCalc / Machine Pro Club**: Vite + React, Supabase, offers calendar, machines/guides schema; constraints in **`20260430_SESSION_HANDOFF.md`** (e.g. **https://www.machinepro.club/**, licensing, no wholesale copying).
+- **Guides UI**: search, +EV-style cards, calculator, “Ask community” → feed, markdown expansion; demo content (Buffalo first, then Phoenix, etc.).
+
+### What you built in that session
+- **Automated chat exports**: Node script **`scripts/cursor-chat-export.mjs`**, per-machine runners and **Scheduled Tasks** so laptop vs desktop append to **`session-chat-export-laptop.md`** vs **`session-chat-export-desktop.md`** (avoids merge fights on one file). Desktop side also fixed **spaces in `.cursor/projects/` path segments** so transcripts resolve.
+- **Guides**: **`GuidesScreen`**, hamburger **“AP Guides”**, demo guides, **`community_feed_posts`**, optional SQL for card fields, **`react-markdown`**, etc.
+- **Demo cards**: Per the **latest** messages in this laptop export, you already finished **Phoenix Link** and **Stack Up Pays** in addition to Buffalo; the assistant verified three demos in **`GuidesScreen.jsx`**: `buffaloLinkGuideDemo.js`, `phoenixLinkGuideDemo.js`, `stackUpPaysGuideDemo.js` (Stack Up Pays → cyan styling, `/stackup-icon.jpg`, calculator mapping **`stackup`**).
+
+### Where things stand
+- No open coding task was pinned at the very end; the thread closed with “we can extend guides (another title, seed data, feed tweaks) from here.”
+- Practical next steps from the handoff are still things like **bankroll/income tracker**, deeper **Supabase** wiring for real guide rows vs demos, or **subscription** later—only if you want to prioritize one of those.
+
+If you tell me what you want to do next (e.g. another machine card, seed SQL, or feed behavior), we can continue from that.
+
+---
+
+## Chat export (2026-05-02T07:31:40.314Z)
+
+_Source: `59774193-29d3-41af-a4a4-47a4f2877a68` — lines 4–20_
+
+### User
+
+lets start building the must hit by card
+
+### Assistant
+
+Exploring the codebase to find how cards and calculators are built so we can add a "must hit by" card consistently.
+
+### Assistant
+
+Inspecting how guide demo cards are structured and wired into `GuidesScreen`.
+
+### Assistant
+
+Adding an AP Guides demo card for Must Hit By that matches existing guide demos and wires to `MHBCalculator` (`mhb`). Creating the demo module, a small hero asset, and updating `GuidesScreen.jsx`.
+
+### Assistant
+
+Updating `GuidesScreen.jsx` to import the demo and wire styling, merge logic, calculator resolution, and card bullets.
+
+### Assistant
+
+Here is what was added for the **Must Hit By** AP Guides card.
+
+### 1. `src/features/guides/mustHitByGuideDemo.js`
+- Slug constant: `must-hit-by-jackpot` (same as the merged machine row).
+- Three **+EV-style card bullets** (meter vs cap, meter rise / RTP, in-app calculator).
+- Full **markdown guide**: MHB concept, stopping rules (midpoint vs cap), floor notes, bankroll, how to use **`MHBCalculator`**.
+
+### 2. `public/mhb-jackpot-hero.svg`
+- Purple / fuchsia gradient hero so the card matches the **Calculators → Must Hit By Jackpot** styling without depending on PNGs that may not be in the repo.
+
+### 3. `GuidesScreen.jsx`
+- Merges the demo when Supabase does **not** already have that machine slug (same pattern as Buffalo / Phoenix / Stack Up Pays).
+- **`resolveCalculatorKey`**: `must-hit-by-jackpot` and `calculator_slug === 'mhb'` → opens **`mhb`** (`MHBCalculator`).
+- Card bullets, **violet/fuchsia** accents, hero, gradient overlay, focus ring, and markdown **h2** tone for this slug.
+
+In **AP Guides**, you should see **Must Hit By Jackpot** (manufacturer **Various**, type **Must-Hit-By Progressive**) with **Open calculator** → existing MHB tool and **Ask community** wired like the other cards.
+
+**Note:** `npm run build` failed on resolving `react-markdown` in this environment; that looks like a local `node_modules` / install issue, not these edits. After `npm install`, run `npm run build` again on your machine.
+
+If you add a real **`guides` + `machines`** row later with the same slug (or `calculator_slug: 'mhb'`), the local demo is skipped automatically. If you want a **title-specific** MHB guide next (e.g. a named progressive), say which title and we can clone this pattern with its own slug and copy.
+
+### User
+
+specify this particular one as Ainsworth must hit bys and all the info you need for the card is at https://wizardofodds.com/games/slots/mystery-jackpot-ainsworth/
+
+### Assistant
+
+Retargeting the guide demo to Ainsworth must-hit-by progressives using the Wizard of Odds article: updating the demo module and GuidesScreen references (slug, styling, merge row).
+
+### Assistant
+
+Rewriting the demo module for Ainsworth-specific content (paraphrased, with a citation to Wizard of Odds) and updating `GuidesScreen.jsx` to use slug `ainsworth-must-hit-by`.
+
+### Assistant
+
+Here is what changed.
+
+### `mustHitByGuideDemo.js`
+- Card is explicitly **Ainsworth** must-hit-by / **mystery** progressives, aligned with [Wizard of Odds — Must-Hit-By Progressives on Ainsworth Slots](https://wizardofodds.com/games/slots/mystery-jackpot-ainsworth/).
+- **Slug** is now `ainsworth-must-hit-by` (`AINSWORTH_MUST_HIT_BY_DEMO_SLUG`).
+- **Card bullets:** uniform random target between reset and cap, **% meter rise**; **Red Rock 2013 sample** (Minor $20→$50 @ 0.45%, Major $350→$400 @ 0.20%) with a clear “verify on your glass” note; **AGS** warning (do not use the same model).
+- **Full guide:** WOO link as primary reference, four-rule summary, markdown table for that historical sample, **t = m × (h + r) / (h + 2r)** with definitions, **Major $370 / 10% HE → Minor ~$48.13** example, AGS caveat, how to combine **in-app MHB calc** with WOO’s **two-meter tables**.
+
+### `GuidesScreen.jsx`
+- Demo row title **“Ainsworth Must Hit By (Mystery Progressives)”**, machine **Ainsworth Must Hit By**, manufacturer **Ainsworth**, type **Must-Hit-By Mystery Progressive**.
+- **`resolveCalculatorKey`:** `ainsworth-must-hit-by` still opens the existing **`mhb`** calculator.
+- Styling/hero paths updated from `must-hit-by-jackpot` → `ainsworth-must-hit-by` (same purple hero SVG).
+
+Content is **paraphrased** plus explicit credit and links to WOO; numbers and formula match what they publish for that article. If you later add a Supabase `machines` row, use slug **`ainsworth-must-hit-by`** and `calculator_slug: 'mhb'` so it stays consistent.

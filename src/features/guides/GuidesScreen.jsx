@@ -42,6 +42,11 @@ function formatGuideDate(iso) {
   }
 }
 
+/** Shipped with the app when Supabase has no published row for that slug yet (see `mergeLocalGuideDemos`). */
+function isLocalDemoGuide(row) {
+  return typeof row?.id === 'string' && row.id.startsWith('local-demo-')
+}
+
 /** Map DB \`machines.calculator_slug\` / slug → AppShell \`openCalculator\` keys. */
 function resolveCalculatorKey(machine) {
   if (!machine) return null
@@ -719,11 +724,19 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                     className={`w-full text-left touch-manipulation focus:outline-none focus-visible:ring-2 ${ringFocus}`}
                     aria-expanded={expanded}
                   >
-                    <div className={`relative h-28 w-full bg-gradient-to-br ${heroGradientClass(slug)}`}>
+                    <div
+                      className={`relative w-full bg-gradient-to-br ${heroGradientClass(slug)} ${
+                        expanded ? 'flex justify-center' : 'h-28 overflow-hidden'
+                      }`}
+                    >
                       <img
                         src={heroImage(row)}
                         alt=""
-                        className="h-full w-full object-cover opacity-95"
+                        className={
+                          expanded
+                            ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+                            : 'h-full w-full object-cover opacity-95'
+                        }
                         onError={guideHeroImgOnError}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
@@ -765,12 +778,21 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                       </div>
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">
-                        <span>
-                          Added <span className="text-zinc-400">{formatGuideDate(row.created_at)}</span>
-                        </span>
-                        <span>
-                          Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at)}</span>
-                        </span>
+                        {isLocalDemoGuide(row) ? (
+                          <span className="text-zinc-400 leading-snug w-full">
+                            Added / Updated show database dates after this guide exists in Supabase (you are seeing the
+                            bundled local demo for now).
+                          </span>
+                        ) : (
+                          <>
+                            <span>
+                              Added <span className="text-zinc-400">{formatGuideDate(row.created_at)}</span>
+                            </span>
+                            <span>
+                              Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at)}</span>
+                            </span>
+                          </>
+                        )}
                       </div>
 
                       <div className="text-zinc-500 text-xs font-medium">{expanded ? 'Tap to collapse' : 'Tap for full guide'}</div>

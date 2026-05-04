@@ -67,6 +67,26 @@ That refreshes `card.meta.json` and `guide.md` stubs under `Slots/<slug>/` for e
 
 When you want Supabase `machines` and `guides` to match the repo:
 
+**Quick copy-paste** (run from the repo root; use `.env.supabase.test` / `.env.supabase.production` with **`SUPABASE_SERVICE_ROLE_KEY`**, not the anon key):
+
+```bash
+npm run slots:sync:test                  # upsert → test project
+npm run slots:sync:production            # upsert → production project
+
+npm run slots:sync:test:dry              # preview test (no writes)
+npm run slots:sync:production:dry       # preview production (no writes)
+
+npm run slots:sync:test:dry:quiet        # dry-run, short output only
+```
+
+Single game only:
+
+```bash
+node scripts/sync-slot-forms-to-supabase.mjs --target=test --slug=adventures-of-sinbad
+```
+
+(`--target=production` works the same; use any folder slug under `Slots/`.)
+
 1. **Pick the project:** test vs production.
 
    **Option A — explicit target (recommended with two Supabase projects)**  

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS machines (
   slug text UNIQUE NOT NULL,
   name text NOT NULL,
   manufacturer text,
-  type text CHECK (type IN ('Must-Hit-By', 'Persistent State', 'Lock Game', 'Accumulator', 'Hybrid', 'Other')),
+  type text,
   difficulty text CHECK (difficulty IN ('Beginner', 'Intermediate', 'Advanced')),
   vegas_availability text,
   nerf_risk text CHECK (nerf_risk IN ('Low', 'Medium', 'High')),

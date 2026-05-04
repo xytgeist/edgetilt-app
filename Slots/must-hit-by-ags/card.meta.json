@@ -8,19 +8,19 @@
     "type": "Must-Hit-By",
     "difficulty": "Intermediate",
     "vegas_availability": "Common",
-    "nerf_risk": "Medium",
+    "nerf_risk": "Low",
     "has_calculator": true,
     "calculator_slug": "mhb",
-    "volatility_index": null,
+    "volatility_index": "Medium",
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2019
   },
   "guide_seed": {
     "slug": "must-hit-by-ags",
     "title": "AGS Must Hit By",
     "published": true,
     "card_summary_bullets": [],
-    "card_ev_threshold": "Mystery MH progressives — clock seed & eligibility first",
+    "card_ev_threshold": "Typically ~95% of MHB (use calculator to confirm)",
     "content_markdown_file": "guide.md",
     "last_updated": null
   },

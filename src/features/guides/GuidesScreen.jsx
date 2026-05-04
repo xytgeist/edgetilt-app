@@ -381,6 +381,72 @@ function popularityLabel(row) {
   return m.vegas_availability || '—'
 }
 
+/** 1–5 ⚡ from volatility copy (custom index, label, or machine fields). */
+function volatilityLightningCount(row) {
+  const m = machineForGuide(row)
+  if (!m) return 3
+  const label = volatilityLabel(row)
+  const blob = `${m.volatility_index || ''} ${label}`.toLowerCase()
+
+  if (/\bmed-?high\b|\bmedium[- ]high\b/.test(blob)) return 4
+  if (/\blow[- –]medium\b/.test(blob)) return 2
+  if (/\bhigh\b/.test(blob)) return 5
+  if (/\bmedium\b/.test(blob)) return 3
+  if (/\blow\b/.test(blob)) return 1
+
+  const nerf = String(m.nerf_risk || '')
+    .toLowerCase()
+    .trim()
+  if (nerf === 'high') return 5
+  if (nerf === 'medium') return 3
+  if (nerf === 'low') return 2
+
+  const diff = String(m.difficulty || '')
+    .toLowerCase()
+    .trim()
+  if (diff === 'advanced') return 4
+  if (diff === 'beginner') return 2
+  if (diff === 'intermediate') return 3
+
+  return 3
+}
+
+/** 1–5 🔥 from floor-presence wording (`popularity_summary` / `vegas_availability`). */
+function popularityFireCount(row) {
+  const m = machineForGuide(row)
+  if (!m) return 3
+  const haystack = `${m.popularity_summary || ''} ${m.vegas_availability || ''} ${popularityLabel(row)}`.toLowerCase()
+
+  if (haystack.includes('extremely common')) return 5
+  if (haystack.includes('abundant')) return 4
+  if (haystack.includes('very common')) return 4
+  if (haystack.includes('uncommon')) return 2
+  if (haystack.includes('rare')) return 1
+  if (haystack.includes('common')) return 3
+
+  return 3
+}
+
+function lightningMeter(count) {
+  const n = Math.min(5, Math.max(1, count))
+  return '⚡'.repeat(n)
+}
+
+function fireMeter(count) {
+  const n = Math.min(5, Math.max(1, count))
+  return '🔥'.repeat(n)
+}
+
+function IconTarget({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <circle cx="10" cy="10" r="7.25" stroke="currentColor" strokeWidth="1.25" />
+      <circle cx="10" cy="10" r="4" stroke="currentColor" strokeWidth="1.25" />
+      <circle cx="10" cy="10" r="1.35" fill="currentColor" />
+    </svg>
+  )
+}
+
 function defaultHeroSrc(machineSlug) {
   if (machineSlug === 'phoenix-link') return '/phoenix-link-logo.png'
   if (machineSlug === 'buffalo-link') return '/buffalo-icon.png'
@@ -860,11 +926,31 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                     <div className="p-4 space-y-3">
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
-                          <div className="text-zinc-500 font-semibold uppercase tracking-wide">Volatility</div>
-                          <div className="text-zinc-100 font-bold mt-0.5">{volatilityLabel(row)}</div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-zinc-500 font-semibold uppercase tracking-wide shrink-0">Volatility</div>
+                            <span
+                              className="text-sm leading-none text-amber-300 shrink-0"
+                              title={`${volatilityLightningCount(row)} of 5`}
+                              aria-hidden
+                            >
+                              {lightningMeter(volatilityLightningCount(row))}
+                            </span>
+                          </div>
+                          <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{volatilityLabel(row)}</div>
                         </div>
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
-                          <div className="text-zinc-500 font-semibold uppercase tracking-wide">Popularity</div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-zinc-500 font-semibold uppercase tracking-wide shrink-0">
+                              Popularity
+                            </div>
+                            <span
+                              className="text-sm leading-none shrink-0"
+                              title={`${popularityFireCount(row)} of 5`}
+                              aria-hidden
+                            >
+                              {fireMeter(popularityFireCount(row))}
+                            </span>
+                          </div>
                           <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{popularityLabel(row)}</div>
                         </div>
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
@@ -882,13 +968,12 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                       <div
                         className={`relative overflow-hidden rounded-2xl border-2 px-4 py-3.5 ${accent.evPanel}`}
                       >
-                        <div
-                          className={`text-[10px] font-extrabold uppercase tracking-[0.2em] ${accent.evLabel}`}
-                        >
-                          +EV Threshold
+                        <div className={`inline-flex items-center gap-2 ${accent.evLabel}`}>
+                          <IconTarget className="h-3.5 w-3.5 shrink-0 opacity-95" />
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">+EV Threshold</span>
                         </div>
                         <p
-                          className={`mt-2 text-base font-extrabold leading-snug tracking-tight drop-shadow-sm ${accent.strong}`}
+                          className={`mt-2 text-base font-normal leading-snug tracking-tight ${accent.strong}`}
                         >
                           {evThresholdLine}
                         </p>
@@ -901,19 +986,27 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                             bundled local demo for now).
                           </span>
                         ) : (
-                          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1.5 text-[11px]">
-                            <span className="inline-flex items-center gap-1.5 text-zinc-500">
-                              <IconCalendar className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                              <span className="font-semibold uppercase tracking-wide">Added</span>
-                              <span className="tabular-nums font-medium text-zinc-300">
-                                {formatGuideDate(row.created_at)}
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-800/35 bg-emerald-950/25 px-2.5 py-1.5 shadow-sm shadow-black/20">
+                              <IconCalendar className="h-3.5 w-3.5 shrink-0 text-emerald-400/90" aria-hidden />
+                              <span className="flex flex-col gap-0.5 leading-none sm:flex-row sm:items-baseline sm:gap-1.5">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/90">
+                                  Added
+                                </span>
+                                <span className="text-[11px] font-semibold tabular-nums text-zinc-200">
+                                  {formatGuideDate(row.created_at)}
+                                </span>
                               </span>
                             </span>
-                            <span className="inline-flex items-center gap-1.5 text-zinc-500">
-                              <IconClock className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                              <span className="font-semibold uppercase tracking-wide">Updated</span>
-                              <span className="tabular-nums font-medium text-zinc-300">
-                                {formatGuideDate(row.updated_at)}
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-sky-800/35 bg-sky-950/20 px-2.5 py-1.5 shadow-sm shadow-black/20">
+                              <IconClock className="h-3.5 w-3.5 shrink-0 text-sky-400/90" aria-hidden />
+                              <span className="flex flex-col gap-0.5 leading-none sm:flex-row sm:items-baseline sm:gap-1.5">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-sky-400/90">
+                                  Updated
+                                </span>
+                                <span className="text-[11px] font-semibold tabular-nums text-zinc-200">
+                                  {formatGuideDate(row.updated_at)}
+                                </span>
                               </span>
                             </span>
                           </div>

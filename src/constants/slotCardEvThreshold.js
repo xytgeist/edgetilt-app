@@ -30,7 +30,8 @@ export const SLUG_RELEASE_YEAR = {
 /** Map messy DB/UI type strings onto keys in TYPE_DEFAULT_CARD_EV_THRESHOLD. */
 export function evThresholdTypeKey(type) {
   if (!type) return 'Other'
-  if (String(type).includes('Must-Hit-By')) return 'Must-Hit-By'
+  const raw = String(type)
+  if (raw.includes('Must-Hit-By') || /\bmust\s+hit\s+by\b/i.test(raw)) return 'Must-Hit-By'
   if (TYPE_DEFAULT_CARD_EV_THRESHOLD[type] != null) return type
   return 'Other'
 }

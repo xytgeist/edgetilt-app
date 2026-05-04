@@ -21,6 +21,9 @@ end $$;
 
 alter table public.guides add column if not exists card_ev_threshold text;
 
+-- `machines.type`: allow any label (UI / sync). Drops legacy enum-style CHECK if present.
+alter table public.machines drop constraint if exists machines_type_check;
+
 -- Example seed for Buffalo Link (tune anytime in the dashboard / SQL).
 update public.machines
 set

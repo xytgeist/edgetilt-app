@@ -4,16 +4,16 @@
   "machine": {
     "slug": "aztec-banner",
     "name": "Aztec Banner",
-    "manufacturer": "Aristocrat",
+    "manufacturer": "Everi",
     "type": "Persistent State",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
+    "vegas_availability": "Uncommon",
     "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2023
   },
   "guide_seed": {
     "slug": "aztec-banner",
@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_ev_threshold": "Strong meters / state vs cost to clear"
+    "card_ev_threshold": "3+ Active Banners w/ remaining spins"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",

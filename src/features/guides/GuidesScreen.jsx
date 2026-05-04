@@ -419,6 +419,10 @@ function makeGuideMarkdownComponents(machineSlug) {
           ? 'text-cyan-100'
           : machineSlug === 'aladdins-fortune'
             ? 'text-emerald-100'
+            : machineSlug === 'aztec-banner'
+              ? 'text-lime-100'
+              : machineSlug === 'pegasus-banner'
+                ? 'text-sky-100'
           : machineSlug === 'ainsworth-must-hit-by' || machineSlug === 'must-hit-by-aig'
             ? 'text-violet-100'
             : machineSlug === 'ags-must-hit-by' || machineSlug === 'must-hit-by-ags'
@@ -566,6 +570,8 @@ function defaultHeroSrc(machineSlug) {
   if (machineSlug === 'stack-up-pays') return '/guides/stack-up-pays/hero.webp'
   if (machineSlug === 'adventures-of-sinbad') return '/guides/adventures-of-sinbad/hero.webp'
   if (machineSlug === 'aladdins-fortune') return '/guides/aladdins-fortune/hero.webp'
+  if (machineSlug === 'aztec-banner') return '/guides/aztec-banner/hero.webp'
+  if (machineSlug === 'pegasus-banner') return '/guides/pegasus-banner/hero.webp'
   if (machineSlug === 'ainsworth-must-hit-by' || machineSlug === 'must-hit-by-aig')
     return '/guides/ainsworth-must-hit-by/hero.webp'
   if (machineSlug === 'ags-must-hit-by' || machineSlug === 'must-hit-by-ags')
@@ -615,6 +621,10 @@ function heroGradientClass(machineSlug) {
   if (machineSlug === 'adventures-of-sinbad') return 'from-amber-950/85 via-orange-950/35 to-zinc-950'
   if (machineSlug === 'aladdins-fortune')
     return 'from-emerald-950/75 via-amber-950/30 to-zinc-950'
+  if (machineSlug === 'aztec-banner')
+    return 'from-green-950/80 via-orange-950/35 to-zinc-950'
+  if (machineSlug === 'pegasus-banner')
+    return 'from-sky-950/80 via-amber-950/30 to-zinc-950'
   if (machineSlug === 'ainsworth-must-hit-by' || machineSlug === 'must-hit-by-aig')
     return 'from-violet-950/85 via-fuchsia-950/35 to-zinc-950'
   if (machineSlug === 'ags-must-hit-by' || machineSlug === 'must-hit-by-ags')
@@ -707,6 +717,30 @@ function cardAccent(machineSlug) {
         'rounded-xl border border-dashed border-emerald-400/55 bg-gradient-to-br from-emerald-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-emerald-300',
       evTablesRule: 'border-emerald-400/65',
+    }
+  }
+  if (machineSlug === 'aztec-banner') {
+    return {
+      chevron: 'text-lime-400',
+      strong: 'text-lime-50',
+      subtitle: 'text-orange-200/88',
+      expandedBorder: 'border-green-500/45 shadow-lg shadow-green-950/30',
+      evTablesBox:
+        'rounded-xl border border-dashed border-lime-400/50 bg-gradient-to-br from-green-950/40 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-lime-300',
+      evTablesRule: 'border-lime-400/60',
+    }
+  }
+  if (machineSlug === 'pegasus-banner') {
+    return {
+      chevron: 'text-sky-400',
+      strong: 'text-sky-50',
+      subtitle: 'text-amber-200/88',
+      expandedBorder: 'border-sky-500/45 shadow-lg shadow-blue-950/35',
+      evTablesBox:
+        'rounded-xl border border-dashed border-sky-400/55 bg-gradient-to-br from-blue-950/38 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-sky-300',
+      evTablesRule: 'border-sky-400/60',
     }
   }
   return {
@@ -1039,7 +1073,11 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         ? 'focus-visible:ring-sky-500/60'
                         : slug === 'aladdins-fortune'
                           ? 'focus-visible:ring-emerald-500/60'
-                          : 'focus-visible:ring-amber-500/60'
+                          : slug === 'aztec-banner'
+                            ? 'focus-visible:ring-lime-500/60'
+                            : slug === 'pegasus-banner'
+                              ? 'focus-visible:ring-sky-500/60'
+                              : 'focus-visible:ring-amber-500/60'
 
             return (
               <li key={row.id || row.slug}>

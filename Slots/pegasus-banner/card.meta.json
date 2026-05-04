@@ -4,29 +4,30 @@
   "machine": {
     "slug": "pegasus-banner",
     "name": "Pegasus Banner",
-    "manufacturer": "Aristocrat",
+    "manufacturer": "Everi",
     "type": "Persistent State",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
+    "vegas_availability": "Uncommon",
     "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2023
   },
   "guide_seed": {
     "slug": "pegasus-banner",
     "title": "Pegasus Banner",
     "published": true,
     "card_summary_bullets": [
-      "Persistent State: Persistent meters / signatures on the glass — weak state vs strong state is the whole game.",
+      "Reskin of **Aztec Banner** — same Everi **Banner Series** rules (suit banners, 7-spin clocks, mystery reveals, coin free spins); Pegasus is theme/art only.",
+      "Persistent State: play when **3+ active banners** still have spins; pass below that — read the **betting / meter display**, not just the reels.",
       "Floor / rarity: Common — re-verify same visit.",
-      "Nerf: Medium — Aristocrat / jurisdictional packaging changes outcomes."
+      "Nerf: Medium — **Everi** / jurisdictional packaging changes outcomes."
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_ev_threshold": "Strong meters / state vs cost to clear"
+    "card_ev_threshold": "3+ Active Banners w/ remaining spins"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",

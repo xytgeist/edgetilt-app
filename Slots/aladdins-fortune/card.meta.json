@@ -4,16 +4,16 @@
   "machine": {
     "slug": "aladdins-fortune",
     "name": "Aladdin's Fortune",
-    "manufacturer": "Light & Wonder",
+    "manufacturer": "IGT",
     "type": "Persistent State",
-    "difficulty": "Intermediate",
+    "difficulty": "Beginner",
     "vegas_availability": "Rare",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2016
   },
   "guide_seed": {
     "slug": "aladdins-fortune",

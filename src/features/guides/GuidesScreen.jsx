@@ -803,7 +803,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                   >
                     <div
                       className={`relative w-full bg-gradient-to-br ${heroGradientClass(slug)} ${
-                        expanded ? 'flex justify-center' : 'h-28 overflow-hidden'
+                        expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden'
                       }`}
                     >
                       <img

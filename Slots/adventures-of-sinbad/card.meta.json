@@ -5,22 +5,22 @@
     "slug": "adventures-of-sinbad",
     "name": "Adventures of Sinbad!",
     "manufacturer": "Azure Gaming",
-    "type": "Hybrid",
+    "type": "Persistent State",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
+    "vegas_availability": "Rare",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2017
   },
   "guide_seed": {
     "slug": "adventures-of-sinbad",
     "title": "Adventures of Sinbad!",
     "published": true,
     "card_summary_bullets": [],
-    "card_ev_threshold": "30 or fewer steps from GOAL",
+    "card_gist": "30 or fewer steps from GOAL",
     "content_markdown_file": "guide.md",
     "last_updated": null
   },

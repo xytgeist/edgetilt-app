@@ -130,8 +130,67 @@ function resolveCalculatorKey(machine) {
   return null
 }
 
+/**
+ * Prefer one Published row per must-hit vendor when both legacy (`must-hit-by-*`) and canonical (`*-must-hit-by`) guides exist from older syncs / migrations.
+ */
+function dedupeMustHitByAliasRows(rows) {
+  const list = [...(rows || [])]
+  const embed = (r) => {
+    const m = r?.machines
+    if (m == null) return null
+    return Array.isArray(m) ? m[0] ?? null : m
+  }
+  const vendorFamilyOf = (r) => {
+    const ms = (embed(r)?.slug || '').trim()
+    const gs = typeof r.slug === 'string' ? r.slug.trim() : ''
+    const slugSet = new Set([ms, gs].filter(Boolean))
+    if (slugSet.has('ags-must-hit-by') || slugSet.has('must-hit-by-ags')) return 'ags'
+    if (slugSet.has('igt-must-hit-by') || slugSet.has('must-hit-by-igt')) return 'igt'
+    if (slugSet.has('ainsworth-must-hit-by') || slugSet.has('must-hit-by-aig')) return 'ainsworth'
+    return ''
+  }
+  const canonicalSlug = (fam) =>
+    fam === 'ags'
+      ? 'ags-must-hit-by'
+      : fam === 'igt'
+        ? 'igt-must-hit-by'
+        : 'ainsworth-must-hit-by'
+  /** Order rows so we keep canonical slug machines when scores tie / no updated_at drift. */
+  const scoreRowForFamily = (r, fam) => {
+    const ms = (embed(r)?.slug || '').trim()
+    const gs = typeof r.slug === 'string' ? r.slug.trim() : ''
+    const want = canonicalSlug(fam)
+    let s = ms === want || gs === want ? 100 : 60
+    if (fam === 'ags' && (ms === 'must-hit-by-ags' || gs === 'must-hit-by-ags')) s -= 1
+    if (fam === 'igt' && (ms === 'must-hit-by-igt' || gs === 'must-hit-by-igt')) s -= 1
+    if (fam === 'ainsworth' && (ms === 'must-hit-by-aig' || gs === 'must-hit-by-aig')) s -= 1
+    return s
+  }
+  /** @type {Map<string, { row: (typeof list)[number]; score: number }>} */
+  const best = new Map()
+  for (const r of list) {
+    const fam = vendorFamilyOf(r)
+    if (!fam) continue
+    const sc = scoreRowForFamily(r, fam)
+    const prev = best.get(fam)
+    if (
+      !prev ||
+      sc > prev.score ||
+      (sc === prev.score &&
+        String(r.updated_at || '') > String((prev.row && prev.row.updated_at) || ''))
+    ) {
+      best.set(fam, { row: r, score: sc })
+    }
+  }
+  return list.filter((r) => {
+    const fam = vendorFamilyOf(r)
+    if (!fam) return true
+    return best.get(fam)?.row === r
+  })
+}
+
 function mergeLocalGuideDemos(rows) {
-  const base = [...(rows || [])]
+  const base = dedupeMustHitByAliasRows([...(rows || [])])
   /** Suppress a bundled demo if *either* the linked machine slug or this guide's `guides.slug` is present — avoids doubling when FK join fails or slug lives only on the guide row. */
   const slugs = new Set()
   for (const r of base) {
@@ -379,7 +438,9 @@ function makeGuideMarkdownComponents(machineSlug) {
 function volatilityLabel(row) {
   const m = machineForGuide(row)
   if (!m) return '—'
-  if (m.volatility_index) return m.volatility_index
+  const viRaw = m.volatility_index
+  const vi = typeof viRaw === 'string' ? viRaw.trim() : viRaw
+  if (vi != null && vi !== '') return typeof viRaw === 'string' ? vi : String(vi)
   if (m.nerf_risk && m.difficulty) return `${m.difficulty} play / ${m.nerf_risk} nerf risk`
   return m.difficulty || m.nerf_risk || '—'
 }
@@ -776,7 +837,10 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                 calculator_slug,
                 thumbnail_url,
                 created_at,
-                updated_at
+                updated_at,
+                release_year,
+                volatility_index,
+                popularity_summary
               )
             `
             )

@@ -20,7 +20,7 @@
     "title": "Adventures of Sinbad!",
     "published": true,
     "card_summary_bullets": [],
-    "card_gist": "30 or fewer steps from GOAL",
+    "card_ev_threshold": "30 or fewer steps from GOAL",
     "content_markdown_file": "guide.md",
     "last_updated": null
   },

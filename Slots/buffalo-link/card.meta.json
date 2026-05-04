@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_gist": "Play any 1400+"
+    "card_ev_threshold": "Play any 1400+"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **High** for marketing/paytable drift.",

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "rich-little-hens",
+    "name": "Rich Little Hens",
+    "manufacturer": "Aristocrat",
+    "type": "Persistent State",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Medium",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "rich-little-hens",
+    "title": "Rich Little Hens",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_ev_threshold": "Hens-family persistent meters — align with Piggy playbook where shared",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Assume persistent-meter variance similar to Piggy lineage until differentiated by scouts.",
+    "popularity_summary": "Seed stub — confirm floor frequency in your corridors.",
+    "edge_vectors": [
+      "Treat weak vs strong glass state framing as headline edge when meters are honest."
+    ],
+    "bankroll_angle": "Budget through base-game RTP while climbing persistent ladders.",
+    "verification_checklist": [
+      "Photo each hedge/piggy/heft meter grouping relevant on this SKU.",
+      "Denom + line rules for progressive/features."
+    ],
+    "common_pitfalls": [
+      "Cargo-culting Piggies numbers without photographing this cabinet’s glass."
+    ],
+    "nerf_angle": "**Medium**: Aristocrat marketing refreshes cabinets often."
+  },
+  "assets": {
+    "hero_relative": "Rich-Little-Piggies-Hens.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

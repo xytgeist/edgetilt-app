@@ -1,6 +1,6 @@
 /**
- * Merge `machine.release_year` and `guide_seed.card_gist` into each Slots/<slug>/card.meta.json
- * when missing, using defaults from src/constants/slotCardGists.js .
+ * Merge `machine.release_year` and `guide_seed.card_ev_threshold` into each Slots/<slug>/card.meta.json
+ * when missing, using defaults from src/constants/slotCardEvThreshold.js .
  *
  *   node scripts/backfill-slot-card-fields.mjs
  */
@@ -9,7 +9,7 @@ import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import { defaultCardGistForSlug, defaultReleaseYearForSlug } from "../src/constants/slotCardGists.js";
+import { defaultCardEvThresholdForSlug, defaultReleaseYearForSlug } from "../src/constants/slotCardEvThreshold.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
@@ -33,9 +33,19 @@ async function main() {
       changed = true;
     }
     json.guide_seed = json.guide_seed || {};
-    const gist = json.guide_seed.card_gist;
-    if (gist === undefined || gist === null || String(gist).trim() === "") {
-      json.guide_seed.card_gist = defaultCardGistForSlug(slug, json.machine.type);
+    const legacy = json.guide_seed.card_gist;
+    if (legacy !== undefined && legacy !== null && String(legacy).trim() !== "") {
+      const cur = json.guide_seed.card_ev_threshold;
+      if (cur === undefined || cur === null || String(cur).trim() === "") {
+        json.guide_seed.card_ev_threshold = String(legacy).trim();
+      }
+      delete json.guide_seed.card_gist;
+      changed = true;
+    }
+    const ev = json.guide_seed.card_ev_threshold;
+    if (ev === undefined || ev === null || String(ev).trim() === "") {
+      json.guide_seed.card_ev_threshold = defaultCardEvThresholdForSlug(slug, json.machine.type);
+      if (json.guide_seed.card_gist !== undefined) delete json.guide_seed.card_gist;
       changed = true;
     }
 

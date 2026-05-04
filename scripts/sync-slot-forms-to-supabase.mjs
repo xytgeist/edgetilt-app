@@ -353,14 +353,15 @@ async function main() {
       process.exit(1);
     }
 
+    const evLineRaw = g.card_ev_threshold ?? g.card_gist;
     const guidePayload = {
       machine_id: upserted.id,
       slug: g.slug,
       title: g.title,
       content_markdown: content_markdown,
-      card_gist:
-        typeof g.card_gist === "string" && String(g.card_gist).trim() !== ""
-          ? String(g.card_gist).trim()
+      card_ev_threshold:
+        typeof evLineRaw === "string" && String(evLineRaw).trim() !== ""
+          ? String(evLineRaw).trim()
           : null,
       published: g.published !== false,
       difficulty: m.difficulty ?? null,
@@ -372,8 +373,10 @@ async function main() {
     const { error: ge } = await supabase.from("guides").upsert(guidePayload, { onConflict: "slug" });
     if (ge) {
       console.error(`guides upsert ${g.slug}:`, ge.message);
-      if (ge.message?.includes("card_gist")) {
-        console.error("Hint: run supabase/guides_machine_card_fields.sql to add guides.card_gist.");
+      if (ge.message?.includes("card_ev_threshold") || ge.message?.includes("card_gist")) {
+        console.error(
+          "Hint: run supabase/guides_machine_card_fields.sql (adds guides.card_ev_threshold; renames legacy card_gist if present)."
+        );
       }
       process.exit(1);
     }

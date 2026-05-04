@@ -1,9 +1,9 @@
 /**
- * Default one-line card “gist” when `guides.card_gist` is null — and helpers for manifests.
- * Tune per slug in Supabase after sync or in `Slots/<slug>/card.meta.json` → guide_seed.card_gist.
+ * Default one-line +EV threshold when `guides.card_ev_threshold` is null — and helpers for manifests.
+ * Tune per slug in Supabase after sync or in `Slots/<slug>/card.meta.json` → guide_seed.card_ev_threshold.
  */
 
-export const TYPE_DEFAULT_CARD_GIST = {
+export const TYPE_DEFAULT_CARD_EV_THRESHOLD = {
   'Must-Hit-By': 'Counter tight vs cost per increment',
   'Persistent State': 'Strong meters / state vs cost to clear',
   'Lock Game': 'Lock package worth the buy-in',
@@ -13,7 +13,7 @@ export const TYPE_DEFAULT_CARD_GIST = {
 }
 
 /** Curated overrides — short operator phrases. */
-export const SLUG_CARD_GIST = {
+export const SLUG_CARD_EV_THRESHOLD = {
   'buffalo-link': 'Play any 1400+',
   'phoenix-link': 'Cheap path to must-hit award',
   'stack-up-pays': 'Stacks / meters beat the grind tax',
@@ -27,18 +27,18 @@ export const SLUG_RELEASE_YEAR = {
   'plants-vs-zombies-3d': 2016,
 }
 
-/** Map messy DB/UI type strings onto keys in TYPE_DEFAULT_CARD_GIST. */
-export function gistTypeKey(type) {
+/** Map messy DB/UI type strings onto keys in TYPE_DEFAULT_CARD_EV_THRESHOLD. */
+export function evThresholdTypeKey(type) {
   if (!type) return 'Other'
   if (String(type).includes('Must-Hit-By')) return 'Must-Hit-By'
-  if (TYPE_DEFAULT_CARD_GIST[type] != null) return type
+  if (TYPE_DEFAULT_CARD_EV_THRESHOLD[type] != null) return type
   return 'Other'
 }
 
-export function defaultCardGistForSlug(slug, type) {
-  if (slug && SLUG_CARD_GIST[slug]) return SLUG_CARD_GIST[slug]
-  const t = gistTypeKey(type)
-  return TYPE_DEFAULT_CARD_GIST[t]
+export function defaultCardEvThresholdForSlug(slug, type) {
+  if (slug && SLUG_CARD_EV_THRESHOLD[slug]) return SLUG_CARD_EV_THRESHOLD[slug]
+  const t = evThresholdTypeKey(type)
+  return TYPE_DEFAULT_CARD_EV_THRESHOLD[t]
 }
 
 export function defaultReleaseYearForSlug(slug) {

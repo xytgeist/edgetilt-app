@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "must-hit-by-aig",
+    "name": "Must Hit By (AIG staging)",
+    "manufacturer": "Various",
+    "type": "Must-Hit-By Mystery Progressive",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Medium",
+    "has_calculator": true,
+    "calculator_slug": "mhb",
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "must-hit-by-aig",
+    "title": "Must Hit By (AIG staging)",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_ev_threshold": "Asset staging folder — rename slug/title once manufacturer is pinned",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Placeholder: confirm OEM (AGS/Ainsworth/IGT/etc.) on glass before treating heuristics as live.",
+    "popularity_summary": "Seed stub — replace after title identification.",
+    "edge_vectors": [
+      "Manufacturer-specific must-hit semantics differ widely — swap this stub for the right family playbook."
+    ],
+    "bankroll_angle": "Do not assume progressive economics until ladder + denom rules are confirmed.",
+    "verification_checklist": [
+      "Read manufacturer and progressive labels on cabinet.",
+      "Photo ladders and denomination / eligibility fine print."
+    ],
+    "common_pitfalls": [
+      "Using this folder title (`aig`) as if it mapped to a known OEM without verification."
+    ],
+    "nerf_angle": "**Medium** until narrowed to a specific progressive family."
+  },
+  "assets": {
+    "hero_relative": "Main Image.png",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

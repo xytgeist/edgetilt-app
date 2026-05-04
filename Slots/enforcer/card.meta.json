@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_gist": "Counter tight vs cost per increment"
+    "card_ev_threshold": "Counter tight vs cost per increment"
   },
   "ap": {
     "volatility_summary": "Beginner play profile; nerf risk rated **Low** for marketing/paytable drift.",

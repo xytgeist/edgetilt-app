@@ -22,7 +22,7 @@ Other scripts:
 | `npm run build` | Production build |
 | `npm run preview` | Preview the production build |
 | `npm run lint` | ESLint |
-| `npm run slots:backfill-card-fields` | Add `card_gist` + `release_year` to manifests missing them |
+| `npm run slots:backfill-card-fields` | Add `card_ev_threshold` + `release_year` to manifests missing them |
 | `npm run slots:sync:test` / `slots:sync:production` | Upsert manifests to **test** or **prod** (see `.env.supabase.*`) |
 | `npm run slots:sync:test:dry` / `slots:sync:production:dry` | Dry-run for those targets |
 | `npm run slots:sync:test:dry:quiet` / `slots:sync:production:dry:quiet` | Same, without dumping every manifest JSON (short output) |
@@ -36,7 +36,7 @@ Other scripts:
 
 Run schema-related SQL when you add or change tables/columns/policies—not on every content edit. Examples:
 
-- `supabase/guides_machine_card_fields.sql` — adds optional columns if missing (safe to re-run): **`machines`**: `volatility_index`, `popularity_summary`, **`release_year`** (year only); **`guides`**: **`card_gist`** (single-line cue shown on AP guide cards). The app falls back gracefully if older DBs omit some of these until you run this script.
+- `supabase/guides_machine_card_fields.sql` — adds optional columns if missing (safe to re-run): **`machines`**: `volatility_index`, `popularity_summary`, **`release_year`** (year only); **`guides`**: **`card_ev_threshold`** (+EV threshold line on AP guide cards; renames legacy **`card_gist`** when present). The app falls back gracefully if older DBs omit some optional columns until you run this script.
 
 Treat other files in `supabase/` the same way: run them when the file’s purpose matches what your database still needs (new tables, RLS, seeds).
 
@@ -46,10 +46,10 @@ Treat other files in `supabase/` the same way: run them when the file’s purpos
 
 Each game has a **lowercase kebab-case** folder matching the machine `slug`, for example `Slots/buffalo-link/`. Inside:
 
-- `card.meta.json` — machine fields (including optional **`release_year`**), **`guide_seed.card_gist`** (one phrase: when to play, e.g. Buffalo **Play any 1400+**), advantage-play **`ap`** blocks, asset hints.
+- `card.meta.json` — machine fields (including optional **`release_year`**), **`guide_seed.card_ev_threshold`** (one phrase: +EV threshold / when to play, e.g. Buffalo **Play any 1400+**), advantage-play **`ap`** blocks, asset hints.
 - `guide.md` — markdown synced to `guides.content_markdown`.
 
-**Gist defaults:** curated per slug / type fallbacks live in **`src/constants/slotCardGists.js`**. After adding machines, either edit each manifest’s `card_gist` or run **`npm run slots:backfill-card-fields`** once to populate missing **`card_gist`** / **`release_year`** from those defaults (`release_year` stays `null` unless listed in constants).
+**+EV threshold defaults:** curated per slug / type fallbacks live in **`src/constants/slotCardEvThreshold.js`**. After adding machines, either edit each manifest’s `card_ev_threshold` or run **`npm run slots:backfill-card-fields`** once to populate missing **`card_ev_threshold`** / **`release_year`** from those defaults (`release_year` stays `null` unless listed in constants).
 
 Legacy asset folders with mixed case or non-slug names are ignored by the sync script; keep the canonical slug folder for anything that should sync.
 
@@ -147,4 +147,4 @@ On a case-insensitive drive, mixed-case legacy folders (for example `Phoenix-Lin
 
 - `scripts/generate-slot-card-manifests.mjs` — manifest shape and calculator overrides.
 - `scripts/sync-slot-forms-to-supabase.mjs` — upsert columns and CLI flags.
-- `src/constants/slotCardGists.js` — default card one-liners (`gist`) per type / slug for UI + manifests.
+- `src/constants/slotCardEvThreshold.js` — default card +EV threshold one-liners per type / slug for UI + manifests.

@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_gist": "Lock EV clears buy-in hurdle"
+    "card_ev_threshold": "Lock EV clears buy-in hurdle"
   },
   "ap": {
     "volatility_summary": "Beginner play profile; nerf risk rated **Low** for marketing/paytable drift.",

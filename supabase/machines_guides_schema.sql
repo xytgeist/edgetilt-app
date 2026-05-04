@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS guides (
   slug text UNIQUE NOT NULL,
   title text NOT NULL,
   content_markdown text NOT NULL,
-  card_gist text,
+  card_ev_threshold text,
   difficulty text,
   last_updated date DEFAULT CURRENT_DATE,
   published boolean DEFAULT true,

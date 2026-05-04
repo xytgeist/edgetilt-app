@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "must-hit-by-ags",
+    "name": "AGS Must Hit By",
+    "manufacturer": "AGS",
+    "type": "Must-Hit-By Mystery Progressive",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Medium",
+    "has_calculator": true,
+    "calculator_slug": "mhb",
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "must-hit-by-ags",
+    "title": "AGS Must Hit By",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_ev_threshold": "Mystery MH progressives — clock seed & eligibility first",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Mystery must-hit ladders: scouting reduces unknowns but spin/battle volatility stays high.",
+    "popularity_summary": "Seed stub — revise from floor sightings.",
+    "edge_vectors": [
+      "Treat glass seed, increment rules, and eligibility as authoritative vs generic AP lore."
+    ],
+    "bankroll_angle": "Budget for base-game RTP while chasing progressive clock / mystery path economics.",
+    "verification_checklist": [
+      "Photo progressive panels and denomination / max-bet requirements.",
+      "Capture title-specific help/rules if jurisdiction shows them."
+    ],
+    "common_pitfalls": [
+      "Applying IGT/Ainsworth heuristics blindly to an AGS package."
+    ],
+    "nerf_angle": "**Medium**: packaging and thresholds can drift by market."
+  },
+  "assets": {
+    "hero_relative": "Main IMage.png",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

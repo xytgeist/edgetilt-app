@@ -20,7 +20,7 @@
     "title": "Buffalo Eagle Ascension",
     "published": true,
     "card_summary_bullets": [],
-    "card_gist": "Strong meters / state vs cost to clear",
+    "card_ev_threshold": "Strong meters / state vs cost to clear",
     "content_markdown_file": "guide.md",
     "last_updated": null
   },

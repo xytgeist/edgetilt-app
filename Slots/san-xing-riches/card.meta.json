@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_gist": "Strong meters / state vs cost to clear"
+    "card_ev_threshold": "Strong meters / state vs cost to clear"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **Low** for marketing/paytable drift.",

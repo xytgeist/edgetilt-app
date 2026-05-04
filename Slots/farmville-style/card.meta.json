@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_gist": "Progress far along vs price to finish"
+    "card_ev_threshold": "Progress far along vs price to finish"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",

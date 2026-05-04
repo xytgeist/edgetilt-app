@@ -31,7 +31,7 @@ import {
   AINSWORTH_MUST_HIT_BY_DEMO_SLUG,
   ainsworthMustHitByGuideMarkdown,
 } from './mustHitByGuideDemo'
-import { defaultCardGistForSlug } from '../../constants/slotCardGists'
+import { defaultCardEvThresholdForSlug } from '../../constants/slotCardEvThreshold'
 
 function formatGuideDate(iso) {
   if (!iso) return '—'
@@ -40,6 +40,65 @@ function formatGuideDate(iso) {
   } catch {
     return '—'
   }
+}
+
+function IconCalendar({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M5.5 3.25v1.5m9-1.5v1.5m-10.25 3h10.5m-12 0v7.5a1.5 1.5 0 001.5 1.5h11a1.5 1.5 0 001.5-1.5v-7.5m-14 0v-1.5a1.5 1.5 0 011.5-1.5h11a1.5 1.5 0 011.5 1.5v1.5m-14 0h14"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function IconClock({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <circle cx="10" cy="10" r="6.25" stroke="currentColor" strokeWidth="1.25" />
+      <path
+        d="M10 7v3.25l2.25 1.25"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function IconChevronFold({ expanded, className }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      {expanded ? (
+        <path
+          d="M5 12.5l5-5 5 5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <path
+          d="M5 7.5l5 5 5-5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  )
 }
 
 /** Shipped with the app when Supabase has no published row for that slug yet (see `mergeLocalGuideDemos`). */
@@ -263,12 +322,14 @@ function mergeLocalGuideDemos(rows) {
   return merged
 }
 
-/** One-line operator cue — DB `guides.card_gist`, else catalog default from slug/type. */
-function cardGistForRow(row) {
-  const raw = typeof row.card_gist === 'string' ? row.card_gist.trim() : ''
-  if (raw) return raw
+/** One-line +EV threshold — DB `guides.card_ev_threshold` (legacy `card_gist`), else catalog default from slug/type. */
+function cardEvThresholdForRow(row) {
+  const fromNew = typeof row.card_ev_threshold === 'string' ? row.card_ev_threshold.trim() : ''
+  if (fromNew) return fromNew
+  const legacy = typeof row.card_gist === 'string' ? row.card_gist.trim() : ''
+  if (legacy) return legacy
   const m = machineForGuide(row)
-  if (m?.slug) return defaultCardGistForSlug(m.slug, m.type)
+  if (m?.slug) return defaultCardEvThresholdForSlug(m.slug, m.type)
   return TYPE_LINE_FALLBACK_GUIDE_HINT
 }
 
@@ -552,7 +613,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
           slug,
           title,
           content_markdown,
-          card_gist,
+          card_ev_threshold,
           last_updated,
           created_at,
           updated_at,
@@ -584,6 +645,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
         const missingOptionalCols =
           error.message?.includes('volatility_index') ||
           error.message?.includes('popularity_summary') ||
+          error.message?.includes('card_ev_threshold') ||
           error.message?.includes('card_gist') ||
           error.message?.includes('release_year')
         if (missingOptionalCols) {
@@ -595,6 +657,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
               slug,
               title,
               content_markdown,
+              card_gist,
               last_updated,
               created_at,
               updated_at,
@@ -706,7 +769,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
             const slug = m?.slug || row.slug
             const expanded = expandedSlug === slug
             const calcKey = resolveCalculatorKey(m)
-            const gistLine = cardGistForRow(row)
+            const evThresholdLine = cardEvThresholdForRow(row)
             const accent = cardAccent(slug)
             const ringFocus =
               slug === 'phoenix-link'
@@ -753,10 +816,26 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         }
                         onError={guideHeroImgOnError}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
-                      <div className="absolute bottom-3 left-4 right-4">
-                        <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md">{m?.name || row.title}</h2>
-                        <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>{m?.manufacturer || '—'}</div>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
+                        <div className="flex items-end justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
+                              {m?.name || row.title}
+                            </h2>
+                            <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
+                              {m?.manufacturer || '—'}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right leading-tight pb-px">
+                            <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">
+                              Released
+                            </div>
+                            <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
+                              {m?.release_year != null ? m.release_year : '—'}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -770,13 +849,9 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Popularity</div>
                           <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{popularityLabel(row)}</div>
                         </div>
-                        <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
+                        <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Type</div>
                           <div className="text-zinc-200 font-semibold mt-0.5 leading-snug">{m?.type || '—'}</div>
-                        </div>
-                        <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
-                          <div className="text-zinc-500 font-semibold uppercase tracking-wide">Released</div>
-                          <div className="text-zinc-100 font-bold mt-0.5">{m?.release_year ?? '—'}</div>
                         </div>
                         {row.known_titles_line ? (
                           <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
@@ -787,29 +862,56 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                       </div>
 
                       <div className="rounded-xl bg-zinc-950/70 px-3 py-2.5 border border-zinc-800/90">
-                        <div className="text-zinc-500 text-[11px] font-semibold uppercase tracking-wide">Gist</div>
-                        <p className={`text-sm text-zinc-100 font-semibold leading-snug mt-1 ${accent.strong}`}>{gistLine}</p>
+                        <div className="text-zinc-500 text-[11px] font-semibold uppercase tracking-wide">+EV Threshold</div>
+                        <p className={`text-sm text-zinc-100 font-semibold leading-snug mt-1 ${accent.strong}`}>{evThresholdLine}</p>
                       </div>
 
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">
+                      <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         {isLocalDemoGuide(row) ? (
-                          <span className="text-zinc-400 leading-snug w-full">
+                          <span className="text-zinc-400 text-[11px] leading-snug rounded-xl border border-zinc-700/55 bg-zinc-900/50 px-3 py-2">
                             Added / Updated show database dates after this guide exists in Supabase (you are seeing the
                             bundled local demo for now).
                           </span>
                         ) : (
-                          <>
-                            <span>
-                              Added <span className="text-zinc-400">{formatGuideDate(row.created_at)}</span>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-800/35 bg-emerald-950/25 px-2.5 py-1.5 shadow-sm shadow-black/20">
+                              <IconCalendar className="h-3.5 w-3.5 shrink-0 text-emerald-400/90" />
+                              <span className="flex flex-col gap-0.5 leading-none sm:flex-row sm:items-baseline sm:gap-1.5">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/90">
+                                  Added
+                                </span>
+                                <span className="text-[11px] font-semibold tabular-nums text-zinc-200">
+                                  {formatGuideDate(row.created_at)}
+                                </span>
+                              </span>
                             </span>
-                            <span>
-                              Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at)}</span>
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-sky-800/35 bg-sky-950/20 px-2.5 py-1.5 shadow-sm shadow-black/20">
+                              <IconClock className="h-3.5 w-3.5 shrink-0 text-sky-400/90" />
+                              <span className="flex flex-col gap-0.5 leading-none sm:flex-row sm:items-baseline sm:gap-1.5">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-sky-400/90">
+                                  Updated
+                                </span>
+                                <span className="text-[11px] font-semibold tabular-nums text-zinc-200">
+                                  {formatGuideDate(row.updated_at)}
+                                </span>
+                              </span>
                             </span>
-                          </>
+                          </div>
                         )}
+                        <div
+                          className={`inline-flex items-center justify-center gap-1.5 self-start rounded-xl border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest shadow-sm shadow-black/15 sm:self-auto ${
+                            expanded
+                              ? 'border-zinc-600/60 bg-zinc-800/80 text-zinc-300'
+                              : 'border-amber-600/35 bg-amber-950/30 text-amber-200/90'
+                          }`}
+                        >
+                          <IconChevronFold
+                            expanded={expanded}
+                            className={expanded ? 'h-3.5 w-3.5 text-zinc-400' : 'h-3.5 w-3.5 text-amber-400/90'}
+                          />
+                          {expanded ? 'Tap to collapse' : 'Tap for full guide'}
+                        </div>
                       </div>
-
-                      <div className="text-zinc-500 text-xs font-medium">{expanded ? 'Tap to collapse' : 'Tap for full guide'}</div>
                     </div>
                   </button>
 

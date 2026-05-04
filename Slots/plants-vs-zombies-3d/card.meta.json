@@ -20,7 +20,7 @@
     "title": "Plants vs Zombies 3D: Ancient Egypt",
     "published": true,
     "card_summary_bullets": [],
-    "card_gist": "Brain meter 150–200+ on your tier",
+    "card_ev_threshold": "Brain meter 150–200+ on your tier",
     "content_markdown_file": "guide.md",
     "last_updated": null
   },

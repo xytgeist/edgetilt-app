@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "cash-falls",
+    "name": "Cash Falls",
+    "manufacturer": "Light & Wonder",
+    "type": "Persistent State",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Medium",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "cash-falls",
+    "title": "Cash Falls",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_ev_threshold": "Link-style meters — scout state vs denom before you commit",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Intermediate play profile; confirm family rules and denomination on glass.",
+    "popularity_summary": "Seed stub — revise after you scout floor presence.",
+    "edge_vectors": [
+      "Persistent / link semantics: treat signage and meter photos as authoritative for this revision."
+    ],
+    "bankroll_angle": "Budget for persistence chase and base-game RTP while meters move.",
+    "verification_checklist": [
+      "Photo meters and marquee; confirm denom and required bet ladder.",
+      "Compare help screen to assumptions in this stub."
+    ],
+    "common_pitfalls": [
+      "Eyeballing a single ladder without verifying eligibility rules."
+    ],
+    "nerf_angle": "**Medium**: marketing/paytable drift is plausible for link-style families."
+  },
+  "assets": {
+    "hero_relative": "Cash Falls Image.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

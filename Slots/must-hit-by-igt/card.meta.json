@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "must-hit-by-igt",
+    "name": "IGT Must Hit By",
+    "manufacturer": "IGT",
+    "type": "Must-Hit-By Mystery Progressive",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Very Common",
+    "nerf_risk": "Medium",
+    "has_calculator": true,
+    "calculator_slug": "mhb",
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "must-hit-by-igt",
+    "title": "IGT Must Hit By",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_ev_threshold": "Classic IGT MH ladder economics — denom & eligibility first",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Wide floor presence keeps scouting relevant; jackpot path variance remains brutal.",
+    "popularity_summary": "Treat as broadly available until your market proves otherwise.",
+    "edge_vectors": [
+      "IGT-specific thresholds and marquee behavior vary by packaging — prioritize photos + help panels."
+    ],
+    "bankroll_angle": "Size for base RTP while metering clock / jackpot spin frequency.",
+    "verification_checklist": [
+      "Progressive denomination stack and eligibility text.",
+      "Title-specific quirks (bonus spin vs base-only increment, etc.) from help."
+    ],
+    "common_pitfalls": [
+      "Applying one IGT SKU’s increments to another without reading glass."
+    ],
+    "nerf_angle": "**Medium**: jurisdictional ladders and payouts change over time."
+  },
+  "assets": {
+    "hero_relative": "IGT_Main_Image.png",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

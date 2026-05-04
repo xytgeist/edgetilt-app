@@ -10,7 +10,7 @@ import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import { defaultCardGistForSlug, defaultReleaseYearForSlug } from "../src/constants/slotCardGists.js";
+import { defaultCardEvThresholdForSlug, defaultReleaseYearForSlug } from "../src/constants/slotCardEvThreshold.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
@@ -266,7 +266,7 @@ function buildManifest(m) {
       title: m.name,
       published: true,
       card_summary_bullets: cardSummaryBullets(m),
-      card_gist: defaultCardGistForSlug(m.slug, m.type),
+      card_ev_threshold: defaultCardEvThresholdForSlug(m.slug, m.type),
       content_markdown_file: "guide.md",
       last_updated: null,
     },

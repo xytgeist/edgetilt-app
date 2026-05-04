@@ -333,41 +333,17 @@ function machineForGuide(row) {
   return Array.isArray(m) ? m[0] ?? null : m
 }
 
-/** Treat generic buffalo placeholder thumbs as “unset” so game-specific `defaultHeroSrc` wins. */
-function normalizeGuideThumbUrl(url, machineSlug) {
-  if (url == null || String(url).trim() === '') return null
-  const u = String(url).trim()
-  const isBuffaloIcon = u === '/buffalo-icon.png' || u.endsWith('/buffalo-icon.png')
-  if (machineSlug && machineSlug !== 'buffalo-link' && isBuffaloIcon) return null
-  return u
-}
-
 function heroImage(row) {
   const machine = machineForGuide(row)
   const ms = machine?.slug
-  const g = normalizeGuideThumbUrl(row.thumbnail_url, ms)
-  const mt = normalizeGuideThumbUrl(machine?.thumbnail_url, ms)
-  return g || mt || defaultHeroSrc(ms)
+  return row.thumbnail_url || machine?.thumbnail_url || defaultHeroSrc(ms)
 }
 
 function guideHeroImgOnError(e) {
   const el = e.currentTarget
-  const slug = el.dataset.machineSlug || ''
-  const def = defaultHeroSrc(slug)
-  const defFile = def.replace(/^\//, '')
-  if (el.dataset.heroStep === 'retry') {
-    el.dataset.heroStep = 'buffalo'
-    el.src = '/buffalo-icon.png'
-    return
-  }
-  el.dataset.heroStep = 'retry'
-  const cur = el.getAttribute('src') || ''
-  if (defFile && cur.includes(defFile)) {
-    el.dataset.heroStep = 'buffalo'
-    el.src = '/buffalo-icon.png'
-  } else {
-    el.src = def
-  }
+  if (el.dataset.fallback === '1') return
+  el.dataset.fallback = '1'
+  el.src = '/buffalo-icon.png'
 }
 
 function heroGradientClass(machineSlug) {
@@ -427,25 +403,6 @@ function cardAccent(machineSlug) {
     subtitle: 'text-amber-200/90',
     expandedBorder: 'border-amber-500/50 shadow-lg shadow-amber-900/20',
   }
-}
-
-function MetaDatesRow({ row, m }) {
-  return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">
-      <span className="inline-flex items-center gap-1">
-        <span aria-hidden>📝</span>
-        <span>
-          Added <span className="text-zinc-400">{formatGuideDate(row.created_at || m?.created_at)}</span>
-        </span>
-      </span>
-      <span className="inline-flex items-center gap-1">
-        <span aria-hidden>🔄</span>
-        <span>
-          Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at || row.last_updated)}</span>
-        </span>
-      </span>
-    </div>
-  )
 }
 
 function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted }) {
@@ -766,8 +723,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                       <img
                         src={heroImage(row)}
                         alt=""
-                        className="h-full w-full object-cover"
-                        data-machine-slug={slug}
+                        className="h-full w-full object-cover opacity-95"
                         onError={guideHeroImgOnError}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
@@ -808,12 +764,16 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         <p className={`text-sm text-zinc-100 font-semibold leading-snug mt-1 ${accent.strong}`}>{gistLine}</p>
                       </div>
 
-                      <MetaDatesRow row={row} m={m} />
-
-                      <div className="flex items-center gap-2 text-zinc-500 text-xs font-medium">
-                        <span aria-hidden>👆</span>
-                        <span>{expanded ? 'Tap to collapse' : 'Tap for full guide'}</span>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">
+                        <span>
+                          Added <span className="text-zinc-400">{formatGuideDate(row.created_at || m?.created_at)}</span>
+                        </span>
+                        <span>
+                          Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at || row.last_updated)}</span>
+                        </span>
                       </div>
+
+                      <div className="text-zinc-500 text-xs font-medium">{expanded ? 'Tap to collapse' : 'Tap for full guide'}</div>
                     </div>
                   </button>
 

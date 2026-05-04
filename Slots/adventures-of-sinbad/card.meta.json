@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "adventures-of-sinbad",
+    "name": "Adventures of Sinbad!",
+    "manufacturer": "Azure Gaming",
+    "type": "Hybrid",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Low",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "adventures-of-sinbad",
+    "title": "Adventures of Sinbad!",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_gist": "2 bosses down; Cyclops close on map",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Hybrid map + RNG battles + jackpot wedge: scouting helps, but variance on monster fights and jackpot spin remains large.",
+    "popularity_summary": "Often spotted in smaller / mid-tier rooms; comparatively less locals pressure than marquee bonus-meter games.",
+    "edge_vectors": [
+      "Two-seat linked cabinet: separate bonus meters — **scout the side you intend to buy**.",
+      "Adventure spins (three Adventure Time icons) wheel-move the map ~1–6 spaces; defeating **Skeleton → Snake → Cyclops** opens a jackpot **chance** spin, not a lock.",
+      "Stronger scouting heuristic (trip report): **two of three monsters defeated** and **Cyclops positioned close** on your path so fewer clean map hits are wasted."
+    ],
+    "bankroll_angle": "Treat as incremental-reveal + RNG chain: battles can fail after a \"good\" move; jackpot spin can brick even after Cyclops clears. Budget for full whiffs.",
+    "verification_checklist": [
+      "Photo monster states + jackpot seed if shown; confirm bet denomination and any per-seat linkage.",
+      "Read help/rules for jackpot ladder (author cites typical $500+ seed, rarely >$600 — verify)."
+    ],
+    "common_pitfalls": [
+      "**Overshoot:** landing past the Cyclops forces waiting for another lap.",
+      "**Battle loss:** stepping on Cyclops ≠ guaranteed kill.",
+      "**Jackpot whiff:** post-battle spin can pay small wedges ($5–$100 on a cited 50¢ config) vs jackpot.",
+      "**Wrong seat:** scouting partner-side meters without intending to fund that wager."
+    ],
+    "nerf_angle": "**Low–Medium** procedural risk via marketing/paytable refresh; scarcity means less AP pressure but also fewer playable instances."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

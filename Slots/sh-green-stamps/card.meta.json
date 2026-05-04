@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "sh-green-stamps",
+    "name": "S&H Green Stamps",
+    "manufacturer": "Classic",
+    "type": "Accumulator",
+    "difficulty": "Beginner",
+    "vegas_availability": "Rare (nostalgia)",
+    "nerf_risk": "Low",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "sh-green-stamps",
+    "title": "S&H Green Stamps",
+    "published": true,
+    "card_summary_bullets": [
+      "Accumulator: Stamp / book / collector completion paths — total cost to finish vs implied value.",
+      "Floor / rarity: Rare (nostalgia) — re-verify same visit.",
+      "Nerf: Low — Classic / jurisdictional packaging changes outcomes."
+    ],
+    "content_markdown_file": "guide.md",
+    "last_updated": null,
+    "card_gist": "Progress far along vs price to finish"
+  },
+  "ap": {
+    "volatility_summary": "Beginner play profile; nerf risk rated **Low** for marketing/paytable drift.",
+    "popularity_summary": "Floor presence (from seed): **Rare (nostalgia)**. Treat as marketing signal, not proof of edge.",
+    "edge_vectors": [
+      "Stamp / book / collector completion paths — total cost to finish vs implied value.",
+      "Rare titles: liquidity and nerf risk often dominate EV."
+    ],
+    "bankroll_angle": "Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.",
+    "verification_checklist": [
+      "Photo: collection rules, reset behavior, denom."
+    ],
+    "common_pitfalls": [
+      "Starting a deep accumulator without a clear finish budget."
+    ],
+    "nerf_angle": "Nerf risk **Low**: assume paytables, caps, and marketing can move without notice."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "regal-link",
+    "name": "Regal Link",
+    "manufacturer": "IGT",
+    "type": "Hybrid",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Medium",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "regal-link",
+    "title": "Regal Link",
+    "published": true,
+    "card_summary_bullets": [
+      "Hybrid: Hybrid = combine MHB / persistent heuristics: which axis actually carries the equity on this cabinet?",
+      "Floor / rarity: Common — re-verify same visit.",
+      "Nerf: Medium — IGT / jurisdictional packaging changes outcomes."
+    ],
+    "content_markdown_file": "guide.md",
+    "last_updated": null,
+    "card_gist": "Best axis lines up cheap (meters / prizes)"
+  },
+  "ap": {
+    "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",
+    "popularity_summary": "Floor presence (from seed): **Common**. Treat as marketing signal, not proof of edge.",
+    "edge_vectors": [
+      "Hybrid = combine MHB / persistent heuristics: which axis actually carries the equity on this cabinet?"
+    ],
+    "bankroll_angle": "Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.",
+    "verification_checklist": [
+      "Photo both progressive-style readouts and any persistent meters."
+    ],
+    "common_pitfalls": [
+      "Modeling only one half of the hybrid and ignoring the other."
+    ],
+    "nerf_angle": "Nerf risk **Medium**: assume paytables, caps, and marketing can move without notice."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

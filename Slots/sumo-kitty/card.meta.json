@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "sumo-kitty",
+    "name": "Sumo Kitty",
+    "manufacturer": "Ainsworth",
+    "type": "Must-Hit-By",
+    "difficulty": "Beginner",
+    "vegas_availability": "Common",
+    "nerf_risk": "Low",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "sumo-kitty",
+    "title": "Sumo Kitty",
+    "published": true,
+    "card_summary_bullets": [
+      "Must-Hit-By: Counter / must-hit distance vs cost-per-increment is the primary +EV lens; verify increment and reset on the glass.",
+      "Floor / rarity: Common — re-verify same visit.",
+      "Nerf: Low — Ainsworth / jurisdictional packaging changes outcomes."
+    ],
+    "content_markdown_file": "guide.md",
+    "last_updated": null,
+    "card_gist": "Counter tight vs cost per increment"
+  },
+  "ap": {
+    "volatility_summary": "Beginner play profile; nerf risk rated **Low** for marketing/paytable drift.",
+    "popularity_summary": "Floor presence (from seed): **Common**. Treat as marketing signal, not proof of edge.",
+    "edge_vectors": [
+      "Counter / must-hit distance vs cost-per-increment is the primary +EV lens; verify increment and reset on the glass.",
+      "Average bonus / must-hit pay assumptions dominate — stale assumptions lie.",
+      "Walk-away discipline: volatility around the hit window can erase paper EV."
+    ],
+    "bankroll_angle": "Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.",
+    "verification_checklist": [
+      "Photo: must-hit ceiling, current counter, denom set, max-bet if tied to eligibility.",
+      "Confirm marketing progressive vs machine-level caps for this bank."
+    ],
+    "common_pitfalls": [
+      "Chasing a 'close' counter with wrong denom or ineligible bet.",
+      "Using last month's paytable photo for today's session."
+    ],
+    "nerf_angle": "Nerf risk **Low**: assume paytables, caps, and marketing can move without notice."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

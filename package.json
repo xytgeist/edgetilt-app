@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "slots:generate": "node scripts/generate-slot-card-manifests.mjs",
+    "slots:sync": "node scripts/sync-slot-forms-to-supabase.mjs",
+    "slots:sync:dry": "node scripts/sync-slot-forms-to-supabase.mjs --dry-run",
+    "slots:backfill-card-fields": "node scripts/backfill-slot-card-fields.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.0",

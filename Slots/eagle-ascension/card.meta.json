@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "eagle-ascension",
+    "name": "Buffalo Eagle Ascension",
+    "manufacturer": "Aristocrat",
+    "type": "Persistent State",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Very Common",
+    "nerf_risk": "High",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "eagle-ascension",
+    "title": "Buffalo Eagle Ascension",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_gist": "Strong meters / state vs cost to clear",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Intermediate profile; Aristocrat persistent-family volatility with **High** rated nerf / marketing drift.",
+    "popularity_summary": "**Very Common** placement when installed — scarcity can still apply by market.",
+    "edge_vectors": [
+      "**Eagle ladder / ascension signatures** alongside buffalo meters — scout which axis carries equity on **this** theme revision.",
+      "Cross-meter correlation: one favorable read can be undone by depleted neighbors.",
+      "Base-game tax while progressing persistent features — denom and line qualification must match the state you modeled."
+    ],
+    "bankroll_angle": "Size for worst-case drawdown through dry buffalo stretches and partial ladder setbacks; verify max-bet eligibility same visit.",
+    "verification_checklist": [
+      "Photo ladders, eagle/buffalo meters, progressive panels if tied to persistence.",
+      "Confirm package name matches **Buffalo Eagle Ascension** vs base **Buffalo Ascension** on the marquee."
+    ],
+    "common_pitfalls": [
+      "Mixing Ascension vs Eagle Ascension rule sets from memory.",
+      "Scouting one meter while ignoring depleted companion persistence."
+    ],
+    "nerf_angle": "**High** procedural risk — assume paytables, caps, or feature packaging change with jurisdiction."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

@@ -23,7 +23,7 @@ export const agsMustHitByGuideMarkdown = `## What you are looking at
 
 The **AGS caveat** is spelled out in context on **[Must-Hit-By Progressives on Ainsworth Slots](https://wizardofodds.com/games/slots/mystery-jackpot-ainsworth/)** (Michael Shackleford, Wizard of Odds), because that page contrasts **Ainsworth-style uniform** behavior with **AGS-style** behavior.
 
-Hero art for this card is sourced from **Slots/Must Hit By AGS/Main IMage.png** in your repo (served as **/ags-must-hit-by-hero.png**).
+Hero art for this card is sourced from **Slots/must-hit-by-ags/Main IMage.png** in your repo (served as **/ags-must-hit-by-hero.png**).
 
 ## Games and cabinets you may hear in the same conversation
 

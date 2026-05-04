@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "plants-vs-zombies-3d",
+    "name": "Plants vs Zombies 3D: Ancient Egypt",
+    "manufacturer": "IGT",
+    "type": "Accumulator",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Very Common",
+    "nerf_risk": "Medium",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": 2016
+  },
+  "guide_seed": {
+    "slug": "plants-vs-zombies-3d",
+    "title": "Plants vs Zombies 3D: Ancient Egypt",
+    "published": true,
+    "card_summary_bullets": [],
+    "card_gist": "Brain meter 150–200+ on your tier",
+    "content_markdown_file": "guide.md",
+    "last_updated": null
+  },
+  "ap": {
+    "volatility_summary": "Bonus-meter chase with active decay — session risk spikes if brains stall while you fund spins.",
+    "popularity_summary": "Heavy floor presence circa launch; fierce competition depressed ‘standard’ playable meter thresholds in crowded markets.",
+    "edge_vectors": [
+      "Primary meter: bar hits **500** points and awards **one of four** bonuses (Camel Zombie, Defend Yourself, Free Games, Zombie Uprising — **Uprising rarer**, often cited strongest). Bonus usually pays *something meaningful* versus empty consolation.",
+      "**Brains on reels 1, 3, 5** add **+54** meter points ([AdvantageSlots recap](https://www.advantageslots.com/the-zombies-are-coming-how-to-advantage-play-plants-vs-zombies-3d-by-igt/)). Spins **without** a brain deduct **−12** — you can bleed a ‘good’ meter if brains vanish.",
+      "**Five wager steps ⇒ five isolated meters.** Scout playable numbers on **the tier you will actually bankroll**, not whichever bar photographs best.",
+      "Crowding-adjusted heuristic: longtime consensus **~200+**; AdvantageSlots notes hustle scenes relaxing toward **150+** — still verify against your cost model."
+    ],
+    "bankroll_angle": "Model decay cycles + denom lock-in before sitting; quitting rules matter as much as entry threshold when −12 churn is live.",
+    "verification_checklist": [
+      "Photo meter + keyed bet indicator together.",
+      "Confirm brain reel positions, increments, deductions, bonus family from on-machine help.",
+      "After any wager change, re-read meter belongs to active step."
+    ],
+    "common_pitfalls": [
+      "Mis-reading another player’s dormant high meter.",
+      "Assuming TravelUpdate-era **56**-point folklore vs payable **54** physics on contemporary ROM.",
+      "Ignoring competitive compression of ‘good enough’ meter readings."
+    ],
+    "nerf_angle": "**Medium**: manufacturer / casino refresh can alter ladders; AP density changes what meter reading clears the logistical hurdle rate."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

@@ -1,0 +1,28 @@
+# Cash Machine Lock — advantage play notes (stub)
+
+_Generated seed — edit freely. Sync to Supabase with `npm run slots:sync` when ready._
+
+## What you are hunting
+
+Cash Machine Lock is catalogued as **Lock Game** (Light & Wonder). Edge lives where **state on the glass** lines up with **correct denom / bet qualification** and **fresh paytable truth** for this bank.
+
+## +EV checklist
+
+- Lock cycles and reset economics — know what you buy when you enter the lock path.
+- Completion vs abandon math once partial progress is sunk.
+
+## Bankroll
+
+Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.
+
+## Verify on the floor
+
+- Photo: lock rules summary on help screen if available; denom.
+
+## Pitfalls
+
+- Ignoring partial-lock trap scenarios on high-volatility themes.
+
+## Nerf / marketing
+
+Nerf risk **Low**: assume paytables, caps, and marketing can move without notice.

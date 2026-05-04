@@ -24,7 +24,7 @@ export const ainsworthMustHitByGuideMarkdown = `## What you are looking at
 
 **Ainsworth** cabinets often ship **paired mystery progressives** (commonly labeled **Minor** and **Major**): visible meters that **must award before a published ceiling**, with a **random trigger threshold** hidden inside the band. The public write-up with photos, rules, and **target-point tables** is **[Must-Hit-By Progressives on Ainsworth Slots](https://wizardofodds.com/games/slots/mystery-jackpot-ainsworth/)** (Michael Shackleford, Wizard of Odds).
 
-Hero art for this card is sourced from your repo’s **Slots/Must Hit By AIG/Main Image.png** (exported to the web app as **/ainsworth-must-hit-by-hero.png**).
+Hero art for this card is sourced from your repo’s **Slots/must-hit-by-aig/Main Image.png** (exported to the web app as **/ainsworth-must-hit-by-hero.png**).
 
 ## Games you may see with this mystery MHB package
 

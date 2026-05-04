@@ -3,40 +3,35 @@ import ReactMarkdown from 'react-markdown'
 import { format, parseISO } from 'date-fns'
 import {
   BUFFALO_LINK_DEMO_SLUG,
-  buffaloLinkCardBullets,
   buffaloLinkGuideMarkdown,
 } from './buffaloLinkGuideDemo'
 import {
   PHOENIX_LINK_DEMO_SLUG,
-  phoenixLinkCardBullets,
   phoenixLinkGuideMarkdown,
 } from './phoenixLinkGuideDemo'
 import {
   STACK_UP_PAYS_DEMO_SLUG,
-  stackUpPaysCardBullets,
   stackUpPaysGuideMarkdown,
 } from './stackUpPaysGuideDemo'
 import {
   AGS_MHB_KNOWN_TITLES_LINE,
   AGS_MHB_SEARCH_KEYWORDS,
   AGS_MUST_HIT_BY_DEMO_SLUG,
-  agsMustHitByCardBullets,
   agsMustHitByGuideMarkdown,
 } from './agsMustHitByGuideDemo'
 import {
   IGT_MHB_KNOWN_TITLES_LINE,
   IGT_MHB_SEARCH_KEYWORDS,
   IGT_MUST_HIT_BY_DEMO_SLUG,
-  igtMustHitByCardBullets,
   igtMustHitByGuideMarkdown,
 } from './igtMustHitByGuideDemo'
 import {
   AINSWORTH_MHB_KNOWN_TITLES_LINE,
   AINSWORTH_MHB_SEARCH_KEYWORDS,
   AINSWORTH_MUST_HIT_BY_DEMO_SLUG,
-  ainsworthMustHitByCardBullets,
   ainsworthMustHitByGuideMarkdown,
 } from './mustHitByGuideDemo'
+import { defaultCardGistForSlug } from '../../constants/slotCardGists'
 
 function formatGuideDate(iso) {
   if (!iso) return '—'
@@ -263,19 +258,16 @@ function mergeLocalGuideDemos(rows) {
   return merged
 }
 
-function cardBulletsForRow(row) {
-  const ms = row.machines?.slug
-  if (ms === BUFFALO_LINK_DEMO_SLUG) return buffaloLinkCardBullets
-  if (ms === PHOENIX_LINK_DEMO_SLUG) return phoenixLinkCardBullets
-  if (ms === STACK_UP_PAYS_DEMO_SLUG) return stackUpPaysCardBullets
-  if (ms === AINSWORTH_MUST_HIT_BY_DEMO_SLUG) return ainsworthMustHitByCardBullets
-  if (ms === AGS_MUST_HIT_BY_DEMO_SLUG) return agsMustHitByCardBullets
-  if (ms === IGT_MUST_HIT_BY_DEMO_SLUG) return igtMustHitByCardBullets
-  const first = (row.content_markdown || '').split(/\n##/)[0].trim()
-  if (first.length > 400) return [first.slice(0, 360).trim() + '…']
-  if (first) return [first]
-  return ['Open the full guide for play notes and +EV context.']
+/** One-line operator cue — DB `guides.card_gist`, else catalog default from slug/type. */
+function cardGistForRow(row) {
+  const raw = typeof row.card_gist === 'string' ? row.card_gist.trim() : ''
+  if (raw) return raw
+  const m = row.machines
+  if (m?.slug) return defaultCardGistForSlug(m.slug, m.type)
+  return TYPE_LINE_FALLBACK_GUIDE_HINT
 }
+
+const TYPE_LINE_FALLBACK_GUIDE_HINT = 'Verify +EV on the glass — open guide'
 
 function makeGuideMarkdownComponents(machineSlug) {
   const h2Tone =
@@ -537,6 +529,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
           slug,
           title,
           content_markdown,
+          card_gist,
           last_updated,
           created_at,
           updated_at,
@@ -556,6 +549,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
             thumbnail_url,
             created_at,
             updated_at,
+            release_year,
             volatility_index,
             popularity_summary
           )
@@ -564,9 +558,12 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
         .order('title')
 
       if (error) {
-        const missingVol =
-          error.message?.includes('volatility_index') || error.message?.includes('popularity_summary')
-        if (missingVol) {
+        const missingOptionalCols =
+          error.message?.includes('volatility_index') ||
+          error.message?.includes('popularity_summary') ||
+          error.message?.includes('card_gist') ||
+          error.message?.includes('release_year')
+        if (missingOptionalCols) {
           const { data: d2, error: e2 } = await supabaseClient
             .from('guides')
             .select(
@@ -675,7 +672,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
             const slug = row.machines?.slug || row.slug
             const expanded = expandedSlug === slug
             const calcKey = resolveCalculatorKey(row.machines)
-            const bullets = cardBulletsForRow(row)
+            const gistLine = cardGistForRow(row)
             const accent = cardAccent(slug)
             const ringFocus =
               slug === 'phoenix-link'
@@ -703,7 +700,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                     className={`w-full text-left touch-manipulation focus:outline-none focus-visible:ring-2 ${ringFocus}`}
                     aria-expanded={expanded}
                   >
-                    <div className={`relative h-36 w-full bg-gradient-to-br ${heroGradientClass(slug)}`}>
+                    <div className={`relative h-28 w-full bg-gradient-to-br ${heroGradientClass(slug)}`}>
                       <img
                         src={heroImage(row)}
                         alt=""
@@ -718,7 +715,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
                       <div className="absolute bottom-3 left-4 right-4">
                         <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md">{row.machines?.name || row.title}</h2>
-                        <div className={`${accent.subtitle} text-xs font-semibold mt-0.5`}>{row.machines?.manufacturer || '—'}</div>
+                        <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>{row.machines?.manufacturer || '—'}</div>
                       </div>
                     </div>
 
@@ -732,9 +729,13 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Popularity</div>
                           <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{popularityLabel(row)}</div>
                         </div>
-                        <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
+                        <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Type</div>
-                          <div className="text-zinc-200 font-semibold mt-0.5">{row.machines?.type || '—'}</div>
+                          <div className="text-zinc-200 font-semibold mt-0.5 leading-snug">{row.machines?.type || '—'}</div>
+                        </div>
+                        <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
+                          <div className="text-zinc-500 font-semibold uppercase tracking-wide">Released</div>
+                          <div className="text-zinc-100 font-bold mt-0.5">{row.machines?.release_year ?? '—'}</div>
                         </div>
                         {row.known_titles_line ? (
                           <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
@@ -744,24 +745,11 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         ) : null}
                       </div>
 
-                      <div className="space-y-2">
-                        {bullets.map((b, i) => (
-                          <div key={i} className="text-sm text-zinc-300 leading-relaxed flex gap-2">
-                            <span className={`${accent.chevron} shrink-0 font-bold`}>▸</span>
-                            <span>
-                              <ReactMarkdown
-                                components={{
-                                  p: ({ children }) => <span className="inline">{children}</span>,
-                                  strong: ({ children }) => (
-                                    <strong className={`${accent.strong} font-bold`}>{children}</strong>
-                                  ),
-                                }}
-                              >
-                                {b}
-                              </ReactMarkdown>
-                            </span>
-                          </div>
-                        ))}
+                      <div className="rounded-xl bg-zinc-950/70 px-3 py-2.5 border border-zinc-800/90">
+                        <div className="text-zinc-500 text-[11px] font-semibold uppercase tracking-wide">Gist</div>
+                        <p className={`text-sm text-zinc-100 font-semibold leading-snug mt-1 ${accent.strong}`}>
+                          {gistLine}
+                        </p>
                       </div>
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">

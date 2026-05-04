@@ -21,7 +21,7 @@ export const igtMustHitByGuideMarkdown = `## What you are looking at
 
 **IGT** (and **legacy WMS** content often found on IGT-managed floors) has a long line of **mystery / must-hit-by** style progressives: a **published ceiling**, a **meter that climbs with qualifying coin-in**, and a **hidden trigger threshold** chosen inside the band. Public **target-point** math is laid out on **[Must-Hit-By Progressives (WMS mystery jackpots)](https://wizardofodds.com/games/slots/mystery-jackpot/)** (Michael Shackleford, Wizard of Odds). That page assumes a **uniform** distribution between seed and cap—**do not** paste those conclusions onto **AGS** meters without a separate model.
 
-Hero art for this card is sourced from **Slots/Must Hit By IGT/IGT_Main_Image.png** (served as **/igt-must-hit-by-hero.png**). Your repo also includes a reference strip image under **Slots/Must Hit By IGT/** for Coyote Moon / Money Storm / Lobstermania—useful for **visual ID**, not for PAR.
+Hero art for this card is sourced from **Slots/must-hit-by-igt/IGT_Main_Image.png** (served as **/igt-must-hit-by-hero.png**). Your repo also includes a reference strip image under **Slots/must-hit-by-igt/** for Coyote Moon / Money Storm / Lobstermania—useful for **visual ID**, not for PAR.
 
 ## Titles players often type into search
 

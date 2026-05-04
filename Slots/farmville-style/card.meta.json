@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "farmville-style",
+    "name": "Farmville-style Collector",
+    "manufacturer": "Various",
+    "type": "Accumulator",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Rare",
+    "nerf_risk": "Medium",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "farmville-style",
+    "title": "Farmville-style Collector",
+    "published": true,
+    "card_summary_bullets": [
+      "Accumulator: Stamp / book / collector completion paths — total cost to finish vs implied value.",
+      "Floor / rarity: Rare — re-verify same visit.",
+      "Nerf: Medium — Various / jurisdictional packaging changes outcomes."
+    ],
+    "content_markdown_file": "guide.md",
+    "last_updated": null,
+    "card_gist": "Progress far along vs price to finish"
+  },
+  "ap": {
+    "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",
+    "popularity_summary": "Floor presence (from seed): **Rare**. Treat as marketing signal, not proof of edge.",
+    "edge_vectors": [
+      "Stamp / book / collector completion paths — total cost to finish vs implied value.",
+      "Rare titles: liquidity and nerf risk often dominate EV."
+    ],
+    "bankroll_angle": "Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.",
+    "verification_checklist": [
+      "Photo: collection rules, reset behavior, denom."
+    ],
+    "common_pitfalls": [
+      "Starting a deep accumulator without a clear finish budget."
+    ],
+    "nerf_angle": "Nerf risk **Medium**: assume paytables, caps, and marketing can move without notice."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

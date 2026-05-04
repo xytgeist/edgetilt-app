@@ -1,5 +1,5 @@
 -- =====================================================
--- FULL SCRIPT: Create + Fill machines table (42 real AP slots)
+-- FULL SCRIPT: Create + Fill machines table (catalog AP slots)
 -- Paste into Supabase SQL editor, or run via CLI against a dev project.
 -- WARNING: Section 5 TRUNCATE wipes existing machines + guides. Do not
 -- re-run that block in production after you have real guide content.
@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS machines (
   has_calculator boolean DEFAULT false,
   calculator_slug text,
   thumbnail_url text,
+  release_year smallint,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -29,6 +30,7 @@ CREATE TABLE IF NOT EXISTS guides (
   slug text UNIQUE NOT NULL,
   title text NOT NULL,
   content_markdown text NOT NULL,
+  card_gist text,
   difficulty text,
   last_updated date DEFAULT CURRENT_DATE,
   published boolean DEFAULT true,
@@ -56,7 +58,7 @@ CREATE POLICY "Public can read machines" ON machines FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Public can read published guides" ON guides;
 CREATE POLICY "Public can read published guides" ON guides FOR SELECT USING (published = true);
 
--- 5. Clear existing data and insert the 42 real machines
+-- 5. Clear existing data and insert the catalog machines
 TRUNCATE TABLE guides CASCADE;
 TRUNCATE TABLE machines CASCADE;
 
@@ -70,6 +72,7 @@ INSERT INTO machines (slug, name, manufacturer, type, difficulty, vegas_availabi
 ('wu-jin-pen', 'Wu Jin Pen', 'Light & Wonder', 'Persistent State', 'Advanced', 'Common', 'Medium', false, null),
 ('scarab', 'Scarab', 'Light & Wonder', 'Persistent State', 'Intermediate', 'Common', 'Medium', false, null),
 ('buffalo-ascension', 'Buffalo Ascension', 'Aristocrat', 'Persistent State', 'Intermediate', 'Very Common', 'High', false, null),
+('eagle-ascension', 'Buffalo Eagle Ascension', 'Aristocrat', 'Persistent State', 'Intermediate', 'Very Common', 'High', false, null),
 ('thunder-cash', 'Thunder Cash', 'Ainsworth', 'Must-Hit-By', 'Beginner', 'Very Common', 'Low', false, null),
 ('eagle-bucks', 'Eagle Bucks', 'Ainsworth', 'Must-Hit-By', 'Beginner', 'Common', 'Low', false, null),
 ('mustang-money-2', 'Mustang Money 2', 'Ainsworth', 'Must-Hit-By', 'Beginner', 'Common', 'Low', false, null),
@@ -99,8 +102,9 @@ INSERT INTO machines (slug, name, manufacturer, type, difficulty, vegas_availabi
 ('buffalo-stampede', 'Buffalo Stampede', 'Aristocrat', 'Persistent State', 'Intermediate', 'Very Common', 'High', false, null),
 ('buffalo-link', 'Buffalo Link', 'Aristocrat', 'Persistent State', 'Intermediate', 'Very Common', 'High', false, null),
 ('buffalo-diamond', 'Buffalo Diamond', 'Aristocrat', 'Persistent State', 'Intermediate', 'Common', 'High', false, null),
-('wolf-run', 'Wolf Run (base)', 'IGT', 'Persistent State', 'Intermediate', 'Common', 'Medium', false, null),
 ('san-xing-riches', 'San Xing Riches', 'IGT', 'Persistent State', 'Intermediate', 'Common', 'Low', false, null),
 ('lucky-lemmings-stampede', 'Lucky Lemmings Stampede', 'Aristocrat', 'Persistent State', 'Intermediate', 'Common', 'Medium', false, null),
 ('treasure-blast', 'Treasure Blast', 'Aristocrat', 'Persistent State', 'Intermediate', 'Common', 'Medium', false, null),
-('magic-treasures', 'Magic Treasures', 'Aristocrat', 'Persistent State', 'Intermediate', 'Common', 'Medium', false, null);
+('magic-treasures', 'Magic Treasures', 'Aristocrat', 'Persistent State', 'Intermediate', 'Common', 'Medium', false, null),
+('plants-vs-zombies-3d', 'Plants vs Zombies 3D: Ancient Egypt', 'IGT', 'Accumulator', 'Intermediate', 'Very Common', 'Medium', false, null),
+('adventures-of-sinbad', 'Adventures of Sinbad!', 'Azure Gaming', 'Hybrid', 'Intermediate', 'Common', 'Low', false, null);

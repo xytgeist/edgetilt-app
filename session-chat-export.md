@@ -919,3 +919,371 @@ Use your real repo path in `cd` if it differs. That only **registers** the task;
 ```powershell
 .\scripts\Run-CursorChatExport-Laptop.ps1
 ```
+
+---
+
+**May 3, 2026, 11:42:47 PM — Desktop**
+
+## Chat export (2026-05-04T06:42:47.822Z)
+
+_Source: `3ba2fca4-226e-450c-9c97-fd36860f093a` — lines 134–142_
+
+### User
+
+can you please create directories named by the slot game name for each of the slots in our slot games table so i can go out and find the images we need for the cards
+
+### Assistant
+
+Reading machine rows from the schema seed to create sanitized folder names.
+
+### Assistant
+
+Creating `Slots/guide-card-images/` with one folder per machine display name from the seed (Windows-safe). Existing `Slots/` entries stay untouched.
+
+### Assistant
+
+Here’s what was set up.
+
+### Location
+**`Slots/guide-card-images/`** — one subfolder per **`machines.name`** value from `supabase/machines_guides_schema.sql` (the current seed has **43** rows, not 42).
+
+### Naming rules
+- Folders use the **display name** from the table (e.g. `Buffalo Link`, `Stack Up Pays`).
+- **`&`** → **` and `** so `S&H Green Stamps` becomes **`S and H Green Stamps`** (safer for shells and scripts).
+- Stripped only characters that are invalid on Windows: **`<>:"/\|?*`** (nothing else in your list hit that).
+
+### Your existing `Slots/` tree
+Nothing under **`Slots/Buffalo-Eagle_Ascension`**, **`Phoenix-Link`**, etc. was changed; this is a **parallel** tree for card art.
+
+### Next steps for you
+Drop each game’s hero / logo / cab art into its folder (e.g. `hero.jpg`, `card.webp`). When you wire **`machines.thumbnail_url`** or **`guides.thumbnail_url`**, you can point at paths like `/Slots/guide-card-images/Buffalo%20Link/hero.webp` or copy assets into **`public/`** if you want them served without encoding issues—your call when you hook up the app.
+
+If you want folders keyed by **`slug`** instead (e.g. `buffalo-link` for stable URLs), say so and we can rename or duplicate.
+
+### User
+
+instead of this directory structure, i think it makes more sense to have a directory for each game, then have everything that is associated with the game in its named directory. For example in ./Slots/Buffalo-Ascension/ we would house all images, the a form that contains all of the pertinent information on the card (so i can just change the form in the directory if something changes) etc. What do you think
+
+### Assistant
+
+That structure is a solid idea, and it matches how a lot of teams treat “content + assets” for a product catalog.
+
+### Why it works well
+- **Everything for one title lives together** — art, notes, and “what goes on the card” in one place. Easier to hand off to a VA or future-you than hunting across `public/`, SQL, and markdown.
+- **Git-friendly** — changes are reviewable diffs (`card.yaml` tweak + new `hero.webp`).
+- **Stable mental model** — “open the Buffalo Ascension folder” is obvious.
+
+### Two conventions I’d push for
+1. **Folder name = `machines.slug` (kebab-case)**  
+   e.g. `Slots/buffalo-ascension/` not only `Buffalo-Ascension/`, so it maps 1:1 to Supabase and to URLs later. You can still put a `README` or `DISPLAY_NAME.txt` inside if you want the marketing string visible in Explorer.
+
+2. **One machine-readable “form” file with a fixed name**  
+   e.g. `card.meta.yaml` or `card.meta.json` — fields like display name, manufacturer, volatility, popularity blurb, calculator slug, short +EV bullets, links. The app (or a small import script) can **read that as the source of truth for the card** until you move everything into Supabase/CMS.
+
+### Caveat (so expectations stay clear)
+- The **running app** does not automatically read random folders under `./Slots/` unless you **wire it** (build step, import script, or fetch from storage). Today the guides UI is driven by **Supabase** + a few in-repo demos. So treat `./Slots/<slug>/` as the **editorial workspace**; either sync into DB periodically or add a dev-only loader later.
+
+### Compared to `guide-card-images/…`
+Your proposal is **strictly better** as the long-term layout: one folder per game with **images + form**, not “images only in a parallel tree.” You can delete or ignore `Slots/guide-card-images/` once you migrate, or I can help rename/move into slug folders in a follow-up.
+
+**Bottom line:** Yes — **`<repo>/Slots/<machine-slug>/`** with **`card.meta.{yaml|json}`** + images is a clean pattern; tie folder names to DB slugs and keep one canonical schema for the form file so nothing drifts.
+
+### User
+
+OK go ahead and make those changes. In each folder, create the form with everything you can find about the game related to advantage play you can.You can do this in yaml or json, whichever you prefer. The intent behind these forms would be to have a script that updates the supabase table that i can run anytime i add new games or make changes.
+
+### Assistant
+
+Creating a generator script to produce `Slots/<slug>/card.meta.yaml` and `guide.md` stubs from the machines seed, removing `Slots/guide-card-images/`, and adding a Supabase sync script stub that reads the YAML and upserts when credentials are present.
+
+---
+
+**May 4, 2026, 12:12:47 AM — Desktop**
+
+## Chat export (2026-05-04T07:12:47.829Z)
+
+_Source: `3ba2fca4-226e-450c-9c97-fd36860f093a` — lines 143–189_
+
+### Assistant
+
+Implementing SQL parsing in the generator for maintainability, then adding the sync script.
+
+### Assistant
+
+Merging calculator flags into manifests (seed DB is stale for Buffalo/Phoenix). Adding the sync script and removing `guide-card-images`.
+
+### User
+
+OK go ahead and make those changes. In each folder, create the form with everything you can find about the game related to advantage play you can.You can do this in yaml or json, whichever you prefer. The intent behind these forms would be to have a script that updates the supabase table that i can run anytime i add new games or make changes.
+
+### Assistant
+
+Identifying a Windows case-insensitivity issue: `Phoenix-Link` is the same path as `phoenix-link`, so the generator wrote manifests into the legacy folder while the sync script only scans lowercase slug folders. Renaming the folder to `phoenix-link` so sync picks it up.
+
+### Assistant
+
+Here is where things stand after the handoff work.
+
+## Done
+
+- **Per-game folders** under `Slots/<slug>/` with **`card.meta.json`** (machine + guide seed + **`ap`** blocks) and **`guide.md`** stubs, generated from `supabase/machines_guides_schema.sql`.
+- **`scripts/sync-slot-forms-to-supabase.mjs`** — upsert `machines` + `guides` from those files; **`npm run slots:sync:dry`** / **`npm run slots:sync`** (needs **`SUPABASE_SERVICE_ROLE_KEY`** + URL).
+- **`npm run slots:generate`** to refresh manifests when the SQL seed changes.
+
+## Fix applied just now (Windows)
+
+On case-insensitive volumes, **`Phoenix-Link`** and **`phoenix-link`** are the same directory, so the generator was writing into the legacy name while the sync script only reads **`^[a-z0-9-]+$`** folders — dry-run showed **42** manifests instead of **43**. The folder was renamed in two steps to **`phoenix-link`**; **`npm run slots:sync:dry`** now reports **43 manifest(s)**.
+
+## What you do next
+
+1. Set **`SUPABASE_URL`** (or **`VITE_SUPABASE_URL`**) and **`SUPABASE_SERVICE_ROLE_KEY`**, then run **`npm run slots:sync`** when you want DB to match the repo forms.
+2. After any change to the machines **`INSERT`** in **`machines_guides_schema.sql`**, run **`npm run slots:generate`** so new slugs get folders and JSON, then edit content and sync again.
+3. Drop **`hero.webp`** (or adjust **`assets`** in JSON) per title as you build art; optional **`volatility_index`** / **`popularity_summary`** in **`machine`** sync when non-null (per your migration **`guides_machine_card_fields.sql`**).
+
+If you want, we can add a small **Windows-only guard** in **`generate-slot-card-manifests.mjs`** that warns when a legacy folder name only differs by case from the slug so this does not silently recur.
+
+### User
+
+ok, we need to make sure all of these types of things (how/when to run the upsert sql) and anything of this nature are added to the overall LVSlotPro readme file
+
+### Assistant
+
+Reading the project README and package scripts to document slot manifests, sync, and related workflows.
+
+### Assistant
+
+Replacing the placeholder Vite README with LVSlotPro documentation covering development, Supabase schema SQL, and the slot manifest sync workflow.
+
+### Assistant
+
+Here is what changed.
+
+## README updates
+
+The root **`README.md`** was still the default Vite template. It is now an **LVSlotPro** doc that covers:
+
+1. **Prerequisites and local dev** — `npm install`, `npm run dev`, plus `build`, `preview`, and `lint`.
+2. **Supabase: schema SQL vs app data** — When to run SQL from `supabase/` (Dashboard vs CLI), with **`guides_machine_card_fields.sql`** called out as a safe, repeatable migration for extra `machines` columns, and a clear note that **row upserts for machines/guides from repo forms are not done by hand** — use the sync script.
+3. **Slot manifests** — `Slots/<slug>/`, `card.meta.json`, `guide.md`, slug-only folder naming, legacy folders skipped by sync.
+4. **`npm run slots:generate`** — Run after edits to the **`INSERT INTO machines`** block in **`machines_guides_schema.sql`**.
+5. **`npm run slots:sync:dry`** / **`npm run slots:sync`** — Env vars (`SUPABASE_URL` or `VITE_SUPABASE_URL`, **`SUPABASE_SERVICE_ROLE_KEY`**), why service role, dry run vs real sync, optional **`--slug=`**.
+6. **Windows** — Short case-folding / folder-name note so `phoenix-link` does not collide with `Phoenix-Link`.
+7. **Pointers** — The two scripts under `scripts/` for details.
+
+If you want the README to also document **community feed SQL**, **edge functions**, or **deploy**, say what you use day-to-day and we can add a subsection without bloating the top of the file.
+
+### User
+
+add a directory for Plants vs Zombies 3D - you can find most of the information on how to advantage play it at https://travelupdate.com/gamble-advantage-play-plants-vs-zombies/
+
+### Assistant
+
+Adding `plants-vs-zombies-3d` to the machines seed and creating `Slots/plants-vs-zombies-3d/` with manifest and guide content from the article. Checking manifest shape and the SQL insert format.
+
+### Assistant
+
+Adding the SQL seed row and creating `Slots/plants-vs-zombies-3d/` with a manifest and guide that reflect the article (including per-denom meters and meter math). Updating the schema file comment that still says "42".
+
+### Assistant
+
+Here is what was added.
+
+### 1. `supabase/machines_guides_schema.sql`
+- New machine row: **`plants-vs-zombies-3d`**, **Plants vs Zombies 3D: Ancient Egypt**, **IGT**, type **`Accumulator`**, Intermediate, **Very Common**, nerf **Medium**, no calculator.
+- Comments at the top / section 5 no longer say “42 machines” so they stay accurate as the list grows.
+
+### 2. `Slots/plants-vs-zombies-3d/card.meta.json`
+- Same shape as your other manifests: `machine`, `guide_seed`, **`ap`** tuned to the [TravelUpdate PvZ 3D writeup](https://travelupdate.com/gamble-advantage-play-plants-vs-zombies/) — visible **500**-cap meter, **+56** / brain, **−12** / brainless spin, **overflow after bonus**, **separate meters per bet tier**, reported bonus band **~50×–150×**, competition / floor notes.
+
+### 3. `Slots/plants-vs-zombies-3d/guide.md`
+- Longer player-facing guide with the same mechanics, heuristics (including the **200+ / stop below 200** band from that article, framed as a trip-report rule of thumb), verification steps, disclaimer, and a clear link to the TravelUpdate piece so readers can compare sources.
+
+Add **`hero.webp`** (or another asset) in that folder when you have art; `assets.hero_relative` is still **`hero.webp`**.
+
+**Next step for Supabase:** run  
+`npm run slots:sync -- --slug=plants-vs-zombies-3d`  
+(or full `npm run slots:sync`) with your URL + **service role** key so `machines` and `guides` get the upsert. If you use the full schema script with **`TRUNCATE`**, only do that where wiping data is acceptable.
+
+---
+
+**May 4, 2026, 12:42:47 AM — Desktop**
+
+## Chat export (2026-05-04T07:42:47.812Z)
+
+_Source: `3ba2fca4-226e-450c-9c97-fd36860f093a` — lines 190–256_
+
+### User
+
+This is a better write-up by a more established Advantage Player for plants vs zombies: https://www.advantageslots.com/the-zombies-are-coming-how-to-advantage-play-plants-vs-zombies-3d-by-igt/ 
+
+Also, lets add add a Release Date (year only is fine) field. Fill this out whenever you are able to find it for each game.
+
+Also, create directory for "Adventures of Sinbad!" - you can find relevant information here: https://travelupdate.com/advantage-play-continued-adventures-sinbad/ 
+
+Also, lets reduce the size of the card. Instead of showing multiple bullet points, show a "Gist" - a single phrase gist of when to play a machine. For example the "Gist" on Buffalo link would read Play any 1400+
+
+### Assistant
+
+Implementing the advantageslots PvZ update, adding `release_year` and `gist` across manifests/sync/schema, creating the Sinbad slot directory, and updating the guides card UI to show a single-line gist.
+
+### Assistant
+
+Implementing schema migrations, sync, centralized gist/release defaults, Sinbad assets, updated PvZ content, UI changes, and a backfill script to add fields to existing manifests without overwriting custom `ap`/guides.
+
+### Assistant
+
+Creating shared constants, SQL migration updates, sync/UI changes, PvZ and Sinbad content, and running the backfill script.
+
+### Assistant
+
+Here is what was implemented.
+
+### PvZ — [AdvantageSlots](https://www.advantageslots.com/the-zombies-are-coming-how-to-advantage-play-plants-vs-zombies-3d-by-igt/) as primary
+- **`Slots/plants-vs-zombies-3d/guide.md`** is centered on that article (500 cap, brains on **reels 1/3/5**, **+54 / −12**, **five** bet tiers = **five** meters, consensus **~200+** with note on **~150+** in crowded spots, four bonus modes / Uprising rare).
+- **`card.meta.json`** matches the same numbers, calls out the old **56** story vs **54** on ROM, sets **`release_year`: 2016**, **`card_gist`**: `Brain meter 150–200+ on your tier`.
+- TravelUpdate is still linked as older color commentary.
+
+### **`release_year`** (machine) + **`card_gist`** (guide)
+- **`supabase/guides_machine_card_fields.sql`** — `machines.release_year smallint`, `guides.card_gist text`.
+- **`supabase/machines_guides_schema.sql`** — same columns on **`CREATE TABLE`** for new installs.
+- **`scripts/sync-slot-forms-to-supabase.mjs`** — upserts those fields; trims `card_gist`; hints if columns are missing.
+- **`scripts/generate-slot-card-manifests.mjs`** — new rows get `release_year` + `card_gist` from defaults.
+- **`npm run slots:backfill-card-fields`** — fills gaps on existing manifests (43 were updated; PvZ/Sinbad already set).
+- Defaults / slug overrides: **`src/constants/slotCardGists.js`** (Buffalo **`Play any 1400+`**, PvZ/Sinbad phrases, type fallbacks, **`SLUG_RELEASE_YEAR`** for PvZ **2016** only so far).
+
+### **Adventures of Sinbad!**
+- Seed row: **`adventures-of-sinbad`** (Azure Gaming, **Hybrid**, Intermediate, Common, Low).
+- **`Slots/adventures-of-sinbad/`** — `card.meta.json` + **`guide.md`** from [TravelUpdate — Sinbad write-up](https://travelupdate.com/advantage-play-continued-adventures-sinbad/) (dual meters, map / three monsters, jackpot **chance**, Cyclops proximity, overshoot / battle / wedge caveats). **`release_year`**: `null` until you confirm a year.
+
+### **Smaller AP guide cards**
+- **`GuidesScreen.jsx`**: hero **h-36 → h-28**; bullets replaced by a single **Gist** block; **`Type` | `Released`** grid (year from **`machines.release_year`**).
+- Loads **`guides.card_gist`** and **`machines.release_year`** with the same fallback path as volatility columns if the DB is behind migrations.
+- Demos fall back through **`defaultCardGistForSlug`** when **`card_gist`** is absent.
+
+### **Docs**
+- **`README.md`** — documents `release_year`, `card_gist`, `slotCardGists.js`, backfill script, migration file scope.
+
+Apply DB changes with **`guides_machine_card_fields.sql`**, then **`npm run slots:sync`** so Supabase picks up gist/year text.
+
+### User
+
+please go through each of the older directories in Slots (ones you didnt create) and rename them following the naming convention you used for the others. 
+
+Also change Buffalo-Eagle-Ascension to buffalo-ascension and create a new directory called eagle-ascension. 
+
+Change Rich-Little-Piggies-Hens to rich-little-hens (since we now have a rich-little-piggies directory)
+
+Remove wolf-run directory and anything associated with it as it is not in fact an AP game
+
+### Assistant
+
+Inventorying `Slots/` and references to legacy folders and `wolf-run` so we can rename folders, split Buffalo/Eagle assets, add `eagle-ascension`, and remove Wolf Run.
+
+### Assistant
+
+Applying folder renames via the shell (handling Windows case collisions), merging Buffalo assets into `buffalo-ascension`, removing `wolf-run` from schema and repo, updating legacy maps and docs that reference old paths.
+
+### Assistant
+
+Here's what changed.
+
+### Folder renames (legacy → slug-style)
+Merged **`Buffalo-Eagle_Ascension`** into **`buffalo-ascension`** (PNG/JPG copied in; **`buffalo-ascension/card.meta.json`** now has **`legacy_slots_subfolder: null`**).
+
+| Old name | New name |
+|----------|----------|
+| `Rich-Little-Piggies-Hens` | `rich-little-hens` (`rich-little-piggies` manifest now points at **`legacy_slots_subfolder`: `rich-little-hens`) |
+| `Cash-Falls` | `cash-falls` (two-step rename on Windows) |
+| `Must Hit By IGT` | `must-hit-by-igt` |
+| `Must Hit By AGS` | `must-hit-by-ags` |
+| `Must Hit By AIG` | `must-hit-by-aig` |
+| `Phoenix-Link` | `phoenix-link` (two-step rename; recreated **`card.meta.json`** + **`guide.md`** so sync still picks it up)
+
+### Buffalo vs Eagle Ascension
+- **`Slots/buffalo-ascension`** is the single canonical folder for Buffalo Ascension art (formerly under `Buffalo-Eagle_Ascension`).
+- New catalog row + manifests: **`eagle-ascension`** (“Buffalo Eagle Ascension”) — **`Slots/eagle-ascension/card.meta.json`**, **`guide.md`**, plus **`machines`** INSERT line in **`supabase/machines_guides_schema.sql`**.
+
+### Wolf Run (non-AP)
+- Removed **`Slots/wolf-run/`**.
+- Removed **`wolf-run`** from the **`INSERT INTO machines`** list in **`supabase/machines_guides_schema.sql`** ( **`wolf-run-eclipse`** is unchanged).
+
+### Code / docs
+- **`scripts/generate-slot-card-manifests.mjs`** — **`LEGACY_ASSET_FOLDERS`** only maps **`rich-little-piggies` → `rich-little-hens`**.
+- **`src/features/guides/Must…GuideDemo.js`** files — paths updated to **`Slots/must-hit-by-…/`**.
+- **`README.md`** — Windows / naming note updated for the new convention.
+
+**DB note:** `npm run slots:sync` **upserts** slugs it sees; it does **not** delete the old `wolf-run` row if it’s already in Supabase. Remove that row in the dashboard (or SQL) if you want the DB cleaned up.
+
+**`npm run slots:sync:dry`** completes with **45** manifests (`wolf-run` out, **`eagle-ascension`** in).
+
+**Git / OneDrive:** If `Slots/Phoenix-Link` images were tracked, you may see a delete/add as `Slots/phoenix-link`; stage accordingly.
+
+### User
+
+ok now how do i update the supabase table with everything we have now
+
+### Assistant
+
+Here’s a concise runbook to get Supabase in line with the repo.
+
+### 1. Add any missing columns (once per project)
+
+In the Supabase **SQL Editor**, run the contents of:
+
+`supabase/guides_machine_card_fields.sql`
+
+That adds `volatility_index`, `popularity_summary`, `release_year` on `machines` and `card_gist` on `guides` when they’re missing.
+
+**Do not** re-run the **`TRUNCATE` + full seed** block in `machines_guides_schema.sql` on a project that already has real data — that wipes `machines` and `guides`.
+
+### 2. Set env vars (same terminal you’ll use for sync)
+
+PowerShell example:
+
+```powershell
+$env:SUPABASE_URL = "https://YOUR_PROJECT_REF.supabase.co"
+$env:SUPABASE_SERVICE_ROLE_KEY = "your-service-role-secret-key"
+```
+
+(`VITE_SUPABASE_URL` also works if that’s what you already use.)
+
+Use the **service role** key from **Project Settings → API**. The sync script upserts `machines` / `guides`; anon keys are usually blocked by RLS.
+
+### 3. Preview (optional)
+
+From the repo root:
+
+```powershell
+npm run slots:sync:dry
+```
+
+### 4. Write to Supabase
+
+```powershell
+npm run slots:sync
+```
+
+One slug only:
+
+```powershell
+node scripts/sync-slot-forms-to-supabase.mjs --slug=buffalo-link
+```
+
+That reads each `Slots/<slug>/card.meta.json` + `guide.md` and upserts matching rows (including `card_gist`, `release_year`, markdown, etc.).
+
+### 5. Cleanup DB rows you removed from the repo
+
+The script **does not delete** machines/guides that no longer exist locally (e.g. **`wolf-run`**). In the SQL Editor, remove those rows yourself if they’re still there, e.g.:
+
+```sql
+delete from public.guides where slug = 'wolf-run';
+delete from public.machines where slug = 'wolf-run';
+```
+
+(order matters if FK from `guides` to `machines` — delete `guides` first, then `machines`, or rely on `ON DELETE CASCADE` from machines if your schema deletes guides with the machine.)
+
+### 6. New machine in SQL seed only
+
+If you added **`eagle-ascension`** (or anything else) **only** in `machines_guides_schema.sql` but **not** via sync, **`npm run slots:sync`** is still what creates/updates **`guides`** and **`machines`** from `Slots/`; the SQL file is mainly for greenfield resets or documenting the catalog.
+
+More detail lives in **`README.md`** under *Slot manifests* and *sync*.

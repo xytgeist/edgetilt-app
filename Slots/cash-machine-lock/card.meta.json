@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "cash-machine-lock",
+    "name": "Cash Machine Lock",
+    "manufacturer": "Light & Wonder",
+    "type": "Lock Game",
+    "difficulty": "Beginner",
+    "vegas_availability": "Common",
+    "nerf_risk": "Low",
+    "has_calculator": true,
+    "calculator_slug": "cash-machine-lock",
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "cash-machine-lock",
+    "title": "Cash Machine Lock",
+    "published": true,
+    "card_summary_bullets": [
+      "Lock Game: Lock cycles and reset economics — know what you buy when you enter the lock path.",
+      "Floor / rarity: Common — re-verify same visit.",
+      "Nerf: Low — Light & Wonder / jurisdictional packaging changes outcomes."
+    ],
+    "content_markdown_file": "guide.md",
+    "last_updated": null,
+    "card_gist": "Lock EV clears buy-in hurdle"
+  },
+  "ap": {
+    "volatility_summary": "Beginner play profile; nerf risk rated **Low** for marketing/paytable drift.",
+    "popularity_summary": "Floor presence (from seed): **Common**. Treat as marketing signal, not proof of edge.",
+    "edge_vectors": [
+      "Lock cycles and reset economics — know what you buy when you enter the lock path.",
+      "Completion vs abandon math once partial progress is sunk."
+    ],
+    "bankroll_angle": "Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.",
+    "verification_checklist": [
+      "Photo: lock rules summary on help screen if available; denom."
+    ],
+    "common_pitfalls": [
+      "Ignoring partial-lock trap scenarios on high-volatility themes."
+    ],
+    "nerf_angle": "Nerf risk **Low**: assume paytables, caps, and marketing can move without notice."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

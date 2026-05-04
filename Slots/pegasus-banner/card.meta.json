@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
+  "machine": {
+    "slug": "pegasus-banner",
+    "name": "Pegasus Banner",
+    "manufacturer": "Aristocrat",
+    "type": "Persistent State",
+    "difficulty": "Intermediate",
+    "vegas_availability": "Common",
+    "nerf_risk": "Medium",
+    "has_calculator": false,
+    "calculator_slug": null,
+    "volatility_index": null,
+    "popularity_summary": null,
+    "release_year": null
+  },
+  "guide_seed": {
+    "slug": "pegasus-banner",
+    "title": "Pegasus Banner",
+    "published": true,
+    "card_summary_bullets": [
+      "Persistent State: Persistent meters / signatures on the glass — weak state vs strong state is the whole game.",
+      "Floor / rarity: Common — re-verify same visit.",
+      "Nerf: Medium — Aristocrat / jurisdictional packaging changes outcomes."
+    ],
+    "content_markdown_file": "guide.md",
+    "last_updated": null,
+    "card_gist": "Strong meters / state vs cost to clear"
+  },
+  "ap": {
+    "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",
+    "popularity_summary": "Floor presence (from seed): **Common**. Treat as marketing signal, not proof of edge.",
+    "edge_vectors": [
+      "Persistent meters / signatures on the glass — weak state vs strong state is the whole game.",
+      "Cross-meter correlation: one 'good' meter can be negated by bad neighbors.",
+      "Base-game RTP tax while you move state — count the dollars to clear, not only the top line."
+    ],
+    "bankroll_angle": "Size sessions for worst-case drawdown before the persistent / bonus state pays you back; confirm denom and max-bet rules the same visit you scout.",
+    "verification_checklist": [
+      "Photo: each persistent ladder or meter family that matters for this title family.",
+      "Denom, line count, and any 'must bet' for progressive eligibility."
+    ],
+    "common_pitfalls": [
+      "Eyeballing one meter in isolation.",
+      "Assuming strip vs locals marketing matches this cabinet revision."
+    ],
+    "nerf_angle": "Nerf risk **Medium**: assume paytables, caps, and marketing can move without notice."
+  },
+  "assets": {
+    "hero_relative": "hero.webp",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

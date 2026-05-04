@@ -65,7 +65,7 @@ function resolveCalculatorKey(machine) {
 
 function mergeLocalGuideDemos(rows) {
   const base = [...(rows || [])]
-  const slugs = new Set(base.map((r) => r.machines?.slug).filter(Boolean))
+  const slugs = new Set(base.map((r) => machineForGuide(r)?.slug).filter(Boolean))
   const extras = []
 
   if (!slugs.has(PHOENIX_LINK_DEMO_SLUG)) {
@@ -262,7 +262,7 @@ function mergeLocalGuideDemos(rows) {
 function cardGistForRow(row) {
   const raw = typeof row.card_gist === 'string' ? row.card_gist.trim() : ''
   if (raw) return raw
-  const m = row.machines
+  const m = machineForGuide(row)
   if (m?.slug) return defaultCardGistForSlug(m.slug, m.type)
   return TYPE_LINE_FALLBACK_GUIDE_HINT
 }
@@ -301,7 +301,7 @@ function makeGuideMarkdownComponents(machineSlug) {
 }
 
 function volatilityLabel(row) {
-  const m = row.machines
+  const m = machineForGuide(row)
   if (!m) return '—'
   if (m.volatility_index) return m.volatility_index
   if (m.nerf_risk && m.difficulty) return `${m.difficulty} play / ${m.nerf_risk} nerf risk`
@@ -309,7 +309,7 @@ function volatilityLabel(row) {
 }
 
 function popularityLabel(row) {
-  const m = row.machines
+  const m = machineForGuide(row)
   if (!m) return '—'
   if (m.popularity_summary) return m.popularity_summary
   return m.vegas_availability || '—'
@@ -326,9 +326,48 @@ function defaultHeroSrc(machineSlug) {
   return '/buffalo-icon.png'
 }
 
+/** Supabase may return `machines` as an object or a one-element array depending on FK metadata. */
+function machineForGuide(row) {
+  const m = row?.machines
+  if (m == null) return null
+  return Array.isArray(m) ? m[0] ?? null : m
+}
+
+/** Treat generic buffalo placeholder thumbs as “unset” so game-specific `defaultHeroSrc` wins. */
+function normalizeGuideThumbUrl(url, machineSlug) {
+  if (url == null || String(url).trim() === '') return null
+  const u = String(url).trim()
+  const isBuffaloIcon = u === '/buffalo-icon.png' || u.endsWith('/buffalo-icon.png')
+  if (machineSlug && machineSlug !== 'buffalo-link' && isBuffaloIcon) return null
+  return u
+}
+
 function heroImage(row) {
-  const ms = row.machines?.slug
-  return row.thumbnail_url || row.machines?.thumbnail_url || defaultHeroSrc(ms)
+  const machine = machineForGuide(row)
+  const ms = machine?.slug
+  const g = normalizeGuideThumbUrl(row.thumbnail_url, ms)
+  const mt = normalizeGuideThumbUrl(machine?.thumbnail_url, ms)
+  return g || mt || defaultHeroSrc(ms)
+}
+
+function guideHeroImgOnError(e) {
+  const el = e.currentTarget
+  const slug = el.dataset.machineSlug || ''
+  const def = defaultHeroSrc(slug)
+  const defFile = def.replace(/^\//, '')
+  if (el.dataset.heroStep === 'retry') {
+    el.dataset.heroStep = 'buffalo'
+    el.src = '/buffalo-icon.png'
+    return
+  }
+  el.dataset.heroStep = 'retry'
+  const cur = el.getAttribute('src') || ''
+  if (defFile && cur.includes(defFile)) {
+    el.dataset.heroStep = 'buffalo'
+    el.src = '/buffalo-icon.png'
+  } else {
+    el.src = def
+  }
 }
 
 function heroGradientClass(machineSlug) {
@@ -671,9 +710,10 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
       ) : (
         <ul className="space-y-5 list-none p-0 m-0">
           {filtered.map((row) => {
-            const slug = row.machines?.slug || row.slug
+            const m = machineForGuide(row)
+            const slug = m?.slug || row.slug
             const expanded = expandedSlug === slug
-            const calcKey = resolveCalculatorKey(row.machines)
+            const calcKey = resolveCalculatorKey(m)
             const gistLine = cardGistForRow(row)
             const accent = cardAccent(slug)
             const ringFocus =
@@ -707,17 +747,13 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         src={heroImage(row)}
                         alt=""
                         className="h-full w-full object-cover opacity-95"
-                        onError={(e) => {
-                          const el = e.currentTarget
-                          if (el.dataset.fallback === '1') return
-                          el.dataset.fallback = '1'
-                          el.src = '/buffalo-icon.png'
-                        }}
+                        data-machine-slug={slug}
+                        onError={guideHeroImgOnError}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
                       <div className="absolute bottom-3 left-4 right-4">
-                        <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md">{row.machines?.name || row.title}</h2>
-                        <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>{row.machines?.manufacturer || '—'}</div>
+                        <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md">{m?.name || row.title}</h2>
+                        <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>{m?.manufacturer || '—'}</div>
                       </div>
                     </div>
 
@@ -733,11 +769,11 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         </div>
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Type</div>
-                          <div className="text-zinc-200 font-semibold mt-0.5 leading-snug">{row.machines?.type || '—'}</div>
+                          <div className="text-zinc-200 font-semibold mt-0.5 leading-snug">{m?.type || '—'}</div>
                         </div>
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Released</div>
-                          <div className="text-zinc-100 font-bold mt-0.5">{row.machines?.release_year ?? '—'}</div>
+                          <div className="text-zinc-100 font-bold mt-0.5">{m?.release_year ?? '—'}</div>
                         </div>
                         {row.known_titles_line ? (
                           <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
@@ -756,7 +792,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">
                         <span>
-                          Added <span className="text-zinc-400">{formatGuideDate(row.created_at || row.machines?.created_at)}</span>
+                          Added <span className="text-zinc-400">{formatGuideDate(row.created_at || m?.created_at)}</span>
                         </span>
                         <span>
                           Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at || row.last_updated)}</span>

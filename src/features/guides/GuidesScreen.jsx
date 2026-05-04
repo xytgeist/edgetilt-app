@@ -995,33 +995,23 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
 
                       <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         {isLocalDemoGuide(row) ? (
-                          <span className="text-zinc-400 text-[11px] leading-snug rounded-xl border border-zinc-700/55 bg-zinc-900/50 px-3 py-2">
-                            Added / Updated show database dates after this guide exists in Supabase (you are seeing the
-                            bundled local demo for now).
-                          </span>
+                          <p className="text-zinc-500 text-[10px] leading-snug max-w-[16rem]">
+                            Added / updated dates appear here once this guide is in Supabase (bundled demo for now).
+                          </p>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-800/35 bg-emerald-950/25 px-2.5 py-1.5 shadow-sm shadow-black/20">
-                              <IconCalendar className="h-3.5 w-3.5 shrink-0 text-emerald-400/90" aria-hidden />
-                              <span className="flex flex-col gap-0.5 leading-none sm:flex-row sm:items-baseline sm:gap-1.5">
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500/90">
-                                  Added
-                                </span>
-                                <span className="text-[11px] font-semibold tabular-nums text-zinc-200">
-                                  {formatGuideDate(row.created_at)}
-                                </span>
-                              </span>
+                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[10px] leading-snug text-zinc-500">
+                            <span className="inline-flex items-center gap-1">
+                              <IconCalendar className="h-3 w-3 shrink-0 text-zinc-600 opacity-70" aria-hidden />
+                              <span className="text-zinc-600">Added</span>
+                              <span className="tabular-nums text-zinc-400">{formatGuideDate(row.created_at)}</span>
                             </span>
-                            <span className="inline-flex items-center gap-2 rounded-xl border border-sky-800/35 bg-sky-950/20 px-2.5 py-1.5 shadow-sm shadow-black/20">
-                              <IconClock className="h-3.5 w-3.5 shrink-0 text-sky-400/90" aria-hidden />
-                              <span className="flex flex-col gap-0.5 leading-none sm:flex-row sm:items-baseline sm:gap-1.5">
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-sky-400/90">
-                                  Updated
-                                </span>
-                                <span className="text-[11px] font-semibold tabular-nums text-zinc-200">
-                                  {formatGuideDate(row.updated_at)}
-                                </span>
-                              </span>
+                            <span className="text-zinc-700 opacity-70" aria-hidden>
+                              ·
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <IconClock className="h-3 w-3 shrink-0 text-zinc-600 opacity-70" aria-hidden />
+                              <span className="text-zinc-600">Updated</span>
+                              <span className="tabular-nums text-zinc-400">{formatGuideDate(row.updated_at)}</span>
                             </span>
                           </div>
                         )}

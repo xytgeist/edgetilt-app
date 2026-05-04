@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Supabase CLI / slot sync — keep test & prod service keys out of git
+.env.supabase.test
+.env.supabase.production
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,3 +32,6 @@ supabase/.branches/
 
 # Per-machine offsets for transcript export (scripts/cursor-chat-export.mjs)
 .cursor/chat-export-state-*.json
+
+# Cursor chat transcripts often contain pasted secrets — do not commit
+session-chat-export.md

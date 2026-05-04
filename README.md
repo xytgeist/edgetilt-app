@@ -23,6 +23,9 @@ Other scripts:
 | `npm run preview` | Preview the production build |
 | `npm run lint` | ESLint |
 | `npm run slots:backfill-card-fields` | Add `card_gist` + `release_year` to manifests missing them |
+| `npm run slots:sync:test` / `slots:sync:production` | Upsert manifests to **test** or **prod** (see `.env.supabase.*`) |
+| `npm run slots:sync:test:dry` / `slots:sync:production:dry` | Dry-run for those targets |
+| `npm run slots:sync:test:dry:quiet` / `slots:sync:production:dry:quiet` | Same, without dumping every manifest JSON (short output) |
 
 ## Supabase: schema SQL vs app data
 
@@ -64,27 +67,54 @@ That refreshes `card.meta.json` and `guide.md` stubs under `Slots/<slug>/` for e
 
 When you want Supabase `machines` and `guides` to match the repo:
 
-1. Set environment variables (same shell session or `.env` loaded by your tooling):
+1. **Pick the project:** test vs production.
 
-   - `SUPABASE_URL` or `VITE_SUPABASE_URL` — project URL (`https://<ref>.supabase.co`).
-   - `SUPABASE_SERVICE_ROLE_KEY` — **service role** key. The sync uses upserts; anon keys are usually blocked by RLS for these tables.
+   **Option A — explicit target (recommended with two Supabase projects)**  
+   Add two repo-root env files (**gitignored**):
 
-2. **Dry run** (no writes, prints what would be sent):
+   | File | Use |
+   | --- | --- |
+   | `.env.supabase.test` | Test/staging project URL + **service_role** key |
+   | `.env.supabase.production` | Production project URL + **service_role** key |
+
+   Each file can contain the same variable names as `.env`:
+
+   - `SUPABASE_URL` or `VITE_SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+
+   The script always loads **`.env`** first (optional shared defaults), then **overwrites** URL/key from the target file when you pass `--target=`.
+
+   | Command |
+   | --- |
+   | `npm run slots:sync:test` / `npm run slots:sync:test:dry` |
+   | `npm run slots:sync:production` / `npm run slots:sync:production:dry` |
+
+   CLI equivalents: `--target=test`, `--target=production` (`prod` is accepted).
+
+   **Option B — single `.env` only**  
+   `npm run slots:sync` / `slots:sync:dry` behave as before: only `.env` (good if you temporarily point `.env` at one project).
+
+2. **Dry run** (no writes, prints payloads and which host/target):
 
    ```bash
-   npm run slots:sync:dry
+   npm run slots:sync:test:dry
    ```
 
 3. **Apply upserts:**
 
    ```bash
-   npm run slots:sync
+   npm run slots:sync:test
    ```
+   or `npm run slots:sync:production` when you intend production.
+
+   The sync script reads **`Slots/...`** and prints **`Slots sync → <target> → <hostname>`** before writing so you can confirm which Supabase instance you hit.
+
+   **`TypeError: fetch failed`** on upsert means the HTTP client couldn’t reach your project (wrong URL, paused project, DNS, firewall/VPN blocking `*.supabase.co`, TLS issues). Fix connectivity; the slug printed first (e.g. `adventures-of-sinbad`) is alphabetical, not broken data.
 
 Optional: sync a single game:
 
 ```bash
-node scripts/sync-slot-forms-to-supabase.mjs --slug=buffalo-link
+node scripts/sync-slot-forms-to-supabase.mjs --target=test --slug=buffalo-link
 ```
 
 Run sync whenever you add games, change manifests, or update `guide.md` and want the database to reflect it.

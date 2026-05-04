@@ -508,25 +508,125 @@ function fireMeter(count) {
   return '🔥'.repeat(n)
 }
 
-function IconLayers({ className }) {
+function IconEvTarget({ className }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <path
-        d="M3.5 7.5L10 4.25 16.5 7.5 10 10.75 3.5 7.5z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path d="M3.5 11.25L10 14.5l6.5-3.25" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="10" cy="10" r="7.25" stroke="currentColor" strokeWidth="1.25" />
+      <circle cx="10" cy="10" r="4" stroke="currentColor" strokeWidth="1.25" />
+      <circle cx="10" cy="10" r="1.35" fill="currentColor" />
     </svg>
   )
 }
 
-function GuideEvThresholdPanel({ line, accent }) {
+function IconEvGauge({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M4 12.5a6 6 0 0112 0"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path d="M10 12.5L7 8.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+      <circle cx="10" cy="12.5" r="1.15" fill="currentColor" />
+    </svg>
+  )
+}
+
+function IconEvTrendingUp({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M3.5 13.5L8.25 8.75l2.75 2.75 5-6"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12.25 5.25h4.5v4.5"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function IconEvBolt({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M11.4 2.75L6.5 11.25h3.6l-1.7 6.5 6.15-9.65h-3.4l1.25-5.35z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function IconEvClipboard({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M7 4.25h6a1.1 1.1 0 011.1 1.1v11.15a1.1 1.1 0 01-1.1 1.1H7a1.1 1.1 0 01-1.1-1.1V5.35a1.1 1.1 0 011.1-1.1z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 3.35v1.65h4V3.35A1.35 1.35 0 0010.65 2h-1.3A1.35 1.35 0 008 3.35z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M7.5 9h5M7.5 11.25h5M7.5 13.5h3.25" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconEvSparkles({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        d="M10 3.5v3.75M10 12.75v3.75M5.85 10.75h3.3M10.85 10.75h3.3"
+        stroke="currentColor"
+        strokeWidth="1.15"
+        strokeLinecap="round"
+      />
+      <circle cx="10" cy="10.75" r="1.4" fill="currentColor" />
+      <path
+        d="M14.85 5.5l.9.9M14.85 16l.9-.9M5.25 6.4l.9-.9M5.25 15.1l.9.9"
+        stroke="currentColor"
+        strokeWidth="1.05"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/** First six rows in the sorted list — one icon each so you can compare styles (same order as below). */
+const THRESHOLD_ICON_ROULETTE = [
+  IconEvTarget,
+  IconEvGauge,
+  IconEvTrendingUp,
+  IconEvBolt,
+  IconEvClipboard,
+  IconEvSparkles,
+]
+
+function GuideEvThresholdPanel({ line, accent, listIndex }) {
+  const Icon =
+    typeof listIndex === 'number' && listIndex >= 0 && listIndex < THRESHOLD_ICON_ROULETTE.length
+      ? THRESHOLD_ICON_ROULETTE[listIndex]
+      : IconEvTarget
   return (
     <div className={accent.evTablesBox}>
       <div className={`flex items-center gap-2 ${accent.evTablesHead}`}>
-        <IconLayers className="h-3.5 w-3.5 shrink-0 opacity-90" />
+        <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" />
         <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">+EV Threshold</span>
       </div>
       <div className={`relative mt-2 border-l-2 pl-3 ${accent.evTablesRule}`}>
@@ -962,7 +1062,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
         <div className="text-zinc-500 text-sm py-8 text-center">No guides match that search.</div>
       ) : (
         <ul className="space-y-8 list-none p-0 m-0">
-          {filtered.map((row) => {
+          {filtered.map((row, listIndex) => {
             const m = machineForGuide(row)
             const slug = m?.slug || row.slug
             const expanded = expandedSlug === slug
@@ -1083,7 +1183,11 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         ) : null}
                       </div>
 
-                      <GuideEvThresholdPanel line={evThresholdLine} accent={accent} />
+                      <GuideEvThresholdPanel
+                        line={evThresholdLine}
+                        accent={accent}
+                        listIndex={listIndex}
+                      />
 
                       <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         {isLocalDemoGuide(row) ? (

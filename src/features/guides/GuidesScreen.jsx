@@ -961,7 +961,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
       ) : filtered.length === 0 ? (
         <div className="text-zinc-500 text-sm py-8 text-center">No guides match that search.</div>
       ) : (
-        <ul className="space-y-5 list-none p-0 m-0">
+        <ul className="space-y-8 list-none p-0 m-0">
           {filtered.map((row) => {
             const m = machineForGuide(row)
             const slug = m?.slug || row.slug
@@ -989,8 +989,10 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                     if (el) guideCardRefs.current[slug] = el
                     else delete guideCardRefs.current[slug]
                   }}
-                  className={`rounded-3xl border overflow-hidden transition-shadow bg-zinc-900 scroll-mt-[max(0.5rem,env(safe-area-inset-top))] ${
-                    expanded ? accent.expandedBorder : 'border-zinc-800'
+                  className={`rounded-3xl border overflow-hidden bg-zinc-900 scroll-mt-[max(0.5rem,env(safe-area-inset-top))] transition-[box-shadow,border-color,ring-color] duration-200 ${
+                    expanded
+                      ? `${accent.expandedBorder} ring-1 ring-white/[0.07] shadow-2xl`
+                      : 'border-zinc-700/85 ring-1 ring-zinc-500/15 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.65)]'
                   }`}
                 >
                   <button

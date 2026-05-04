@@ -16,6 +16,13 @@
  *
  * Optional: only one slug
  *   node scripts/sync-slot-forms-to-supabase.mjs --slug=buffalo-link
+ *
+ * `machine.nerf_risk` in card.meta.json:
+ *   - `Low` | `Medium` | `High` — written as-is (override).
+ *   - Omitted or `"auto"` — computed from `guides.created_at` (Added date):
+ *       under 180 days → High, under 365 days → Medium, else Low.
+ *     If the guide row does not exist yet, uses current time (first import ≈ High).
+ *   Invalid strings throw so typos fail the sync.
  */
 
 import fs from "fs";
@@ -144,6 +151,54 @@ async function loadManifests(filterSlug) {
   return out;
 }
 
+const NERF_LEVELS = new Set(["Low", "Medium", "High"]);
+
+/** @returns {null | "Low" | "Medium" | "High"} */
+function parseNerfRiskOverride(raw, slug) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (s === "") return null;
+  if (s.toLowerCase() === "auto") return null;
+  const cap = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  if (NERF_LEVELS.has(cap)) return /** @type {"Low"|"Medium"|"High"} */ (cap);
+  throw new Error(
+    `Invalid machine.nerf_risk "${raw}" for slug "${slug}". Use Low, Medium, High, "auto", or omit.`
+  );
+}
+
+/** Uses guides.created_at (when the guide was added). Thresholds vs sync run time: under 180d High, under 365d Medium, else Low. */
+function nerfRiskFromGuideAdded(addedIso, now = new Date()) {
+  if (!addedIso) return "Medium";
+  const t0 = new Date(addedIso).getTime();
+  if (Number.isNaN(t0)) return "Medium";
+  const days = (now.getTime() - t0) / 86400000;
+  if (days < 0) return "High";
+  if (days < 180) return "High";
+  if (days < 365) return "Medium";
+  return "Low";
+}
+
+/**
+ * Explicit manifest value wins; otherwise derive from guide `created_at`,
+ * or `now` when the guide does not exist yet (first sync).
+ */
+function resolveNerfRiskForSync({ slug, manifestNerfRisk, guideCreatedAt, now }) {
+  const override = parseNerfRiskOverride(manifestNerfRisk, slug);
+  if (override) return override;
+  const anchor = guideCreatedAt ?? now.toISOString();
+  return nerfRiskFromGuideAdded(anchor, now);
+}
+
+async function fetchGuideCreatedAt(supabase, guideSlug) {
+  const { data, error } = await supabase
+    .from("guides")
+    .select("created_at")
+    .eq("slug", guideSlug)
+    .maybeSingle();
+  if (error) throw new Error(`guides.created_at lookup (${guideSlug}): ${error.message}`);
+  return data?.created_at ?? null;
+}
+
 async function main() {
   const { dry, dryQuiet, slug: filterSlug, target } = parseArgs();
   loadSupabaseEnv(target);
@@ -236,6 +291,20 @@ async function main() {
   for (const { dir, json, content_markdown } of manifests) {
     const m = json.machine;
     const g = json.guide_seed;
+    let guideCreatedAt;
+    try {
+      guideCreatedAt = await fetchGuideCreatedAt(supabase, g.slug);
+    } catch (e) {
+      console.error(e instanceof Error ? e.message : e);
+      process.exit(1);
+    }
+    const now = new Date();
+    const nerfResolved = resolveNerfRiskForSync({
+      slug: m.slug,
+      manifestNerfRisk: m.nerf_risk,
+      guideCreatedAt,
+      now,
+    });
     const machinePayload = {
       slug: m.slug,
       name: m.name,
@@ -243,7 +312,7 @@ async function main() {
       type: m.type,
       difficulty: m.difficulty,
       vegas_availability: m.vegas_availability,
-      nerf_risk: m.nerf_risk,
+      nerf_risk: nerfResolved,
       has_calculator: m.has_calculator,
       calculator_slug: m.calculator_slug,
       thumbnail_url: m.thumbnail_url ?? null,

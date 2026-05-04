@@ -766,10 +766,10 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 pt-1 border-t border-zinc-800/80">
                         <span>
-                          Added <span className="text-zinc-400">{formatGuideDate(row.created_at || m?.created_at)}</span>
+                          Added <span className="text-zinc-400">{formatGuideDate(row.created_at)}</span>
                         </span>
                         <span>
-                          Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at || row.last_updated)}</span>
+                          Updated <span className="text-zinc-400">{formatGuideDate(row.updated_at)}</span>
                         </span>
                       </div>
 

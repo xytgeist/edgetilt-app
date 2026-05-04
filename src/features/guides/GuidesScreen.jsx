@@ -370,6 +370,144 @@ function guideHeroImgOnError(e) {
   }
 }
 
+function clamp255(v) {
+  return Math.max(0, Math.min(255, Math.round(v)))
+}
+
+function rgbObjToRgb({ r, g, b }) {
+  return { r: clamp255(r), g: clamp255(g), b: clamp255(b) }
+}
+
+function rgbToCss({ r, g, b }, a = 1) {
+  const o = rgbObjToRgb({ r, g, b })
+  return `rgba(${o.r},${o.g},${o.b},${a})`
+}
+
+/** Mix two linear RGB-ish triples (already 0–255 scale). */
+function blendRgbTriple(a, b, t) {
+  return rgbObjToRgb({
+    r: a.r * (1 - t) + b.r * t,
+    g: a.g * (1 - t) + b.g * t,
+    b: a.b * (1 - t) + b.b * t,
+  })
+}
+
+/** Returns [hue 0–1, saturation 0–1, lightness 0–1] */
+function rgbToHslApprox(r, g, b) {
+  const rn = r / 255
+  const gn = g / 255
+  const bn = b / 255
+  const max = Math.max(rn, gn, bn)
+  const min = Math.min(rn, gn, bn)
+  const L = (max + min) / 2
+  if (Math.abs(max - min) < 1e-6) return [0, 0, L]
+  const d = max - min
+  const S = L > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let H = 0
+  if (max === rn) H = (gn - bn) / d + (gn < bn ? 6 : 0)
+  else if (max === gn) H = (bn - rn) / d + 2
+  else H = (rn - gn) / d + 4
+  H /= 6
+  return [H, S, L]
+}
+
+/**
+ * Sample saturated colors + overall tone from a loaded & same-origin drawable.
+ * Cross-origin thumbnails (no CORS) throw when reading pixels — caller catches.
+ */
+function extractHeroPaletteFromImage(imgEl) {
+  try {
+    const rawSrc = imgEl.currentSrc || imgEl.src || ''
+    if (/buffalo-icon\.png|phoenix-link-logo|stackup-icon|must-hit-by-hero/i.test(rawSrc)) return null
+  } catch {
+    /* ignore */
+  }
+  const wnat = imgEl.naturalWidth
+  const hn = imgEl.naturalHeight
+  if (!wnat || !hn || !imgEl.complete) return null
+  const tw = 56
+  const th = Math.max(28, Math.round((hn / wnat) * tw))
+  const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
+  if (!canvas) return null
+  canvas.width = tw
+  canvas.height = th
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return null
+  ctx.drawImage(imgEl, 0, 0, tw, th)
+  let data
+  try {
+    data = ctx.getImageData(0, 0, tw, th).data
+  } catch {
+    return null /* tainted canvas (cross-origin thumbnail) */
+  }
+
+  let vr = 0
+  let vg = 0
+  let vb = 0
+  let vw = 0
+  let mr = 0
+  let mg = 0
+  let mb = 0
+  let mw = 0
+  let ar = 0
+  let ag = 0
+  let ab = 0
+  let nx = 0
+
+  for (let i = 0; i < data.length; i += 4 * 6) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
+    const aa = data[i + 3]
+    if (aa < 140) continue
+    const [, s, lum] = rgbToHslApprox(r, g, b)
+    const satKick = Math.max(0, s - 0.06)
+    const weight = satKick * satKick
+    vr += r * weight
+    vg += g * weight
+    vb += b * weight
+    vw += weight
+    const midW = lum > 0.1 && lum < 0.92 ? 1 : 0.25
+    mr += r * midW
+    mg += g * midW
+    mb += b * midW
+    mw += midW
+    ar += r
+    ag += g
+    ab += b
+    nx += 1
+  }
+
+  if (!vw || !mw || !nx) return null
+
+  const zincRef = { r: 23, g: 23, b: 25 }
+  const vibrantRaw = rgbObjToRgb({ r: vr / vw, g: vg / vw, b: vb / vw })
+  const mutedRaw = rgbObjToRgb({ r: mr / mw, g: mg / mw, b: mb / mw })
+  const overallRaw = rgbObjToRgb({ r: ar / nx, g: ag / nx, b: ab / nx })
+
+  const calm = blendRgbTriple(vibrantRaw, mutedRaw, 0.5)
+  const cardEdge = blendRgbTriple(vibrantRaw, zincRef, 0.78)
+
+  const pillBgRgb = blendRgbTriple(calm, zincRef, 0.82)
+  return {
+    /** Strong accent for glows */
+    vibrant: vibrantRaw,
+    /** Calmer mid used for washes */
+    calm,
+    muted: mutedRaw,
+    overall: overallRaw,
+    pillBg: rgbToCss(pillBgRgb, 0.72),
+    pillBorder: rgbToCss(calm, 0.52),
+    cardBorder: rgbToCss(cardEdge, 0.55),
+    cardGlow: rgbToCss(vibrantRaw, 0.18),
+    heroWash: rgbToCss(blendRgbTriple(vibrantRaw, overallRaw, 0.35), 0.38),
+    heroWashSoft: rgbToCss(vibrantRaw, 0.12),
+    gistAccent: rgbToCss(vibrantRaw, 0.55),
+    gistGlow: rgbToCss(vibrantRaw, 0.22),
+    accentPop: rgbToCss(vibrantRaw, 0.92),
+  }
+}
+
 function heroGradientClass(machineSlug) {
   if (machineSlug === 'phoenix-link') return 'from-orange-950/80 via-zinc-900/40 to-zinc-950'
   if (machineSlug === 'stack-up-pays') return 'from-cyan-950/80 via-sky-950/40 to-zinc-950'
@@ -442,9 +580,18 @@ function guideCardDesignVariant(slug) {
   return GUIDE_CARD_VARIANT_BY_SLUG[slug] ?? 'ember'
 }
 
-function StatPill({ emoji, children, className = '' }) {
+function StatPill({ emoji, children, className = '', palette }) {
+  const tint =
+    palette && typeof palette.pillBg === 'string'
+      ? {
+          backgroundColor: palette.pillBg,
+          borderColor: palette.pillBorder,
+          boxShadow: `inset 0 0 0 1px ${palette.heroWashSoft}`,
+        }
+      : undefined
   return (
     <span
+      style={tint}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold leading-tight text-zinc-100 bg-zinc-950/55 border-zinc-700/55 ${className}`.trim()}
     >
       <span className="opacity-90" aria-hidden>
@@ -475,15 +622,23 @@ function MetaDatesRow({ row, m }) {
 }
 
 /** Softer card bodies: showcase layouts for selected slugs + fresh default for everyone else. */
-function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
+function GuideCardMetaBlock({ variant, row, m, gistLine, accent, palette }) {
   const vol = volatilityLabel(row)
   const pop = popularityLabel(row)
   const typ = m?.type || '—'
   const yr = m?.release_year ?? '—'
   const known = row.known_titles_line
 
+  const aura =
+    palette && typeof palette.pillBorder === 'string'
+      ? {
+          borderColor: palette.pillBorder,
+          boxShadow: `0 18px 55px -28px ${palette.gistGlow}`,
+        }
+      : undefined
+
   const gistBlock = (extraClass = '') => (
-    <div className={`rounded-2xl px-3.5 py-3 ${extraClass}`.trim()}>
+    <div style={aura} className={`rounded-2xl px-3.5 py-3 ${extraClass}`.trim()}>
       <p className={`text-sm leading-snug font-semibold ${accent.strong}`}>{gistLine}</p>
     </div>
   )
@@ -498,24 +653,45 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
   if (variant === 'aurora') {
     return (
       <div className="space-y-3">
-        <div className="rounded-2xl bg-gradient-to-br from-amber-950/50 via-violet-950/25 to-cyan-950/20 border border-white/10 p-3 shadow-inner">
+        <div
+          className="rounded-2xl bg-gradient-to-br from-amber-950/50 via-violet-950/25 to-cyan-950/20 border border-white/10 p-3 shadow-inner"
+          style={
+            palette?.pillBorder
+              ? {
+                  borderColor: palette.pillBorder,
+                  boxShadow: `inset 0 1px 0 0 ${palette.heroWashSoft}, inset 0 -32px 52px -22px ${palette.heroWashSoft}`,
+                }
+              : undefined
+          }
+        >
           <div className="flex flex-wrap gap-2">
-            <StatPill emoji="🌊" className="bg-white/10 border-white/10 backdrop-blur-sm">
+            <StatPill palette={palette} emoji="🌊" className="bg-white/10 border-white/10 backdrop-blur-sm">
               {vol}
             </StatPill>
-            <StatPill emoji="👀" className="bg-white/10 border-white/10 backdrop-blur-sm">
+            <StatPill palette={palette} emoji="👀" className="bg-white/10 border-white/10 backdrop-blur-sm">
               {pop}
             </StatPill>
-            <StatPill emoji="🗺️" className="bg-white/10 border-white/10 backdrop-blur-sm">
+            <StatPill palette={palette} emoji="🗺️" className="bg-white/10 border-white/10 backdrop-blur-sm">
               {typ}
             </StatPill>
-            <StatPill emoji="📆" className="bg-white/10 border-white/10 backdrop-blur-sm">
+            <StatPill palette={palette} emoji="📆" className="bg-white/10 border-white/10 backdrop-blur-sm">
               {yr}
             </StatPill>
           </div>
         </div>
         {knownSoft}
-        <div className="rounded-2xl bg-zinc-950/60 border border-amber-400/20 px-3 py-3 relative overflow-hidden">
+        <div
+          className="rounded-2xl bg-zinc-950/60 border border-amber-400/20 px-3 py-3 relative overflow-hidden"
+          style={
+            palette?.gistGlow
+              ? {
+                  borderColor: palette.pillBorder,
+                  boxShadow: `0 22px 54px -26px ${palette.gistGlow}`,
+                  backgroundImage: palette.heroWash ? `linear-gradient(145deg, transparent 0%, transparent 55%, ${palette.heroWash} 155%)` : undefined,
+                }
+              : undefined
+          }
+        >
           <div className="absolute -right-6 -top-6 text-5xl opacity-20 pointer-events-none select-none" aria-hidden>
             ✨
           </div>
@@ -534,17 +710,37 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
   if (variant === 'nova') {
     return (
       <div className="space-y-3">
-        <div className="-mx-1 rounded-2xl bg-gradient-to-r from-rose-950/35 via-zinc-950 to-rose-950/20 border border-rose-500/20 p-3">
+        <div
+          className="-mx-1 rounded-2xl bg-gradient-to-r from-rose-950/35 via-zinc-950 to-rose-950/20 border border-rose-500/20 p-3"
+          style={
+            palette?.pillBorder
+              ? {
+                  borderColor: palette.pillBorder,
+                  boxShadow: `inset 0 -30px 48px -28px ${palette.heroWashSoft}`,
+                }
+              : undefined
+          }
+        >
           <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[['🎯', vol], ['🔥', pop], ['🎰', typ], ['📅', yr]].map(([emoji, val], i) => (
-              <StatPill key={i} emoji={emoji} className="snap-start shrink-0 border-rose-500/25 bg-rose-950/40">
+              <StatPill palette={palette} key={i} emoji={emoji} className="snap-start shrink-0 border-rose-500/25 bg-rose-950/40">
                 {val}
               </StatPill>
             ))}
           </div>
         </div>
         {knownSoft}
-        <div className="rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-950/40 to-zinc-950 px-3 py-3 shadow-lg shadow-rose-950/20 flex gap-2">
+        <div
+          className="rounded-2xl border border-rose-400/30 bg-gradient-to-br from-rose-950/40 to-zinc-950 px-3 py-3 shadow-lg shadow-rose-950/20 flex gap-2"
+          style={
+            palette?.gistGlow
+              ? {
+                  borderColor: palette.pillBorder,
+                  boxShadow: `0 24px 60px -30px ${palette.gistGlow}, inset 0 0 0 1px ${palette.heroWashSoft}`,
+                }
+              : undefined
+          }
+        >
           <span className="text-lg shrink-0" aria-hidden>
             💥
           </span>
@@ -559,7 +755,14 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap gap-x-3 gap-y-2 text-[13px] text-zinc-200 items-center">
-          <span className="inline-flex items-center gap-1 rounded-lg bg-fuchsia-950/35 px-2 py-1 border border-fuchsia-500/25">
+          <span
+            className="inline-flex items-center gap-1 rounded-lg bg-fuchsia-950/35 px-2 py-1 border border-fuchsia-500/25"
+            style={
+              palette?.pillBg
+                ? { backgroundColor: palette.pillBg, borderColor: palette.pillBorder }
+                : undefined
+            }
+          >
             <span aria-hidden>🔮</span>
             <span className="font-semibold">{vol}</span>
           </span>
@@ -580,8 +783,21 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
           </span>
         </div>
         {knownSoft}
-        <div className="rounded-2xl ring-2 ring-fuchsia-500/35 ring-offset-2 ring-offset-zinc-900 bg-zinc-950/80 px-3.5 py-3 flex gap-2">
-          <span className="text-fuchsia-400 shrink-0" aria-hidden>
+        <div
+          className="rounded-2xl ring-2 ring-fuchsia-500/35 ring-offset-2 ring-offset-zinc-900 bg-zinc-950/80 px-3.5 py-3 flex gap-2"
+          style={
+            palette?.gistAccent
+              ? {
+                  boxShadow: `0 0 0 2px ${palette.heroWashSoft}, 0 28px 64px -32px ${palette.gistGlow}`,
+                }
+              : undefined
+          }
+        >
+          <span
+            className="text-fuchsia-400 shrink-0"
+            style={palette?.accentPop ? { color: palette.accentPop } : undefined}
+            aria-hidden
+          >
             ✦
           </span>
           <p className={`text-sm leading-snug ${accent.strong}`}>{gistLine}</p>
@@ -594,9 +810,22 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
   if (variant === 'lamp') {
     return (
       <div className="space-y-3">
-        <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-900/25 via-zinc-950 to-yellow-950/20 px-3 py-3">
+        <div
+          className="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-900/25 via-zinc-950 to-yellow-950/20 px-3 py-3"
+          style={
+            palette?.pillBorder
+              ? {
+                  borderColor: palette.pillBorder,
+                  boxShadow: `inset 0 -40px 56px -40px ${palette.heroWash}`,
+                }
+              : undefined
+          }
+        >
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2">
+            <div
+              className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2"
+              style={palette?.pillBg ? { boxShadow: `inset 0 0 0 1px ${palette.heroWashSoft}` } : undefined}
+            >
               <span className="text-lg" aria-hidden>
                 🪔
               </span>
@@ -605,7 +834,10 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
                 <div className="text-sm font-bold text-amber-50">{vol}</div>
               </div>
             </div>
-            <div className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2">
+            <div
+              className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2"
+              style={palette?.pillBg ? { boxShadow: `inset 0 0 0 1px ${palette.heroWashSoft}` } : undefined}
+            >
               <span className="text-lg" aria-hidden>
                 👥
               </span>
@@ -614,7 +846,10 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
                 <div className="text-sm font-bold text-amber-50 leading-snug">{pop}</div>
               </div>
             </div>
-            <div className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2 col-span-2 sm:col-span-1">
+            <div
+              className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2 col-span-2 sm:col-span-1"
+              style={palette?.pillBg ? { boxShadow: `inset 0 0 0 1px ${palette.heroWashSoft}` } : undefined}
+            >
               <span className="text-lg" aria-hidden>
                 🕌
               </span>
@@ -623,7 +858,10 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
                 <div className="text-sm font-semibold text-zinc-100">{typ}</div>
               </div>
             </div>
-            <div className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2 col-span-2 sm:col-span-1">
+            <div
+              className="rounded-xl bg-black/25 px-2.5 py-2 flex items-start gap-2 col-span-2 sm:col-span-1"
+              style={palette?.pillBg ? { boxShadow: `inset 0 0 0 1px ${palette.heroWashSoft}` } : undefined}
+            >
               <span className="text-lg" aria-hidden>
                 ✳️
               </span>
@@ -635,8 +873,15 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
           </div>
         </div>
         {knownSoft}
-        <div className="border-l-[3px] border-amber-400/70 pl-3 py-1 flex gap-2">
-          <span className="text-amber-300/90 text-lg shrink-0" aria-hidden>
+        <div
+          className="border-l-[3px] border-amber-400/70 pl-3 py-1 flex gap-2"
+          style={palette?.gistAccent ? { borderLeftColor: palette.accentPop } : undefined}
+        >
+          <span
+            className="text-amber-300/90 text-lg shrink-0"
+            style={palette?.accentPop ? { color: palette.accentPop } : undefined}
+            aria-hidden
+          >
             ✨
           </span>
           <p className={`text-sm leading-snug ${accent.strong}`}>{gistLine}</p>
@@ -650,23 +895,33 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
     return (
       <div className="space-y-3">
         <div className="flex flex-col items-center gap-2">
-          <StatPill emoji="🗿" className="bg-emerald-950/35 border-emerald-500/30">
+          <StatPill palette={palette} emoji="🗿" className="bg-emerald-950/35 border-emerald-500/30">
             {vol}
           </StatPill>
           <div className="flex flex-wrap justify-center gap-2 w-full">
-            <StatPill emoji="🌴" className="bg-teal-950/30 border-teal-500/25">
+            <StatPill palette={palette} emoji="🌴" className="bg-teal-950/30 border-teal-500/25">
               {pop}
             </StatPill>
-            <StatPill emoji="🎴" className="bg-teal-950/30 border-teal-500/25">
+            <StatPill palette={palette} emoji="🎴" className="bg-teal-950/30 border-teal-500/25">
               {typ}
             </StatPill>
           </div>
-          <StatPill emoji="☀️" className="bg-emerald-950/35 border-emerald-500/30 opacity-95">
+          <StatPill palette={palette} emoji="☀️" className="bg-emerald-950/35 border-emerald-500/30 opacity-95">
             {yr}
           </StatPill>
         </div>
         {knownSoft}
-        <div className="rounded-2xl bg-gradient-to-t from-emerald-950/25 to-zinc-950 border-t-2 border-emerald-400/35 px-3 py-3">
+        <div
+          className="rounded-2xl bg-gradient-to-t from-emerald-950/25 to-zinc-950 border-t-2 border-emerald-400/35 px-3 py-3"
+          style={
+            palette?.gistGlow
+              ? {
+                  borderTopColor: palette.pillBorder,
+                  boxShadow: `0 -16px 48px -26px ${palette.gistGlow}`,
+                }
+              : undefined
+          }
+        >
           <p className={`text-sm leading-snug ${accent.strong}`}>{gistLine}</p>
         </div>
         <MetaDatesRow row={row} m={m} />
@@ -677,7 +932,12 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
   if (variant === 'trail') {
     return (
       <div className="space-y-3">
-        <div className="relative rounded-2xl overflow-hidden border border-amber-800/40">
+        <div
+          className="relative rounded-2xl overflow-hidden border border-amber-800/40"
+          style={
+            palette?.pillBorder ? { borderColor: palette.cardBorder || palette.pillBorder } : undefined
+          }
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 via-transparent to-sky-500/10" />
           <div className="relative flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 text-[13px]">
             <span className="text-lg" aria-hidden>
@@ -695,7 +955,14 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
           </div>
         </div>
         {knownSoft}
-        <div className="rounded-2xl bg-zinc-950/70 px-3 py-3 border border-zinc-800 flex gap-3">
+        <div
+          className="rounded-2xl bg-zinc-950/70 px-3 py-3 border border-zinc-800 flex gap-3"
+          style={
+            palette?.gistGlow
+              ? { borderColor: palette.pillBorder, boxShadow: `0 20px 54px -30px ${palette.gistGlow}` }
+              : undefined
+          }
+        >
           <span className="text-2xl shrink-0 select-none">⛰️</span>
           <p className={`text-sm leading-snug ${accent.strong}`}>{gistLine}</p>
         </div>
@@ -708,10 +975,10 @@ function GuideCardMetaBlock({ variant, row, m, gistLine, accent }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <StatPill emoji="⚡">{vol}</StatPill>
-        <StatPill emoji="📍">{pop}</StatPill>
-        <StatPill emoji="🎰">{typ}</StatPill>
-        <StatPill emoji="📅">{String(yr)}</StatPill>
+        <StatPill palette={palette} emoji="⚡">{vol}</StatPill>
+        <StatPill palette={palette} emoji="📍">{pop}</StatPill>
+        <StatPill palette={palette} emoji="🎰">{typ}</StatPill>
+        <StatPill palette={palette} emoji="📅">{String(yr)}</StatPill>
       </div>
       {knownSoft}
       {gistBlock('bg-zinc-950/45 border border-zinc-800/70 shadow-sm')}
@@ -851,6 +1118,8 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
   const [loadErr, setLoadErr] = useState('')
   const [expandedSlug, setExpandedSlug] = useState(null)
   const [askFor, setAskFor] = useState(null)
+  /** Sampled from hero bitmap (same-origin only); cross-origin thumbs skip extraction. */
+  const [heroPalettes, setHeroPalettes] = useState(() => ({}))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1009,6 +1278,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
             const gistLine = cardGistForRow(row)
             const accent = cardAccent(slug)
             const cardVariant = guideCardDesignVariant(slug)
+            const heroPalette = heroPalettes[slug] ?? null
             const ringFocus =
               slug === 'phoenix-link'
                 ? 'focus-visible:ring-orange-500/60'
@@ -1026,8 +1296,18 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
               <li key={row.id || row.slug}>
                 <article
                   className={`rounded-3xl border overflow-hidden transition-shadow bg-zinc-900 ${
-                    expanded ? accent.expandedBorder : 'border-zinc-800'
+                    expanded ? accent.expandedBorder : heroPalette?.cardBorder ? '' : 'border-zinc-800'
                   }`}
+                  style={
+                    heroPalette && !expanded
+                      ? {
+                          borderColor: heroPalette.cardBorder,
+                          boxShadow: `0 12px 40px -14px ${heroPalette.cardGlow}`,
+                        }
+                      : heroPalette && expanded
+                        ? { boxShadow: `0 18px 50px -16px ${heroPalette.cardGlow}` }
+                        : undefined
+                  }
                 >
                   <button
                     type="button"
@@ -1042,7 +1322,20 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         className="h-full w-full object-cover opacity-95"
                         data-machine-slug={slug}
                         onError={guideHeroImgOnError}
+                        onLoad={(e) => {
+                          const pal = extractHeroPaletteFromImage(e.currentTarget)
+                          if (pal) setHeroPalettes((prev) => ({ ...prev, [slug]: pal }))
+                        }}
                       />
+                      {heroPalette?.heroWash ? (
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0"
+                          style={{
+                            background: `linear-gradient(180deg, ${heroPalette.heroWashSoft} 0%, transparent 40%, ${heroPalette.heroWash} 100%)`,
+                          }}
+                        />
+                      ) : null}
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
                       <div className="absolute bottom-3 left-4 right-4">
                         <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md">{m?.name || row.title}</h2>
@@ -1051,7 +1344,14 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                     </div>
 
                     <div className="p-4 space-y-3">
-                      <GuideCardMetaBlock variant={cardVariant} row={row} m={m} gistLine={gistLine} accent={accent} />
+                      <GuideCardMetaBlock
+                        variant={cardVariant}
+                        row={row}
+                        m={m}
+                        gistLine={gistLine}
+                        accent={accent}
+                        palette={heroPalette}
+                      />
 
                       <div className="flex items-center gap-2 text-zinc-500 text-xs font-medium pt-1">
                         <span aria-hidden>👆</span>
@@ -1092,7 +1392,10 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                   </div>
 
                   {expanded ? (
-                    <div className="border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
+                    <div
+                      style={heroPalette ? { borderTopColor: heroPalette.cardBorder } : undefined}
+                      className="border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none"
+                    >
                       <ReactMarkdown components={makeGuideMarkdownComponents(slug)}>
                         {row.content_markdown || ''}
                       </ReactMarkdown>

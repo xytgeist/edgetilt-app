@@ -527,7 +527,7 @@ function GuideEvThresholdPanel({ line, accent }) {
     <div className={accent.evTablesBox}>
       <div className={`flex items-center gap-2 ${accent.evTablesHead}`}>
         <IconLayers className="h-3.5 w-3.5 shrink-0 opacity-90" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Tables vs glass</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">+EV Threshold</span>
       </div>
       <div className={`relative mt-2 border-l-2 pl-3 ${accent.evTablesRule}`}>
         <p className={`text-base font-normal leading-snug ${accent.strong}`}>{line}</p>

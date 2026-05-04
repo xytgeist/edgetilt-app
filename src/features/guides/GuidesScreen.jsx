@@ -508,36 +508,6 @@ function fireMeter(count) {
   return '🔥'.repeat(n)
 }
 
-function IconTarget({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <circle cx="10" cy="10" r="7.25" stroke="currentColor" strokeWidth="1.25" />
-      <circle cx="10" cy="10" r="4" stroke="currentColor" strokeWidth="1.25" />
-      <circle cx="10" cy="10" r="1.35" fill="currentColor" />
-    </svg>
-  )
-}
-
-function IconGauge({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <path
-        d="M3.75 13.75a6.75 6.75 0 1112.5 0"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-      />
-      <path
-        d="M10 7.5v3.25l2 1.1"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 function IconLayers({ className }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -552,86 +522,16 @@ function IconLayers({ className }) {
   )
 }
 
-function IconSparkles({ className }) {
+function GuideEvThresholdPanel({ line, accent }) {
   return (
-    <svg className={className} viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <path d="M10 2.5l1.05 4.95 4.95 1.05-4.95 1.05L10 14.5 8.95 9.55 4 8.5l4.95-1.05L10 2.5z" opacity="0.92" />
-      <path
-        d="M16 12.25l.45 1.8 1.8.45-1.8.45-.45 1.8-.45-1.8-1.8-.45 1.8-.45.45-1.8z"
-        opacity="0.55"
-      />
-    </svg>
-  )
-}
-
-/** UI experiment: distinct +EV panels for a few guides; everyone else keeps the bordered gradient panel. */
-function evThresholdPanelKind(machineSlug) {
-  const s = typeof machineSlug === 'string' ? machineSlug.trim().toLowerCase() : ''
-  if (s === 'ags-must-hit-by' || s === 'must-hit-by-ags') return 'agsStrip'
-  if (s === 'ainsworth-must-hit-by' || s === 'must-hit-by-aig') return 'ainsworthTables'
-  if (s === 'aladdins-fortune') return 'aladdinEmerald'
-  return 'default'
-}
-
-function GuideEvThresholdPanel({ kind, line, accent }) {
-  if (kind === 'agsStrip') {
-    return (
-      <div className="relative overflow-hidden rounded-xl border border-rose-500/35 border-l-[3px] border-l-rose-400 bg-zinc-950/90 px-3.5 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 gap-y-1">
-          <span className="inline-flex items-center gap-1.5 text-rose-400/95">
-            <IconGauge className="h-3.5 w-3.5 shrink-0 opacity-90" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.18em]">Calculator anchor</span>
-          </span>
-          <span className="rounded-md bg-rose-500/15 px-2 py-0.5 text-[9px] font-semibold text-rose-200/90 ring-1 ring-rose-400/30">
-            MHB math
-          </span>
-        </div>
-        <p className={`mt-2 text-[15px] font-medium leading-snug ${accent.strong}`}>{line}</p>
+    <div className={accent.evTablesBox}>
+      <div className={`flex items-center gap-2 ${accent.evTablesHead}`}>
+        <IconLayers className="h-3.5 w-3.5 shrink-0 opacity-90" />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Tables vs glass</span>
       </div>
-    )
-  }
-
-  if (kind === 'ainsworthTables') {
-    return (
-      <div className="rounded-xl border border-dashed border-violet-400/55 bg-gradient-to-br from-violet-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5">
-        <div className="flex items-center gap-2 text-violet-300">
-          <IconLayers className="h-3.5 w-3.5 shrink-0 opacity-90" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">Tables vs glass</span>
-        </div>
-        <div className="relative mt-2 border-l-2 border-violet-400/65 pl-3">
-          <p className={`text-base font-normal leading-snug ${accent.strong}`}>{line}</p>
-        </div>
+      <div className={`relative mt-2 border-l-2 pl-3 ${accent.evTablesRule}`}>
+        <p className={`text-base font-normal leading-snug ${accent.strong}`}>{line}</p>
       </div>
-    )
-  }
-
-  if (kind === 'aladdinEmerald') {
-    return (
-      <div className="flex gap-3 rounded-2xl border border-emerald-500/35 bg-emerald-950/25 px-4 py-3.5 shadow-sm shadow-black/25 ring-1 ring-emerald-500/10">
-        <div
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400"
-          aria-hidden
-        >
-          <IconSparkles className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="inline-flex items-center gap-1.5 text-emerald-400/95">
-            <IconTarget className="h-3 w-3 shrink-0 opacity-95" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">+EV threshold</span>
-          </div>
-          <p className="mt-1.5 text-base font-normal leading-snug tracking-tight text-emerald-50">{line}</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl border-2 px-4 py-3.5 ${accent.evPanel}`}>
-      <div className={`inline-flex items-center gap-2 ${accent.evLabel}`}>
-        <IconTarget className="h-3.5 w-3.5 shrink-0 opacity-95" />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em]">+EV Threshold</span>
-      </div>
-      <p className={`mt-2 text-base font-normal leading-snug tracking-tight ${accent.strong}`}>{line}</p>
     </div>
   )
 }
@@ -700,9 +600,10 @@ function cardAccent(machineSlug) {
       strong: 'text-orange-50',
       subtitle: 'text-orange-200/90',
       expandedBorder: 'border-orange-500/50 shadow-lg shadow-orange-900/20',
-      evLabel: 'text-orange-400',
-      evPanel:
-        'border-orange-400/55 bg-gradient-to-br from-orange-950/65 via-zinc-900/50 to-zinc-950 ring-2 ring-orange-500/25 shadow-lg shadow-orange-950/35',
+      evTablesBox:
+        'rounded-xl border border-dashed border-orange-400/55 bg-gradient-to-br from-orange-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-orange-300',
+      evTablesRule: 'border-orange-400/65',
     }
   }
   if (machineSlug === 'stack-up-pays') {
@@ -711,9 +612,10 @@ function cardAccent(machineSlug) {
       strong: 'text-cyan-50',
       subtitle: 'text-cyan-200/90',
       expandedBorder: 'border-cyan-500/50 shadow-lg shadow-cyan-900/25',
-      evLabel: 'text-cyan-400',
-      evPanel:
-        'border-cyan-400/55 bg-gradient-to-br from-cyan-950/60 via-zinc-900/55 to-zinc-950 ring-2 ring-cyan-500/25 shadow-lg shadow-cyan-950/35',
+      evTablesBox:
+        'rounded-xl border border-dashed border-cyan-400/55 bg-gradient-to-br from-cyan-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-cyan-300',
+      evTablesRule: 'border-cyan-400/65',
     }
   }
   if (machineSlug === 'ainsworth-must-hit-by' || machineSlug === 'must-hit-by-aig') {
@@ -722,9 +624,10 @@ function cardAccent(machineSlug) {
       strong: 'text-violet-50',
       subtitle: 'text-fuchsia-200/90',
       expandedBorder: 'border-violet-500/50 shadow-lg shadow-fuchsia-950/30',
-      evLabel: 'text-violet-300',
-      evPanel:
-        'border-violet-400/50 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/25 to-zinc-950 ring-2 ring-violet-500/25 shadow-lg shadow-violet-950/40',
+      evTablesBox:
+        'rounded-xl border border-dashed border-violet-400/55 bg-gradient-to-br from-violet-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-violet-300',
+      evTablesRule: 'border-violet-400/65',
     }
   }
   if (machineSlug === 'ags-must-hit-by' || machineSlug === 'must-hit-by-ags') {
@@ -733,9 +636,10 @@ function cardAccent(machineSlug) {
       strong: 'text-rose-50',
       subtitle: 'text-rose-200/90',
       expandedBorder: 'border-rose-500/50 shadow-lg shadow-rose-950/35',
-      evLabel: 'text-rose-400',
-      evPanel:
-        'border-rose-400/50 bg-gradient-to-br from-rose-950/65 via-red-950/20 to-zinc-950 ring-2 ring-rose-500/30 shadow-lg shadow-rose-950/40',
+      evTablesBox:
+        'rounded-xl border border-dashed border-rose-400/55 bg-gradient-to-br from-rose-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-rose-300',
+      evTablesRule: 'border-rose-400/65',
     }
   }
   if (machineSlug === 'igt-must-hit-by' || machineSlug === 'must-hit-by-igt') {
@@ -744,9 +648,10 @@ function cardAccent(machineSlug) {
       strong: 'text-sky-50',
       subtitle: 'text-sky-200/90',
       expandedBorder: 'border-sky-500/50 shadow-lg shadow-blue-950/30',
-      evLabel: 'text-sky-400',
-      evPanel:
-        'border-sky-400/50 bg-gradient-to-br from-sky-950/58 via-blue-950/28 to-zinc-950 ring-2 ring-sky-500/25 shadow-lg shadow-blue-950/35',
+      evTablesBox:
+        'rounded-xl border border-dashed border-sky-400/55 bg-gradient-to-br from-sky-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+      evTablesHead: 'text-sky-300',
+      evTablesRule: 'border-sky-400/65',
     }
   }
   return {
@@ -754,9 +659,10 @@ function cardAccent(machineSlug) {
     strong: 'text-amber-50',
     subtitle: 'text-amber-200/90',
     expandedBorder: 'border-amber-500/50 shadow-lg shadow-amber-900/20',
-    evLabel: 'text-amber-400',
-    evPanel:
-      'border-amber-400/50 bg-gradient-to-br from-amber-950/55 via-yellow-950/15 to-zinc-950 ring-2 ring-amber-500/30 shadow-lg shadow-amber-950/30',
+    evTablesBox:
+      'rounded-xl border border-dashed border-amber-400/55 bg-gradient-to-br from-amber-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
+    evTablesHead: 'text-amber-300',
+    evTablesRule: 'border-amber-400/65',
   }
 }
 
@@ -1175,11 +1081,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         ) : null}
                       </div>
 
-                      <GuideEvThresholdPanel
-                        kind={evThresholdPanelKind(slug)}
-                        line={evThresholdLine}
-                        accent={accent}
-                      />
+                      <GuideEvThresholdPanel line={evThresholdLine} accent={accent} />
 
                       <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         {isLocalDemoGuide(row) ? (

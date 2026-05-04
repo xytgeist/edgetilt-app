@@ -1001,7 +1001,10 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                         ) : (
                           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[10px] leading-snug text-zinc-500">
                             <span className="inline-flex items-center gap-1">
-                              <IconCalendar className="h-3 w-3 shrink-0 text-zinc-600 opacity-70" aria-hidden />
+                              <IconCalendar
+                                className="h-3 w-3 shrink-0 text-emerald-500/80"
+                                aria-hidden
+                              />
                               <span className="text-zinc-600">Added</span>
                               <span className="tabular-nums text-zinc-400">{formatGuideDate(row.created_at)}</span>
                             </span>
@@ -1009,7 +1012,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                               ·
                             </span>
                             <span className="inline-flex items-center gap-1">
-                              <IconClock className="h-3 w-3 shrink-0 text-zinc-600 opacity-70" aria-hidden />
+                              <IconClock className="h-3 w-3 shrink-0 text-sky-500/75" aria-hidden />
                               <span className="text-zinc-600">Updated</span>
                               <span className="tabular-nums text-zinc-400">{formatGuideDate(row.updated_at)}</span>
                             </span>

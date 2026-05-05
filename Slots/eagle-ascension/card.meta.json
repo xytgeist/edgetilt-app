@@ -5,22 +5,22 @@
     "slug": "eagle-ascension",
     "name": "Eagle Ascension",
     "manufacturer": "Aristocrat",
-    "type": "Persistent State",
+    "type": "Persistent Reel Expansion",
     "difficulty": "Intermediate",
     "vegas_availability": "Very Common",
     "nerf_risk": "High",
     "has_calculator": false,
     "calculator_slug": null,
-    "volatility_index": null,
+    "volatility_index": "Medium-High",
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2024
   },
   "guide_seed": {
     "slug": "eagle-ascension",
     "title": "Eagle Ascension",
     "published": true,
     "card_summary_bullets": [],
-    "card_ev_threshold": "Strong meters / state vs cost to clear",
+    "card_ev_threshold": "3,136+ ways (132+, 231+, 222+, 131 w/ FG, 030 w/ Gold Eagle in reel 2 or 4)",
     "content_markdown_file": "guide.md",
     "last_updated": null
   },

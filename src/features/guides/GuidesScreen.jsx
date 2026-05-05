@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { format, parseISO } from 'date-fns'
 import {
   BUFFALO_LINK_DEMO_SLUG,
@@ -1400,6 +1401,7 @@ export default function GuidesScreen({ supabaseClient, onOpenCalculator, onNavig
                     <div className="border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
                       <ReactMarkdown
                         urlTransform={guideMarkdownUrlTransform}
+                        remarkPlugins={[remarkGfm]}
                         components={makeGuideMarkdownComponents(slug, { onOpenGuideSlug: openGuideSlug })}
                       >
                         {row.content_markdown || ''}

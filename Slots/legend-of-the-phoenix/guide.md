@@ -18,26 +18,26 @@ Clearly visible on screen. As the state is persistent for each bet, make sure to
 
 ## ⚠️ Risk & Warnings
 
-**Bankroll on hand: 150-1000 units depending on which target (Red/Green/Blue)**
+Bankroll on hand: **150-1000 units** depending on which target (Red/Green/Blue)
 
 Variance on this machine can be high depending on several factors:
 
 - **Target bonus** - Running a Red at 12 holds significantly less risk than a Green at 13 and massively lower risk than a Blue 14.
 - **RTP / Settings** – Each meter increments at a static frequency – but that frequency can vary wildly based on the machine settings. The possible frequency settings are:
 
-| **Setting** | **Red** | **Green** | **Blue** |
+| Setting | **Red** | **Green** | **Blue** |
 | :-- | --: | --: | --: |
-| **Profile 1** | **48** | **175** | **600** |
-| **Profile 2** | **75** | **250** | **600** |
-| **Profile 3** | **110** | **330** | **850** |
+| Profile 1 | 48 | 175 | 600 |
+| Profile 2 | 75 | 250 | 600 |
+| Profile 3 | 110 | 330 | 850 |
 
-- **Did you find the machine cold, or was someone playing it and you were able to count the spins**
+- Did you find the machine **cold**, or was someone playing it and you were able to **count the spins**
 
-Generally, take any Red or Green in range. Only play a Blue 14 if:
+Generally, take any Red or Green in range. **Only play a Blue 14 if:**
 
-1. **Green is 12**
-2. **You've watched a player spin 250+ times after Blue incremented to 14**
-3. **You need coin-in for card building/maintenance purposes**
+1. Green is **12**
+2. You've watched a player spin **250+ times** _after_ Blue incremented to 14
+3. You need coin-in for card building/maintenance purposes
 
 ## 🎭 Skins (same game different theme/art)
 
@@ -55,7 +55,7 @@ Generally, take any Red or Green in range. Only play a Blue 14 if:
 
 Legend of the 3X2X Phoenix Progressive Free Games (the 3-reel mechanical stepper version on IGT's DiamondRS cabinet) is a classic-style slot with modern persistent progressive features.
 
-**Basic Setup**
+### Basic Setup
 
 - **Reels:** 3 mechanical reels
 - **Paylines:** 25 fixed lines (all played every spin)
@@ -63,7 +63,7 @@ Legend of the 3X2X Phoenix Progressive Free Games (the 3-reel mechanical stepper
 
 The reels feature classic symbols like sevens, bars, cherries, and Phoenix-themed icons, plus 2X and 3X multipliers that can stack for big line wins (up to 9X on a single payline, or higher with three multipliers).
 
-**Main Bonus Feature: Progressive Free Games**
+### Main Bonus Feature: Progressive Free Games
 
 This is the standout mechanic — three separate persistent meters (one for each multiplier level):
 
@@ -82,7 +82,7 @@ How the meters work:
 
 The meters are persistent across players and don't reset on every bonus — this creates "heat" on the machine that advantage players track.
 
-**Wheel Bonus (Top Screen Feature)**
+### Wheel Bonus (Top Screen Feature)
 
 In the newer Progressive Free Games Wheel version:
 

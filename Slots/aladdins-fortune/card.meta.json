@@ -5,14 +5,14 @@
     "slug": "aladdins-fortune",
     "name": "Aladdin's Fortune",
     "manufacturer": "IGT",
-    "type": "Persistent State",
+    "type": "Persistent Wild Accumulator",
     "difficulty": "Beginner",
     "vegas_availability": "Rare",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
-    "volatility_index": null,
-    "popularity_summary": null,
+    "volatility_index": "Low-Medium",
+    "popularity_summary": "Rare",
     "release_year": 2016
   },
   "guide_seed": {
@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_gist": "Strong meters / state vs cost to clear"
+    "card_gist": "6+ lit letters on Reels 1–3 (or wild reels already active, especially on left side)"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **Medium** for marketing/paytable drift.",

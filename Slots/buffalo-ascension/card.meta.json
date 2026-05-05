@@ -5,15 +5,15 @@
     "slug": "buffalo-ascension",
     "name": "Buffalo Ascension",
     "manufacturer": "Aristocrat",
-    "type": "Persistent State",
+    "type": "Persistent Reel Expansion",
     "difficulty": "Intermediate",
     "vegas_availability": "Very Common",
-    "nerf_risk": "High",
+    "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
-    "volatility_index": null,
+    "volatility_index": "Medium-High",
     "popularity_summary": null,
-    "release_year": null
+    "release_year": 2022
   },
   "guide_seed": {
     "slug": "buffalo-ascension",
@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_ev_threshold": "Strong meters / state vs cost to clear"
+    "card_ev_threshold": "3,136+ ways (reel heights = 132+, 231+, 222+; 131 with FG, any Super Stampede in reel 2 or 4 with center reel at max)"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **High** for marketing/paytable drift.",

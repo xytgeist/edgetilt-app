@@ -26,7 +26,7 @@ This is a **medium to high volatility** machine that can have extreme session sw
 
 [Buffalo Ascension](guide:buffalo-ascension)
 
-![Buffalo Ascension: title art](/guides/buffalo-ascension/buffalo-ascension-1.webp)
+![Buffalo Ascension: title art](/guides/buffalo-ascension/hero.webp)
 
 ---
 

@@ -26,7 +26,7 @@
     ],
     "content_markdown_file": "guide.md",
     "last_updated": null,
-    "card_ev_threshold": "3,136+ ways (reel heights = 132+, 231+, 222+; 131 with FG, any Super Stampede in reel 2 or 4 with center reel at max)"
+    "card_ev_threshold": "3,136+ ways (132+, 231+, 222+, 131 w/ FG, 030 w/ Super in reel 2 or 4)"
   },
   "ap": {
     "volatility_summary": "Intermediate play profile; nerf risk rated **High** for marketing/paytable drift.",

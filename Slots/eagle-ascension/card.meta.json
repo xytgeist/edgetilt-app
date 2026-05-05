@@ -3,7 +3,7 @@
   "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
   "machine": {
     "slug": "eagle-ascension",
-    "name": "Buffalo Eagle Ascension",
+    "name": "Eagle Ascension",
     "manufacturer": "Aristocrat",
     "type": "Persistent State",
     "difficulty": "Intermediate",
@@ -17,7 +17,7 @@
   },
   "guide_seed": {
     "slug": "eagle-ascension",
-    "title": "Buffalo Eagle Ascension",
+    "title": "Eagle Ascension",
     "published": true,
     "card_summary_bullets": [],
     "card_ev_threshold": "Strong meters / state vs cost to clear",

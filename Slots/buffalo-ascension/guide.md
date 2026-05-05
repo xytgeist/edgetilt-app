@@ -30,7 +30,7 @@ This is a **medium to high volatility** machine that can have extreme session sw
 
 ## 🎰 Gameplay Mechanics
 
-**Buffalo Ascension** is a **5-reel, ways-to-win** video slot by Aristocrat (released in 2022) that features **persistent reel expansion** on the middle three reels. Reels 1 and 5 stay at 4 positions high, while Reels 2, 3, and 4 can grow up to **7 positions high** as Arrow symbols land.
+**Buffalo Ascension** is a **5-reel, ways-to-win** video slot by Aristocrat (released in 2022) that features **persistent reel expansion** on the middle three reels. Reels 1 and 5 stay at 4 positions high, while Reels 2, 3, and 4 can grow up to **7 positions high** as Arrow symbols land. **Free Games (8-20)** can be triggered on any spin by landing 3, 4, or 5 coins.
 
 Every Arrow that lands on a middle reel increases that reel’s height by one position, boosting the total **ways to win** (up to 5,488 maximum). The game clearly displays the current ways count. When a reel hits 7 high and receives another Arrow, it triggers a feature (Stampede, Super Stampede, or Free Games) and resets to 4 high.
 

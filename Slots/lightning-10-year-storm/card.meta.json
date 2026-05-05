@@ -2,10 +2,10 @@
   "schema_version": 1,
   "source": "LVSlotPro repo Slots/<slug>/ — edit and run npm run slots:sync",
   "machine": {
-    "slug": "phoenix-link",
-    "name": "Phoenix Link",
+    "slug": "lightning-10-year-storm",
+    "name": "Lightning 10-Year Storm",
     "manufacturer": "Aristocrat",
-    "type": "MHB Counter",
+    "type": "Must Hit By Counter",
     "difficulty": "Beginner",
     "vegas_availability": "Very Common",
     "nerf_risk": "High",
@@ -13,11 +13,11 @@
     "calculator_slug": "phoenix",
     "volatility_index": "Very High",
     "popularity_summary": null,
-    "release_year": 2024
+    "release_year": 2026
   },
   "guide_seed": {
-    "slug": "phoenix-link",
-    "title": "Phoenix Link",
+    "slug": "lightning-10-year-storm",
+    "title": "Lightning 10-Year Storm",
     "published": true,
     "card_summary_bullets": [
       "Must Hit By: Counter / must-hit distance vs cost-per-increment is the primary +EV lens; verify increment and reset on the glass.",
@@ -50,7 +50,7 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": ["lightning-10-year-storm-skin.webp"],
+    "diagrams_relative": [],
     "legacy_slots_subfolder": null
   }
 }

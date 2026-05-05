@@ -1,53 +1,34 @@
-# Aztec Banner — advantage play guide
+# Aztec Banner
 
-_Sync to Supabase with `npm run slots:sync` when you want the app to pick up edits._
+## 🚦 When to play (and when to stop)
 
-## When to play (and when to stop)
+Look for **3 or more banners** with spins remaining.
 
-Banner state is the whole angle: you want **several suits “live” at once** so mystery coverage stacks.
+![Aztec Banner glass: suit banner meters above the reels and the next-spin suit-to-mystery message bar](/guides/aztec-banner/aztec-banner-1.webp)
 
-- **Favor seats where three or more banners are active** and still have spins left on them. **Four or more** is even better—more suits converting to mystery symbols at the same time.
-- **Walk away once only two banners remain active.** Below that, the machine is usually too cold to justify feeding the base game.
-- **Read the count from the betting / meter display** on the glass—it tells you how many banner features are in play; don’t guess from the reels alone.
+Play until <3 banners remain.
 
-## Game overview
+## 🔭 How to check (quick/easy)
 
-**Aztec Banner** is a **5×4 video slot from Everi**, part of the **Banner Series**, launched in **2023**. It’s dressed in Aztec jungle stone and serpent art, but the sell is mechanical: **state carries forward**—what you earn on one spin changes how the next several spins behave instead of everything snapping back to a blank slate each time. Layer in **free spins**, **mystery symbols**, and the **persistent banner** loop, and you get a game that feels current while still handling like a traditional floor slot.
+The banners are **clearly visible** on the display.
 
-## Gameplay basics
+## ⚠️ Risk & Warnings
 
-- **Grid:** 5 reels × 4 rows. **40 lines**, always all-in—no “lines off” shortcuts.
-- **Bet floor:** **50 credits minimum per spin** in typical configs, stepping up from there. **Multi-denom** is common, so the same title can ride penny or nickel math depending on the house setup.
-- **Symbols:** Card suits (spades, hearts, diamonds, clubs) mix with higher-paying picture symbols on the Aztec theme.
-- **Feel:** Mostly **medium-volatility pacing**—dry stretches, then clumps when banners overlap or the bonus hits. It’s busier than a classic stepper, calmer than a jam-packed feature monster.
+**Bankroll on hand: 20 units**
 
-## Special features
+This is a **very low risk machine** as only **a few spins** are required. You will often get blanked or paid very little, but occasionally you’ll smash for **many units**.
 
-### Persistent Banner Feature
+## 🎰 Gameplay Mechanics
 
-This is the signature loop. Each reel can show **two “high banner” symbols tied to the four suits**. When **any two matching banner symbols** land so the **suit’s banner lights**, that banner stays **active for the next seven spins**. While it runs, **every symbol of that suit on the reels is replaced with a mystery symbol**; those mysteries then **reveal** into paytable symbols, so you’re effectively playing with **extra ways to build large line hits** until the countdown ends.
+The Aztec Banner slot features a **5×4 reel layout** with **40 fixed paylines**, meaning **every spin** plays **all lines**. Bets **start at a minimum of 50 credits** and **scale upward**, with **multi-denomination support** that lets casinos offer it across various **penny and nickel denominations**.
 
-Because the effect is **spin-counted**, the cabinet can “stack”: you might start one suit, then **trigger another before the first expires**, so multiple suits are dumping mysteries at once—that’s the **warm** state advantage players hunt.
+The reels display **classic card suits** (spades, hearts, diamonds, clubs) alongside higher-paying **Aztec-themed** symbols. Gameplay is **straightforward**: set your bet, spin, and look for **winning line combinations** and **special symbols**. What sets it apart from standard line slots is the **Persistent Banner feature**, which can influence **multiple consecutive spins**.
 
-### Free Spins Bonus
+Wins form through standard **left-to-right combinations**, and the **volatility** feels medium…long enough **dry spells** to build tension, balanced by satisfying **bursts when banners activate** or **bonuses trigger**. This makes it ideal for players seeking something **more engaging** than a **classic stepper** but **less overwhelming** than heavily featured **modern video slots**.
 
-Land **three or more scattered coin symbols** to enter the bonus. **Wilds are added to the reel strips.** A **full four-symbol-high stack of wilds** on a reel **adds an extra free spin**, stretching the round and giving more shots at big line connections. **Mysteries, wilds, and regular premiums can overlap** in the same window, so the bonus can picture especially heavy when banners and free spins line up.
+The **standout mechanic** is the **Persistent Banner Feature**. Each reel includes **two high banner symbols** for the **four suits**. Landing **any two matching banners** lights up the corresponding suit and keeps it **active for the next seven spins**. During this time, **every symbol of that suit** on the reels **transforms into a mystery symbol**, which then **reveals** a **paytable symbol**. This creates **additional winning opportunities** while the banner **remains lit**.
 
-## Bankroll and session math
+Since the effect **persists across multiple spins**, the game develops **real momentum**. You can **trigger one banner** and then **activate another before the first expires**, resulting in **several reels** filled with mystery symbols **at once**. This encourages longer play sessions as you watch the board **“heat up”** instead of **every spin** feeling isolated.
 
-You pay **full base-game RTP** while you **chase or ride banner state**—count **total dollars to move the situation**, not just the top-line fantasy. Size bankroll for **worst-case drawdown before** the stacked-banner window or bonus pays you back, and **re-check denom and max-bet rules on the same visit** you scout.
+Aztec Banner also offers a **Free Spins bonus** triggered by **three or more scattered coin symbols**. In the **bonus round**, **wild symbols are added** to the reels, and landing a **4-high stack** of wilds grants an **extra spin**. The free spins pair especially well with **active banners**, allowing **mystery symbols**, wilds, and **regular high-paying icons** to combine for some impressive, **high-potential screens**.
 
-## Verify on the floor
-
-- **Snapshot the betting / banner display** when you evaluate—active banner count and spin clocks are first-class information.
-- **Confirm denom, credit multiplier, and any must-bet rules** before you commit real money.
-- **Cross-check suits in isolation:** one hot-looking banner can be negated if neighbors are dead—look at **combined** banner coverage.
-
-## Pitfalls
-
-- **Treating one lit banner as enough** when the display shows the rest cold.
-- **Assuming** a locals-floor paytable or marketing strip matches **this** bank’s **current** package.
-
-## Nerf / marketing
-
-**Nerf risk is medium:** paytables, caps, and **how** Banner Series features are packaged can change by jurisdiction or refresh. Treat marketing stills and old forum screenshots as hints, not contracts.

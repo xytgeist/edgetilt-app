@@ -430,7 +430,30 @@ function makeGuideMarkdownComponents(machineSlug) {
               : machineSlug === 'igt-must-hit-by' || machineSlug === 'must-hit-by-igt'
                 ? 'text-sky-100'
                 : 'text-amber-100'
+  const titleBarTo =
+    machineSlug === 'aztec-banner'
+      ? 'to-lime-500/65'
+      : machineSlug === 'pegasus-banner'
+        ? 'to-sky-500/60'
+      : machineSlug === 'aladdins-fortune'
+        ? 'to-emerald-500/60'
+      : 'to-amber-500/55'
   return {
+    h1: ({ children }) => (
+      <div className="flex items-center gap-3 w-full mb-5 mt-0.5 select-none">
+        <span
+          className={`h-0.5 flex-1 min-w-[0.75rem] rounded-full bg-gradient-to-r from-zinc-800/20 ${titleBarTo}`}
+          aria-hidden
+        />
+        <h1 className="text-center text-[1.35rem] leading-tight font-black text-white tracking-tight m-0 px-1 shrink-0 max-w-[85%]">
+          {children}
+        </h1>
+        <span
+          className={`h-0.5 flex-1 min-w-[0.75rem] rounded-full bg-gradient-to-l from-zinc-800/20 ${titleBarTo}`}
+          aria-hidden
+        />
+      </div>
+    ),
     h2: ({ children }) => <h2 className={`text-lg font-black ${h2Tone} mt-6 first:mt-0 mb-2`}>{children}</h2>,
     h3: ({ children }) => <h3 className="text-base font-bold text-zinc-100 mt-4 mb-1.5">{children}</h3>,
     p: ({ children }) => <p className="text-zinc-300 leading-relaxed mb-3 last:mb-0">{children}</p>,

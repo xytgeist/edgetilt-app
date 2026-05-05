@@ -50,7 +50,7 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": [],
+    "diagrams_relative": ["aztec-banner-1.webp"],
     "legacy_slots_subfolder": null
   }
 }

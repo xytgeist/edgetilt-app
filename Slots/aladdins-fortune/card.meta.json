@@ -50,7 +50,7 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": [],
+    "diagrams_relative": ["aladdins-fortune-wilds.webp"],
     "legacy_slots_subfolder": null
   }
 }

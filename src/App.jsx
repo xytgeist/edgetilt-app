@@ -1519,7 +1519,7 @@ function AppShell({ onLogout, supabaseClient }) {
           <img
             src="/guides/buffalo-link/buffalo-link-calculator-icon.webp"
             alt="Buffalo"
-            className="h-full w-full origin-center scale-[1.16] object-cover object-center"
+            className="h-full w-full object-cover object-center"
           />
         </div>
         <div className="min-w-0 flex-1 self-center">

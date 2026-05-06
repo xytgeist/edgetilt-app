@@ -293,6 +293,28 @@ function MHBCalculator({ onBack }) {
     () => getConcurrentJackpotConfigs(manufacturer, igtLineBet, igtDenom),
     [manufacturer, igtLineBet, igtDenom]
   )
+  const jpCheckboxJackpots = useMemo(() => {
+    if (manufacturer !== 'manual') return concurrentJackpots
+    const mhbVal = Number(mustHitBy)
+    const resetVal = Number(resetValue)
+    const riseVal = Number(meterRise)
+    const ready =
+      Number.isFinite(mhbVal) &&
+      Number.isFinite(resetVal) &&
+      Number.isFinite(riseVal) &&
+      mhbVal > resetVal &&
+      riseVal > 0
+    if (!ready) return []
+    return [
+      {
+        key: 'manual-mhb',
+        label: `${formatUsd(mhbVal)} MHB`,
+        mhb: mhbVal,
+        reset: resetVal,
+        meterRise: riseVal,
+      },
+    ]
+  }, [manufacturer, concurrentJackpots, mustHitBy, resetValue, meterRise])
 
   // Outputs
   const [ev, setEv] = useState(0)
@@ -373,12 +395,13 @@ function MHBCalculator({ onBack }) {
     setResetValue('')
     setOverallRTP(85)
     setUseMidpoint(false)
+    setShowAdvanced(true)
   }, [manufacturer])
 
   // Reset include toggles to checked when concurrent jackpot set changes.
   useEffect(() => {
     const next = {}
-    for (const jp of concurrentJackpots) next[jp.key] = true
+    for (const jp of jpCheckboxJackpots) next[jp.key] = true
     const selectedCap = effectiveCap(manufacturer, mustHitBy)
     if (manufacturer === 'ainsworth' && selectedCap !== 10000) {
       next['ainsworth-10000'] = false
@@ -387,7 +410,7 @@ function MHBCalculator({ onBack }) {
       next['ags-5000'] = false
     }
     setIncludedJpContributions(next)
-  }, [concurrentJackpots, manufacturer, mustHitBy])
+  }, [jpCheckboxJackpots, manufacturer, mustHitBy])
 
   const calculate = () => {
     const p = presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom)
@@ -407,7 +430,7 @@ function MHBCalculator({ onBack }) {
       setIsPositive(false)
       return
     }
-    const contributionParts = concurrentJackpots.map((jp) => {
+    const contributionParts = jpCheckboxJackpots.map((jp) => {
       const target = useMidpoint ? (jp.reset + jp.mhb) / 2 : jp.mhb
       const distanceFromReset = target - jp.reset
       const incrementsFromReset = distanceFromReset / 0.01
@@ -522,7 +545,7 @@ function MHBCalculator({ onBack }) {
 
   useEffect(() => {
     calculate()
-  }, [current, mustHitBy, meterRise, resetValue, overallRTP, useMidpoint, manufacturer, igtTier, igtLineBet, igtDenom, includedJpContributions, concurrentJackpots])
+  }, [current, mustHitBy, meterRise, resetValue, overallRTP, useMidpoint, manufacturer, igtTier, igtLineBet, igtDenom, includedJpContributions, jpCheckboxJackpots])
 
   // Input handlers
   const handleIntegerChange = (setter, defaultVal) => (e) => {
@@ -931,7 +954,7 @@ function MHBCalculator({ onBack }) {
             <div className="p-4 pt-3 space-y-4 border-t border-gray-800">
               <p className="text-[11px] italic leading-snug text-zinc-500">
                 {manufacturer === 'manual'
-                  ? 'RTP and Meter Rise are required. Provide Reset Value if possible for more precise analysis - if you don\'t know, we will estimate it based on the Must Hit By value.'
+                  ? 'RTP and Meter Rise are required. Provide Reset Value if possible for more precise analysis - if unknown, we will estimate based on the Must Hit By value.'
                   : 'These defaults are set to observed values. Only change if you know what you\'re doing!'}
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -999,37 +1022,39 @@ function MHBCalculator({ onBack }) {
                 </label>
               </div>
 
-              <div>
-                <div className="rounded-2xl bg-gray-800 p-3">
-                  <div className="mb-2 text-center text-[11px] font-semibold text-cyan-300">
-                    Include MHB Contribution to RTP
-                  </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {concurrentJackpots.map((jp) => {
-                      const checked = includedJpContributions[jp.key] !== false
-                      const pct = jpContributionByKey[jp.key]
-                      const label = Number.isFinite(pct) ? `${jp.label} (${pct.toFixed(2)}%)` : jp.label
-                      return (
-                        <label
-                          key={jp.key}
-                          className="flex items-center justify-between gap-2 rounded-xl bg-gray-900/70 px-3 py-2 text-[11px] font-semibold text-white tabular-nums"
-                        >
-                          <span>{label}</span>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              const isChecked = e.target.checked
-                              setIncludedJpContributions((prev) => ({ ...prev, [jp.key]: isChecked }))
-                            }}
-                            className="h-4 w-4 shrink-0 rounded border-gray-600 bg-gray-700 accent-cyan-500"
-                          />
-                        </label>
-                      )
-                    })}
+              {jpCheckboxJackpots.length > 0 && (
+                <div>
+                  <div className="rounded-2xl bg-gray-800 p-3">
+                    <div className="mb-2 text-center text-[11px] font-semibold text-cyan-300">
+                      Include MHB Contribution to RTP
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {jpCheckboxJackpots.map((jp) => {
+                        const checked = includedJpContributions[jp.key] !== false
+                        const pct = jpContributionByKey[jp.key]
+                        const label = Number.isFinite(pct) ? `${jp.label} (${pct.toFixed(2)}%)` : jp.label
+                        return (
+                          <label
+                            key={jp.key}
+                            className="flex items-center justify-between gap-2 rounded-xl bg-gray-900/70 px-3 py-2 text-[11px] font-semibold text-white tabular-nums"
+                          >
+                            <span>{label}</span>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const isChecked = e.target.checked
+                                setIncludedJpContributions((prev) => ({ ...prev, [jp.key]: isChecked }))
+                              }}
+                              className="h-4 w-4 shrink-0 rounded border-gray-600 bg-gray-700 accent-cyan-500"
+                            />
+                          </label>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
             </div>
           )}

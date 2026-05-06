@@ -291,104 +291,122 @@ function MHBCalculator({ onBack }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={jpMeterDisplay}
-                onFocus={handleJpMeterFocus}
-                onChange={handleJpMeterChange}
-                onBlur={handleJpMeterBlur}
-                className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-              />
+          <div className="grid grid-cols-2 gap-4 items-start">
+            <div className="space-y-2">
+              <div>
+                <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={jpMeterDisplay}
+                  onFocus={handleJpMeterFocus}
+                  onChange={handleJpMeterChange}
+                  onBlur={handleJpMeterBlur}
+                  className={`w-full rounded-2xl bg-gray-800 text-center font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35 ${
+                    manufacturer === 'igt' ? 'p-3 text-base' : 'p-4 text-2xl'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
+                {manufacturer === 'igt' ? (
+                  <div className="w-full rounded-2xl bg-gray-800 p-3 text-center text-base font-bold text-white tabular-nums">
+                    {formatUsd(mustHitBy)}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      value={mustHitBy}
+                      onChange={(e) => setMustHitBy(Number(e.target.value))}
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                    >
+                      <option value={500}>{formatUsd(500)}</option>
+                      {manufacturer !== 'ainsworth' ? (
+                        <option value={5000}>{formatUsd(5000)}</option>
+                      ) : null}
+                      {manufacturer !== 'ags' ? <option value={10000}>{formatUsd(10000)}</option> : null}
+                    </select>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
             </div>
 
             {manufacturer === 'igt' ? (
               <div className="space-y-2">
-                <label className="block text-gray-400 text-xs mb-1">IGT Jackpot Tier</label>
-                <div className="relative">
-                  <select
-                    value={igtTier}
-                    onChange={(e) => setIgtTier(e.target.value)}
-                    className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                  >
-                    <option value="mini">Mini</option>
-                    <option value="minor">Minor</option>
-                    <option value="major">Major</option>
-                  </select>
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 20 20"
-                    className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">IGT Jackpot Tier</label>
+                  <div className="relative">
+                    <select
+                      value={igtTier}
+                      onChange={(e) => setIgtTier(e.target.value)}
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                    >
+                      <option value="mini">Mini</option>
+                      <option value="minor">Minor</option>
+                      <option value="major">Major</option>
+                    </select>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <div className="relative">
-                  <select
-                    value={igtLineBet}
-                    onChange={(e) => setIgtLineBet(Number(e.target.value))}
-                    className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                  >
-                    <option value={1}>Line Bet 1</option>
-                    <option value={2}>Line Bet 2</option>
-                    <option value={3}>Line Bet 3</option>
-                    <option value={5}>Line Bet 5</option>
-                    <option value={10}>Line Bet 10</option>
-                  </select>
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 20 20"
-                    className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">IGT Line Bet</label>
+                  <div className="relative">
+                    <select
+                      value={igtLineBet}
+                      onChange={(e) => setIgtLineBet(Number(e.target.value))}
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                    >
+                      <option value={1}>1</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3</option>
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                    </select>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-[11px] leading-snug text-gray-500">
-                  Must Hit By: {formatUsd(mustHitBy)} ({IGT_TIER_LABELS[igtTier]} - line bet {igtLineBet})
+                <p className="rounded-xl bg-gray-800/70 px-3 py-2 text-center text-[11px] leading-snug text-gray-400">
+                  {IGT_TIER_LABELS[igtTier]} - line bet {igtLineBet}
                 </p>
               </div>
             ) : (
-              <div>
-                <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
-                <div className="relative">
-                  <select
-                    value={mustHitBy}
-                    onChange={(e) => setMustHitBy(Number(e.target.value))}
-                    className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                  >
-                    <option value={500}>{formatUsd(500)}</option>
-                    {manufacturer !== 'ainsworth' ? (
-                      <option value={5000}>{formatUsd(5000)}</option>
-                    ) : null}
-                    {manufacturer !== 'ags' ? <option value={10000}>{formatUsd(10000)}</option> : null}
-                  </select>
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 20 20"
-                    className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              </div>
+              <div />
             )}
           </div>
         </div>

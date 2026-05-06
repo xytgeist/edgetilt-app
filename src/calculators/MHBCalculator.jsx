@@ -229,6 +229,7 @@ function MHBCalculator({ onBack }) {
     const mhb = effectiveCap(manufacturer, mustHitBy)
     const riseDollars = Number(meterRise) || p.meterRise
     const resetVal = Number(resetValue) || p.reset
+    const averageHit = useMidpoint ? (resetVal + mhb) / 2 : mhb
 
     if (mhb <= currentVal) {
       setEv(999)
@@ -242,32 +243,29 @@ function MHBCalculator({ onBack }) {
       return
     }
 
-    const target = useMidpoint 
-      ? currentVal + (mhb - currentVal) * 0.5 
-      : mhb
-
-    const dollarDistance = target - currentVal
+    const target = averageHit
+    const dollarDistance = Math.max(0, target - currentVal)
     const incrementsNeeded = dollarDistance / 0.01
     const coinInToTarget = incrementsNeeded * riseDollars
-    const expectedLoss = coinInToTarget * (1 - rtp)
-
-    const finalEV = target - expectedLoss
-
-    const houseEdge = 1 - rtp
-    let breakevenCurrent = useMidpoint
-      ? mhb * (100 * riseDollars * houseEdge - 1) / (100 * riseDollars * houseEdge + 1)
-      : mhb - (riseDollars * 0.01 / houseEdge)
-
-    const breakevenRounded = Math.ceil(breakevenCurrent)
-
-    const averageHit = useMidpoint ? (resetVal + mhb) / 2 : mhb
     const distanceFromReset = averageHit - resetVal
     const incrementsFromReset = distanceFromReset / 0.01
     const coinInFromReset = incrementsFromReset * riseDollars
-    const jpContrib = coinInFromReset > 0 ? (averageHit / coinInFromReset) * 100 : 0
+    const jpContribFraction = coinInFromReset > 0 ? averageHit / coinInFromReset : 0
+    const jpContrib = jpContribFraction * 100
+    const effectiveRtp = Math.min(0.999999, Math.max(0, rtp - jpContribFraction))
+    const effectiveHouseEdge = 1 - effectiveRtp
+    const expectedLoss = coinInToTarget * effectiveHouseEdge
+
+    const finalEV = target - expectedLoss
+
+    const breakevenDenominator = 100 * riseDollars * effectiveHouseEdge
+    const breakevenCurrent = breakevenDenominator > 0
+      ? target - target / breakevenDenominator
+      : target
+    const breakevenRounded = Math.ceil(breakevenCurrent)
 
     const fullIncrements = (mhb - currentVal) / 0.01
-    const maxExposureDollars = fullIncrements * riseDollars * houseEdge
+    const maxExposureDollars = fullIncrements * riseDollars * effectiveHouseEdge
 
     setEv(Math.round(finalEV))
     setEvExact(Number(finalEV.toFixed(2)))

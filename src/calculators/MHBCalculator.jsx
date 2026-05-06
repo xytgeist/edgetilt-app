@@ -823,25 +823,10 @@ function MHBCalculator({ onBack }) {
                     value={overallRTP}
                     onChange={handleFloatChange(setOverallRTP, activePreset.rtp)}
                     onBlur={handleFloatBlur(setOverallRTP, activePreset.rtp)}
-                    className="w-full rounded-2xl bg-gray-800 p-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className="h-12 w-full rounded-2xl bg-gray-800 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-gray-400 text-[11px] mb-1">Meter Rise ($ per $0.01 increment)</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={meterRiseDisplay}
-                    onFocus={handleMeterRiseFocus}
-                    onChange={handleMeterRiseChange}
-                    onBlur={handleMeterRiseBlur}
-                    className="w-full rounded-2xl bg-gray-800 p-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 items-end">
                 <div>
                   <label className="block text-gray-400 text-[11px] mb-1">Reset Value</label>
                   <input
@@ -854,15 +839,41 @@ function MHBCalculator({ onBack }) {
                     className="h-12 w-full rounded-2xl bg-gray-800 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
+              </div>
 
-                <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl bg-gray-800 px-3 touch-manipulation">
+              <div>
+                <div>
+                  <label className="block text-gray-400 text-[11px] mb-1">Meter Rise ($ per $0.01 increment)</label>
                   <input
-                    type="checkbox"
-                    checked={useMidpoint}
-                    onChange={(e) => setUseMidpoint(e.target.checked)}
-                    className="h-5 w-5 shrink-0 rounded border-gray-600 bg-gray-700 accent-cyan-500 focus:ring-2 focus:ring-cyan-500/45 focus:ring-offset-0 focus:ring-offset-gray-800"
+                    type="text"
+                    inputMode="decimal"
+                    value={meterRiseDisplay}
+                    onFocus={handleMeterRiseFocus}
+                    onChange={handleMeterRiseChange}
+                    onBlur={handleMeterRiseBlur}
+                    className="h-12 w-full rounded-2xl bg-gray-800 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
-                  <span className="text-gray-300 text-[13px] leading-snug">Use Midpoint</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl bg-gray-800 px-3 touch-manipulation">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={useMidpoint}
+                    onClick={() => setUseMidpoint((v) => !v)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/45 ${
+                      useMidpoint ? 'border-cyan-300/70 bg-cyan-500/40' : 'border-gray-600 bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                        useMidpoint ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-gray-300 text-[13px] leading-snug">Use Midpoint for EV & Breakeven</span>
                 </label>
               </div>
 

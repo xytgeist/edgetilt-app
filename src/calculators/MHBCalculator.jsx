@@ -283,6 +283,7 @@ function MHBCalculator({ onBack }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showMeterCue, setShowMeterCue] = useState(false)
   const [showIgtTierInfo, setShowIgtTierInfo] = useState(false)
+  const [showCalcInfo, setShowCalcInfo] = useState(false)
   const [includedJpContributions, setIncludedJpContributions] = useState({})
 
   const activePreset = useMemo(
@@ -724,7 +725,14 @@ function MHBCalculator({ onBack }) {
               </div>
             </div>
           </div>
-          <div className="w-12" />
+          <button
+            type="button"
+            onClick={() => setShowCalcInfo(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-400/45 bg-cyan-500/10 text-sm font-bold italic text-cyan-200 hover:bg-cyan-500/20"
+            aria-label="How calculations work"
+          >
+            i
+          </button>
         </div>
 
         {/* Main Inputs */}
@@ -1131,6 +1139,79 @@ function MHBCalculator({ onBack }) {
               <button
                 type="button"
                 onClick={() => setShowIgtTierInfo(false)}
+                className="mt-5 w-full rounded-xl bg-cyan-600 py-3 font-semibold hover:bg-cyan-500"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showCalcInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-2xl border border-cyan-500/30 bg-gray-900 p-5 text-white shadow-xl">
+              <h3 className="border-b border-cyan-500/25 pb-2 text-center text-lg font-semibold tracking-[0.08em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
+                Analytical Methodology
+              </h3>
+              <details className="mt-3 rounded-xl border border-cyan-500/25 bg-gray-800/60 p-3">
+                <summary className="cursor-pointer select-none text-sm font-semibold tracking-[0.03em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
+                  Non-techie version
+                </summary>
+                <div className="mt-2 space-y-2 text-sm leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif]">
+                  <p>
+                    The calculator estimates whether a jackpot is worth playing right now, based on where the meter currently is and how fast it grows.
+                  </p>
+                  <p>
+                    It figures out how much money you are likely to put in before the jackpot hits, then compares that to the expected jackpot return.
+                  </p>
+                  <p>
+                    It also backs out jackpot value already included in the game RTP so you do not double-count value.
+                  </p>
+                  <p>
+                    Breakeven Entry is the meter point where the expected value is about zero. Above that, the game tends to be better; below that, you are usually still waiting.
+                  </p>
+                  <p>
+                    Max Exposure is a worst-case style estimate assuming colder-than-normal performance, so you can see potential downside before getting paid.
+                  </p>
+                </div>
+              </details>
+              <details className="mt-3 rounded-xl border border-cyan-500/25 bg-gray-800/60 p-3">
+                <summary className="cursor-pointer select-none text-sm font-semibold tracking-[0.03em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
+                  Dweeb-speak
+                </summary>
+                <p className="mt-2 text-sm italic leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif]">
+                  This analyzer is a quantitative framework for progressive-jackpot valuation, breakeven threshold detection, and stressed-loss envelope estimation.
+                </p>
+                <div className="mt-2 space-y-2 text-sm leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif]">
+                  <p>
+                    <span className="font-semibold text-cyan-200">I. State Space:</span> Let x denote entry meter, M the must-hit boundary, m the observed current meter, R the reset baseline, r the meter-rise coefficient ($ coin-in per $0.01 meter increment), and p the total machine RTP.
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">II. Terminal Payoff Functional:</span> The target operator T(x) is piecewise: T(x) = M (midpoint disabled), or T(x) = x + 0.5 x (M - x) (midpoint enabled). For live EV evaluation, set x = m.
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">III. Coin-in Path Integral (Discrete Step Form):</span> Required path coin-in is C(x) = ((T(x) - x) / 0.01) x r, i.e., meter displacement mapped to 0.01 increments and scaled by r.
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">IV. Concurrent Progressive Return Extraction:</span> For each enabled jackpot i with hit value H_i, reset R_i, and rise coefficient r_i, contribution_i = H_i / (((H_i - R_i) / 0.01) x r_i). Aggregate progressive return term is P = sum_i(contribution_i).
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">V. Effective Base RTP Projection:</span> Progressive-adjusted RTP is p_eff = clamp(p - P, 0, 0.999999), enforcing bounded probability-domain behavior.
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">VI. Expectation Layer:</span> Expected path loss is L(x) = C(x) x (1 - p_eff), with net expected value EV(x) = T(x) - L(x).
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">VII. Breakeven Root Localization:</span> Solve x* such that EV(x*) = 0 over x in [0, M] using bisection on a sign-changing bracket. Displayed breakeven is ceil(x*), while the continuous root is reported beneath.
+                  </p>
+                  <p>
+                    <span className="font-semibold text-cyan-200">VIII. Stress-Case Loss Envelope:</span> Under adverse conversion efficiency, p_stress = 0.85 x p_eff. Stress loss is L_stress(x) = C(x) x (1 - p_stress), and downside exposure is Exposure(x) = max(0, L_stress(x) - T(x)).
+                  </p>
+                </div>
+              </details>
+              <button
+                type="button"
+                onClick={() => setShowCalcInfo(false)}
                 className="mt-5 w-full rounded-xl bg-cyan-600 py-3 font-semibold hover:bg-cyan-500"
               >
                 Got it

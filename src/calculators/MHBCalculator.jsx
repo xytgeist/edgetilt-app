@@ -274,6 +274,7 @@ function MHBCalculator({ onBack }) {
   const [breakevenExact, setBreakevenExact] = useState(0)
   const [coinInExpected, setCoinInExpected] = useState(0)
   const [jpContribution, setJpContribution] = useState(0)
+  const [jpContributionBreakdown, setJpContributionBreakdown] = useState('')
   const [exposure, setExposure] = useState(0)
   const [isPositive, setIsPositive] = useState(false)
 
@@ -338,8 +339,24 @@ function MHBCalculator({ onBack }) {
     const currentVal = Number(current) || p.current
     const mhb = effectiveCap(manufacturer, mustHitBy)
     const riseDollars = Number(meterRise) || p.meterRise
-    const jpContribFraction = totalJpContributionFraction(manufacturer, useMidpoint, igtLineBet, igtDenom)
+    const concurrentJackpots = getConcurrentJackpotConfigs(manufacturer, igtLineBet, igtDenom)
+    const contributionParts = concurrentJackpots.map((jp) => {
+      const target = useMidpoint ? (jp.reset + jp.mhb) / 2 : jp.mhb
+      const distanceFromReset = target - jp.reset
+      const incrementsFromReset = distanceFromReset / 0.01
+      const coinInFromReset = incrementsFromReset * jp.meterRise
+      const contributionFraction = coinInFromReset > 0 ? target / coinInFromReset : 0
+      return {
+        label: formatUsd(jp.mhb),
+        percent: contributionFraction * 100,
+        fraction: contributionFraction,
+      }
+    })
+    const jpContribFraction = contributionParts.reduce((sum, part) => sum + part.fraction, 0)
     const jpContrib = jpContribFraction * 100
+    const jpBreakdown = contributionParts
+      .map((part) => `${part.label}: ${part.percent.toFixed(2)}%`)
+      .join(' + ')
     const effectiveRtp = Math.min(0.999999, Math.max(0, rtp - jpContribFraction))
     const effectiveHouseEdge = 1 - effectiveRtp
 
@@ -427,6 +444,7 @@ function MHBCalculator({ onBack }) {
     setBreakevenExact(Number(breakevenCurrent.toFixed(2)))
     setCoinInExpected(Math.round(coinInToTarget))
     setJpContribution(Number(jpContrib.toFixed(2)))
+    setJpContributionBreakdown(jpBreakdown)
     setExposure(Math.round(maxExposureDollars))
     setIsPositive(finalEV >= 0)
   }
@@ -808,8 +826,8 @@ function MHBCalculator({ onBack }) {
 
               <div>
                 <label className="block text-gray-400 text-xs mb-1">JP Contribution</label>
-                <div className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white tabular-nums">
-                  +{jpContribution}%
+                <div className="w-full rounded-2xl bg-gray-800 p-4 text-center text-sm font-semibold text-white tabular-nums leading-relaxed">
+                  {jpContributionBreakdown || `Total: ${jpContribution.toFixed(2)}%`}
                 </div>
               </div>
 

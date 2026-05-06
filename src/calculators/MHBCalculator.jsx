@@ -34,12 +34,26 @@ function presetFor(manufacturer, mustHitBy) {
   return m[cap] || m[500]
 }
 
+/** en-US currency: $10,000 / $4,911.76 */
+function formatUsd(amount) {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return '$0'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n)
+}
+
 function MHBCalculator({ onBack }) {
   const [manufacturer, setManufacturer] = useState('ainsworth')
 
   // Main fields
   const [current, setCurrent] = useState(475)
   const [mustHitBy, setMustHitBy] = useState(500)
+  const [jpMeterFocused, setJpMeterFocused] = useState(false)
+  const [jpMeterDraft, setJpMeterDraft] = useState('')
 
   // Advanced Settings
   const [overallRTP, setOverallRTP] = useState(85)
@@ -154,6 +168,37 @@ function MHBCalculator({ onBack }) {
     setter(isNaN(val) ? defaultVal : val)
   }
 
+  const jpMeterDisplay = jpMeterFocused ? jpMeterDraft : formatUsd(current)
+
+  const handleJpMeterFocus = () => {
+    setJpMeterFocused(true)
+    const n = Number(current)
+    setJpMeterDraft(Number.isFinite(n) ? String(n) : '')
+  }
+
+  const handleJpMeterChange = (e) => {
+    let v = e.target.value.replace(/[^0-9.]/g, '')
+    const dot = v.indexOf('.')
+    if (dot !== -1) {
+      v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '')
+    }
+    setJpMeterDraft(v)
+    if (v === '' || v === '.') return
+    const num = parseFloat(v)
+    if (!Number.isNaN(num)) setCurrent(num)
+  }
+
+  const handleJpMeterBlur = () => {
+    const n = parseFloat(jpMeterDraft)
+    if (jpMeterDraft === '' || jpMeterDraft === '.' || Number.isNaN(n)) {
+      setCurrent(activePreset.current)
+    } else {
+      setCurrent(n)
+    }
+    setJpMeterFocused(false)
+    setJpMeterDraft('')
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 pb-12">
       <div className="max-w-lg mx-auto px-4 pt-6">
@@ -182,14 +227,14 @@ function MHBCalculator({ onBack }) {
               onChange={(e) => setManufacturer(e.target.value)}
               className="w-full p-3.5 bg-gray-800 rounded-2xl text-lg font-bold text-center text-purple-200"
             >
-              <option value="ainsworth">Ainsworth (uniform mystery)</option>
-              <option value="ags">AGS (late-band / near-cap)</option>
-              <option value="igt">IGT / WMS-style mystery</option>
+              <option value="ainsworth">Ainsworth</option>
+              <option value="ags">AGS</option>
+              <option value="igt">IGT</option>
             </select>
             <p className="text-gray-500 text-[11px] mt-2 leading-snug">
               Switches example meter, rise, reset, and RTP for this maker and cap—always verify on the glass.
               {manufacturer === 'ags' ? (
-                <span className="block mt-1 text-gray-500">AGS uses 500 / 5000 caps only (no 10k preset).</span>
+                <span className="block mt-1 text-gray-500">AGS uses {formatUsd(500)} / {formatUsd(5000)} caps only (no 10k preset).</span>
               ) : null}
             </p>
           </div>
@@ -200,9 +245,10 @@ function MHBCalculator({ onBack }) {
               <input 
                 type="text" 
                 inputMode="decimal"
-                value={current} 
-                onChange={handleFloatChange(setCurrent, activePreset.current)} 
-                onBlur={handleFloatBlur(setCurrent, activePreset.current)} 
+                value={jpMeterDisplay} 
+                onFocus={handleJpMeterFocus}
+                onChange={handleJpMeterChange} 
+                onBlur={handleJpMeterBlur} 
                 className="w-full p-4 bg-gray-800 rounded-2xl text-3xl font-bold text-center text-purple-300" 
               />
             </div>
@@ -214,9 +260,9 @@ function MHBCalculator({ onBack }) {
                 onChange={(e) => setMustHitBy(Number(e.target.value))}
                 className="w-full p-4 bg-gray-800 rounded-2xl text-3xl font-bold text-center text-purple-300"
               >
-                <option value={500}>500</option>
-                <option value={5000}>5000 (e.g. River Dragons)</option>
-                {manufacturer !== 'ags' ? <option value={10000}>10000</option> : null}
+                <option value={500}>{formatUsd(500)}</option>
+                <option value={5000}>{formatUsd(5000)}</option>
+                {manufacturer !== 'ags' ? <option value={10000}>{formatUsd(10000)}</option> : null}
               </select>
             </div>
           </div>

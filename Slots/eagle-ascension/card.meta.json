@@ -8,7 +8,7 @@
     "type": "Persistent Reel Expansion",
     "difficulty": "Intermediate",
     "vegas_availability": "Very Common",
-    "nerf_risk": "High",
+    "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": "Medium-High",

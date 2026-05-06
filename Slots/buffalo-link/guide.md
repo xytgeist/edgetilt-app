@@ -18,6 +18,8 @@ Size sessions for worst-case drawdown before the persistent / bonus state pays y
 
 ## Verify on the floor
 
+![Buffalo Link counter: free feature must be won before 1800 collected](/guides/buffalo-link/buffalo-link-counter.webp)
+
 - Photo: each persistent ladder or meter family that matters for this title family.
 - Denom, line count, and any 'must bet' for progressive eligibility.
 

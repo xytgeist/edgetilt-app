@@ -1544,14 +1544,16 @@ function AppShell({ onLogout, supabaseClient }) {
 
       <button
         onClick={() => setActiveCalculator('mhb')}
-        className="w-full bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-700 hover:from-purple-500 hover:via-violet-500 hover:to-fuchsia-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]"
+        className="mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-indigo-700 via-violet-700 to-cyan-700 p-6 text-left shadow-lg shadow-black/30 transition-all hover:from-indigo-600 hover:via-violet-600 hover:to-cyan-600 active:scale-[0.985] sm:gap-5 sm:p-8"
       >
-        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-400 to-fuchsia-400 text-5xl shadow-inner">
-          🎰
-        </div>
+        <img
+          src="/guides/mhb/mhb-calculator-icon.webp"
+          alt=""
+          className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg ring-2 ring-violet-300/30 ring-offset-2 ring-offset-indigo-900/80"
+        />
         <div className="min-w-0 flex-1 self-center">
-          <div className="line-clamp-2 font-semibold text-2xl leading-snug text-purple-100">Must Hit By Jackpot</div>
-          <p className="mt-0.5 line-clamp-1 text-base leading-snug text-purple-200 sm:line-clamp-2">
+          <div className="line-clamp-2 text-2xl font-semibold leading-snug text-violet-50">Must Hit By Jackpot</div>
+          <p className="mt-0.5 line-clamp-1 text-base leading-snug text-cyan-100/95 sm:line-clamp-2">
             Progressive must-hit analyzer
           </p>
         </div>

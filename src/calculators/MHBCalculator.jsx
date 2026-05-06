@@ -205,13 +205,18 @@ function MHBCalculator({ onBack }) {
 
         {/* Title */}
         <div className="flex items-center mb-6">
-          <button onClick={onBack} className="text-[52px] leading-none text-purple-400 hover:text-purple-300 -mt-1 mr-4 font-light active:opacity-70">‹</button>
+          <button onClick={onBack} className="text-[52px] leading-none text-cyan-400 hover:text-cyan-300 -mt-1 mr-4 font-light active:opacity-70">‹</button>
           <div className="flex items-center flex-1 justify-center gap-3">
-            <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 to-fuchsia-600 flex-shrink-0">
-              <span className="text-4xl">🎰</span>
-            </div>
+            <img
+              src="/guides/mhb/mhb-calculator-icon.webp"
+              alt=""
+              className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-lg shadow-black/40 ring-2 ring-violet-700/50 ring-offset-2 ring-offset-gray-950"
+            />
             <h1 className="font-black text-white tracking-[-1.8px] text-[26px] xs:text-[27px] sm:text-[29px] md:text-[32px] lg:text-[33px]"
-                style={{ textShadow: `-2px -2px 0 #7e22ce, 2px -2px 0 #7e22ce, -2px 2px 0 #7e22ce, 2px 2px 0 #7e22ce` }}>
+                style={{
+                  textShadow:
+                    '-2px -2px 0 #5b21b6, 2px -2px 0 #5b21b6, -2px 2px 0 #0e7490, 2px 2px 0 #0e7490, 0 0 20px rgba(6,182,212,0.35)',
+                }}>
               MHB CALCULATOR
             </h1>
           </div>
@@ -225,7 +230,7 @@ function MHBCalculator({ onBack }) {
             <select
               value={manufacturer}
               onChange={(e) => setManufacturer(e.target.value)}
-              className="w-full p-3.5 bg-gray-800 rounded-2xl text-lg font-bold text-center text-purple-200"
+              className="w-full rounded-2xl bg-gray-800 p-3.5 text-center text-lg font-bold text-violet-200 outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
             >
               <option value="ainsworth">Ainsworth</option>
               <option value="ags">AGS</option>
@@ -249,7 +254,7 @@ function MHBCalculator({ onBack }) {
                 onFocus={handleJpMeterFocus}
                 onChange={handleJpMeterChange}
                 onBlur={handleJpMeterBlur}
-                className="w-full p-4 bg-gray-800 rounded-2xl text-3xl font-bold text-center text-purple-300"
+                className="w-full rounded-2xl bg-gray-800 p-4 text-center text-3xl font-bold text-cyan-100 outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
               />
             </div>
 
@@ -258,7 +263,7 @@ function MHBCalculator({ onBack }) {
               <select
                 value={mustHitBy}
                 onChange={(e) => setMustHitBy(Number(e.target.value))}
-                className="w-full p-4 bg-gray-800 rounded-2xl text-3xl font-bold text-center text-purple-300"
+                className="w-full rounded-2xl bg-gray-800 p-4 text-center text-3xl font-bold text-violet-200 outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
               >
                 <option value={500}>{formatUsd(500)}</option>
                 <option value={5000}>{formatUsd(5000)}</option>
@@ -270,9 +275,9 @@ function MHBCalculator({ onBack }) {
 
         {/* Advanced Settings */}
         <div className="mt-6 bg-gray-900 rounded-3xl overflow-hidden">
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex justify-between items-center p-5 text-left hover:bg-gray-800">
-            <span className="font-semibold text-purple-300">Advanced Settings</span>
-            <span className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>▼</span>
+          <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex w-full items-center justify-between p-5 text-left hover:bg-gray-800">
+            <span className="font-semibold text-violet-400">Advanced Settings</span>
+            <span className={`text-cyan-400 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>▼</span>
           </button>
           {showAdvanced && (
             <div className="p-5 pt-0 space-y-6 border-t border-gray-800">
@@ -283,7 +288,7 @@ function MHBCalculator({ onBack }) {
                   value={overallRTP}
                   onChange={handleFloatChange(setOverallRTP, activePreset.rtp)}
                   onBlur={handleFloatBlur(setOverallRTP, activePreset.rtp)}
-                  className="w-full p-4 bg-gray-800 rounded-2xl text-center text-2xl font-bold"
+                  className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
               </div>
 
@@ -294,7 +299,7 @@ function MHBCalculator({ onBack }) {
                   value={meterRise}
                   onChange={handleFloatChange(setMeterRise, activePreset.meterRise)}
                   onBlur={handleFloatBlur(setMeterRise, activePreset.meterRise)}
-                  className="w-full p-4 bg-gray-800 rounded-2xl text-center text-2xl font-bold"
+                  className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
               </div>
 
@@ -305,16 +310,16 @@ function MHBCalculator({ onBack }) {
                   value={resetValue}
                   onChange={handleIntegerChange(setResetValue, activePreset.reset)}
                   onBlur={handleIntegerBlur(setResetValue, activePreset.reset)}
-                  className="w-full p-4 bg-gray-800 rounded-2xl text-center text-2xl font-bold"
+                  className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer bg-gray-800 p-4 rounded-2xl touch-manipulation">
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-gray-800 p-4 touch-manipulation">
                 <input
                   type="checkbox"
                   checked={useMidpoint}
                   onChange={(e) => setUseMidpoint(e.target.checked)}
-                  className="h-5 w-5 shrink-0 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-0 focus:ring-offset-gray-800 accent-purple-600"
+                  className="h-5 w-5 shrink-0 rounded border-gray-600 bg-gray-700 accent-violet-600 focus:ring-2 focus:ring-cyan-500/45 focus:ring-offset-0 focus:ring-offset-gray-800"
                 />
                 <span className="text-gray-300 text-sm leading-snug">
                   Use Midpoint for EV & Breakeven
@@ -326,7 +331,9 @@ function MHBCalculator({ onBack }) {
 
         {/* Outputs */}
         <div className="mt-8 bg-gray-900 p-6 rounded-3xl">
-          <h2 className="text-xl font-semibold text-purple-400 mb-6 text-center">MHB Analysis</h2>
+          <h2 className="mb-6 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-center text-xl font-semibold text-transparent">
+            MHB Analysis
+          </h2>
 
           <div className="grid grid-cols-2 gap-4 text-center">
             <div className="bg-gray-800 p-5 rounded-2xl">
@@ -340,18 +347,18 @@ function MHBCalculator({ onBack }) {
             </div>
             <div className="bg-gray-800 p-5 rounded-2xl">
               <div className="text-gray-400 text-sm">Breakeven Entry</div>
-              <div className="text-4xl font-bold text-purple-300">{breakeven}</div>
-              <div className="text-xs text-purple-400/70 mt-1">
+              <div className="text-4xl font-bold text-violet-300">{breakeven}</div>
+              <div className="text-xs text-violet-400/70 mt-1">
                 ${breakevenExact.toFixed(2)}
               </div>
             </div>
             <div className="bg-gray-800 p-5 rounded-2xl">
               <div className="text-gray-400 text-sm">Coin in expected</div>
-              <div className="text-4xl font-bold text-amber-400">${coinInExpected}</div>
+              <div className="text-4xl font-bold text-sky-400">${coinInExpected}</div>
             </div>
             <div className="bg-gray-800 p-5 rounded-2xl">
               <div className="text-gray-400 text-sm">JP Contribution</div>
-              <div className="text-4xl font-bold text-purple-300">+{jpContribution}%</div>
+              <div className="text-4xl font-bold text-fuchsia-300">+{jpContribution}%</div>
             </div>
           </div>
 
@@ -369,8 +376,8 @@ function MHBCalculator({ onBack }) {
 
         <CalculatorDisclaimer className="mt-8" />
 
-        <div className="text-center text-slate-500 text-xs mt-6">
-          MHB Calculator • Purple Edition
+        <div className="mt-6 text-center text-xs text-slate-500">
+          MHB Calculator · violet and cyan accents
         </div>
       </div>
     </div>

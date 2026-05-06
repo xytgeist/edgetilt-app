@@ -175,6 +175,10 @@ function solveBreakevenEntry({ mhb, rtpPercent, riseDollars, resetVal, useMidpoi
   return (lo + hi) / 2
 }
 
+function roundToCents(value) {
+  return Number((Number(value) || 0).toFixed(2))
+}
+
 /** en-US currency: $10,000 / $4,911.76 */
 function formatUsd(amount) {
   const n = Number(amount)
@@ -238,7 +242,7 @@ function MHBCalculator({ onBack }) {
       resetVal: p.reset,
       useMidpoint: useMidpointDefault,
     })
-    setCurrent(defaultBreakeven)
+    setCurrent(roundToCents(defaultBreakeven))
     setMeterRise(p.meterRise)
     setResetValue(p.reset)
     setOverallRTP(p.rtp)
@@ -428,9 +432,9 @@ function MHBCalculator({ onBack }) {
   const handleJpMeterBlur = () => {
     const n = parseFloat(jpMeterDraft)
     if (jpMeterDraft === '' || jpMeterDraft === '.' || Number.isNaN(n)) {
-      setCurrent(activePreset.current)
+      setCurrent(roundToCents(activePreset.current))
     } else {
-      setCurrent(n)
+      setCurrent(roundToCents(n))
     }
     setJpMeterFocused(false)
     setJpMeterDraft('')

@@ -10,7 +10,7 @@ Use your Phoenix Link calculator for precise take points. Lower bets on low deno
 
 ## 🛑 When to stop
 
-Play until the bonus triggers or the counter drops significantly below your calculated **+EV threshold**. Do not chase **low counters** on **poor RTP setups**.
+Play until the counter bonus triggers. Do not chase **low counters** on **poor RTP setups**. Make sure to check the counter after hitting the counter bonus - unlike Buffalo Link, the counter resets to a random number and may reset back to a +EV point. I've seen resets into the high 1400s multiple times.
 
 ## 🔍 How to check (Pain in the ass) 
 

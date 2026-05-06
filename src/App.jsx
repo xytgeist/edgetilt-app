@@ -19,6 +19,7 @@ import WeekEventDetailModal from './features/offers/components/WeekEventDetailMo
 import AddEventFab from './features/offers/components/AddEventFab'
 import useOffersCalendarState from './features/offers/hooks/useOffersCalendarState'
 import useOffersCalendarMutations from './features/offers/hooks/useOffersCalendarMutations'
+import useWebPushNotifications from './features/offers/hooks/useWebPushNotifications'
 import GuidesScreen from './features/guides/GuidesScreen'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -590,6 +591,105 @@ function AppShell({ onLogout, supabaseClient }) {
   }
 
   const OffersCalendar = () => {
+    const [sendingTestPush, setSendingTestPush] = useState(false)
+    const [testPushMessage, setTestPushMessage] = useState('')
+    const [runningReminderCheck, setRunningReminderCheck] = useState(false)
+    const [reminderMessage, setReminderMessage] = useState('')
+    const [isIosDevice, setIsIosDevice] = useState(false)
+    const [isStandaloneMode, setIsStandaloneMode] = useState(false)
+    const [showIosInstallHelp, setShowIosInstallHelp] = useState(true)
+
+    const {
+      isSupported: pushSupported,
+      permission: pushPermission,
+      isBusy: pushBusy,
+      statusMessage: pushStatusMessage,
+      isSubscribed: pushSubscribed,
+      canEnable: canEnablePush,
+      canDisable: canDisablePush,
+      enable: enablePush,
+      disable: disablePush,
+    } = useWebPushNotifications({ supabaseClient })
+
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+      const ua = window.navigator.userAgent || ''
+      const isIos = /iPhone|iPad|iPod/i.test(ua)
+      const standaloneViaMedia = window.matchMedia?.('(display-mode: standalone)')?.matches === true
+      const standaloneViaNavigator = window.navigator.standalone === true
+      setIsIosDevice(isIos)
+      setIsStandaloneMode(standaloneViaMedia || standaloneViaNavigator)
+    }, [])
+
+    const sendTestPush = useCallback(async () => {
+      setSendingTestPush(true)
+      setTestPushMessage('')
+      try {
+        const { data, error } = await supabaseClient.functions.invoke('send-test-push', {
+          body: {
+            title: 'LVSlotPro Test Notification',
+            body: 'If you can read this, web push is working.',
+            url: '/?tab=offers',
+          },
+        })
+        if (error) throw error
+        const sent = Number(data?.sent || 0)
+        const failed = Number(data?.failed || 0)
+        const removed = Number(data?.removed || 0)
+        setTestPushMessage(`Test sent: ${sent} succeeded, ${failed} failed, ${removed} stale subscription(s) removed.`)
+      } catch (error) {
+        setTestPushMessage(error?.message || 'Could not send test push.')
+      } finally {
+        setSendingTestPush(false)
+      }
+    }, [supabaseClient])
+
+    const ensureReminderRule = useCallback(async () => {
+      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession()
+      if (sessionError) throw sessionError
+      const userId = sessionData?.session?.user?.id
+      if (!userId) throw new Error('Sign in required.')
+      const { error } = await supabaseClient
+        .from('offer_notification_rules')
+        .upsert(
+          {
+            user_id: userId,
+            lead_minutes: 15,
+            enabled: true,
+          },
+          { onConflict: 'user_id,lead_minutes' }
+        )
+      if (error) throw error
+    }, [supabaseClient])
+
+    const runReminderCheckNow = useCallback(async () => {
+      setRunningReminderCheck(true)
+      setReminderMessage('')
+      try {
+        await ensureReminderRule()
+        const { data, error } = await supabaseClient.functions.invoke('send-due-offer-reminders', {
+          body: { lookaheadMinutes: 60 },
+        })
+        if (error) throw error
+        setReminderMessage(
+          `Reminder check complete: queued ${Number(data?.queued || 0)}, sent ${Number(data?.sent || 0)}, failed ${Number(
+            data?.failed || 0
+          )}.`
+        )
+      } catch (error) {
+        setReminderMessage(error?.message || 'Could not run reminder check.')
+      } finally {
+        setRunningReminderCheck(false)
+      }
+    }, [ensureReminderRule, supabaseClient])
+
+    const iosInstallRequired = isIosDevice && !isStandaloneMode
+    const allowPushControls = !iosInstallRequired
+    const canEnablePushUi = canEnablePush && allowPushControls
+    const canDisablePushUi = canDisablePush && allowPushControls
+    const canSendTestPushUi = pushSubscribed && !sendingTestPush && allowPushControls
+    const canRunRemindersUi = pushSubscribed && !runningReminderCheck && allowPushControls
+
     const {
       fileInputRef,
       longPressTimerRef,
@@ -970,6 +1070,84 @@ function AppShell({ onLogout, supabaseClient }) {
             Syncing AI results... new events and review items will pop in automatically.
           </div>
         )}
+
+        <div className="mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
+          {iosInstallRequired && showIosInstallHelp ? (
+            <div className="mb-3 rounded-xl border border-amber-400/40 bg-amber-950/30 p-3 text-[11px] leading-relaxed text-amber-100">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold">iPhone setup needed for push</span>
+                <button
+                  type="button"
+                  onClick={() => setShowIosInstallHelp(false)}
+                  className="rounded-md px-2 py-0.5 text-[10px] font-semibold text-amber-100/80 hover:bg-amber-500/20"
+                >
+                  Hide
+                </button>
+              </div>
+              <div>1) Open this site in Safari</div>
+              <div>2) Tap Share (square with arrow)</div>
+              <div>3) Tap Add to Home Screen</div>
+              <div>4) Launch the installed app icon, then tap Enable</div>
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-cyan-100">Push Notifications</div>
+              <div className="text-[11px] text-cyan-200/80">
+                Status: {pushSubscribed ? 'Enabled on this device' : 'Disabled'} {pushSupported ? '' : '(unsupported browser)'}
+              </div>
+              <div className="text-[11px] text-cyan-200/70">Permission: {pushPermission}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!canEnablePushUi}
+                onClick={() => void enablePush()}
+                className="min-h-9 rounded-xl border border-cyan-300/35 bg-cyan-600 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-cyan-900/35 disabled:text-cyan-100/90 disabled:opacity-100"
+              >
+                {pushBusy ? 'Working...' : 'Enable'}
+              </button>
+              <button
+                type="button"
+                disabled={!canDisablePushUi}
+                onClick={() => void disablePush()}
+                className="min-h-9 rounded-xl border border-zinc-600/60 bg-zinc-800 px-3 text-xs font-semibold text-zinc-100 disabled:cursor-not-allowed disabled:bg-zinc-800/70 disabled:text-zinc-300/85 disabled:opacity-100"
+              >
+                Disable
+              </button>
+              <button
+                type="button"
+                disabled={!canSendTestPushUi}
+                onClick={() => void sendTestPush()}
+                className="min-h-9 rounded-xl border border-violet-500/35 bg-violet-700/80 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-violet-900/35 disabled:text-violet-100/80 disabled:opacity-100"
+              >
+                {sendingTestPush ? 'Sending...' : 'Send test'}
+              </button>
+              <button
+                type="button"
+                disabled={!canRunRemindersUi}
+                onClick={() => void runReminderCheckNow()}
+                className="min-h-9 rounded-xl border border-emerald-500/35 bg-emerald-700/80 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-emerald-900/35 disabled:text-emerald-100/80 disabled:opacity-100"
+              >
+                {runningReminderCheck ? 'Checking...' : 'Run reminders'}
+              </button>
+            </div>
+          </div>
+          {!canEnablePush && !pushSubscribed ? (
+            <div className="mt-2 text-[11px] leading-relaxed text-cyan-100/80">
+              {iosInstallRequired
+                ? 'Enable is unavailable on iPhone browser tabs. Install to Home Screen and open from the app icon first.'
+                : !pushSupported
+                ? 'Enable is unavailable because this browser does not support web push in the current context.'
+                : pushPermission === 'denied'
+                  ? 'Enable is unavailable because notification permission is blocked for this site.'
+                  : 'Enable is temporarily unavailable while setup is in progress.'}
+            </div>
+          ) : null}
+          {pushStatusMessage ? <div className="mt-2 text-[11px] leading-relaxed text-cyan-100/90">{pushStatusMessage}</div> : null}
+          {testPushMessage ? <div className="mt-2 text-[11px] leading-relaxed text-violet-100/90">{testPushMessage}</div> : null}
+          {reminderMessage ? <div className="mt-2 text-[11px] leading-relaxed text-emerald-100/90">{reminderMessage}</div> : null}
+        </div>
 
         <ReviewQueuePanel reviewQueue={reviewQueue} onComplete={beginReviewItem} onSkip={(itemId) => void skipReviewItem(itemId)} />
 

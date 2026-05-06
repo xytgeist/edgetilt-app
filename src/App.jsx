@@ -1513,7 +1513,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
       <button
         onClick={() => setActiveCalculator('buffalo')}
-        className="mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-amber-800 via-orange-800 to-red-900 p-6 text-left ring-1 ring-orange-900/35 transition-all hover:from-amber-700 hover:via-orange-700 hover:to-red-800 hover:ring-orange-800/45 active:scale-[0.985] sm:gap-5 sm:p-8"
+        className="mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-amber-700 via-orange-700 to-red-800 p-6 text-left ring-1 ring-orange-800/45 transition-all hover:from-amber-600 hover:via-orange-600 hover:to-red-700 hover:ring-orange-700/50 active:scale-[0.985] sm:gap-5 sm:p-8"
       >
         <div className="relative flex h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-600/90 to-orange-800 shadow-inner ring-1 ring-orange-900/45">
           <img

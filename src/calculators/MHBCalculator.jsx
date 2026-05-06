@@ -155,6 +155,10 @@ function MHBCalculator({ onBack }) {
   const [overallRTP, setOverallRTP] = useState(88)
   const [meterRise, setMeterRise] = useState(2.50)
   const [resetValue, setResetValue] = useState(350)
+  const [meterRiseFocused, setMeterRiseFocused] = useState(false)
+  const [meterRiseDraft, setMeterRiseDraft] = useState('')
+  const [resetValueFocused, setResetValueFocused] = useState(false)
+  const [resetValueDraft, setResetValueDraft] = useState('')
   const [useMidpoint, setUseMidpoint] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showMeterCue, setShowMeterCue] = useState(false)
@@ -206,9 +210,9 @@ function MHBCalculator({ onBack }) {
     }
   }, [manufacturer, igtTier, igtLineBet, igtDenom, mustHitBy])
 
-  // AGS defaults to full run (no midpoint); other makers default to midpoint.
+  // AGS and IGT default to full run (no midpoint); Ainsworth defaults to midpoint.
   useEffect(() => {
-    setUseMidpoint(manufacturer !== 'ags')
+    setUseMidpoint(manufacturer === 'ainsworth')
   }, [manufacturer])
 
   // Briefly highlight MHB Meter whenever key selectors change.
@@ -292,6 +296,8 @@ function MHBCalculator({ onBack }) {
   }
 
   const jpMeterDisplay = jpMeterFocused ? `$${jpMeterDraft}` : formatUsd(current)
+  const meterRiseDisplay = meterRiseFocused ? `$${meterRiseDraft}` : formatUsd(meterRise)
+  const resetValueDisplay = resetValueFocused ? `$${resetValueDraft}` : formatUsd(resetValue)
 
   const handleJpMeterFocus = () => {
     setJpMeterFocused(true)
@@ -320,6 +326,64 @@ function MHBCalculator({ onBack }) {
     }
     setJpMeterFocused(false)
     setJpMeterDraft('')
+  }
+
+  const handleMeterRiseFocus = () => {
+    setMeterRiseFocused(true)
+    const n = Number(meterRise)
+    setMeterRiseDraft(Number.isFinite(n) ? String(n) : '')
+  }
+
+  const handleMeterRiseChange = (e) => {
+    let v = e.target.value.replace(/[^0-9.]/g, '')
+    const dot = v.indexOf('.')
+    if (dot !== -1) {
+      v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '')
+    }
+    setMeterRiseDraft(v)
+    if (v === '' || v === '.') return
+    const num = parseFloat(v)
+    if (!Number.isNaN(num)) setMeterRise(num)
+  }
+
+  const handleMeterRiseBlur = () => {
+    const n = parseFloat(meterRiseDraft)
+    if (meterRiseDraft === '' || meterRiseDraft === '.' || Number.isNaN(n)) {
+      setMeterRise(activePreset.meterRise)
+    } else {
+      setMeterRise(n)
+    }
+    setMeterRiseFocused(false)
+    setMeterRiseDraft('')
+  }
+
+  const handleResetValueFocus = () => {
+    setResetValueFocused(true)
+    const n = Number(resetValue)
+    setResetValueDraft(Number.isFinite(n) ? String(n) : '')
+  }
+
+  const handleResetValueChange = (e) => {
+    let v = e.target.value.replace(/[^0-9.]/g, '')
+    const dot = v.indexOf('.')
+    if (dot !== -1) {
+      v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '')
+    }
+    setResetValueDraft(v)
+    if (v === '' || v === '.') return
+    const num = parseFloat(v)
+    if (!Number.isNaN(num)) setResetValue(num)
+  }
+
+  const handleResetValueBlur = () => {
+    const n = parseFloat(resetValueDraft)
+    if (resetValueDraft === '' || resetValueDraft === '.' || Number.isNaN(n)) {
+      setResetValue(activePreset.reset)
+    } else {
+      setResetValue(n)
+    }
+    setResetValueFocused(false)
+    setResetValueDraft('')
   }
 
   return (
@@ -564,9 +628,11 @@ function MHBCalculator({ onBack }) {
                 <label className="block text-gray-400 text-xs mb-1">Meter Rise ($ per $0.01 increment)</label>
                 <input
                   type="text"
-                  value={meterRise}
-                  onChange={handleFloatChange(setMeterRise, activePreset.meterRise)}
-                  onBlur={handleFloatBlur(setMeterRise, activePreset.meterRise)}
+                  inputMode="decimal"
+                  value={meterRiseDisplay}
+                  onFocus={handleMeterRiseFocus}
+                  onChange={handleMeterRiseChange}
+                  onBlur={handleMeterRiseBlur}
                   className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
               </div>
@@ -575,9 +641,11 @@ function MHBCalculator({ onBack }) {
                 <label className="block text-gray-400 text-xs mb-1">Reset Value</label>
                 <input
                   type="text"
-                  value={resetValue}
-                  onChange={handleIntegerChange(setResetValue, activePreset.reset)}
-                  onBlur={handleIntegerBlur(setResetValue, activePreset.reset)}
+                  inputMode="decimal"
+                  value={resetValueDisplay}
+                  onFocus={handleResetValueFocus}
+                  onChange={handleResetValueChange}
+                  onBlur={handleResetValueBlur}
                   className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                 />
               </div>

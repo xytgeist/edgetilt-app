@@ -157,6 +157,7 @@ function MHBCalculator({ onBack }) {
   const [resetValue, setResetValue] = useState(350)
   const [useMidpoint, setUseMidpoint] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showMeterCue, setShowMeterCue] = useState(false)
 
   const activePreset = useMemo(
     () => presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom),
@@ -209,6 +210,13 @@ function MHBCalculator({ onBack }) {
   useEffect(() => {
     setUseMidpoint(manufacturer !== 'ags')
   }, [manufacturer])
+
+  // Briefly highlight MHB Meter whenever key selectors change.
+  useEffect(() => {
+    setShowMeterCue(true)
+    const timer = setTimeout(() => setShowMeterCue(false), 1800)
+    return () => clearTimeout(timer)
+  }, [manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom])
 
   const calculate = () => {
     const p = presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom)
@@ -468,7 +476,11 @@ function MHBCalculator({ onBack }) {
                     onFocus={handleJpMeterFocus}
                     onChange={handleJpMeterChange}
                     onBlur={handleJpMeterBlur}
-                    className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                    className={`w-full rounded-2xl p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35 ${
+                      showMeterCue
+                        ? 'bg-gray-700/90 ring-2 ring-cyan-400/45 animate-pulse'
+                        : 'bg-gray-800'
+                    }`}
                   />
                 </div>
                 <div>
@@ -490,7 +502,11 @@ function MHBCalculator({ onBack }) {
                   onFocus={handleJpMeterFocus}
                   onChange={handleJpMeterChange}
                   onBlur={handleJpMeterBlur}
-                  className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                  className={`w-full rounded-2xl p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35 ${
+                    showMeterCue
+                      ? 'bg-gray-700/90 ring-2 ring-cyan-400/45 animate-pulse'
+                      : 'bg-gray-800'
+                  }`}
                 />
               </div>
 

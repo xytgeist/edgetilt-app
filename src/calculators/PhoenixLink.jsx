@@ -105,12 +105,14 @@ function PhoenixLink({ onBack }) {
     else if (denom === 0.10) baseOverall = 88.4
     else if (denom === 0.25) baseOverall = 88.6
     else if (denom > 1) baseOverall = 91.5
-    const finalOverall = maxMajor ? baseOverall + 0.5 : baseOverall
-    setOverallRTP(finalOverall)
-  }, [denom, maxMajor])
+    // Keep the UI RTP stable; Max Major affects calculations only.
+    setOverallRTP(baseOverall)
+  }, [denom])
 
   const calculate = () => {
-    const oRTP = overallRTP / 100
+    const displayedOverall = Number(overallRTP) || 0
+    const effectiveOverall = displayedOverall + (maxMajor ? 0.5 : 0)
+    const oRTP = effectiveOverall / 100
     const inc = increment
     const avgTrig = avgTrigger
     const X = currentX || 0

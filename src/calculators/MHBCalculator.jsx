@@ -251,7 +251,7 @@ function MHBCalculator({ onBack }) {
               </svg>
             </div>
             <p className="text-gray-500 text-[11px] mt-2 leading-snug">
-              Switches the default meter, rise, reset, and RTP to typical for the selected manfucaturer.
+              Switches the default meter, rise, reset, and RTP to typical for the selected manufacturer.
             </p>
           </div>
 

@@ -8,7 +8,7 @@ export default function CalculatorDisclaimer({ className = '' }) {
     >
       <p className="mb-2.5">
         Figures here reflect <span className="text-zinc-400">long-run average expectations</span> over a very large
-        number of spins—similar in spirit to how theoretical payback is defined—not a prediction for any single session,
+        number of spins - similar in spirit to how theoretical payback is defined - not a prediction for any single session,
         visit, or sample of play.
       </p>
       <p className="mb-2.5">

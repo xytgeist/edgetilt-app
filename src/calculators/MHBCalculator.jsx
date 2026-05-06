@@ -260,7 +260,11 @@ function MHBCalculator({ onBack }) {
 
     const breakevenRounded = Math.ceil(breakevenCurrent)
 
-    const jpContrib = 0.4 * (mhb + resetVal) / (mhb - resetVal)
+    const averageHit = useMidpoint ? (resetVal + mhb) / 2 : mhb
+    const distanceFromReset = averageHit - resetVal
+    const incrementsFromReset = distanceFromReset / 0.01
+    const coinInFromReset = incrementsFromReset * riseDollars
+    const jpContrib = coinInFromReset > 0 ? (averageHit / coinInFromReset) * 100 : 0
 
     const fullIncrements = (mhb - currentVal) / 0.01
     const maxExposureDollars = fullIncrements * riseDollars * houseEdge

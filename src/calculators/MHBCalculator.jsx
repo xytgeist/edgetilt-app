@@ -54,18 +54,18 @@ const IGT_MHB_BY_TIER_AND_LINE_BET = {
 
 const IGT_BASE_PRESETS = {
   mini: {
-    20: { meterRise: 0.25, reset: 17 },
-    40: { meterRise: 0.25, reset: 34 },
-    60: { meterRise: 0.25, reset: 51 },
-    100: { meterRise: 0.25, reset: 85 },
-    200: { meterRise: 0.25, reset: 170 },
+    20: { meterRise: 0.5, reset: 17 },
+    40: { meterRise: 0.5, reset: 34 },
+    60: { meterRise: 0.5, reset: 51 },
+    100: { meterRise: 0.5, reset: 85 },
+    200: { meterRise: 0.5, reset: 170 },
   },
   minor: {
-    50: { meterRise: 0.25, reset: 37.5 },
-    100: { meterRise: 0.25, reset: 75 },
-    150: { meterRise: 0.25, reset: 112.5 },
-    250: { meterRise: 0.25, reset: 187.5 },
-    500: { meterRise: 0.25, reset: 375 },
+    50: { meterRise: 1, reset: 37.5 },
+    100: { meterRise: 1, reset: 75 },
+    150: { meterRise: 1, reset: 112.5 },
+    250: { meterRise: 1, reset: 187.5 },
+    500: { meterRise: 1, reset: 375 },
   },
   major: {
     200: { meterRise: 2.5, reset: 125 },

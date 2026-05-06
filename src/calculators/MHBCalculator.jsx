@@ -393,14 +393,14 @@ function MHBCalculator({ onBack }) {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Denom</label>
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Denom</label>
                   <div className="relative">
                     <select
                       value={igtDenom}
                       onChange={(e) => setIgtDenom(Number(e.target.value))}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-2.5 pr-10 text-center text-lg font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value={0.01}>$0.01</option>
                       <option value={0.25}>$0.25</option>
@@ -423,12 +423,12 @@ function MHBCalculator({ onBack }) {
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Jackpot Tier</label>
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Jackpot Tier</label>
                   <div className="relative">
                     <select
                       value={igtTier}
                       onChange={(e) => setIgtTier(e.target.value)}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-2.5 pr-10 text-center text-lg font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value="mini">Mini</option>
                       <option value="minor">Minor</option>
@@ -450,12 +450,12 @@ function MHBCalculator({ onBack }) {
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">Bet</label>
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Bet</label>
                   <div className="relative">
                     <select
                       value={igtLineBet}
                       onChange={(e) => setIgtLineBet(Number(e.target.value))}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-2.5 pr-10 text-center text-lg font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value={1}>Bet 1</option>
                       <option value={2}>Bet 2</option>

@@ -1513,9 +1513,9 @@ function AppShell({ onLogout, supabaseClient }) {
 
       <button
         onClick={() => setActiveCalculator('buffalo')}
-        className="w-full bg-gradient-to-br from-amber-600 via-orange-600 to-red-700 hover:from-amber-500 hover:via-orange-500 hover:to-red-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]"
+        className="mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-amber-950 via-orange-950 to-neutral-950 p-6 text-left ring-1 ring-orange-950/35 transition-all hover:from-amber-900 hover:via-orange-900 hover:to-red-950 hover:ring-orange-900/45 active:scale-[0.985] sm:gap-5 sm:p-8"
       >
-        <div className="relative flex h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 shadow-inner ring-1 ring-amber-950/35">
+        <div className="relative flex h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-800/90 to-orange-950 shadow-inner ring-1 ring-orange-950/45">
           <img
             src="/guides/buffalo-link/buffalo-link-calculator-icon.webp"
             alt="Buffalo"
@@ -1523,8 +1523,8 @@ function AppShell({ onLogout, supabaseClient }) {
           />
         </div>
         <div className="min-w-0 flex-1 self-center">
-          <div className="line-clamp-2 font-semibold text-2xl leading-snug text-amber-100">Buffalo Link EV Calc</div>
-          <p className="mt-0.5 line-clamp-1 text-base leading-snug text-amber-200 sm:line-clamp-2">
+          <div className="line-clamp-2 text-2xl font-semibold leading-snug text-amber-50/95">Buffalo Link EV Calc</div>
+          <p className="mt-0.5 line-clamp-1 text-base leading-snug text-amber-200/80 sm:line-clamp-2">
             Midpoint-based counter analyzer
           </p>
         </div>

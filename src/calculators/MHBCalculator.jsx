@@ -371,85 +371,62 @@ function MHBCalculator({ onBack }) {
           </div>
 
           {manufacturer === 'igt' ? (
-            <div className="grid grid-cols-2 gap-4 items-start">
-              <div className="space-y-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={jpMeterDisplay}
-                    onFocus={handleJpMeterFocus}
-                    onChange={handleJpMeterChange}
-                    onBlur={handleJpMeterBlur}
-                    className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
-                  <div className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white tabular-nums">
-                    {formatUsd(mustHitBy)}
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Denom</label>
+                  <div className="relative">
+                    <select
+                      value={igtDenom}
+                      onChange={(e) => setIgtDenom(Number(e.target.value))}
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                    >
+                      <option value={0.01}>$0.01</option>
+                      <option value={0.25}>$0.25</option>
+                      <option value={1}>$1</option>
+                      <option value={2}>$2</option>
+                    </select>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-gray-400 text-[11px] mb-0.5">Denom</label>
-                    <div className="relative">
-                      <select
-                        value={igtDenom}
-                        onChange={(e) => setIgtDenom(Number(e.target.value))}
-                        className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                      >
-                        <option value={0.01}>$0.01</option>
-                        <option value={0.25}>$0.25</option>
-                        <option value={1}>$1</option>
-                        <option value={2}>$2</option>
-                      </select>
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 20 20"
-                        className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 text-[11px] mb-0.5">Line Bet</label>
-                    <div className="relative">
-                      <select
-                        value={igtLineBet}
-                        onChange={(e) => setIgtLineBet(Number(e.target.value))}
-                        className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                      >
-                        <option value={1}>Bet 1</option>
-                        <option value={2}>Bet 2</option>
-                        <option value={3}>Bet 3</option>
-                        <option value={5}>Bet 5</option>
-                        <option value={10}>Bet 10</option>
-                      </select>
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 20 20"
-                        className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
+                <div>
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Line Bet</label>
+                  <div className="relative">
+                    <select
+                      value={igtLineBet}
+                      onChange={(e) => setIgtLineBet(Number(e.target.value))}
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                    >
+                      <option value={1}>Bet 1</option>
+                      <option value={2}>Bet 2</option>
+                      <option value={3}>Bet 3</option>
+                      <option value={5}>Bet 5</option>
+                      <option value={10}>Bet 10</option>
+                    </select>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
                 </div>
 
@@ -459,7 +436,7 @@ function MHBCalculator({ onBack }) {
                     <select
                       value={igtTier}
                       onChange={(e) => setIgtTier(e.target.value)}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value="mini">Mini</option>
                       <option value="minor">Minor</option>
@@ -477,6 +454,27 @@ function MHBCalculator({ onBack }) {
                         clipRule="evenodd"
                       />
                     </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={jpMeterDisplay}
+                    onFocus={handleJpMeterFocus}
+                    onChange={handleJpMeterChange}
+                    onBlur={handleJpMeterBlur}
+                    className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
+                  <div className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white tabular-nums">
+                    {formatUsd(mustHitBy)}
                   </div>
                 </div>
               </div>

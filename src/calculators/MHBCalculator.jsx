@@ -229,34 +229,31 @@ function MHBCalculator({ onBack }) {
     const mhb = effectiveCap(manufacturer, mustHitBy)
     const riseDollars = Number(meterRise) || p.meterRise
     const resetVal = Number(resetValue) || p.reset
+    const jpTarget = useMidpoint ? (resetVal + mhb) / 2 : mhb
+    const jpDistanceFromReset = jpTarget - resetVal
+    const jpIncrementsFromReset = jpDistanceFromReset / 0.01
+    const jpCoinInFromReset = jpIncrementsFromReset * riseDollars
+    const jpContribFraction = jpCoinInFromReset > 0 ? jpTarget / jpCoinInFromReset : 0
+    const jpContrib = jpContribFraction * 100
+    const effectiveRtp = Math.min(0.999999, Math.max(0, rtp - jpContribFraction))
+    const effectiveHouseEdge = 1 - effectiveRtp
+
     const evForCurrent = (entry) => {
       const targetAtEntry = useMidpoint
         ? entry + (mhb - entry) * 0.5
         : mhb
-      const averageHitAtEntry = targetAtEntry
 
       const dollarDistanceAtEntry = Math.max(0, targetAtEntry - entry)
       const incrementsNeededAtEntry = dollarDistanceAtEntry / 0.01
       const coinInToTargetAtEntry = incrementsNeededAtEntry * riseDollars
 
-      const distanceFromResetAtEntry = averageHitAtEntry - resetVal
-      const incrementsFromResetAtEntry = distanceFromResetAtEntry / 0.01
-      const coinInFromResetAtEntry = incrementsFromResetAtEntry * riseDollars
-      const jpContribFractionAtEntry = coinInFromResetAtEntry > 0
-        ? averageHitAtEntry / coinInFromResetAtEntry
-        : 0
-
-      const effectiveRtpAtEntry = Math.min(0.999999, Math.max(0, rtp - jpContribFractionAtEntry))
-      const effectiveHouseEdgeAtEntry = 1 - effectiveRtpAtEntry
-      const expectedLossAtEntry = coinInToTargetAtEntry * effectiveHouseEdgeAtEntry
+      const expectedLossAtEntry = coinInToTargetAtEntry * effectiveHouseEdge
       const evAtEntry = targetAtEntry - expectedLossAtEntry
 
       return {
         targetAtEntry,
         coinInToTargetAtEntry,
-        jpContribFractionAtEntry,
         evAtEntry,
-        effectiveHouseEdgeAtEntry,
       }
     }
 
@@ -275,10 +272,7 @@ function MHBCalculator({ onBack }) {
     const currentEval = evForCurrent(currentVal)
     const target = currentEval.targetAtEntry
     const coinInToTarget = currentEval.coinInToTargetAtEntry
-    const jpContribFraction = currentEval.jpContribFractionAtEntry
-    const jpContrib = jpContribFraction * 100
     const finalEV = currentEval.evAtEntry
-    const effectiveHouseEdge = currentEval.effectiveHouseEdgeAtEntry
 
     // Solve breakeven entry from EV(entry) = 0, independent of the current meter input.
     let lo = resetVal

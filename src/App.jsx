@@ -1553,7 +1553,7 @@ function AppShell({ onLogout, supabaseClient }) {
         <img
           src="/guides/mhb/mhb-calculator-icon.webp"
           alt=""
-          className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg ring-2 ring-violet-300/30 ring-offset-2 ring-offset-indigo-900/80"
+          className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg"
         />
         <div className="min-w-0 flex-1 self-center">
           <div className="line-clamp-2 text-2xl font-semibold leading-snug text-violet-50">Must Hit By Jackpot</div>

@@ -212,7 +212,7 @@ function MHBCalculator({ onBack }) {
               alt=""
               className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-lg shadow-black/40"
             />
-            <h1 className="font-black text-white tracking-[-1.8px] text-[26px] xs:text-[27px] sm:text-[29px] md:text-[32px] lg:text-[33px]"
+            <h1 className="font-black text-white tracking-[-1.8px] text-[32px]"
                 style={{
                   textShadow:
                     '-2px -2px 0 #5b21b6, 2px -2px 0 #5b21b6, -2px 2px 0 #0e7490, 2px 2px 0 #0e7490, 0 0 20px rgba(6,182,212,0.35)',
@@ -356,7 +356,7 @@ function MHBCalculator({ onBack }) {
 
         {/* Outputs */}
         <div className="mt-8 bg-gray-900 p-6 rounded-3xl">
-          <h2 className="mb-6 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-center text-xl font-semibold text-transparent">
+          <h2 className="mb-6 text-center text-xl font-semibold text-violet-400">
             MHB Analysis
           </h2>
 

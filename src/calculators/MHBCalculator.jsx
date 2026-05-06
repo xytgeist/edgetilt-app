@@ -342,6 +342,11 @@ function MHBCalculator({ onBack }) {
                 />
               </div>
 
+              <div className="bg-gray-800 rounded-2xl p-4 text-center">
+                <div className="text-gray-400 text-xs mb-1">JP Contribution</div>
+                <div className="text-white font-bold tabular-nums text-xl leading-tight">+{jpContribution}%</div>
+              </div>
+
               <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-gray-800 p-4 touch-manipulation">
                 <input
                   type="checkbox"
@@ -366,7 +371,7 @@ function MHBCalculator({ onBack }) {
           <div className="grid grid-cols-2 gap-4 text-center">
             <div className="bg-gray-800 p-5 rounded-2xl">
               <div className="text-gray-400 text-sm">Expected Value</div>
-              <div className={`text-3xl font-bold tabular-nums ${ev >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className={`text-2xl leading-tight font-bold tracking-tight tabular-nums ${ev >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {formatUsd(ev)}
               </div>
               <div className={`text-xs mt-1 ${ev >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
@@ -375,27 +380,22 @@ function MHBCalculator({ onBack }) {
             </div>
             <div className="bg-gray-800 p-5 rounded-2xl">
               <div className="text-gray-400 text-sm">Breakeven Entry</div>
-              <div className="text-3xl font-bold tabular-nums text-amber-300">{formatUsd(breakeven)}</div>
+              <div className="text-2xl leading-tight font-bold tracking-tight tabular-nums text-amber-300">{formatUsd(breakeven)}</div>
               <div className="text-xs text-amber-300/70 mt-1">
                 ${breakevenExact.toFixed(2)}
               </div>
             </div>
             <div className="bg-gray-800 p-5 rounded-2xl">
               <div className="text-gray-400 text-sm">Coin-in Expected</div>
-              <div className="text-[28px] leading-none font-bold tracking-tight tabular-nums text-white">
+              <div className="text-2xl leading-tight font-bold tracking-tight tabular-nums text-white">
                 {formatUsd(coinInExpected)}
               </div>
             </div>
             <div className="bg-gray-800 p-5 rounded-2xl">
-              <div className="text-gray-400 text-sm">JP Contribution</div>
-              <div className="text-3xl font-bold tabular-nums text-white">+{jpContribution}%</div>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-gray-800 p-5 rounded-2xl text-center">
-            <div className="text-gray-400 text-sm">Max Exposure (Full Run)</div>
-            <div className="text-3xl font-bold text-red-400">
-              ${exposure.toLocaleString()}
+              <div className="text-gray-400 text-sm">Max Exposure</div>
+              <div className="text-2xl leading-tight font-bold tracking-tight tabular-nums text-red-400">
+                -{formatUsd(exposure)}
+              </div>
             </div>
           </div>
 

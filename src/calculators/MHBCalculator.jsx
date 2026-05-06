@@ -229,10 +229,10 @@ function MHBCalculator({ onBack }) {
     const mhb = effectiveCap(manufacturer, mustHitBy)
     const riseDollars = Number(meterRise) || p.meterRise
     const resetVal = Number(resetValue) || p.reset
-    const averageHit = useMidpoint ? (resetVal + mhb) / 2 : mhb
     const target = useMidpoint
-      ? (currentVal < averageHit ? averageHit : mhb)
+      ? currentVal + (mhb - currentVal) * 0.5
       : mhb
+    const averageHit = target
 
     if (mhb <= currentVal) {
       setEv(999)

@@ -33,7 +33,9 @@ export default function useWebPushNotifications({ supabaseClient }) {
   const [isBusy, setIsBusy] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [isSubscribed, setIsSubscribed] = useState(false)
-  const publicVapidKey = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || ''
+  const [fetchedPublicKey, setFetchedPublicKey] = useState('')
+
+  const envPublicKey = (import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || '').trim()
 
   const canEnable = useMemo(
     () => isSupported && permission !== 'denied' && !isSubscribed && !isBusy,
@@ -58,6 +60,32 @@ export default function useWebPushNotifications({ supabaseClient }) {
     }
     void syncLocalState()
   }, [syncLocalState])
+
+  /** Production / PWA builds often omit VITE_WEB_PUSH_PUBLIC_KEY; load public key from Edge Function. */
+  useEffect(() => {
+    if (!isSupported || envPublicKey || !supabaseClient) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabaseClient.functions.invoke('get-web-push-config')
+        if (cancelled) return
+        if (error) {
+          setStatusMessage('Could not load push config. Deploy get-web-push-config and set WEB_PUSH_PUBLIC_KEY in Supabase secrets.')
+          return
+        }
+        const key = typeof data?.publicKey === 'string' ? data.publicKey.trim() : ''
+        if (key) setFetchedPublicKey(key)
+        else setStatusMessage('Push config returned no public key.')
+      } catch {
+        if (!cancelled) {
+          setStatusMessage('Could not load push config. Check network and Supabase function deployment.')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isSupported, envPublicKey, supabaseClient])
 
   const upsertSubscriptionRow = useCallback(
     async (subscription) => {
@@ -92,14 +120,33 @@ export default function useWebPushNotifications({ supabaseClient }) {
     [supabaseClient]
   )
 
+  const resolveVapidPublicKey = useCallback(async () => {
+    const fromEnv = (import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || '').trim()
+    if (fromEnv) return fromEnv
+    if (fetchedPublicKey.trim()) return fetchedPublicKey.trim()
+    const { data, error } = await supabaseClient.functions.invoke('get-web-push-config')
+    if (error) throw new Error(error.message || 'Could not load push configuration.')
+    const key = typeof data?.publicKey === 'string' ? data.publicKey.trim() : ''
+    if (!key) throw new Error('Push is not configured (missing WEB_PUSH_PUBLIC_KEY on server).')
+    setFetchedPublicKey(key)
+    return key
+  }, [supabaseClient, fetchedPublicKey])
+
   const enable = useCallback(async () => {
     if (!isSupported) return
-    if (!publicVapidKey) {
-      setStatusMessage('Missing VITE_WEB_PUSH_PUBLIC_KEY. Add it to your environment first.')
-      return
-    }
     setIsBusy(true)
     setStatusMessage('')
+    let vapidKey
+    try {
+      vapidKey = await resolveVapidPublicKey()
+    } catch (err) {
+      setStatusMessage(
+        err?.message ||
+          'Missing push public key. Set VITE_WEB_PUSH_PUBLIC_KEY in Vercel or deploy Supabase function get-web-push-config with WEB_PUSH_PUBLIC_KEY.'
+      )
+      setIsBusy(false)
+      return
+    }
     try {
       const permissionResult = await Notification.requestPermission()
       setPermission(permissionResult)
@@ -115,7 +162,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
         existing ||
         (await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: base64UrlToUint8Array(publicVapidKey),
+          applicationServerKey: base64UrlToUint8Array(vapidKey),
         }))
       await upsertSubscriptionRow(subscription)
       setIsSubscribed(true)
@@ -125,7 +172,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
     } finally {
       setIsBusy(false)
     }
-  }, [isSupported, publicVapidKey, upsertSubscriptionRow])
+  }, [isSupported, resolveVapidPublicKey, upsertSubscriptionRow])
 
   const disable = useCallback(async () => {
     if (!isSupported) return

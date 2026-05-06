@@ -1544,17 +1544,15 @@ function AppShell({ onLogout, supabaseClient }) {
 
       <button
         onClick={() => setActiveCalculator('mhb')}
-        className="w-full bg-gradient-to-br from-[#1e0a2e] via-[#164e63] to-[#072043] hover:from-[#2a1540] hover:via-[#155e75] hover:to-[#082a54] ring-2 ring-purple-950/70 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985] shadow-xl shadow-black/40"
+        className="w-full bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-700 hover:from-purple-500 hover:via-violet-500 hover:to-fuchsia-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]"
       >
-        <img
-          src="/guides/mhb/mhb-msd-icon.webp"
-          alt=""
-          className="h-16 w-16 flex-shrink-0 rounded-2xl object-cover ring-2 ring-amber-950/70 shadow-inner shadow-black/50"
-        />
+        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-400 to-fuchsia-400 text-5xl shadow-inner">
+          🎰
+        </div>
         <div className="min-w-0 flex-1 self-center">
-          <div className="line-clamp-2 font-semibold text-2xl leading-snug text-amber-100">Must Hit By Jackpot</div>
-          <p className="mt-0.5 line-clamp-1 text-base leading-snug text-cyan-200/90 sm:line-clamp-2">
-            IGT mystery MHB analyzer · themed layout
+          <div className="line-clamp-2 font-semibold text-2xl leading-snug text-purple-100">Must Hit By Jackpot</div>
+          <p className="mt-0.5 line-clamp-1 text-base leading-snug text-purple-200 sm:line-clamp-2">
+            Progressive must-hit analyzer
           </p>
         </div>
       </button>

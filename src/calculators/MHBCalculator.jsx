@@ -46,25 +46,6 @@ function formatUsd(amount) {
   }).format(n)
 }
 
-/** Money Storm Deluxe–inspired: red plank frames, storm backdrop */
-const woodPanel =
-  'rounded-2xl border border-amber-950/55 bg-gradient-to-b from-[#5a1a20] via-[#3f1116] to-[#2a0b10] shadow-[inset_0_1px_0_rgba(255,215,140,0.1),0_12px_32px_rgba(0,0,0,0.55)] ring-1 ring-black/60'
-
-const plankInset =
-  'rounded-xl border border-black/45 bg-[#120709] shadow-[inset_0_2px_8px_rgba(0,0,0,0.65)]'
-
-const fieldFocus =
-  'focus:outline-none focus:ring-2 focus:ring-cyan-400/55 focus:border-cyan-500/40'
-
-const labelStorm =
-  'text-[11px] font-bold uppercase tracking-[0.12em] text-amber-100/90'
-
-const glowingValue = 'font-black text-white [text-shadow:0_0_14px_rgba(250,250,250,0.35),0_2px_0_rgba(0,0,0,0.8)]'
-
-const glowingYellow = '[text-shadow:0_0_16px_rgba(250,204,21,0.55),0_2px_0_rgba(0,0,0,0.85)]'
-const glowingGreen = '[text-shadow:0_0_14px_rgba(74,222,128,0.5),0_2px_0_rgba(0,0,0,0.85)]'
-const glowingSky = '[text-shadow:0_0_14px_rgba(56,189,248,0.5),0_2px_0_rgba(0,0,0,0.85)]'
-
 function MHBCalculator({ onBack }) {
   const [manufacturer, setManufacturer] = useState('ainsworth')
 
@@ -219,235 +200,177 @@ function MHBCalculator({ onBack }) {
   }
 
   return (
-    <div className="relative min-h-screen pb-12 overflow-x-hidden">
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
-        <img
-          src="/guides/mhb/mhb-msd-bg.webp"
-          alt=""
-          className="absolute inset-0 h-full w-full scale-105 object-cover opacity-[0.22]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#070b14] via-[#0f0a28]/93 to-[#051018]" />
-        <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/35 via-transparent to-cyan-950/25" />
-      </div>
+    <div className="min-h-screen bg-gray-950 pb-12">
+      <div className="max-w-lg mx-auto px-4 pt-6">
 
-      <div className="relative z-10 max-w-lg mx-auto px-4 pt-6">
-
-        {/* Title — art from user-provided Money Storm Deluxe marquee */}
-        <div className="flex items-start mb-6">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-[52px] leading-none text-cyan-300 hover:text-cyan-200 -mt-1 mr-3 font-light active:opacity-70 [text-shadow:0_0_12px_rgba(34,211,238,0.45)] touch-manipulation"
-          >
-            ‹
-          </button>
-          <div className="flex flex-1 items-center gap-3 min-w-0">
-            <img
-              src="/guides/mhb/mhb-msd-icon.webp"
-              alt=""
-              className="h-[3.85rem] w-[3.85rem] shrink-0 rounded-2xl object-cover ring-2 ring-amber-900/70 shadow-xl shadow-black/60"
-            />
-            <div className="min-w-0 pt-0.5">
-              <div className="inline-block rounded-md border border-red-950/70 bg-[#450a0a] px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-yellow-300 shadow-inner shadow-black/50">
-                IGT Mystery MHB style
-              </div>
-              <h1 className="mt-1 font-black uppercase leading-[1.05] tracking-tight text-[22px] text-white xs:text-[24px] sm:text-[26px] [text-shadow:0_3px_0_#064e3b,0_-1px_0_rgba(0,0,0,0.5)]">
-                <span className="bg-gradient-to-b from-emerald-300 to-green-600 bg-clip-text text-transparent [-webkit-background-clip:text]">
-                  Must Hit By
-                </span>{' '}
-                <span className="bg-gradient-to-br from-indigo-200 via-purple-400 to-fuchsia-500 bg-clip-text [-webkit-background-clip:text] [text-shadow:0_2px_12px_rgba(168,85,247,0.45)]">
-                  Calculator
-                </span>
-              </h1>
-              <p className="font-semibold uppercase tracking-[0.2em] text-[10px] text-sky-200/85">
-                After Money Storm Deluxe · Verify glass
-              </p>
+        {/* Title */}
+        <div className="flex items-center mb-6">
+          <button onClick={onBack} className="text-[52px] leading-none text-purple-400 hover:text-purple-300 -mt-1 mr-4 font-light active:opacity-70">‹</button>
+          <div className="flex items-center flex-1 justify-center gap-3">
+            <div className="w-14 h-14 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 to-fuchsia-600 flex-shrink-0">
+              <span className="text-4xl">🎰</span>
             </div>
+            <h1 className="font-black text-white tracking-[-1.8px] text-[26px] xs:text-[27px] sm:text-[29px] md:text-[32px] lg:text-[33px]"
+                style={{ textShadow: `-2px -2px 0 #7e22ce, 2px -2px 0 #7e22ce, -2px 2px 0 #7e22ce, 2px 2px 0 #7e22ce` }}>
+              MHB CALCULATOR
+            </h1>
           </div>
-          <div className="w-10 shrink-0" />
+          <div className="w-12" />
         </div>
 
         {/* Main Inputs */}
-        <div className={`p-5 ${woodPanel}`}>
+        <div className="bg-gray-900 p-5 rounded-3xl">
           <div className="mb-4">
-            <label className={`block mb-2 ${labelStorm}`}>Manufacturer</label>
-            <div className={plankInset}>
-              <select
-                value={manufacturer}
-                onChange={(e) => setManufacturer(e.target.value)}
-                className={`w-full cursor-pointer bg-transparent p-4 text-center text-lg font-black uppercase tracking-wide text-yellow-300 ${fieldFocus}`}
-              >
-                <option value="ainsworth" className="bg-[#1a0608] text-yellow-50">Ainsworth</option>
-                <option value="ags" className="bg-[#1a0608] text-yellow-50">AGS</option>
-                <option value="igt" className="bg-[#1a0608] text-yellow-50">IGT</option>
-              </select>
-            </div>
-            <p className="mt-2 text-[11px] leading-snug text-amber-200/65">
-              Load example meter rise, reset, and RTP—always verify on the glass for your revision.
+            <label className="block text-gray-400 text-xs mb-1">Manufacturer</label>
+            <select
+              value={manufacturer}
+              onChange={(e) => setManufacturer(e.target.value)}
+              className="w-full p-3.5 bg-gray-800 rounded-2xl text-lg font-bold text-center text-purple-200"
+            >
+              <option value="ainsworth">Ainsworth</option>
+              <option value="ags">AGS</option>
+              <option value="igt">IGT</option>
+            </select>
+            <p className="text-gray-500 text-[11px] mt-2 leading-snug">
+              Switches example meter, rise, reset, and RTP for this maker and cap—always verify on the glass.
               {manufacturer === 'ags' ? (
-                <span className="block mt-1 opacity-95">AGS uses {formatUsd(500)} / {formatUsd(5000)} caps only (no 10k).</span>
+                <span className="block mt-1 text-gray-500">AGS uses {formatUsd(500)} / {formatUsd(5000)} caps only (no 10k preset).</span>
               ) : null}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`block mb-2 ${labelStorm}`}>JP meter (current)</label>
-              <div className={plankInset}>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={jpMeterDisplay}
-                  onFocus={handleJpMeterFocus}
-                  onChange={handleJpMeterChange}
-                  onBlur={handleJpMeterBlur}
-                  className={`${glowingValue} text-center ${fieldFocus} w-full bg-transparent p-3 text-3xl`}
-                />
-              </div>
+              <label className="block text-gray-400 text-xs mb-1">JP Meter (Current)</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={jpMeterDisplay}
+                onFocus={handleJpMeterFocus}
+                onChange={handleJpMeterChange}
+                onBlur={handleJpMeterBlur}
+                className="w-full p-4 bg-gray-800 rounded-2xl text-3xl font-bold text-center text-purple-300"
+              />
             </div>
 
             <div>
-              <label className={`block mb-2 ${labelStorm}`}>Must hit by</label>
-              <div className={plankInset}>
-                <select
-                  value={mustHitBy}
-                  onChange={(e) => setMustHitBy(Number(e.target.value))}
-                  className={`w-full cursor-pointer bg-transparent py-4 text-center font-black ${fieldFocus} text-3xl uppercase text-white ${glowingSky}`}
-                >
-                  <option value={500} className="bg-[#1a0608] text-yellow-50">{formatUsd(500)}</option>
-                  <option value={5000} className="bg-[#1a0608] text-yellow-50">{formatUsd(5000)}</option>
-                  {manufacturer !== 'ags' ? (
-                    <option value={10000} className="bg-[#1a0608] text-yellow-50">{formatUsd(10000)}</option>
-                  ) : null}
-                </select>
-              </div>
+              <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
+              <select
+                value={mustHitBy}
+                onChange={(e) => setMustHitBy(Number(e.target.value))}
+                className="w-full p-4 bg-gray-800 rounded-2xl text-3xl font-bold text-center text-purple-300"
+              >
+                <option value={500}>{formatUsd(500)}</option>
+                <option value={5000}>{formatUsd(5000)}</option>
+                {manufacturer !== 'ags' ? <option value={10000}>{formatUsd(10000)}</option> : null}
+              </select>
             </div>
           </div>
         </div>
 
         {/* Advanced Settings */}
-        <div className={`mt-6 overflow-hidden ${woodPanel}`}>
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex w-full items-center justify-between p-5 text-left font-black uppercase tracking-wider text-yellow-300 transition hover:bg-black/25"
-          >
-            <span>Advanced settings</span>
-            <span className={`text-cyan-300 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>▼</span>
+        <div className="mt-6 bg-gray-900 rounded-3xl overflow-hidden">
+          <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex justify-between items-center p-5 text-left hover:bg-gray-800">
+            <span className="font-semibold text-purple-300">Advanced Settings</span>
+            <span className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>▼</span>
           </button>
           {showAdvanced && (
-            <div className="space-y-5 border-t border-black/35 p-5 pt-5">
+            <div className="p-5 pt-0 space-y-6 border-t border-gray-800">
               <div>
-                <label className={`block mb-2 ${labelStorm}`}>RTP %</label>
-                <div className={plankInset}>
-                  <input
-                    type="text"
-                    value={overallRTP}
-                    onChange={handleFloatChange(setOverallRTP, activePreset.rtp)}
-                    onBlur={handleFloatBlur(setOverallRTP, activePreset.rtp)}
-                    className={`${glowingValue} w-full bg-transparent p-4 text-center text-2xl ${fieldFocus}`}
-                  />
-                </div>
+                <label className="block text-gray-400 text-xs mb-1">RTP %</label>
+                <input
+                  type="text"
+                  value={overallRTP}
+                  onChange={handleFloatChange(setOverallRTP, activePreset.rtp)}
+                  onBlur={handleFloatBlur(setOverallRTP, activePreset.rtp)}
+                  className="w-full p-4 bg-gray-800 rounded-2xl text-center text-2xl font-bold"
+                />
               </div>
 
               <div>
-                <label className={`block mb-2 ${labelStorm}`}>Meter rise ($ per $0.01)</label>
-                <div className={plankInset}>
-                  <input
-                    type="text"
-                    value={meterRise}
-                    onChange={handleFloatChange(setMeterRise, activePreset.meterRise)}
-                    onBlur={handleFloatBlur(setMeterRise, activePreset.meterRise)}
-                    className={`${glowingValue} w-full bg-transparent p-4 text-center text-2xl ${fieldFocus}`}
-                  />
-                </div>
+                <label className="block text-gray-400 text-xs mb-1">Meter Rise ($ per $0.01 increment)</label>
+                <input
+                  type="text"
+                  value={meterRise}
+                  onChange={handleFloatChange(setMeterRise, activePreset.meterRise)}
+                  onBlur={handleFloatBlur(setMeterRise, activePreset.meterRise)}
+                  className="w-full p-4 bg-gray-800 rounded-2xl text-center text-2xl font-bold"
+                />
               </div>
 
               <div>
-                <label className={`block mb-2 ${labelStorm}`}>Reset value</label>
-                <div className={plankInset}>
-                  <input
-                    type="text"
-                    value={resetValue}
-                    onChange={handleIntegerChange(setResetValue, activePreset.reset)}
-                    onBlur={handleIntegerBlur(setResetValue, activePreset.reset)}
-                    className={`${glowingValue} w-full bg-transparent p-4 text-center text-2xl ${fieldFocus}`}
-                  />
-                </div>
+                <label className="block text-gray-400 text-xs mb-1">Reset Value</label>
+                <input
+                  type="text"
+                  value={resetValue}
+                  onChange={handleIntegerChange(setResetValue, activePreset.reset)}
+                  onBlur={handleIntegerBlur(setResetValue, activePreset.reset)}
+                  className="w-full p-4 bg-gray-800 rounded-2xl text-center text-2xl font-bold"
+                />
               </div>
 
-              <label className={`flex cursor-pointer items-center gap-3 touch-manipulation border border-black/30 ${plankInset} p-4`}>
+              <label className="flex items-center gap-3 cursor-pointer bg-gray-800 p-4 rounded-2xl touch-manipulation">
                 <input
                   type="checkbox"
                   checked={useMidpoint}
                   onChange={(e) => setUseMidpoint(e.target.checked)}
-                  className="h-5 w-5 shrink-0 accent-cyan-400"
+                  className="h-5 w-5 shrink-0 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-0 focus:ring-offset-gray-800 accent-purple-600"
                 />
-                <span className="text-[13px] font-semibold leading-snug text-amber-100/90">
-                  Use midpoint for EV &amp; breakeven (typical scouting shortcut)
+                <span className="text-gray-300 text-sm leading-snug">
+                  Use Midpoint for EV & Breakeven
                 </span>
               </label>
             </div>
           )}
         </div>
 
-        {/* Outputs — tier hues like Hurricane / Tornado / Whirlwind */}
-        <div className={`mt-8 p-6 ${woodPanel}`}>
-          <div className="mx-auto mb-6 max-w-xs rounded-lg border border-red-950 bg-[#3f0d0e] px-4 py-2 text-center shadow-lg shadow-black/50">
-            <h2 className="font-black uppercase tracking-[0.2em] text-sm text-yellow-300 [text-shadow:0_0_10px_rgba(253,224,71,0.45)]">
-              MHB Analysis
-            </h2>
-          </div>
+        {/* Outputs */}
+        <div className="mt-8 bg-gray-900 p-6 rounded-3xl">
+          <h2 className="text-xl font-semibold text-purple-400 mb-6 text-center">MHB Analysis</h2>
 
           <div className="grid grid-cols-2 gap-4 text-center">
-            <div className={`p-5 ${plankInset}`}>
-              <div className={`${labelStorm} mb-2 text-yellow-200`}>Expected value</div>
-              <div
-                className={`text-[2.125rem] font-black leading-none ${ev >= 0 ? `text-yellow-300 ${glowingYellow}` : 'text-red-400 [text-shadow:0_0_14px_rgba(248,113,113,0.45)]'}`}
-              >
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Expected Value</div>
+              <div className={`text-4xl font-bold ${ev >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 ${ev.toFixed(0)}
               </div>
-              <div className={`mt-1 text-xs tracking-wide ${ev >= 0 ? 'text-yellow-200/65' : 'text-red-300/65'}`}>
+              <div className={`text-xs mt-1 ${ev >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
                 ${evExact.toFixed(2)}
               </div>
             </div>
-            <div className={`p-5 ${plankInset}`}>
-              <div className={`${labelStorm} mb-2 text-green-200`}>Breakeven entry</div>
-              <div className={`text-[2.125rem] font-black text-green-300 ${glowingGreen}`}>{breakeven}</div>
-              <div className="mt-1 text-xs tracking-wide text-green-300/65">${breakevenExact.toFixed(2)}</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Breakeven Entry</div>
+              <div className="text-4xl font-bold text-purple-300">{breakeven}</div>
+              <div className="text-xs text-purple-400/70 mt-1">
+                ${breakevenExact.toFixed(2)}
+              </div>
             </div>
-            <div className={`p-5 ${plankInset}`}>
-              <div className={`${labelStorm} mb-2 text-sky-200`}>Coin-in expected</div>
-              <div className={`text-[2.125rem] font-black text-sky-200 ${glowingSky}`}>${coinInExpected}</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Coin in expected</div>
+              <div className="text-4xl font-bold text-amber-400">${coinInExpected}</div>
             </div>
-            <div className={`p-5 ${plankInset}`}>
-              <div className={`${labelStorm} mb-2 text-fuchsia-200`}>JP contribution</div>
-              <div className={`${glowingValue} text-[2.125rem] text-fuchsia-200`}>+{jpContribution}%</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">JP Contribution</div>
+              <div className="text-4xl font-bold text-purple-300">+{jpContribution}%</div>
             </div>
           </div>
 
-          <div className={`mt-6 p-6 text-center ${plankInset} border-[#5c0808]`}>
-            <div className={`${labelStorm} text-red-200`}>Max exposure (full run)</div>
-            <div className="mt-1 text-3xl font-black text-orange-400 [text-shadow:0_0_18px_rgba(251,146,60,0.45)]">
+          <div className="mt-6 bg-gray-800 p-5 rounded-2xl text-center">
+            <div className="text-gray-400 text-sm">Max Exposure (Full Run)</div>
+            <div className="text-3xl font-bold text-red-400">
               ${exposure.toLocaleString()}
             </div>
           </div>
 
-          <div
-            className={`mt-6 border-4 border-double border-yellow-900/60 p-5 text-center text-lg font-black uppercase tracking-wide shadow-black/70 ${
-              isPositive
-                ? 'bg-gradient-to-b from-green-950/95 to-emerald-950 text-emerald-300 [text-shadow:0_0_12px_rgba(52,211,153,0.4)]'
-                : 'bg-gradient-to-b from-red-950/95 to-orange-950/90 text-orange-100 [text-shadow:0_0_12px_rgba(251,146,60,0.35)]'
-            }`}
-          >
-            {isPositive ? '+EV • Play reads favorable' : 'Still −EV • Keep waiting'}
+          <div className={`mt-6 p-4 rounded-2xl text-center font-bold text-lg ${isPositive ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>
+            {isPositive ? '✅ +EV — PLAY THIS ONE' : '❌ Still -EV — Keep Waiting'}
           </div>
         </div>
 
-        <CalculatorDisclaimer className="mt-8 text-slate-300/85" />
+        <CalculatorDisclaimer className="mt-8" />
 
-        <div className="mt-6 text-center text-[11px] uppercase tracking-[0.15em] text-slate-500">
-          Decorative theme · Not affiliated with IGT®
+        <div className="text-center text-slate-500 text-xs mt-6">
+          MHB Calculator • Purple Edition
         </div>
       </div>
     </div>

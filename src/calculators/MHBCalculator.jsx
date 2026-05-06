@@ -127,6 +127,54 @@ function presetFor(manufacturer, mustHitBy, igtTier = 'mini', igtLineBet = 1, ig
   return m[cap] || m[500]
 }
 
+function solveBreakevenEntry({ mhb, rtpPercent, riseDollars, resetVal, useMidpoint }) {
+  const rtp = (Number(rtpPercent) || 0) / 100
+  const targetForJp = useMidpoint ? (resetVal + mhb) / 2 : mhb
+  const jpDistanceFromReset = targetForJp - resetVal
+  const jpIncrementsFromReset = jpDistanceFromReset / 0.01
+  const jpCoinInFromReset = jpIncrementsFromReset * riseDollars
+  const jpContribFraction = jpCoinInFromReset > 0 ? targetForJp / jpCoinInFromReset : 0
+  const effectiveRtp = Math.min(0.999999, Math.max(0, rtp - jpContribFraction))
+  const effectiveHouseEdge = 1 - effectiveRtp
+
+  const evForEntry = (entry) => {
+    const targetAtEntry = useMidpoint ? entry + (mhb - entry) * 0.5 : mhb
+    const dollarDistanceAtEntry = Math.max(0, targetAtEntry - entry)
+    const incrementsNeededAtEntry = dollarDistanceAtEntry / 0.01
+    const coinInToTargetAtEntry = incrementsNeededAtEntry * riseDollars
+    const expectedLossAtEntry = coinInToTargetAtEntry * effectiveHouseEdge
+    return targetAtEntry - expectedLossAtEntry
+  }
+
+  let lo = resetVal
+  let hi = mhb
+  let loEv = evForEntry(lo)
+  let hiEv = evForEntry(hi)
+
+  if (loEv === 0) return lo
+  if (hiEv === 0) return hi
+  if (loEv * hiEv > 0) return Math.abs(loEv) <= Math.abs(hiEv) ? lo : hi
+
+  for (let i = 0; i < 60; i += 1) {
+    const mid = (lo + hi) / 2
+    const midEv = evForEntry(mid)
+    if (Math.abs(midEv) < 1e-7 || Math.abs(hi - lo) < 1e-7) {
+      lo = mid
+      hi = mid
+      break
+    }
+    if (loEv * midEv <= 0) {
+      hi = mid
+      hiEv = midEv
+    } else {
+      lo = mid
+      loEv = midEv
+    }
+  }
+
+  return (lo + hi) / 2
+}
+
 /** en-US currency: $10,000 / $4,911.76 */
 function formatUsd(amount) {
   const n = Number(amount)
@@ -181,7 +229,16 @@ function MHBCalculator({ onBack }) {
   // Load maker + cap bundle (current, rise, reset, RTP defaults)
   useEffect(() => {
     const p = presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom)
-    setCurrent(p.current)
+    const mhb = effectiveCap(manufacturer, mustHitBy)
+    const useMidpointDefault = manufacturer === 'ainsworth'
+    const defaultBreakeven = solveBreakevenEntry({
+      mhb,
+      rtpPercent: p.rtp,
+      riseDollars: p.meterRise,
+      resetVal: p.reset,
+      useMidpoint: useMidpointDefault,
+    })
+    setCurrent(defaultBreakeven)
     setMeterRise(p.meterRise)
     setResetValue(p.reset)
     setOverallRTP(p.rtp)

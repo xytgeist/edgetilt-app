@@ -158,6 +158,7 @@ function MHBCalculator({ onBack }) {
   const [useMidpoint, setUseMidpoint] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showMeterCue, setShowMeterCue] = useState(false)
+  const [meterCueIsPurple, setMeterCueIsPurple] = useState(false)
 
   const activePreset = useMemo(
     () => presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom),
@@ -214,9 +215,19 @@ function MHBCalculator({ onBack }) {
   // Briefly highlight MHB Meter whenever key selectors change.
   useEffect(() => {
     setShowMeterCue(true)
+    setMeterCueIsPurple(false)
     const timer = setTimeout(() => setShowMeterCue(false), 1800)
     return () => clearTimeout(timer)
   }, [manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom])
+
+  // Alternate cue color while pulsing (cyan <-> purple).
+  useEffect(() => {
+    if (!showMeterCue) return
+    const interval = setInterval(() => {
+      setMeterCueIsPurple((prev) => !prev)
+    }, 250)
+    return () => clearInterval(interval)
+  }, [showMeterCue])
 
   const calculate = () => {
     const p = presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom)
@@ -477,7 +488,11 @@ function MHBCalculator({ onBack }) {
                     onChange={handleJpMeterChange}
                     onBlur={handleJpMeterBlur}
                     className={`w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-400/45 focus:ring-2 focus:ring-cyan-300/65 ${
-                      showMeterCue ? 'ring-4 ring-cyan-300/95 shadow-[0_0_0_4px_rgba(34,211,238,0.35),0_0_0_10px_rgba(168,85,247,0.24)] animate-pulse' : ''
+                      showMeterCue
+                        ? meterCueIsPurple
+                          ? 'ring-2 ring-violet-300/95 shadow-[0_0_0_3px_rgba(167,139,250,0.42)] animate-pulse'
+                          : 'ring-2 ring-cyan-200/95 shadow-[0_0_0_3px_rgba(103,232,249,0.45)] animate-pulse'
+                        : ''
                     }`}
                   />
                 </div>
@@ -501,7 +516,11 @@ function MHBCalculator({ onBack }) {
                   onChange={handleJpMeterChange}
                   onBlur={handleJpMeterBlur}
                   className={`w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-400/45 focus:ring-2 focus:ring-cyan-300/65 ${
-                    showMeterCue ? 'ring-4 ring-cyan-300/95 shadow-[0_0_0_4px_rgba(34,211,238,0.35),0_0_0_10px_rgba(168,85,247,0.24)] animate-pulse' : ''
+                    showMeterCue
+                      ? meterCueIsPurple
+                        ? 'ring-2 ring-violet-300/95 shadow-[0_0_0_3px_rgba(167,139,250,0.42)] animate-pulse'
+                        : 'ring-2 ring-cyan-200/95 shadow-[0_0_0_3px_rgba(103,232,249,0.45)] animate-pulse'
+                      : ''
                   }`}
                 />
               </div>

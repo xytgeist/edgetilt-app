@@ -316,7 +316,7 @@ function MHBCalculator({ onBack }) {
 
               <div className="space-y-2">
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">IGT Jackpot Tier</label>
+                  <label className="block text-gray-400 text-xs mb-1">Jackpot Tier</label>
                   <div className="relative">
                     <select
                       value={igtTier}
@@ -343,18 +343,18 @@ function MHBCalculator({ onBack }) {
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 text-xs mb-1">IGT Line Bet</label>
+                  <label className="block text-gray-400 text-xs mb-1">Bet</label>
                   <div className="relative">
                     <select
                       value={igtLineBet}
                       onChange={(e) => setIgtLineBet(Number(e.target.value))}
                       className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
-                      <option value={1}>Line Bet 1</option>
-                      <option value={2}>Line Bet 2</option>
-                      <option value={3}>Line Bet 3</option>
-                      <option value={5}>Line Bet 5</option>
-                      <option value={10}>Line Bet 10</option>
+                      <option value={1}>Bet 1</option>
+                      <option value={2}>Bet 2</option>
+                      <option value={3}>Bet 3</option>
+                      <option value={5}>Bet 5</option>
+                      <option value={10}>Bet 10</option>
                     </select>
                     <svg
                       aria-hidden="true"

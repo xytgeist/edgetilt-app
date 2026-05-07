@@ -15,12 +15,25 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'LVSlotPro Reminder'
+  let body = payload.body || 'You have an upcoming event.'
+  if (payload.eventStartAt) {
+    const dt = new Date(payload.eventStartAt)
+    if (!Number.isNaN(dt.getTime())) {
+      if (payload.eventAlertPreset === 'day_9am') {
+        const localDate = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        body = `${payload.body || 'Your event'} (${localDate})`
+      } else {
+        const localTime = dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        body = `${payload.body || 'Your event'} at ${localTime}`
+      }
+    }
+  }
   const options = {
-    body: payload.body || 'You have an upcoming event.',
+    body,
     icon: payload.icon || '/android-chrome-192x192.png',
     badge: payload.badge || '/favicon-32x32.png',
     data: {
-      url: payload.url || '/?tab=offers',
+      url: payload.url || '/?tab=offers&offersView=agenda',
     },
   }
 
@@ -29,8 +42,12 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const relative = typeof event.notification?.data?.url === 'string' ? event.notification.data.url : '/?tab=offers'
-  const fullUrl = new URL(relative, self.location.origin).href
+  const relative = typeof event.notification?.data?.url === 'string' ? event.notification.data.url : '/?tab=offers&offersView=agenda'
+  const url = new URL(relative, self.location.origin)
+  if (url.searchParams.get('tab') === 'offers' && !url.searchParams.get('offersView')) {
+    url.searchParams.set('offersView', 'agenda')
+  }
+  const fullUrl = url.href
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {

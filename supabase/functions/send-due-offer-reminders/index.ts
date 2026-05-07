@@ -36,12 +36,12 @@ function notificationPayload(ev: {
   if (ev.alert_preset === 'day_9am') {
     return {
       title: `${casino} · Today`,
-      body: `${title} (${formatEventDate(ev.start_at)})`,
+      body: title,
     }
   }
   return {
     title: `${casino} · Starting soon`,
-    body: `${title} at ${formatEventDate(ev.start_at)}`,
+    body: title,
   }
 }
 
@@ -194,12 +194,16 @@ Deno.serve(async (req) => {
           keys: { p256dh: toBase64Url(sub.p256dh), auth: toBase64Url(sub.auth) },
         }
         try {
+          const firstEvent = sortedEvents[0]
+          const isSingleEvent = sortedEvents.length === 1
           await webpush.sendNotification(
             subscription as { endpoint: string; keys: { p256dh: string; auth: string } },
             JSON.stringify({
               title,
               body: nBody,
               url: '/?tab=offers&offersView=agenda',
+              eventStartAt: isSingleEvent ? firstEvent?.start_at || null : null,
+              eventAlertPreset: isSingleEvent ? firstEvent?.alert_preset || null : null,
             })
           )
           hadSuccess = true

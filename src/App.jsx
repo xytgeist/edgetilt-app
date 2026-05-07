@@ -103,6 +103,7 @@ function GoogleIcon() {
 function AppShell({ onLogout, supabaseClient }) {
   const [tab, setTab] = useState('home')
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
+  const [pendingOfferCalendarView, setPendingOfferCalendarView] = useState(null)
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo' | 'stackup' | 'mhb' | null
@@ -133,6 +134,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const applyFromUrl = () => {
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
+      const targetOffersView = params.get('offersView')
       const targetEventId = params.get('eventId')
       const targetEventIdsRaw = params.get('eventIds')
       const targetEventIds = targetEventIdsRaw
@@ -142,6 +144,9 @@ function AppShell({ onLogout, supabaseClient }) {
           .filter(Boolean)
         : []
       if (targetTab === 'offers') setTab('offers')
+      if (targetOffersView === 'agenda' || targetOffersView === 'week' || targetOffersView === 'month') {
+        setPendingOfferCalendarView(targetOffersView)
+      }
       if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
       if (targetEventIds.length > 0) setPendingOfferEventIds(targetEventIds)
     }
@@ -1244,6 +1249,19 @@ function AppShell({ onLogout, supabaseClient }) {
     }, [showForm, editingId])
 
     useEffect(() => {
+      if (!pendingOfferCalendarView) return
+      if (pendingOfferCalendarView === 'agenda' || pendingOfferCalendarView === 'week' || pendingOfferCalendarView === 'month') {
+        setCalendarMode(pendingOfferCalendarView)
+      }
+      setPendingOfferCalendarView(null)
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('offersView')
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+      }
+    }, [pendingOfferCalendarView, setCalendarMode])
+
+    useEffect(() => {
       if (!pendingOfferEventIds.length) return
       const existingIds = pendingOfferEventIds.filter((id) => events.some((ev) => ev.id === id))
       if (!existingIds.length) return
@@ -1970,7 +1988,7 @@ function AppShell({ onLogout, supabaseClient }) {
                                       <span
                                         title="Has alert"
                                         aria-label="Has alert"
-                                        className="absolute right-1.5 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-cyan-300/45 bg-cyan-500/20 px-1 text-[10px] leading-none text-cyan-100"
+                                        className="absolute right-1.5 top-1 inline-flex items-center justify-center text-[10px] leading-none text-zinc-100"
                                       >
                                         🔔
                                       </span>
@@ -2100,7 +2118,7 @@ function AppShell({ onLogout, supabaseClient }) {
                         <span
                           title="Has alert"
                           aria-label="Has alert"
-                          className="absolute right-2.5 top-2.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-cyan-300/45 bg-cyan-500/20 px-1.5 text-[11px] leading-none text-cyan-100"
+                          className="absolute right-2.5 top-2.5 inline-flex items-center justify-center text-[11px] leading-none text-zinc-100"
                         >
                           🔔
                         </span>

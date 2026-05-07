@@ -56,8 +56,8 @@ self.addEventListener('notificationclick', (event) => {
           await client.focus()
           if ('navigate' in client && typeof client.navigate === 'function') {
             await client.navigate(fullUrl).catch(() => {})
+            return
           }
-          return
         } catch {
           continue
         }

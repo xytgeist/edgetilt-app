@@ -1,16 +1,26 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import DatePicker from 'react-datepicker'
+import Picker from 'react-mobile-picker'
 import {
   dateFromDatetimeLocalValue,
   datetimeLocalValueFromDate,
   defaultAlertPresetForAllDay,
+  OFFER_ALERT_10_MIN_BEFORE,
+  OFFER_ALERT_15_MIN_BEFORE,
+  OFFER_ALERT_1_DAY_BEFORE,
+  OFFER_ALERT_1_WEEK_BEFORE,
+  OFFER_ALERT_2_DAYS_BEFORE,
+  OFFER_ALERT_2_HOURS_BEFORE,
+  OFFER_ALERT_30_MIN_BEFORE,
+  OFFER_ALERT_5_MIN_BEFORE,
+  OFFER_ALERT_AT_TIME,
   OFFER_ALERT_DAY_9AM,
   OFFER_ALERT_HOUR_BEFORE,
   OFFER_ALERT_NONE
 } from '../utils'
 
 function FieldGroup({ children }) {
-  return <div className="overflow-visible rounded-3xl border border-zinc-600/80 bg-zinc-900/95 shadow-[0_14px_30px_rgba(0,0,0,0.45)]">{children}</div>
+  return <div className="overflow-visible rounded-3xl border border-zinc-600/80 bg-[#2b2d34] shadow-[0_14px_30px_rgba(0,0,0,0.45)]">{children}</div>
 }
 
 function GroupRow({ children, divider = true }) {
@@ -22,11 +32,41 @@ function GroupRow({ children, divider = true }) {
   )
 }
 
-const selectIos =
-  'min-w-0 flex-1 cursor-pointer appearance-none bg-transparent py-3 pr-10 text-[15px] text-zinc-100 outline-none focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-zinc-100'
-
 const inputFlush =
-  'w-full bg-transparent px-4 py-1.5 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none'
+  'w-full bg-transparent px-4 py-1.5 text-[15px] text-white outline-none placeholder:text-white focus:outline-none'
+
+const ALERT_OPTIONS_ALL_DAY = [
+  { value: OFFER_ALERT_NONE, label: 'None' },
+  { value: OFFER_ALERT_DAY_9AM, label: 'On day of event (9 AM)' },
+  { value: OFFER_ALERT_1_DAY_BEFORE, label: '1 day before (9 AM)' },
+  { value: OFFER_ALERT_2_DAYS_BEFORE, label: '2 days before (9 AM)' },
+  { value: OFFER_ALERT_1_WEEK_BEFORE, label: '1 week before' }
+]
+
+const ALERT_OPTIONS_TIMED = [
+  { value: OFFER_ALERT_NONE, label: 'None' },
+  { value: OFFER_ALERT_AT_TIME, label: 'At time of event' },
+  { value: OFFER_ALERT_5_MIN_BEFORE, label: '5 minutes before' },
+  { value: OFFER_ALERT_10_MIN_BEFORE, label: '10 minutes before' },
+  { value: OFFER_ALERT_15_MIN_BEFORE, label: '15 minutes before' },
+  { value: OFFER_ALERT_30_MIN_BEFORE, label: '30 minutes before' },
+  { value: OFFER_ALERT_HOUR_BEFORE, label: '1 hour before' },
+  { value: OFFER_ALERT_2_HOURS_BEFORE, label: '2 hours before' },
+  { value: OFFER_ALERT_1_DAY_BEFORE, label: '1 day before' },
+  { value: OFFER_ALERT_2_DAYS_BEFORE, label: '2 days before' },
+  { value: OFFER_ALERT_1_WEEK_BEFORE, label: '1 week before' }
+]
+
+const OFFER_TYPE_OPTIONS = [
+  { value: 'free_play', label: 'Free play' },
+  { value: 'hotel', label: 'Hotel stay' },
+  { value: 'dining', label: 'Dining credit' },
+  { value: 'gift', label: 'Gift day' },
+  { value: 'multiplier', label: 'Tier multiplier' },
+  { value: 'tournament', label: 'Tournament' },
+  { value: 'drawing', label: 'Drawing' },
+  { value: 'other', label: 'Other' }
+]
 
 export default function OfferFormModal({
   showForm,
@@ -74,6 +114,23 @@ export default function OfferFormModal({
   const [valueFocused, setValueFocused] = useState(false)
   const [activeCalendar, setActiveCalendar] = useState(null) // 'start' | 'end' | null
   const [activeTime, setActiveTime] = useState(null) // 'start' | 'end' | null
+  const [showOfferTypeMenu, setShowOfferTypeMenu] = useState(false)
+  const [showAlertMenu, setShowAlertMenu] = useState(false)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const [offerTypeMenuDirection, setOfferTypeMenuDirection] = useState('down')
+  const [alertMenuDirection, setAlertMenuDirection] = useState('down')
+  const offerTypeAnchorRef = useRef(null)
+  const alertAnchorRef = useRef(null)
+  const offerTypeMenuRef = useRef(null)
+  const alertMenuRef = useRef(null)
+  const HOUR_REPEAT = 9
+  const HOUR_MID = Math.floor(HOUR_REPEAT / 2)
+  const MINUTE_REPEAT = 7
+  const MINUTE_MID = Math.floor(MINUTE_REPEAT / 2)
+  const [timePickerValue, setTimePickerValue] = useState({
+    start: { hour: `${HOUR_MID}:1`, minute: `${MINUTE_MID}:00`, period: 'AM' },
+    end: { hour: `${HOUR_MID}:1`, minute: `${MINUTE_MID}:00`, period: 'AM' }
+  })
 
   const valueRaw = String(draft.valueAmount ?? '')
   const valueFormatted = useMemo(() => {
@@ -112,12 +169,69 @@ export default function OfferFormModal({
 
   const formatDateOnly = (dt) => (dt ? dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '')
   const formatTimeOnly = (dt) => (dt ? dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '')
+  const alertOptions = allDay ? ALERT_OPTIONS_ALL_DAY : ALERT_OPTIONS_TIMED
+  const safeAlertPreset = draft.alertPreset || defaultAlertPresetForAllDay(allDay)
+  const alertLabel = alertOptions.find((o) => o.value === safeAlertPreset)?.label || alertOptions[0].label
+  const offerTypeLabel = OFFER_TYPE_OPTIONS.find((o) => o.value === draft.offerType)?.label || 'Free play'
+  const hasUserEnteredDraftData =
+    !!draft.title?.trim() ||
+    !!draft.casinoName?.trim() ||
+    !!draft.valueAmount?.trim() ||
+    !!draft.notes?.trim() ||
+    draft.offerType !== 'free_play' ||
+    allDay !== true
 
-  const applyTimeToField = (field, hour12, minute, period) => {
+  const requestClose = () => {
+    if (!editingId && hasUserEnteredDraftData) {
+      setShowDiscardConfirm(true)
+      return
+    }
+    closeForm()
+  }
+
+  const chooseMenuDirection = (anchorEl, desiredMenuHeight = 320) => {
+    if (!anchorEl || typeof window === 'undefined') return 'down'
+    const rect = anchorEl.getBoundingClientRect()
+    const spaceAbove = rect.top
+    const spaceBelow = window.innerHeight - rect.bottom
+    if (spaceBelow >= desiredMenuHeight) return 'down'
+    if (spaceAbove >= desiredMenuHeight) return 'up'
+    return spaceBelow >= spaceAbove ? 'down' : 'up'
+  }
+
+  useEffect(() => {
+    if (!showAlertMenu && !showOfferTypeMenu) return
+    const onPointerDown = (event) => {
+      const target = event.target
+      const inAlertMenu = alertMenuRef.current?.contains(target)
+      const inAlertAnchor = alertAnchorRef.current?.contains(target)
+      const inOfferTypeMenu = offerTypeMenuRef.current?.contains(target)
+      const inOfferTypeAnchor = offerTypeAnchorRef.current?.contains(target)
+      if (showAlertMenu && !inAlertMenu && !inAlertAnchor) setShowAlertMenu(false)
+      if (showOfferTypeMenu && !inOfferTypeMenu && !inOfferTypeAnchor) setShowOfferTypeMenu(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [showAlertMenu, showOfferTypeMenu])
+
+  useEffect(() => {
+    if (!showAlertMenu && !showOfferTypeMenu) return
+    const updateDirections = () => {
+      if (showOfferTypeMenu) setOfferTypeMenuDirection(chooseMenuDirection(offerTypeAnchorRef.current, 320))
+      if (showAlertMenu) setAlertMenuDirection(chooseMenuDirection(alertAnchorRef.current, 320))
+    }
+    updateDirections()
+    window.addEventListener('resize', updateDirections)
+    window.addEventListener('scroll', updateDirections, true)
+    return () => {
+      window.removeEventListener('resize', updateDirections)
+      window.removeEventListener('scroll', updateDirections, true)
+    }
+  }, [showAlertMenu, showOfferTypeMenu])
+
+  const applyTimeToField = (field, hour24, minute) => {
     const source = field === 'start' ? startSelected : endSelected
     if (!source) return
-    let hour24 = hour12 % 12
-    if (period === 'PM') hour24 += 12
     const next = new Date(source)
     next.setHours(hour24, minute, 0, 0)
     const nextVal = datetimeLocalValueFromDate(next)
@@ -132,60 +246,132 @@ export default function OfferFormModal({
     }
   }
 
+  const seedTimePicker = (field, dt) => {
+    if (!dt) return
+    const h24 = dt.getHours()
+    const hour12 = String(h24 % 12 || 12)
+    const minuteStep = Math.round(dt.getMinutes() / 5) * 5
+    const minute = String(minuteStep === 60 ? 0 : minuteStep).padStart(2, '0')
+    const period = h24 >= 12 ? 'PM' : 'AM'
+    setTimePickerValue((prev) => ({
+      ...prev,
+      [field]: { hour: `${HOUR_MID}:${hour12}`, minute: `${MINUTE_MID}:${minute}`, period }
+    }))
+  }
+
   const renderTimePicker = (field) => {
     const dt = field === 'start' ? startSelected : endSelected
     if (!dt || allDay || activeTime !== field) return null
-    const hour24 = dt.getHours()
-    const selectedPeriod = hour24 >= 12 ? 'PM' : 'AM'
-    const selectedHour = hour24 % 12 || 12
-    const selectedMinute = dt.getMinutes()
-    const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5)
+    const pickerValue = timePickerValue[field]
+
+    const hours = Array.from({ length: HOUR_REPEAT * 12 }, (_, i) => {
+      const rep = Math.floor(i / 12)
+      const h = String((i % 12) + 1)
+      return { token: `${rep}:${h}`, label: h }
+    })
+    const minutes = Array.from({ length: MINUTE_REPEAT * 12 }, (_, i) => {
+      const rep = Math.floor(i / 12)
+      const m = String((i % 12) * 5).padStart(2, '0')
+      return { token: `${rep}:${m}`, label: m }
+    })
+    const periods = ['AM', 'PM']
+    const onChange = (nextValue) => {
+      const prevValue = timePickerValue[field]
+      const [prevHourRepRaw, prevHourRaw] = String(prevValue.hour).split(':')
+      const [, prevMinuteRaw] = String(prevValue.minute).split(':')
+      const [hourRepRaw, hourRawToken] = String(nextValue.hour).split(':')
+      const [minRepRaw, minuteRawToken] = String(nextValue.minute).split(':')
+
+      const prevHour = prevHourRaw ?? String(prevValue.hour)
+      const prevMinute = prevMinuteRaw ?? String(prevValue.minute)
+      let hourRaw = hourRawToken ?? String(nextValue.hour)
+      const minuteRaw = minuteRawToken ?? String(nextValue.minute)
+      let hourRep = Number(hourRepRaw)
+      const minuteRep = Number(minRepRaw)
+      let period = nextValue.period
+      const periodChangedByUser = nextValue.period !== prevValue.period
+
+      // Carry forward hour when minute wraps 55 -> 00.
+      if (prevMinute === '55' && minuteRaw === '00') {
+        const nextHourNum = (Number(hourRaw) % 12) + 1
+        hourRaw = String(nextHourNum)
+        if (Number.isFinite(hourRep) && nextHourNum === 1) hourRep += 1
+      }
+      // Borrow hour when minute wraps 00 -> 55.
+      if (prevMinute === '00' && minuteRaw === '55') {
+        const prevHourNum = Number(hourRaw) - 1 || 12
+        hourRaw = String(prevHourNum)
+        if (Number.isFinite(hourRep) && prevHourNum === 12) hourRep -= 1
+      }
+      // Toggle AM/PM when the hour wheel crosses 11 <-> 12.
+      if (!periodChangedByUser && prevMinute === minuteRaw) {
+        if (prevHour === '11' && hourRaw === '12') {
+          period = period === 'AM' ? 'PM' : 'AM'
+        } else if (prevHour === '12' && hourRaw === '11') {
+          period = period === 'AM' ? 'PM' : 'AM'
+        }
+      }
+
+      const resolvedValue = {
+        hour: `${Number.isFinite(hourRep) ? hourRep : Number(prevHourRepRaw) || HOUR_MID}:${hourRaw}`,
+        minute: `${Number.isFinite(minuteRep) ? minuteRep : MINUTE_MID}:${minuteRaw}`,
+        period
+      }
+      setTimePickerValue((prev) => ({ ...prev, [field]: resolvedValue }))
+
+      const h = Number(hourRaw)
+      const m = Number(minuteRaw)
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return
+      let h24 = h % 12
+      if (period === 'PM') h24 += 12
+      applyTimeToField(field, h24, m)
+      const hourNearEdge = Number.isFinite(hourRep) && (hourRep < 2 || hourRep > HOUR_REPEAT - 3)
+      const minuteNearEdge = Number.isFinite(minRep) && (minRep < 2 || minRep > MINUTE_REPEAT - 3)
+      if (hourNearEdge || minuteNearEdge) {
+        setTimePickerValue((prev) => ({
+          ...prev,
+          [field]: {
+            hour: `${HOUR_MID}:${hourRaw}`,
+            minute: `${MINUTE_MID}:${minuteRaw}`,
+            period
+          }
+        }))
+      }
+    }
+
     return (
       <>
-        <div className="mx-4 h-px bg-zinc-700/75" />
         <div className="px-4 py-2">
-          <div className="relative rounded-2xl bg-zinc-900/90 px-3 py-2">
-            <div className="pointer-events-none absolute left-3 right-3 top-1/2 h-9 -translate-y-1/2 rounded-full bg-zinc-700/55" />
-            <div className="grid grid-cols-3 gap-2">
-              <div className="max-h-40 overflow-y-auto no-scrollbar">
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    onClick={() => applyTimeToField(field, h, selectedMinute, selectedPeriod)}
-                    className={`block w-full py-1 text-center text-2xl ${h === selectedHour ? 'text-zinc-100' : 'text-zinc-500'}`}
-                  >
-                    {h}
-                  </button>
+          <div className="relative w-full rounded-2xl bg-[#2b2d34] px-1 py-2">
+            <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-[30px] -translate-y-1/2 rounded-full bg-zinc-600/60" />
+            <div className="mx-auto w-[180px]">
+              <Picker className="offers-time-wheel" value={pickerValue} onChange={onChange} height={170} itemHeight={44} wheelMode="natural">
+              <Picker.Column name="hour">
+                {hours.map((h) => (
+                  <Picker.Item key={h.token} value={h.token}>
+                    {({ selected }) => <div className={`text-center text-lg ${selected ? 'text-zinc-100' : 'text-zinc-500'}`}>{h.label}</div>}
+                  </Picker.Item>
                 ))}
-              </div>
-              <div className="max-h-40 overflow-y-auto no-scrollbar">
-                {minuteOptions.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => applyTimeToField(field, selectedHour, m, selectedPeriod)}
-                    className={`block w-full py-1 text-center text-2xl ${m === selectedMinute ? 'text-zinc-100' : 'text-zinc-500'}`}
-                  >
-                    {String(m).padStart(2, '0')}
-                  </button>
+              </Picker.Column>
+              <Picker.Column name="minute">
+                {minutes.map((m) => (
+                  <Picker.Item key={m.token} value={m.token}>
+                    {({ selected }) => <div className={`text-center text-lg ${selected ? 'text-zinc-100' : 'text-zinc-500'}`}>{m.label}</div>}
+                  </Picker.Item>
                 ))}
-              </div>
-              <div>
-                {(['AM', 'PM']).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => applyTimeToField(field, selectedHour, selectedMinute, p)}
-                    className={`block w-full py-3 text-center text-2xl ${p === selectedPeriod ? 'text-zinc-100' : 'text-zinc-500'}`}
-                  >
-                    {p}
-                  </button>
+              </Picker.Column>
+              <Picker.Column name="period">
+                {periods.map((p) => (
+                  <Picker.Item key={p} value={p}>
+                    {({ selected }) => <div className={`text-center text-lg ${selected ? 'text-zinc-100' : 'text-zinc-500'}`}>{p}</div>}
+                  </Picker.Item>
                 ))}
-              </div>
+              </Picker.Column>
+              </Picker>
             </div>
           </div>
         </div>
+        <div className="mx-4 h-px bg-zinc-700/75" />
       </>
     )
   }
@@ -228,10 +414,10 @@ export default function OfferFormModal({
                 {date.toLocaleString(undefined, { month: 'long', year: 'numeric' })}
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={decreaseMonth} className="text-red-400 text-lg font-semibold px-2 -mr-1">
+                <button type="button" onClick={decreaseMonth} className="text-cyan-300 text-lg font-semibold px-2 -mr-1">
                   ‹
                 </button>
-                <button type="button" onClick={increaseMonth} className="text-red-400 text-lg font-semibold px-2 -mr-2">
+                <button type="button" onClick={increaseMonth} className="text-cyan-300 text-lg font-semibold px-2 -mr-2">
                   ›
                 </button>
               </div>
@@ -240,6 +426,7 @@ export default function OfferFormModal({
           formatWeekDay={(dayName) => String(dayName || '').toUpperCase().slice(0, 3)}
         />
       </div>
+      <div className="mx-4 h-px bg-zinc-700/75" />
     </>
   ) : null
 
@@ -249,7 +436,7 @@ export default function OfferFormModal({
         <div className="mb-4 flex shrink-0 items-center justify-between">
           <button
             type="button"
-            onClick={closeForm}
+            onClick={requestClose}
             aria-label="Close event form"
             className="grid h-12 w-12 place-items-center rounded-full border border-zinc-600 bg-zinc-800/90 text-2xl leading-none text-zinc-300 touch-manipulation"
           >
@@ -272,14 +459,26 @@ export default function OfferFormModal({
 
         <div className="flex flex-col gap-6">
           {!completingReviewItemId && !editingId && (
-            <div className="rounded-3xl border border-zinc-600/80 bg-zinc-900/95 p-3 shadow-[0_14px_30px_rgba(0,0,0,0.45)]">
+            <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-slate-900/95 to-zinc-900/95 p-3 shadow-[0_14px_30px_rgba(0,0,0,0.45)]">
               <button
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full min-h-11 touch-manipulation text-left text-[15px] font-medium text-cyan-400 hover:text-cyan-300 disabled:opacity-55"
+                className="w-full min-h-11 touch-manipulation text-left disabled:opacity-55"
               >
-                {uploading ? 'Uploading…' : "Import from photo(s): We'll auto-magically create events from your casino mailers. 🤖"}
+                <span className="flex items-center gap-3">
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-200">
+                    📸
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-cyan-100">
+                      {uploading ? 'Importing photos…' : 'Import from photo(s)'}
+                    </span>
+                    <span className="mt-0.5 block text-[13px] leading-snug text-cyan-200/75">
+                      We will auto-create offer events from your casino mailers.
+                    </span>
+                  </span>
+                </span>
               </button>
               <input
                 ref={fileInputRef}
@@ -293,16 +492,16 @@ export default function OfferFormModal({
           )}
 
           {completingReviewItemId && (
-            <div className="rounded-3xl border border-amber-700/45 bg-amber-950/25 p-2.5">
-              <div className="text-[15px] font-medium text-amber-100">Source mailer image</div>
+            <div className="rounded-3xl border border-cyan-700/45 bg-cyan-950/25 p-2.5">
+              <div className="text-[15px] font-medium text-cyan-100">Source mailer image</div>
               {reviewSourceImageLoading ? (
-                <div className="mt-2 text-[15px] text-amber-200/85">Loading…</div>
+                <div className="mt-2 text-[15px] text-cyan-200/85">Loading…</div>
               ) : reviewSourceImageUrl ? (
                 <a href={reviewSourceImageUrl} target="_blank" rel="noreferrer" className="-mx-3 mt-2 block px-3" title="Open full image">
                   <img src={reviewSourceImageUrl} alt="" className="max-h-56 w-full rounded-lg object-contain" />
                 </a>
               ) : (
-                <div className="mt-2 text-[15px] text-amber-200/85">Preview unavailable · you can still edit below.</div>
+                <div className="mt-2 text-[15px] text-cyan-200/85">Preview unavailable · you can still edit below.</div>
               )}
             </div>
           )}
@@ -332,7 +531,7 @@ export default function OfferFormModal({
                     tabIndex={-1}
                     onMouseDown={(ev) => ev.preventDefault()}
                     onClick={() => setShowTitleSuggestions((v) => !v)}
-                    className="pointer-events-auto absolute right-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-zinc-500"
+                    className="pointer-events-auto absolute right-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-zinc-100"
                   >
                     ▾
                   </button>
@@ -349,7 +548,7 @@ export default function OfferFormModal({
                           if (completingReviewItemId && !editingId) setPropagateTitleOnSave(true)
                           setShowTitleSuggestions(false)
                         }}
-                        className="w-full px-4 py-2.5 text-left text-[15px] text-zinc-200 hover:bg-zinc-800"
+                        className="w-full px-4 py-2.5 text-left text-[15px] text-zinc-100 hover:bg-zinc-800"
                       >
                         {t}
                       </button>
@@ -380,7 +579,7 @@ export default function OfferFormModal({
                     aria-label="Casino suggestions"
                     onMouseDown={(ev) => ev.preventDefault()}
                     onClick={() => setShowCasinoSuggestions((v) => !v)}
-                    className="absolute right-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-zinc-500"
+                    className="absolute right-0 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-zinc-100"
                   >
                     ▾
                   </button>
@@ -397,7 +596,7 @@ export default function OfferFormModal({
                           if (completingReviewItemId && !editingId) setPropagateCasinoOnSave(true)
                           setShowCasinoSuggestions(false)
                         }}
-                        className="w-full px-4 py-2.5 text-left text-[15px] text-zinc-200 hover:bg-zinc-800"
+                        className="w-full px-4 py-2.5 text-left text-[15px] text-zinc-100 hover:bg-zinc-800"
                       >
                         {name}
                       </button>
@@ -411,25 +610,53 @@ export default function OfferFormModal({
           {/* Type + Amount */}
           <FieldGroup>
             <GroupRow>
-              <div className="relative min-h-[2.25rem]">
-              <select
-                aria-label="Offer type"
-                value={draft.offerType}
-                onChange={(e) => setDraft((d) => ({ ...d, offerType: e.target.value }))}
-                className="w-full cursor-pointer appearance-none bg-transparent py-2 pr-10 text-left text-[15px] text-zinc-100 outline-none focus:outline-none [&>option]:bg-zinc-900 [&>option]:text-zinc-100"
-              >
-                <option value="free_play">Free play</option>
-                <option value="hotel">Hotel stay</option>
-                <option value="dining">Dining credit</option>
-                <option value="gift">Gift day</option>
-                <option value="multiplier">Tier multiplier</option>
-                <option value="tournament">Tournament</option>
-                <option value="drawing">Drawing</option>
-                <option value="other">Other</option>
-              </select>
-              <span aria-hidden className="pointer-events-none absolute right-3 top-1/2 text-lg leading-none text-zinc-400 -translate-y-1/2">
-                ›
-              </span>
+              <div ref={offerTypeAnchorRef} className="relative min-h-[2.25rem]">
+                <button
+                  type="button"
+                  aria-label="Offer type"
+                  onClick={() => {
+                    setShowAlertMenu(false)
+                    setOfferTypeMenuDirection(chooseMenuDirection(offerTypeAnchorRef.current, 320))
+                    setShowOfferTypeMenu((v) => !v)
+                  }}
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer"
+                >
+                  <span className="sr-only">Open offer type options</span>
+                </button>
+                <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex items-center text-[15px] text-zinc-100">
+                  {offerTypeLabel}
+                </div>
+                <span aria-hidden className="pointer-events-none absolute right-0 top-1/2 text-zinc-100 -translate-y-1/2 text-base leading-none">
+                  ▾
+                </span>
+                {showOfferTypeMenu ? (
+                  <div
+                    ref={offerTypeMenuRef}
+                    className={`absolute right-0 z-40 w-[270px] max-w-[82vw] overflow-hidden rounded-[30px] border border-zinc-600/75 bg-zinc-900/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl ${
+                      offerTypeMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+                    }`}
+                  >
+                    <div className="max-h-[360px] overflow-auto">
+                      {OFFER_TYPE_OPTIONS.map((opt) => {
+                        const selected = draft.offerType === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setDraft((d) => ({ ...d, offerType: opt.value }))
+                              setShowOfferTypeMenu(false)
+                            }}
+                            className="w-full text-left px-3 py-2 text-[15px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
+                          >
+                            <span className="inline-flex w-7 items-center justify-center text-zinc-100">{selected ? '✓' : ''}</span>
+                            <span>{opt.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </GroupRow>
             <GroupRow divider={false}>
@@ -487,6 +714,7 @@ export default function OfferFormModal({
                     // Default Starts to the next closest hour from *now*, and Ends to +1 hour.
                     const base = dateFromDatetimeLocalValue(cur.startAt)
                     if (!base) return { ...cur, alertPreset: nextPreset }
+                    const curEnd = dateFromDatetimeLocalValue(cur.endAt)
                     const now = new Date()
                     const trunc = new Date(now)
                     trunc.setMinutes(0, 0, 0)
@@ -496,7 +724,10 @@ export default function OfferFormModal({
                     const nextStart = isLate
                       ? new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1, 0, 0, 0, 0)
                       : new Date(base.getFullYear(), base.getMonth(), base.getDate(), nextHour.getHours(), 0, 0, 0)
-                    const nextEnd = new Date(nextStart.getTime() + 60 * 60 * 1000)
+                    // Preserve user-selected end date when present; only fill in a time.
+                    const nextEnd = curEnd
+                      ? new Date(curEnd.getFullYear(), curEnd.getMonth(), curEnd.getDate(), nextStart.getHours() + 1, 0, 0, 0)
+                      : new Date(nextStart.getTime() + 60 * 60 * 1000)
                     return {
                       ...cur,
                       alertPreset: nextPreset,
@@ -507,7 +738,7 @@ export default function OfferFormModal({
                   }}
                   className="peer sr-only"
                 />
-                <span className="relative block h-[26px] w-[58px] rounded-[999px] bg-zinc-600 transition-colors after:absolute after:left-[2px] after:top-[2px] after:block after:h-[22px] after:w-[36px] after:rounded-[999px] after:bg-white after:shadow after:transition-transform peer-checked:bg-[#34C759] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-violet-500 peer-checked:after:translate-x-[18px]" />
+                <span className="relative block h-[26px] w-[58px] rounded-[999px] bg-zinc-600 transition-colors after:absolute after:left-[2px] after:top-[2px] after:block after:h-[22px] after:w-[36px] after:rounded-[999px] after:bg-white after:shadow after:transition-transform peer-checked:bg-[#FF4144] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cyan-500 peer-checked:after:translate-x-[18px]" />
               </label>
               </div>
             </GroupRow>
@@ -525,7 +756,7 @@ export default function OfferFormModal({
               >
                 {!allDay ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full bg-zinc-700/70 px-3 py-1 ${activeCalendar === 'start' ? 'text-red-400' : 'text-zinc-50'}`}>
+                    <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'start' ? 'text-cyan-300' : 'text-zinc-50'}`}>
                       {formatDateOnly(startSelected)}
                     </span>
                     <button
@@ -533,15 +764,19 @@ export default function OfferFormModal({
                       onClick={(e) => {
                         e.stopPropagation()
                         setActiveCalendar(null)
-                        setActiveTime((v) => (v === 'start' ? null : 'start'))
+                        setActiveTime((v) => {
+                          const next = v === 'start' ? null : 'start'
+                          if (next === 'start') seedTimePicker('start', startSelected)
+                          return next
+                        })
                       }}
-                      className={`inline-flex items-center rounded-full bg-zinc-700/70 px-3 py-1 ${activeTime === 'start' ? 'text-red-400' : 'text-zinc-50'}`}
+                      className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeTime === 'start' ? 'text-cyan-300' : 'text-zinc-50'}`}
                     >
                       {formatTimeOnly(startSelected)}
                     </button>
                   </span>
                 ) : (
-                  <span className={`inline-flex items-center rounded-full bg-zinc-700/70 px-3 py-1 ${activeCalendar === 'start' ? 'text-red-400' : 'text-zinc-50'}`}>
+                  <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'start' ? 'text-cyan-300' : 'text-zinc-50'}`}>
                     {formatDateOnly(startSelected)}
                   </span>
                 )}
@@ -564,7 +799,7 @@ export default function OfferFormModal({
               >
                 {!allDay ? (
                   <span className="inline-flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full bg-zinc-700/70 px-3 py-1 ${activeCalendar === 'end' ? 'text-red-400' : 'text-zinc-50'}`}>
+                    <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'end' ? 'text-cyan-300' : 'text-zinc-50'}`}>
                       {formatDateOnly(endSelected)}
                     </span>
                     <button
@@ -572,15 +807,19 @@ export default function OfferFormModal({
                       onClick={(e) => {
                         e.stopPropagation()
                         setActiveCalendar(null)
-                        setActiveTime((v) => (v === 'end' ? null : 'end'))
+                        setActiveTime((v) => {
+                          const next = v === 'end' ? null : 'end'
+                          if (next === 'end') seedTimePicker('end', endSelected)
+                          return next
+                        })
                       }}
-                      className={`inline-flex items-center rounded-full bg-zinc-700/70 px-3 py-1 ${activeTime === 'end' ? 'text-red-400' : 'text-zinc-50'}`}
+                      className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeTime === 'end' ? 'text-cyan-300' : 'text-zinc-50'}`}
                     >
                       {formatTimeOnly(endSelected)}
                     </button>
                   </span>
                 ) : (
-                  <span className={`inline-flex items-center rounded-full bg-zinc-700/70 px-3 py-1 ${activeCalendar === 'end' ? 'text-red-400' : 'text-zinc-50'}`}>
+                  <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'end' ? 'text-cyan-300' : 'text-zinc-50'}`}>
                     {formatDateOnly(endSelected)}
                   </span>
                 )}
@@ -593,23 +832,54 @@ export default function OfferFormModal({
             <GroupRow divider={false}>
             <div className="flex h-11 items-center gap-4">
               <span className="w-[74px] shrink-0 pt-0.5 text-[15px] text-zinc-100">Alert</span>
-              <div className="relative min-w-0 flex-1">
-                <select
+              <div ref={alertAnchorRef} className="relative min-w-0 flex-1 h-11">
+                <button
+                  type="button"
                   aria-label="Notification alert"
-                  value={draft.alertPreset || OFFER_ALERT_DAY_9AM}
-                  onChange={(e) => setDraft((d) => ({ ...d, alertPreset: e.target.value }))}
-                  className={`${selectIos} h-11 py-0 text-zinc-100`}
+                  onClick={() => {
+                    setShowOfferTypeMenu(false)
+                    setAlertMenuDirection(chooseMenuDirection(alertAnchorRef.current, 320))
+                    setShowAlertMenu((v) => !v)
+                  }}
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer"
                 >
-                  <option value={OFFER_ALERT_NONE}>None</option>
-                  {allDay ? (
-                    <option value={OFFER_ALERT_DAY_9AM}>On day of event (9 AM)</option>
-                  ) : (
-                    <option value={OFFER_ALERT_HOUR_BEFORE}>1 hour before</option>
-                  )}
-                </select>
-                <span aria-hidden className="pointer-events-none absolute right-0 top-1/2 text-zinc-400 -translate-y-1/2 text-lg leading-none">
-                  ›
+                  <span className="sr-only">Open alert options</span>
+                </button>
+                <div aria-hidden className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-[15px] text-zinc-100">
+                  {alertLabel}
+                </div>
+                <span aria-hidden className="pointer-events-none absolute right-0 top-1/2 text-zinc-100 -translate-y-1/2 text-base leading-none">
+                  ▾
                 </span>
+                {showAlertMenu ? (
+                  <div
+                    ref={alertMenuRef}
+                    className={`absolute right-0 z-40 w-[270px] max-w-[82vw] overflow-hidden rounded-[30px] border border-zinc-600/75 bg-zinc-900/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl ${
+                      alertMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+                    }`}
+                  >
+                    <div className="max-h-[360px] overflow-auto">
+                      {alertOptions.map((opt, idx) => {
+                        const selected = safeAlertPreset === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setDraft((d) => ({ ...d, alertPreset: opt.value }))
+                              setShowAlertMenu(false)
+                            }}
+                            className="w-full text-left px-3 py-2 text-[15px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
+                          >
+                            <span className="inline-flex w-7 items-center justify-center text-zinc-100">{selected ? '✓' : ''}</span>
+                            <span>{opt.label}</span>
+                            {idx === 0 ? <span className="mt-2 block h-px bg-zinc-700/75" /> : null}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
             </GroupRow>
@@ -633,31 +903,31 @@ export default function OfferFormModal({
 
           {completingReviewItemId && !editingId && (
             <div className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-4 py-3">
-              <div className="mb-3 text-[15px] text-zinc-500">Apply to matching open drafts · same offer type only</div>
-              <label className="flex items-center gap-3 text-[15px] text-zinc-200">
+              <div className="mb-3 text-[15px] text-zinc-200">Apply to matching open drafts · same offer type only</div>
+              <label className="flex items-center gap-3 text-[15px] text-white">
                 <input
                   type="checkbox"
                   checked={propagateCasinoOnSave}
                   onChange={(e) => setPropagateCasinoOnSaveChecked(e.target.checked)}
-                  className="h-5 w-5 accent-violet-500"
+                  className="h-5 w-5 accent-cyan-500"
                 />
                 Casino name
               </label>
-              <label className="mt-3 flex items-center gap-3 text-[15px] text-zinc-200">
+              <label className="mt-3 flex items-center gap-3 text-[15px] text-white">
                 <input
                   type="checkbox"
                   checked={propagateTitleOnSave}
                   onChange={(e) => setPropagateTitleOnSaveChecked(e.target.checked)}
-                  className="h-5 w-5 accent-violet-500"
+                  className="h-5 w-5 accent-cyan-500"
                 />
                 Title
               </label>
-              <label className="mt-3 flex items-center gap-3 text-[15px] text-zinc-200">
+              <label className="mt-3 flex items-center gap-3 text-[15px] text-white">
                 <input
                   type="checkbox"
                   checked={propagateValueOnSave}
                   onChange={(e) => setPropagateValueOnSaveChecked(e.target.checked)}
-                  className="h-5 w-5 accent-violet-500"
+                  className="h-5 w-5 accent-cyan-500"
                 />
                 Amount
               </label>
@@ -676,6 +946,28 @@ export default function OfferFormModal({
           )}
         </div>
       </div>
+      {showDiscardConfirm ? (
+        <div className="fixed inset-0 z-[80] bg-black/30" onClick={() => setShowDiscardConfirm(false)}>
+          <div
+            className="absolute left-4 top-4 w-[186px] max-w-[86vw] rounded-3xl border border-zinc-600/80 bg-zinc-900/55 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-md sm:left-6 sm:top-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[15px] text-zinc-100">Are you sure you want to discard this new event?</p>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDiscardConfirm(false)
+                  closeForm()
+                }}
+                className="w-full rounded-full bg-zinc-700/95 px-3 py-2 text-[15px] font-medium text-[#FF4144]"
+              >
+                Discard Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

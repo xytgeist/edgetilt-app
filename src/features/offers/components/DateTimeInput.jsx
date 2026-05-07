@@ -13,8 +13,8 @@ const DateTimeInput = forwardRef(({ value, onClick, placeholder, align = 'left',
   const datePart = timeMatch ? display.replace(timeMatch[0], '').trim() : display
   const timePart = timeMatch ? timeMatch[0].trim() : ''
 
-  const pillOn = active ? 'bg-zinc-700/70 text-red-400' : 'bg-zinc-700/70 text-zinc-50'
-  const pillOff = active ? 'bg-zinc-700/55 text-red-300/80' : 'bg-zinc-700/55 text-zinc-400'
+  const pillOn = active ? 'bg-zinc-600/60 text-red-400' : 'bg-zinc-600/60 text-white'
+  const pillOff = active ? 'bg-zinc-600/45 text-red-300/80' : 'bg-zinc-600/45 text-white'
   return (
     <button ref={ref} type="button" onClick={onClick} className={`w-full touch-manipulation ${boxed}`}>
       {grouped && align === 'right' ? (

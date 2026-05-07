@@ -128,7 +128,7 @@ input[list]::-webkit-list-button {
 /* Inline calendar: today indicator is red text (no ring) */
 .offer-datepicker-inline .react-datepicker__day--today {
   box-shadow: none !important;
-  color: #ef4444 !important; /* red-500 */
+  color: #06b6d4 !important; /* cyan-500 */
 }
 
 /* Selected indicator: white rounded ring */
@@ -142,10 +142,17 @@ input[list]::-webkit-list-button {
 /* Inline calendar selected day: filled circle (iOS-style) */
 .offer-datepicker-inline .react-datepicker__day--selected,
 .offer-datepicker-inline .react-datepicker__day--keyboard-selected {
-  background: #ef4444 !important; /* red-500 */
+  background: #06b6d4 !important; /* cyan-500 */
   color: #ffffff !important;
   box-shadow: none !important;
   border-radius: 9999px !important;
+}
+
+/* Prevent month navigation from showing a "selected" circle on preselected (keyboard) days. */
+.offer-datepicker-inline .react-datepicker__day--keyboard-selected:not(.react-datepicker__day--selected) {
+  background: transparent !important;
+  color: rgba(228, 228, 231, 0.95) !important; /* zinc-200 */
+  border-radius: 0 !important;
 }
 
 /* If react-datepicker uses range highlight classes, keep the same selected indicator */
@@ -202,4 +209,17 @@ input[list]::-webkit-list-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* react-mobile-picker adds separator lines around center item; hide them */
+.offers-time-wheel::before,
+.offers-time-wheel::after {
+  display: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Hide react-mobile-picker built-in indicator lines (it renders as final child div) */
+.offers-time-wheel > div:last-child {
+  display: none !important;
 }

@@ -73,7 +73,29 @@ export function shuffledCopy(items) {
 
 export const OFFER_ALERT_NONE = 'none'
 export const OFFER_ALERT_DAY_9AM = 'day_9am'
+export const OFFER_ALERT_AT_TIME = 'at_time'
+export const OFFER_ALERT_5_MIN_BEFORE = '5_min_before'
+export const OFFER_ALERT_10_MIN_BEFORE = '10_min_before'
+export const OFFER_ALERT_15_MIN_BEFORE = '15_min_before'
+export const OFFER_ALERT_30_MIN_BEFORE = '30_min_before'
 export const OFFER_ALERT_HOUR_BEFORE = 'hour_before'
+export const OFFER_ALERT_2_HOURS_BEFORE = '2_hours_before'
+export const OFFER_ALERT_1_DAY_BEFORE = '1_day_before'
+export const OFFER_ALERT_2_DAYS_BEFORE = '2_days_before'
+export const OFFER_ALERT_1_WEEK_BEFORE = '1_week_before'
+
+const TIMED_ALERT_PRESET_TO_MS = {
+  [OFFER_ALERT_AT_TIME]: 0,
+  [OFFER_ALERT_5_MIN_BEFORE]: 5 * 60 * 1000,
+  [OFFER_ALERT_10_MIN_BEFORE]: 10 * 60 * 1000,
+  [OFFER_ALERT_15_MIN_BEFORE]: 15 * 60 * 1000,
+  [OFFER_ALERT_30_MIN_BEFORE]: 30 * 60 * 1000,
+  [OFFER_ALERT_HOUR_BEFORE]: 60 * 60 * 1000,
+  [OFFER_ALERT_2_HOURS_BEFORE]: 2 * 60 * 60 * 1000,
+  [OFFER_ALERT_1_DAY_BEFORE]: 24 * 60 * 60 * 1000,
+  [OFFER_ALERT_2_DAYS_BEFORE]: 2 * 24 * 60 * 60 * 1000,
+  [OFFER_ALERT_1_WEEK_BEFORE]: 7 * 24 * 60 * 60 * 1000
+}
 
 /** Default iOS-style alert when opening the form (All day is on by default). */
 export function defaultAlertPresetForAllDay(allDay) {
@@ -84,9 +106,18 @@ export function defaultAlertPresetForAllDay(allDay) {
 export function coerceAlertPresetForMode(alertPreset, allDay) {
   if (alertPreset === OFFER_ALERT_NONE) return OFFER_ALERT_NONE
   if (allDay) {
-    return alertPreset === OFFER_ALERT_HOUR_BEFORE ? OFFER_ALERT_DAY_9AM : alertPreset
+    if (
+      alertPreset === OFFER_ALERT_DAY_9AM ||
+      alertPreset === OFFER_ALERT_1_DAY_BEFORE ||
+      alertPreset === OFFER_ALERT_2_DAYS_BEFORE ||
+      alertPreset === OFFER_ALERT_1_WEEK_BEFORE
+    ) {
+      return alertPreset
+    }
+    return OFFER_ALERT_DAY_9AM
   }
-  return alertPreset === OFFER_ALERT_DAY_9AM ? OFFER_ALERT_HOUR_BEFORE : alertPreset
+  if (alertPreset === OFFER_ALERT_DAY_9AM) return OFFER_ALERT_HOUR_BEFORE
+  return Object.prototype.hasOwnProperty.call(TIMED_ALERT_PRESET_TO_MS, alertPreset) ? alertPreset : OFFER_ALERT_HOUR_BEFORE
 }
 
 /**
@@ -99,8 +130,29 @@ export function computeOfferAlertFireIso(alertPreset, normalizedStart, allDay) {
   if (!normalizedStart || Number.isNaN(normalizedStart.getTime())) return null
   const safe = coerceAlertPresetForMode(alertPreset, allDay)
   if (safe === OFFER_ALERT_NONE) return null
-  if (safe === OFFER_ALERT_HOUR_BEFORE) {
-    return new Date(normalizedStart.getTime() - 60 * 60 * 1000).toISOString()
+  if (allDay) {
+    const dayOffsets = {
+      [OFFER_ALERT_DAY_9AM]: 0,
+      [OFFER_ALERT_1_DAY_BEFORE]: 1,
+      [OFFER_ALERT_2_DAYS_BEFORE]: 2,
+      [OFFER_ALERT_1_WEEK_BEFORE]: 7
+    }
+    if (Object.prototype.hasOwnProperty.call(dayOffsets, safe)) {
+      const offsetDays = dayOffsets[safe]
+      const atNine = new Date(
+        normalizedStart.getFullYear(),
+        normalizedStart.getMonth(),
+        normalizedStart.getDate() - offsetDays,
+        9,
+        0,
+        0,
+        0
+      )
+      return atNine.toISOString()
+    }
+  }
+  if (!allDay && Object.prototype.hasOwnProperty.call(TIMED_ALERT_PRESET_TO_MS, safe)) {
+    return new Date(normalizedStart.getTime() - TIMED_ALERT_PRESET_TO_MS[safe]).toISOString()
   }
   if (safe === OFFER_ALERT_DAY_9AM) {
     const atNine = new Date(

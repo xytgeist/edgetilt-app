@@ -451,12 +451,13 @@ export default function OfferFormModal({
   ) : null
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black/55 px-3 pb-6 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[2px]">
-      <div className="mx-auto w-full max-w-lg">
+    <div className="fixed inset-0 z-[70] flex bg-black/55 px-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[2px]">
+      <div className="mx-auto flex w-full max-w-lg flex-1 items-end">
         <div
-          className={`w-full overflow-hidden rounded-[36px] bg-[#2b2d34] shadow-[0_18px_60px_rgba(0,0,0,0.65)] ${
+          className={`w-full overflow-hidden rounded-t-[36px] bg-[#2b2d34] shadow-[0_10px_30px_rgba(0,0,0,0.25)] ${
             activeTime ? 'touch-none' : ''
           }`}
+          style={{ height: 'calc(100dvh - (env(safe-area-inset-top) + 12px))' }}
         >
           <div className="px-4 pt-4">
             <div className="relative flex shrink-0 items-center justify-between">

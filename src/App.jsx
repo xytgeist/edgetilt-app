@@ -769,6 +769,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const [runningReminderCheck, setRunningReminderCheck] = useState(false)
     const [reminderMessage, setReminderMessage] = useState('')
     const [isIosDevice, setIsIosDevice] = useState(false)
+    const [isSafariBrowser, setIsSafariBrowser] = useState(false)
     const [isStandaloneMode, setIsStandaloneMode] = useState(false)
     const [showIosInstallHelp, setShowIosInstallHelp] = useState(true)
 
@@ -786,6 +787,7 @@ function AppShell({ onLogout, supabaseClient }) {
       mode: 'confirm',
       title: '',
       message: '',
+      images: [],
       confirmLabel: 'Continue',
       cancelLabel: 'Cancel'
     })
@@ -916,9 +918,16 @@ function AppShell({ onLogout, supabaseClient }) {
       if (typeof window === 'undefined') return
       const ua = window.navigator.userAgent || ''
       const isIos = /iPhone|iPad|iPod/i.test(ua)
+      const isSafari =
+        /Safari/i.test(ua) &&
+        !/CriOS/i.test(ua) &&
+        !/FxiOS/i.test(ua) &&
+        !/EdgiOS/i.test(ua) &&
+        !/OPiOS/i.test(ua)
       const standaloneViaMedia = window.matchMedia?.('(display-mode: standalone)')?.matches === true
       const standaloneViaNavigator = window.navigator.standalone === true
       setIsIosDevice(isIos)
+      setIsSafariBrowser(isIos && isSafari)
       setIsStandaloneMode(standaloneViaMedia || standaloneViaNavigator)
     }, [])
 
@@ -1004,6 +1013,7 @@ function AppShell({ onLogout, supabaseClient }) {
             mode: config.mode || 'confirm',
             title: config.title || '',
             message: config.message || '',
+            images: Array.isArray(config.images) ? config.images : [],
             confirmLabel: config.confirmLabel || 'Continue',
             cancelLabel: config.cancelLabel || 'Cancel'
           })
@@ -1018,8 +1028,8 @@ function AppShell({ onLogout, supabaseClient }) {
     )
 
     const showAppInfo = useCallback(
-      async ({ title, message, confirmLabel = 'OK' }) => {
-        await showAlertDialog({ mode: 'info', title, message, confirmLabel, cancelLabel: '' })
+      async ({ title, message, images = [], confirmLabel = 'OK' }) => {
+        await showAlertDialog({ mode: 'info', title, message, images, confirmLabel, cancelLabel: '' })
       },
       [showAlertDialog]
     )
@@ -1057,8 +1067,14 @@ function AppShell({ onLogout, supabaseClient }) {
           }
           await showAppInfo({
             title: 'iPhone Setup',
-            message:
-              'To enable alerts on iPhone:\n1) Open in Safari\n2) Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Tap "Turn on alerts on this device"\n\nThen save your event.',
+            message: isSafariBrowser
+              ? 'To enable alerts on iPhone:\n1) Tap Share -> Add to Home Screen\n2) Open app from Home Screen icon\n3) Tap "Turn on alerts on this device"\n\nThen save your event.'
+              : 'To enable alerts on iPhone:\n1) Open this site in Safari\n2) In Safari, tap Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Tap "Turn on alerts on this device"\n\nThen save your event.',
+            images: [
+              { src: '/onboarding/ios-step-1-menu-button.png', alt: 'Step 1: tap browser menu button', caption: 'Step 1: Open browser menu' },
+              { src: '/onboarding/ios-step-2-share-button.png', alt: 'Step 2: tap Share', caption: 'Step 2: Tap Share' },
+              { src: '/onboarding/ios-step-3-add-home-screen.png', alt: 'Step 3: tap Add to Home Screen', caption: 'Step 3: Add to Home Screen' }
+            ],
             confirmLabel: 'Got it'
           })
           return alertPreset
@@ -1083,7 +1099,7 @@ function AppShell({ onLogout, supabaseClient }) {
         }
         return alertPreset
       },
-      [enablePush, iosInstallRequired, pushSubscribed, setStoredAlertDefaultForCurrentUser, showAppConfirm, showAppInfo]
+      [enablePush, iosInstallRequired, isSafariBrowser, pushSubscribed, setStoredAlertDefaultForCurrentUser, showAppConfirm, showAppInfo]
     )
 
     const handleAlertPresetSelection = useCallback(
@@ -2170,6 +2186,16 @@ function AppShell({ onLogout, supabaseClient }) {
             >
               <div className="text-[17px] font-semibold text-zinc-100">{alertDialogState.title}</div>
               <div className="mt-2 whitespace-pre-line text-[14px] leading-relaxed text-zinc-300">{alertDialogState.message}</div>
+              {alertDialogState.images?.length ? (
+                <div className="mt-3 max-h-[45dvh] space-y-2 overflow-auto pr-0.5">
+                  {alertDialogState.images.map((img, idx) => (
+                    <div key={`${img.src}-${idx}`} className="rounded-2xl border border-zinc-700/70 bg-zinc-950/60 p-2">
+                      <img src={img.src} alt={img.alt || ''} className="w-full rounded-xl object-cover" loading="lazy" />
+                      {img.caption ? <div className="mt-1 text-[11px] text-zinc-300">{img.caption}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-4 flex gap-2">
                 {alertDialogState.mode === 'confirm' ? (
                   <button

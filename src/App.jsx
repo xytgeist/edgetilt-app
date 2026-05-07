@@ -1095,8 +1095,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
         const enabled = await enablePush()
         if (!enabled) {
-          await setDefaultNone()
-          return OFFER_ALERT_NONE
+          return alertPreset
         }
         return alertPreset
       },

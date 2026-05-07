@@ -118,6 +118,7 @@ export default function OfferFormModal({
   const [showOfferTypeMenu, setShowOfferTypeMenu] = useState(false)
   const [showAlertMenu, setShowAlertMenu] = useState(false)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const [alertCardPulse, setAlertCardPulse] = useState(false)
   const [offerTypeMenuDirection, setOfferTypeMenuDirection] = useState('down')
   const [alertMenuDirection, setAlertMenuDirection] = useState('down')
   const offerTypeAnchorRef = useRef(null)
@@ -887,6 +888,11 @@ export default function OfferFormModal({
           </FieldGroup>
 
           {/* Alert */}
+          <div
+            className={`rounded-3xl transition-all ${
+              alertCardPulse ? 'ring-2 ring-cyan-400/70 shadow-[0_0_28px_rgba(34,211,238,0.35)] animate-pulse' : ''
+            }`}
+          >
           <FieldGroup>
             <GroupRow divider={false}>
               <div className="flex h-12 items-center gap-4">
@@ -925,10 +931,15 @@ export default function OfferFormModal({
                               key={opt.value}
                               type="button"
                               onClick={async () => {
+                                const requestedPreset = opt.value
                                 const resolvedPreset = onRequestSetAlertPreset
-                                  ? await onRequestSetAlertPreset(opt.value)
-                                  : opt.value
+                                  ? await onRequestSetAlertPreset(requestedPreset)
+                                  : requestedPreset
                                 setDraft((d) => ({ ...d, alertPreset: resolvedPreset }))
+                                if (requestedPreset !== 'none' && resolvedPreset === 'none') {
+                                  setAlertCardPulse(true)
+                                  window.setTimeout(() => setAlertCardPulse(false), 1300)
+                                }
                                 setShowAlertMenu(false)
                               }}
                               className="w-full text-left px-3 py-2 text-[16px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
@@ -946,6 +957,7 @@ export default function OfferFormModal({
               </div>
             </GroupRow>
           </FieldGroup>
+          </div>
 
           {/* Notes */}
           <FieldGroup>

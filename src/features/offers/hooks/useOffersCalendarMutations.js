@@ -10,7 +10,9 @@ import {
 function isMissingAlertColumnsError(err) {
   const code = String(err?.code || '')
   const msg = `${err?.message || ''} ${err?.details || ''} ${err?.hint || ''}`.toLowerCase()
-  return code === '42703' || (msg.includes('column') && msg.includes('alert_preset') && msg.includes('does not exist'))
+  const mentionsMissingColumn = msg.includes('column') && (msg.includes('does not exist') || msg.includes('could not find'))
+  const mentionsAlertColumns = msg.includes('alert_preset') || msg.includes('alert_fire_at')
+  return code === '42703' || code === 'PGRST204' || (mentionsMissingColumn && mentionsAlertColumns)
 }
 
 function withoutAlertColumns(payload) {

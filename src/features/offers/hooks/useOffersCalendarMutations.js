@@ -301,7 +301,6 @@ export default function useOffersCalendarMutations({
         setCursorMonth(new Date(focusDate.getFullYear(), focusDate.getMonth(), 1))
         setWeekAnchor(focusDate)
         setSelectedDays([])
-        if (calendarMode === 'agenda') setCalendarMode('month')
       }
       closeForm()
       await loadEvents()

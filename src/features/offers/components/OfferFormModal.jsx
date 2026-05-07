@@ -451,33 +451,47 @@ export default function OfferFormModal({
   ) : null
 
   return (
-    <div className={`fixed inset-0 z-[70] ${activeTime ? 'overflow-hidden' : 'overflow-y-auto'} bg-zinc-900 px-3 py-6 sm:py-8`}>
-      <div className="mx-auto flex max-w-lg flex-col px-3">
-        <div className="mb-4 flex shrink-0 items-center justify-between">
-          <button
-            type="button"
-            onClick={requestClose}
-            aria-label="Close event form"
-            className="grid h-12 w-12 place-items-center rounded-full border border-zinc-600 bg-zinc-800/90 text-2xl leading-none text-zinc-300 touch-manipulation"
-          >
-            ×
-          </button>
-          <button
-            type="button"
-            onClick={saveEvent}
-            disabled={!canSave || saving}
-            aria-label={editingId ? 'Update event' : 'Save event'}
-            className={`grid h-12 w-12 place-items-center rounded-full border text-2xl leading-none touch-manipulation transition-colors ${
-              canSave && !saving
-                ? 'border-emerald-400/70 bg-emerald-500 text-white'
-                : 'border-zinc-600 bg-zinc-800/90 text-zinc-500'
-            }`}
-          >
-            {saving ? '…' : '✓'}
-          </button>
-        </div>
+    <div className="fixed inset-0 z-[70] bg-black/55 px-3 pb-6 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[2px]">
+      <div className="mx-auto w-full max-w-lg">
+        <div
+          className={`w-full overflow-hidden rounded-[36px] bg-[#2b2d34] shadow-[0_18px_60px_rgba(0,0,0,0.65)] ${
+            activeTime ? 'touch-none' : ''
+          }`}
+        >
+          <div className="px-4 pt-4">
+            <div className="relative flex shrink-0 items-center justify-between">
+              <button
+                type="button"
+                onClick={requestClose}
+                aria-label="Close event form"
+                className="grid h-12 w-12 place-items-center rounded-full border border-zinc-600 bg-zinc-800/90 text-2xl leading-none text-zinc-300 touch-manipulation"
+              >
+                ×
+              </button>
+              <div className="pointer-events-none absolute left-0 right-0 text-center text-[16px] font-semibold text-white">
+                {editingId ? 'Edit Event' : 'New Event'}
+              </div>
+              <button
+                type="button"
+                onClick={saveEvent}
+                disabled={!canSave || saving}
+                aria-label={editingId ? 'Update event' : 'Save event'}
+                className={`grid h-12 w-12 place-items-center rounded-full border text-2xl leading-none touch-manipulation transition-colors ${
+                  canSave && !saving
+                    ? 'border-emerald-400/70 bg-emerald-500 text-white'
+                    : 'border-zinc-600 bg-zinc-800/90 text-zinc-500'
+                }`}
+              >
+                {saving ? '…' : '✓'}
+              </button>
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-6">
+          <div
+            className={`px-4 pb-5 pt-4 ${activeTime ? 'overflow-hidden' : 'overflow-y-auto'}`}
+            style={{ maxHeight: 'calc(100dvh - (env(safe-area-inset-top) + 120px))' }}
+          >
+            <div className="flex flex-col gap-6">
           {!completingReviewItemId && !editingId && (
             <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-slate-900/95 to-zinc-900/95 p-3 shadow-[0_14px_30px_rgba(0,0,0,0.45)]">
               <button
@@ -968,6 +982,8 @@ export default function OfferFormModal({
               Remove this draft
             </button>
           )}
+            </div>
+          </div>
         </div>
       </div>
       {showDiscardConfirm ? (

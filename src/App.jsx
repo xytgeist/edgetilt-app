@@ -35,6 +35,7 @@ const btnPrimary = 'w-full min-h-12 text-base font-bold touch-manipulation activ
 const btnSecondary = 'w-full min-h-12 text-base font-bold touch-manipulation active:scale-[0.99] transition-transform'
 const linkBtn = 'w-full min-h-12 text-base text-gray-400 hover:text-white touch-manipulation py-3 text-center flex items-center justify-center active:scale-[0.99]'
 const OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX = 'offers_alert_default_preset_v1:'
+const OFFERS_DEFAULT_VIEW_KEY_PREFIX = 'offers_default_view_v1:'
 
 /**
  * When OAuth fails, Supabase redirects back with error / error_code in the query or hash (not the signInWithOAuth return value).
@@ -103,7 +104,6 @@ function GoogleIcon() {
 function AppShell({ onLogout, supabaseClient }) {
   const [tab, setTab] = useState('home')
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
-  const [pendingOfferCalendarView, setPendingOfferCalendarView] = useState(null)
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo' | 'stackup' | 'mhb' | null
@@ -134,8 +134,6 @@ function AppShell({ onLogout, supabaseClient }) {
     const applyFromUrl = () => {
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
-      const targetOffersView = params.get('offersView')
-      const fromPush = params.get('fromPush') === '1'
       const targetEventId = params.get('eventId')
       const targetEventIdsRaw = params.get('eventIds')
       const targetEventIds = targetEventIdsRaw
@@ -145,43 +143,17 @@ function AppShell({ onLogout, supabaseClient }) {
           .filter(Boolean)
         : []
       if (targetTab === 'offers') setTab('offers')
-      if (fromPush) {
-        setPendingOfferCalendarView('agenda')
-      } else if (targetOffersView === 'agenda' || targetOffersView === 'week' || targetOffersView === 'month') {
-        setPendingOfferCalendarView(targetOffersView)
-      }
       if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
       if (targetEventIds.length > 0) setPendingOfferEventIds(targetEventIds)
     }
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
-    window.addEventListener('focus', applyFromUrl)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') applyFromUrl()
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => {
-      window.removeEventListener('popstate', applyFromUrl)
-      window.removeEventListener('focus', applyFromUrl)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
+    return () => window.removeEventListener('popstate', applyFromUrl)
   }, [])
 
   useEffect(() => {
     if (tab === 'home') void loadCommunityFeed()
   }, [tab, loadCommunityFeed])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !navigator?.serviceWorker) return
-    const handleServiceWorkerMessage = (event) => {
-      const msgType = event?.data?.type
-      if (msgType !== 'offers-open-agenda') return
-      setTab('offers')
-      setPendingOfferCalendarView('agenda')
-    }
-    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
-    return () => navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
-  }, [])
 
   const openCalculator = (key) => {
     setActiveCalculator(key)
@@ -834,6 +806,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const [reminderPrefsError, setReminderPrefsError] = useState('')
     const [pushAdvancedOpen, setPushAdvancedOpen] = useState(false)
     const [newEventAlertPresetDefault, setNewEventAlertPresetDefault] = useState(OFFER_ALERT_DAY_9AM)
+    const [offersDefaultView, setOffersDefaultView] = useState('auto')
     const [alertPromptHandledForCurrentForm, setAlertPromptHandledForCurrentForm] = useState(false)
     const [alertDialogState, setAlertDialogState] = useState({
       open: false,
@@ -859,6 +832,7 @@ function AppShell({ onLogout, supabaseClient }) {
     } = useWebPushNotifications({ supabaseClient })
 
     const getAlertDefaultStorageKeyForUser = useCallback((userId) => `${OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX}${userId}`, [])
+    const getOffersDefaultViewStorageKeyForUser = useCallback((userId) => `${OFFERS_DEFAULT_VIEW_KEY_PREFIX}${userId}`, [])
 
     const setStoredAlertDefaultForCurrentUser = useCallback(
       async (nextPreset) => {
@@ -870,6 +844,18 @@ function AppShell({ onLogout, supabaseClient }) {
         window.localStorage.setItem(getAlertDefaultStorageKeyForUser(userId), nextPreset)
       },
       [getAlertDefaultStorageKeyForUser, supabaseClient]
+    )
+
+    const setStoredOffersDefaultViewForCurrentUser = useCallback(
+      async (nextView) => {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        const userId = session?.user?.id
+        if (!userId || typeof window === 'undefined') return
+        window.localStorage.setItem(getOffersDefaultViewStorageKeyForUser(userId), nextView)
+      },
+      [getOffersDefaultViewStorageKeyForUser, supabaseClient]
     )
 
     useEffect(() => {
@@ -890,6 +876,29 @@ function AppShell({ onLogout, supabaseClient }) {
         cancelled = true
       }
     }, [getAlertDefaultStorageKeyForUser, supabaseClient])
+
+    useEffect(() => {
+      let cancelled = false
+      ;(async () => {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (!session?.user || typeof window === 'undefined') {
+          if (!cancelled) setOffersDefaultView('auto')
+          return
+        }
+        const stored = window.localStorage.getItem(getOffersDefaultViewStorageKeyForUser(session.user.id))
+        if (cancelled) return
+        if (stored === 'month' || stored === 'week' || stored === 'agenda' || stored === 'auto') {
+          setOffersDefaultView(stored)
+        } else {
+          setOffersDefaultView('auto')
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    }, [getOffersDefaultViewStorageKeyForUser, supabaseClient])
 
     const persistReminderRule = useCallback(
       async (leadMinutes, enabled) => {
@@ -1269,22 +1278,17 @@ function AppShell({ onLogout, supabaseClient }) {
     })
 
     useEffect(() => {
-      setAlertPromptHandledForCurrentForm(false)
-    }, [showForm, editingId])
+      if (tab !== 'offers') return
+      if (offersDefaultView === 'month' || offersDefaultView === 'week' || offersDefaultView === 'agenda') {
+        setCalendarMode(offersDefaultView)
+      } else if (offersDefaultView === 'auto') {
+        setCalendarMode('auto')
+      }
+    }, [offersDefaultView, setCalendarMode, tab])
 
     useEffect(() => {
-      if (!pendingOfferCalendarView) return
-      if (pendingOfferCalendarView === 'agenda' || pendingOfferCalendarView === 'week' || pendingOfferCalendarView === 'month') {
-        setCalendarMode(pendingOfferCalendarView)
-      }
-      setPendingOfferCalendarView(null)
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href)
-        url.searchParams.delete('offersView')
-        url.searchParams.delete('fromPush')
-        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
-      }
-    }, [pendingOfferCalendarView, setCalendarMode])
+      setAlertPromptHandledForCurrentForm(false)
+    }, [showForm, editingId])
 
     useEffect(() => {
       if (!pendingOfferEventIds.length) return
@@ -1811,36 +1815,54 @@ function AppShell({ onLogout, supabaseClient }) {
                   ⋯
                 </button>
                 {viewMenuOpen && (
-                  <div className="absolute right-0 top-10 z-20 w-28 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+                  <div className="absolute right-0 top-10 z-20 w-44 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setCalendarMode('month')
+                        setOffersDefaultView('month')
+                        await setStoredOffersDefaultViewForCurrentUser('month')
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                     >
-                      Calendar
+                      Calendar {offersDefaultView === 'month' ? '• default' : ''}
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setCalendarMode('week')
+                        setOffersDefaultView('week')
+                        await setStoredOffersDefaultViewForCurrentUser('week')
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                     >
-                      Week
+                      Week {offersDefaultView === 'week' ? '• default' : ''}
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setCalendarMode('agenda')
+                        setOffersDefaultView('agenda')
+                        await setStoredOffersDefaultViewForCurrentUser('agenda')
                         setViewMenuOpen(false)
                       }}
                       className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
                     >
-                      Agenda
+                      Agenda {offersDefaultView === 'agenda' ? '• default' : ''}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setCalendarMode('auto')
+                        setOffersDefaultView('auto')
+                        await setStoredOffersDefaultViewForCurrentUser('auto')
+                        setViewMenuOpen(false)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-800"
+                    >
+                      Auto {offersDefaultView === 'auto' ? '• default' : ''}
                     </button>
                   </div>
                 )}

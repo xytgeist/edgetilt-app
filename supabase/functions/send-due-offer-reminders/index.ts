@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
             JSON.stringify({
               title,
               body: nBody,
-              url: '/?tab=offers&offersView=agenda&fromPush=1',
+              url: '/?tab=offers',
               eventStartAt: isSingleEvent ? firstEvent?.start_at || null : null,
               eventAlertPreset: isSingleEvent ? firstEvent?.alert_preset || null : null,
             })

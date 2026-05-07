@@ -33,7 +33,7 @@ self.addEventListener('push', (event) => {
     icon: payload.icon || '/android-chrome-192x192.png',
     badge: payload.badge || '/favicon-32x32.png',
     data: {
-      url: payload.url || '/?tab=offers&offersView=agenda',
+      url: payload.url || '/?tab=offers',
     },
   }
 
@@ -42,22 +42,14 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const relative = typeof event.notification?.data?.url === 'string' ? event.notification.data.url : '/?tab=offers&offersView=agenda'
-  const url = new URL(relative, self.location.origin)
-  if (url.searchParams.get('tab') === 'offers' && !url.searchParams.get('offersView')) {
-    url.searchParams.set('offersView', 'agenda')
-  }
-  const fullUrl = url.href
-  const pushAgendaMessage = { type: 'offers-open-agenda' }
+  const relative = typeof event.notification?.data?.url === 'string' ? event.notification.data.url : '/?tab=offers'
+  const fullUrl = new URL(relative, self.location.origin).href
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {
         if (!('focus' in client)) continue
         try {
           await client.focus()
-          if (typeof client.postMessage === 'function') {
-            client.postMessage(pushAgendaMessage)
-          }
           if ('navigate' in client && typeof client.navigate === 'function') {
             try {
               await client.navigate(fullUrl)
@@ -71,11 +63,7 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       if (self.clients.openWindow) {
-        const opened = await self.clients.openWindow(fullUrl)
-        if (opened && typeof opened.postMessage === 'function') {
-          opened.postMessage(pushAgendaMessage)
-        }
-        return opened
+        return self.clients.openWindow(fullUrl)
       }
       return undefined
     })

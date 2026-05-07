@@ -431,7 +431,7 @@ export default function OfferFormModal({
   ) : null
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-y-auto bg-zinc-900 px-3 py-6 sm:py-8">
+    <div className={`fixed inset-0 z-[70] ${activeTime ? 'overflow-hidden' : 'overflow-y-auto'} bg-zinc-900 px-3 py-6 sm:py-8`}>
       <div className="mx-auto flex max-w-lg flex-col px-3">
         <div className="mb-4 flex shrink-0 items-center justify-between">
           <button
@@ -785,7 +785,7 @@ export default function OfferFormModal({
             </GroupRow>
             {activeCalendar === 'start' ? InlineCalendar : null}
             {renderTimePicker('start')}
-            <GroupRow>
+            <GroupRow divider={false}>
             <div className="flex h-12 items-center gap-4">
               <span className="w-[74px] shrink-0 pt-0.5 text-[16px] text-zinc-100">Ends</span>
               <button
@@ -895,7 +895,7 @@ export default function OfferFormModal({
               aria-label="Notes"
               value={draft.notes}
               onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-              className="min-h-[6rem] w-full resize-y bg-transparent py-0 text-[16px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
+              className="min-h-[6rem] w-full resize-y bg-transparent px-4 py-3 text-[16px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
               placeholder="Notes"
               rows={4}
             />

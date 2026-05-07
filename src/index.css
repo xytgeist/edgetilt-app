@@ -219,6 +219,12 @@ input[list]::-webkit-list-button {
   box-shadow: none !important;
 }
 
+/* Let wheel gestures control the picker without page scroll grabbing touch. */
+.offers-time-wheel,
+.offers-time-wheel * {
+  touch-action: none;
+}
+
 /* Hide react-mobile-picker built-in indicator lines (it renders as final child div) */
 .offers-time-wheel > div:last-child {
   display: none !important;

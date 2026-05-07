@@ -97,7 +97,9 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const dryRun = body?.dryRun === true
     const lookaheadMinutes = Number(body?.lookaheadMinutes) > 0 ? Number(body.lookaheadMinutes) : 1
+    const graceLookbackSeconds = Number(body?.graceLookbackSeconds) > 0 ? Number(body.graceLookbackSeconds) : 120
     const now = new Date()
+    const lower = new Date(now.getTime() - graceLookbackSeconds * 1000)
     const upper = new Date(now.getTime() + lookaheadMinutes * 60_000)
 
     const { data: rules, error: rulesError } = await admin.from('offer_notification_rules').select('user_id').eq('enabled', true)
@@ -117,7 +119,7 @@ Deno.serve(async (req) => {
       .select('id, user_id, casino_name, title, start_at, alert_fire_at, alert_preset')
       .in('user_id', allowedUsers)
       .not('alert_fire_at', 'is', null)
-      .gte('alert_fire_at', now.toISOString())
+      .gte('alert_fire_at', lower.toISOString())
       .lt('alert_fire_at', upper.toISOString())
       .order('alert_fire_at', { ascending: true })
       .limit(400)

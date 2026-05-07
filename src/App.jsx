@@ -1077,7 +1077,8 @@ function AppShell({ onLogout, supabaseClient }) {
             ],
             confirmLabel: 'Got it'
           })
-          return alertPreset
+          await setDefaultNone()
+          return OFFER_ALERT_NONE
         }
 
         const shouldEnable = await showAppConfirm({

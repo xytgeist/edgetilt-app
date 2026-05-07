@@ -45,6 +45,40 @@ function notificationPayload(ev: {
   }
 }
 
+function batchedNotificationPayload(
+  events: Array<{
+    casino_name: string | null
+    title: string | null
+    start_at: string
+    alert_preset: string | null
+  }>
+): { title: string; body: string } {
+  if (!events.length) return { title: 'Offer reminder', body: 'You have offers due soon.' }
+  if (events.length === 1) return notificationPayload(events[0])
+
+  const allDayOnly = events.every((ev) => ev.alert_preset === 'day_9am')
+  const first = events[0]
+  const firstDate = formatEventDate(first.start_at)
+  const titles = events
+    .map((ev) => ev.title?.trim() || 'Untitled event')
+    .filter(Boolean)
+  const preview = titles.slice(0, 3).join(' • ')
+  const remaining = Math.max(0, titles.length - 3)
+  const tail = remaining > 0 ? ` +${remaining} more` : ''
+
+  if (allDayOnly) {
+    return {
+      title: `${events.length} offers today`,
+      body: `${preview}${tail} (${firstDate})`,
+    }
+  }
+
+  return {
+    title: `${events.length} offers starting soon`,
+    body: `${preview}${tail}`,
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -91,42 +125,65 @@ Deno.serve(async (req) => {
     if (candErr) throw candErr
 
     const list = candidates || []
+    const candidateIds = list.map((ev) => ev.id)
+
+    const { data: alreadySentRows, error: sentErr } = candidateIds.length
+      ? await admin
+        .from('offer_notification_sends')
+        .select('event_id')
+        .in('event_id', candidateIds)
+        .eq('lead_minutes', ALERT_SCHEDULE_LEAD_KEY)
+      : { data: [], error: null }
+    if (sentErr) throw sentErr
+    const alreadySentIds = new Set((alreadySentRows || []).map((r) => r.event_id))
+    const unsentEvents = list.filter((ev) => !alreadySentIds.has(ev.id))
+
+    const grouped = new Map<string, typeof unsentEvents>()
+    for (const ev of unsentEvents) {
+      const key = `${ev.user_id}::${ev.alert_fire_at || ''}`
+      const cur = grouped.get(key)
+      if (cur) cur.push(ev)
+      else grouped.set(key, [ev])
+    }
+
     let checked = list.length
     let queued = 0
     let sent = 0
     let failed = 0
     let removed = 0
 
-    for (const ev of list) {
-      const { data: existing } = await admin
-        .from('offer_notification_sends')
-        .select('id')
-        .eq('user_id', ev.user_id)
-        .eq('event_id', ev.id)
-        .eq('lead_minutes', ALERT_SCHEDULE_LEAD_KEY)
-        .maybeSingle()
-      if (existing) continue
-
-      queued += 1
+    const subscriptionCache = new Map<string, Array<{ id: string; endpoint: string; p256dh: string | null; auth: string | null }>>()
+    for (const eventsAtSameTime of grouped.values()) {
+      const ev = eventsAtSameTime[0]
+      queued += eventsAtSameTime.length
       if (dryRun) continue
 
-      const { data: subscriptions, error: subError } = await admin
-        .from('push_subscriptions')
-        .select('id, endpoint, p256dh, auth')
-        .eq('user_id', ev.user_id)
-      if (subError) throw subError
+      let subscriptions = subscriptionCache.get(ev.user_id)
+      if (!subscriptions) {
+        const { data: fetchedSubscriptions, error: subError } = await admin
+          .from('push_subscriptions')
+          .select('id, endpoint, p256dh, auth')
+          .eq('user_id', ev.user_id)
+        if (subError) throw subError
+        subscriptions = fetchedSubscriptions || []
+        subscriptionCache.set(ev.user_id, subscriptions)
+      }
+
       if (!subscriptions || subscriptions.length === 0) {
-        await admin.from('offer_notification_sends').insert({
-          user_id: ev.user_id,
-          event_id: ev.id,
-          lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
-          send_status: 'no_subscription',
-          error_message: 'No push subscriptions found for user.',
-        })
+        await admin.from('offer_notification_sends').insert(
+          eventsAtSameTime.map((item) => ({
+            user_id: item.user_id,
+            event_id: item.id,
+            lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
+            send_status: 'no_subscription',
+            error_message: 'No push subscriptions found for user.',
+          }))
+        )
         continue
       }
 
-      const { title, body: nBody } = notificationPayload(ev)
+      const sortedEvents = [...eventsAtSameTime].sort((a, b) => a.start_at.localeCompare(b.start_at))
+      const { title, body: nBody } = batchedNotificationPayload(sortedEvents)
       let hadSuccess = false
       let errorSummary = ''
       for (const sub of subscriptions) {
@@ -157,13 +214,15 @@ Deno.serve(async (req) => {
         }
       }
 
-      await admin.from('offer_notification_sends').insert({
-        user_id: ev.user_id,
-        event_id: ev.id,
-        lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
-        send_status: hadSuccess ? 'sent' : 'failed',
-        error_message: hadSuccess ? null : errorSummary.slice(0, 400),
-      })
+      await admin.from('offer_notification_sends').insert(
+        eventsAtSameTime.map((item) => ({
+          user_id: item.user_id,
+          event_id: item.id,
+          lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
+          send_status: hadSuccess ? 'sent' : 'failed',
+          error_message: hadSuccess ? null : errorSummary.slice(0, 400),
+        }))
+      )
     }
 
     return new Response(JSON.stringify({ checked, queued, sent, failed, removed, dryRun }), {

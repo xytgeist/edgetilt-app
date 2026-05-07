@@ -102,6 +102,8 @@ function GoogleIcon() {
 
 function AppShell({ onLogout, supabaseClient }) {
   const [tab, setTab] = useState('home')
+  const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
+  const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo' | 'stackup' | 'mhb' | null
   const [intelView, setIntelView] = useState({ screen: 'home', cityId: null, casinoId: null })
@@ -125,6 +127,28 @@ function AppShell({ onLogout, supabaseClient }) {
       setCommunityFeedLoading(false)
     }
   }, [supabaseClient])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const applyFromUrl = () => {
+      const params = new URLSearchParams(window.location.search || '')
+      const targetTab = params.get('tab')
+      const targetEventId = params.get('eventId')
+      const targetEventIdsRaw = params.get('eventIds')
+      const targetEventIds = targetEventIdsRaw
+        ? targetEventIdsRaw
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
+        : []
+      if (targetTab === 'offers') setTab('offers')
+      if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
+      if (targetEventIds.length > 0) setPendingOfferEventIds(targetEventIds)
+    }
+    applyFromUrl()
+    window.addEventListener('popstate', applyFromUrl)
+    return () => window.removeEventListener('popstate', applyFromUrl)
+  }, [])
 
   useEffect(() => {
     if (tab === 'home') void loadCommunityFeed()
@@ -1220,6 +1244,24 @@ function AppShell({ onLogout, supabaseClient }) {
     }, [showForm, editingId])
 
     useEffect(() => {
+      if (!pendingOfferEventIds.length) return
+      const existingIds = pendingOfferEventIds.filter((id) => events.some((ev) => ev.id === id))
+      if (!existingIds.length) return
+      setCalendarMode('agenda')
+      setSelectedDays([])
+      setExpandedEventId(existingIds[0])
+      setOfferSpotlightEventIds(existingIds)
+      setPendingOfferEventIds([])
+      window.setTimeout(() => setOfferSpotlightEventIds([]), 12000)
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('eventId')
+        url.searchParams.delete('eventIds')
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+      }
+    }, [events, pendingOfferEventIds, setCalendarMode, setSelectedDays, setExpandedEventId])
+
+    useEffect(() => {
       const handlePointerDown = (event) => {
         const target = event.target
         if (casinoFieldRef.current && !casinoFieldRef.current.contains(target)) {
@@ -2029,6 +2071,7 @@ function AppShell({ onLogout, supabaseClient }) {
                   const e = row.event
                   const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
                   const hasAlert = !!(e.alert_preset && e.alert_preset !== 'none')
+                  const isSpotlighted = offerSpotlightEventIds.includes(e.id)
                   const isExpanded = expandedEventId === e.id
                   const startDate = new Date(e.start_at)
                   const endDate = e.end_at ? new Date(e.end_at) : null
@@ -2051,7 +2094,7 @@ function AppShell({ onLogout, supabaseClient }) {
                       type="button"
                       onClick={() => toggleExpandedEvent(e.id)}
                       aria-expanded={isExpanded}
-                      className={`${meta.card} relative block w-full rounded-2xl p-2.5 text-left transition-colors hover:bg-opacity-90`}
+                      className={`${meta.card} relative block w-full rounded-2xl p-2.5 text-left transition-colors hover:bg-opacity-90 ${isSpotlighted ? 'ring-2 ring-cyan-300/85 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : ''}`}
                     >
                       {hasAlert ? (
                         <span

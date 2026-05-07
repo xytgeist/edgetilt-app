@@ -189,6 +189,9 @@ Deno.serve(async (req) => {
       let hadSuccess = false
       let errorSummary = ''
       for (const sub of subscriptions) {
+        const targetEventId = sortedEvents[0]?.id
+        const targetEventIds = sortedEvents.map((item) => item.id).filter(Boolean)
+        const targetEventIdsParam = targetEventIds.length ? encodeURIComponent(targetEventIds.join(',')) : ''
         const subscription = {
           endpoint: sub.endpoint,
           keys: { p256dh: toBase64Url(sub.p256dh), auth: toBase64Url(sub.auth) },
@@ -199,7 +202,9 @@ Deno.serve(async (req) => {
             JSON.stringify({
               title,
               body: nBody,
-              url: '/?tab=offers',
+              url: targetEventId
+                ? `/?tab=offers&eventId=${encodeURIComponent(targetEventId)}&eventIds=${targetEventIdsParam}`
+                : '/?tab=offers',
             })
           )
           hadSuccess = true

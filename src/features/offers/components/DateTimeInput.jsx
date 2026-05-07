@@ -4,10 +4,10 @@ const DateTimeInput = forwardRef(({ value, onClick, placeholder, align = 'left',
   const display = value || ''
   const alignCls = align === 'right' ? 'text-right' : 'text-left'
   const boxed = grouped
-    ? `h-12 min-h-12 rounded-none bg-transparent text-[17px] text-zinc-100 outline-none focus-visible:ring-0 flex items-center ${
+    ? `h-12 min-h-12 rounded-none bg-transparent text-[16px] text-zinc-100 outline-none focus-visible:ring-0 flex items-center ${
         align === 'right' ? 'justify-end text-right pr-0' : 'justify-start text-left px-2'
       }`
-    : 'h-12 rounded-2xl bg-zinc-800 text-zinc-100 text-left px-3 outline-none focus:ring-2 focus:ring-violet-500/30 flex items-center justify-start text-[17px]'
+    : 'h-12 rounded-2xl bg-zinc-800 text-zinc-100 text-left px-3 outline-none focus:ring-2 focus:ring-violet-500/30 flex items-center justify-start text-[16px]'
 
   const timeMatch = display.match(/(\d{1,2}:\d{2}\s*[AP]M)$/i)
   const datePart = timeMatch ? display.replace(timeMatch[0], '').trim() : display

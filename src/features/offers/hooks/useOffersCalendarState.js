@@ -12,7 +12,36 @@ import {
   toDatetimeLocalValue
 } from '../utils'
 
+const OFFERS_FORM_DRAFT_STORAGE_KEY = 'offers_form_draft_v1'
+const OFFERS_FORM_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+function readPersistedFormDraft() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(OFFERS_FORM_DRAFT_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    const savedAt = Number(parsed.savedAt || 0)
+    if (!Number.isFinite(savedAt) || Date.now() - savedAt > OFFERS_FORM_DRAFT_MAX_AGE_MS) return null
+    const draft = { ...emptyOfferDraft(), ...(parsed.draft || {}) }
+    return {
+      showForm: parsed.showForm === true,
+      draft,
+      allDay: parsed.allDay !== false
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearPersistedFormDraft() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(OFFERS_FORM_DRAFT_STORAGE_KEY)
+}
+
 export default function useOffersCalendarState({ supabaseClient, normalizeLoadedEvent }) {
+  const restoredFormDraft = readPersistedFormDraft()
   const fileInputRef = useRef(null)
   const longPressTimerRef = useRef(null)
   const casinoFieldRef = useRef(null)
@@ -41,15 +70,15 @@ export default function useOffersCalendarState({ supabaseClient, normalizeLoaded
   const [reviewSourceImagePath, setReviewSourceImagePath] = useState(null)
   const [reviewSourceImageUrl, setReviewSourceImageUrl] = useState('')
   const [reviewSourceImageLoading, setReviewSourceImageLoading] = useState(false)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(() => restoredFormDraft?.showForm === true)
   const [editingId, setEditingId] = useState(null)
   const [selectedDays, setSelectedDays] = useState([])
   const [cursorMonth, setCursorMonth] = useState(() => {
     const n = new Date()
     return new Date(n.getFullYear(), n.getMonth(), 1)
   })
-  const [draft, setDraft] = useState(() => emptyOfferDraft())
-  const [allDay, setAllDay] = useState(true)
+  const [draft, setDraft] = useState(() => restoredFormDraft?.draft || emptyOfferDraft())
+  const [allDay, setAllDay] = useState(() => (restoredFormDraft ? restoredFormDraft.allDay : true))
   const [showCasinoSuggestions, setShowCasinoSuggestions] = useState(false)
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false)
   const [expandedEventId, setExpandedEventId] = useState(null)
@@ -167,6 +196,22 @@ export default function useOffersCalendarState({ supabaseClient, normalizeLoaded
       window.localStorage.removeItem('offers_active_import_batch_id')
     }
   }, [activeImportBatchId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // Persist only unsaved "new event" drafts.
+    if (showForm && !editingId && !completingReviewItemId) {
+      const payload = {
+        savedAt: Date.now(),
+        showForm: true,
+        allDay,
+        draft
+      }
+      window.localStorage.setItem(OFFERS_FORM_DRAFT_STORAGE_KEY, JSON.stringify(payload))
+      return
+    }
+    clearPersistedFormDraft()
+  }, [allDay, completingReviewItemId, draft, editingId, showForm])
 
   const loadEvents = useCallback(async () => {
     if (!supabaseClient) return
@@ -312,6 +357,7 @@ export default function useOffersCalendarState({ supabaseClient, normalizeLoaded
   )
 
   const closeForm = useCallback(() => {
+    clearPersistedFormDraft()
     setShowForm(false)
     setEditingId(null)
     setDraft(emptyOfferDraft())

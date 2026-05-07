@@ -33,7 +33,7 @@ function GroupRow({ children, divider = true }) {
 }
 
 const inputFlush =
-  'w-full bg-transparent px-4 py-1.5 text-[17px] text-white outline-none placeholder:text-white focus:outline-none'
+  'w-full bg-transparent px-4 py-1.5 text-[16px] text-white outline-none placeholder:text-white focus:outline-none'
 
 const ALERT_OPTIONS_ALL_DAY = [
   { value: OFFER_ALERT_NONE, label: 'None' },
@@ -471,7 +471,7 @@ export default function OfferFormModal({
                     📸
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[17px] font-semibold text-cyan-100">
+                    <span className="block text-[16px] font-semibold text-cyan-100">
                       {uploading ? 'Importing photos…' : 'Import from photo(s)'}
                     </span>
                     <span className="mt-0.5 block text-[13px] leading-snug text-cyan-200/75">
@@ -493,15 +493,15 @@ export default function OfferFormModal({
 
           {completingReviewItemId && (
             <div className="rounded-3xl border border-cyan-700/45 bg-cyan-950/25 p-2.5">
-              <div className="text-[17px] font-medium text-cyan-100">Source mailer image</div>
+              <div className="text-[16px] font-medium text-cyan-100">Source mailer image</div>
               {reviewSourceImageLoading ? (
-                <div className="mt-2 text-[17px] text-cyan-200/85">Loading…</div>
+                <div className="mt-2 text-[16px] text-cyan-200/85">Loading…</div>
               ) : reviewSourceImageUrl ? (
                 <a href={reviewSourceImageUrl} target="_blank" rel="noreferrer" className="-mx-3 mt-2 block px-3" title="Open full image">
                   <img src={reviewSourceImageUrl} alt="" className="max-h-56 w-full rounded-lg object-contain" />
                 </a>
               ) : (
-                <div className="mt-2 text-[17px] text-cyan-200/85">Preview unavailable · you can still edit below.</div>
+                <div className="mt-2 text-[16px] text-cyan-200/85">Preview unavailable · you can still edit below.</div>
               )}
             </div>
           )}
@@ -509,7 +509,7 @@ export default function OfferFormModal({
           {/* Title + Casino */}
           <FieldGroup>
             <GroupRow>
-              <div ref={titleFieldRef} className="relative">
+              <div ref={titleFieldRef} className="relative h-12">
                 <input
                   aria-label="Title"
                   value={draft.title}
@@ -520,7 +520,7 @@ export default function OfferFormModal({
                   }}
                   onFocus={() => setShowTitleSuggestions(hasTitleSuggestions)}
                   onBlur={() => setTimeout(() => setShowTitleSuggestions(false), 120)}
-                  className="w-full bg-transparent py-1.5 pr-10 text-[17px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
+                  className="h-12 w-full bg-transparent py-0 pr-10 text-[16px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
                   placeholder="Title"
                   autoComplete="off"
                 />
@@ -548,7 +548,7 @@ export default function OfferFormModal({
                           if (completingReviewItemId && !editingId) setPropagateTitleOnSave(true)
                           setShowTitleSuggestions(false)
                         }}
-                        className="w-full px-4 py-2.5 text-left text-[17px] text-zinc-100 hover:bg-zinc-800"
+                        className="w-full px-4 py-2.5 text-left text-[16px] text-zinc-100 hover:bg-zinc-800"
                       >
                         {t}
                       </button>
@@ -558,7 +558,7 @@ export default function OfferFormModal({
               </div>
             </GroupRow>
             <GroupRow divider={false}>
-              <div ref={casinoFieldRef} className="relative">
+              <div ref={casinoFieldRef} className="relative h-12">
                 <input
                   aria-label="Casino"
                   value={draft.casinoName}
@@ -569,7 +569,7 @@ export default function OfferFormModal({
                   }}
                   onFocus={() => setShowCasinoSuggestions(hasCasinoSuggestions)}
                   onBlur={() => setTimeout(() => setShowCasinoSuggestions(false), 120)}
-                  className="w-full bg-transparent py-1.5 pr-10 text-[17px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
+                  className="h-12 w-full bg-transparent py-0 pr-10 text-[16px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
                   placeholder="Casino"
                   autoComplete="off"
                 />
@@ -596,7 +596,7 @@ export default function OfferFormModal({
                           if (completingReviewItemId && !editingId) setPropagateCasinoOnSave(true)
                           setShowCasinoSuggestions(false)
                         }}
-                        className="w-full px-4 py-2.5 text-left text-[17px] text-zinc-100 hover:bg-zinc-800"
+                        className="w-full px-4 py-2.5 text-left text-[16px] text-zinc-100 hover:bg-zinc-800"
                       >
                         {name}
                       </button>
@@ -610,7 +610,7 @@ export default function OfferFormModal({
           {/* Type + Amount */}
           <FieldGroup>
             <GroupRow>
-              <div ref={offerTypeAnchorRef} className="relative min-h-[2.25rem]">
+              <div ref={offerTypeAnchorRef} className="relative h-12">
                 <button
                   type="button"
                   aria-label="Offer type"
@@ -623,7 +623,7 @@ export default function OfferFormModal({
                 >
                   <span className="sr-only">Open offer type options</span>
                 </button>
-                <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex items-center text-[17px] text-zinc-100">
+                <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex items-center text-[16px] text-zinc-100">
                   {offerTypeLabel}
                 </div>
                 <span aria-hidden className="pointer-events-none absolute right-0 top-1/2 text-zinc-100 -translate-y-1/2 text-base leading-none">
@@ -647,7 +647,7 @@ export default function OfferFormModal({
                               setDraft((d) => ({ ...d, offerType: opt.value }))
                               setShowOfferTypeMenu(false)
                             }}
-                            className="w-full text-left px-3 py-2 text-[17px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
+                            className="w-full text-left px-3 py-2 text-[16px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
                           >
                             <span className="inline-flex w-7 items-center justify-center text-zinc-100">{selected ? '✓' : ''}</span>
                             <span>{opt.label}</span>
@@ -674,17 +674,17 @@ export default function OfferFormModal({
                 }}
                 onFocus={() => setValueFocused(true)}
                 onBlur={() => setValueFocused(false)}
-                className="w-full bg-transparent py-1.5 text-[17px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
+                className="h-12 w-full bg-transparent py-0 text-[16px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
                 placeholder="$ Value"
               />
             </GroupRow>
           </FieldGroup>
 
-          {/* All-day · Starts · Ends · Alert */}
+          {/* All-day · Starts · Ends */}
           <FieldGroup>
             <GroupRow>
               <div className="flex h-12 items-center justify-between gap-4">
-              <span className="text-[17px] text-zinc-100">All-day</span>
+              <span className="text-[16px] text-zinc-100">All-day</span>
               <label className="relative inline-flex cursor-pointer items-center shrink-0">
                 <input
                   type="checkbox"
@@ -744,7 +744,7 @@ export default function OfferFormModal({
             </GroupRow>
             <GroupRow>
             <div className="flex h-12 items-center gap-4">
-              <span className="w-[74px] shrink-0 pt-0.5 text-[17px] text-zinc-100">Starts</span>
+              <span className="w-[74px] shrink-0 pt-0.5 text-[16px] text-zinc-100">Starts</span>
               <button
                 type="button"
                 onClick={() => {
@@ -787,7 +787,7 @@ export default function OfferFormModal({
             {renderTimePicker('start')}
             <GroupRow>
             <div className="flex h-12 items-center gap-4">
-              <span className="w-[74px] shrink-0 pt-0.5 text-[17px] text-zinc-100">Ends</span>
+              <span className="w-[74px] shrink-0 pt-0.5 text-[16px] text-zinc-100">Ends</span>
               <button
                 type="button"
                 onClick={() => {
@@ -829,59 +829,63 @@ export default function OfferFormModal({
             {activeCalendar === 'end' ? InlineCalendar : null}
             {renderTimePicker('end')}
 
+          </FieldGroup>
+
+          {/* Alert */}
+          <FieldGroup>
             <GroupRow divider={false}>
-            <div className="flex h-12 items-center gap-4">
-              <span className="w-[74px] shrink-0 pt-0.5 text-[17px] text-zinc-100">Alert</span>
-              <div ref={alertAnchorRef} className="relative min-w-0 flex-1 h-11">
-                <button
-                  type="button"
-                  aria-label="Notification alert"
-                  onClick={() => {
-                    setShowOfferTypeMenu(false)
-                    setAlertMenuDirection(chooseMenuDirection(alertAnchorRef.current, 320))
-                    setShowAlertMenu((v) => !v)
-                  }}
-                  className="absolute inset-0 z-10 h-full w-full cursor-pointer"
-                >
-                  <span className="sr-only">Open alert options</span>
-                </button>
-                <div aria-hidden className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-[17px] text-zinc-100">
-                  {alertLabel}
-                </div>
-                <span aria-hidden className="pointer-events-none absolute right-0 top-1/2 text-zinc-100 -translate-y-1/2 text-base leading-none">
-                  ▾
-                </span>
-                {showAlertMenu ? (
-                  <div
-                    ref={alertMenuRef}
-                    className={`absolute right-0 z-40 w-[270px] max-w-[82vw] overflow-hidden rounded-[30px] border border-zinc-600/75 bg-zinc-900/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl ${
-                      alertMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
-                    }`}
+              <div className="flex h-12 items-center gap-4">
+                <span className="w-[74px] shrink-0 pt-0.5 text-[16px] text-zinc-100">Alert</span>
+                <div ref={alertAnchorRef} className="relative min-w-0 flex-1 h-11">
+                  <button
+                    type="button"
+                    aria-label="Notification alert"
+                    onClick={() => {
+                      setShowOfferTypeMenu(false)
+                      setAlertMenuDirection(chooseMenuDirection(alertAnchorRef.current, 320))
+                      setShowAlertMenu((v) => !v)
+                    }}
+                    className="absolute inset-0 z-10 h-full w-full cursor-pointer"
                   >
-                    <div className="max-h-[360px] overflow-auto">
-                      {alertOptions.map((opt, idx) => {
-                        const selected = safeAlertPreset === opt.value
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => {
-                              setDraft((d) => ({ ...d, alertPreset: opt.value }))
-                              setShowAlertMenu(false)
-                            }}
-                            className="w-full text-left px-3 py-2 text-[17px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
-                          >
-                            <span className="inline-flex w-7 items-center justify-center text-zinc-100">{selected ? '✓' : ''}</span>
-                            <span>{opt.label}</span>
-                            {idx === 0 ? <span className="mt-2 block h-px bg-zinc-700/75" /> : null}
-                          </button>
-                        )
-                      })}
-                    </div>
+                    <span className="sr-only">Open alert options</span>
+                  </button>
+                  <div aria-hidden className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-[16px] text-zinc-100">
+                    {alertLabel}
                   </div>
-                ) : null}
+                  <span aria-hidden className="pointer-events-none absolute right-0 top-1/2 text-zinc-100 -translate-y-1/2 text-base leading-none">
+                    ▾
+                  </span>
+                  {showAlertMenu ? (
+                    <div
+                      ref={alertMenuRef}
+                      className={`absolute right-0 z-40 w-[270px] max-w-[82vw] overflow-hidden rounded-[30px] border border-zinc-600/75 bg-zinc-900/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl ${
+                        alertMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+                      }`}
+                    >
+                      <div className="max-h-[360px] overflow-auto">
+                        {alertOptions.map((opt, idx) => {
+                          const selected = safeAlertPreset === opt.value
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setDraft((d) => ({ ...d, alertPreset: opt.value }))
+                                setShowAlertMenu(false)
+                              }}
+                              className="w-full text-left px-3 py-2 text-[16px] text-zinc-100 hover:bg-zinc-800/70 rounded-lg"
+                            >
+                              <span className="inline-flex w-7 items-center justify-center text-zinc-100">{selected ? '✓' : ''}</span>
+                              <span>{opt.label}</span>
+                              {idx === 0 ? <span className="mt-2 block h-px bg-zinc-700/75" /> : null}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
             </GroupRow>
           </FieldGroup>
 
@@ -891,20 +895,20 @@ export default function OfferFormModal({
               aria-label="Notes"
               value={draft.notes}
               onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-              className="min-h-[4rem] w-full resize-y bg-transparent px-4 py-1.5 text-[17px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
+              className="min-h-[6rem] w-full resize-y bg-transparent py-0 text-[16px] text-zinc-100 outline-none placeholder:text-zinc-500 focus:outline-none"
               placeholder="Notes"
               rows={4}
             />
           </FieldGroup>
 
           {completingReviewItemId && !editingId && notice && (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-[17px] text-emerald-100">{notice}</div>
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3 py-2 text-[16px] text-emerald-100">{notice}</div>
           )}
 
           {completingReviewItemId && !editingId && (
             <div className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-4 py-3">
-              <div className="mb-3 text-[17px] text-zinc-200">Apply to matching open drafts · same offer type only</div>
-              <label className="flex items-center gap-3 text-[17px] text-white">
+              <div className="mb-3 text-[16px] text-zinc-200">Apply to matching open drafts · same offer type only</div>
+              <label className="flex items-center gap-3 text-[16px] text-white">
                 <input
                   type="checkbox"
                   checked={propagateCasinoOnSave}
@@ -913,7 +917,7 @@ export default function OfferFormModal({
                 />
                 Casino name
               </label>
-              <label className="mt-3 flex items-center gap-3 text-[17px] text-white">
+              <label className="mt-3 flex items-center gap-3 text-[16px] text-white">
                 <input
                   type="checkbox"
                   checked={propagateTitleOnSave}
@@ -922,7 +926,7 @@ export default function OfferFormModal({
                 />
                 Title
               </label>
-              <label className="mt-3 flex items-center gap-3 text-[17px] text-white">
+              <label className="mt-3 flex items-center gap-3 text-[16px] text-white">
                 <input
                   type="checkbox"
                   checked={propagateValueOnSave}
@@ -939,7 +943,7 @@ export default function OfferFormModal({
               type="button"
               onClick={() => void skipCurrentReviewFromForm()}
               disabled={saving}
-              className="min-h-[3rem] w-full touch-manipulation rounded-xl border border-zinc-600 bg-zinc-900 py-3 text-[17px] font-medium text-red-400/95 hover:bg-zinc-800 disabled:opacity-55"
+              className="min-h-[3rem] w-full touch-manipulation rounded-xl border border-zinc-600 bg-zinc-900 py-3 text-[16px] font-medium text-red-400/95 hover:bg-zinc-800 disabled:opacity-55"
             >
               Remove this draft
             </button>
@@ -952,7 +956,7 @@ export default function OfferFormModal({
             className="absolute left-4 top-4 w-[186px] max-w-[86vw] rounded-3xl border border-zinc-600/80 bg-zinc-900/55 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)] backdrop-blur-md sm:left-6 sm:top-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-[17px] text-zinc-100">Are you sure you want to discard this new event?</p>
+            <p className="text-[16px] text-zinc-100">Are you sure you want to discard this new event?</p>
             <div className="mt-3">
               <button
                 type="button"
@@ -960,7 +964,7 @@ export default function OfferFormModal({
                   setShowDiscardConfirm(false)
                   closeForm()
                 }}
-                className="w-full rounded-full bg-zinc-700/95 px-3 py-2 text-[17px] font-medium text-[#FF4144]"
+                className="w-full rounded-full bg-zinc-700/95 px-3 py-2 text-[16px] font-medium text-[#FF4144]"
               >
                 Discard Changes
               </button>

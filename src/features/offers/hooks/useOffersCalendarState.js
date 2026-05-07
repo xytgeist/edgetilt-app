@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  coerceAlertPresetForMode,
   defaultAlertPresetForAllDay,
   draftFromAiReviewPayload,
   emptyOfferDraft,
@@ -447,9 +448,7 @@ export default function useOffersCalendarState({
     const alertPreset =
       ap === undefined || ap === null || ap === ''
         ? OFFER_ALERT_NONE
-        : ap === OFFER_ALERT_NONE || ap === OFFER_ALERT_DAY_9AM || ap === OFFER_ALERT_HOUR_BEFORE
-          ? ap
-          : defaultAlertPresetForAllDay(allDayEdit)
+        : coerceAlertPresetForMode(String(ap), allDayEdit)
     setDraft({
       casinoName: ev.casino_name || '',
       offerType: ev.offer_type || 'free_play',

@@ -20,7 +20,7 @@ import {
 } from '../utils'
 
 function FieldGroup({ children }) {
-  return <div className="overflow-visible rounded-3xl bg-[#2b2d34] shadow-[0_14px_30px_rgba(0,0,0,0.45)]">{children}</div>
+  return <div className="overflow-visible rounded-3xl border border-zinc-700/55 bg-[#2b2d34] shadow-none">{children}</div>
 }
 
 function GroupRow({ children, divider = true }) {
@@ -460,11 +460,17 @@ export default function OfferFormModal({
           {/* Scroll region (content scrolls under header) */}
           <div
             className={`relative h-full overscroll-contain ${activeTime ? 'overflow-hidden' : 'overflow-y-auto touch-pan-y'}`}
-            style={{ WebkitOverflowScrolling: 'touch' }}
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              WebkitMaskImage:
+                'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) calc(100% - 96px), rgba(0,0,0,0.9) calc(100% - 56px), rgba(0,0,0,0) 100%)',
+              maskImage:
+                'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) calc(100% - 96px), rgba(0,0,0,0.9) calc(100% - 56px), rgba(0,0,0,0) 100%)'
+            }}
           >
             {/* Sticky header overlay */}
             <div className="sticky top-0 z-30">
-              <div className="px-4 pt-4 pb-6 bg-gradient-to-b from-[#2b2d34]/85 via-[#2b2d34]/70 to-transparent backdrop-blur-xl">
+              <div className="bg-[#2b2d34]/72 px-4 pb-5 pt-4 backdrop-blur-xl">
                 <div className="relative flex shrink-0 items-center justify-between">
                   <button
                     type="button"
@@ -990,8 +996,6 @@ export default function OfferFormModal({
               </div>
             </div>
 
-            {/* Bottom fade (matches iOS feel when scrolling near bottom) */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-[#2b2d34]/95 via-[#2b2d34]/55 to-transparent" />
           </div>
         </div>
       </div>

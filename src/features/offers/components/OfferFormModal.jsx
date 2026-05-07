@@ -933,7 +933,7 @@ export default function OfferFormModal({
                               onClick={async () => {
                                 const requestedPreset = opt.value
                                 const resolvedPreset = onRequestSetAlertPreset
-                                  ? await onRequestSetAlertPreset(requestedPreset)
+                                  ? await onRequestSetAlertPreset(requestedPreset, { editingId: Boolean(editingId) })
                                   : requestedPreset
                                 setDraft((d) => ({ ...d, alertPreset: resolvedPreset }))
                                 if (requestedPreset !== 'none' && resolvedPreset === 'none') {

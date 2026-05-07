@@ -1104,8 +1104,9 @@ function AppShell({ onLogout, supabaseClient }) {
     )
 
     const handleAlertPresetSelection = useCallback(
-      async (nextPreset) => {
-        if (nextPreset === OFFER_ALERT_NONE || pushSubscribed) return nextPreset
+      async (nextPreset, ctx = {}) => {
+        const isEditing = ctx?.editingId === true
+        if (isEditing || nextPreset === OFFER_ALERT_NONE || pushSubscribed) return nextPreset
         setAlertPromptHandledForCurrentForm(true)
         return maybeResolveAlertPresetWithPrompt(nextPreset)
       },
@@ -1915,14 +1916,24 @@ function AppShell({ onLogout, supabaseClient }) {
                             <div className="pointer-events-none relative z-[2] grid grid-cols-7 gap-0">
                               {lane.map((ev) => {
                                 const meta = offerTypeMeta[ev.offer_type] || offerTypeMeta.other
+                                const hasAlert = !!(ev.alert_preset && ev.alert_preset !== 'none')
                                 return (
                                   <button
                                     key={`wk-${ev.id}-${ev._startCol}`}
                                     type="button"
                                     onClick={() => setWeekDetailEvent(ev)}
-                                    className={`pointer-events-auto ${meta.card} flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
+                                    className={`pointer-events-auto ${meta.card} relative flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
                                     style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
                                   >
+                                    {hasAlert ? (
+                                      <span
+                                        title="Has alert"
+                                        aria-label="Has alert"
+                                        className="absolute right-1.5 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-cyan-300/45 bg-cyan-500/20 px-1 text-[10px] leading-none text-cyan-100"
+                                      >
+                                        🔔
+                                      </span>
+                                    ) : null}
                                     <span className="w-full truncate text-left font-bold text-zinc-100">
                                       {ev.casino_name || 'Event'}
                                     </span>
@@ -2018,6 +2029,7 @@ function AppShell({ onLogout, supabaseClient }) {
                   }
                   const e = row.event
                   const meta = offerTypeMeta[e.offer_type] || offerTypeMeta.other
+                  const hasAlert = !!(e.alert_preset && e.alert_preset !== 'none')
                   const isExpanded = expandedEventId === e.id
                   const startDate = new Date(e.start_at)
                   const endDate = e.end_at ? new Date(e.end_at) : null
@@ -2040,8 +2052,17 @@ function AppShell({ onLogout, supabaseClient }) {
                       type="button"
                       onClick={() => toggleExpandedEvent(e.id)}
                       aria-expanded={isExpanded}
-                      className={`${meta.card} block w-full rounded-2xl p-2.5 text-left transition-colors hover:bg-opacity-90`}
+                      className={`${meta.card} relative block w-full rounded-2xl p-2.5 text-left transition-colors hover:bg-opacity-90`}
                     >
+                      {hasAlert ? (
+                        <span
+                          title="Has alert"
+                          aria-label="Has alert"
+                          className="absolute right-2.5 top-2.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-cyan-300/45 bg-cyan-500/20 px-1.5 text-[11px] leading-none text-cyan-100"
+                        >
+                          🔔
+                        </span>
+                      ) : null}
                       <div className="flex items-start gap-2">
                         <div className="w-10 shrink-0 text-center">
                           <div className="text-zinc-500 text-[9px] font-semibold tracking-wide">{dayLabel}</div>

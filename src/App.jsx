@@ -135,6 +135,7 @@ function AppShell({ onLogout, supabaseClient }) {
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
       const targetOffersView = params.get('offersView')
+      const fromPush = params.get('fromPush') === '1'
       const targetEventId = params.get('eventId')
       const targetEventIdsRaw = params.get('eventIds')
       const targetEventIds = targetEventIdsRaw
@@ -144,7 +145,9 @@ function AppShell({ onLogout, supabaseClient }) {
           .filter(Boolean)
         : []
       if (targetTab === 'offers') setTab('offers')
-      if (targetOffersView === 'agenda' || targetOffersView === 'week' || targetOffersView === 'month') {
+      if (fromPush) {
+        setPendingOfferCalendarView('agenda')
+      } else if (targetOffersView === 'agenda' || targetOffersView === 'week' || targetOffersView === 'month') {
         setPendingOfferCalendarView(targetOffersView)
       }
       if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
@@ -152,7 +155,16 @@ function AppShell({ onLogout, supabaseClient }) {
     }
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
-    return () => window.removeEventListener('popstate', applyFromUrl)
+    window.addEventListener('focus', applyFromUrl)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') applyFromUrl()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('popstate', applyFromUrl)
+      window.removeEventListener('focus', applyFromUrl)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   useEffect(() => {
@@ -1257,6 +1269,7 @@ function AppShell({ onLogout, supabaseClient }) {
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href)
         url.searchParams.delete('offersView')
+        url.searchParams.delete('fromPush')
         window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
       }
     }, [pendingOfferCalendarView, setCalendarMode])

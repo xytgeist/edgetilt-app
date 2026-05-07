@@ -1312,6 +1312,7 @@ function AppShell({ onLogout, supabaseClient }) {
           </div>
         )}
 
+        {false && (
         <div className="mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
           {iosInstallRequired && showIosInstallHelp ? (
             <div className="mb-3 rounded-xl border border-amber-400/40 bg-amber-950/30 p-3 text-[11px] leading-relaxed text-amber-100">
@@ -1500,6 +1501,7 @@ function AppShell({ onLogout, supabaseClient }) {
             ) : null}
           </div>
         </div>
+        )}
 
         <ReviewQueuePanel reviewQueue={reviewQueue} onComplete={beginReviewItem} onSkip={(itemId) => void skipReviewItem(itemId)} />
 

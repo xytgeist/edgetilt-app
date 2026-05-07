@@ -14,6 +14,14 @@ import {
 
 const OFFERS_FORM_DRAFT_STORAGE_KEY = 'offers_form_draft_v1'
 const OFFERS_FORM_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000
+const OFFER_EVENTS_BASE_SELECT = 'id,casino_name,offer_type,title,start_at,end_at,value_amount,notes,created_at,source_type,source_image_path'
+const OFFER_EVENTS_SELECT_WITH_ALERTS = `${OFFER_EVENTS_BASE_SELECT},alert_preset,alert_fire_at`
+
+function isMissingAlertColumnsError(err) {
+  const code = String(err?.code || '')
+  const msg = `${err?.message || ''} ${err?.details || ''} ${err?.hint || ''}`.toLowerCase()
+  return code === '42703' || (msg.includes('column') && msg.includes('alert_preset') && msg.includes('does not exist'))
+}
 
 function readPersistedFormDraft() {
   if (typeof window === 'undefined') return null
@@ -218,13 +226,21 @@ export default function useOffersCalendarState({ supabaseClient, normalizeLoaded
     setLoading(true)
     setError('')
     try {
-      const { data, error: e } = await supabaseClient
+      let { data, error: e } = await supabaseClient
         .from('offer_events')
-        .select(
-          'id,casino_name,offer_type,title,start_at,end_at,value_amount,notes,created_at,source_type,source_image_path,alert_preset,alert_fire_at'
-        )
+        .select(OFFER_EVENTS_SELECT_WITH_ALERTS)
         .order('start_at', { ascending: true })
         .limit(500)
+      // Backward-compatible fallback for databases that haven't added alert columns yet.
+      if (e && isMissingAlertColumnsError(e)) {
+        const fallback = await supabaseClient
+          .from('offer_events')
+          .select(OFFER_EVENTS_BASE_SELECT)
+          .order('start_at', { ascending: true })
+          .limit(500)
+        data = fallback.data
+        e = fallback.error
+      }
       if (e) throw e
       setEvents((data || []).map(normalizeLoadedEvent))
     } catch (e) {

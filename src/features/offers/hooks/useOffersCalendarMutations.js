@@ -7,6 +7,19 @@ import {
   OFFER_ALERT_DAY_9AM
 } from '../utils'
 
+function isMissingAlertColumnsError(err) {
+  const code = String(err?.code || '')
+  const msg = `${err?.message || ''} ${err?.details || ''} ${err?.hint || ''}`.toLowerCase()
+  return code === '42703' || (msg.includes('column') && msg.includes('alert_preset') && msg.includes('does not exist'))
+}
+
+function withoutAlertColumns(payload) {
+  const next = { ...payload }
+  delete next.alert_preset
+  delete next.alert_fire_at
+  return next
+}
+
 export default function useOffersCalendarMutations({
   supabaseClient,
   state,
@@ -128,11 +141,20 @@ export default function useOffersCalendarMutations({
                 alert_preset: assocPreset,
                 alert_fire_at: assocFire
               }
-              const { data: inserted, error: insertErr } = await supabaseClient
+              let { data: inserted, error: insertErr } = await supabaseClient
                 .from('offer_events')
                 .insert(insertPayload)
                 .select('id')
                 .single()
+              if (insertErr && isMissingAlertColumnsError(insertErr)) {
+                const retry = await supabaseClient
+                  .from('offer_events')
+                  .insert(withoutAlertColumns(insertPayload))
+                  .select('id')
+                  .single()
+                inserted = retry.data
+                insertErr = retry.error
+              }
               if (!insertErr && inserted?.id) {
                 const { error: resolveErr } = await supabaseClient
                   .from('offer_ai_review_items')
@@ -224,7 +246,11 @@ export default function useOffersCalendarMutations({
       }
 
       if (editingId) {
-        const { error: e } = await supabaseClient.from('offer_events').update(payload).eq('id', editingId)
+        let { error: e } = await supabaseClient.from('offer_events').update(payload).eq('id', editingId)
+        if (e && isMissingAlertColumnsError(e)) {
+          const retry = await supabaseClient.from('offer_events').update(withoutAlertColumns(payload)).eq('id', editingId)
+          e = retry.error
+        }
         if (e) throw e
       } else {
         const { data: sessionData } = await supabaseClient.auth.getSession()
@@ -240,7 +266,12 @@ export default function useOffersCalendarMutations({
           source_type: pendingReviewId ? 'image_ai' : 'manual',
           source_image_path: pendingReviewId ? pendingImg : null
         }
-        const { data: inserted, error: e } = await supabaseClient.from('offer_events').insert(insertPayload).select('id').single()
+        let { data: inserted, error: e } = await supabaseClient.from('offer_events').insert(insertPayload).select('id').single()
+        if (e && isMissingAlertColumnsError(e)) {
+          const retry = await supabaseClient.from('offer_events').insert(withoutAlertColumns(insertPayload)).select('id').single()
+          inserted = retry.data
+          e = retry.error
+        }
         if (e) throw e
         if (pendingReviewId && inserted?.id) {
           const { error: revErr } = await supabaseClient

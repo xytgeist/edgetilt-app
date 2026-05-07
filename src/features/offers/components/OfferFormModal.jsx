@@ -454,7 +454,7 @@ export default function OfferFormModal({
     <div className="fixed inset-0 z-[70] flex bg-black/55 px-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[2px]">
       <div className="mx-auto flex w-full max-w-lg flex-1 items-end">
         <div
-          className="relative w-full overflow-hidden rounded-t-[36px] bg-[#1b1e25] shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
+          className="relative w-full overflow-hidden rounded-t-[36px] bg-[#181b22] shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
           style={{ height: 'calc(100dvh - (env(safe-area-inset-top) + 12px))' }}
         >
           {/* Transparent control layer above scroll content */}
@@ -489,10 +489,12 @@ export default function OfferFormModal({
 
           {/* Top blur veil to recreate iOS-style scroll-under blur */}
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-28 bg-black/5 backdrop-blur-xl"
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-20 bg-black/4 backdrop-blur-xl"
             style={{
-              WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.88) 58%, rgba(0,0,0,0) 100%)',
-              maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.88) 58%, rgba(0,0,0,0) 100%)'
+              WebkitMaskImage:
+                'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 18%, rgba(0,0,0,0.82) 42%, rgba(0,0,0,0.5) 62%, rgba(0,0,0,0) 78%)',
+              maskImage:
+                'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 18%, rgba(0,0,0,0.82) 42%, rgba(0,0,0,0.5) 62%, rgba(0,0,0,0) 78%)'
             }}
           />
 

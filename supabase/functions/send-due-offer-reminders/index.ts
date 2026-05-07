@@ -132,13 +132,23 @@ Deno.serve(async (req) => {
     const { data: alreadySentRows, error: sentErr } = candidateIds.length
       ? await admin
         .from('offer_notification_sends')
-        .select('event_id')
+        .select('event_id,created_at')
         .in('event_id', candidateIds)
         .eq('lead_minutes', ALERT_SCHEDULE_LEAD_KEY)
       : { data: [], error: null }
     if (sentErr) throw sentErr
-    const alreadySentIds = new Set((alreadySentRows || []).map((r) => r.event_id))
-    const unsentEvents = list.filter((ev) => !alreadySentIds.has(ev.id))
+    const lastSentAtByEventId = new Map(
+      (alreadySentRows || []).map((r) => [r.event_id, r.created_at || null])
+    )
+    // Re-send when an event was edited after the prior send (alert_fire_at moved later).
+    const unsentEvents = list.filter((ev) => {
+      const sentAt = lastSentAtByEventId.get(ev.id)
+      if (!sentAt) return true
+      const sentMs = new Date(sentAt).getTime()
+      const fireMs = new Date(ev.alert_fire_at || '').getTime()
+      if (!Number.isFinite(sentMs) || !Number.isFinite(fireMs)) return false
+      return sentMs < fireMs
+    })
 
     const grouped = new Map<string, typeof unsentEvents>()
     for (const ev of unsentEvents) {

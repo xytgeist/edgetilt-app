@@ -260,16 +260,6 @@ export default function useOffersCalendarMutations({
           e = retry.error
         }
         if (e) throw e
-        // Allow reminders to send again after event edits (e.g. changed time/date).
-        const { error: resetSendsErr } = await supabaseClient
-          .from('offer_notification_sends')
-          .delete()
-          .eq('event_id', editingId)
-          .eq('lead_minutes', 0)
-        if (resetSendsErr) {
-          // eslint-disable-next-line no-console
-          console.warn('Could not reset reminder send history for edited event:', resetSendsErr)
-        }
       } else {
         const { data: sessionData } = await supabaseClient.auth.getSession()
         const user = sessionData?.session?.user

@@ -132,6 +132,7 @@ export default function OfferFormModal({
     end: { hour: `${HOUR_MID}:1`, minute: `${MINUTE_MID}:00`, period: 'AM' }
   })
   const timePickerRecenterTimersRef = useRef({ start: null, end: null })
+  const timePickerApplyTimersRef = useRef({ start: null, end: null })
 
   const valueRaw = String(draft.valueAmount ?? '')
   const valueFormatted = useMemo(() => {
@@ -282,6 +283,11 @@ export default function OfferFormModal({
         window.clearTimeout(timers[field])
         timers[field] = null
       }
+      const applyTimers = timePickerApplyTimersRef.current
+      if (applyTimers?.[field]) {
+        window.clearTimeout(applyTimers[field])
+        applyTimers[field] = null
+      }
       const prevValue = timePickerValue[field]
       const [prevHourRepRaw, prevHourRaw] = String(prevValue.hour).split(':')
       const [, prevMinuteRaw] = String(prevValue.minute).split(':')
@@ -330,7 +336,11 @@ export default function OfferFormModal({
       if (!Number.isFinite(h) || !Number.isFinite(m)) return
       let h24 = h % 12
       if (period === 'PM') h24 += 12
-      applyTimeToField(field, h24, m)
+      // Debounce draft updates so the wheel can glide smoothly.
+      applyTimers[field] = window.setTimeout(() => {
+        applyTimeToField(field, h24, m)
+        applyTimers[field] = null
+      }, 160)
       const hourNearEdge = Number.isFinite(hourRep) && (hourRep < 2 || hourRep > HOUR_REPEAT - 3)
       const minuteNearEdge = Number.isFinite(minRep) && (minRep < 2 || minRep > MINUTE_REPEAT - 3)
       if (hourNearEdge || minuteNearEdge) {

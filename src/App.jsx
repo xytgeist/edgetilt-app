@@ -36,6 +36,9 @@ const btnSecondary = 'w-full min-h-12 text-base font-bold touch-manipulation act
 const linkBtn = 'w-full min-h-12 text-base text-gray-400 hover:text-white touch-manipulation py-3 text-center flex items-center justify-center active:scale-[0.99]'
 const OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX = 'offers_alert_default_preset_v1:'
 const OFFERS_DEFAULT_VIEW_KEY_PREFIX = 'offers_default_view_v1:'
+const OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX = 'offers_ios_alert_setup_ack_v1:'
+const OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX = 'offers_ios_alert_reminder_suppress_v1:'
+const OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX = 'offers_ios_pwa_notif_prompt_v1:'
 
 /**
  * When OAuth fails, Supabase redirects back with error / error_code in the query or hash (not the signInWithOAuth return value).
@@ -824,10 +827,14 @@ function AppShell({ onLogout, supabaseClient }) {
       title: '',
       message: '',
       images: [],
+      checkboxLabel: '',
+      checkboxChecked: false,
       confirmLabel: 'Continue',
       cancelLabel: 'Cancel'
     })
     const alertDialogResolverRef = useRef(null)
+    const alertDialogReturnCheckedRef = useRef(false)
+    const alertDialogCheckedRef = useRef(false)
 
     const {
       isSupported: pushSupported,
@@ -843,6 +850,12 @@ function AppShell({ onLogout, supabaseClient }) {
 
     const getAlertDefaultStorageKeyForUser = useCallback((userId) => `${OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX}${userId}`, [])
     const getOffersDefaultViewStorageKeyForUser = useCallback((userId) => `${OFFERS_DEFAULT_VIEW_KEY_PREFIX}${userId}`, [])
+    const getIosAlertSetupSeenStorageKeyForUser = useCallback((userId) => `${OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX}${userId}`, [])
+    const getIosAlertReminderSuppressStorageKeyForUser = useCallback(
+      (userId) => `${OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX}${userId}`,
+      []
+    )
+    const getIosPwaNotifPromptStorageKeyForUser = useCallback((userId) => `${OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX}${userId}`, [])
 
     const setStoredAlertDefaultForCurrentUser = useCallback(
       async (nextPreset) => {
@@ -1071,21 +1084,32 @@ function AppShell({ onLogout, supabaseClient }) {
 
     const closeAlertDialog = useCallback((result) => {
       const resolver = alertDialogResolverRef.current
+      const returnChecked = alertDialogReturnCheckedRef.current === true
+      const checked = alertDialogCheckedRef.current === true
       alertDialogResolverRef.current = null
+      alertDialogReturnCheckedRef.current = false
+      alertDialogCheckedRef.current = false
       setAlertDialogState((cur) => ({ ...cur, open: false }))
-      if (resolver) resolver(result)
+      if (resolver) {
+        if (returnChecked) resolver({ confirmed: result === true, checked })
+        else resolver(result)
+      }
     }, [])
 
     const showAlertDialog = useCallback(
       (config) =>
         new Promise((resolve) => {
           alertDialogResolverRef.current = resolve
+          alertDialogReturnCheckedRef.current = config.returnChecked === true
+          alertDialogCheckedRef.current = config.checkboxDefaultChecked === true
           setAlertDialogState({
             open: true,
             mode: config.mode || 'confirm',
             title: config.title || '',
             message: config.message || '',
             images: Array.isArray(config.images) ? config.images : [],
+            checkboxLabel: config.checkboxLabel || '',
+            checkboxChecked: config.checkboxDefaultChecked === true,
             confirmLabel: config.confirmLabel || 'Continue',
             cancelLabel: config.cancelLabel || 'Cancel'
           })
@@ -1100,9 +1124,18 @@ function AppShell({ onLogout, supabaseClient }) {
     )
 
     const showAppInfo = useCallback(
-      async ({ title, message, images = [], confirmLabel = 'OK' }) => {
-        await showAlertDialog({ mode: 'info', title, message, images, confirmLabel, cancelLabel: '' })
-      },
+      async ({ title, message, images = [], confirmLabel = 'OK', checkboxLabel = '', checkboxDefaultChecked = false, returnChecked = false }) =>
+        await showAlertDialog({
+          mode: 'info',
+          title,
+          message,
+          images,
+          confirmLabel,
+          checkboxLabel,
+          checkboxDefaultChecked,
+          returnChecked,
+          cancelLabel: ''
+        }),
       [showAlertDialog]
     )
 
@@ -1116,6 +1149,57 @@ function AppShell({ onLogout, supabaseClient }) {
       []
     )
 
+    const iosPwaPromptShownRef = useRef(false)
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+      if (!isIosDevice || !isStandaloneMode) return
+      if (pushSubscribed || pushPermission === 'denied' || iosPwaPromptShownRef.current) return
+      let cancelled = false
+      ;(async () => {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        const userId = session?.user?.id
+        if (!userId || cancelled) return
+        const key = getIosPwaNotifPromptStorageKeyForUser(userId)
+        let alreadyPrompted = false
+        try {
+          alreadyPrompted = window.localStorage.getItem(key) === '1'
+        } catch {
+          alreadyPrompted = false
+        }
+        if (alreadyPrompted) return
+        iosPwaPromptShownRef.current = true
+        const shouldEnable = await showAppConfirm({
+          title: 'Enable Notifications',
+          message: '',
+          confirmLabel: 'Enable',
+          cancelLabel: 'Not now'
+        })
+        if (cancelled) return
+        try {
+          window.localStorage.setItem(key, '1')
+        } catch {
+          // ignore storage failures
+        }
+        if (shouldEnable) {
+          await enablePush()
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    }, [
+      enablePush,
+      getIosPwaNotifPromptStorageKeyForUser,
+      isIosDevice,
+      isStandaloneMode,
+      pushPermission,
+      pushSubscribed,
+      showAppConfirm,
+      supabaseClient
+    ])
+
     const maybeResolveAlertPresetWithPrompt = useCallback(
       async (alertPreset) => {
         if (alertPreset === OFFER_ALERT_NONE || pushSubscribed) return alertPreset
@@ -1126,39 +1210,76 @@ function AppShell({ onLogout, supabaseClient }) {
         }
 
         if (iosInstallRequired) {
-          const proceed = await showAppConfirm({
-            title: 'Enable Alerts on iPhone',
-            message:
-              'Alerts are enabled for this event. On iPhone, notifications only work from the Home Screen app.\n\nContinue to keep this event alert and view setup steps.\nCancel to set Alert to None and make future new-event alerts default to None.',
-            confirmLabel: 'Continue',
-            cancelLabel: 'Set to None'
-          })
-          if (!proceed) {
-            await setDefaultNone()
-            return OFFER_ALERT_NONE
+          const {
+            data: { session },
+          } = await supabaseClient.auth.getSession()
+          const userId = session?.user?.id
+          const metadata = session?.user?.user_metadata || {}
+          const seenStorageKey = userId ? getIosAlertSetupSeenStorageKeyForUser(userId) : ''
+          const suppressStorageKey = userId ? getIosAlertReminderSuppressStorageKeyForUser(userId) : ''
+          let setupSeen = metadata.offers_ios_alert_setup_seen === true
+          let reminderSuppress = metadata.offers_ios_alert_reminder_suppress === true
+          if (userId && typeof window !== 'undefined') {
+            try {
+              if (!setupSeen) setupSeen = window.localStorage.getItem(seenStorageKey) === '1'
+              if (!reminderSuppress) reminderSuppress = window.localStorage.getItem(suppressStorageKey) === '1'
+            } catch {
+              // ignore storage read failures (private mode/restricted storage)
+            }
           }
-          await showAppInfo({
-            title: 'iPhone Setup',
-            message: isSafariBrowser
-              ? 'To enable alerts on iPhone:\n1) Tap Share -> Add to Home Screen\n2) Open app from Home Screen icon\n3) Tap "Turn on alerts on this device"\n\nThen save your event.'
-              : 'To enable alerts on iPhone:\n1) Open this site in Safari\n2) In Safari, tap Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Tap "Turn on alerts on this device"\n\nThen save your event.',
-            images: [
-              { src: '/onboarding/ios-step-1-menu-button.png', alt: 'Step 1: tap browser menu button', caption: 'Step 1: Open browser menu' },
-              { src: '/onboarding/ios-step-2-share-button.png', alt: 'Step 2: tap Share', caption: 'Step 2: Tap Share' },
-              { src: '/onboarding/ios-step-3-add-home-screen.png', alt: 'Step 3: tap Add to Home Screen', caption: 'Step 3: Add to Home Screen' }
-            ],
-            confirmLabel: 'Got it'
+
+          const persistFlags = (nextSeen, nextSuppress = reminderSuppress) => {
+            if (!userId) return
+            if (typeof window !== 'undefined') {
+              try {
+                if (nextSeen) window.localStorage.setItem(seenStorageKey, '1')
+                if (nextSuppress) window.localStorage.setItem(suppressStorageKey, '1')
+              } catch {
+                // ignore storage write failures
+              }
+            }
+            const nextMetadata = {
+              ...metadata,
+              offers_ios_alert_setup_seen: nextSeen,
+              offers_ios_alert_reminder_suppress: nextSuppress
+            }
+            void supabaseClient.auth.updateUser({ data: nextMetadata })
+          }
+
+          if (!setupSeen) {
+            await showAppInfo({
+              title: 'Enable Notifications on iPhone',
+              message: isSafariBrowser
+                ? "On iPhone, alert notifications only work from the Home Screen app. Don't blame me, blame Apple. 🤷‍♂️\n\nTo enable alerts:\n1) Tap Share -> Add to Home Screen\n2) Open app from Home Screen icon\n3) Allow Notifications"
+                : "On iPhone, alert notifications only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Slot Pro in SAFARI (blame Apple 🤷‍♂️)\n2) Tap Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Allow Notifications",
+              images: [{ src: '/onboarding/ios-setup.gif', alt: 'iPhone Home Screen setup steps', caption: '' }],
+              confirmLabel: 'Got it'
+            })
+            persistFlags(true, reminderSuppress)
+            return alertPreset
+          }
+
+          if (reminderSuppress) return alertPreset
+
+          const infoResult = await showAppInfo({
+            title: 'Remember...',
+            message: "We'll save your event and alert, but you won't receive the alerts until you add the app to Home Screen!",
+            images: [{ src: '/onboarding/ios-setup.gif', alt: 'iPhone Home Screen setup steps', caption: '' }],
+            confirmLabel: 'Got it',
+            checkboxLabel: 'No more reminders',
+            checkboxDefaultChecked: false,
+            returnChecked: true
           })
-          await setDefaultNone()
-          return OFFER_ALERT_NONE
+          const checked = infoResult?.checked === true
+          if (checked) persistFlags(true, true)
+          return alertPreset
         }
 
         const shouldEnable = await showAppConfirm({
           title: 'Enable Notifications',
-          message:
-            'This event has an alert. Enable notifications on this device now?\n\nContinue to request permission.\nCancel to set Alert to None and make future new-event alerts default to None.',
+          message: '',
           confirmLabel: 'Enable',
-          cancelLabel: 'Set to None'
+          cancelLabel: 'Cancel'
         })
         if (!shouldEnable) {
           await setDefaultNone()
@@ -1171,24 +1292,40 @@ function AppShell({ onLogout, supabaseClient }) {
         }
         return alertPreset
       },
-      [enablePush, iosInstallRequired, isSafariBrowser, pushSubscribed, setStoredAlertDefaultForCurrentUser, showAppConfirm, showAppInfo]
+      [
+        enablePush,
+        getIosAlertReminderSuppressStorageKeyForUser,
+        getIosAlertSetupSeenStorageKeyForUser,
+        iosInstallRequired,
+        isSafariBrowser,
+        pushSubscribed,
+        setStoredAlertDefaultForCurrentUser,
+        showAppConfirm,
+        showAppInfo,
+        supabaseClient
+      ]
     )
 
     const handleAlertPresetSelection = useCallback(
       async (nextPreset, ctx = {}) => {
         const isEditing = ctx?.editingId === true
         if (isEditing || nextPreset === OFFER_ALERT_NONE || pushSubscribed) return nextPreset
+        if (iosInstallRequired) return nextPreset
         setAlertPromptHandledForCurrentForm(true)
         return maybeResolveAlertPresetWithPrompt(nextPreset)
       },
-      [maybeResolveAlertPresetWithPrompt, pushSubscribed]
+      [iosInstallRequired, maybeResolveAlertPresetWithPrompt, pushSubscribed]
     )
 
     const resolveAlertPresetBeforeSave = useCallback(
       async (alertPreset, { editingId }) => {
         if (editingId || alertPreset === OFFER_ALERT_NONE || pushSubscribed) return alertPreset
         if (alertPromptHandledForCurrentForm) return alertPreset
-        return maybeResolveAlertPresetWithPrompt(alertPreset)
+        try {
+          return await maybeResolveAlertPresetWithPrompt(alertPreset)
+        } catch {
+          return alertPreset
+        }
       },
       [alertPromptHandledForCurrentForm, maybeResolveAlertPresetWithPrompt, pushSubscribed]
     )
@@ -2337,6 +2474,21 @@ function AppShell({ onLogout, supabaseClient }) {
                     </div>
                   ))}
                 </div>
+              ) : null}
+              {alertDialogState.checkboxLabel ? (
+                <label className="mt-3 flex items-center gap-2 text-[12px] text-zinc-200">
+                  <input
+                    type="checkbox"
+                    checked={alertDialogState.checkboxChecked === true}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      alertDialogCheckedRef.current = checked
+                      setAlertDialogState((cur) => ({ ...cur, checkboxChecked: checked }))
+                    }}
+                    className="h-4 w-4 rounded border-zinc-500 bg-zinc-800 text-cyan-500 focus:ring-cyan-400"
+                  />
+                  <span>{alertDialogState.checkboxLabel}</span>
+                </label>
               ) : null}
               <div className="mt-4 flex gap-2">
                 {alertDialogState.mode === 'confirm' ? (

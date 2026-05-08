@@ -2909,7 +2909,7 @@ function AppShell({ onLogout, supabaseClient }) {
 
       {globalConfirmState.open ? (
         <div
-          className="fixed inset-0 z-[95] flex items-end justify-center bg-black/60 p-4 sm:items-center"
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4"
           onClick={() => closeGlobalConfirm(false)}
         >
           <div

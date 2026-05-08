@@ -1215,14 +1215,15 @@ function AppShell({ onLogout, supabaseClient }) {
             data: { session },
           } = await supabaseClient.auth.getSession()
           const userId = session?.user?.id
+          const metadata = session?.user?.user_metadata || {}
           const seenStorageKey = userId ? getIosAlertSetupSeenStorageKeyForUser(userId) : ''
           const suppressStorageKey = userId ? getIosAlertReminderSuppressStorageKeyForUser(userId) : ''
-          let setupSeen = false
-          let reminderSuppress = false
+          let setupSeen = metadata.offers_ios_alert_setup_seen === true
+          let reminderSuppress = metadata.offers_ios_alert_reminder_suppress === true
           if (userId && typeof window !== 'undefined') {
             try {
-              setupSeen = window.localStorage.getItem(seenStorageKey) === '1'
-              reminderSuppress = window.localStorage.getItem(suppressStorageKey) === '1'
+              if (!setupSeen) setupSeen = window.localStorage.getItem(seenStorageKey) === '1'
+              if (!reminderSuppress) reminderSuppress = window.localStorage.getItem(suppressStorageKey) === '1'
             } catch {
               // ignore storage read failures (private mode/restricted storage)
             }

@@ -215,6 +215,7 @@ export default function useOffersCalendarMutations({
   ])
 
   const saveEvent = useCallback(async () => {
+    let saveCompleted = false
     setSaving(true)
     setError('')
     try {
@@ -296,13 +297,13 @@ export default function useOffersCalendarMutations({
           }
         }
       }
+      saveCompleted = true
       if (!editingId && !pendingReviewId) {
         const focusDate = new Date(normalizedStart.getFullYear(), normalizedStart.getMonth(), normalizedStart.getDate())
         setCursorMonth(new Date(focusDate.getFullYear(), focusDate.getMonth(), 1))
         setWeekAnchor(focusDate)
         setSelectedDays([])
       }
-      closeForm()
       await loadEvents()
       await loadReviewQueue()
     } catch (e) {
@@ -322,6 +323,13 @@ export default function useOffersCalendarMutations({
       if (e?.hint) parts.push(`hint: ${e.hint}`)
       setError(parts.join('\n') || 'Failed to save offer.')
     } finally {
+      if (saveCompleted) {
+        try {
+          closeForm()
+        } catch {
+          // Never allow close-flow errors to keep the form open after a successful save.
+        }
+      }
       setSaving(false)
     }
   }, [

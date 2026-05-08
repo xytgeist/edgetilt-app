@@ -116,6 +116,36 @@ function AppShell({ onLogout, supabaseClient }) {
   const [communityPosts, setCommunityPosts] = useState([])
   const [communityFeedLoading, setCommunityFeedLoading] = useState(false)
   const iosPwaGlobalPromptShownRef = useRef(false)
+  const [globalConfirmState, setGlobalConfirmState] = useState({
+    open: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Continue',
+    cancelLabel: 'Cancel'
+  })
+  const globalConfirmResolverRef = useRef(null)
+
+  const closeGlobalConfirm = useCallback((result) => {
+    const resolver = globalConfirmResolverRef.current
+    globalConfirmResolverRef.current = null
+    setGlobalConfirmState((cur) => ({ ...cur, open: false }))
+    if (resolver) resolver(result === true)
+  }, [])
+
+  const showGlobalConfirm = useCallback(
+    ({ title, message = '', confirmLabel = 'Continue', cancelLabel = 'Cancel' }) =>
+      new Promise((resolve) => {
+        globalConfirmResolverRef.current = resolve
+        setGlobalConfirmState({
+          open: true,
+          title,
+          message,
+          confirmLabel,
+          cancelLabel
+        })
+      }),
+    []
+  )
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -142,7 +172,12 @@ function AppShell({ onLogout, supabaseClient }) {
       }
       if (alreadyPrompted) return
       iosPwaGlobalPromptShownRef.current = true
-      const shouldEnable = window.confirm('Enable Notifications\n\nAllow notifications for this Home Screen app now?')
+      const shouldEnable = await showGlobalConfirm({
+        title: 'Enable Notifications',
+        message: 'Allow notifications for this Home Screen app now?',
+        confirmLabel: 'Enable',
+        cancelLabel: 'Not now'
+      })
       if (cancelled) return
       try {
         window.localStorage.setItem(promptKey, '1')
@@ -166,7 +201,7 @@ function AppShell({ onLogout, supabaseClient }) {
     return () => {
       cancelled = true
     }
-  }, [supabaseClient])
+  }, [showGlobalConfirm, supabaseClient])
 
   const loadCommunityFeed = useCallback(async () => {
     setCommunityFeedLoading(true)
@@ -2871,6 +2906,39 @@ function AppShell({ onLogout, supabaseClient }) {
   return (
     <div className="min-h-dvh bg-gray-950">
       {renderTabContent()}
+
+      {globalConfirmState.open ? (
+        <div
+          className="fixed inset-0 z-[95] flex items-end justify-center bg-black/60 p-4 sm:items-center"
+          onClick={() => closeGlobalConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-zinc-700 bg-zinc-900 p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[17px] font-semibold text-zinc-100">{globalConfirmState.title}</div>
+            {globalConfirmState.message ? (
+              <div className="mt-2 whitespace-pre-line text-[14px] leading-relaxed text-zinc-300">{globalConfirmState.message}</div>
+            ) : null}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => closeGlobalConfirm(false)}
+                className="min-h-11 flex-1 rounded-xl border border-zinc-600 bg-zinc-800 px-3 text-sm font-semibold text-zinc-200 touch-manipulation"
+              >
+                {globalConfirmState.cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => closeGlobalConfirm(true)}
+                className="min-h-11 flex-1 rounded-xl border border-cyan-400/45 bg-cyan-600 px-3 text-sm font-semibold text-white touch-manipulation"
+              >
+                {globalConfirmState.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {menuOpen && (
         <button

@@ -1237,6 +1237,20 @@ function AppShell({ onLogout, supabaseClient }) {
                 // ignore storage write failures
               }
             }
+            // Persist to Supabase in the background without blocking save flow.
+            const currentMetadata = session?.user?.user_metadata || {}
+            const nextMetadata = {
+              ...currentMetadata,
+              offers_ios_alert_setup_seen: nextSeen,
+              offers_ios_alert_reminder_suppress: nextSuppress
+            }
+            void (async () => {
+              try {
+                await supabaseClient.auth.updateUser({ data: nextMetadata })
+              } catch {
+                // Ignore metadata write failures; local fallback still keeps flow functional.
+              }
+            })()
           }
 
           if (!setupSeen) {

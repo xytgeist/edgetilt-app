@@ -40,6 +40,7 @@ const OFFERS_DELETE_CONFIRM_SKIP_KEY_PREFIX = 'offers_delete_confirm_skip_v1:'
 const OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX = 'offers_ios_alert_setup_ack_v1:'
 const OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX = 'offers_ios_alert_reminder_suppress_v1:'
 const OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX = 'offers_ios_pwa_notif_prompt_v1:'
+const OFFERS_IOS_PWA_ENABLE_PENDING_KEY_PREFIX = 'offers_ios_pwa_enable_pending_v1:'
 
 /**
  * When OAuth fails, Supabase redirects back with error / error_code in the query or hash (not the signInWithOAuth return value).
@@ -114,6 +115,58 @@ function AppShell({ onLogout, supabaseClient }) {
   const [intelView, setIntelView] = useState({ screen: 'home', cityId: null, casinoId: null })
   const [communityPosts, setCommunityPosts] = useState([])
   const [communityFeedLoading, setCommunityFeedLoading] = useState(false)
+  const iosPwaGlobalPromptShownRef = useRef(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ua = window.navigator.userAgent || ''
+    const isIos = /iPhone|iPad|iPod/i.test(ua)
+    const standaloneViaMedia = window.matchMedia?.('(display-mode: standalone)')?.matches === true
+    const standaloneViaNavigator = window.navigator.standalone === true
+    const isStandalone = standaloneViaMedia || standaloneViaNavigator
+    if (!isIos || !isStandalone || iosPwaGlobalPromptShownRef.current) return
+    let cancelled = false
+    ;(async () => {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession()
+      const userId = session?.user?.id
+      if (!userId || cancelled) return
+      const promptKey = `${OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX}${userId}`
+      const pendingEnableKey = `${OFFERS_IOS_PWA_ENABLE_PENDING_KEY_PREFIX}${userId}`
+      let alreadyPrompted = false
+      try {
+        alreadyPrompted = window.localStorage.getItem(promptKey) === '1'
+      } catch {
+        alreadyPrompted = false
+      }
+      if (alreadyPrompted) return
+      iosPwaGlobalPromptShownRef.current = true
+      const shouldEnable = window.confirm('Enable Notifications\n\nAllow notifications for this Home Screen app now?')
+      if (cancelled) return
+      try {
+        window.localStorage.setItem(promptKey, '1')
+      } catch {
+        // Ignore local storage failures.
+      }
+      if (!shouldEnable) return
+      try {
+        const permission = await window.Notification?.requestPermission?.()
+        if (permission === 'granted') {
+          try {
+            window.localStorage.setItem(pendingEnableKey, '1')
+          } catch {
+            // Ignore local storage failures.
+          }
+        }
+      } catch {
+        // Ignore prompt errors; user can still enable later.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient])
 
   const loadCommunityFeed = useCallback(async () => {
     setCommunityFeedLoading(true)
@@ -1152,11 +1205,10 @@ function AppShell({ onLogout, supabaseClient }) {
       []
     )
 
-    const iosPwaPromptShownRef = useRef(false)
     useEffect(() => {
       if (typeof window === 'undefined') return
       if (!isIosDevice || !isStandaloneMode) return
-      if (pushSubscribed || pushPermission === 'denied' || iosPwaPromptShownRef.current) return
+      if (pushSubscribed || pushPermission === 'denied') return
       let cancelled = false
       ;(async () => {
         const {
@@ -1165,6 +1217,22 @@ function AppShell({ onLogout, supabaseClient }) {
         const userId = session?.user?.id
         if (!userId || cancelled) return
         const key = getIosPwaNotifPromptStorageKeyForUser(userId)
+        const pendingEnableKey = `${OFFERS_IOS_PWA_ENABLE_PENDING_KEY_PREFIX}${userId}`
+        let shouldAutoEnable = false
+        try {
+          shouldAutoEnable = window.localStorage.getItem(pendingEnableKey) === '1'
+        } catch {
+          shouldAutoEnable = false
+        }
+        if (shouldAutoEnable) {
+          await enablePush()
+          try {
+            window.localStorage.removeItem(pendingEnableKey)
+          } catch {
+            // Ignore local storage failures.
+          }
+          return
+        }
         let alreadyPrompted = false
         try {
           alreadyPrompted = window.localStorage.getItem(key) === '1'
@@ -1172,7 +1240,6 @@ function AppShell({ onLogout, supabaseClient }) {
           alreadyPrompted = false
         }
         if (alreadyPrompted) return
-        iosPwaPromptShownRef.current = true
         const shouldEnable = await showAppConfirm({
           title: 'Enable Notifications',
           message: '',

@@ -835,6 +835,7 @@ function AppShell({ onLogout, supabaseClient }) {
     const alertDialogResolverRef = useRef(null)
     const alertDialogReturnCheckedRef = useRef(false)
     const alertDialogCheckedRef = useRef(false)
+    const pendingIosMetadataSyncRef = useRef(null)
 
     const {
       isSupported: pushSupported,
@@ -1237,6 +1238,11 @@ function AppShell({ onLogout, supabaseClient }) {
                 // ignore storage write failures
               }
             }
+            pendingIosMetadataSyncRef.current = {
+              userId,
+              setupSeen: nextSeen,
+              reminderSuppress: nextSuppress
+            }
           }
 
           if (!setupSeen) {
@@ -1533,7 +1539,26 @@ function AppShell({ onLogout, supabaseClient }) {
         loadEvents,
         loadReviewQueue,
         refreshImportResults,
-        resolveAlertPresetBeforeSave
+        resolveAlertPresetBeforeSave,
+        onAfterSuccessfulSave: async () => {
+          const pending = pendingIosMetadataSyncRef.current
+          if (!pending) return
+          try {
+            const {
+              data: { session },
+            } = await supabaseClient.auth.getSession()
+            if (!session?.user || session.user.id !== pending.userId) return
+            const nextMetadata = {
+              ...(session.user.user_metadata || {}),
+              offers_ios_alert_setup_seen: pending.setupSeen === true,
+              offers_ios_alert_reminder_suppress: pending.reminderSuppress === true
+            }
+            await supabaseClient.auth.updateUser({ data: nextMetadata })
+            pendingIosMetadataSyncRef.current = null
+          } catch {
+            // Keep pending value for a future successful save attempt.
+          }
+        }
       }
     })
 

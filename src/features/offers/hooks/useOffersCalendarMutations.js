@@ -51,7 +51,7 @@ export default function useOffersCalendarMutations({
     setUploading,
     setActiveImportBatchId
   } = setters
-  const { closeForm, loadEvents, loadReviewQueue, refreshImportResults, resolveAlertPresetBeforeSave } = actions
+  const { closeForm, loadEvents, loadReviewQueue, refreshImportResults, resolveAlertPresetBeforeSave, onAfterSuccessfulSave } = actions
 
   const applyCurrentFieldsToAssociatedReviewItems = useCallback(async () => {
     if (!completingReviewUploadId || !completingReviewItemId) return
@@ -306,6 +306,9 @@ export default function useOffersCalendarMutations({
       }
       await loadEvents()
       await loadReviewQueue()
+      if (typeof onAfterSuccessfulSave === 'function') {
+        void onAfterSuccessfulSave()
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('saveEvent error:', e)
@@ -353,7 +356,8 @@ export default function useOffersCalendarMutations({
     closeForm,
     loadEvents,
     loadReviewQueue,
-    resolveAlertPresetBeforeSave
+    resolveAlertPresetBeforeSave,
+    onAfterSuccessfulSave
   ])
 
   const handleImportPhotos = useCallback(

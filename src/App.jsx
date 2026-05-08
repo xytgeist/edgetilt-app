@@ -1256,6 +1256,7 @@ function AppShell({ onLogout, supabaseClient }) {
               confirmLabel: 'Got it'
             })
             persistFlags(true, reminderSuppress)
+            closeForm()
             return alertPreset
           }
 
@@ -1272,6 +1273,7 @@ function AppShell({ onLogout, supabaseClient }) {
           })
           const checked = infoResult?.checked === true
           if (checked) persistFlags(true, true)
+          closeForm()
           return alertPreset
         }
 
@@ -1300,6 +1302,7 @@ function AppShell({ onLogout, supabaseClient }) {
         isSafariBrowser,
         pushSubscribed,
         setStoredAlertDefaultForCurrentUser,
+        closeForm,
         showAppConfirm,
         showAppInfo,
         supabaseClient

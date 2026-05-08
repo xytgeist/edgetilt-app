@@ -48,7 +48,11 @@ function readPersistedFormDraft() {
 
 function clearPersistedFormDraft() {
   if (typeof window === 'undefined') return
-  window.localStorage.removeItem(OFFERS_FORM_DRAFT_STORAGE_KEY)
+  try {
+    window.localStorage.removeItem(OFFERS_FORM_DRAFT_STORAGE_KEY)
+  } catch {
+    // Safari private mode / restricted storage can throw; never block close flow.
+  }
 }
 
 export default function useOffersCalendarState({
@@ -210,9 +214,17 @@ export default function useOffersCalendarState({
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (activeImportBatchId) {
-      window.localStorage.setItem('offers_active_import_batch_id', activeImportBatchId)
+      try {
+        window.localStorage.setItem('offers_active_import_batch_id', activeImportBatchId)
+      } catch {
+        // Ignore storage failures in restricted/private environments.
+      }
     } else {
-      window.localStorage.removeItem('offers_active_import_batch_id')
+      try {
+        window.localStorage.removeItem('offers_active_import_batch_id')
+      } catch {
+        // Ignore storage failures in restricted/private environments.
+      }
     }
   }, [activeImportBatchId])
 
@@ -226,7 +238,11 @@ export default function useOffersCalendarState({
         allDay,
         draft
       }
-      window.localStorage.setItem(OFFERS_FORM_DRAFT_STORAGE_KEY, JSON.stringify(payload))
+      try {
+        window.localStorage.setItem(OFFERS_FORM_DRAFT_STORAGE_KEY, JSON.stringify(payload))
+      } catch {
+        // Ignore storage failures in restricted/private environments.
+      }
       return
     }
     clearPersistedFormDraft()

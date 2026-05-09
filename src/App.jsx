@@ -1094,6 +1094,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const openLoungePostDetail = useCallback((post) => {
       if (!post?.id) return
       loungePostDetailClosingIntentionalRef.current = false
+      /** Same post already showing — avoids replaying the slide-out/in (often triggered by a stray tap on the row after save / keyboard on mobile). */
+      if (loungePostDetail?.id === post.id && loungePostDetailVisible) {
+        setLoungePostDetailMenuOpen(false)
+        setLoungePostDeleteConfirmOpen(false)
+        return
+      }
       setLoungeManageErr('')
       setLoungeDetailEditing(false)
       setLoungeDetailDraftCaption('')
@@ -1114,7 +1120,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setLoungePostDetailVisible(true))
       })
-    }, [])
+    }, [loungePostDetail?.id, loungePostDetailVisible])
 
     const onLoungePostDetailPanelTransitionEnd = useCallback(
       (e) => {

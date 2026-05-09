@@ -594,7 +594,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return dt.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' })
     }, [])
 
-    const actionIconClass = 'h-[18px] w-[18px] text-zinc-500'
+    const actionIconClass = 'h-[20px] w-[20px] text-zinc-500'
 
     const interactionStateFor = useCallback(
       (postId) => interactionByPost[postId] || { commented: false, reposted: false, liked: false },
@@ -911,16 +911,16 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         <div className="z-20 shrink-0 border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
           <div className="px-3 py-2.5 flex items-center justify-between gap-3">
             <div>
-              <div className="text-white text-[22px] font-black tracking-tight">Lounge</div>
-              <div className="text-zinc-500 text-[12px]">Latest</div>
+              <div className="text-white text-[24px] font-black tracking-tight">Lounge</div>
+              <div className="text-zinc-500 text-[13px]">Latest</div>
             </div>
-            <div className="text-zinc-600 text-[12px]">{communityFeedLoading ? 'Updating…' : ''}</div>
+            <div className="text-zinc-600 text-[13px]">{communityFeedLoading ? 'Updating…' : ''}</div>
           </div>
         </div>
 
-        <div className="shrink-0 border-b border-zinc-800 bg-zinc-950/65 px-3 py-3">
-          <div className="flex items-start gap-3.5">
-            <div className="mt-0.5 flex w-12 shrink-0 justify-center">
+        <div className="shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 py-3">
+          <div className="flex items-start gap-4">
+            <div className="mt-0.5 flex w-[3.3rem] shrink-0 justify-center">
               <button
                 type="button"
                 onClick={() =>
@@ -931,7 +931,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                       })
                     : null
                 }
-                className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900 text-[15px] font-bold text-zinc-200"
+                className="flex h-[3.3rem] w-[3.3rem] shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900 text-[17px] font-bold text-zinc-200"
                 title="Open your profile"
                 aria-label="Open your profile"
               >
@@ -965,12 +965,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     ref={composerTextareaRef}
                     value={postText}
                     onChange={(e) => setPostText(e.target.value)}
-                    className="w-full min-h-20 resize-none touch-manipulation bg-transparent text-[18px] leading-snug text-white outline-none placeholder:text-[18px] placeholder:text-zinc-500"
+                    className="w-full min-h-20 resize-none touch-manipulation bg-transparent text-[20px] leading-snug text-white outline-none placeholder:text-[20px] placeholder:text-zinc-500"
                     placeholder="Are you winning, son?"
                     maxLength={280}
                   />
                   {postErr ? (
-                    <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[18px] leading-relaxed text-rose-200">
+                    <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[20px] leading-relaxed text-rose-200">
                       {postErr}
                     </div>
                   ) : null}
@@ -979,7 +979,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 <button
                   type="button"
                   onClick={() => setComposerExpanded(true)}
-                  className="min-h-11 w-full touch-manipulation text-left text-[18px] text-zinc-500"
+                  className="min-h-12 w-full touch-manipulation text-left text-[20px] text-zinc-500"
                 >
                   Are you winning, son?
                 </button>
@@ -1010,16 +1010,16 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   setPostErr('Unsupported media type. Please choose an image or video file.')
                 }}
               />
-              <div className="mt-2 flex items-center gap-3.5">
-              <div className="mt-0.5 flex w-12 shrink-0 items-center justify-center">
+              <div className="mt-2 flex items-center gap-4">
+              <div className="mt-0.5 flex w-[3.3rem] shrink-0 items-center justify-center">
                 <button
                   type="button"
                   onClick={() => composerMediaInputRef.current?.click()}
-                  className="min-h-10 min-w-10 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-zinc-300 hover:text-zinc-100"
+                  className="min-h-11 min-w-11 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-zinc-300 hover:text-zinc-100"
                   title="Add media"
                   aria-label="Add media"
                 >
-                  <svg className="h-[18px] w-[18px]" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <svg className="h-[20px] w-[20px]" viewBox="0 0 20 20" fill="none" aria-hidden>
                     <path d="M4.75 4.75h10.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H4.75a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M7 9.25l1.75 1.75 3.25-3.25 2.5 2.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                     <circle cx="7" cy="7.25" r=".9" fill="currentColor" />
@@ -1029,17 +1029,17 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                 <div className="min-w-0 flex-1 pr-2">
                   {composerMediaFile ? (
-                    <span className="block truncate text-[18px] text-zinc-400">
+                    <span className="block truncate text-[20px] text-zinc-400">
                       {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
                     </span>
                   ) : null}
                 </div>
                 <div className="inline-flex shrink-0 items-center gap-2">
-                  <span className="text-[18px] tabular-nums text-zinc-500">{postText.length}/280</span>
+                  <span className="text-[20px] tabular-nums text-zinc-500">{postText.length}/280</span>
                   <button
                     type="button"
                     onClick={() => setComposerExpanded(false)}
-                    className="min-h-11 touch-manipulation rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-[18px] font-semibold text-zinc-300"
+                    className="min-h-12 touch-manipulation rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-[20px] font-semibold text-zinc-300"
                   >
                     Cancel
                   </button>
@@ -1047,7 +1047,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     type="button"
                     onClick={() => void submitLoungePost()}
                     disabled={postBusy}
-                    className="min-h-11 touch-manipulation rounded-lg bg-cyan-600 px-4 text-[18px] font-bold text-white disabled:opacity-60"
+                    className="min-h-12 touch-manipulation rounded-lg bg-cyan-600 px-4 text-[20px] font-bold text-white disabled:opacity-60"
                   >
                     {postBusy ? 'Posting…' : 'Post'}
                   </button>
@@ -1064,9 +1064,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         >
           <div
             className="overflow-hidden transition-[max-height,opacity] duration-200"
-            style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
+            style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2.25rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
           >
-            <div className="px-3 py-1 text-center text-[12px] text-zinc-400">
+            <div className="px-3 py-1 text-center text-[13px] text-zinc-400">
               {pullRefreshing
                 ? 'Refreshing lounge…'
                 : pullDistance >= pullRefreshThresholdPx
@@ -1076,9 +1076,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           </div>
           <div className="border-b border-zinc-800 pb-4">
           {communityFeedLoading ? (
-            <div className="px-3 py-4 text-zinc-400 text-[15px]">Loading lounge…</div>
+            <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>
           ) : communityPosts.length === 0 ? (
-            <div className="px-3 py-5 text-zinc-400 text-[15px] leading-relaxed">
+            <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
               No posts yet. Run{' '}
               <code className="text-fuchsia-200/90">supabase/feed_phase_a_profiles_public_read.sql</code> in Supabase,
               then post from Guides → Ask community.
@@ -1086,7 +1086,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           ) : (
             <>
               {communityPosts.map((post) => (
-                <article key={post.id} className="border-t border-zinc-800 px-3 py-3.5 bg-zinc-950/35">
+                <article key={post.id} className="border-t border-zinc-800 px-3 py-4 bg-zinc-950/35">
                   {(() => {
                     const ui = interactionStateFor(post.id)
                     const isBookmarked = !!bookmarkedByPost[post.id]
@@ -1099,11 +1099,11 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     const likeClass = ui.liked ? 'text-rose-400' : 'text-zinc-500'
                     const bookmarkClass = isBookmarked ? 'text-amber-300' : 'text-zinc-500'
                     return (
-                  <div className="flex gap-3.5">
+                  <div className="flex gap-4">
                     <button
                       type="button"
                       onClick={() => void openProfileModal(post)}
-                      className="h-12 w-12 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-[15px] font-bold flex items-center justify-center overflow-hidden"
+                      className="h-[3.3rem] w-[3.3rem] shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-[17px] font-bold flex items-center justify-center overflow-hidden"
                     >
                       {post?.author_profile?.avatar_url ? (
                         <img
@@ -1128,13 +1128,13 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                         <button
                           type="button"
                           onClick={() => void openProfileModal(post)}
-                          className="min-w-0 flex-1 overflow-hidden text-left hover:text-cyan-300 text-[13px] leading-tight"
+                          className="min-w-0 flex-1 overflow-hidden text-left hover:text-cyan-300 text-[14px] leading-tight"
                         >
-                          <div className="truncate text-left text-zinc-100 font-semibold text-[15px] leading-tight">
+                          <div className="truncate text-left text-zinc-100 font-semibold text-[17px] leading-tight">
                             {displayNameFor(post)}
                           </div>
-                          <div className="mt-0.5 flex w-fit min-w-0 max-w-full items-center gap-x-1 text-left text-[13px] leading-tight">
-                            <span className="min-w-0 max-w-[12rem] shrink truncate text-zinc-500 sm:max-w-[15rem]">
+                          <div className="mt-0.5 flex w-fit min-w-0 max-w-full items-center gap-x-1 text-left text-[14px] leading-tight">
+                            <span className="min-w-0 max-w-[13rem] shrink truncate text-zinc-500 sm:max-w-[17rem]">
                               {handleFor(post)}
                             </span>
                             <span className="shrink-0 text-zinc-600">·</span>
@@ -1157,18 +1157,18 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                         </div>
                       </div>
                       {post.pinned && post.title ? (
-                        <div className="mt-1.5 text-white text-[15px] font-semibold leading-snug">{post.title}</div>
+                        <div className="mt-1.5 text-white text-[17px] font-semibold leading-snug">{post.title}</div>
                       ) : null}
-                      <div className="text-zinc-200 text-[15px] mt-1.5 leading-relaxed whitespace-pre-wrap">
+                      <div className="mt-1.5 text-zinc-200 text-[17px] leading-relaxed whitespace-pre-wrap">
                         {post.caption || post.body || post.title || ''}
                       </div>
-                      <div className="mt-2 grid grid-cols-5 items-center text-[13px]">
+                      <div className="mt-2 grid grid-cols-5 items-center text-[14px]">
                         <button
                           type="button"
                           onClick={() => toggleInteraction(post.id, 'commented')}
                           className="inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                         >
-                          <svg className={`h-[18px] w-[18px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[20px] w-[20px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                             <path d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
@@ -1178,7 +1178,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                           onClick={() => toggleInteraction(post.id, 'reposted')}
                           className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                         >
-                          <svg className={`h-[18px] w-[18px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[20px] w-[20px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                             <path d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
@@ -1187,7 +1187,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                           onClick={() => toggleInteraction(post.id, 'liked')}
                           className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                         >
-                          <svg className={`h-[18px] w-[18px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[20px] w-[20px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                             <path d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
@@ -1203,7 +1203,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                           className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                           title={isBookmarked ? 'Remove bookmark' : 'Save post'}
                         >
-                          <svg className={`h-[18px] w-[18px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                             <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
@@ -1218,7 +1218,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               {communityFeedHasMore ? <div ref={loadMoreSentinelRef} className="h-2 w-full" aria-hidden /> : null}
 
               {communityFeedLoadingMore ? (
-                <div className="px-3 py-3 text-zinc-500 text-[15px]">Loading more…</div>
+                <div className="px-3 py-3 text-zinc-500 text-[17px]">Loading more…</div>
               ) : null}
 
               {communityFeedHasMore ? (
@@ -1226,14 +1226,14 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   type="button"
                   onClick={() => loadMoreCommunityFeed()}
                   disabled={communityFeedLoadingMore}
-                  className="mx-3 my-2 w-[calc(100%-1.5rem)] min-h-10 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 text-[13px] font-semibold disabled:opacity-60 touch-manipulation"
+                  className="mx-3 my-2 w-[calc(100%-1.5rem)] min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 text-[14px] font-semibold disabled:opacity-60 touch-manipulation"
                 >
                   Load more
                 </button>
               ) : null}
 
               {!communityFeedHasMore && communityPosts.length > 0 ? (
-                <div className="text-center text-[13px] text-zinc-600 py-2">You are caught up.</div>
+                <div className="text-center text-[14px] text-zinc-600 py-2">You are caught up.</div>
               ) : null}
             </>
           )}
@@ -1250,8 +1250,8 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
             />
             <div className="relative z-10 w-full max-w-lg rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
               <div className="p-4 border-b border-zinc-800">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden grid place-items-center text-zinc-300 font-bold">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-[3.3rem] w-[3.3rem] rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden grid place-items-center text-zinc-300 text-[17px] font-bold">
                     {profileModalData?.avatar_url ? (
                       <img src={profileModalData.avatar_url} alt="" className="h-full w-full object-cover" />
                     ) : (
@@ -1269,32 +1269,32 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-white font-bold truncate">{profileModalData?.display_name || 'Member'}</div>
-                    <div className="text-cyan-300 text-sm truncate">
+                    <div className="text-white text-[17px] font-bold truncate">{profileModalData?.display_name || 'Member'}</div>
+                    <div className="text-cyan-300 text-[15px] truncate">
                       {profileModalData?.handle ? `@${profileModalData.handle}` : '@member'}
                     </div>
                   </div>
                 </div>
                 {profileModalData?.bio ? (
-                  <div className="mt-3 text-zinc-300 text-sm leading-relaxed">{profileModalData.bio}</div>
+                  <div className="mt-3 text-zinc-300 text-[15px] leading-relaxed">{profileModalData.bio}</div>
                 ) : null}
               </div>
               <div className="min-h-0 overflow-y-auto">
                 {profileModalLoading ? (
-                  <div className="p-4 text-zinc-400 text-sm">Loading profile…</div>
+                  <div className="p-4 text-zinc-400 text-[15px]">Loading profile…</div>
                 ) : profileModalErr ? (
                   <div className="p-4">
-                    <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs">
+                    <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[13px]">
                       {profileModalErr}
                     </div>
                   </div>
                 ) : profileModalPosts.length === 0 ? (
-                  <div className="p-4 text-zinc-500 text-sm">No Lounge posts yet.</div>
+                  <div className="p-4 text-zinc-500 text-[15px]">No Lounge posts yet.</div>
                 ) : (
                   profileModalPosts.map((p) => (
                     <div key={p.id} className="border-t border-zinc-800 p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-zinc-400 text-[11px]">
+                        <div className="text-zinc-400 text-[12px]">
                           {p.created_at
                             ? new Date(p.created_at).toLocaleString(undefined, {
                                 month: 'short',
@@ -1310,7 +1310,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-1.5 text-zinc-100 text-sm leading-relaxed whitespace-pre-wrap">
+                      <div className="mt-1.5 text-zinc-100 text-[15px] leading-relaxed whitespace-pre-wrap">
                         {p.caption || p.body || p.title || ''}
                       </div>
                     </div>
@@ -1321,7 +1321,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 <button
                   type="button"
                   onClick={() => setProfileModalOpen(false)}
-                  className="w-full min-h-10 rounded-xl bg-zinc-800 text-zinc-100 font-semibold"
+                  className="w-full min-h-11 rounded-xl bg-zinc-800 text-zinc-100 text-[15px] font-semibold"
                 >
                   Close
                 </button>
@@ -1339,9 +1339,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               onClick={() => setAuthPromptOpen(false)}
             />
             <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
-              <div className="text-rose-200 text-sm font-semibold uppercase tracking-wide">Sign in required</div>
-              <div className="text-white text-lg font-bold mt-1">Post to Lounge</div>
-              <div className="text-zinc-400 text-sm mt-2 leading-relaxed">
+              <div className="text-rose-200 text-[15px] font-semibold uppercase tracking-wide">Sign in required</div>
+              <div className="text-white text-xl font-bold mt-1">Post to Lounge</div>
+              <div className="text-zinc-400 text-[15px] mt-2 leading-relaxed">
                 You need an account to post. Choose Sign in or Create account.
               </div>
               <div className="mt-4 grid grid-cols-1 gap-2">
@@ -1351,7 +1351,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     setAuthPromptOpen(false)
                     onRequireAuth?.('login')
                   }}
-                  className="min-h-11 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+                  className="min-h-12 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-[15px] text-white font-semibold"
                 >
                   Sign in
                 </button>
@@ -1361,14 +1361,14 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     setAuthPromptOpen(false)
                     onRequireAuth?.('create')
                   }}
-                  className="min-h-11 rounded-xl border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold"
+                  className="min-h-12 rounded-xl border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 text-[15px] text-zinc-100 font-semibold"
                 >
                   Create account
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuthPromptOpen(false)}
-                  className="min-h-10 rounded-xl text-zinc-400 hover:text-zinc-200"
+                  className="min-h-11 rounded-xl text-[15px] text-zinc-400 hover:text-zinc-200"
                 >
                   Cancel
                 </button>
@@ -1386,16 +1386,16 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               onClick={() => setProfileGateOpen(false)}
             />
             <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
-              <div className="text-cyan-200 text-sm font-semibold uppercase tracking-wide">Complete your profile</div>
-              <div className="text-white text-lg font-bold mt-1">One-time setup before posting</div>
-              <div className="text-zinc-400 text-sm mt-2 leading-relaxed">
+              <div className="text-cyan-200 text-[15px] font-semibold uppercase tracking-wide">Complete your profile</div>
+              <div className="text-white text-xl font-bold mt-1">One-time setup before posting</div>
+              <div className="text-zinc-400 text-[15px] mt-2 leading-relaxed">
                 Pick a handle and display name for Lounge posts.
               </div>
               <div className="mt-4 space-y-3">
               <label className="block">
-                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Profile photo</span>
+                <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Profile photo</span>
                 <div className="mt-1 flex items-center gap-3">
-                  <label className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0 grid place-items-center cursor-pointer">
+                  <label className="h-[3.3rem] w-[3.3rem] rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0 grid place-items-center cursor-pointer">
                     {profileGateAvatarPreview ? (
                       <img
                         src={profileGateAvatarPreview}
@@ -1406,7 +1406,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                       />
                     ) : (
                       <span
-                        className={`flex h-full w-full items-center justify-center text-xs font-bold text-white ${profileAvatarToneClass(
+                        className={`flex h-full w-full items-center justify-center text-[13px] font-bold text-white ${profileAvatarToneClass(
                           composerUserId || profileGateHandle || profileGateDisplayName
                         )}`}
                       >
@@ -1437,21 +1437,21 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 </div>
               </label>
                 <label className="block">
-                  <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Display name</span>
+                  <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Display name</span>
                   <input
                     value={profileGateDisplayName}
                     onChange={(e) => setProfileGateDisplayName(e.target.value)}
                     maxLength={24}
-                    className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-[16px] focus:outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
+                    className="mt-1 w-full min-h-12 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-[18px] focus:outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
                     placeholder="Bryan"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Handle</span>
+                  <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Handle</span>
                   <input
                     value={profileGateHandle ? `@${profileGateHandle}` : '@'}
                     onChange={(e) => setProfileGateHandle(handleSlugFromAtInput(e.target.value))}
-                    className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-[16px] outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
+                    className="mt-1 w-full min-h-12 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-[18px] outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
                     placeholder="@your_handle"
                     autoCapitalize="none"
                     autoCorrect="off"
@@ -1459,7 +1459,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   />
                 </label>
                 {profileGateErr ? (
-                  <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed">
+                  <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[13px] leading-relaxed">
                     {profileGateErr}
                   </div>
                 ) : null}
@@ -1468,7 +1468,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 <button
                   type="button"
                   onClick={() => setProfileGateOpen(false)}
-                  className="flex-1 min-h-10 rounded-xl bg-zinc-800 text-zinc-100 font-semibold"
+                  className="flex-1 min-h-11 rounded-xl bg-zinc-800 text-zinc-100 text-[15px] font-semibold"
                 >
                   Cancel
                 </button>
@@ -1476,7 +1476,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   type="button"
                   onClick={() => void saveProfileGate()}
                   disabled={profileGateBusy}
-                  className="flex-1 min-h-10 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-60"
+                  className="flex-1 min-h-11 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-[15px] text-white font-semibold disabled:opacity-60"
                 >
                   {profileGateBusy ? 'Saving…' : 'Save profile'}
                 </button>

@@ -28,9 +28,9 @@ Do not store secrets in this file.
 ### Phase A - Foundation (DB + auth shaping)
 
 - [x] A1 core `profiles` model in place on test (`handle`, `display_name`, `avatar_url`, `bio`, `role`, `banned_at`, timestamps, constraints/index).
-- [ ] A2 feed model finalization is in progress (current table still uses `title + body`; counters/pin columns exist; final caption model and migration sequence not finished).
-- [x] A3 baseline RLS/policy shape for public read + authed write + staff moderation is applied on test.
-- [ ] A4 rate limiting (`rate_limit_events` + policy/RPC/edge enforcement) not started.
+- [x] A2 feed model on test: `community_feed_posts` is **caption-only** (legacy `title` / `body` dropped after backfill); `edited_at`, pin/moderation columns, denormalized `like_count` / `comment_count` (counter **maintenance** still deferred until likes/comments ship).
+- [x] A3 baseline RLS/policy shape for public read + authed write + staff moderation is applied on test (includes author **30-minute** `UPDATE` window in SQL).
+- [x] A4 **DB-first** posting rate limit on test: `rate_limit_events` + indexes + `BEFORE INSERT` guard on `community_feed_posts` in `feed_phase_a_profiles_public_read.sql` (optional later: Redis/edge limiter per roadmap).
 
 ### Phase B - Public read feed
 
@@ -119,17 +119,17 @@ Do not store secrets in this file.
 
 ## Frontend feature buildout on test
 
-- [ ] Active now: A2 feed model finalization (`community_feed_posts` -> v1 shape)
-  - Change: finalize content model (`caption/body` direction), migration order (`expand -> app migrate -> contract`), and pinned/count behavior to match roadmap.
-  - Source: `supabase/community_feed_posts.sql`, `supabase/feed_phase_a_profiles_public_read.sql`, home feed UI query/render.
-  - Test validation: existing feed reads/writes still work through migration sequence with no downtime.
-  - Production replay: add finalized SQL/migration steps to checklist §2 before promotion.
+- [x] A2 feed model v1 on test (`community_feed_posts` caption-only)
+  - Change: Canonical **`caption`** (≤280); app uses `src/utils/communityFeedPost.js` for inserts and display; **`title` / `body`** removed from schema after phase-A SQL backfill + column drop; feed `.select` lists updated.
+  - Source: `supabase/community_feed_posts.sql`, `supabase/feed_phase_a_profiles_public_read.sql`, `src/App.jsx`, `src/features/guides/GuidesScreen.jsx`, `supabase/seed/lounge_fake_posts.sql`.
+  - Test validation: Lounge + Guides posting and feed read verified on test after re-applying phase A SQL.
+  - Production replay: `production-rollout-checklist.md` §2 — run current `community_feed_posts.sql` then `feed_phase_a_profiles_public_read.sql` (or equivalent migration) before relying on caption-only clients.
 
-- [ ] Next after A2: A4 rate limiting foundation
-  - Change: add `rate_limit_events` table + indexes and first enforcement path for posting actions.
-  - Source: new SQL + app/edge enforcement path.
-  - Test validation: window limits trigger correctly under repeated post attempts.
-  - Production replay: checklist §2 and/or §4 (depending on DB-only vs edge function).
+- [x] A4 rate limiting foundation (DB path) on test
+  - Change: `rate_limit_events` + rolling-window insert guard on new community posts; app surfaces rate-limit errors in Lounge/Guides.
+  - Source: `supabase/feed_phase_a_profiles_public_read.sql` (section 4) + client error handling.
+  - Test validation: repeated posts within the configured window return the limiter error; normal posting outside the window succeeds.
+  - Production replay: checklist §2; optional §4 only if an edge path is added later.
 
 ---
 
@@ -154,3 +154,4 @@ Do not store secrets in this file.
 - 2026-05-09: Started A4 foundation with DB-backed post rate limiting (`rate_limit_events` + insert trigger guard) and user-facing rate-limit error copy.
 - 2026-05-09: Added rate-limit cooldown feedback (`retry_in_seconds`) and surfaced user-facing countdown in Lounge/Guides post errors.
 - 2026-05-09: Started Phase C gating with profile completion modal (handle/display name) before posting from Lounge or Guides.
+- 2026-05-09: Doc sync — marked **A2** (caption-only, legacy columns dropped) and **A4** (DB rate limit in phase A SQL) complete on test; clarified A3 includes 30-minute author update policy in SQL.

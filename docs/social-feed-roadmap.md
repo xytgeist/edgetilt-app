@@ -21,20 +21,17 @@ For day-to-day implementation status, use `docs/test-buildout-backlog.md`.
 
 ### A2. Evolve `community_feed_posts` (or rename to `feed_posts`)
 
-- Support 280-char main text model.
-- Resolve `title` vs `body` shape:
-  - preferred: `body` as canonical caption field
-  - optional: keep `title` only for pinned announcements
-- Keep optional `game_slug` / `game_title` in v1 (FK later if needed).
-- Add moderation/edit metadata:
-  - `edited_at`
+- **v1 on test:** single user-authored text column **`caption`** (≤280 chars). Legacy **`title` / `body`** were removed after a one-time backfill in `feed_phase_a_profiles_public_read.sql` (test-only data acceptable).
+- Keep optional **`game_slug` / `game_title`** in v1 (FK later if needed).
+- Moderation / edit metadata:
+  - `edited_at` (maintained by trigger on `caption` updates)
   - `hidden_at`
   - `hidden_reason`
-  - `pinned` (single pinned enforced via partial unique index or separate pinned row model)
-- Add denormalized counters:
+  - `pinned` (single pinned enforced via partial unique index)
+- Denormalized counters (schema present on test):
   - `like_count`
   - `comment_count`
-  - maintain via triggers initially
+  - maintain via triggers when likes/comments land (Phase F / comment phase); not required for caption-only MVP read path
 
 ### A3. RLS alignment to visibility rules
 
@@ -48,9 +45,9 @@ For day-to-day implementation status, use `docs/test-buildout-backlog.md`.
 
 ### A4. Rate limits
 
-- Initial implementation: DB-backed windows via `rate_limit_events` table.
+- **v1 on test:** DB-backed windows via `rate_limit_events` table + `BEFORE INSERT` trigger on `community_feed_posts` (see `feed_phase_a_profiles_public_read.sql`).
 - Index pattern: `(user_id, kind, window_start)`.
-- Later option: Redis/external limiter.
+- Later option: Redis/external limiter or edge enforcement for tighter UX.
 
 ### Deliverable
 
@@ -203,4 +200,4 @@ For day-to-day implementation status, use `docs/test-buildout-backlog.md`.
 
 - Video transcoding path: a single Edge Function running ffmpeg may hit platform runtime/memory limits. Confirm where transcoding executes before D2 (Supabase-compatible patterns vs external worker).
 - Comments + infinite scroll performance: ranking and thread queries are likely the first hotspot. Add indexes early (`post_id`, `parent_id`, `created_at`) and validate query plans on realistic data volume.
-- Feed table migration safety: current model uses `title + body` and auth-only `SELECT`; move to new visibility/content shape with a no-downtime sequence (`expand -> migrate app -> contract`).
+- Feed table migration safety: production promotion should still follow **expand → backfill → app deploy → contract** whenever changing column shapes; test env skipped straight to caption-only after backfill.

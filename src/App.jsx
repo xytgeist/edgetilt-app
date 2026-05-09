@@ -35,6 +35,7 @@ import {
 import {
   communityFeedPostInsertPayload,
   feedPostDisplayCaption,
+  normalizeFeedCaption,
 } from './utils/communityFeedPost'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -710,6 +711,14 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const [composerAuthResolved, setComposerAuthResolved] = useState(false)
     const [pullDistance, setPullDistance] = useState(0)
     const [pullRefreshing, setPullRefreshing] = useState(false)
+    const LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS = 30 * 60 * 1000
+    const [loungeEditPostId, setLoungeEditPostId] = useState(null)
+    const [loungeEditCaption, setLoungeEditCaption] = useState('')
+    const [loungeEditBusy, setLoungeEditBusy] = useState(false)
+    const [loungeEditErr, setLoungeEditErr] = useState('')
+    const [loungeDeleteBusyId, setLoungeDeleteBusyId] = useState(null)
+    const [loungeManageErr, setLoungeManageErr] = useState('')
+    const loungeEditPostIdRef = useRef(null)
     const loadMoreSentinelRef = useRef(null)
     const pullStartYRef = useRef(null)
     const pullTriggeredRef = useRef(false)
@@ -1001,6 +1010,126 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const toggleBookmark = useCallback((postId) => {
       setBookmarkedByPost((prev) => ({ ...prev, [postId]: !prev[postId] }))
     }, [])
+
+    function loungePostWithinAuthorEditWindow(createdAt) {
+      if (!createdAt) return false
+      const t = new Date(createdAt).getTime()
+      if (!Number.isFinite(t)) return false
+      return Date.now() - t <= LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS
+    }
+
+    const cancelLoungeEdit = useCallback(() => {
+      setLoungeEditPostId(null)
+      setLoungeEditCaption('')
+      setLoungeEditErr('')
+    }, [])
+
+    const beginLoungeEdit = useCallback(
+      (post) => {
+        if (!post?.id || post.user_id !== composerUserId) return
+        if (!loungePostWithinAuthorEditWindow(post.created_at)) return
+        setLoungeManageErr('')
+        setLoungeEditErr('')
+        setLoungeEditPostId(post.id)
+        setLoungeEditCaption(feedPostDisplayCaption(post))
+      },
+      [composerUserId]
+    )
+
+    const saveLoungeEdit = useCallback(async () => {
+      const cap = normalizeFeedCaption(loungeEditCaption)
+      setLoungeEditErr('')
+      if (!cap) {
+        setLoungeEditErr('Write a caption before saving.')
+        return
+      }
+      if (!loungeEditPostId) return
+      setLoungeEditBusy(true)
+      try {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (!session?.user) {
+          setAuthPromptOpen(true)
+          setLoungeEditErr('You must be signed in.')
+          return
+        }
+        const { data, error } = await supabaseClient
+          .from('community_feed_posts')
+          .update({ caption: cap })
+          .eq('id', loungeEditPostId)
+          .select('id,caption,edited_at')
+          .maybeSingle()
+        if (error) {
+          const msg = String(error.message || '')
+          if (msg.toLowerCase().includes('rate limit exceeded')) {
+            setLoungeEditErr(rateLimitMessage(msg))
+            return
+          }
+          if (error.code === '42501') {
+            setLoungeEditErr('You can no longer edit this post (time window or permissions).')
+            return
+          }
+          setLoungeEditErr(msg || 'Could not save.')
+          return
+        }
+        if (!data?.id) {
+          setLoungeEditErr('Could not save. Try refreshing the feed.')
+          return
+        }
+        setCommunityPosts((prev) =>
+          prev.map((p) => (p.id === data.id ? { ...p, caption: data.caption, edited_at: data.edited_at } : p))
+        )
+        cancelLoungeEdit()
+      } finally {
+        setLoungeEditBusy(false)
+      }
+    }, [cancelLoungeEdit, loungeEditCaption, loungeEditPostId, rateLimitMessage, supabaseClient])
+
+    const confirmDeleteLoungePost = useCallback(
+      async (post) => {
+        if (!post?.id || post.user_id !== composerUserId) return
+        setLoungeManageErr('')
+        const ok = await showGlobalConfirm({
+          title: 'Delete this post?',
+          message: 'This removes the post from the Lounge. This cannot be undone.',
+          confirmLabel: 'Delete',
+          cancelLabel: 'Cancel',
+        })
+        if (!ok) return
+        setLoungeDeleteBusyId(post.id)
+        try {
+          const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', post.id)
+          if (error) {
+            const msg = String(error.message || '')
+            if (error.code === '42501') {
+              setLoungeManageErr('You do not have permission to delete this post.')
+              return
+            }
+            setLoungeManageErr(msg || 'Could not delete.')
+            return
+          }
+          if (loungeEditPostIdRef.current === post.id) cancelLoungeEdit()
+          await loadCommunityFeed({ silent: true })
+        } finally {
+          setLoungeDeleteBusyId(null)
+        }
+      },
+      [cancelLoungeEdit, composerUserId, loadCommunityFeed, showGlobalConfirm, supabaseClient]
+    )
+
+    useEffect(() => {
+      loungeEditPostIdRef.current = loungeEditPostId
+    }, [loungeEditPostId])
+
+    useEffect(() => {
+      if (!composerUserId) {
+        setLoungeEditPostId(null)
+        setLoungeEditCaption('')
+        setLoungeEditErr('')
+        setLoungeDeleteBusyId(null)
+      }
+    }, [composerUserId])
 
     useEffect(() => {
       let cancelled = false
@@ -1622,6 +1751,13 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           </div>
 
           <div className="border-b border-zinc-800 pb-4">
+          {loungeManageErr ? (
+            <div className="px-3 pt-3">
+              <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
+                {loungeManageErr}
+              </div>
+            </div>
+          ) : null}
           {communityFeedLoading ? (
             <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>
           ) : communityPosts.length === 0 ? (
@@ -1703,9 +1839,68 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                           ) : null}
                         </div>
                       </div>
-                      <div className="mt-1.5 text-zinc-200 text-[17px] leading-tight whitespace-pre-wrap">
-                        {renderRichCaption(feedPostDisplayCaption(post))}
-                      </div>
+                      {composerUserId &&
+                      post.user_id === composerUserId &&
+                      loungePostWithinAuthorEditWindow(post.created_at) &&
+                      loungeEditPostId !== post.id ? (
+                        <div className="mt-1.5 flex flex-wrap items-center justify-end gap-3 text-[13px] font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => beginLoungeEdit(post)}
+                            disabled={loungeDeleteBusyId === post.id || loungeEditBusy}
+                            className="touch-manipulation text-cyan-400 hover:text-cyan-300 disabled:opacity-40"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void confirmDeleteLoungePost(post)}
+                            disabled={loungeDeleteBusyId === post.id || loungeEditBusy}
+                            className="touch-manipulation text-rose-400 hover:text-rose-300 disabled:opacity-40"
+                          >
+                            {loungeDeleteBusyId === post.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
+                      ) : null}
+                      {loungeEditPostId === post.id ? (
+                        <div className="mt-1.5 space-y-2">
+                          <textarea
+                            value={loungeEditCaption}
+                            onChange={(e) => setLoungeEditCaption(e.target.value)}
+                            maxLength={280}
+                            rows={4}
+                            className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-[17px] leading-snug text-zinc-100 outline-none focus:border-cyan-600/60 focus:ring-2 focus:ring-cyan-500/25"
+                            aria-label="Edit caption"
+                          />
+                          {loungeEditErr ? (
+                            <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[13px] leading-tight text-rose-200">
+                              {loungeEditErr}
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void saveLoungeEdit()}
+                              disabled={loungeEditBusy}
+                              className="min-h-9 touch-manipulation rounded-lg bg-cyan-600 px-3 py-1.5 text-[14px] font-bold text-white disabled:opacity-60"
+                            >
+                              {loungeEditBusy ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelLoungeEdit}
+                              disabled={loungeEditBusy}
+                              className="min-h-9 touch-manipulation rounded-lg border border-zinc-600 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 disabled:opacity-60"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1.5 text-zinc-200 text-[17px] leading-tight whitespace-pre-wrap">
+                          {renderRichCaption(feedPostDisplayCaption(post))}
+                        </div>
+                      )}
                       <div className="mt-2 grid grid-cols-5 items-center text-[14px]">
                         <button
                           type="button"

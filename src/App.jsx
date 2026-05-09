@@ -815,6 +815,15 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       } catch {
         el.focus()
       }
+      const len = el.value.length
+      try {
+        el.setSelectionRange(len, len)
+      } catch {
+        // ignore
+      }
+      el.scrollTop = el.scrollHeight
+      const m = loungeDetailEditMirrorRef.current
+      if (m) m.scrollTop = el.scrollTop
     }, [loungeDetailEditing])
 
     useLayoutEffect(() => {

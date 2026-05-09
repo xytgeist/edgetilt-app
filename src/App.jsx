@@ -1008,7 +1008,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           </div>
         </div>
 
-        <div className="shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 py-3">
+        <div
+          className={`shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${composerExpanded ? 'pt-3 pb-1' : 'py-3'}`}
+        >
           <div className="flex items-start gap-4">
             <div className="mt-0.5 flex w-[3.3rem] shrink-0 justify-center">
               <button
@@ -1055,7 +1057,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     ref={composerTextareaRef}
                     value={postText}
                     onChange={(e) => setPostText(e.target.value)}
-                    className="w-full min-h-20 resize-none touch-manipulation bg-transparent text-[17px] leading-tight text-white outline-none placeholder:text-[17px] placeholder:text-zinc-500"
+                    className="w-full min-h-20 resize-none touch-manipulation bg-transparent px-0 pt-3 text-[17px] leading-tight text-white outline-none placeholder:text-[17px] placeholder:text-zinc-500"
                     placeholder="Are you winning, son?"
                     maxLength={280}
                   />
@@ -1079,7 +1081,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           {composerExpanded ? (
             <>
               <div
-                className="mt-3 h-px w-auto max-w-full bg-zinc-700/85 mx-5 sm:mx-8"
+                className="mt-1 h-px w-auto max-w-full bg-zinc-700/85 mx-5 sm:mx-8"
                 role="presentation"
                 aria-hidden
               />
@@ -1105,11 +1107,11 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   setPostErr('Unsupported media type. Please choose an image or video file.')
                 }}
               />
-              <div className="mt-2 flex items-center gap-4">
+              <div className="mt-0.5 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => composerMediaInputRef.current?.click()}
-                  className="mt-0.5 flex shrink-0 touch-manipulation items-center justify-center rounded-md p-2.5 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                  className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
                   title="Add media"
                   aria-label="Add media"
                 >
@@ -1150,9 +1152,19 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   <button
                     type="button"
                     onClick={() => setComposerExpanded(false)}
-                    className="min-h-7 touch-manipulation rounded-md border border-zinc-700 bg-zinc-900 px-2 text-[11px] font-semibold text-zinc-300"
+                    className="flex min-h-7 min-w-7 shrink-0 touch-manipulation items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                    title="Close composer"
+                    aria-label="Close composer"
                   >
-                    Cancel
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden>
+                      <path
+                        d="M5.5 7.5 10 12l4.5-4.5"
+                        stroke="currentColor"
+                        strokeWidth="1.65"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </button>
                   <button
                     type="button"

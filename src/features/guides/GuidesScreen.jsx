@@ -1173,33 +1173,33 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
               <label className="block">
                 <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Profile photo</span>
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0">
+                  <label className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0 grid place-items-center cursor-pointer">
                     {profileGateAvatarPreview ? (
                       <img src={profileGateAvatarPreview} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <div className="h-full w-full grid place-items-center text-zinc-500 text-xs">+</div>
                     )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
-                      if (!file) return
-                      if (!String(file.type || '').startsWith('image/')) {
-                        setProfileGateErr('Please choose an image file.')
-                        return
-                      }
-                      if (file.size > 5 * 1024 * 1024) {
-                        setProfileGateErr('Image must be 5MB or smaller.')
-                        return
-                      }
-                      setProfileGateErr('')
-                      setProfileGateAvatarFile(file)
-                      setProfileGateAvatarPreview(URL.createObjectURL(file))
-                    }}
-                    className="block w-full text-xs text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-zinc-100 hover:file:bg-zinc-700"
-                  />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        if (!file) return
+                        if (!String(file.type || '').startsWith('image/')) {
+                          setProfileGateErr('Please choose an image file.')
+                          return
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          setProfileGateErr('Image must be 5MB or smaller.')
+                          return
+                        }
+                        setProfileGateErr('')
+                        setProfileGateAvatarFile(file)
+                        setProfileGateAvatarPreview(URL.createObjectURL(file))
+                      }}
+                    />
+                  </label>
                 </div>
               </label>
               <label className="block">

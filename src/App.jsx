@@ -1047,7 +1047,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     <button
                       type="button"
                       onClick={() => void openProfileModal(post)}
-                      className="h-9 w-9 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-bold flex items-center justify-center overflow-hidden"
+                      className="h-11 w-11 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-sm font-bold flex items-center justify-center overflow-hidden"
                     >
                       {post?.author_profile?.avatar_url ? (
                         <img
@@ -1066,21 +1066,23 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                         <button
                           type="button"
                           onClick={() => void openProfileModal(post)}
-                          className="min-w-0 max-w-full text-left hover:text-cyan-300 text-xs leading-tight inline-flex items-center"
+                          className="min-w-0 max-w-full text-left hover:text-cyan-300 text-xs leading-tight"
                         >
-                          <span className="text-zinc-100 font-semibold text-[12px]">{displayNameFor(post)}</span>
-                          <span className="text-zinc-500 ml-1 truncate max-w-[7rem]">{handleFor(post)}</span>
-                          <span className="text-zinc-600 mx-1">·</span>
-                          <span className="text-zinc-500">{postAgeLabel(post.created_at)}</span>
+                          <div className="text-zinc-100 font-semibold text-[14px] leading-tight">{displayNameFor(post)}</div>
+                          <div className="text-zinc-500 text-[12px] leading-tight">
+                            <span className="truncate max-w-[7rem] inline-block align-bottom">{handleFor(post)}</span>
+                            <span className="text-zinc-600 mx-1">·</span>
+                            <span>{postAgeLabel(post.created_at)}</span>
+                          </div>
                         </button>
                         <div className="flex flex-wrap items-center gap-2">
                           {post.pinned ? (
-                            <span className="rounded-md bg-fuchsia-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+                            <span className="rounded-full bg-fuchsia-500/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-fuchsia-200">
                               Pinned
                             </span>
                           ) : null}
                           {post.game_slug ? (
-                            <span className="inline-flex items-center rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                            <span className="inline-flex items-center rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-300">
                               {post.game_title}
                             </span>
                           ) : null}
@@ -1314,33 +1316,33 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               <label className="block">
                 <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Profile photo</span>
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0">
+                  <label className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0 grid place-items-center cursor-pointer">
                     {profileGateAvatarPreview ? (
                       <img src={profileGateAvatarPreview} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <div className="h-full w-full grid place-items-center text-zinc-500 text-xs">+</div>
                     )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
-                      if (!file) return
-                      if (!String(file.type || '').startsWith('image/')) {
-                        setProfileGateErr('Please choose an image file.')
-                        return
-                      }
-                      if (file.size > 5 * 1024 * 1024) {
-                        setProfileGateErr('Image must be 5MB or smaller.')
-                        return
-                      }
-                      setProfileGateErr('')
-                      setProfileGateAvatarFile(file)
-                      setProfileGateAvatarPreview(URL.createObjectURL(file))
-                    }}
-                    className="block w-full text-xs text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-zinc-100 hover:file:bg-zinc-700"
-                  />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        if (!file) return
+                        if (!String(file.type || '').startsWith('image/')) {
+                          setProfileGateErr('Please choose an image file.')
+                          return
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          setProfileGateErr('Image must be 5MB or smaller.')
+                          return
+                        }
+                        setProfileGateErr('')
+                        setProfileGateAvatarFile(file)
+                        setProfileGateAvatarPreview(URL.createObjectURL(file))
+                      }}
+                    />
+                  </label>
                 </div>
               </label>
                 <label className="block">

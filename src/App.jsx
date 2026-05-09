@@ -577,6 +577,8 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const composerMediaInputRef = useRef(null)
     const composerTextareaRef = useRef(null)
     const loungeFeedScrollRef = useRef(null)
+    /** True when feed scroll auto-collapsed the composer; cleared on explicit open / post / discard. */
+    const composerFoldedFromFeedScrollRef = useRef(false)
     const composerDraftFlushRef = useRef({ postText: '', composerExpanded: false, composerMediaFile: null })
     composerDraftFlushRef.current = { postText, composerExpanded, composerMediaFile }
 
@@ -616,6 +618,27 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         el.focus()
       }
     }, [composerExpanded])
+
+    useEffect(() => {
+      const el = loungeFeedScrollRef.current
+      if (!el || typeof window === 'undefined') return
+      const scrollDownPx = 14
+      const scrollTopPx = 6
+      const onScroll = () => {
+        const st = el.scrollTop
+        const { postText: t, composerExpanded: ex, composerMediaFile: f } = composerDraftFlushRef.current
+        const hasDraft = String(t || '').trim().length > 0 || !!f
+        if (st > scrollDownPx && ex && hasDraft) {
+          setComposerExpanded(false)
+          composerFoldedFromFeedScrollRef.current = true
+        } else if (st <= scrollTopPx && composerFoldedFromFeedScrollRef.current) {
+          setComposerExpanded(true)
+          composerFoldedFromFeedScrollRef.current = false
+        }
+      }
+      el.addEventListener('scroll', onScroll, { passive: true })
+      return () => el.removeEventListener('scroll', onScroll)
+    }, [])
 
     const displayLabel = useCallback((p) => {
       const pr = p?.author_profile
@@ -891,6 +914,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         setPostText('')
         setComposerMediaFile(null)
         setComposerMediaKind('')
+        composerFoldedFromFeedScrollRef.current = false
         setComposerExpanded(false)
         clearLoungeComposerDraft()
         setAuthPromptOpen(false)
@@ -1019,6 +1043,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 setComposerMediaFile(null)
                 setComposerMediaKind('')
                 setPostErr('')
+                composerFoldedFromFeedScrollRef.current = false
                 setComposerExpanded(false)
                 clearLoungeComposerDraft()
                 try {
@@ -1101,7 +1126,10 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setComposerExpanded(true)}
+                  onClick={() => {
+                    composerFoldedFromFeedScrollRef.current = false
+                    setComposerExpanded(true)
+                  }}
                   className="flex min-h-12 w-full touch-manipulation items-start justify-start pt-[18px] text-left text-[17px] leading-[1.25] text-zinc-500"
                 >
                   Are you winning, son?

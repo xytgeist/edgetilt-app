@@ -673,13 +673,16 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       const el = loungeFeedScrollRef.current
       if (!el || typeof window === 'undefined') return
       loungeScrollPrevTopRef.current = el.scrollTop
-      const revealPx = 160
-      const hidePx = 130
-      const revealDeltaCapPx = 28
-      const composerFoldPx = 150
-      const composerUnfoldPx = 170
+      /** Scroll px (same axis as feed) to move title reveal ~1.0; lower = faster motion per px. */
+      const titleRevealPerScrollPx = 220
+      const titleHidePerScrollPx = 190
+      /** Scroll px to move composer fold ~1.0; tuned so fold tracks finger distance. */
+      const composerCouplingPx = 240
+      /** Only caps absurd single-event deltas (flings); normal scroll uses true distance. */
+      const maxAbsScrollStepPx = 180
       /** When feed-folded, allow smooth reopen while scrollTop is within this distance of the top. */
       const composerUnfoldBandPx = 168
+      const minScrollStepPx = 0.35
       const queueScrollVisualFlush = () => {
         if (loungeScrollVisualRafRef.current) return
         loungeScrollVisualRafRef.current = window.requestAnimationFrame(() => {
@@ -697,15 +700,15 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         const eff =
           rawDelta === 0
             ? 0
-            : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), revealDeltaCapPx)
+            : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), maxAbsScrollStepPx)
 
         let r = loungeTitleRevealRef.current
         if (st <= 2) {
           r = 1
-        } else if (eff < -0.5) {
-          r = Math.min(1, r + (-eff) / revealPx)
-        } else if (eff > 1.25) {
-          r = Math.max(0, r - eff / hidePx)
+        } else if (eff < -minScrollStepPx) {
+          r = Math.min(1, r + (-eff) / titleRevealPerScrollPx)
+        } else if (eff > minScrollStepPx) {
+          r = Math.max(0, r - eff / titleHidePerScrollPx)
         }
         let scrollVisualDirty = false
         if (r !== loungeTitleRevealRef.current) {
@@ -713,9 +716,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           scrollVisualDirty = true
         }
 
-        if (composerExpandedRef.current && eff > 0.2) {
+        if (composerExpandedRef.current && eff > minScrollStepPx) {
           if (st > scrollDownPx || composerFoldRevealRef.current < 0.998) {
-            const next = Math.max(0, composerFoldRevealRef.current - eff / composerFoldPx)
+            const next = Math.max(0, composerFoldRevealRef.current - eff / composerCouplingPx)
             if (next !== composerFoldRevealRef.current) {
               composerFoldRevealRef.current = next
               scrollVisualDirty = true
@@ -733,9 +736,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           composerExpandedRef.current &&
           composerFoldRevealRef.current < 0.995 &&
           st <= composerUnfoldBandPx &&
-          eff < -0.5
+          eff < -minScrollStepPx
         ) {
-          const next = Math.min(1, composerFoldRevealRef.current + (-eff) / composerUnfoldPx)
+          const next = Math.min(1, composerFoldRevealRef.current + (-eff) / composerCouplingPx)
           if (next !== composerFoldRevealRef.current) {
             composerFoldRevealRef.current = next
             scrollVisualDirty = true
@@ -745,14 +748,14 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           composerFoldedFromFeedScrollRef.current &&
           st <= composerUnfoldBandPx
         ) {
-          if (eff < -0.5) {
+          if (eff < -minScrollStepPx) {
             if (!composerExpandedRef.current) {
               setComposerExpanded(true)
               composerExpandedRef.current = true
               composerFoldRevealRef.current = Math.max(composerFoldRevealRef.current, 0.06)
               scrollVisualDirty = true
             }
-            const next = Math.min(1, composerFoldRevealRef.current + (-eff) / composerUnfoldPx)
+            const next = Math.min(1, composerFoldRevealRef.current + (-eff) / composerCouplingPx)
             if (next !== composerFoldRevealRef.current) {
               composerFoldRevealRef.current = next
               scrollVisualDirty = true

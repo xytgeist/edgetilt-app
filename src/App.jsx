@@ -91,6 +91,17 @@ function composerStableInitialsFromUid(uid) {
   return '··'
 }
 
+/** Lounge post detail: `9:46 AM · 5/9/26` (local time + short date). */
+function formatLoungePostDetailWhen(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const t = d.getTime()
+  if (!Number.isFinite(t)) return ''
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const dateShort = `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`
+  return `${time} · ${dateShort}`
+}
+
 // Mobile-first: min 16px text (iOS won’t auto-zoom), ~48px min tap height, notched device padding
 const mobileShell = 'min-h-dvh bg-gray-950 flex items-center justify-center overflow-y-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]'
 const inputBase = 'w-full min-h-12 text-base text-white bg-gray-800 rounded-2xl border-0 px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 touch-manipulation'
@@ -717,14 +728,26 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const [loungeDetailDraftCaption, setLoungeDetailDraftCaption] = useState('')
     const [loungeDetailEditBusy, setLoungeDetailEditBusy] = useState(false)
     const [loungeDetailEditErr, setLoungeDetailEditErr] = useState('')
+    const [loungeDetailEditMediaFile, setLoungeDetailEditMediaFile] = useState(null)
+    const [loungeDetailEditMediaKind, setLoungeDetailEditMediaKind] = useState('')
     const [loungeDetailDeleteBusy, setLoungeDetailDeleteBusy] = useState(false)
     const [loungeManageErr, setLoungeManageErr] = useState('')
+    const [loungePostDetailVisible, setLoungePostDetailVisible] = useState(true)
+    const [loungePostDetailMenuOpen, setLoungePostDetailMenuOpen] = useState(false)
+    const [loungePostDeleteConfirmOpen, setLoungePostDeleteConfirmOpen] = useState(false)
+    const loungePostDetailVisibleRef = useRef(true)
+    /** Only finalize slide-out after an explicit user close — avoids spurious `transitionend` from the open animation (`visible` false→true). */
+    const loungePostDetailClosingIntentionalRef = useRef(false)
+    const loungePostDetailMenuWrapRef = useRef(null)
     const loadMoreSentinelRef = useRef(null)
     const pullStartYRef = useRef(null)
     const pullTriggeredRef = useRef(false)
     const composerMediaInputRef = useRef(null)
     const composerTextareaRef = useRef(null)
     const composerMirrorRef = useRef(null)
+    const loungeDetailEditTextareaRef = useRef(null)
+    const loungeDetailEditMirrorRef = useRef(null)
+    const loungeDetailEditMediaInputRef = useRef(null)
     const loungeFeedScrollRef = useRef(null)
     const loungeTitleBarRef = useRef(null)
     const loungeScrollPrevTopRef = useRef(0)
@@ -784,6 +807,24 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       if (!ta || !m) return
       m.scrollTop = ta.scrollTop
     }, [postText])
+
+    useLayoutEffect(() => {
+      if (!loungeDetailEditing) return
+      const el = loungeDetailEditTextareaRef.current
+      if (!el) return
+      try {
+        el.focus({ preventScroll: true })
+      } catch {
+        el.focus()
+      }
+    }, [loungeDetailEditing])
+
+    useLayoutEffect(() => {
+      const ta = loungeDetailEditTextareaRef.current
+      const m = loungeDetailEditMirrorRef.current
+      if (!ta || !m) return
+      m.scrollTop = ta.scrollTop
+    }, [loungeDetailDraftCaption, loungeDetailEditing])
 
     useLayoutEffect(() => {
       const bar = loungeTitleBarRef.current
@@ -1018,33 +1059,97 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return Date.now() - t <= LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS
     }
 
-    const closeLoungePostDetail = useCallback(() => {
+    const finalizeLoungePostDetailClose = useCallback(() => {
+      loungePostDetailClosingIntentionalRef.current = false
       setLoungePostDetail(null)
+      setLoungePostDetailVisible(true)
+      setLoungePostDetailMenuOpen(false)
+      setLoungePostDeleteConfirmOpen(false)
       setLoungeDetailEditing(false)
       setLoungeDetailDraftCaption('')
       setLoungeDetailEditErr('')
+      setLoungeDetailEditMediaFile(null)
+      setLoungeDetailEditMediaKind('')
       setLoungeDetailDeleteBusy(false)
+      setLoungeManageErr('')
     }, [])
+
+    const closeLoungePostDetailImmediate = useCallback(() => {
+      finalizeLoungePostDetailClose()
+    }, [finalizeLoungePostDetailClose])
+
+    const closeLoungePostDetail = useCallback(() => {
+      setLoungePostDetailMenuOpen(false)
+      const reduce =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+      if (reduce) {
+        finalizeLoungePostDetailClose()
+        return
+      }
+      loungePostDetailClosingIntentionalRef.current = true
+      setLoungePostDetailVisible(false)
+    }, [finalizeLoungePostDetailClose])
 
     const openLoungePostDetail = useCallback((post) => {
       if (!post?.id) return
+      loungePostDetailClosingIntentionalRef.current = false
       setLoungeManageErr('')
       setLoungeDetailEditing(false)
       setLoungeDetailDraftCaption('')
       setLoungeDetailEditErr('')
+      setLoungeDetailEditMediaFile(null)
+      setLoungeDetailEditMediaKind('')
+      setLoungePostDetailMenuOpen(false)
+      setLoungePostDeleteConfirmOpen(false)
       setLoungePostDetail(post)
+      const reduce =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+      if (reduce) {
+        setLoungePostDetailVisible(true)
+        return
+      }
+      setLoungePostDetailVisible(false)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setLoungePostDetailVisible(true))
+      })
     }, [])
+
+    const onLoungePostDetailPanelTransitionEnd = useCallback(
+      (e) => {
+        if (e.propertyName !== 'transform') return
+        if (e.target !== e.currentTarget) return
+        if (loungePostDetailVisibleRef.current) return
+        if (!loungePostDetailClosingIntentionalRef.current) return
+        loungePostDetailClosingIntentionalRef.current = false
+        finalizeLoungePostDetailClose()
+      },
+      [finalizeLoungePostDetailClose]
+    )
 
     const cancelLoungeDetailEdit = useCallback(() => {
       setLoungeDetailEditing(false)
       setLoungeDetailDraftCaption('')
       setLoungeDetailEditErr('')
+      setLoungeDetailEditMediaFile(null)
+      setLoungeDetailEditMediaKind('')
+      try {
+        const el = loungeDetailEditMediaInputRef.current
+        if (el) el.value = ''
+      } catch {
+        // ignore
+      }
     }, [])
 
     const saveLoungeDetailCaption = useCallback(async () => {
       if (!loungePostDetail?.id) return
       const cap = normalizeFeedCaption(loungeDetailDraftCaption)
       setLoungeDetailEditErr('')
+      if (loungeDetailEditMediaFile) {
+        setLoungeDetailEditErr('Remove attached media to save — only the caption can be edited.')
+        return
+      }
       if (!cap) {
         setLoungeDetailEditErr('Write a caption before saving.')
         return
@@ -1092,19 +1197,19 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       } finally {
         setLoungeDetailEditBusy(false)
       }
-    }, [cancelLoungeDetailEdit, loungeDetailDraftCaption, loungePostDetail, rateLimitMessage, supabaseClient])
+    }, [
+      cancelLoungeDetailEdit,
+      loungeDetailDraftCaption,
+      loungeDetailEditMediaFile,
+      loungePostDetail,
+      rateLimitMessage,
+      supabaseClient,
+    ])
 
-    const confirmDeleteLoungePostFromDetail = useCallback(async () => {
+    const performLoungePostDeleteFromDetail = useCallback(async () => {
       if (!loungePostDetail?.id || loungePostDetail.user_id !== composerUserId) return
-      setLoungeManageErr('')
       const postId = loungePostDetail.id
-      const ok = await showGlobalConfirm({
-        title: 'Delete this post?',
-        message: 'This removes the post from the Lounge. This cannot be undone.',
-        confirmLabel: 'Delete',
-        cancelLabel: 'Cancel',
-      })
-      if (!ok) return
+      setLoungeManageErr('')
       setLoungeDetailDeleteBusy(true)
       try {
         const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', postId)
@@ -1112,17 +1217,38 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           const msg = String(error.message || '')
           if (error.code === '42501') {
             setLoungeManageErr('You do not have permission to delete this post.')
-            return
+          } else {
+            setLoungeManageErr(msg || 'Could not delete.')
           }
-          setLoungeManageErr(msg || 'Could not delete.')
+          setLoungePostDeleteConfirmOpen(false)
           return
         }
+        setLoungePostDeleteConfirmOpen(false)
         closeLoungePostDetail()
         await loadCommunityFeed({ silent: true })
       } finally {
         setLoungeDetailDeleteBusy(false)
       }
-    }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, showGlobalConfirm, supabaseClient])
+    }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, supabaseClient])
+
+    useEffect(() => {
+      loungePostDetailVisibleRef.current = loungePostDetailVisible
+    }, [loungePostDetailVisible])
+
+    useEffect(() => {
+      if (!loungePostDetailMenuOpen) return
+      const onDown = (e) => {
+        const el = loungePostDetailMenuWrapRef.current
+        if (el && e.target instanceof Node && el.contains(e.target)) return
+        setLoungePostDetailMenuOpen(false)
+      }
+      document.addEventListener('mousedown', onDown)
+      document.addEventListener('touchstart', onDown, { passive: true })
+      return () => {
+        document.removeEventListener('mousedown', onDown)
+        document.removeEventListener('touchstart', onDown)
+      }
+    }, [loungePostDetailMenuOpen])
 
     useEffect(() => {
       if (!composerUserId) {
@@ -1134,6 +1260,16 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       if (!loungePostDetail) return
       const onKey = (e) => {
         if (e.key !== 'Escape') return
+        if (loungePostDeleteConfirmOpen) {
+          e.preventDefault()
+          if (!loungeDetailDeleteBusy) setLoungePostDeleteConfirmOpen(false)
+          return
+        }
+        if (loungePostDetailMenuOpen) {
+          e.preventDefault()
+          setLoungePostDetailMenuOpen(false)
+          return
+        }
         if (loungeDetailEditing) {
           e.preventDefault()
           cancelLoungeDetailEdit()
@@ -1143,7 +1279,15 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       }
       window.addEventListener('keydown', onKey)
       return () => window.removeEventListener('keydown', onKey)
-    }, [cancelLoungeDetailEdit, closeLoungePostDetail, loungeDetailEditing, loungePostDetail])
+    }, [
+      cancelLoungeDetailEdit,
+      closeLoungePostDetail,
+      loungeDetailDeleteBusy,
+      loungeDetailEditing,
+      loungePostDeleteConfirmOpen,
+      loungePostDetail,
+      loungePostDetailMenuOpen,
+    ])
 
     useEffect(() => {
       let cancelled = false
@@ -1788,7 +1932,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   className="border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
                   onClick={(e) => {
                     const t = e.target
-                    if (t instanceof Element && t.closest('button, a')) return
+                    if (t instanceof Element && t.closest('button, a, textarea, input, select')) return
                     openLoungePostDetail(post)
                   }}
                 >
@@ -1807,8 +1951,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   <div className="flex gap-4">
                     <button
                       type="button"
-                      onClick={() => void openProfileModal(post)}
-                      className="h-[3.3rem] w-[3.3rem] shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-[17px] font-bold flex items-center justify-center overflow-hidden"
+                      title="View profile"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void openProfileModal(post)
+                      }}
+                      className="h-[3.3rem] w-[3.3rem] shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-[17px] font-bold flex items-center justify-center overflow-hidden touch-manipulation hover:border-zinc-600"
                     >
                       {post?.author_profile?.avatar_url ? (
                         <img
@@ -1830,11 +1978,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     </button>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void openProfileModal(post)}
-                          className="min-w-0 flex-1 overflow-hidden text-left hover:text-cyan-300 text-[14px] leading-tight"
-                        >
+                        <div className="min-w-0 flex-1 overflow-hidden text-left text-[14px] leading-tight">
                           <div className="truncate text-left text-zinc-100 font-semibold text-[17px] leading-tight">
                             {displayNameFor(post)}
                           </div>
@@ -1847,7 +1991,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                               {postAgeLabel(post.created_at)}
                             </span>
                           </div>
-                        </button>
+                        </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-2">
                           {post.pinned ? (
                             <span className="rounded-full bg-fuchsia-500/20 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-fuchsia-200">
@@ -1944,28 +2088,43 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
         {loungePostDetail ? (
           <div
-            className="fixed inset-0 z-[96] flex flex-col justify-end bg-black/80 sm:justify-center sm:p-3"
+            className="fixed inset-0 z-[96] sm:bg-black/85"
             role="dialog"
             aria-modal="true"
             aria-labelledby="lounge-post-detail-title"
           >
             <button
               type="button"
-              className="absolute inset-0 z-0 cursor-default"
+              className="absolute inset-0 z-0 hidden cursor-default sm:block"
               aria-label="Close post"
               onClick={() => {
+                if (loungePostDeleteConfirmOpen) {
+                  if (!loungeDetailDeleteBusy) setLoungePostDeleteConfirmOpen(false)
+                  return
+                }
                 if (loungeDetailEditing) cancelLoungeDetailEdit()
                 else closeLoungePostDetail()
               }}
             />
             <div
-              className="relative z-10 flex max-h-[calc(100dvh-0.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-700 bg-zinc-950 shadow-2xl sm:mx-auto sm:max-h-[min(92dvh,880px)] sm:rounded-2xl"
+              className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/90 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none ${
+                loungePostDetailVisible ? 'translate-x-0' : 'translate-x-full'
+              }`}
+              onTransitionEnd={onLoungePostDetailPanelTransitionEnd}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-3 sm:py-3">
+              <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] sm:py-3">
                 <button
                   type="button"
                   onClick={() => {
+                    if (loungePostDeleteConfirmOpen) {
+                      if (!loungeDetailDeleteBusy) setLoungePostDeleteConfirmOpen(false)
+                      return
+                    }
+                    if (loungePostDetailMenuOpen) {
+                      setLoungePostDetailMenuOpen(false)
+                      return
+                    }
                     if (loungeDetailEditing) cancelLoungeDetailEdit()
                     else closeLoungePostDetail()
                   }}
@@ -1979,10 +2138,74 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 <h2 id="lounge-post-detail-title" className="min-w-0 flex-1 text-center text-[17px] font-bold text-white">
                   Post
                 </h2>
-                <div className="h-10 w-10 shrink-0" aria-hidden />
+                {composerUserId &&
+                loungePostDetail.user_id === composerUserId &&
+                !loungeDetailEditing ? (
+                  <div ref={loungePostDetailMenuWrapRef} className="relative flex h-10 w-10 shrink-0 justify-end">
+                    <button
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={loungePostDetailMenuOpen}
+                      aria-label="Post options"
+                      onClick={() => setLoungePostDetailMenuOpen((o) => !o)}
+                      className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                        <circle cx="4" cy="10" r="1.65" />
+                        <circle cx="10" cy="10" r="1.65" />
+                        <circle cx="16" cy="10" r="1.65" />
+                      </svg>
+                    </button>
+                    {loungePostDetailMenuOpen ? (
+                      <div
+                        role="menu"
+                        className="absolute right-0 top-full z-[20] mt-1 min-w-[11rem] rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                      >
+                        {loungePostWithinAuthorEditWindow(loungePostDetail.created_at) ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                            onClick={() => {
+                              setLoungePostDetailMenuOpen(false)
+                              setLoungeDetailEditErr('')
+                              setLoungeManageErr('')
+                              setLoungeDetailEditMediaFile(null)
+                              setLoungeDetailEditMediaKind('')
+                              try {
+                                const el = loungeDetailEditMediaInputRef.current
+                                if (el) el.value = ''
+                              } catch {
+                                // ignore
+                              }
+                              setLoungeDetailDraftCaption(feedPostDisplayCaption(loungePostDetail))
+                              setLoungeDetailEditing(true)
+                            }}
+                          >
+                            Edit
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="block w-full px-4 py-3 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                          disabled={loungeDetailDeleteBusy}
+                          onClick={() => {
+                            setLoungePostDetailMenuOpen(false)
+                            setLoungePostDeleteConfirmOpen(true)
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="h-10 w-10 shrink-0" aria-hidden />
+                )}
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                 {loungeManageErr ? (
                   <div className="mb-4 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
                     {loungeManageErr}
@@ -1994,7 +2217,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     type="button"
                     onClick={() => {
                       const p = loungePostDetail
-                      closeLoungePostDetail()
+                      closeLoungePostDetailImmediate()
                       void openProfileModal(p)
                     }}
                     className="h-[3.3rem] w-[3.3rem] shrink-0 overflow-hidden rounded-full border border-zinc-700 bg-zinc-900 text-[17px] font-bold text-zinc-200"
@@ -2024,7 +2247,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                       type="button"
                       onClick={() => {
                         const p = loungePostDetail
-                        closeLoungePostDetail()
+                        closeLoungePostDetailImmediate()
                         void openProfileModal(p)
                       }}
                       className="text-left hover:text-cyan-300"
@@ -2050,20 +2273,64 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 </div>
 
                 {loungeDetailEditing ? (
-                  <div className="mt-4 space-y-2">
-                    <textarea
-                      value={loungeDetailDraftCaption}
-                      onChange={(e) => setLoungeDetailDraftCaption(e.target.value)}
-                      maxLength={280}
-                      rows={6}
-                      className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-[18px] leading-snug text-zinc-100 outline-none focus:border-cyan-600/60 focus:ring-2 focus:ring-cyan-500/25"
-                      aria-label="Edit caption"
-                    />
-                    {loungeDetailEditErr ? (
-                      <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[13px] leading-tight text-rose-200">
-                        {loungeDetailEditErr}
+                  <div className="relative mt-4">
+                    <button
+                      type="button"
+                      disabled={loungeDetailEditBusy}
+                      onClick={() => {
+                        if (loungeDetailEditBusy) return
+                        cancelLoungeDetailEdit()
+                      }}
+                      className="absolute right-0 top-0 z-10 flex h-6 w-6 touch-manipulation items-center justify-center rounded-full bg-zinc-800/95 text-zinc-500 shadow-sm hover:bg-zinc-700 hover:text-zinc-200 active:text-white disabled:pointer-events-none disabled:opacity-40 [-webkit-tap-highlight-color:transparent]"
+                      title="Cancel edits"
+                      aria-label="Cancel edits"
+                    >
+                      <svg className="h-3 w-3" viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <path
+                          d="M6 6l8 8M14 6l-8 8"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                    <div className="pr-8">
+                      <div className="grid min-h-[5rem] grid-cols-1 grid-rows-1 [&>*]:col-start-1 [&>*]:row-start-1">
+                        <div
+                          ref={loungeDetailEditMirrorRef}
+                          aria-hidden
+                          className="pointer-events-none min-h-[5rem] w-full overflow-y-auto whitespace-pre-wrap break-words border border-transparent px-0 py-0 text-left text-[18px] leading-snug text-zinc-100 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                        >
+                          {loungeDetailDraftCaption ? (
+                            renderRichCaption(loungeDetailDraftCaption, {
+                              hashtagClassName: 'pointer-events-none font-semibold text-cyan-300',
+                              linkClassName:
+                                'pointer-events-none font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
+                            })
+                          ) : (
+                            <span className="text-zinc-500">Are you winning, son?</span>
+                          )}
+                        </div>
+                        <textarea
+                          ref={loungeDetailEditTextareaRef}
+                          value={loungeDetailDraftCaption}
+                          onChange={(e) => setLoungeDetailDraftCaption(e.target.value)}
+                          onScroll={(e) => {
+                            const m = loungeDetailEditMirrorRef.current
+                            if (m) m.scrollTop = e.currentTarget.scrollTop
+                          }}
+                          className="z-10 min-h-[5rem] w-full resize-none touch-manipulation overflow-y-auto bg-transparent px-0 py-0 text-[18px] leading-snug text-transparent caret-white outline-none selection:bg-cyan-500/25"
+                          placeholder=""
+                          aria-label="Edit caption"
+                          maxLength={280}
+                        />
                       </div>
-                    ) : null}
+                      {loungeDetailEditErr ? (
+                        <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
+                          {loungeDetailEditErr}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ) : (
                   <div className="mt-4 text-[18px] leading-snug text-zinc-100 whitespace-pre-wrap">
@@ -2076,16 +2343,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 )}
 
                 <div className="mt-4 text-[14px] text-zinc-500">
-                  {loungePostDetail.created_at
-                    ? new Date(loungePostDetail.created_at).toLocaleString(undefined, {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })
-                    : ''}
+                  {formatLoungePostDetailWhen(loungePostDetail.created_at)}
                   {loungePostDetail.edited_at ? (
                     <span className="text-zinc-600"> · Edited</span>
                   ) : null}
@@ -2103,142 +2361,224 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   const likeClass = ui.liked ? 'text-rose-400' : 'text-zinc-500'
                   const bookmarkClass = isBookmarked ? 'text-amber-300' : 'text-zinc-500'
                   return (
-                    <div className="mt-5 grid grid-cols-5 items-center gap-1 border-t border-zinc-800/90 pt-4 text-[15px]">
-                      <button
-                        type="button"
-                        onClick={() => toggleInteraction(d.id, 'commented')}
-                        className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                      >
-                        <svg className={`h-[22px] w-[22px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                    <div className="mt-5 border-t border-zinc-800/90 pt-4">
+                      {loungeDetailEditing ? (
+                        <>
+                          <input
+                            ref={loungeDetailEditMediaInputRef}
+                            type="file"
+                            accept="image/*,video/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null
+                              if (!file) return
+                              const mime = String(file.type || '').toLowerCase()
+                              if (mime.startsWith('image/')) {
+                                setLoungeDetailEditErr('')
+                                setLoungeDetailEditMediaKind('image')
+                                setLoungeDetailEditMediaFile(file)
+                                return
+                              }
+                              if (mime.startsWith('video/')) {
+                                setLoungeDetailEditErr('')
+                                setLoungeDetailEditMediaKind('video')
+                                setLoungeDetailEditMediaFile(file)
+                                return
+                              }
+                              setLoungeDetailEditErr('Unsupported media type. Please choose an image or video file.')
+                              setLoungeDetailEditMediaFile(null)
+                              setLoungeDetailEditMediaKind('')
+                              try {
+                                const el = loungeDetailEditMediaInputRef.current
+                                if (el) el.value = ''
+                              } catch {
+                                // ignore
+                              }
+                            }}
                           />
-                        </svg>
-                        {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleInteraction(d.id, 'reposted')}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                          <div className="mb-2 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1">
+                            <button
+                              type="button"
+                              onClick={() => loungeDetailEditMediaInputRef.current?.click()}
+                              className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                              title="Add media"
+                              aria-label="Add media"
+                            >
+                              <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
+                                <rect
+                                  x="3.75"
+                                  y="3.75"
+                                  width="12.5"
+                                  height="12.5"
+                                  rx="2"
+                                  stroke="currentColor"
+                                  strokeWidth="1.35"
+                                />
+                                <path
+                                  d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
+                                  stroke="currentColor"
+                                  strokeWidth="1.25"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+                              </svg>
+                            </button>
+                            <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1 pr-2">
+                                {loungeDetailEditMediaFile ? (
+                                  <span className="block truncate text-[17px] leading-tight text-zinc-400">
+                                    {loungeDetailEditMediaKind === 'video' ? 'Video' : 'Image'} selected
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="inline-flex shrink-0 items-center gap-2 py-0.5">
+                                {loungeDetailDraftCaption.length >= 280 ? (
+                                  <span className="text-[11px] tabular-nums font-semibold text-rose-400" aria-live="polite">
+                                    {loungeDetailDraftCaption.length}/280
+                                  </span>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => void saveLoungeDetailCaption()}
+                                  disabled={loungeDetailEditBusy}
+                                  className="min-h-8 shrink-0 touch-manipulation rounded-md bg-cyan-600 px-2 py-1 text-[14px] font-bold text-white hover:bg-cyan-500 disabled:opacity-60 [-webkit-tap-highlight-color:transparent]"
+                                >
+                                  {loungeDetailEditBusy ? 'Saving…' : 'Save'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+                      <div
+                        className={`grid grid-cols-5 items-center gap-1 text-[15px] ${loungeDetailEditing ? 'mt-1' : ''}`}
                       >
-                        <svg className={`h-[22px] w-[22px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleInteraction(d.id, 'liked')}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                      >
-                        <svg className={`h-[22px] w-[22px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                      >
-                        <svg className={actionIconClass} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M11.5 4.75h3.75V8.5M15 5l-6.25 6.25M12.75 10.5v4a.75.75 0 01-.75.75H5.5a.75.75 0 01-.75-.75V8a.75.75 0 01.75-.75h4"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleBookmark(d.id)}
-                        className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                        title={isBookmarked ? 'Remove bookmark' : 'Save post'}
-                      >
-                        <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleInteraction(d.id, 'commented')}
+                          className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                        >
+                          <svg className={`h-[22px] w-[22px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleInteraction(d.id, 'reposted')}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                        >
+                          <svg className={`h-[22px] w-[22px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleInteraction(d.id, 'liked')}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                        >
+                          <svg className={`h-[22px] w-[22px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                        >
+                          <svg className={actionIconClass} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M11.5 4.75h3.75V8.5M15 5l-6.25 6.25M12.75 10.5v4a.75.75 0 01-.75.75H5.5a.75.75 0 01-.75-.75V8a.75.75 0 01.75-.75h4"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(d.id)}
+                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                          title={isBookmarked ? 'Remove bookmark' : 'Save post'}
+                        >
+                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   )
                 })()}
               </div>
-
-              {composerUserId &&
-              loungePostDetail.user_id === composerUserId &&
-              loungePostWithinAuthorEditWindow(loungePostDetail.created_at) &&
-              !loungeDetailEditing ? (
-                <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-zinc-800 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoungeDetailEditErr('')
-                      setLoungeManageErr('')
-                      setLoungeDetailDraftCaption(feedPostDisplayCaption(loungePostDetail))
-                      setLoungeDetailEditing(true)
-                    }}
-                    disabled={loungeDetailDeleteBusy}
-                    className="min-h-12 touch-manipulation rounded-xl border border-zinc-600 bg-zinc-900 text-[15px] font-semibold text-zinc-100 hover:bg-zinc-800 disabled:opacity-50"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void confirmDeleteLoungePostFromDetail()}
-                    disabled={loungeDetailDeleteBusy}
-                    className="min-h-12 touch-manipulation rounded-xl bg-rose-600/90 text-[15px] font-bold text-white hover:bg-rose-500 disabled:opacity-50"
-                  >
-                    {loungeDetailDeleteBusy ? 'Deleting…' : 'Delete'}
-                  </button>
-                </div>
-              ) : null}
-
-              {composerUserId &&
-              loungePostDetail.user_id === composerUserId &&
-              loungePostWithinAuthorEditWindow(loungePostDetail.created_at) &&
-              loungeDetailEditing ? (
-                <div className="flex shrink-0 flex-wrap gap-2 border-t border-zinc-800 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                  <button
-                    type="button"
-                    onClick={() => void saveLoungeDetailCaption()}
-                    disabled={loungeDetailEditBusy}
-                    className="min-h-12 flex-1 touch-manipulation rounded-xl bg-cyan-600 px-4 text-[15px] font-bold text-white hover:bg-cyan-500 disabled:opacity-60"
-                  >
-                    {loungeDetailEditBusy ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelLoungeDetailEdit}
-                    disabled={loungeDetailEditBusy}
-                    className="min-h-12 flex-1 touch-manipulation rounded-xl border border-zinc-600 bg-zinc-900 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : null}
             </div>
+
+            {loungePostDeleteConfirmOpen ? (
+              <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="lounge-delete-post-title"
+                className="fixed inset-0 z-[110] flex items-center justify-center bg-black/65 p-4 sm:bg-black/70"
+                onClick={() => {
+                  if (!loungeDetailDeleteBusy) setLoungePostDeleteConfirmOpen(false)
+                }}
+              >
+                <div
+                  className="w-full max-w-sm rounded-3xl border border-zinc-700 bg-zinc-900 p-4 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div id="lounge-delete-post-title" className="text-[17px] font-semibold text-zinc-100">
+                    Delete this post?
+                  </div>
+                  <div className="mt-2 text-[14px] leading-relaxed text-zinc-300">
+                    This removes the post from the Lounge. This cannot be undone.
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={loungeDetailDeleteBusy}
+                      onClick={() => setLoungePostDeleteConfirmOpen(false)}
+                      className="min-h-11 flex-1 rounded-xl border border-zinc-600 bg-zinc-800 px-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loungeDetailDeleteBusy}
+                      onClick={() => void performLoungePostDeleteFromDetail()}
+                      className="min-h-11 flex-1 rounded-xl border border-rose-500/50 bg-rose-600 px-3 text-sm font-semibold text-white touch-manipulation hover:bg-rose-500 disabled:opacity-50"
+                    >
+                      {loungeDetailDeleteBusy ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

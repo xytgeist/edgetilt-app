@@ -1224,7 +1224,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   // ignore
                 }
               }}
-              className="absolute right-2 top-2 z-10 flex h-6 w-6 touch-manipulation items-center justify-center rounded-full bg-zinc-800/95 text-zinc-500 shadow-sm hover:bg-zinc-700 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+              className="absolute right-3 top-3 z-10 flex h-6 w-6 touch-manipulation items-center justify-center rounded-full bg-zinc-800/95 text-zinc-500 shadow-sm hover:bg-zinc-700 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
               title="Discard draft"
               aria-label="Discard draft"
             >
@@ -1277,7 +1277,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 )}
               </button>
             </div>
-            <div className={`min-w-0 flex-1 ${composerExpanded ? 'pr-8' : ''}`}>
+            <div className="min-w-0 flex-1">
               {composerExpanded ? (
                 <div
                   className="overflow-hidden will-change-[max-height,opacity]"
@@ -1286,98 +1286,20 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     opacity: Math.min(1, 0.2 + 0.8 * composerFoldReveal),
                   }}
                 >
-                  <textarea
-                    ref={composerTextareaRef}
-                    value={postText}
-                    onChange={(e) => setPostText(e.target.value)}
-                    className="w-full min-h-[6.5rem] resize-none touch-manipulation bg-transparent px-0 py-0 pt-[18px] text-[17px] leading-[1.25] text-white outline-none placeholder:text-[17px] placeholder:leading-[1.25] placeholder:text-zinc-500"
-                    placeholder="Are you winning, son?"
-                    maxLength={280}
-                  />
-                  {postErr ? (
-                    <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[17px] leading-tight text-rose-200">
-                      {postErr}
-                    </div>
-                  ) : null}
-                  <div
-                    className="mt-1 h-px w-auto max-w-full bg-zinc-700/85 mx-5 sm:mx-8"
-                    role="presentation"
-                    aria-hidden
-                  />
-                  <input
-                    ref={composerMediaInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
-                      if (!file) return
-                      const mime = String(file.type || '').toLowerCase()
-                      if (mime.startsWith('image/')) {
-                        setComposerMediaKind('image')
-                        setComposerMediaFile(file)
-                        return
-                      }
-                      if (mime.startsWith('video/')) {
-                        setComposerMediaKind('video')
-                        setComposerMediaFile(file)
-                        return
-                      }
-                      setPostErr('Unsupported media type. Please choose an image or video file.')
-                    }}
-                  />
-                  <div className="mt-1 flex items-center gap-2 pt-1.5 pb-1">
-                    <button
-                      type="button"
-                      onClick={() => composerMediaInputRef.current?.click()}
-                      className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
-                      title="Add media"
-                      aria-label="Add media"
-                    >
-                      <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
-                        <rect
-                          x="3.75"
-                          y="3.75"
-                          width="12.5"
-                          height="12.5"
-                          rx="2"
-                          stroke="currentColor"
-                          strokeWidth="1.35"
-                        />
-                        <path
-                          d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
-                          stroke="currentColor"
-                          strokeWidth="1.25"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle cx="8" cy="8" r="0.9" fill="currentColor" />
-                      </svg>
-                    </button>
-                    <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1 pr-2">
-                        {composerMediaFile ? (
-                          <span className="block truncate text-[17px] leading-tight text-zinc-400">
-                            {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
-                          </span>
-                        ) : null}
+                  <div className="pr-8">
+                    <textarea
+                      ref={composerTextareaRef}
+                      value={postText}
+                      onChange={(e) => setPostText(e.target.value)}
+                      className="w-full min-h-[6.5rem] resize-none touch-manipulation bg-transparent px-0 py-0 pt-[18px] text-[17px] leading-[1.25] text-white outline-none placeholder:text-[17px] placeholder:leading-[1.25] placeholder:text-zinc-500"
+                      placeholder="Are you winning, son?"
+                      maxLength={280}
+                    />
+                    {postErr ? (
+                      <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[17px] leading-tight text-rose-200">
+                        {postErr}
                       </div>
-                      <div className="inline-flex shrink-0 items-center gap-2 py-0.5 pl-2 pr-1">
-                        {postText.length >= 280 ? (
-                          <span className="text-[11px] tabular-nums font-semibold text-rose-400" aria-live="polite">
-                            {postText.length}/280
-                          </span>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => void submitLoungePost()}
-                          disabled={postBusy}
-                          className="min-h-9 shrink-0 touch-manipulation rounded-md bg-cyan-600 px-3.5 py-1.5 text-[14px] font-bold text-white disabled:opacity-60"
-                        >
-                          {postBusy ? 'Posting…' : 'Post'}
-                        </button>
-                      </div>
-                    </div>
+                    ) : null}
                   </div>
                 </div>
               ) : (
@@ -1412,6 +1334,93 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               )}
             </div>
           </div>
+          {composerExpanded ? (
+            <div
+              className="will-change-[opacity]"
+              style={{ opacity: Math.min(1, 0.2 + 0.8 * composerFoldReveal) }}
+            >
+              <div
+                className="mx-auto mt-1 h-px w-[90%] bg-zinc-700/85"
+                role="presentation"
+                aria-hidden
+              />
+              <input
+                ref={composerMediaInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null
+                  if (!file) return
+                  const mime = String(file.type || '').toLowerCase()
+                  if (mime.startsWith('image/')) {
+                    setComposerMediaKind('image')
+                    setComposerMediaFile(file)
+                    return
+                  }
+                  if (mime.startsWith('video/')) {
+                    setComposerMediaKind('video')
+                    setComposerMediaFile(file)
+                    return
+                  }
+                  setPostErr('Unsupported media type. Please choose an image or video file.')
+                }}
+              />
+              <div className="mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1">
+                <button
+                  type="button"
+                  onClick={() => composerMediaInputRef.current?.click()}
+                  className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                  title="Add media"
+                  aria-label="Add media"
+                >
+                  <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <rect
+                      x="3.75"
+                      y="3.75"
+                      width="12.5"
+                      height="12.5"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                    />
+                    <path
+                      d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
+                      stroke="currentColor"
+                      strokeWidth="1.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+                  </svg>
+                </button>
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1 pr-2">
+                    {composerMediaFile ? (
+                      <span className="block truncate text-[17px] leading-tight text-zinc-400">
+                        {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="inline-flex shrink-0 items-center gap-2 py-0.5">
+                    {postText.length >= 280 ? (
+                      <span className="text-[11px] tabular-nums font-semibold text-rose-400" aria-live="polite">
+                        {postText.length}/280
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void submitLoungePost()}
+                      disabled={postBusy}
+                      className="min-h-8 shrink-0 touch-manipulation rounded-md bg-cyan-600 px-2 py-1 text-[14px] font-bold text-white disabled:opacity-60"
+                    >
+                      {postBusy ? 'Posting…' : 'Post'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           </div>
 
           <div className="border-b border-zinc-800 pb-4">

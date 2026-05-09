@@ -1015,11 +1015,11 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                 <button
                   type="button"
                   onClick={() => composerMediaInputRef.current?.click()}
-                  className="min-h-11 min-w-11 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-zinc-300 hover:text-zinc-100"
+                  className="min-h-7 min-w-7 shrink-0 rounded-md border border-zinc-700 bg-zinc-900 px-1 text-zinc-300 hover:text-zinc-100"
                   title="Add media"
                   aria-label="Add media"
                 >
-                  <svg className="h-[20px] w-[20px]" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <svg className="h-[11px] w-[11px]" viewBox="0 0 20 20" fill="none" aria-hidden>
                     <path d="M4.75 4.75h10.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H4.75a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M7 9.25l1.75 1.75 3.25-3.25 2.5 2.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                     <circle cx="7" cy="7.25" r=".9" fill="currentColor" />
@@ -1034,12 +1034,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     </span>
                   ) : null}
                 </div>
-                <div className="inline-flex shrink-0 items-center gap-2">
-                  <span className="text-[20px] tabular-nums text-zinc-500">{postText.length}/280</span>
+                <div className="inline-flex shrink-0 items-center gap-1">
+                  <span className="text-[11px] tabular-nums text-zinc-500">{postText.length}/280</span>
                   <button
                     type="button"
                     onClick={() => setComposerExpanded(false)}
-                    className="min-h-12 touch-manipulation rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-[20px] font-semibold text-zinc-300"
+                    className="min-h-7 touch-manipulation rounded-md border border-zinc-700 bg-zinc-900 px-2 text-[11px] font-semibold text-zinc-300"
                   >
                     Cancel
                   </button>
@@ -1047,7 +1047,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     type="button"
                     onClick={() => void submitLoungePost()}
                     disabled={postBusy}
-                    className="min-h-12 touch-manipulation rounded-lg bg-cyan-600 px-4 text-[20px] font-bold text-white disabled:opacity-60"
+                    className="min-h-7 touch-manipulation rounded-md bg-cyan-600 px-2.5 text-[11px] font-bold text-white disabled:opacity-60"
                   >
                     {postBusy ? 'Posting…' : 'Post'}
                   </button>

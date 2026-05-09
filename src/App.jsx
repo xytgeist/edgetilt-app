@@ -577,6 +577,13 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const composerMediaInputRef = useRef(null)
     const composerTextareaRef = useRef(null)
     const loungeFeedScrollRef = useRef(null)
+    const loungeTitleBarRef = useRef(null)
+    const loungeScrollPrevTopRef = useRef(0)
+    const loungeTitleRevealRef = useRef(1)
+    const loungeTitleRevealRafRef = useRef(0)
+    const [loungeTitleBarHeight, setLoungeTitleBarHeight] = useState(0)
+    const [loungeTitleReveal, setLoungeTitleReveal] = useState(1)
+    const [loungeFeedViewportTopPx, setLoungeFeedViewportTopPx] = useState(0)
     /** True when feed scroll auto-collapsed the composer; cleared on explicit open / post / discard. */
     const composerFoldedFromFeedScrollRef = useRef(false)
     const composerDraftFlushRef = useRef({ postText: '', composerExpanded: false, composerMediaFile: null })
@@ -619,13 +626,81 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       }
     }, [composerExpanded])
 
+    useLayoutEffect(() => {
+      const bar = loungeTitleBarRef.current
+      if (!bar || typeof ResizeObserver === 'undefined') return
+      const apply = () => {
+        const h = Math.ceil(bar.getBoundingClientRect().height)
+        if (h > 0) setLoungeTitleBarHeight((prev) => (prev === h ? prev : h))
+      }
+      apply()
+      const ro = new ResizeObserver(() => apply())
+      ro.observe(bar)
+      return () => ro.disconnect()
+    }, [])
+
+    useLayoutEffect(() => {
+      const el = loungeFeedScrollRef.current
+      if (!el) return
+      const sync = () => {
+        setLoungeFeedViewportTopPx((prev) => {
+          const n = Math.round(el.getBoundingClientRect().top)
+          return prev === n ? prev : n
+        })
+      }
+      sync()
+      if (typeof ResizeObserver === 'undefined') {
+        window.addEventListener('resize', sync)
+        return () => window.removeEventListener('resize', sync)
+      }
+      const ro = new ResizeObserver(sync)
+      ro.observe(el)
+      window.addEventListener('resize', sync)
+      return () => {
+        ro.disconnect()
+        window.removeEventListener('resize', sync)
+      }
+    }, [])
+
     useEffect(() => {
       const el = loungeFeedScrollRef.current
       if (!el || typeof window === 'undefined') return
+      loungeScrollPrevTopRef.current = el.scrollTop
+      const revealPx = 160
+      const hidePx = 130
+      const revealDeltaCapPx = 36
+      const queueRevealRender = () => {
+        if (loungeTitleRevealRafRef.current) return
+        loungeTitleRevealRafRef.current = window.requestAnimationFrame(() => {
+          loungeTitleRevealRafRef.current = 0
+          setLoungeTitleReveal(loungeTitleRevealRef.current)
+        })
+      }
       const scrollDownPx = 14
       const scrollTopPx = 6
       const onScroll = () => {
         const st = el.scrollTop
+        const prev = loungeScrollPrevTopRef.current
+        const rawDelta = st - prev
+        loungeScrollPrevTopRef.current = st
+        const eff =
+          rawDelta === 0
+            ? 0
+            : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), revealDeltaCapPx)
+
+        let r = loungeTitleRevealRef.current
+        if (st <= 2) {
+          r = 1
+        } else if (eff < -0.5) {
+          r = Math.min(1, r + (-eff) / revealPx)
+        } else if (eff > 1.25) {
+          r = Math.max(0, r - eff / hidePx)
+        }
+        if (r !== loungeTitleRevealRef.current) {
+          loungeTitleRevealRef.current = r
+          queueRevealRender()
+        }
+
         const { composerExpanded: ex } = composerDraftFlushRef.current
         if (st > scrollDownPx && ex) {
           setComposerExpanded(false)
@@ -636,7 +711,10 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         }
       }
       el.addEventListener('scroll', onScroll, { passive: true })
-      return () => el.removeEventListener('scroll', onScroll)
+      return () => {
+        el.removeEventListener('scroll', onScroll)
+        if (loungeTitleRevealRafRef.current) window.cancelAnimationFrame(loungeTitleRevealRafRef.current)
+      }
     }, [])
 
     const displayLabel = useCallback((p) => {
@@ -1025,7 +1103,20 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           ref={loungeFeedScrollRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
         >
-          <div className="relative z-10 shrink-0 w-full border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
+          <div
+            aria-hidden
+            className="shrink-0"
+            style={{ height: loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56 }}
+          />
+          <div
+            ref={loungeTitleBarRef}
+            className="fixed left-1/2 z-[45] w-full max-w-2xl -translate-x-1/2 border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
+            style={{
+              top: loungeFeedViewportTopPx,
+              transform: `translate3d(0, ${-(1 - loungeTitleReveal) * (loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56)}px, 0)`,
+              pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
+            }}
+          >
             <div className="px-3 py-2.5 flex items-center justify-between gap-3">
               <div>
                 <div className="text-white text-[24px] font-black tracking-tight">Lounge</div>

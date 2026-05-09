@@ -511,11 +511,11 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const pullTriggeredRef = useRef(false)
     const composerMediaInputRef = useRef(null)
     const composerTextareaRef = useRef(null)
-    const loungeFeedPullZoneRef = useRef(null)
-    /** Pull-to-refresh: higher gain + cap = longer, looser travel before rubber-band limit. */
+    const loungeFeedScrollRef = useRef(null)
+    /** Pull-to-refresh: 1:1-ish finger travel in the feed scroller; cap avoids runaway state. */
     const pullRefreshThresholdPx = 88
-    const pullMaxVisualPx = 240
-    const pullFingerGain = 0.9
+    const pullMaxVisualPx = 300
+    const pullFingerGain = 1
 
     useLayoutEffect(() => {
       if (!composerExpanded) return
@@ -661,12 +661,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
     useEffect(() => {
       if (typeof window === 'undefined') return
-      const zone = loungeFeedPullZoneRef.current
+      const zone = loungeFeedScrollRef.current
       if (!zone) return
       const thresholdPx = pullRefreshThresholdPx
 
       const onTouchStart = (e) => {
-        if (window.scrollY > 0) {
+        if (zone.scrollTop > 0) {
           pullStartYRef.current = null
           return
         }
@@ -717,14 +717,15 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
     useEffect(() => {
       if (!communityFeedHasMore || communityFeedLoadingMore || communityFeedLoading) return
+      const root = loungeFeedScrollRef.current
       const node = loadMoreSentinelRef.current
-      if (!node || typeof window === 'undefined' || !('IntersectionObserver' in window)) return
+      if (!root || !node || typeof window === 'undefined' || !('IntersectionObserver' in window)) return
       const observer = new window.IntersectionObserver(
         (entries) => {
           const first = entries?.[0]
           if (first?.isIntersecting) void loadMoreCommunityFeed()
         },
-        { rootMargin: '300px 0px' }
+        { root, rootMargin: '300px 0px' }
       )
       observer.observe(node)
       return () => observer.disconnect()
@@ -906,8 +907,8 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     )
 
     return (
-      <div className="max-w-2xl mx-auto pb-4">
-        <div className="sticky top-[max(0px,env(safe-area-inset-top))] z-20 border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
+      <div className="mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="z-20 shrink-0 border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
           <div className="px-3 py-2.5 flex items-center justify-between gap-3">
             <div>
               <div className="text-white text-xl font-black tracking-tight">Lounge</div>
@@ -917,7 +918,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           </div>
         </div>
 
-        <div className="border-b border-zinc-800 bg-zinc-950/65 px-3 py-3">
+        <div className="shrink-0 border-b border-zinc-800 bg-zinc-950/65 px-3 py-3">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex w-11 shrink-0 justify-center">
               <button
@@ -1057,7 +1058,10 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           ) : null}
         </div>
 
-        <div ref={loungeFeedPullZoneRef} className="min-h-0">
+        <div
+          ref={loungeFeedScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
+        >
           <div
             className="overflow-hidden transition-[max-height,opacity] duration-200"
             style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
@@ -1070,7 +1074,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                   : 'Pull down to refresh'}
             </div>
           </div>
-          <div className="border-b border-zinc-800">
+          <div className="border-b border-zinc-800 pb-4">
           {communityFeedLoading ? (
             <div className="px-3 py-4 text-zinc-400 text-sm">Loading lounge…</div>
           ) : communityPosts.length === 0 ? (

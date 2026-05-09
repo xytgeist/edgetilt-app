@@ -33,6 +33,12 @@ import {
   ainsworthMustHitByGuideMarkdown,
 } from './mustHitByGuideDemo'
 import { defaultCardEvThresholdForSlug } from '../../constants/slotCardEvThreshold'
+import {
+  fetchOwnProfile,
+  profileSeedFromUser,
+  saveProfileWithHandleFallback,
+  uploadProfileAvatar,
+} from '../profiles/profileGate'
 
 /** Calculator / generic placeholder art for Buffalo Link — also used when a guide hero fails to load. */
 const BUFFALO_PLACEHOLDER_SRC = '/guides/buffalo-link/buffalo-link-calculator-icon.webp'
@@ -895,24 +901,46 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
+  const [profileGateOpen, setProfileGateOpen] = useState(false)
+  const [profileGateBusy, setProfileGateBusy] = useState(false)
+  const [profileGateErr, setProfileGateErr] = useState('')
+  const [profileGateHandle, setProfileGateHandle] = useState('')
+  const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
+  const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
+  const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
 
   const gameTitle = guideRow?.machines?.name || guideRow?.title || 'Game'
   const gameSlug = guideRow?.machines?.slug || guideRow?.slug || ''
+  const rateLimitMessage = (rawMessage) => {
+    const m = /retry_in_seconds=(\d+)/i.exec(String(rawMessage || ''))
+    const secs = m ? Number(m[1]) : NaN
+    if (!Number.isFinite(secs) || secs <= 0) {
+      return '🤖 You\'re in spam bot jail! Please wait a few minutes and try again.'
+    }
+    const mm = Math.floor(secs / 60)
+    const ss = secs % 60
+    const tail = mm > 0 ? `${mm}m ${String(ss).padStart(2, '0')}s` : `${ss}s`
+    return `🤖 You're in spam bot jail! Try again in ${tail}.`
+  }
 
   useEffect(() => {
     if (open) {
       setCaption('')
       setErr('')
       setAuthPromptOpen(false)
+      setProfileGateOpen(false)
+      setProfileGateErr('')
+      setProfileGateAvatarFile(null)
+      setProfileGateAvatarPreview('')
     }
   }, [open, guideRow?.id])
 
   if (!open || !guideRow) return null
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const submit = async (e, forcedCaption = null) => {
+    e?.preventDefault?.()
     setErr('')
-    const cleanedCaption = caption.trim()
+    const cleanedCaption = String(forcedCaption ?? caption).trim()
     if (!cleanedCaption) {
       setErr('Write a caption before posting.')
       return
@@ -928,6 +956,25 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
       } = await supabaseClient.auth.getSession()
       if (!session?.user) {
         setAuthPromptOpen(true)
+        setBusy(false)
+        return
+      }
+
+      const { data: ownProfile, error: profileErr } = await fetchOwnProfile(supabaseClient, session.user.id)
+      if (profileErr) {
+        setErr(`Could not verify profile: ${profileErr.message || 'Unknown error.'}`)
+        setBusy(false)
+        return
+      }
+      if (!ownProfile?.handle || !ownProfile?.display_name) {
+        const seed = profileSeedFromUser(session.user)
+        setProfileGateHandle(ownProfile?.handle || seed.baseHandle)
+        setProfileGateDisplayName(ownProfile?.display_name || seed.displayName)
+        setProfileGateAvatarFile(null)
+        setProfileGateAvatarPreview(ownProfile?.avatar_url || '')
+        setProfileGateErr('')
+        setProfileGateOpen(true)
+        setErr('Complete your profile before posting.')
         setBusy(false)
         return
       }
@@ -948,6 +995,8 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
           setErr(
             `A required relation is missing in the active project (${ACTIVE_SUPABASE_HOST}). Run both SQL files in this same project: \`supabase/community_feed_posts.sql\` then \`supabase/feed_phase_a_profiles_public_read.sql\`. Details: ${error.message}`
           )
+        } else if (error.message?.toLowerCase?.().includes('rate limit exceeded')) {
+          setErr(rateLimitMessage(error.message))
         } else if (error.code === '42501') {
           setErr(`Posting blocked by RLS/policy in ${ACTIVE_SUPABASE_HOST}. Details: ${error.message}`)
         } else {
@@ -963,6 +1012,55 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
       setErr(ex?.message || 'Could not post.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const saveProfileGate = async () => {
+    setProfileGateErr('')
+    const display = profileGateDisplayName.trim()
+    if (!display) {
+      setProfileGateErr('Display name is required.')
+      return
+    }
+    setProfileGateBusy(true)
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession()
+      if (!session?.user) {
+        setProfileGateOpen(false)
+        setAuthPromptOpen(true)
+        return
+      }
+      let avatarUrl
+      if (profileGateAvatarFile) {
+        const { data: uploadedUrl, error: uploadErr } = await uploadProfileAvatar({
+          supabaseClient,
+          user: session.user,
+          file: profileGateAvatarFile,
+        })
+        if (uploadErr) {
+          setProfileGateErr(uploadErr.message || 'Could not upload avatar image.')
+          return
+        }
+        avatarUrl = uploadedUrl || null
+      }
+
+      const { error } = await saveProfileWithHandleFallback({
+        supabaseClient,
+        user: session.user,
+        displayName: display,
+        requestedHandle: profileGateHandle,
+        avatarUrl,
+      })
+      if (error) {
+        setProfileGateErr(error.message || 'Could not save profile.')
+        return
+      }
+      setProfileGateOpen(false)
+      await submit(null, caption)
+    } finally {
+      setProfileGateBusy(false)
     }
   }
 
@@ -1051,6 +1149,99 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                 className="min-h-10 rounded-xl text-zinc-400 hover:text-zinc-200"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {profileGateOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/75" role="dialog" aria-modal>
+          <button
+            type="button"
+            className="absolute inset-0 z-0 cursor-default"
+            aria-label="Close profile gate"
+            onClick={() => setProfileGateOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
+            <div className="text-cyan-200 text-sm font-semibold uppercase tracking-wide">Complete your profile</div>
+            <div className="text-white text-lg font-bold mt-1">One-time setup before posting</div>
+            <div className="text-zinc-400 text-sm mt-2 leading-relaxed">
+              Pick a handle and display name for Lounge posts.
+            </div>
+            <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Profile photo</span>
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0">
+                    {profileGateAvatarPreview ? (
+                      <img src={profileGateAvatarPreview} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full grid place-items-center text-zinc-500 text-xs">+</div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null
+                      if (!file) return
+                      if (!String(file.type || '').startsWith('image/')) {
+                        setProfileGateErr('Please choose an image file.')
+                        return
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        setProfileGateErr('Image must be 5MB or smaller.')
+                        return
+                      }
+                      setProfileGateErr('')
+                      setProfileGateAvatarFile(file)
+                      setProfileGateAvatarPreview(URL.createObjectURL(file))
+                    }}
+                    className="block w-full text-xs text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-zinc-100 hover:file:bg-zinc-700"
+                  />
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Handle</span>
+                <input
+                  value={profileGateHandle}
+                  onChange={(e) => setProfileGateHandle(e.target.value)}
+                  className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  placeholder="your_handle"
+                />
+              </label>
+              <label className="block">
+                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Display name</span>
+                <input
+                  value={profileGateDisplayName}
+                  onChange={(e) => setProfileGateDisplayName(e.target.value)}
+                  maxLength={24}
+                  className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  placeholder="Bryan"
+                />
+              </label>
+              {profileGateErr ? (
+                <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed">
+                  {profileGateErr}
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setProfileGateOpen(false)}
+                className="flex-1 min-h-10 rounded-xl bg-zinc-800 text-zinc-100 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveProfileGate()}
+                disabled={profileGateBusy}
+                className="flex-1 min-h-10 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-60"
+              >
+                {profileGateBusy ? 'Saving…' : 'Save profile'}
               </button>
             </div>
           </div>

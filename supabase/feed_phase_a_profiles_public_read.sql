@@ -274,3 +274,115 @@ create policy community_feed_posts_delete_moderator on public.community_feed_pos
         and p.role = 'admin'
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- 4) Rate limiting (A4 foundation) — DB-first posting guard
+-- ---------------------------------------------------------------------------
+create table if not exists public.rate_limit_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null,
+  window_start timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists rate_limit_events_user_kind_window_idx
+  on public.rate_limit_events (user_id, kind, window_start desc);
+
+create index if not exists rate_limit_events_created_idx
+  on public.rate_limit_events (created_at desc);
+
+comment on table public.rate_limit_events is
+  'Append-only rate limit events for DB-backed rolling window enforcement.';
+
+create or replace function public.community_feed_posts_enforce_rate_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid;
+  v_kind text := 'community_post_create';
+  v_window interval := interval '10 minutes';
+  v_limit integer := 5;
+  v_window_start timestamptz;
+  v_count integer;
+  v_oldest_in_window timestamptz;
+  v_retry_seconds integer;
+begin
+  -- Service-role / SQL-editor writes may not carry auth context; skip limiter there.
+  v_uid := auth.uid();
+  if v_uid is null then
+    return new;
+  end if;
+
+  v_window_start := now() - v_window;
+
+  select count(*)
+  into v_count
+  from public.rate_limit_events e
+  where e.user_id = v_uid
+    and e.kind = v_kind
+    and e.created_at >= v_window_start;
+
+  if v_count >= v_limit then
+    select min(e.created_at)
+    into v_oldest_in_window
+    from public.rate_limit_events e
+    where e.user_id = v_uid
+      and e.kind = v_kind
+      and e.created_at >= v_window_start;
+
+    v_retry_seconds := greatest(
+      1,
+      ceil(extract(epoch from ((coalesce(v_oldest_in_window, now()) + v_window) - now())))::int
+    );
+
+    raise exception 'Rate limit exceeded: retry_in_seconds=% (max % posts per % minutes)', v_retry_seconds, v_limit, extract(epoch from v_window) / 60
+      using errcode = 'P0001';
+  end if;
+
+  insert into public.rate_limit_events (user_id, kind, window_start)
+  values (v_uid, v_kind, date_trunc('minute', now()));
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_community_feed_posts_rate_limit on public.community_feed_posts;
+create trigger trg_community_feed_posts_rate_limit
+  before insert on public.community_feed_posts
+  for each row
+  execute function public.community_feed_posts_enforce_rate_limit();
+
+-- ---------------------------------------------------------------------------
+-- 5) Profile avatars storage bucket (Phase C profile gate)
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('profile-avatars', 'profile-avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists "profile_avatars_insert_own" on storage.objects;
+create policy "profile_avatars_insert_own"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'profile-avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "profile_avatars_update_own" on storage.objects;
+create policy "profile_avatars_update_own"
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'profile-avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "profile_avatars_delete_own" on storage.objects;
+create policy "profile_avatars_delete_own"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'profile-avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);

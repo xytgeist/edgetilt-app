@@ -41,7 +41,8 @@ Do not store secrets in this file.
 
 ### Phases C-L
 
-- [ ] Not started as complete feature slices yet (profiles page/gating, media pipeline, comments, likes, search, notifications, moderation, block/mute, permalinks, legal).
+- [ ] Not started as complete feature slices yet (media pipeline, comments, likes, search, notifications, moderation, block/mute, permalinks, legal).
+- [ ] Phase C started: first-interaction profile completion gate now blocks posting until `handle` + `display_name` are set (Lounge + Guides).
 
 ---
 
@@ -150,3 +151,6 @@ Do not store secrets in this file.
 - 2026-05-08: Added explicit roadmap phase status snapshot; set active implementation target to A2 feed model finalization.
 - 2026-05-08: Started A2 implementation: added `caption` migration/backfill path and app read/write compatibility for `caption` with legacy `title/body` fallback.
 - 2026-05-08: Added pinned-first feed query + cursor-based pagination (`created_at`, `id`) with load-more behavior in Home feed UI.
+- 2026-05-09: Started A4 foundation with DB-backed post rate limiting (`rate_limit_events` + insert trigger guard) and user-facing rate-limit error copy.
+- 2026-05-09: Added rate-limit cooldown feedback (`retry_in_seconds`) and surfaced user-facing countdown in Lounge/Guides post errors.
+- 2026-05-09: Started Phase C gating with profile completion modal (handle/display name) before posting from Lounge or Guides.

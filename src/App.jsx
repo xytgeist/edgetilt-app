@@ -23,6 +23,12 @@ import useOffersCalendarState from './features/offers/hooks/useOffersCalendarSta
 import useOffersCalendarMutations from './features/offers/hooks/useOffersCalendarMutations'
 import useWebPushNotifications from './features/offers/hooks/useWebPushNotifications'
 import GuidesScreen from './features/guides/GuidesScreen'
+import {
+  fetchOwnProfile,
+  profileSeedFromUser,
+  saveProfileWithHandleFallback,
+  uploadProfileAvatar,
+} from './features/profiles/profileGate'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -471,8 +477,36 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
   }
 
   const SocialFeed = () => {
+    const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
     const [postText, setPostText] = useState('')
+    const [composerExpanded, setComposerExpanded] = useState(false)
+    const [composerMediaFile, setComposerMediaFile] = useState(null)
+    const [composerMediaKind, setComposerMediaKind] = useState('')
+    const [postBusy, setPostBusy] = useState(false)
+    const [postErr, setPostErr] = useState('')
+    const [authPromptOpen, setAuthPromptOpen] = useState(false)
+    const [profileGateOpen, setProfileGateOpen] = useState(false)
+    const [profileGateBusy, setProfileGateBusy] = useState(false)
+    const [profileGateErr, setProfileGateErr] = useState('')
+    const [profileGateHandle, setProfileGateHandle] = useState('')
+    const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
+    const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
+    const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
+    const [profileModalOpen, setProfileModalOpen] = useState(false)
+    const [profileModalLoading, setProfileModalLoading] = useState(false)
+    const [profileModalErr, setProfileModalErr] = useState('')
+    const [profileModalData, setProfileModalData] = useState(null)
+    const [profileModalPosts, setProfileModalPosts] = useState([])
+    const [interactionByPost, setInteractionByPost] = useState({})
+    const [bookmarkedByPost, setBookmarkedByPost] = useState({})
+    const [composerUserId, setComposerUserId] = useState('')
+    const [composerUserProfile, setComposerUserProfile] = useState(null)
+    const [pullDistance, setPullDistance] = useState(0)
+    const [pullRefreshing, setPullRefreshing] = useState(false)
     const loadMoreSentinelRef = useRef(null)
+    const pullStartYRef = useRef(null)
+    const pullTriggeredRef = useRef(false)
+    const composerMediaInputRef = useRef(null)
 
     const displayLabel = useCallback((p) => {
       const pr = p?.author_profile
@@ -481,11 +515,172 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return 'Member'
     }, [])
 
+    const displayNameFor = useCallback((p) => {
+      const pr = p?.author_profile
+      if (pr?.display_name) return pr.display_name
+      if (pr?.handle) return `@${pr.handle}`
+      return 'Member'
+    }, [])
+
+    const handleFor = useCallback((p) => {
+      const pr = p?.author_profile
+      if (pr?.handle) return `@${pr.handle}`
+      return '@member'
+    }, [])
+
     const avatarText = useCallback((p) => {
       const pr = p?.author_profile
       const base = (pr?.display_name || pr?.handle || 'Member').trim()
       return base.slice(0, 1).toUpperCase() || 'M'
     }, [])
+
+    const rateLimitMessage = useCallback((rawMessage) => {
+      const m = /retry_in_seconds=(\d+)/i.exec(String(rawMessage || ''))
+      const secs = m ? Number(m[1]) : NaN
+      if (!Number.isFinite(secs) || secs <= 0) {
+        return '🤖 You\'re in spam bot jail! Please wait a few minutes and try again.'
+      }
+      const mm = Math.floor(secs / 60)
+      const ss = secs % 60
+      const tail = mm > 0 ? `${mm}m ${String(ss).padStart(2, '0')}s` : `${ss}s`
+      return `🤖 You're in spam bot jail! Try again in ${tail}.`
+    }, [])
+
+    const postAgeLabel = useCallback((createdAt) => {
+      if (!createdAt) return ''
+      const createdMs = new Date(createdAt).getTime()
+      if (!Number.isFinite(createdMs)) return ''
+      const diffMs = Date.now() - createdMs
+      const diffMinutes = Math.max(0, Math.floor(diffMs / 60000))
+      if (diffMinutes < 60) return `${Math.max(0, diffMinutes)}m`
+      const diffHours = Math.floor(diffMinutes / 60)
+      if (diffHours < 24) return `${diffHours}h`
+      const diffDays = Math.floor(diffHours / 24)
+      if (diffDays <= 3) return `${diffDays}d`
+      const dt = new Date(createdAt)
+      const now = new Date()
+      const sameYear = dt.getFullYear() === now.getFullYear()
+      return dt.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' })
+    }, [])
+
+    const actionIconClass = 'h-4 w-4 text-zinc-500'
+
+    const interactionStateFor = useCallback(
+      (postId) => interactionByPost[postId] || { commented: false, reposted: false, liked: false },
+      [interactionByPost]
+    )
+
+    const toggleInteraction = useCallback((postId, key) => {
+      setInteractionByPost((prev) => {
+        const cur = prev[postId] || { commented: false, reposted: false, liked: false }
+        return { ...prev, [postId]: { ...cur, [key]: !cur[key] } }
+      })
+    }, [])
+
+    const toggleBookmark = useCallback((postId) => {
+      setBookmarkedByPost((prev) => ({ ...prev, [postId]: !prev[postId] }))
+    }, [])
+
+    useEffect(() => {
+      let cancelled = false
+      ;(async () => {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        const uid = session?.user?.id || ''
+        if (cancelled) return
+        setComposerUserId(uid)
+        if (!uid) {
+          setComposerUserProfile(null)
+          return
+        }
+        const { data } = await supabaseClient
+          .from('profiles')
+          .select('user_id,handle,display_name,avatar_url,bio')
+          .eq('user_id', uid)
+          .maybeSingle()
+        if (cancelled) return
+        setComposerUserProfile(data || null)
+      })()
+      return () => {
+        cancelled = true
+      }
+    }, [supabaseClient, communityPosts.length])
+
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+      try {
+        const raw = window.localStorage.getItem(BOOKMARKS_STORAGE_KEY)
+        if (!raw) return
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object') setBookmarkedByPost(parsed)
+      } catch {
+        // Ignore local storage parse errors.
+      }
+    }, [])
+
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+      try {
+        window.localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarkedByPost))
+      } catch {
+        // Ignore local storage write errors.
+      }
+    }, [bookmarkedByPost])
+
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+      const thresholdPx = 84
+
+      const onTouchStart = (e) => {
+        if (window.scrollY > 0) {
+          pullStartYRef.current = null
+          return
+        }
+        pullStartYRef.current = e.touches?.[0]?.clientY ?? null
+        pullTriggeredRef.current = false
+      }
+
+      const onTouchMove = (e) => {
+        if (pullRefreshing) return
+        const startY = pullStartYRef.current
+        if (startY == null) return
+        const currentY = e.touches?.[0]?.clientY ?? startY
+        const dy = Math.max(0, currentY - startY)
+        if (dy <= 0) {
+          setPullDistance(0)
+          return
+        }
+        const eased = Math.min(120, Math.floor(dy * 0.55))
+        setPullDistance(eased)
+      }
+
+      const onTouchEnd = async () => {
+        const shouldRefresh = pullDistance >= thresholdPx && !pullTriggeredRef.current
+        pullStartYRef.current = null
+        setPullDistance(0)
+        if (!shouldRefresh) return
+        pullTriggeredRef.current = true
+        setPullRefreshing(true)
+        try {
+          await loadCommunityFeed()
+        } finally {
+          setPullRefreshing(false)
+          pullTriggeredRef.current = false
+        }
+      }
+
+      window.addEventListener('touchstart', onTouchStart, { passive: true })
+      window.addEventListener('touchmove', onTouchMove, { passive: true })
+      window.addEventListener('touchend', onTouchEnd, { passive: true })
+      window.addEventListener('touchcancel', onTouchEnd, { passive: true })
+      return () => {
+        window.removeEventListener('touchstart', onTouchStart)
+        window.removeEventListener('touchmove', onTouchMove)
+        window.removeEventListener('touchend', onTouchEnd)
+        window.removeEventListener('touchcancel', onTouchEnd)
+      }
+    }, [loadCommunityFeed, pullDistance, pullRefreshing])
 
     useEffect(() => {
       if (!communityFeedHasMore || communityFeedLoadingMore || communityFeedLoading) return
@@ -502,43 +697,324 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => observer.disconnect()
     }, [communityFeedHasMore, communityFeedLoading, communityFeedLoadingMore, loadMoreCommunityFeed])
 
+    const submitLoungePost = useCallback(async () => {
+      const caption = postText.trim()
+      setPostErr('')
+      if (!caption) {
+        setPostErr('Write a caption before posting.')
+        return
+      }
+      if (caption.length > 280) {
+        setPostErr('Caption must be 280 characters or fewer.')
+        return
+      }
+
+      setPostBusy(true)
+      try {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (!session?.user) {
+          setPostErr('You must be signed in to post in Lounge.')
+          setAuthPromptOpen(true)
+          return
+        }
+
+        const { data: ownProfile, error: profileErr } = await fetchOwnProfile(supabaseClient, session.user.id)
+        if (profileErr) {
+          setPostErr(`Could not verify profile: ${profileErr.message || 'Unknown error.'}`)
+          return
+        }
+        if (!ownProfile?.handle || !ownProfile?.display_name) {
+          const seed = profileSeedFromUser(session.user)
+          setProfileGateHandle(ownProfile?.handle || seed.baseHandle)
+          setProfileGateDisplayName(ownProfile?.display_name || seed.displayName)
+          setProfileGateAvatarFile(null)
+          setProfileGateAvatarPreview(ownProfile?.avatar_url || '')
+          setProfileGateErr('')
+          setProfileGateOpen(true)
+          setPostErr('Complete your profile to post in Lounge.')
+          return
+        }
+
+        const { error } = await supabaseClient.from('community_feed_posts').insert({
+          caption,
+          body: caption,
+          title: 'Lounge thread',
+          game_title: 'Lounge',
+          game_slug: null,
+        })
+
+        if (error) {
+          const msg = String(error.message || '')
+          if (msg.toLowerCase().includes('rate limit exceeded')) {
+            setPostErr(rateLimitMessage(msg))
+            return
+          }
+          if (error.code === '42501') {
+            setPostErr('Posting is blocked by current permissions. Please sign in and try again.')
+            return
+          }
+          if (error.code === '42P01') {
+            setPostErr('Lounge feed table is not set up in this project yet.')
+            return
+          }
+          setPostErr(msg || 'Could not post right now.')
+          return
+        }
+
+        setPostText('')
+        setComposerMediaFile(null)
+        setComposerMediaKind('')
+        setComposerExpanded(false)
+        setAuthPromptOpen(false)
+        await loadCommunityFeed()
+      } finally {
+        setPostBusy(false)
+      }
+    }, [loadCommunityFeed, onRequireAuth, postText, rateLimitMessage, supabaseClient])
+
+    const saveProfileGate = useCallback(async () => {
+      setProfileGateErr('')
+      const display = profileGateDisplayName.trim()
+      if (!display) {
+        setProfileGateErr('Display name is required.')
+        return
+      }
+      setProfileGateBusy(true)
+      try {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (!session?.user) {
+          setProfileGateOpen(false)
+          setAuthPromptOpen(true)
+          return
+        }
+        let avatarUrl
+        if (profileGateAvatarFile) {
+          const { data: uploadedUrl, error: uploadErr } = await uploadProfileAvatar({
+            supabaseClient,
+            user: session.user,
+            file: profileGateAvatarFile,
+          })
+          if (uploadErr) {
+            setProfileGateErr(uploadErr.message || 'Could not upload avatar image.')
+            return
+          }
+          avatarUrl = uploadedUrl || null
+        }
+
+        const { error } = await saveProfileWithHandleFallback({
+          supabaseClient,
+          user: session.user,
+          displayName: display,
+          requestedHandle: profileGateHandle,
+          avatarUrl,
+        })
+        if (error) {
+          setProfileGateErr(error.message || 'Could not save profile.')
+          return
+        }
+        setProfileGateOpen(false)
+      await submitLoungePost()
+      } finally {
+        setProfileGateBusy(false)
+      }
+    }, [profileGateAvatarFile, profileGateDisplayName, profileGateHandle, submitLoungePost, supabaseClient])
+
+    const openProfileModal = useCallback(
+      async (post) => {
+        const userId = post?.user_id
+        if (!userId) return
+        setProfileModalOpen(true)
+        setProfileModalLoading(true)
+        setProfileModalErr('')
+        setProfileModalData(post?.author_profile || null)
+        setProfileModalPosts([])
+        try {
+          const [{ data: profileRow, error: profileErr }, { data: postRows, error: postsErr }] =
+            await Promise.all([
+              supabaseClient
+                .from('profiles')
+                .select('user_id,handle,display_name,avatar_url,bio')
+                .eq('user_id', userId)
+                .maybeSingle(),
+              supabaseClient
+                .from('community_feed_posts')
+                .select('id,caption,title,body,created_at,game_title,pinned')
+                .eq('user_id', userId)
+                .is('hidden_at', null)
+                .order('pinned', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(30),
+            ])
+          if (profileErr || postsErr) {
+            setProfileModalErr(profileErr?.message || postsErr?.message || 'Could not load profile.')
+            return
+          }
+          setProfileModalData(
+            profileRow || {
+              user_id: userId,
+              handle: '',
+              display_name: 'Member',
+              avatar_url: null,
+              bio: '',
+            }
+          )
+          setProfileModalPosts(postRows || [])
+        } finally {
+          setProfileModalLoading(false)
+        }
+      },
+      [supabaseClient]
+    )
+
     return (
       <div className="max-w-2xl mx-auto pb-4">
         <div className="sticky top-[max(0px,env(safe-area-inset-top))] z-20 border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
+          <div
+            className="overflow-hidden transition-[max-height,opacity] duration-200"
+            style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
+          >
+            <div className="px-3 py-1 text-center text-[11px] text-zinc-400">
+              {pullRefreshing
+                ? 'Refreshing lounge…'
+                : pullDistance >= 84
+                  ? 'Release to refresh'
+                  : 'Pull down to refresh'}
+            </div>
+          </div>
           <div className="px-3 py-2.5 flex items-center justify-between gap-3">
             <div>
               <div className="text-white text-xl font-black tracking-tight">Lounge</div>
               <div className="text-zinc-500 text-[11px]">Latest</div>
             </div>
-            <button
-              type="button"
-              onClick={() => loadCommunityFeed()}
-              disabled={communityFeedLoading}
-              className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-200 touch-manipulation active:scale-[0.99] disabled:opacity-60"
-            >
-              {communityFeedLoading ? 'Refreshing…' : 'Refresh'}
-            </button>
+            <div className="text-zinc-600 text-[11px]">{communityFeedLoading ? 'Updating…' : ''}</div>
           </div>
         </div>
 
         <div className="border-b border-zinc-800 bg-zinc-950/65 px-3 py-3">
-          <div className="text-white font-bold text-sm mb-2">Start a thread</div>
-          <textarea
-            value={postText}
-            onChange={(e) => setPostText(e.target.value)}
-            className="w-full min-h-20 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2.5 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
-            placeholder="Ask a question or drop quick floor intel..."
-          />
-          <div className="mt-2.5 flex items-center gap-2">
-            <button type="button" className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-[11px] font-semibold text-zinc-100">
-              Photo
-            </button>
-            <button type="button" className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-[11px] font-semibold text-zinc-100">
-              Video
-            </button>
-            <button type="button" className="ml-auto min-h-8 rounded-lg bg-cyan-600 px-3.5 text-[11px] font-bold text-white">
-              Post
-            </button>
+          <div className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2.5">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  composerUserId
+                    ? void openProfileModal({
+                        user_id: composerUserId,
+                        author_profile: composerUserProfile,
+                      })
+                    : null
+                }
+                className="mt-0.5 h-8 w-8 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-bold flex items-center justify-center overflow-hidden"
+                title="Open your profile"
+                aria-label="Open your profile"
+              >
+                {composerUserProfile?.avatar_url ? (
+                  <img
+                    src={composerUserProfile.avatar_url}
+                    alt=""
+                    className="h-full w-full rounded-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  (composerUserProfile?.display_name || composerUserProfile?.handle || 'M')
+                    .slice(0, 1)
+                    .toUpperCase()
+                )}
+              </button>
+              <div className="min-w-0 flex-1">
+            {composerExpanded ? (
+              <>
+                <textarea
+                  autoFocus
+                  value={postText}
+                  onChange={(e) => setPostText(e.target.value)}
+                  className="w-full min-h-20 bg-transparent text-white outline-none placeholder:text-zinc-500 text-sm resize-none"
+                  placeholder="Ask a question or drop quick floor intel..."
+                  maxLength={280}
+                />
+                {postErr ? (
+                  <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed">
+                    {postErr}
+                  </div>
+                ) : null}
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-2">
+                    <input
+                      ref={composerMediaInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        if (!file) return
+                        const mime = String(file.type || '').toLowerCase()
+                        if (mime.startsWith('image/')) {
+                          setComposerMediaKind('image')
+                          setComposerMediaFile(file)
+                          return
+                        }
+                        if (mime.startsWith('video/')) {
+                          setComposerMediaKind('video')
+                          setComposerMediaFile(file)
+                          return
+                        }
+                        setPostErr('Unsupported media type. Please choose an image or video file.')
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => composerMediaInputRef.current?.click()}
+                      className="min-h-8 min-w-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-zinc-300 hover:text-zinc-100"
+                      title="Add media"
+                      aria-label="Add media"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <path d="M4.75 4.75h10.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H4.75a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M7 9.25l1.75 1.75 3.25-3.25 2.5 2.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="7" cy="7.25" r=".9" fill="currentColor" />
+                      </svg>
+                    </button>
+                    {composerMediaFile ? (
+                      <span className="text-[11px] text-zinc-400">
+                        {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="inline-flex items-center gap-2">
+                    <span className="text-[11px] text-zinc-500">{postText.length}/280</span>
+                    <button
+                      type="button"
+                      onClick={() => setComposerExpanded(false)}
+                      className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-[11px] font-semibold text-zinc-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void submitLoungePost()}
+                      disabled={postBusy}
+                      className="min-h-8 rounded-lg bg-cyan-600 px-3.5 text-[11px] font-bold text-white disabled:opacity-60"
+                    >
+                      {postBusy ? 'Posting…' : 'Post'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setComposerExpanded(true)}
+                className="w-full min-h-9 text-left text-sm text-zinc-500"
+              >
+                Are you winning, son?
+              </button>
+            )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -555,21 +1031,58 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
             <>
               {communityPosts.map((post) => (
                 <article key={post.id} className="border-t border-zinc-800 px-3 py-3 bg-zinc-950/35">
+                  {(() => {
+                    const ui = interactionStateFor(post.id)
+                    const isBookmarked = !!bookmarkedByPost[post.id]
+                    const commentCount =
+                      (typeof post.comment_count === 'number' ? post.comment_count : 0) + (ui.commented ? 1 : 0)
+                    const likeCount =
+                      (typeof post.like_count === 'number' ? post.like_count : 0) + (ui.liked ? 1 : 0)
+                    const commentClass = ui.commented ? 'text-zinc-100' : 'text-zinc-500'
+                    const repostClass = ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
+                    const likeClass = ui.liked ? 'text-rose-400' : 'text-zinc-500'
+                    const bookmarkClass = isBookmarked ? 'text-amber-300' : 'text-zinc-500'
+                    return (
                   <div className="flex gap-3">
-                    <div className="h-9 w-9 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-bold flex items-center justify-center">
-                      {avatarText(post)}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void openProfileModal(post)}
+                      className="h-9 w-9 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-bold flex items-center justify-center overflow-hidden"
+                    >
+                      {post?.author_profile?.avatar_url ? (
+                        <img
+                          src={post.author_profile.avatar_url}
+                          alt=""
+                          className="h-full w-full rounded-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        avatarText(post)
+                      )}
+                    </button>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-zinc-100 font-semibold">{displayLabel(post)}</div>
+                        <button
+                          type="button"
+                          onClick={() => void openProfileModal(post)}
+                          className="min-w-0 max-w-full text-left hover:text-cyan-300 text-xs leading-tight inline-flex items-center"
+                        >
+                          <span className="text-zinc-100 font-semibold text-[12px]">{displayNameFor(post)}</span>
+                          <span className="text-zinc-500 ml-1 truncate max-w-[7rem]">{handleFor(post)}</span>
+                          <span className="text-zinc-600 mx-1">·</span>
+                          <span className="text-zinc-500">{postAgeLabel(post.created_at)}</span>
+                        </button>
                         <div className="flex flex-wrap items-center gap-2">
                           {post.pinned ? (
                             <span className="rounded-md bg-fuchsia-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
                               Pinned
                             </span>
                           ) : null}
-                          {post.game_title ? (
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-amber-400/90">{post.game_title}</span>
+                          {post.game_slug ? (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                              {post.game_title}
+                            </span>
                           ) : null}
                         </div>
                       </div>
@@ -579,38 +1092,56 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                       <div className="text-zinc-200 text-sm mt-1.5 leading-relaxed whitespace-pre-wrap">
                         {post.caption || post.body || post.title || ''}
                       </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-zinc-500">
-                        {post.created_at
-                          ? new Date(post.created_at).toLocaleString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
-                          : ''}
-                        {typeof post.like_count === 'number' ? <span className="text-zinc-400">{post.like_count}</span> : null}
-                        {typeof post.comment_count === 'number' ? <span className="text-zinc-400">{post.comment_count}</span> : null}
-                      </div>
-                      <div className="mt-2 flex items-center gap-3 text-xs text-zinc-400">
-                        <button type="button" className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70 hover:text-zinc-200">
-                          <span aria-hidden>💬</span>
-                          <span>Reply</span>
+                      <div className="mt-2 grid grid-cols-5 items-center text-xs">
+                        <button
+                          type="button"
+                          onClick={() => toggleInteraction(post.id, 'commented')}
+                          className="inline-flex items-center justify-start gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70"
+                        >
+                          <svg className={`h-4 w-4 ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70 hover:text-zinc-200">
-                          <span aria-hidden>🔁</span>
-                          <span>Repost</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleInteraction(post.id, 'reposted')}
+                          className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70"
+                        >
+                          <svg className={`h-4 w-4 ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70 hover:text-zinc-200">
-                          <span aria-hidden>❤️</span>
-                          <span>Like</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleInteraction(post.id, 'liked')}
+                          className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70"
+                        >
+                          <svg className={`h-4 w-4 ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70 hover:text-zinc-200">
-                          <span aria-hidden>↗️</span>
-                          <span>Share</span>
+                        <button type="button" className="inline-flex items-center justify-center gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70">
+                          <svg className={actionIconClass} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M11.5 4.75h3.75V8.5M15 5l-6.25 6.25M12.75 10.5v4a.75.75 0 01-.75.75H5.5a.75.75 0 01-.75-.75V8a.75.75 0 01.75-.75h4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(post.id)}
+                          className="inline-flex items-center justify-end gap-1 rounded px-1.5 py-0.5 hover:bg-zinc-900/70"
+                          title={isBookmarked ? 'Remove bookmark' : 'Save post'}
+                        >
+                          <svg className={`h-4 w-4 ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
                         </button>
                       </div>
                     </div>
                   </div>
+                    )
+                  })()}
                 </article>
               ))}
 
@@ -637,6 +1168,226 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
             </>
           )}
         </div>
+
+        {profileModalOpen ? (
+          <div className="fixed inset-0 z-[95] flex items-end justify-center sm:items-center p-4 bg-black/75" role="dialog" aria-modal>
+            <button
+              type="button"
+              className="absolute inset-0 z-0 cursor-default"
+              aria-label="Close profile"
+              onClick={() => setProfileModalOpen(false)}
+            />
+            <div className="relative z-10 w-full max-w-lg rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+              <div className="p-4 border-b border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden grid place-items-center text-zinc-300 font-bold">
+                    {profileModalData?.avatar_url ? (
+                      <img src={profileModalData.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      (profileModalData?.display_name || profileModalData?.handle || 'M').slice(0, 1).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-white font-bold truncate">{profileModalData?.display_name || 'Member'}</div>
+                    <div className="text-cyan-300 text-sm truncate">
+                      {profileModalData?.handle ? `@${profileModalData.handle}` : '@member'}
+                    </div>
+                  </div>
+                </div>
+                {profileModalData?.bio ? (
+                  <div className="mt-3 text-zinc-300 text-sm leading-relaxed">{profileModalData.bio}</div>
+                ) : null}
+              </div>
+              <div className="min-h-0 overflow-y-auto">
+                {profileModalLoading ? (
+                  <div className="p-4 text-zinc-400 text-sm">Loading profile…</div>
+                ) : profileModalErr ? (
+                  <div className="p-4">
+                    <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs">
+                      {profileModalErr}
+                    </div>
+                  </div>
+                ) : profileModalPosts.length === 0 ? (
+                  <div className="p-4 text-zinc-500 text-sm">No Lounge posts yet.</div>
+                ) : (
+                  profileModalPosts.map((p) => (
+                    <div key={p.id} className="border-t border-zinc-800 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-zinc-400 text-[11px]">
+                          {p.created_at
+                            ? new Date(p.created_at).toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })
+                            : ''}
+                        </div>
+                        {p.game_slug ? (
+                          <span className="inline-flex items-center rounded-full border border-amber-500/35 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                            {p.game_title}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1.5 text-zinc-100 text-sm leading-relaxed whitespace-pre-wrap">
+                        {p.caption || p.body || p.title || ''}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="p-3 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setProfileModalOpen(false)}
+                  className="w-full min-h-10 rounded-xl bg-zinc-800 text-zinc-100 font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {authPromptOpen ? (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>
+            <button
+              type="button"
+              className="absolute inset-0 z-0 cursor-default"
+              aria-label="Close auth prompt"
+              onClick={() => setAuthPromptOpen(false)}
+            />
+            <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
+              <div className="text-rose-200 text-sm font-semibold uppercase tracking-wide">Sign in required</div>
+              <div className="text-white text-lg font-bold mt-1">Post to Lounge</div>
+              <div className="text-zinc-400 text-sm mt-2 leading-relaxed">
+                You need an account to post. Choose Sign in or Create account.
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthPromptOpen(false)
+                    onRequireAuth?.('login')
+                  }}
+                  className="min-h-11 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthPromptOpen(false)
+                    onRequireAuth?.('create')
+                  }}
+                  className="min-h-11 rounded-xl border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold"
+                >
+                  Create account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthPromptOpen(false)}
+                  className="min-h-10 rounded-xl text-zinc-400 hover:text-zinc-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {profileGateOpen ? (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/75" role="dialog" aria-modal>
+            <button
+              type="button"
+              className="absolute inset-0 z-0 cursor-default"
+              aria-label="Close profile gate"
+              onClick={() => setProfileGateOpen(false)}
+            />
+            <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
+              <div className="text-cyan-200 text-sm font-semibold uppercase tracking-wide">Complete your profile</div>
+              <div className="text-white text-lg font-bold mt-1">One-time setup before posting</div>
+              <div className="text-zinc-400 text-sm mt-2 leading-relaxed">
+                Pick a handle and display name for Lounge posts.
+              </div>
+              <div className="mt-4 space-y-3">
+              <label className="block">
+                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Profile photo</span>
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden shrink-0">
+                    {profileGateAvatarPreview ? (
+                      <img src={profileGateAvatarPreview} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full grid place-items-center text-zinc-500 text-xs">+</div>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null
+                      if (!file) return
+                      if (!String(file.type || '').startsWith('image/')) {
+                        setProfileGateErr('Please choose an image file.')
+                        return
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        setProfileGateErr('Image must be 5MB or smaller.')
+                        return
+                      }
+                      setProfileGateErr('')
+                      setProfileGateAvatarFile(file)
+                      setProfileGateAvatarPreview(URL.createObjectURL(file))
+                    }}
+                    className="block w-full text-xs text-zinc-300 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-zinc-100 hover:file:bg-zinc-700"
+                  />
+                </div>
+              </label>
+                <label className="block">
+                  <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Handle</span>
+                  <input
+                    value={profileGateHandle}
+                    onChange={(e) => setProfileGateHandle(e.target.value)}
+                    className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                    placeholder="your_handle"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Display name</span>
+                  <input
+                    value={profileGateDisplayName}
+                    onChange={(e) => setProfileGateDisplayName(e.target.value)}
+                    maxLength={24}
+                    className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                    placeholder="Bryan"
+                  />
+                </label>
+                {profileGateErr ? (
+                  <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed">
+                    {profileGateErr}
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProfileGateOpen(false)}
+                  className="flex-1 min-h-10 rounded-xl bg-zinc-800 text-zinc-100 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveProfileGate()}
+                  disabled={profileGateBusy}
+                  className="flex-1 min-h-10 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-60"
+                >
+                  {profileGateBusy ? 'Saving…' : 'Save profile'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }

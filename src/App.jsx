@@ -577,6 +577,11 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const composerMediaInputRef = useRef(null)
     const composerTextareaRef = useRef(null)
     const loungeFeedScrollRef = useRef(null)
+    const loungeTitleBarRef = useRef(null)
+    const loungeScrollPrevTopRef = useRef(0)
+    const [loungeTitleBarHeight, setLoungeTitleBarHeight] = useState(0)
+    const [loungeTitleDocked, setLoungeTitleDocked] = useState(false)
+    const [loungeFeedViewportTopPx, setLoungeFeedViewportTopPx] = useState(0)
     /** True when feed scroll auto-collapsed the composer; cleared on explicit open / post / discard. */
     const composerFoldedFromFeedScrollRef = useRef(false)
     const composerDraftFlushRef = useRef({ postText: '', composerExpanded: false, composerMediaFile: null })
@@ -619,6 +624,42 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       }
     }, [composerExpanded])
 
+    useLayoutEffect(() => {
+      const bar = loungeTitleBarRef.current
+      if (!bar || typeof ResizeObserver === 'undefined') return
+      const apply = () => {
+        const h = Math.ceil(bar.getBoundingClientRect().height)
+        if (h > 0) setLoungeTitleBarHeight((prev) => (prev === h ? prev : h))
+      }
+      apply()
+      const ro = new ResizeObserver(() => apply())
+      ro.observe(bar)
+      return () => ro.disconnect()
+    }, [])
+
+    useLayoutEffect(() => {
+      const el = loungeFeedScrollRef.current
+      if (!el) return
+      const sync = () => {
+        setLoungeFeedViewportTopPx((prev) => {
+          const n = Math.round(el.getBoundingClientRect().top)
+          return prev === n ? prev : n
+        })
+      }
+      sync()
+      if (typeof ResizeObserver === 'undefined') {
+        window.addEventListener('resize', sync)
+        return () => window.removeEventListener('resize', sync)
+      }
+      const ro = new ResizeObserver(sync)
+      ro.observe(el)
+      window.addEventListener('resize', sync)
+      return () => {
+        ro.disconnect()
+        window.removeEventListener('resize', sync)
+      }
+    }, [])
+
     useEffect(() => {
       const el = loungeFeedScrollRef.current
       if (!el || typeof window === 'undefined') return
@@ -626,9 +667,20 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       const scrollTopPx = 6
       const onScroll = () => {
         const st = el.scrollTop
-        const { postText: t, composerExpanded: ex, composerMediaFile: f } = composerDraftFlushRef.current
-        const hasDraft = String(t || '').trim().length > 0 || !!f
-        if (st > scrollDownPx && ex && hasDraft) {
+        const prev = loungeScrollPrevTopRef.current
+        const delta = st - prev
+        loungeScrollPrevTopRef.current = st
+
+        if (st <= 1) {
+          setLoungeTitleDocked(false)
+        } else if (delta < -0.75) {
+          setLoungeTitleDocked(true)
+        } else if (delta > 2) {
+          setLoungeTitleDocked(false)
+        }
+
+        const { composerExpanded: ex } = composerDraftFlushRef.current
+        if (st > scrollDownPx && ex) {
           setComposerExpanded(false)
           composerFoldedFromFeedScrollRef.current = true
         } else if (st <= scrollTopPx && composerFoldedFromFeedScrollRef.current) {
@@ -1022,19 +1074,49 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
     return (
       <div className="mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <div className="z-20 shrink-0 border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
-          <div className="px-3 py-2.5 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-white text-[24px] font-black tracking-tight">Lounge</div>
-              <div className="text-zinc-500 text-[13px]">Latest</div>
-            </div>
-            <div className="text-zinc-600 text-[13px]">{communityFeedLoading ? 'Updating…' : ''}</div>
-          </div>
-        </div>
-
         <div
-          className={`relative shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${composerExpanded ? 'pt-3 pb-2.5' : 'py-3'}`}
+          ref={loungeFeedScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
         >
+          <div
+            className="relative shrink-0 w-full"
+            style={loungeTitleBarHeight > 0 ? { height: loungeTitleBarHeight } : undefined}
+          >
+            <div
+              ref={loungeTitleBarRef}
+              className={
+                loungeTitleDocked
+                  ? 'fixed left-1/2 z-[45] w-full max-w-2xl -translate-x-1/2 border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.35)]'
+                  : 'relative z-10 w-full border-b border-zinc-800/95 bg-zinc-950/90 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80'
+              }
+              style={loungeTitleDocked ? { top: loungeFeedViewportTopPx } : undefined}
+            >
+              <div className="px-3 py-2.5 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-white text-[24px] font-black tracking-tight">Lounge</div>
+                  <div className="text-zinc-500 text-[13px]">Latest</div>
+                </div>
+                <div className="text-zinc-600 text-[13px]">{communityFeedLoading ? 'Updating…' : ''}</div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="overflow-hidden transition-[max-height,opacity] duration-200"
+            style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2.25rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
+          >
+            <div className="px-3 py-1 text-center text-[13px] text-zinc-400">
+              {pullRefreshing
+                ? 'Refreshing lounge…'
+                : pullDistance >= pullRefreshThresholdPx
+                  ? 'Release to refresh'
+                  : 'Pull down to refresh'}
+            </div>
+          </div>
+
+          <div
+            className={`relative shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${composerExpanded ? 'pt-3 pb-2.5' : 'py-3'}`}
+          >
           {composerExpanded ? (
             <button
               type="button"
@@ -1130,9 +1212,24 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     composerFoldedFromFeedScrollRef.current = false
                     setComposerExpanded(true)
                   }}
-                  className="flex min-h-12 w-full touch-manipulation items-start justify-start pt-[18px] text-left text-[17px] leading-[1.25] text-zinc-500"
+                  className="flex min-h-12 w-full min-w-0 touch-manipulation items-start justify-start pt-[18px] text-left text-[17px] leading-[1.25] text-zinc-500"
                 >
-                  Are you winning, son?
+                  {(() => {
+                    const firstLine = String(postText || '')
+                      .split('\n')[0]
+                      .trim()
+                    if (firstLine) {
+                      return <span className="block w-full min-w-0 truncate text-zinc-100">{firstLine}</span>
+                    }
+                    if (composerMediaFile) {
+                      return (
+                        <span className="block w-full min-w-0 truncate text-zinc-400">
+                          {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
+                        </span>
+                      )
+                    }
+                    return 'Are you winning, son?'
+                  })()}
                 </button>
               )}
             </div>
@@ -1221,24 +1318,8 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               </div>
             </>
           ) : null}
-        </div>
-
-        <div
-          ref={loungeFeedScrollRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
-        >
-          <div
-            className="overflow-hidden transition-[max-height,opacity] duration-200"
-            style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2.25rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
-          >
-            <div className="px-3 py-1 text-center text-[13px] text-zinc-400">
-              {pullRefreshing
-                ? 'Refreshing lounge…'
-                : pullDistance >= pullRefreshThresholdPx
-                  ? 'Release to refresh'
-                  : 'Pull down to refresh'}
-            </div>
           </div>
+
           <div className="border-b border-zinc-800 pb-4">
           {communityFeedLoading ? (
             <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>

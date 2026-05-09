@@ -530,8 +530,30 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
     const avatarText = useCallback((p) => {
       const pr = p?.author_profile
-      const base = (pr?.display_name || pr?.handle || 'Member').trim()
-      return base.slice(0, 1).toUpperCase() || 'M'
+      const base = String(pr?.display_name || pr?.handle || 'Member')
+        .trim()
+        .replace(/\s+/g, ' ')
+      if (!base) return 'ME'
+      const words = base.split(' ').filter(Boolean)
+      if (words.length >= 2) return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase()
+      const letters = base.replace(/[^a-z0-9]/gi, '').toUpperCase()
+      return letters.slice(0, 2) || 'ME'
+    }, [])
+
+    const avatarToneClass = useCallback((seedValue) => {
+      const seed = String(seedValue || '')
+      const tones = [
+        'bg-rose-600/70',
+        'bg-amber-600/70',
+        'bg-emerald-600/70',
+        'bg-sky-600/70',
+        'bg-violet-600/70',
+        'bg-fuchsia-600/70',
+        'bg-cyan-600/70',
+      ]
+      let hash = 0
+      for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
+      return tones[hash % tones.length]
     }, [])
 
     const rateLimitMessage = useCallback((rawMessage) => {
@@ -897,39 +919,48 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         <div className="border-b border-zinc-800 bg-zinc-950/65 px-3 py-3">
           <div className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2.5">
             <div className="flex items-start gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  composerUserId
-                    ? void openProfileModal({
-                        user_id: composerUserId,
-                        author_profile: composerUserProfile,
-                      })
-                    : null
-                }
-                className="mt-0.5 h-8 w-8 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-bold flex items-center justify-center overflow-hidden"
-                title="Open your profile"
-                aria-label="Open your profile"
-              >
-                {composerUserProfile?.avatar_url ? (
-                  <img
-                    src={composerUserProfile.avatar_url}
-                    alt=""
-                    className="h-full w-full rounded-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  (composerUserProfile?.display_name || composerUserProfile?.handle || 'M')
-                    .slice(0, 1)
-                    .toUpperCase()
-                )}
-              </button>
+              <div className="mt-0.5 w-8 shrink-0 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() =>
+                    composerUserId
+                      ? void openProfileModal({
+                          user_id: composerUserId,
+                          author_profile: composerUserProfile,
+                        })
+                      : null
+                  }
+                  className="h-8 w-8 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-bold flex items-center justify-center overflow-hidden"
+                  title="Open your profile"
+                  aria-label="Open your profile"
+                >
+                  {composerUserProfile?.avatar_url ? (
+                    <img
+                      src={composerUserProfile.avatar_url}
+                      alt=""
+                      className="h-full w-full rounded-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <span
+                      className={`h-full w-full flex items-center justify-center text-white font-bold ${avatarToneClass(
+                        composerUserProfile?.user_id || composerUserId || composerUserProfile?.display_name || 'me'
+                      )}`}
+                    >
+                      {avatarText({
+                        author_profile: {
+                          display_name: composerUserProfile?.display_name || composerUserProfile?.handle || 'Me',
+                        },
+                      })}
+                    </span>
+                  )}
+                </button>
+              </div>
               <div className="min-w-0 flex-1">
             {composerExpanded ? (
               <>
                 <textarea
-                  autoFocus
                   value={postText}
                   onChange={(e) => setPostText(e.target.value)}
                   className="w-full min-h-20 bg-transparent text-white outline-none placeholder:text-zinc-500 text-sm resize-none"
@@ -941,68 +972,6 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     {postErr}
                   </div>
                 ) : null}
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-2">
-                    <input
-                      ref={composerMediaInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        if (!file) return
-                        const mime = String(file.type || '').toLowerCase()
-                        if (mime.startsWith('image/')) {
-                          setComposerMediaKind('image')
-                          setComposerMediaFile(file)
-                          return
-                        }
-                        if (mime.startsWith('video/')) {
-                          setComposerMediaKind('video')
-                          setComposerMediaFile(file)
-                          return
-                        }
-                        setPostErr('Unsupported media type. Please choose an image or video file.')
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => composerMediaInputRef.current?.click()}
-                      className="min-h-8 min-w-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-zinc-300 hover:text-zinc-100"
-                      title="Add media"
-                      aria-label="Add media"
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden>
-                        <path d="M4.75 4.75h10.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H4.75a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M7 9.25l1.75 1.75 3.25-3.25 2.5 2.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        <circle cx="7" cy="7.25" r=".9" fill="currentColor" />
-                      </svg>
-                    </button>
-                    {composerMediaFile ? (
-                      <span className="text-[11px] text-zinc-400">
-                        {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="inline-flex items-center gap-2">
-                    <span className="text-[11px] text-zinc-500">{postText.length}/280</span>
-                    <button
-                      type="button"
-                      onClick={() => setComposerExpanded(false)}
-                      className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-[11px] font-semibold text-zinc-300"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void submitLoungePost()}
-                      disabled={postBusy}
-                      className="min-h-8 rounded-lg bg-cyan-600 px-3.5 text-[11px] font-bold text-white disabled:opacity-60"
-                    >
-                      {postBusy ? 'Posting…' : 'Post'}
-                    </button>
-                  </div>
-                </div>
               </>
             ) : (
               <button
@@ -1015,6 +984,76 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
             )}
               </div>
             </div>
+            {composerExpanded ? (
+              <>
+                <input
+                  ref={composerMediaInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    if (!file) return
+                    const mime = String(file.type || '').toLowerCase()
+                    if (mime.startsWith('image/')) {
+                      setComposerMediaKind('image')
+                      setComposerMediaFile(file)
+                      return
+                    }
+                    if (mime.startsWith('video/')) {
+                      setComposerMediaKind('video')
+                      setComposerMediaFile(file)
+                      return
+                    }
+                    setPostErr('Unsupported media type. Please choose an image or video file.')
+                  }}
+                />
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="mt-0.5 flex w-8 shrink-0 justify-center items-center">
+                    <button
+                      type="button"
+                      onClick={() => composerMediaInputRef.current?.click()}
+                      className="min-h-8 min-w-8 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-zinc-300 hover:text-zinc-100"
+                      title="Add media"
+                      aria-label="Add media"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <path d="M4.75 4.75h10.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H4.75a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M7 9.25l1.75 1.75 3.25-3.25 2.5 2.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="7" cy="7.25" r=".9" fill="currentColor" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1 pr-2">
+                      {composerMediaFile ? (
+                        <span className="block truncate text-[11px] text-zinc-400">
+                          {composerMediaKind === 'video' ? 'Video' : 'Image'} selected
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="inline-flex shrink-0 items-center gap-2">
+                      <span className="text-[11px] text-zinc-500">{postText.length}/280</span>
+                      <button
+                        type="button"
+                        onClick={() => setComposerExpanded(false)}
+                        className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 text-[11px] font-semibold text-zinc-300"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void submitLoungePost()}
+                        disabled={postBusy}
+                        className="min-h-8 rounded-lg bg-cyan-600 px-3.5 text-[11px] font-bold text-white disabled:opacity-60"
+                      >
+                        {postBusy ? 'Posting…' : 'Post'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -1058,7 +1097,13 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                           decoding="async"
                         />
                       ) : (
-                        avatarText(post)
+                        <span
+                          className={`h-full w-full flex items-center justify-center text-white font-bold ${avatarToneClass(
+                            post?.author_profile?.user_id || post?.user_id || displayLabel(post)
+                          )}`}
+                        >
+                          {avatarText(post)}
+                        </span>
                       )}
                     </button>
                     <div className="min-w-0 flex-1">
@@ -1186,7 +1231,17 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
                     {profileModalData?.avatar_url ? (
                       <img src={profileModalData.avatar_url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      (profileModalData?.display_name || profileModalData?.handle || 'M').slice(0, 1).toUpperCase()
+                      <span
+                        className={`h-full w-full flex items-center justify-center text-white font-bold ${avatarToneClass(
+                          profileModalData?.user_id || profileModalData?.handle || profileModalData?.display_name || 'member'
+                        )}`}
+                      >
+                        {avatarText({
+                          author_profile: {
+                            display_name: profileModalData?.display_name || profileModalData?.handle || 'Member',
+                          },
+                        })}
+                      </span>
                     )}
                   </div>
                   <div className="min-w-0">

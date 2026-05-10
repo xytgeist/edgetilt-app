@@ -856,9 +856,17 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         })
       }
       sync()
-      /** Avoid ResizeObserver on the scroll root: it can fire when scrollbar/layout shifts and re-run `sync`, which updates fixed header `top` and has been linked to scroll snapping on mobile WebKit. */
+      if (typeof ResizeObserver === 'undefined') {
+        window.addEventListener('resize', sync)
+        return () => window.removeEventListener('resize', sync)
+      }
+      const ro = new ResizeObserver(sync)
+      ro.observe(el)
       window.addEventListener('resize', sync)
-      return () => window.removeEventListener('resize', sync)
+      return () => {
+        ro.disconnect()
+        window.removeEventListener('resize', sync)
+      }
     }, [])
 
     useEffect(() => {

@@ -86,6 +86,21 @@ export default function LoungeProfileFullScreen({
 
   const showOwnEditControls = isOwnProfile && ownProfileEditing
 
+  const exitOwnProfileEditing = useCallback(() => {
+    setOwnProfileMenuOpen(false)
+    setOwnProfileEditing(false)
+    setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
+    setAboutErr('')
+    if (typeof document !== 'undefined') {
+      try {
+        const el = document.activeElement
+        if (el && typeof el.blur === 'function') el.blur()
+      } catch {
+        // ignore
+      }
+    }
+  }, [profile?.about_me, profile?.bio])
+
   const refreshSocial = useCallback(async () => {
     if (!profileUserId || !viewerUserId) {
       setFollowerCount(0)
@@ -319,8 +334,8 @@ export default function LoungeProfileFullScreen({
         }}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {/* Banner */}
-          <div className="relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36">
+          {/* Banner: sticky so back / ⋯ stay reachable while scrolling (mobile keyboard safe). */}
+          <div className="sticky top-0 z-30 relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 shadow-[0_6px_16px_rgba(0,0,0,0.35)] sm:h-36">
             <button
               type="button"
               onClick={onClose}
@@ -371,9 +386,7 @@ export default function LoungeProfileFullScreen({
                         onClick={() => {
                           setOwnProfileMenuOpen(false)
                           if (ownProfileEditing) {
-                            setOwnProfileEditing(false)
-                            setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
-                            setAboutErr('')
+                            exitOwnProfileEditing()
                           } else {
                             setAboutErr('')
                             setOwnProfileEditing(true)
@@ -599,6 +612,17 @@ export default function LoungeProfileFullScreen({
             </div>
           </div>
         </div>
+        {showOwnEditControls ? (
+          <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
+            <button
+              type="button"
+              onClick={() => exitOwnProfileEditing()}
+              className="w-full min-h-11 rounded-xl border border-zinc-600 bg-zinc-800 py-2.5 text-[15px] font-semibold text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-700 active:bg-zinc-600"
+            >
+              Done editing
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   )

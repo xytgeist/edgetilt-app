@@ -21,6 +21,8 @@ function App() {
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
   /** Shown in the shell after whitelist rejection (session is cleared). */
   const [accessNotice, setAccessNotice] = useState('')
+  /** Moderator/admin: full access; hamburger hides subscriber-only lock icons. */
+  const [isStaffRole, setIsStaffRole] = useState(false)
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -151,6 +153,27 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [checkWhitelist])
+
+  useEffect(() => {
+    if (!user?.id || !isAllowed) {
+      queueMicrotask(() => setIsStaffRole(false))
+      return
+    }
+    let cancelled = false
+    void supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        const role = data?.role
+        setIsStaffRole(role === 'moderator' || role === 'admin')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, isAllowed])
 
   const getFriendlyErrorMessage = (error, context = 'general') => {
     const message = error?.message || 'Unknown error'
@@ -563,11 +586,16 @@ function App() {
     )
   }
 
+  const hasActiveSubscription =
+    String(import.meta.env.VITE_HAS_ACTIVE_SUBSCRIPTION || '').toLowerCase() === 'true'
+
   // Logged-in app shell
   if (currentView === 'app') {
     return (
       <AppShell
         browseMode={user && isAllowed ? 'member' : 'anonymous'}
+        hasActiveSubscription={hasActiveSubscription}
+        isStaff={isStaffRole}
         onOpenAuth={openAuthPanel}
         accessNotice={accessNotice}
         onDismissAccessNotice={() => setAccessNotice('')}

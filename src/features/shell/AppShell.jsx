@@ -26,6 +26,19 @@ function TabLoadingFallback() {
   )
 }
 
+/** Shown on hamburger items that need an active subscription (free-tier members). */
+function NavLockGlyph({ className }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden>
+      <path
+        fillRule="evenodd"
+        d="M10 1a4.5 4.5 0 00-4.5 4.5V6H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V8a2 2 0 00-2-2h-.5A4.5 4.5 0 0010 1zm3 5V5.5a3 3 0 10-6 0V6h6z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
 export default function AppShell({
   onLogout,
   supabaseClient,
@@ -33,7 +46,9 @@ export default function AppShell({
   browseMode = 'member',
   onOpenAuth,
   accessNotice = '',
-  onDismissAccessNotice
+  onDismissAccessNotice,
+  hasActiveSubscription = false,
+  isStaff = false
 }) {
   const COMMUNITY_FEED_PAGE_SIZE = 20
   const [tab, setTab] = useState('home')
@@ -300,15 +315,19 @@ export default function AppShell({
     setMenuOpen(false)
   }
 
+  /** `subscriberGated`: show lock in menu for logged-in users without an active subscription (see `docs/access-tiers.md`). */
   const navItems = [
-    { id: 'home', label: 'Lounge', icon: '🍻' },
-    { id: 'calculators', label: 'Calcs', icon: '🧮' },
-    { id: 'offers', label: 'Offers', icon: '📅' },
-    { id: 'bankroll', label: 'Bankroll', icon: '💰' },
-    { id: 'guides', label: 'AP Guides', icon: '📗', menuHint: 'Search · +EV cards · ask' },
-    { id: 'intel', label: 'Intel', icon: '📍' },
-    { id: 'team', label: 'Team', icon: '🤝' }
+    { id: 'home', label: 'Lounge', icon: '🍻', subscriberGated: false },
+    { id: 'calculators', label: 'Calcs', icon: '🧮', subscriberGated: true },
+    { id: 'offers', label: 'Offers', icon: '📅', subscriberGated: false },
+    { id: 'bankroll', label: 'Bankroll', icon: '💰', subscriberGated: true },
+    { id: 'guides', label: 'AP Guides', icon: '📗', menuHint: 'Search · +EV cards · ask', subscriberGated: true },
+    { id: 'intel', label: 'Intel', icon: '📍', subscriberGated: false },
+    { id: 'team', label: 'Team', icon: '🤝', subscriberGated: false }
   ]
+
+  const showNavSubscriberLocks =
+    browseMode === 'member' && !isStaff && !hasActiveSubscription
 
 
   const renderTabContent = () => {
@@ -572,29 +591,34 @@ export default function AppShell({
       <div className="fixed right-4 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 flex flex-col items-end gap-2">
         {menuOpen && (
           <div className="min-w-[11.5rem] max-w-[15rem] w-max rounded-2xl bg-zinc-950/95 backdrop-blur px-2 py-2 shadow-xl">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  if (item.id !== 'calculators') setActiveCalculator(null)
-                  else if (activeCalculator) setActiveCalculator(null)
-                  setTab(item.id)
-                  setMenuOpen(false)
-                }}
-                className={`w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
-                  tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-900'
-                } ${item.menuHint ? 'pb-2' : ''}`}
-              >
-                <span className="flex items-center gap-2">
-                  <span aria-hidden>{item.icon}</span>
-                  <span className="font-semibold">{item.label}</span>
-                </span>
-                {item.menuHint ? (
-                  <span className="mt-0.5 block pl-8 text-[11px] leading-snug text-zinc-500">{item.menuHint}</span>
-                ) : null}
-              </button>
-            ))}
+            {navItems.map((item) => {
+              const showLock = showNavSubscriberLocks && item.subscriberGated
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  title={showLock ? 'Subscribe to unlock full access here' : undefined}
+                  onClick={() => {
+                    if (item.id !== 'calculators') setActiveCalculator(null)
+                    else if (activeCalculator) setActiveCalculator(null)
+                    setTab(item.id)
+                    setMenuOpen(false)
+                  }}
+                  className={`w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
+                    tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-900'
+                  } ${item.menuHint ? 'pb-2' : ''}`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span aria-hidden>{item.icon}</span>
+                    <span className="min-w-0 flex-1 font-semibold truncate">{item.label}</span>
+                    {showLock ? <NavLockGlyph className="h-3.5 w-3.5 shrink-0 text-amber-400/95" /> : null}
+                  </span>
+                  {item.menuHint ? (
+                    <span className="mt-0.5 block pl-8 text-[11px] leading-snug text-zinc-500">{item.menuHint}</span>
+                  ) : null}
+                </button>
+              )
+            })}
           </div>
         )}
 

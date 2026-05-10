@@ -62,6 +62,7 @@ If the user attempts **any** of the following, show the **create account** popup
 **Navigation**
 
 - May open **all** other app areas from the **hamburger menu** (no blanket “create account” wall).
+- **Hamburger UI:** Menu rows that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (Offers stays **unlocked** in the menu because the **calendar** is free; **alerts** and **OCR** stay subscribe-gated **inside** Offers.)
 
 **Per-feature subscribe requirements**
 
@@ -131,3 +132,4 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | --- | --- |
 | 2026-05-10 | Initial template; filled anon/create-account gating; free verified + subscribe gates; paid + add-on paywalls; staff; TBD + modal UX. |
 | 2026-05-10 | Removed **50 posts per day** cap; anon Lounge read-only is uncapped aside from normal pagination/RLS. |
+| 2026-05-10 | Hamburger: lock icons on **Calcs**, **AP Guides**, **Bankroll** for free non-subscribers; staff/subscribers see no locks; Offers menu row unlocked (gates in-feature). |

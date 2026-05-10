@@ -801,7 +801,6 @@ export default function SocialFeed({
   }, [loadCommunityFeed, pullDistance, pullRefreshing])
 
   useEffect(() => {
-    if (loungeReadOnly) return
     if (!communityFeedHasMore || communityFeedLoadingMore || communityFeedLoading || pullRefreshing) return
     const root = loungeFeedScrollRef.current
     const node = loadMoreSentinelRef.current
@@ -820,7 +819,6 @@ export default function SocialFeed({
     communityFeedLoading,
     communityFeedLoadingMore,
     loadMoreCommunityFeed,
-    loungeReadOnly,
     pullRefreshing,
   ])
 
@@ -1499,13 +1497,7 @@ export default function SocialFeed({
             {communityFeedHasMore ? (
               <button
                 type="button"
-                onClick={() => {
-                  if (loungeReadOnly) {
-                    requireLoungeAuth()
-                    return
-                  }
-                  void loadMoreCommunityFeed()
-                }}
+                onClick={() => void loadMoreCommunityFeed()}
                 disabled={communityFeedLoadingMore}
                 className="mx-3 my-2 w-[calc(100%-1.5rem)] min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 text-[14px] font-semibold disabled:opacity-60 touch-manipulation"
               >

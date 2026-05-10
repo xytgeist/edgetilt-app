@@ -28,6 +28,8 @@ import {
 import { composerStableInitialsFromUid, formatLoungePostDetailWhen } from './loungeFormat'
 import { renderRichCaption } from './loungeCaption'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
+import LoungePostArticle from './LoungePostArticle'
+import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 
 /** DB raises exception 'MAX_PINNED_POSTS' when a third visible pin is attempted. */
@@ -44,6 +46,7 @@ export default function SocialFeed({
   communityFeedHasMore,
   loadCommunityFeed,
   loadMoreCommunityFeed,
+  hydrateCommunityPosts = async (rows) => rows ?? [],
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -74,6 +77,9 @@ export default function SocialFeed({
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
   const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [profileModalVisible, setProfileModalVisible] = useState(true)
+  const profileModalVisibleRef = useRef(true)
+  const profileModalCloseFallbackTimerRef = useRef(0)
   const [profileModalLoading, setProfileModalLoading] = useState(false)
   const [profileModalErr, setProfileModalErr] = useState('')
   const [profileModalData, setProfileModalData] = useState(null)
@@ -1081,6 +1087,41 @@ export default function SocialFeed({
     }
   }, [onRequireAuth, profileGateAvatarFile, profileGateDisplayName, profileGateHandle, submitLoungePost, supabaseClient])
 
+  useEffect(() => {
+    profileModalVisibleRef.current = profileModalVisible
+  }, [profileModalVisible])
+
+  const finalizeProfileModalClose = useCallback(() => {
+    const tid = profileModalCloseFallbackTimerRef.current
+    if (tid) {
+      window.clearTimeout(tid)
+      profileModalCloseFallbackTimerRef.current = 0
+    }
+    setProfileModalOpen(false)
+    setProfileModalData(null)
+    setProfileModalPosts([])
+    setProfileModalErr('')
+    setProfileModalVisible(true)
+  }, [])
+
+  const closeProfileModal = useCallback(() => {
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+    if (reduce) {
+      finalizeProfileModalClose()
+      return
+    }
+    const prevTid = profileModalCloseFallbackTimerRef.current
+    if (prevTid) window.clearTimeout(prevTid)
+    profileModalVisibleRef.current = false
+    setProfileModalVisible(false)
+    profileModalCloseFallbackTimerRef.current = window.setTimeout(() => {
+      profileModalCloseFallbackTimerRef.current = 0
+      if (!profileModalVisibleRef.current) finalizeProfileModalClose()
+    }, 400)
+  }, [finalizeProfileModalClose])
+
   const openProfileModal = useCallback(
     async (post) => {
       if (loungeReadOnly) {
@@ -1089,47 +1130,154 @@ export default function SocialFeed({
       }
       const userId = post?.user_id
       if (!userId) return
+      const prevTid = profileModalCloseFallbackTimerRef.current
+      if (prevTid) {
+        window.clearTimeout(prevTid)
+        profileModalCloseFallbackTimerRef.current = 0
+      }
       setProfileModalOpen(true)
       setProfileModalLoading(true)
       setProfileModalErr('')
-      setProfileModalData(post?.author_profile || null)
+      setProfileModalData({
+        user_id: userId,
+        ...(post?.author_profile && typeof post.author_profile === 'object' ? post.author_profile : {}),
+      })
       setProfileModalPosts([])
+      const reduce =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+      if (reduce) {
+        profileModalVisibleRef.current = true
+        setProfileModalVisible(true)
+      } else {
+        profileModalVisibleRef.current = false
+        setProfileModalVisible(false)
+      }
       try {
-        const [{ data: profileRow, error: profileErr }, { data: postRows, error: postsErr }] =
-          await Promise.all([
-            supabaseClient
-              .from('profiles')
-              .select('user_id,handle,display_name,avatar_url,bio,created_at,role')
-              .eq('user_id', userId)
-              .maybeSingle(),
-            supabaseClient
-              .from('community_feed_posts')
-              .select('id,caption,created_at,game_title,pinned')
-              .eq('user_id', userId)
-              .is('hidden_at', null)
-              .order('pinned', { ascending: false })
-              .order('created_at', { ascending: false })
-              .limit(30),
-          ])
-        if (profileErr || postsErr) {
-          setProfileModalErr(profileErr?.message || postsErr?.message || 'Could not load profile.')
+        const [{ data: postRows, error: postsErr }, coreProfile] = await Promise.all([
+          supabaseClient
+            .from('community_feed_posts')
+            .select('id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count')
+            .eq('user_id', userId)
+            .is('hidden_at', null)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .limit(30),
+          supabaseClient
+            .from('profiles')
+            .select('user_id,handle,display_name,avatar_url,bio,created_at,role')
+            .eq('user_id', userId)
+            .maybeSingle(),
+        ])
+        if (postsErr) {
+          setProfileModalErr(postsErr?.message || 'Could not load posts.')
+          if (!reduce) {
+            profileModalVisibleRef.current = true
+            setProfileModalVisible(true)
+          }
           return
         }
-        setProfileModalData(
-          profileRow || {
-            user_id: userId,
-            handle: '',
-            display_name: 'Member',
-            avatar_url: null,
-            bio: '',
+        const mergedProfile = {
+          user_id: userId,
+          ...(post?.author_profile && typeof post.author_profile === 'object' ? post.author_profile : {}),
+          ...(coreProfile.data || {}),
+        }
+        if (!coreProfile.error && coreProfile.data) {
+          const ext = await supabaseClient
+            .from('profiles')
+            .select('about_me, banner_url')
+            .eq('user_id', userId)
+            .maybeSingle()
+          if (!ext.error && ext.data) {
+            Object.assign(mergedProfile, ext.data)
           }
-        )
-        setProfileModalPosts(postRows || [])
+        }
+        setProfileModalData(mergedProfile)
+        const hydrated = await hydrateCommunityPosts(postRows || [])
+        setProfileModalPosts(hydrated)
+        if (reduce) {
+          profileModalVisibleRef.current = true
+          setProfileModalVisible(true)
+        } else {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              profileModalVisibleRef.current = true
+              setProfileModalVisible(true)
+            })
+          })
+        }
       } finally {
         setProfileModalLoading(false)
       }
     },
-    [loungeReadOnly, onRequireAuth, supabaseClient]
+    [hydrateCommunityPosts, loungeReadOnly, onRequireAuth, supabaseClient]
+  )
+
+  const onProfileScreenUpdated = useCallback((next) => {
+    setProfileModalData((prev) => ({ ...(prev || {}), ...next }))
+    if (next?.user_id && composerUserId && next.user_id === composerUserId) {
+      setComposerUserProfile((prev) => {
+        const merged = { ...(prev || {}), ...next }
+        writeLoungeProfileCache(merged)
+        return merged
+      })
+      const authorPatch = {}
+      for (const k of ['avatar_url', 'display_name', 'handle', 'banner_url', 'about_me', 'bio', 'role']) {
+        if (Object.prototype.hasOwnProperty.call(next, k)) authorPatch[k] = next[k]
+      }
+      if (Object.keys(authorPatch).length > 0) {
+        setCommunityPosts((prev) =>
+          prev.map((p) => {
+            if (p.user_id !== next.user_id) return p
+            const ap = p.author_profile && typeof p.author_profile === 'object' ? p.author_profile : {}
+            return { ...p, author_profile: { ...ap, ...authorPatch, user_id: next.user_id } }
+          })
+        )
+      }
+    }
+  }, [composerUserId, setCommunityPosts])
+
+  const profilePostCardProps = useMemo(
+    () => ({
+      loungeReadOnly,
+      interactionStateFor,
+      toggleInteraction,
+      toggleBookmark,
+      bookmarkedByPost,
+      requireLoungeAuth,
+      openProfileGateIfNeeded,
+      onAvatarClick: (p) => void openProfileModal(p),
+      loungeViewerIsStaff,
+      setLoungePostPinned,
+      loungePinBusy,
+      displayNameFor,
+      handleFor,
+      postAgeLabel,
+      displayLabel,
+      avatarToneClass,
+      avatarText,
+      onPostBodyClick: openLoungePostDetail,
+    }),
+    [
+      loungeReadOnly,
+      interactionStateFor,
+      toggleInteraction,
+      toggleBookmark,
+      bookmarkedByPost,
+      requireLoungeAuth,
+      openProfileGateIfNeeded,
+      openProfileModal,
+      loungeViewerIsStaff,
+      setLoungePostPinned,
+      loungePinBusy,
+      displayNameFor,
+      handleFor,
+      postAgeLabel,
+      displayLabel,
+      avatarToneClass,
+      avatarText,
+      openLoungePostDetail,
+    ]
   )
 
   return (
@@ -1486,175 +1634,26 @@ export default function SocialFeed({
                   openLoungePostDetail(post)
                 }}
               >
-                {(() => {
-                  const ui = interactionStateFor(post.id)
-                  const isBookmarked = !!bookmarkedByPost[post.id]
-                  const baseComments = typeof post.comment_count === 'number' ? post.comment_count : 0
-                  const baseLikes = typeof post.like_count === 'number' ? post.like_count : 0
-                  const commentCount = baseComments + (loungeReadOnly ? 0 : ui.commented ? 1 : 0)
-                  const likeCount = baseLikes + (loungeReadOnly ? 0 : ui.liked ? 1 : 0)
-                  const commentClass = loungeReadOnly ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
-                  const repostClass = loungeReadOnly ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
-                  const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-rose-400' : 'text-zinc-500'
-                  const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-amber-300' : 'text-zinc-500'
-                  const ro = loungeReadOnly
-                  return (
-                <div className="flex items-start gap-3">
-                  <button
-                    type="button"
-                    title="View profile"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      void openProfileModal(post)
-                    }}
-                    className="mt-0.5 h-10 w-10 shrink-0 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-200 text-[15px] font-bold flex items-center justify-center overflow-hidden touch-manipulation hover:border-zinc-600 sm:h-[2.75rem] sm:w-[2.75rem] sm:text-[16px]"
-                  >
-                    {post?.author_profile?.avatar_url ? (
-                      <img
-                        src={post.author_profile.avatar_url}
-                        alt=""
-                        className="h-full w-full rounded-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <span
-                        className={`h-full w-full flex items-center justify-center text-white font-bold ${avatarToneClass(
-                          post?.author_profile?.user_id || post?.user_id || displayLabel(post)
-                        )}`}
-                      >
-                        {avatarText(post)}
-                      </span>
-                    )}
-                  </button>
-                  <div className="min-w-0 flex-1 pt-0.5">
-                    <div className="min-w-0 overflow-hidden text-left">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug">
-                        <span className="min-w-0 max-w-[min(12rem,46vw)] truncate font-semibold text-[15px] text-zinc-100 sm:max-w-[14rem]">
-                          {displayNameFor(post)}
-                        </span>
-                        <LoungeStaffRoleBadge role={post?.author_profile?.role} />
-                        <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[15px] text-zinc-500">
-                          <span className="min-w-0 truncate sm:max-w-[11rem]">{handleFor(post)}</span>
-                          <span className="shrink-0 text-zinc-600">·</span>
-                          <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
-                            {postAgeLabel(post.created_at)}
-                          </span>
-                        </span>
-                        {post.pinned ? (
-                          <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
-                            Pinned
-                          </span>
-                        ) : null}
-                        {loungeViewerIsStaff && !loungeReadOnly ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              void setLoungePostPinned(post.id, !post.pinned)
-                            }}
-                            disabled={loungePinBusy}
-                            className="shrink-0 rounded-full border border-zinc-600/90 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-zinc-300 hover:border-fuchsia-500/50 hover:text-fuchsia-100 disabled:opacity-50 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                          >
-                            {post.pinned ? 'Unpin' : 'Pin'}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                    {post.game_slug ? (
-                      <div className="mt-1.5 flex justify-start">
-                        <span className="inline-flex max-w-full items-center truncate rounded-full border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-tight text-amber-300 sm:max-w-[14rem]">
-                          {post.game_title}
-                        </span>
-                      </div>
-                    ) : null}
-                    <div
-                      className={`text-zinc-200 text-[17px] leading-tight whitespace-pre-wrap ${post.game_slug ? 'mt-1' : 'mt-1.5'}`}
-                    >
-                      {renderRichCaption(feedPostDisplayCaption(post))}
-                    </div>
-                    {post.edited_at ? (
-                      <div className="mt-1.5 text-left text-[14px] leading-tight text-zinc-500">Edited</div>
-                    ) : null}
-                    <div
-                      className="mt-2 grid grid-cols-5 items-center text-[14px]"
-                      onClick={(e) => e.stopPropagation()}
-                      role="group"
-                    >
-                      <LoungeFeedStatSlot
-                        readOnly={ro}
-                        title={ro ? 'Sign in to comment' : undefined}
-                        onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => {
-                          if (openProfileGateIfNeeded()) return
-                          toggleInteraction(post.id, 'commented')
-                        }}
-                        className="inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
-                      >
-                        <svg className={`h-[20px] w-[20px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
-                      </LoungeFeedStatSlot>
-                      <LoungeFeedStatSlot
-                        readOnly={ro}
-                        title={ro ? 'Sign in to repost' : undefined}
-                        onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => {
-                          if (openProfileGateIfNeeded()) return
-                          toggleInteraction(post.id, 'reposted')
-                        }}
-                        className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
-                      >
-                        <svg className={`h-[20px] w-[20px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </LoungeFeedStatSlot>
-                      <LoungeFeedStatSlot
-                        readOnly={ro}
-                        title={ro ? 'Sign in to like' : undefined}
-                        onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => toggleInteraction(post.id, 'liked')}
-                        className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
-                      >
-                        <svg className={`h-[20px] w-[20px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
-                      </LoungeFeedStatSlot>
-                      <span className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 text-zinc-600" title="Share" aria-hidden>
-                        <svg className={actionIconClass} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path d="M11.5 4.75h3.75V8.5M15 5l-6.25 6.25M12.75 10.5v4a.75.75 0 01-.75.75H5.5a.75.75 0 01-.75-.75V8a.75.75 0 01.75-.75h4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                      {ro ? (
-                        <button
-                          type="button"
-                          onClick={requireLoungeAuth}
-                          className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 text-zinc-600 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                          title="Sign in to save posts"
-                        >
-                          <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                            <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => toggleBookmark(post.id)}
-                          className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
-                          title={isBookmarked ? 'Remove bookmark' : 'Save post'}
-                        >
-                          <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                            <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                  )
-                })()}
+                <LoungePostArticle
+                  post={post}
+                  loungeReadOnly={loungeReadOnly}
+                  interactionStateFor={interactionStateFor}
+                  toggleInteraction={toggleInteraction}
+                  toggleBookmark={toggleBookmark}
+                  bookmarkedByPost={bookmarkedByPost}
+                  requireLoungeAuth={requireLoungeAuth}
+                  openProfileGateIfNeeded={openProfileGateIfNeeded}
+                  onAvatarClick={(p) => void openProfileModal(p)}
+                  loungeViewerIsStaff={loungeViewerIsStaff}
+                  setLoungePostPinned={setLoungePostPinned}
+                  loungePinBusy={loungePinBusy}
+                  displayNameFor={displayNameFor}
+                  handleFor={handleFor}
+                  postAgeLabel={postAgeLabel}
+                  displayLabel={displayLabel}
+                  avatarToneClass={avatarToneClass}
+                  avatarText={avatarText}
+                />
               </article>
             ))}
 
@@ -2232,103 +2231,23 @@ export default function SocialFeed({
         </div>
       ) : null}
 
-      {profileModalOpen ? (
-        <div className="fixed inset-0 z-[95] flex items-end justify-center sm:items-center p-4 bg-black/75" role="dialog" aria-modal>
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-default"
-            aria-label="Close profile"
-            onClick={() => setProfileModalOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-lg rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
-            <div className="p-4 border-b border-zinc-800">
-              <div className="flex items-center gap-3.5">
-                <div className="h-[3.3rem] w-[3.3rem] rounded-full border border-zinc-700 bg-zinc-950 overflow-hidden grid place-items-center text-zinc-300 text-[17px] font-bold">
-                  {profileModalData?.avatar_url ? (
-                    <img src={profileModalData.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span
-                      className={`h-full w-full flex items-center justify-center text-white font-bold ${avatarToneClass(
-                        profileModalData?.user_id || profileModalData?.handle || profileModalData?.display_name || 'member'
-                      )}`}
-                    >
-                      {avatarText({
-                        author_profile: {
-                          display_name: profileModalData?.display_name || profileModalData?.handle || 'Member',
-                        },
-                      })}
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="min-w-0 flex-1 truncate text-white text-[17px] font-bold">
-                      {profileModalData?.display_name || 'Member'}
-                    </div>
-                    <LoungeStaffRoleBadge role={profileModalData?.role} size="modal" />
-                  </div>
-                  <div className="text-cyan-300 text-[15px] truncate">
-                    {profileModalData?.handle ? `@${profileModalData.handle}` : '@member'}
-                  </div>
-                </div>
-              </div>
-              {profileModalData?.bio ? (
-                <div className="mt-3 text-zinc-300 text-[15px] leading-relaxed">{profileModalData.bio}</div>
-              ) : null}
-            </div>
-            <div className="min-h-0 overflow-y-auto">
-              {profileModalLoading ? (
-                <div className="p-4 text-zinc-400 text-[15px]">Loading profile…</div>
-              ) : profileModalErr ? (
-                <div className="p-4">
-                  <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[13px]">
-                    {profileModalErr}
-                  </div>
-                </div>
-              ) : profileModalPosts.length === 0 ? (
-                <div className="p-4 text-zinc-500 text-[15px]">No Lounge posts yet.</div>
-              ) : (
-                profileModalPosts.map((p) => (
-                  <div key={p.id} className="border-t border-zinc-800 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-zinc-400 text-[12px]">
-                        {p.created_at
-                          ? new Date(p.created_at).toLocaleString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
-                          : ''}
-                      </div>
-                      {p.game_slug ? (
-                        <span className="inline-flex max-w-[8.5rem] items-center truncate rounded-full border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase leading-none tracking-tight text-amber-300">
-                          {p.game_title}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-1.5 text-zinc-100 text-[15px] leading-relaxed whitespace-pre-wrap">
-                      {renderRichCaption(feedPostDisplayCaption(p), {
-                        hashtagClassName: 'font-semibold text-cyan-300',
-                        linkClassName:
-                          'font-medium text-sky-300 underline underline-offset-2 decoration-sky-300/70 break-words',
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="p-3 border-t border-zinc-800">
-              <button
-                type="button"
-                onClick={() => setProfileModalOpen(false)}
-                className="w-full min-h-11 rounded-xl bg-zinc-800 text-zinc-100 text-[15px] font-semibold"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+      {profileModalOpen && profileModalData?.user_id ? (
+        <LoungeProfileFullScreen
+          open={profileModalOpen}
+          panelVisible={profileModalVisible}
+          profileUserId={profileModalData.user_id}
+          viewerUserId={composerUserId || ''}
+          supabaseClient={supabaseClient}
+          profile={profileModalData}
+          posts={profileModalPosts}
+          loading={profileModalLoading}
+          error={profileModalErr}
+          isOwnProfile={Boolean(composerUserId && profileModalData.user_id === composerUserId)}
+          onClose={closeProfileModal}
+          onAfterTransitionOut={finalizeProfileModalClose}
+          postCardProps={profilePostCardProps}
+          onProfileUpdated={onProfileScreenUpdated}
+        />
       ) : null}
 
       {profileGateOpen ? (

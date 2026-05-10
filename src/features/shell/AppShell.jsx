@@ -161,10 +161,15 @@ export default function AppShell({
       const ids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))]
       let profileByUserId = {}
       if (ids.length > 0) {
-        const { data: profiles } = await supabaseClient
+        const coreFields = 'user_id,handle,display_name,avatar_url,bio,role'
+        let res = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,role')
+          .select(`${coreFields},about_me,banner_url`)
           .in('user_id', ids)
+        if (res.error) {
+          res = await supabaseClient.from('profiles').select(coreFields).in('user_id', ids)
+        }
+        const profiles = res.data
         profileByUserId = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]))
       }
       return rows.map((r) => ({
@@ -488,6 +493,7 @@ export default function AppShell({
           communityFeedHasMore={communityFeedHasMore}
           loadCommunityFeed={loadCommunityFeed}
           loadMoreCommunityFeed={loadMoreCommunityFeed}
+          hydrateCommunityPosts={hydrateCommunityPosts}
         />
       )
     }

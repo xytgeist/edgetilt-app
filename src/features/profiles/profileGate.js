@@ -123,7 +123,7 @@ export function profileSeedFromUser(user) {
 export async function fetchOwnProfile(supabaseClient, userId) {
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('user_id,handle,display_name,avatar_url,bio,created_at,role')
+    .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) return { data: null, error }
@@ -186,7 +186,7 @@ export async function saveProfileWithHandleFallback({
     const { data, error } = await supabaseClient
       .from('profiles')
       .upsert(payload, { onConflict: 'user_id' })
-      .select('user_id,handle,display_name,avatar_url,bio,created_at,role')
+      .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role')
       .single()
 
     if (!error) return { data, error: null }
@@ -238,6 +238,42 @@ export async function uploadProfileAvatar({ supabaseClient, user, file }) {
     return {
       data: null,
       error: uploadError instanceof Error ? uploadError : new Error(raw || 'Could not upload avatar image.'),
+    }
+  }
+
+  const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path)
+  return { data: data?.publicUrl || null, error: null }
+}
+
+/** Wide banner for full-screen profile. Create bucket `profile-banners` (public) in Supabase if missing. */
+export async function uploadProfileBanner({ supabaseClient, user, file }) {
+  const mime = String(file?.type || '').toLowerCase()
+  if (!mime.startsWith('image/')) {
+    return { data: null, error: new Error('Please choose an image file.') }
+  }
+
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const bucket = 'profile-banners'
+
+  const { error: uploadError } = await supabaseClient.storage.from(bucket).upload(path, file, {
+    upsert: false,
+    cacheControl: '3600',
+    contentType: file.type || 'image/jpeg',
+  })
+  if (uploadError) {
+    const raw = String(
+      uploadError.message || uploadError.error || uploadError.statusCode || uploadError || ''
+    ).trim()
+    if (/load failed|failed to fetch|networkerror|network request failed/i.test(raw)) {
+      return {
+        data: null,
+        error: new Error('Could not upload your banner. Check your connection and try again.'),
+      }
+    }
+    return {
+      data: null,
+      error: uploadError instanceof Error ? uploadError : new Error(raw || 'Could not upload banner image.'),
     }
   }
 

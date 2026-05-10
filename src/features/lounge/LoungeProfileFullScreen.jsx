@@ -407,10 +407,13 @@ export default function LoungeProfileFullScreen({
             <button
               type="button"
               onClick={onClose}
-              className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 grid h-12 w-12 place-items-center rounded-full bg-zinc-900/95 text-white shadow-lg backdrop-blur touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] sm:left-3"
+              className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 sm:left-3"
               aria-label="Back"
             >
-              <span aria-hidden className="block leading-none text-2xl -translate-y-px">
+              <span
+                aria-hidden
+                className="block leading-none text-2xl -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]"
+              >
                 ←
               </span>
             </button>
@@ -431,9 +434,12 @@ export default function LoungeProfileFullScreen({
                     aria-expanded={ownProfileMenuOpen}
                     aria-haspopup="menu"
                     aria-label="Profile options"
-                    className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900/95 text-white shadow-lg backdrop-blur touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]"
+                    className="grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50"
                   >
-                    <span aria-hidden className="block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px">
+                    <span
+                      aria-hidden
+                      className="block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]"
+                    >
                       ···
                     </span>
                   </button>

@@ -1300,12 +1300,16 @@ export default function SocialFeed({
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}
         >
-          <div className="px-3 py-2.5 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-white text-[24px] font-black tracking-tight">Lounge</div>
-              <div className="text-zinc-500 text-[13px]">Latest</div>
+          <div className="relative flex items-center justify-center px-3 py-2">
+            <img
+              src="/edge-lounge-logo.png"
+              alt="EDGE"
+              className="h-8 w-auto max-w-[min(220px,calc(100%-5rem))] object-contain object-center"
+              draggable={false}
+            />
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]">
+              {communityFeedLoading ? 'Updating…' : ''}
             </div>
-            <div className="text-zinc-600 text-[13px]">{communityFeedLoading ? 'Updating…' : ''}</div>
           </div>
         </div>
 

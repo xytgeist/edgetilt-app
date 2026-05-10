@@ -2227,7 +2227,7 @@ export default function SocialFeed({
                     </span>
                   )}
                   <span
-                    className="pointer-events-none absolute inset-0 flex items-center justify-center text-[1.2rem] font-extralight leading-none text-white/40 [text-shadow:0_1px_4px_rgba(0,0,0,0.75)]"
+                    className="pointer-events-none absolute bottom-0.5 right-0.5 flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full bg-black/45 text-[11px] font-extralight leading-none text-zinc-300/75 ring-1 ring-white/10"
                     aria-hidden
                   >
                     +

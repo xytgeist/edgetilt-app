@@ -1197,7 +1197,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                       </span>
                     )}
                     <span
-                      className="pointer-events-none absolute inset-0 flex items-center justify-center text-[1.05rem] font-extralight leading-none text-white/40 [text-shadow:0_1px_4px_rgba(0,0,0,0.75)]"
+                      className="pointer-events-none absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/45 text-[10px] font-extralight leading-none text-zinc-300/75 ring-1 ring-white/10"
                       aria-hidden
                     >
                       +

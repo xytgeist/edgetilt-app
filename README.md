@@ -2,6 +2,8 @@
 
 React + Vite front end for slot guides, calculators, and related tooling. Supabase backs machines, guides, and other data.
 
+**Where things live:** Auth and session bootstrap are in **`src/App.jsx`**. The logged-in app (tabs, Lounge, Offers, etc.) is **`src/features/shell/AppShell.jsx`**, with product areas under **`src/features/*`**. Slot EV calculators ship as **`src/features/calculators/games/*.jsx`**. See **`docs/frontend-architecture.md`** for the full map.
+
 ## Prerequisites
 
 - Node.js (current LTS is fine)
@@ -145,6 +147,7 @@ On a case-insensitive drive, mixed-case legacy folders (for example `Phoenix-Lin
 
 ## Further reading
 
+- `docs/frontend-architecture.md` — `App` vs `AppShell`, feature folders, calculators layout, bundle notes.
 - `scripts/generate-slot-card-manifests.mjs` — manifest shape and calculator overrides.
 - `scripts/sync-slot-forms-to-supabase.mjs` — upsert columns and CLI flags.
 - `src/constants/slotCardEvThreshold.js` — default card +EV threshold one-liners per type / slug for UI + manifests.

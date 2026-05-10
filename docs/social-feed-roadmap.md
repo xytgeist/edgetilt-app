@@ -2,7 +2,7 @@
 
 This is the product build list. Build and validate on `test` first, then replay required infra steps on production using `docs/production-rollout-checklist.md`.
 
-For day-to-day implementation status, use `docs/test-buildout-backlog.md`.
+For day-to-day implementation status, use `docs/test-buildout-backlog.md`. For where Lounge and related UI live in the repo, see `docs/frontend-architecture.md`.
 
 **Execution:** phases are completed **in order (A → B → …)**; the “Suggested MVP sequencing” section below is a **priority hint** only. Dependency exceptions (e.g. count triggers that need tables from a later phase) are recorded in the backlog **Build policy**.
 

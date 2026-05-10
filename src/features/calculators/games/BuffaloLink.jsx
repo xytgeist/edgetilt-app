@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
-import { formatDenomLabel } from '../utils/formatDenomLabel'
+import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,

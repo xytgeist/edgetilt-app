@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
+import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
 
 function defaultCurrentForCap(cap) {
   return Math.round(cap * 0.95)

@@ -44,6 +44,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] Basic public read feed path works on test (anon-visible rows, signed-in posting path from Guides).
 - [x] Cursor pagination on `(created_at, id)` is implemented with load-more pagination (infinite auto-load polish still optional).
 - [x] Pinned row: head load fetches at most one pinned row plus first unpinned page; pinned prepended; load-more uses unpinned-only cursor (matches roadmap “prepend one pinned” shape). RLS hides `hidden_at` rows.
+- [ ] **Staff pin/unpin (and broader Lounge moderation UI):** not shipped in the client. **Database is ready:** `profiles.role in ('moderator','admin')` may `UPDATE` any feed row (`community_feed_posts_update_moderator` in `supabase/feed_phase_a_profiles_public_read.sql`), and `community_feed_posts_author_guard` lets staff change `pinned` / hide fields without hitting the author-only restriction. Until an in-app mod surface exists, **test pinned ordering** by rerunning the pin block at the end of `supabase/seed/lounge_fake_posts.sql` (clears pins, pins one visible row) or with a one-off `UPDATE` in the Supabase SQL editor (respect the partial unique index: at most one `pinned = true` among non-hidden rows).
 - [x] Logged-out Lounge: composer hidden; like/comment/repost/bookmark are read-only (server counts only, no local mutation UI). Feed search is not a Lounge surface yet (Phase G). Guides search remains on Guides tab.
 
 ### Phases C-L
@@ -128,7 +129,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 - [x] A2 feed model v1 on test (`community_feed_posts` caption-only)
   - Change: Canonical **`caption`** (≤280); app uses `src/utils/communityFeedPost.js` for inserts and display; **`title` / `body`** removed from schema after phase-A SQL backfill + column drop; feed `.select` lists updated.
-  - Source: `supabase/community_feed_posts.sql`, `supabase/feed_phase_a_profiles_public_read.sql`, `src/App.jsx`, `src/features/guides/GuidesScreen.jsx`, `supabase/seed/lounge_fake_posts.sql`.
+  - Source: `supabase/community_feed_posts.sql`, `supabase/feed_phase_a_profiles_public_read.sql`, `src/features/lounge/SocialFeed.jsx`, `src/features/shell/AppShell.jsx` (feed wiring / tab entry), `src/features/guides/GuidesScreen.jsx`, `supabase/seed/lounge_fake_posts.sql`.
   - Test validation: Lounge + Guides posting and feed read verified on test after re-applying phase A SQL.
   - Production replay: `production-rollout-checklist.md` §2 — run current `community_feed_posts.sql` then `feed_phase_a_profiles_public_read.sql` (or equivalent migration) before relying on caption-only clients.
 
@@ -142,9 +143,15 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Test smoke and release readiness
 
-- [ ] Maintain a "known-good on test" smoke pass list
-  - Include: home feed (anon), signed-in posting, offers save, calculators, calendars, push config endpoint.
-  - Production replay: mirrors checklist §5.
+- [x] Maintain a "known-good on test" smoke pass list
+  - **Local automation (2026-05-09):** `npm run lint` and `npm run build` pass; production build shows expected lazy chunks (`SocialFeed`, `OffersCalendar`, `GuidesScreen`, `LocalIntel`, `BankrollTracker`, `CalculatorsTab`, per-game calculator bundles).
+  - **Manual on test** (required before prod; mirrors `production-rollout-checklist.md` §5 where applicable):
+    1. **Logged out:** Lounge feed loads; composer hidden; like/comment/repost/bookmark read-only; no feed-related console errors.
+    2. **Logged in:** Post and reactions; **load-more** cursor pagination for unpinned rows. **Pinned at top:** only applies when a `pinned = true` row exists (no in-app staff pin yet — use `supabase/seed/lounge_fake_posts.sql` tail or SQL editor; see Phase B “Staff pin/unpin” item).
+    3. **Heavy tabs once:** Offers, Intel, Bankroll, Calculators (open each game once), Guides — no stuck `Suspense`; calculators work after first open.
+    4. **Guides → Ask community:** insert succeeds where RLS allows (profile gate if applicable).
+    5. **Offers / calendars / push:** offers save; calendar surfaces; edge paths per §4 / §5 in production checklist (align with Edge Functions rows above).
+  - Production replay: same ordered pass on production after deploy.
 
 - [ ] Final pre-prod gate
   - Change: Mark all required sections here as complete before running production rollout checklist.
@@ -155,6 +162,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 ## Update log
 
 - 2026-05-10: Adopted strict phase-order build policy; marked Phase B pinned + logged-out Lounge items complete; noted A2 counter triggers dependency on E/F tables.
+- 2026-05-09: Clarified **pinned** testing: feed query/UI treat pinned rows correctly, but **staff pin/unpin is DB-only** until moderation UI ships; documented seed/SQL path and adjusted smoke list wording.
+- 2026-05-09: Recorded smoke pass list under **Test smoke and release readiness**; marked local lint/build + chunk-split check complete; enumerated manual on-test replay steps (feed anon/auth, pinned/load-more, lazy tabs/calculators, Guides insert, offers/calendars/push).
 - 2026-05-08: Initialized test-first backlog and seeded with current feed/policy/edge-function parity work.
 - 2026-05-08: Added explicit roadmap phase status snapshot; set active implementation target to A2 feed model finalization.
 - 2026-05-08: Started A2 implementation: added `caption` migration/backfill path and app read/write compatibility for `caption` with legacy `title/body` fallback.
@@ -162,4 +171,5 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - 2026-05-09: Started A4 foundation with DB-backed post rate limiting (`rate_limit_events` + insert trigger guard) and user-facing rate-limit error copy.
 - 2026-05-09: Added rate-limit cooldown feedback (`retry_in_seconds`) and surfaced user-facing countdown in Lounge/Guides post errors.
 - 2026-05-09: Started Phase C gating with profile completion modal (handle/display name) before posting from Lounge or Guides.
+- 2026-05-09: Documented modular frontend: `App.jsx` (auth) + `features/shell/AppShell.jsx` (logged-in shell); Lounge, Offers, Intel, Bankroll, Calculators under `src/features/`; calculator games under `features/calculators/games/` (see `docs/frontend-architecture.md`).
 - 2026-05-09: Doc sync — marked **A2** (caption-only, legacy columns dropped) and **A4** (DB rate limit in phase A SQL) complete on test; clarified A3 includes 30-minute author update policy in SQL.

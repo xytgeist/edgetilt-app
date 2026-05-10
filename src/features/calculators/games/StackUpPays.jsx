@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
-import { formatDenomLabel } from '../utils/formatDenomLabel'
+import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 
 const MUST_HIT = {
   mega: 350,

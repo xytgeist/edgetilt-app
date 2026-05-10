@@ -85,10 +85,11 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 ## 5. Post-deploy smoke (application)
 
 - [ ] Logged-out: **Home feed** renders (requires **anon** SELECT on visible posts — Phase A migration).
+- [ ] Optional — **pinned announcement:** if you use one in prod, confirm it appears first (ordering only; there is still **no in-app staff pin UI** — parity with test seed/SQL or a future mod tool per `docs/test-buildout-backlog.md` Phase B).
 - [ ] Signed-in: **Guides → Ask community** still inserts (`community_feed_posts`) when RLS permits.
 - [ ] Profiles: until onboarding ships, authors may appear as **`Member`** with no profiles row — expected until Account/gate UX exists.
 - [ ] **`get-web-push-config`**: authenticated `GET` → `200` with `publicKey` (mirror prior smoke checklist).
-- [ ] Regression: Offers save, calendars, calculators as before.
+- [ ] Regression: Offers save, calendars, calculators as before (calculator UI: `src/features/calculators/`).
 
 ---
 
@@ -114,4 +115,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated alongside social feed Phase A profiles + public read (`feed_phase_a_profiles_public_read`)._
+_Last updated alongside social feed Phase A profiles + public read (`feed_phase_a_profiles_public_read`). Frontend layout map: `docs/frontend-architecture.md`._

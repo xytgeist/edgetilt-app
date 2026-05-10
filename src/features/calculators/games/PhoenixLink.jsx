@@ -10,8 +10,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
-import { formatDenomLabel } from '../utils/formatDenomLabel'
+import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 

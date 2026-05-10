@@ -1,0 +1,7 @@
+export const OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX = 'offers_alert_default_preset_v1:'
+export const OFFERS_DEFAULT_VIEW_KEY_PREFIX = 'offers_default_view_v1:'
+export const OFFERS_DELETE_CONFIRM_SKIP_KEY_PREFIX = 'offers_delete_confirm_skip_v1:'
+export const OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX = 'offers_ios_alert_setup_ack_v1:'
+export const OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX = 'offers_ios_alert_reminder_suppress_v1:'
+export const OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX = 'offers_ios_pwa_notif_prompt_v1:'
+export const OFFERS_IOS_PWA_ENABLE_PENDING_KEY_PREFIX = 'offers_ios_pwa_enable_pending_v1:'

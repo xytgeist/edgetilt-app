@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   formatProfileSaveDebugError,
   profileAvatarInitials,
@@ -52,6 +52,8 @@ export default function LoungeProfileFullScreen({
   const bannerInputRef = useRef(null)
   const avatarInputRef = useRef(null)
   const ownProfileBannerMenuRef = useRef(null)
+  const ownProfileMenuButtonRef = useRef(null)
+  const ownProfileMenuPanelRef = useRef(null)
 
   const displayName = String(profile?.display_name || profile?.handle || 'Member').trim() || 'Member'
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
@@ -83,6 +85,58 @@ export default function LoungeProfileFullScreen({
       document.removeEventListener('touchstart', onDown)
     }
   }, [ownProfileMenuOpen])
+
+  const placeOwnProfileMenu = useCallback(() => {
+    const btn = ownProfileMenuButtonRef.current
+    const panel = ownProfileMenuPanelRef.current
+    if (!btn || !panel) return
+    const r = btn.getBoundingClientRect()
+    const margin = 6
+    const vh = window.innerHeight
+    const vw = document.documentElement.clientWidth
+    const panelH = panel.offsetHeight || 52
+    let top = r.bottom + margin
+    if (top + panelH > vh - margin) {
+      top = Math.max(margin, r.top - margin - panelH)
+    }
+    if (top + panelH > vh - margin) {
+      top = Math.max(margin, vh - panelH - margin)
+    }
+    panel.style.position = 'fixed'
+    panel.style.zIndex = '200'
+    panel.style.top = `${top}px`
+    panel.style.bottom = 'auto'
+    panel.style.right = `${Math.max(margin, vw - r.right)}px`
+    panel.style.left = 'auto'
+    panel.style.minWidth = '11.5rem'
+    panel.style.maxWidth = `min(18rem, calc(100vw - ${margin * 2}px))`
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!ownProfileMenuOpen) return
+    const run = () => {
+      requestAnimationFrame(() => placeOwnProfileMenu())
+    }
+    run()
+    const onRe = () => run()
+    window.addEventListener('resize', onRe)
+    window.addEventListener('scroll', onRe, true)
+    return () => {
+      window.removeEventListener('resize', onRe)
+      window.removeEventListener('scroll', onRe, true)
+      const panel = ownProfileMenuPanelRef.current
+      if (panel) {
+        panel.style.position = ''
+        panel.style.zIndex = ''
+        panel.style.top = ''
+        panel.style.bottom = ''
+        panel.style.right = ''
+        panel.style.left = ''
+        panel.style.minWidth = ''
+        panel.style.maxWidth = ''
+      }
+    }
+  }, [ownProfileMenuOpen, placeOwnProfileMenu])
 
   const showOwnEditControls = isOwnProfile && ownProfileEditing
 
@@ -334,8 +388,12 @@ export default function LoungeProfileFullScreen({
         }}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {/* Banner: sticky so back / ⋯ stay reachable while scrolling (mobile keyboard safe). */}
-          <div className="sticky top-0 z-10 relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 shadow-[0_6px_16px_rgba(0,0,0,0.35)] sm:h-36">
+          {/* Banner: sticky only while editing own profile so back / ⋯ stay reachable over the form + keyboard. */}
+          <div
+            className={`relative z-10 h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36 ${
+              showOwnEditControls ? 'sticky top-0 shadow-[0_6px_16px_rgba(0,0,0,0.35)]' : ''
+            }`}
+          >
             <button
               type="button"
               onClick={onClose}
@@ -360,6 +418,7 @@ export default function LoungeProfileFullScreen({
                   className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-3"
                 >
                   <button
+                    ref={ownProfileMenuButtonRef}
                     type="button"
                     onClick={() => setOwnProfileMenuOpen((v) => !v)}
                     aria-expanded={ownProfileMenuOpen}
@@ -376,7 +435,8 @@ export default function LoungeProfileFullScreen({
                   </button>
                   {ownProfileMenuOpen ? (
                     <div
-                      className="absolute right-0 bottom-full mb-1 min-w-[11.5rem] rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
+                      ref={ownProfileMenuPanelRef}
+                      className="min-w-[11.5rem] rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
                       role="menu"
                     >
                       <button

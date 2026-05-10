@@ -339,7 +339,7 @@ export default function LoungeProfileFullScreen({
             <button
               type="button"
               onClick={onClose}
-              className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex h-10 w-10 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/45 text-white shadow-[0_2px_14px_rgba(0,0,0,0.55),0_0_1px_rgba(0,0,0,0.8)] backdrop-blur-sm [-webkit-tap-highlight-color:transparent] hover:bg-black/55 hover:border-white/25 sm:left-3"
+              className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-black/28 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/42 active:bg-black/48 sm:left-3"
               aria-label="Back"
             >
               <span
@@ -365,7 +365,7 @@ export default function LoungeProfileFullScreen({
                     aria-expanded={ownProfileMenuOpen}
                     aria-haspopup="menu"
                     aria-label="Profile options"
-                    className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/45 text-white shadow-[0_2px_14px_rgba(0,0,0,0.55),0_0_1px_rgba(0,0,0,0.8)] backdrop-blur-sm [-webkit-tap-highlight-color:transparent] hover:bg-black/55 hover:border-white/25"
+                    className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-black/28 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/42 active:bg-black/48"
                   >
                     <span
                       className="pb-0.5 text-[20px] font-bold leading-none tracking-tight [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]"

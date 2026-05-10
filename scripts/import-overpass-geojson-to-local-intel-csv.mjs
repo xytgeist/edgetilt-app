@@ -235,7 +235,6 @@ function main() {
   writeCitiesCsv(citiesCsvPath, cities)
   writeCasinosCsv(casinosCsvPath, casinos)
 
-  // eslint-disable-next-line no-console
   console.log(
     `Imported ${importedCasinos.length} rows from GeoJSON; now ${cities.length} cities and ${casinos.length} casinos in seed CSVs.`
   )

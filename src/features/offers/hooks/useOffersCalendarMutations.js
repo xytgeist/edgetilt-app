@@ -37,11 +37,9 @@ export default function useOffersCalendarMutations({
     propagateCasinoOnSave,
     propagateTitleOnSave,
     propagateValueOnSave,
-    reviewSourceImagePath,
-    calendarMode
+    reviewSourceImagePath
   } = state
   const {
-    setCalendarMode,
     setCursorMonth,
     setWeekAnchor,
     setSelectedDays,
@@ -292,7 +290,6 @@ export default function useOffersCalendarMutations({
             })
             .eq('id', pendingReviewId)
           if (revErr) {
-            // eslint-disable-next-line no-console
             console.warn('Could not mark AI review item resolved:', revErr)
           }
         }
@@ -310,9 +307,7 @@ export default function useOffersCalendarMutations({
         void onAfterSuccessfulSave()
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error('saveEvent error:', e)
-      // eslint-disable-next-line no-console
       console.error('saveEvent payload (partial):', {
         offer_type: draft?.offerType,
         startAt: draft?.startAt,
@@ -351,8 +346,6 @@ export default function useOffersCalendarMutations({
     setCursorMonth,
     setWeekAnchor,
     setSelectedDays,
-    calendarMode,
-    setCalendarMode,
     closeForm,
     loadEvents,
     loadReviewQueue,

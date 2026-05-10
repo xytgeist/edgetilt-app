@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 
 function defaultCurrentForCap(cap) {
@@ -323,7 +323,7 @@ function MHBCalculator({ onBack }) {
   const [breakeven, setBreakeven] = useState(0)
   const [breakevenExact, setBreakevenExact] = useState(0)
   const [coinInExpected, setCoinInExpected] = useState(0)
-  const [jpContribution, setJpContribution] = useState(0)
+  const [, setJpContribution] = useState(0)
   const [jpContributionByKey, setJpContributionByKey] = useState({})
   const [exposure, setExposure] = useState(0)
   const [isPositive, setIsPositive] = useState(false)
@@ -343,17 +343,19 @@ function MHBCalculator({ onBack }) {
       igtLineBet,
       igtDenom,
     })
-    setCurrent(roundToCents(defaultBreakeven))
-    setMeterRise(p.meterRise)
-    setResetValue(p.reset)
-    setOverallRTP(p.rtp)
+    queueMicrotask(() => {
+      setCurrent(roundToCents(defaultBreakeven))
+      setMeterRise(p.meterRise)
+      setResetValue(p.reset)
+      setOverallRTP(p.rtp)
+    })
   }, [manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom])
 
   // Keep select value valid: AGS has no 10k tier.
   useEffect(() => {
     if (manufacturer === 'manual') return
     if (manufacturer === 'ags' && mustHitBy === 10000) {
-      setMustHitBy(5000)
+      queueMicrotask(() => setMustHitBy(5000))
     }
   }, [manufacturer, mustHitBy])
 
@@ -361,7 +363,7 @@ function MHBCalculator({ onBack }) {
   useEffect(() => {
     if (manufacturer === 'manual') return
     if (manufacturer === 'ainsworth' && mustHitBy === 5000) {
-      setMustHitBy(500)
+      queueMicrotask(() => setMustHitBy(500))
     }
   }, [manufacturer, mustHitBy])
 
@@ -370,19 +372,19 @@ function MHBCalculator({ onBack }) {
     if (manufacturer !== 'igt') return
     const derived = igtMustHitByFor(igtTier, igtLineBet, igtDenom)
     if (mustHitBy !== derived) {
-      setMustHitBy(derived)
+      queueMicrotask(() => setMustHitBy(derived))
     }
   }, [manufacturer, igtTier, igtLineBet, igtDenom, mustHitBy])
 
   // AGS and IGT default to full run (no midpoint); Ainsworth defaults to midpoint.
   useEffect(() => {
     if (manufacturer === 'manual') return
-    setUseMidpoint(manufacturer === 'ainsworth')
+    queueMicrotask(() => setUseMidpoint(manufacturer === 'ainsworth'))
   }, [manufacturer])
 
   // Briefly highlight MHB Meter whenever key selectors change.
   useEffect(() => {
-    setShowMeterCue(true)
+    queueMicrotask(() => setShowMeterCue(true))
     const timer = setTimeout(() => setShowMeterCue(false), 1800)
     return () => clearTimeout(timer)
   }, [manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom])
@@ -390,13 +392,15 @@ function MHBCalculator({ onBack }) {
   // Manual Entry starts with blank money fields and RTP at 85.
   useEffect(() => {
     if (manufacturer !== 'manual') return
-    setCurrent('')
-    setMustHitBy('')
-    setMeterRise('')
-    setResetValue('')
-    setOverallRTP(85)
-    setUseMidpoint(false)
-    setShowAdvanced(true)
+    queueMicrotask(() => {
+      setCurrent('')
+      setMustHitBy('')
+      setMeterRise('')
+      setResetValue('')
+      setOverallRTP(85)
+      setUseMidpoint(false)
+      setShowAdvanced(true)
+    })
   }, [manufacturer])
 
   // Reset include toggles to checked when concurrent jackpot set changes.
@@ -410,10 +414,10 @@ function MHBCalculator({ onBack }) {
     if (manufacturer === 'ags' && selectedCap !== 5000) {
       next['ags-5000'] = false
     }
-    setIncludedJpContributions(next)
+    queueMicrotask(() => setIncludedJpContributions(next))
   }, [jpCheckboxJackpots, manufacturer, mustHitBy])
 
-  const calculate = () => {
+  const calculate = useCallback(() => {
     const p = presetFor(manufacturer, mustHitBy, igtTier, igtLineBet, igtDenom)
     const rtp = (Number(overallRTP) || p.rtp) / 100
     const currentVal = manufacturer === 'manual' ? Number(current) : (Number(current) || p.current)
@@ -542,21 +546,26 @@ function MHBCalculator({ onBack }) {
     setJpContributionByKey(jpByKey)
     setExposure(Math.round(maxExposureDollars))
     setIsPositive(finalEV >= 0)
-  }
+  }, [
+    current,
+    mustHitBy,
+    meterRise,
+    overallRTP,
+    useMidpoint,
+    manufacturer,
+    igtTier,
+    igtLineBet,
+    igtDenom,
+    includedJpContributions,
+    jpCheckboxJackpots,
+  ])
 
   useEffect(() => {
-    calculate()
-  }, [current, mustHitBy, meterRise, resetValue, overallRTP, useMidpoint, manufacturer, igtTier, igtLineBet, igtDenom, includedJpContributions, jpCheckboxJackpots])
+    queueMicrotask(() => calculate())
+  }, [calculate])
 
   // Input handlers
-  const handleIntegerChange = (setter, defaultVal) => (e) => {
-    setter(e.target.value.replace(/[^0-9]/g, ''))
-  }
-  const handleIntegerBlur = (setter, defaultVal) => (e) => {
-    let val = parseInt(e.target.value, 10)
-    setter(isNaN(val) ? defaultVal : val)
-  }
-  const handleFloatChange = (setter, defaultVal) => (e) => {
+  const handleFloatChange = (setter) => (e) => {
     setter(e.target.value.replace(/[^0-9.]/g, ''))
   }
   const handleFloatBlur = (setter, defaultVal) => (e) => {

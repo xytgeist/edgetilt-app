@@ -32,9 +32,6 @@ function GroupRow({ children, divider = true }) {
   )
 }
 
-const inputFlush =
-  'w-full bg-transparent px-4 py-1.5 text-[16px] text-white outline-none placeholder:text-white focus:outline-none'
-
 const ALERT_OPTIONS_ALL_DAY = [
   { value: OFFER_ALERT_NONE, label: 'None' },
   { value: OFFER_ALERT_DAY_9AM, label: 'On day of event (9 AM)' },
@@ -92,8 +89,6 @@ export default function OfferFormModal({
   setAllDay,
   startSelected,
   endSelected,
-  endMinTime,
-  endMaxTime,
   saveEvent,
   saving,
   notice,
@@ -108,7 +103,6 @@ export default function OfferFormModal({
   titleFieldRef,
   onRequestSetAlertPreset
 }) {
-  if (!showForm) return null
   const canSave = !!(draft.casinoName?.trim() && draft.title?.trim() && draft.startAt)
   const hasTitleSuggestions = filteredTitleOptions.length > 0
   const hasCasinoSuggestions = filteredCasinoOptions.length > 0
@@ -163,16 +157,6 @@ export default function OfferFormModal({
       return { ...cur, endAt: nextEnd }
     })
   }, [allDay, draft.endAt, draft.startAt, setDraft])
-
-  const formatPillValue = (dt) => {
-    if (!dt) return ''
-    if (allDay) {
-      return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-    }
-    const datePart = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-    const timePart = dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-    return `${datePart} ${timePart}`
-  }
 
   const formatDateOnly = (dt) => (dt ? dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '')
   const formatTimeOnly = (dt) => (dt ? dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '')
@@ -360,7 +344,7 @@ export default function OfferFormModal({
         applyTimers[field] = null
       }, 160)
       const hourNearEdge = Number.isFinite(hourRep) && (hourRep < 2 || hourRep > HOUR_REPEAT - 3)
-      const minuteNearEdge = Number.isFinite(minRep) && (minRep < 2 || minRep > MINUTE_REPEAT - 3)
+      const minuteNearEdge = Number.isFinite(minRepRaw) && (minRepRaw < 2 || minRepRaw > MINUTE_REPEAT - 3)
       if (hourNearEdge || minuteNearEdge) {
         // Debounce recenter so swipe momentum doesn't feel "grabby".
         timers[field] = window.setTimeout(() => {
@@ -467,6 +451,8 @@ export default function OfferFormModal({
       <div className="mx-4 h-px bg-zinc-700/75" />
     </>
   ) : null
+
+  if (!showForm) return null
 
   return (
     <div className="fixed inset-0 z-[70] flex bg-black/55 px-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[2px]">

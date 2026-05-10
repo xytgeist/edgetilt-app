@@ -31,7 +31,7 @@ function toTitleCase(value) {
 export function normalizeHandle(rawValue) {
   const raw = String(rawValue || '').toLowerCase()
   const compact = raw
-    .replace(/[\s\-]+/g, '_')
+    .replace(/[\s-]+/g, '_')
     .replace(/[^a-z0-9_]/g, '')
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '')
@@ -83,7 +83,7 @@ export function profileSeedFromUser(user) {
   const local = email.includes('@') ? email.split('@')[0] : ''
   const baseHandle = normalizeHandle(local) || `user_${String(user?.id || '').slice(0, 6)}`
   const displayFromLocal = local
-    .replace(/[._\-]+/g, ' ')
+    .replace(/[._-]+/g, ' ')
     .trim()
   const displayName = toTitleCase(displayFromLocal) || 'Member'
   return { baseHandle, displayName }

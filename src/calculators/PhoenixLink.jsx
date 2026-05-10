@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -10,15 +10,10 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import { createClient } from '@supabase/supabase-js'
 import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 import { formatDenomLabel } from '../utils/formatDenomLabel'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const MUST_HIT = 1888
 
@@ -106,10 +101,10 @@ function PhoenixLink({ onBack }) {
     else if (denom === 0.25) baseOverall = 88.6
     else if (denom > 1) baseOverall = 91.5
     // Keep the UI RTP stable; Max Major affects calculations only.
-    setOverallRTP(baseOverall)
+    queueMicrotask(() => setOverallRTP(baseOverall))
   }, [denom])
 
-  const calculate = () => {
+  const calculate = useCallback(() => {
     const displayedOverall = Number(overallRTP) || 0
     const effectiveOverall = displayedOverall + (maxMajor ? 0.5 : 0)
     const oRTP = effectiveOverall / 100
@@ -162,13 +157,13 @@ function PhoenixLink({ onBack }) {
       })
     }
     setEvTable(table)
-  }
+  }, [overallRTP, avgBonusPay, increment, avgTrigger, currentX, betSize, maxMajor])
 
   useEffect(() => {
-    calculate()
-  }, [overallRTP, avgBonusPay, increment, avgTrigger, currentX, betSize, denom, maxMajor])
+    queueMicrotask(() => calculate())
+  }, [calculate])
 
-  const handleFloatChange = (setter, defaultVal) => (e) => {
+  const handleFloatChange = (setter) => (e) => {
     const val = e.target.value.replace(/[^0-9.]/g, '');
     setter(val);
   };
@@ -179,20 +174,6 @@ function PhoenixLink({ onBack }) {
       setter(defaultVal);
     } else {
       setter(parseFloat(val));
-    }
-  };
-
-  const handleIntegerChange = (setter, defaultVal) => (e) => {
-    const val = e.target.value.replace(/[^0-9]/g, '');
-    setter(val);
-  };
-
-  const handleIntegerBlur = (setter, defaultVal) => (e) => {
-    let val = e.target.value.trim();
-    if (val === '' || isNaN(parseInt(val, 10))) {
-      setter(defaultVal);
-    } else {
-      setter(parseInt(val, 10));
     }
   };
 

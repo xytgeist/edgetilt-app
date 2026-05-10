@@ -207,7 +207,6 @@ function main() {
   fs.mkdirSync(seedDir, { recursive: true })
   fs.writeFileSync(outPath, lines.join('\n'), 'utf8')
 
-  // eslint-disable-next-line no-console
   console.log(`Wrote ${path.relative(root, outPath)} (${uniqCities.length} cities, ${casinos.length} casinos)`)
 }
 

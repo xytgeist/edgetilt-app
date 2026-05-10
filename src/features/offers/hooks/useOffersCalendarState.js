@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   coerceAlertPresetForMode,
-  defaultAlertPresetForAllDay,
   draftFromAiReviewPayload,
   emptyOfferDraft,
   localDateKeyFromDate,
@@ -389,14 +388,13 @@ export default function useOffersCalendarState({
         if (signedErr) throw signedErr
         setReviewSourceImageUrl(data?.signedUrl || '')
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn('Could not create signed URL for review image:', e)
         setReviewSourceImageUrl('')
       } finally {
         setReviewSourceImageLoading(false)
       }
     },
-    [supabaseClient]
+    [supabaseClient, makeBaseDraft]
   )
 
   const closeForm = useCallback(() => {

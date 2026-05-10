@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 import { formatDenomLabel } from '../utils/formatDenomLabel'
 
@@ -125,10 +125,8 @@ function StackUpPays({ onBack }) {
 
   const [evAvg, setEvAvg] = useState(0)
   const [currentRTP, setCurrentRTP] = useState(89)
-  const [fpDollarsNeeded, setFpDollarsNeeded] = useState(0)
   const [isAlreadyPositive, setIsAlreadyPositive] = useState(false)
   const [projectedHits, setProjectedHits] = useState(0)
-  const [projectedSpins, setProjectedSpins] = useState(0)
   const [spinsToPositive, setSpinsToPositive] = useState(null)
   const [simulationSteps, setSimulationSteps] = useState([])
 
@@ -137,7 +135,7 @@ function StackUpPays({ onBack }) {
 
   useEffect(() => {
     if (!DENOM_OPTIONS.some((d) => Math.abs(d - denom) < 1e-9)) {
-      setDenom(2)
+      queueMicrotask(() => setDenom(2))
     }
   }, [denom])
 
@@ -150,14 +148,13 @@ function StackUpPays({ onBack }) {
     else if (denom === 0.25) base = 90
     else if (denom >= 0.5) base = 92
 
-    setOverallRTP(base)
-    setRtpInput(String(base))
+    queueMicrotask(() => {
+      setOverallRTP(base)
+      setRtpInput(String(base))
+    })
   }, [denom])
 
-  const calculate = () => {
-    const bet = Number(betSize) || 25
-    const baseRTP = overallRTP / 100
-
+  const calculate = useCallback(() => {
     const meterData = [
       { label: 'Mega',  counter: mega,  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega, reset: RESET.mega,  mid: MIDPOINT.mega },
       { label: 'Grand', counter: grand, mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand, reset: RESET.grand, mid: MIDPOINT.grand },
@@ -167,8 +164,6 @@ function StackUpPays({ onBack }) {
     ]
 
     const stateRTP = getCalibratedStateRTP(overallRTP, meterData)
-    const { baseRTP: calibratedBaseRTP } = getCalibrationFromCycle(overallRTP, meterData)
-    const baseSpinRTP = calibratedBaseRTP / 100
 
     // Strategy:
     // 1) Use current state RTP as the edge rate.
@@ -240,23 +235,16 @@ function StackUpPays({ onBack }) {
     setCurrentRTP(Math.round(stateRTP * 10) / 10)
     setEvAvg(projectedSessionEV)
     setProjectedHits(projectedHitsToStop)
-    setProjectedSpins(projectedSpinsToStop)
     setSpinsToPositive(spinsUntilPositive)
     setSimulationSteps(steps)
 
     const alreadyPositive = stateRTP >= 100
     setIsAlreadyPositive(alreadyPositive)
-
-    if (!alreadyPositive) {
-      setFpDollarsNeeded(Math.round(68 * bet))
-    } else {
-      setFpDollarsNeeded(0)
-    }
-  }
+  }, [mega, grand, major, minor, mini, overallRTP])
 
   useEffect(() => {
-    calculate()
-  }, [mega, grand, major, minor, mini, betSize, denom, overallRTP])
+    queueMicrotask(() => calculate())
+  }, [calculate])
 
   return (
     <div className="min-h-screen bg-slate-950 pb-12">

@@ -2966,7 +2966,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const [isPosting, setIsPosting] = useState(false)
     const [follows, setFollows] = useState({ city: new Set(), casino: new Set() })
 
-    const loadFollows = async () => {
+    const loadFollows = useCallback(async () => {
       const { data, error: e } = await supabaseClient
         .from('follows')
         .select('target_type,target_id')
@@ -2979,15 +2979,15 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         if (r.target_type === 'casino') casinoSet.add(r.target_id)
       })
       setFollows({ city: citySet, casino: casinoSet })
-    }
+    }, [])
 
-    const loadCities = async () => {
+    const loadCities = useCallback(async () => {
       const { data, error: e } = await supabaseClient.from('cities').select('id,name,region').order('name')
       if (e) throw e
       setCities(data || [])
-    }
+    }, [])
 
-    const loadCasinosForCity = async (cityId) => {
+    const loadCasinosForCity = useCallback(async (cityId) => {
       const { data, error: e } = await supabaseClient
         .from('casinos')
         .select('id,name,city_id')
@@ -2995,9 +2995,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         .order('name')
       if (e) throw e
       setCasinos(data || [])
-    }
+    }, [])
 
-    const loadPosts = async ({ targetType, targetId }) => {
+    const loadPosts = useCallback(async ({ targetType, targetId }) => {
       const { data, error: e } = await supabaseClient
         .from('intel_posts')
         .select('id,target_type,target_id,post_type,title,body,created_at')
@@ -3007,7 +3007,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         .limit(50)
       if (e) throw e
       setPosts(data || [])
-    }
+    }, [])
 
     const toggleFollow = async ({ targetType, targetId }) => {
       const isFollowing = (targetType === 'city' ? follows.city : follows.casino).has(targetId)
@@ -3072,8 +3072,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => {
         cancelled = true
       }
-    }, [])
+    }, [loadCities, loadFollows])
 
+    const intelDataKey = `${intelView.screen}|${intelView.cityId ?? ''}|${intelView.casinoId ?? ''}`
     useEffect(() => {
       let cancelled = false
       const run = async () => {
@@ -3096,7 +3097,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => {
         cancelled = true
       }
-    }, [intelView.screen, intelView.cityId, intelView.casinoId])
+    }, [intelDataKey, loadCasinosForCity, loadPosts])
 
     const Header = ({ title, subtitle, onBack, right }) => (
       <div className="flex items-start justify-between gap-3 mb-5">
@@ -3471,7 +3472,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         if (!userId || typeof window === 'undefined') return
         window.localStorage.setItem(getAlertDefaultStorageKeyForUser(userId), nextPreset)
       },
-      [getAlertDefaultStorageKeyForUser, supabaseClient]
+      [getAlertDefaultStorageKeyForUser]
     )
 
     const setStoredOffersDefaultViewForCurrentUser = useCallback(
@@ -3483,7 +3484,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         if (!userId || typeof window === 'undefined') return
         window.localStorage.setItem(getOffersDefaultViewStorageKeyForUser(userId), nextView)
       },
-      [getOffersDefaultViewStorageKeyForUser, supabaseClient]
+      [getOffersDefaultViewStorageKeyForUser]
     )
 
     useEffect(() => {
@@ -3503,7 +3504,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => {
         cancelled = true
       }
-    }, [getAlertDefaultStorageKeyForUser, supabaseClient])
+    }, [getAlertDefaultStorageKeyForUser])
 
     useEffect(() => {
       let cancelled = false
@@ -3526,7 +3527,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => {
         cancelled = true
       }
-    }, [getOffersDefaultViewStorageKeyForUser, supabaseClient])
+    }, [getOffersDefaultViewStorageKeyForUser])
 
     const persistReminderRule = useCallback(
       async (leadMinutes, enabled) => {
@@ -3546,7 +3547,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         )
         if (error) throw error
       },
-      [supabaseClient]
+      []
     )
 
     useEffect(() => {
@@ -3587,7 +3588,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => {
         cancelled = true
       }
-    }, [supabaseClient])
+    }, [])
 
     const pushSubscribedRef = useRef(false)
     useEffect(() => {
@@ -3642,7 +3643,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       } finally {
         setSendingTestPush(false)
       }
-    }, [supabaseClient])
+    }, [])
 
     const saveReminderTiming = useCallback(
       async (nextLead, nextEnabled) => {
@@ -3678,7 +3679,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       } finally {
         setRunningReminderCheck(false)
       }
-    }, [supabaseClient])
+    }, [])
 
     const iosInstallRequired = isIosDevice && !isStandaloneMode
     const allowPushControls = !iosInstallRequired
@@ -3815,8 +3816,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       isStandaloneMode,
       pushPermission,
       pushSubscribed,
-      showAppConfirm,
-      supabaseClient
+      showAppConfirm
     ])
 
     const maybeResolveAlertPresetWithPrompt = useCallback(
@@ -3921,8 +3921,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         pushSubscribed,
         setStoredAlertDefaultForCurrentUser,
         showAppConfirm,
-        showAppInfo,
-        supabaseClient
+        showAppInfo
       ]
     )
 
@@ -4029,6 +4028,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       newEventAlertPresetDefault
     })
 
+    const filteredEvents = useMemo(() => {
+      if (selectedDays.length === 0) return events
+      const selectedSet = new Set(selectedDays)
+      return events.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
+    }, [events, selectedDays])
+
     useEffect(() => {
       if (tab !== 'offers') return
       if (offersDefaultView === 'month' || offersDefaultView === 'week' || offersDefaultView === 'agenda') {
@@ -4036,12 +4041,13 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       } else if (offersDefaultView === 'auto') {
         setCalendarMode('auto')
       }
-    }, [offersDefaultView, setCalendarMode, tab])
+    }, [offersDefaultView, setCalendarMode])
 
     useEffect(() => {
       setAlertPromptHandledForCurrentForm(false)
     }, [showForm, editingId])
 
+    const pendingOfferEventIdsKey = pendingOfferEventIds.join('\u0001')
     useEffect(() => {
       if (!pendingOfferEventIds.length) return
       const existingIds = pendingOfferEventIds.filter((id) => events.some((ev) => ev.id === id))
@@ -4058,7 +4064,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         url.searchParams.delete('eventIds')
         window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
       }
-    }, [events, pendingOfferEventIds, setCalendarMode, setSelectedDays, setExpandedEventId])
+    }, [events, pendingOfferEventIdsKey, setCalendarMode, setSelectedDays, setExpandedEventId])
 
     useEffect(() => {
       const handlePointerDown = (event) => {
@@ -4076,7 +4082,14 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
       document.addEventListener('pointerdown', handlePointerDown)
       return () => document.removeEventListener('pointerdown', handlePointerDown)
-    }, [])
+    }, [
+      casinoFieldRef,
+      titleFieldRef,
+      viewMenuRef,
+      setShowCasinoSuggestions,
+      setShowTitleSuggestions,
+      setViewMenuOpen,
+    ])
 
     useEffect(() => {
       if (typeof window === 'undefined') return undefined
@@ -4085,7 +4098,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       sync()
       media.addEventListener('change', sync)
       return () => media.removeEventListener('change', sync)
-    }, [])
+    }, [setIsLandscape])
 
     useEffect(() => {
       const next = {}
@@ -4095,7 +4108,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
         next[ev.id] = el.scrollWidth > el.clientWidth
       }
       setNotesOverflowById(next)
-    }, [events, selectedDays, expandedEventId])
+    }, [events, selectedDays, expandedEventId, filteredEvents, notesPreviewRefs, setNotesOverflowById])
 
     const toggleExpandedEvent = (eventId) => {
       setExpandedEventId((id) => (id === eventId ? null : eventId))
@@ -4202,12 +4215,6 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       }
     })
 
-    const filteredEvents = useMemo(() => {
-      if (selectedDays.length === 0) return events
-      const selectedSet = new Set(selectedDays)
-      return events.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
-    }, [events, selectedDays])
-
     const activeCalendarView = useMemo(() => {
       if (calendarMode === 'agenda') return 'agenda'
       if (calendarMode === 'week') return 'week'
@@ -4217,7 +4224,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
 
     useEffect(() => {
       if (activeCalendarView !== 'week') setWeekDetailEvent(null)
-    }, [activeCalendarView])
+    }, [activeCalendarView, setWeekDetailEvent])
 
     const startOfWeekMonday = (d) => {
       const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -4362,7 +4369,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       if (activeCalendarView !== 'month' && selectedDays.length > 0) {
         setSelectedDays([])
       }
-    }, [activeCalendarView, selectedDays.length])
+    }, [activeCalendarView, selectedDays.length, setSelectedDays])
 
     const isWeekView = activeCalendarView === 'week'
     const weekLayoutFullBleed = isWeekView && isLandscape

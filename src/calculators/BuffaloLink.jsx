@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import CalculatorDisclaimer from '../components/CalculatorDisclaimer'
 import { formatDenomLabel } from '../utils/formatDenomLabel'
 import { Line } from 'react-chartjs-2'
@@ -106,11 +106,11 @@ function BuffaloLink({ onBack }) {
     else if (denom > 1) baseOverall = 91.5
 
     // Keep the UI RTP stable; Max Major affects calculations only.
-    setOverallRTP(baseOverall)
+    queueMicrotask(() => setOverallRTP(baseOverall))
   }, [denom])
 
   // Main calculation
-  const calculate = () => {
+  const calculate = useCallback(() => {
     const displayedOverall = Number(overallRTP) || 0
     const effectiveOverall = displayedOverall + (maxMajor ? 0.5 : 0)
     const oRTP = effectiveOverall / 100
@@ -182,13 +182,21 @@ function BuffaloLink({ onBack }) {
       })
     }
     setEvTable(table)
-  }
+  }, [
+    currentX,
+    betSize,
+    overallRTP,
+    avgBonusPay,
+    buffalosPerSpin,
+    midpointFactor,
+    maxMajor,
+  ])
 
   useEffect(() => {
-    calculate()
-  }, [currentX, betSize, denom, overallRTP, avgBonusPay, buffalosPerSpin, midpointFactor, maxMajor])
+    queueMicrotask(() => calculate())
+  }, [calculate])
 
-  const handleFloatChange = (setter, defaultVal) => (e) => {
+  const handleFloatChange = (setter) => (e) => {
     const val = e.target.value.replace(/[^0-9.]/g, '')
     setter(val)
   }
@@ -198,7 +206,7 @@ function BuffaloLink({ onBack }) {
     setter(isNaN(val) ? defaultVal : val)
   }
 
-  const handleIntegerChange = (setter, defaultVal) => (e) => {
+  const handleIntegerChange = (setter) => (e) => {
     const val = e.target.value.replace(/[^0-9]/g, '')
     setter(val)
   }

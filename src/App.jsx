@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, btnSecondary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage } from './features/auth/oauthCallback'
@@ -16,7 +16,7 @@ function App() {
   const [password, setPassword] = useState('')
   const [isChecking, setIsChecking] = useState(true)
   const [currentView, setCurrentView] = useState('app')
-  /** Full-screen login/signup when the user chooses it or a feature calls onRequireAuth. */
+  /** Login/signup as a modal over the app when the user chooses it or a feature calls onRequireAuth. */
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
   /** Optional shell banner (e.g. future account notices). */
   const [accessNotice, setAccessNotice] = useState('')
@@ -342,6 +342,31 @@ function App() {
     setAuthPanelOpen(true)
   }
 
+  const closeAuthPanel = useCallback(() => {
+    setAuthPanelOpen(false)
+    setLoginError('')
+    setSignupError('')
+    setSignupMessage('')
+  }, [])
+
+  useEffect(() => {
+    if (!authPanelOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeAuthPanel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [authPanelOpen, closeAuthPanel])
+
+  useEffect(() => {
+    if (!authPanelOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [authPanelOpen])
+
   if (isChecking) return <div className={`${mobileShell} text-white`}>Loading...</div>
 
   // Reset Password Page
@@ -391,210 +416,253 @@ function App() {
     )
   }
 
-  // Login / signup (overlay path — app shell stays available when this is closed)
-  if (authPanelOpen) {
-    return (
-      <div className={mobileShell}>
-        <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full">
-          <button
-            type="button"
-            onClick={() => {
-              setAuthPanelOpen(false)
-              setLoginError('')
-              setSignupError('')
-              setSignupMessage('')
-            }}
-            className={`${linkBtn} mb-5 block w-full text-left text-sm sm:text-base`}
-          >
-            ← Continue without signing in
-          </button>
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Las Vegas Slot Pro</h2>
-
-          {verificationSuccess && (
-            <div className="mb-6 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm sm:text-base font-medium leading-relaxed">
-              ✅ Account Verified - have fun!
-            </div>
-          )}
-
-          {!showForgotPassword && !showCreateAccount ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputBase}
-                autoComplete="email"
-                inputMode="email"
-                enterKeyHint="next"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputBase}
-                autoComplete="current-password"
-                inputMode="text"
-                enterKeyHint="go"
-                required
-              />
-              <button 
-                type="submit"
-                disabled={isLoggingIn}
-                className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
-              >
-                {isLoggingIn ? 'Logging In...' : 'Log In'}
-              </button>
-
-              {loginError && (
-                <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
-                  {loginError}
-                </div>
-              )}
-
-              <OAuthDivider />
-              <button
-                type="button"
-                disabled={isOAuthLoading}
-                onClick={() => handleOAuthSignIn('google')}
-                className={`${btnPrimary} flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
-                aria-label="Continue with Google"
-              >
-                <GoogleIcon />
-                Google
-              </button>
-
-              <button 
-                type="button" 
-                onClick={() => {
-                  setShowCreateAccount(true)
-                  setShowForgotPassword(false)
-                  setSignupError('')
-                  setSignupMessage('')
-                }}
-                className={`${btnSecondary} bg-gray-700 hover:bg-gray-600 border border-orange-600 rounded-2xl text-white`}
-              >
-                Signup
-              </button>
-
-              <div className="pt-1">
-                <button type="button" onClick={() => setShowForgotPassword(true)} className="w-full min-h-12 text-base text-orange-400 hover:text-orange-300 touch-manipulation py-3 text-center">
-                  Forgot Password?
-                </button>
-              </div>
-            </form>
-          ) : showCreateAccount ? (
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <input
-                type="email"
-                placeholder="Email"
-                value={signupEmail}
-                onChange={(e) => setSignupEmail(e.target.value)}
-                className={inputBase}
-                autoComplete="email"
-                inputMode="email"
-                enterKeyHint="next"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={signupPassword}
-                onChange={(e) => setSignupPassword(e.target.value)}
-                className={inputBase}
-                autoComplete="new-password"
-                inputMode="text"
-                enterKeyHint="next"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                value={signupConfirmPassword}
-                onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                className={inputBase}
-                autoComplete="new-password"
-                inputMode="text"
-                enterKeyHint="go"
-                required
-              />
-              {signupError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">{signupError}</div>}
-              {signupMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">{signupMessage}</div>}
-              <button type="submit" disabled={isSigningUp} className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}>
-                {isSigningUp ? 'Creating Account...' : 'Create Account'}
-              </button>
-              <OAuthDivider />
-              <button
-                type="button"
-                disabled={isOAuthLoading}
-                onClick={() => handleOAuthSignIn('google', { setError: setSignupError })}
-                className={`${btnPrimary} flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
-                aria-label="Sign up with Google"
-              >
-                <GoogleIcon />
-                Google
-              </button>
-              <button type="button" onClick={() => {
-                setShowCreateAccount(false)
-                setSignupError('')
-                setSignupMessage('')
-              }} className={`${linkBtn} text-sm sm:text-base`}>← Back to Login</button>
-            </form>
-          ) : (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                className={inputBase}
-                autoComplete="email"
-                inputMode="email"
-                enterKeyHint="go"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                required
-              />
-              {forgotError && <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">{forgotError}</div>}
-              {forgotMessage && <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">{forgotMessage}</div>}
-              <button type="submit" disabled={isSendingReset} className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}>
-                {isSendingReset ? 'Sending...' : 'Send Reset Link'}
-              </button>
-              <button type="button" onClick={() => setShowForgotPassword(false)} className={`${linkBtn} text-sm sm:text-base`}>← Back to Login</button>
-            </form>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   const hasActiveSubscription =
     hasActiveSubscriptionFromProfile ||
     String(import.meta.env.VITE_HAS_ACTIVE_SUBSCRIPTION || '').toLowerCase() === 'true'
 
-  // Logged-in app shell
+  // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {
     return (
-      <AppShell
-        browseMode={user ? 'member' : 'anonymous'}
-        hasActiveSubscription={hasActiveSubscription}
-        isStaff={isStaffRole}
-        onOpenAuth={openAuthPanel}
-        accessNotice={accessNotice}
-        onDismissAccessNotice={() => setAccessNotice('')}
-        onLogout={handleLogout}
-        supabaseClient={supabase}
-        onRequireAuth={(mode = 'login') => openAuthPanel(mode === 'create' ? 'create' : 'login')}
-      />
+      <>
+        <AppShell
+          browseMode={user ? 'member' : 'anonymous'}
+          hasActiveSubscription={hasActiveSubscription}
+          isStaff={isStaffRole}
+          onOpenAuth={openAuthPanel}
+          accessNotice={accessNotice}
+          onDismissAccessNotice={() => setAccessNotice('')}
+          onLogout={handleLogout}
+          supabaseClient={supabase}
+          onRequireAuth={(mode = 'login') => openAuthPanel(mode === 'create' ? 'create' : 'login')}
+        />
+        {authPanelOpen ? (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default bg-black/70 [-webkit-tap-highlight-color:transparent]"
+              aria-label="Close sign in"
+              onClick={closeAuthPanel}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="auth-modal-title"
+              className="relative z-10 w-full max-w-sm max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-contain rounded-3xl border border-zinc-600/80 bg-gray-900 p-6 shadow-2xl sm:p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={closeAuthPanel}
+                className={`${linkBtn} mb-4 !min-h-11 w-full text-sm sm:text-base`}
+              >
+                ← Continue without signing in
+              </button>
+              <h2 id="auth-modal-title" className="text-2xl font-bold text-white mb-6 text-center">
+                Las Vegas Slot Pro
+              </h2>
+
+              {verificationSuccess && (
+                <div className="mb-6 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm sm:text-base font-medium leading-relaxed">
+                  ✅ Account Verified - have fun!
+                </div>
+              )}
+
+              {!showForgotPassword && !showCreateAccount ? (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputBase}
+                    autoComplete="email"
+                    inputMode="email"
+                    enterKeyHint="next"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={inputBase}
+                    autoComplete="current-password"
+                    inputMode="text"
+                    enterKeyHint="go"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn}
+                    className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
+                  >
+                    {isLoggingIn ? 'Logging In...' : 'Log In'}
+                  </button>
+
+                  {loginError && (
+                    <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <OAuthDivider />
+                  <button
+                    type="button"
+                    disabled={isOAuthLoading}
+                    onClick={() => handleOAuthSignIn('google')}
+                    className={`${btnPrimary} flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
+                    aria-label="Continue with Google"
+                  >
+                    <GoogleIcon />
+                    Google
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateAccount(true)
+                      setShowForgotPassword(false)
+                      setSignupError('')
+                      setSignupMessage('')
+                    }}
+                    className={`${btnSecondary} bg-gray-700 hover:bg-gray-600 border border-orange-600 rounded-2xl text-white`}
+                  >
+                    Signup
+                  </button>
+
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="w-full min-h-12 text-base text-orange-400 hover:text-orange-300 touch-manipulation py-3 text-center"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                </form>
+              ) : showCreateAccount ? (
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    className={inputBase}
+                    autoComplete="email"
+                    inputMode="email"
+                    enterKeyHint="next"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    className={inputBase}
+                    autoComplete="new-password"
+                    inputMode="text"
+                    enterKeyHint="next"
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                    className={inputBase}
+                    autoComplete="new-password"
+                    inputMode="text"
+                    enterKeyHint="go"
+                    required
+                  />
+                  {signupError && (
+                    <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
+                      {signupError}
+                    </div>
+                  )}
+                  {signupMessage && (
+                    <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">
+                      {signupMessage}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSigningUp}
+                    className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
+                  >
+                    {isSigningUp ? 'Creating Account...' : 'Create Account'}
+                  </button>
+                  <OAuthDivider />
+                  <button
+                    type="button"
+                    disabled={isOAuthLoading}
+                    onClick={() => handleOAuthSignIn('google', { setError: setSignupError })}
+                    className={`${btnPrimary} flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
+                    aria-label="Sign up with Google"
+                  >
+                    <GoogleIcon />
+                    Google
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateAccount(false)
+                      setSignupError('')
+                      setSignupMessage('')
+                    }}
+                    className={`${linkBtn} text-sm sm:text-base`}
+                  >
+                    ← Back to Login
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className={inputBase}
+                    autoComplete="email"
+                    inputMode="email"
+                    enterKeyHint="go"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                  />
+                  {forgotError && (
+                    <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
+                      {forgotError}
+                    </div>
+                  )}
+                  {forgotMessage && (
+                    <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">
+                      {forgotMessage}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSendingReset}
+                    className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
+                  >
+                    {isSendingReset ? 'Sending...' : 'Send Reset Link'}
+                  </button>
+                  <button type="button" onClick={() => setShowForgotPassword(false)} className={`${linkBtn} text-sm sm:text-base`}>
+                    ← Back to Login
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </>
     )
   }
 

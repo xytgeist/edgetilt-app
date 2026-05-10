@@ -72,6 +72,8 @@ export default function AppShell({
     cancelLabel: 'Cancel'
   })
   const globalConfirmResolverRef = useRef(null)
+  const onRequireAuthRef = useRef(onRequireAuth)
+  onRequireAuthRef.current = onRequireAuth
 
   const closeGlobalConfirm = useCallback((result) => {
     const resolver = globalConfirmResolverRef.current
@@ -285,14 +287,26 @@ export default function AppShell({
           .map((id) => id.trim())
           .filter(Boolean)
         : []
-      if (targetTab === 'offers') setTab('offers')
+      if (targetTab === 'offers') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.('login')
+        } else {
+          setTab('offers')
+        }
+      }
       if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
-      if (targetEventIds.length > 0) setPendingOfferEventIds(targetEventIds)
+      if (targetEventIds.length > 0) {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.('login')
+        } else {
+          setPendingOfferEventIds(targetEventIds)
+        }
+      }
     }
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
     return () => window.removeEventListener('popstate', applyFromUrl)
-  }, [])
+  }, [browseMode])
 
   /** Only refire when entering Lounge — not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {
@@ -303,13 +317,22 @@ export default function AppShell({
     if (typeof window === 'undefined' || !navigator?.serviceWorker) return
     const handleServiceWorkerMessage = (event) => {
       if (event?.data?.type !== 'offers-open-tab') return
+      if (browseMode === 'anonymous') {
+        onRequireAuthRef.current?.('login')
+        return
+      }
       setTab('offers')
     }
     navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
     return () => navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
-  }, [])
+  }, [browseMode])
 
   const openCalculator = (key) => {
+    if (browseMode === 'anonymous') {
+      onRequireAuth?.('login')
+      setMenuOpen(false)
+      return
+    }
     setActiveCalculator(key)
     setTab('calculators')
     setMenuOpen(false)
@@ -329,6 +352,13 @@ export default function AppShell({
   const showNavSubscriberLocks =
     browseMode === 'member' && !isStaff && !hasActiveSubscription
 
+
+  useEffect(() => {
+    if (browseMode !== 'anonymous') return
+    if (tab === 'home') return
+    setTab('home')
+    setMenuOpen(false)
+  }, [browseMode, tab])
 
   const renderTabContent = () => {
     if (tab === 'calculators') {
@@ -528,21 +558,6 @@ export default function AppShell({
             Dismiss
           </button>
         </div>
-      ) : browseMode === 'anonymous' ? (
-        <div className="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-900/95 px-4 py-2.5 backdrop-blur">
-          <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
-            <p className="min-w-0 text-[12px] leading-snug text-zinc-400">
-              Browsing without an account. Log in to post, save offers, and use member-only features.
-            </p>
-            <button
-              type="button"
-              onClick={() => onOpenAuth?.('login')}
-              className="shrink-0 rounded-xl bg-orange-600 px-3 py-2 text-[12px] font-bold text-white touch-manipulation hover:bg-orange-500"
-            >
-              Log in
-            </button>
-          </div>
-        </div>
       ) : null}
       <Suspense fallback={<TabLoadingFallback />}>{renderTabContent()}</Suspense>
 
@@ -599,6 +614,11 @@ export default function AppShell({
                   type="button"
                   title={showLock ? 'Subscribe to unlock full access here' : undefined}
                   onClick={() => {
+                    if (browseMode === 'anonymous' && item.id !== 'home') {
+                      onRequireAuth?.('login')
+                      setMenuOpen(false)
+                      return
+                    }
                     if (item.id !== 'calculators') setActiveCalculator(null)
                     else if (activeCalculator) setActiveCalculator(null)
                     setTab(item.id)

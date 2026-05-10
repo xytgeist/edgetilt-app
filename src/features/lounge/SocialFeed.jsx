@@ -54,7 +54,6 @@ export default function SocialFeed({
   const [composerMediaKind, setComposerMediaKind] = useState('')
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
-  const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const [profileGateOpen, setProfileGateOpen] = useState(false)
   const [profileGateBusy, setProfileGateBusy] = useState(false)
   const [profileGateErr, setProfileGateErr] = useState('')
@@ -116,6 +115,13 @@ export default function SocialFeed({
   const composerDraftFlushRef = useRef({ postText: '', composerExpanded: false, composerMediaFile: null })
   composerDraftFlushRef.current = { postText, composerExpanded, composerMediaFile }
   composerExpandedRef.current = composerExpanded
+
+  /** No composer, server-only counts, gated taps until session is known and user is signed in. */
+  const loungeReadOnly = !composerAuthResolved || !composerUserId
+
+  const requireLoungeAuth = useCallback(() => {
+    onRequireAuth?.('login')
+  }, [onRequireAuth])
 
   useEffect(() => {
     persistLoungeComposerDraft(postText, composerExpanded, composerMediaFile)
@@ -468,6 +474,10 @@ export default function SocialFeed({
 
   const openLoungePostDetail = useCallback((post) => {
     if (!post?.id) return
+    if (loungeReadOnly) {
+      onRequireAuth?.('login')
+      return
+    }
     const tid = loungePostDetailCloseFallbackTimerRef.current
     if (tid) {
       window.clearTimeout(tid)
@@ -493,7 +503,7 @@ export default function SocialFeed({
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setLoungePostDetailVisible(true))
     })
-  }, [])
+  }, [loungeReadOnly, onRequireAuth])
 
   const onLoungePostDetailPanelTransitionEnd = useCallback(
     (e) => {
@@ -537,7 +547,7 @@ export default function SocialFeed({
         data: { session },
       } = await supabaseClient.auth.getSession()
       if (!session?.user) {
-        setAuthPromptOpen(true)
+        onRequireAuth?.('login')
         setLoungeDetailEditErr('You must be signed in.')
         return
       }
@@ -579,6 +589,7 @@ export default function SocialFeed({
     loungeDetailDraftCaption,
     loungeDetailEditMediaFile,
     loungePostDetail,
+    onRequireAuth,
     rateLimitMessage,
     setCommunityPosts,
     supabaseClient,
@@ -790,6 +801,7 @@ export default function SocialFeed({
   }, [loadCommunityFeed, pullDistance, pullRefreshing])
 
   useEffect(() => {
+    if (loungeReadOnly) return
     if (!communityFeedHasMore || communityFeedLoadingMore || communityFeedLoading || pullRefreshing) return
     const root = loungeFeedScrollRef.current
     const node = loadMoreSentinelRef.current
@@ -803,7 +815,14 @@ export default function SocialFeed({
     )
     observer.observe(node)
     return () => observer.disconnect()
-  }, [communityFeedHasMore, communityFeedLoading, communityFeedLoadingMore, loadMoreCommunityFeed, pullRefreshing])
+  }, [
+    communityFeedHasMore,
+    communityFeedLoading,
+    communityFeedLoadingMore,
+    loadMoreCommunityFeed,
+    loungeReadOnly,
+    pullRefreshing,
+  ])
 
   const submitLoungePost = useCallback(async () => {
     const caption = postText.trim()
@@ -824,7 +843,7 @@ export default function SocialFeed({
       } = await supabaseClient.auth.getSession()
       if (!session?.user) {
         setPostErr('You must be signed in to post in Lounge.')
-        setAuthPromptOpen(true)
+        onRequireAuth?.('login')
         return
       }
 
@@ -882,12 +901,11 @@ export default function SocialFeed({
       composerExpandedRef.current = false
       setComposerExpanded(false)
       clearLoungeComposerDraft()
-      setAuthPromptOpen(false)
       await loadCommunityFeed()
     } finally {
       setPostBusy(false)
     }
-  }, [composerUserProfile?.avatar_url, loadCommunityFeed, postText, rateLimitMessage, supabaseClient])
+  }, [composerUserProfile?.avatar_url, loadCommunityFeed, onRequireAuth, postText, rateLimitMessage, supabaseClient])
 
   const saveProfileGate = useCallback(async () => {
     setProfileGateErr('')
@@ -903,7 +921,7 @@ export default function SocialFeed({
       } = await supabaseClient.auth.getSession()
       if (!session?.user) {
         setProfileGateOpen(false)
-        setAuthPromptOpen(true)
+        onRequireAuth?.('login')
         return
       }
       let avatarUrl
@@ -936,10 +954,14 @@ export default function SocialFeed({
     } finally {
       setProfileGateBusy(false)
     }
-  }, [profileGateAvatarFile, profileGateDisplayName, profileGateHandle, submitLoungePost, supabaseClient])
+  }, [onRequireAuth, profileGateAvatarFile, profileGateDisplayName, profileGateHandle, submitLoungePost, supabaseClient])
 
   const openProfileModal = useCallback(
     async (post) => {
+      if (loungeReadOnly) {
+        onRequireAuth?.('login')
+        return
+      }
       const userId = post?.user_id
       if (!userId) return
       setProfileModalOpen(true)
@@ -982,11 +1004,8 @@ export default function SocialFeed({
         setProfileModalLoading(false)
       }
     },
-    [supabaseClient]
+    [loungeReadOnly, onRequireAuth, supabaseClient]
   )
-
-  /** Signed-out feed: read posts and counts; no composer or local-only “reactions”. */
-  const loungeReadOnly = composerAuthResolved && !composerUserId
 
   return (
     <div className="mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
@@ -1030,26 +1049,12 @@ export default function SocialFeed({
           </div>
         </div>
 
+        {loungeReadOnly ? null : (
         <div
           className={`relative shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${
-            loungeReadOnly ? 'py-4' : composerExpanded ? 'pt-3 pb-2.5' : 'py-3'
+            composerExpanded ? 'pt-3 pb-2.5' : 'py-3'
           }`}
         >
-        {loungeReadOnly ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[15px] leading-snug text-zinc-400">
-              Sign in to post and use reactions in the Lounge. You can still read the feed.
-            </p>
-            <button
-              type="button"
-              onClick={() => onRequireAuth?.()}
-              className="shrink-0 min-h-11 touch-manipulation rounded-xl bg-cyan-600 px-4 py-2.5 text-[15px] font-bold text-white hover:bg-cyan-500 [-webkit-tap-highlight-color:transparent]"
-            >
-              Sign in
-            </button>
-          </div>
-        ) : (
-          <>
         {composerExpanded && composerFoldReveal > 0.14 ? (
           <button
             type="button"
@@ -1304,9 +1309,8 @@ export default function SocialFeed({
             </div>
           </div>
         ) : null}
-          </>
-        )}
         </div>
+        )}
 
         <div className="border-b border-zinc-800 pb-4">
         {loungeManageErr ? (
@@ -1417,7 +1421,8 @@ export default function SocialFeed({
                     >
                       <LoungeFeedStatSlot
                         readOnly={ro}
-                        title={ro ? 'Comments' : undefined}
+                        title={ro ? 'Sign in to comment' : undefined}
+                        onReadOnlyClick={requireLoungeAuth}
                         onClick={() => toggleInteraction(post.id, 'commented')}
                         className="inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
@@ -1428,7 +1433,8 @@ export default function SocialFeed({
                       </LoungeFeedStatSlot>
                       <LoungeFeedStatSlot
                         readOnly={ro}
-                        title={ro ? 'Reposts' : undefined}
+                        title={ro ? 'Sign in to repost' : undefined}
+                        onReadOnlyClick={requireLoungeAuth}
                         onClick={() => toggleInteraction(post.id, 'reposted')}
                         className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
@@ -1438,7 +1444,8 @@ export default function SocialFeed({
                       </LoungeFeedStatSlot>
                       <LoungeFeedStatSlot
                         readOnly={ro}
-                        title={ro ? 'Likes' : undefined}
+                        title={ro ? 'Sign in to like' : undefined}
+                        onReadOnlyClick={requireLoungeAuth}
                         onClick={() => toggleInteraction(post.id, 'liked')}
                         className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
@@ -1453,14 +1460,16 @@ export default function SocialFeed({
                         </svg>
                       </span>
                       {ro ? (
-                        <span
-                          className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 text-zinc-600"
+                        <button
+                          type="button"
+                          onClick={requireLoungeAuth}
+                          className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 text-zinc-600 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                           title="Sign in to save posts"
                         >
                           <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                             <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                        </span>
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -1490,7 +1499,13 @@ export default function SocialFeed({
             {communityFeedHasMore ? (
               <button
                 type="button"
-                onClick={() => loadMoreCommunityFeed()}
+                onClick={() => {
+                  if (loungeReadOnly) {
+                    requireLoungeAuth()
+                    return
+                  }
+                  void loadMoreCommunityFeed()
+                }}
                 disabled={communityFeedLoadingMore}
                 className="mx-3 my-2 w-[calc(100%-1.5rem)] min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-100 text-[14px] font-semibold disabled:opacity-60 touch-manipulation"
               >
@@ -1881,7 +1896,8 @@ export default function SocialFeed({
                     >
                       <LoungeFeedStatSlot
                         readOnly={ro}
-                        title={ro ? 'Comments' : undefined}
+                        title={ro ? 'Sign in to comment' : undefined}
+                        onReadOnlyClick={requireLoungeAuth}
                         onClick={() => toggleInteraction(d.id, 'commented')}
                         className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
@@ -1898,7 +1914,8 @@ export default function SocialFeed({
                       </LoungeFeedStatSlot>
                       <LoungeFeedStatSlot
                         readOnly={ro}
-                        title={ro ? 'Reposts' : undefined}
+                        title={ro ? 'Sign in to repost' : undefined}
+                        onReadOnlyClick={requireLoungeAuth}
                         onClick={() => toggleInteraction(d.id, 'reposted')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
@@ -1914,7 +1931,8 @@ export default function SocialFeed({
                       </LoungeFeedStatSlot>
                       <LoungeFeedStatSlot
                         readOnly={ro}
-                        title={ro ? 'Likes' : undefined}
+                        title={ro ? 'Sign in to like' : undefined}
+                        onReadOnlyClick={requireLoungeAuth}
                         onClick={() => toggleInteraction(d.id, 'liked')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
@@ -1945,8 +1963,10 @@ export default function SocialFeed({
                         </svg>
                       </span>
                       {ro ? (
-                        <span
-                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 text-zinc-600"
+                        <button
+                          type="button"
+                          onClick={requireLoungeAuth}
+                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 text-zinc-600 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                           title="Sign in to save posts"
                         >
                           <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -1958,7 +1978,7 @@ export default function SocialFeed({
                               strokeLinejoin="round"
                             />
                           </svg>
-                        </span>
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -2116,53 +2136,6 @@ export default function SocialFeed({
                 className="w-full min-h-11 rounded-xl bg-zinc-800 text-zinc-100 text-[15px] font-semibold"
               >
                 Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {authPromptOpen ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal>
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-default"
-            aria-label="Close auth prompt"
-            onClick={() => setAuthPromptOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
-            <div className="text-rose-200 text-[15px] font-semibold uppercase tracking-wide">Sign in required</div>
-            <div className="text-white text-xl font-bold mt-1">Post to Lounge</div>
-            <div className="text-zinc-400 text-[15px] mt-2 leading-relaxed">
-              You need an account to post. Choose Sign in or Create account.
-            </div>
-            <div className="mt-4 grid grid-cols-1 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthPromptOpen(false)
-                  onRequireAuth?.('login')
-                }}
-                className="min-h-12 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-[15px] text-white font-semibold"
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthPromptOpen(false)
-                  onRequireAuth?.('create')
-                }}
-                className="min-h-12 rounded-xl border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 text-[15px] text-zinc-100 font-semibold"
-              >
-                Create account
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthPromptOpen(false)}
-                className="min-h-11 rounded-xl text-[15px] text-zinc-400 hover:text-zinc-200"
-              >
-                Cancel
               </button>
             </div>
           </div>

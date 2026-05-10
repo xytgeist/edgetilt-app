@@ -1304,7 +1304,7 @@ export default function SocialFeed({
             <img
               src="/edge-lounge-logo.png"
               alt="EDGE"
-              className="h-16 w-auto max-w-[min(380px,calc(100%-5.5rem))] object-contain object-center"
+              className="h-10 w-auto max-w-[min(260px,calc(100%-5.5rem))] object-contain object-center"
               draggable={false}
             />
             <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]">

@@ -1474,7 +1474,10 @@ export default function SocialFeed({
                         readOnly={ro}
                         title={ro ? 'Sign in to comment' : undefined}
                         onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => toggleInteraction(post.id, 'commented')}
+                        onClick={() => {
+                          if (openProfileGateIfNeeded()) return
+                          toggleInteraction(post.id, 'commented')
+                        }}
                         className="inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
                         <svg className={`h-[20px] w-[20px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -1486,7 +1489,10 @@ export default function SocialFeed({
                         readOnly={ro}
                         title={ro ? 'Sign in to repost' : undefined}
                         onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => toggleInteraction(post.id, 'reposted')}
+                        onClick={() => {
+                          if (openProfileGateIfNeeded()) return
+                          toggleInteraction(post.id, 'reposted')
+                        }}
                         className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
                         <svg className={`h-[20px] w-[20px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -1932,7 +1938,10 @@ export default function SocialFeed({
                         readOnly={ro}
                         title={ro ? 'Sign in to comment' : undefined}
                         onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => toggleInteraction(d.id, 'commented')}
+                        onClick={() => {
+                          if (openProfileGateIfNeeded()) return
+                          toggleInteraction(d.id, 'commented')
+                        }}
                         className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
                         <svg className={`h-[22px] w-[22px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -1950,7 +1959,10 @@ export default function SocialFeed({
                         readOnly={ro}
                         title={ro ? 'Sign in to repost' : undefined}
                         onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => toggleInteraction(d.id, 'reposted')}
+                        onClick={() => {
+                          if (openProfileGateIfNeeded()) return
+                          toggleInteraction(d.id, 'reposted')
+                        }}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
                         <svg className={`h-[22px] w-[22px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>

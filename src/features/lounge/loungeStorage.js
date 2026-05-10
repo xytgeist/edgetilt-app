@@ -70,13 +70,19 @@ export function writeProfileGateAck(uid) {
 
 const PROFILE_GATE_RECENT_PROFILE_MS = 7 * 24 * 60 * 60 * 1000
 
-/** Missing handle/name, or new starter profile not yet acknowledged (see `readProfileGateAck`). */
+/**
+ * Missing handle/name, or email-seeded row created recently without browser ack (`readProfileGateAck`).
+ * Rows with a real avatar URL are treated as already established (photo upload never ran through the
+ * Lounge-only ack path for long-time / migrated users).
+ */
 export function loungeProfileNeedsGate(profile, userId) {
   if (!userId) return false
   const h = String(profile?.handle || '').trim()
   const d = String(profile?.display_name || '').trim()
   if (!h || !d) return true
   if (readProfileGateAck(userId)) return false
+  const avatar = String(profile?.avatar_url || '').trim()
+  if (avatar) return false
   const createdMs = profile?.created_at ? new Date(profile.created_at).getTime() : NaN
   const now = Date.now()
   const profileRecent =

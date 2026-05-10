@@ -7,6 +7,9 @@
  *   CHAT_EXPORT_HANDOFF — output markdown file (required for machine-specific runners)
  *   CHAT_EXPORT_STATE_ID — suffix for .cursor/chat-export-state-<id>.json (default: default); also used as export source label (desktop / laptop)
  *   CHAT_EXPORT_SOURCE_LABEL — optional display label for the meta line (e.g. "Desktop"); defaults from STATE_ID
+ *
+ * State file: `.cursor/chat-export-state-<STATE_ID>.json` (e.g. …-default.json). If that is missing but
+ * `.cursor/chat-export-state.json` exists (legacy name), it is read once and superseded by the canonical file on write.
  */
 
 import fs from "fs";
@@ -74,6 +77,22 @@ function defaultTranscriptsRoot() {
 
 const stateDir = path.join(workspaceRoot, ".cursor");
 const statePath = path.join(stateDir, `chat-export-state-${stateId}.json`);
+/** Cursor stores each chat under agent-transcripts/<uuid>/<uuid>.jsonl — folder name is the conversation id. */
+function conversationIdFromTranscriptPath(absJsonlPath) {
+  try {
+    return path.basename(path.dirname(absJsonlPath));
+  } catch {
+    return "";
+  }
+}
+
+function statePathsToTry() {
+  const paths = [statePath];
+  if (stateId === "default") {
+    paths.push(path.join(stateDir, "chat-export-state.json"));
+  }
+  return paths;
+}
 
 async function findLatestJsonl(root) {
   if (!fs.existsSync(root)) return null;
@@ -107,12 +126,21 @@ function extractMessageBody(obj) {
 }
 
 async function readState() {
-  try {
-    const raw = await fsp.readFile(statePath, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return { file: null, line: 0 };
+  for (const p of statePathsToTry()) {
+    try {
+      const raw = await fsp.readFile(p, "utf8");
+      const parsed = JSON.parse(raw);
+      const file = typeof parsed.file === "string" ? parsed.file : null;
+      const line = Number.isFinite(parsed.line) ? parsed.line : 0;
+      if (file && !fs.existsSync(file)) {
+        continue;
+      }
+      return { file, line };
+    } catch {
+      // try next path
+    }
   }
+  return { file: null, line: 0 };
 }
 
 async function writeState(s) {
@@ -130,13 +158,20 @@ async function main() {
     return;
   }
 
-  let state = await readState();
-  if (state.file !== jsonlPath) {
-    state = { file: jsonlPath, line: 0 };
-  }
-
   const raw = await fsp.readFile(jsonlPath, "utf8");
   const lines = raw.split(/\r?\n/).filter((l) => l.length > 0);
+
+  let state = await readState();
+  if (state.file !== jsonlPath) {
+    const oldId = state.file ? conversationIdFromTranscriptPath(state.file) : "";
+    const newId = conversationIdFromTranscriptPath(jsonlPath);
+    if (oldId && newId && oldId === newId) {
+      state = { file: jsonlPath, line: Math.min(state.line, lines.length) };
+    } else {
+      state = { file: jsonlPath, line: 0 };
+    }
+  }
+
   const start = Math.min(state.line, lines.length);
   const slice = lines.slice(start);
   if (slice.length === 0) return;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   formatProfileSaveDebugError,
   profileAvatarInitials,
@@ -74,8 +75,13 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!ownProfileMenuOpen) return
     const onDown = (e) => {
-      const el = ownProfileBannerMenuRef.current
-      if (el && e.target instanceof Node && el.contains(e.target)) return
+      const wrap = ownProfileBannerMenuRef.current
+      const panel = ownProfileMenuPanelRef.current
+      const t = e.target
+      if (t instanceof Node) {
+        if (wrap?.contains(t)) return
+        if (panel?.contains(t)) return
+      }
       setOwnProfileMenuOpen(false)
     }
     document.addEventListener('mousedown', onDown)
@@ -397,13 +403,10 @@ export default function LoungeProfileFullScreen({
             <button
               type="button"
               onClick={onClose}
-              className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-black/28 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/42 active:bg-black/48 sm:left-3"
+              className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 grid h-12 w-12 place-items-center rounded-full bg-zinc-900/95 text-white shadow-lg backdrop-blur touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] sm:left-3"
               aria-label="Back"
             >
-              <span
-                className="text-[22px] leading-none [text-shadow:0_1px_2px_rgba(0,0,0,0.9),0_2px_10px_rgba(0,0,0,0.65)]"
-                aria-hidden
-              >
+              <span aria-hidden className="block leading-none text-2xl -translate-y-px">
                 ←
               </span>
             </button>
@@ -424,39 +427,39 @@ export default function LoungeProfileFullScreen({
                     aria-expanded={ownProfileMenuOpen}
                     aria-haspopup="menu"
                     aria-label="Profile options"
-                    className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-full bg-black/28 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/42 active:bg-black/48"
+                    className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900/95 text-white shadow-lg backdrop-blur touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]"
                   >
-                    <span
-                      className="pb-0.5 text-[20px] font-bold leading-none tracking-tight [text-shadow:0_1px_2px_rgba(0,0,0,0.9)]"
-                      aria-hidden
-                    >
+                    <span aria-hidden className="block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px">
                       ···
                     </span>
                   </button>
-                  {ownProfileMenuOpen ? (
-                    <div
-                      ref={ownProfileMenuPanelRef}
-                      className="min-w-[11.5rem] rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
-                      role="menu"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="w-full px-4 py-2.5 text-left text-[15px] font-semibold text-zinc-100 hover:bg-zinc-800/90 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                        onClick={() => {
-                          setOwnProfileMenuOpen(false)
-                          if (ownProfileEditing) {
-                            exitOwnProfileEditing()
-                          } else {
-                            setAboutErr('')
-                            setOwnProfileEditing(true)
-                          }
-                        }}
-                      >
-                        {ownProfileEditing ? 'Done editing' : 'Edit profile'}
-                      </button>
-                    </div>
-                  ) : null}
+                  {ownProfileMenuOpen
+                    ? createPortal(
+                        <div
+                          ref={ownProfileMenuPanelRef}
+                          className="min-w-[11.5rem] rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
+                          role="menu"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="w-full px-4 py-2.5 text-left text-[15px] font-semibold text-zinc-100 hover:bg-zinc-800/90 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                            onClick={() => {
+                              setOwnProfileMenuOpen(false)
+                              if (ownProfileEditing) {
+                                exitOwnProfileEditing()
+                              } else {
+                                setAboutErr('')
+                                setOwnProfileEditing(true)
+                              }
+                            }}
+                          >
+                            {ownProfileEditing ? 'Done editing' : 'Edit profile'}
+                          </button>
+                        </div>,
+                        document.body
+                      )
+                    : null}
                 </div>
                 {showOwnEditControls ? (
                   <button

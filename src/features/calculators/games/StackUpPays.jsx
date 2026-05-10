@@ -111,7 +111,7 @@ function getCalibratedStateRTP(overallRTP, meters) {
   return baseRTP + stateBonusRTP
 }
 
-function StackUpPays({ onBack }) {
+function StackUpPays({ onBack, titleBarNavSlot = null }) {
   const [mega, setMega] = useState(300)
   const [grand, setGrand] = useState(225)
   const [major, setMajor] = useState(175)
@@ -275,7 +275,7 @@ function StackUpPays({ onBack }) {
             </div>
           </div>
 
-          <div className="w-12" />
+          {titleBarNavSlot ? <div className="flex shrink-0 justify-end">{titleBarNavSlot}</div> : <div className="w-12 shrink-0" aria-hidden />}
         </div>
 
         {/* Bet Size + Denomination + RTP Override */}

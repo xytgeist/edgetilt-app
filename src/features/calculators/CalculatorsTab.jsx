@@ -13,12 +13,20 @@ function CalculatorLoadingFallback() {
   )
 }
 
-function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth, onLogout, onDeleteAccount, deleteAccountBusy }) {
+function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth, onLogout, onDeleteAccount, deleteAccountBusy, titleBarNavSlot }) {
   return (
     <div className="max-w-lg mx-auto px-4 py-6 sm:py-8 pt-[max(0.5rem,env(safe-area-inset-top))]">
-    <div className="text-center mb-10 sm:mb-12">
-      <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Las Vegas Slot Pro</h1>
-      <p className="text-zinc-400 mt-3 text-base">Select a calculator</p>
+    <div className="mb-10 flex items-start justify-between gap-3 text-left sm:mb-12">
+      <div className="min-w-0 flex-1">
+        <img
+          src="/edge-lounge-logo.png"
+          alt="EDGE"
+          className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left"
+          draggable={false}
+        />
+        <p className="mt-4 text-base text-zinc-400">Select a calculator</p>
+      </div>
+      {titleBarNavSlot ? <div className="shrink-0 pt-0.5">{titleBarNavSlot}</div> : null}
     </div>
 
     <button
@@ -129,6 +137,7 @@ export default function CalculatorsTab({
   onLogout,
   onDeleteAccount,
   deleteAccountBusy = false,
+  titleBarNavSlot = null,
 }) {
   if (!activeCalculator) {
     return (
@@ -139,15 +148,24 @@ export default function CalculatorsTab({
         onLogout={onLogout}
         onDeleteAccount={onDeleteAccount}
         deleteAccountBusy={deleteAccountBusy}
+        titleBarNavSlot={titleBarNavSlot}
       />
     )
   }
   return (
     <Suspense fallback={<CalculatorLoadingFallback />}>
-      {activeCalculator === 'phoenix' ? <PhoenixLink onBack={() => setActiveCalculator(null)} /> : null}
-      {activeCalculator === 'buffalo' ? <BuffaloLink onBack={() => setActiveCalculator(null)} /> : null}
-      {activeCalculator === 'stackup' ? <StackUpPays onBack={() => setActiveCalculator(null)} /> : null}
-      {activeCalculator === 'mhb' ? <MHBCalculator onBack={() => setActiveCalculator(null)} /> : null}
+      {activeCalculator === 'phoenix' ? (
+        <PhoenixLink onBack={() => setActiveCalculator(null)} titleBarNavSlot={titleBarNavSlot} />
+      ) : null}
+      {activeCalculator === 'buffalo' ? (
+        <BuffaloLink onBack={() => setActiveCalculator(null)} titleBarNavSlot={titleBarNavSlot} />
+      ) : null}
+      {activeCalculator === 'stackup' ? (
+        <StackUpPays onBack={() => setActiveCalculator(null)} titleBarNavSlot={titleBarNavSlot} />
+      ) : null}
+      {activeCalculator === 'mhb' ? (
+        <MHBCalculator onBack={() => setActiveCalculator(null)} titleBarNavSlot={titleBarNavSlot} />
+      ) : null}
     </Suspense>
   )
 }

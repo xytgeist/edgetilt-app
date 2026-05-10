@@ -1294,15 +1294,14 @@ export default function SocialFeed({
           pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
         }}
       >
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2">
-          <div className="min-w-0" aria-hidden />
+        <div className="flex items-center justify-between gap-3 px-3 py-2">
           <img
             src="/edge-lounge-logo.png"
             alt="EDGE"
-            className="h-6 w-auto max-w-[min(165px,calc(100vw-7rem))] justify-self-center object-contain object-center"
+            className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left"
             draggable={false}
           />
-          <div className="flex min-w-0 items-center justify-end gap-2">
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
             <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
               {communityFeedLoading ? 'Updating…' : ''}
             </div>

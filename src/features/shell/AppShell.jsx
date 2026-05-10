@@ -361,6 +361,65 @@ export default function AppShell({
   const showNavSubscriberLocks =
     browseMode === 'member' && !isStaff && !hasActiveSubscription
 
+  const renderNavMenuItems = () =>
+    navItems.map((item) => {
+      const showLock = showNavSubscriberLocks && item.subscriberGated
+      return (
+        <button
+          key={item.id}
+          type="button"
+          title={showLock ? 'Subscribe to unlock full access here' : undefined}
+          onClick={() => {
+            if (browseMode === 'anonymous' && item.id !== 'home') {
+              onRequireAuth?.('login')
+              setMenuOpen(false)
+              return
+            }
+            if (item.id !== 'calculators') setActiveCalculator(null)
+            else if (activeCalculator) setActiveCalculator(null)
+            setTab(item.id)
+            setMenuOpen(false)
+          }}
+          className={`w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
+            tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-900'
+          } ${item.menuHint ? 'pb-2' : ''}`}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span aria-hidden>{item.icon}</span>
+            <span className="min-w-0 flex-1 font-semibold truncate">{item.label}</span>
+            {showLock ? <NavLockGlyph className="h-3.5 w-3.5 shrink-0 text-amber-400/95" /> : null}
+          </span>
+          {item.menuHint ? (
+            <span className="mt-0.5 block pl-8 text-[11px] leading-snug text-zinc-500">{item.menuHint}</span>
+          ) : null}
+        </button>
+      )
+    })
+
+  const renderTitleBarNavSlot = () => (
+    <div className="relative z-[55] shrink-0">
+      {menuOpen ? (
+        <div
+          className="absolute right-0 top-full z-[55] mt-1 min-w-[11.5rem] max-w-[min(15rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+          role="menu"
+        >
+          {renderNavMenuItems()}
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        className="grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+      >
+        <span aria-hidden className="block leading-none text-xl -translate-y-px">
+          {menuOpen ? '×' : '☰'}
+        </span>
+      </button>
+    </div>
+  )
 
   useEffect(() => {
     if (browseMode !== 'anonymous') return
@@ -380,6 +439,7 @@ export default function AppShell({
           onLogout={onLogout}
           onDeleteAccount={onDeleteAccount}
           deleteAccountBusy={deleteAccountBusy}
+          titleBarNavSlot={renderTitleBarNavSlot()}
         />
       )
     }
@@ -496,30 +556,7 @@ export default function AppShell({
           loadCommunityFeed={loadCommunityFeed}
           loadMoreCommunityFeed={loadMoreCommunityFeed}
           hydrateCommunityPosts={hydrateCommunityPosts}
-          titleBarNavSlot={
-            <div className="relative z-[55] shrink-0">
-              {menuOpen ? (
-                <div
-                  className="absolute right-0 top-full z-[55] mt-1 min-w-[11.5rem] max-w-[min(15rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
-                  role="menu"
-                >
-                  {renderNavMenuItems()}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                aria-expanded={menuOpen}
-                aria-haspopup="menu"
-                className="grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
-              >
-                <span aria-hidden className="block leading-none text-xl -translate-y-px">
-                  {menuOpen ? '×' : '☰'}
-                </span>
-              </button>
-            </div>
-          }
+          titleBarNavSlot={renderTitleBarNavSlot()}
         />
       )
     }
@@ -532,6 +569,7 @@ export default function AppShell({
           onNavigateHome={() => setTab('home')}
           onCommunityPosted={loadCommunityFeed}
           onRequireAuth={onRequireAuth}
+          titleBarNavSlot={renderTitleBarNavSlot()}
         />
       )
     }
@@ -580,41 +618,6 @@ export default function AppShell({
 
     return null
   }
-
-  const renderNavMenuItems = () =>
-    navItems.map((item) => {
-      const showLock = showNavSubscriberLocks && item.subscriberGated
-      return (
-        <button
-          key={item.id}
-          type="button"
-          title={showLock ? 'Subscribe to unlock full access here' : undefined}
-          onClick={() => {
-            if (browseMode === 'anonymous' && item.id !== 'home') {
-              onRequireAuth?.('login')
-              setMenuOpen(false)
-              return
-            }
-            if (item.id !== 'calculators') setActiveCalculator(null)
-            else if (activeCalculator) setActiveCalculator(null)
-            setTab(item.id)
-            setMenuOpen(false)
-          }}
-          className={`w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
-            tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-300 hover:bg-zinc-900'
-          } ${item.menuHint ? 'pb-2' : ''}`}
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <span aria-hidden>{item.icon}</span>
-            <span className="min-w-0 flex-1 font-semibold truncate">{item.label}</span>
-            {showLock ? <NavLockGlyph className="h-3.5 w-3.5 shrink-0 text-amber-400/95" /> : null}
-          </span>
-          {item.menuHint ? (
-            <span className="mt-0.5 block pl-8 text-[11px] leading-snug text-zinc-500">{item.menuHint}</span>
-          ) : null}
-        </button>
-      )
-    })
 
   return (
     <div className="min-h-dvh bg-gray-950">
@@ -674,7 +677,7 @@ export default function AppShell({
         />
       )}
 
-      {tab !== 'home' ? (
+      {tab !== 'home' && tab !== 'calculators' && tab !== 'guides' ? (
         <div className="fixed right-4 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 flex flex-col items-end gap-2">
           {menuOpen ? (
             <div

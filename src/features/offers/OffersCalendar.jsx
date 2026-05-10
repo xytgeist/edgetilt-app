@@ -1235,31 +1235,61 @@ export default function OffersCalendar({
       <ReviewQueuePanel reviewQueue={reviewQueue} onComplete={beginReviewItem} onSkip={(itemId) => void skipReviewItem(itemId)} />
 
       <div className={isWeekView ? 'flex flex-1 min-h-0 flex-col gap-2' : 'mb-2'}>
-          <div className={`relative flex shrink-0 items-center gap-2 ${isWeekView ? '' : 'mb-2'}`}>
-            <div className="pointer-events-none absolute inset-x-0 text-center">
-              <div className="mx-auto max-w-[70%] truncate text-white text-xl font-black tracking-tight">
+          <div className={`relative flex w-full min-h-9 shrink-0 items-center justify-between ${isWeekView ? '' : 'mb-2'}`}>
+            <img
+              src="/edge-lounge-logo.png"
+              alt="EDGE"
+              className="relative z-20 h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left"
+              draggable={false}
+            />
+            <div className="absolute left-1/2 top-1/2 z-10 flex max-w-[min(22rem,calc(100vw-5.5rem))] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1 px-1">
+              <button
+                type="button"
+                disabled={activeCalendarView === 'agenda'}
+                onClick={() => {
+                  if (activeCalendarView === 'agenda') return
+                  if (activeCalendarView === 'week') {
+                    setWeekAnchor((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7))
+                    return
+                  }
+                  setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+                }}
+                className={`min-h-9 min-w-9 shrink-0 rounded-xl bg-zinc-900 font-bold touch-manipulation ${
+                  activeCalendarView === 'agenda'
+                    ? 'cursor-not-allowed text-zinc-600 opacity-40'
+                    : 'text-zinc-200'
+                }`}
+                aria-label={
+                  activeCalendarView === 'agenda' ? 'Agenda view' : activeCalendarView === 'week' ? 'Previous week' : 'Previous month'
+                }
+              >
+                ‹
+              </button>
+              <div className="min-w-0 max-w-[min(12rem,calc(100vw-11rem))] shrink truncate text-center text-xl font-black tracking-tight text-white sm:max-w-[14rem]">
                 {activeCalendarView === 'agenda' ? 'Agenda' : activeCalendarView === 'week' ? weekTitle : monthTitle}
               </div>
+              <button
+                type="button"
+                disabled={activeCalendarView === 'agenda'}
+                onClick={() => {
+                  if (activeCalendarView === 'agenda') return
+                  if (activeCalendarView === 'week') {
+                    setWeekAnchor((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7))
+                    return
+                  }
+                  setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+                }}
+                className={`min-h-9 min-w-9 shrink-0 rounded-xl bg-zinc-900 font-bold touch-manipulation ${
+                  activeCalendarView === 'agenda'
+                    ? 'cursor-not-allowed text-zinc-600 opacity-40'
+                    : 'text-zinc-200'
+                }`}
+                aria-label={activeCalendarView === 'week' ? 'Next week' : 'Next month'}
+              >
+                ›
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (activeCalendarView === 'agenda') return
-                if (activeCalendarView === 'week') {
-                  setWeekAnchor((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7))
-                  return
-                }
-                setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))
-              }}
-              className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
-              aria-label={
-                activeCalendarView === 'agenda' ? 'Agenda view' : activeCalendarView === 'week' ? 'Previous week' : 'Previous month'
-              }
-            >
-              ‹
-            </button>
-            <div className="flex-1" />
-            <div ref={viewMenuRef} className="relative">
+            <div ref={viewMenuRef} className="relative z-20 shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMenuOpen((v) => !v)}
@@ -1321,21 +1351,6 @@ export default function OffersCalendar({
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (activeCalendarView === 'agenda') return
-                if (activeCalendarView === 'week') {
-                  setWeekAnchor((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7))
-                  return
-                }
-                setCursorMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))
-              }}
-              className="min-h-9 min-w-9 rounded-xl bg-zinc-900 text-zinc-200 font-bold touch-manipulation"
-              aria-label={activeCalendarView === 'week' ? 'Next week' : 'Next month'}
-            >
-              ›
-            </button>
           </div>
 
           {activeCalendarView === 'agenda' ? null : activeCalendarView === 'month' ? (

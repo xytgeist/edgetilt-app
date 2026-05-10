@@ -257,7 +257,7 @@ function formatUsd(amount) {
   }).format(n)
 }
 
-function MHBCalculator({ onBack }) {
+function MHBCalculator({ onBack, titleBarNavSlot = null }) {
   const [manufacturer, setManufacturer] = useState('ainsworth')
   const [igtTier, setIgtTier] = useState('mini')
   const [igtLineBet, setIgtLineBet] = useState(1)
@@ -734,14 +734,17 @@ function MHBCalculator({ onBack }) {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowCalcInfo(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-400/45 bg-cyan-500/10 text-sm font-bold italic text-cyan-200 hover:bg-cyan-500/20"
-            aria-label="How calculations work"
-          >
-            i
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCalcInfo(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-400/45 bg-cyan-500/10 text-sm font-bold italic text-cyan-200 hover:bg-cyan-500/20"
+              aria-label="How calculations work"
+            >
+              i
+            </button>
+            {titleBarNavSlot}
+          </div>
         </div>
 
         {/* Main Inputs */}

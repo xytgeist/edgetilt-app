@@ -1297,6 +1297,7 @@ export default function GuidesScreen({
   onNavigateHome,
   onCommunityPosted,
   onRequireAuth,
+  titleBarNavSlot = null,
 }) {
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState([])
@@ -1452,9 +1453,18 @@ export default function GuidesScreen({
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))] pb-24">
-      <div className="mb-5">
-        <div className="text-white text-2xl font-black tracking-tight">AP Guides</div>
-        <div className="text-zinc-400 text-sm mt-0.5">+EV quick read · expand for full playbook</div>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="sr-only">AP Guides</h1>
+          <img
+            src="/edge-lounge-logo.png"
+            alt="EDGE"
+            className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left"
+            draggable={false}
+          />
+          <div className="mt-2 text-sm text-zinc-400">+EV quick read · expand for full playbook</div>
+        </div>
+        {titleBarNavSlot ? <div className="shrink-0 pt-0.5">{titleBarNavSlot}</div> : null}
       </div>
 
       <label className="block mb-5">

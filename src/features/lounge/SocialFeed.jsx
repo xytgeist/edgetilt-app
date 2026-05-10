@@ -436,17 +436,13 @@ export default function SocialFeed({
     [interactionByPost]
   )
 
-  const toggleInteraction = useCallback(
-    (postId, key) => {
-      if (!composerUserId) return
-      if (key === 'commented' && openProfileGateIfNeeded()) return
-      setInteractionByPost((prev) => {
-        const cur = prev[postId] || { commented: false, reposted: false, liked: false }
-        return { ...prev, [postId]: { ...cur, [key]: !cur[key] } }
-      })
-    },
-    [composerUserId, openProfileGateIfNeeded]
-  )
+  const toggleInteraction = useCallback((postId, key) => {
+    if (!composerUserId) return
+    setInteractionByPost((prev) => {
+      const cur = prev[postId] || { commented: false, reposted: false, liked: false }
+      return { ...prev, [postId]: { ...cur, [key]: !cur[key] } }
+    })
+  }, [composerUserId])
 
   const toggleBookmark = useCallback((postId) => {
     if (!composerUserId) return
@@ -1143,14 +1139,14 @@ export default function SocialFeed({
           <div className="mt-0.5 flex w-[3.3rem] shrink-0 justify-center">
             <button
               type="button"
-              onClick={() =>
-                composerUserId
-                  ? void openProfileModal({
-                      user_id: composerUserId,
-                      author_profile: composerUserProfile,
-                    })
-                  : null
-              }
+              onClick={() => {
+                if (!composerUserId) return
+                if (openProfileGateIfNeeded()) return
+                void openProfileModal({
+                  user_id: composerUserId,
+                  author_profile: composerUserProfile,
+                })
+              }}
               className="flex h-[3.3rem] w-[3.3rem] shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900 text-[17px] font-bold text-zinc-200"
               title="Open your profile"
               aria-label="Open your profile"
@@ -1218,9 +1214,6 @@ export default function SocialFeed({
                     <textarea
                       ref={composerTextareaRef}
                       value={postText}
-                      onFocus={() => {
-                        void openProfileGateIfNeeded()
-                      }}
                       onChange={(e) => setPostText(e.target.value)}
                       onScroll={(e) => {
                         const m = composerMirrorRef.current
@@ -1243,7 +1236,6 @@ export default function SocialFeed({
               <button
                 type="button"
                 onClick={() => {
-                  if (openProfileGateIfNeeded()) return
                   composerFoldedFromFeedScrollRef.current = false
                   composerFoldRevealRef.current = 1
                   setComposerFoldReveal(1)
@@ -1314,10 +1306,7 @@ export default function SocialFeed({
             <div className="mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1">
               <button
                 type="button"
-                onClick={() => {
-                  if (openProfileGateIfNeeded()) return
-                  composerMediaInputRef.current?.click()
-                }}
+                onClick={() => composerMediaInputRef.current?.click()}
                 className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
                 title="Add media"
                 aria-label="Add media"

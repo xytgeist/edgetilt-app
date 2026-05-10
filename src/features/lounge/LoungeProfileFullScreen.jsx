@@ -48,7 +48,7 @@ export default function LoungeProfileFullScreen({
   const [avatarBusy, setAvatarBusy] = useState(false)
   /** Own profile: overflow menu on banner (⋯). */
   const [ownProfileMenuOpen, setOwnProfileMenuOpen] = useState(false)
-  /** Own profile: after "Edit profile", show Photo / Banner / About editor. */
+  /** Own profile: after "Edit", show Photo / Banner / About editor. */
   const [ownProfileEditing, setOwnProfileEditing] = useState(false)
   const bannerInputRef = useRef(null)
   const avatarInputRef = useRef(null)
@@ -146,10 +146,13 @@ export default function LoungeProfileFullScreen({
 
   const showOwnEditControls = isOwnProfile && ownProfileEditing
 
-  const exitOwnProfileEditing = useCallback(() => {
+  const exitOwnProfileEditing = useCallback((opts) => {
     setOwnProfileMenuOpen(false)
     setOwnProfileEditing(false)
-    setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
+    const fromProfile = String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140)
+    setAboutDraft(
+      opts?.nextAboutDraft !== undefined ? String(opts.nextAboutDraft).slice(0, 140) : fromProfile
+    )
     setAboutErr('')
     if (typeof document !== 'undefined') {
       try {
@@ -282,6 +285,7 @@ export default function LoungeProfileFullScreen({
         return
       }
       onProfileUpdated?.({ ...profile, about_me: next || null })
+      exitOwnProfileEditing({ nextAboutDraft: next })
     } finally {
       setAboutBusy(false)
     }
@@ -454,7 +458,7 @@ export default function LoungeProfileFullScreen({
                               }
                             }}
                           >
-                            {ownProfileEditing ? 'Done editing' : 'Edit profile'}
+                            {ownProfileEditing ? 'Done editing' : 'Edit'}
                           </button>
                         </div>,
                         document.body
@@ -476,8 +480,8 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4 pb-4">
-            <div className="relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
-              <div className="relative shrink-0">
+            <div className="pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
+              <div className="relative shrink-0 pointer-events-auto">
                 <div className="flex h-24 w-24 overflow-hidden rounded-full border-4 border-zinc-950 bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
                   {profile?.avatar_url ? (
                     <img
@@ -518,7 +522,7 @@ export default function LoungeProfileFullScreen({
                 ) : null}
               </div>
               {!isOwnProfile && viewerUserId ? (
-                <div className="mb-1 flex flex-wrap items-center justify-end gap-2">
+                <div className="pointer-events-auto mb-1 flex flex-wrap items-center justify-end gap-2">
                   <button
                     type="button"
                     disabled={socialBusy}
@@ -602,7 +606,7 @@ export default function LoungeProfileFullScreen({
                       onClick={() => void saveAbout()}
                       className="rounded-lg bg-cyan-600 px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50 touch-manipulation"
                     >
-                      {aboutBusy ? 'Saving…' : 'Save about'}
+                      {aboutBusy ? 'Saving…' : 'Save'}
                     </button>
                   </div>
                   {aboutErr ? <div className="text-[13px] text-rose-300">{aboutErr}</div> : null}

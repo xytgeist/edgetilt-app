@@ -13,6 +13,7 @@ import {
   feedPostDisplayCaption,
   normalizeFeedCaption,
 } from '../../utils/communityFeedPost'
+import { compressImageFileUnderMaxBytes } from '../../utils/compressImageForUpload'
 import {
   readLoungeProfileCache,
   writeLoungeProfileCache,
@@ -2229,20 +2230,23 @@ export default function SocialFeed({
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
+                    onChange={async (e) => {
+                      const input = e.target
+                      const file = input.files?.[0] || null
                       if (!file) return
-                      if (!String(file.type || '').startsWith('image/')) {
-                        setProfileGateErr('Please choose an image file.')
-                        return
-                      }
-                      if (file.size > 5 * 1024 * 1024) {
-                        setProfileGateErr('Image must be 5MB or smaller.')
-                        return
-                      }
                       setProfileGateErr('')
-                      setProfileGateAvatarFile(file)
-                      setProfileGateAvatarPreview(URL.createObjectURL(file))
+                      const { file: ready, error } = await compressImageFileUnderMaxBytes(file)
+                      if (error) {
+                        setProfileGateErr(error.message)
+                        try {
+                          input.value = ''
+                        } catch {
+                          // ignore
+                        }
+                        return
+                      }
+                      setProfileGateAvatarFile(ready)
+                      setProfileGateAvatarPreview(URL.createObjectURL(ready))
                     }}
                   />
                 </label>

@@ -6,6 +6,12 @@ Roadmap and phase ordering live in `docs/social-feed-roadmap.md`.
 
 Do not store secrets in this file.
 
+### Build policy (phases)
+
+Work proceeds **in roadmap phase order (A → B → C → …)** with each phase treated as **complete** before moving on. The “Suggested MVP sequencing” block in `social-feed-roadmap.md` is only a **priority hint**, not permission to skip phase scope.
+
+**Hard dependencies:** an item may be completed in a **later** phase only if it truly requires tables or features that do not exist yet. Example: **`community_feed_posts.like_count` / `comment_count` maintenance triggers** (roadmap A2) require **`post_likes`** / **`feed_comments`** (Phases F / E); those triggers are tracked with **Phase F** (and E) until those tables ship.
+
 ---
 
 ## How to use this file
@@ -31,18 +37,19 @@ Do not store secrets in this file.
 - [x] A2 feed model on test: `community_feed_posts` is **caption-only** (legacy `title` / `body` dropped after backfill); `edited_at`, pin/moderation columns, denormalized `like_count` / `comment_count` (counter **maintenance** still deferred until likes/comments ship).
 - [x] A3 baseline RLS/policy shape for public read + authed write + staff moderation is applied on test (includes author **30-minute** `UPDATE` window in SQL).
 - [x] A4 **DB-first** posting rate limit on test: `rate_limit_events` + indexes + `BEFORE INSERT` guard on `community_feed_posts` in `feed_phase_a_profiles_public_read.sql` (optional later: Redis/edge limiter per roadmap).
+- [ ] A2 **counter maintenance:** when Phase E/F add `feed_comments` / `post_likes`, ship SQL triggers to keep `like_count` / `comment_count` in sync (cannot complete before those tables exist).
 
 ### Phase B - Public read feed
 
 - [x] Basic public read feed path works on test (anon-visible rows, signed-in posting path from Guides).
 - [x] Cursor pagination on `(created_at, id)` is implemented with load-more pagination (infinite auto-load polish still optional).
-- [ ] Pinned row handling exists at data level but UI/query behavior is not fully finalized to roadmap spec.
-- [ ] Logged-out gating for like/comment/search is not fully enforced end-to-end yet.
+- [x] Pinned row: head load fetches at most one pinned row plus first unpinned page; pinned prepended; load-more uses unpinned-only cursor (matches roadmap “prepend one pinned” shape). RLS hides `hidden_at` rows.
+- [x] Logged-out Lounge: composer hidden; like/comment/repost/bookmark are read-only (server counts only, no local mutation UI). Feed search is not a Lounge surface yet (Phase G). Guides search remains on Guides tab.
 
 ### Phases C-L
 
-- [ ] Not started as complete feature slices yet (media pipeline, comments, likes, search, notifications, moderation, block/mute, permalinks, legal).
-- [ ] Phase C started: first-interaction profile completion gate now blocks posting until `handle` + `display_name` are set (Lounge + Guides).
+- [ ] Phases **D–L** not started as complete slices yet (media pipeline, comments, likes, search, notifications, moderation, block/mute, permalinks, legal).
+- [ ] **Phase C (next):** `/u/:handle` profile surface, authored-posts list, handle collision + reserved-handle policy; profile completion gate for first post already in Lounge + Guides.
 
 ---
 
@@ -147,6 +154,7 @@ Do not store secrets in this file.
 
 ## Update log
 
+- 2026-05-10: Adopted strict phase-order build policy; marked Phase B pinned + logged-out Lounge items complete; noted A2 counter triggers dependency on E/F tables.
 - 2026-05-08: Initialized test-first backlog and seeded with current feed/policy/edge-function parity work.
 - 2026-05-08: Added explicit roadmap phase status snapshot; set active implementation target to A2 feed model finalization.
 - 2026-05-08: Started A2 implementation: added `caption` migration/backfill path and app read/write compatibility for `caption` with legacy `title/body` fallback.

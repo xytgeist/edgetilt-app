@@ -304,6 +304,22 @@ const clearLoungeComposerDraft = () => {
   }
 }
 
+/** Lounge post row / sheet: signed-out users see counts only (no local toggle state). */
+function LoungeFeedStatSlot({ readOnly, onClick, className, title, children }) {
+  if (readOnly) {
+    return (
+      <span className={`${className} cursor-default select-none`} title={title}>
+        {children}
+      </span>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} className={className} title={title}>
+      {children}
+    </button>
+  )
+}
+
 function SocialFeed({
   supabaseClient,
   onRequireAuth,
@@ -683,15 +699,17 @@ function SocialFeed({
   )
 
   const toggleInteraction = useCallback((postId, key) => {
+    if (!composerUserId) return
     setInteractionByPost((prev) => {
       const cur = prev[postId] || { commented: false, reposted: false, liked: false }
       return { ...prev, [postId]: { ...cur, [key]: !cur[key] } }
     })
-  }, [])
+  }, [composerUserId])
 
   const toggleBookmark = useCallback((postId) => {
+    if (!composerUserId) return
     setBookmarkedByPost((prev) => ({ ...prev, [postId]: !prev[postId] }))
-  }, [])
+  }, [composerUserId])
 
   function loungePostWithinAuthorEditWindow(createdAt) {
     if (!createdAt) return false
@@ -1261,6 +1279,9 @@ function SocialFeed({
     [supabaseClient]
   )
 
+  /** Signed-out feed: read posts and counts; no composer or local-only “reactions”. */
+  const loungeReadOnly = composerAuthResolved && !composerUserId
+
   return (
     <div className="mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <div
@@ -1304,8 +1325,25 @@ function SocialFeed({
         </div>
 
         <div
-          className={`relative shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${composerExpanded ? 'pt-3 pb-2.5' : 'py-3'}`}
+          className={`relative shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${
+            loungeReadOnly ? 'py-4' : composerExpanded ? 'pt-3 pb-2.5' : 'py-3'
+          }`}
         >
+        {loungeReadOnly ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[15px] leading-snug text-zinc-400">
+              Sign in to post and use reactions in the Lounge. You can still read the feed.
+            </p>
+            <button
+              type="button"
+              onClick={() => onRequireAuth?.()}
+              className="shrink-0 min-h-11 touch-manipulation rounded-xl bg-cyan-600 px-4 py-2.5 text-[15px] font-bold text-white hover:bg-cyan-500 [-webkit-tap-highlight-color:transparent]"
+            >
+              Sign in
+            </button>
+          </div>
+        ) : (
+          <>
         {composerExpanded && composerFoldReveal > 0.14 ? (
           <button
             type="button"
@@ -1560,6 +1598,8 @@ function SocialFeed({
             </div>
           </div>
         ) : null}
+          </>
+        )}
         </div>
 
         <div className="border-b border-zinc-800 pb-4">
@@ -1570,7 +1610,7 @@ function SocialFeed({
             </div>
           </div>
         ) : null}
-        {communityFeedLoading ? (
+        {communityFeedLoading && communityPosts.length === 0 ? (
           <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>
         ) : communityPosts.length === 0 ? (
           <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
@@ -1593,14 +1633,15 @@ function SocialFeed({
                 {(() => {
                   const ui = interactionStateFor(post.id)
                   const isBookmarked = !!bookmarkedByPost[post.id]
-                  const commentCount =
-                    (typeof post.comment_count === 'number' ? post.comment_count : 0) + (ui.commented ? 1 : 0)
-                  const likeCount =
-                    (typeof post.like_count === 'number' ? post.like_count : 0) + (ui.liked ? 1 : 0)
-                  const commentClass = ui.commented ? 'text-zinc-100' : 'text-zinc-500'
-                  const repostClass = ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
-                  const likeClass = ui.liked ? 'text-rose-400' : 'text-zinc-500'
-                  const bookmarkClass = isBookmarked ? 'text-amber-300' : 'text-zinc-500'
+                  const baseComments = typeof post.comment_count === 'number' ? post.comment_count : 0
+                  const baseLikes = typeof post.like_count === 'number' ? post.like_count : 0
+                  const commentCount = baseComments + (loungeReadOnly ? 0 : ui.commented ? 1 : 0)
+                  const likeCount = baseLikes + (loungeReadOnly ? 0 : ui.liked ? 1 : 0)
+                  const commentClass = loungeReadOnly ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
+                  const repostClass = loungeReadOnly ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
+                  const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-rose-400' : 'text-zinc-500'
+                  const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-amber-300' : 'text-zinc-500'
+                  const ro = loungeReadOnly
                   return (
                 <div className="flex gap-4">
                   <button
@@ -1662,9 +1703,14 @@ function SocialFeed({
                     <div className="mt-1.5 text-zinc-200 text-[17px] leading-tight whitespace-pre-wrap">
                       {renderRichCaption(feedPostDisplayCaption(post))}
                     </div>
-                    <div className="mt-2 grid grid-cols-5 items-center text-[14px]">
-                      <button
-                        type="button"
+                    <div
+                      className="mt-2 grid grid-cols-5 items-center text-[14px]"
+                      onClick={(e) => e.stopPropagation()}
+                      role="group"
+                    >
+                      <LoungeFeedStatSlot
+                        readOnly={ro}
+                        title={ro ? 'Comments' : undefined}
                         onClick={() => toggleInteraction(post.id, 'commented')}
                         className="inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
@@ -1672,18 +1718,20 @@ function SocialFeed({
                           <path d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
-                      </button>
-                      <button
-                        type="button"
+                      </LoungeFeedStatSlot>
+                      <LoungeFeedStatSlot
+                        readOnly={ro}
+                        title={ro ? 'Reposts' : undefined}
                         onClick={() => toggleInteraction(post.id, 'reposted')}
                         className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
                         <svg className={`h-[20px] w-[20px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                           <path d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                      </button>
-                      <button
-                        type="button"
+                      </LoungeFeedStatSlot>
+                      <LoungeFeedStatSlot
+                        readOnly={ro}
+                        title={ro ? 'Likes' : undefined}
                         onClick={() => toggleInteraction(post.id, 'liked')}
                         className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
                       >
@@ -1691,22 +1739,33 @@ function SocialFeed({
                           <path d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
-                      </button>
-                      <button type="button" className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70">
+                      </LoungeFeedStatSlot>
+                      <span className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 text-zinc-600" title="Share" aria-hidden>
                         <svg className={actionIconClass} viewBox="0 0 20 20" fill="none" aria-hidden>
                           <path d="M11.5 4.75h3.75V8.5M15 5l-6.25 6.25M12.75 10.5v4a.75.75 0 01-.75.75H5.5a.75.75 0 01-.75-.75V8a.75.75 0 01.75-.75h4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleBookmark(post.id)}
-                        className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
-                        title={isBookmarked ? 'Remove bookmark' : 'Save post'}
-                      >
-                        <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
+                      </span>
+                      {ro ? (
+                        <span
+                          className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 text-zinc-600"
+                          title="Sign in to save posts"
+                        >
+                          <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(post.id)}
+                          className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
+                          title={isBookmarked ? 'Remove bookmark' : 'Save post'}
+                        >
+                          <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2008,13 +2067,15 @@ function SocialFeed({
                 const d = loungePostDetail
                 const ui = interactionStateFor(d.id)
                 const isBookmarked = !!bookmarkedByPost[d.id]
-                const commentCount =
-                  (typeof d.comment_count === 'number' ? d.comment_count : 0) + (ui.commented ? 1 : 0)
-                const likeCount = (typeof d.like_count === 'number' ? d.like_count : 0) + (ui.liked ? 1 : 0)
-                const commentClass = ui.commented ? 'text-zinc-100' : 'text-zinc-500'
-                const repostClass = ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
-                const likeClass = ui.liked ? 'text-rose-400' : 'text-zinc-500'
-                const bookmarkClass = isBookmarked ? 'text-amber-300' : 'text-zinc-500'
+                const baseComments = typeof d.comment_count === 'number' ? d.comment_count : 0
+                const baseLikes = typeof d.like_count === 'number' ? d.like_count : 0
+                const commentCount = baseComments + (loungeReadOnly ? 0 : ui.commented ? 1 : 0)
+                const likeCount = baseLikes + (loungeReadOnly ? 0 : ui.liked ? 1 : 0)
+                const commentClass = loungeReadOnly ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
+                const repostClass = loungeReadOnly ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
+                const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-rose-400' : 'text-zinc-500'
+                const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-amber-300' : 'text-zinc-500'
+                const ro = loungeReadOnly
                 return (
                   <div className="mt-5 border-t border-zinc-800/90 pt-4">
                     {loungeDetailEditing ? (
@@ -2108,9 +2169,12 @@ function SocialFeed({
                     ) : null}
                     <div
                       className={`grid grid-cols-5 items-center gap-1 text-[15px] ${loungeDetailEditing ? 'mt-1' : ''}`}
+                      onClick={(e) => e.stopPropagation()}
+                      role="group"
                     >
-                      <button
-                        type="button"
+                      <LoungeFeedStatSlot
+                        readOnly={ro}
+                        title={ro ? 'Comments' : undefined}
                         onClick={() => toggleInteraction(d.id, 'commented')}
                         className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
@@ -2124,9 +2188,10 @@ function SocialFeed({
                           />
                         </svg>
                         {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
-                      </button>
-                      <button
-                        type="button"
+                      </LoungeFeedStatSlot>
+                      <LoungeFeedStatSlot
+                        readOnly={ro}
+                        title={ro ? 'Reposts' : undefined}
                         onClick={() => toggleInteraction(d.id, 'reposted')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
@@ -2139,9 +2204,10 @@ function SocialFeed({
                             strokeLinejoin="round"
                           />
                         </svg>
-                      </button>
-                      <button
-                        type="button"
+                      </LoungeFeedStatSlot>
+                      <LoungeFeedStatSlot
+                        readOnly={ro}
+                        title={ro ? 'Likes' : undefined}
                         onClick={() => toggleInteraction(d.id, 'liked')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
@@ -2155,10 +2221,11 @@ function SocialFeed({
                           />
                         </svg>
                         {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                      </LoungeFeedStatSlot>
+                      <span
+                        className="inline-flex items-center justify-center rounded-lg px-2 py-2 text-zinc-600"
+                        title="Share"
+                        aria-hidden
                       >
                         <svg className={actionIconClass} viewBox="0 0 20 20" fill="none" aria-hidden>
                           <path
@@ -2169,23 +2236,40 @@ function SocialFeed({
                             strokeLinejoin="round"
                           />
                         </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleBookmark(d.id)}
-                        className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                        title={isBookmarked ? 'Remove bookmark' : 'Save post'}
-                      >
-                        <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
+                      </span>
+                      {ro ? (
+                        <span
+                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 text-zinc-600"
+                          title="Sign in to save posts"
+                        >
+                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleBookmark(d.id)}
+                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                          title={isBookmarked ? 'Remove bookmark' : 'Save post'}
+                        >
+                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -2663,6 +2747,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     }
   }, [COMMUNITY_FEED_PAGE_SIZE, hydrateCommunityPosts, supabaseClient])
 
+  const loadCommunityFeedRef = useRef(loadCommunityFeed)
+  loadCommunityFeedRef.current = loadCommunityFeed
+
   const loadMoreCommunityFeed = useCallback(async () => {
     if (
       !communityFeedHasMore ||
@@ -2733,9 +2820,10 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     return () => window.removeEventListener('popstate', applyFromUrl)
   }, [])
 
+  /** Only refire when entering Lounge — not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {
-    if (tab === 'home') void loadCommunityFeed()
-  }, [tab, loadCommunityFeed])
+    if (tab === 'home') void loadCommunityFeedRef.current()
+  }, [tab])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator?.serviceWorker) return
@@ -5243,7 +5331,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               Questions posted from <span className="text-zinc-400">Guides → Ask community</span> land here once{' '}
               <code className="text-zinc-400">community_feed_posts</code> is applied in Supabase.
             </p>
-            {communityFeedLoading ? (
+            {communityFeedLoading && communityPosts.length === 0 ? (
               <div className="text-zinc-500 text-sm py-2">Loading feed…</div>
             ) : communityPosts.length === 0 ? (
               <div className="rounded-2xl bg-zinc-800/70 p-4 text-zinc-400 text-sm leading-relaxed">

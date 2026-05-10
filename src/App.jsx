@@ -11,7 +11,6 @@ import {
   localDateKeyFromIso,
   localDateKeyFromDate,
   dateFromDatetimeLocalValue,
-  datetimeLocalValueFromDate,
   normalizeLoadedEvent
 } from './features/offers/utils'
 import ReviewQueuePanel from './features/offers/components/ReviewQueuePanel'
@@ -875,6 +874,7 @@ function SocialFeed({
     loungeDetailEditMediaFile,
     loungePostDetail,
     rateLimitMessage,
+    setCommunityPosts,
     supabaseClient,
   ])
 
@@ -1181,7 +1181,7 @@ function SocialFeed({
     } finally {
       setPostBusy(false)
     }
-  }, [composerUserProfile?.avatar_url, loadCommunityFeed, onRequireAuth, postText, rateLimitMessage, supabaseClient])
+  }, [composerUserProfile?.avatar_url, loadCommunityFeed, postText, rateLimitMessage, supabaseClient])
 
   const saveProfileGate = useCallback(async () => {
     setProfileGateErr('')
@@ -2962,7 +2962,6 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const [notice, setNotice] = useState('')
     const [draft, setDraft] = useState({ postType: 'conditions', title: '', body: '' })
     const [isPosting, setIsPosting] = useState(false)
     const [follows, setFollows] = useState({ city: new Set(), casino: new Set() })
@@ -3073,7 +3072,6 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       return () => {
         cancelled = true
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
@@ -3405,6 +3403,8 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
   }
 
   const OffersCalendar = () => {
+    /** Gate for the large legacy push / iOS help block below (was `false &&`). */
+    const showLegacyOffersPushPanel = false
     const [sendingTestPush, setSendingTestPush] = useState(false)
     const [testPushMessage, setTestPushMessage] = useState('')
     const [runningReminderCheck, setRunningReminderCheck] = useState(false)
@@ -3955,29 +3955,21 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       longPressTimerRef,
       casinoFieldRef,
       titleFieldRef,
-      importSyncRunningRef,
       events,
-      setEvents,
       loading,
-      setLoading,
       saving,
       setSaving,
       uploading,
       setUploading,
       syncingImportResults,
-      setSyncingImportResults,
-      activeImportBatchId,
       setActiveImportBatchId,
       error,
       setError,
       notice,
       setNotice,
       reviewQueue,
-      setReviewQueue,
       completingReviewItemId,
-      setCompletingReviewItemId,
       completingReviewUploadId,
-      setCompletingReviewUploadId,
       propagateCasinoOnSave,
       setPropagateCasinoOnSave,
       propagateTitleOnSave,
@@ -3985,18 +3977,12 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       propagateValueOnSave,
       setPropagateValueOnSave,
       reviewSourceImagePath,
-      setReviewSourceImagePath,
       reviewSourceImageUrl,
-      setReviewSourceImageUrl,
       reviewSourceImageLoading,
-      setReviewSourceImageLoading,
       showForm,
-      setShowForm,
       editingId,
-      setEditingId,
       selectedDays,
       setSelectedDays,
-      cursorMonth,
       setCursorMonth,
       draft,
       setDraft,
@@ -4023,7 +4009,6 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       weekAnchor,
       setWeekAnchor,
       offerTypeMeta,
-      dayBuckets,
       dayTypeDots,
       calendarCells,
       monthTitle,
@@ -4164,7 +4149,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
       await loadEvents()
     }
 
-    const { applyCurrentFieldsToAssociatedReviewItems, saveEvent, handleImportPhotos } = useOffersCalendarMutations({
+    const { saveEvent, handleImportPhotos } = useOffersCalendarMutations({
       supabaseClient,
       state: {
         draft,
@@ -4410,7 +4395,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
           </div>
         )}
 
-        {false && (
+        {showLegacyOffersPushPanel ? (
         <div className="mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
           {iosInstallRequired && showIosInstallHelp ? (
             <div className="mb-3 rounded-xl border border-amber-400/40 bg-amber-950/30 p-3 text-[11px] leading-relaxed text-amber-100">
@@ -4599,7 +4584,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
             ) : null}
           </div>
         </div>
-        )}
+        ) : null}
 
         <ReviewQueuePanel reviewQueue={reviewQueue} onComplete={beginReviewItem} onSkip={(itemId) => void skipReviewItem(itemId)} />
 
@@ -5565,59 +5550,82 @@ function App() {
   // Verification success message
   const [verificationSuccess, setVerificationSuccess] = useState(false)
 
-  useEffect(() => {
-    try {
-      const pref = window.localStorage.getItem(AUTH_VIEW_STORAGE_KEY)
-      if (pref === 'create') {
-        setShowCreateAccount(true)
-        setShowForgotPassword(false)
-      }
-      if (pref === 'login') {
-        setShowCreateAccount(false)
-        setShowForgotPassword(false)
-      }
-      if (pref) window.localStorage.removeItem(AUTH_VIEW_STORAGE_KEY)
-    } catch {
-      // Ignore storage read failures.
+  const checkWhitelist = useCallback(async (userEmail) => {
+    if (!userEmail) {
+      setIsAllowed(false)
+      setIsChecking(false)
+      return
     }
+    const { data } = await supabase.from('allowed_emails').select('email').eq('email', userEmail).maybeSingle()
+    if (!data) {
+      setIsAllowed(false)
+      setIsChecking(false)
+      setLoginError("Your account is not yet approved. Contact Ryan to be whitelisted.")
+      await supabase.auth.signOut()
+      return
+    }
+    setIsAllowed(true)
+    setIsChecking(false)
   }, [])
 
   useEffect(() => {
-    const { error: oauthError, errorCode, errorDescription } = readAuthCallbackParams()
-    const oauthMsg = getOAuthCallbackMessage(oauthError, errorCode, errorDescription)
-    if (oauthMsg) {
-      setLoginError(oauthMsg)
-      window.history.replaceState({}, document.title, window.location.pathname || '/')
-    }
-
-    const hash = window.location.hash
-    const hashParams = new URLSearchParams(hash.replace('#', ''))
-    // Email confirmation uses type=signup; Google OAuth can too, but the hash includes provider_token
-    const isEmailOnlyVerification = (hash.includes('type=signup') || hash.includes('type=confirmation')) && !hash.includes('provider_token')
-    if (isEmailOnlyVerification) {
-      setVerificationSuccess(true)
-      setTimeout(() => {
-        if (window.location.hash) {
-          window.history.replaceState({}, document.title, window.location.pathname || '/')
+    queueMicrotask(() => {
+      try {
+        const pref = window.localStorage.getItem(AUTH_VIEW_STORAGE_KEY)
+        if (pref === 'create') {
+          setShowCreateAccount(true)
+          setShowForgotPassword(false)
         }
-      }, 0)
-    }
+        if (pref === 'login') {
+          setShowCreateAccount(false)
+          setShowForgotPassword(false)
+        }
+        if (pref) window.localStorage.removeItem(AUTH_VIEW_STORAGE_KEY)
+      } catch {
+        // Ignore storage read failures.
+      }
+    })
+  }, [])
 
-    // Only trigger reset password for actual recovery links
-    if (hash.includes('type=recovery')) {
-      setCurrentView('reset-password')
-      const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
-
-      if (accessToken && refreshToken) {
-        void supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        })
+  useEffect(() => {
+    queueMicrotask(() => {
+      const { error: oauthError, errorCode, errorDescription } = readAuthCallbackParams()
+      const oauthMsg = getOAuthCallbackMessage(oauthError, errorCode, errorDescription)
+      if (oauthMsg) {
+        setLoginError(oauthMsg)
+        window.history.replaceState({}, document.title, window.location.pathname || '/')
       }
 
-      window.history.replaceState({}, document.title, '/reset-password')
-    }
+      const hash = window.location.hash
+      const hashParams = new URLSearchParams(hash.replace('#', ''))
+      // Email confirmation uses type=signup; Google OAuth can too, but the hash includes provider_token
+      const isEmailOnlyVerification =
+        (hash.includes('type=signup') || hash.includes('type=confirmation')) && !hash.includes('provider_token')
+      if (isEmailOnlyVerification) {
+        setVerificationSuccess(true)
+        setTimeout(() => {
+          if (window.location.hash) {
+            window.history.replaceState({}, document.title, window.location.pathname || '/')
+          }
+        }, 0)
+      }
+
+      // Only trigger reset password for actual recovery links
+      if (hash.includes('type=recovery')) {
+        setCurrentView('reset-password')
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+
+        if (accessToken && refreshToken) {
+          void supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
+        }
+
+        window.history.replaceState({}, document.title, '/reset-password')
+      }
+    })
 
     void supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -5635,25 +5643,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
-
-  const checkWhitelist = async (userEmail) => {
-    if (!userEmail) {
-      setIsAllowed(false)
-      setIsChecking(false)
-      return
-    }
-    const { data } = await supabase.from('allowed_emails').select('email').eq('email', userEmail).maybeSingle()
-    if (!data) {
-      setIsAllowed(false)
-      setIsChecking(false)
-      setLoginError("Your account is not yet approved. Contact Ryan to be whitelisted.")
-      await supabase.auth.signOut()
-      return
-    }
-    setIsAllowed(true)
-    setIsChecking(false)
-  }
+  }, [checkWhitelist])
 
   const getFriendlyErrorMessage = (error, context = 'general') => {
     const message = error?.message || 'Unknown error'

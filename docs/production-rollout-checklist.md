@@ -5,6 +5,8 @@
 Use this when merging **`test` → production** so parity gaps aren’t missed.  
 Treat **`jtjgtucumuoswnbauxry`** as reference (**test**) unless documented elsewhere — **`wedrhwtsxifbnnbgxdkm`** is the (**production**) Supabase project ref inferred from `.env.supabase.production`.
 
+**Doc routing for agents:** Root **`AGENTS.md`** explains when to edit this file vs `docs/test-buildout-backlog.md` vs roadmap after infra or smoke changes.
+
 **Do not paste secrets into this file.** Rotate secrets independently via dashboards/Vercel.
 
 ---

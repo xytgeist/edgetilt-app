@@ -46,6 +46,10 @@ Further wins (if needed later): true list virtualization (`@tanstack/react-virtu
 
 If you see **`src/calculators/`** in older notes or chat exports, that directory was removed; calculator components now live under **`src/features/calculators/games/`**. Lounge work that used to cite **`SocialFeed` inside `App.jsx`** now refers to **`src/features/lounge/SocialFeed.jsx`**.
 
+## Maintaining documentation
+
+Structural or bundling changes here should land in the **same PR** as the code. For **what else to update** (roadmap, backlog, prod checklist, chat vs repo as source of truth), follow the repo playbook **`AGENTS.md`** at the project root.
+
 ---
 
 _Last aligned with the modular `App` + `AppShell` + `features/*` layout._

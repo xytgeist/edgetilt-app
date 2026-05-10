@@ -4,6 +4,8 @@ React + Vite front end for slot guides, calculators, and related tooling. Supaba
 
 **Where things live:** Auth and session bootstrap are in **`src/App.jsx`**. The logged-in app (tabs, Lounge, Offers, etc.) is **`src/features/shell/AppShell.jsx`**, with product areas under **`src/features/*`**. Slot EV calculators ship as **`src/features/calculators/games/*.jsx`**. See **`docs/frontend-architecture.md`** for the full map.
 
+**Keeping docs current (humans + AI):** Follow **`AGENTS.md`** — which files are canonical, when to update them, and what to capture from decisions so future sessions do not rely on chat memory.
+
 ## Prerequisites
 
 - Node.js (current LTS is fine)

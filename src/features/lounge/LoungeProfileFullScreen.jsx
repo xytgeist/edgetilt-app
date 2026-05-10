@@ -397,8 +397,14 @@ export default function LoungeProfileFullScreen({
           if (!panelVisible) onAfterTransitionOut?.()
         }}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          {/* Banner; ⋯ is a sibling strip with sticky top while editing so only that control pins (banner image scrolls). */}
+        <div
+          className={
+            showOwnEditControls
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+              : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+          }
+        >
+          {/* Banner; ⋯ sits in the corner (edit mode: header does not scroll, so absolute is enough). */}
           <div className="relative z-10 w-full shrink-0">
             <div className="relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36">
               <button
@@ -436,11 +442,7 @@ export default function LoungeProfileFullScreen({
             {isOwnProfile ? (
               <div
                 ref={ownProfileBannerMenuRef}
-                className={
-                  showOwnEditControls
-                    ? 'pointer-events-none sticky top-0 z-20 -mt-28 flex h-28 w-full shrink-0 justify-end pr-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:-mt-36 sm:h-36 sm:pr-3'
-                    : 'absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-3'
-                }
+                className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-3"
               >
                 <button
                   ref={ownProfileMenuButtonRef}
@@ -449,9 +451,7 @@ export default function LoungeProfileFullScreen({
                   aria-expanded={ownProfileMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Profile options"
-                  className={`grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 ${
-                    showOwnEditControls ? 'pointer-events-auto' : ''
-                  }`}
+                  className="grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50"
                 >
                   <span
                     aria-hidden
@@ -491,8 +491,18 @@ export default function LoungeProfileFullScreen({
             ) : null}
           </div>
 
-          <div className="relative px-4 pb-4">
-            <div className="pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
+          <div
+            className={
+              showOwnEditControls
+                ? 'relative flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+                : 'relative px-4 pb-4'
+            }
+          >
+            <div
+              className={`pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14 ${
+                showOwnEditControls ? 'shrink-0' : ''
+              }`}
+            >
               <div className="relative shrink-0 pointer-events-auto">
                 <div className="flex h-24 w-24 overflow-hidden rounded-full border-4 border-zinc-950 bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
                   {profile?.avatar_url ? (
@@ -573,7 +583,7 @@ export default function LoungeProfileFullScreen({
               ) : null}
             </div>
 
-            <div className="mt-3 space-y-1">
+            <div className={`mt-3 space-y-1 ${showOwnEditControls ? 'shrink-0' : ''}`}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xl font-bold text-white sm:text-2xl">{displayName}</span>
                 <LoungeStaffRoleBadge role={profile?.role} />
@@ -588,7 +598,7 @@ export default function LoungeProfileFullScreen({
               </div>
             </div>
 
-            <div className="mt-4 flex gap-6 text-[15px]">
+            <div className={`mt-4 flex gap-6 text-[15px] ${showOwnEditControls ? 'shrink-0' : ''}`}>
               <div>
                 <span className="font-bold text-white">{formatCount(followingCount)}</span>{' '}
                 <span className="text-zinc-500">Following</span>
@@ -599,7 +609,7 @@ export default function LoungeProfileFullScreen({
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className={`mt-4 ${showOwnEditControls ? 'shrink-0' : ''}`}>
               {showOwnEditControls ? (
                 <div className="space-y-2">
                   <textarea
@@ -630,7 +640,7 @@ export default function LoungeProfileFullScreen({
               )}
             </div>
 
-            <div className="mt-6 border-b border-zinc-800">
+            <div className={`mt-6 border-b border-zinc-800 ${showOwnEditControls ? 'shrink-0' : ''}`}>
               <div className="flex gap-0">
                 {['posts', 'replies'].map((id) => (
                   <button
@@ -650,7 +660,13 @@ export default function LoungeProfileFullScreen({
               </div>
             </div>
 
-            <div className="min-h-[12rem]">
+            <div
+              className={
+                showOwnEditControls
+                  ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]'
+                  : 'min-h-[12rem]'
+              }
+            >
               {loading ? (
                 <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
               ) : error ? (

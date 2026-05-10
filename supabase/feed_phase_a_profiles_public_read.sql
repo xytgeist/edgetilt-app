@@ -80,6 +80,16 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Staff cannot be demoted to `user` by their own profile save (partial upserts / omitted role).
+  -- Demote via SQL editor (postgres) or an admin JWT path; client upserts must not clear `role`.
+  if tg_op = 'UPDATE'
+     and old.role in ('moderator', 'admin')
+     and new.role = 'user'
+     and auth.uid() is not null
+     and auth.uid() = new.user_id then
+    new.role := old.role;
+  end if;
+
   if new.role is distinct from old.role then
     if not exists (
       select 1

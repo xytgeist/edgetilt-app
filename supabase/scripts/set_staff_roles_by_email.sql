@@ -4,6 +4,9 @@
 -- The SQL editor has no JWT, so we briefly disable that trigger, apply updates, then re-enable it.
 --
 -- Requires an existing `public.profiles` row for each auth user (same `user_id` as `auth.users.id`).
+-- This repo does **not** auto-insert into `profiles` on signup; rows are created when that account
+-- signs into the app (`ensureDefaultProfileRow` in App). If someone exists only in `auth.users`
+-- and never got a profile row, the UPDATE below matches **zero rows** for them (no error).
 
 begin;
 
@@ -50,4 +53,28 @@ where
       'xytgeist@gmail.com'
     ]
   )
+order by u.email;
+
+-- If roles look correct here but Lounge shields are missing, clients may still be showing
+-- a feed loaded before the update: pull-to-refresh or reload the app so posts re-hydrate from `profiles.role`.
+
+-- ---------------------------------------------------------------------------
+-- Diagnose: staff emails that have Auth but NO `public.profiles` row
+-- (moderator/admin UPDATE above did nothing for them until a profile exists.)
+-- ---------------------------------------------------------------------------
+select
+  u.id as auth_user_id,
+  u.email,
+  u.created_at as auth_created_at
+from auth.users u
+where
+  lower(u.email) = any (
+    array[
+      'investigence@gmail.com',
+      'kennynorman@gmail.com',
+      'reachselena@gmail.com',
+      'xytgeist@gmail.com'
+    ]
+  )
+  and not exists (select 1 from public.profiles p where p.user_id = u.id)
 order by u.email;

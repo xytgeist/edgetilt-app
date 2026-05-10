@@ -68,7 +68,9 @@ function ShieldIcon({ className }) {
 
 export default function LoungeStaffRoleBadge({ role, size = 'feed' }) {
 
-  const r = String(role || '').toLowerCase()
+  const r = String(role ?? '')
+    .trim()
+    .toLowerCase()
 
   if (r !== 'admin' && r !== 'moderator') return null
 

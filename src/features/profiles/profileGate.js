@@ -173,6 +173,12 @@ export async function saveProfileWithHandleFallback({
   const safeDisplay = String(displayName || '').trim().slice(0, 24) || seed.displayName
   const nowIso = new Date().toISOString()
 
+  const existing = await fetchOwnProfile(supabaseClient, user.id)
+  if (existing.error) return { data: null, error: existing.error }
+  const existingRole = String(existing.data?.role || '').toLowerCase()
+  const preserveStaffRole =
+    existingRole === 'moderator' || existingRole === 'admin' ? existing.data.role : null
+
   for (let i = 0; i < 30; i += 1) {
     const handle = candidateHandle(safeBase, i)
     const payload = {
@@ -182,6 +188,8 @@ export async function saveProfileWithHandleFallback({
       updated_at: nowIso,
     }
     if (avatarUrl !== undefined) payload.avatar_url = avatarUrl || null
+    /** Keep staff role on upsert — partial payloads must not demote moderator/admin to `user`. */
+    if (preserveStaffRole) payload.role = preserveStaffRole
 
     const { data, error } = await supabaseClient
       .from('profiles')

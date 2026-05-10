@@ -158,7 +158,9 @@ export default function AppShell({
   const hydrateCommunityPosts = useCallback(
     async (rows) => {
       if (!rows?.length) return []
-      const ids = [...new Set(rows.map((r) => r.user_id).filter(Boolean))]
+      /** Stable map key so post.user_id always matches hydrated profiles (UUID string vs object edge cases). */
+      const uidKey = (id) => (id == null || id === '' ? '' : String(id))
+      const ids = [...new Set(rows.map((r) => uidKey(r.user_id)).filter(Boolean))]
       let profileByUserId = {}
       if (ids.length > 0) {
         const coreFields = 'user_id,handle,display_name,avatar_url,bio,role'
@@ -170,11 +172,11 @@ export default function AppShell({
           res = await supabaseClient.from('profiles').select(coreFields).in('user_id', ids)
         }
         const profiles = res.data
-        profileByUserId = Object.fromEntries((profiles || []).map((p) => [p.user_id, p]))
+        profileByUserId = Object.fromEntries((profiles || []).map((p) => [uidKey(p.user_id), p]))
       }
       return rows.map((r) => ({
         ...r,
-        author_profile: profileByUserId[r.user_id] || null,
+        author_profile: profileByUserId[uidKey(r.user_id)] || null,
       }))
     },
     [supabaseClient]

@@ -50,11 +50,14 @@ export default function LoungeProfileFullScreen({
   const [ownProfileMenuOpen, setOwnProfileMenuOpen] = useState(false)
   /** Own profile: after "Edit", show Photo / Banner / About editor. */
   const [ownProfileEditing, setOwnProfileEditing] = useState(false)
+  const showOwnEditControls = isOwnProfile && ownProfileEditing
   const bannerInputRef = useRef(null)
   const avatarInputRef = useRef(null)
   const ownProfileBannerMenuRef = useRef(null)
   const ownProfileMenuButtonRef = useRef(null)
   const ownProfileMenuPanelRef = useRef(null)
+  const profileBodyScrollRef = useRef(null)
+  const wasOwnProfileEditingRef = useRef(false)
 
   const displayName = String(profile?.display_name || profile?.handle || 'Member').trim() || 'Member'
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
@@ -144,7 +147,25 @@ export default function LoungeProfileFullScreen({
     }
   }, [ownProfileMenuOpen, placeOwnProfileMenu])
 
-  const showOwnEditControls = isOwnProfile && ownProfileEditing
+  /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */
+  useLayoutEffect(() => {
+    const was = wasOwnProfileEditingRef.current
+    wasOwnProfileEditingRef.current = showOwnEditControls
+    if (!was || showOwnEditControls) return
+    const el = profileBodyScrollRef.current
+    const reset = () => {
+      if (el) el.scrollTop = 0
+      try {
+        window.scrollTo(0, 0)
+      } catch {
+        // ignore
+      }
+    }
+    reset()
+    requestAnimationFrame(reset)
+    const t = window.setTimeout(reset, 120)
+    return () => window.clearTimeout(t)
+  }, [showOwnEditControls])
 
   const exitOwnProfileEditing = useCallback((opts) => {
     setOwnProfileMenuOpen(false)
@@ -398,6 +419,7 @@ export default function LoungeProfileFullScreen({
         }}
       >
         <div
+          ref={profileBodyScrollRef}
           className={
             showOwnEditControls
               ? 'min-h-0 flex-1 overflow-hidden overscroll-y-none pb-[max(0.5rem,env(safe-area-inset-bottom))]'

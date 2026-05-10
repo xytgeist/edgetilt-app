@@ -2,8 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom'
 import {
   formatProfileSaveDebugError,
+  handleSlugFromAtInput,
+  normalizeHandle,
   profileAvatarInitials,
   profileAvatarToneClass,
+  saveProfileWithHandleFallback,
   uploadProfileAvatar,
   uploadProfileBanner,
 } from '../profiles/profileGate'
@@ -42,6 +45,8 @@ export default function LoungeProfileFullScreen({
   const [profileFollowsViewer, setProfileFollowsViewer] = useState(false)
   const [socialBusy, setSocialBusy] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
+  const [displayNameDraft, setDisplayNameDraft] = useState('')
+  const [handleSlugDraft, setHandleSlugDraft] = useState('')
   const [aboutBusy, setAboutBusy] = useState(false)
   const [aboutErr, setAboutErr] = useState('')
   const [bannerBusy, setBannerBusy] = useState(false)
@@ -68,7 +73,15 @@ export default function LoungeProfileFullScreen({
     setTab('posts')
     setOwnProfileMenuOpen(false)
     setOwnProfileEditing(false)
+    setDisplayNameDraft('')
+    setHandleSlugDraft('')
   }, [open, profileUserId])
+
+  useEffect(() => {
+    if (!ownProfileEditing || !isOwnProfile || !profile) return
+    setDisplayNameDraft(String(profile.display_name ?? '').trim().slice(0, 24))
+    setHandleSlugDraft(String(profile.handle ?? '').trim())
+  }, [ownProfileEditing, isOwnProfile, profile?.user_id, open])
 
   useEffect(() => {
     if (!open || !profileUserId) return
@@ -174,6 +187,14 @@ export default function LoungeProfileFullScreen({
     setAboutDraft(
       opts?.nextAboutDraft !== undefined ? String(opts.nextAboutDraft).slice(0, 140) : fromProfile
     )
+    setDisplayNameDraft(
+      opts?.nextDisplayName !== undefined
+        ? String(opts.nextDisplayName).trim().slice(0, 24)
+        : String(profile?.display_name || '').trim().slice(0, 24)
+    )
+    setHandleSlugDraft(
+      opts?.nextHandle !== undefined ? String(opts.nextHandle || '').trim() : String(profile?.handle || '').trim()
+    )
     setAboutErr('')
     if (typeof document !== 'undefined') {
       try {
@@ -183,7 +204,7 @@ export default function LoungeProfileFullScreen({
         // ignore
       }
     }
-  }, [profile?.about_me, profile?.bio])
+  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle])
 
   const refreshSocial = useCallback(async () => {
     if (!profileUserId || !viewerUserId) {
@@ -284,15 +305,42 @@ export default function LoungeProfileFullScreen({
     }
   }
 
-  const saveAbout = async () => {
+  const saveProfileEdits = async () => {
     if (!isOwnProfile || !viewerUserId || aboutBusy) return
-    const next = String(aboutDraft || '').trim().slice(0, 140)
+    const nextAbout = String(aboutDraft || '').trim().slice(0, 140)
+    const dn = String(displayNameDraft || '').trim().slice(0, 24)
+    if (!dn) {
+      setAboutErr('Display name is required.')
+      return
+    }
+    const nextHandle = normalizeHandle(handleSlugDraft)
+    if (!nextHandle) {
+      setAboutErr('Handle must be at least 2 characters (letters, numbers, underscore).')
+      return
+    }
     setAboutErr('')
     setAboutBusy(true)
     try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession()
+      if (!session?.user) {
+        setAboutErr('You must be signed in.')
+        return
+      }
+      const { data: identityRow, error: idErr } = await saveProfileWithHandleFallback({
+        supabaseClient,
+        user: session.user,
+        displayName: dn,
+        requestedHandle: nextHandle,
+      })
+      if (idErr || !identityRow) {
+        setAboutErr(formatProfileSaveDebugError(idErr, 'Save profile'))
+        return
+      }
       const { error: upErr } = await supabaseClient
         .from('profiles')
-        .update({ about_me: next || null })
+        .update({ about_me: nextAbout || null })
         .eq('user_id', viewerUserId)
       if (upErr) {
         const raw = String(upErr.message || '')
@@ -302,11 +350,19 @@ export default function LoungeProfileFullScreen({
           )
           return
         }
-        setAboutErr(raw || 'Could not save.')
+        setAboutErr(raw || 'Could not save About.')
         return
       }
-      onProfileUpdated?.({ ...profile, about_me: next || null })
-      exitOwnProfileEditing({ nextAboutDraft: next })
+      onProfileUpdated?.({
+        ...profile,
+        ...identityRow,
+        about_me: nextAbout || null,
+      })
+      exitOwnProfileEditing({
+        nextAboutDraft: nextAbout,
+        nextDisplayName: identityRow.display_name,
+        nextHandle: identityRow.handle,
+      })
     } finally {
       setAboutBusy(false)
     }
@@ -596,18 +652,59 @@ export default function LoungeProfileFullScreen({
             </div>
 
             <div className="mt-3 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xl font-bold text-white sm:text-2xl">{displayName}</span>
-                <LoungeStaffRoleBadge role={profile?.role} />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[15px] text-cyan-300">
-                <span>{handle}</span>
-                {profileFollowsViewer && viewerUserId && profileUserId !== viewerUserId ? (
-                  <span className="rounded-full border border-zinc-600 bg-zinc-900/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                    Follows you
-                  </span>
-                ) : null}
-              </div>
+              {showOwnEditControls ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <label className="min-w-0 flex-1 basis-[min(100%,14rem)]">
+                      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Display name</span>
+                      <input
+                        type="text"
+                        value={displayNameDraft}
+                        onChange={(e) => setDisplayNameDraft(e.target.value.slice(0, 24))}
+                        maxLength={24}
+                        autoComplete="name"
+                        className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[17px] font-semibold text-white outline-none focus:border-cyan-600/60 touch-manipulation"
+                        placeholder="Your name"
+                      />
+                    </label>
+                    <div className="flex shrink-0 items-center gap-1.5 pt-6 sm:pt-7">
+                      <LoungeStaffRoleBadge role={profile?.role} />
+                    </div>
+                  </div>
+                  <label className="block">
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Handle</span>
+                    <input
+                      type="text"
+                      value={handleSlugDraft ? `@${handleSlugDraft}` : '@'}
+                      onChange={(e) => setHandleSlugDraft(handleSlugFromAtInput(e.target.value))}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[15px] text-cyan-200 outline-none focus:border-cyan-600/60 touch-manipulation"
+                      placeholder="@your_handle"
+                    />
+                    <span className="mt-1 block text-[12px] text-zinc-500">
+                      Lowercase letters, numbers, underscore. Shown as @
+                      {handleSlugDraft || 'your_handle'} in Lounge.
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xl font-bold text-white sm:text-2xl">{displayName}</span>
+                    <LoungeStaffRoleBadge role={profile?.role} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[15px] text-cyan-300">
+                    <span>{handle}</span>
+                    {profileFollowsViewer && viewerUserId && profileUserId !== viewerUserId ? (
+                      <span className="rounded-full border border-zinc-600 bg-zinc-900/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Follows you
+                      </span>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-4 flex gap-6 text-[15px]">
@@ -637,7 +734,7 @@ export default function LoungeProfileFullScreen({
                     <button
                       type="button"
                       disabled={aboutBusy}
-                      onClick={() => void saveAbout()}
+                      onClick={() => void saveProfileEdits()}
                       className="rounded-lg bg-cyan-600 px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50 touch-manipulation"
                     >
                       {aboutBusy ? 'Saving…' : 'Save'}

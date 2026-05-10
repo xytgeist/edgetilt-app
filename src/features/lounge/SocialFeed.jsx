@@ -1462,6 +1462,9 @@ export default function SocialFeed({
                     <div className="mt-1.5 text-zinc-200 text-[17px] leading-tight whitespace-pre-wrap">
                       {renderRichCaption(feedPostDisplayCaption(post))}
                     </div>
+                    {post.edited_at ? (
+                      <div className="mt-1.5 text-left text-[14px] leading-tight text-zinc-500">Edited</div>
+                    ) : null}
                     <div
                       className="mt-2 grid grid-cols-5 items-center text-[14px]"
                       onClick={(e) => e.stopPropagation()}

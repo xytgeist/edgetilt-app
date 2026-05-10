@@ -8,7 +8,7 @@ React + Vite front end for slot guides, calculators, and related tooling. Supaba
 
 **Access:** The app shell loads for **anonymous** visitors (Supabase anon key); use **Log in** from the sticky strip or from a feature when something needs an account. Any **successful sign-in** uses the full member shell (freemium / subscribe rules live in product docs + UI). Details: **`docs/frontend-architecture.md`** (Access model).
 
-**Subscriber UI (until billing is wired):** set **`VITE_HAS_ACTIVE_SUBSCRIPTION=true`** in `.env.local` to hide hamburger lock icons and simulate an active paid subscription locally. Omit or `false` in production until Stripe + profile flags drive this from the database.
+**Subscriber UI:** Per-user flag **`profiles.has_active_subscription`** (run **`supabase/profiles_tier_testing.sql`** on your Supabase project). Optional: **`VITE_HAS_ACTIVE_SUBSCRIPTION=true`** in `.env.local` forces subscriber UI for **all** logged-in users. See **`docs/test-user-roles.md`** for role + flag recipes.
 
 ## Prerequisites
 

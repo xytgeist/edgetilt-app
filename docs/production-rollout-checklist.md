@@ -34,6 +34,7 @@ Track **everything else** already used on test that production must also have ap
 
 - [ ] `community_feed_posts.sql` — base home feed table + baseline trigger
 - [ ] `feed_phase_a_profiles_public_read.sql` — **`profiles`**, moderation columns, **public anon read** RLS, staff policies, guards
+- [ ] `profiles_tier_testing.sql` — **`has_active_subscription`** + guard trigger (subscriber UI + testing; run after phase A file)
 - [ ] Any earlier schema you rely on: **`offers`** / **`offer_events`**, **`push_subscriptions`**, notification SQL, etc. — mirror **test** `supabase/` files that are not yet on prod
 
 **After deploy — quick smoke SQL (production):**

@@ -22,6 +22,8 @@ function App() {
   const [accessNotice, setAccessNotice] = useState('')
   /** Moderator/admin: full access; hamburger hides subscriber-only lock icons. */
   const [isStaffRole, setIsStaffRole] = useState(false)
+  /** From `profiles.has_active_subscription` when column exists (see `supabase/profiles_tier_testing.sql`). */
+  const [hasActiveSubscriptionFromProfile, setHasActiveSubscriptionFromProfile] = useState(false)
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -128,20 +130,47 @@ function App() {
 
   useEffect(() => {
     if (!user?.id) {
-      queueMicrotask(() => setIsStaffRole(false))
+      queueMicrotask(() => {
+        setIsStaffRole(false)
+        setHasActiveSubscriptionFromProfile(false)
+      })
       return
     }
     let cancelled = false
-    void supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
+    const load = async () => {
+      const wide = await supabase
+        .from('profiles')
+        .select('role, has_active_subscription')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (cancelled) return
+      if (wide.data) {
+        const r = wide.data.role
+        setIsStaffRole(r === 'moderator' || r === 'admin')
+        setHasActiveSubscriptionFromProfile(Boolean(wide.data.has_active_subscription))
+        return
+      }
+      if (wide.error?.code === 'PGRST116') {
+        setIsStaffRole(false)
+        setHasActiveSubscriptionFromProfile(false)
+        return
+      }
+      if (wide.error) {
+        const narrow = await supabase.from('profiles').select('role').eq('user_id', user.id).maybeSingle()
         if (cancelled) return
-        const role = data?.role
-        setIsStaffRole(role === 'moderator' || role === 'admin')
-      })
+        if (narrow.data) {
+          const r = narrow.data.role
+          setIsStaffRole(r === 'moderator' || r === 'admin')
+        } else {
+          setIsStaffRole(false)
+        }
+        setHasActiveSubscriptionFromProfile(false)
+        return
+      }
+      setIsStaffRole(false)
+      setHasActiveSubscriptionFromProfile(false)
+    }
+    void load()
     return () => {
       cancelled = true
     }
@@ -549,6 +578,7 @@ function App() {
   }
 
   const hasActiveSubscription =
+    hasActiveSubscriptionFromProfile ||
     String(import.meta.env.VITE_HAS_ACTIVE_SUBSCRIPTION || '').toLowerCase() === 'true'
 
   // Logged-in app shell

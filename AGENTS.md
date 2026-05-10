@@ -14,7 +14,8 @@ Future sessions have **no memory** of this chat. Treat the repo as the **source 
 | 4 | `docs/test-buildout-backlog.md` | Test-first work, phase checkboxes, **smoke list**, sign-offs, SQL/RLS notes tied to test |
 | 5 | `docs/production-rollout-checklist.md` | Promoting test work to production (SQL, functions, smoke) |
 | 6 | `docs/access-tiers.md` | **Freemium spec:** no account vs free vs paid — per-surface read/write matrix; update when product rules change |
-| 7 | `supabase/*.sql` | Schema, RLS, triggers; read headers/comments when touching the DB |
+| 7 | `docs/test-user-roles.md` | **`profiles.role`** + **`has_active_subscription`** — tier testing SQL recipes |
+| 8 | `supabase/*.sql` | Schema, RLS, triggers; read headers/comments when touching the DB |
 
 Feature-specific notes may also live next to code (e.g. `src/features/offers/README.md`).
 

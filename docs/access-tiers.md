@@ -134,3 +134,4 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | 2026-05-10 | Removed **50 posts per day** cap; anon Lounge read-only is uncapped aside from normal pagination/RLS. |
 | 2026-05-10 | Hamburger: lock icons on **Calcs**, **AP Guides**, **Bankroll** for free non-subscribers; staff/subscribers see no locks; Offers menu row unlocked (gates in-feature). |
 | 2026-05-10 | **Signup:** no client **`allowed_emails`** whitelist; free tier = signed-in user until billing flags ship. |
+| 2026-05-10 | DB: **`profiles.has_active_subscription`** + testing doc **`docs/test-user-roles.md`** for tier checks. |

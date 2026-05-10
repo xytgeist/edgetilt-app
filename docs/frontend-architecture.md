@@ -13,7 +13,7 @@ Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circ
 ## Access model (public browse + member)
 
 - **Anonymous:** No Supabase session → user lands in **`AppShell`** immediately (Supabase **anon** key; public-read RLS paths work). A sticky strip invites **Log in**; Lounge and other surfaces follow **anon** policies (today: read-only patterns in Lounge where writes require auth).
-- **Member:** Any authenticated Supabase session → **`browseMode === 'member'`** (log out, posting, offers sync, etc. as implemented). **`hasActiveSubscription`** (today: env **`VITE_HAS_ACTIVE_SUBSCRIPTION`**, later: billing/profile) plus **`isStaff`** from **`profiles.role`** control **hamburger lock icons** for subscriber-gated tabs (`AppShell.jsx`).
+- **Member:** Any authenticated Supabase session → **`browseMode === 'member'`** (log out, posting, offers sync, etc. as implemented). **`hasActiveSubscription`** = **`profiles.has_active_subscription`** OR env **`VITE_HAS_ACTIVE_SUBSCRIPTION`**; **`isStaff`** = **`profiles.role`** in `moderator` / `admin`. Those drive **hamburger lock icons** in `AppShell.jsx`. Testing: **`docs/test-user-roles.md`**, SQL **`supabase/profiles_tier_testing.sql`**.
 - **Auth UI:** Log in / sign up / forgot password render as a **full-screen panel** when the user opens auth from the strip, **Continue without signing in**, or when a feature calls **`onRequireAuth`** (no full-app reload). Whitelist rejection sets a dismissible **`accessNotice`** in the shell after sign-out.
 
 ### Planned: freemium + subscription tiers

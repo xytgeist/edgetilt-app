@@ -47,6 +47,8 @@ export default function SocialFeed({
   loadCommunityFeed,
   loadMoreCommunityFeed,
   hydrateCommunityPosts = async (rows) => rows ?? [],
+  /** Optional shell UI (e.g. hamburger) rendered on the right side of the fixed title bar. */
+  titleBarNavSlot = null,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -1300,15 +1302,19 @@ export default function SocialFeed({
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}
         >
-          <div className="relative flex items-center justify-center px-3 py-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-2">
+            <div className="min-w-0" aria-hidden />
             <img
               src="/edge-lounge-logo.png"
               alt="EDGE"
-              className="h-8 w-auto max-w-[min(220px,calc(100%-5rem))] object-contain object-center"
+              className="h-6 w-auto max-w-[min(165px,calc(100vw-7rem))] justify-self-center object-contain object-center"
               draggable={false}
             />
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 text-[13px]">
-              {communityFeedLoading ? 'Updating…' : ''}
+            <div className="flex min-w-0 items-center justify-end gap-2">
+              <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
+                {communityFeedLoading ? 'Updating…' : ''}
+              </div>
+              {titleBarNavSlot}
             </div>
           </div>
         </div>

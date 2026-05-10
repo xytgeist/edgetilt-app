@@ -335,7 +335,7 @@ export default function LoungeProfileFullScreen({
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {/* Banner: sticky so back / ⋯ stay reachable while scrolling (mobile keyboard safe). */}
-          <div className="sticky top-0 z-30 relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 shadow-[0_6px_16px_rgba(0,0,0,0.35)] sm:h-36">
+          <div className="sticky top-0 z-10 relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 shadow-[0_6px_16px_rgba(0,0,0,0.35)] sm:h-36">
             <button
               type="button"
               onClick={onClose}
@@ -350,14 +350,14 @@ export default function LoungeProfileFullScreen({
               </span>
             </button>
             {profile?.banner_url ? (
-              <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
+              <img src={profile.banner_url} alt="" className="relative z-0 h-full w-full object-cover" />
             ) : null}
             {isOwnProfile ? (
               <>
                 <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
                 <div
                   ref={ownProfileBannerMenuRef}
-                  className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-30 sm:right-3"
+                  className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-3"
                 >
                   <button
                     type="button"
@@ -376,7 +376,7 @@ export default function LoungeProfileFullScreen({
                   </button>
                   {ownProfileMenuOpen ? (
                     <div
-                      className="absolute right-0 top-11 min-w-[11.5rem] rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
+                      className="absolute right-0 bottom-full mb-1 min-w-[11.5rem] rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
                       role="menu"
                     >
                       <button
@@ -413,7 +413,7 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4 pb-4">
-            <div className="-mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
+            <div className="relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
               <div className="relative shrink-0">
                 <div className="flex h-24 w-24 overflow-hidden rounded-full border-4 border-zinc-950 bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
                   {profile?.avatar_url ? (

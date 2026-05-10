@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import {
   fetchOwnProfile,
+  formatProfileSaveDebugError,
   handleSlugFromAtInput,
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -969,7 +970,7 @@ export default function SocialFeed({
           file: profileGateAvatarFile,
         })
         if (uploadErr) {
-          setProfileGateErr(uploadErr.message || 'Could not upload avatar image.')
+          setProfileGateErr(formatProfileSaveDebugError(uploadErr, 'Avatar upload'))
           return
         }
         avatarUrl = uploadedUrl || null
@@ -983,7 +984,7 @@ export default function SocialFeed({
         avatarUrl,
       })
       if (error) {
-        setProfileGateErr(error.message || 'Could not save profile.')
+        setProfileGateErr(formatProfileSaveDebugError(error, 'Save profile'))
         return
       }
       const { data: freshProfile, error: freshErr } = await fetchOwnProfile(supabaseClient, session.user.id)
@@ -2280,7 +2281,7 @@ export default function SocialFeed({
                 />
               </label>
               {profileGateErr ? (
-                <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[13px] leading-relaxed">
+                <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[13px] leading-relaxed break-words whitespace-pre-wrap">
                   {profileGateErr}
                 </div>
               ) : null}

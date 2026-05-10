@@ -37,6 +37,7 @@ import { communityFeedPostInsertPayload } from '../../utils/communityFeedPost'
 import { compressImageFileUnderMaxBytes } from '../../utils/compressImageForUpload'
 import {
   fetchOwnProfile,
+  formatProfileSaveDebugError,
   handleSlugFromAtInput,
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -1042,7 +1043,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
           file: profileGateAvatarFile,
         })
         if (uploadErr) {
-          setProfileGateErr(uploadErr.message || 'Could not upload avatar image.')
+          setProfileGateErr(formatProfileSaveDebugError(uploadErr, 'Avatar upload'))
           return
         }
         avatarUrl = uploadedUrl || null
@@ -1056,7 +1057,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         avatarUrl,
       })
       if (error) {
-        setProfileGateErr(error.message || 'Could not save profile.')
+        setProfileGateErr(formatProfileSaveDebugError(error, 'Save profile'))
         return
       }
       writeProfileGateAck(session.user.id)
@@ -1261,7 +1262,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                 />
               </label>
               {profileGateErr ? (
-                <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed">
+                <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed break-words whitespace-pre-wrap">
                   {profileGateErr}
                 </div>
               ) : null}

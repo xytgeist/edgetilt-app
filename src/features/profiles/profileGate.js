@@ -1,3 +1,34 @@
+/** Strip invisible chars that often sneak in from mobile paste/autocorrect. */
+const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g
+
+/**
+ * One line for UI: which step failed + message + PostgREST/Storage fields when present.
+ * @param {unknown} err
+ * @param {'Avatar upload'|'Save profile'} stepLabel
+ */
+export function formatProfileSaveDebugError(err, stepLabel = '') {
+  if (err == null) return stepLabel ? `${stepLabel}: unknown error` : 'Unknown error'
+  if (typeof err === 'string') return [stepLabel, err].filter(Boolean).join(': ')
+
+  const msg =
+    (typeof err.message === 'string' && err.message) ||
+    (typeof err.error_description === 'string' && err.error_description) ||
+    (typeof err.error === 'string' && err.error) ||
+    ''
+  const code = err.code ?? err.statusCode ?? err.status
+  const details = typeof err.details === 'string' ? err.details : ''
+  const hint = typeof err.hint === 'string' ? err.hint : ''
+  const name = typeof err.name === 'string' && err.name !== 'Error' ? err.name : ''
+
+  const head = [stepLabel, name, msg.trim()].filter(Boolean).join(' — ')
+  const metaParts = []
+  if (code != null && code !== '') metaParts.push(`code=${code}`)
+  if (details) metaParts.push(`details=${details}`)
+  if (hint) metaParts.push(`hint=${hint}`)
+  const meta = metaParts.length ? ` (${metaParts.join(' · ')})` : ''
+  return head ? `${head}${meta}` : stepLabel ? `${stepLabel}: could not read error` : 'Could not read error'
+}
+
 const RESERVED_HANDLES = new Set([
   'admin',
   'api',
@@ -29,7 +60,7 @@ function toTitleCase(value) {
 }
 
 export function normalizeHandle(rawValue) {
-  const raw = String(rawValue || '').toLowerCase()
+  const raw = String(rawValue || '').replace(ZERO_WIDTH_RE, '').toLowerCase()
   const compact = raw
     .replace(/[\s-]+/g, '_')
     .replace(/[^a-z0-9_]/g, '')
@@ -43,7 +74,7 @@ export function normalizeHandle(rawValue) {
 
 /** Single-field @handle input → stored slug (no @). Max length matches handle column clipping. */
 export function handleSlugFromAtInput(raw) {
-  let v = String(raw ?? '')
+  let v = String(raw ?? '').replace(ZERO_WIDTH_RE, '')
   if (v === '' || v === '@') return ''
   if (!v.startsWith('@')) v = `@${v.replace(/@/g, '')}`
   const tail = v.slice(1).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30)
@@ -160,10 +191,14 @@ export async function saveProfileWithHandleFallback({
 
     if (!error) return { data, error: null }
 
+    // Unique handle collisions only — match Postgres/PostgREST phrasing, not the substring "handle"
+    // inside arbitrary text (e.g. check-constraint names like profiles_handle_chars use code 23514, not 23505).
+    const pgMsg = [error.message, error.details, error.hint, error.constraint]
+      .filter(Boolean)
+      .join(' ')
     const isHandleConflict =
-      error.code === '23505' &&
-      (String(error.message || '').includes('profiles_handle_lower_key') ||
-        String(error.details || '').includes('profiles_handle_lower_key'))
+      String(error.code || '') === '23505' &&
+      (/profiles_handle_lower_key/i.test(pgMsg) || /lower\s*\(\s*handle\s*\)/i.test(pgMsg))
     if (isHandleConflict) continue
 
     return { data: null, error }
@@ -190,7 +225,21 @@ export async function uploadProfileAvatar({ supabaseClient, user, file }) {
     cacheControl: '3600',
     contentType: file.type || 'image/jpeg',
   })
-  if (uploadError) return { data: null, error: uploadError }
+  if (uploadError) {
+    const raw = String(
+      uploadError.message || uploadError.error || uploadError.statusCode || uploadError || ''
+    ).trim()
+    if (/load failed|failed to fetch|networkerror|network request failed/i.test(raw)) {
+      return {
+        data: null,
+        error: new Error('Could not upload your photo. Check your connection and try again.'),
+      }
+    }
+    return {
+      data: null,
+      error: uploadError instanceof Error ? uploadError : new Error(raw || 'Could not upload avatar image.'),
+    }
+  }
 
   const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path)
   return { data: data?.publicUrl || null, error: null }

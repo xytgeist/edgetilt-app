@@ -84,13 +84,20 @@ function App() {
         window.history.replaceState({}, document.title, window.location.pathname || '/')
       }
 
-      const hash = window.location.hash
+      const hash = window.location.hash || ''
+      const search = window.location.search || ''
+      const combinedForType = `${hash}${search}`
       const hashParams = new URLSearchParams(hash.replace('#', ''))
-      // Email confirmation uses type=signup; Google OAuth can too, but the hash includes provider_token
+      // Email confirmation uses type=signup (or type=confirmation); Google OAuth includes provider_token in the hash.
       const isEmailOnlyVerification =
-        (hash.includes('type=signup') || hash.includes('type=confirmation')) && !hash.includes('provider_token')
+        (combinedForType.includes('type=signup') || combinedForType.includes('type=confirmation')) &&
+        !combinedForType.includes('provider_token')
       if (isEmailOnlyVerification) {
         setVerificationSuccess(true)
+        setShowCreateAccount(false)
+        setShowForgotPassword(false)
+        setLoginError('')
+        setAuthPanelOpen(true)
         setTimeout(() => {
           if (window.location.hash) {
             window.history.replaceState({}, document.title, window.location.pathname || '/')
@@ -99,7 +106,7 @@ function App() {
       }
 
       // Only trigger reset password for actual recovery links
-      if (hash.includes('type=recovery')) {
+      if (combinedForType.includes('type=recovery')) {
         setCurrentView('reset-password')
         const accessToken = hashParams.get('access_token')
         const refreshToken = hashParams.get('refresh_token')
@@ -215,6 +222,7 @@ function App() {
 
     setUser(data.user)
     setAccessNotice('')
+    setVerificationSuccess(false)
     setAuthPanelOpen(false)
     setIsLoggingIn(false)
   }
@@ -347,6 +355,7 @@ function App() {
     setLoginError('')
     setSignupError('')
     setSignupMessage('')
+    setVerificationSuccess(false)
   }, [])
 
   useEffect(() => {

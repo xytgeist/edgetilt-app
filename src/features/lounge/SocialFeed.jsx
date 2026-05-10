@@ -1432,29 +1432,25 @@ export default function SocialFeed({
                     )}
                   </button>
                   <div className="min-w-0 flex-1 pt-0.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1 overflow-hidden text-left">
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug">
-                          <span className="min-w-0 max-w-[min(12rem,46vw)] truncate font-semibold text-[15px] text-zinc-100 sm:max-w-[14rem]">
-                            {displayNameFor(post)}
-                          </span>
-                          <span className="inline-flex shrink-0 translate-y-[0.5px]">
-                            <LoungeStaffRoleBadge role={post?.author_profile?.role} />
-                          </span>
-                          <span className="min-w-0 shrink truncate text-[15px] text-zinc-500 sm:max-w-[11rem]">
-                            {handleFor(post)}
-                          </span>
-                          <span className="shrink-0 text-[15px] text-zinc-600">·</span>
-                          <span className="shrink-0 text-[15px] font-normal tabular-nums text-zinc-500 whitespace-nowrap">
+                    <div className="min-w-0 overflow-hidden text-left">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug">
+                        <span className="min-w-0 max-w-[min(12rem,46vw)] truncate font-semibold text-[15px] text-zinc-100 sm:max-w-[14rem]">
+                          {displayNameFor(post)}
+                        </span>
+                        <LoungeStaffRoleBadge role={post?.author_profile?.role} />
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[15px] text-zinc-500">
+                          <span className="min-w-0 truncate sm:max-w-[11rem]">{handleFor(post)}</span>
+                          <span className="shrink-0 text-zinc-600">·</span>
+                          <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
                             {postAgeLabel(post.created_at)}
                           </span>
-                        </div>
-                      </div>
-                      {post.pinned ? (
-                        <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-tight text-fuchsia-200">
-                          Pinned
                         </span>
-                      ) : null}
+                        {post.pinned ? (
+                          <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                            Pinned
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     {post.game_slug ? (
                       <div className="mt-1.5 flex justify-start">
@@ -1725,7 +1721,7 @@ export default function SocialFeed({
                   )}
                 </button>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -1733,26 +1729,24 @@ export default function SocialFeed({
                         closeLoungePostDetailImmediate()
                         void openProfileModal(p)
                       }}
-                      className="min-w-0 flex-1 overflow-hidden text-left hover:text-cyan-300"
+                      className="min-w-0 inline-flex max-w-full overflow-hidden text-left hover:text-cyan-300"
                     >
                       <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug">
                         <span className="min-w-0 max-w-[min(12rem,46vw)] truncate font-semibold text-[15px] text-zinc-100 sm:max-w-[14rem]">
                           {displayNameFor(loungePostDetail)}
                         </span>
-                        <span className="inline-flex shrink-0 translate-y-[0.5px]">
-                          <LoungeStaffRoleBadge role={loungePostDetail?.author_profile?.role} size="detail" />
-                        </span>
-                        <span className="min-w-0 shrink truncate text-[15px] text-zinc-500 sm:max-w-[11rem]">
-                          {handleFor(loungePostDetail)}
-                        </span>
-                        <span className="shrink-0 text-[15px] text-zinc-600">·</span>
-                        <span className="shrink-0 text-[15px] font-normal tabular-nums text-zinc-500 whitespace-nowrap">
-                          {postAgeLabel(loungePostDetail.created_at)}
+                        <LoungeStaffRoleBadge role={loungePostDetail?.author_profile?.role} size="detail" />
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[15px] text-zinc-500">
+                          <span className="min-w-0 truncate sm:max-w-[11rem]">{handleFor(loungePostDetail)}</span>
+                          <span className="shrink-0 text-zinc-600">·</span>
+                          <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
+                            {postAgeLabel(loungePostDetail.created_at)}
+                          </span>
                         </span>
                       </div>
                     </button>
                     {loungePostDetail.pinned ? (
-                      <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-tight text-fuchsia-200">
+                      <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
                         Pinned
                       </span>
                     ) : null}

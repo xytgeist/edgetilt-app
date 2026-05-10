@@ -481,6 +481,9 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     supabaseClient,
   ])
 
+  const loadCommunityFeedRef = useRef(loadCommunityFeed)
+  loadCommunityFeedRef.current = loadCommunityFeed
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const applyFromUrl = () => {
@@ -503,9 +506,10 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
     return () => window.removeEventListener('popstate', applyFromUrl)
   }, [])
 
+  /** Only refire when entering Lounge — not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {
-    if (tab === 'home') void loadCommunityFeed()
-  }, [tab, loadCommunityFeed])
+    if (tab === 'home') void loadCommunityFeedRef.current()
+  }, [tab])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator?.serviceWorker) return
@@ -1918,7 +1922,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               </div>
             </div>
           ) : null}
-          {communityFeedLoading ? (
+          {communityFeedLoading && communityPosts.length === 0 ? (
             <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>
           ) : communityPosts.length === 0 ? (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
@@ -5211,7 +5215,7 @@ function AppShell({ onLogout, supabaseClient, onRequireAuth }) {
               Questions posted from <span className="text-zinc-400">Guides → Ask community</span> land here once{' '}
               <code className="text-zinc-400">community_feed_posts</code> is applied in Supabase.
             </p>
-            {communityFeedLoading ? (
+            {communityFeedLoading && communityPosts.length === 0 ? (
               <div className="text-zinc-500 text-sm py-2">Loading feed…</div>
             ) : communityPosts.length === 0 ? (
               <div className="rounded-2xl bg-zinc-800/70 p-4 text-zinc-400 text-sm leading-relaxed">

@@ -791,7 +791,7 @@ export default function LoungeProfileFullScreen({
                           postCardProps.onPostBodyClick?.(post.reposted_post)
                           return
                         }
-                        if (t.closest('button, a, textarea, input, select, [data-lounge-post-menu]')) return
+                        if (t.closest('button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom]')) return
                         postCardProps.onPostBodyClick?.(post)
                       }}
                     >

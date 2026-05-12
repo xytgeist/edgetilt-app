@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { feedPostImageUrls } from '../../utils/communityFeedPost'
-import { LoungeInlineMediaUrl, LoungePostMediaPair } from './LoungeInlineMediaUrl.jsx'
+import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 
 /** Match `LoungeInlineMediaUrl`: border wraps intrinsic image size (`w-auto`), not a fixed slide width. */
 const imgClassByVariant = {
@@ -22,11 +23,15 @@ export function LoungeImageCarousel({
   regionAriaLabel = 'Post images',
   /** Per-slide remove control copy when `onRemoveIndex` is set. */
   removeLabelForIndex,
+  /** Tap image to open fullscreen (disabled in composer). */
+  enableLightbox = true,
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
+  const [lightboxUrl, setLightboxUrl] = useState(null)
   if (!list.length) return null
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const isComposer = variant === 'composer'
+  const canOpenLightbox = enableLightbox && !isComposer && typeof onRemoveIndex !== 'function'
   /** Cap slide width in the row; inner frame still shrinks to image (`inline-block` + `w-auto` img). */
   const slideMaxW = isComposer
     ? 'max-w-[min(78vw,18rem)]'
@@ -43,9 +48,35 @@ export function LoungeImageCarousel({
       >
         {list.map((url, i) => (
           <div key={`${url}-${i}`} className={`relative w-auto shrink-0 snap-start ${slideMaxW}`}>
-            <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
-              <img src={url} alt="" className={imgClass} loading="lazy" decoding="async" />
-            </div>
+            {canOpenLightbox ? (
+              <div
+                role="button"
+                tabIndex={0}
+                data-lounge-image-zoom
+                className="block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setLightboxUrl(url)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setLightboxUrl(url)
+                  }
+                }}
+                aria-label="View full image"
+                title="View full image"
+              >
+                <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
+                  <img src={url} alt="" className={imgClass} loading="lazy" decoding="async" />
+                </div>
+              </div>
+            ) : (
+              <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
+                <img src={url} alt="" className={imgClass} loading="lazy" decoding="async" />
+              </div>
+            )}
             {typeof onRemoveIndex === 'function' ? (
               <button
                 type="button"
@@ -65,6 +96,7 @@ export function LoungeImageCarousel({
           </div>
         ))}
       </div>
+      {lightboxUrl ? <LoungeImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} /> : null}
     </div>
   )
 }
@@ -72,7 +104,7 @@ export function LoungeImageCarousel({
 /**
  * Feed / detail: multi-image carousel when `image_urls` is non-empty; otherwise legacy `media_url` + `gif_url`.
  */
-export function LoungePostFeedImagesAndGif({ post, variant = 'feed', firstMarginTopClass = 'mt-2' }) {
+export function LoungePostFeedImagesAndGif({ post, variant = 'feed', firstMarginTopClass = 'mt-2', enableLightbox = true }) {
   const imgs = feedPostImageUrls(post)
   const gif = String(post?.gif_url || '').trim()
   if (imgs.length > 0) {
@@ -83,6 +115,7 @@ export function LoungePostFeedImagesAndGif({ post, variant = 'feed', firstMargin
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}
         regionAriaLabel={gif ? 'Post images and GIF' : 'Post images'}
+        enableLightbox={enableLightbox}
       />
     )
   }
@@ -92,6 +125,7 @@ export function LoungePostFeedImagesAndGif({ post, variant = 'feed', firstMargin
       gifUrl={post?.gif_url}
       variant={variant}
       firstMarginTopClass={firstMarginTopClass}
+      enableLightbox={enableLightbox}
     />
   )
 }

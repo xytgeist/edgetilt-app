@@ -36,6 +36,7 @@ Track **everything else** already used on test that production must also have ap
 - [ ] `feed_phase_a_profiles_public_read.sql` — **`profiles`**, moderation columns, **public anon read** RLS, staff policies, guards
 - [ ] `profiles_tier_testing.sql` — **`has_active_subscription`** + guard trigger (subscriber UI + testing; run after phase A file)
 - [ ] **`lounge_feed_post_stream_video.sql`** — **`community_feed_posts.stream_video_uid`** for Lounge **Cloudflare Stream** video posts (required before current client inserts video)
+- [ ] **Lounge Stream purge (cron):** run migrations **`20260509180000_lounge_cf_stream_purge_pg_cron.sql`**, **`20260512120000_lounge_cf_stream_purge_normalize_vault_secrets.sql`**, **`20260515120000_lounge_cf_stream_purge_invoke_options.sql`** (or `supabase db push --linked`) on **production** after enabling extensions **`pg_cron`** and **`pg_net`**. Create Vault secrets **`lounge_cf_stream_purge_http_secret`** (same value as Edge **`LOUNGE_CF_STREAM_PURGE_SECRET`**) and **`lounge_cf_stream_purge_supabase_anon_key`** (project anon / publishable per purge **`README.md`**). Optional: `select public.invoke_lounge_cf_stream_purge_pending();` then inspect **`net._http_response`**.
 - [ ] Any earlier schema you rely on: **`offers`** / **`offer_events`**, **`push_subscriptions`**, notification SQL, etc. — mirror **test** `supabase/` files that are not yet on prod
 
 **After deploy — quick smoke SQL (production):**
@@ -80,12 +81,17 @@ supabase functions deploy send-test-push
 supabase functions deploy send-due-offer-reminders
 supabase functions deploy lounge-cf-stream-direct-upload
 supabase functions deploy lounge-cf-stream-delete-video
+supabase functions deploy lounge-cf-stream-delete-orphan
+supabase functions deploy lounge-cf-stream-purge-pending-uploads
 ```
+
+Deploy **`lounge-cf-stream-purge-pending-uploads`** from a repo copy that includes **`supabase/config.toml`** (`verify_jwt = false` for that function) so **`sb_*`** gateway keys work when used from Vault.
 
 Set **production** Edge secrets for Stream (same **names** as test; rotate values independently):
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_STREAM_API_TOKEN`
+- `LOUNGE_CF_STREAM_PURGE_SECRET` (required for **`lounge-cf-stream-purge-pending-uploads`** only; must match Vault **`lounge_cf_stream_purge_http_secret`** if you use the pg_cron job). **`lounge-cf-stream-delete-orphan`** uses the **caller's Supabase JWT** (same pattern as **`lounge-cf-stream-direct-upload`**), not this secret.
 
 Cross-check dashboards: **Production** function list versus **test** (names active, versions reasonable).
 
@@ -100,7 +106,7 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 - [ ] Signed-in: **Guides → Ask community** still inserts (`community_feed_posts`) when RLS permits.
 - [ ] Profiles: until onboarding ships, authors may appear as **`Member`** with no profiles row — expected until Account/gate UX exists.
 - [ ] **`get-web-push-config`**: authenticated `GET` → `200` with `publicKey` (mirror prior smoke checklist).
-- [ ] **Lounge video (Cloudflare Stream):** post a short clip (composer, under **60 seconds**) from Lounge; it plays in feed/detail via HLS. Requires **`lounge_feed_post_stream_video.sql`** on the DB, **`lounge-cf-stream-direct-upload`** and **`lounge-cf-stream-delete-video`** deployed, and Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** on that Supabase project. Delete the post and confirm the asset disappears from Cloudflare Stream (or returns 404 if re-deleted).
+- [ ] **Lounge video (Cloudflare Stream):** post a short clip (composer, under **60 seconds**) from Lounge; it plays in feed/detail via HLS. Requires **`lounge_feed_post_stream_video.sql`** on the DB, **`lounge-cf-stream-direct-upload`** and **`lounge-cf-stream-delete-video`** deployed, and Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** on that Supabase project. Delete the post and confirm the asset disappears from Cloudflare Stream (or returns 404 if re-deleted). If you use **purge cron** on prod, mirror **§2** migrations + **§4** **`LOUNGE_CF_STREAM_PURGE_SECRET`** / Vault parity and spot-check **`cron.job`** + **`net._http_response`** after a manual invoke.
 
 ---
 
@@ -126,4 +132,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: Lounge **Cloudflare Stream** video (`stream_video_uid`, Edge `lounge-cf-stream-direct-upload`, `lounge-cf-stream-delete-video`). Frontend layout map: `docs/frontend-architecture.md`._
+_Last updated: Lounge **Cloudflare Stream** (`stream_video_uid`, direct-upload, delete-video, delete-orphan, purge + pg_cron migrations / Vault). Frontend layout map: `docs/frontend-architecture.md`._

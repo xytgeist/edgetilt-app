@@ -97,6 +97,10 @@ Deno.serve(async (req) => {
       })
     }
 
+    /** Direct upload URL stops accepting bytes after this time (RFC 3339). Orphan Stream rows may still show pendingupload until deleted — see `lounge-cf-stream-purge-pending-uploads` and client orphan delete. */
+    const uploadExpiryMs = 6 * 60 * 60 * 1000
+    const expiry = new Date(Date.now() + uploadExpiryMs).toISOString()
+
     const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/direct_upload`
     const cfRes = await fetch(endpoint, {
       method: 'POST',
@@ -107,6 +111,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         maxDurationSeconds: MAX_DURATION_SECONDS,
         requireSignedURLs: false,
+        expiry,
       }),
     })
 

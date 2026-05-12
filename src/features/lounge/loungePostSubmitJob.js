@@ -3,6 +3,7 @@ import { communityFeedPostInsertPayload, uploadLoungeFeedPostImage } from '../..
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
+  deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
   requestCfStreamDirectUpload,
   uploadVideoToCfStreamDirectUrlWithProgress,
@@ -70,118 +71,132 @@ export async function executeLoungeCommunityPostSubmission({
   tick(0.05)
 
   let streamVideoUid = ''
-  if (hasVideo && videoFile) {
-    const vf = videoFile
-    if (vf.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-      throw new Error('Video must be 200 MB or smaller for upload.')
+  /** Set when direct upload URL is minted; cleared only after DB insert succeeds. Used to delete CF orphans on any failure. */
+  let pendingCfUploadUid = null
+  let insertSucceeded = false
+
+  try {
+    if (hasVideo && videoFile) {
+      const vf = videoFile
+      if (vf.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+        throw new Error('Video must be 200 MB or smaller for upload.')
+      }
+      const dur = await probeVideoFileDurationSeconds(vf)
+      throwIfAborted()
+      if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+        throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+      }
+      tick(0.08)
+      const { uploadURL, uid } = await requestCfStreamDirectUpload(supabaseClient)
+      pendingCfUploadUid = uid
+      throwIfAborted()
+      tick(0.1)
+      await uploadVideoToCfStreamDirectUrlWithProgress(uploadURL, vf, {
+        signal,
+        onProgress: (r) => tick(0.1 + r * 0.52),
+      })
+      throwIfAborted()
+      tick(0.64)
+      await waitForCfStreamManifestReady(uid, {
+        signal,
+        onPoll: ({ elapsed }) => {
+          const cap = 120_000
+          const t = Math.min(1, elapsed / cap)
+          tick(0.64 + t * 0.24)
+        },
+      })
+      streamVideoUid = uid
     }
-    const dur = await probeVideoFileDurationSeconds(vf)
+
     throwIfAborted()
-    if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-      throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+    const uploadedUrls = []
+    for (let i = 0; i < nImg; i += 1) {
+      throwIfAborted()
+      const file = imageFiles[i]
+      const base = hasVideo ? 0.1 : 0.08
+      const span = hasVideo ? 0.2 : 0.82
+      tick(base + ((i + 1) / nImg) * span)
+      const { file: ready, error: cErr } = await prepareLoungeFeedImageForUpload(file)
+      if (cErr) throw new Error(cErr.message)
+      const { data: upUrl, error: upErr } = await uploadLoungeFeedPostImage({
+        supabaseClient,
+        user: session.user,
+        file: ready,
+      })
+      if (upErr) throw new Error(upErr.message || 'Could not upload image.')
+      if (!upUrl) throw new Error('Could not upload image.')
+      uploadedUrls.push(upUrl)
     }
-    tick(0.08)
-    const { uploadURL, uid } = await requestCfStreamDirectUpload(supabaseClient)
+
     throwIfAborted()
-    tick(0.1)
-    await uploadVideoToCfStreamDirectUrlWithProgress(uploadURL, vf, {
-      signal,
-      onProgress: (r) => tick(0.1 + r * 0.52),
-    })
-    throwIfAborted()
-    tick(0.64)
-    await waitForCfStreamManifestReady(uid, {
-      signal,
-      onPoll: ({ elapsed }) => {
-        const cap = 120_000
-        const t = Math.min(1, elapsed / cap)
-        tick(0.64 + t * 0.24)
-      },
-    })
-    streamVideoUid = uid
+    tick(0.9)
+
+    let insertPayload
+    if (streamVideoUid) {
+      insertPayload = communityFeedPostInsertPayload({
+        caption,
+        gameTitle: 'Lounge',
+        gameSlug: null,
+        pinned: isStaffPoster && wantsPin ? true : undefined,
+        streamVideoUid,
+      })
+    } else if (uploadedUrls.length > 0) {
+      insertPayload = communityFeedPostInsertPayload({
+        caption,
+        gameTitle: 'Lounge',
+        gameSlug: null,
+        pinned: isStaffPoster && wantsPin ? true : undefined,
+        imageUrls: uploadedUrls,
+        gifUrl: gifOnlyUrl || undefined,
+      })
+    } else if (gifOnlyUrl) {
+      insertPayload = communityFeedPostInsertPayload({
+        caption,
+        gameTitle: 'Lounge',
+        gameSlug: null,
+        pinned: isStaffPoster && wantsPin ? true : undefined,
+        mediaUrl: gifOnlyUrl,
+      })
+    } else {
+      insertPayload = communityFeedPostInsertPayload({
+        caption,
+        gameTitle: 'Lounge',
+        gameSlug: null,
+        pinned: isStaffPoster && wantsPin ? true : undefined,
+      })
+    }
+
+    const { error } = await supabaseClient.from('community_feed_posts').insert(insertPayload)
+
+    if (error) {
+      const msg = String(error.message || '')
+      if (msg.toLowerCase().includes('rate limit exceeded')) {
+        throw new Error(rateLimitMessage(msg))
+      }
+      if (error.code === '42501') {
+        throw new Error('Posting is blocked by current permissions. Please sign in and try again.')
+      }
+      if (error.code === '42P01') {
+        throw new Error('Lounge feed table is not set up in this project yet.')
+      }
+      if (msg.includes('MAX_PINNED_POSTS')) {
+        throw new Error(LOUNGE_MAX_PINNED_ALERT)
+      }
+      if (/media_url|gif_url|image_urls|stream_video_uid|schema cache/i.test(msg)) {
+        throw new Error(
+          'Media attachments need the latest DB scripts. Run supabase/lounge_feed_post_media.sql, supabase/lounge_feed_post_gif_url.sql, supabase/lounge_feed_post_image_urls.sql, and supabase/lounge_feed_post_stream_video.sql in Supabase.',
+        )
+      }
+      throw new Error(msg || 'Could not post right now.')
+    }
+
+    insertSucceeded = true
+    pendingCfUploadUid = null
+    tick(1)
+  } catch (e) {
+    if (pendingCfUploadUid && !insertSucceeded) {
+      await deleteCfStreamOrphanAsset(supabaseClient, pendingCfUploadUid)
+    }
+    throw e
   }
-
-  throwIfAborted()
-  const uploadedUrls = []
-  for (let i = 0; i < nImg; i += 1) {
-    throwIfAborted()
-    const file = imageFiles[i]
-    const base = hasVideo ? 0.1 : 0.08
-    const span = hasVideo ? 0.2 : 0.82
-    tick(base + ((i + 1) / nImg) * span)
-    const { file: ready, error: cErr } = await prepareLoungeFeedImageForUpload(file)
-    if (cErr) throw new Error(cErr.message)
-    const { data: upUrl, error: upErr } = await uploadLoungeFeedPostImage({
-      supabaseClient,
-      user: session.user,
-      file: ready,
-    })
-    if (upErr) throw new Error(upErr.message || 'Could not upload image.')
-    if (!upUrl) throw new Error('Could not upload image.')
-    uploadedUrls.push(upUrl)
-  }
-
-  throwIfAborted()
-  tick(0.9)
-
-  let insertPayload
-  if (streamVideoUid) {
-    insertPayload = communityFeedPostInsertPayload({
-      caption,
-      gameTitle: 'Lounge',
-      gameSlug: null,
-      pinned: isStaffPoster && wantsPin ? true : undefined,
-      streamVideoUid,
-    })
-  } else if (uploadedUrls.length > 0) {
-    insertPayload = communityFeedPostInsertPayload({
-      caption,
-      gameTitle: 'Lounge',
-      gameSlug: null,
-      pinned: isStaffPoster && wantsPin ? true : undefined,
-      imageUrls: uploadedUrls,
-      gifUrl: gifOnlyUrl || undefined,
-    })
-  } else if (gifOnlyUrl) {
-    insertPayload = communityFeedPostInsertPayload({
-      caption,
-      gameTitle: 'Lounge',
-      gameSlug: null,
-      pinned: isStaffPoster && wantsPin ? true : undefined,
-      mediaUrl: gifOnlyUrl,
-    })
-  } else {
-    insertPayload = communityFeedPostInsertPayload({
-      caption,
-      gameTitle: 'Lounge',
-      gameSlug: null,
-      pinned: isStaffPoster && wantsPin ? true : undefined,
-    })
-  }
-
-  const { error } = await supabaseClient.from('community_feed_posts').insert(insertPayload)
-
-  if (error) {
-    const msg = String(error.message || '')
-    if (msg.toLowerCase().includes('rate limit exceeded')) {
-      throw new Error(rateLimitMessage(msg))
-    }
-    if (error.code === '42501') {
-      throw new Error('Posting is blocked by current permissions. Please sign in and try again.')
-    }
-    if (error.code === '42P01') {
-      throw new Error('Lounge feed table is not set up in this project yet.')
-    }
-    if (msg.includes('MAX_PINNED_POSTS')) {
-      throw new Error(LOUNGE_MAX_PINNED_ALERT)
-    }
-    if (/media_url|gif_url|image_urls|stream_video_uid|schema cache/i.test(msg)) {
-      throw new Error(
-        'Media attachments need the latest DB scripts. Run supabase/lounge_feed_post_media.sql, supabase/lounge_feed_post_gif_url.sql, supabase/lounge_feed_post_image_urls.sql, and supabase/lounge_feed_post_stream_video.sql in Supabase.',
-      )
-    }
-    throw new Error(msg || 'Could not post right now.')
-  }
-
-  tick(1)
 }

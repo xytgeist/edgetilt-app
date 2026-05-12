@@ -6,7 +6,7 @@ Used by **`src/utils/loungeVideoUpload.js`** (`deleteCfStreamForCommunityFeedPos
 
 ## Secrets
 
-Same as **`lounge-cf-stream-direct-upload`**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN` (Stream:Edit includes delete).
+Same as **`lounge-cf-stream-direct-upload`**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN` (Stream:Edit includes delete). Use **`--project-ref jtjgtucumuoswnbauxry`** on `supabase secrets set` for **test** (see direct-upload README).
 
 ## Deploy
 

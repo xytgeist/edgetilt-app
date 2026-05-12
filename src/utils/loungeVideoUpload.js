@@ -303,6 +303,39 @@ export function uploadVideoToCfStreamDirectUrlWithProgress(uploadURL, file, opti
   })
 }
 
+/** Cloudflare Stream vod uid from direct upload (32 hex). */
+const CF_STREAM_VIDEO_UID_RE = /^[0-9a-f]{32}$/i
+
+/**
+ * Best-effort delete of a Stream asset minted via direct upload when the post never committed
+ * (upload/manifest/insert failed or user aborted). Ignores invalid uids and invoke errors.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} uid
+ */
+export async function deleteCfStreamOrphanAsset(supabaseClient, uid) {
+  const id = String(uid || '').trim()
+  if (!id || !CF_STREAM_VIDEO_UID_RE.test(id)) return
+
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession()
+  if (!session?.access_token) return
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke('lounge-cf-stream-delete-orphan', {
+      body: { uid: id },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (error) return
+    if (!data || typeof data !== 'object') return
+    const errMsg = data.error != null ? String(data.error).trim() : ''
+    if (errMsg) return
+  } catch {
+    // ignore — cleanup must not block UX
+  }
+}
+
 /**
  * Deletes the Cloudflare Stream asset for a feed post (author or staff). Server resolves `stream_video_uid`.
  * Call **before** deleting the `community_feed_posts` row. No-op when the post has no Stream uid.

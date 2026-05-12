@@ -8,6 +8,13 @@ Used by **`src/utils/loungeVideoUpload.js`** via `supabase.functions.invoke('lou
 
 Set in **Supabase Dashboard → Edge Functions → Secrets** (or CLI), per environment (test / production):
 
+**Test** project — add **`--project-ref jtjgtucumuoswnbauxry`** to `supabase secrets set` (do not commit real values):
+
+```bash
+supabase secrets set CLOUDFLARE_ACCOUNT_ID="YOUR_32_HEX_ACCOUNT_ID" --project-ref jtjgtucumuoswnbauxry
+supabase secrets set CLOUDFLARE_STREAM_API_TOKEN="YOUR_STREAM_EDIT_TOKEN" --project-ref jtjgtucumuoswnbauxry
+```
+
 | Name | Description |
 | --- | --- |
 | `CLOUDFLARE_ACCOUNT_ID` | **Account ID** only: 32 hex characters, no dashes/underscores. In [Cloudflare Dashboard](https://dash.cloudflare.com/) open your account and copy **Account ID** from the **right sidebar** (or Workers & Pages → your worker → account summary). **Do not** use a **Zone ID** (domain overview), API token string, or Stream video UID — the Stream API path is `/accounts/{account_id}/...` and wrong IDs produce “could not route … object identifier is invalid”. |
@@ -37,6 +44,8 @@ supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucum
 
 - **60 seconds** max length in the app; direct upload tokens use **`maxDurationSeconds: 75`** so clips that measure slightly over 60s at the encoder are not rejected by Cloudflare while the product cap stays 60s.
 - **200 MB** max file size for the basic POST upload path (Cloudflare; see Stream direct upload docs).
+
+Direct upload responses include an **`expiry`** (currently **6 hours** from mint) so the one-time upload URL stops accepting bytes; the Stream asset may still appear as **pending upload** until encoding completes or the asset is deleted. Failed posts call **`lounge-cf-stream-delete-orphan`** from the app; use **`lounge-cf-stream-purge-pending-uploads`** on a schedule for anything the client never cleaned up.
 
 ## References
 

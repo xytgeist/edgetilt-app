@@ -1,12 +1,18 @@
 -- Cloudflare Stream video id (HLS playback via `videodelivery.net/{uid}/...`).
 -- Apply after `lounge_feed_post_image_urls.sql`. Videos are exclusive of `image_urls` / GIF in app logic.
 --
--- Edge Function `lounge-cf-stream-direct-upload` (deploy + secrets):
---   supabase secrets set CLOUDFLARE_ACCOUNT_ID=...
---   supabase secrets set CLOUDFLARE_STREAM_API_TOKEN=...   # Stream:Edit
+-- Edge Function `lounge-cf-stream-direct-upload` (deploy + secrets; test project ref jtjgtucumuoswnbauxry):
+--   supabase secrets set CLOUDFLARE_ACCOUNT_ID=... --project-ref jtjgtucumuoswnbauxry
+--   supabase secrets set CLOUDFLARE_STREAM_API_TOKEN=... --project-ref jtjgtucumuoswnbauxry   # Stream:Edit
 --   supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucumuoswnbauxry
--- Edge `lounge-cf-stream-delete-video` (same secrets; test ref):
+-- Edge `lounge-cf-stream-delete-video` (same secrets):
 --   supabase functions deploy lounge-cf-stream-delete-video --project-ref jtjgtucumuoswnbauxry
+-- Edge `lounge-cf-stream-delete-orphan` (failed direct-upload cleanup):
+--   supabase functions deploy lounge-cf-stream-delete-orphan --project-ref jtjgtucumuoswnbauxry
+-- Edge `lounge-cf-stream-purge-pending-uploads` (cron; Edge secret LOUNGE_CF_STREAM_PURGE_SECRET + Vault + pg_cron):
+--   supabase secrets set LOUNGE_CF_STREAM_PURGE_SECRET="$(openssl rand -hex 32)" --project-ref jtjgtucumuoswnbauxry   # once per project
+--   supabase functions deploy lounge-cf-stream-purge-pending-uploads --project-ref jtjgtucumuoswnbauxry
+--   supabase/migrations/20260509180000_lounge_cf_stream_purge_pg_cron.sql + Vault (see purge function README)
 
 alter table public.community_feed_posts
   add column if not exists stream_video_uid text;

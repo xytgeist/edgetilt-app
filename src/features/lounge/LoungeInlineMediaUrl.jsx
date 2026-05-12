@@ -1,32 +1,76 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+
+function normalizeUrlList(urls) {
+  if (!Array.isArray(urls)) return []
+  return urls.map((u) => String(u ?? '').trim()).filter(Boolean)
+}
 
 /**
  * Full-screen image viewer (feed / detail). Portals to `document.body` above sheets and feed rows.
+ * Pass `urls` + `initialIndex` for multi-image navigation; or legacy single `url`.
  */
-export function LoungeImageLightbox({ url, onClose }) {
+export function LoungeImageLightbox({ url, urls, initialIndex = 0, onClose }) {
+  const list = useMemo(() => {
+    const fromArr = normalizeUrlList(urls)
+    if (fromArr.length) return fromArr
+    const one = url != null ? String(url).trim() : ''
+    return one ? [one] : []
+  }, [url, urls])
+
+  const [idx, setIdx] = useState(0)
+
   useEffect(() => {
-    if (!url) return
+    const n = list.length
+    if (n === 0) return
+    const clamped = Math.max(0, Math.min(initialIndex, n - 1))
+    setIdx(clamped)
+  }, [list, initialIndex])
+
+  const current = list[idx] || ''
+
+  const goPrev = useCallback(() => {
+    setIdx((i) => (list.length <= 1 ? i : i <= 0 ? list.length - 1 : i - 1))
+  }, [list.length])
+
+  const goNext = useCallback(() => {
+    setIdx((i) => (list.length <= 1 ? i : i >= list.length - 1 ? 0 : i + 1))
+  }, [list.length])
+
+  useEffect(() => {
+    if (!current) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e) => {
       if (e.key === 'Escape') onClose()
+      if (list.length > 1) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          goPrev()
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          goNext()
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
     }
-  }, [url, onClose])
+  }, [current, onClose, list.length, goPrev, goNext])
 
-  if (!url) return null
+  if (!current) return null
+
+  const multi = list.length > 1
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black/92 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="fixed inset-0 z-[100] flex flex-col bg-black/75 backdrop-blur-[2px] p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       role="dialog"
       aria-modal="true"
-      aria-label="Full image"
+      aria-label={multi ? `Image ${idx + 1} of ${list.length}` : 'Full image'}
       onClick={onClose}
     >
       <div className="flex shrink-0 justify-end">
@@ -36,16 +80,56 @@ export function LoungeImageLightbox({ url, onClose }) {
             e.stopPropagation()
             onClose()
           }}
-          className="touch-manipulation rounded-lg border border-zinc-600 bg-zinc-900/90 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+          className="touch-manipulation rounded-lg border border-zinc-600/80 bg-zinc-900/80 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
         >
           Close
         </button>
       </div>
       <div
-        className="flex min-h-0 flex-1 items-center justify-center p-2"
+        className="relative flex min-h-0 flex-1 items-center justify-center p-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <img src={url} alt="" className="max-h-full max-w-full object-contain" loading="eager" decoding="async" />
+        {multi ? (
+          <>
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={(e) => {
+                e.stopPropagation()
+                goPrev()
+              }}
+              className="absolute left-1 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full border border-zinc-600/80 bg-zinc-950/75 text-zinc-100 shadow-lg backdrop-blur-sm hover:bg-zinc-800/90 sm:left-2 sm:h-12 sm:w-12 [-webkit-tap-highlight-color:transparent]"
+            >
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={(e) => {
+                e.stopPropagation()
+                goNext()
+              }}
+              className="absolute right-1 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 touch-manipulation items-center justify-center rounded-full border border-zinc-600/80 bg-zinc-950/75 text-zinc-100 shadow-lg backdrop-blur-sm hover:bg-zinc-800/90 sm:right-2 sm:h-12 sm:w-12 [-webkit-tap-highlight-color:transparent]"
+            >
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200">
+              {idx + 1} / {list.length}
+            </div>
+          </>
+        ) : null}
+        <img
+          key={current}
+          src={current}
+          alt=""
+          className="max-h-full max-w-full object-contain"
+          loading="eager"
+          decoding="async"
+        />
       </div>
     </div>,
     document.body
@@ -58,7 +142,7 @@ export function LoungeImageLightbox({ url, onClose }) {
  * @param {boolean} [enableLightbox] — Tap to open fullscreen (feed/detail); set false for non-interactive embeds if needed.
  */
 export function LoungeInlineMediaUrl({ url, variant = 'feed', marginTopClass = 'mt-2', enableLightbox = true }) {
-  const [lightboxUrl, setLightboxUrl] = useState(null)
+  const [lightbox, setLightbox] = useState(null)
   if (!url) return null
   const isEmbed = variant === 'embed'
   const isDetail = variant === 'detail'
@@ -86,13 +170,13 @@ export function LoungeInlineMediaUrl({ url, variant = 'feed', marginTopClass = '
           className="max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
           onClick={(e) => {
             e.stopPropagation()
-            setLightboxUrl(String(url).trim())
+            setLightbox({ urls: [String(url).trim()], index: 0 })
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               e.stopPropagation()
-              setLightboxUrl(String(url).trim())
+              setLightbox({ urls: [String(url).trim()], index: 0 })
             }
           }}
           aria-label="View full image"
@@ -103,7 +187,9 @@ export function LoungeInlineMediaUrl({ url, variant = 'feed', marginTopClass = '
       ) : (
         framed
       )}
-      {lightboxUrl ? <LoungeImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} /> : null}
+      {lightbox ? (
+        <LoungeImageLightbox urls={lightbox.urls} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
+      ) : null}
     </div>
   )
 }

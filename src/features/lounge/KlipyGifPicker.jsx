@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchKlipyGifs } from '../../utils/klipyGifs'
 
+/** Cap auto-fetched pages (per search / trending session) to limit Klipy + edge invocations if user scrolls endlessly. */
+const KLIPY_PICKER_MAX_PAGES = 15
+
 /**
  * Full-screen-ish sheet: search or trending GIFs via Klipy (Edge Function `klipy-gifs`).
  */
@@ -13,6 +16,23 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   const [page, setPage] = useState(1)
   const [hasNext, setHasNext] = useState(false)
   const debounceRef = useRef(0)
+  const scrollRef = useRef(null)
+  const sentinelRef = useRef(null)
+  const pageRef = useRef(1)
+  const hasNextRef = useRef(false)
+  const loadingRef = useRef(false)
+  const loadRef = useRef(async (_opts) => {})
+  const appendInflightRef = useRef(false)
+
+  useEffect(() => {
+    pageRef.current = page
+  }, [page])
+  useEffect(() => {
+    hasNextRef.current = hasNext
+  }, [hasNext])
+  useEffect(() => {
+    loadingRef.current = loading
+  }, [loading])
 
   useEffect(() => {
     if (!open) return
@@ -26,6 +46,12 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
       if (!supabaseClient || !open) return
       const nextPage = opts?.page ?? 1
       const append = Boolean(opts?.append)
+      if (!append) {
+        appendInflightRef.current = false
+      } else {
+        if (appendInflightRef.current) return
+        appendInflightRef.current = true
+      }
       setLoading(true)
       setErr('')
       if (!append) setItems([])
@@ -61,10 +87,15 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
         }
       } finally {
         setLoading(false)
+        if (append) appendInflightRef.current = false
       }
     },
     [debounced, open, supabaseClient],
   )
+
+  useEffect(() => {
+    loadRef.current = load
+  }, [load])
 
   useEffect(() => {
     if (!open) return
@@ -84,11 +115,31 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    const root = scrollRef.current
+    const target = sentinelRef.current
+    if (!root || !target || typeof IntersectionObserver === 'undefined') return
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.some((e) => e.isIntersecting)
+        if (!visible) return
+        if (loadingRef.current || !hasNextRef.current) return
+        if (pageRef.current >= KLIPY_PICKER_MAX_PAGES) return
+        void loadRef.current({ page: pageRef.current + 1, append: true })
+      },
+      { root, rootMargin: '280px 0px', threshold: 0 }
+    )
+    io.observe(target)
+    return () => io.disconnect()
+  }, [open, debounced, items.length, hasNext])
+
   if (!open) return null
 
   return (
     <div
-      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/60 px-2 pt-8 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45 px-2 pt-8 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a GIF"
@@ -99,7 +150,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
         aria-label="Close GIF picker"
         onClick={onClose}
       />
-      <div className="relative z-10 mb-0 flex max-h-[min(78dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c] shadow-xl">
+      <div className="relative z-10 mb-0 flex max-h-[min(78dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md">
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <input
             type="search"
@@ -119,7 +170,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
             Cancel
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
           {!debounced ? (
             <p className="px-2 pb-1 text-[13px] text-zinc-500">Trending — type to search.</p>
           ) : null}
@@ -163,17 +214,16 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
           {!loading && items.length === 0 && !err ? (
             <div className="py-10 text-center text-[15px] text-zinc-500">No GIFs found.</div>
           ) : null}
-          {hasNext && items.length > 0 ? (
-            <div className="pb-3 pt-2 text-center">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void load({ page: page + 1, append: true })}
-                className="rounded-full border border-zinc-600 px-4 py-2 text-[14px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-800 disabled:opacity-45"
-              >
-                {loading ? 'Loading…' : 'Load more'}
-              </button>
-            </div>
+          {hasNext && items.length > 0 && page < KLIPY_PICKER_MAX_PAGES ? (
+            <div ref={sentinelRef} className="h-1 w-full shrink-0" aria-hidden />
+          ) : null}
+          {loading && items.length > 0 ? (
+            <div className="py-2 text-center text-[13px] text-zinc-500">Loading more…</div>
+          ) : null}
+          {hasNext && page >= KLIPY_PICKER_MAX_PAGES && items.length > 0 ? (
+            <p className="px-2 pb-2 text-center text-[12px] leading-snug text-zinc-500">
+              Showing {KLIPY_PICKER_MAX_PAGES} pages of results — refine your search to dig deeper.
+            </p>
           ) : null}
         </div>
         <div className="shrink-0 border-t border-zinc-800 px-3 py-2 text-center text-[11px] text-zinc-500">

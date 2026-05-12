@@ -27,7 +27,7 @@ export function LoungeImageCarousel({
   enableLightbox = true,
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
-  const [lightboxUrl, setLightboxUrl] = useState(null)
+  const [lightbox, setLightbox] = useState(null)
   const carouselScrollRef = useRef(null)
   const urlsKey = list.join('\0')
   useLayoutEffect(() => {
@@ -63,13 +63,13 @@ export function LoungeImageCarousel({
                 className="block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setLightboxUrl(url)
+                  setLightbox({ urls: list, index: i })
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    setLightboxUrl(url)
+                    setLightbox({ urls: list, index: i })
                   }
                 }}
                 aria-label="View full image"
@@ -103,7 +103,9 @@ export function LoungeImageCarousel({
           </div>
         ))}
       </div>
-      {lightboxUrl ? <LoungeImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} /> : null}
+      {lightbox ? (
+        <LoungeImageLightbox urls={lightbox.urls} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />
+      ) : null}
     </div>
   )
 }

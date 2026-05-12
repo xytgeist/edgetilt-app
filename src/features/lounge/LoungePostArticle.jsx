@@ -76,7 +76,7 @@ export default function LoungePostArticle({
         onPostMenuReport ||
         (loungeViewerIsStaff && !menuIsOwn && typeof onStaffPostDelete === 'function'))
   )
-  const menuShowEdit = Boolean(menuIsOwn && typeof captionEditableInMenu === 'function' && captionEditableInMenu(post))
+  const menuShowEdit = Boolean(menuIsOwn && typeof onPostMenuEdit === 'function')
 
   useEffect(() => {
     if (!repostMenuOpen) return
@@ -363,31 +363,47 @@ export default function LoungePostArticle({
             {repostMenuOpen && !ro && !ui.reposted && onPlainRepost && onQuoteRepost ? (
               <div
                 role="menu"
-                className="absolute bottom-full left-1/2 z-40 mb-1 min-w-[11rem] -translate-x-1/2 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                className="absolute left-1/2 top-full z-[130] mt-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
               >
                 <button
                   type="button"
                   role="menuitem"
-                  className="block w-full px-3 py-2 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
                   onClick={(e) => {
                     e.stopPropagation()
                     setRepostMenuOpen(false)
                     onPlainRepost(post)
                   }}
                 >
+                  <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <path
+                      d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                   Repost
                 </button>
                 <button
                   type="button"
                   role="menuitem"
-                  className="block w-full px-3 py-2 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
                   onClick={(e) => {
                     e.stopPropagation()
                     setRepostMenuOpen(false)
                     onQuoteRepost(post)
                   }}
                 >
-                  Quote repost
+                  <svg className="h-4 w-4 shrink-0 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <path
+                      d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Quote
                 </button>
               </div>
             ) : null}

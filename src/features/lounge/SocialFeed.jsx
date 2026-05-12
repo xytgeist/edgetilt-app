@@ -3534,6 +3534,7 @@ export default function SocialFeed({
                           ? 'mt-1.5'
                           : 'mt-4'
                     }
+                    visibilityResetRootRef={loungePostDetailScrollRef}
                   />
                   <button
                     type="button"
@@ -3569,6 +3570,7 @@ export default function SocialFeed({
                       post={loungePostDetail.reposted_post}
                       variant="embed"
                       firstMarginTopClass="mt-2"
+                      visibilityResetRootRef={loungePostDetailScrollRef}
                     />
                   </button>
                 </>
@@ -3597,6 +3599,7 @@ export default function SocialFeed({
                           ? 'mt-1.5'
                           : 'mt-4'
                     }
+                    visibilityResetRootRef={loungePostDetailScrollRef}
                   />
                 </>
               )}
@@ -4093,7 +4096,60 @@ export default function SocialFeed({
         />
       ) : null}
 
-      {quoteRepostModal ? (
+      {quoteRepostModal?.mode === 'remove' ? (
+        <div
+          className="fixed inset-0 z-[92] flex items-end justify-center bg-black/45 px-3 pb-0 backdrop-blur-[3px]"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="quote-remove-confirm-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
+            aria-label="Dismiss"
+            disabled={quoteRepostBusy}
+            onClick={() => {
+              if (quoteRepostBusy) return
+              setQuoteRepostModal(null)
+              setQuoteRepostErr('')
+            }}
+          />
+          <div className="pointer-events-none relative z-10 mx-auto w-full max-w-md pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="pointer-events-auto rounded-t-2xl border border-zinc-600/80 bg-[#181b22]/96 px-4 pt-4 shadow-2xl backdrop-blur-md">
+              <p id="quote-remove-confirm-title" className="text-[16px] font-semibold leading-snug text-white">
+                Are you sure you want to delete your quote of this post?
+              </p>
+              {quoteRepostErr ? (
+                <div className="mt-3 rounded-xl border border-rose-500/40 bg-rose-950/20 px-3 py-2 text-[14px] leading-relaxed text-rose-200 break-words whitespace-pre-wrap">
+                  {quoteRepostErr}
+                </div>
+              ) : null}
+              <div className="mt-5 flex gap-3 pb-1">
+                <button
+                  type="button"
+                  disabled={quoteRepostBusy}
+                  onClick={() => {
+                    if (quoteRepostBusy) return
+                    setQuoteRepostModal(null)
+                    setQuoteRepostErr('')
+                  }}
+                  className="min-h-12 flex-1 touch-manipulation rounded-xl border border-zinc-600 bg-zinc-800/90 text-[15px] font-semibold text-zinc-100 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={quoteRepostBusy}
+                  onClick={() => void confirmRemoveQuoteRepost()}
+                  className="min-h-12 flex-1 touch-manipulation rounded-xl border border-rose-500/50 bg-rose-600 text-[15px] font-semibold text-white hover:bg-rose-500 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                >
+                  {quoteRepostBusy ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : quoteRepostModal ? (
         <div
           className="fixed inset-0 z-[92] flex bg-black/45 px-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[3px]"
           role="dialog"
@@ -4139,13 +4195,9 @@ export default function SocialFeed({
                     id="quote-repost-sheet-title"
                     className="pointer-events-none absolute left-0 right-0 text-center text-[16px] font-semibold text-white"
                   >
-                    {quoteRepostModal.mode === 'compose' ? 'Repost' : 'Remove repost'}
+                    Repost
                   </div>
-                  {quoteRepostModal.mode === 'compose' ? (
-                    <div className="pointer-events-none min-h-12 min-w-[4.75rem] shrink-0" aria-hidden />
-                  ) : (
-                    <div className="min-h-8 min-w-[2.75rem] shrink-0" aria-hidden />
-                  )}
+                  <div className="pointer-events-none min-h-12 min-w-[4.75rem] shrink-0" aria-hidden />
                 </div>
               </div>
 
@@ -4171,8 +4223,7 @@ export default function SocialFeed({
                 }}
               >
                 <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-[86px]">
-                  {quoteRepostModal.mode === 'compose' ? (
-                    <>
+                  <>
                       <div className="flex items-start gap-3">
                         <div className="mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full border border-zinc-600 bg-zinc-900">
                           {composerUserProfile?.avatar_url ? (
@@ -4206,11 +4257,12 @@ export default function SocialFeed({
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="grid min-h-0 max-h-[min(50vh,22rem)] grid-cols-1 grid-rows-1 [&>*]:col-start-1 [&>*]:row-start-1">
+                          <div className="mt-0.5 flex min-h-[7.25rem] flex-col">
+                            <div className="grid min-h-[6.75rem] max-h-[min(50vh,22rem)] shrink-0 grid-cols-1 grid-rows-1 sm:min-h-[7.25rem] [&>*]:col-start-1 [&>*]:row-start-1">
                             <div
                               ref={quoteRepostMirrorRef}
                               aria-hidden
-                              className="pointer-events-none min-h-0 max-h-[min(50vh,22rem)] w-full overflow-y-auto whitespace-pre-wrap break-words px-0 py-0 pt-[10px] text-left text-[17px] leading-[1.25] text-zinc-100 [overflow-wrap:anywhere] [scrollbar-width:none] [-ms-overflow-style:none] sm:pt-[13px] [&::-webkit-scrollbar]:hidden"
+                              className="pointer-events-none min-h-[6.75rem] max-h-[min(50vh,22rem)] w-full overflow-y-auto whitespace-pre-wrap break-words px-0 py-0 pt-[10px] text-left text-[17px] leading-[1.25] text-zinc-100 [overflow-wrap:anywhere] [scrollbar-width:none] [-ms-overflow-style:none] sm:min-h-[7.25rem] sm:pt-[13px] [&::-webkit-scrollbar]:hidden"
                             >
                               {quoteRepostDraft ? (
                                 quoteRepostDraft
@@ -4220,7 +4272,7 @@ export default function SocialFeed({
                             </div>
                             <textarea
                               ref={quoteRepostTextareaRef}
-                              rows={1}
+                              rows={5}
                               value={quoteRepostDraft}
                               onChange={(e) => setQuoteRepostDraft(e.target.value)}
                               onScroll={(e) => {
@@ -4228,10 +4280,11 @@ export default function SocialFeed({
                                 if (m) m.scrollTop = e.currentTarget.scrollTop
                               }}
                               maxLength={280}
-                              className="z-10 min-h-[2.75rem] max-h-[min(50vh,22rem)] w-full resize-none touch-manipulation overflow-y-auto bg-transparent px-0 py-0 pt-[10px] text-[17px] leading-[1.25] text-transparent caret-white outline-none selection:bg-cyan-500/25 focus:outline-none focus:ring-0 sm:min-h-[3rem] sm:pt-[13px]"
+                              className="z-10 min-h-[6.75rem] max-h-[min(50vh,22rem)] w-full resize-none touch-manipulation overflow-y-auto bg-transparent px-0 py-0 pt-[10px] text-[17px] leading-[1.25] text-transparent caret-white outline-none selection:bg-cyan-500/25 focus:outline-none focus:ring-0 sm:min-h-[7.25rem] sm:pt-[13px]"
                               placeholder=""
                               aria-label="Quote for repost"
                             />
+                          </div>
                           </div>
                           <input
                             ref={quoteRepostMediaInputRef}
@@ -4436,6 +4489,7 @@ export default function SocialFeed({
                                   post={orig}
                                   variant="embed"
                                   firstMarginTopClass="mt-2"
+                                  visibilityResetRootRef={quoteRepostScrollRef}
                                 />
                               </div>
                             )
@@ -4448,41 +4502,6 @@ export default function SocialFeed({
                         </div>
                       ) : null}
                     </>
-                  ) : (
-                    <>
-                      <p className="text-[15px] leading-relaxed text-zinc-300">
-                        This removes only your quote repost. The original post stays in the feed.
-                      </p>
-                      {quoteRepostErr ? (
-                        <div className="mt-3 rounded-2xl border border-rose-500/40 bg-rose-950/20 px-3 py-2 text-[14px] leading-relaxed text-rose-200 break-words whitespace-pre-wrap">
-                          {quoteRepostErr}
-                        </div>
-                      ) : null}
-                      <div className="mt-6 flex flex-col gap-3">
-                        <button
-                          type="button"
-                          disabled={quoteRepostBusy}
-                          onClick={() => {
-                            if (quoteRepostBusy) return
-                            setQuoteRepostModal(null)
-                            setQuoteRepostErr('')
-                            clearQuoteRepostMedia()
-                          }}
-                          className="min-h-12 w-full rounded-2xl border border-zinc-600 bg-zinc-800/90 text-[16px] font-semibold text-zinc-100 touch-manipulation disabled:opacity-45"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={quoteRepostBusy}
-                          onClick={() => void confirmRemoveQuoteRepost()}
-                          className="min-h-12 w-full rounded-2xl border border-rose-500/50 bg-rose-600 text-[16px] font-semibold text-white touch-manipulation hover:bg-rose-500 disabled:opacity-45"
-                        >
-                          {quoteRepostBusy ? 'Removing…' : 'Remove repost'}
-                        </button>
-                      </div>
-                    </>
-                  )}
                 </div>
               </div>
             </div>

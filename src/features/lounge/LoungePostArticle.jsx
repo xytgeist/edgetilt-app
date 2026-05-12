@@ -257,6 +257,7 @@ export default function LoungePostArticle({
                   post={post.reposted_post}
                   variant="embed"
                   firstMarginTopClass="mt-2"
+                  visibilityResetRootRef={repostMenuScrollRootRef}
                 />
               </button>
             </>
@@ -271,6 +272,7 @@ export default function LoungePostArticle({
                 post={post}
                 variant="feed"
                 firstMarginTopClass={feedPostDisplayCaption(post) ? 'mt-2' : 'mt-1.5'}
+                visibilityResetRootRef={repostMenuScrollRootRef}
               />
               <button
                 type="button"
@@ -299,6 +301,7 @@ export default function LoungePostArticle({
                   post={post.reposted_post}
                   variant="embed"
                   firstMarginTopClass="mt-2"
+                  visibilityResetRootRef={repostMenuScrollRootRef}
                 />
               </button>
             </>
@@ -314,6 +317,7 @@ export default function LoungePostArticle({
               post={post}
               variant="feed"
               firstMarginTopClass={feedPostDisplayCaption(post) ? 'mt-2' : 'mt-1.5'}
+              visibilityResetRootRef={repostMenuScrollRootRef}
             />
           </>
         )}

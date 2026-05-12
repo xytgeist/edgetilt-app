@@ -25,6 +25,11 @@ export function LoungeImageCarousel({
   removeLabelForIndex,
   /** Tap image to open fullscreen (disabled in composer). */
   enableLightbox = true,
+  /**
+   * When set (feed/detail scroll container), carousel snaps back to slide 1 when this block
+   * re-enters that scrollport after leaving — fixes nested scroll + `content-visibility` with `root: null`.
+   */
+  visibilityResetRootRef,
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const [lightbox, setLightbox] = useState(null)
@@ -52,20 +57,22 @@ export function LoungeImageCarousel({
     }
   }, [urlsKey])
   const isComposer = variant === 'composer'
-  /** When the post row re-enters the viewport after scroll-away, snap carousel back to the first slide. */
+  /** When the media strip re-enters the scroll container (or viewport), snap back to slide 1. */
   useEffect(() => {
     if (isComposer || !list.length) return
     const scroller = carouselScrollRef.current
     if (!scroller) return
-    const rootEl = scroller.closest('article') || scroller.parentElement
-    if (!rootEl || typeof IntersectionObserver === 'undefined') return
-    let wasIntersecting = false
+    const observeTarget = scroller.parentElement
+    if (!observeTarget || typeof IntersectionObserver === 'undefined') return
+    const scrollRoot = visibilityResetRootRef?.current ?? null
+    let wasVisibleEnough = false
+    const visibleEnough = (en) => en.isIntersecting && en.intersectionRatio >= 0.06
     const io = new IntersectionObserver(
       (entries) => {
         const en = entries[0]
         if (!en) return
-        const now = en.isIntersecting && en.intersectionRatio >= 0.12
-        if (now && !wasIntersecting) {
+        const now = visibleEnough(en)
+        if (now && !wasVisibleEnough) {
           scroller.scrollLeft = 0
           try {
             scroller.scrollTo({ left: 0, behavior: 'instant' })
@@ -73,13 +80,17 @@ export function LoungeImageCarousel({
             // ignore
           }
         }
-        wasIntersecting = !!en.isIntersecting
+        wasVisibleEnough = now
       },
-      { root: null, threshold: [0, 0.12, 0.2] }
+      {
+        root: scrollRoot,
+        rootMargin: '0px',
+        threshold: [0, 0.02, 0.06, 0.12, 0.25],
+      }
     )
-    io.observe(rootEl)
+    io.observe(observeTarget)
     return () => io.disconnect()
-  }, [urlsKey, isComposer, list.length])
+  }, [urlsKey, isComposer, list.length, visibilityResetRootRef])
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const canOpenLightbox = enableLightbox && !isComposer && typeof onRemoveIndex !== 'function'
   /** Cap slide width in the row; inner frame still shrinks to image (`inline-block` + `w-auto` img). */
@@ -104,7 +115,7 @@ export function LoungeImageCarousel({
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
         ref={carouselScrollRef}
-        className="flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch]"
+        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${isComposer ? 'scroll-smooth' : ''}`}
         role="region"
         aria-label={regionAriaLabel}
       >
@@ -187,7 +198,13 @@ export function LoungeImageCarousel({
 /**
  * Feed / detail: multi-image carousel when `image_urls` is non-empty; otherwise legacy `media_url` + `gif_url`.
  */
-export function LoungePostFeedImagesAndGif({ post, variant = 'feed', firstMarginTopClass = 'mt-2', enableLightbox = true }) {
+export function LoungePostFeedImagesAndGif({
+  post,
+  variant = 'feed',
+  firstMarginTopClass = 'mt-2',
+  enableLightbox = true,
+  visibilityResetRootRef,
+}) {
   const imgs = feedPostImageUrls(post)
   const gif = String(post?.gif_url || '').trim()
   if (imgs.length > 0) {
@@ -199,6 +216,7 @@ export function LoungePostFeedImagesAndGif({ post, variant = 'feed', firstMargin
         firstMarginTopClass={firstMarginTopClass}
         regionAriaLabel={gif ? 'Post images and GIF' : 'Post images'}
         enableLightbox={enableLightbox}
+        visibilityResetRootRef={visibilityResetRootRef}
       />
     )
   }

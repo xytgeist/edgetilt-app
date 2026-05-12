@@ -727,7 +727,7 @@ export default function LoungeProfileFullScreen({
                     rows={3}
                     maxLength={140}
                     placeholder="Tell people about you (max 140 characters)"
-                    className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[15px] leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-600/60"
+                    className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-600/60"
                   />
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[12px] text-zinc-500 tabular-nums">{aboutDraft.length}/140</span>

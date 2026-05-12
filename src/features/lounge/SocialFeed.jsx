@@ -3866,7 +3866,7 @@ export default function SocialFeed({
                         placeholder="Write a comment…"
                         maxLength={2000}
                         rows={3}
-                        className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[15px] text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
+                        className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] leading-snug text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
                       />
                       <div className="mt-2 flex justify-end">
                         <button

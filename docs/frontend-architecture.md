@@ -26,13 +26,13 @@ Roadmap detail: **`docs/social-feed-roadmap.md`** (section **Freemium & subscrip
 | --- | --- |
 | **`shell/`** | `AppShell.jsx`, `shellClasses.js` (shared Tailwind class strings for layout/buttons where reused), `index.js` barrel. |
 | **`auth/`** | OAuth UI bits and URL callback helpers used by **`App.jsx`**. |
-| **`lounge/`** | Lounge social feed: `SocialFeed.jsx`, caption helpers, storage keys, `index.js`. |
+| **`lounge/`** | Lounge social feed: **`SocialFeed.jsx`**, **`LoungePostArticle.jsx`**, **`LoungePostFeedMedia.jsx`**, **`LoungeProfileFullScreen.jsx`**, caption helpers, storage keys, `index.js`. Rate-limit errors render **above** the composer. **Repost** uses an **anchored popover** under the control (not a bottom sheet). Feed **media carousels** reset to the first slide when the post row re-enters the viewport. |
 | **`guides/`** | AP guides: `GuidesScreen.jsx`, demo data, `index.js`. |
 | **`offers/`** | Offers calendar: `OffersCalendar.jsx`, `offerStorageKeys.js`, `utils.js`, `hooks/`, `components/`, `index.js` (re-exports `OffersCalendar`). |
 | **`intel/`** | Local Intel (cities / casinos / posts): `LocalIntel.jsx`, `index.js`. |
 | **`bankroll/`** | Bankroll tracker UI scaffold: `BankrollTracker.jsx`, `index.js`. |
 | **`calculators/`** | **`CalculatorsTab.jsx`** (calculator picker + active game routing). Game implementations live under **`calculators/games/`** (`PhoenixLink`, `BuffaloLink`, `StackUpPays`, `MHBCalculator`). |
-| **`profiles/`** | Shared profile gate helpers for Lounge + Guides. |
+| **`profiles/`** | Shared profile gate helpers for Lounge + Guides (`profileGate.js`, etc.). Profile saves and **`handle_changed_at`** / cooldown-aware selects for the Lounge profile editor. |
 
 Shared non-feature code stays in **`src/utils/`**, **`src/components/`** (e.g. `CalculatorDisclaimer`), and **`src/constants/`** as before.
 
@@ -62,4 +62,4 @@ Structural or bundling changes here should land in the **same PR** as the code. 
 
 ---
 
-_Last aligned with the modular `App` + `AppShell` + `features/*` layout._
+_Last aligned with the modular `App` + `AppShell` + `features/*` layout; Lounge row expanded 2026-05-11 for feed/profile/repost UX._

@@ -69,6 +69,7 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 - **v1 on test:** DB-backed windows via `rate_limit_events` table + `BEFORE INSERT` trigger on `community_feed_posts` (see `feed_phase_a_profiles_public_read.sql`).
 - Index pattern: `(user_id, kind, window_start)`.
+- **UX (test):** rate-limit / “spam” errors for posting are shown **above** the composer strip in Lounge so long drafts do not hide the message (`SocialFeed.jsx`).
 - Later option: Redis/external limiter or edge enforcement for tighter UX.
 
 ### Deliverable
@@ -98,6 +99,7 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 ## Phase C - Profiles + first-interaction gating
 
+- **Shipped (test, partial):** Full-screen **profile editor** in Lounge (`LoungeProfileFullScreen.jsx`) for own profile: display name, handle, avatar, About; saves respect RLS; **staff `role` is not stripped** on save. **Handle changes:** at most **once per rolling 7 days** — DB column `profiles.handle_changed_at` + trigger in **`supabase/profile_handle_changed_at.sql`** (also bundled at end of **`profile_lounge_fullscreen.sql`**); client shows **Confirm** (first change in window) or **Cooldown** (within window: save other fields, keep server handle) on **Save**, with **Continue** performing the save without a second Save tap. **iOS:** min **16px** text on handle/display fields and post-save **blur + window/visualViewport scroll** to reduce Safari zoom/viewport glitches.
 - `/u/:handle` profile page:
   - profile data
   - authored posts
@@ -132,6 +134,8 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 - Create post with caption + optional game tag + media.
 
+**Shipped (test, UX):** Quote-repost composer uses the same **tall textarea** behavior as the main composer (min/max height, typography); **images/GIF** sit on the line below text. **Multi-image carousels** in the feed reset to the **first (left-most) slide** when the post row **re-enters the viewport** after scroll-away (`LoungePostFeedMedia.jsx`). Composer **image cap** (e.g. 6) shows a modal with clear copy from file picker / quote flows.
+
 ---
 
 ## Phase E - Comments (threaded)
@@ -151,6 +155,7 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 ## Phase F - Likes + counts
 
 - **Shipped (test, first slice):** `post_likes`, `post_reposts`, `post_bookmarks` + triggers on `like_count` / `repost_count` in `feed_interactions_phase_ef.sql`; Lounge wiring persists toggles. `comment_likes` and periodic reconcile are still out of scope.
+- **UX (test):** **Repost** opens a **fixed popover under the stat** (plain / quote / undo / remove quote as applicable) on feed + post detail; removed bottom-sheet “repost manage” for consistency.
 - `post_likes` and `comment_likes` with unique `(user_id, target)` constraints.
 - Count updates via triggers initially; periodic reconcile optional later.
 

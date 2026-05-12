@@ -60,6 +60,8 @@ Port these into the table above when they appear in conversation:
 - Auth/session: `src/App.jsx`. Logged-in shell: `src/features/shell/AppShell.jsx`.
 - Calculators: `src/features/calculators/` and `src/features/calculators/games/` (not `src/calculators/`).
 - Feed schema/RLS: `supabase/feed_phase_a_profiles_public_read.sql`, `supabase/feed_interactions_phase_ef.sql` (likes/reposts/bookmarks/comments + count triggers), and related files.
+- Lounge profile edit + **handle cooldown (7 days):** `src/features/lounge/LoungeProfileFullScreen.jsx`, `src/features/profiles/profileGate.js`; SQL **`supabase/profile_handle_changed_at.sql`** (also appended to **`supabase/profile_lounge_fullscreen.sql`**). Apply on Supabase before relying on `profiles.handle_changed_at`.
+- Feed post UI (carousel reset, repost popover menus, composer/quote layout): `src/features/lounge/LoungePostFeedMedia.jsx`, `LoungePostArticle.jsx`, `SocialFeed.jsx`.
 - Pinned row for UI testing: tail of `supabase/seed/lounge_fake_posts.sql`.
 
 ## Automation you can run anytime

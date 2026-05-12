@@ -36,6 +36,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 ### Phase A - Foundation (DB + auth shaping)
 
 - [x] A1 core `profiles` model in place on test (`handle`, `display_name`, `avatar_url`, `bio`, `role`, `banned_at`, timestamps, constraints/index).
+- [x] **Handle change cadence (test):** `profiles.handle_changed_at` + `BEFORE UPDATE OF handle` cooldown trigger (one change per rolling 7 days; raises `PROFILE_HANDLE_CHANGE_COOLDOWN`). Sources: **`supabase/profile_handle_changed_at.sql`** and tail of **`supabase/profile_lounge_fullscreen.sql`**. Client: **`LoungeProfileFullScreen.jsx`**, **`profileGate.js`** (select includes `handle_changed_at`). **Apply SQL on test** before selects/saves that expect the column.
 - [x] A2 feed model on test: `community_feed_posts` is **caption-only** (legacy `title` / `body` dropped after backfill); `edited_at`, pin/moderation columns, denormalized `like_count` / `comment_count` / `repost_count` (after `feed_interactions_phase_ef.sql`).
 - [x] A3 baseline RLS/policy shape for public read + authed write + staff moderation is applied on test (includes author **30-minute** `UPDATE` window in SQL).
 - [x] A4 **DB-first** posting rate limit on test: `rate_limit_events` + indexes + `BEFORE INSERT` guard on `community_feed_posts` in `feed_phase_a_profiles_public_read.sql` (optional later: Redis/edge limiter per roadmap).
@@ -52,7 +53,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 ### Phases C-L
 
 - [ ] Phases **D–L** not complete end-to-end; **first slice:** Lounge signed-in persistence for likes, reposts, bookmarks, and flat comments (post detail) + SQL `feed_interactions_phase_ef.sql` (Phase E/F subset). Threaded ranking, search, notifications, etc. still roadmap scope.
-- [ ] **Phase C (next):** `/u/:handle` profile surface, authored-posts list, handle collision + reserved-handle policy; profile completion gate for first post already in Lounge + Guides.
+- [ ] **Phase C (remaining):** dedicated **`/u/:handle`** profile route + authored-posts list + handle collision + reserved-handle policy as in roadmap. **Shipped on test (partial):** profile completion gate for first post (Lounge + Guides); **full-screen profile editor** in Lounge; **7-day handle change** rule (DB + modals); iOS-focused profile-save mitigations — see **`docs/social-feed-roadmap.md`** Phase C and backlog SQL/FE rows below.
 - [ ] **Freemium / subscriptions:** anonymous read-only where required; free-account vs subscriber entitlements (DB + **RLS** + Stripe webhooks); extend shell gating beyond today’s **`browseMode`**. Product spec: fill **`docs/access-tiers.md`**; roadmap: **`docs/social-feed-roadmap.md`** → *Freemium & subscriptions*.
 
 ---
@@ -148,6 +149,23 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - Test validation: repeated posts within the configured window return the limiter error; normal posting outside the window succeeds.
   - Production replay: checklist §2; optional §4 only if an edge path is added later.
 
+- [x] A4 **UX:** rate-limit / spam messaging **above** the Lounge composer (`SocialFeed.jsx`) so long expanded drafts do not hide the banner.
+  - Change: `postErr` strip placement + styling.
+  - Test validation: trigger rate limit with a tall composer; message remains visible without scrolling the draft.
+  - Production replay: N/A (client-only).
+
+- [x] Lounge profile fullscreen + handle-save flows (test)
+  - Change: Own-profile edit sheet: RLS-safe updates; staff role preserved; handle change **confirm** / **cooldown** modals with **Continue** submitting save; iOS **16px** min on handle/display + post-save **blur + scroll** reset.
+  - Source: `src/features/lounge/LoungeProfileFullScreen.jsx`, `src/features/profiles/profileGate.js`, profile selects in `SocialFeed.jsx` as applicable.
+  - Test validation: normal user save; mod/admin save; handle modal paths; iOS Safari spot-check after save.
+  - Production replay: run **`profile_handle_changed_at.sql`** (or full **`profile_lounge_fullscreen.sql`**) on prod before relying on column/trigger.
+
+- [x] Lounge feed media + repost UX (test)
+  - Change: Feed/detail carousels reset to **first slide** when post **re-enters viewport** (`LoungePostFeedMedia.jsx`); **repost** uses **anchored popover** under control including reposted-state actions (`LoungePostArticle.jsx`, `SocialFeed.jsx`); quote composer textarea sizing aligned with main composer; image-cap modal from picker/quote flows.
+  - Source: files above.
+  - Test validation: scroll multi-image post off/on; repost menu position; quote sheet height + media below text; 7th image attempt shows cap modal.
+  - Production replay: N/A (client-only).
+
 ---
 
 ## Test smoke and release readiness
@@ -160,6 +178,11 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
     3. **Heavy tabs once:** Offers, Intel, Bankroll, Calculators (open each game once), Guides — no stuck `Suspense`; calculators work after first open.
     4. **Guides → Ask community:** insert succeeds where RLS allows (profile gate if applicable).
     5. **Offers / calendars / push:** offers save; calendar surfaces; edge paths per §4 / §5 in production checklist (align with Edge Functions rows above).
+    6. **Profile (Lounge):** own profile → edit → save display/avatar/about; change handle → **Confirm** → **Continue** completes save without a second Save; within 7 days of a handle change → **Cooldown** → **Continue** keeps handle, saves rest; **mod/admin** save retains `role`.
+    7. **Feed carousels:** multi-image post — scroll off-screen until row leaves view, scroll back — carousel shows **first** (left-most) slide.
+    8. **Repost:** menu opens **under** the Repost control on feed + post detail; already-reposted row shows manage actions in the same anchored popover (no bottom sheet).
+    9. **Rate limit:** when posting is blocked, error strip is **above** the composer even with a tall draft.
+    10. **Quote repost:** textarea expands like main composer; images/GIF one line below text; picking more than **6** images shows cap modal (composer + quote sheet).
   - **Sign-off:** Manual steps above passed on **test** (operator confirmation after latest `test` deploy).
   - Production replay: same ordered pass on production after deploy.
 
@@ -171,6 +194,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-11: **Doc sync (Lounge continuity):** profile **`handle_changed_at`** + 7-day cooldown SQL and client modals; iOS profile-save mitigations; rate-limit banner above composer; feed carousel first-slide on re-entry; anchored repost menus; quote composer height — reflected in **`AGENTS.md`**, **`docs/social-feed-roadmap.md`** (Phases A4, C, D deliverable, F), **`docs/frontend-architecture.md`** (`lounge/` table), and this backlog (A1 bullet, A4 UX, FE rows, smoke 6–10). Code on branch **`test`** (commit `d7c3ffd` area).
 - 2026-05-10: **`profiles.has_active_subscription`** + guard trigger (**`supabase/profiles_tier_testing.sql`**); app reads role + flag for hamburger locks; **`docs/test-user-roles.md`** for SQL recipes.
 - 2026-05-09: **Lounge interactions (Phase E/F slice):** added `supabase/feed_interactions_phase_ef.sql` (`post_likes`, `post_reposts`, `post_bookmarks`, `feed_comments`, `repost_count`, count triggers, RLS); client persistence + comments UI in **`SocialFeed.jsx`** / **`LoungePostArticle.jsx`**; feed selects include **`repost_count`** in **`AppShell.jsx`**. **Requires applying the new SQL on test.** Profile **follows** unchanged (`profile_follows` in `profile_lounge_fullscreen.sql`).
 - 2026-05-10: **Removed `allowed_emails` / whitelist** from **`App.jsx`**; authenticated users always get member shell (documented in README + **`docs/frontend-architecture.md`**). Optional: drop unused **`public.allowed_emails`** table/policies in Supabase when ops are ready.

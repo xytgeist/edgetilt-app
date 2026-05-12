@@ -160,8 +160,6 @@ export default function SocialFeed({
   /** Maps original post id → this user's quote-repost row id (for remove). */
   const quoteRepostChildIdRef = useRef({})
   const [repostManageModal, setRepostManageModal] = useState(null)
-  /** Lift the feed `<article>` while Repost/Quote dropdown is open so the next row does not paint over the menu. */
-  const [feedRepostMenuLiftPostId, setFeedRepostMenuLiftPostId] = useState(null)
   const [composerDiscardPromptOpen, setComposerDiscardPromptOpen] = useState(false)
   const [loungeDetailRepostMenuOpen, setLoungeDetailRepostMenuOpen] = useState(false)
   const loungeDetailRepostMenuRef = useRef(null)
@@ -2742,17 +2740,19 @@ export default function SocialFeed({
               <button
                 type="button"
                 onClick={() => composerMediaInputRef.current?.click()}
-                className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                 title="Add media"
                 aria-label="Add media"
               >
-                <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
+                <svg className="h-9 w-9" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <rect
                     x="3.75"
                     y="3.75"
                     width="12.5"
                     height="12.5"
                     rx="2"
+                    fill="currentColor"
+                    fillOpacity="0.14"
                     stroke="currentColor"
                     strokeWidth="1.35"
                   />
@@ -2763,7 +2763,7 @@ export default function SocialFeed({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
-                  <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+                  <circle cx="8" cy="8" r="1" fill="currentColor" />
                 </svg>
               </button>
               <button
@@ -2773,7 +2773,7 @@ export default function SocialFeed({
                   setKlipyPickerTarget('composer')
                   setKlipyPickerOpen(true)
                 }}
-                className="flex shrink-0 touch-manipulation items-center justify-center rounded-md px-1.5 py-1 text-[12px] font-bold tracking-wide text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                className="flex min-h-9 min-w-[2.75rem] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-violet-500/45 bg-violet-500/15 px-2.5 py-2 text-[13px] font-extrabold tracking-wide text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/25 hover:text-violet-200 active:text-violet-100 [-webkit-tap-highlight-color:transparent]"
                 title="Add GIF (Klipy)"
                 aria-label="Add GIF"
               >
@@ -2981,9 +2981,7 @@ export default function SocialFeed({
               <article
                 key={post.id}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
-                className={`border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent] ${
-                  feedRepostMenuLiftPostId === post.id ? 'relative z-[25] isolate' : ''
-                }`}
+                className="border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
                 onClick={(e) => {
                   const t = e.target
                   if (!(t instanceof Element)) return
@@ -3001,7 +2999,7 @@ export default function SocialFeed({
                   loungeReadOnly={loungeReadOnly}
                   interactionStateFor={interactionStateFor}
                   toggleInteraction={toggleInteraction}
-                  onRepostDropdownOpenChange={(open) => setFeedRepostMenuLiftPostId(open ? post.id : null)}
+                  repostMenuScrollRootRef={loungeFeedScrollRef}
                   onPlainRepost={handlePlainRepost}
                   onRepostManage={handleRepostManage}
                   onQuoteRepost={openQuoteRepostComposer}
@@ -3500,17 +3498,19 @@ export default function SocialFeed({
                           <button
                             type="button"
                             onClick={() => loungeDetailEditMediaInputRef.current?.click()}
-                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-zinc-500 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add media"
                             aria-label="Add media"
                           >
-                            <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <svg className="h-9 w-9" viewBox="0 0 20 20" fill="none" aria-hidden>
                               <rect
                                 x="3.75"
                                 y="3.75"
                                 width="12.5"
                                 height="12.5"
                                 rx="2"
+                                fill="currentColor"
+                                fillOpacity="0.14"
                                 stroke="currentColor"
                                 strokeWidth="1.35"
                               />
@@ -3521,7 +3521,7 @@ export default function SocialFeed({
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                               />
-                              <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+                              <circle cx="8" cy="8" r="1" fill="currentColor" />
                             </svg>
                           </button>
                           <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
@@ -3570,9 +3570,11 @@ export default function SocialFeed({
                         }}
                         className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
-                        <svg className={`h-[22px] w-[22px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <svg className={`h-[22px] w-[22px] ${commentClass}`} viewBox="0 0 20 20" aria-hidden>
                           <path
                             d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z"
+                            fill="currentColor"
+                            fillOpacity={ro ? 0.08 : ui.commented ? 0.42 : 0.18}
                             stroke="currentColor"
                             strokeWidth="1.35"
                             strokeLinecap="round"
@@ -3650,7 +3652,7 @@ export default function SocialFeed({
                                 openQuoteRepostComposer(d)
                               }}
                             >
-                              <svg className="h-4 w-4 shrink-0 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                              <svg className="h-4 w-4 shrink-0 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                                 <path
                                   d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
                                   strokeLinecap="round"
@@ -3669,11 +3671,13 @@ export default function SocialFeed({
                         onClick={() => void toggleInteraction(d.id, 'liked')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
-                        <svg className={`h-[22px] w-[22px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <svg className={`h-[22px] w-[22px] ${likeClass}`} viewBox="0 0 20 20" aria-hidden>
                           <path
                             d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
+                            fill="currentColor"
+                            fillOpacity={ro ? 0.06 : ui.liked ? 1 : 0.2}
+                            stroke={ui.liked ? 'none' : 'currentColor'}
+                            strokeWidth={ui.liked ? 0 : 1.35}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
@@ -3702,9 +3706,11 @@ export default function SocialFeed({
                           className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 text-zinc-600 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                           title="Sign in to save posts"
                         >
-                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
                             <path
                               d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                              fill="currentColor"
+                              fillOpacity={0.08}
                               stroke="currentColor"
                               strokeWidth="1.35"
                               strokeLinecap="round"
@@ -3719,9 +3725,11 @@ export default function SocialFeed({
                           className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                           title={isBookmarked ? 'Remove bookmark' : 'Save post'}
                         >
-                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
                             <path
                               d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                              fill="currentColor"
+                              fillOpacity={isBookmarked ? 0.55 : 0.18}
                               stroke="currentColor"
                               strokeWidth="1.35"
                               strokeLinecap="round"
@@ -3916,7 +3924,7 @@ export default function SocialFeed({
                         openQuoteRepostComposer(orig)
                       }}
                     >
-                      <svg className="h-4 w-4 shrink-0 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                      <svg className="h-4 w-4 shrink-0 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                         <path
                           d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
                           strokeLinecap="round"
@@ -4142,22 +4150,24 @@ export default function SocialFeed({
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-zinc-700/70 pt-3">
-                        <div className="flex h-10 shrink-0 items-center justify-center gap-0.5">
+                        <div className="flex h-10 shrink-0 items-center justify-center gap-1.5">
                           <button
                             type="button"
                             disabled={quoteRepostBusy}
                             onClick={() => quoteRepostMediaInputRef.current?.click()}
-                            className="flex touch-manipulation items-center justify-center rounded-md p-0.5 text-zinc-500 hover:text-zinc-200 active:text-white disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                            className="flex touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add image"
                             aria-label="Add image"
                           >
-                            <svg className="h-6 w-6" viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <svg className="h-9 w-9" viewBox="0 0 20 20" fill="none" aria-hidden>
                               <rect
                                 x="3.75"
                                 y="3.75"
                                 width="12.5"
                                 height="12.5"
                                 rx="2"
+                                fill="currentColor"
+                                fillOpacity="0.14"
                                 stroke="currentColor"
                                 strokeWidth="1.35"
                               />
@@ -4168,7 +4178,7 @@ export default function SocialFeed({
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                               />
-                              <circle cx="8" cy="8" r="0.9" fill="currentColor" />
+                              <circle cx="8" cy="8" r="1" fill="currentColor" />
                             </svg>
                           </button>
                           <button
@@ -4180,7 +4190,7 @@ export default function SocialFeed({
                               setKlipyPickerTarget('quote')
                               setKlipyPickerOpen(true)
                             }}
-                            className="flex touch-manipulation items-center justify-center rounded-md px-1 py-0.5 text-[11px] font-bold tracking-wide text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-200 active:text-white disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                            className="flex min-h-9 min-w-[2.75rem] touch-manipulation items-center justify-center rounded-lg border border-violet-500/45 bg-violet-500/15 px-2.5 py-2 text-[13px] font-extrabold tracking-wide text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/25 hover:text-violet-200 active:text-violet-100 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF (Klipy)"
                             aria-label="Add GIF"
                           >

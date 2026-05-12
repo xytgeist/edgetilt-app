@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
 import { renderRichCaption } from './loungeCaption'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
@@ -50,12 +51,14 @@ export default function LoungePostArticle({
   busyDeletingPostId,
   /** Moderator/admin: delete another user's post from the row menu. */
   onStaffPostDelete,
-  /** When the Repost/Quote dropdown opens or closes; parent lifts the feed row so the menu is not covered by the next card. */
-  onRepostDropdownOpenChange,
+  /** Scroll container (e.g. main feed) so the portaled Repost/Quote menu stays aligned while scrolling. */
+  repostMenuScrollRootRef,
 }) {
   const ui = interactionStateFor(post.id)
   const [repostMenuOpen, setRepostMenuOpen] = useState(false)
   const repostMenuRef = useRef(null)
+  const repostMenuPortalRef = useRef(null)
+  const [repostMenuFixed, setRepostMenuFixed] = useState({ top: 0, left: 0 })
   const isBookmarked = !!bookmarkedByPost[post.id]
   const baseComments = typeof post.comment_count === 'number' ? post.comment_count : 0
   const baseLikes = typeof post.like_count === 'number' ? post.like_count : 0
@@ -83,8 +86,12 @@ export default function LoungePostArticle({
   useEffect(() => {
     if (!repostMenuOpen) return
     const close = (e) => {
-      const el = repostMenuRef.current
-      if (el && e.target instanceof Node && el.contains(e.target)) return
+      const t = e.target
+      if (!(t instanceof Node)) return
+      const anchor = repostMenuRef.current
+      const panel = repostMenuPortalRef.current
+      if (anchor?.contains(t)) return
+      if (panel?.contains(t)) return
       setRepostMenuOpen(false)
     }
     document.addEventListener('mousedown', close)
@@ -95,12 +102,23 @@ export default function LoungePostArticle({
     }
   }, [repostMenuOpen])
 
-  useEffect(() => {
-    onRepostDropdownOpenChange?.(repostMenuOpen)
-    return () => {
-      if (repostMenuOpen) onRepostDropdownOpenChange?.(false)
+  useLayoutEffect(() => {
+    if (!repostMenuOpen) return
+    const update = () => {
+      const el = repostMenuRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      setRepostMenuFixed({ top: r.bottom + 4, left: r.left + r.width / 2 })
     }
-  }, [repostMenuOpen, onRepostDropdownOpenChange])
+    update()
+    const scrollRoot = repostMenuScrollRootRef?.current
+    window.addEventListener('resize', update)
+    scrollRoot?.addEventListener('scroll', update, { passive: true })
+    return () => {
+      window.removeEventListener('resize', update)
+      scrollRoot?.removeEventListener('scroll', update)
+    }
+  }, [repostMenuOpen, repostMenuScrollRootRef])
 
   const onAvatar = (e) => {
     e.stopPropagation()
@@ -317,9 +335,11 @@ export default function LoungePostArticle({
             }}
             className="inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
           >
-            <svg className={`h-[20px] w-[20px] ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+            <svg className={`h-[20px] w-[20px] ${commentClass}`} viewBox="0 0 20 20" aria-hidden>
               <path
                 d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z"
+                fill="currentColor"
+                fillOpacity={ro ? 0.08 : ui.commented ? 0.42 : 0.18}
                 stroke="currentColor"
                 strokeWidth="1.35"
                 strokeLinecap="round"
@@ -369,53 +389,63 @@ export default function LoungePostArticle({
               </svg>
               {Number.isFinite(repostCount) ? <span className={repostClass}>{repostCount}</span> : null}
             </LoungeFeedStatSlot>
-            {repostMenuOpen && !ro && !ui.reposted && onPlainRepost && onQuoteRepost ? (
-              <div
-                role="menu"
-                className="absolute left-1/2 top-full z-[130] mt-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setRepostMenuOpen(false)
-                    onPlainRepost(post)
-                  }}
-                >
-                  <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
-                    <path
-                      d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
-                      stroke="currentColor"
-                      strokeWidth="1.35"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  Repost
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setRepostMenuOpen(false)
-                    onQuoteRepost(post)
-                  }}
-                >
-                  <svg className="h-4 w-4 shrink-0 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                    <path
-                      d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  Quote
-                </button>
-              </div>
-            ) : null}
+            {typeof document !== 'undefined' &&
+            repostMenuOpen &&
+            !ro &&
+            !ui.reposted &&
+            onPlainRepost &&
+            onQuoteRepost
+              ? createPortal(
+                  <div
+                    ref={repostMenuPortalRef}
+                    role="menu"
+                    className="fixed z-[48] min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
+                    style={{ top: repostMenuFixed.top, left: repostMenuFixed.left }}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setRepostMenuOpen(false)
+                        onPlainRepost(post)
+                      }}
+                    >
+                      <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <path
+                          d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                          stroke="currentColor"
+                          strokeWidth="1.35"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Repost
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setRepostMenuOpen(false)
+                        onQuoteRepost(post)
+                      }}
+                    >
+                      <svg className="h-4 w-4 shrink-0 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                        <path
+                          d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Quote
+                    </button>
+                  </div>,
+                  document.body
+                )
+              : null}
           </div>
           <LoungeFeedStatSlot
             readOnly={ro}
@@ -424,11 +454,13 @@ export default function LoungePostArticle({
             onClick={() => void toggleInteraction(post.id, 'liked')}
             className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
           >
-            <svg className={`h-[20px] w-[20px] ${likeClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+            <svg className={`h-[20px] w-[20px] ${likeClass}`} viewBox="0 0 20 20" aria-hidden>
               <path
                 d="M10 16.1l-.85-.78C5.65 12.1 3.5 10.16 3.5 7.78A3.28 3.28 0 016.78 4.5c1.07 0 2.1.5 2.72 1.29A3.55 3.55 0 0112.22 4.5a3.28 3.28 0 013.28 3.28c0 2.38-2.15 4.33-5.65 7.54l-.85.78z"
-                stroke="currentColor"
-                strokeWidth="1.35"
+                fill="currentColor"
+                fillOpacity={ro ? 0.06 : ui.liked ? 1 : 0.2}
+                stroke={ui.liked ? 'none' : 'currentColor'}
+                strokeWidth={ui.liked ? 0 : 1.35}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -453,9 +485,11 @@ export default function LoungePostArticle({
               className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 text-zinc-600 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               title="Sign in to save posts"
             >
-              <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+              <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
                 <path
                   d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                  fill="currentColor"
+                  fillOpacity={0.08}
                   stroke="currentColor"
                   strokeWidth="1.35"
                   strokeLinecap="round"
@@ -470,9 +504,11 @@ export default function LoungePostArticle({
               className="inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
               title={isBookmarked ? 'Remove bookmark' : 'Save post'}
             >
-              <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+              <svg className={`h-[20px] w-[20px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
                 <path
                   d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
+                  fill="currentColor"
+                  fillOpacity={isBookmarked ? 0.55 : 0.18}
                   stroke="currentColor"
                   strokeWidth="1.35"
                   strokeLinecap="round"

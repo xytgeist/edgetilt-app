@@ -2744,7 +2744,7 @@ export default function SocialFeed({
                 title="Add media"
                 aria-label="Add media"
               >
-                <svg className="h-9 w-9" viewBox="0 0 20 20" fill="none" aria-hidden>
+                <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <rect
                     x="3.75"
                     y="3.75"
@@ -2773,11 +2773,32 @@ export default function SocialFeed({
                   setKlipyPickerTarget('composer')
                   setKlipyPickerOpen(true)
                 }}
-                className="flex min-h-9 min-w-[2.75rem] shrink-0 touch-manipulation items-center justify-center rounded-lg border border-violet-500/45 bg-violet-500/15 px-2.5 py-2 text-[13px] font-extrabold tracking-wide text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/25 hover:text-violet-200 active:text-violet-100 [-webkit-tap-highlight-color:transparent]"
+                className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                 title="Add GIF (Klipy)"
                 aria-label="Add GIF"
               >
-                GIF
+                <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <rect
+                    x="3.75"
+                    y="3.75"
+                    width="12.5"
+                    height="12.5"
+                    rx="2"
+                    fill="currentColor"
+                    fillOpacity="0.14"
+                    stroke="currentColor"
+                    strokeWidth="1.35"
+                  />
+                  <text
+                    x="10"
+                    y="12.85"
+                    textAnchor="middle"
+                    fill="currentColor"
+                    style={{ fontSize: '5.35px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
+                  >
+                    GIF
+                  </text>
+                </svg>
               </button>
               <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                 <div className="min-w-0 flex-1 pr-2" />
@@ -3502,7 +3523,7 @@ export default function SocialFeed({
                             title="Add media"
                             aria-label="Add media"
                           >
-                            <svg className="h-9 w-9" viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
                               <rect
                                 x="3.75"
                                 y="3.75"
@@ -4155,11 +4176,11 @@ export default function SocialFeed({
                             type="button"
                             disabled={quoteRepostBusy}
                             onClick={() => quoteRepostMediaInputRef.current?.click()}
-                            className="flex touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add image"
                             aria-label="Add image"
                           >
-                            <svg className="h-9 w-9" viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
                               <rect
                                 x="3.75"
                                 y="3.75"
@@ -4190,11 +4211,32 @@ export default function SocialFeed({
                               setKlipyPickerTarget('quote')
                               setKlipyPickerOpen(true)
                             }}
-                            className="flex min-h-9 min-w-[2.75rem] touch-manipulation items-center justify-center rounded-lg border border-violet-500/45 bg-violet-500/15 px-2.5 py-2 text-[13px] font-extrabold tracking-wide text-violet-300 hover:border-violet-400/60 hover:bg-violet-500/25 hover:text-violet-200 active:text-violet-100 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF (Klipy)"
                             aria-label="Add GIF"
                           >
-                            GIF
+                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
+                              <rect
+                                x="3.75"
+                                y="3.75"
+                                width="12.5"
+                                height="12.5"
+                                rx="2"
+                                fill="currentColor"
+                                fillOpacity="0.14"
+                                stroke="currentColor"
+                                strokeWidth="1.35"
+                              />
+                              <text
+                                x="10"
+                                y="12.85"
+                                textAnchor="middle"
+                                fill="currentColor"
+                                style={{ fontSize: '5.35px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
+                              >
+                                GIF
+                              </text>
+                            </svg>
                           </button>
                         </div>
                         <div className="flex min-w-0 grow basis-[min(100%,14rem)] flex-wrap items-center justify-end gap-2">

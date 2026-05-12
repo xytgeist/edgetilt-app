@@ -261,6 +261,7 @@ export function LoungePostFeedImagesAndGif({
   if (streamUid) {
     return (
       <LoungePostStreamVideo
+        key={streamUid}
         uid={streamUid}
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}

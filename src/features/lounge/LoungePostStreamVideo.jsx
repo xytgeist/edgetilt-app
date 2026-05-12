@@ -35,14 +35,17 @@ const borderByVariant = {
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
+ * @param {number} [attachKey] bump to force re-attach after a recoverable failure
  */
-function useStreamHlsAttachment(videoRef, src) {
+function useStreamHlsAttachment(videoRef, src, attachKey = 0) {
   useEffect(() => {
     const video = videoRef.current
     if (!video || !src) return undefined
 
     let cancelled = false
     let hlsInstance = null
+    /** @type {((event: string, data: unknown) => void) | null} */
+    let hlsErrorHandler = null
 
     const cleanupVideo = () => {
       try {
@@ -63,10 +66,27 @@ function useStreamHlsAttachment(videoRef, src) {
         if (cancelled || !videoRef.current || videoRef.current !== video) return
         if (Hls.isSupported()) {
           const hls = new Hls({
-            maxBufferLength: 24,
-            maxMaxBufferLength: 90,
+            maxBufferLength: 45,
+            maxMaxBufferLength: 120,
           })
           hlsInstance = hls
+          let didMediaRecover = false
+          let didNetRestart = false
+          hlsErrorHandler = (_event, data) => {
+            if (!data?.fatal || cancelled) return
+            try {
+              if (data.type === 'networkError' && !didNetRestart) {
+                didNetRestart = true
+                hls.startLoad()
+              } else if (data.type === 'mediaError' && !didMediaRecover) {
+                didMediaRecover = true
+                hls.recoverMediaError()
+              }
+            } catch {
+              // ignore
+            }
+          }
+          hls.on(Hls.Events.ERROR, hlsErrorHandler)
           hls.loadSource(src)
           hls.attachMedia(video)
         } else {
@@ -82,21 +102,30 @@ function useStreamHlsAttachment(videoRef, src) {
     return () => {
       cancelled = true
       if (hlsInstance) {
+        if (hlsErrorHandler) {
+          try {
+            hlsInstance.off('error', hlsErrorHandler)
+          } catch {
+            // ignore
+          }
+        }
         hlsInstance.destroy()
         hlsInstance = null
       }
       cleanupVideo()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit videoRef
-  }, [src])
+  }, [src, attachKey])
 }
 
 function LoungeStreamVideoLightbox({ uid, onClose }) {
   const videoRef = useRef(null)
+  const [attachKey, setAttachKey] = useState(0)
+  const [showLoadRetry, setShowLoadRetry] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
-  useStreamHlsAttachment(videoRef, id ? src : '')
+  useStreamHlsAttachment(videoRef, id ? src : '', attachKey)
 
   useEffect(() => {
     if (!id) return
@@ -140,7 +169,7 @@ function LoungeStreamVideoLightbox({ uid, onClose }) {
     }
     v.addEventListener('canplay', go, { once: true })
     return () => v.removeEventListener('canplay', go)
-  }, [id])
+  }, [id, attachKey])
 
   if (!id) return null
 
@@ -177,8 +206,24 @@ function LoungeStreamVideoLightbox({ uid, onClose }) {
           poster={poster}
           preload="auto"
           aria-label="Post video (full screen)"
+          onError={() => setShowLoadRetry(true)}
         />
       </div>
+      {showLoadRetry ? (
+        <div className="pointer-events-auto absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[1] flex -translate-x-1/2 flex-col items-center gap-2 rounded-xl border border-zinc-600/80 bg-zinc-950/90 px-4 py-2 text-center text-[13px] text-zinc-200 shadow-lg">
+          <span>Could not load this video.</span>
+          <button
+            type="button"
+            className="touch-manipulation rounded-lg bg-cyan-600 px-3 py-1.5 text-[14px] font-semibold text-white hover:bg-cyan-500"
+            onClick={() => {
+              setShowLoadRetry(false)
+              setAttachKey((k) => k + 1)
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
     </div>,
     document.body,
   )
@@ -217,11 +262,13 @@ export default function LoungePostStreamVideo({
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [streamAttachKey, setStreamAttachKey] = useState(0)
+  const [showStreamRetry, setShowStreamRetry] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
 
-  useStreamHlsAttachment(videoRef, src)
+  useStreamHlsAttachment(videoRef, src, streamAttachKey)
 
   const openLightbox = useCallback(() => {
     try {
@@ -307,7 +354,7 @@ export default function LoungePostStreamVideo({
     }
     io.observe(wrap)
     return () => io.disconnect()
-  }, [id, showOpen, visibilityResetRootRef])
+  }, [id, showOpen, visibilityResetRootRef, streamAttachKey])
 
   /** After closing lightbox, resume muted autoplay if still in view. */
   useEffect(() => {
@@ -368,7 +415,28 @@ export default function LoungePostStreamVideo({
             preload="auto"
             poster={poster}
             aria-hidden
+            onError={() => setShowStreamRetry(true)}
           />
+          {showStreamRetry ? (
+            <div
+              className="pointer-events-auto absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"
+              onClick={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              <span>Could not load video.</span>
+              <button
+                type="button"
+                className="touch-manipulation rounded-lg bg-cyan-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-cyan-500"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowStreamRetry(false)
+                  setStreamAttachKey((k) => k + 1)
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
           {showOpen ? (
             <div
               className="pointer-events-none absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/50 px-1.5 py-0.5 text-[11px] font-medium text-zinc-300/90"

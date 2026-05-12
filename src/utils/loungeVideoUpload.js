@@ -1,5 +1,8 @@
-/** Max length for Lounge video posts (matches Cloudflare direct_upload + product cap). */
+/** Max length for Lounge video posts (product cap; client validation). */
 export const LOUNGE_VIDEO_MAX_SECONDS = 60
+
+/** Cloudflare `maxDurationSeconds` is set slightly above the product cap so a clip that measures ~59s in an editor but ~60.1s in the browser/encoder is not rejected at the API. */
+export const LOUNGE_CF_STREAM_MAX_DURATION_SECONDS = 75
 
 /** Cloudflare Stream basic POST direct upload limit. */
 export const LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -90,6 +93,17 @@ async function messageFromEdgeFunctionResponseBody(res) {
   return raw.slice(0, 400)
 }
 
+/** Safari often surfaces failed `fetch` as "Load failed" with no HTTP body. */
+export function mapGenericNetworkErrorMessage(raw, fallback) {
+  const s = String(raw || '').trim()
+  if (/load failed|failed to fetch|networkerror|network request failed/i.test(s)) {
+    return (
+      'Connection was interrupted (common on cellular Safari or large uploads). Try Wi‑Fi, post again, or export a smaller MP4 (H.264 + AAC).'
+    )
+  }
+  return s || String(fallback || '').trim()
+}
+
 /**
  * When `functions.invoke` fails with HTTP 4xx/5xx, Supabase sets `error` to `FunctionsHttpError`
  * with message "Edge Function returned a non-2xx status code" — the JSON body from our Edge
@@ -140,10 +154,12 @@ async function messageFromFunctionsInvokeError(error, invokeResponse, opts = {})
 
   if (/** @type {{ name?: string }} */ (error).name === 'FunctionsFetchError' && ctx && typeof ctx === 'object') {
     const c = /** @type {{ message?: string }} */ (ctx)
-    if (typeof c.message === 'string' && c.message.trim()) return c.message.trim()
+    if (typeof c.message === 'string' && c.message.trim()) {
+      return mapGenericNetworkErrorMessage(c.message.trim(), fallback || defaultUserMessage)
+    }
   }
 
-  return fallback || defaultUserMessage
+  return mapGenericNetworkErrorMessage(fallback, defaultUserMessage)
 }
 
 /**
@@ -187,7 +203,7 @@ export async function requestCfStreamDirectUpload(supabaseClient) {
   return {
     uploadURL,
     uid,
-    maxDurationSeconds: Number(data.maxDurationSeconds) || LOUNGE_VIDEO_MAX_SECONDS,
+    maxDurationSeconds: Number(data.maxDurationSeconds) || LOUNGE_CF_STREAM_MAX_DURATION_SECONDS,
   }
 }
 
@@ -255,7 +271,7 @@ export async function deleteCfStreamForCommunityFeedPost(supabaseClient, postId)
  * Poll until HLS manifest is reachable (encoding finished).
  */
 export async function waitForCfStreamManifestReady(uid, options = {}) {
-  const timeoutMs = options.timeoutMs ?? 120_000
+  const timeoutMs = options.timeoutMs ?? 300_000
   const intervalMs = options.intervalMs ?? 1500
   const manifest = cfStreamManifestUrl(uid)
   if (!manifest) throw new Error('Missing video id.')
@@ -267,13 +283,17 @@ export async function waitForCfStreamManifestReady(uid, options = {}) {
       throw new Error('Video is still processing. Wait a bit and try posting again.')
     }
     try {
-      const res = await fetch(manifest, { method: 'GET', cache: 'no-store' })
+      const res = await fetch(manifest, {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'omit',
+      })
       if (res.ok) {
         const txt = await res.text()
         if (txt.includes('#EXTM3U')) return true
       }
     } catch {
-      // network hiccup — retry
+      // network hiccup — retry until timeout
     }
     await new Promise((r) => setTimeout(r, intervalMs))
   }

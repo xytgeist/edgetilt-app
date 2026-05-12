@@ -1,5 +1,5 @@
 /**
- * Mint a one-time Cloudflare Stream direct upload URL (max 60s). Caller must be authenticated.
+ * Mint a one-time Cloudflare Stream direct upload URL (product cap 60s; CF maxDurationSeconds has headroom for probe/encoder drift). Caller must be authenticated.
  *
  * Secrets (Supabase project → Edge Functions):
  *   CLOUDFLARE_ACCOUNT_ID
@@ -14,7 +14,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const MAX_DURATION_SECONDS = 60
+/** Slightly above 60 so clips that read as ~59s in an editor but measure just over 60s at upload are not rejected by Cloudflare. Client still enforces the 60s product cap. */
+const MAX_DURATION_SECONDS = 75
 
 /** Cloudflare Account IDs are 32 hex chars (same length as Zone IDs — use Account ID from the dashboard sidebar, not a zone). */
 const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i

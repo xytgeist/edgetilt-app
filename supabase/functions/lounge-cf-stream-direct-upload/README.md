@@ -35,7 +35,7 @@ supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucum
 
 ## Product limits (enforced in app + upload token)
 
-- **60 seconds** max duration (`maxDurationSeconds` on direct upload).
+- **60 seconds** max length in the app; direct upload tokens use **`maxDurationSeconds: 75`** so clips that measure slightly over 60s at the encoder are not rejected by Cloudflare while the product cap stays 60s.
 - **200 MB** max file size for the basic POST upload path (Cloudflare; see Stream direct upload docs).
 
 ## References

@@ -11,7 +11,6 @@ import {
   uploadProfileAvatar,
 } from '../profiles/profileGate'
 import {
-  communityFeedPostInsertPayload,
   communityFeedPlainRepostInsertPayload,
   communityFeedQuoteRepostInsertPayload,
   feedPostAuthorEditMediaSeed,
@@ -29,12 +28,7 @@ import {
 } from '../../utils/compressImageForUpload'
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
-  LOUNGE_VIDEO_MAX_SECONDS,
   deleteCfStreamForCommunityFeedPost,
-  probeVideoFileDurationSeconds,
-  requestCfStreamDirectUpload,
-  uploadVideoToCfStreamDirectUrl,
-  waitForCfStreamManifestReady,
 } from '../../utils/loungeVideoUpload'
 import {
   readLoungeProfileCache,
@@ -46,6 +40,7 @@ import {
   loungeProfileNeedsGate,
   writeProfileGateAck,
 } from './loungeStorage'
+import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob'
 import { composerStableInitialsFromUid, formatLoungePostDetailWhen } from './loungeFormat'
 import { renderRichCaption } from './loungeCaption'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
@@ -170,6 +165,13 @@ export default function SocialFeed({
   const [composerPinOnPost, setComposerPinOnPost] = useState(false)
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
+  /** Bottom bar while a lounge post is uploading in the background (`progress` 0–1). */
+  const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
+  const [loungePostUploadFailedOpen, setLoungePostUploadFailedOpen] = useState(false)
+  const loungePostSnapshotRef = useRef(null)
+  const loungePostAbortRef = useRef(null)
+  /** True while a background lounge post job may be in flight (guards double submit). */
+  const loungePostJobRunningRef = useRef(false)
   /** Non-empty while showing the “too many images” alert (composer + quote repost uploads). */
   const [loungeImageLimitDialog, setLoungeImageLimitDialog] = useState('')
   const [loungePinBusy, setLoungePinBusy] = useState(false)
@@ -2065,6 +2067,138 @@ export default function SocialFeed({
     pullRefreshing,
   ])
 
+  const clearComposerForPostAttempt = useCallback(() => {
+    setPostText('')
+    setComposerImageItems((prev) => {
+      for (const it of prev) {
+        try {
+          URL.revokeObjectURL(it.preview)
+        } catch {
+          // ignore
+        }
+      }
+      return []
+    })
+    setComposerVideoSlot((prev) => {
+      if (prev?.preview) {
+        try {
+          URL.revokeObjectURL(prev.preview)
+        } catch {
+          // ignore
+        }
+      }
+      return null
+    })
+    setComposerMediaUrl('')
+    setComposerPinOnPost(false)
+    composerFoldedFromFeedScrollRef.current = false
+    composerFoldRevealRef.current = 0
+    setComposerFoldReveal(0)
+    composerExpandedRef.current = false
+    setComposerExpanded(false)
+    clearLoungeComposerDraft()
+    try {
+      const el = composerMediaInputRef.current
+      if (el) el.value = ''
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const restoreComposerFromSnapshot = useCallback((snap) => {
+    if (!snap) return
+    setPostText(snap.caption)
+    setComposerMediaUrl(snap.gifOnlyUrl)
+    setComposerPinOnPost(Boolean(snap.wantsPin && snap.isStaffPoster))
+    const files = Array.isArray(snap.imageFiles) ? snap.imageFiles : []
+    setComposerImageItems(
+      files.map((file) => ({
+        id: newComposerImageId(),
+        file,
+        preview: URL.createObjectURL(file),
+      })),
+    )
+    if (snap.videoFile) {
+      const vf = snap.videoFile
+      setComposerVideoSlot({ file: vf, preview: URL.createObjectURL(vf) })
+    } else {
+      setComposerVideoSlot(null)
+    }
+    setComposerExpanded(true)
+    composerExpandedRef.current = true
+    composerFoldRevealRef.current = 1
+    setComposerFoldReveal(1)
+    composerFoldedFromFeedScrollRef.current = false
+  }, [])
+
+  const cancelLoungePostUpload = useCallback(() => {
+    try {
+      loungePostAbortRef.current?.abort()
+    } catch {
+      // ignore
+    }
+    loungePostAbortRef.current = null
+    loungePostJobRunningRef.current = false
+    setLoungePostUploadBar(null)
+    restoreComposerFromSnapshot(loungePostSnapshotRef.current)
+    loungePostSnapshotRef.current = null
+  }, [restoreComposerFromSnapshot])
+
+  const runBackgroundLoungePostSubmission = useCallback(
+    async (snapshot) => {
+      loungePostJobRunningRef.current = true
+      const ac = new AbortController()
+      loungePostAbortRef.current = ac
+      setLoungePostUploadBar({ progress: 0 })
+      try {
+        await executeLoungeCommunityPostSubmission({
+          supabaseClient,
+          snapshot,
+          signal: ac.signal,
+          onProgress: (p) => setLoungePostUploadBar({ progress: p }),
+          rateLimitMessage,
+        })
+        loungePostSnapshotRef.current = null
+        await loadCommunityFeed()
+      } catch (e) {
+        if (e?.name === 'AbortError') return
+        const msg = e instanceof Error ? e.message : ''
+        if (msg === LOUNGE_MAX_PINNED_ALERT && typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
+        setLoungePostUploadFailedOpen(true)
+      } finally {
+        setLoungePostUploadBar(null)
+        loungePostAbortRef.current = null
+        loungePostJobRunningRef.current = false
+      }
+    },
+    [loadCommunityFeed, rateLimitMessage, supabaseClient],
+  )
+
+  const retryLoungePostUpload = useCallback(() => {
+    const snap = loungePostSnapshotRef.current
+    setLoungePostUploadFailedOpen(false)
+    if (!snap) return
+    void runBackgroundLoungePostSubmission(snap)
+  }, [runBackgroundLoungePostSubmission])
+
+  const onLoungePostUploadSaveDraft = useCallback(() => {
+    const snap = loungePostSnapshotRef.current
+    if (snap) {
+      persistLoungeComposerDraft(snap.caption, false, false, snap.gifOnlyUrl)
+      setPostErr('Draft saved. Re-add photos or video if you had any.')
+    }
+    loungePostSnapshotRef.current = null
+    loungePostJobRunningRef.current = false
+    setLoungePostUploadFailedOpen(false)
+  }, [])
+
+  const onLoungePostUploadFailureCancel = useCallback(() => {
+    restoreComposerFromSnapshot(loungePostSnapshotRef.current)
+    loungePostSnapshotRef.current = null
+    loungePostJobRunningRef.current = false
+    setLoungePostUploadFailedOpen(false)
+  }, [restoreComposerFromSnapshot])
+
   const submitLoungePost = useCallback(async () => {
     const caption = postText.trim()
     setPostErr('')
@@ -2081,8 +2215,18 @@ export default function SocialFeed({
       setPostErr('Caption must be 280 characters or fewer.')
       return
     }
+    if (loungePostJobRunningRef.current) return
+
+    if (hasVideo && composerVideoSlot?.file) {
+      if (composerVideoSlot.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+        setPostErr('Video must be 200 MB or smaller for upload.')
+        return
+      }
+    }
 
     setPostBusy(true)
+    /** @type {{ caption: string, gifOnlyUrl: string, imageFiles: File[], videoFile: File | null, wantsPin: boolean, isStaffPoster: boolean } | null} */
+    let snapshot = null
     try {
       const {
         data: { session },
@@ -2106,7 +2250,7 @@ export default function SocialFeed({
         setProfileGateDisplayName(d || seed.displayName)
         setProfileGateAvatarFile(null)
         setProfileGateAvatarPreview(
-          ownProfile?.avatar_url || composerUserProfile?.avatar_url || ''
+          ownProfile?.avatar_url || composerUserProfile?.avatar_url || '',
         )
         setProfileGateErr('')
         setProfileGateOpen(true)
@@ -2126,167 +2270,34 @@ export default function SocialFeed({
         return
       }
 
-      let streamVideoUid = ''
-      if (hasVideo && composerVideoSlot?.file) {
-        const vf = composerVideoSlot.file
-        if (vf.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-          setPostErr('Video must be 200 MB or smaller for upload.')
-          return
-        }
-        try {
-          const dur = await probeVideoFileDurationSeconds(vf)
-          if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-            setPostErr(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
-            return
-          }
-        } catch (e) {
-          setPostErr(e instanceof Error ? e.message : 'Could not read this video file.')
-          return
-        }
-        try {
-          const { uploadURL, uid } = await requestCfStreamDirectUpload(supabaseClient)
-          await uploadVideoToCfStreamDirectUrl(uploadURL, vf)
-          await waitForCfStreamManifestReady(uid)
-          streamVideoUid = uid
-        } catch (e) {
-          setPostErr(e instanceof Error ? e.message : 'Video upload failed.')
-          return
-        }
+      snapshot = {
+        caption,
+        gifOnlyUrl,
+        imageFiles: composerImageItems.map((it) => it.file),
+        videoFile: hasVideo && composerVideoSlot?.file ? composerVideoSlot.file : null,
+        wantsPin: composerPinOnPost,
+        isStaffPoster,
       }
-
-      const uploadedUrls = []
-      for (const item of composerImageItems) {
-        const { file: ready, error: cErr } = await prepareLoungeFeedImageForUpload(item.file)
-        if (cErr) {
-          setPostErr(cErr.message)
-          return
-        }
-        const { data: upUrl, error: upErr } = await uploadLoungeFeedPostImage({
-          supabaseClient,
-          user: session.user,
-          file: ready,
-        })
-        if (upErr) {
-          setPostErr(upErr.message || 'Could not upload image.')
-          return
-        }
-        if (!upUrl) {
-          setPostErr('Could not upload image.')
-          return
-        }
-        uploadedUrls.push(upUrl)
-      }
-
-      let insertPayload
-      if (streamVideoUid) {
-        insertPayload = communityFeedPostInsertPayload({
-          caption,
-          gameTitle: 'Lounge',
-          gameSlug: null,
-          pinned: isStaffPoster && composerPinOnPost ? true : undefined,
-          streamVideoUid,
-        })
-      } else if (uploadedUrls.length > 0) {
-        insertPayload = communityFeedPostInsertPayload({
-          caption,
-          gameTitle: 'Lounge',
-          gameSlug: null,
-          pinned: isStaffPoster && composerPinOnPost ? true : undefined,
-          imageUrls: uploadedUrls,
-          gifUrl: gifOnlyUrl || undefined,
-        })
-      } else if (gifOnlyUrl) {
-        insertPayload = communityFeedPostInsertPayload({
-          caption,
-          gameTitle: 'Lounge',
-          gameSlug: null,
-          pinned: isStaffPoster && composerPinOnPost ? true : undefined,
-          mediaUrl: gifOnlyUrl,
-        })
-      } else {
-        insertPayload = communityFeedPostInsertPayload({
-          caption,
-          gameTitle: 'Lounge',
-          gameSlug: null,
-          pinned: isStaffPoster && composerPinOnPost ? true : undefined,
-        })
-      }
-
-      const { error } = await supabaseClient.from('community_feed_posts').insert(insertPayload)
-
-      if (error) {
-        const msg = String(error.message || '')
-        if (msg.toLowerCase().includes('rate limit exceeded')) {
-          setPostErr(rateLimitMessage(msg))
-          return
-        }
-        if (error.code === '42501') {
-          setPostErr('Posting is blocked by current permissions. Please sign in and try again.')
-          return
-        }
-        if (error.code === '42P01') {
-          setPostErr('Lounge feed table is not set up in this project yet.')
-          return
-        }
-        if (msg.includes('MAX_PINNED_POSTS')) {
-          if (typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
-          setPostErr(LOUNGE_MAX_PINNED_ALERT)
-          return
-        }
-        if (/media_url|gif_url|image_urls|stream_video_uid|schema cache/i.test(msg)) {
-          setPostErr(
-            'Media attachments need the latest DB scripts. Run supabase/lounge_feed_post_media.sql, supabase/lounge_feed_post_gif_url.sql, supabase/lounge_feed_post_image_urls.sql, and supabase/lounge_feed_post_stream_video.sql in Supabase.'
-          )
-          return
-        }
-        setPostErr(msg || 'Could not post right now.')
-        return
-      }
-
-      setPostText('')
-      setComposerImageItems((prev) => {
-        for (const it of prev) {
-          try {
-            URL.revokeObjectURL(it.preview)
-          } catch {
-            // ignore
-          }
-        }
-        return []
-      })
-      setComposerVideoSlot((prev) => {
-        if (prev?.preview) {
-          try {
-            URL.revokeObjectURL(prev.preview)
-          } catch {
-            // ignore
-          }
-        }
-        return null
-      })
-      setComposerMediaUrl('')
-      setComposerPinOnPost(false)
-      composerFoldedFromFeedScrollRef.current = false
-      composerFoldRevealRef.current = 0
-      setComposerFoldReveal(0)
-      composerExpandedRef.current = false
-      setComposerExpanded(false)
-      clearLoungeComposerDraft()
-      await loadCommunityFeed()
     } finally {
       setPostBusy(false)
     }
+
+    if (!snapshot) return
+
+    loungePostSnapshotRef.current = snapshot
+    clearComposerForPostAttempt()
+    void runBackgroundLoungePostSubmission(snapshot)
   }, [
+    clearComposerForPostAttempt,
     composerImageItems,
-    composerVideoSlot,
     composerMediaUrl,
     composerPinOnPost,
     composerUserProfile?.avatar_url,
     composerUserProfile?.role,
-    loadCommunityFeed,
+    composerVideoSlot,
     onRequireAuth,
     postText,
-    rateLimitMessage,
+    runBackgroundLoungePostSubmission,
     supabaseClient,
   ])
 
@@ -3059,6 +3070,8 @@ export default function SocialFeed({
                     onClick={() => void submitLoungePost()}
                     disabled={
                       postBusy ||
+                      !!loungePostUploadBar ||
+                      loungePostUploadFailedOpen ||
                       (!postText.trim() &&
                         !String(composerMediaUrl || '').trim() &&
                         composerImageItems.length === 0 &&
@@ -4800,6 +4813,77 @@ export default function SocialFeed({
                 className="flex-1 min-h-11 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-[15px] text-white font-semibold disabled:opacity-60"
               >
                 {profileGateBusy ? 'Saving…' : 'Save profile'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {loungePostUploadBar ? (
+        <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
+          <div className="mx-auto flex max-w-lg items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium text-zinc-200">Uploading post...</div>
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
+                  style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
+                  role="progressbar"
+                  aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => cancelLoungePostUpload()}
+              className="shrink-0 touch-manipulation rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-1.5 text-[14px] font-semibold text-zinc-100 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {loungePostUploadFailedOpen ? (
+        <div
+          className="fixed inset-0 z-[95] flex items-end justify-center bg-black/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lounge-upload-failed-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default touch-manipulation bg-transparent"
+            aria-label="Close"
+            onClick={() => onLoungePostUploadFailureCancel()}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md">
+            <h2 id="lounge-upload-failed-title" className="text-[17px] font-bold text-white">
+              Upload failed
+            </h2>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+              <button
+                type="button"
+                onClick={() => retryLoungePostUpload()}
+                className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-1"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => onLoungePostUploadSaveDraft()}
+                className="min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-2"
+              >
+                Save as draft
+              </button>
+              <button
+                type="button"
+                onClick={() => onLoungePostUploadFailureCancel()}
+                className="min-h-11 rounded-xl bg-zinc-800 px-4 text-[15px] font-semibold text-zinc-100 hover:bg-zinc-700 touch-manipulation sm:order-3"
+              >
+                Cancel
               </button>
             </div>
           </div>

@@ -215,15 +215,92 @@ export async function requestCfStreamDirectUpload(supabaseClient) {
 export async function uploadVideoToCfStreamDirectUrl(uploadURL, file) {
   const fd = new FormData()
   fd.append('file', file, file.name || 'video.mp4')
-  const res = await fetch(uploadURL, {
-    method: 'POST',
-    body: fd,
-  })
+  let res
+  try {
+    res = await fetch(uploadURL, {
+      method: 'POST',
+      body: fd,
+      credentials: 'omit',
+    })
+  } catch (e) {
+    throw new Error(
+      mapGenericNetworkErrorMessage(e instanceof Error ? e.message : String(e), 'Video upload failed.'),
+    )
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '')
     const hint = t ? ` ${t.slice(0, 200)}` : ''
     throw new Error(`Upload failed (${res.status}).${hint}`)
   }
+}
+
+/**
+ * Same as `uploadVideoToCfStreamDirectUrl` but reports upload byte progress (0–1) and honors `AbortSignal`.
+ * @param {string} uploadURL
+ * @param {File} file
+ * @param {{ signal?: AbortSignal, onProgress?: (ratio: number) => void }} [options]
+ */
+export function uploadVideoToCfStreamDirectUrlWithProgress(uploadURL, file, options = {}) {
+  const { signal, onProgress } = options
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const xhr = new XMLHttpRequest()
+    const detachAbort = () => {
+      if (!signal) return
+      try {
+        signal.removeEventListener('abort', onAbort)
+      } catch {
+        // ignore
+      }
+    }
+    const onAbort = () => {
+      try {
+        xhr.abort()
+      } catch {
+        // ignore
+      }
+    }
+    signal?.addEventListener('abort', onAbort)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && typeof onProgress === 'function') {
+        const r = e.total > 0 ? e.loaded / e.total : 0
+        onProgress(Math.max(0, Math.min(1, r)))
+      }
+    }
+    xhr.onload = () => {
+      detachAbort()
+      if (signal?.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'))
+        return
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve()
+        return
+      }
+      const hint = String(xhr.responseText || '').trim().slice(0, 200)
+      reject(new Error(`Upload failed (${xhr.status}).${hint ? ` ${hint}` : ''}`))
+    }
+    xhr.onerror = () => {
+      detachAbort()
+      reject(new Error('Video upload failed (network error).'))
+    }
+    xhr.onabort = () => {
+      detachAbort()
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    try {
+      xhr.open('POST', uploadURL)
+      const fd = new FormData()
+      fd.append('file', file, file.name || 'video.mp4')
+      xhr.send(fd)
+    } catch (e) {
+      detachAbort()
+      reject(e instanceof Error ? e : new Error(String(e)))
+    }
+  })
 }
 
 /**
@@ -267,34 +344,63 @@ export async function deleteCfStreamForCommunityFeedPost(supabaseClient, postId)
   }
 }
 
+function sleepWithAbort(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    let tid = 0
+    const onAbort = () => {
+      if (tid) clearTimeout(tid)
+      signal?.removeEventListener('abort', onAbort)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    signal?.addEventListener('abort', onAbort)
+    tid = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+  })
+}
+
 /**
  * Poll until HLS manifest is reachable (encoding finished).
+ * @param {string} uid
+ * @param {{ timeoutMs?: number, intervalMs?: number, signal?: AbortSignal, onPoll?: (args: { elapsed: number }) => void }} [options]
  */
 export async function waitForCfStreamManifestReady(uid, options = {}) {
   const timeoutMs = options.timeoutMs ?? 300_000
   const intervalMs = options.intervalMs ?? 1500
+  const signal = options.signal
   const manifest = cfStreamManifestUrl(uid)
   if (!manifest) throw new Error('Missing video id.')
   const start = typeof performance !== 'undefined' ? performance.now() : Date.now()
   while (true) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
     const elapsed =
       (typeof performance !== 'undefined' ? performance.now() : Date.now()) - start
     if (elapsed > timeoutMs) {
       throw new Error('Video is still processing. Wait a bit and try posting again.')
     }
+    options.onPoll?.({ elapsed })
     try {
       const res = await fetch(manifest, {
         method: 'GET',
         cache: 'no-store',
         credentials: 'omit',
+        signal,
       })
       if (res.ok) {
         const txt = await res.text()
         if (txt.includes('#EXTM3U')) return true
       }
-    } catch {
+    } catch (e) {
+      if (e && typeof e === 'object' && 'name' in e && /** @type {{ name?: string }} */ (e).name === 'AbortError') {
+        throw e
+      }
       // network hiccup — retry until timeout
     }
-    await new Promise((r) => setTimeout(r, intervalMs))
+    await sleepWithAbort(intervalMs, signal)
   }
 }

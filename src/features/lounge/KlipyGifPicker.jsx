@@ -127,7 +127,11 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
             <div className="mx-1 mb-2 rounded-xl border border-rose-500/40 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">{err}</div>
           ) : null}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {items.map((it) => (
+            {items.map((it) => {
+              const animatedPreview =
+                it.previewUrl && /\.(gif|webp)(\?|#|$)/i.test(it.previewUrl) ? it.previewUrl : ''
+              const gridSrc = animatedPreview || it.gifUrl || it.previewUrl
+              return (
               <button
                 key={it.id + it.gifUrl}
                 type="button"
@@ -138,7 +142,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
                 className="group relative aspect-square overflow-hidden rounded-xl border border-zinc-700/70 bg-zinc-900/60 touch-manipulation hover:border-cyan-600/50"
               >
                 <img
-                  src={it.previewUrl}
+                  src={gridSrc}
                   alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"
@@ -150,7 +154,8 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
                   </span>
                 ) : null}
               </button>
-            ))}
+              )
+            })}
           </div>
           {loading && items.length === 0 ? (
             <div className="py-10 text-center text-[15px] text-zinc-500">Loading…</div>

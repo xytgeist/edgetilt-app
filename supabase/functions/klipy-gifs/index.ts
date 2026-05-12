@@ -7,6 +7,9 @@ const corsHeaders = {
 
 type KlipyItemOut = { id: string; title: string; gifUrl: string; previewUrl: string }
 
+const GIF_OR_WEBP = /\.(gif|webp)(\?|#|$)/i
+const JPG_OR_PNG = /\.(jpe?g|png)(\?|#|$)/i
+
 function getNested(obj: unknown, path: string[]): unknown {
   let cur: unknown = obj
   for (const key of path) {
@@ -16,37 +19,130 @@ function getNested(obj: unknown, path: string[]): unknown {
   return cur
 }
 
+/** Klipy payloads vary: `file`, `files` as object or array, or URLs nested under unknown keys — scan for media URLs. */
+function collectUrlsMatching(root: unknown, re: RegExp, maxDepth: number, bucket: Set<string>) {
+  if (maxDepth < 0 || root == null) return
+  if (typeof root === 'string') {
+    const t = root.trim()
+    if (t.startsWith('http') && re.test(t)) bucket.add(t)
+    return
+  }
+  if (Array.isArray(root)) {
+    for (const x of root) collectUrlsMatching(x, re, maxDepth - 1, bucket)
+    return
+  }
+  if (typeof root === 'object') {
+    const o = root as Record<string, unknown>
+    for (const k of Object.keys(o)) {
+      collectUrlsMatching(o[k], re, maxDepth - 1, bucket)
+    }
+  }
+}
+
+function mediaRoots(item: Record<string, unknown>): unknown[] {
+  const out: unknown[] = []
+  if (item.file != null) out.push(item.file)
+  if (Array.isArray(item.files)) {
+    for (const x of item.files) out.push(x)
+  } else if (item.files != null) {
+    out.push(item.files)
+  }
+  if (item.media != null) out.push(item.media)
+  if (out.length === 0) out.push(item)
+  return out
+}
+
+/** Higher = better for full-size insert (prefer HD / original GIF). */
+function scoreInsertUrl(u: string): number {
+  const L = u.toLowerCase()
+  let s = 0
+  if (/\.gif(\?|#|$)/i.test(u)) s += 40
+  if (/\.webp(\?|#|$)/i.test(u)) s += 25
+  if (/\b(hd|original|source|full)\b/i.test(L)) s += 50
+  if (/\b(md|lg)\b/i.test(L)) s += 20
+  if (/\b(sm)\b/i.test(L)) s += 10
+  if (/\b(xs)\b/i.test(L)) s += 5
+  return s + Math.min(30, Math.floor(u.length / 80))
+}
+
+/** Higher = better for grid cell (prefer small animated asset over HD). */
+function scorePreviewUrl(u: string): number {
+  const L = u.toLowerCase()
+  let s = 0
+  if (/\.gif(\?|#|$)/i.test(u)) s += 45
+  if (/\.webp(\?|#|$)/i.test(u)) s += 40
+  if (/\bxs\b|\/xs[./_-]|[._-]xs[._-]/i.test(L)) s += 35
+  if (/\bsm\b|\/sm[./_-]|[._-]sm[._-]/i.test(L)) s += 28
+  if (/\bmd\b|\/md[./_-]|[._-]md[._-]/i.test(L)) s += 18
+  if (/\b(hd|original|source|full)\b/i.test(L)) s -= 25
+  return s
+}
+
+function scorePreviewStill(u: string): number {
+  const L = u.toLowerCase()
+  let s = 0
+  if (/\bxs\b|\/xs[./_-]|[._-]xs[._-]/i.test(L)) s += 20
+  if (/\bsm\b|\/sm[./_-]/i.test(L)) s += 15
+  if (/\bmd\b|\/md[./_-]/i.test(L)) s += 10
+  return s
+}
+
+function bestByScore(urls: string[], score: (u: string) => number): string {
+  if (urls.length === 0) return ''
+  return urls.reduce((a, b) => (score(a) >= score(b) ? a : b))
+}
+
 function pickFromItem(item: Record<string, unknown>): KlipyItemOut | null {
+  const animated = new Set<string>()
+  const stills = new Set<string>()
+  for (const root of mediaRoots(item)) {
+    collectUrlsMatching(root, GIF_OR_WEBP, 16, animated)
+    collectUrlsMatching(root, JPG_OR_PNG, 16, stills)
+  }
+
+  // Legacy nested shape (hd.gif.url etc.)
   const bag = (item.file ?? item.files) as Record<string, unknown> | undefined
-  if (!bag || typeof bag !== 'object') return null
+  if (bag && typeof bag === 'object' && !Array.isArray(bag)) {
+    const legacyGif = String(
+      getNested(bag, ['hd', 'gif', 'url']) ??
+        getNested(bag, ['gif', 'gif', 'url']) ??
+        getNested(bag, ['original', 'gif', 'url']) ??
+        getNested(bag, ['gif', 'url']) ??
+        '',
+    ).trim()
+    if (legacyGif) animated.add(legacyGif)
+    for (const path of [
+      ['xs', 'gif', 'url'],
+      ['sm', 'gif', 'url'],
+      ['md', 'gif', 'url'],
+      ['xs', 'webp', 'url'],
+      ['sm', 'webp', 'url'],
+    ] as const) {
+      const u = String(getNested(bag, [...path]) ?? '').trim()
+      if (u) animated.add(u)
+    }
+    for (const path of [
+      ['xs', 'jpg', 'url'],
+      ['sm', 'jpg', 'url'],
+      ['md', 'jpg', 'url'],
+    ] as const) {
+      const u = String(getNested(bag, [...path]) ?? '').trim()
+      if (u) stills.add(u)
+    }
+  }
 
-  const gifUrl = String(
-    getNested(bag, ['hd', 'gif', 'url']) ??
-      getNested(bag, ['gif', 'gif', 'url']) ??
-      getNested(bag, ['original', 'gif', 'url']) ??
-      getNested(bag, ['gif', 'url']) ??
-      '',
-  ).trim()
+  const gifs = [...animated]
+  const jpgs = [...stills]
 
-  /** Prefer small animated GIFs for the picker grid (Klipy often exposes sm/md/xs gif URLs). */
-  const previewGif = String(
-    getNested(bag, ['xs', 'gif', 'url']) ??
-      getNested(bag, ['sm', 'gif', 'url']) ??
-      getNested(bag, ['md', 'gif', 'url']) ??
-      '',
-  ).trim()
-
-  const previewJpg = String(
-    getNested(bag, ['md', 'jpg', 'url']) ??
-      getNested(bag, ['sm', 'jpg', 'url']) ??
-      getNested(bag, ['xs', 'jpg', 'url']) ??
-      '',
-  ).trim()
-
-  // Grid preview: small animated GIF when Klipy provides it; else full GIF (still animates); JPG only as last resort.
-  const previewUrl = (previewGif || gifUrl || previewJpg).trim()
-
+  const gifUrl = bestByScore(gifs, scoreInsertUrl)
   if (!gifUrl) return null
+
+  const previewAnimated = bestByScore(gifs, scorePreviewUrl)
+  const previewStill = bestByScore(jpgs, scorePreviewStill)
+  // Prefer a smaller animated URL for the grid; only fall back to JPEG if Klipy gave no separate smaller GIF/WebP.
+  const previewUrl = (previewAnimated && previewAnimated !== gifUrl ? previewAnimated : '') ||
+    gifUrl ||
+    previewStill
 
   const id = String(item.slug ?? item.id ?? item.uuid ?? Math.random().toString(36).slice(2)).slice(0, 200)
   const title = String(item.title ?? item.content_description ?? '').trim().slice(0, 240)

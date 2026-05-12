@@ -160,6 +160,8 @@ export default function SocialFeed({
   /** Maps original post id → this user's quote-repost row id (for remove). */
   const quoteRepostChildIdRef = useRef({})
   const [repostManageModal, setRepostManageModal] = useState(null)
+  /** Lift the feed `<article>` while Repost/Quote dropdown is open so the next row does not paint over the menu. */
+  const [feedRepostMenuLiftPostId, setFeedRepostMenuLiftPostId] = useState(null)
   const [composerDiscardPromptOpen, setComposerDiscardPromptOpen] = useState(false)
   const [loungeDetailRepostMenuOpen, setLoungeDetailRepostMenuOpen] = useState(false)
   const loungeDetailRepostMenuRef = useRef(null)
@@ -2979,7 +2981,9 @@ export default function SocialFeed({
               <article
                 key={post.id}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
-                className="border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
+                className={`border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent] ${
+                  feedRepostMenuLiftPostId === post.id ? 'relative z-[25] isolate' : ''
+                }`}
                 onClick={(e) => {
                   const t = e.target
                   if (!(t instanceof Element)) return
@@ -2997,6 +3001,7 @@ export default function SocialFeed({
                   loungeReadOnly={loungeReadOnly}
                   interactionStateFor={interactionStateFor}
                   toggleInteraction={toggleInteraction}
+                  onRepostDropdownOpenChange={(open) => setFeedRepostMenuLiftPostId(open ? post.id : null)}
                   onPlainRepost={handlePlainRepost}
                   onRepostManage={handleRepostManage}
                   onQuoteRepost={openQuoteRepostComposer}

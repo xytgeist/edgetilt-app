@@ -50,6 +50,8 @@ export default function LoungePostArticle({
   busyDeletingPostId,
   /** Moderator/admin: delete another user's post from the row menu. */
   onStaffPostDelete,
+  /** When the Repost/Quote dropdown opens or closes; parent lifts the feed row so the menu is not covered by the next card. */
+  onRepostDropdownOpenChange,
 }) {
   const ui = interactionStateFor(post.id)
   const [repostMenuOpen, setRepostMenuOpen] = useState(false)
@@ -92,6 +94,13 @@ export default function LoungePostArticle({
       document.removeEventListener('touchstart', close)
     }
   }, [repostMenuOpen])
+
+  useEffect(() => {
+    onRepostDropdownOpenChange?.(repostMenuOpen)
+    return () => {
+      if (repostMenuOpen) onRepostDropdownOpenChange?.(false)
+    }
+  }, [repostMenuOpen, onRepostDropdownOpenChange])
 
   const onAvatar = (e) => {
     e.stopPropagation()

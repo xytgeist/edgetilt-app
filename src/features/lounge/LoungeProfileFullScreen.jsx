@@ -43,6 +43,8 @@ export default function LoungeProfileFullScreen({
   const [isFollowing, setIsFollowing] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [profileFollowsViewer, setProfileFollowsViewer] = useState(false)
+  /** Lift profile post row while Repost/Quote dropdown is open (same stacking issue as main feed). */
+  const [profileRepostMenuLiftPostId, setProfileRepostMenuLiftPostId] = useState(null)
   const [socialBusy, setSocialBusy] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
   const [displayNameDraft, setDisplayNameDraft] = useState('')
@@ -782,7 +784,9 @@ export default function LoungeProfileFullScreen({
                     <article
                       key={post.id}
                       style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
-                      className="border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
+                      className={`border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent] ${
+                        profileRepostMenuLiftPostId === post.id ? 'relative z-[25] isolate' : ''
+                      }`}
                       onClick={(e) => {
                         const t = e.target
                         if (!(t instanceof Element)) return
@@ -800,6 +804,7 @@ export default function LoungeProfileFullScreen({
                         suppressAvatarProfileNavigation
                         profileOwnerUserId={profileUserId}
                         {...postCardProps}
+                        onRepostDropdownOpenChange={(open) => setProfileRepostMenuLiftPostId(open ? post.id : null)}
                       />
                     </article>
                   ))

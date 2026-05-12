@@ -112,9 +112,10 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - Production replay: `production-rollout-checklist.md` §4
 
 - [ ] `lounge-cf-stream-direct-upload` (Lounge **Cloudflare Stream** direct-upload mint) deployed with secrets on **test** (and production when promoted)
+- [ ] `lounge-cf-stream-delete-video` (delete Stream asset when a video post is deleted) deployed on the **same** project (reuses `CLOUDFLARE_*` secrets)
   - **SQL:** `supabase/lounge_feed_post_stream_video.sql` → column **`stream_video_uid`** on `community_feed_posts`.
   - **Secrets (names only):** `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN` (Stream Write/Edit token).
-  - **Source:** `supabase/functions/lounge-cf-stream-direct-upload/`, `src/utils/loungeVideoUpload.js`, `LoungePostStreamVideo.jsx`, `SocialFeed.jsx`, feed selects in `AppShell.jsx`.
+  - **Source:** `supabase/functions/lounge-cf-stream-direct-upload/`, `supabase/functions/lounge-cf-stream-delete-video/`, `src/utils/loungeVideoUpload.js`, `LoungePostStreamVideo.jsx`, `SocialFeed.jsx`, feed selects in `AppShell.jsx`. Optional SQL **`supabase/lounge_feed_posts_delete_moderator_align.sql`** if moderators staff-delete others’ posts.
   - Production replay: `production-rollout-checklist.md` §2 + §4 + smoke §5 (video line).
 
 - [ ] Function-by-function smoke notes captured  
@@ -207,6 +208,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-09: **Stream delete when video post removed:** Edge **`lounge-cf-stream-delete-video`** (auth + `stream_video_uid` lookup + Cloudflare DELETE); **`deleteCfStreamForCommunityFeedPost`** in **`loungeVideoUpload.js`**; **`SocialFeed.jsx`** calls it before every **`community_feed_posts`** delete when the row has a Stream uid. **`supabase/lounge_feed_posts_delete_moderator_align.sql`** + **`feed_phase_a_profiles_public_read.sql`** moderator delete policy aligned with staff UI. Docs: **`AGENTS.md`**, **`README.md`**, **`docs/production-rollout-checklist.md`**, **`docs/frontend-architecture.md`**, this backlog Edge row + source line.
 - 2026-05-09: **Lounge video (Cloudflare Stream):** `community_feed_posts.stream_video_uid` + Edge **`lounge-cf-stream-direct-upload`** + `loungeVideoUpload.js` / **`LoungePostStreamVideo.jsx`** / **`SocialFeed.jsx`** composer + post flow; **`hls.js`** lazy-loaded for HLS on non-Safari; feed **`stream_video_uid`** in **`AppShell.jsx`**. Continuity: **`AGENTS.md`**, **`WAKEUP`**, **`docs/social-feed-roadmap.md`** (D2), **`docs/frontend-architecture.md`**, **`docs/production-rollout-checklist.md`** (§2/§4/§5), **`docs/test-buildout-backlog.md`** (Edge list, FE row, smoke 11), **`supabase/functions/lounge-cf-stream-direct-upload/README.md`**. Branch **`test`** (commit `c8187dd`).
 - 2026-05-12: **Profile avatar crop modal** (`ProfileAvatarCropModal.jsx`): after picking a photo in **own profile edit**, circular preview with **drag pan**, **wheel / pinch zoom**, **±90° rotate**, **Reset**, **Apply** → WebP crop then existing `prepareAvatarImageForUpload` + upload path in `LoungeProfileFullScreen.jsx`.
 - 2026-05-12: **Lounge carousel + quote UI:** feed/detail carousels reset to slide 1 via **`visibilityResetRootRef`** + `IntersectionObserver`, plus **scroll/resize** geometry on the feed (and detail) root so **newly loaded posts** reliably detect leave/re-enter; quote repost compose mirrors **main composer** (`min-h-[6.5rem]` stack, textarea `min-h-[2.75rem]`, toolbar `mt-1` under caption); remove-quote bottom sheet **more bottom padding**. Files: `LoungePostFeedMedia.jsx`, `SocialFeed.jsx`. Prior `3578e6c` note + smoke steps 7/10 updated in this doc.

@@ -97,13 +97,22 @@ async function messageFromEdgeFunctionResponseBody(res) {
  * JSON with a non-JSON Content-Type; use `clone().text()` + parse so we still surface the message.
  * @param {unknown} error
  * @param {Response | undefined} invokeResponse same object as `error.context` when present; kept for clarity
+ * @param {{ functionName?: string, defaultUserMessage?: string }} [opts]
  * @returns {Promise<string>}
  */
-async function messageFromFunctionsInvokeError(error, invokeResponse) {
+async function messageFromFunctionsInvokeError(error, invokeResponse, opts = {}) {
+  const functionName =
+    typeof opts.functionName === 'string' && opts.functionName.trim()
+      ? opts.functionName.trim()
+      : 'lounge-cf-stream-direct-upload'
+  const defaultUserMessage =
+    typeof opts.defaultUserMessage === 'string' && opts.defaultUserMessage.trim()
+      ? opts.defaultUserMessage.trim()
+      : 'Could not start video upload.'
   const fallback = String(
-    (error && typeof error === 'object' && 'message' in error && error.message) || 'Could not start video upload.',
+    (error && typeof error === 'object' && 'message' in error && error.message) || defaultUserMessage,
   ).trim()
-  if (!error || typeof error !== 'object') return fallback || 'Could not start video upload.'
+  if (!error || typeof error !== 'object') return fallback || defaultUserMessage
 
   const ctx = /** @type {{ context?: unknown; name?: string }} */ (error).context
   const res =
@@ -118,15 +127,15 @@ async function messageFromFunctionsInvokeError(error, invokeResponse) {
     if (fromBody) return fromBody
     const status = typeof res.status === 'number' ? res.status : 0
     if (status === 404) {
-      return 'Video upload service is not deployed. Deploy Edge Function `lounge-cf-stream-direct-upload` on this Supabase project.'
+      return `That service is not deployed. Deploy Edge Function \`${functionName}\` on this Supabase project.`
     }
     if (status === 401) {
-      return 'Sign in again, then retry the video post (session expired or not sent to upload service).'
+      return 'Sign in again, then retry (session expired or not sent to the service).'
     }
     if (status === 503) {
-      return 'Video uploads are not configured or unavailable (set Edge secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_STREAM_API_TOKEN`, then redeploy `lounge-cf-stream-direct-upload`).'
+      return `Cloudflare Stream is not configured on the server (set Edge secrets \`CLOUDFLARE_ACCOUNT_ID\` and \`CLOUDFLARE_STREAM_API_TOKEN\`, then deploy \`${functionName}\`).`
     }
-    return fallback || `Video upload service returned HTTP ${status || 'error'}.`
+    return fallback || `Service returned HTTP ${status || 'error'}.`
   }
 
   if (/** @type {{ name?: string }} */ (error).name === 'FunctionsFetchError' && ctx && typeof ctx === 'object') {
@@ -134,7 +143,7 @@ async function messageFromFunctionsInvokeError(error, invokeResponse) {
     if (typeof c.message === 'string' && c.message.trim()) return c.message.trim()
   }
 
-  return fallback || 'Could not start video upload.'
+  return fallback || defaultUserMessage
 }
 
 /**
@@ -157,7 +166,10 @@ export async function requestCfStreamDirectUpload(supabaseClient) {
     },
   )
   if (error) {
-    const msg = await messageFromFunctionsInvokeError(error, invokeResponse)
+    const msg = await messageFromFunctionsInvokeError(error, invokeResponse, {
+      functionName: 'lounge-cf-stream-direct-upload',
+      defaultUserMessage: 'Could not start video upload.',
+    })
     throw new Error(msg)
   }
   if (!data || typeof data !== 'object') {
@@ -195,6 +207,47 @@ export async function uploadVideoToCfStreamDirectUrl(uploadURL, file) {
     const t = await res.text().catch(() => '')
     const hint = t ? ` ${t.slice(0, 200)}` : ''
     throw new Error(`Upload failed (${res.status}).${hint}`)
+  }
+}
+
+/**
+ * Deletes the Cloudflare Stream asset for a feed post (author or staff). Server resolves `stream_video_uid`.
+ * Call **before** deleting the `community_feed_posts` row. No-op when the post has no Stream uid.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} postId
+ */
+export async function deleteCfStreamForCommunityFeedPost(supabaseClient, postId) {
+  const id = String(postId || '').trim()
+  if (!id) return
+
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession()
+  if (!session?.access_token) {
+    throw new Error('You must be signed in to delete.')
+  }
+
+  const { data, error, response: invokeResponse } = await supabaseClient.functions.invoke(
+    'lounge-cf-stream-delete-video',
+    {
+      body: { postId: id },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    },
+  )
+  if (error) {
+    const msg = await messageFromFunctionsInvokeError(error, invokeResponse, {
+      functionName: 'lounge-cf-stream-delete-video',
+      defaultUserMessage: 'Could not remove hosted video.',
+    })
+    throw new Error(msg)
+  }
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid response from video cleanup service.')
+  }
+  const errMsg = data.error != null ? String(data.error).trim() : ''
+  if (errMsg) {
+    throw new Error(errMsg)
   }
 }
 

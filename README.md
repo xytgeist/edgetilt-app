@@ -44,7 +44,7 @@ Other scripts:
 
 Run schema-related SQL when you add or change tables/columns/policies—not on every content edit. Examples:
 
-- `supabase/lounge_feed_post_stream_video.sql` — adds **`community_feed_posts.stream_video_uid`** for **Lounge video** (Cloudflare Stream). Pair with deploying Edge **`lounge-cf-stream-direct-upload`** and Supabase secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** (see **`supabase/functions/lounge-cf-stream-direct-upload/README.md`**).
+- `supabase/lounge_feed_post_stream_video.sql` — adds **`community_feed_posts.stream_video_uid`** for **Lounge video** (Cloudflare Stream). Pair with deploying Edge **`lounge-cf-stream-direct-upload`** and **`lounge-cf-stream-delete-video`** and Supabase secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** (see **`supabase/functions/lounge-cf-stream-direct-upload/README.md`**). If moderators staff-delete others’ posts, apply **`supabase/lounge_feed_posts_delete_moderator_align.sql`** (or use the updated block in **`feed_phase_a_profiles_public_read.sql`** on fresh installs).
 - `supabase/guides_machine_card_fields.sql` — adds optional columns if missing (safe to re-run): **`machines`**: `volatility_index`, `popularity_summary`, **`release_year`** (year only); **`guides`**: **`card_ev_threshold`** (+EV threshold line on AP guide cards; renames legacy **`card_gist`** when present). The app falls back gracefully if older DBs omit some optional columns until you run this script.
 
 Treat other files in `supabase/` the same way: run them when the file’s purpose matches what your database still needs (new tables, RLS, seeds).

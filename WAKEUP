@@ -16,6 +16,9 @@ Use after a restart or any new chat when you want a cold start pointed the right
 
 **Optional add-ons** (delete if not needed)
 
-- **Lounge video (Cloudflare Stream):** run **`supabase/lounge_feed_post_stream_video.sql`** on the Supabase project; deploy **`lounge-cf-stream-direct-upload`**; set Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** and **`CLOUDFLARE_STREAM_API_TOKEN`** (details: **`supabase/functions/lounge-cf-stream-direct-upload/README.md`** + **`AGENTS.md`** quick anchors).
+- **Lounge video (Cloudflare Stream):** run **`supabase/lounge_feed_post_stream_video.sql`** on the Supabase project; set Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** and **`CLOUDFLARE_STREAM_API_TOKEN`**; deploy to **test** with  
+  `supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucumuoswnbauxry` and  
+  `supabase functions deploy lounge-cf-stream-delete-video --project-ref jtjgtucumuoswnbauxry`  
+  (details: **`supabase/functions/lounge-cf-stream-direct-upload/README.md`**, **`lounge-cf-stream-delete-video/README.md`**, **`AGENTS.md`**). If moderators staff-delete others’ posts, run **`supabase/lounge_feed_posts_delete_moderator_align.sql`** when the DB still has admin-only moderator delete.
 - No prod writes / no commits / PR only: _[say which]_
 - Context: _[link, path, or "decision already in backlog §…"]_

@@ -4,7 +4,9 @@
 -- Edge Function `lounge-cf-stream-direct-upload` (deploy + secrets):
 --   supabase secrets set CLOUDFLARE_ACCOUNT_ID=...
 --   supabase secrets set CLOUDFLARE_STREAM_API_TOKEN=...   # Stream:Edit
---   supabase functions deploy lounge-cf-stream-direct-upload
+--   supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucumuoswnbauxry
+-- Edge `lounge-cf-stream-delete-video` (same secrets; test ref):
+--   supabase functions deploy lounge-cf-stream-delete-video --project-ref jtjgtucumuoswnbauxry
 
 alter table public.community_feed_posts
   add column if not exists stream_video_uid text;

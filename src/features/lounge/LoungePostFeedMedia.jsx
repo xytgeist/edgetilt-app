@@ -259,7 +259,15 @@ export function LoungePostFeedImagesAndGif({
 }) {
   const streamUid = feedPostStreamVideoUid(post)
   if (streamUid) {
-    return <LoungePostStreamVideo uid={streamUid} variant={variant} firstMarginTopClass={firstMarginTopClass} />
+    return (
+      <LoungePostStreamVideo
+        uid={streamUid}
+        variant={variant}
+        firstMarginTopClass={firstMarginTopClass}
+        enableLightbox={enableLightbox}
+        visibilityResetRootRef={visibilityResetRootRef}
+      />
+    )
   }
   const imgs = feedPostImageUrls(post)
   const gif = String(post?.gif_url || '').trim()

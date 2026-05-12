@@ -122,8 +122,8 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 ### D2. Video (1 per post, max **60s** on Lounge)
 
-- **Shipped (test):** **Cloudflare Stream** — Edge Function **`lounge-cf-stream-direct-upload`** mints one-time upload URLs (`maxDurationSeconds: 60`); client **`src/utils/loungeVideoUpload.js`** uploads and polls HLS manifest until ready; DB **`community_feed_posts.stream_video_uid`** (`supabase/lounge_feed_post_stream_video.sql`). Playback **`LoungePostStreamVideo.jsx`** (native HLS where supported, else lazy **`hls.js`**). Video bytes **not** in Supabase Storage. **Basic POST** path: files **≤ 200 MB** (Cloudflare limit for that method).
-- **Edge secrets (names only):** `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN` (Stream **Write** or **Edit**). See **`supabase/functions/lounge-cf-stream-direct-upload/README.md`**.
+- **Shipped (test):** **Cloudflare Stream** — Edge **`lounge-cf-stream-direct-upload`** mints one-time upload URLs (`maxDurationSeconds: 60`); Edge **`lounge-cf-stream-delete-video`** deletes the Stream asset when the feed post is removed (client calls it before row delete); client **`src/utils/loungeVideoUpload.js`** uploads and polls HLS manifest until ready; DB **`community_feed_posts.stream_video_uid`** (`supabase/lounge_feed_post_stream_video.sql`). Playback **`LoungePostStreamVideo.jsx`** (native HLS where supported, else lazy **`hls.js`**). Video bytes **not** in Supabase Storage. **Basic POST** path: files **≤ 200 MB** (Cloudflare limit for that method).
+- **Edge secrets (names only):** `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN` (Stream **Write** or **Edit**). See **`supabase/functions/lounge-cf-stream-direct-upload/README.md`** and **`supabase/functions/lounge-cf-stream-delete-video/README.md`**.
 - **Alternatives** (not implemented): Mux, Bunny Stream.
 
 ### Deliverable

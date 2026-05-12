@@ -1,0 +1,190 @@
+/**
+ * Deletes a Cloudflare Stream asset for a Lounge feed post when the caller is allowed to delete that post
+ * (author, moderator, or admin). Looks up `stream_video_uid` server-side — clients must not send the uid.
+ *
+ * Secrets: same as `lounge-cf-stream-direct-upload` — CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_STREAM_API_TOKEN (Stream:Edit).
+ *
+ * @see https://developers.cloudflare.com/api/resources/stream/methods/delete/
+ */
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  try {
+    const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
+    const apiToken = Deno.env.get('CLOUDFLARE_STREAM_API_TOKEN')?.trim()
+    if (!accountId || !apiToken) {
+      return new Response(
+        JSON.stringify({
+          error: 'Video cleanup is not configured (missing Cloudflare Stream credentials on the server).',
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+    if (!CLOUDFLARE_ACCOUNT_ID_RE.test(accountId)) {
+      return new Response(JSON.stringify({ error: 'Invalid CLOUDFLARE_ACCOUNT_ID format on the server.' }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    }
+
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.toLowerCase().startsWith('bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization bearer token.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    let postId = ''
+    try {
+      const body = (await req.json()) as { postId?: string }
+      postId = typeof body?.postId === 'string' ? body.postId.trim() : ''
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!postId) {
+      return new Response(JSON.stringify({ error: 'Missing postId.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const jwt = authHeader.replace(/^Bearer\s+/i, '').trim()
+    const admin = createClient(supabaseUrl, serviceRoleKey)
+    const {
+      data: { user },
+      error: userErr,
+    } = await admin.auth.getUser(jwt)
+    if (userErr || !user?.id) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired session.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { data: row, error: postErr } = await admin
+      .from('community_feed_posts')
+      .select('id,user_id,stream_video_uid')
+      .eq('id', postId)
+      .maybeSingle()
+
+    if (postErr) {
+      return new Response(JSON.stringify({ error: postErr.message || 'Could not load post.' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!row?.id) {
+      return new Response(JSON.stringify({ error: 'Post not found.' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const uid = String(row.stream_video_uid ?? '').trim()
+    if (!uid) {
+      return new Response(JSON.stringify({ ok: true, skipped: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const authorOk = row.user_id === user.id
+    let staffOk = false
+    if (!authorOk) {
+      const { data: prof } = await admin.from('profiles').select('role').eq('user_id', user.id).maybeSingle()
+      const role = prof?.role
+      staffOk = role === 'moderator' || role === 'admin'
+    }
+    if (!authorOk && !staffOk) {
+      return new Response(JSON.stringify({ error: 'You do not have permission to remove this video.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${encodeURIComponent(uid)}`
+    const cfRes = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${apiToken}` },
+    })
+
+    if (cfRes.status === 404) {
+      return new Response(JSON.stringify({ ok: true, notFound: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const ct = (cfRes.headers.get('Content-Type') || '').toLowerCase()
+    let cfJson: { success?: boolean; errors?: Array<{ message?: string }> } = {}
+    try {
+      if (ct.includes('application/json')) {
+        cfJson = (await cfRes.json()) as typeof cfJson
+      } else {
+        const raw = await cfRes.text()
+        if (cfRes.ok) {
+          return new Response(JSON.stringify({ ok: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        return new Response(
+          JSON.stringify({
+            error: `Cloudflare returned non-JSON (${cfRes.status}): ${raw.slice(0, 240)}`,
+          }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+    } catch {
+      return new Response(JSON.stringify({ error: 'Could not read Cloudflare response.' }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!cfRes.ok || cfJson?.success === false) {
+      const msg =
+        cfJson?.errors?.map((e) => e.message).filter(Boolean).join('; ') ||
+        `Cloudflare Stream delete failed (${cfRes.status})`
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return new Response(JSON.stringify({ error: msg || 'Server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})

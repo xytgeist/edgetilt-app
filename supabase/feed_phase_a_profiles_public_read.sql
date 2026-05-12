@@ -361,7 +361,7 @@ create policy community_feed_posts_delete_moderator on public.community_feed_pos
       select 1
       from public.profiles p
       where p.user_id = auth.uid()
-        and p.role = 'admin'
+        and p.role in ('moderator', 'admin')
     )
   );
 

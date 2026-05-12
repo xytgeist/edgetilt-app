@@ -16,6 +16,26 @@ const corsHeaders = {
 
 const MAX_DURATION_SECONDS = 60
 
+/** Cloudflare Account IDs are 32 hex chars (same length as Zone IDs — use Account ID from the dashboard sidebar, not a zone). */
+const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i
+
+function cloudflareAccountHint(): string {
+  return (
+    ' In Supabase Edge secrets, set CLOUDFLARE_ACCOUNT_ID to your Cloudflare Account ID: ' +
+    'dash.cloudflare.com → pick the account → copy Account ID from the right-hand sidebar (or Workers & Pages overview). ' +
+    'It must be 32 hexadecimal characters with no dashes or underscores. Do not use a Zone ID, API Token, or Stream video UID.'
+  )
+}
+
+/** Stream storage is prepaid; zero purchased minutes means uploads fail even with an empty video list. */
+function cloudflareStreamStorageHint(): string {
+  return (
+    ' Cloudflare Stream bills stored minutes as prepaid blocks (developers.cloudflare.com/stream/pricing). ' +
+    'If purchased or allocated storage is zero, uploads are rejected until you add storage in the dashboard ' +
+    '(Stream or Billing). Direct upload links also temporarily reserve up to maxDurationSeconds until the upload finishes or the link expires.'
+  )
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -35,6 +55,15 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'Video uploads are not configured (missing Cloudflare Stream credentials on the server).',
+        }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    if (!CLOUDFLARE_ACCOUNT_ID_RE.test(accountId)) {
+      return new Response(
+        JSON.stringify({
+          error: `CLOUDFLARE_ACCOUNT_ID is not a valid Cloudflare Account ID (expected 32 hex characters).${cloudflareAccountHint()}`,
         }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
@@ -106,9 +135,15 @@ Deno.serve(async (req) => {
     }
 
     if (!cfRes.ok || !cfJson?.success || !cfJson.result?.uploadURL || !cfJson.result?.uid) {
-      const msg =
+      let msg =
         cfJson?.errors?.map((e) => e.message).filter(Boolean).join('; ') ||
         `Cloudflare Stream error (${cfRes.status})`
+      if (/could not route|object identifier is invalid|invalid account/i.test(msg)) {
+        msg += cloudflareAccountHint()
+      }
+      if (/storage capacity|storage quota|allocated storage|exceeded your.*storage|purchase more minutes/i.test(msg)) {
+        msg += cloudflareStreamStorageHint()
+      }
       return new Response(JSON.stringify({ error: msg }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,22 +1,42 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
 
-const boxByVariant = {
-  feed: 'max-h-64 w-full overflow-hidden rounded-xl border border-zinc-700/80 bg-black sm:max-h-72',
-  detail: 'max-h-[min(70vh,520px)] w-full overflow-hidden rounded-xl border border-zinc-700/80 bg-black',
-  embed: 'max-h-52 w-full overflow-hidden rounded-lg border border-zinc-700/80 bg-black sm:max-h-56',
-  composer: 'max-h-52 w-full overflow-hidden rounded-xl border border-zinc-700/80 bg-black',
+/** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; frame hugs aspect). */
+const videoClassByVariant = {
+  feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
+  detail: 'block max-h-[min(70vh,520px)] w-auto max-w-full h-auto object-contain',
+  embed: 'block max-h-40 w-auto max-w-full h-auto object-contain sm:max-h-44',
+  composer: 'block max-h-40 w-auto max-w-full h-auto object-contain',
+}
+
+/** Match carousel slide width caps so video does not span the full row width like a banner. */
+const slideMaxWByVariant = {
+  feed: 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]',
+  detail: 'max-w-full',
+  embed: 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]',
+  composer: 'max-w-[min(78vw,18rem)]',
+}
+
+const roundingByVariant = {
+  feed: 'rounded-xl',
+  detail: 'rounded-xl',
+  embed: 'rounded-lg',
+  composer: 'rounded-xl',
+}
+
+const borderByVariant = {
+  feed: 'border-zinc-700/60',
+  detail: 'border-zinc-700/60',
+  embed: 'border-zinc-600/40',
+  composer: 'border-zinc-700/60',
 }
 
 /**
- * Cloudflare Stream playback (adaptive HLS). `uid` is the Stream asset id from `stream_video_uid`.
+ * @param {React.RefObject<HTMLVideoElement | null>} videoRef
+ * @param {string} src manifest URL
  */
-export default function LoungePostStreamVideo({ uid, variant = 'feed', firstMarginTopClass = 'mt-2' }) {
-  const videoRef = useRef(null)
-  const id = String(uid || '').trim()
-  const src = cfStreamManifestUrl(id)
-  const poster = cfStreamPosterUrl(id, 720)
-
+function useStreamHlsAttachment(videoRef, src) {
   useEffect(() => {
     const video = videoRef.current
     if (!video || !src) return undefined
@@ -67,24 +87,307 @@ export default function LoungePostStreamVideo({ uid, variant = 'feed', firstMarg
       }
       cleanupVideo()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit videoRef
   }, [src])
+}
+
+function LoungeStreamVideoLightbox({ uid, onClose }) {
+  const videoRef = useRef(null)
+  const id = String(uid || '').trim()
+  const src = cfStreamManifestUrl(id)
+  const poster = cfStreamPosterUrl(id, 720)
+  useStreamHlsAttachment(videoRef, id ? src : '')
+
+  useEffect(() => {
+    if (!id) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [id, onClose])
+
+  /** Prefer sound in full screen once media can play; fall back to muted if unmuted autoplay is blocked. */
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return undefined
+    const go = () => {
+      try {
+        v.muted = false
+        const p = v.play()
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            try {
+              v.muted = true
+              void v.play()
+            } catch {
+              // ignore
+            }
+          })
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (v.readyState >= 2) {
+      go()
+      return undefined
+    }
+    v.addEventListener('canplay', go, { once: true })
+    return () => v.removeEventListener('canplay', go)
+  }, [id])
 
   if (!id) return null
 
-  const box = boxByVariant[variant] || boxByVariant.feed
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex flex-col bg-black/75 backdrop-blur-[2px] p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Full screen video"
+      onClick={onClose}
+    >
+      <div className="flex shrink-0 justify-end">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+          className="touch-manipulation rounded-lg border border-zinc-600/80 bg-zinc-900/80 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+        >
+          Close
+        </button>
+      </div>
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center p-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <video
+          ref={videoRef}
+          className="max-h-full max-w-full object-contain"
+          controls
+          playsInline
+          controlsList="nodownload"
+          poster={poster}
+          preload="auto"
+          aria-label="Post video (full screen)"
+        />
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+function MutedGlyph({ className = 'h-4 w-4' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11 5L6 9H2v6h4l5 4V5zM19 9l-6 6M13 9l6 6"
+      />
+    </svg>
+  )
+}
+
+/**
+ * Cloudflare Stream playback (adaptive HLS). `uid` is the Stream asset id from `stream_video_uid`.
+ *
+ * Feed-style (when `enableLightbox` and not composer): muted autoplay while scrolled into view; no inline
+ * controls so a **single tap** opens full screen (X-style). Full screen uses native controls with sound when allowed.
+ *
+ * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] — Optional scroll root for in-view
+ *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
+ */
+export default function LoungePostStreamVideo({
+  uid,
+  variant = 'feed',
+  firstMarginTopClass = 'mt-2',
+  enableLightbox = true,
+  visibilityResetRootRef,
+}) {
+  const containerRef = useRef(null)
+  const videoRef = useRef(null)
+  const inViewRef = useRef(false)
+  const lightboxOpenRef = useRef(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const id = String(uid || '').trim()
+  const src = cfStreamManifestUrl(id)
+  const poster = cfStreamPosterUrl(id, 720)
+
+  useStreamHlsAttachment(videoRef, src)
+
+  const openLightbox = useCallback(() => {
+    try {
+      videoRef.current?.pause()
+    } catch {
+      // ignore
+    }
+    setLightboxOpen(true)
+  }, [])
+
+  useEffect(() => {
+    lightboxOpenRef.current = lightboxOpen
+  }, [lightboxOpen])
+
+  const showOpen = enableLightbox && variant !== 'composer'
+
+  /** Muted autoplay while sufficiently visible (X-style feed). */
+  useEffect(() => {
+    const wrap = containerRef.current
+    const v = videoRef.current
+    if (!wrap || !v || !showOpen || !id) return undefined
+
+    const root = visibilityResetRootRef?.current ?? null
+    let io
+    try {
+      io = new IntersectionObserver(
+        (entries) => {
+          const e = entries[0]
+          const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
+          inViewRef.current = ok
+          if (!ok) {
+            try {
+              v.pause()
+            } catch {
+              // ignore
+            }
+            return
+          }
+          if (lightboxOpenRef.current) return
+          try {
+            v.muted = true
+            const p = v.play()
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          } catch {
+            // ignore
+          }
+        },
+        {
+          root,
+          rootMargin: '0px',
+          threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
+        },
+      )
+    } catch {
+      io = new IntersectionObserver(
+        (entries) => {
+          const e = entries[0]
+          const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
+          inViewRef.current = ok
+          if (!ok) {
+            try {
+              v.pause()
+            } catch {
+              // ignore
+            }
+            return
+          }
+          if (lightboxOpenRef.current) return
+          try {
+            v.muted = true
+            const p = v.play()
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          } catch {
+            // ignore
+          }
+        },
+        {
+          root: null,
+          rootMargin: '0px',
+          threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
+        },
+      )
+    }
+    io.observe(wrap)
+    return () => io.disconnect()
+  }, [id, showOpen, visibilityResetRootRef])
+
+  /** After closing lightbox, resume muted autoplay if still in view. */
+  useEffect(() => {
+    if (lightboxOpen) return
+    const v = videoRef.current
+    if (!v || !showOpen) return
+    if (!inViewRef.current) return
+    try {
+      v.muted = true
+      const p = v.play()
+      if (p && typeof p.catch === 'function') p.catch(() => {})
+    } catch {
+      // ignore
+    }
+  }, [lightboxOpen, showOpen])
+
+  if (!id) return null
+
+  const videoClass = videoClassByVariant[variant] || videoClassByVariant.feed
+  const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
+  const rounding = roundingByVariant[variant] || roundingByVariant.feed
+  const border = borderByVariant[variant] || borderByVariant.feed
 
   return (
-    <div className={`${firstMarginTopClass} ${box}`}>
-      <video
-        ref={videoRef}
-        className="h-full w-full max-h-[inherit] object-contain"
-        controls
-        playsInline
-        controlsList="nodownload"
-        poster={poster}
-        preload="metadata"
-        aria-label="Post video"
-      />
+    <div className={`${firstMarginTopClass} w-full min-w-0`}>
+      <div className={`inline-block max-w-full ${slideMaxW}`}>
+        <div
+          ref={containerRef}
+          role="button"
+          tabIndex={0}
+          data-lounge-video-zoom
+          className={`relative inline-block max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+          aria-label={
+            showOpen
+              ? 'Post video, playing muted in feed. Tap for full screen with sound and controls.'
+              : 'Post video'
+          }
+          title={showOpen ? 'Tap for full screen' : undefined}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (showOpen) openLightbox()
+          }}
+          onKeyDown={(e) => {
+            if (!showOpen) return
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              openLightbox()
+            }
+          }}
+        >
+          <video
+            ref={videoRef}
+            className={`pointer-events-none ${videoClass}`}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster={poster}
+            aria-hidden
+          />
+          {showOpen ? (
+            <div
+              className="pointer-events-none absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/50 px-1.5 py-0.5 text-[11px] font-medium text-zinc-300/90"
+              aria-hidden
+            >
+              <MutedGlyph className="h-3.5 w-3.5 shrink-0 opacity-90" />
+              <span className="max-w-[6.5rem] truncate sm:max-w-[8rem]">Tap for sound</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {lightboxOpen ? (
+        <LoungeStreamVideoLightbox
+          uid={id}
+          onClose={() => {
+            setLightboxOpen(false)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

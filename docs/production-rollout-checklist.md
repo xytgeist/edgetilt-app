@@ -79,6 +79,7 @@ supabase functions deploy get-web-push-config
 supabase functions deploy send-test-push
 supabase functions deploy send-due-offer-reminders
 supabase functions deploy lounge-cf-stream-direct-upload
+supabase functions deploy lounge-cf-stream-delete-video
 ```
 
 Set **production** Edge secrets for Stream (same **names** as test; rotate values independently):
@@ -99,7 +100,7 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 - [ ] Signed-in: **Guides → Ask community** still inserts (`community_feed_posts`) when RLS permits.
 - [ ] Profiles: until onboarding ships, authors may appear as **`Member`** with no profiles row — expected until Account/gate UX exists.
 - [ ] **`get-web-push-config`**: authenticated `GET` → `200` with `publicKey` (mirror prior smoke checklist).
-- [ ] **Lounge video (Cloudflare Stream):** post a short clip (composer, under **60 seconds**) from Lounge; it plays in feed/detail via HLS. Requires **`lounge_feed_post_stream_video.sql`** on the DB, **`lounge-cf-stream-direct-upload`** deployed, and Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** on that Supabase project.
+- [ ] **Lounge video (Cloudflare Stream):** post a short clip (composer, under **60 seconds**) from Lounge; it plays in feed/detail via HLS. Requires **`lounge_feed_post_stream_video.sql`** on the DB, **`lounge-cf-stream-direct-upload`** and **`lounge-cf-stream-delete-video`** deployed, and Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** on that Supabase project. Delete the post and confirm the asset disappears from Cloudflare Stream (or returns 404 if re-deleted).
 
 ---
 
@@ -125,4 +126,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: Lounge **Cloudflare Stream** video (`stream_video_uid`, Edge `lounge-cf-stream-direct-upload`). Frontend layout map: `docs/frontend-architecture.md`._
+_Last updated: Lounge **Cloudflare Stream** video (`stream_video_uid`, Edge `lounge-cf-stream-direct-upload`, `lounge-cf-stream-delete-video`). Frontend layout map: `docs/frontend-architecture.md`._

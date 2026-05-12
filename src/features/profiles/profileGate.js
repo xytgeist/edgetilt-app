@@ -160,6 +160,21 @@ function candidateHandle(base, index) {
   return `${trunk}${suffix}`.slice(0, 30)
 }
 
+/** Postgres 23505 on `profiles_handle_lower_key` / lower(handle) — try next handle candidate. */
+function isProfileHandleUniqueViolation(error) {
+  if (!error) return false
+  const pgMsg = [error.message, error.details, error.hint, error.constraint]
+    .filter(Boolean)
+    .join(' ')
+  return (
+    String(error.code || '') === '23505' &&
+    (/profiles_handle_lower_key/i.test(pgMsg) || /lower\s*\(\s*handle\s*\)/i.test(pgMsg))
+  )
+}
+
+const PROFILE_SAVE_SELECT =
+  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role'
+
 export async function saveProfileWithHandleFallback({
   supabaseClient,
   user,
@@ -181,40 +196,56 @@ export async function saveProfileWithHandleFallback({
 
   for (let i = 0; i < 30; i += 1) {
     const handle = candidateHandle(safeBase, i)
-    const payload = {
+
+    if (existing.data) {
+      const updatePayload = {
+        handle,
+        display_name: safeDisplay,
+        updated_at: nowIso,
+      }
+      if (avatarUrl !== undefined) updatePayload.avatar_url = avatarUrl || null
+      if (preserveStaffRole) updatePayload.role = preserveStaffRole
+
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .update(updatePayload)
+        .eq('user_id', user.id)
+        .select(PROFILE_SAVE_SELECT)
+        .maybeSingle()
+
+      if (error) {
+        if (isProfileHandleUniqueViolation(error)) continue
+        return { data: null, error }
+      }
+      if (!data) {
+        return {
+          data: null,
+          error: new Error('Could not update profile (row missing). Refresh and try again.'),
+        }
+      }
+      return { data, error: null }
+    }
+
+    const insertPayload = {
       user_id: user.id,
       handle,
       display_name: safeDisplay,
       updated_at: nowIso,
+      role: 'user',
     }
-    if (avatarUrl !== undefined) payload.avatar_url = avatarUrl || null
-    if (!existing.data) {
-      /** INSERT: policy `profiles_insert_own` requires `role = 'user'`. Omitting `role` can yield NULL and fail RLS on upsert. */
-      payload.role = 'user'
-    } else if (preserveStaffRole) {
-      /** UPDATE: keep moderator/admin when re-upserting handle/display (never send staff `role` on insert — violates INSERT policy). */
-      payload.role = preserveStaffRole
-    }
+    if (avatarUrl !== undefined) insertPayload.avatar_url = avatarUrl || null
 
     const { data, error } = await supabaseClient
       .from('profiles')
-      .upsert(payload, { onConflict: 'user_id' })
-      .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role')
+      .insert(insertPayload)
+      .select(PROFILE_SAVE_SELECT)
       .single()
 
-    if (!error) return { data, error: null }
-
-    // Unique handle collisions only — match Postgres/PostgREST phrasing, not the substring "handle"
-    // inside arbitrary text (e.g. check-constraint names like profiles_handle_chars use code 23514, not 23505).
-    const pgMsg = [error.message, error.details, error.hint, error.constraint]
-      .filter(Boolean)
-      .join(' ')
-    const isHandleConflict =
-      String(error.code || '') === '23505' &&
-      (/profiles_handle_lower_key/i.test(pgMsg) || /lower\s*\(\s*handle\s*\)/i.test(pgMsg))
-    if (isHandleConflict) continue
-
-    return { data: null, error }
+    if (error) {
+      if (isProfileHandleUniqueViolation(error)) continue
+      return { data: null, error }
+    }
+    return { data, error: null }
   }
 
   return {

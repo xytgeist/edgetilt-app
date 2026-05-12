@@ -32,7 +32,24 @@ export function LoungeImageCarousel({
   const urlsKey = list.join('\0')
   useLayoutEffect(() => {
     const el = carouselScrollRef.current
-    if (el) el.scrollLeft = 0
+    if (!el) return
+    const reset = () => {
+      el.scrollLeft = 0
+      try {
+        el.scrollTo({ left: 0, behavior: 'instant' })
+      } catch {
+        // ignore
+      }
+    }
+    reset()
+    const id0 = requestAnimationFrame(reset)
+    const id1 = requestAnimationFrame(() => {
+      reset()
+    })
+    return () => {
+      cancelAnimationFrame(id0)
+      cancelAnimationFrame(id1)
+    }
   }, [urlsKey])
   if (!list.length) return null
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
@@ -45,6 +62,17 @@ export function LoungeImageCarousel({
   const rounding = variant === 'embed' ? 'rounded-lg' : 'rounded-xl'
   const border = variant === 'embed' ? 'border-zinc-600/40' : 'border-zinc-700/60'
 
+  const nudgeScrollStart = () => {
+    const el = carouselScrollRef.current
+    if (!el) return
+    el.scrollLeft = 0
+    try {
+      el.scrollTo({ left: 0, behavior: 'instant' })
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
@@ -54,7 +82,10 @@ export function LoungeImageCarousel({
         aria-label={regionAriaLabel}
       >
         {list.map((url, i) => (
-          <div key={`${url}-${i}`} className={`relative w-auto shrink-0 snap-start ${slideMaxW}`}>
+          <div
+            key={`${url}-${i}`}
+            className={`relative w-auto shrink-0 snap-start ${!isComposer ? 'min-w-[3rem]' : ''} ${slideMaxW}`}
+          >
             {canOpenLightbox ? (
               <div
                 role="button"
@@ -76,12 +107,28 @@ export function LoungeImageCarousel({
                 title="View full image"
               >
                 <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
-                  <img src={url} alt="" className={imgClass} loading="lazy" decoding="async" />
+                  <img
+                    src={url}
+                    alt=""
+                    className={imgClass}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    fetchPriority={i === 0 ? 'high' : undefined}
+                    onLoad={i === 0 ? nudgeScrollStart : undefined}
+                  />
                 </div>
               </div>
             ) : (
               <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
-                <img src={url} alt="" className={imgClass} loading="lazy" decoding="async" />
+                <img
+                  src={url}
+                  alt=""
+                  className={imgClass}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  fetchPriority={i === 0 ? 'high' : undefined}
+                  onLoad={i === 0 ? nudgeScrollStart : undefined}
+                />
               </div>
             )}
             {typeof onRemoveIndex === 'function' ? (

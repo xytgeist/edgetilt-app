@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import {
   fetchOwnProfile,
   formatProfileSaveDebugError,
@@ -62,6 +63,31 @@ const LOUNGE_COMPOSER_MAX_IMAGES = 6
 
 function newComposerImageId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+/** Merge new file picks into composer/quote image lists; never call `setLoungeImageLimitDialog` from inside another setState updater. */
+function mergeLoungePickedImageItems(prevItems, fileList, newIdFn) {
+  const next = [...prevItems]
+  const cap = LOUNGE_COMPOSER_MAX_IMAGES
+  let room = Math.max(0, cap - next.length)
+  let limitDialog = ''
+  if (room === 0) {
+    limitDialog = `You can attach up to ${cap} images.`
+    return { next, limitDialog }
+  }
+  let skipped = 0
+  for (const file of fileList) {
+    if (room <= 0) {
+      skipped += 1
+      continue
+    }
+    next.push({ id: newIdFn(), file, preview: URL.createObjectURL(file) })
+    room -= 1
+  }
+  if (skipped > 0) {
+    limitDialog = `You can attach up to ${cap} images. Extra files were not added.`
+  }
+  return { next, limitDialog }
 }
 
 /** Caption length → counter color (yellow 265+, orange 275+, red at 280). */
@@ -182,6 +208,10 @@ export default function SocialFeed({
   const [repostManageBusy, setRepostManageBusy] = useState(false)
   const [quoteRepostErr, setQuoteRepostErr] = useState('')
   const [quoteRepostImageItems, setQuoteRepostImageItems] = useState([])
+  const composerImageItemsRef = useRef(composerImageItems)
+  composerImageItemsRef.current = composerImageItems
+  const quoteRepostImageItemsRef = useRef(quoteRepostImageItems)
+  quoteRepostImageItemsRef.current = quoteRepostImageItems
   const [quoteRepostMediaUrl, setQuoteRepostMediaUrl] = useState('')
   const quoteRepostTextareaRef = useRef(null)
   const quoteRepostMirrorRef = useRef(null)
@@ -1125,13 +1155,16 @@ export default function SocialFeed({
     const originalId = modal.original.id
     const cap = normalizeFeedCaption(quoteRepostDraft)
     setQuoteRepostErr('')
-    if (!cap) {
-      setQuoteRepostErr('Write a quote to repost.')
-      return
-    }
     const quoteGifCheck = validateAtMostOneGifUrl(quoteRepostMediaUrl)
     if (!quoteGifCheck.ok) {
       setQuoteRepostErr(quoteGifCheck.message)
+      return
+    }
+    const gifOnlyUrl = quoteGifCheck.value
+    const hasQuoteMedia =
+      quoteRepostImageItems.length > 0 || String(gifOnlyUrl || '').trim().length > 0
+    if (!cap && !hasQuoteMedia) {
+      setQuoteRepostErr('Add a comment, image, or GIF to repost.')
       return
     }
     setQuoteRepostBusy(true)
@@ -1187,7 +1220,6 @@ export default function SocialFeed({
         }
         uploadedQuoteUrls.push(upUrl)
       }
-      const gifOnlyUrl = quoteGifCheck.value
       const insertPayload = communityFeedQuoteRepostInsertPayload({
         caption: cap,
         originalPostId: originalId,
@@ -1210,8 +1242,12 @@ export default function SocialFeed({
           setQuoteRepostErr('Reposting is blocked by current permissions.')
           return
         }
-        if (msg.toLowerCase().includes('quote repost requires') || msg.toLowerCase().includes('non-empty caption')) {
-          setQuoteRepostErr('Add a quote to repost.')
+        if (
+          msg.toLowerCase().includes('quote repost requires') ||
+          msg.toLowerCase().includes('non-empty caption') ||
+          msg.toLowerCase().includes('comment or media')
+        ) {
+          setQuoteRepostErr('Add a comment, image, or GIF to repost.')
           return
         }
         if (msg.toLowerCase().includes('hidden') || msg.toLowerCase().includes('not found')) {
@@ -2795,28 +2831,11 @@ export default function SocialFeed({
                   }
                   return null
                 })
-                setComposerImageItems((prev) => {
-                  const next = [...prev]
-                  const cap = LOUNGE_COMPOSER_MAX_IMAGES
-                  let room = Math.max(0, cap - next.length)
-                  if (room === 0) {
-                    setLoungeImageLimitDialog(`You can attach up to ${cap} images.`)
-                    return next
-                  }
-                  let skipped = 0
-                  for (const file of files) {
-                    if (room <= 0) {
-                      skipped += 1
-                      continue
-                    }
-                    next.push({ id: newComposerImageId(), file, preview: URL.createObjectURL(file) })
-                    room -= 1
-                  }
-                  if (skipped > 0) {
-                    setLoungeImageLimitDialog(`You can attach up to ${cap} images. Extra files were not added.`)
-                  }
-                  return next
-                })
+                const prevImgs = composerImageItemsRef.current
+                const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+                composerImageItemsRef.current = next
+                setComposerImageItems(next)
+                if (limitDialog) setLoungeImageLimitDialog(limitDialog)
                 try {
                   input.value = ''
                 } catch {
@@ -4235,28 +4254,11 @@ export default function SocialFeed({
                                 }
                                 return
                               }
-                              setQuoteRepostImageItems((prev) => {
-                                const next = [...prev]
-                                const cap = LOUNGE_COMPOSER_MAX_IMAGES
-                                let room = Math.max(0, cap - next.length)
-                                if (room === 0) {
-                                  setLoungeImageLimitDialog(`You can attach up to ${cap} images.`)
-                                  return next
-                                }
-                                let skipped = 0
-                                for (const file of files) {
-                                  if (room <= 0) {
-                                    skipped += 1
-                                    continue
-                                  }
-                                  next.push({ id: newComposerImageId(), file, preview: URL.createObjectURL(file) })
-                                  room -= 1
-                                }
-                                if (skipped > 0) {
-                                  setLoungeImageLimitDialog(`You can attach up to ${cap} images. Extra files were not added.`)
-                                }
-                                return next
-                              })
+                              const prevImgs = quoteRepostImageItemsRef.current
+                              const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+                              quoteRepostImageItemsRef.current = next
+                              setQuoteRepostImageItems(next)
+                              if (limitDialog) setLoungeImageLimitDialog(limitDialog)
                               try {
                                 input.value = ''
                               } catch {
@@ -4376,7 +4378,12 @@ export default function SocialFeed({
                           </span>
                           <button
                             type="button"
-                            disabled={quoteRepostBusy || !normalizeFeedCaption(quoteRepostDraft)}
+                            disabled={
+                              quoteRepostBusy ||
+                              (!normalizeFeedCaption(quoteRepostDraft) &&
+                                quoteRepostImageItems.length === 0 &&
+                                !String(quoteRepostMediaUrl || '').trim())
+                            }
                             aria-label={quoteRepostBusy ? 'Posting' : 'Post quote repost'}
                             aria-busy={quoteRepostBusy}
                             title={quoteRepostBusy ? 'Posting…' : undefined}
@@ -4384,7 +4391,10 @@ export default function SocialFeed({
                             className={`shrink-0 touch-manipulation rounded-lg border px-2.5 text-center text-[12px] font-semibold leading-tight transition-colors disabled:opacity-45 [-webkit-tap-highlight-color:transparent] ${
                               quoteRepostBusy ? 'min-h-10 min-w-[6.5rem] py-2' : 'min-h-8 py-1'
                             } ${
-                              normalizeFeedCaption(quoteRepostDraft) && !quoteRepostBusy
+                              (normalizeFeedCaption(quoteRepostDraft) ||
+                                quoteRepostImageItems.length > 0 ||
+                                !!String(quoteRepostMediaUrl || '').trim()) &&
+                              !quoteRepostBusy
                                 ? 'border-emerald-400/70 bg-emerald-500 text-white hover:bg-emerald-400'
                                 : 'border-zinc-600 bg-zinc-800/90 text-zinc-500'
                             }`}
@@ -4487,33 +4497,36 @@ export default function SocialFeed({
         supabaseClient={supabaseClient}
       />
 
-      {loungeImageLimitDialog ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="lounge-image-limit-msg"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-default touch-manipulation"
-            aria-label="Dismiss"
-            onClick={() => setLoungeImageLimitDialog('')}
-          />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-600 bg-zinc-900 p-5 shadow-2xl">
-            <p id="lounge-image-limit-msg" className="text-[15px] leading-relaxed text-zinc-100">
-              {loungeImageLimitDialog}
-            </p>
-            <button
-              type="button"
-              onClick={() => setLoungeImageLimitDialog('')}
-              className="mt-4 w-full min-h-11 rounded-xl bg-zinc-100 text-[15px] font-semibold text-zinc-900 touch-manipulation hover:bg-white active:bg-zinc-200 [-webkit-tap-highlight-color:transparent]"
+      {loungeImageLimitDialog && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[220] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="lounge-image-limit-msg"
             >
-              OK
-            </button>
-          </div>
-        </div>
-      ) : null}
+              <button
+                type="button"
+                className="absolute inset-0 z-0 cursor-default touch-manipulation"
+                aria-label="Dismiss"
+                onClick={() => setLoungeImageLimitDialog('')}
+              />
+              <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-600 bg-zinc-900 p-5 shadow-2xl">
+                <p id="lounge-image-limit-msg" className="text-[15px] leading-relaxed text-zinc-100">
+                  {loungeImageLimitDialog}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setLoungeImageLimitDialog('')}
+                  className="mt-4 w-full min-h-11 rounded-xl bg-zinc-100 text-[15px] font-semibold text-zinc-900 touch-manipulation hover:bg-white active:bg-zinc-200 [-webkit-tap-highlight-color:transparent]"
+                >
+                  OK
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {profileGateOpen ? (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal>

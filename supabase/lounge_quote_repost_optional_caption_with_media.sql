@@ -1,24 +1,5 @@
--- Plain reposts (no quote text): caption empty, is_plain_repost = true, repost_of_post_id set.
--- Quote reposts: caption is the quote when present; empty caption is allowed if the row has media
--- (see `community_feed_posts_validate_quote_repost`). Plain reposts: empty caption, is_plain_repost = true.
--- Allows one quote and one plain repost per (user_id, original) via partial unique indexes.
--- Run after feed_repost_quote_posts.sql (or equivalent repost columns + validate trigger).
-
-alter table public.community_feed_posts
-  add column if not exists is_plain_repost boolean not null default false;
-
-comment on column public.community_feed_posts.is_plain_repost is
-  'True when this row is a plain repost (no quote caption); caption must be empty.';
-
-drop index if exists community_feed_posts_one_quote_repost_per_user_original;
-
-create unique index if not exists community_feed_posts_one_quote_repost_per_user_original
-  on public.community_feed_posts (user_id, repost_of_post_id)
-  where repost_of_post_id is not null and coalesce(is_plain_repost, false) = false;
-
-create unique index if not exists community_feed_posts_one_plain_repost_per_user_original
-  on public.community_feed_posts (user_id, repost_of_post_id)
-  where repost_of_post_id is not null and coalesce(is_plain_repost, false) = true;
+-- Patch: quote repost with media but no caption (run once on DBs that already applied `lounge_plain_reposts.sql`
+-- with the old "non-empty caption" rule). New installs: use updated `lounge_plain_reposts.sql` instead.
 
 create or replace function public.community_feed_posts_validate_quote_repost()
 returns trigger

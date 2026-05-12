@@ -58,48 +58,83 @@ export function probeVideoFileDurationSeconds(file) {
 }
 
 /**
- * When `functions.invoke` fails with HTTP 4xx/5xx, Supabase sets `error` to `FunctionsHttpError`
- * with message "Edge Function returned a non-2xx status code" — the JSON body from our Edge
- * Function (e.g. `{ "error": "..." }`) lives on `error.context` (a `Response`).
- * @param {unknown} error
+ * @param {Response} res
  * @returns {Promise<string>}
  */
-async function messageFromFunctionsInvokeError(error) {
+async function messageFromEdgeFunctionResponseBody(res) {
+  if (!res || typeof res.clone !== 'function') return ''
+  let raw = ''
+  try {
+    raw = (await res.clone().text()).trim()
+  } catch {
+    return ''
+  }
+  if (!raw) return ''
+  if (raw.startsWith('{') || raw.startsWith('[')) {
+    try {
+      const body = JSON.parse(raw)
+      if (body && typeof body === 'object' && !Array.isArray(body)) {
+        if (body.error != null) {
+          const m = String(body.error).trim()
+          if (m) return m
+        }
+        if (body.message != null) {
+          const m = String(body.message).trim()
+          if (m) return m
+        }
+      }
+    } catch {
+      // non-JSON despite leading brace — show snippet
+    }
+  }
+  return raw.slice(0, 400)
+}
+
+/**
+ * When `functions.invoke` fails with HTTP 4xx/5xx, Supabase sets `error` to `FunctionsHttpError`
+ * with message "Edge Function returned a non-2xx status code" — the JSON body from our Edge
+ * Function (e.g. `{ "error": "..." }`) is on `error.context` (a `Response`). Some gateways send
+ * JSON with a non-JSON Content-Type; use `clone().text()` + parse so we still surface the message.
+ * @param {unknown} error
+ * @param {Response | undefined} invokeResponse same object as `error.context` when present; kept for clarity
+ * @returns {Promise<string>}
+ */
+async function messageFromFunctionsInvokeError(error, invokeResponse) {
   const fallback = String(
     (error && typeof error === 'object' && 'message' in error && error.message) || 'Could not start video upload.',
   ).trim()
   if (!error || typeof error !== 'object') return fallback || 'Could not start video upload.'
-  const ctx = /** @type {{ context?: unknown }} */ (error).context
-  if (!ctx || typeof ctx !== 'object' || typeof /** @type {Response} */ (ctx).json !== 'function') {
-    return fallback || 'Could not start video upload.'
-  }
-  const res = /** @type {Response} */ (ctx)
-  try {
-    const ct = (res.headers?.get?.('Content-Type') || '').toLowerCase()
-    if (ct.includes('application/json')) {
-      const body = await res.json()
-      if (body && typeof body === 'object' && body.error != null) {
-        const m = String(body.error).trim()
-        if (m) return m
-      }
-    } else {
-      const t = (await res.text().catch(() => '')).trim()
-      if (t) return t.slice(0, 400)
+
+  const ctx = /** @type {{ context?: unknown; name?: string }} */ (error).context
+  const res =
+    ctx && typeof ctx === 'object' && typeof /** @type {Response} */ (ctx).status === 'number'
+      ? /** @type {Response} */ (ctx)
+      : invokeResponse && typeof invokeResponse.status === 'number'
+        ? invokeResponse
+        : null
+
+  if (res) {
+    const fromBody = await messageFromEdgeFunctionResponseBody(res)
+    if (fromBody) return fromBody
+    const status = typeof res.status === 'number' ? res.status : 0
+    if (status === 404) {
+      return 'Video upload service is not deployed. Deploy Edge Function `lounge-cf-stream-direct-upload` on this Supabase project.'
     }
-  } catch {
-    // ignore parse failures
+    if (status === 401) {
+      return 'Sign in again, then retry the video post (session expired or not sent to upload service).'
+    }
+    if (status === 503) {
+      return 'Video uploads are not configured or unavailable (set Edge secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_STREAM_API_TOKEN`, then redeploy `lounge-cf-stream-direct-upload`).'
+    }
+    return fallback || `Video upload service returned HTTP ${status || 'error'}.`
   }
-  const status = typeof res.status === 'number' ? res.status : 0
-  if (status === 404) {
-    return 'Video upload service is not deployed. Deploy Edge Function `lounge-cf-stream-direct-upload` on this Supabase project.'
+
+  if (/** @type {{ name?: string }} */ (error).name === 'FunctionsFetchError' && ctx && typeof ctx === 'object') {
+    const c = /** @type {{ message?: string }} */ (ctx)
+    if (typeof c.message === 'string' && c.message.trim()) return c.message.trim()
   }
-  if (status === 401) {
-    return 'Sign in again, then retry the video post (session expired or not sent to upload service).'
-  }
-  if (status === 503) {
-    return 'Video uploads are not configured or unavailable (set Edge secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_STREAM_API_TOKEN`, then redeploy `lounge-cf-stream-direct-upload`).'
-  }
-  return fallback || `Video upload service returned HTTP ${status || 'error'}.`
+
+  return fallback || 'Could not start video upload.'
 }
 
 /**
@@ -114,12 +149,15 @@ export async function requestCfStreamDirectUpload(supabaseClient) {
     throw new Error('You must be signed in to post a video.')
   }
 
-  const { data, error } = await supabaseClient.functions.invoke('lounge-cf-stream-direct-upload', {
-    body: {},
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  })
+  const { data, error, response: invokeResponse } = await supabaseClient.functions.invoke(
+    'lounge-cf-stream-direct-upload',
+    {
+      body: {},
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    },
+  )
   if (error) {
-    const msg = await messageFromFunctionsInvokeError(error)
+    const msg = await messageFromFunctionsInvokeError(error, invokeResponse)
     throw new Error(msg)
   }
   if (!data || typeof data !== 'object') {

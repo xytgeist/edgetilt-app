@@ -20,6 +20,9 @@
     "slots:backfill-card-fields": "node scripts/backfill-slot-card-fields.mjs"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.12.6",
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
     "@supabase/supabase-js": "^2.100.0",
     "chart.js": "^4.5.1",
     "date-fns": "^4.1.0",

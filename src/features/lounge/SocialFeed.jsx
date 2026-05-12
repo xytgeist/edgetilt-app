@@ -28,7 +28,9 @@ import {
 } from '../../utils/compressImageForUpload'
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
+  LOUNGE_VIDEO_MAX_SECONDS,
   deleteCfStreamForCommunityFeedPost,
+  probeVideoFileDurationSeconds,
 } from '../../utils/loungeVideoUpload'
 import {
   readLoungeProfileCache,
@@ -48,6 +50,7 @@ import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
+import LoungeVideoCropModal from './LoungeVideoCropModal.jsx'
 import KlipyGifPicker from './KlipyGifPicker.jsx'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 
@@ -165,13 +168,17 @@ export default function SocialFeed({
   const [composerPinOnPost, setComposerPinOnPost] = useState(false)
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
-  /** Bottom bar while a lounge post is uploading in the background (`progress` 0–1). */
+  /** Bottom bar for **video** lounge posts only (`progress` 0–1). Text/image posts upload without this bar. */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
+  /** True while any background lounge post submission is running (keeps Post disabled without the video bar). */
+  const [loungePostSubmitInFlight, setLoungePostSubmitInFlight] = useState(false)
   const [loungePostUploadFailedOpen, setLoungePostUploadFailedOpen] = useState(false)
   const loungePostSnapshotRef = useRef(null)
   const loungePostAbortRef = useRef(null)
   /** True while a background lounge post job may be in flight (guards double submit). */
   const loungePostJobRunningRef = useRef(false)
+  /** When set, user is trimming a long video before it enters the composer or detail editor. */
+  const [loungeVideoCrop, setLoungeVideoCrop] = useState(null)
   /** Non-empty while showing the “too many images” alert (composer + quote repost uploads). */
   const [loungeImageLimitDialog, setLoungeImageLimitDialog] = useState('')
   const [loungePinBusy, setLoungePinBusy] = useState(false)
@@ -708,6 +715,32 @@ export default function SocialFeed({
     const ss = secs % 60
     const tail = mm > 0 ? `${mm}m ${String(ss).padStart(2, '0')}s` : `${ss}s`
     return `🤖 You're in spam bot jail! Try again in ${tail}.`
+  }, [])
+
+  const queueLoungeVideoOrCrop = useCallback(async (vf, mode) => {
+    const msgRead = (e) => (e instanceof Error ? e.message : 'Could not read this video file.')
+    try {
+      const dur = await probeVideoFileDurationSeconds(vf)
+      if (!Number.isFinite(dur) || dur <= 0) {
+        if (mode === 'composer') setPostErr('Could not read this video file.')
+        else setLoungeDetailEditErr('Could not read this video file.')
+        return
+      }
+      if (dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+        if (mode === 'composer') {
+          setComposerVideoSlot({ file: vf, preview: URL.createObjectURL(vf) })
+          setComposerMediaUrl('')
+        } else {
+          setLoungeDetailEditMediaFile(vf)
+          setLoungeDetailEditMediaKind('video')
+        }
+        return
+      }
+      setLoungeVideoCrop({ file: vf, mode })
+    } catch (e) {
+      if (mode === 'composer') setPostErr(msgRead(e))
+      else setLoungeDetailEditErr(msgRead(e))
+    }
   }, [])
 
   const postAgeLabel = useCallback((createdAt) => {
@@ -2147,15 +2180,17 @@ export default function SocialFeed({
   const runBackgroundLoungePostSubmission = useCallback(
     async (snapshot) => {
       loungePostJobRunningRef.current = true
+      setLoungePostSubmitInFlight(true)
       const ac = new AbortController()
       loungePostAbortRef.current = ac
-      setLoungePostUploadBar({ progress: 0 })
+      const showVideoUploadBar = Boolean(snapshot?.videoFile)
+      if (showVideoUploadBar) setLoungePostUploadBar({ progress: 0 })
       try {
         await executeLoungeCommunityPostSubmission({
           supabaseClient,
           snapshot,
           signal: ac.signal,
-          onProgress: (p) => setLoungePostUploadBar({ progress: p }),
+          onProgress: showVideoUploadBar ? (p) => setLoungePostUploadBar({ progress: p }) : undefined,
           rateLimitMessage,
         })
         loungePostSnapshotRef.current = null
@@ -2169,6 +2204,7 @@ export default function SocialFeed({
         setLoungePostUploadBar(null)
         loungePostAbortRef.current = null
         loungePostJobRunningRef.current = false
+        setLoungePostSubmitInFlight(false)
       }
     },
     [loadCommunityFeed, rateLimitMessage, supabaseClient],
@@ -2938,7 +2974,7 @@ export default function SocialFeed({
                         // ignore
                       }
                     }
-                    return { file: vf, preview: URL.createObjectURL(vf) }
+                    return null
                   })
                   setComposerMediaUrl('')
                   try {
@@ -2946,6 +2982,7 @@ export default function SocialFeed({
                   } catch {
                     // ignore
                   }
+                  void queueLoungeVideoOrCrop(vf, 'composer')
                   return
                 }
                 const bad = files.some((f) => !isProbablyImageFile(f))
@@ -3070,8 +3107,9 @@ export default function SocialFeed({
                     onClick={() => void submitLoungePost()}
                     disabled={
                       postBusy ||
-                      !!loungePostUploadBar ||
+                      loungePostSubmitInFlight ||
                       loungePostUploadFailedOpen ||
+                      loungeVideoCrop != null ||
                       (!postText.trim() &&
                         !String(composerMediaUrl || '').trim() &&
                         composerImageItems.length === 0 &&
@@ -3778,8 +3816,7 @@ export default function SocialFeed({
                             }
                             if (mime.startsWith('video/')) {
                               setLoungeDetailEditErr('')
-                              setLoungeDetailEditMediaKind('video')
-                              setLoungeDetailEditMediaFile(file)
+                              void queueLoungeVideoOrCrop(file, 'detail')
                               return
                             }
                             setLoungeDetailEditErr('Unsupported media type. Please choose an image or video file.')
@@ -4838,12 +4875,36 @@ export default function SocialFeed({
             <button
               type="button"
               onClick={() => cancelLoungePostUpload()}
-              className="shrink-0 touch-manipulation rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-1.5 text-[14px] font-semibold text-zinc-100 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+              aria-label="Cancel upload"
+              className="shrink-0 touch-manipulation bg-transparent px-1 py-1 text-[14px] font-semibold text-cyan-400 hover:text-cyan-300 [-webkit-tap-highlight-color:transparent]"
             >
-              Cancel
+              cancel
             </button>
           </div>
         </div>
+      ) : null}
+
+      {loungeVideoCrop ? (
+        <LoungeVideoCropModal
+          file={loungeVideoCrop.file}
+          onCancel={() => {
+            if (loungeVideoCrop.mode === 'detail') {
+              setLoungeDetailEditMediaFile(null)
+              setLoungeDetailEditMediaKind('')
+            }
+            setLoungeVideoCrop(null)
+          }}
+          onConfirm={(f) => {
+            if (loungeVideoCrop.mode === 'composer') {
+              setComposerVideoSlot({ file: f, preview: URL.createObjectURL(f) })
+              setComposerMediaUrl('')
+            } else {
+              setLoungeDetailEditMediaFile(f)
+              setLoungeDetailEditMediaKind('video')
+            }
+            setLoungeVideoCrop(null)
+          }}
+        />
       ) : null}
 
       {loungePostUploadFailedOpen ? (

@@ -245,7 +245,7 @@ function MutedGlyph({ className = 'h-4 w-4' }) {
  * Cloudflare Stream playback (adaptive HLS). `uid` is the Stream asset id from `stream_video_uid`.
  *
  * Feed-style (when `enableLightbox` and not composer): muted autoplay while scrolled into view; no inline
- * controls so a **single tap** opens full screen (X-style). Full screen uses native controls with sound when allowed.
+ * controls. Tap the video for full screen; a wide bottom band unmutes in the feed (falls back to full screen if blocked).
  *
  * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] — Optional scroll root for in-view
  *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
@@ -278,6 +278,31 @@ export default function LoungePostStreamVideo({
     }
     setLightboxOpen(true)
   }, [])
+
+  /** User gesture on a dedicated hit target; try sound in-feed before falling back to full screen. */
+  const tryUnmuteInlineOrOpenLightbox = useCallback(() => {
+    const v = videoRef.current
+    if (!v) {
+      openLightbox()
+      return
+    }
+    try {
+      v.muted = false
+      const p = v.play()
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {
+          try {
+            v.muted = true
+          } catch {
+            // ignore
+          }
+          openLightbox()
+        })
+      }
+    } catch {
+      openLightbox()
+    }
+  }, [openLightbox])
 
   useEffect(() => {
     lightboxOpenRef.current = lightboxOpen
@@ -389,10 +414,10 @@ export default function LoungePostStreamVideo({
           className={`relative inline-block max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
-              ? 'Post video, playing muted in feed. Tap for full screen with sound and controls.'
+              ? 'Post video, playing muted in feed. Tap the video for full screen. Use the bottom control for sound in the feed.'
               : 'Post video'
           }
-          title={showOpen ? 'Tap for full screen' : undefined}
+          title={showOpen ? 'Tap video for full screen; bottom area for sound' : undefined}
           onClick={(e) => {
             e.stopPropagation()
             if (showOpen) openLightbox()
@@ -419,7 +444,7 @@ export default function LoungePostStreamVideo({
           />
           {showStreamRetry ? (
             <div
-              className="pointer-events-auto absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"
+              className="pointer-events-auto absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"
               onClick={(e) => e.stopPropagation()}
               role="presentation"
             >
@@ -437,14 +462,21 @@ export default function LoungePostStreamVideo({
               </button>
             </div>
           ) : null}
-          {showOpen ? (
-            <div
-              className="pointer-events-none absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/50 px-1.5 py-0.5 text-[11px] font-medium text-zinc-300/90"
-              aria-hidden
+          {showOpen && !showStreamRetry ? (
+            <button
+              type="button"
+              aria-label="Play video with sound in the feed"
+              className="absolute bottom-0 left-0 right-0 z-[1] flex min-h-[5.25rem] items-end justify-start bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2 pb-2.5 pt-10 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+              onClick={(e) => {
+                e.stopPropagation()
+                tryUnmuteInlineOrOpenLightbox()
+              }}
             >
-              <MutedGlyph className="h-3.5 w-3.5 shrink-0 opacity-90" />
-              <span className="max-w-[6.5rem] truncate sm:max-w-[8rem]">Tap for sound</span>
-            </div>
+              <span className="pointer-events-none flex max-w-full items-center gap-1.5 rounded-md bg-black/55 px-2 py-1.5 text-[11px] font-medium text-zinc-200 sm:px-2.5 sm:py-2 sm:text-[12px]">
+                <MutedGlyph className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
+                <span className="max-w-[min(12rem,72vw)] truncate">Tap for sound</span>
+              </span>
+            </button>
           ) : null}
         </div>
       </div>

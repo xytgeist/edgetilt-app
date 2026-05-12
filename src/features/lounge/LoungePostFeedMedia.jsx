@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { feedPostImageUrls } from '../../utils/communityFeedPost'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 
@@ -28,6 +28,12 @@ export function LoungeImageCarousel({
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const [lightboxUrl, setLightboxUrl] = useState(null)
+  const carouselScrollRef = useRef(null)
+  const urlsKey = list.join('\0')
+  useLayoutEffect(() => {
+    const el = carouselScrollRef.current
+    if (el) el.scrollLeft = 0
+  }, [urlsKey])
   if (!list.length) return null
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const isComposer = variant === 'composer'
@@ -42,6 +48,7 @@ export function LoungeImageCarousel({
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
+        ref={carouselScrollRef}
         className="flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch]"
         role="region"
         aria-label={regionAriaLabel}

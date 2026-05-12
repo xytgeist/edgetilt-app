@@ -1,6 +1,6 @@
 /**
  * Feed post helpers: `caption` is the main user-authored text on `community_feed_posts`.
- * Quote reposts set `repost_of_post_id` and require a non-empty `caption` (the quote).
+ * Quote reposts set `repost_of_post_id` and a non-empty `caption`. Plain reposts use `is_plain_repost` and empty caption.
  */
 
 /** Trimmed caption string (empty if missing). */
@@ -82,6 +82,7 @@ export function communityFeedQuoteRepostInsertPayload({ caption, originalPostId,
     game_title: '',
     game_slug: null,
     repost_of_post_id: originalPostId,
+    is_plain_repost: false,
   }
   const imgs = Array.isArray(imageUrls)
     ? imageUrls.map((u) => String(u ?? '').trim()).filter(Boolean)
@@ -96,6 +97,17 @@ export function communityFeedQuoteRepostInsertPayload({ caption, originalPostId,
   const gu = gifUrl != null ? String(gifUrl).trim() : ''
   if (gu) out.gif_url = gu
   return out
+}
+
+/** Plain repost (no quote): empty caption + `is_plain_repost` (see `supabase/lounge_plain_reposts.sql`). */
+export function communityFeedPlainRepostInsertPayload({ originalPostId }) {
+  return {
+    caption: '',
+    game_title: '',
+    game_slug: null,
+    repost_of_post_id: originalPostId,
+    is_plain_repost: true,
+  }
 }
 
 const LOUNGE_FEED_MEDIA_BUCKET = 'lounge-feed'

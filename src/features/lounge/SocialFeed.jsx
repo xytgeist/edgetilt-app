@@ -11,15 +11,16 @@ import {
 } from '../profiles/profileGate'
 import {
   communityFeedPostInsertPayload,
+  communityFeedPlainRepostInsertPayload,
   communityFeedQuoteRepostInsertPayload,
   feedPostDisplayCaption,
   normalizeFeedCaption,
   uploadLoungeFeedPostImage,
 } from '../../utils/communityFeedPost'
 import {
-  compressImageFileUnderMaxBytes,
   isProbablyImageFile,
   isProbablyVideoFile,
+  prepareAvatarImageForUpload,
   prepareLoungeFeedImageForUpload,
 } from '../../utils/compressImageForUpload'
 import {
@@ -55,7 +56,7 @@ function isLoungePostWithinAuthorEditWindow(createdAt) {
   return Date.now() - t <= LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS
 }
 
-const LOUNGE_COMPOSER_MAX_IMAGES = 12
+const LOUNGE_COMPOSER_MAX_IMAGES = 6
 
 function newComposerImageId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -154,11 +155,25 @@ export default function SocialFeed({
   const bookmarkedByPostRef = useRef(bookmarkedByPost)
   bookmarkedByPostRef.current = bookmarkedByPost
   const bookmarksMigratedFromLocalRef = useRef(false)
+  /** Maps original post id → this user's plain-repost row id (for undo). */
+  const plainRepostChildIdRef = useRef({})
   /** Maps original post id → this user's quote-repost row id (for remove). */
   const quoteRepostChildIdRef = useRef({})
+  const [repostManageModal, setRepostManageModal] = useState(null)
+  const [composerDiscardPromptOpen, setComposerDiscardPromptOpen] = useState(false)
+  const [loungeDetailRepostMenuOpen, setLoungeDetailRepostMenuOpen] = useState(false)
+  const loungeDetailRepostMenuRef = useRef(null)
+  const loungePostDetailScrollRef = useRef(null)
+  const loungePostDetailTitleBarRef = useRef(null)
+  const loungePostDetailTitleRevealRef = useRef(1)
+  const [loungePostDetailTitleReveal, setLoungePostDetailTitleReveal] = useState(1)
+  const [loungePostDetailTitleBarHeight, setLoungePostDetailTitleBarHeight] = useState(0)
+  const loungePostDetailScrollPrevTopRef = useRef(0)
+  const loungePostDetailScrollVisualRafRef = useRef(0)
   const [quoteRepostModal, setQuoteRepostModal] = useState(null)
   const [quoteRepostDraft, setQuoteRepostDraft] = useState('')
   const [quoteRepostBusy, setQuoteRepostBusy] = useState(false)
+  const [repostManageBusy, setRepostManageBusy] = useState(false)
   const [quoteRepostErr, setQuoteRepostErr] = useState('')
   const [quoteRepostMediaFile, setQuoteRepostMediaFile] = useState(null)
   const [quoteRepostMediaPreview, setQuoteRepostMediaPreview] = useState('')
@@ -501,6 +516,91 @@ export default function SocialFeed({
     }
   }, [])
 
+  useLayoutEffect(() => {
+    if (!loungePostDetail) return
+    const bar = loungePostDetailTitleBarRef.current
+    if (!bar || typeof ResizeObserver === 'undefined') return
+    const apply = () => {
+      const h = Math.ceil(bar.getBoundingClientRect().height)
+      if (h > 0) setLoungePostDetailTitleBarHeight((prev) => (prev === h ? prev : h))
+    }
+    apply()
+    const ro = new ResizeObserver(() => apply())
+    ro.observe(bar)
+    return () => ro.disconnect()
+  }, [loungePostDetail])
+
+  useEffect(() => {
+    if (!loungePostDetail) return
+    loungePostDetailTitleRevealRef.current = 1
+    setLoungePostDetailTitleReveal(1)
+    const el = loungePostDetailScrollRef.current
+    if (el) {
+      el.scrollTop = 0
+      loungePostDetailScrollPrevTopRef.current = 0
+    }
+  }, [loungePostDetail?.id])
+
+  useEffect(() => {
+    const el = loungePostDetailScrollRef.current
+    if (!el || typeof window === 'undefined' || !loungePostDetail) return
+    const titleRevealPerScrollPx = 220
+    const titleHidePerScrollPx = 190
+    const maxAbsScrollStepPx = 180
+    const minScrollStepPx = 0.35
+    const queueDetailTitleFlush = () => {
+      if (loungePostDetailScrollVisualRafRef.current) return
+      loungePostDetailScrollVisualRafRef.current = window.requestAnimationFrame(() => {
+        loungePostDetailScrollVisualRafRef.current = 0
+        setLoungePostDetailTitleReveal(loungePostDetailTitleRevealRef.current)
+      })
+    }
+    const onScroll = () => {
+      const st = el.scrollTop
+      const prev = loungePostDetailScrollPrevTopRef.current
+      const rawDelta = st - prev
+      loungePostDetailScrollPrevTopRef.current = st
+      const eff =
+        rawDelta === 0 ? 0 : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), maxAbsScrollStepPx)
+
+      let r = loungePostDetailTitleRevealRef.current
+      if (st <= 2) {
+        r = 1
+      } else if (eff < -minScrollStepPx) {
+        r = Math.min(1, r + (-eff) / titleRevealPerScrollPx)
+      } else if (eff > minScrollStepPx) {
+        r = Math.max(0, r - eff / titleHidePerScrollPx)
+      }
+      if (r !== loungePostDetailTitleRevealRef.current) {
+        loungePostDetailTitleRevealRef.current = r
+        queueDetailTitleFlush()
+      }
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (loungePostDetailScrollVisualRafRef.current) {
+        window.cancelAnimationFrame(loungePostDetailScrollVisualRafRef.current)
+        loungePostDetailScrollVisualRafRef.current = 0
+      }
+    }
+  }, [loungePostDetail])
+
+  useEffect(() => {
+    if (!loungeDetailRepostMenuOpen) return
+    const close = (e) => {
+      const wrap = loungeDetailRepostMenuRef.current
+      if (wrap && e.target instanceof Node && wrap.contains(e.target)) return
+      setLoungeDetailRepostMenuOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('touchstart', close, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('touchstart', close)
+    }
+  }, [loungeDetailRepostMenuOpen])
+
   const displayLabel = useCallback((p) => {
     const pr = p?.author_profile
     if (pr?.handle) return `@${pr.handle}`
@@ -569,7 +669,10 @@ export default function SocialFeed({
 
   const actionIconClass = 'h-[20px] w-[20px] text-zinc-500'
 
-  const defaultInteraction = useMemo(() => ({ commented: false, reposted: false, liked: false }), [])
+  const defaultInteraction = useMemo(
+    () => ({ commented: false, reposted: false, liked: false, plainRepostChildId: null, quoteRepostChildId: null }),
+    []
+  )
 
   const patchPostAggregate = useCallback((postId, partial) => {
     setCommunityPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...partial } : p)))
@@ -586,7 +689,7 @@ export default function SocialFeed({
         supabaseClient.from('post_likes').select('post_id').eq('user_id', uid).in('post_id', ids),
         supabaseClient
           .from('community_feed_posts')
-          .select('id,repost_of_post_id')
+          .select('id,repost_of_post_id,is_plain_repost')
           .eq('user_id', uid)
           .in('repost_of_post_id', ids)
           .is('hidden_at', null),
@@ -610,24 +713,34 @@ export default function SocialFeed({
       }
       const likedSet = new Set((likesRes.data || []).map((r) => r.post_id))
       const repostedSet = new Set()
-      const nextChild = { ...quoteRepostChildIdRef.current }
-      for (const id of ids) delete nextChild[id]
-      for (const r of quoteRepostRes.data || []) {
-        if (r.repost_of_post_id) {
-          repostedSet.add(r.repost_of_post_id)
-          nextChild[r.repost_of_post_id] = r.id
-        }
+      const nextPlain = { ...plainRepostChildIdRef.current }
+      const nextQuote = { ...quoteRepostChildIdRef.current }
+      for (const id of ids) {
+        delete nextPlain[id]
+        delete nextQuote[id]
       }
-      quoteRepostChildIdRef.current = nextChild
+      for (const r of quoteRepostRes.data || []) {
+        const oid = r.repost_of_post_id
+        if (!oid) continue
+        repostedSet.add(oid)
+        if (r.is_plain_repost === true) nextPlain[oid] = r.id
+        else nextQuote[oid] = r.id
+      }
+      plainRepostChildIdRef.current = nextPlain
+      quoteRepostChildIdRef.current = nextQuote
       const commentedSet = new Set((commentsRes.data || []).map((r) => r.post_id))
       setInteractionByPost((prev) => {
         const next = { ...prev }
         for (const id of ids) {
           const cur = next[id] || { ...defaultInteraction }
+          const plainId = nextPlain[id] || null
+          const quoteId = nextQuote[id] || null
           next[id] = {
             ...cur,
             liked: likedSet.has(id),
-            reposted: repostedSet.has(id),
+            reposted: !!(plainId || quoteId),
+            plainRepostChildId: plainId,
+            quoteRepostChildId: quoteId,
             commented: commentedSet.has(id),
           }
         }
@@ -816,37 +929,139 @@ export default function SocialFeed({
     [klipyPickerTarget, setPostErr, setQuoteRepostErr],
   )
 
-  const handleQuoteRepostPress = useCallback(
+  const openQuoteRepostComposer = useCallback(
     (post) => {
       if (!post?.id || loungeReadOnly) return
       if (openProfileGateIfNeeded()) return
-      const st = interactionStateFor(post.id)
-      if (st.reposted) {
-        const childId = quoteRepostChildIdRef.current[post.id]
-        if (childId) {
-          setQuoteRepostErr('')
-          setQuoteRepostModal({ mode: 'remove', original: post, childId })
-          return
-        }
-        void refreshLoungePostInteractions([post.id]).then(() => {
-          const cid = quoteRepostChildIdRef.current[post.id]
-          if (cid) {
-            setQuoteRepostErr('')
-            setQuoteRepostModal({ mode: 'remove', original: post, childId: cid })
-          } else {
-            setLoungeManageErr('Could not find your quote repost. Try refreshing the feed.')
-          }
-        })
-        return
-      }
       clearQuoteRepostMedia()
       setQuoteRepostDraft('')
       setQuoteRepostErr('')
       setQuoteRepostModal({ mode: 'compose', original: post })
+      setRepostManageModal(null)
+      setLoungeDetailRepostMenuOpen(false)
     },
-    [clearQuoteRepostMedia, loungeReadOnly, openProfileGateIfNeeded, interactionStateFor, refreshLoungePostInteractions]
+    [clearQuoteRepostMedia, loungeReadOnly, openProfileGateIfNeeded]
   )
 
+  const handleRepostManage = useCallback(
+    (post) => {
+      if (!post?.id || loungeReadOnly) return
+      if (openProfileGateIfNeeded()) return
+      setRepostManageModal({ original: post })
+      setLoungeDetailRepostMenuOpen(false)
+    },
+    [loungeReadOnly, openProfileGateIfNeeded]
+  )
+
+  const handlePlainRepost = useCallback(
+    async (post) => {
+      if (!post?.id || loungeReadOnly || !composerUserId) return
+      if (openProfileGateIfNeeded()) return
+      setLoungeManageErr('')
+      setRepostManageModal(null)
+      setLoungeDetailRepostMenuOpen(false)
+      try {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (!session?.user) {
+          onRequireAuth?.('login')
+          return
+        }
+        const { data: ownProfile, error: profileErr } = await fetchOwnProfile(supabaseClient, session.user.id)
+        if (profileErr) {
+          setLoungeManageErr(`Could not verify profile: ${profileErr.message || 'Unknown error.'}`)
+          return
+        }
+        if (loungeProfileNeedsGate(ownProfile, session.user.id)) {
+          const h = String(ownProfile?.handle || '').trim()
+          const d = String(ownProfile?.display_name || '').trim()
+          const seed = profileSeedFromUser(session.user)
+          setProfileGateHandle(h || seed.baseHandle)
+          setProfileGateDisplayName(d || seed.displayName)
+          setProfileGateAvatarFile(null)
+          setProfileGateAvatarPreview(ownProfile?.avatar_url || composerUserProfile?.avatar_url || '')
+          setProfileGateErr('')
+          setProfileGateOpen(true)
+          setLoungeManageErr('Complete your profile to repost.')
+          return
+        }
+        const { error } = await supabaseClient
+          .from('community_feed_posts')
+          .insert(communityFeedPlainRepostInsertPayload({ originalPostId: post.id }))
+        if (error) {
+          const msg = String(error.message || '')
+          if (error.code === '23505') {
+            setLoungeManageErr('You already have a plain repost for this post.')
+            return
+          }
+          if (msg.toLowerCase().includes('rate limit exceeded')) {
+            setLoungeManageErr(rateLimitMessage(msg))
+            return
+          }
+          if (error.code === '42501') {
+            setLoungeManageErr('Reposting is blocked by current permissions.')
+            return
+          }
+          if (msg.toLowerCase().includes('plain') || msg.toLowerCase().includes('caption')) {
+            setLoungeManageErr('Plain repost is not available until the latest DB migration is applied.')
+            return
+          }
+          setLoungeManageErr(msg || 'Could not repost right now.')
+          return
+        }
+        await loadCommunityFeed({ silent: true })
+        await refreshLoungePostInteractions([post.id])
+      } catch (e) {
+        setLoungeManageErr(e?.message || 'Could not repost.')
+      }
+    },
+    [
+      composerUserId,
+      composerUserProfile?.avatar_url,
+      loungeReadOnly,
+      loadCommunityFeed,
+      openProfileGateIfNeeded,
+      rateLimitMessage,
+      refreshLoungePostInteractions,
+      supabaseClient,
+      onRequireAuth,
+    ]
+  )
+
+  const undoPlainRepostForOriginal = useCallback(
+    async (originalPostId) => {
+      if (!originalPostId || !composerUserId) return
+      const childId =
+        plainRepostChildIdRef.current[originalPostId] ||
+        interactionByPostRef.current[originalPostId]?.plainRepostChildId
+      if (!childId) {
+        setLoungeManageErr('Could not find your repost. Try refreshing.')
+        return
+      }
+      setRepostManageBusy(true)
+      setLoungeManageErr('')
+      try {
+        const { error } = await supabaseClient
+          .from('community_feed_posts')
+          .delete()
+          .eq('id', childId)
+          .eq('user_id', composerUserId)
+        if (error) {
+          setLoungeManageErr(error.message || 'Could not undo repost.')
+          return
+        }
+        setRepostManageModal(null)
+        await loadCommunityFeed({ silent: true })
+        await refreshLoungePostInteractions([originalPostId])
+      } finally {
+        setRepostManageBusy(false)
+      }
+    },
+    [composerUserId, loadCommunityFeed, refreshLoungePostInteractions, supabaseClient]
+  )
+
+  /** Kept as alias for profile modal props dependency lists. */
   const submitQuoteRepost = useCallback(async () => {
     const modal = quoteRepostModal
     if (!modal || modal.mode !== 'compose' || !modal.original?.id) return
@@ -1138,6 +1353,7 @@ export default function SocialFeed({
     setLoungePostDetail(null)
     setLoungePostDetailVisible(true)
     setLoungePostDetailMenuOpen(false)
+    setLoungeDetailRepostMenuOpen(false)
     setLoungeDetailEditing(false)
     setLoungeDetailDraftCaption('')
     setLoungeDetailEditErr('')
@@ -1197,6 +1413,7 @@ export default function SocialFeed({
       setLoungeDetailEditMediaFile(null)
       setLoungeDetailEditMediaKind('')
       setLoungePostDetailMenuOpen(false)
+      setLoungeDetailRepostMenuOpen(false)
       setLoungePostDetail(post)
       if (
         wantEdit &&
@@ -1379,6 +1596,37 @@ export default function SocialFeed({
     }
   }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, supabaseClient])
 
+  const performLoungeStaffDeleteFromDetail = useCallback(async () => {
+    if (!loungePostDetail?.id || !loungeViewerIsStaff) return
+    if (loungePostDetail.user_id === composerUserId) return
+    if (loungePostDeleteInflightRef.current) return
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm('Delete this post as staff? This cannot be undone.')
+      if (!ok) return
+    }
+    loungePostDeleteInflightRef.current = true
+    const postId = loungePostDetail.id
+    setLoungeManageErr('')
+    setLoungeDetailDeleteBusy(true)
+    try {
+      const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', postId)
+      if (error) {
+        const msg = String(error.message || '')
+        if (error.code === '42501') {
+          setLoungeManageErr('You do not have permission to delete this post.')
+        } else {
+          setLoungeManageErr(msg || 'Could not delete.')
+        }
+        return
+      }
+      closeLoungePostDetail()
+      await loadCommunityFeed({ silent: true })
+    } finally {
+      loungePostDeleteInflightRef.current = false
+      setLoungeDetailDeleteBusy(false)
+    }
+  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, loungeViewerIsStaff, supabaseClient])
+
   const deleteLoungePostFromFeed = useCallback(
     async (post) => {
       if (!post?.id || post.user_id !== composerUserId) return
@@ -1409,6 +1657,50 @@ export default function SocialFeed({
       }
     },
     [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, supabaseClient]
+  )
+
+  const deleteStaffLoungePostFromFeed = useCallback(
+    async (post) => {
+      if (!post?.id || !loungeViewerIsStaff || !composerUserId) return
+      if (post.user_id === composerUserId) {
+        await deleteLoungePostFromFeed(post)
+        return
+      }
+      if (loungePostDeleteInflightRef.current) return
+      if (typeof window !== 'undefined') {
+        const ok = window.confirm('Delete this post as staff? This cannot be undone.')
+        if (!ok) return
+      }
+      loungePostDeleteInflightRef.current = true
+      setLoungeFeedDeleteBusyPostId(post.id)
+      setLoungeManageErr('')
+      try {
+        const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', post.id)
+        if (error) {
+          const msg = String(error.message || '')
+          if (error.code === '42501') {
+            setLoungeManageErr('You do not have permission to delete this post.')
+          } else {
+            setLoungeManageErr(msg || 'Could not delete.')
+          }
+          return
+        }
+        if (loungePostDetail?.id === post.id) closeLoungePostDetail()
+        await loadCommunityFeed({ silent: true })
+      } finally {
+        loungePostDeleteInflightRef.current = false
+        setLoungeFeedDeleteBusyPostId(null)
+      }
+    },
+    [
+      closeLoungePostDetail,
+      composerUserId,
+      deleteLoungePostFromFeed,
+      loadCommunityFeed,
+      loungePostDetail,
+      loungeViewerIsStaff,
+      supabaseClient,
+    ]
   )
 
   const onPostMenuBlockFromFeed = useCallback((p) => {
@@ -2000,7 +2292,9 @@ export default function SocialFeed({
       loungeReadOnly,
       interactionStateFor,
       toggleInteraction,
-      onQuoteRepost: handleQuoteRepostPress,
+      onPlainRepost: handlePlainRepost,
+      onRepostManage: handleRepostManage,
+      onQuoteRepost: openQuoteRepostComposer,
       toggleBookmark,
       bookmarkedByPost,
       requireLoungeAuth,
@@ -2024,6 +2318,7 @@ export default function SocialFeed({
         ),
       onPostMenuEdit: (p) => openLoungePostDetail(p, { startEditing: true }),
       onPostMenuDelete: deleteLoungePostFromFeed,
+      onStaffPostDelete: deleteStaffLoungePostFromFeed,
       onPostMenuBlock: onPostMenuBlockFromFeed,
       onPostMenuReport: onPostMenuReportFromFeed,
       busyDeletingPostId: loungeFeedDeleteBusyPostId,
@@ -2032,7 +2327,9 @@ export default function SocialFeed({
       loungeReadOnly,
       interactionStateFor,
       toggleInteraction,
-      handleQuoteRepostPress,
+      handlePlainRepost,
+      handleRepostManage,
+      openQuoteRepostComposer,
       toggleBookmark,
       bookmarkedByPost,
       requireLoungeAuth,
@@ -2050,6 +2347,7 @@ export default function SocialFeed({
       avatarText,
       composerUserId,
       deleteLoungePostFromFeed,
+      deleteStaffLoungePostFromFeed,
       onPostMenuBlockFromFeed,
       onPostMenuReportFromFeed,
       loungeFeedDeleteBusyPostId,
@@ -2112,6 +2410,15 @@ export default function SocialFeed({
           <button
             type="button"
             onClick={() => {
+              const hasContent =
+                postText.trim().length > 0 ||
+                composerImageItems.length > 0 ||
+                composerVideoSlot != null ||
+                String(composerMediaUrl || '').trim().length > 0
+              if (hasContent) {
+                setComposerDiscardPromptOpen(true)
+                return
+              }
               setPostText('')
               setComposerImageItems((prev) => {
                 for (const it of prev) {
@@ -2406,9 +2713,23 @@ export default function SocialFeed({
                 })
                 setComposerImageItems((prev) => {
                   const next = [...prev]
+                  const cap = LOUNGE_COMPOSER_MAX_IMAGES
+                  let room = Math.max(0, cap - next.length)
+                  if (room === 0) {
+                    setPostErr(`You can attach up to ${cap} images.`)
+                    return next
+                  }
+                  let skipped = 0
                   for (const file of files) {
-                    if (next.length >= LOUNGE_COMPOSER_MAX_IMAGES) break
+                    if (room <= 0) {
+                      skipped += 1
+                      continue
+                    }
                     next.push({ id: newComposerImageId(), file, preview: URL.createObjectURL(file) })
+                    room -= 1
+                  }
+                  if (skipped > 0) {
+                    setPostErr(`You can attach up to ${cap} images. Extra files were not added.`)
                   }
                   return next
                 })
@@ -2503,6 +2824,121 @@ export default function SocialFeed({
         </div>
         )}
 
+        {composerDiscardPromptOpen ? (
+          <div
+            className="fixed inset-0 z-[91] flex items-end justify-center bg-black/60 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 sm:items-center sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="composer-discard-title"
+          >
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default touch-manipulation bg-transparent"
+              aria-label="Close"
+              onClick={() => setComposerDiscardPromptOpen(false)}
+            />
+            <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-4 shadow-2xl">
+              <h2 id="composer-discard-title" className="text-[17px] font-bold text-white">
+                Save draft?
+              </h2>
+              <p className="mt-2 text-[14px] leading-snug text-zinc-400">
+                Save your text and linked GIF to drafts. Photos and videos in the composer are cleared and need to be
+                re-added when you continue.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  className="order-2 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-1"
+                  onClick={() => {
+                    setComposerDiscardPromptOpen(false)
+                    setPostText('')
+                    setComposerImageItems((prev) => {
+                      for (const it of prev) {
+                        try {
+                          URL.revokeObjectURL(it.preview)
+                        } catch {
+                          // ignore
+                        }
+                      }
+                      return []
+                    })
+                    setComposerVideoSlot((prev) => {
+                      if (prev?.preview) {
+                        try {
+                          URL.revokeObjectURL(prev.preview)
+                        } catch {
+                          // ignore
+                        }
+                      }
+                      return null
+                    })
+                    setComposerMediaUrl('')
+                    setComposerPinOnPost(false)
+                    setPostErr('')
+                    composerFoldedFromFeedScrollRef.current = false
+                    composerFoldRevealRef.current = 0
+                    setComposerFoldReveal(0)
+                    composerExpandedRef.current = false
+                    setComposerExpanded(false)
+                    clearLoungeComposerDraft()
+                    try {
+                      const el = composerMediaInputRef.current
+                      if (el) el.value = ''
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  className="order-1 min-h-11 rounded-xl bg-violet-600 px-4 text-[15px] font-semibold text-white hover:bg-violet-500 touch-manipulation sm:order-2"
+                  onClick={() => {
+                    persistLoungeComposerDraft(postText, false, false, composerMediaUrl)
+                    setComposerImageItems((prev) => {
+                      for (const it of prev) {
+                        try {
+                          URL.revokeObjectURL(it.preview)
+                        } catch {
+                          // ignore
+                        }
+                      }
+                      return []
+                    })
+                    setComposerVideoSlot((prev) => {
+                      if (prev?.preview) {
+                        try {
+                          URL.revokeObjectURL(prev.preview)
+                        } catch {
+                          // ignore
+                        }
+                      }
+                      return null
+                    })
+                    try {
+                      const el = composerMediaInputRef.current
+                      if (el) el.value = ''
+                    } catch {
+                      // ignore
+                    }
+                    setComposerDiscardPromptOpen(false)
+                    setComposerPinOnPost(false)
+                    setPostErr('Draft saved. Re-add photos if you had any.')
+                    composerFoldedFromFeedScrollRef.current = false
+                    composerFoldRevealRef.current = 0
+                    setComposerFoldReveal(0)
+                    composerExpandedRef.current = false
+                    setComposerExpanded(false)
+                  }}
+                >
+                  Save draft
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="border-b border-zinc-800 pb-4">
         {loungeManageErr ? (
           <div className="px-3 pt-3">
@@ -2565,7 +3001,9 @@ export default function SocialFeed({
                   loungeReadOnly={loungeReadOnly}
                   interactionStateFor={interactionStateFor}
                   toggleInteraction={toggleInteraction}
-                  onQuoteRepost={handleQuoteRepostPress}
+                  onPlainRepost={handlePlainRepost}
+                  onRepostManage={handleRepostManage}
+                  onQuoteRepost={openQuoteRepostComposer}
                   toggleBookmark={toggleBookmark}
                   bookmarkedByPost={bookmarkedByPost}
                   onOpenComments={openLoungePostDetail}
@@ -2591,6 +3029,7 @@ export default function SocialFeed({
                   }
                   onPostMenuEdit={(p) => openLoungePostDetail(p, { startEditing: true })}
                   onPostMenuDelete={deleteLoungePostFromFeed}
+                  onStaffPostDelete={deleteStaffLoungePostFromFeed}
                   onPostMenuBlock={onPostMenuBlockFromFeed}
                   onPostMenuReport={onPostMenuReportFromFeed}
                   busyDeletingPostId={loungeFeedDeleteBusyPostId}
@@ -2636,7 +3075,15 @@ export default function SocialFeed({
             onTransitionCancel={onLoungePostDetailPanelTransitionEnd}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] sm:py-3">
+            <div
+              ref={loungePostDetailTitleBarRef}
+              className="absolute inset-x-0 top-0 z-30 border-b border-zinc-800/95 bg-zinc-950/95 px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 sm:py-3 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
+              style={{
+                transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
+                pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
+              }}
+            >
+              <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -2716,6 +3163,20 @@ export default function SocialFeed({
                           Delete
                         </button>
                       ) : null}
+                      {loungeViewerIsStaff && !loungeDetailIsOwn ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="block w-full px-4 py-3 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                          disabled={loungeDetailDeleteBusy}
+                          onClick={() => {
+                            setLoungePostDetailMenuOpen(false)
+                            void performLoungeStaffDeleteFromDetail()
+                          }}
+                        >
+                          Delete post
+                        </button>
+                      ) : null}
                       {loungeViewerIsStaff ? (
                         <button
                           type="button"
@@ -2733,9 +3194,19 @@ export default function SocialFeed({
               ) : (
                 <div className="h-10 w-10 shrink-0" aria-hidden />
               )}
+              </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div
+              ref={loungePostDetailScrollRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
+            >
+              <div
+                aria-hidden
+                className="shrink-0"
+                style={{ height: loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56 }}
+              />
+              <div className="px-4 py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
               {loungeManageErr ? (
                 <div className="mb-4 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
                   {loungeManageErr}
@@ -3109,33 +3580,71 @@ export default function SocialFeed({
                         </svg>
                         {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
                       </LoungeFeedStatSlot>
-                      <LoungeFeedStatSlot
-                        readOnly={ro}
-                        title={
-                          ro
-                            ? 'Sign in to repost'
-                            : ui.reposted
-                              ? 'Remove your quote repost'
-                              : 'Quote repost'
-                        }
-                        onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => {
-                          if (openProfileGateIfNeeded()) return
-                          handleQuoteRepostPress(d)
-                        }}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                      >
-                        <svg className={`h-[22px] w-[22px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-                          <path
-                            d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
-                            stroke="currentColor"
-                            strokeWidth="1.35"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        {Number.isFinite(repostCount) ? <span className={repostClass}>{repostCount}</span> : null}
-                      </LoungeFeedStatSlot>
+                      <div className="relative flex justify-center" ref={loungeDetailRepostMenuRef}>
+                        <LoungeFeedStatSlot
+                          readOnly={ro}
+                          title={
+                            ro
+                              ? 'Sign in to repost'
+                              : ui.reposted
+                                ? 'Repost options'
+                                : 'Repost or quote repost'
+                          }
+                          onReadOnlyClick={requireLoungeAuth}
+                          onClick={() => {
+                            if (openProfileGateIfNeeded()) return
+                            if (ui.reposted) {
+                              setLoungeDetailRepostMenuOpen(false)
+                              handleRepostManage(d)
+                              return
+                            }
+                            setLoungeDetailRepostMenuOpen((o) => !o)
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                        >
+                          <svg className={`h-[22px] w-[22px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                            <path
+                              d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                              stroke="currentColor"
+                              strokeWidth="1.35"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          {Number.isFinite(repostCount) ? <span className={repostClass}>{repostCount}</span> : null}
+                        </LoungeFeedStatSlot>
+                        {loungeDetailRepostMenuOpen && !ro && !ui.reposted ? (
+                          <div
+                            role="menu"
+                            className="absolute bottom-full left-1/2 z-40 mb-1 min-w-[11rem] -translate-x-1/2 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="block w-full px-3 py-2 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setLoungeDetailRepostMenuOpen(false)
+                                void handlePlainRepost(d)
+                              }}
+                            >
+                              Repost
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="block w-full px-3 py-2 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setLoungeDetailRepostMenuOpen(false)
+                                openQuoteRepostComposer(d)
+                              }}
+                            >
+                              Quote repost
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                       <LoungeFeedStatSlot
                         readOnly={ro}
                         title={ro ? 'Sign in to like' : undefined}
@@ -3271,6 +3780,7 @@ export default function SocialFeed({
                   </>
                 )}
               </div>
+              </div>
             </div>
           </div>
 
@@ -3294,6 +3804,87 @@ export default function SocialFeed({
           postCardProps={profilePostCardProps}
           onProfileUpdated={onProfileScreenUpdated}
         />
+      ) : null}
+
+      {repostManageModal?.original ? (
+        <div
+          className="fixed inset-0 z-[94] flex items-end justify-center bg-black/55 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lounge-repost-manage-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
+            aria-label="Close"
+            disabled={repostManageBusy}
+            onClick={() => {
+              if (repostManageBusy) return
+              setRepostManageModal(null)
+            }}
+          />
+          <div className="pointer-events-auto relative z-10 w-full max-w-lg rounded-t-[24px] border border-zinc-700 bg-zinc-900 px-4 pb-5 pt-4 shadow-xl">
+            <h2 id="lounge-repost-manage-title" className="text-center text-[17px] font-bold text-white">
+              Repost
+            </h2>
+            <div className="mt-3 flex flex-col gap-2">
+              {(() => {
+                const orig = repostManageModal.original
+                const st = interactionStateFor(orig.id)
+                const plainId = st.plainRepostChildId
+                const quoteId = st.quoteRepostChildId
+                return (
+                  <>
+                    {plainId ? (
+                      <button
+                        type="button"
+                        className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-rose-400 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                        disabled={repostManageBusy}
+                        onClick={() => void undoPlainRepostForOriginal(orig.id)}
+                      >
+                        Undo repost
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-zinc-100 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                        disabled={repostManageBusy}
+                        onClick={() => void handlePlainRepost(orig)}
+                      >
+                        Repost
+                      </button>
+                    )}
+                    {quoteId ? (
+                      <button
+                        type="button"
+                        className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-zinc-100 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                        disabled={repostManageBusy}
+                        onClick={() => {
+                          setRepostManageModal(null)
+                          setQuoteRepostErr('')
+                          setQuoteRepostModal({ mode: 'remove', original: orig, childId: quoteId })
+                        }}
+                      >
+                        Remove quote repost
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-zinc-100 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                      disabled={repostManageBusy}
+                      onClick={() => {
+                        setRepostManageModal(null)
+                        openQuoteRepostComposer(orig)
+                      }}
+                    >
+                      Quote repost
+                    </button>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {quoteRepostModal ? (
@@ -3334,7 +3925,7 @@ export default function SocialFeed({
                       setQuoteRepostErr('')
                       clearQuoteRepostMedia()
                     }}
-                    className="pointer-events-auto min-h-12 min-w-[4.75rem] shrink-0 touch-manipulation rounded-full px-3 py-2 text-left text-[12px] font-semibold leading-tight text-zinc-300 hover:bg-zinc-800/90 hover:text-white active:text-white disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                    className="pointer-events-auto min-h-12 min-w-[4.75rem] shrink-0 touch-manipulation rounded-full px-3 py-2 text-left text-[15px] font-semibold leading-tight text-zinc-300 hover:bg-zinc-800/90 hover:text-white active:text-white disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                   >
                     Cancel
                   </button>
@@ -3727,7 +4318,7 @@ export default function SocialFeed({
                       const file = input.files?.[0] || null
                       if (!file) return
                       setProfileGateErr('')
-                      const { file: ready, error } = await compressImageFileUnderMaxBytes(file)
+                      const { file: ready, error } = await prepareAvatarImageForUpload(file)
                       if (error) {
                         setProfileGateErr(error.message)
                         try {

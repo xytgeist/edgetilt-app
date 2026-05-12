@@ -34,7 +34,7 @@ import {
 } from './mustHitByGuideDemo'
 import { defaultCardEvThresholdForSlug } from '../../constants/slotCardEvThreshold'
 import { communityFeedPostInsertPayload } from '../../utils/communityFeedPost'
-import { compressImageFileUnderMaxBytes } from '../../utils/compressImageForUpload'
+import { prepareAvatarImageForUpload } from '../../utils/compressImageForUpload'
 import {
   fetchOwnProfile,
   formatProfileSaveDebugError,
@@ -1223,7 +1223,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                         const file = input.files?.[0] || null
                         if (!file) return
                         setProfileGateErr('')
-                        const { file: ready, error } = await compressImageFileUnderMaxBytes(file)
+                        const { file: ready, error } = await prepareAvatarImageForUpload(file)
                         if (error) {
                           setProfileGateErr(error.message)
                           try {

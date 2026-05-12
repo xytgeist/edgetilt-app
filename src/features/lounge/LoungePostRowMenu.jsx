@@ -9,6 +9,10 @@ export default function LoungePostRowMenu({
   deleteBusy,
   onEdit,
   onDelete,
+  /** Moderator/admin: delete another user's post. */
+  showStaffDelete,
+  staffDeleteBusy,
+  onStaffDelete,
   onBlock,
   onReport,
 }) {
@@ -100,6 +104,21 @@ export default function LoungePostRowMenu({
             </>
           ) : (
             <>
+              {showStaffDelete ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                  disabled={staffDeleteBusy}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    close()
+                    onStaffDelete?.()
+                  }}
+                >
+                  Delete post
+                </button>
+              ) : null}
               <button
                 type="button"
                 role="menuitem"

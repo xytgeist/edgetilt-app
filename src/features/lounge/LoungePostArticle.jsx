@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
 import { renderRichCaption } from './loungeCaption'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
@@ -15,7 +16,11 @@ export default function LoungePostArticle({
   loungeReadOnly,
   interactionStateFor,
   toggleInteraction,
-  /** Quote repost (required caption) or remove existing quote; preferred over `toggleInteraction(..., 'reposted')`. */
+  /** Plain repost (no quote); requires caption empty + `is_plain_repost` in DB. */
+  onPlainRepost,
+  /** When user already reposted: open sheet to undo plain / remove quote / add quote. */
+  onRepostManage,
+  /** Quote repost (opens composer with caption). */
   onQuoteRepost,
   toggleBookmark,
   bookmarkedByPost,
@@ -43,8 +48,12 @@ export default function LoungePostArticle({
   onPostMenuBlock,
   onPostMenuReport,
   busyDeletingPostId,
+  /** Moderator/admin: delete another user's post from the row menu. */
+  onStaffPostDelete,
 }) {
   const ui = interactionStateFor(post.id)
+  const [repostMenuOpen, setRepostMenuOpen] = useState(false)
+  const repostMenuRef = useRef(null)
   const isBookmarked = !!bookmarkedByPost[post.id]
   const baseComments = typeof post.comment_count === 'number' ? post.comment_count : 0
   const baseLikes = typeof post.like_count === 'number' ? post.like_count : 0
@@ -57,9 +66,32 @@ export default function LoungePostArticle({
   const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-rose-400' : 'text-zinc-500'
   const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-amber-300' : 'text-zinc-500'
   const ro = loungeReadOnly
-  const showPostRowMenu = Boolean(!ro && viewerUserId && (onPostMenuEdit || onPostMenuDelete || onPostMenuBlock || onPostMenuReport))
   const menuIsOwn = Boolean(viewerUserId && post?.user_id === viewerUserId)
+  const showPostRowMenu = Boolean(
+    !ro &&
+      viewerUserId &&
+      (onPostMenuEdit ||
+        onPostMenuDelete ||
+        onPostMenuBlock ||
+        onPostMenuReport ||
+        (loungeViewerIsStaff && !menuIsOwn && typeof onStaffPostDelete === 'function'))
+  )
   const menuShowEdit = Boolean(menuIsOwn && typeof captionEditableInMenu === 'function' && captionEditableInMenu(post))
+
+  useEffect(() => {
+    if (!repostMenuOpen) return
+    const close = (e) => {
+      const el = repostMenuRef.current
+      if (el && e.target instanceof Node && el.contains(e.target)) return
+      setRepostMenuOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('touchstart', close, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('touchstart', close)
+    }
+  }, [repostMenuOpen])
 
   const onAvatar = (e) => {
     e.stopPropagation()
@@ -133,6 +165,9 @@ export default function LoungePostArticle({
               deleteBusy={Boolean(busyDeletingPostId && busyDeletingPostId === post.id)}
               onEdit={() => onPostMenuEdit?.(post)}
               onDelete={() => onPostMenuDelete?.(post)}
+              showStaffDelete={Boolean(loungeViewerIsStaff && !menuIsOwn && typeof onStaffPostDelete === 'function')}
+              staffDeleteBusy={Boolean(busyDeletingPostId && busyDeletingPostId === post.id)}
+              onStaffDelete={() => onStaffPostDelete?.(post)}
               onBlock={() => onPostMenuBlock?.(post)}
               onReport={() => onPostMenuReport?.(post)}
             />
@@ -146,47 +181,97 @@ export default function LoungePostArticle({
           </div>
         ) : null}
         {post.reposted_post ? (
-          <>
-            {feedPostDisplayCaption(post) ? (
-              <div className="mt-1.5 text-left text-[17px] leading-snug text-zinc-200 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                {renderRichCaption(feedPostDisplayCaption(post))}
+          post?.is_plain_repost === true ? (
+            <>
+              <div className="mt-1.5 flex items-center gap-1.5 text-left text-[13px] leading-snug text-zinc-500">
+                <svg className="h-4 w-4 shrink-0 text-emerald-500/90" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <path
+                    d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                    stroke="currentColor"
+                    strokeWidth="1.35"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="min-w-0 font-medium text-zinc-400">
+                  {viewerUserId && post.user_id === viewerUserId
+                    ? 'You reposted'
+                    : `${displayNameFor(post)} reposted`}
+                </span>
               </div>
-            ) : null}
-            <LoungePostFeedImagesAndGif
-              post={post}
-              variant="feed"
-              firstMarginTopClass={feedPostDisplayCaption(post) ? 'mt-2' : 'mt-1.5'}
-            />
-            <button
-              type="button"
-              data-lounge-original-embed
-              aria-label="View original post"
-              className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
-            >
-              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
-                <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
-                  {displayNameFor(post.reposted_post)}
-                </span>
-                <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
-                <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[14px] text-zinc-500">
-                  <span className="min-w-0 max-w-[min(9rem,36vw)] truncate sm:max-w-[11rem]">{handleFor(post.reposted_post)}</span>
-                </span>
-                {post.reposted_post.pinned ? (
-                  <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
-                    Pinned
+              <button
+                type="button"
+                data-lounge-original-embed
+                aria-label="View original post"
+                className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
+                  <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
+                    {displayNameFor(post.reposted_post)}
                   </span>
-                ) : null}
-              </div>
-              <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">
-                {renderRichCaption(feedPostDisplayCaption(post.reposted_post))}
-              </div>
+                  <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[14px] text-zinc-500">
+                    <span className="min-w-0 max-w-[min(9rem,36vw)] truncate sm:max-w-[11rem]">{handleFor(post.reposted_post)}</span>
+                  </span>
+                  {post.reposted_post.pinned ? (
+                    <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                      Pinned
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">
+                  {renderRichCaption(feedPostDisplayCaption(post.reposted_post))}
+                </div>
+                <LoungePostFeedImagesAndGif
+                  post={post.reposted_post}
+                  variant="embed"
+                  firstMarginTopClass="mt-2"
+                />
+              </button>
+            </>
+          ) : (
+            <>
+              {feedPostDisplayCaption(post) ? (
+                <div className="mt-1.5 text-left text-[17px] leading-snug text-zinc-200 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                  {renderRichCaption(feedPostDisplayCaption(post))}
+                </div>
+              ) : null}
               <LoungePostFeedImagesAndGif
-                post={post.reposted_post}
-                variant="embed"
-                firstMarginTopClass="mt-2"
+                post={post}
+                variant="feed"
+                firstMarginTopClass={feedPostDisplayCaption(post) ? 'mt-2' : 'mt-1.5'}
               />
-            </button>
-          </>
+              <button
+                type="button"
+                data-lounge-original-embed
+                aria-label="View original post"
+                className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
+                  <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
+                    {displayNameFor(post.reposted_post)}
+                  </span>
+                  <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
+                  <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[14px] text-zinc-500">
+                    <span className="min-w-0 max-w-[min(9rem,36vw)] truncate sm:max-w-[11rem]">{handleFor(post.reposted_post)}</span>
+                  </span>
+                  {post.reposted_post.pinned ? (
+                    <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                      Pinned
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">
+                  {renderRichCaption(feedPostDisplayCaption(post.reposted_post))}
+                </div>
+                <LoungePostFeedImagesAndGif
+                  post={post.reposted_post}
+                  variant="embed"
+                  firstMarginTopClass="mt-2"
+                />
+              </button>
+            </>
+          )
         ) : (
           <>
             {feedPostDisplayCaption(post) ? (
@@ -234,37 +319,79 @@ export default function LoungePostArticle({
             </svg>
             {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
           </LoungeFeedStatSlot>
-          <LoungeFeedStatSlot
-            readOnly={ro}
-            title={
-              ro
-                ? 'Sign in to repost'
-                : ui.reposted
-                  ? 'Remove your quote repost'
-                  : 'Quote repost'
-            }
-            onReadOnlyClick={requireLoungeAuth}
-            onClick={() => {
-              if (openProfileGateIfNeeded()) return
-              if (onQuoteRepost) {
-                onQuoteRepost(post)
-                return
+          <div className="relative flex justify-center" ref={repostMenuRef}>
+            <LoungeFeedStatSlot
+              readOnly={ro}
+              title={
+                ro
+                  ? 'Sign in to repost'
+                  : ui.reposted
+                    ? 'Repost options'
+                    : 'Repost or quote repost'
               }
-              void toggleInteraction(post.id, 'reposted')
-            }}
-            className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
-          >
-            <svg className={`h-[20px] w-[20px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
-              <path
-                d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
-                stroke="currentColor"
-                strokeWidth="1.35"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {Number.isFinite(repostCount) ? <span className={repostClass}>{repostCount}</span> : null}
-          </LoungeFeedStatSlot>
+              onReadOnlyClick={requireLoungeAuth}
+              onClick={() => {
+                if (openProfileGateIfNeeded()) return
+                if (ui.reposted) {
+                  setRepostMenuOpen(false)
+                  onRepostManage?.(post)
+                  return
+                }
+                if (onPlainRepost && onQuoteRepost) {
+                  setRepostMenuOpen((o) => !o)
+                  return
+                }
+                if (onQuoteRepost) {
+                  onQuoteRepost(post)
+                  return
+                }
+                void toggleInteraction(post.id, 'reposted')
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70"
+            >
+              <svg className={`h-[20px] w-[20px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                <path
+                  d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                  stroke="currentColor"
+                  strokeWidth="1.35"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {Number.isFinite(repostCount) ? <span className={repostClass}>{repostCount}</span> : null}
+            </LoungeFeedStatSlot>
+            {repostMenuOpen && !ro && !ui.reposted && onPlainRepost && onQuoteRepost ? (
+              <div
+                role="menu"
+                className="absolute bottom-full left-1/2 z-40 mb-1 min-w-[11rem] -translate-x-1/2 rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-2 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setRepostMenuOpen(false)
+                    onPlainRepost(post)
+                  }}
+                >
+                  Repost
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-2 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setRepostMenuOpen(false)
+                    onQuoteRepost(post)
+                  }}
+                >
+                  Quote repost
+                </button>
+              </div>
+            ) : null}
+          </div>
           <LoungeFeedStatSlot
             readOnly={ro}
             title={ro ? 'Sign in to like' : undefined}

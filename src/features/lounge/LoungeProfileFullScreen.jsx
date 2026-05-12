@@ -10,7 +10,7 @@ import {
   uploadProfileAvatar,
   uploadProfileBanner,
 } from '../profiles/profileGate'
-import { compressImageFileUnderMaxBytes } from '../../utils/compressImageForUpload'
+import { prepareAvatarImageForUpload } from '../../utils/compressImageForUpload'
 import LoungePostArticle from './LoungePostArticle'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 
@@ -425,7 +425,7 @@ export default function LoungeProfileFullScreen({
     if (!raw || !isOwnProfile || !viewerUserId || avatarBusy) return
     setAvatarBusy(true)
     try {
-      const { file, error: compressErr } = await compressImageFileUnderMaxBytes(raw)
+      const { file, error: compressErr } = await prepareAvatarImageForUpload(raw)
       if (compressErr) {
         window.alert(compressErr.message || 'Could not process that image.')
         return

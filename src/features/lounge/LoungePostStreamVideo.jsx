@@ -347,9 +347,8 @@ export default function LoungePostStreamVideo({
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
-  /** After `playing` (or timeout): fade video in and poster out; then drop poster `<img>`. */
+  /** After `playing` (or timeout): fade video in over poster; poster stays in-flow for layout (avoids Safari default video width flash). */
   const [streamFadeShowVideo, setStreamFadeShowVideo] = useState(false)
-  const [streamFadePosterDismissed, setStreamFadePosterDismissed] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
@@ -387,11 +386,9 @@ export default function LoungePostStreamVideo({
     if (!lazyStream || !poster) return undefined
     if (!attachStream) {
       setStreamFadeShowVideo(false)
-      setStreamFadePosterDismissed(false)
       return undefined
     }
     setStreamFadeShowVideo(false)
-    setStreamFadePosterDismissed(false)
     const v = videoRef.current
     if (!v) return undefined
     let cleaned = false
@@ -578,15 +575,24 @@ export default function LoungePostStreamVideo({
     }
   }, [coordinatorActive, lazyStream, isWinner])
 
+  const onInlineStreamError = useCallback(() => {
+    if (recoveryBurstRef.current < 2) {
+      recoveryBurstRef.current += 1
+      setShowStreamRetry(false)
+      setStreamAttachKey((k) => k + 1)
+      return
+    }
+    setShowStreamRetry(true)
+  }, [])
+
   if (!id) return null
 
   const videoClass = videoClassByVariant[variant] || videoClassByVariant.feed
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
   const border = borderByVariant[variant] || borderByVariant.feed
-  /** iOS: empty `<video>` after HLS detach often stays black; show Stream thumbnail as `<img>` until attach. */
-  const showStreamPosterImg = Boolean(lazyStream && !attachStream && poster)
-  const streamPosterCrossfade = Boolean(lazyStream && poster && attachStream)
+  /** iOS: poster `<img>` in-flow sizes the frame; `<video>` stays absolute so default intrinsic width cannot flash wide. */
+  const usePosterFrame = Boolean(lazyStream && poster)
   const streamFadeTransitionStyle = { transitionDuration: `${STREAM_ATTACH_FADE_MS}ms` }
 
   return (
@@ -618,66 +624,51 @@ export default function LoungePostStreamVideo({
           }}
         >
           <div className="relative">
-            {showStreamPosterImg ? (
-              <img
-                src={poster}
-                alt=""
-                decoding="async"
-                draggable={false}
-                className={`pointer-events-none block max-w-full select-none ${videoClass}`}
+            {usePosterFrame ? (
+              <>
+                <img
+                  src={poster}
+                  alt=""
+                  decoding="async"
+                  draggable={false}
+                  className={`pointer-events-none block max-w-full select-none transition-opacity ease-out ${videoClass} ${
+                    attachStream && streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
+                  }`}
+                  style={attachStream ? streamFadeTransitionStyle : undefined}
+                  aria-hidden
+                />
+                <video
+                  ref={videoRef}
+                  className={`pointer-events-none absolute inset-0 z-[1] h-full w-full max-w-full object-contain transition-opacity ease-out ${
+                    attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  style={attachStream ? streamFadeTransitionStyle : undefined}
+                  muted
+                  loop
+                  playsInline
+                  preload={variant === 'composer' ? 'auto' : 'metadata'}
+                  poster={poster}
+                  aria-hidden
+                  onError={onInlineStreamError}
+                />
+              </>
+            ) : (
+              <video
+                ref={videoRef}
+                className={`pointer-events-none ${videoClass}`}
+                muted
+                loop
+                playsInline
+                preload={variant === 'composer' ? 'auto' : 'metadata'}
+                poster={poster}
                 aria-hidden
+                onError={onInlineStreamError}
               />
-            ) : null}
-            {streamPosterCrossfade && !streamFadePosterDismissed ? (
-              <img
-                src={poster}
-                alt=""
-                decoding="async"
-                draggable={false}
-                className={`pointer-events-none absolute inset-0 z-0 h-full w-full max-w-full object-contain select-none transition-opacity ease-out ${
-                  streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
-                }`}
-                style={streamFadeTransitionStyle}
-                aria-hidden
-                onTransitionEnd={(e) => {
-                  if (e.propertyName !== 'opacity') return
-                  if (!streamFadeShowVideo) return
-                  setStreamFadePosterDismissed(true)
-                }}
-              />
-            ) : null}
-            <video
-              ref={videoRef}
-              className={
-                showStreamPosterImg
-                  ? 'pointer-events-none absolute inset-0 z-0 h-full w-full max-h-full min-h-0 max-w-full object-contain opacity-0'
-                  : streamPosterCrossfade && !streamFadePosterDismissed
-                    ? `pointer-events-none relative z-[1] max-w-full transition-opacity ease-out ${videoClass} ${
-                        streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
-                      }`
-                    : `pointer-events-none ${videoClass}`
-              }
-              style={streamPosterCrossfade && !streamFadePosterDismissed ? streamFadeTransitionStyle : undefined}
-              muted
-              loop
-              playsInline
-              preload={variant === 'composer' ? 'auto' : 'metadata'}
-              poster={poster}
-              aria-hidden
-              onError={() => {
-                if (recoveryBurstRef.current < 2) {
-                  recoveryBurstRef.current += 1
-                  setShowStreamRetry(false)
-                  setStreamAttachKey((k) => k + 1)
-                  return
-                }
-                setShowStreamRetry(true)
-              }}
-            />
+            )}
           </div>
           {showStreamRetry ? (
             <div
-              className="pointer-events-auto absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"
+              className="pointer-events-auto absolute inset-0 z-[4] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"
               onClick={(e) => e.stopPropagation()}
               role="presentation"
             >
@@ -700,7 +691,7 @@ export default function LoungePostStreamVideo({
             <button
               type="button"
               aria-label="Play video with sound in the feed"
-              className="absolute bottom-0 left-0 right-0 z-[1] flex min-h-[5.25rem] items-end justify-start bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2 pb-2.5 pt-10 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+              className="absolute bottom-0 left-0 right-0 z-[3] flex min-h-[5.25rem] items-end justify-start bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2 pb-2.5 pt-10 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
               onClick={(e) => {
                 e.stopPropagation()
                 tryUnmuteInlineOrOpenLightbox()

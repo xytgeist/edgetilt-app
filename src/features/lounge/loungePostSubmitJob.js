@@ -21,6 +21,9 @@ const LOUNGE_MAX_PINNED_ALERT =
  * @property {File[]} imageFiles
  * @property {File | null} videoFile
  * @property {string | null} [streamVideoUid] When set, video already uploaded to Cloudflare Stream (composer prep).
+ * @property {number | null | undefined} [awaitingComposerVideoPrepJobId] When set, post job awaits in-flight composer prep for this job id.
+ * @property {object | null | undefined} [videoPrepSpec] Spec for `runComposerStreamVideoPrepWithRetries` (retry / interrupted handoff).
+ * @property {{ posterUrl: string, preview: string } | null | undefined} [videoPrepSlotRestore] Trim poster URLs when restoring composer after cancel.
  * @property {boolean} wantsPin
  * @property {boolean} isStaffPoster
  */

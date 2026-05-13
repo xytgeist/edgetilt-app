@@ -192,6 +192,11 @@ export default function SocialFeed({
   const composerVideoPrepAbortRef = useRef(null)
   /** Last spec passed to `runComposerStreamVideoPrepWithRetries` (for Retry after prep failure). */
   const composerVideoPrepSpecRef = useRef(null)
+  /**
+   * In-flight composer prep handoff for posts submitted before prep finishes.
+   * @type {{ jobId: number, promise: Promise<{ encodedFile: File, streamVideoUid: string }>, resolve: (v: { encodedFile: File, streamVideoUid: string }) => void, reject: (e: unknown) => void, settled: boolean } | null}
+   */
+  const composerVideoPrepHandoffRef = useRef(null)
   /** Latest failure payload for Retry (ref avoids stale closure). */
   const loungePostUploadFailureDetailsRef = useRef(null)
   /** When set, user is trimming a long video before it enters the composer or detail editor. */
@@ -772,6 +777,14 @@ export default function SocialFeed({
 
   const startComposerVideoPrepFromSpec = useCallback(
     (spec, slotBase) => {
+      const prevH = composerVideoPrepHandoffRef.current
+      if (prevH && !prevH.settled) {
+        try {
+          prevH.reject(new DOMException('Aborted', 'AbortError'))
+        } catch {
+          // ignore
+        }
+      }
       try {
         composerVideoPrepAbortRef.current?.abort()
       } catch {
@@ -781,6 +794,29 @@ export default function SocialFeed({
       const ac = new AbortController()
       composerVideoPrepAbortRef.current = ac
       composerVideoPrepSpecRef.current = spec
+
+      let resHandoff = /** @type {((v: { encodedFile: File, streamVideoUid: string }) => void) | null} */ (null)
+      let rejHandoff = /** @type {((e: unknown) => void) | null} */ (null)
+      const prepPromise = new Promise((res, rej) => {
+        resHandoff = res
+        rejHandoff = rej
+      })
+      const handoff = {
+        jobId,
+        settled: false,
+        promise: prepPromise,
+        resolve: (v) => {
+          if (handoff.settled) return
+          handoff.settled = true
+          resHandoff?.(v)
+        },
+        reject: (e) => {
+          if (handoff.settled) return
+          handoff.settled = true
+          rejHandoff?.(e)
+        },
+      }
+      composerVideoPrepHandoffRef.current = handoff
 
       const nextSlot = {
         ...slotBase,
@@ -799,7 +835,7 @@ export default function SocialFeed({
 
       void (async () => {
         try {
-          const { encodedFile, streamVideoUid } = await runComposerStreamVideoPrepWithRetries({
+          const result = await runComposerStreamVideoPrepWithRetries({
             supabaseClient,
             signal: ac.signal,
             spec,
@@ -818,8 +854,14 @@ export default function SocialFeed({
               )
             },
           })
-          if (ac.signal.aborted || composerVideoPrepJobIdRef.current !== jobId) return
-
+          if (ac.signal.aborted || composerVideoPrepJobIdRef.current !== jobId) {
+            if (!handoff.settled) {
+              handoff.reject(new DOMException('Aborted', 'AbortError'))
+            }
+            return
+          }
+          handoff.resolve(result)
+          const { encodedFile, streamVideoUid } = result
           setComposerVideoSlot((prev) => {
             if (!prev || prev.prepJobId !== jobId) return prev
             const oldPreview = prev.preview
@@ -851,6 +893,9 @@ export default function SocialFeed({
           })
           setLoungePostUploadBar((bar) => (bar?.mode === 'mediaPrep' && bar.prepJobId === jobId ? null : bar))
         } catch (e) {
+          if (!handoff.settled) {
+            handoff.reject(e instanceof Error ? e : new Error(String(e)))
+          }
           if (e?.name === 'AbortError') {
             if (composerVideoPrepJobIdRef.current !== jobId) return
             setLoungePostUploadBar(null)
@@ -860,13 +905,16 @@ export default function SocialFeed({
           const msg =
             (e instanceof Error ? e.message : String(e || '')).trim() ||
             'Video upload failed after multiple attempts.'
-          setComposerVideoSlot((prev) => (prev?.prepJobId === jobId ? { ...prev, prepStatus: 'failed', prepError: msg } : prev))
-          setLoungePostUploadFailureDetails({
-            kind: 'mediaPrep',
-            phase: 'Uploading media…',
-            message: msg,
-          })
-          setLoungePostUploadFailedOpen(true)
+          const slotStill = composerVideoSlotRef.current
+          if (slotStill?.prepJobId === jobId) {
+            setComposerVideoSlot((prev) => (prev?.prepJobId === jobId ? { ...prev, prepStatus: 'failed', prepError: msg } : prev))
+            setLoungePostUploadFailureDetails({
+              kind: 'mediaPrep',
+              phase: 'Uploading media…',
+              message: msg,
+            })
+            setLoungePostUploadFailedOpen(true)
+          }
           setLoungePostUploadBar(null)
         }
       })()
@@ -875,6 +923,15 @@ export default function SocialFeed({
   )
 
   const cancelComposerMediaPrep = useCallback(() => {
+    const h = composerVideoPrepHandoffRef.current
+    if (h && !h.settled) {
+      try {
+        h.reject(new DOMException('Aborted', 'AbortError'))
+      } catch {
+        // ignore
+      }
+    }
+    composerVideoPrepHandoffRef.current = null
     composerVideoPrepJobIdRef.current += 1
     try {
       composerVideoPrepAbortRef.current?.abort()
@@ -944,12 +1001,7 @@ export default function SocialFeed({
   const loungeComposerVideoPostBlocked = useMemo(() => {
     const v = composerVideoSlot
     if (!v) return false
-    const ps = v.prepStatus
-    if (ps === 'preparing' || ps === 'failed') return true
-    const uid = String(v.streamVideoUid || '').trim()
-    if (uid) return false
-    if (v.file && (ps === 'ready' || ps == null)) return false
-    return true
+    return v.prepStatus === 'failed'
   }, [composerVideoSlot])
 
   const actionIconClass = 'h-[20px] w-[20px] text-zinc-500'
@@ -2296,14 +2348,26 @@ export default function SocialFeed({
     pullRefreshing,
   ])
 
-  const clearComposerForPostAttempt = useCallback(() => {
-    composerVideoPrepJobIdRef.current += 1
-    try {
-      composerVideoPrepAbortRef.current?.abort()
-    } catch {
-      // ignore
+  const clearComposerForPostAttempt = useCallback((opts = {}) => {
+    const preserve = Boolean(opts.preserveComposerVideoPrep)
+    if (!preserve) {
+      const h = composerVideoPrepHandoffRef.current
+      if (h && !h.settled) {
+        try {
+          h.reject(new DOMException('Aborted', 'AbortError'))
+        } catch {
+          // ignore
+        }
+      }
+      composerVideoPrepHandoffRef.current = null
+      composerVideoPrepJobIdRef.current += 1
+      try {
+        composerVideoPrepAbortRef.current?.abort()
+      } catch {
+        // ignore
+      }
+      composerVideoPrepAbortRef.current = null
     }
-    composerVideoPrepAbortRef.current = null
     setPostText('')
     setComposerImageItems((prev) => {
       for (const it of prev) {
@@ -2316,18 +2380,20 @@ export default function SocialFeed({
       return []
     })
     setComposerVideoSlot((prev) => {
-      if (prev?.preview) {
-        try {
-          URL.revokeObjectURL(prev.preview)
-        } catch {
-          // ignore
+      if (!preserve) {
+        if (prev?.preview) {
+          try {
+            URL.revokeObjectURL(prev.preview)
+          } catch {
+            // ignore
+          }
         }
-      }
-      if (prev?.posterUrl && prev.posterUrl !== prev.preview) {
-        try {
-          URL.revokeObjectURL(prev.posterUrl)
-        } catch {
-          // ignore
+        if (prev?.posterUrl && prev.posterUrl !== prev.preview) {
+          try {
+            URL.revokeObjectURL(prev.posterUrl)
+          } catch {
+            // ignore
+          }
         }
       }
       return null
@@ -2361,7 +2427,7 @@ export default function SocialFeed({
         preview: URL.createObjectURL(file),
       })),
     )
-    if (snap.videoFile || String(snap.streamVideoUid || '').trim()) {
+    if (String(snap.streamVideoUid || '').trim()) {
       const vf = snap.videoFile
       const uid = String(snap.streamVideoUid || '').trim() || null
       if (vf) {
@@ -2377,6 +2443,37 @@ export default function SocialFeed({
       } else {
         setComposerVideoSlot(null)
       }
+    } else if (snap.videoPrepSpec) {
+      if (snap.videoPrepSpec.kind === 'direct') {
+        const f = snap.videoPrepSpec.file
+        const previewUrl = URL.createObjectURL(f)
+        startComposerVideoPrepFromSpec(snap.videoPrepSpec, {
+          file: f,
+          posterUrl: null,
+          preview: previewUrl,
+          streamVideoUid: null,
+        })
+      } else if (snap.videoPrepSlotRestore) {
+        startComposerVideoPrepFromSpec(snap.videoPrepSpec, {
+          file: null,
+          posterUrl: snap.videoPrepSlotRestore.posterUrl,
+          preview: snap.videoPrepSlotRestore.preview,
+          streamVideoUid: null,
+        })
+      } else {
+        setComposerVideoSlot(null)
+      }
+    } else if (snap.videoFile) {
+      const vf = snap.videoFile
+      setComposerVideoSlot({
+        prepJobId: 0,
+        file: vf,
+        posterUrl: null,
+        preview: URL.createObjectURL(vf),
+        streamVideoUid: null,
+        prepStatus: 'ready',
+        prepError: '',
+      })
     } else {
       setComposerVideoSlot(null)
     }
@@ -2385,7 +2482,7 @@ export default function SocialFeed({
     composerFoldRevealRef.current = 1
     setComposerFoldReveal(1)
     composerFoldedFromFeedScrollRef.current = false
-  }, [])
+  }, [startComposerVideoPrepFromSpec])
 
   const cancelLoungePostUpload = useCallback(() => {
     try {
@@ -2398,6 +2495,16 @@ export default function SocialFeed({
     loungePostUploadLastPhaseRef.current = ''
     setLoungePostUploadFailureDetails(null)
     setLoungePostUploadBar(null)
+    const snap = loungePostSnapshotRef.current
+    if (snap?.awaitingComposerVideoPrepJobId != null) {
+      try {
+        composerVideoPrepAbortRef.current?.abort()
+      } catch {
+        // ignore
+      }
+      composerVideoPrepJobIdRef.current += 1
+      composerVideoPrepHandoffRef.current = null
+    }
     restoreComposerFromSnapshot(loungePostSnapshotRef.current)
     loungePostSnapshotRef.current = null
   }, [restoreComposerFromSnapshot])
@@ -2412,9 +2519,74 @@ export default function SocialFeed({
       loungePostAbortRef.current = ac
       setLoungePostUploadBar({ mode: 'post', progress: 0, status: 'Starting…', detail: '' })
       try {
+        let snap = { ...snapshot }
+        const uid0 = String(snap.streamVideoUid || '').trim()
+        if (
+          !uid0 &&
+          (snap.awaitingComposerVideoPrepJobId != null || snap.videoPrepSpec)
+        ) {
+          loungePostUploadLastPhaseRef.current = 'Waiting for video'
+          setLoungePostUploadBar({
+            mode: 'post',
+            progress: 0.06,
+            status: 'Waiting for video',
+            detail: '',
+          })
+
+          /** @type {{ encodedFile: File, streamVideoUid: string }} */
+          let out
+          const awaitingId = snap.awaitingComposerVideoPrepJobId
+          const h = composerVideoPrepHandoffRef.current
+          if (awaitingId != null && h && h.jobId === awaitingId) {
+            try {
+              out = await h.promise
+            } catch (e) {
+              if (e?.name === 'AbortError') throw e
+              if (!snap.videoPrepSpec) throw e
+              out = await runComposerStreamVideoPrepWithRetries({
+                supabaseClient,
+                signal: ac.signal,
+                spec: snap.videoPrepSpec,
+                onProgress: (info) => {
+                  if (ac.signal.aborted) return
+                  setLoungePostUploadBar({
+                    mode: 'post',
+                    progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                    status: String(info.status || ''),
+                    detail: String(info.detail || ''),
+                  })
+                },
+              })
+            }
+          } else if (snap.videoPrepSpec) {
+            out = await runComposerStreamVideoPrepWithRetries({
+              supabaseClient,
+              signal: ac.signal,
+              spec: snap.videoPrepSpec,
+              onProgress: (info) => {
+                if (ac.signal.aborted) return
+                setLoungePostUploadBar({
+                  mode: 'post',
+                  progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                  status: String(info.status || ''),
+                  detail: String(info.detail || ''),
+                })
+              },
+            })
+          } else {
+            throw new Error('Video preparation was interrupted.')
+          }
+          snap = {
+            ...snap,
+            videoFile: out.encodedFile,
+            streamVideoUid: out.streamVideoUid,
+            awaitingComposerVideoPrepJobId: null,
+          }
+        }
+
         await executeLoungeCommunityPostSubmission({
           supabaseClient,
-          snapshot,
+          snapshot: snap,
           signal: ac.signal,
           onProgress: (info) => {
             loungePostUploadLastPhaseRef.current = String(info?.status || '')
@@ -2427,10 +2599,20 @@ export default function SocialFeed({
           },
           rateLimitMessage,
         })
+        if (
+          snapshot.awaitingComposerVideoPrepJobId != null &&
+          composerVideoPrepHandoffRef.current?.jobId === snapshot.awaitingComposerVideoPrepJobId
+        ) {
+          composerVideoPrepHandoffRef.current = null
+        }
         loungePostSnapshotRef.current = null
         await loadCommunityFeed()
       } catch (e) {
         if (e?.name === 'AbortError') return
+        const curSnap = loungePostSnapshotRef.current
+        if (curSnap?.awaitingComposerVideoPrepJobId != null) {
+          loungePostSnapshotRef.current = { ...curSnap, awaitingComposerVideoPrepJobId: null }
+        }
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Unknown error'
         if (msg === LOUNGE_MAX_PINNED_ALERT && typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
         setLoungePostUploadFailureDetails({
@@ -2539,7 +2721,7 @@ export default function SocialFeed({
     }
 
     setPostBusy(true)
-    /** @type {{ caption: string, gifOnlyUrl: string, imageFiles: File[], videoFile: File | null, streamVideoUid: string | null, wantsPin: boolean, isStaffPoster: boolean } | null} */
+    /** @type {{ caption: string, gifOnlyUrl: string, imageFiles: File[], videoFile: File | null, streamVideoUid: string | null, awaitingComposerVideoPrepJobId?: number | null, videoPrepSpec?: object | null, videoPrepSlotRestore?: { posterUrl: string, preview: string } | null, wantsPin: boolean, isStaffPoster: boolean } | null} */
     let snapshot = null
     try {
       const {
@@ -2585,12 +2767,30 @@ export default function SocialFeed({
         return
       }
 
+      const slot = composerVideoSlot
+      const uid = hasVideo ? String(slot?.streamVideoUid || '').trim() || null : null
+      const awaiting =
+        hasVideo &&
+        !uid &&
+        slot?.prepStatus === 'preparing' &&
+        typeof slot?.prepJobId === 'number'
+          ? slot.prepJobId
+          : null
+      const specForSnap = awaiting != null ? composerVideoPrepSpecRef.current : null
+      const trimRestore =
+        awaiting != null && specForSnap && specForSnap.kind === 'trim' && slot
+          ? { posterUrl: slot.posterUrl, preview: slot.preview }
+          : null
+
       snapshot = {
         caption,
         gifOnlyUrl,
         imageFiles: composerImageItems.map((it) => it.file),
-        videoFile: hasVideo && composerVideoSlot?.file ? composerVideoSlot.file : null,
-        streamVideoUid: hasVideo ? String(composerVideoSlot?.streamVideoUid || '').trim() || null : null,
+        videoFile: hasVideo && slot?.file ? slot.file : null,
+        streamVideoUid: uid,
+        awaitingComposerVideoPrepJobId: awaiting,
+        videoPrepSpec: specForSnap,
+        videoPrepSlotRestore: trimRestore,
         wantsPin: composerPinOnPost,
         isStaffPoster,
       }
@@ -2600,8 +2800,9 @@ export default function SocialFeed({
 
     if (!snapshot) return
 
+    const preserveVideoPrep = snapshot.awaitingComposerVideoPrepJobId != null
     loungePostSnapshotRef.current = snapshot
-    clearComposerForPostAttempt()
+    clearComposerForPostAttempt({ preserveComposerVideoPrep: preserveVideoPrep })
     void runBackgroundLoungePostSubmission(snapshot)
   }, [
     loungeComposerVideoPostBlocked,

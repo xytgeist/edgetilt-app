@@ -36,16 +36,23 @@ const borderByVariant = {
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
  * @param {number} [attachKey] bump to force re-attach after a recoverable failure
+ * @param {object} [opts]
+ * @param {boolean} [opts.enabled=true] when false, detach (feed: off-screen)
+ * @param {boolean} [opts.feedStyleAbr=false] conservative ABR for small tiles / composer
+ * @param {React.MutableRefObject<number> | null} [opts.recoveryBurstRef] auto-reattach budget (shared with `<video onError>`)
+ * @param {(() => void) | null} [opts.onAutoReattach] bump attachKey after built-in Hls recovery fails
  */
-function useStreamHlsAttachment(videoRef, src, attachKey = 0) {
+function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
+  const {
+    enabled = true,
+    feedStyleAbr = false,
+    recoveryBurstRef = null,
+    onAutoReattach = null,
+  } = opts
+
   useEffect(() => {
     const video = videoRef.current
     if (!video || !src) return undefined
-
-    let cancelled = false
-    let hlsInstance = null
-    /** @type {((event: string, data: unknown) => void) | null} */
-    let hlsErrorHandler = null
 
     const cleanupVideo = () => {
       try {
@@ -56,9 +63,28 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0) {
       }
     }
 
+    if (!enabled) {
+      cleanupVideo()
+      return undefined
+    }
+
+    let cancelled = false
+    let hlsInstance = null
+    /** @type {((event: string, data: unknown) => void) | null} */
+    let hlsErrorHandler = null
+
+    const onRecovered = () => {
+      if (recoveryBurstRef) recoveryBurstRef.current = 0
+    }
+    video.addEventListener('canplay', onRecovered, { once: true })
+
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src
-      return cleanupVideo
+      return () => {
+        cancelled = true
+        video.removeEventListener('canplay', onRecovered)
+        cleanupVideo()
+      }
     }
 
     import('hls.js')
@@ -66,8 +92,10 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0) {
         if (cancelled || !videoRef.current || videoRef.current !== video) return
         if (Hls.isSupported()) {
           const hls = new Hls({
-            maxBufferLength: 45,
-            maxMaxBufferLength: 120,
+            maxBufferLength: feedStyleAbr ? 28 : 45,
+            maxMaxBufferLength: feedStyleAbr ? 90 : 120,
+            lowLatencyMode: false,
+            ...(feedStyleAbr ? { startLevel: 0, capLevelToPlayerSize: true } : {}),
           })
           hlsInstance = hls
           let didMediaRecover = false
@@ -78,15 +106,42 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0) {
               if (data.type === 'networkError' && !didNetRestart) {
                 didNetRestart = true
                 hls.startLoad()
-              } else if (data.type === 'mediaError' && !didMediaRecover) {
+                return
+              }
+              if (data.type === 'mediaError' && !didMediaRecover) {
                 didMediaRecover = true
                 hls.recoverMediaError()
+                return
+              }
+              const ref = recoveryBurstRef
+              if (ref && ref.current < 2 && onAutoReattach) {
+                ref.current += 1
+                queueMicrotask(() => onAutoReattach())
+                return
               }
             } catch {
               // ignore
             }
           }
           hls.on(Hls.Events.ERROR, hlsErrorHandler)
+          if (feedStyleAbr) {
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              if (cancelled || !hls.levels?.length) return
+              let cap = hls.levels.length - 1
+              for (let i = hls.levels.length - 1; i >= 0; i -= 1) {
+                const h = hls.levels[i]?.height
+                if (h && h <= 720) {
+                  cap = i
+                  break
+                }
+              }
+              try {
+                hls.autoLevelCapping = cap
+              } catch {
+                // ignore
+              }
+            })
+          }
           hls.loadSource(src)
           hls.attachMedia(video)
         } else {
@@ -101,31 +156,36 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0) {
 
     return () => {
       cancelled = true
+      video.removeEventListener('canplay', onRecovered)
       if (hlsInstance) {
-        if (hlsErrorHandler) {
-          try {
-            hlsInstance.off('error', hlsErrorHandler)
-          } catch {
-            // ignore
-          }
+        try {
+          hlsInstance.destroy()
+        } catch {
+          // ignore
         }
-        hlsInstance.destroy()
         hlsInstance = null
       }
       cleanupVideo()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit videoRef
-  }, [src, attachKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit videoRef; opts refs stable
+  }, [src, attachKey, enabled, feedStyleAbr, onAutoReattach, recoveryBurstRef])
 }
 
 function LoungeStreamVideoLightbox({ uid, onClose }) {
   const videoRef = useRef(null)
+  const recoveryBurstRef = useRef(0)
   const [attachKey, setAttachKey] = useState(0)
   const [showLoadRetry, setShowLoadRetry] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
-  useStreamHlsAttachment(videoRef, id ? src : '', attachKey)
+  const bumpAttach = useCallback(() => setAttachKey((k) => k + 1), [])
+  useStreamHlsAttachment(videoRef, id ? src : '', attachKey, {
+    enabled: Boolean(id),
+    feedStyleAbr: false,
+    recoveryBurstRef,
+    onAutoReattach: bumpAttach,
+  })
 
   useEffect(() => {
     if (!id) return
@@ -206,7 +266,15 @@ function LoungeStreamVideoLightbox({ uid, onClose }) {
           poster={poster}
           preload="auto"
           aria-label="Post video (full screen)"
-          onError={() => setShowLoadRetry(true)}
+          onError={() => {
+            if (recoveryBurstRef.current < 2) {
+              recoveryBurstRef.current += 1
+              setShowLoadRetry(false)
+              setAttachKey((k) => k + 1)
+              return
+            }
+            setShowLoadRetry(true)
+          }}
         />
       </div>
       {showLoadRetry ? (
@@ -216,6 +284,7 @@ function LoungeStreamVideoLightbox({ uid, onClose }) {
             type="button"
             className="touch-manipulation rounded-lg bg-cyan-600 px-3 py-1.5 text-[14px] font-semibold text-white hover:bg-cyan-500"
             onClick={() => {
+              recoveryBurstRef.current = 0
               setShowLoadRetry(false)
               setAttachKey((k) => k + 1)
             }}
@@ -261,14 +330,33 @@ export default function LoungePostStreamVideo({
   const videoRef = useRef(null)
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
+  const recoveryBurstRef = useRef(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
+  const [streamInView, setStreamInView] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
+  const showOpen = enableLightbox && variant !== 'composer'
+  const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
+  const feedStyleAbr = variant === 'feed' || variant === 'embed' || variant === 'composer'
+  const attachStream = lazyStream ? streamInView : true
 
-  useStreamHlsAttachment(videoRef, src, streamAttachKey)
+  useEffect(() => {
+    if (!streamInView && lazyStream) recoveryBurstRef.current = 0
+  }, [streamInView, lazyStream])
+
+  const bumpStreamAttach = useCallback(() => {
+    setStreamAttachKey((k) => k + 1)
+  }, [])
+
+  useStreamHlsAttachment(videoRef, src, streamAttachKey, {
+    enabled: attachStream,
+    feedStyleAbr,
+    recoveryBurstRef,
+    onAutoReattach: bumpStreamAttach,
+  })
 
   const openLightbox = useCallback(() => {
     try {
@@ -308,78 +396,78 @@ export default function LoungePostStreamVideo({
     lightboxOpenRef.current = lightboxOpen
   }, [lightboxOpen])
 
-  const showOpen = enableLightbox && variant !== 'composer'
-
-  /** Muted autoplay while sufficiently visible (X-style feed). */
+  /** Muted autoplay while sufficiently visible (X-style feed). Feed/embed: defer HLS until in view. */
   useEffect(() => {
     const wrap = containerRef.current
     const v = videoRef.current
     if (!wrap || !v || !showOpen || !id) return undefined
 
+    const applyIo = (entries) => {
+      const e = entries[0]
+      const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
+      inViewRef.current = ok
+      if (lazyStream) setStreamInView(ok)
+      if (!ok) {
+        try {
+          v.pause()
+        } catch {
+          // ignore
+        }
+        return
+      }
+      if (lightboxOpenRef.current) return
+      if (lazyStream) return
+      try {
+        v.muted = true
+        const p = v.play()
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      } catch {
+        // ignore
+      }
+    }
+
     const root = visibilityResetRootRef?.current ?? null
     let io
     try {
-      io = new IntersectionObserver(
-        (entries) => {
-          const e = entries[0]
-          const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
-          inViewRef.current = ok
-          if (!ok) {
-            try {
-              v.pause()
-            } catch {
-              // ignore
-            }
-            return
-          }
-          if (lightboxOpenRef.current) return
-          try {
-            v.muted = true
-            const p = v.play()
-            if (p && typeof p.catch === 'function') p.catch(() => {})
-          } catch {
-            // ignore
-          }
-        },
-        {
-          root,
-          rootMargin: '0px',
-          threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
-        },
-      )
+      io = new IntersectionObserver(applyIo, {
+        root,
+        rootMargin: '0px',
+        threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
+      })
     } catch {
-      io = new IntersectionObserver(
-        (entries) => {
-          const e = entries[0]
-          const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
-          inViewRef.current = ok
-          if (!ok) {
-            try {
-              v.pause()
-            } catch {
-              // ignore
-            }
-            return
-          }
-          if (lightboxOpenRef.current) return
-          try {
-            v.muted = true
-            const p = v.play()
-            if (p && typeof p.catch === 'function') p.catch(() => {})
-          } catch {
-            // ignore
-          }
-        },
-        {
-          root: null,
-          rootMargin: '0px',
-          threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
-        },
-      )
+      io = new IntersectionObserver(applyIo, {
+        root: null,
+        rootMargin: '0px',
+        threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
+      })
     }
     io.observe(wrap)
     return () => io.disconnect()
-  }, [id, showOpen, visibilityResetRootRef, streamAttachKey])
+  }, [id, showOpen, lazyStream, visibilityResetRootRef, streamAttachKey])
+
+  /** After lazy HLS attach (feed/embed), start muted autoplay once media is ready. */
+  useEffect(() => {
+    if (!lazyStream || !attachStream) return undefined
+    if (!showOpen) return undefined
+    if (!inViewRef.current || lightboxOpenRef.current) return undefined
+    const v = videoRef.current
+    if (!v) return undefined
+    const go = () => {
+      try {
+        v.muted = true
+        const p = v.play()
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      } catch {
+        // ignore
+      }
+    }
+    if (v.readyState >= 2) {
+      go()
+      return undefined
+    }
+    v.addEventListener('canplay', go, { once: true })
+    return () => v.removeEventListener('canplay', go)
+  }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen])
 
   /** After closing lightbox, resume muted autoplay if still in view. */
   useEffect(() => {
@@ -437,10 +525,18 @@ export default function LoungePostStreamVideo({
             muted
             loop
             playsInline
-            preload="auto"
+            preload={variant === 'composer' ? 'auto' : 'metadata'}
             poster={poster}
             aria-hidden
-            onError={() => setShowStreamRetry(true)}
+            onError={() => {
+              if (recoveryBurstRef.current < 2) {
+                recoveryBurstRef.current += 1
+                setShowStreamRetry(false)
+                setStreamAttachKey((k) => k + 1)
+                return
+              }
+              setShowStreamRetry(true)
+            }}
           />
           {showStreamRetry ? (
             <div
@@ -454,6 +550,7 @@ export default function LoungePostStreamVideo({
                 className="touch-manipulation rounded-lg bg-cyan-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-cyan-500"
                 onClick={(e) => {
                   e.stopPropagation()
+                  recoveryBurstRef.current = 0
                   setShowStreamRetry(false)
                   setStreamAttachKey((k) => k + 1)
                 }}

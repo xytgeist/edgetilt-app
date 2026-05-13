@@ -100,53 +100,66 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  tgt uuid;
 begin
   if tg_op = 'INSERT' then
     if new.repost_of_post_id is not null and new.hidden_at is null then
+      perform set_config('lounge.denorm_feed_counters', '1', true);
       update public.community_feed_posts
         set repost_count = repost_count + 1
         where id = new.repost_of_post_id;
+      perform set_config('lounge.denorm_feed_counters', '', true);
     end if;
     return new;
   elsif tg_op = 'DELETE' then
     if old.repost_of_post_id is not null and old.hidden_at is null then
+      perform set_config('lounge.denorm_feed_counters', '1', true);
       update public.community_feed_posts
         set repost_count = greatest(0, repost_count - 1)
         where id = old.repost_of_post_id;
+      perform set_config('lounge.denorm_feed_counters', '', true);
     end if;
     return old;
   elsif tg_op = 'UPDATE' then
     -- Repost target changed (rare): adjust both sides
     if old.repost_of_post_id is distinct from new.repost_of_post_id then
       if old.repost_of_post_id is not null and old.hidden_at is null then
+        perform set_config('lounge.denorm_feed_counters', '1', true);
         update public.community_feed_posts
           set repost_count = greatest(0, repost_count - 1)
           where id = old.repost_of_post_id;
+        perform set_config('lounge.denorm_feed_counters', '', true);
       end if;
       if new.repost_of_post_id is not null and new.hidden_at is null then
+        perform set_config('lounge.denorm_feed_counters', '1', true);
         update public.community_feed_posts
           set repost_count = repost_count + 1
           where id = new.repost_of_post_id;
+        perform set_config('lounge.denorm_feed_counters', '', true);
       end if;
       return new;
     end if;
 
     if new.repost_of_post_id is not null then
       if old.hidden_at is null and new.hidden_at is not null then
+        perform set_config('lounge.denorm_feed_counters', '1', true);
         update public.community_feed_posts
           set repost_count = greatest(0, repost_count - 1)
           where id = new.repost_of_post_id;
+        perform set_config('lounge.denorm_feed_counters', '', true);
       elsif old.hidden_at is not null and new.hidden_at is null then
+        perform set_config('lounge.denorm_feed_counters', '1', true);
         update public.community_feed_posts
           set repost_count = repost_count + 1
           where id = new.repost_of_post_id;
+        perform set_config('lounge.denorm_feed_counters', '', true);
       end if;
     end if;
     return new;
   end if;
   return null;
+exception when others then
+  perform set_config('lounge.denorm_feed_counters', '', true);
+  raise;
 end;
 $$;
 
@@ -168,6 +181,10 @@ as $$
 declare
   staff boolean;
 begin
+  if current_setting('lounge.denorm_feed_counters', true) = '1' then
+    return new;
+  end if;
+
   select exists (
     select 1
     from public.profiles p

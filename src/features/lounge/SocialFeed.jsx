@@ -2835,7 +2835,7 @@ export default function SocialFeed({
                             'pointer-events-none font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
                         })
                       ) : (
-                        <span className="text-zinc-500">Are you winning, son?</span>
+                        <span className="text-zinc-500">Are ya winning, son?</span>
                       )}
                     </div>
                     <textarea
@@ -2945,7 +2945,7 @@ export default function SocialFeed({
                       </span>
                     )
                   }
-                  return 'Are you winning, son?'
+                  return 'Are ya winning, son?'
                 })()}
               </button>
             )}
@@ -3656,7 +3656,7 @@ export default function SocialFeed({
                               'pointer-events-none font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
                           })
                         ) : (
-                          <span className="text-zinc-500">Are you winning, son?</span>
+                          <span className="text-zinc-500">Are ya winning, son?</span>
                         )}
                       </div>
                       <textarea

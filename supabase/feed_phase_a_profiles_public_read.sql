@@ -120,6 +120,10 @@ as $$
 declare
   staff boolean;
 begin
+  if current_setting('lounge.denorm_feed_counters', true) = '1' then
+    return new;
+  end if;
+
   select exists (
     select 1
     from public.profiles p

@@ -153,15 +153,22 @@ set search_path = public
 as $$
 begin
   if tg_op = 'INSERT' then
+    perform set_config('lounge.denorm_feed_counters', '1', true);
     update public.community_feed_posts
       set like_count = like_count + 1
       where id = new.post_id;
+    perform set_config('lounge.denorm_feed_counters', '', true);
   elsif tg_op = 'DELETE' then
+    perform set_config('lounge.denorm_feed_counters', '1', true);
     update public.community_feed_posts
       set like_count = greatest(0, like_count - 1)
       where id = old.post_id;
+    perform set_config('lounge.denorm_feed_counters', '', true);
   end if;
   return null;
+exception when others then
+  perform set_config('lounge.denorm_feed_counters', '', true);
+  raise;
 end;
 $$;
 
@@ -179,15 +186,22 @@ set search_path = public
 as $$
 begin
   if tg_op = 'INSERT' then
+    perform set_config('lounge.denorm_feed_counters', '1', true);
     update public.community_feed_posts
       set repost_count = repost_count + 1
       where id = new.post_id;
+    perform set_config('lounge.denorm_feed_counters', '', true);
   elsif tg_op = 'DELETE' then
+    perform set_config('lounge.denorm_feed_counters', '1', true);
     update public.community_feed_posts
       set repost_count = greatest(0, repost_count - 1)
       where id = old.post_id;
+    perform set_config('lounge.denorm_feed_counters', '', true);
   end if;
   return null;
+exception when others then
+  perform set_config('lounge.denorm_feed_counters', '', true);
+  raise;
 end;
 $$;
 
@@ -206,35 +220,46 @@ as $$
 begin
   if tg_op = 'INSERT' then
     if new.parent_id is null and new.hidden_at is null then
+      perform set_config('lounge.denorm_feed_counters', '1', true);
       update public.community_feed_posts
         set comment_count = comment_count + 1
         where id = new.post_id;
+      perform set_config('lounge.denorm_feed_counters', '', true);
     end if;
     return new;
   elsif tg_op = 'DELETE' then
     if old.parent_id is null and old.hidden_at is null then
+      perform set_config('lounge.denorm_feed_counters', '1', true);
       update public.community_feed_posts
         set comment_count = greatest(0, comment_count - 1)
         where id = old.post_id;
+      perform set_config('lounge.denorm_feed_counters', '', true);
     end if;
     return old;
   elsif tg_op = 'UPDATE' then
     if new.parent_id is not distinct from old.parent_id then
       if old.parent_id is null then
         if old.hidden_at is null and new.hidden_at is not null then
+          perform set_config('lounge.denorm_feed_counters', '1', true);
           update public.community_feed_posts
             set comment_count = greatest(0, comment_count - 1)
             where id = old.post_id;
+          perform set_config('lounge.denorm_feed_counters', '', true);
         elsif old.hidden_at is not null and new.hidden_at is null then
+          perform set_config('lounge.denorm_feed_counters', '1', true);
           update public.community_feed_posts
             set comment_count = comment_count + 1
             where id = new.post_id;
+          perform set_config('lounge.denorm_feed_counters', '', true);
         end if;
       end if;
     end if;
     return new;
   end if;
   return null;
+exception when others then
+  perform set_config('lounge.denorm_feed_counters', '', true);
+  raise;
 end;
 $$;
 

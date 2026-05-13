@@ -48,6 +48,7 @@ import { renderRichCaption } from './loungeCaption'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
+import { LoungeFeedVideoAutoplayProvider } from './LoungeFeedVideoAutoplayContext.jsx'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
@@ -2667,6 +2668,7 @@ export default function SocialFeed({
         ref={loungeFeedScrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
       >
+        <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef}>
         <div
           aria-hidden
           className="shrink-0"
@@ -3383,6 +3385,7 @@ export default function SocialFeed({
           </>
         )}
         </div>
+        </LoungeFeedVideoAutoplayProvider>
       </div>
 
       {loungePostDetail ? (

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
+import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; frame hugs aspect). */
 const videoClassByVariant = {
@@ -318,6 +319,7 @@ function MutedGlyph({ className = 'h-4 w-4' }) {
  *
  * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] — Optional scroll root for in-view
  *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
+ * @param {string} [feedAutoplayClientId] — When inside `LoungeFeedVideoAutoplayProvider`, only the mid-scroll winner attaches/plays.
  */
 export default function LoungePostStreamVideo({
   uid,
@@ -325,11 +327,13 @@ export default function LoungePostStreamVideo({
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
   visibilityResetRootRef,
+  feedAutoplayClientId,
 }) {
   const containerRef = useRef(null)
   const videoRef = useRef(null)
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
+  const isWinnerRef = useRef(false)
   const recoveryBurstRef = useRef(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
@@ -338,10 +342,19 @@ export default function LoungePostStreamVideo({
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
+  const getVideoContainer = useCallback(() => containerRef.current, [])
+  const { coordinatorActive, isWinner, scheduleRecompute } = useLoungeFeedVideoAutoplay(
+    feedAutoplayClientId,
+    getVideoContainer,
+  )
   const showOpen = enableLightbox && variant !== 'composer'
   const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
   const feedStyleAbr = variant === 'feed' || variant === 'embed' || variant === 'composer'
-  const attachStream = lazyStream ? streamInView : true
+  const attachStream = lazyStream ? streamInView && (!coordinatorActive || isWinner) : true
+
+  useEffect(() => {
+    isWinnerRef.current = !coordinatorActive || isWinner
+  }, [coordinatorActive, isWinner])
 
   useEffect(() => {
     if (!streamInView && lazyStream) recoveryBurstRef.current = 0
@@ -407,14 +420,16 @@ export default function LoungePostStreamVideo({
       const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
       inViewRef.current = ok
       if (lazyStream) setStreamInView(ok)
-      if (!ok) {
+      const won = isWinnerRef.current
+      if (!ok || !won) {
         try {
           v.pause()
         } catch {
           // ignore
         }
-        return
       }
+      queueMicrotask(() => scheduleRecompute())
+      if (!ok || !won) return
       if (lightboxOpenRef.current) return
       if (lazyStream) return
       try {
@@ -443,13 +458,14 @@ export default function LoungePostStreamVideo({
     }
     io.observe(wrap)
     return () => io.disconnect()
-  }, [id, showOpen, lazyStream, visibilityResetRootRef, streamAttachKey])
+  }, [id, showOpen, lazyStream, visibilityResetRootRef, streamAttachKey, scheduleRecompute])
 
   /** After lazy HLS attach (feed/embed), start muted autoplay once media is ready. */
   useEffect(() => {
     if (!lazyStream || !attachStream) return undefined
     if (!showOpen) return undefined
     if (!inViewRef.current || lightboxOpenRef.current) return undefined
+    if (coordinatorActive && !isWinner) return undefined
     const v = videoRef.current
     if (!v) return undefined
     const go = () => {
@@ -467,7 +483,7 @@ export default function LoungePostStreamVideo({
     }
     v.addEventListener('canplay', go, { once: true })
     return () => v.removeEventListener('canplay', go)
-  }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen])
+  }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen, coordinatorActive, isWinner])
 
   /** After closing lightbox, resume muted autoplay if still in view. */
   useEffect(() => {
@@ -475,6 +491,14 @@ export default function LoungePostStreamVideo({
     const v = videoRef.current
     if (!v || !showOpen) return
     if (!inViewRef.current) return
+    if (coordinatorActive && !isWinner) {
+      try {
+        v.pause()
+      } catch {
+        // ignore
+      }
+      return
+    }
     try {
       v.muted = true
       const p = v.play()
@@ -482,7 +506,21 @@ export default function LoungePostStreamVideo({
     } catch {
       // ignore
     }
-  }, [lightboxOpen, showOpen])
+  }, [lightboxOpen, showOpen, coordinatorActive, isWinner])
+
+  /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
+  useEffect(() => {
+    if (!coordinatorActive || !lazyStream) return
+    const v = videoRef.current
+    if (!v) return
+    if (!isWinner) {
+      try {
+        v.pause()
+      } catch {
+        // ignore
+      }
+    }
+  }, [coordinatorActive, lazyStream, isWinner])
 
   if (!id) return null
 

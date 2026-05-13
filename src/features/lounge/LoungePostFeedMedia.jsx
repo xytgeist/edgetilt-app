@@ -258,6 +258,10 @@ export function LoungePostFeedImagesAndGif({
   visibilityResetRootRef,
 }) {
   const streamUid = feedPostStreamVideoUid(post)
+  const feedAutoplayClientId =
+    (variant === 'feed' || variant === 'embed') && post?.id && streamUid && enableLightbox
+      ? `${post.id}:${streamUid}`
+      : undefined
   if (streamUid) {
     return (
       <LoungePostStreamVideo
@@ -267,6 +271,7 @@ export function LoungePostFeedImagesAndGif({
         firstMarginTopClass={firstMarginTopClass}
         enableLightbox={enableLightbox}
         visibilityResetRootRef={visibilityResetRootRef}
+        feedAutoplayClientId={feedAutoplayClientId}
       />
     )
   }

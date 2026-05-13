@@ -38,6 +38,9 @@ const LAZY_ATTACH_IO_THRESHOLD = 0.04
 /** Prefetch into the scroll root so the winner can start loading before fully on screen. */
 const LAZY_ATTACH_ROOT_MARGIN = '180px 0px 240px 0px'
 
+/** Poster → first-frame crossfade when inline Stream attaches (iOS handoff). */
+const STREAM_ATTACH_FADE_MS = 220
+
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
@@ -344,6 +347,9 @@ export default function LoungePostStreamVideo({
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
+  /** After `playing` (or timeout): fade video in and poster out; then drop poster `<img>`. */
+  const [streamFadeShowVideo, setStreamFadeShowVideo] = useState(false)
+  const [streamFadePosterDismissed, setStreamFadePosterDismissed] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
@@ -375,6 +381,37 @@ export default function LoungePostStreamVideo({
     recoveryBurstRef,
     onAutoReattach: bumpStreamAttach,
   })
+
+  /** Reset crossfade when tile loses inline stream; prime fade when it attaches. */
+  useEffect(() => {
+    if (!lazyStream || !poster) return undefined
+    if (!attachStream) {
+      setStreamFadeShowVideo(false)
+      setStreamFadePosterDismissed(false)
+      return undefined
+    }
+    setStreamFadeShowVideo(false)
+    setStreamFadePosterDismissed(false)
+    const v = videoRef.current
+    if (!v) return undefined
+    let cleaned = false
+    const reveal = () => {
+      if (cleaned) return
+      queueMicrotask(() => setStreamFadeShowVideo(true))
+    }
+    const onPlaying = () => reveal()
+    if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      reveal()
+    } else {
+      v.addEventListener('playing', onPlaying, { once: true })
+    }
+    const tid = window.setTimeout(reveal, 500)
+    return () => {
+      cleaned = true
+      v.removeEventListener('playing', onPlaying)
+      window.clearTimeout(tid)
+    }
+  }, [attachStream, lazyStream, poster, id, streamAttachKey])
 
   const openLightbox = useCallback(() => {
     try {
@@ -547,6 +584,10 @@ export default function LoungePostStreamVideo({
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
   const border = borderByVariant[variant] || borderByVariant.feed
+  /** iOS: empty `<video>` after HLS detach often stays black; show Stream thumbnail as `<img>` until attach. */
+  const showStreamPosterImg = Boolean(lazyStream && !attachStream && poster)
+  const streamPosterCrossfade = Boolean(lazyStream && poster && attachStream)
+  const streamFadeTransitionStyle = { transitionDuration: `${STREAM_ATTACH_FADE_MS}ms` }
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
@@ -576,25 +617,64 @@ export default function LoungePostStreamVideo({
             }
           }}
         >
-          <video
-            ref={videoRef}
-            className={`pointer-events-none ${videoClass}`}
-            muted
-            loop
-            playsInline
-            preload={variant === 'composer' ? 'auto' : 'metadata'}
-            poster={poster}
-            aria-hidden
-            onError={() => {
-              if (recoveryBurstRef.current < 2) {
-                recoveryBurstRef.current += 1
-                setShowStreamRetry(false)
-                setStreamAttachKey((k) => k + 1)
-                return
+          <div className="relative">
+            {showStreamPosterImg ? (
+              <img
+                src={poster}
+                alt=""
+                decoding="async"
+                draggable={false}
+                className={`pointer-events-none block max-w-full select-none ${videoClass}`}
+                aria-hidden
+              />
+            ) : null}
+            {streamPosterCrossfade && !streamFadePosterDismissed ? (
+              <img
+                src={poster}
+                alt=""
+                decoding="async"
+                draggable={false}
+                className={`pointer-events-none absolute inset-0 z-0 h-full w-full max-w-full object-contain select-none transition-opacity ease-out ${
+                  streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
+                }`}
+                style={streamFadeTransitionStyle}
+                aria-hidden
+                onTransitionEnd={(e) => {
+                  if (e.propertyName !== 'opacity') return
+                  if (!streamFadeShowVideo) return
+                  setStreamFadePosterDismissed(true)
+                }}
+              />
+            ) : null}
+            <video
+              ref={videoRef}
+              className={
+                showStreamPosterImg
+                  ? 'pointer-events-none absolute inset-0 z-0 h-full w-full max-h-full min-h-0 max-w-full object-contain opacity-0'
+                  : streamPosterCrossfade && !streamFadePosterDismissed
+                    ? `pointer-events-none relative z-[1] max-w-full transition-opacity ease-out ${videoClass} ${
+                        streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
+                      }`
+                    : `pointer-events-none ${videoClass}`
               }
-              setShowStreamRetry(true)
-            }}
-          />
+              style={streamPosterCrossfade && !streamFadePosterDismissed ? streamFadeTransitionStyle : undefined}
+              muted
+              loop
+              playsInline
+              preload={variant === 'composer' ? 'auto' : 'metadata'}
+              poster={poster}
+              aria-hidden
+              onError={() => {
+                if (recoveryBurstRef.current < 2) {
+                  recoveryBurstRef.current += 1
+                  setShowStreamRetry(false)
+                  setStreamAttachKey((k) => k + 1)
+                  return
+                }
+                setShowStreamRetry(true)
+              }}
+            />
+          </div>
           {showStreamRetry ? (
             <div
               className="pointer-events-auto absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"

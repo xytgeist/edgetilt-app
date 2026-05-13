@@ -30,7 +30,7 @@ self.addEventListener('push', (event) => {
   }
   const options = {
     body,
-    icon: payload.icon || '/android-chrome-192x192.png',
+    icon: payload.icon || '/android-icon-192x192.png',
     badge: payload.badge || '/favicon-32x32.png',
     data: {
       url: payload.url || '/?tab=offers',

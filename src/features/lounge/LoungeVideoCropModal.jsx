@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LOUNGE_VIDEO_MAX_SECONDS } from '../../utils/loungeVideoUpload'
-import { maxCropRectForAspect } from '../../utils/loungeVideoCropMath.js'
+import { maxCropRectForAspect, sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
 
 const MIN_CLIP_SEC = 0.5
 const MAX_CLIP_SEC = LOUNGE_VIDEO_MAX_SECONDS
@@ -224,10 +224,10 @@ function cropOverlayPercents(layout, cropPx) {
 /**
  * Trim and optionally crop a video to at most 60s: draggable window on the full timeline (cannot widen past 60s).
  *
- * @param {{ file: File, knownDurationSec?: number, onCancel: () => void, onConfirm: (file: File) => void }} props
- * `knownDurationSec` — duration already probed before opening (avoids iOS waiting twice on `loadedmetadata`).
+ * @param {{ file: File, knownDurationSec?: number, intent?: 'composer' | 'detail', onCancel: () => void, onConfirm: (result: File | { type: 'composerTrimJob', sourceFile: File, startSec: number, endSec: number, cropPx: { x: number, y: number, w: number, h: number } | null, intrinsicWidth: number, intrinsicHeight: number, posterUrl: string }) => void }} props
+ * `intent` — `composer` returns a trim payload for background encode/upload; `detail` keeps synchronous encode and passes a `File`.
  */
-export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel, onConfirm }) {
+export default function LoungeVideoCropModal({ file, knownDurationSec, intent = 'composer', onCancel, onConfirm }) {
   const videoRef = useRef(null)
   /** Hidden clone: poster frame is captured here so the visible preview is never seek-snapped for posters. */
   const posterVideoRef = useRef(null)
@@ -274,7 +274,7 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   }, [duration])
 
   useEffect(() => {
-    trimBusyRef.current = phase === 'trimming'
+    trimBusyRef.current = phase === 'trimming' || phase === 'capturing'
   }, [phase])
 
   /** While preview is playing, keep playback inside the trim range (loop at end). */
@@ -721,34 +721,110 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
 
   const confirmTrim = useCallback(async () => {
     setTrimErr('')
-    setPhase('trimming')
-    const ac = new AbortController()
-    trimAbortRef.current = ac
     const { start, end } = clipRef.current
+
+    if (intent === 'detail') {
+      setPhase('trimming')
+      const ac = new AbortController()
+      trimAbortRef.current = ac
+      try {
+        const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
+        const v = videoRef.current
+        const iw = Number(v?.videoWidth) || intrinsicSize.w
+        const ih = Number(v?.videoHeight) || intrinsicSize.h
+        const rawCrop = cropAspectKey !== 'original' ? cropRef.current : null
+        const out = await trimVideoFileToMp4(file, start, end, {
+          signal: ac.signal,
+          crop: rawCrop && iw > 0 && ih > 0 ? rawCrop : null,
+          intrinsicWidth: iw,
+          intrinsicHeight: ih,
+        })
+        onConfirm(out)
+      } catch (err) {
+        if (err?.name === 'AbortError') {
+          setPhase('idle')
+          return
+        }
+        setTrimErr(err instanceof Error ? err.message : 'Could not trim video.')
+        setPhase('idle')
+      } finally {
+        trimAbortRef.current = null
+      }
+      return
+    }
+
+    setPhase('capturing')
+    const v = videoRef.current
     try {
-      const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
-      const v = videoRef.current
-      const iw = Number(v?.videoWidth) || intrinsicSize.w
-      const ih = Number(v?.videoHeight) || intrinsicSize.h
+      if (!v || durationRef.current <= 0) {
+        throw new Error('Video is not ready yet.')
+      }
+      const iw = Number(v.videoWidth) || intrinsicSize.w
+      const ih = Number(v.videoHeight) || intrinsicSize.h
+      if (!(iw > 1) || !(ih > 1)) {
+        throw new Error('Could not read video dimensions.')
+      }
+      await waitSeeked(v, start, 1400)
+      await waitPaintTick(v)
+      await primePosterFrameForCanvas(v)
+
       const rawCrop = cropAspectKey !== 'original' ? cropRef.current : null
-      const out = await trimVideoFileToMp4(file, start, end, {
-        signal: ac.signal,
-        crop: rawCrop && iw > 0 && ih > 0 ? rawCrop : null,
+      const cropSan =
+        rawCrop && iw > 0 && ih > 0 ? sanitizeVideoCropPx(iw, ih, rawCrop) : null
+
+      const posterUrl = await new Promise((resolve, reject) => {
+        try {
+          const cnv = document.createElement('canvas')
+          const ctx = cnv.getContext('2d')
+          if (!ctx) {
+            reject(new Error('Could not capture poster.'))
+            return
+          }
+          if (cropSan) {
+            const scale = cropSan.w > POSTER_MAX_WIDTH ? POSTER_MAX_WIDTH / cropSan.w : 1
+            cnv.width = Math.round(cropSan.w * scale)
+            cnv.height = Math.round(cropSan.h * scale)
+            ctx.drawImage(v, cropSan.x, cropSan.y, cropSan.w, cropSan.h, 0, 0, cnv.width, cnv.height)
+          } else {
+            const w0 = v.videoWidth
+            const h0 = v.videoHeight
+            const scale = w0 > POSTER_MAX_WIDTH ? POSTER_MAX_WIDTH / w0 : 1
+            cnv.width = Math.round(w0 * scale)
+            cnv.height = Math.round(h0 * scale)
+            ctx.drawImage(v, 0, 0, w0, h0, 0, 0, cnv.width, cnv.height)
+          }
+          cnv.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Could not capture poster.'))
+                return
+              }
+              resolve(URL.createObjectURL(blob))
+            },
+            'image/jpeg',
+            0.82,
+          )
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error(String(err)))
+        }
+      })
+
+      onConfirm({
+        type: 'composerTrimJob',
+        sourceFile: file,
+        startSec: start,
+        endSec: end,
+        cropPx: cropSan,
         intrinsicWidth: iw,
         intrinsicHeight: ih,
+        posterUrl,
       })
-      onConfirm(out)
-    } catch (err) {
-      if (err?.name === 'AbortError') {
-        setPhase('idle')
-        return
-      }
-      setTrimErr(err instanceof Error ? err.message : 'Could not trim video.')
       setPhase('idle')
-    } finally {
-      trimAbortRef.current = null
+    } catch (err) {
+      setTrimErr(err instanceof Error ? err.message : 'Could not prepare clip.')
+      setPhase('idle')
     }
-  }, [file, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h])
+  }, [file, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h, intent])
 
   useEffect(
     () => () => {
@@ -762,7 +838,7 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
 
   const pct = (t) => (duration > 0 ? (t / duration) * 100 : 0)
   const span = clipEnd - clipStart
-  const busy = phase === 'trimming'
+  const busy = phase === 'trimming' || phase === 'capturing'
   void layoutRev
   const stageLayout = getVideoStageLayout(videoRef.current, videoStageRef.current)
   const cropPc = cropAspectKey !== 'original' ? cropOverlayPercents(stageLayout, cropPx) : null
@@ -945,7 +1021,7 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
             onClick={() => void confirmTrim()}
             className="min-h-11 flex-1 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 disabled:opacity-40 touch-manipulation"
           >
-            Use this clip
+            {busy ? (intent === 'detail' ? 'Trimming…' : 'Preparing…') : 'Use this clip'}
           </button>
         </div>
       </div>

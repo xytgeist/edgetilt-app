@@ -20,6 +20,7 @@ const LOUNGE_MAX_PINNED_ALERT =
  * @property {string} gifOnlyUrl
  * @property {File[]} imageFiles
  * @property {File | null} videoFile
+ * @property {string | null} [streamVideoUid] When set, video already uploaded to Cloudflare Stream (composer prep).
  * @property {boolean} wantsPin
  * @property {boolean} isStaffPoster
  */
@@ -64,8 +65,10 @@ export async function executeLoungeCommunityPostSubmission({
     throw new Error('You must be signed in to post in Lounge.')
   }
 
-  const { caption, gifOnlyUrl, imageFiles, videoFile, wantsPin, isStaffPoster } = snapshot
-  const hasVideo = videoFile != null
+  const { caption, gifOnlyUrl, imageFiles, videoFile, streamVideoUid: preUploadedUid, wantsPin, isStaffPoster } =
+    snapshot
+  const preUid = String(preUploadedUid || '').trim()
+  const hasVideo = Boolean(videoFile) || Boolean(preUid)
   const nImg = Array.isArray(imageFiles) ? imageFiles.length : 0
 
   if (hasVideo && gifOnlyUrl) {
@@ -81,7 +84,20 @@ export async function executeLoungeCommunityPostSubmission({
   let insertSucceeded = false
 
   try {
-    if (hasVideo && videoFile) {
+    if (hasVideo && preUid) {
+      streamVideoUid = preUid
+      pendingCfUploadUid = preUid
+      throwIfAborted()
+      report(0.55, 'Video ready', 'Using upload from composer')
+      await waitForCfStreamManifestReady(preUid, {
+        signal,
+        onPoll: ({ elapsed }) => {
+          const cap = 120_000
+          const t = Math.min(1, elapsed / cap)
+          report(0.55 + t * 0.3, 'Checking playback', `${Math.round(elapsed / 1000)}s`)
+        },
+      })
+    } else if (hasVideo && videoFile) {
       const vf = videoFile
       if (vf.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
         throw new Error('Video must be 200 MB or smaller for upload.')

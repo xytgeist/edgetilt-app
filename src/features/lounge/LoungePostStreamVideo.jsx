@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
 
-/** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; frame hugs aspect). */
+/** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
 const videoClassByVariant = {
   feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
   detail: 'block max-h-[min(70vh,520px)] w-auto max-w-full h-auto object-contain',
@@ -11,7 +11,7 @@ const videoClassByVariant = {
   composer: 'block max-h-40 w-auto max-w-full h-auto object-contain',
 }
 
-/** Match carousel slide width caps so video does not span the full row width like a banner. */
+/** Max width cap only; outer wrapper is `inline-flex w-fit` so the frame hugs the video/poster aspect. */
 const slideMaxWByVariant = {
   feed: 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]',
   detail: 'max-w-full',
@@ -424,9 +424,9 @@ export default function LoungePostStreamVideo({
     onAutoReattach: bumpStreamAttach,
   })
 
-  /** Reset crossfade when tile loses inline stream; prime fade when it attaches. */
+  /** Fade HLS over CF thumbnail once playing (all variants with poster frame; when not `attachStream`, keep video hidden). */
   useEffect(() => {
-    if (!lazyStream || !poster) return undefined
+    if (!poster) return undefined
     if (!attachStream) {
       setStreamFadeShowVideo(false)
       return undefined
@@ -484,7 +484,7 @@ export default function LoungePostStreamVideo({
       v.removeEventListener('timeupdate', onTime)
       window.clearTimeout(tid)
     }
-  }, [attachStream, lazyStream, poster, id, streamAttachKey])
+  }, [attachStream, poster, id, streamAttachKey])
 
   const openLightbox = useCallback(() => {
     try {
@@ -721,8 +721,8 @@ export default function LoungePostStreamVideo({
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
   const border = borderByVariant[variant] || borderByVariant.feed
-  /** iOS: poster `<img>` in-flow sizes the frame; `<video>` stays absolute so default intrinsic width cannot flash wide. */
-  const usePosterFrame = Boolean(lazyStream && poster)
+  /** iOS: in-flow poster `<img>` sizes the frame; `<video>` stays absolute until fade. Use whenever we have a CF thumbnail URL (feed, embed, and detail — not only lazy feed). */
+  const usePosterFrame = Boolean(id && poster)
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle = attachStream
     ? {
@@ -732,13 +732,13 @@ export default function LoungePostStreamVideo({
     : undefined
 
   return (
-    <div className={`${firstMarginTopClass} w-full min-w-0 self-start ${slideMaxW}`}>
+    <div className={`${firstMarginTopClass} inline-flex shrink-0 self-start ${slideMaxW}`}>
       <div
         ref={containerRef}
         role="button"
         tabIndex={0}
         data-lounge-video-zoom
-        className={`relative block w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+        className={`relative block w-fit max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? stripSoundUnmuted
@@ -771,7 +771,7 @@ export default function LoungePostStreamVideo({
               usePosterFrame
                 ? posterLayoutFailed
                   ? 'relative w-full bg-black'
-                  : 'relative flex w-full min-h-[min(36vw,12rem)] justify-center bg-black sm:min-h-[13rem]'
+                  : 'relative inline-block w-fit max-w-full bg-black leading-none'
                 : 'relative'
             }
           >

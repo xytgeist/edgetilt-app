@@ -885,14 +885,22 @@ export default function SocialFeed({
             const oldPreview = prev.preview
             const oldPoster = prev.posterUrl
             const vidUrl = URL.createObjectURL(encodedFile)
-            if (oldPreview) {
+
+            const posterToKeep =
+              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
+                ? oldPoster
+                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
+                  ? oldPreview
+                  : null
+
+            if (oldPreview && oldPreview !== posterToKeep) {
               try {
                 URL.revokeObjectURL(oldPreview)
               } catch {
                 // ignore
               }
             }
-            if (oldPoster && oldPoster !== oldPreview) {
+            if (oldPoster && oldPoster !== posterToKeep) {
               try {
                 URL.revokeObjectURL(oldPoster)
               } catch {
@@ -904,7 +912,7 @@ export default function SocialFeed({
               file: encodedFile,
               streamVideoUid,
               preview: vidUrl,
-              posterUrl: null,
+              posterUrl: posterToKeep,
               prepStatus: 'ready',
               prepError: '',
             }
@@ -3464,19 +3472,21 @@ export default function SocialFeed({
                     )
                   })()}
                   {composerVideoSlot ? (
-                    <div className="relative mt-1.5 inline-block max-w-[min(78vw,18rem)] self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black">
+                    <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
                       {!composerVideoSlot.file && composerVideoSlot.preview ? (
                         <img
                           src={composerVideoSlot.preview}
                           alt=""
-                          className="block max-h-52 w-auto max-w-full h-auto object-contain"
+                          className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
                         />
                       ) : composerVideoSlot.preview ? (
                         <video
                           src={composerVideoSlot.preview}
-                          className="block max-h-52 w-auto max-w-full h-auto object-contain"
+                          poster={composerVideoSlot.posterUrl || undefined}
+                          className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
                           controls
                           playsInline
+                          preload="metadata"
                           aria-label="Video preview"
                         />
                       ) : null}

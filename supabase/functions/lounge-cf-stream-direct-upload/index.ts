@@ -126,6 +126,13 @@ Deno.serve(async (req) => {
         cfJson = (await cfRes.json()) as typeof cfJson
       } else {
         const raw = await cfRes.text()
+        console.warn('[lounge-video-upload]', {
+          ts: new Date().toISOString(),
+          phase: 'cf_stream_mint_cloudflare_api',
+          outcome: 'non_json_response',
+          cfHttpStatus: cfRes.status,
+          snippet: raw.slice(0, 240),
+        })
         return new Response(
           JSON.stringify({
             error: `Cloudflare returned non-JSON (${cfRes.status}): ${raw.slice(0, 240)}`,
@@ -134,6 +141,12 @@ Deno.serve(async (req) => {
         )
       }
     } catch {
+      console.warn('[lounge-video-upload]', {
+        ts: new Date().toISOString(),
+        phase: 'cf_stream_mint_cloudflare_api',
+        outcome: 'json_parse_or_read_failed',
+        cfHttpStatus: cfRes.status,
+      })
       return new Response(JSON.stringify({ error: 'Could not read Cloudflare response.' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -150,6 +163,16 @@ Deno.serve(async (req) => {
       if (/storage capacity|storage quota|allocated storage|exceeded your.*storage|purchase more minutes/i.test(msg)) {
         msg += cloudflareStreamStorageHint()
       }
+      console.warn('[lounge-video-upload]', {
+        ts: new Date().toISOString(),
+        phase: 'cf_stream_mint_cloudflare_api',
+        outcome: 'cf_error_or_incomplete',
+        cfHttpStatus: cfRes.status,
+        cfSuccess: Boolean(cfJson?.success),
+        hasUploadUrl: Boolean(cfJson?.result?.uploadURL),
+        hasUid: Boolean(cfJson?.result?.uid),
+        errorSummary: msg.slice(0, 500),
+      })
       return new Response(JSON.stringify({ error: msg }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -166,6 +189,12 @@ Deno.serve(async (req) => {
     )
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    console.warn('[lounge-video-upload]', {
+      ts: new Date().toISOString(),
+      phase: 'cf_stream_mint_edge',
+      outcome: 'unhandled_throw',
+      message: (msg || 'Server error').slice(0, 500),
+    })
     return new Response(JSON.stringify({ error: msg || 'Server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

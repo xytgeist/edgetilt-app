@@ -850,15 +850,23 @@ export default function SocialFeed({
             },
             onProgress: (info) => {
               if (composerVideoPrepJobIdRef.current !== jobId) return
+              setLoungePostUploadBar((bar) => {
+                if (!bar || bar?.mode !== 'mediaPrep' || bar.prepJobId !== jobId) return bar
+                const d = String(info.detail || '').trim()
+                return {
+                  mode: 'mediaPrep',
+                  prepJobId: jobId,
+                  progress: typeof info.progress === 'number' ? info.progress : 0,
+                  status: String(info.status || ''),
+                  detail: d !== '' ? d : typeof bar.detail === 'string' ? bar.detail : '',
+                }
+              })
+            },
+            onUploadDiagnostic: (detail) => {
+              if (composerVideoPrepJobIdRef.current !== jobId) return
               setLoungePostUploadBar((bar) =>
                 bar?.mode === 'mediaPrep' && bar.prepJobId === jobId
-                  ? {
-                      mode: 'mediaPrep',
-                      prepJobId: jobId,
-                      progress: typeof info.progress === 'number' ? info.progress : 0,
-                      status: String(info.status || ''),
-                      detail: String(info.detail || ''),
-                    }
+                  ? { ...bar, detail: String(detail).slice(0, 280) }
                   : bar,
               )
             },
@@ -2606,14 +2614,24 @@ export default function SocialFeed({
           let out
           const onPrepProgressWhilePosting = (info) => {
             if (ac.signal.aborted) return
-            setLoungePostUploadBar({
-              ...(mediaUploadBarSkin
-                ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
-                : { mode: 'post' }),
-              progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
-              status: String(info.status || ''),
-              detail: String(info.detail || ''),
+            setLoungePostUploadBar((prev) => {
+              const d = String(info.detail || '').trim()
+              return {
+                ...(mediaUploadBarSkin
+                  ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
+                  : { mode: 'post' }),
+                progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                status: String(info.status || ''),
+                detail: d !== '' ? d : prev && typeof prev.detail === 'string' ? prev.detail : '',
+              }
             })
+          }
+
+          const onPrepUploadDiagnostic = (detail) => {
+            if (ac.signal.aborted) return
+            setLoungePostUploadBar((prev) =>
+              prev ? { ...prev, detail: String(detail).slice(0, 280) } : prev,
+            )
           }
 
           const runPrepForPosting = async () => {
@@ -2625,6 +2643,7 @@ export default function SocialFeed({
                 signal: ac.signal,
                 uploadFile: reuse,
                 onProgress: onPrepProgressWhilePosting,
+                onUploadDiagnostic: onPrepUploadDiagnostic,
               })
               composerVideoLastEncodedFileRef.current = null
               return { encodedFile: reuse, streamVideoUid }
@@ -2637,6 +2656,7 @@ export default function SocialFeed({
                 composerVideoLastEncodedFileRef.current = f
               },
               onProgress: onPrepProgressWhilePosting,
+              onUploadDiagnostic: onPrepUploadDiagnostic,
             })
             composerVideoLastEncodedFileRef.current = null
             return prepOut
@@ -2678,16 +2698,25 @@ export default function SocialFeed({
           signal: ac.signal,
           onProgress: (info) => {
             loungePostUploadLastPhaseRef.current = String(info?.status || '')
-            setLoungePostUploadBar({
-              ...(mediaUploadBarSkin
-                ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
-                : { mode: 'post' }),
-              progress: typeof info?.progress === 'number' ? info.progress : 0,
-              status: String(info?.status || ''),
-              detail: String(info?.detail || ''),
+            setLoungePostUploadBar((prev) => {
+              const d = String(info?.detail || '').trim()
+              return {
+                ...(mediaUploadBarSkin
+                  ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
+                  : { mode: 'post' }),
+                progress: typeof info?.progress === 'number' ? info.progress : 0,
+                status: String(info?.status || ''),
+                detail: d !== '' ? d : prev && typeof prev.detail === 'string' ? prev.detail : '',
+              }
             })
           },
           rateLimitMessage,
+          onUploadDiagnostic: (detail) => {
+            if (ac.signal.aborted) return
+            setLoungePostUploadBar((prev) =>
+              prev ? { ...prev, detail: String(detail).slice(0, 280) } : prev,
+            )
+          },
         })
         loungePostSnapshotRef.current = null
         await loadCommunityFeed()

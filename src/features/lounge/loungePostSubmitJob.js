@@ -5,8 +5,7 @@ import {
   LOUNGE_VIDEO_MAX_SECONDS,
   deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
-  requestCfStreamDirectUpload,
-  uploadVideoToCfStreamDirectUrlWithProgress,
+  uploadVideoToCfStreamResumableTus,
   waitForCfStreamManifestReady,
 } from '../../utils/loungeVideoUpload'
 
@@ -37,6 +36,7 @@ const LOUNGE_MAX_PINNED_ALERT =
  * @param {AbortSignal} opts.signal
  * @param {(info: { progress: number, status: string, detail?: string }) => void} [opts.onProgress]
  * @param {(msg: string) => string} opts.rateLimitMessage
+ * @param {(detail: string) => void} [opts.onUploadDiagnostic] Mint / upload / manifest failures → upload bar detail
  */
 export async function executeLoungeCommunityPostSubmission({
   supabaseClient,
@@ -44,6 +44,7 @@ export async function executeLoungeCommunityPostSubmission({
   signal,
   onProgress,
   rateLimitMessage,
+  onUploadDiagnostic,
 }) {
   const report = (progress, status, detail = '') => {
     if (typeof onProgress !== 'function') return
@@ -94,6 +95,7 @@ export async function executeLoungeCommunityPostSubmission({
       report(0.55, 'Video ready', 'Using upload from composer')
       await waitForCfStreamManifestReady(preUid, {
         signal,
+        onUploadDiagnostic,
         onPoll: ({ elapsed }) => {
           const cap = 120_000
           const t = Math.min(1, elapsed / cap)
@@ -111,20 +113,22 @@ export async function executeLoungeCommunityPostSubmission({
       if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
         throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
       }
-      report(0.08, 'Requesting upload URL', 'Cloudflare Stream direct upload')
-      const { uploadURL, uid } = await requestCfStreamDirectUpload(supabaseClient)
-      pendingCfUploadUid = uid
-      throwIfAborted()
-      report(0.1, 'Uploading video to Cloudflare', '0% sent')
-      await uploadVideoToCfStreamDirectUrlWithProgress(uploadURL, vf, {
+      report(0.08, 'Uploading video', 'Cloudflare Stream (resumable)')
+      const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, vf, {
         signal,
+        onUploadDiagnostic,
+        onStreamUidAvailable: (id) => {
+          pendingCfUploadUid = id
+        },
         onProgress: (r) =>
-          report(0.1 + r * 0.52, 'Uploading video to Cloudflare', `${Math.round(r * 100)}% sent`),
+          report(0.08 + r * 0.54, 'Uploading video to Cloudflare', `${Math.round(r * 100)}% sent`),
       })
+      pendingCfUploadUid = uid
       throwIfAborted()
       report(0.64, 'Waiting for Cloudflare encoding', 'Polling HLS manifest…')
       await waitForCfStreamManifestReady(uid, {
         signal,
+        onUploadDiagnostic,
         onPoll: ({ elapsed }) => {
           const cap = 120_000
           const t = Math.min(1, elapsed / cap)

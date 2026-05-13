@@ -4,8 +4,7 @@ import {
   LOUNGE_VIDEO_MAX_SECONDS,
   deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
-  requestCfStreamDirectUpload,
-  uploadVideoToCfStreamDirectUrlWithProgress,
+  uploadVideoToCfStreamResumableTus,
   waitForCfStreamManifestReady,
 } from '../../utils/loungeVideoUpload'
 
@@ -75,16 +74,23 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
 }
 
 /**
- * Mint → upload → manifest retries only (caller supplies the encoded `File`).
+ * Mint → resumable tus upload → manifest retries only (caller supplies the encoded `File`).
  *
  * @param {object} opts
  * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
  * @param {AbortSignal} opts.signal
  * @param {File} opts.uploadFile
  * @param {(info: { progress: number, status: string, detail?: string, attempt: number }) => void} [opts.onProgress]
+ * @param {(detail: string) => void} [opts.onUploadDiagnostic] Last error line for the upload bar
  * @returns {Promise<{ streamVideoUid: string }>}
  */
-export async function uploadEncodedVideoToCfStreamWithRetries({ supabaseClient, signal, uploadFile, onProgress }) {
+export async function uploadEncodedVideoToCfStreamWithRetries({
+  supabaseClient,
+  signal,
+  uploadFile,
+  onProgress,
+  onUploadDiagnostic,
+}) {
   const report = (progress, status, detail, attempt) => {
     if (typeof onProgress !== 'function') return
     onProgress({
@@ -111,22 +117,23 @@ export async function uploadEncodedVideoToCfStreamWithRetries({ supabaseClient, 
         attempt,
       )
 
-      report(0.44, 'Requesting upload URL', '', attempt)
-      const { uploadURL, uid } = await requestCfStreamDirectUpload(supabaseClient)
-      pendingUid = uid
-      if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-
-      report(0.48, 'Uploading to Cloudflare', '0%', attempt)
-      await uploadVideoToCfStreamDirectUrlWithProgress(uploadURL, uploadFile, {
+      report(0.44, 'Starting resumable upload', '', attempt)
+      const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, uploadFile, {
         signal,
+        onUploadDiagnostic,
+        onStreamUidAvailable: (id) => {
+          pendingUid = id
+        },
         onProgress: (r) =>
-          report(0.48 + r * 0.42, 'Uploading to Cloudflare', `${Math.round(r * 100)}%`, attempt),
+          report(0.44 + r * 0.46, 'Uploading to Cloudflare', `${Math.round(r * 100)}%`, attempt),
       })
+      pendingUid = uid
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
       report(0.92, 'Finishing upload', 'Waiting for playback…', attempt)
       await waitForCfStreamManifestReady(uid, {
         signal,
+        onUploadDiagnostic,
         onPoll: ({ elapsed }) => {
           const cap = 120_000
           const t = Math.min(1, elapsed / cap)
@@ -164,8 +171,8 @@ export async function uploadEncodedVideoToCfStreamWithRetries({ supabaseClient, 
 }
 
 /**
- * Encode (when trim), upload to Cloudflare Stream, wait for manifest — with retries on failure.
- * On-device encode and duration checks run once; retries repeat only mint → upload → manifest.
+ * Encode (when trim), upload to Cloudflare Stream (tus), wait for manifest — with retries on failure.
+ * On-device encode and duration checks run once; retries repeat only tus creation/upload → manifest.
  *
  * @param {object} opts
  * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
@@ -173,6 +180,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({ supabaseClient, 
  * @param {{ kind: 'direct', file: File } | { kind: 'trim', sourceFile: File, startSec: number, endSec: number, cropPx: { x: number, y: number, w: number, h: number } | null, intrinsicWidth: number, intrinsicHeight: number }} opts.spec
  * @param {(info: { progress: number, status: string, detail?: string, attempt: number }) => void} [opts.onProgress]
  * @param {(file: File) => void} [opts.onEncodedFileReady] Called once after encode + validation, before Cloudflare attempts (for post-job reuse without re-encoding).
+ * @param {(detail: string) => void} [opts.onUploadDiagnostic] Shown in the Lounge upload bar `detail` on mint/upload/manifest failures.
  * @returns {Promise<{ encodedFile: File, streamVideoUid: string }>}
  */
 export async function runComposerStreamVideoPrepWithRetries({
@@ -181,6 +189,7 @@ export async function runComposerStreamVideoPrepWithRetries({
   spec,
   onProgress,
   onEncodedFileReady,
+  onUploadDiagnostic,
 }) {
   const uploadFile = await encodeComposerVideoFileFromSpec({ signal, spec, onProgress })
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -190,6 +199,7 @@ export async function runComposerStreamVideoPrepWithRetries({
     signal,
     uploadFile,
     onProgress,
+    onUploadDiagnostic,
   })
   return { encodedFile: uploadFile, streamVideoUid }
 }

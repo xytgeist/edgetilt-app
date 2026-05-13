@@ -61,41 +61,42 @@ export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
 
   await ffmpeg.writeFile(inName, await fetchFile(file))
 
-  /** Crop uses caller dimensions so x/y/w/h stay valid for the encoded source size. */
-  const vfParts = []
+  /**
+   * Optional crop (source pixels), then scale width to 1280 (height -2, bicubic).
+   * With crop: crop=w:h:x:y,scale=1280:-2:flags=bicubic
+   * No crop: scale=1280:-2:flags=bicubic
+   */
+  let vf = 'scale=1280:-2:flags=bicubic'
   if (cropIn && cropIn.w > 0 && cropIn.h > 0 && iw > 0 && ih > 0) {
     const c = sanitizeVideoCropPx(iw, ih, cropIn)
-    if (c) vfParts.push(`crop=${c.w}:${c.h}:${c.x}:${c.y}`)
+    if (c) vf = `crop=${c.w}:${c.h}:${c.x}:${c.y},scale=1280:-2:flags=bicubic`
   }
 
-  const args = [
-    '-ss',
-    String(start),
-    '-i',
-    inName,
-    '-t',
-    String(dur),
+  /**
+   * Lounge trim (WASM intermediate). Groups:
+   * - Demux / logging: -hide_banner -loglevel error -analyzeduration 1500000 -probesize 5242880
+   * - Trim: -ss start -i input -t duration
+   * - Video: -c:v libx264 -preset ultrafast -crf 27 -pix_fmt yuv420p
+   * - Video filters: -vf (crop+,)scale=1280:-2:flags=bicubic
+   * - Audio: -c:a aac -b:a 128k
+   * - Mux: -movflags +faststart -y output.mp4
+   */
+  const demuxLogging = [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-analyzeduration',
+    '1500000',
+    '-probesize',
+    '5242880',
   ]
-  if (vfParts.length) args.push('-vf', vfParts.join(','))
-  /** Trim always re-encodes; quality vs WASM time. User feedback: encode is fast enough — bias toward higher fidelity for Stream ingest. */
-  args.push(
-    '-c:v',
-    'libx264',
-    '-preset',
-    'fast',
-    '-crf',
-    '18',
-    '-pix_fmt',
-    'yuv420p',
-    '-c:a',
-    'aac',
-    '-b:a',
-    '192k',
-    '-movflags',
-    '+faststart',
-    '-y',
-    outName,
-  )
+  const trim = ['-ss', String(start), '-i', inName, '-t', String(dur)]
+  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
+  const videoFilters = ['-vf', vf]
+  const audio = ['-c:a', 'aac', '-b:a', '128k']
+  const mux = ['-movflags', '+faststart', '-y', outName]
+
+  const args = [...demuxLogging, ...trim, ...video, ...videoFilters, ...audio, ...mux]
 
   try {
     const code = await ffmpeg.exec(args, undefined, { signal })

@@ -31,7 +31,7 @@ Phoenix Link is an **Aristocrat-style must-hit-by (MHB)** family game: a **visib
 
 Treat scouting cost (partial cycles, wrong denom probes, “just checking”) as **real dilution** of edge. If you cannot articulate **fee per unit of counter progress** vs **implied value**, you are not ready to size up.
 
-## Using the Las Vegas Slot Pro calculator
+## Using the Edge calculator
 
 Open **Phoenix Link EV Calc** from the card. Plug **counter, denom, bet, increment model, average trigger, bonus pay**, and optional **full-run fee** switches to match how you scout. Compare **EV and exposure** columns before you commit bankroll.
 

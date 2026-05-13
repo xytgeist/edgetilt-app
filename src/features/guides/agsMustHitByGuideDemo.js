@@ -42,7 +42,7 @@ Treat these as **search anchors**, not a promise that every bank uses the same *
 2. **Verify rise and eligibility** — **Qualifying bet**, **denom**, and **link vs stand-alone** still dominate realized RTP; do not extrapolate from a **different property’s** PAR.
 3. **Log your own samples** — Small **private hit logs** (counter at hit, denom, bet) beat forum lore when you are deciding whether a **uniform** approximation is “good enough” on a specific bank.
 
-## Using the Las Vegas Slot Pro calculator
+## Using the Edge calculator
 
 Open **Must Hit By Jackpot** from this card for **what-if** math on **current**, **cap**, **meter rise**, **reset**, and **RTP**. Read outputs as **upper-bound optimism** unless you have evidence the bank behaves **uniformly** through the band.
 

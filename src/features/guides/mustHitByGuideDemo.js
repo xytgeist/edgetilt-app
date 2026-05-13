@@ -77,7 +77,7 @@ The same WOO article stresses that **AGS** must-hit-by behavior is **not** model
 
 Two-meter games mean you are often solving **two correlated** “how much base tax to move each ladder” problems. Size sessions so **variance on the base game** does not force you off a +EV state before the mystery resolves.
 
-## Using the Las Vegas Slot Pro calculator
+## Using the Edge calculator
 
 Open **Must Hit By Jackpot** from this card to stress-test **one meter** with **current**, **cap**, **meter rise per penny**, **reset**, **RTP**, and **midpoint vs full run**. For **Ainsworth dual-meter target points**, keep **[Wizard of Odds — Ainsworth mystery MHB](https://wizardofodds.com/games/slots/mystery-jackpot-ainsworth/)** open for the **tabular** Major/Minor targets; merge those assumptions with your floor-verified **rise %** and **RTP**.
 

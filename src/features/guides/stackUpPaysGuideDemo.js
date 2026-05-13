@@ -31,7 +31,7 @@ Stack Up Pays on **IGT’s Ascending Fortunes** chassis is a **multi-meter persi
 
 Multi-meter games **correlate bad runs**: several meters can stall in expensive territory at once. Size bets so a **single “bad cloud”** across meters does not wipe the session before the math can work.
 
-## Using the Las Vegas Slot Pro calculator
+## Using the Edge calculator
 
 Open **Stack Up Pays** from the card. Enter **overall RTP**, **denom**, **per-meter counter / must-hit / reset / SPI** (defaults match common training setups—always verify on the glass), and read **+EV counter**, **calibrated RTP**, and **expected bets won** for the stopping rule you use.
 

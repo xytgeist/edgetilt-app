@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data ? event.data.text() : '' }
   }
 
-  const title = payload.title || 'LVSlotPro Reminder'
+  const title = payload.title || 'Edge Reminder'
   let body = payload.body || 'You have an upcoming event.'
   if (payload.eventStartAt) {
     const dt = new Date(payload.eventStartAt)

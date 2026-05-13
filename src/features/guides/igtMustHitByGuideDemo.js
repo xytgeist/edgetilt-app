@@ -35,7 +35,7 @@ These are **common IGT / WMS brands** that sometimes appear with **incremental o
 
 Where **uniform** mystery math is appropriate, the same **t = m × (h + r) / (h + 2r)** style thinking (see WOO) applies: you need **m** (cap), **r** (rise as a fraction of bet), and a defensible **h** (whole-game house edge including progressive contribution assumptions). **IGT revisions**, **link size**, and **denom** can all move **r** and **h** without changing the marquee art.
 
-## Using the Las Vegas Slot Pro calculator
+## Using the Edge calculator
 
 Open **Must Hit By Jackpot** from this card. Enter **current meter**, **must-hit cap**, **meter rise per penny**, **reset**, **overall RTP**, and compare **midpoint vs full run**. Cross-check breakeven / exposure against **[Wizard of Odds — mystery jackpot / must-hit-by](https://wizardofodds.com/games/slots/mystery-jackpot/)** for **table-based** target-point habits you use in scouting.
 

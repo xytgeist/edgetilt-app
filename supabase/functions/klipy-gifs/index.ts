@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const ua = req.headers.get('user-agent') || 'LVSlotPro-KlipyProxy/1'
+    const ua = req.headers.get('user-agent') || 'Edge-KlipyProxy/1'
     const klipyRes = await fetch(upstreamUrl, {
       headers: {
         Accept: 'application/json',

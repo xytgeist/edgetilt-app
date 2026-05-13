@@ -483,7 +483,7 @@ export default function AppShell({
         <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <div className="text-white text-2xl font-black tracking-tight">Las Vegas Slot Pro</div>
+              <div className="text-white text-2xl font-black tracking-tight">Edge</div>
               <div className="text-zinc-400 text-sm mt-0.5">Lounge</div>
             </div>
             {browseMode === 'member' ? (

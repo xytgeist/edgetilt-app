@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const userId = userData.user.id
 
     const body = await req.json().catch(() => ({}))
-    const title = typeof body?.title === 'string' && body.title.trim() ? body.title.trim() : 'LVSlotPro Test'
+    const title = typeof body?.title === 'string' && body.title.trim() ? body.title.trim() : 'Edge Test'
     const message =
       typeof body?.body === 'string' && body.body.trim() ? body.body.trim() : 'Push notifications are wired correctly on this device.'
     const targetUrl = typeof body?.url === 'string' && body.url.trim() ? body.url.trim() : '/?tab=offers'

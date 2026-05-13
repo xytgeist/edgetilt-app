@@ -25,7 +25,7 @@ The app invokes:
 ```ts
 supabaseClient.functions.invoke('send-test-push', {
   body: {
-    title: 'LVSlotPro Test Notification',
+    title: 'Edge Test Notification',
     body: 'If you can read this, web push is working.',
     url: '/?tab=offers'
   }

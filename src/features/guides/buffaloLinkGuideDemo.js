@@ -32,7 +32,7 @@ Buffalo Link is an **Aristocrat persistent-state** title: what happened on the m
 
 Buffalo Link can **draw down multiple majors** worth of volatility before converging. If you cannot survive the **95th percentile** bad streak at your chosen bet, you are not playing the edge — you are buying lottery tickets with extra steps.
 
-## Using the Las Vegas Slot Pro calculator
+## Using the Edge calculator
 
 Open **Buffalo Link EV Calc** from the card. It is built around the same **midpoint / logistic-style exit** philosophy discussed in-product: use it to translate what you see on the glass into **concrete stop rules** instead of improvising under pressure.
 

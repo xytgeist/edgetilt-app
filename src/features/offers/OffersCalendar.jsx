@@ -259,7 +259,7 @@ export default function OffersCalendar({
     try {
       const { data, error } = await supabaseClient.functions.invoke('send-test-push', {
         body: {
-          title: 'LVSlotPro Test Notification',
+          title: 'Edge Test Notification',
           body: 'If you can read this, web push is working.',
           url: '/?tab=offers',
         },
@@ -503,7 +503,7 @@ export default function OffersCalendar({
             title: 'Enable Notifications on iPhone',
             message: isSafariBrowser
               ? "On iPhone, alert notifications only work from the Home Screen app. Don't blame me, blame Apple. 🤷‍♂️\n\nTo enable alerts:\n1) Tap Share -> Add to Home Screen\n2) Open app from Home Screen icon\n3) Allow Notifications"
-              : "On iPhone, alert notifications only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Slot Pro in SAFARI (blame Apple 🤷‍♂️)\n2) Tap Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Allow Notifications",
+              : "On iPhone, alert notifications only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Edge in SAFARI (blame Apple 🤷‍♂️)\n2) Tap Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Allow Notifications",
             images: [{ src: '/onboarding/ios-setup.png', alt: 'iPhone Home Screen setup steps', caption: '' }],
             confirmLabel: 'Got it'
           })

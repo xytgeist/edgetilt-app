@@ -2888,10 +2888,10 @@ export default function SocialFeed({
                     )
                   })()}
                   {composerVideoSlot ? (
-                    <div className="relative mt-1.5 max-h-52 w-full overflow-hidden rounded-xl border border-zinc-700/80 bg-black">
+                    <div className="relative mt-1.5 inline-block max-w-[min(78vw,18rem)] overflow-hidden rounded-xl border border-zinc-700/80 bg-black">
                       <video
                         src={composerVideoSlot.preview}
-                        className="max-h-52 w-full object-contain"
+                        className="block max-h-52 w-auto max-w-full h-auto object-contain"
                         controls
                         playsInline
                         aria-label="Video preview"

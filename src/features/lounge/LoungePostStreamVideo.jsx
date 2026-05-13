@@ -727,13 +727,13 @@ export default function LoungePostStreamVideo({
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
-      <div className={`inline-block max-w-full ${slideMaxW}`}>
+      <div className={`block w-full min-w-0 ${slideMaxW}`}>
         <div
           ref={containerRef}
           role="button"
           tabIndex={0}
           data-lounge-video-zoom
-          className={`relative inline-block max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+          className={`relative block w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? stripSoundUnmuted
@@ -761,7 +761,7 @@ export default function LoungePostStreamVideo({
             }
           }}
         >
-          <div className="relative">
+          <div className={usePosterFrame ? 'relative aspect-video w-full bg-black' : 'relative'}>
             {usePosterFrame ? (
               <>
                 <img
@@ -769,7 +769,7 @@ export default function LoungePostStreamVideo({
                   alt=""
                   decoding="async"
                   draggable={false}
-                  className={`pointer-events-none block max-w-full select-none transition-opacity ease-out ${videoClass} ${
+                  className={`pointer-events-none absolute inset-0 z-0 h-full w-full select-none object-contain transition-opacity ease-out ${
                     attachStream && streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
                   }`}
                   style={streamFadeTransitionStyle}
@@ -777,7 +777,7 @@ export default function LoungePostStreamVideo({
                 />
                 <video
                   ref={videoRef}
-                  className={`pointer-events-none absolute inset-0 z-[1] h-full w-full max-w-full object-contain transition-opacity ease-out ${
+                  className={`pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain transition-opacity ease-out ${
                     attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
                   }`}
                   style={streamFadeTransitionStyle}

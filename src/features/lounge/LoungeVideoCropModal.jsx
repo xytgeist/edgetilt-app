@@ -4,14 +4,6 @@ import { LOUNGE_VIDEO_MAX_SECONDS } from '../../utils/loungeVideoUpload'
 
 const MIN_CLIP_SEC = 0.5
 const MAX_CLIP_SEC = LOUNGE_VIDEO_MAX_SECONDS
-/** Filmstrip: one column per second of source; selection math uses full `duration` (fractional seconds). */
-const FILMSTRIP_PX_PER_SEC = 26
-const CAPTURE_W = 52
-const CAPTURE_H = 30
-const JPEG_QUALITY = 0.38
-/** Do not block more than this per seek (iOS / long-GOP can stall). */
-const SEEK_TIMEOUT_MS = 2800
-const VIDEO_READY_TIMEOUT_MS = 14000
 
 function formatClock(sec) {
   const s = Math.max(0, sec)
@@ -21,95 +13,20 @@ function formatClock(sec) {
   return `${mm}:${String(ss).padStart(2, '0')}.${frac}`
 }
 
-function waitSeeked(video, targetTime, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const t = window.setTimeout(() => {
-      video.removeEventListener('seeked', onSeeked)
-      reject(new Error('seek-timeout'))
-    }, timeoutMs)
-    const onSeeked = () => {
-      window.clearTimeout(t)
-      video.removeEventListener('seeked', onSeeked)
-      resolve(undefined)
-    }
-    video.addEventListener('seeked', onSeeked, { once: true })
-    try {
-      video.currentTime = targetTime
-    } catch (e) {
-      window.clearTimeout(t)
-      video.removeEventListener('seeked', onSeeked)
-      reject(e)
-    }
-  })
-}
-
-function waitVideoReady(video, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const tryOk = () => {
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        resolve(undefined)
-        return true
-      }
-      return false
-    }
-    if (tryOk()) return
-    const t = window.setTimeout(() => {
-      video.removeEventListener('loadeddata', onLd)
-      video.removeEventListener('canplay', onLd)
-      video.removeEventListener('error', onErr)
-      reject(new Error('video-ready-timeout'))
-    }, timeoutMs)
-    const onLd = () => {
-      if (tryOk()) {
-        window.clearTimeout(t)
-        video.removeEventListener('loadeddata', onLd)
-        video.removeEventListener('canplay', onLd)
-        video.removeEventListener('error', onErr)
-      }
-    }
-    const onErr = () => {
-      window.clearTimeout(t)
-      video.removeEventListener('loadeddata', onLd)
-      video.removeEventListener('canplay', onLd)
-      video.removeEventListener('error', onErr)
-      reject(new Error('video-error'))
-    }
-    video.addEventListener('loadeddata', onLd)
-    video.addEventListener('canplay', onLd)
-    video.addEventListener('error', onErr)
-    try {
-      video.load()
-    } catch {
-      // ignore
-    }
-  })
-}
-
-/** Wait until `drawImage` is likely to succeed; short poll first, then full wait. */
-async function waitUntilVideoFrameable(video, pollMs) {
-  const deadline = Date.now() + pollMs
-  while (Date.now() < deadline) {
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return
-    await new Promise((r) => window.setTimeout(r, 40))
-  }
-  await waitVideoReady(video, VIDEO_READY_TIMEOUT_MS)
-}
-
 /**
- * Trim a video to at most 60s: filmstrip (~1 frame / sec) for picking range; ffmpeg only after "Use this clip".
+ * Trim a video to at most 60s: draggable window on the full timeline (cannot widen past 60s).
  *
  * @param {{ file: File, knownDurationSec?: number, onCancel: () => void, onConfirm: (file: File) => void }} props
+ * `knownDurationSec` — duration already probed before opening (avoids iOS waiting twice on `loadedmetadata`).
  */
 export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel, onConfirm }) {
   const videoRef = useRef(null)
   const trackRef = useRef(null)
-  const filmstripInnerRef = useRef(null)
   const urlRef = useRef('')
   const dragRef = useRef(null)
   const durationRef = useRef(0)
   const clipRef = useRef({ start: 0, end: MAX_CLIP_SEC })
   const listenersRef = useRef({ move: null, up: null })
-  const filmstripAbortRef = useRef(false)
 
   const [duration, setDuration] = useState(0)
   const [clipStart, setClipStart] = useState(0)
@@ -118,13 +35,6 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   const [trimErr, setTrimErr] = useState('')
   const [trimProgress, setTrimProgress] = useState(0)
   const trimAbortRef = useRef(null)
-
-  /** data URL per integer second index (parallel to 0..ceil(duration)-1). */
-  const [filmstripUrls, setFilmstripUrls] = useState([])
-  const [filmstripDone, setFilmstripDone] = useState(0)
-  const [filmstripTotal, setFilmstripTotal] = useState(0)
-  const [filmstripErr, setFilmstripErr] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
 
   useEffect(() => {
     clipRef.current = { start: clipStart, end: clipEnd }
@@ -135,22 +45,18 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   }, [duration])
 
   useEffect(() => {
-    if (!file) {
-      setVideoUrl('')
-      urlRef.current = ''
-      return undefined
-    }
+    void import('../../utils/loungeVideoFfmpegTrim')
+      .then((m) => m.prefetchFfmpegCore())
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!file) return undefined
     const u = URL.createObjectURL(file)
     urlRef.current = u
-    setVideoUrl(u)
     setTrimErr('')
     setTrimProgress(0)
     setPhase('idle')
-    setFilmstripUrls([])
-    setFilmstripDone(0)
-    setFilmstripTotal(0)
-    setFilmstripErr('')
-    filmstripAbortRef.current = false
     const probed =
       typeof knownDurationSec === 'number' &&
       Number.isFinite(knownDurationSec) &&
@@ -171,95 +77,14 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
       clipRef.current = { start: 0, end: MAX_CLIP_SEC }
     }
     return () => {
-      filmstripAbortRef.current = true
       try {
         URL.revokeObjectURL(u)
       } catch {
         // ignore
       }
       urlRef.current = ''
-      setVideoUrl('')
     }
   }, [file, knownDurationSec])
-
-  /** Progressive filmstrip: one seek + canvas grab per second (no ffmpeg until confirm). */
-  useEffect(() => {
-    if (!file || duration <= 0 || !videoUrl) return undefined
-    const v = videoRef.current
-    if (!v) return undefined
-
-    filmstripAbortRef.current = false
-    const total = Math.max(1, Math.ceil(duration - 1e-6))
-    setFilmstripTotal(total)
-    setFilmstripDone(0)
-    setFilmstripUrls(Array.from({ length: total }, () => ''))
-    setFilmstripErr('')
-
-    const canvas = document.createElement('canvas')
-    canvas.width = CAPTURE_W
-    canvas.height = CAPTURE_H
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      setFilmstripErr('Could not build preview.')
-      return undefined
-    }
-
-    let cancelled = false
-    const run = async () => {
-      try {
-        try {
-          v.pause()
-        } catch {
-          // ignore
-        }
-        await waitUntilVideoFrameable(v, 2800)
-        if (cancelled || filmstripAbortRef.current) return
-
-        const urls = Array.from({ length: total }, () => '')
-        const durEl = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : duration
-
-        for (let i = 0; i < total; i += 1) {
-          if (cancelled || filmstripAbortRef.current) return
-          const target = Math.min(i, Math.max(0, durEl - 0.05))
-          try {
-            await waitSeeked(v, target, SEEK_TIMEOUT_MS)
-          } catch {
-            urls[i] = ''
-            setFilmstripUrls([...urls])
-            setFilmstripDone(i + 1)
-            await new Promise((r) => {
-              window.requestAnimationFrame(r)
-            })
-            continue
-          }
-          try {
-            ctx.fillStyle = '#09090b'
-            ctx.fillRect(0, 0, CAPTURE_W, CAPTURE_H)
-            ctx.drawImage(v, 0, 0, CAPTURE_W, CAPTURE_H)
-            urls[i] = canvas.toDataURL('image/jpeg', JPEG_QUALITY)
-          } catch {
-            urls[i] = ''
-          }
-          urls[i] = urls[i] || ''
-          setFilmstripUrls([...urls])
-          setFilmstripDone(i + 1)
-          await new Promise((r) => {
-            window.requestAnimationFrame(r)
-          })
-        }
-      } catch {
-        if (!cancelled && !filmstripAbortRef.current) {
-          setFilmstripErr('Preview frames are still loading slowly — you can still drag the range and post.')
-        }
-      }
-    }
-
-    void run()
-
-    return () => {
-      cancelled = true
-    }
-  }, [file, duration, videoUrl])
 
   const cleanupDrag = useCallback(() => {
     const { move, up } = listenersRef.current
@@ -273,15 +98,29 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   }, [])
 
   const timeFromClientX = useCallback((clientX) => {
-    const scrollEl = trackRef.current
-    const inner = filmstripInnerRef.current
+    const el = trackRef.current
     const dur = durationRef.current
-    if (!scrollEl || !inner || dur <= 0) return 0
-    const sr = scrollEl.getBoundingClientRect()
-    const x = clientX - sr.left + scrollEl.scrollLeft
-    const w = inner.offsetWidth || 1
-    const t = (x / w) * dur
-    return Math.min(dur, Math.max(0, t))
+    if (!el || dur <= 0) return 0
+    const r = el.getBoundingClientRect()
+    const p = Math.min(1, Math.max(0, (clientX - r.left) / Math.max(1, r.width)))
+    return p * dur
+  }, [])
+
+  const onMetaLoaded = useCallback(() => {
+    const v = videoRef.current
+    const d = v?.duration
+    if (!Number.isFinite(d) || d <= 0) return
+    durationRef.current = d
+    setDuration(d)
+    let ns = clipRef.current.start
+    let ne = clipRef.current.end
+    if (ne > d) ne = d
+    if (ne - ns > MAX_CLIP_SEC) ns = Math.max(0, ne - MAX_CLIP_SEC)
+    if (ns < 0) ns = 0
+    if (ne - ns < MIN_CLIP_SEC) ne = Math.min(d, ns + MIN_CLIP_SEC)
+    clipRef.current = { start: ns, end: ne }
+    setClipStart(ns)
+    setClipEnd(ne)
   }, [])
 
   const startLeftDrag = useCallback(
@@ -452,11 +291,9 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
 
   if (!file) return null
 
-  const stripInnerPx = duration > 0 ? duration * FILMSTRIP_PX_PER_SEC : 0
   const pct = (t) => (duration > 0 ? (t / duration) * 100 : 0)
   const span = clipEnd - clipStart
   const busy = phase === 'trimming'
-  const nStripCells = duration > 0 ? Math.max(1, Math.ceil(duration - 1e-6)) : 0
 
   return createPortal(
     <div
@@ -469,80 +306,26 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-zinc-700/85 bg-zinc-950/96 p-4 shadow-2xl backdrop-blur-md">
         <h2 className="text-[17px] font-bold text-white">Trim video (max {MAX_CLIP_SEC}s)</h2>
         <p className="mt-1 text-[13px] leading-snug text-zinc-400">
-          Drag the handles on the strip (about one thumbnail per second). Encoding runs only after you tap{' '}
-          <span className="font-semibold text-zinc-300">Use this clip</span>.
+          Drag the handles to shorten the clip (never wider than {MAX_CLIP_SEC}s). Drag the highlighted range to move it along your video.
         </p>
 
+        <div className="mt-3 overflow-hidden rounded-xl border border-zinc-700/80 bg-black">
+          <video
+            ref={videoRef}
+            src={urlRef.current || undefined}
+            className="max-h-[40vh] w-full object-contain"
+            controls={!busy}
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={onMetaLoaded}
+            onLoadedData={onMetaLoaded}
+            onDurationChange={onMetaLoaded}
+          />
+        </div>
+
         {duration > 0 ? (
-          <>
-            <div
-              ref={trackRef}
-              className="mt-3 max-h-[42vh] overflow-x-auto overflow-y-hidden rounded-xl border border-zinc-700/80 bg-zinc-900/80 [-webkit-overflow-scrolling:touch]"
-            >
-              <div
-                ref={filmstripInnerRef}
-                className="flex shrink-0 flex-col flex-nowrap"
-                style={{ width: stripInnerPx > 0 ? `${stripInnerPx}px` : undefined, minWidth: '100%' }}
-              >
-                <div className="relative flex h-[4.5rem] shrink-0 flex-nowrap">
-                  {Array.from({ length: nStripCells }, (_, i) => {
-                    const src = filmstripUrls[i]
-                    const w = FILMSTRIP_PX_PER_SEC
-                    return (
-                      <div
-                        key={i}
-                        className="flex shrink-0 items-center justify-center border-r border-zinc-800/90 bg-black"
-                        style={{ width: `${w}px` }}
-                        aria-hidden
-                      >
-                        {src ? (
-                          <img src={src} alt="" className="h-full w-full object-cover" draggable={false} />
-                        ) : (
-                          <div className="h-full w-full animate-pulse bg-zinc-800/80" />
-                        )}
-                      </div>
-                    )
-                  })}
-                  <div
-                    className="pointer-events-none absolute inset-y-1 rounded-md border-2 border-cyan-400/90 bg-cyan-500/15"
-                    style={{
-                      left: `${pct(clipStart)}%`,
-                      width: `${Math.max(0.2, pct(clipEnd) - pct(clipStart))}%`,
-                    }}
-                  />
-                </div>
-
-                <div className="relative mt-1 h-9 w-full shrink-0 select-none touch-none">
-                  <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-zinc-800/90" />
-                  <button
-                    type="button"
-                    aria-label="Move clip range"
-                    className="absolute top-1/2 z-0 h-4 -translate-y-1/2 cursor-grab rounded-md bg-cyan-500/40 active:cursor-grabbing"
-                    style={{
-                      left: `${pct(clipStart)}%`,
-                      width: `${Math.max(0.5, pct(clipEnd) - pct(clipStart))}%`,
-                    }}
-                    onPointerDown={startMoveDrag}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Trim start"
-                    className="absolute top-1/2 z-[2] h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cyan-400 bg-zinc-900 shadow-md touch-manipulation"
-                    style={{ left: `${pct(clipStart)}%` }}
-                    onPointerDown={startLeftDrag}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Trim end"
-                    className="absolute top-1/2 z-[2] h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cyan-400 bg-zinc-900 shadow-md touch-manipulation"
-                    style={{ left: `${pct(clipEnd)}%` }}
-                    onPointerDown={startRightDrag}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px] tabular-nums text-zinc-400">
+          <div className="mt-4">
+            <div className="flex justify-between text-[12px] tabular-nums text-zinc-400">
               <span>
                 Start {formatClock(clipStart)} · End {formatClock(clipEnd)}
               </span>
@@ -550,28 +333,33 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
                 Length {formatClock(span)} / max {MAX_CLIP_SEC}s
               </span>
             </div>
-
-            {filmstripTotal > 0 ? (
-              <p className="mt-1 text-[12px] text-zinc-500">
-                Filmstrip {filmstripDone}/{filmstripTotal}s
-                {filmstripDone < filmstripTotal ? ' · still capturing…' : ' · ready'}
-              </p>
-            ) : null}
-            {filmstripErr ? <p className="mt-1 text-[12px] text-amber-200/90">{filmstripErr}</p> : null}
-
-            <div className="mt-2 overflow-hidden rounded-lg border border-zinc-800 bg-black">
-              <video
-                ref={videoRef}
-                src={videoUrl || undefined}
-                className="max-h-[7rem] w-full object-contain"
-                controls={!busy}
-                playsInline
-                muted
-                preload="auto"
-                aria-label="Trim preview"
+            <div ref={trackRef} className="relative mt-2 h-11 select-none touch-none">
+              <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-zinc-800" />
+              <button
+                type="button"
+                aria-label="Move clip range"
+                className="absolute top-1/2 h-4 -translate-y-1/2 cursor-grab rounded-md bg-cyan-500/35 active:cursor-grabbing"
+                style={{
+                  left: `${pct(clipStart)}%`,
+                  width: `${Math.max(0.5, pct(clipEnd) - pct(clipStart))}%`,
+                }}
+                onPointerDown={startMoveDrag}
+              />
+              <button
+                type="button"
+                aria-label="Trim start"
+                className="absolute top-1/2 z-[1] h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cyan-400 bg-zinc-900 shadow-md touch-manipulation"
+                style={{ left: `${pct(clipStart)}%` }}
+                onPointerDown={startLeftDrag}
+              />
+              <button
+                type="button"
+                aria-label="Trim end"
+                className="absolute top-1/2 z-[1] h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cyan-400 bg-zinc-900 shadow-md touch-manipulation"
+                style={{ left: `${pct(clipEnd)}%` }}
+                onPointerDown={startRightDrag}
               />
             </div>
-
             <button
               type="button"
               onClick={playSelection}
@@ -580,7 +368,7 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
             >
               Play selection
             </button>
-          </>
+          </div>
         ) : (
           <p className="mt-3 text-[13px] text-zinc-500">
             Reading video…{' '}

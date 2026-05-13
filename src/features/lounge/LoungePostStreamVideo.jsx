@@ -40,6 +40,8 @@ const LAZY_ATTACH_ROOT_MARGIN = '180px 0px 240px 0px'
 
 /** Poster → first-frame crossfade when inline Stream attaches (iOS handoff). */
 const STREAM_ATTACH_FADE_MS = 220
+/** Hold poster visible briefly so the first decoded frame is not a black blend with fading video. */
+const STREAM_POSTER_FADE_DELAY_MS = 72
 
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
@@ -360,7 +362,8 @@ export default function LoungePostStreamVideo({
   const showOpen = enableLightbox && variant !== 'composer'
   const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
   const feedStyleAbr = variant === 'feed' || variant === 'embed' || variant === 'composer'
-  const attachStream = lazyStream ? streamInView && (!coordinatorActive || isWinner) : true
+  /** Coordinator can name a winner before IntersectionObserver fires; attach on winner alone (IO still gates pause for non-coordinator). */
+  const attachStream = lazyStream ? (coordinatorActive ? isWinner : streamInView) : true
 
   useEffect(() => {
     isWinnerRef.current = !coordinatorActive || isWinner
@@ -394,18 +397,51 @@ export default function LoungePostStreamVideo({
     let cleaned = false
     const reveal = () => {
       if (cleaned) return
-      queueMicrotask(() => setStreamFadeShowVideo(true))
+      const el = videoRef.current
+      if (!el) {
+        queueMicrotask(() => setStreamFadeShowVideo(true))
+        return
+      }
+      const run = () => {
+        if (cleaned) return
+        requestAnimationFrame(() => {
+          if (cleaned) return
+          requestAnimationFrame(() => {
+            if (cleaned) return
+            setStreamFadeShowVideo(true)
+          })
+        })
+      }
+      if (typeof el.requestVideoFrameCallback === 'function') {
+        try {
+          el.requestVideoFrameCallback(() => {
+            if (cleaned) return
+            run()
+          })
+        } catch {
+          run()
+        }
+      } else {
+        run()
+      }
     }
     const onPlaying = () => reveal()
+    const onTime = () => {
+      if (cleaned || !videoRef.current || videoRef.current.currentTime <= 0) return
+      videoRef.current.removeEventListener('timeupdate', onTime)
+      reveal()
+    }
     if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       reveal()
     } else {
       v.addEventListener('playing', onPlaying, { once: true })
+      v.addEventListener('timeupdate', onTime)
     }
-    const tid = window.setTimeout(reveal, 500)
+    const tid = window.setTimeout(reveal, 800)
     return () => {
       cleaned = true
       v.removeEventListener('playing', onPlaying)
+      v.removeEventListener('timeupdate', onTime)
       window.clearTimeout(tid)
     }
   }, [attachStream, lazyStream, poster, id, streamAttachKey])
@@ -461,7 +497,13 @@ export default function LoungePostStreamVideo({
       inViewRef.current = attachOk
       if (lazyStream) setStreamInView(attachOk)
       const won = isWinnerRef.current
-      if (!attachOk || !won) {
+      if (!won) {
+        try {
+          v.pause()
+        } catch {
+          // ignore
+        }
+      } else if (!attachOk && !coordinatorActive) {
         try {
           v.pause()
         } catch {
@@ -504,7 +546,8 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     if (!lazyStream || !attachStream) return undefined
     if (!showOpen) return undefined
-    if (!inViewRef.current || lightboxOpenRef.current) return undefined
+    if ((!inViewRef.current && !(coordinatorActive && isWinner)) || lightboxOpenRef.current)
+      return undefined
     if (coordinatorActive && !isWinner) return undefined
     const v = videoRef.current
     if (!v) return undefined
@@ -543,7 +586,7 @@ export default function LoungePostStreamVideo({
     if (lightboxOpen) return
     const v = videoRef.current
     if (!v || !showOpen) return
-    if (!inViewRef.current) return
+    if (!inViewRef.current && !(coordinatorActive && isWinner)) return
     if (coordinatorActive && !isWinner) {
       try {
         v.pause()
@@ -593,7 +636,13 @@ export default function LoungePostStreamVideo({
   const border = borderByVariant[variant] || borderByVariant.feed
   /** iOS: poster `<img>` in-flow sizes the frame; `<video>` stays absolute so default intrinsic width cannot flash wide. */
   const usePosterFrame = Boolean(lazyStream && poster)
-  const streamFadeTransitionStyle = { transitionDuration: `${STREAM_ATTACH_FADE_MS}ms` }
+  /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
+  const streamFadeTransitionStyle = attachStream
+    ? {
+        transitionDuration: `${STREAM_ATTACH_FADE_MS}ms`,
+        transitionDelay: streamFadeShowVideo ? `${STREAM_POSTER_FADE_DELAY_MS}ms` : '0ms',
+      }
+    : undefined
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
@@ -634,7 +683,7 @@ export default function LoungePostStreamVideo({
                   className={`pointer-events-none block max-w-full select-none transition-opacity ease-out ${videoClass} ${
                     attachStream && streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
                   }`}
-                  style={attachStream ? streamFadeTransitionStyle : undefined}
+                  style={streamFadeTransitionStyle}
                   aria-hidden
                 />
                 <video
@@ -642,7 +691,7 @@ export default function LoungePostStreamVideo({
                   className={`pointer-events-none absolute inset-0 z-[1] h-full w-full max-w-full object-contain transition-opacity ease-out ${
                     attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
                   }`}
-                  style={attachStream ? streamFadeTransitionStyle : undefined}
+                  style={streamFadeTransitionStyle}
                   muted
                   loop
                   playsInline

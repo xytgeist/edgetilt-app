@@ -2669,7 +2669,7 @@ export default function SocialFeed({
 
         {loungeReadOnly ? null : (
         <div
-          className={`relative shrink-0 border-b border-zinc-800 bg-zinc-900/40 px-3 ${
+          className={`relative shrink-0 border-b border-zinc-600/65 bg-zinc-700/55 px-3 ${
             composerExpanded ? 'pt-3 pb-2.5' : 'py-3'
           }`}
         >

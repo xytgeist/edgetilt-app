@@ -2618,10 +2618,7 @@ export default function SocialFeed({
       avatarText,
       onPostBodyClick: openLoungePostDetail,
       viewerUserId: composerUserId,
-      captionEditableInMenu: (p) =>
-        Boolean(
-          composerUserId && p?.user_id === composerUserId && isLoungePostWithinAuthorEditWindow(p?.created_at)
-        ),
+      captionEditableInMenu: (p) => Boolean(composerUserId && p?.user_id === composerUserId),
       onPostMenuEdit: (p) => openLoungePostDetail(p, { startEditing: true }),
       onPostMenuDelete: deleteLoungePostFromFeed,
       onStaffPostDelete: deleteStaffLoungePostFromFeed,
@@ -3376,13 +3373,7 @@ export default function SocialFeed({
                   avatarToneClass={avatarToneClass}
                   avatarText={avatarText}
                   viewerUserId={composerUserId}
-                  captionEditableInMenu={(p) =>
-                    Boolean(
-                      composerUserId &&
-                        p?.user_id === composerUserId &&
-                        isLoungePostWithinAuthorEditWindow(p?.created_at)
-                    )
-                  }
+                  captionEditableInMenu={(p) => Boolean(composerUserId && p?.user_id === composerUserId)}
                   onPostMenuEdit={(p) => openLoungePostDetail(p, { startEditing: true })}
                   onPostMenuDelete={deleteLoungePostFromFeed}
                   onStaffPostDelete={deleteStaffLoungePostFromFeed}

@@ -361,11 +361,17 @@ export default function LoungePostStreamVideo({
   const [streamInView, setStreamInView] = useState(false)
   /** After `playing` (or timeout): fade video in over poster; poster stays in-flow for layout (avoids Safari default video width flash). */
   const [streamFadeShowVideo, setStreamFadeShowVideo] = useState(false)
+  /** In-flow poster can collapse to a broken-icon size when CF thumbnail 404s or is not ready yet. */
+  const [posterLayoutFailed, setPosterLayoutFailed] = useState(false)
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
   const showOpen = enableLightbox && variant !== 'composer'
   const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
+
+  useEffect(() => {
+    setPosterLayoutFailed(false)
+  }, [id])
   const getVideoContainer = useCallback(() => containerRef.current, [])
   const {
     coordinatorActive,
@@ -726,13 +732,13 @@ export default function LoungePostStreamVideo({
     : undefined
 
   return (
-    <div className={`${firstMarginTopClass} w-fit max-w-full min-w-0 self-start ${slideMaxW}`}>
+    <div className={`${firstMarginTopClass} w-full min-w-0 self-start ${slideMaxW}`}>
       <div
         ref={containerRef}
         role="button"
         tabIndex={0}
         data-lounge-video-zoom
-        className={`relative inline-block max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+        className={`relative block w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? stripSoundUnmuted
@@ -763,38 +769,65 @@ export default function LoungePostStreamVideo({
           <div
             className={
               usePosterFrame
-                ? 'relative inline-block max-w-full min-w-[3rem] min-h-[2.5rem] bg-black'
+                ? posterLayoutFailed
+                  ? 'relative w-full bg-black'
+                  : 'relative flex w-full min-h-[min(36vw,12rem)] justify-center bg-black sm:min-h-[13rem]'
                 : 'relative'
             }
           >
             {usePosterFrame ? (
-              <>
-                <img
-                  src={poster}
-                  alt=""
-                  decoding="async"
-                  draggable={false}
-                  className={`pointer-events-none relative z-0 select-none transition-opacity ease-out ${videoClass} ${
-                    attachStream && streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
-                  }`}
-                  style={streamFadeTransitionStyle}
-                  aria-hidden
-                />
-                <video
-                  ref={videoRef}
-                  className={`pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain transition-opacity ease-out ${
-                    attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  style={streamFadeTransitionStyle}
-                  muted={!stripSoundUnmuted}
-                  loop
-                  playsInline
-                  preload={variant === 'composer' ? 'auto' : 'metadata'}
-                  poster={poster}
-                  aria-hidden
-                  onError={onInlineStreamError}
-                />
-              </>
+              posterLayoutFailed ? (
+                <div className="relative aspect-video w-full bg-black">
+                  <video
+                    ref={videoRef}
+                    className={`pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain transition-opacity ease-out ${
+                      attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    style={streamFadeTransitionStyle}
+                    muted={!stripSoundUnmuted}
+                    loop
+                    playsInline
+                    preload={variant === 'composer' ? 'auto' : 'metadata'}
+                    poster={poster}
+                    aria-hidden
+                    onError={onInlineStreamError}
+                  />
+                </div>
+              ) : (
+                <>
+                  <img
+                    src={poster}
+                    alt=""
+                    decoding="async"
+                    draggable={false}
+                    loading="eager"
+                    className={`pointer-events-none relative z-0 select-none transition-opacity ease-out ${videoClass} ${
+                      attachStream && streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
+                    }`}
+                    style={streamFadeTransitionStyle}
+                    aria-hidden
+                    onError={() => setPosterLayoutFailed(true)}
+                    onLoad={(e) => {
+                      const el = e.currentTarget
+                      if (el.naturalWidth < 16 || el.naturalHeight < 16) setPosterLayoutFailed(true)
+                    }}
+                  />
+                  <video
+                    ref={videoRef}
+                    className={`pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain transition-opacity ease-out ${
+                      attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    style={streamFadeTransitionStyle}
+                    muted={!stripSoundUnmuted}
+                    loop
+                    playsInline
+                    preload={variant === 'composer' ? 'auto' : 'metadata'}
+                    poster={poster}
+                    aria-hidden
+                    onError={onInlineStreamError}
+                  />
+                </>
+              )
             ) : (
               <video
                 ref={videoRef}

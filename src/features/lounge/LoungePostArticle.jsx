@@ -203,6 +203,7 @@ export default function LoungePostArticle({
               onStaffDelete={() => onStaffPostDelete?.(post)}
               onBlock={() => onPostMenuBlock?.(post)}
               onReport={() => onPostMenuReport?.(post)}
+              positionScrollRootRef={repostMenuScrollRootRef}
             />
           ) : null}
         </div>

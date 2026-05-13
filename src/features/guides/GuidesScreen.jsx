@@ -34,7 +34,7 @@ import {
 } from './mustHitByGuideDemo'
 import { defaultCardEvThresholdForSlug } from '../../constants/slotCardEvThreshold'
 import { communityFeedPostInsertPayload } from '../../utils/communityFeedPost'
-import { prepareAvatarImageForUpload } from '../../utils/compressImageForUpload'
+import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
 import {
   fetchOwnProfile,
   formatProfileSaveDebugError,
@@ -46,6 +46,7 @@ import {
   uploadProfileAvatar,
 } from '../profiles/profileGate'
 import { loungeProfileNeedsGate, writeProfileGateAck } from '../lounge/loungeStorage'
+import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 
 /** Calculator / generic placeholder art for Buffalo Link — also used when a guide hero fails to load. */
@@ -916,6 +917,23 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
   const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
+  const [profileGateAvatarCropFile, setProfileGateAvatarCropFile] = useState(null)
+
+  const onProfileGateAvatarCropCancel = useCallback(() => {
+    setProfileGateAvatarCropFile(null)
+  }, [])
+
+  const onProfileGateAvatarCropApply = useCallback(async (croppedFile) => {
+    setProfileGateAvatarCropFile(null)
+    setProfileGateErr('')
+    const { file: ready, error } = await prepareAvatarImageForUpload(croppedFile)
+    if (error) {
+      setProfileGateErr(error.message)
+      return
+    }
+    setProfileGateAvatarFile(ready)
+    setProfileGateAvatarPreview(URL.createObjectURL(ready))
+  }, [])
 
   const gameTitle = guideRow?.machines?.name || guideRow?.title || 'Game'
   const gameSlug = guideRow?.machines?.slug || guideRow?.slug || ''
@@ -939,6 +957,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
       setProfileGateOpen(false)
       setProfileGateErr('')
       setProfileGateAvatarFile(null)
+      setProfileGateAvatarCropFile(null)
       setProfileGateAvatarPreview('')
     }
   }, [open, guideRow?.id])
@@ -978,6 +997,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         setProfileGateHandle(h || seed.baseHandle)
         setProfileGateDisplayName(d || seed.displayName)
         setProfileGateAvatarFile(null)
+        setProfileGateAvatarCropFile(null)
         setProfileGateAvatarPreview(ownProfile?.avatar_url || '')
         setProfileGateErr('')
         setProfileGateOpen(true)
@@ -1032,6 +1052,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         data: { session },
       } = await supabaseClient.auth.getSession()
       if (!session?.user) {
+        setProfileGateAvatarCropFile(null)
         setProfileGateOpen(false)
         setAuthPromptOpen(true)
         return
@@ -1062,6 +1083,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         return
       }
       writeProfileGateAck(session.user.id)
+      setProfileGateAvatarCropFile(null)
       setProfileGateOpen(false)
       await submit(null, caption)
     } finally {
@@ -1166,7 +1188,10 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
             type="button"
             className="absolute inset-0 z-0 cursor-default"
             aria-label="Close profile gate"
-            onClick={() => setProfileGateOpen(false)}
+            onClick={() => {
+              setProfileGateAvatarCropFile(null)
+              setProfileGateOpen(false)
+            }}
           />
           <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5">
             <div className="text-cyan-200 text-sm font-semibold uppercase tracking-wide">Complete your profile</div>
@@ -1218,23 +1243,21 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const input = e.target
                         const file = input.files?.[0] || null
+                        try {
+                          input.value = ''
+                        } catch {
+                          // ignore
+                        }
                         if (!file) return
-                        setProfileGateErr('')
-                        const { file: ready, error } = await prepareAvatarImageForUpload(file)
-                        if (error) {
-                          setProfileGateErr(error.message)
-                          try {
-                            input.value = ''
-                          } catch {
-                            // ignore
-                          }
+                        if (!isProbablyImageFile(file)) {
+                          setProfileGateErr('Please choose an image file.')
                           return
                         }
-                        setProfileGateAvatarFile(ready)
-                        setProfileGateAvatarPreview(URL.createObjectURL(ready))
+                        setProfileGateErr('')
+                        setProfileGateAvatarCropFile(file)
                       }}
                     />
                   </label>
@@ -1271,7 +1294,10 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={() => setProfileGateOpen(false)}
+                onClick={() => {
+                  setProfileGateAvatarCropFile(null)
+                  setProfileGateOpen(false)
+                }}
                 className="flex-1 min-h-10 rounded-xl bg-zinc-800 text-zinc-100 font-semibold"
               >
                 Cancel
@@ -1288,6 +1314,13 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
           </div>
         </div>
       ) : null}
+
+      <ProfileAvatarCropModal
+        open={Boolean(profileGateAvatarCropFile)}
+        file={profileGateAvatarCropFile}
+        onCancel={onProfileGateAvatarCropCancel}
+        onApply={onProfileGateAvatarCropApply}
+      />
     </>
   )
 }

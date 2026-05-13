@@ -49,6 +49,7 @@ import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFee
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
+import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeVideoCropModal from './LoungeVideoCropModal.jsx'
 import KlipyGifPicker from './KlipyGifPicker.jsx'
@@ -189,6 +190,8 @@ export default function SocialFeed({
   const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
+  /** Raw pick before crop modal (Complete your profile). */
+  const [profileGateAvatarCropFile, setProfileGateAvatarCropFile] = useState(null)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [profileModalVisible, setProfileModalVisible] = useState(true)
   const profileModalVisibleRef = useRef(true)
@@ -344,6 +347,7 @@ export default function SocialFeed({
     setProfileGateHandle(h || seed.baseHandle)
     setProfileGateDisplayName(d || seed.displayName)
     setProfileGateAvatarFile(null)
+    setProfileGateAvatarCropFile(null)
     setProfileGateAvatarPreview(String(composerUserProfile?.avatar_url || '').trim())
     setProfileGateErr('')
     setProfileGateOpen(true)
@@ -1099,6 +1103,7 @@ export default function SocialFeed({
           setProfileGateHandle(h || seed.baseHandle)
           setProfileGateDisplayName(d || seed.displayName)
           setProfileGateAvatarFile(null)
+          setProfileGateAvatarCropFile(null)
           setProfileGateAvatarPreview(ownProfile?.avatar_url || composerUserProfile?.avatar_url || '')
           setProfileGateErr('')
           setProfileGateOpen(true)
@@ -1236,6 +1241,7 @@ export default function SocialFeed({
         setProfileGateHandle(h || seed.baseHandle)
         setProfileGateDisplayName(d || seed.displayName)
         setProfileGateAvatarFile(null)
+        setProfileGateAvatarCropFile(null)
         setProfileGateAvatarPreview(ownProfile?.avatar_url || composerUserProfile?.avatar_url || '')
         setProfileGateErr('')
         setQuoteRepostModal(null)
@@ -2014,10 +2020,12 @@ export default function SocialFeed({
   useEffect(() => {
     if (!composerAuthResolved) return
     if (!composerUserId || !composerAuthUser) {
+      setProfileGateAvatarCropFile(null)
       setProfileGateOpen(false)
       return
     }
     if (!loungeProfileNeedsGate(composerUserProfile, composerUserId)) {
+      setProfileGateAvatarCropFile(null)
       setProfileGateOpen(false)
     }
   }, [composerAuthResolved, composerUserId, composerAuthUser, composerUserProfile])
@@ -2285,6 +2293,7 @@ export default function SocialFeed({
         setProfileGateHandle(h || seed.baseHandle)
         setProfileGateDisplayName(d || seed.displayName)
         setProfileGateAvatarFile(null)
+        setProfileGateAvatarCropFile(null)
         setProfileGateAvatarPreview(
           ownProfile?.avatar_url || composerUserProfile?.avatar_url || '',
         )
@@ -2337,6 +2346,22 @@ export default function SocialFeed({
     supabaseClient,
   ])
 
+  const onProfileGateAvatarCropCancel = useCallback(() => {
+    setProfileGateAvatarCropFile(null)
+  }, [])
+
+  const onProfileGateAvatarCropApply = useCallback(async (croppedFile) => {
+    setProfileGateAvatarCropFile(null)
+    setProfileGateErr('')
+    const { file: ready, error } = await prepareAvatarImageForUpload(croppedFile)
+    if (error) {
+      setProfileGateErr(error.message)
+      return
+    }
+    setProfileGateAvatarFile(ready)
+    setProfileGateAvatarPreview(URL.createObjectURL(ready))
+  }, [])
+
   const saveProfileGate = useCallback(async () => {
     setProfileGateErr('')
     const display = profileGateDisplayName.trim()
@@ -2350,6 +2375,7 @@ export default function SocialFeed({
         data: { session },
       } = await supabaseClient.auth.getSession()
       if (!session?.user) {
+        setProfileGateAvatarCropFile(null)
         setProfileGateOpen(false)
         onRequireAuth?.('login')
         return
@@ -2385,6 +2411,7 @@ export default function SocialFeed({
         writeLoungeProfileCache(freshProfile)
       }
       writeProfileGateAck(session.user.id)
+      setProfileGateAvatarCropFile(null)
       setProfileGateOpen(false)
       await submitLoungePost()
     } finally {
@@ -4721,6 +4748,7 @@ export default function SocialFeed({
             aria-label="Close profile gate"
             onClick={() => {
               if (profileGateProvisionalConfirmNeeded) return
+              setProfileGateAvatarCropFile(null)
               setProfileGateOpen(false)
             }}
           />
@@ -4776,23 +4804,21 @@ export default function SocialFeed({
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const input = e.target
                       const file = input.files?.[0] || null
+                      try {
+                        input.value = ''
+                      } catch {
+                        // ignore
+                      }
                       if (!file) return
-                      setProfileGateErr('')
-                      const { file: ready, error } = await prepareAvatarImageForUpload(file)
-                      if (error) {
-                        setProfileGateErr(error.message)
-                        try {
-                          input.value = ''
-                        } catch {
-                          // ignore
-                        }
+                      if (!isProbablyImageFile(file)) {
+                        setProfileGateErr('Please choose an image file.')
                         return
                       }
-                      setProfileGateAvatarFile(ready)
-                      setProfileGateAvatarPreview(URL.createObjectURL(ready))
+                      setProfileGateErr('')
+                      setProfileGateAvatarCropFile(file)
                     }}
                   />
                 </label>
@@ -4837,6 +4863,7 @@ export default function SocialFeed({
                 }
                 onClick={() => {
                   if (profileGateProvisionalConfirmNeeded) return
+                  setProfileGateAvatarCropFile(null)
                   setProfileGateOpen(false)
                 }}
                 className="flex-1 min-h-11 rounded-xl bg-zinc-800 text-zinc-100 text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
@@ -4855,6 +4882,13 @@ export default function SocialFeed({
           </div>
         </div>
       ) : null}
+
+      <ProfileAvatarCropModal
+        open={Boolean(profileGateAvatarCropFile)}
+        file={profileGateAvatarCropFile}
+        onCancel={onProfileGateAvatarCropCancel}
+        onApply={onProfileGateAvatarCropApply}
+      />
 
       {loungePostUploadBar ? (
         <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">

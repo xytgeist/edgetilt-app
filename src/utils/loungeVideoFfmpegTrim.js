@@ -1,5 +1,6 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
+import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 
 /** Must match the ESM build served for `ffmpeg.load` (see @ffmpeg/ffmpeg 0.12 docs). */
 const CORE_VERSION = '0.12.6'
@@ -34,11 +35,12 @@ export function prefetchFfmpegCore() {
  * @param {File} file
  * @param {number} startSec
  * @param {number} endSec
- * @param {{ onProgress?: (ratio01: number) => void, signal?: AbortSignal }} [opts]
+ * @param {{ onProgress?: (ratio01: number) => void, signal?: AbortSignal, crop?: { x: number, y: number, w: number, h: number } | null, intrinsicWidth?: number, intrinsicHeight?: number }} [opts]
+ * `crop` — pixel rect on decoded source frames; requires `intrinsicWidth` / `intrinsicHeight` (element `videoWidth` / `videoHeight`).
  * @returns {Promise<File>}
  */
 export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
-  const { onProgress, signal } = opts
+  const { onProgress, signal, crop: cropIn, intrinsicWidth: iw, intrinsicHeight: ih } = opts
   const start = Math.max(0, Number(startSec) || 0)
   const end = Math.max(start, Number(endSec) || 0)
   const dur = end - start
@@ -58,33 +60,42 @@ export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
   ffmpeg.on('progress', onProg)
 
   await ffmpeg.writeFile(inName, await fetchFile(file))
+
+  /** Crop uses caller dimensions so x/y/w/h stay valid for the encoded source size. */
+  const vfParts = []
+  if (cropIn && cropIn.w > 0 && cropIn.h > 0 && iw > 0 && ih > 0) {
+    const c = sanitizeVideoCropPx(iw, ih, cropIn)
+    if (c) vfParts.push(`crop=${c.w}:${c.h}:${c.x}:${c.y}`)
+  }
+
+  const args = [
+    '-ss',
+    String(start),
+    '-i',
+    inName,
+    '-t',
+    String(dur),
+  ]
+  if (vfParts.length) args.push('-vf', vfParts.join(','))
+  args.push(
+    '-c:v',
+    'libx264',
+    '-preset',
+    'ultrafast',
+    '-crf',
+    '26',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '128k',
+    '-movflags',
+    '+faststart',
+    '-y',
+    outName,
+  )
+
   try {
-    const code = await ffmpeg.exec(
-      [
-        '-ss',
-        String(start),
-        '-i',
-        inName,
-        '-t',
-        String(dur),
-        '-c:v',
-        'libx264',
-        '-preset',
-        'ultrafast',
-        '-crf',
-        '26',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        '-movflags',
-        '+faststart',
-        '-y',
-        outName,
-      ],
-      undefined,
-      { signal },
-    )
+    const code = await ffmpeg.exec(args, undefined, { signal })
     if (code !== 0) throw new Error('Video encoding failed.')
   } finally {
     ffmpeg.off('progress', onProg)

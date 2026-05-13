@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LOUNGE_VIDEO_MAX_SECONDS } from '../../utils/loungeVideoUpload'
+import { maxCropRectForAspect } from '../../utils/loungeVideoCropMath.js'
 
 const MIN_CLIP_SEC = 0.5
 const MAX_CLIP_SEC = LOUNGE_VIDEO_MAX_SECONDS
@@ -172,8 +173,56 @@ function isNearlyBlack(a) {
   return a.darkRatio > 0.88 && a.mean < 15
 }
 
+const CROP_PRESET_ROWS = [
+  ['original', 'Original'],
+  ['1:1', '1:1'],
+  ['4:5', '4:5'],
+  ['16:9', '16:9'],
+  ['9:16', '9:16'],
+]
+
+/** Crop width / height (displayed region in source pixels). */
+const CROP_ASPECT_PRESETS = {
+  '1:1': 1,
+  '4:5': 4 / 5,
+  '16:9': 16 / 9,
+  '9:16': 9 / 16,
+}
+
+/** @returns {{ vw: number, vh: number, scale: number, left: number, top: number, dw: number, dh: number, bw: number, bh: number } | null} */
+function getVideoStageLayout(videoEl, stageEl) {
+  if (!videoEl || !stageEl || !videoEl.videoWidth) return null
+  const vw = videoEl.videoWidth
+  const vh = videoEl.videoHeight
+  const br = stageEl.getBoundingClientRect()
+  const bw = br.width
+  const bh = br.height
+  if (!(bw > 0) || !(bh > 0)) return null
+  const scale = Math.min(bw / vw, bh / vh)
+  const dw = vw * scale
+  const dh = vh * scale
+  const left = (bw - dw) / 2
+  const top = (bh - dh) / 2
+  return { vw, vh, scale, left, top, dw, dh, bw, bh }
+}
+
+/** Percents of stage box for dim strips + crop window (object-contain letterboxing aware). */
+function cropOverlayPercents(layout, cropPx) {
+  if (!layout || !cropPx) return null
+  const { vw, vh, left, top, dw, dh, bw, bh } = layout
+  const L = (left / bw) * 100
+  const T = (top / bh) * 100
+  const RW = (dw / bw) * 100
+  const RH = (dh / bh) * 100
+  const cl = L + RW * (cropPx.x / vw)
+  const ct = T + RH * (cropPx.y / vh)
+  const cw = RW * (cropPx.w / vw)
+  const ch = RH * (cropPx.h / vh)
+  return { cl, ct, cw, ch }
+}
+
 /**
- * Trim a video to at most 60s: draggable window on the full timeline (cannot widen past 60s).
+ * Trim and optionally crop a video to at most 60s: draggable window on the full timeline (cannot widen past 60s).
  *
  * @param {{ file: File, knownDurationSec?: number, onCancel: () => void, onConfirm: (file: File) => void }} props
  * `knownDurationSec` — duration already probed before opening (avoids iOS waiting twice on `loadedmetadata`).
@@ -182,7 +231,10 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   const videoRef = useRef(null)
   /** Hidden clone: poster frame is captured here so the visible preview is never seek-snapped for posters. */
   const posterVideoRef = useRef(null)
+  const videoStageRef = useRef(null)
   const trackRef = useRef(null)
+  const cropListenersRef = useRef({ move: null, up: null })
+  const cropRef = useRef(null)
   const urlRef = useRef('')
   const dragRef = useRef(null)
   const durationRef = useRef(0)
@@ -197,6 +249,10 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   const [posterUrl, setPosterUrl] = useState('')
   /** Separate blob URL for the hidden probe so WebKit decodes it independently of the main preview. */
   const [probeBlobUrl, setProbeBlobUrl] = useState('')
+  const [intrinsicSize, setIntrinsicSize] = useState({ w: 0, h: 0 })
+  const [cropAspectKey, setCropAspectKey] = useState('original')
+  const [cropPx, setCropPx] = useState(null)
+  const [layoutRev, bumpLayout] = useReducer((n) => n + 1, 0)
   const trimAbortRef = useRef(null)
   const trimBusyRef = useRef(false)
   const posterCapturedRef = useRef(false)
@@ -208,6 +264,10 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
   useEffect(() => {
     clipRef.current = { start: clipStart, end: clipEnd }
   }, [clipStart, clipEnd])
+
+  useEffect(() => {
+    cropRef.current = cropPx
+  }, [cropPx])
 
   useEffect(() => {
     durationRef.current = duration
@@ -265,6 +325,9 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
       posterObjectUrlRef.current = ''
     }
     setPhase('idle')
+    setIntrinsicSize({ w: 0, h: 0 })
+    setCropAspectKey('original')
+    setCropPx(null)
     const probed =
       typeof knownDurationSec === 'number' &&
       Number.isFinite(knownDurationSec) &&
@@ -308,6 +371,33 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
     }
   }, [file, knownDurationSec])
 
+  useEffect(() => {
+    const vw = intrinsicSize.w
+    const vh = intrinsicSize.h
+    if (cropAspectKey === 'original' || !(vw > 0) || !(vh > 0)) {
+      setCropPx(null)
+      return
+    }
+    const ar = CROP_ASPECT_PRESETS[cropAspectKey]
+    if (typeof ar !== 'number') {
+      setCropPx(null)
+      return
+    }
+    setCropPx(maxCropRectForAspect(vw, vh, ar))
+  }, [cropAspectKey, intrinsicSize.w, intrinsicSize.h])
+
+  useEffect(() => {
+    const el = videoStageRef.current
+    if (!el) return undefined
+    const ro = new ResizeObserver(() => bumpLayout())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [file])
+
+  useEffect(() => {
+    bumpLayout()
+  }, [intrinsicSize.w, intrinsicSize.h])
+
   const cleanupDrag = useCallback(() => {
     const { move, up } = listenersRef.current
     if (move) window.removeEventListener('pointermove', move)
@@ -318,6 +408,53 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
     listenersRef.current = { move: null, up: null }
     dragRef.current = null
   }, [])
+
+  const cleanupCropDrag = useCallback(() => {
+    const { move, up } = cropListenersRef.current
+    if (move) window.removeEventListener('pointermove', move)
+    if (up) {
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+    cropListenersRef.current = { move: null, up: null }
+  }, [])
+
+  const startCropPan = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const layout = getVideoStageLayout(videoRef.current, videoStageRef.current)
+      const cur = cropRef.current
+      if (!layout || !cur) return
+      const startUx = e.clientX
+      const startUy = e.clientY
+      const startCx = cur.x
+      const startCy = cur.y
+      const { vw, vh, scale } = layout
+      const move = (ev) => {
+        const c = cropRef.current
+        if (!c) return
+        const dx = (ev.clientX - startUx) / scale
+        const dy = (ev.clientY - startUy) / scale
+        const nx = Math.max(0, Math.min(startCx + dx, vw - c.w))
+        const ny = Math.max(0, Math.min(startCy + dy, vh - c.h))
+        setCropPx({ ...c, x: nx, y: ny })
+      }
+      const up = () => {
+        cleanupCropDrag()
+      }
+      cropListenersRef.current = { move, up }
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('pointercancel', up)
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // ignore
+      }
+    },
+    [cleanupCropDrag],
+  )
 
   const timeFromClientX = useCallback((clientX) => {
     const el = trackRef.current
@@ -330,6 +467,11 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
 
   const onMetaLoaded = useCallback(() => {
     const v = videoRef.current
+    const vw = v?.videoWidth
+    const vh = v?.videoHeight
+    if (Number.isFinite(vw) && Number.isFinite(vh) && vw > 0 && vh > 0) {
+      setIntrinsicSize({ w: vw, h: vh })
+    }
     const d = v?.duration
     if (!Number.isFinite(d) || d <= 0) return
     durationRef.current = d
@@ -585,8 +727,15 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
     const { start, end } = clipRef.current
     try {
       const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
+      const v = videoRef.current
+      const iw = Number(v?.videoWidth) || intrinsicSize.w
+      const ih = Number(v?.videoHeight) || intrinsicSize.h
+      const rawCrop = cropAspectKey !== 'original' ? cropRef.current : null
       const out = await trimVideoFileToMp4(file, start, end, {
         signal: ac.signal,
+        crop: rawCrop && iw > 0 && ih > 0 ? rawCrop : null,
+        intrinsicWidth: iw,
+        intrinsicHeight: ih,
       })
       onConfirm(out)
     } catch (err) {
@@ -599,22 +748,31 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
     } finally {
       trimAbortRef.current = null
     }
-  }, [file, onConfirm])
+  }, [file, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h])
 
-  useEffect(() => () => cleanupDrag(), [cleanupDrag])
+  useEffect(
+    () => () => {
+      cleanupDrag()
+      cleanupCropDrag()
+    },
+    [cleanupDrag, cleanupCropDrag],
+  )
 
   if (!file) return null
 
   const pct = (t) => (duration > 0 ? (t / duration) * 100 : 0)
   const span = clipEnd - clipStart
   const busy = phase === 'trimming'
+  void layoutRev
+  const stageLayout = getVideoStageLayout(videoRef.current, videoStageRef.current)
+  const cropPc = cropAspectKey !== 'original' ? cropOverlayPercents(stageLayout, cropPx) : null
 
   return createPortal(
     <div
       className="fixed inset-0 z-[96] flex items-end justify-center bg-black/55 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Trim video"
+      aria-label="Trim and crop video"
     >
       <button
         type="button"
@@ -626,17 +784,17 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
         }}
       />
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-zinc-700/85 bg-zinc-950/96 p-4 shadow-2xl backdrop-blur-md">
-        <h2 className="text-[17px] font-bold text-white">Trim video (max {MAX_CLIP_SEC}s)</h2>
+        <h2 className="text-[17px] font-bold text-white">Trim &amp; crop (max {MAX_CLIP_SEC}s)</h2>
         <p className="mt-1 text-[13px] leading-snug text-zinc-400">
-          Press play on the video once to preview. Drag the handles or the highlighted range to scrub; playback stays inside your selection and loops at the end. The clip is never wider than {MAX_CLIP_SEC}s.
+          Trim with the timeline below. Optional crop: pick an aspect, then drag the highlighted region to frame your shot. Press play to preview; playback stays inside your selection and loops at the end. The clip never exceeds {MAX_CLIP_SEC}s.
         </p>
 
-        <div className="relative mt-3 overflow-hidden rounded-xl border border-zinc-700/80 bg-black">
+        <div ref={videoStageRef} className="relative mt-3 min-h-[min(40vh,220px)] overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-900">
           <video
             ref={videoRef}
             src={urlRef.current || undefined}
             poster={posterUrl || undefined}
-            className="max-h-[40vh] w-full object-contain"
+            className="relative z-[1] max-h-[40vh] w-full object-contain"
             controls={!busy}
             playsInline
             preload="metadata"
@@ -662,7 +820,64 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, onCancel,
             }}
             onCanPlay={scheduleProbePosterScan}
           />
+          {cropPc ? (
+            <div key={layoutRev} className="absolute inset-0 z-[5] select-none">
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 bg-black/60"
+                style={{ height: `${cropPc.ct}%` }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 bg-black/60"
+                style={{ top: `${cropPc.ct + cropPc.ch}%`, bottom: 0 }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute left-0 bg-black/60"
+                style={{ top: `${cropPc.ct}%`, width: `${cropPc.cl}%`, height: `${cropPc.ch}%` }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute right-0 bg-black/60"
+                style={{ top: `${cropPc.ct}%`, left: `${cropPc.cl + cropPc.cw}%`, height: `${cropPc.ch}%` }}
+                aria-hidden
+              />
+              <button
+                type="button"
+                aria-label="Drag to move crop region"
+                className="pointer-events-auto absolute cursor-move border-2 border-cyan-400 bg-transparent"
+                style={{
+                  left: `${cropPc.cl}%`,
+                  top: `${cropPc.ct}%`,
+                  width: `${cropPc.cw}%`,
+                  height: `${cropPc.ch}%`,
+                }}
+                onPointerDown={startCropPan}
+              />
+            </div>
+          ) : null}
         </div>
+
+        {intrinsicSize.w > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[12px] text-zinc-500">Crop</span>
+            {CROP_PRESET_ROWS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={cropAspectKey === key}
+                onClick={() => setCropAspectKey(key)}
+                className={`rounded-lg px-2.5 py-1 text-[12px] font-semibold touch-manipulation ${
+                  cropAspectKey === key
+                    ? 'bg-cyan-600 text-white'
+                    : 'border border-zinc-600 bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         {duration > 0 ? (
           <div className="mt-4">

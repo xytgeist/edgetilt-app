@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from 'react'
 
@@ -150,6 +151,12 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
     storeRef.current = createAutoplayStore(scrollRootRef)
   }
 
+  /** Shared across feed/embed Stream tiles: one “Tap for sound” enables inline audio on whichever tile is autoplaying. */
+  const [feedInlineSoundUnmuted, setFeedInlineSoundUnmuted] = useState(false)
+  const toggleFeedInlineSound = useCallback(() => {
+    setFeedInlineSoundUnmuted((m) => !m)
+  }, [])
+
   useEffect(() => {
     storeRef.current?.setScrollRootRef(scrollRootRef)
   }, [scrollRootRef])
@@ -184,7 +191,14 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
     }
   }, [scrollRootRef])
 
-  const value = useMemo(() => ({ store: storeRef.current }), [])
+  const value = useMemo(
+    () => ({
+      store: storeRef.current,
+      feedInlineSoundUnmuted,
+      toggleFeedInlineSound,
+    }),
+    [feedInlineSoundUnmuted, toggleFeedInlineSound],
+  )
 
   return <LoungeFeedVideoAutoplayContext.Provider value={value}>{children}</LoungeFeedVideoAutoplayContext.Provider>
 }
@@ -212,5 +226,12 @@ export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
   const coordinatorActive = Boolean(ctx && clientId)
   const isWinner = Boolean(ctx && clientId && winnerId === clientId)
 
-  return { coordinatorActive, isWinner, scheduleRecompute: ctx?.store?.schedule ?? (() => {}) }
+  return {
+    coordinatorActive,
+    isWinner,
+    scheduleRecompute: ctx?.store?.schedule ?? (() => {}),
+    feedSoundFromProvider: Boolean(ctx),
+    feedInlineSoundUnmuted: ctx?.feedInlineSoundUnmuted ?? false,
+    toggleFeedInlineSound: ctx?.toggleFeedInlineSound ?? (() => {}),
+  }
 }

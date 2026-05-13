@@ -354,13 +354,21 @@ export default function LoungePostStreamVideo({
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
-  const getVideoContainer = useCallback(() => containerRef.current, [])
-  const { coordinatorActive, isWinner, scheduleRecompute } = useLoungeFeedVideoAutoplay(
-    feedAutoplayClientId,
-    getVideoContainer,
-  )
   const showOpen = enableLightbox && variant !== 'composer'
   const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
+  const getVideoContainer = useCallback(() => containerRef.current, [])
+  const {
+    coordinatorActive,
+    isWinner,
+    scheduleRecompute,
+    feedSoundFromProvider,
+    feedInlineSoundUnmuted,
+    toggleFeedInlineSound,
+  } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
+  /** Feed/embed inside `LoungeFeedVideoAutoplayProvider`: one shared inline mute flag for all Stream tiles. */
+  const coordinatedFeedSound = Boolean(lazyStream && feedSoundFromProvider)
+  const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
+  const stripSoundUnmuted = coordinatedFeedSound ? feedInlineSoundUnmuted : localStripSoundUnmuted
   const feedStyleAbr = variant === 'feed' || variant === 'embed' || variant === 'composer'
   /** Coordinator can name a winner before IntersectionObserver fires; attach on winner alone (IO still gates pause for non-coordinator). */
   const attachStream = lazyStream ? (coordinatorActive ? isWinner : streamInView) : true
@@ -368,6 +376,22 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     isWinnerRef.current = !coordinatorActive || isWinner
   }, [coordinatorActive, isWinner])
+
+  /** Keep inline `<video>` muted in sync with shared feed sound (winner tile only has media while coordinating). */
+  useEffect(() => {
+    if (!coordinatedFeedSound || !attachStream) return
+    const v = videoRef.current
+    if (!v || lightboxOpenRef.current) return
+    try {
+      v.muted = !feedInlineSoundUnmuted
+      if (feedInlineSoundUnmuted) {
+        const p = v.play()
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      }
+    } catch {
+      // ignore
+    }
+  }, [coordinatedFeedSound, attachStream, feedInlineSoundUnmuted, streamAttachKey, isWinner])
 
   useEffect(() => {
     if (!streamInView && lazyStream) recoveryBurstRef.current = 0
@@ -455,9 +479,45 @@ export default function LoungePostStreamVideo({
     setLightboxOpen(true)
   }, [])
 
-  /** User gesture on a dedicated hit target; try sound in-feed before falling back to full screen. */
-  const tryUnmuteInlineOrOpenLightbox = useCallback(() => {
+  /** Bottom strip: feed/embed under provider toggles shared inline sound; other variants toggle this tile only. */
+  const onSoundStripPress = useCallback(() => {
+    if (coordinatedFeedSound) {
+      const turningOn = !feedInlineSoundUnmuted
+      toggleFeedInlineSound()
+      if (turningOn && attachStream) {
+        const v = videoRef.current
+        if (!v) return
+        try {
+          v.muted = false
+          const p = v.play()
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {
+              try {
+                v.muted = true
+              } catch {
+                // ignore
+              }
+              toggleFeedInlineSound()
+              openLightbox()
+            })
+          }
+        } catch {
+          toggleFeedInlineSound()
+          openLightbox()
+        }
+      }
+      return
+    }
     const v = videoRef.current
+    if (localStripSoundUnmuted) {
+      try {
+        if (v) v.muted = true
+      } catch {
+        // ignore
+      }
+      setLocalStripSoundUnmuted(false)
+      return
+    }
     if (!v) {
       openLightbox()
       return
@@ -465,20 +525,31 @@ export default function LoungePostStreamVideo({
     try {
       v.muted = false
       const p = v.play()
-      if (p && typeof p.catch === 'function') {
-        p.catch(() => {
-          try {
-            v.muted = true
-          } catch {
-            // ignore
-          }
-          openLightbox()
-        })
+      if (p && typeof p.then === 'function') {
+        p
+          .then(() => setLocalStripSoundUnmuted(true))
+          .catch(() => {
+            try {
+              v.muted = true
+            } catch {
+              // ignore
+            }
+            openLightbox()
+          })
+      } else {
+        setLocalStripSoundUnmuted(true)
       }
     } catch {
       openLightbox()
     }
-  }, [openLightbox])
+  }, [
+    coordinatedFeedSound,
+    feedInlineSoundUnmuted,
+    localStripSoundUnmuted,
+    attachStream,
+    openLightbox,
+    toggleFeedInlineSound,
+  ])
 
   useEffect(() => {
     lightboxOpenRef.current = lightboxOpen
@@ -515,7 +586,7 @@ export default function LoungePostStreamVideo({
       if (lightboxOpenRef.current) return
       if (lazyStream) return
       try {
-        v.muted = true
+        v.muted = !localStripSoundUnmuted
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       } catch {
@@ -540,7 +611,7 @@ export default function LoungePostStreamVideo({
     }
     io.observe(wrap)
     return () => io.disconnect()
-  }, [id, showOpen, lazyStream, visibilityResetRootRef, streamAttachKey, scheduleRecompute])
+  }, [id, showOpen, lazyStream, visibilityResetRootRef, streamAttachKey, scheduleRecompute, localStripSoundUnmuted])
 
   /** After lazy HLS attach (feed/embed), start muted autoplay once media is ready. */
   useEffect(() => {
@@ -554,7 +625,7 @@ export default function LoungePostStreamVideo({
     let cleaned = false
     const go = () => {
       try {
-        v.muted = true
+        v.muted = coordinatedFeedSound ? !feedInlineSoundUnmuted : true
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       } catch {
@@ -579,7 +650,7 @@ export default function LoungePostStreamVideo({
       v.removeEventListener('loadeddata', onEarly)
       v.removeEventListener('canplay', onEarly)
     }
-  }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen, coordinatorActive, isWinner])
+  }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen, coordinatorActive, isWinner, coordinatedFeedSound, feedInlineSoundUnmuted])
 
   /** After closing lightbox, resume muted autoplay if still in view. */
   useEffect(() => {
@@ -596,13 +667,13 @@ export default function LoungePostStreamVideo({
       return
     }
     try {
-      v.muted = true
+      v.muted = coordinatedFeedSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
       const p = v.play()
       if (p && typeof p.catch === 'function') p.catch(() => {})
     } catch {
       // ignore
     }
-  }, [lightboxOpen, showOpen, coordinatorActive, isWinner])
+  }, [lightboxOpen, showOpen, coordinatorActive, isWinner, coordinatedFeedSound, feedInlineSoundUnmuted, localStripSoundUnmuted])
 
   /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
   useEffect(() => {
@@ -655,10 +726,18 @@ export default function LoungePostStreamVideo({
           className={`relative inline-block max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
-              ? 'Post video, playing muted in feed. Tap the video for full screen. Use the bottom control for sound in the feed.'
+              ? stripSoundUnmuted
+                ? 'Post video, sound on in feed. Tap the video for full screen. Use the bottom control to mute in the feed.'
+                : 'Post video, playing muted in feed. Tap the video for full screen. Use the bottom control for sound in the feed.'
               : 'Post video'
           }
-          title={showOpen ? 'Tap video for full screen; bottom area for sound' : undefined}
+          title={
+            showOpen
+              ? stripSoundUnmuted
+                ? 'Tap video for full screen; bottom area to mute'
+                : 'Tap video for full screen; bottom area for sound'
+              : undefined
+          }
           onClick={(e) => {
             e.stopPropagation()
             if (showOpen) openLightbox()
@@ -692,7 +771,7 @@ export default function LoungePostStreamVideo({
                     attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
                   }`}
                   style={streamFadeTransitionStyle}
-                  muted
+                  muted={!stripSoundUnmuted}
                   loop
                   playsInline
                   preload={variant === 'composer' ? 'auto' : 'metadata'}
@@ -705,7 +784,7 @@ export default function LoungePostStreamVideo({
               <video
                 ref={videoRef}
                 className={`pointer-events-none ${videoClass}`}
-                muted
+                muted={!stripSoundUnmuted}
                 loop
                 playsInline
                 preload={variant === 'composer' ? 'auto' : 'metadata'}
@@ -739,16 +818,18 @@ export default function LoungePostStreamVideo({
           {showOpen && !showStreamRetry ? (
             <button
               type="button"
-              aria-label="Play video with sound in the feed"
+              aria-label={stripSoundUnmuted ? 'Mute video in the feed' : 'Play video with sound in the feed'}
               className="absolute bottom-0 left-0 right-0 z-[3] flex min-h-[5.25rem] items-end justify-start bg-gradient-to-t from-black/75 via-black/30 to-transparent px-2 pb-2.5 pt-10 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
               onClick={(e) => {
                 e.stopPropagation()
-                tryUnmuteInlineOrOpenLightbox()
+                onSoundStripPress()
               }}
             >
               <span className="pointer-events-none flex max-w-full items-center gap-1.5 rounded-md bg-black/55 px-2 py-1.5 text-[11px] font-medium text-zinc-200 sm:px-2.5 sm:py-2 sm:text-[12px]">
                 <MutedGlyph className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
-                <span className="max-w-[min(12rem,72vw)] truncate">Tap for sound</span>
+                <span className="max-w-[min(12rem,72vw)] truncate">
+                  {stripSoundUnmuted ? 'Tap to mute' : 'Tap for sound'}
+                </span>
               </span>
             </button>
           ) : null}

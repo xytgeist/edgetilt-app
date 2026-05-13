@@ -33,6 +33,14 @@ const borderByVariant = {
   composer: 'border-zinc-700/60',
 }
 
+/** Poster `<img>` can be 0×0 before decode; keep a floor so the tile (and absolute `<video>`) never collapses. */
+const posterFrameMinHByVariant = {
+  feed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
+  embed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
+  detail: 'min-h-[min(32vw,11rem)] sm:min-h-[15rem]',
+  composer: 'min-h-[8rem]',
+}
+
 /** Feed/embed: attach HLS when a small fraction is visible (was 0.32 — felt slow). */
 const LAZY_ATTACH_IO_THRESHOLD = 0.04
 /** Prefetch into the scroll root so the winner can start loading before fully on screen. */
@@ -432,57 +440,78 @@ export default function LoungePostStreamVideo({
       return undefined
     }
     setStreamFadeShowVideo(false)
-    const v = videoRef.current
-    if (!v) return undefined
+
     let cleaned = false
-    const reveal = () => {
-      if (cleaned) return
-      const el = videoRef.current
-      if (!el) {
-        queueMicrotask(() => setStreamFadeShowVideo(true))
+    let disarm = () => {}
+
+    const arm = () => {
+      const v = videoRef.current
+      if (!v) {
+        const tid = window.setTimeout(() => {
+          if (!cleaned) setStreamFadeShowVideo(true)
+        }, 800)
+        disarm = () => window.clearTimeout(tid)
         return
       }
-      const run = () => {
+      const reveal = () => {
         if (cleaned) return
-        requestAnimationFrame(() => {
+        const el = videoRef.current
+        if (!el) {
+          queueMicrotask(() => setStreamFadeShowVideo(true))
+          return
+        }
+        const run = () => {
           if (cleaned) return
           requestAnimationFrame(() => {
             if (cleaned) return
-            setStreamFadeShowVideo(true)
+            requestAnimationFrame(() => {
+              if (cleaned) return
+              setStreamFadeShowVideo(true)
+            })
           })
-        })
-      }
-      if (typeof el.requestVideoFrameCallback === 'function') {
-        try {
-          el.requestVideoFrameCallback(() => {
-            if (cleaned) return
+        }
+        if (typeof el.requestVideoFrameCallback === 'function') {
+          try {
+            el.requestVideoFrameCallback(() => {
+              if (cleaned) return
+              run()
+            })
+          } catch {
             run()
-          })
-        } catch {
+          }
+        } else {
           run()
         }
+      }
+      const onPlaying = () => reveal()
+      const onTime = () => {
+        if (cleaned || !videoRef.current || videoRef.current.currentTime <= 0) return
+        videoRef.current.removeEventListener('timeupdate', onTime)
+        reveal()
+      }
+      if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+        reveal()
       } else {
-        run()
+        v.addEventListener('playing', onPlaying, { once: true })
+        v.addEventListener('timeupdate', onTime)
+      }
+      const tid = window.setTimeout(reveal, 800)
+      disarm = () => {
+        v.removeEventListener('playing', onPlaying)
+        v.removeEventListener('timeupdate', onTime)
+        window.clearTimeout(tid)
       }
     }
-    const onPlaying = () => reveal()
-    const onTime = () => {
-      if (cleaned || !videoRef.current || videoRef.current.currentTime <= 0) return
-      videoRef.current.removeEventListener('timeupdate', onTime)
-      reveal()
-    }
-    if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-      reveal()
-    } else {
-      v.addEventListener('playing', onPlaying, { once: true })
-      v.addEventListener('timeupdate', onTime)
-    }
-    const tid = window.setTimeout(reveal, 800)
+
+    const raf = requestAnimationFrame(() => {
+      if (cleaned) return
+      arm()
+    })
+
     return () => {
       cleaned = true
-      v.removeEventListener('playing', onPlaying)
-      v.removeEventListener('timeupdate', onTime)
-      window.clearTimeout(tid)
+      cancelAnimationFrame(raf)
+      disarm()
     }
   }, [attachStream, poster, id, streamAttachKey])
 
@@ -723,6 +752,9 @@ export default function LoungePostStreamVideo({
   const border = borderByVariant[variant] || borderByVariant.feed
   /** iOS: in-flow poster `<img>` sizes the frame; `<video>` stays absolute until fade. Use whenever we have a CF thumbnail URL (feed, embed, and detail — not only lazy feed). */
   const usePosterFrame = Boolean(id && poster)
+  /** Narrow border hug only when the in-flow poster sizes the frame; otherwise anchor to column width (prevents 0×0 collapse / aspect-video % loop). */
+  const hugPosterFrame = usePosterFrame && !posterLayoutFailed
+  const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle = attachStream
     ? {
@@ -732,13 +764,17 @@ export default function LoungePostStreamVideo({
     : undefined
 
   return (
-    <div className={`${firstMarginTopClass} inline-flex shrink-0 self-start ${slideMaxW}`}>
+    <div
+      className={`${firstMarginTopClass} ${
+        hugPosterFrame ? 'inline-flex shrink-0' : 'w-full min-w-0'
+      } self-start ${slideMaxW}`}
+    >
       <div
         ref={containerRef}
         role="button"
         tabIndex={0}
         data-lounge-video-zoom
-        className={`relative block w-fit max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+        className={`relative block ${hugPosterFrame ? 'w-fit' : 'w-full'} max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? stripSoundUnmuted
@@ -771,7 +807,7 @@ export default function LoungePostStreamVideo({
               usePosterFrame
                 ? posterLayoutFailed
                   ? 'relative w-full bg-black'
-                  : 'relative inline-block w-fit max-w-full bg-black leading-none'
+                  : `relative inline-block w-fit max-w-full bg-black leading-none ${posterFrameMinH}`
                 : 'relative'
             }
           >

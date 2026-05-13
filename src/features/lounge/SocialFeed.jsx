@@ -2518,8 +2518,8 @@ export default function SocialFeed({
       const ac = new AbortController()
       loungePostAbortRef.current = ac
       setLoungePostUploadBar({ mode: 'post', progress: 0, status: 'Starting…', detail: '' })
+      let snap = { ...snapshot }
       try {
-        let snap = { ...snapshot }
         const uid0 = String(snap.streamVideoUid || '').trim()
         if (
           !uid0 &&
@@ -2582,6 +2582,13 @@ export default function SocialFeed({
             streamVideoUid: out.streamVideoUid,
             awaitingComposerVideoPrepJobId: null,
           }
+          loungePostSnapshotRef.current = snap
+          if (
+            snapshot.awaitingComposerVideoPrepJobId != null &&
+            composerVideoPrepHandoffRef.current?.jobId === snapshot.awaitingComposerVideoPrepJobId
+          ) {
+            composerVideoPrepHandoffRef.current = null
+          }
         }
 
         await executeLoungeCommunityPostSubmission({
@@ -2599,12 +2606,6 @@ export default function SocialFeed({
           },
           rateLimitMessage,
         })
-        if (
-          snapshot.awaitingComposerVideoPrepJobId != null &&
-          composerVideoPrepHandoffRef.current?.jobId === snapshot.awaitingComposerVideoPrepJobId
-        ) {
-          composerVideoPrepHandoffRef.current = null
-        }
         loungePostSnapshotRef.current = null
         await loadCommunityFeed()
       } catch (e) {
@@ -2612,6 +2613,9 @@ export default function SocialFeed({
         const curSnap = loungePostSnapshotRef.current
         if (curSnap?.awaitingComposerVideoPrepJobId != null) {
           loungePostSnapshotRef.current = { ...curSnap, awaitingComposerVideoPrepJobId: null }
+        }
+        if (String(snap.streamVideoUid || '').trim()) {
+          loungePostSnapshotRef.current = snap
         }
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Unknown error'
         if (msg === LOUNGE_MAX_PINNED_ALERT && typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)

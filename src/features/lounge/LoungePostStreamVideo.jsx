@@ -33,6 +33,11 @@ const borderByVariant = {
   composer: 'border-zinc-700/60',
 }
 
+/** Feed/embed: attach HLS when a small fraction is visible (was 0.32 — felt slow). */
+const LAZY_ATTACH_IO_THRESHOLD = 0.04
+/** Prefetch into the scroll root so the winner can start loading before fully on screen. */
+const LAZY_ATTACH_ROOT_MARGIN = '180px 0px 240px 0px'
+
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
@@ -417,11 +422,12 @@ export default function LoungePostStreamVideo({
 
     const applyIo = (entries) => {
       const e = entries[0]
-      const ok = Boolean(e?.isIntersecting && (e.intersectionRatio >= 0.32 || e.intersectionRatio === 1))
-      inViewRef.current = ok
-      if (lazyStream) setStreamInView(ok)
+      const ratio = typeof e?.intersectionRatio === 'number' ? e.intersectionRatio : 0
+      const attachOk = Boolean(e?.isIntersecting && (ratio >= LAZY_ATTACH_IO_THRESHOLD || ratio === 1))
+      inViewRef.current = attachOk
+      if (lazyStream) setStreamInView(attachOk)
       const won = isWinnerRef.current
-      if (!ok || !won) {
+      if (!attachOk || !won) {
         try {
           v.pause()
         } catch {
@@ -429,7 +435,7 @@ export default function LoungePostStreamVideo({
         }
       }
       queueMicrotask(() => scheduleRecompute())
-      if (!ok || !won) return
+      if (!attachOk || !won) return
       if (lightboxOpenRef.current) return
       if (lazyStream) return
       try {
@@ -446,14 +452,14 @@ export default function LoungePostStreamVideo({
     try {
       io = new IntersectionObserver(applyIo, {
         root,
-        rootMargin: '0px',
-        threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
+        rootMargin: lazyStream ? LAZY_ATTACH_ROOT_MARGIN : '0px',
+        threshold: [0, 0.02, 0.04, 0.08, 0.12, 0.18, 0.25, 0.35, 0.5, 0.65, 0.8, 1],
       })
     } catch {
       io = new IntersectionObserver(applyIo, {
         root: null,
-        rootMargin: '0px',
-        threshold: [0, 0.08, 0.15, 0.22, 0.32, 0.45, 0.6, 0.8, 1],
+        rootMargin: lazyStream ? LAZY_ATTACH_ROOT_MARGIN : '0px',
+        threshold: [0, 0.02, 0.04, 0.08, 0.12, 0.18, 0.25, 0.35, 0.5, 0.65, 0.8, 1],
       })
     }
     io.observe(wrap)
@@ -468,6 +474,7 @@ export default function LoungePostStreamVideo({
     if (coordinatorActive && !isWinner) return undefined
     const v = videoRef.current
     if (!v) return undefined
+    let cleaned = false
     const go = () => {
       try {
         v.muted = true
@@ -481,8 +488,20 @@ export default function LoungePostStreamVideo({
       go()
       return undefined
     }
-    v.addEventListener('canplay', go, { once: true })
-    return () => v.removeEventListener('canplay', go)
+    const onEarly = () => {
+      if (cleaned) return
+      cleaned = true
+      v.removeEventListener('loadeddata', onEarly)
+      v.removeEventListener('canplay', onEarly)
+      go()
+    }
+    v.addEventListener('loadeddata', onEarly)
+    v.addEventListener('canplay', onEarly)
+    return () => {
+      cleaned = true
+      v.removeEventListener('loadeddata', onEarly)
+      v.removeEventListener('canplay', onEarly)
+    }
   }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen, coordinatorActive, isWinner])
 
   /** After closing lightbox, resume muted autoplay if still in view. */

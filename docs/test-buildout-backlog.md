@@ -67,7 +67,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Chat MVP (DMs, ≤10 member groups, subscriber topic rooms — code in repo):**
 
-- [ ] **SQL on test:** `supabase/chat_phase1.sql` — tables, member read RLS, seeded topic slugs (crypto, stonks, investing, poker, sports, `ap-slots`, `ap-tables`). Production replay: `docs/production-rollout-checklist.md` when promoted.
+- [ ] **SQL on test:** `supabase/chat_phase1.sql` — tables, member read RLS (**`chat_room_members`**: own rows only — avoids recursion; DM peer labels use **`dm_key`** in the client), seeded topic slugs. If an older policy was applied, run **`supabase/chat_room_members_rls_recursion_fix.sql`**. Production replay: `docs/production-rollout-checklist.md` when promoted.
 - [ ] **Edge:** deploy `supabase/functions/lounge-chat` (`open_dm`, `join_channel`, `create_group`, `send_message`). `supabase/config.toml` sets **`verify_jwt = true`** for this function.
 - [ ] **Client:** `LoungeChatPanel.jsx` in **`LoungeDockSlidePanels.jsx`**; profile **Message** control in **`LoungeProfileFullScreen.jsx`**; **`SocialFeed.jsx`** + **`AppShell.jsx`** pass `hasActiveSubscription` / `isStaff` and wire dock close → clear pending DM peer.
 - [ ] **Realtime (optional):** if new messages do not appear live, add **`chat_messages`** to the **`supabase_realtime`** publication on the project (see `supabase/functions/lounge-chat/README.md`).
@@ -264,6 +264,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-13: **Chat RLS:** `chat_room_members` SELECT policy no longer uses `EXISTS` on the same table (Postgres **infinite recursion**). Policy is **own membership rows only**; **`LoungeChatPanel`** resolves DM peer display from **`chat_rooms.dm_key`**. Patch file **`supabase/chat_room_members_rls_recursion_fix.sql`** for DBs that already ran the old policy.
 - 2026-05-13: **Lounge chat MVP (wiring):** `LoungeChatPanel.jsx` + `loungeChatApi.js` / `loungeChatConstants.js`; **`LoungeDockSlidePanels.jsx`** embeds chat (flex scroll host for `h-full` panel); **`SocialFeed.jsx`** dock props + `chatDockInitialPeerUserId` / **`openChatWithUserFromProfile`**; **`AppShell.jsx`** passes **`hasActiveSubscription`** / **`isStaff`**; **`LoungeProfileFullScreen.jsx`** Message beside Follow. SQL **`supabase/chat_phase1.sql`** + Edge **`lounge-chat`** + test smoke **§13** documented in **`docs/test-buildout-backlog.md`** (apply SQL + deploy before validation).
 - 2026-05-13: **Lounge posts:** removed hardcoded **`game_title: 'Lounge'`** from **`loungePostSubmitJob.js`** (new posts use empty title/slug until AP Guides picker is wired). Existing DB rows unchanged.
 - 2026-05-13: **Shell column width (edge-to-edge with Lounge):** `AppShell` dashboard + team placeholders **`max-w-2xl`** + **`px-3`**; **`OffersCalendar`**, **`BankrollTracker`**, **`LocalIntel`**, **`CalculatorsTab`** home + calculator game roots align to the same column; **`SocialFeed`** quote sheet + upload bar **`max-w-2xl`**. See **`docs/frontend-architecture.md`** (`shell/` row).

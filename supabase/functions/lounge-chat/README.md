@@ -25,6 +25,8 @@ Uses the caller JWT; validates profile (`handle` + `display_name`) before mutati
 
 Run **`supabase/chat_phase1.sql`** on the project (test, then prod) so `chat_rooms`, `chat_room_members`, and `chat_messages` exist with RLS.
 
+If you deployed chat before the **members RLS recursion** fix, also run **`supabase/chat_room_members_rls_recursion_fix.sql`** (replaces `chat_room_members` SELECT policy so it only allows `user_id = auth.uid()` — the app resolves DM peer labels from **`chat_rooms.dm_key`**, not by listing other members).
+
 ## Security (phase 1)
 
 - **In transit:** HTTPS/TLS to Supabase and this function.

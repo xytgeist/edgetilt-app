@@ -2,6 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loungeChatInvoke } from '../../utils/loungeChatApi'
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants'
 
+/** DM rooms store `dm_key` as the two user ids sorted lexically, joined with `::` (see Edge `dmKey`). */
+function peerUserIdFromDmKey(dmKey, viewerUserId) {
+  if (!dmKey || !viewerUserId) return null
+  const parts = String(dmKey).split('::').map((s) => s.trim())
+  if (parts.length !== 2) return null
+  const [a, b] = parts
+  if (a === viewerUserId) return b
+  if (b === viewerUserId) return a
+  return null
+}
+
 /**
  * Lounge dock **Chat** panel: DMs + small groups + subscriber topic channels.
  */
@@ -55,20 +66,17 @@ export default function LoungeChatPanel({
       const dmRooms = (roomRows || []).filter((r) => r.kind === 'dm')
       let peerByRoom = {}
       if (dmRooms.length > 0) {
-        const dmIds = dmRooms.map((r) => r.id)
-        const { data: allMem, error: amErr } = await supabaseClient
-          .from('chat_room_members')
-          .select('room_id, user_id')
-          .in('room_id', dmIds)
-        if (!amErr && allMem?.length) {
-          const peerIds = []
-          const roomToPeer = {}
-          for (const row of allMem) {
-            if (row.user_id === viewerUserId) continue
-            roomToPeer[row.room_id] = row.user_id
-            peerIds.push(row.user_id)
+        const peerIds = []
+        const roomToPeer = {}
+        for (const r of dmRooms) {
+          const pid = peerUserIdFromDmKey(r.dm_key, viewerUserId)
+          if (pid) {
+            roomToPeer[r.id] = pid
+            peerIds.push(pid)
           }
-          const uniqPeers = [...new Set(peerIds)]
+        }
+        const uniqPeers = [...new Set(peerIds)]
+        if (uniqPeers.length > 0) {
           const { data: profs } = await supabaseClient
             .from('profiles')
             .select('user_id, handle, display_name')

@@ -67,14 +67,11 @@ create policy "chat_rooms_select_member" on public.chat_rooms for select using (
   )
 );
 
+-- Members: each user may only read **their own** membership rows. (A policy that ORs
+-- "other members in same room" via EXISTS on this same table causes **infinite RLS recursion**.)
 drop policy if exists "chat_room_members_select_self" on public.chat_room_members;
 create policy "chat_room_members_select_self" on public.chat_room_members for select using (
   user_id = (select auth.uid())
-  or exists (
-    select 1
-    from public.chat_room_members m2
-    where m2.room_id = chat_room_members.room_id and m2.user_id = (select auth.uid())
-  )
 );
 
 drop policy if exists "chat_messages_select_member" on public.chat_messages;

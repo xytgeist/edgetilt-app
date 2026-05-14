@@ -72,6 +72,10 @@ import KlipyGifPicker from './KlipyGifPicker.jsx'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import { dockChromeHeightFromTitleBarPx } from '../../utils/loungeDockChrome.js'
+import {
+  loungeTitleRevealAfterScrollStep,
+  loungeTitleRevealClampScrollDelta,
+} from '../../utils/loungeTitleRevealScroll.js'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
 
 /** DB raises exception 'MAX_PINNED_POSTS' when a third visible pin is attempted. */
@@ -508,7 +512,7 @@ export default function SocialFeed({
     const ro = new ResizeObserver(() => apply())
     ro.observe(bar)
     return () => ro.disconnect()
-  }, [])
+  }, [loungeDockPanel])
 
   useLayoutEffect(() => {
     const el = loungeFeedScrollRef.current
@@ -537,13 +541,8 @@ export default function SocialFeed({
     const el = loungeFeedScrollRef.current
     if (!el || typeof window === 'undefined') return
     loungeScrollPrevTopRef.current = el.scrollTop
-    /** Scroll px (same axis as feed) to move title reveal ~1.0; lower = faster motion per px. */
-    const titleRevealPerScrollPx = 220
-    const titleHidePerScrollPx = 190
     /** Scroll px to move composer fold ~1.0; tuned so fold tracks finger distance. */
     const composerCouplingPx = 240
-    /** Only caps absurd single-event deltas (flings); normal scroll uses true distance. */
-    const maxAbsScrollStepPx = 180
     /** When feed-folded, allow smooth reopen while scrollTop is within this distance of the top. */
     const composerUnfoldBandPx = 168
     const minScrollStepPx = 0.35
@@ -561,24 +560,14 @@ export default function SocialFeed({
       const prev = loungeScrollPrevTopRef.current
       const rawDelta = st - prev
       loungeScrollPrevTopRef.current = st
-      const eff =
-        rawDelta === 0
-          ? 0
-          : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), maxAbsScrollStepPx)
+      const eff = rawDelta === 0 ? 0 : loungeTitleRevealClampScrollDelta(rawDelta)
 
-      let r = loungeTitleRevealRef.current
-      if (st <= 2) {
-        r = 1
-      } else if (eff < -minScrollStepPx) {
-        r = Math.min(1, r + (-eff) / titleRevealPerScrollPx)
-      } else if (eff > minScrollStepPx) {
-        r = Math.max(0, r - eff / titleHidePerScrollPx)
-      }
-      let scrollVisualDirty = false
-      if (r !== loungeTitleRevealRef.current) {
-        loungeTitleRevealRef.current = r
-        scrollVisualDirty = true
-      }
+      const titleStep = loungeTitleRevealAfterScrollStep({
+        scrollTop: st,
+        effectiveDelta: eff,
+        revealRef: loungeTitleRevealRef,
+      })
+      let scrollVisualDirty = titleStep.changed
 
       if (composerExpandedRef.current && eff > minScrollStepPx) {
         if (st > scrollDownPx || composerFoldRevealRef.current < 0.998) {
@@ -4080,8 +4069,6 @@ export default function SocialFeed({
     ? dockChromeHeightFromTitleBarPx(loungeTitleBarChromePx) + 6
     : 0
   const loungeFeedDockPaddingBottom = loungeDockFeedContentInsetPx
-  /** Slide panels add `env(safe-area-inset-bottom)` themselves; reserve icon row + gap only. */
-  const loungeDockSlideBottomReservePx = Math.max(48, loungeDockFeedContentInsetPx + 10)
 
   return (
     <div
@@ -4109,28 +4096,30 @@ export default function SocialFeed({
           {loungeShareFlash}
         </div>
       ) : null}
-      {/* Fixed title bar outside the scroll container so the nav dropdown stays clickable (not under overflow hit-testing). */}
-      <div
-        ref={loungeTitleBarRef}
-        className="fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
-        style={{
-          top: loungeFeedViewportTopPx,
-          transform: `translate3d(-50%, ${-(1 - loungeTitleReveal) * (loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56)}px, 0)`,
-          pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
-        }}
-      >
-        <div className="flex items-center justify-between gap-3 px-3 py-2">
-          <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
-          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-            <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
-              {communityFeedLoading ? 'Updating…' : ''}
+      {/* Fixed title bar: hidden while dock slide panel is open (panel renders its own scroll-linked bar). */}
+      {!loungeDockPanel ? (
+        <div
+          ref={loungeTitleBarRef}
+          className="fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
+          style={{
+            top: loungeFeedViewportTopPx,
+            transform: `translate3d(-50%, ${-(1 - loungeTitleReveal) * (loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56)}px, 0)`,
+            pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
+          }}
+        >
+          <div className="flex items-center justify-between gap-3 px-3 py-2">
+            <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
+            <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+              <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
+                {communityFeedLoading ? 'Updating…' : ''}
+              </div>
+              {titleBarNavSlot}
             </div>
-            {titleBarNavSlot}
           </div>
         </div>
-      </div>
+      ) : null}
 
-      {showLoungeViewportDock ? (
+      {showLoungeViewportDock && !loungeDockPanel ? (
         <LoungeDockFooterBar
           reveal={loungeTitleReveal}
           barHeightPx={loungeDockFooterHeight}
@@ -5737,7 +5726,15 @@ export default function SocialFeed({
           openPanel={loungeDockPanel}
           onClose={() => setLoungeDockPanel(null)}
           communityPosts={communityPosts}
-          bottomReservePx={loungeDockSlideBottomReservePx}
+          viewportTitleTopPx={loungeFeedViewportTopPx}
+          titleBarNavSlot={titleBarNavSlot}
+          communityFeedLoading={communityFeedLoading}
+          onHome={onLoungeDockHome}
+          onSearch={onLoungeDockSearch}
+          onNotifications={onLoungeDockNotifications}
+          onChat={onLoungeDockChat}
+          onDockFooterHeightChange={onLoungeDockFooterHeight}
+          activePanel={loungeDockPanel}
           onPickPost={onLoungeDockPickPostFromSearch}
         />
       ) : null}

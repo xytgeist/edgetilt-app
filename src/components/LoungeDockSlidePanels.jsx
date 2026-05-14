@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostDisplayCaption } from '../utils/communityFeedPost'
 import { renderRichCaption } from '../features/lounge/loungeCaption'
+import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
+import LoungeDockFooterBar from './LoungeDockFooterBar.jsx'
+import { dockChromeHeightFromTitleBarPx } from '../utils/loungeDockChrome.js'
+import {
+  loungeTitleRevealAfterScrollStep,
+  loungeTitleRevealClampScrollDelta,
+} from '../utils/loungeTitleRevealScroll.js'
 
 const OPEN_MS = 300
 const DISMISS_FRACTION = 0.22
@@ -10,23 +17,32 @@ const COMMIT_PX = 10
 const VERTICAL_BEATS_HORIZONTAL = 1.52
 
 /**
- * Left-sliding dock panels for Lounge (search / notifications / chat).
- * Swipe horizontally to dismiss: finger **left** (panel slides off to the left) **or finger right** (panel
- * slides off to the right — natural for a left-thumb “push away” toward the feed). Works from anywhere on
- * the panel, including search result rows. Vertical scroll still wins when movement is clearly vertical
- * after a short direction lock. Taps on rows still work because pointer capture starts only after horizontal
- * intent is detected. Scroll regions use `touch-pan-y` only so the browser does not compete for horizontal pans.
- * `bottomReservePx` clears the fixed dock footer height + a little gap.
+ * Full-screen Lounge dock panels (search / notifications / chat) over the feed column (`max-w-2xl`).
+ * Same **title bar** chrome as the feed (logo, updating line, nav slot) with **scroll-linked hide/show**;
+ * **dock footer stays fully visible** (`reveal={1}`) while the feed dock continues to hide/show with scroll
+ * only when this panel is closed. Swipe horizontally to dismiss (left or right). `viewportTitleTopPx` must
+ * match the feed title’s `top` offset so the bar aligns with the main Lounge shell.
  */
 export default function LoungeDockSlidePanels({
   openPanel,
   onClose,
   communityPosts = [],
-  bottomReservePx = 56,
+  /** Matches `SocialFeed` `loungeFeedViewportTopPx` (title `top` under shell padding). */
+  viewportTitleTopPx = 0,
+  titleBarNavSlot = null,
+  communityFeedLoading = false,
+  onHome,
+  onSearch,
+  onNotifications,
+  onChat,
+  onDockFooterHeightChange,
+  activePanel = null,
   /** Optional: focus a post in the parent feed (e.g. open detail). */
   onPickPost,
 }) {
   const panelRef = useRef(null)
+  const panelScrollRef = useRef(null)
+  const panelTitleBarRef = useRef(null)
   const [panelW, setPanelW] = useState(300)
   const [tx, setTx] = useState(0)
   const [txTransition, setTxTransition] = useState(false)
@@ -40,8 +56,13 @@ export default function LoungeDockSlidePanels({
   const draggingRef = useRef(false)
   const decidedRef = useRef(false)
   const horizontalRef = useRef(false)
-  /** Capture only after a horizontal dismiss gesture is committed so taps on list rows still work. */
   const pointerCapturedRef = useRef(false)
+
+  const [panelTitleBarHeight, setPanelTitleBarHeight] = useState(0)
+  const panelTitleRevealRef = useRef(1)
+  const [panelTitleReveal, setPanelTitleReveal] = useState(1)
+  const panelScrollPrevTopRef = useRef(0)
+  const panelScrollVisualRafRef = useRef(0)
 
   const [q, setQ] = useState('')
 
@@ -55,11 +76,29 @@ export default function LoungeDockSlidePanels({
     })
   }, [communityPosts, q])
 
+  const panelTitleBarChromePx = panelTitleBarHeight > 0 ? panelTitleBarHeight : 56
+  const scrollBottomInsetPx = dockChromeHeightFromTitleBarPx(panelTitleBarChromePx) + 6
+  const titleHidePx = panelTitleBarHeight > 0 ? panelTitleBarHeight : 56
+  const scrollPaddingTopPx = viewportTitleTopPx + panelTitleBarChromePx
+
   useLayoutEffect(() => {
     return () => {
       if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
     }
   }, [])
+
+  useLayoutEffect(() => {
+    const bar = panelTitleBarRef.current
+    if (!bar || typeof ResizeObserver === 'undefined') return
+    const apply = () => {
+      const h = Math.ceil(bar.getBoundingClientRect().height)
+      if (h > 0) setPanelTitleBarHeight((prev) => (prev === h ? prev : h))
+    }
+    apply()
+    const ro = new ResizeObserver(() => apply())
+    ro.observe(bar)
+    return () => ro.disconnect()
+  }, [openPanel])
 
   useLayoutEffect(() => {
     const el = panelRef.current
@@ -102,6 +141,40 @@ export default function LoungeDockSlidePanels({
     return () => ro.disconnect()
   }, [])
 
+  useEffect(() => {
+    const el = panelScrollRef.current
+    if (!el || typeof window === 'undefined' || !openPanel) return
+    panelScrollPrevTopRef.current = el.scrollTop
+    const queuePanelTitleFlush = () => {
+      if (panelScrollVisualRafRef.current) return
+      panelScrollVisualRafRef.current = window.requestAnimationFrame(() => {
+        panelScrollVisualRafRef.current = 0
+        setPanelTitleReveal(panelTitleRevealRef.current)
+      })
+    }
+    const onScroll = () => {
+      const st = el.scrollTop
+      const prev = panelScrollPrevTopRef.current
+      const rawDelta = st - prev
+      panelScrollPrevTopRef.current = st
+      const eff = rawDelta === 0 ? 0 : loungeTitleRevealClampScrollDelta(rawDelta)
+      const titleStep = loungeTitleRevealAfterScrollStep({
+        scrollTop: st,
+        effectiveDelta: eff,
+        revealRef: panelTitleRevealRef,
+      })
+      if (titleStep.changed) queuePanelTitleFlush()
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (panelScrollVisualRafRef.current) {
+        window.cancelAnimationFrame(panelScrollVisualRafRef.current)
+        panelScrollVisualRafRef.current = 0
+      }
+    }
+  }, [openPanel])
+
   const dismissWithAnimation = useCallback((direction = 'left') => {
     const w = Math.round(panelRef.current?.getBoundingClientRect().width || panelW)
     const wc = Math.max(w, 200)
@@ -123,6 +196,7 @@ export default function LoungeDockSlidePanels({
     if (t instanceof Element) {
       if (t.closest('input, textarea, select, label')) return
       if (t.closest('button[aria-label="Close"]')) return
+      if (t.closest('button[aria-label="Close panel"]')) return
     }
     if (!(e.currentTarget instanceof Element)) return
     pointerIdRef.current = e.pointerId
@@ -165,7 +239,6 @@ export default function LoungeDockSlidePanels({
       if (!horizontalRef.current) return
       e.preventDefault()
       const w = Math.max(panelW, 200)
-      /** Allow sliding off to the left (negative) or right (positive) so left- and right-thumb dismiss both work. */
       const next = Math.max(-w, Math.min(w, startTxRef.current + dx))
       dragTxRef.current = next
       setTx(next)
@@ -210,49 +283,61 @@ export default function LoungeDockSlidePanels({
 
   if (!openPanel) return null
 
-  const bottomPad = `max(0.75rem, calc(${bottomReservePx}px + env(safe-area-inset-bottom)))`
-
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Close panel"
-        className="fixed inset-0 z-[98] bg-black/45 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[99] flex h-dvh max-h-dvh justify-center">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={openPanel === 'search' ? 'Search lounge' : openPanel === 'notifications' ? 'Notifications' : 'Chat'}
-        className="fixed left-0 top-0 z-[99] flex h-dvh max-h-dvh w-[min(22rem,calc(100vw-2.5rem))] max-w-[85vw] flex-col border-r border-zinc-800/90 bg-zinc-950 shadow-[8px_0_40px_rgba(0,0,0,0.45)] will-change-transform motion-reduce:transition-none"
+        className="pointer-events-auto relative flex h-full w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 shadow-[0_0_0_1px_rgba(24,24,27,0.6)] will-change-transform motion-reduce:transition-none"
         style={{
           transform: `translate3d(${tx}px, 0, 0)`,
           transition: txTransition ? `transform ${OPEN_MS}ms cubic-bezier(0.22, 1, 0.36, 1)` : 'none',
-          paddingBottom: bottomPad,
-          paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
         }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endPointerGesture}
         onPointerCancel={endPointerGesture}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-800/90 px-3 py-2">
-          <h2 className="truncate text-[17px] font-semibold text-zinc-100">
-            {openPanel === 'search' ? 'Search Lounge' : openPanel === 'notifications' ? 'Notifications' : 'Chat'}
-          </h2>
-          <button
-            type="button"
-            onClick={() => dismissWithAnimation('left')}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
-            aria-label="Close"
-          >
-            <span className="text-xl leading-none">×</span>
-          </button>
+      <div
+        ref={panelTitleBarRef}
+        className="pointer-events-auto absolute left-0 right-0 z-20 w-full border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
+        style={{
+          top: viewportTitleTopPx,
+          transform: `translate3d(0, ${-(1 - panelTitleReveal) * titleHidePx}px, 0)`,
+          pointerEvents: panelTitleReveal > 0.12 ? 'auto' : 'none',
+        }}
+      >
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+            <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
+              {communityFeedLoading ? 'Updating…' : ''}
+            </div>
+            {titleBarNavSlot}
+            <button
+              type="button"
+              onClick={() => dismissWithAnimation('left')}
+              className="pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
+              aria-label="Close panel"
+            >
+              <span className="text-xl leading-none">×</span>
+            </button>
+          </div>
         </div>
+      </div>
 
+      <div
+        ref={panelScrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y"
+        style={{
+          paddingTop: scrollPaddingTopPx,
+          paddingBottom: scrollBottomInsetPx,
+        }}
+      >
         {openPanel === 'search' ? (
-          <div className="flex min-h-0 flex-1 flex-col px-3 pt-3">
+          <div className="px-3 pt-3">
             <input
               type="search"
               value={q}
@@ -261,35 +346,33 @@ export default function LoungeDockSlidePanels({
               autoComplete="off"
               className="mb-3 w-full rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-cyan-500/45 focus:ring-1 focus:ring-cyan-500/25"
             />
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pb-2 touch-pan-y">
-              {filtered.length === 0 ? (
-                <p className="text-[14px] leading-relaxed text-zinc-500">No posts match.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {filtered.map((p) => (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        onClick={() => onPickPost?.(p.id)}
-                        className="w-full rounded-xl border border-zinc-800/90 bg-zinc-900/60 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-800/70"
-                      >
-                        <div className="line-clamp-3 text-[14px] leading-snug text-zinc-200">
-                          {renderRichCaption(feedPostDisplayCaption(p) || ' ', {
-                            hashtagClassName: 'font-semibold text-cyan-400',
-                          })}
-                        </div>
-                        {p.game_title ? (
-                          <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-amber-400/85">{p.game_title}</div>
-                        ) : null}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            {filtered.length === 0 ? (
+              <p className="text-[14px] leading-relaxed text-zinc-500">No posts match.</p>
+            ) : (
+              <ul className="space-y-2 pb-2">
+                {filtered.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => onPickPost?.(p.id)}
+                      className="w-full rounded-xl border border-zinc-800/90 bg-zinc-900/60 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-800/70"
+                    >
+                      <div className="line-clamp-3 text-[14px] leading-snug text-zinc-200">
+                        {renderRichCaption(feedPostDisplayCaption(p) || ' ', {
+                          hashtagClassName: 'font-semibold text-cyan-400',
+                        })}
+                      </div>
+                      {p.game_title ? (
+                        <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-amber-400/85">{p.game_title}</div>
+                      ) : null}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 [-webkit-overflow-scrolling:touch] touch-pan-y">
+          <div className="px-3 py-4">
             <p className="text-[15px] leading-relaxed text-zinc-400">
               {openPanel === 'notifications'
                 ? 'Notification center is coming soon. Push and offer alerts continue to work from their tabs.'
@@ -298,6 +381,22 @@ export default function LoungeDockSlidePanels({
           </div>
         )}
       </div>
-    </>
+
+      <div className="relative z-30 mt-auto shrink-0">
+        <LoungeDockFooterBar
+          reveal={1}
+          barHeightPx={0}
+          matchTitleBarHeightPx={panelTitleBarChromePx}
+          onHeightChange={onDockFooterHeightChange}
+          onHome={onHome}
+          onSearch={onSearch}
+          onNotifications={onNotifications}
+          onChat={onChat}
+          activePanel={activePanel}
+          layout="viewport"
+        />
+      </div>
+    </div>
+    </div>
   )
 }

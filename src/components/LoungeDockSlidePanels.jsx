@@ -9,7 +9,9 @@ const COMMIT_PX = 10
 
 /**
  * Left-sliding dock panels for Lounge (search / notifications / chat).
- * Swipe horizontally (finger left) to dismiss; vertical scroll still works after a short direction lock.
+ * Swipe horizontally (finger left) to dismiss from anywhere on the panel, including search result rows;
+ * vertical scroll still wins when movement is clearly vertical after a short direction lock. Taps on rows
+ * still work because pointer capture starts only after horizontal intent is detected.
  * `bottomReservePx` clears the fixed dock footer height + a little gap.
  */
 export default function LoungeDockSlidePanels({
@@ -34,6 +36,8 @@ export default function LoungeDockSlidePanels({
   const draggingRef = useRef(false)
   const decidedRef = useRef(false)
   const horizontalRef = useRef(false)
+  /** Capture only after a horizontal dismiss gesture is committed so taps on list rows still work. */
+  const pointerCapturedRef = useRef(false)
 
   const [q, setQ] = useState('')
 
@@ -108,30 +112,24 @@ export default function LoungeDockSlidePanels({
     }, OPEN_MS + 40)
   }, [onClose, panelW])
 
-  const onPointerDown = useCallback(
-    (e) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return
-      const t = e.target
-      if (t instanceof Element && t.closest('button, a, input, textarea, select, label')) return
-      const cur = e.currentTarget
-      if (!(cur instanceof Element)) return
-      pointerIdRef.current = e.pointerId
-      startClientXRef.current = e.clientX
-      startClientYRef.current = e.clientY
-      startTxRef.current = dragTxRef.current
-      draggingRef.current = true
-      decidedRef.current = false
-      horizontalRef.current = false
-      setTxTransition(false)
-      try {
-        cur.setPointerCapture(e.pointerId)
-      } catch {
-        draggingRef.current = false
-        pointerIdRef.current = null
-      }
-    },
-    []
-  )
+  const onPointerDown = useCallback((e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    const t = e.target
+    if (t instanceof Element) {
+      if (t.closest('input, textarea, select, label')) return
+      if (t.closest('button[aria-label="Close"]')) return
+    }
+    if (!(e.currentTarget instanceof Element)) return
+    pointerIdRef.current = e.pointerId
+    startClientXRef.current = e.clientX
+    startClientYRef.current = e.clientY
+    startTxRef.current = dragTxRef.current
+    draggingRef.current = true
+    decidedRef.current = false
+    horizontalRef.current = false
+    pointerCapturedRef.current = false
+    setTxTransition(false)
+  }, [])
 
   const onPointerMove = useCallback(
     (e) => {
@@ -144,16 +142,20 @@ export default function LoungeDockSlidePanels({
         if (Math.abs(dy) > Math.abs(dx)) {
           draggingRef.current = false
           horizontalRef.current = false
-          try {
-            if (e.currentTarget instanceof Element) e.currentTarget.releasePointerCapture(e.pointerId)
-          } catch {
-            // ignore
-          }
           pointerIdRef.current = null
           setTxTransition(true)
           return
         }
         horizontalRef.current = true
+        const cur = e.currentTarget
+        if (cur instanceof Element && !pointerCapturedRef.current) {
+          try {
+            cur.setPointerCapture(e.pointerId)
+            pointerCapturedRef.current = true
+          } catch {
+            // still try to drag without capture (e.g. lost race)
+          }
+        }
       }
       if (!horizontalRef.current) return
       e.preventDefault()
@@ -168,11 +170,14 @@ export default function LoungeDockSlidePanels({
   const endPointerGesture = useCallback(
     (e) => {
       if (pointerIdRef.current !== e.pointerId) return
-      try {
-        if (e.currentTarget instanceof Element) e.currentTarget.releasePointerCapture(e.pointerId)
-      } catch {
-        // ignore
+      if (pointerCapturedRef.current && e.currentTarget instanceof Element) {
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        } catch {
+          // ignore
+        }
       }
+      pointerCapturedRef.current = false
       pointerIdRef.current = null
       const wasHorizontal = horizontalRef.current
       draggingRef.current = false
@@ -246,7 +251,7 @@ export default function LoungeDockSlidePanels({
               autoComplete="off"
               className="mb-3 w-full rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-cyan-500/45 focus:ring-1 focus:ring-cyan-500/25"
             />
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pb-2 touch-pan-y">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pb-2 touch-pan-x touch-pan-y">
               {filtered.length === 0 ? (
                 <p className="text-[14px] leading-relaxed text-zinc-500">No posts match.</p>
               ) : (
@@ -274,7 +279,7 @@ export default function LoungeDockSlidePanels({
             </div>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 [-webkit-overflow-scrolling:touch] touch-pan-y">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 [-webkit-overflow-scrolling:touch] touch-pan-x touch-pan-y">
             <p className="text-[15px] leading-relaxed text-zinc-400">
               {openPanel === 'notifications'
                 ? 'Notification center is coming soon. Push and offer alerts continue to work from their tabs.'

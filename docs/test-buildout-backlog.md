@@ -232,7 +232,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-13: **Lounge OG compound title order:** **`api/lounge-post-og.js`** `compoundOgTitle` is now **`byline · caption · stats`** (was caption first) for **`og:title`** / matching **`og:description`** when a caption exists.
+- 2026-05-13: **Lounge OG preview text:** **`compoundOgTitle`** = **`byline · caption · stats`** in **`og:title`**. **WhatsApp** showed duplicate blocks when **`og:description`** repeated the title — description is now a short CTA (**`Open this post in Edge.`**). iMessage still reads mainly **`og:title`**.
 - 2026-05-18: **Planned:** **Up to two Stream clips per post** (ordered uids; migration from single `stream_video_uid`; composer/quote/feed/delete/autoplay) — `[ ]` under *Planned (Lounge media)*; **Phase D** note in **`docs/social-feed-roadmap.md`**.
 - 2026-05-18: **Deferred:** **Stream inside image carousel** (upload-order mixed strip + lightbox + composer/quote + lifecycle) — `[-]` row under *Deferred / someday* in this file; short **Phase D** note in **`docs/social-feed-roadmap.md`** (not scheduled).
 - 2026-05-18: **Lounge badge tips:** `LoungeBadgeHoverTip.jsx` — dismiss open tip on **document `pointerdown` (capture)** outside anchor/tip and on **Escape** (avoids stuck tooltips when `mouseleave` does not run). **Smoke §12:** Ryan **PASSED** main composer, quote video/media matrix, Cancel-while-prep on **test**; backlog §12 checkboxes + sign-off; note on **why Stream video is exclusive of GIF/images** (schema + feed tile + upload/delete paths).

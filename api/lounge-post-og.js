@@ -3,7 +3,7 @@
  * Shared URL path: `/lounge/p/:postId` (rewritten here from `vercel.json`).
  * Typical preview: `og:image` → `og:title` → domain. **Apple Messages often drops `og:description`**
  * on large-image cards, so **byline · caption · stats** are folded into **`og:title`** (`compoundOgTitle`).
- * `og:description` remains for Slack / Facebook / etc. **`/favicon.ico`** first for domain-row icons.
+ * `og:description` is a **short CTA** (WhatsApp / others render title + description; duplicating the compound title looks broken).
  *
  * Env (set on Vercel; same as the Vite client): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
  */
@@ -259,9 +259,9 @@ export default async function handler(req, res) {
   const stats = statsLine(post)
   const hasCaption = captionSnippet.length > 0
 
-  /** iMessage often ignores `og:description` on large-image cards — pack into `og:title`. */
+  /** Full story in title (iMessage); secondary line must not repeat or WhatsApp shows it twice. */
   const ogTitle = compoundOgTitle(hasCaption ? captionSnippet : '', byline, stats)
-  const ogDescription = hasCaption ? `${byline} · ${captionSnippet} · ${stats}` : stats
+  const ogDescription = 'Open this post in Edge.'
   const docTitle =
     ogTitle.length > 72 ? `${ogTitle.slice(0, 69)}\u2026 · Edge` : `${ogTitle} · Edge`
 

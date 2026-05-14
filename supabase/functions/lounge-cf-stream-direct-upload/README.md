@@ -28,7 +28,7 @@ supabase secrets set CLOUDFLARE_STREAM_API_TOKEN="YOUR_STREAM_EDIT_TOKEN" --proj
 
 ## Database
 
-Run **`supabase/lounge_feed_post_stream_video.sql`** on the same Supabase project so inserts can set **`community_feed_posts.stream_video_uid`**.
+Run **`supabase/lounge_feed_post_stream_video.sql`** on the same Supabase project so inserts can set **`community_feed_posts.stream_video_uid`** and optional **`stream_poster_url`** / **`stream_video_width`** / **`stream_video_height`** (JPEG in `lounge-feed` + display dimensions for feed tiles).
 
 ## Deploy
 

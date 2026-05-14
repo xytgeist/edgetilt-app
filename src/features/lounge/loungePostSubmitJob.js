@@ -3,7 +3,9 @@ import { communityFeedPostInsertPayload, uploadLoungeFeedPostImage } from '../..
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
+  captureVideoFilePosterObjectUrl,
   deleteCfStreamOrphanAsset,
+  probeVideoFileDisplaySize,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
   waitForCfStreamManifestReady,
@@ -143,6 +145,64 @@ export async function executeLoungeCommunityPostSubmission({
       streamVideoUid = uid
     }
 
+    let streamPosterPublicUrl = ''
+    let streamVideoWidthOut = 0
+    let streamVideoHeightOut = 0
+
+    if (streamVideoUid) {
+      const fileProbe = videoFile instanceof File ? videoFile : null
+      if (fileProbe) {
+        const dim = await probeVideoFileDisplaySize(fileProbe)
+        if (dim) {
+          streamVideoWidthOut = dim.width
+          streamVideoHeightOut = dim.height
+        }
+      }
+
+      let posterFile = null
+      const sess = String(snapshot.sessionStreamPosterBlobUrl || '').trim()
+      if (sess.startsWith('blob:')) {
+        throwIfAborted()
+        const res = await fetch(sess)
+        const b = await res.blob()
+        if (b?.size) {
+          posterFile = new File([b], 'stream-poster.jpg', { type: 'image/jpeg' })
+        }
+      } else if (fileProbe) {
+        throwIfAborted()
+        const obj = await captureVideoFilePosterObjectUrl(fileProbe)
+        if (obj) {
+          try {
+            const res = await fetch(obj)
+            const blob = await res.blob()
+            URL.revokeObjectURL(obj)
+            if (blob?.size) {
+              posterFile = new File([blob], 'stream-poster.jpg', { type: 'image/jpeg' })
+            }
+          } catch {
+            try {
+              URL.revokeObjectURL(obj)
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      if (posterFile) {
+        throwIfAborted()
+        report(0.82, 'Uploading preview', 'Poster image')
+        const { data: upUrl, error: upErr } = await uploadLoungeFeedPostImage({
+          supabaseClient,
+          user: session.user,
+          file: posterFile,
+        })
+        if (upErr) throw new Error(upErr.message || 'Could not upload video preview image.')
+        if (!upUrl) throw new Error('Could not upload video preview image.')
+        streamPosterPublicUrl = upUrl
+      }
+    }
+
     throwIfAborted()
     const uploadedUrls = []
     for (let i = 0; i < nImg; i += 1) {
@@ -174,6 +234,9 @@ export async function executeLoungeCommunityPostSubmission({
         gameSlug: null,
         pinned: isStaffPoster && wantsPin ? true : undefined,
         streamVideoUid,
+        streamPosterUrl: streamPosterPublicUrl || undefined,
+        streamVideoWidth: streamVideoWidthOut || undefined,
+        streamVideoHeight: streamVideoHeightOut || undefined,
       })
     } else if (uploadedUrls.length > 0) {
       insertPayload = communityFeedPostInsertPayload({
@@ -217,7 +280,7 @@ export async function executeLoungeCommunityPostSubmission({
       if (msg.includes('MAX_PINNED_POSTS')) {
         throw new Error(LOUNGE_MAX_PINNED_ALERT)
       }
-      if (/media_url|gif_url|image_urls|stream_video_uid|schema cache/i.test(msg)) {
+      if (/media_url|gif_url|image_urls|stream_video_uid|stream_poster_url|stream_video_width|stream_video_height|schema cache/i.test(msg)) {
         throw new Error(
           'Media attachments need the latest DB scripts. Run supabase/lounge_feed_post_media.sql, supabase/lounge_feed_post_gif_url.sql, supabase/lounge_feed_post_image_urls.sql, and supabase/lounge_feed_post_stream_video.sql in Supabase.',
         )

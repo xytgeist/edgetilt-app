@@ -178,7 +178,7 @@ export default function AppShell({
       }
 
       const originalPostSelect =
-        'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid'
+        'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
 
       let repostById = {}
       if (depth === 0) {
@@ -226,7 +226,7 @@ export default function AppShell({
     communityFeedHeadReloadingRef.current = true
     try {
       const selectCols =
-        'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid'
+        'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
       const [{ data: pinnedRows }, { data: rows, error }] = await Promise.all([
         supabaseClient
           .from('community_feed_posts')
@@ -286,7 +286,7 @@ export default function AppShell({
       const cursorFilter = `created_at.lt.${communityFeedCursor.created_at},and(created_at.eq.${communityFeedCursor.created_at},id.lt.${communityFeedCursor.id})`
       const { data: rows, error } = await supabaseClient
         .from('community_feed_posts')
-        .select('id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid')
+        .select('id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height')
         .eq('pinned', false)
         .or(cursorFilter)
         .order('created_at', { ascending: false })

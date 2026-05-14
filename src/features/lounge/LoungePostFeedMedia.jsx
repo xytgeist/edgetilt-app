@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { feedPostImageUrls, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
+import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
@@ -259,6 +259,8 @@ export function LoungePostFeedImagesAndGif({
   visibilityResetRootRef,
 }) {
   const streamUid = feedPostStreamVideoUid(post)
+  const persistedStreamPoster = streamUid ? feedPostStreamPosterUrl(post) : ''
+  const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null
   const sessionStreamPosterUrl = streamUid ? peekLoungeStreamSessionPoster(streamUid) : ''
   const feedAutoplayClientId =
     (variant === 'feed' || variant === 'embed') && post?.id && streamUid && enableLightbox
@@ -275,6 +277,9 @@ export function LoungePostFeedImagesAndGif({
         visibilityResetRootRef={visibilityResetRootRef}
         feedAutoplayClientId={feedAutoplayClientId}
         sessionPosterUrl={sessionStreamPosterUrl || undefined}
+        persistedStreamPosterUrl={persistedStreamPoster || undefined}
+        streamVideoDisplayWidth={streamDims?.width}
+        streamVideoDisplayHeight={streamDims?.height}
       />
     )
   }

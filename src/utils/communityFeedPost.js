@@ -32,6 +32,19 @@ export function feedPostStreamVideoUid(row) {
   return u || ''
 }
 
+/** Public `lounge-feed` JPEG URL for Stream tile poster when set (`supabase/lounge_feed_post_stream_video.sql`). */
+export function feedPostStreamPosterUrl(row) {
+  return String(row?.stream_poster_url ?? '').trim()
+}
+
+/** `{ width, height }` from DB when both present and valid; used for tile aspect-ratio. */
+export function feedPostStreamVideoDisplayDimensions(row) {
+  const w = Number(row?.stream_video_width)
+  const h = Number(row?.stream_video_height)
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w < 2 || h < 2) return null
+  return { width: Math.round(w), height: Math.round(h) }
+}
+
 function isProbablyLoungeStoredImageUrl(u) {
   const s = String(u || '').toLowerCase()
   if (!s) return false
@@ -99,7 +112,7 @@ export function normalizeFeedCaption(caption) {
 
 /**
  * Insert payload for `community_feed_posts` (caption + optional game context + optional media).
- * When `streamVideoUid` is set, stores Cloudflare Stream uid only (`supabase/lounge_feed_post_stream_video.sql`).
+ * When `streamVideoUid` is set, stores Cloudflare Stream uid (`supabase/lounge_feed_post_stream_video.sql`) and optional poster + display dimensions.
  */
 export function communityFeedPostInsertPayload({
   caption,
@@ -115,6 +128,11 @@ export function communityFeedPostInsertPayload({
   imageUrls,
   /** Cloudflare Stream asset uid (HLS); exclusive of images/GIF in app logic. */
   streamVideoUid,
+  /** Public `lounge-feed` URL for a JPEG tile poster (Stream posts only). */
+  streamPosterUrl,
+  /** Display width/height from source file at post time (Stream posts only). */
+  streamVideoWidth,
+  streamVideoHeight,
 }) {
   const cap = normalizeFeedCaption(caption)
   const gt = String(gameTitle ?? '').trim()
@@ -130,6 +148,14 @@ export function communityFeedPostInsertPayload({
     out.media_url = null
     out.gif_url = null
     out.image_urls = []
+    const pu = streamPosterUrl != null ? String(streamPosterUrl).trim() : ''
+    if (pu) out.stream_poster_url = pu
+    const w = Number(streamVideoWidth)
+    const h = Number(streamVideoHeight)
+    if (Number.isFinite(w) && Number.isFinite(h) && w >= 2 && h >= 2) {
+      out.stream_video_width = Math.round(w)
+      out.stream_video_height = Math.round(h)
+    }
     return out
   }
   const imgs = Array.isArray(imageUrls)
@@ -186,6 +212,34 @@ export function communityFeedPlainRepostInsertPayload({ originalPostId }) {
 }
 
 const LOUNGE_FEED_MEDIA_BUCKET = 'lounge-feed'
+
+/**
+ * Best-effort remove of a `lounge-feed` object given its public URL. Ignores failures (delete row should still proceed).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} publicUrl
+ */
+export async function deleteLoungeFeedStreamPosterFromPublicUrl(supabaseClient, publicUrl) {
+  const u = String(publicUrl || '').trim()
+  if (!u || !supabaseClient) return
+  const lower = u.toLowerCase()
+  if (!lower.includes('lounge-feed')) return
+  let path = ''
+  const m = u.match(/\/object\/public\/lounge-feed\/(.+)$/i)
+  if (m?.[1]) {
+    path = decodeURIComponent(String(m[1]).split('?')[0])
+  } else {
+    const idx = lower.indexOf('/lounge-feed/')
+    if (idx < 0) return
+    path = decodeURIComponent(u.slice(idx + '/lounge-feed/'.length).split('?')[0])
+  }
+  path = path.replace(/^\/+/, '')
+  if (!path) return
+  try {
+    await supabaseClient.storage.from(LOUNGE_FEED_MEDIA_BUCKET).remove([path])
+  } catch {
+    // ignore
+  }
+}
 
 /** Upload a single image for a feed post; path prefix must be `user.id/`. */
 export async function uploadLoungeFeedPostImage({ supabaseClient, user, file }) {

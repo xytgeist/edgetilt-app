@@ -23,3 +23,22 @@ comment on column public.community_feed_posts.stream_video_uid is
 create index if not exists community_feed_posts_stream_video_uid_idx
   on public.community_feed_posts (stream_video_uid)
   where stream_video_uid is not null and trim(stream_video_uid) <> '';
+
+-- Stored JPEG in `lounge-feed` (public URL) so feed tiles have a stable poster before CF `thumbnail.jpg` is ready on every device.
+alter table public.community_feed_posts
+  add column if not exists stream_poster_url text;
+
+alter table public.community_feed_posts
+  add column if not exists stream_video_width integer;
+
+alter table public.community_feed_posts
+  add column if not exists stream_video_height integer;
+
+comment on column public.community_feed_posts.stream_poster_url is
+  'Public Supabase Storage URL for a feed-tile JPEG poster (lounge-feed). Optional; complements Cloudflare Stream uid.';
+
+comment on column public.community_feed_posts.stream_video_width is
+  'Display width in pixels from the source file at post time (CSS aspect-ratio / layout). Optional.';
+
+comment on column public.community_feed_posts.stream_video_height is
+  'Display height in pixels from the source file at post time (CSS aspect-ratio / layout). Optional.';

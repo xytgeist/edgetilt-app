@@ -366,6 +366,9 @@ function SoundOnGlyph({ className = 'h-4 w-4' }) {
  *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
  * @param {string} [feedAutoplayClientId] — When inside `LoungeFeedVideoAutoplayProvider`, only the mid-scroll winner attaches/plays.
  * @param {string} [sessionPosterUrl] — Optional `blob:` JPEG from composer; shown until CF `thumbnail.jpg` loads (same-tab session pin).
+ * @param {string} [persistedStreamPosterUrl] — Public `lounge-feed` poster URL from DB (cross-device stable tile).
+ * @param {number} [streamVideoDisplayWidth] — Display width from DB for CSS `aspect-ratio` when set with height.
+ * @param {number} [streamVideoDisplayHeight] — Display height from DB for CSS `aspect-ratio` when set with width.
  */
 export default function LoungePostStreamVideo({
   uid,
@@ -375,8 +378,21 @@ export default function LoungePostStreamVideo({
   visibilityResetRootRef,
   feedAutoplayClientId,
   sessionPosterUrl: sessionPosterUrlProp = '',
+  persistedStreamPosterUrl: persistedStreamPosterUrlProp = '',
+  streamVideoDisplayWidth: streamDisplayWProp,
+  streamVideoDisplayHeight: streamDisplayHProp,
 }) {
   const sessionPosterUrl = String(sessionPosterUrlProp || '').trim()
+  const persistedPosterTrim = useMemo(
+    () => String(persistedStreamPosterUrlProp || '').trim(),
+    [persistedStreamPosterUrlProp],
+  )
+  const hasPersistedPoster = /^https?:\/\//i.test(persistedPosterTrim)
+
+  const displayW = Number(streamDisplayWProp)
+  const displayH = Number(streamDisplayHProp)
+  const hasDisplayDims =
+    Number.isFinite(displayW) && Number.isFinite(displayH) && displayW >= 2 && displayH >= 2
   const containerRef = useRef(null)
   const videoRef = useRef(null)
   const inViewRef = useRef(false)
@@ -396,7 +412,11 @@ export default function LoungePostStreamVideo({
   /** Bumped to bust CDN cache while CF thumbnail is still generating. */
   const [posterBust, setPosterBust] = useState(0)
   /** When false, in-flow `<img>` uses `sessionPosterUrl` (stable layout); CF loads off-DOM until true. */
-  const [cfPosterActive, setCfPosterActive] = useState(() => !sessionPosterUrl)
+  const [cfPosterActive, setCfPosterActive] = useState(() => {
+    const p = String(persistedStreamPosterUrlProp || '').trim()
+    if (/^https?:\/\//i.test(p)) return true
+    return !String(sessionPosterUrlProp || '').trim()
+  })
   const posterRetryTimerRef = useRef(0)
   const posterAttemptRef = useRef(0)
   const id = String(uid || '').trim()
@@ -409,9 +429,10 @@ export default function LoungePostStreamVideo({
   }, [poster, posterBust])
 
   const visiblePosterSrc = useMemo(() => {
-    if (cfPosterActive || !sessionPosterUrl) return posterDisplayUrl
-    return sessionPosterUrl
-  }, [cfPosterActive, sessionPosterUrl, posterDisplayUrl])
+    if (hasPersistedPoster) return persistedPosterTrim
+    if (!cfPosterActive && sessionPosterUrl) return sessionPosterUrl
+    return posterDisplayUrl
+  }, [hasPersistedPoster, persistedPosterTrim, cfPosterActive, sessionPosterUrl, posterDisplayUrl])
 
   const showOpen = enableLightbox && variant !== 'composer'
   const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
@@ -423,12 +444,12 @@ export default function LoungePostStreamVideo({
     posterAttemptRef.current = 0
     window.clearTimeout(posterRetryTimerRef.current)
     posterRetryTimerRef.current = 0
-    setCfPosterActive(!sessionPosterUrl)
-  }, [id, sessionPosterUrl])
+    setCfPosterActive(hasPersistedPoster || !sessionPosterUrl)
+  }, [id, sessionPosterUrl, hasPersistedPoster])
 
   /** Off-DOM CF thumbnail fetch while the visible `<img>` still shows the session `blob:` poster. */
   useEffect(() => {
-    if (!sessionPosterUrl || !id || !poster) return undefined
+    if (hasPersistedPoster || !sessionPosterUrl || !id || !poster) return undefined
     let cancelled = false
     let attempt = 0
     let bust = 0
@@ -468,7 +489,13 @@ export default function LoungePostStreamVideo({
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [id, poster, sessionPosterUrl])
+  }, [id, poster, sessionPosterUrl, hasPersistedPoster])
+
+  useEffect(() => {
+    if (!hasPersistedPoster || !id) return undefined
+    queueMicrotask(() => releaseLoungeStreamSessionPoster(id))
+    return undefined
+  }, [hasPersistedPoster, id])
   const onPosterImgError = useCallback(() => {
     if (!cfPosterActive) {
       setCfPosterActive(true)
@@ -890,7 +917,11 @@ export default function LoungePostStreamVideo({
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
   const posterFallbackFrameClass =
     posterFallbackFrameClassByVariant[variant] || posterFallbackFrameClassByVariant.feed
-  const posterShellMinHClass = posterDecodeOk ? 'min-h-0' : posterFrameMinH
+  const posterFrameAspectStyle =
+    hasDisplayDims && !posterLayoutFailed
+      ? { aspectRatio: `${Math.round(displayW)} / ${Math.round(displayH)}` }
+      : undefined
+  const posterShellMinHClass = posterDecodeOk || hasDisplayDims ? 'min-h-0' : posterFrameMinH
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle = attachStream
     ? {
@@ -942,6 +973,7 @@ export default function LoungePostStreamVideo({
                   : `relative inline-block w-fit max-w-full bg-black leading-none ${posterShellMinHClass}`
                 : 'relative'
             }
+            style={posterFrameAspectStyle}
           >
             {usePosterFrame ? (
               posterLayoutFailed ? (

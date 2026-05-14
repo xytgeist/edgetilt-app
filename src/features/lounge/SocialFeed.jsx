@@ -13,9 +13,11 @@ import {
 import {
   communityFeedPlainRepostInsertPayload,
   communityFeedQuoteRepostInsertPayload,
+  deleteLoungeFeedStreamPosterFromPublicUrl,
   feedPostAuthorEditMediaSeed,
   feedPostDisplayCaption,
   feedPostMediaUpdatePayload,
+  feedPostStreamPosterUrl,
   feedPostStreamVideoUid,
   normalizeFeedCaption,
   uploadLoungeFeedPostImage,
@@ -1585,7 +1587,7 @@ export default function SocialFeed({
           setQuoteRepostErr('That post is no longer available to quote.')
           return
         }
-        if (/media_url|gif_url|image_urls|stream_video_uid|schema cache/i.test(msg)) {
+        if (/media_url|gif_url|image_urls|stream_video_uid|stream_poster_url|stream_video_width|stream_video_height|schema cache/i.test(msg)) {
           setQuoteRepostErr(
             'Media attachments need the latest DB scripts. Run supabase/lounge_feed_post_media.sql, supabase/lounge_feed_post_gif_url.sql, supabase/lounge_feed_post_image_urls.sql, and supabase/lounge_feed_post_stream_video.sql in Supabase.'
           )
@@ -1929,7 +1931,7 @@ export default function SocialFeed({
         .from('community_feed_posts')
         .update(updateBody)
         .eq('id', loungePostDetail.id)
-        .select('id,caption,edited_at,image_urls,media_url,gif_url,stream_video_uid')
+        .select('id,caption,edited_at,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height')
         .maybeSingle()
       if (error) {
         const msg = String(error.message || '')
@@ -1959,6 +1961,9 @@ export default function SocialFeed({
                 media_url: data.media_url,
                 gif_url: data.gif_url,
                 stream_video_uid: data.stream_video_uid,
+                stream_poster_url: data.stream_poster_url,
+                stream_video_width: data.stream_video_width,
+                stream_video_height: data.stream_video_height,
               }
             : p
         )
@@ -1973,6 +1978,9 @@ export default function SocialFeed({
               media_url: data.media_url,
               gif_url: data.gif_url,
               stream_video_uid: data.stream_video_uid,
+              stream_poster_url: data.stream_poster_url,
+              stream_video_width: data.stream_video_width,
+              stream_video_height: data.stream_video_height,
             }
           : prev
       )
@@ -2041,6 +2049,7 @@ export default function SocialFeed({
           return
         }
       }
+      await deleteLoungeFeedStreamPosterFromPublicUrl(supabaseClient, feedPostStreamPosterUrl(loungePostDetail))
       const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', postId)
       if (error) {
         const msg = String(error.message || '')
@@ -2081,6 +2090,7 @@ export default function SocialFeed({
           return
         }
       }
+      await deleteLoungeFeedStreamPosterFromPublicUrl(supabaseClient, feedPostStreamPosterUrl(loungePostDetail))
       const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', postId)
       if (error) {
         const msg = String(error.message || '')
@@ -2120,6 +2130,7 @@ export default function SocialFeed({
             return
           }
         }
+        await deleteLoungeFeedStreamPosterFromPublicUrl(supabaseClient, feedPostStreamPosterUrl(post))
         const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', post.id)
         if (error) {
           const msg = String(error.message || '')
@@ -2165,6 +2176,7 @@ export default function SocialFeed({
             return
           }
         }
+        await deleteLoungeFeedStreamPosterFromPublicUrl(supabaseClient, feedPostStreamPosterUrl(post))
         const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', post.id)
         if (error) {
           const msg = String(error.message || '')
@@ -3159,7 +3171,7 @@ export default function SocialFeed({
         const [{ data: postRows, error: postsErr }, coreProfile] = await Promise.all([
           supabaseClient
             .from('community_feed_posts')
-            .select('id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,media_url,gif_url,image_urls,stream_video_uid')
+            .select('id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height')
             .eq('user_id', userId)
             .is('hidden_at', null)
             .order('created_at', { ascending: false })

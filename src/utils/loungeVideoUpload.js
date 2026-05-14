@@ -200,6 +200,68 @@ export function probeVideoFileDurationSeconds(file) {
   })
 }
 
+/**
+ * Read intrinsic display size from a local video file (`videoWidth` / `videoHeight` after metadata).
+ * @returns {Promise<{ width: number, height: number } | null>}
+ */
+export function probeVideoFileDisplaySize(file) {
+  return new Promise((resolve) => {
+    if (!file || typeof URL === 'undefined' || typeof document === 'undefined') {
+      resolve(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    const v = document.createElement('video')
+    v.preload = 'metadata'
+    v.muted = true
+    v.playsInline = true
+    v.setAttribute('playsinline', '')
+    v.src = url
+    let settled = false
+    const cleanup = () => {
+      try {
+        URL.revokeObjectURL(url)
+      } catch {
+        // ignore
+      }
+      try {
+        v.removeAttribute('src')
+        v.load()
+      } catch {
+        // ignore
+      }
+    }
+    const tryRead = () => {
+      const w = v.videoWidth
+      const h = v.videoHeight
+      if (Number.isFinite(w) && Number.isFinite(h) && w >= 2 && h >= 2) {
+        if (settled) return
+        settled = true
+        window.clearTimeout(tid)
+        cleanup()
+        resolve({ width: Math.round(w), height: Math.round(h) })
+      }
+    }
+    const finishNull = () => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(tid)
+      cleanup()
+      resolve(null)
+    }
+    const tid = window.setTimeout(finishNull, PROBE_DURATION_TIMEOUT_MS)
+    v.onloadedmetadata = () => tryRead()
+    v.onloadeddata = () => tryRead()
+    v.oncanplay = () => tryRead()
+    v.onerror = () => finishNull()
+    try {
+      v.load()
+    } catch {
+      finishNull()
+    }
+  })
+}
+
 /** First-frame JPEG poster for composer preview (aligns with `LoungeVideoCropModal` probe behavior). */
 const LOUNGE_VIDEO_POSTER_CAPTURE_TIMEOUT_MS = 28000
 const LOUNGE_VIDEO_POSTER_MAX_WIDTH = 960

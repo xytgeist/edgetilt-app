@@ -133,6 +133,10 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 **Shipped (test, UX):** Quote-repost composer uses the same **tall textarea** behavior as the main composer (min/max height, typography); **images/GIF** sit on the line below text. **Multi-image carousels** in the feed reset to the **first (left-most) slide** when the post row **re-enters the viewport** after scroll-away (`LoungePostFeedMedia.jsx`). Composer **image cap** (e.g. 6) shows a modal with clear copy from file picker / quote flows.
 
+### Deferred — Stream + images in one carousel (upload order)
+
+- **Not scheduled.** Product idea: a **single** horizontal strip where **Stream clips and still/GIF slides** share one list ordered by **upload sequence** (no type precedence). Requires replacing the current **either/or** split (`stream_video_uid` vs `image_urls` / carousel), mixed lightbox behavior, composer + quote + delete/orphan + autoplay work — tracked as **`[-]`** in **`docs/test-buildout-backlog.md`** *Deferred / someday*.
+
 ---
 
 ## Phase E - Comments (threaded)
@@ -152,7 +156,7 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 ## Phase F - Likes + counts
 
 - **Shipped (test, first slice):** `post_likes`, `post_reposts`, `post_bookmarks` + triggers on `like_count` / `repost_count` in `feed_interactions_phase_ef.sql`; Lounge wiring persists toggles. `comment_likes` and periodic reconcile are still out of scope.
-- **UX (test):** **Repost** opens a **fixed popover under the stat** (plain / quote / undo / remove quote as applicable) on feed + post detail; removed bottom-sheet “repost manage” for consistency.
+- **UX (test):** **Repost** opens a **fixed popover above the stat** (plain / quote / undo / remove quote as applicable) on feed + post detail; removed bottom-sheet “repost manage” for consistency.
 - `post_likes` and `comment_likes` with unique `(user_id, target)` constraints.
 - Count updates via triggers initially; periodic reconcile optional later.
 

@@ -2,7 +2,7 @@
  * Vercel Serverless: HTML + Open Graph / Twitter Card meta for Lounge post permalinks.
  * Shared URL path: `/lounge/p/:postId` (rewritten here from `vercel.json`).
  * Typical preview: `og:image` → `og:title` → domain. **Apple Messages often drops `og:description`**
- * on large-image cards, so caption + byline + stats are folded into **`og:title`** (`compoundOgTitle`).
+ * on large-image cards, so **byline · caption · stats** are folded into **`og:title`** (`compoundOgTitle`).
  * `og:description` remains for Slack / Facebook / etc. **`/favicon.ico`** first for domain-row icons.
  *
  * Env (set on Vercel; same as the Vite client): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
@@ -63,7 +63,7 @@ function statsLine(post) {
 }
 
 /**
- * Attribution line under the caption in previews, e.g. `Queen Edge (@selena) on Edge`.
+ * Attribution line, e.g. `Queen Edge (@selena) on Edge` (placed **before** caption in `compoundOgTitle`).
  * `is_og` appends a check mark (plain text; OS controls color — not Instagram’s red asset).
  */
 function buildAuthorByline(displayName, handle, isOg) {
@@ -73,23 +73,29 @@ function buildAuthorByline(displayName, handle, isOg) {
   return `${core}${mark}`
 }
 
-/** iMessage large-image previews often hide `og:description` — keep one visible title string. */
+/** iMessage large-image previews often hide `og:description` — one string: `byline · caption · stats`. */
 const OG_TITLE_MAX = 380
 
 function compoundOgTitle(captionSnippet, byline, stats) {
   const sep = ' · '
-  const tail = `${sep}${byline}${sep}${stats}`
   if (!captionSnippet) {
     return `${byline}${sep}${stats}`
   }
-  if (captionSnippet.length + tail.length <= OG_TITLE_MAX) {
-    return `${captionSnippet}${tail}`
+  const full = `${byline}${sep}${captionSnippet}${sep}${stats}`
+  if (full.length <= OG_TITLE_MAX) {
+    return full
   }
-  const headRoom = OG_TITLE_MAX - tail.length - 1
-  if (headRoom < 16) {
-    return `${captionSnippet.slice(0, 12)}${sep}${byline}${sep}${stats}`
+  const prefix = `${byline}${sep}`
+  const suffix = `${sep}${stats}`
+  const midBudget = OG_TITLE_MAX - prefix.length - suffix.length - 1
+  if (midBudget < 8) {
+    return `${byline}${sep}${stats}`
   }
-  return `${captionSnippet.slice(0, headRoom - 1)}\u2026${tail}`
+  const capTrunc =
+    captionSnippet.length > midBudget - 1
+      ? `${captionSnippet.slice(0, midBudget - 1)}\u2026`
+      : captionSnippet
+  return `${prefix}${capTrunc}${suffix}`
 }
 
 function jsonLdScript(obj) {
@@ -255,7 +261,7 @@ export default async function handler(req, res) {
 
   /** iMessage often ignores `og:description` on large-image cards — pack into `og:title`. */
   const ogTitle = compoundOgTitle(hasCaption ? captionSnippet : '', byline, stats)
-  const ogDescription = hasCaption ? `${byline} · ${stats}` : stats
+  const ogDescription = hasCaption ? `${byline} · ${captionSnippet} · ${stats}` : stats
   const docTitle =
     ogTitle.length > 72 ? `${ogTitle.slice(0, 69)}\u2026 · Edge` : `${ogTitle} · Edge`
 

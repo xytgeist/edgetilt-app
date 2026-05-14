@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
+import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 
 /** Match `LoungeInlineMediaUrl`: border wraps intrinsic image size (`w-auto`), not a fixed slide width. */
@@ -37,6 +38,10 @@ export function LoungeImageCarousel({
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const [lightbox, setLightbox] = useState(null)
+  const lightboxFooterMerged = useMemo(
+    () => mergeLightboxDismissOnQuoteRepost(lightboxFooter, () => setLightbox(null)),
+    [lightboxFooter, setLightbox],
+  )
   const carouselScrollRef = useRef(null)
   const urlsKey = list.join('\0')
   useLayoutEffect(() => {
@@ -248,7 +253,7 @@ export function LoungeImageCarousel({
           urls={lightbox.urls}
           initialIndex={lightbox.index}
           onClose={() => setLightbox(null)}
-          footer={lightboxFooter}
+          footer={lightboxFooterMerged}
         />
       ) : null}
     </div>

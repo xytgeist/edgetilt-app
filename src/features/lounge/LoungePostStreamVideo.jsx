@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
+import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
@@ -410,6 +411,10 @@ export default function LoungePostStreamVideo({
   const isWinnerRef = useRef(false)
   const recoveryBurstRef = useRef(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const mediaLightboxFooterMerged = useMemo(
+    () => mergeLightboxDismissOnQuoteRepost(mediaLightboxFooter, () => setLightboxOpen(false)),
+    [mediaLightboxFooter, setLightboxOpen],
+  )
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
@@ -1115,7 +1120,7 @@ export default function LoungePostStreamVideo({
       {lightboxOpen ? (
         <LoungeStreamVideoLightbox
           uid={id}
-          footer={mediaLightboxFooter}
+          footer={mediaLightboxFooterMerged}
           onClose={() => {
             setLightboxOpen(false)
           }}

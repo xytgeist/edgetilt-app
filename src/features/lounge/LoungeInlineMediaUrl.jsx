@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { createPortal } from 'react-dom'
 
 function normalizeUrlList(urls) {
@@ -160,6 +161,10 @@ export function LoungeInlineMediaUrl({
   lightboxFooter,
 }) {
   const [lightbox, setLightbox] = useState(null)
+  const lightboxFooterMerged = useMemo(
+    () => mergeLightboxDismissOnQuoteRepost(lightboxFooter, () => setLightbox(null)),
+    [lightboxFooter, setLightbox],
+  )
   if (!url) return null
   const isEmbed = variant === 'embed'
   const isDetail = variant === 'detail'
@@ -209,7 +214,7 @@ export function LoungeInlineMediaUrl({
           urls={lightbox.urls}
           initialIndex={lightbox.index}
           onClose={() => setLightbox(null)}
-          footer={lightboxFooter}
+          footer={lightboxFooterMerged}
         />
       ) : null}
     </div>

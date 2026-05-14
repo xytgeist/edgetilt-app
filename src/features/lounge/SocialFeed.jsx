@@ -4656,7 +4656,7 @@ export default function SocialFeed({
 
       {loungePostDetail ? (
         <div
-          className="fixed inset-0 z-[96] sm:bg-black/55 sm:backdrop-blur-[2px]"
+          className="fixed inset-0 z-[98] sm:bg-black/55 sm:backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"
@@ -5250,7 +5250,7 @@ export default function SocialFeed({
                         {loungeDetailRepostMenuOpen && !ro ? (
                           <div
                             role="menu"
-                            className="absolute left-1/2 top-full z-[130] mt-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
+                            className="absolute bottom-full left-1/2 z-[130] mb-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
                           >
                             {ui.reposted ? (
                               <>

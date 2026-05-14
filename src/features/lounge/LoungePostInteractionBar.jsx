@@ -93,7 +93,8 @@ export default function LoungePostInteractionBar({
       const el = repostMenuRef.current
       if (!el) return
       const r = el.getBoundingClientRect()
-      setRepostMenuFixed({ top: r.bottom + 4, left: r.left + r.width / 2 })
+      /** Anchor menu above the repost control so portaled menus do not run off the bottom of the viewport. */
+      setRepostMenuFixed({ top: r.top - 4, left: r.left + r.width / 2 })
     }
     update()
     const scrollRoot = repostMenuScrollRootRef?.current ?? null
@@ -133,7 +134,7 @@ export default function LoungePostInteractionBar({
         <div
           ref={repostMenuPortalRef}
           role="menu"
-          className={`fixed min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm ${repostMenuPortalClass}`}
+          className={`fixed min-w-[11.5rem] -translate-x-1/2 -translate-y-full rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm ${repostMenuPortalClass}`}
           style={{ top: repostMenuFixed.top, left: repostMenuFixed.left }}
         >
           {ui.plainRepostChildId ? (
@@ -236,7 +237,7 @@ export default function LoungePostInteractionBar({
           <div
             ref={repostMenuPortalRef}
             role="menu"
-            className={`fixed min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm ${repostMenuPortalClass}`}
+            className={`fixed min-w-[11.5rem] -translate-x-1/2 -translate-y-full rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm ${repostMenuPortalClass}`}
             style={{ top: repostMenuFixed.top, left: repostMenuFixed.left }}
           >
             <button
@@ -288,7 +289,7 @@ export default function LoungePostInteractionBar({
     !isFeed && repostMenuOpen && !ro ? (
       <div
         role="menu"
-        className="absolute left-1/2 top-full z-[30] mt-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
+        className="absolute bottom-full left-1/2 z-[30] mb-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
       >
         {ui.reposted ? (
           <>

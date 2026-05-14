@@ -41,6 +41,14 @@ const posterFrameMinHByVariant = {
   composer: 'min-h-[8rem]',
 }
 
+/** When CF thumbnail `<img>` errors: fixed aspect box so `w-fit` ancestors never collapse (matches slide caps per variant). */
+const posterFallbackAspectClassByVariant = {
+  feed: 'relative aspect-video w-[min(88vw,20rem)] max-w-full bg-black sm:w-[min(72vw,17rem)]',
+  embed: 'relative aspect-video w-[min(88vw,20rem)] max-w-full bg-black sm:w-[min(72vw,17rem)]',
+  detail: 'relative aspect-video w-full max-w-full bg-black',
+  composer: 'relative aspect-video w-[min(78vw,18rem)] max-w-full bg-black',
+}
+
 /** Feed/embed: attach HLS when a small fraction is visible (was 0.32 — felt slow). */
 const LAZY_ATTACH_IO_THRESHOLD = 0.04
 /** Prefetch into the scroll root so the winner can start loading before fully on screen. */
@@ -50,6 +58,8 @@ const LAZY_ATTACH_ROOT_MARGIN = '180px 0px 240px 0px'
 const STREAM_ATTACH_FADE_MS = 220
 /** Hold poster visible briefly so the first decoded frame is not a black blend with fading video. */
 const STREAM_POSTER_FADE_DELAY_MS = 72
+/** If decode signals never fire, still unstick poster→video crossfade (rare HLS/Safari quirks). Intentionally long so we do not beat real decode and flash black. */
+const STREAM_FADE_LAST_RESORT_MS = 6500
 
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
@@ -489,17 +499,37 @@ export default function LoungePostStreamVideo({
         videoRef.current.removeEventListener('timeupdate', onTime)
         reveal()
       }
+      /** Only fade poster away once the stream can paint pixels; bare timeout was hiding poster over a black HLS layer. */
+      const revealIfDecoded = () => {
+        if (cleaned) return
+        const el = videoRef.current
+        if (
+          el &&
+          (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
+            (el.readyState >= HTMLMediaElement.HAVE_METADATA && el.currentTime > 0))
+        ) {
+          reveal()
+        }
+      }
       if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
         reveal()
       } else {
         v.addEventListener('playing', onPlaying, { once: true })
         v.addEventListener('timeupdate', onTime)
       }
-      const tid = window.setTimeout(reveal, 800)
+      const tid = window.setTimeout(revealIfDecoded, 900)
+      const tid2 = window.setTimeout(revealIfDecoded, 2400)
+      /** Original ~800ms timer also prevented a stuck fade (poster forever, video opacity-0) when events never ran. */
+      const tidLastResort = window.setTimeout(() => {
+        if (cleaned) return
+        reveal()
+      }, STREAM_FADE_LAST_RESORT_MS)
       disarm = () => {
         v.removeEventListener('playing', onPlaying)
         v.removeEventListener('timeupdate', onTime)
         window.clearTimeout(tid)
+        window.clearTimeout(tid2)
+        window.clearTimeout(tidLastResort)
       }
     }
 
@@ -752,9 +782,9 @@ export default function LoungePostStreamVideo({
   const border = borderByVariant[variant] || borderByVariant.feed
   /** iOS: in-flow poster `<img>` sizes the frame; `<video>` stays absolute until fade. Use whenever we have a CF thumbnail URL (feed, embed, and detail — not only lazy feed). */
   const usePosterFrame = Boolean(id && poster)
-  /** Narrow border hug only when the in-flow poster sizes the frame; otherwise anchor to column width (prevents 0×0 collapse / aspect-video % loop). */
-  const hugPosterFrame = usePosterFrame && !posterLayoutFailed
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
+  const posterFallbackAspectClass =
+    posterFallbackAspectClassByVariant[variant] || posterFallbackAspectClassByVariant.feed
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle = attachStream
     ? {
@@ -764,17 +794,13 @@ export default function LoungePostStreamVideo({
     : undefined
 
   return (
-    <div
-      className={`${firstMarginTopClass} ${
-        hugPosterFrame ? 'inline-flex shrink-0' : 'w-full min-w-0'
-      } self-start ${slideMaxW}`}
-    >
+    <div className={`${firstMarginTopClass} inline-flex shrink-0 self-start ${slideMaxW}`}>
       <div
         ref={containerRef}
         role="button"
         tabIndex={0}
         data-lounge-video-zoom
-        className={`relative block ${hugPosterFrame ? 'w-fit' : 'w-full'} max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+        className={`relative block w-fit max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? stripSoundUnmuted
@@ -813,7 +839,7 @@ export default function LoungePostStreamVideo({
           >
             {usePosterFrame ? (
               posterLayoutFailed ? (
-                <div className="relative aspect-video w-full bg-black">
+                <div className={posterFallbackAspectClass}>
                   <video
                     ref={videoRef}
                     className={`pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain transition-opacity ease-out ${
@@ -843,10 +869,6 @@ export default function LoungePostStreamVideo({
                     style={streamFadeTransitionStyle}
                     aria-hidden
                     onError={() => setPosterLayoutFailed(true)}
-                    onLoad={(e) => {
-                      const el = e.currentTarget
-                      if (el.naturalWidth < 16 || el.naturalHeight < 16) setPosterLayoutFailed(true)
-                    }}
                   />
                   <video
                     ref={videoRef}

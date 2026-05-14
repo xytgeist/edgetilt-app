@@ -1,8 +1,47 @@
 # Agent and maintainer playbook
 
+---
+
+## CRITICAL — READ BEFORE EDITING ANY EXISTING CODE
+
+> **DO NOT UNDER ANY CIRCUMSTANCES EDIT (ALREADY WRITTEN) CODE BEFORE PROPERLY CHECKING THAT IT WILL NOT NEGATIVELY IMPACT OR BREAK ANY OTHER CODE IN THE PROJECT.**
+
+That means tracing **callers, imports, shared components, dual-purpose timers/events, and data contracts** (grep / read related files / `npm run build` as appropriate) **before** changing behavior—not assuming the edit is isolated.
+
+`AGENT_RULE_CROSS_IMPACT_CHECK` — if you are about to change non-trivial code, confirm you have done the above; this token is for searchability in-session.
+
+## CRITICAL — QUESTIONS VS IMPLEMENTATION
+
+> **IF RYAN ASKS A QUESTION ONLY, JUST ANSWER THE QUESTION — DO NOT CODE UNLESS HE DIRECTS YOU TO IMPLEMENT SOMETHING.**
+
+Clarify or analyze in prose; **do not make edits, refactors, or unsolicited patches** when **Ryan** only asked for an explanation or a decision (reading the repo to answer is fine).
+
+`AGENT_RULE_QUESTIONS_ANSWER_ONLY` — searchability token for this rule.
+
+## Architecture and design reasoning
+
+> **When thinking about architecture, features, or any design decision, always reason from a logical / first-principles perspective. Don't just think about the code — evaluate the overall concept, trade-offs, user experience, long-term maintainability, performance implications, and whether the solution actually makes sense in the real world.**
+
+`AGENT_RULE_FIRST_PRINCIPLES_DESIGN` — searchability token for this mindset.
+
+**Example (challenge assumptions before tactical fixes):** In discussion of **orphaned processes** and **pending uploads** in Cloudflare Stream, a **root cause** was that navigating to other app areas (Offers, Calculators, Guides, etc.) **unmounted the Lounge** tree, tearing down in-flight upload work tied to that UI.
+
+- **Weak reflex:** Immediately write **cleanup** code to destroy or paper over orphaned uploads from unmount side-effects.
+- **Strong reflex first:** Ask a **design question**: *Should the Lounge really unmount when someone is only switching between pages **inside our own app**?* From a **product-flow** perspective, a browser tab change is not the same as leaving the product; in-app navigation may still need **background continuity** (uploads, toasts, resume state).
+- **Conceptual direction (often better):** Prefer **keeping Lounge mounted** (e.g. hide instead of unmount), or **lifting upload/session logic** above the route-boundary so uploads continue while **people** explore other surfaces—then add targeted cleanup only where the **product** truly requires teardown (e.g. sign-out, explicit cancel).
+
+**Takeaway:** **Challenge the underlying assumption** (routing vs lifecycle vs ownership of long-running work), weigh **architecture and product implications**, then propose **tactical code**—not the reverse order by default.
+
+## People & naming
+
+- **Ryan** maintains this repo; he is who you are assisting. **Address him as Ryan** in natural language. Do **not** call him “the user,” “user,” or similar generic labels.
+- **Theo** is the human-style name Ryan uses for you (this assistant) in chat.
+
+---
+
 Future sessions have **no memory** of this chat. Treat the repo as the **source of truth**. Your job is to keep the right docs **as current as the code** whenever behavior, data contracts, or team workflow changes.
 
-**Humans:** copy the template in root **`WAKEUP`** into the first message of a new chat (after restart, etc.).
+**Ryan:** use root **`WAKEUP`** as the morning handoff — follow it to paste session context into the first message of a new chat (after restart, etc.).
 
 ## Canonical docs (read these first in a new session)
 
@@ -31,7 +70,7 @@ Do this **in the same change or PR** as the code (or immediately after), not “
 | Production promotion steps or post-deploy smoke | `docs/production-rollout-checklist.md` |
 | **DB capability** (e.g. moderator `UPDATE` including `pinned`) **without** matching UI | `docs/test-buildout-backlog.md`: open checkbox + how to test (seed SQL, SQL editor, future UI). Do not assume the next agent reads chat exports. |
 | Edge Function added/removed/renamed on test | `docs/test-buildout-backlog.md` Edge Functions section + prod checklist §4 if needed |
-| User / stakeholder **decision** that affects implementation | Distill into the single best canonical file above; **one sentence in Update log** if it closes or opens a tracked item |
+| Stakeholder **decision** that affects implementation | Distill into the single best canonical file above; **one sentence in Update log** if it closes or opens a tracked item |
 | **Freemium / subscriptions / entitlements** (tiers, paywalls, Stripe) | **`docs/access-tiers.md`** (matrix) + `docs/social-feed-roadmap.md` (Freemium section) + backlog + `docs/frontend-architecture.md` when client gating changes |
 | Only internal refactor, **zero** API/UX/contract change | Docs optional unless you moved paths (then `frontend-architecture.md`) |
 
@@ -52,7 +91,7 @@ Port these into the table above when they appear in conversation:
 ## Checklist before you finish a substantive task
 
 1. Did behavior or contracts change? If yes, is at least one canonical doc updated?
-2. Did test or prod **validation** happen? If the user confirmed, add a **sign-off** or **Update log** line in `docs/test-buildout-backlog.md`.
+2. Did test or prod **validation** happen? If **Ryan** (or whoever owns sign-off) confirmed, add a **sign-off** or **Update log** line in `docs/test-buildout-backlog.md`.
 3. Did you introduce a **testing limitation** (e.g. no mod UI yet)? Is there an **open** backlog item and smoke wording that says so?
 
 ## Quick technical anchors (avoid stale mental models)

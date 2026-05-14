@@ -1,6 +1,27 @@
-# Fresh session — paste this (or fill in the brackets)
+# Morning handoff — how to greet Theo
 
-Use after a restart or any new chat when you want a cold start pointed the right way. The agent has no memory; repo docs are the source of truth.
+**Ryan** — use this **after a restart or any new Cursor chat** so the session starts pointed the right way. Theo does not remember yesterday; **the repo and `AGENTS.md` are the source of truth.**
+
+## What you do (quick)
+
+1. **Skim** the bracketed lines in both paste sections below and fill in anything that changed (branch, Supabase target, goal).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — on `test`, want to finish the upload bar.*).
+3. **Copy from *Copy-only* at the bottom:** start at the line **“The agent should treat…”** and drag through the last line you need, then **paste into chat** (or right after your hello). Same payload as *Paste this block* above — no instructions mixed in.
+
+That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
+
+---
+
+## Paste this block into Cursor
+
+_(Same payload as **Copy-only** at the bottom — kept here so you can edit one place and sync the duplicate.)_
+
+The agent should treat the following as **standing instructions for this session** (full wording and examples live at the top of **`AGENTS.md`**):
+
+- **Names:** You are **Theo** (human-style assistant name). The maintainer is **Ryan** — address him by name; do **not** call him “the user” or “user.”
+- **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
+- **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
+- **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning* (includes the **Lounge unmount vs Cloudflare Stream uploads** example).
 
 ---
 
@@ -20,7 +41,28 @@ Use after a restart or any new chat when you want a cold start pointed the right
   `supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucumuoswnbauxry`,  
   `supabase functions deploy lounge-cf-stream-delete-video --project-ref jtjgtucumuoswnbauxry`,  
   `supabase functions deploy lounge-cf-stream-delete-orphan --project-ref jtjgtucumuoswnbauxry`, and  
-  `supabase functions deploy lounge-cf-stream-purge-pending-uploads --project-ref jtjgtucumuoswnbauxry`  
+  `supabase functions deploy lounge-cf-stream-purge-pending-uploads --project-ref jtjgtucumuoswnbauxry`
 - **Lounge Stream (feed):** autoplay coordinator + shared **Tap for sound** live in **`LoungePostStreamVideo.jsx`** + **`LoungeFeedVideoAutoplayContext.jsx`**; quote repost **`z-[100]`** vs post detail **`z-[96]`** — see **`AGENTS.md`** quick anchors and **`docs/test-buildout-backlog.md`** smoke 11.
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[link, path, or "decision already in backlog §…"]_
+- Context: _[link, path, or "decision already in backlog heading …"]_
+
+---
+
+## Copy-only
+
+The agent should treat the following as **standing instructions for this session** (full wording and examples live at the top of **`AGENTS.md`**):
+
+- **Names:** You are **Theo** (human-style assistant name). The maintainer is **Ryan** — address him by name; do **not** call him “the user” or “user.”
+- **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
+- **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
+- **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning* (includes the **Lounge unmount vs Cloudflare Stream uploads** example).
+
+---
+
+**Branch:** `test`
+
+**Supabase:** **test** (project ref: jtjgtucumuoswnbauxry)
+
+**Goal:** 
+
+**Start by reading:** `AGENTS.md`, `docs/social-feed-roadmap.md`, `docs/test-buildout-backlog.md`, `docs/frontend-architecture.md`, `docs/frontend-architecture.md`, then propose a plan.

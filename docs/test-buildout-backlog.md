@@ -232,7 +232,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-18: **Lounge trim / large source:** `loungeVideoFfmpegTrim.js` — for inputs **≥ 4 MiB**, mount source via ffmpeg **WORKERFS** (`blobs`) instead of `writeFile`+`fetchFile` into MEMFS (avoids tab crash / OOM on long clips when pressing **Use this clip**).
+- 2026-05-18: **Lounge trim / large source:** `loungeVideoFfmpegTrim.js` — for inputs **≥ 4 MiB**, mount source via ffmpeg **WORKERFS** (`blobs`) instead of `writeFile`+`fetchFile` into MEMFS (avoids tab crash / OOM on long clips when pressing **Use this clip**). **Ryan confirmed** long-source trim no longer crashes on **test** after deploy.
 - 2026-05-18: **Planned:** **Up to two Stream clips per post** (ordered uids; migration from single `stream_video_uid`; composer/quote/feed/delete/autoplay) — `[ ]` under *Planned (Lounge media)*; **Phase D** note in **`docs/social-feed-roadmap.md`**.
 - 2026-05-18: **Deferred:** **Stream inside image carousel** (upload-order mixed strip + lightbox + composer/quote + lifecycle) — `[-]` row under *Deferred / someday* in this file; short **Phase D** note in **`docs/social-feed-roadmap.md`** (not scheduled).
 - 2026-05-18: **Lounge badge tips:** `LoungeBadgeHoverTip.jsx` — dismiss open tip on **document `pointerdown` (capture)** outside anchor/tip and on **Escape** (avoids stuck tooltips when `mouseleave` does not run). **Smoke §12:** Ryan **PASSED** main composer, quote video/media matrix, Cancel-while-prep on **test**; backlog §12 checkboxes + sign-off; note on **why Stream video is exclusive of GIF/images** (schema + feed tile + upload/delete paths).

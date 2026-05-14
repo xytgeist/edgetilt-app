@@ -230,7 +230,9 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 ## Messaging / chat (future — outside A–L phase order)
 
-**Not started.** When picked up: ship with **TLS in transit** + **managed encryption at rest** first; plan a **second phase** for **app-level ciphertext storage** (honest wording — **not** end-to-end unless clients alone hold keys). **Prep from day one:** central message API seam + schema fields for `content_encoding` / key metadata so ciphertext is an upgrade, not a rewrite. **Details, checkboxes, and rough timelines:** `docs/test-buildout-backlog.md` → **Planned (messaging)**.
+**MVP wiring (DMs + topic channels + dock UI)** lives in **`supabase/chat_phase1.sql`**, Edge **`lounge-chat`**, **`LoungeChatPanel.jsx`**, and backlog **Planned (messaging)** / smoke **§13** — apply SQL + deploy Edge on **test** before treating chat as live.
+
+When extending beyond the MVP slice: ship with **TLS in transit** + **managed encryption at rest** first; plan a **second phase** for **app-level ciphertext storage** (honest wording — **not** end-to-end unless clients alone hold keys). **Prep from day one:** central message API seam + schema fields for `content_encoding` / key metadata so ciphertext is an upgrade, not a rewrite. **Details, checkboxes, and rough timelines:** `docs/test-buildout-backlog.md` → **Planned (messaging)**.
 
 ---
 

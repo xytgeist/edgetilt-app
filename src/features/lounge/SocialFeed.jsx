@@ -164,6 +164,9 @@ export default function SocialFeed({
   hydrateCommunityPosts = async (rows) => rows ?? [],
   /** Optional shell UI (e.g. hamburger) rendered on the right side of the fixed title bar. */
   titleBarNavSlot = null,
+  /** Shell subscription + staff (topic channels); merged in-feed with profile role where useful. */
+  hasActiveSubscription = false,
+  isStaff = false,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -317,6 +320,8 @@ export default function SocialFeed({
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
   const [loungeDockPanel, setLoungeDockPanel] = useState(null)
+  /** When set, Chat panel opens a DM with this user (cleared after `open_dm` runs). */
+  const [chatDockInitialPeerUserId, setChatDockInitialPeerUserId] = useState(null)
   const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
   const [loungePostDetail, setLoungePostDetail] = useState(null)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
@@ -379,6 +384,8 @@ export default function SocialFeed({
     const r = composerUserProfile?.role
     return r === 'moderator' || r === 'admin'
   }, [composerUserProfile?.role])
+
+  const chatDockIsStaff = Boolean(isStaff || loungeViewerIsStaff)
 
   const loungeDetailIsOwn = useMemo(
     () => Boolean(composerUserId && loungePostDetail?.user_id && loungePostDetail.user_id === composerUserId),
@@ -2187,6 +2194,7 @@ export default function SocialFeed({
 
   const onLoungeDockHome = useCallback(() => {
     setLoungeDockPanel(null)
+    setChatDockInitialPeerUserId(null)
     if (profileModalOpen) closeProfileModalRef.current()
     if (loungePostDetail) closeLoungePostDetail()
     scrollLoungeFeedToTop()
@@ -2201,8 +2209,41 @@ export default function SocialFeed({
     setLoungeDockPanel((p) => (p === 'notifications' ? null : 'notifications'))
   }, [])
   const onLoungeDockChat = useCallback(() => {
-    setLoungeDockPanel((p) => (p === 'chat' ? null : 'chat'))
+    setLoungeDockPanel((p) => {
+      if (p === 'chat') {
+        setChatDockInitialPeerUserId(null)
+        return null
+      }
+      return 'chat'
+    })
   }, [])
+
+  const clearChatDockInitialPeer = useCallback(() => setChatDockInitialPeerUserId(null), [])
+
+  const viewerCanUseLoungeChat = useMemo(
+    () =>
+      Boolean(
+        composerUserId &&
+          !loungeReadOnly &&
+          !loungeProfileNeedsGate(composerUserProfile, composerUserId)
+      ),
+    [composerUserId, loungeReadOnly, composerUserProfile]
+  )
+
+  const openChatWithUserFromProfile = useCallback(
+    (peerUserId) => {
+      if (!peerUserId || peerUserId === composerUserId) return
+      if (loungeReadOnly) {
+        requireLoungeAuth()
+        return
+      }
+      if (openProfileGateIfNeeded()) return
+      setChatDockInitialPeerUserId(peerUserId)
+      closeProfileModalRef.current()
+      setLoungeDockPanel('chat')
+    },
+    [composerUserId, loungeReadOnly, openProfileGateIfNeeded, requireLoungeAuth]
+  )
 
   const onLoungeDockOpenPostFromSearch = useCallback(
     (post) => {
@@ -2214,7 +2255,10 @@ export default function SocialFeed({
   )
 
   useEffect(() => {
-    if (loungePostDetail && loungeDockPanel) setLoungeDockPanel(null)
+    if (loungePostDetail && loungeDockPanel) {
+      setChatDockInitialPeerUserId(null)
+      setLoungeDockPanel(null)
+    }
   }, [loungePostDetail, loungeDockPanel])
 
   useEffect(() => {
@@ -5720,7 +5764,10 @@ export default function SocialFeed({
         <LoungeDockSlidePanels
           key={loungeDockPanel}
           openPanel={loungeDockPanel}
-          onClose={() => setLoungeDockPanel(null)}
+          onClose={() => {
+            setChatDockInitialPeerUserId(null)
+            setLoungeDockPanel(null)
+          }}
           communityPosts={communityPosts}
           viewportTitleTopPx={loungeFeedViewportTopPx}
           titleBarNavSlot={titleBarNavSlot}
@@ -5733,6 +5780,12 @@ export default function SocialFeed({
           activePanel={loungeDockPanel}
           postCardProps={profilePostCardProps}
           onOpenPostFromSearch={onLoungeDockOpenPostFromSearch}
+          chatSupabaseClient={supabaseClient}
+          chatViewerUserId={composerUserId || ''}
+          chatHasActiveSubscription={hasActiveSubscription}
+          chatIsStaff={chatDockIsStaff}
+          chatInitialPeerUserId={chatDockInitialPeerUserId}
+          onChatInitialPeerCleared={clearChatDockInitialPeer}
         />
       ) : null}
 
@@ -5760,6 +5813,8 @@ export default function SocialFeed({
             onNotifications: onLoungeDockNotifications,
             onChat: onLoungeDockChat,
           }}
+          onOpenChatWithUser={openChatWithUserFromProfile}
+          viewerCanUseLoungeChat={viewerCanUseLoungeChat}
         />
       ) : null}
 

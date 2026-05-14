@@ -2,3 +2,7 @@
 # Purge is invoked from pg_net with sb_publishable/sb_secret OR legacy JWT — see migration + purge README.
 [functions.lounge-cf-stream-purge-pending-uploads]
 verify_jwt = false
+
+# Lounge chat: JWT required (default); explicit for clarity alongside purge exception above.
+[functions.lounge-chat]
+verify_jwt = true

@@ -491,6 +491,8 @@ export default function AppShell({
             loadMoreCommunityFeed={loadMoreCommunityFeed}
             hydrateCommunityPosts={hydrateCommunityPosts}
             titleBarNavSlot={renderTitleBarNavSlot()}
+            hasActiveSubscription={hasActiveSubscription}
+            isStaff={isStaff}
           />
         </div>
       </Suspense>

@@ -4,6 +4,7 @@ import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
 import { LoungeFeedVideoAutoplayProvider } from '../features/lounge/LoungeFeedVideoAutoplayContext.jsx'
 import LoungeDockFooterBar from './LoungeDockFooterBar.jsx'
+import LoungeChatPanel from '../features/lounge/LoungeChatPanel.jsx'
 import { dockChromeHeightFromTitleBarPx } from '../utils/loungeDockChrome.js'
 import {
   loungeTitleRevealAfterScrollStep,
@@ -45,6 +46,12 @@ export default function LoungeDockSlidePanels({
   activePanel = null,
   /** Open a post from search (full row); closes the panel and opens post detail like the main feed. */
   onOpenPostFromSearch,
+  chatSupabaseClient = null,
+  chatViewerUserId = '',
+  chatHasActiveSubscription = false,
+  chatIsStaff = false,
+  chatInitialPeerUserId = null,
+  onChatInitialPeerCleared,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -346,7 +353,11 @@ export default function LoungeDockSlidePanels({
 
       <div
         ref={panelScrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y"
+        className={
+          openPanel === 'chat'
+            ? 'min-h-0 flex flex-1 flex-col overflow-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y'
+            : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y'
+        }
         style={{
           paddingTop: scrollPaddingTopPx,
           paddingBottom: scrollBottomInsetPx,
@@ -400,12 +411,23 @@ export default function LoungeDockSlidePanels({
               </LoungeFeedVideoAutoplayProvider>
             )}
           </div>
+        ) : openPanel === 'chat' ? (
+          <div className="flex min-h-0 flex-1 flex-col px-0 pt-2">
+            <LoungeChatPanel
+              supabaseClient={chatSupabaseClient}
+              viewerUserId={chatViewerUserId}
+              hasActiveSubscription={chatHasActiveSubscription}
+              isStaff={chatIsStaff}
+              initialPeerUserId={chatInitialPeerUserId}
+              onClearInitialPeer={onChatInitialPeerCleared}
+            />
+          </div>
         ) : (
           <div className="px-3 py-4">
             <p className="text-[15px] leading-relaxed text-zinc-400">
               {openPanel === 'notifications'
                 ? 'Notification center is coming soon. Push and offer alerts continue to work from their tabs.'
-                : 'Direct messages and group chat are on the roadmap — TLS + encrypted storage first, then richer chat.'}
+                : 'Chat panel is unavailable.'}
             </p>
           </div>
         )}

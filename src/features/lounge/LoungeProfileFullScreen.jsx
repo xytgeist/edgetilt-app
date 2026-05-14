@@ -58,6 +58,10 @@ export default function LoungeProfileFullScreen({
   hydratePosts,
   /** Optional Lounge shell dock (Home / Search / Alerts / Chat) — same actions as main feed dock. */
   shellDock = null,
+  /** Open DM with this profile user (Lounge dock Chat). */
+  onOpenChatWithUser = null,
+  /** Viewer has handle + display and can call chat Edge actions. */
+  viewerCanUseLoungeChat = false,
 }) {
   const [tab, setTab] = useState('posts')
   const [interactionPosts, setInteractionPosts] = useState([])
@@ -891,6 +895,25 @@ export default function LoungeProfileFullScreen({
                   >
                     {isFollowing ? 'Following' : 'Follow'}
                   </button>
+                  {onOpenChatWithUser && profileUserId ? (
+                    <button
+                      type="button"
+                      disabled={socialBusy || !viewerCanUseLoungeChat}
+                      onClick={() => onOpenChatWithUser(profileUserId)}
+                      title={viewerCanUseLoungeChat ? 'Message' : 'Complete your profile to message'}
+                      aria-label={viewerCanUseLoungeChat ? 'Message' : 'Complete your profile to message'}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 text-zinc-200 touch-manipulation hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <path
+                          d="M4 5.5h12a1.5 1.5 0 011.5 1.5v6A1.5 1.5 0 0116 14.5H8.5l-3.2 2.4a.6.6 0 01-.95-.48V14.5H4A1.5 1.5 0 012.5 13V7A1.5 1.5 0 014 5.5z"
+                          stroke="currentColor"
+                          strokeWidth="1.35"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={socialBusy}

@@ -65,6 +65,13 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Cross-link:** high-level sequencing note in **`docs/social-feed-roadmap.md`** (*Messaging / chat (future)*). Roadmap phases **A–L** unchanged; messaging is **out of band** until picked up.
 
+**Chat MVP (DMs, ≤10 member groups, subscriber topic rooms — code in repo):**
+
+- [ ] **SQL on test:** `supabase/chat_phase1.sql` — tables, member read RLS, seeded topic slugs (crypto, stonks, investing, poker, sports, `ap-slots`, `ap-tables`). Production replay: `docs/production-rollout-checklist.md` when promoted.
+- [ ] **Edge:** deploy `supabase/functions/lounge-chat` (`open_dm`, `join_channel`, `create_group`, `send_message`). `supabase/config.toml` sets **`verify_jwt = true`** for this function.
+- [ ] **Client:** `LoungeChatPanel.jsx` in **`LoungeDockSlidePanels.jsx`**; profile **Message** control in **`LoungeProfileFullScreen.jsx`**; **`SocialFeed.jsx`** + **`AppShell.jsx`** pass `hasActiveSubscription` / `isStaff` and wire dock close → clear pending DM peer.
+- [ ] **Realtime (optional):** if new messages do not appear live, add **`chat_messages`** to the **`supabase_realtime`** publication on the project (see `supabase/functions/lounge-chat/README.md`).
+
 ---
 
 ## Roadmap status snapshot
@@ -243,6 +250,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
         - [x] **Quote + media rules:** attach **GIF** then video (expect GIF cleared / rules as designed); attach **images** then video (expect images cleared). *(2026-05-18 **PASSED**.)* — **Why not mix?** One **visual** attachment model per row today: **`stream_video_uid`** (Cloudflare Stream) **or** still/GIF/carousel URLs (`image_urls` / `media_url` / `gif_url`), not both — see `supabase/lounge_feed_post_stream_video.sql` (“exclusive of `image_urls` / GIF in app logic”), feed tile (`LoungePostStreamVideo` vs images), upload/delete (Stream Edge vs Storage), and composer validation (`Remove the GIF before posting a video`). Image **+** external GIF in one post remains supported; **Stream video +** GIF/images would need product + schema + playback work to do safely.
         - [x] **Quote + upload bar Cancel** while video is **preparing** (quote prep cancels; quote UI still usable; no stuck modal). *(2026-05-18 **PASSED**.)*
         - [x] *(Optional)* **Staff crown / badge tip:** hover or tap **`LoungeBadgeHoverTip`** — reads/positions OK; dismiss on outside tap / **Escape** (`LoungeBadgeHoverTip.jsx`, 2026-05-18).
+    13. **Lounge chat:** after **`chat_phase1.sql`** + Edge **`lounge-chat`** on test — dock **Chat** → Inbox / Topics; subscriber (or staff) can **Join** a topic; two completed profiles exchange a **DM** (profile **Message** beside Follow opens dock); send message; optional Realtime check (messages appear without refresh).
   - **Sign-off:** Manual steps above passed on **test** (operator confirmation after latest `test` deploy).
   - **Sign-off (composer + quote media + badge tips, 2026-05-18, Ryan):** Smoke **§12** items **PASSED** on **test**; badge tip stickiness addressed with document **pointerdown** + **Escape** dismiss on open tip.
   - **Sign-off (Stream poster + dims, 2026-05-17, Ryan):** Extended checklist (session items **2–13**): all **PASSED** on **test**; SQL **`lounge_feed_post_stream_video.sql`** (including **`stream_poster_url`**, **`stream_video_width`**, **`stream_video_height`**) applied on the test Supabase project.
@@ -256,6 +264,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-13: **Lounge chat MVP (wiring):** `LoungeChatPanel.jsx` + `loungeChatApi.js` / `loungeChatConstants.js`; **`LoungeDockSlidePanels.jsx`** embeds chat (flex scroll host for `h-full` panel); **`SocialFeed.jsx`** dock props + `chatDockInitialPeerUserId` / **`openChatWithUserFromProfile`**; **`AppShell.jsx`** passes **`hasActiveSubscription`** / **`isStaff`**; **`LoungeProfileFullScreen.jsx`** Message beside Follow. SQL **`supabase/chat_phase1.sql`** + Edge **`lounge-chat`** + test smoke **§13** documented in **`docs/test-buildout-backlog.md`** (apply SQL + deploy before validation).
 - 2026-05-13: **Lounge posts:** removed hardcoded **`game_title: 'Lounge'`** from **`loungePostSubmitJob.js`** (new posts use empty title/slug until AP Guides picker is wired). Existing DB rows unchanged.
 - 2026-05-13: **Shell column width (edge-to-edge with Lounge):** `AppShell` dashboard + team placeholders **`max-w-2xl`** + **`px-3`**; **`OffersCalendar`**, **`BankrollTracker`**, **`LocalIntel`**, **`CalculatorsTab`** home + calculator game roots align to the same column; **`SocialFeed`** quote sheet + upload bar **`max-w-2xl`**. See **`docs/frontend-architecture.md`** (`shell/` row).
 - 2026-05-13: **EDGE title bar + scroll-hide on more tabs:** **`ScrollLinkedEdgeTitleBarShell`** + **`titleBarNavSlot`** on **`BankrollTracker`**, **`LocalIntel`** (all screens), **`AppShell`** dashboard + team, and **`OffersCalendar`** (replaces in-flow logo row; **`fullWidth`** for week landscape). Nested event-list / week-lane **`overflow-y-auto`** removed so the shell scroller drives title reveal. Shell: optional **`fullWidth`**. **`docs/frontend-architecture.md`** (`shell/`, `offers/` rows).

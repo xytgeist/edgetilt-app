@@ -133,7 +133,10 @@ export default function CalculatorsTab({
 }) {
   if (!activeCalculator) {
     return (
-      <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot}>
+      <ScrollLinkedEdgeTitleBarShell
+        titleBarNavSlot={titleBarNavSlot}
+        contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+      >
         <CalculatorsHome
           onSelectCalculator={setActiveCalculator}
           browseMode={browseMode}
@@ -148,28 +151,31 @@ export default function CalculatorsTab({
   return (
     <Suspense
       fallback={
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot}>
+        <ScrollLinkedEdgeTitleBarShell
+          titleBarNavSlot={titleBarNavSlot}
+          contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        >
           <CalculatorLoadingFallback />
         </ScrollLinkedEdgeTitleBarShell>
       }
     >
       {activeCalculator === 'phoenix' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
           <PhoenixLink onBack={() => setActiveCalculator(null)} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'buffalo' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
           <BuffaloLink onBack={() => setActiveCalculator(null)} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'stackup' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
           <StackUpPays onBack={() => setActiveCalculator(null)} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'mhb' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
           <MHBCalculator onBack={() => setActiveCalculator(null)} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}

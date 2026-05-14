@@ -1487,7 +1487,7 @@ export default function GuidesScreen({
 
   return (
     <>
-      <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+      <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
         <h1 className="sr-only">AP Guides</h1>
         <div className="mb-5 mt-1 text-sm text-zinc-400">+EV quick read · expand for full playbook</div>
 

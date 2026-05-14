@@ -256,6 +256,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-13: **Lounge dock slide panels (left-thumb dismiss):** **`LoungeDockSlidePanels.jsx`** — swipe to close works **off-screen left or right** (`tx` clamp `±panelW`); release threshold either direction; **`VERTICAL_BEATS_HORIZONTAL`** 1.52; scrollable areas **`touch-pan-y`** only (was `pan-x pan-y`). Close button **`onClick`** calls **`dismissWithAnimation('left')`** explicitly.
 - 2026-05-13: **Planned (messaging):** Phased timeline — **Phase 1:** TLS + **provider at rest** (document; HTTPS-only discipline). **Phase 2:** **app-level ciphertext storage** (keys separate from naive DB dump; not E2EE). **Smart prep:** single message read/write API seam + nullable `content_encoding` / key metadata + avoid plaintext-only FTS on body until strategy set — see *Planned (messaging)* in this file; roadmap *Messaging / chat (future)*.
 - 2026-05-13: **Backlog (medium priority):** *Planned (partner / server API)* — trusted partner **Lounge auto-post** via HTTPS + integration secret; server-side insert as a **dedicated** feed user; idempotency + rate limits (see section for sketch).
 - 2026-05-13: **Lounge OG preview text:** **`compoundOgTitle`** = **`byline · caption · stats`** in **`og:title`**. **WhatsApp** showed duplicate blocks when **`og:description`** repeated the title — description is now a short CTA (**`Open this post in Edge.`**). iMessage still reads mainly **`og:title`**.

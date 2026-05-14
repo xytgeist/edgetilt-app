@@ -6,15 +6,16 @@ const OPEN_MS = 300
 const DISMISS_FRACTION = 0.22
 const DISMISS_MIN_PX = 72
 const COMMIT_PX = 10
-/** Vertical must clearly beat horizontal to steal the gesture (left-thumb arcs skew slightly vertical). */
-const VERTICAL_BEATS_HORIZONTAL = 1.34
+/** Vertical must clearly beat horizontal to steal the gesture (thumb arcs skew slightly vertical). */
+const VERTICAL_BEATS_HORIZONTAL = 1.52
 
 /**
  * Left-sliding dock panels for Lounge (search / notifications / chat).
- * Swipe horizontally (finger left) to dismiss from anywhere on the panel, including search result rows;
- * vertical scroll still wins when movement is clearly vertical after a short direction lock (vertical must
- * exceed horizontal by a small factor so left-thumb dismiss arcs are not misread as scroll).
- * Taps on rows still work because pointer capture starts only after horizontal intent is detected.
+ * Swipe horizontally to dismiss: finger **left** (panel slides off to the left) **or finger right** (panel
+ * slides off to the right — natural for a left-thumb “push away” toward the feed). Works from anywhere on
+ * the panel, including search result rows. Vertical scroll still wins when movement is clearly vertical
+ * after a short direction lock. Taps on rows still work because pointer capture starts only after horizontal
+ * intent is detected. Scroll regions use `touch-pan-y` only so the browser does not compete for horizontal pans.
  * `bottomReservePx` clears the fixed dock footer height + a little gap.
  */
 export default function LoungeDockSlidePanels({
@@ -101,13 +102,14 @@ export default function LoungeDockSlidePanels({
     return () => ro.disconnect()
   }, [])
 
-  const dismissWithAnimation = useCallback(() => {
+  const dismissWithAnimation = useCallback((direction = 'left') => {
     const w = Math.round(panelRef.current?.getBoundingClientRect().width || panelW)
     const wc = Math.max(w, 200)
     setPanelW(wc)
     setTxTransition(true)
-    setTx(-wc)
-    dragTxRef.current = -wc
+    const endTx = direction === 'right' ? wc : -wc
+    setTx(endTx)
+    dragTxRef.current = endTx
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current)
     closeTimerRef.current = window.setTimeout(() => {
       closeTimerRef.current = 0
@@ -163,7 +165,8 @@ export default function LoungeDockSlidePanels({
       if (!horizontalRef.current) return
       e.preventDefault()
       const w = Math.max(panelW, 200)
-      const next = Math.min(0, Math.max(-w, startTxRef.current + dx))
+      /** Allow sliding off to the left (negative) or right (positive) so left- and right-thumb dismiss both work. */
+      const next = Math.max(-w, Math.min(w, startTxRef.current + dx))
       dragTxRef.current = next
       setTx(next)
     },
@@ -190,9 +193,13 @@ export default function LoungeDockSlidePanels({
       if (!wasHorizontal) return
       const cur = dragTxRef.current
       const w = Math.max(panelW, 200)
-      const threshold = -Math.max(w * DISMISS_FRACTION, DISMISS_MIN_PX)
-      if (cur <= threshold) {
-        dismissWithAnimation()
+      const travel = Math.max(w * DISMISS_FRACTION, DISMISS_MIN_PX)
+      const thresholdNeg = -travel
+      const thresholdPos = travel
+      if (cur <= thresholdNeg) {
+        dismissWithAnimation('left')
+      } else if (cur >= thresholdPos) {
+        dismissWithAnimation('right')
       } else {
         setTx(0)
         dragTxRef.current = 0
@@ -236,7 +243,7 @@ export default function LoungeDockSlidePanels({
           </h2>
           <button
             type="button"
-            onClick={dismissWithAnimation}
+            onClick={() => dismissWithAnimation('left')}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
             aria-label="Close"
           >
@@ -254,7 +261,7 @@ export default function LoungeDockSlidePanels({
               autoComplete="off"
               className="mb-3 w-full rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-cyan-500/45 focus:ring-1 focus:ring-cyan-500/25"
             />
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pb-2 touch-pan-x touch-pan-y">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] pb-2 touch-pan-y">
               {filtered.length === 0 ? (
                 <p className="text-[14px] leading-relaxed text-zinc-500">No posts match.</p>
               ) : (
@@ -282,7 +289,7 @@ export default function LoungeDockSlidePanels({
             </div>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 [-webkit-overflow-scrolling:touch] touch-pan-x touch-pan-y">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 [-webkit-overflow-scrolling:touch] touch-pan-y">
             <p className="text-[15px] leading-relaxed text-zinc-400">
               {openPanel === 'notifications'
                 ? 'Notification center is coming soon. Push and offer alerts continue to work from their tabs.'

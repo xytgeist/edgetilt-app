@@ -113,7 +113,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       report(
         0.42,
         'Preparing upload',
-        `Cloudflare attempt ${attempt} of ${COMPOSER_VIDEO_PREP_MAX_ATTEMPTS}`,
+        `Ether attempt ${attempt} of ${COMPOSER_VIDEO_PREP_MAX_ATTEMPTS}`,
         attempt,
       )
 
@@ -125,7 +125,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
           pendingUid = id
         },
         onProgress: (r) =>
-          report(0.44 + r * 0.46, 'Uploading to Cloudflare', `${Math.round(r * 100)}%`, attempt),
+          report(0.44 + r * 0.46, 'Uploading to Ether', `${Math.round(r * 100)}%`, attempt),
       })
       pendingUid = uid
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -154,11 +154,10 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         await deleteCfStreamOrphanAsset(supabaseClient, pendingUid)
       }
       lastErr = e instanceof Error ? e : new Error(String(e))
-      const tail = lastErr.message ? `${lastErr.message} — ` : ''
       report(
         0.42,
         'Retrying',
-        `${tail}will retry (${attempt}/${COMPOSER_VIDEO_PREP_MAX_ATTEMPTS})`,
+        'Ether goblins ate your shit...trying again...',
         attempt,
       )
       if (attempt < COMPOSER_VIDEO_PREP_MAX_ATTEMPTS) {

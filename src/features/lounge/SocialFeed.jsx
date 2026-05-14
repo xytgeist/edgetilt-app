@@ -67,6 +67,9 @@ import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 const LOUNGE_MAX_PINNED_ALERT =
   'The maximum number of pinned posts is two. Unpin a post to pin this one.'
 
+/** Shown in upload bar `detail` instead of raw telemetry when `onUploadDiagnostic` fires. */
+const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying again...'
+
 const LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS = 30 * 60 * 1000
 
 function isLoungePostWithinAuthorEditWindow(createdAt) {
@@ -884,9 +887,11 @@ export default function SocialFeed({
             },
             onUploadDiagnostic: (detail) => {
               if (composerVideoPrepJobIdRef.current !== jobId) return
+              const d = String(detail || '').trim()
+              if (!d) return
               setLoungePostUploadBar((bar) =>
                 bar?.mode === 'mediaPrep' && bar.prepJobId === jobId
-                  ? { ...bar, detail: String(detail).slice(0, 280) }
+                  ? { ...bar, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL }
                   : bar,
               )
             },
@@ -1054,9 +1059,11 @@ export default function SocialFeed({
             },
             onUploadDiagnostic: (detail) => {
               if (quoteRepostVideoPrepJobIdRef.current !== jobId) return
+              const d = String(detail || '').trim()
+              if (!d) return
               setLoungePostUploadBar((bar) =>
                 bar?.mode === 'mediaPrep' && bar.prepJobId === jobId
-                  ? { ...bar, detail: String(detail).slice(0, 280) }
+                  ? { ...bar, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL }
                   : bar,
               )
             },
@@ -3144,8 +3151,10 @@ export default function SocialFeed({
 
           const onPrepUploadDiagnostic = (detail) => {
             if (ac.signal.aborted) return
+            const d = String(detail || '').trim()
+            if (!d) return
             setLoungePostUploadBar((prev) =>
-              prev ? { ...prev, detail: String(detail).slice(0, 280) } : prev,
+              prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
             )
           }
 
@@ -3238,8 +3247,10 @@ export default function SocialFeed({
           rateLimitMessage,
           onUploadDiagnostic: (detail) => {
             if (ac.signal.aborted) return
+            const d = String(detail || '').trim()
+            if (!d) return
             setLoungePostUploadBar((prev) =>
-              prev ? { ...prev, detail: String(detail).slice(0, 280) } : prev,
+              prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
             )
           },
         })
@@ -3846,11 +3857,10 @@ export default function SocialFeed({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed left-1/2 z-[102] w-[min(calc(100vw-1.5rem),42rem)] -translate-x-1/2 rounded-xl border border-emerald-500/45 bg-emerald-950/92 px-3 py-2.5 text-center text-[14px] font-medium leading-snug text-emerald-100 shadow-[0_8px_30px_rgba(0,0,0,0.35)] backdrop-blur-md"
+          className="pointer-events-none fixed left-1/2 z-[102] w-[min(calc(100vw-1.5rem),42rem)] -translate-x-1/2 rounded-xl border border-cyan-500/50 bg-zinc-950/92 px-3 py-2.5 text-center text-[14px] font-medium leading-snug text-cyan-100 shadow-[0_8px_30px_rgba(0,0,0,0.35)] backdrop-blur-md"
           style={{ top: 'max(0.5rem, env(safe-area-inset-top))' }}
         >
-          Sending your quote… It will show on the feed when upload finishes. You&apos;ll have 30 minutes to edit after it
-          posts.
+          Sending your quote... You&apos;ll have 30 minutes to edit after it posts.
         </div>
       ) : null}
       {/* Fixed title bar outside the scroll container so the nav dropdown stays clickable (not under overflow hit-testing). */}
@@ -6164,7 +6174,8 @@ export default function SocialFeed({
                   className={`mt-0.5 text-[11px] leading-snug break-words ${
                     loungePostUploadBar.mode === 'mediaPrep' &&
                     (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
-                      String(loungePostUploadBar.detail || '').toLowerCase().includes('retry'))
+                      String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
+                      String(loungePostUploadBar.detail || '').includes('goblins'))
                       ? 'text-amber-200/90'
                       : 'text-zinc-400'
                   }`}

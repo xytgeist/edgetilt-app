@@ -107,8 +107,8 @@ const FALLBACK_SAFE_BOTTOM_PX = 40
  * `reveal` 1 = fully visible, 0 = slid off downward (paired with scroll-linked title hide).
  * Icon-only controls (no chrome around glyphs); active slot uses cyan icon color.
  *
- * @param {number} [matchTitleBarHeightPx=0] — When >0 (viewport dock), the icon band uses ~⅔ of the measured
- *   title bar height (min 36px); safe-area padding stays inside the same full-bleed frosted bar.
+ * @param {number} [matchTitleBarHeightPx=0] — When >0 (viewport dock), the icon band height comes from
+ *   `dockChromeHeightFromTitleBarPx` (see `src/utils/loungeDockChrome.js`); safe-area padding stays inside the same full-bleed frosted bar.
  * @param {'viewport' | 'sheet'} [layout='viewport'] — `sheet` pins to a full-screen sheet bottom (e.g. profile).
  */
 export default function LoungeDockFooterBar({
@@ -162,17 +162,18 @@ export default function LoungeDockFooterBar({
     </button>
   )
 
+  const dockIconClass = 'h-8 w-8 shrink-0 translate-y-1 opacity-95'
   const dockIcons = (
     <>
-      {dockBtn(false, onHome, 'Home', <IconHome className="h-7 w-7 shrink-0 opacity-95" />)}
-      {dockBtn(activePanel === 'search', onSearch, 'Search', <IconSearch className="h-7 w-7 shrink-0 opacity-95" />)}
+      {dockBtn(false, onHome, 'Home', <IconHome className={dockIconClass} />)}
+      {dockBtn(activePanel === 'search', onSearch, 'Search', <IconSearch className={dockIconClass} />)}
       {dockBtn(
         activePanel === 'notifications',
         onNotifications,
         'Notifications',
-        <IconBell className="h-7 w-7 shrink-0 opacity-95" />
+        <IconBell className={dockIconClass} />
       )}
-      {dockBtn(activePanel === 'chat', onChat, 'Chat', <IconChat className="h-7 w-7 shrink-0 opacity-95" />)}
+      {dockBtn(activePanel === 'chat', onChat, 'Chat', <IconChat className={dockIconClass} />)}
     </>
   )
 

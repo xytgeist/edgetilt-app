@@ -1,7 +1,8 @@
 /**
  * Vercel Serverless: HTML + Open Graph / Twitter Card meta for Lounge post permalinks.
  * Shared URL path: `/lounge/p/:postId` (rewritten here from `vercel.json`).
- * Uses Supabase **anon** REST + RLS (same visibility as the public feed).
+ * Typical link preview order (iMessage / Slack, not guaranteed): `og:image` → bold `og:title`
+ * (caption when present) → `og:description` (author on Edge + stats, or stats only if no caption) → domain + icon.
  *
  * Env (set on Vercel; same as the Vite client): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
  */
@@ -54,12 +55,21 @@ function formatCount(n) {
   return `${Math.round(n / 1000)}K`
 }
 
-function buildDescription(post, captionSnippet) {
+function statsLine(post) {
   const likes = formatCount(Number(post.like_count))
   const comments = formatCount(Number(post.comment_count))
-  const stats = `${likes} likes · ${comments} comments`
-  if (captionSnippet) return `${captionSnippet} · ${stats}`
-  return stats
+  return `${likes} likes · ${comments} comments`
+}
+
+/**
+ * Attribution line under the caption in previews, e.g. `Queen Edge (@selena) on Edge`.
+ * `is_og` appends a check mark (plain text; OS controls color — not Instagram’s red asset).
+ */
+function buildAuthorByline(displayName, handle, isOg) {
+  const mark = isOg ? ' \u2714' : ''
+  const core =
+    handle && displayName !== handle ? `${displayName} (${handle}) on Edge` : `${displayName} on Edge`
+  return `${core}${mark}`
 }
 
 /** Same icon hints as `index.html` — crawlers use these for the small mark next to the domain. */
@@ -192,8 +202,9 @@ export default async function handler(req, res) {
   const uid = String(post.user_id || '').trim()
   let displayName = 'Member'
   let handle = ''
+  let isOg = false
   if (uid && UUID_RE.test(uid)) {
-    const profileUrl = `${supabaseUrl}/rest/v1/profiles?user_id=eq.${uid}&select=display_name,handle`
+    const profileUrl = `${supabaseUrl}/rest/v1/profiles?user_id=eq.${uid}&select=display_name,handle,is_og`
     const { ok: pOk, data: profRows } = await fetchJson(profileUrl, headers)
     const pr = pOk && Array.isArray(profRows) && profRows[0] ? profRows[0] : null
     if (pr) {
@@ -204,17 +215,23 @@ export default async function handler(req, res) {
         handle = `@${h}`
         if (!dn) displayName = `@${h}`
       }
+      isOg = Boolean(pr.is_og)
     }
   }
 
   const captionRaw = oneLine(post.caption || '')
-  const captionSnippet = captionRaw.length > 220 ? `${captionRaw.slice(0, 217)}…` : captionRaw
+  const captionSnippet = captionRaw.length > 220 ? `${captionRaw.slice(0, 217)}\u2026` : captionRaw
+  const byline = buildAuthorByline(displayName, handle, isOg)
+  const stats = statsLine(post)
+  const hasCaption = captionSnippet.length > 0
 
-  const title =
-    handle && displayName !== handle
-      ? `${displayName} (${handle}) on Edge Lounge`
-      : `${displayName} on Edge Lounge`
-  const description = buildDescription(post, captionSnippet)
+  /** Most clients: image, then bold `og:title`, then `og:description`, then domain + icon. */
+  const ogTitle = hasCaption ? captionSnippet : byline
+  const ogDescription = hasCaption ? `${byline} · ${stats}` : stats
+  const docTitle = hasCaption
+    ? `${captionSnippet.length > 72 ? `${captionSnippet.slice(0, 69)}\u2026` : captionSnippet} · Edge`
+    : `${byline} · Edge`
+
   const ogImage = pickOgImage(post, origin)
   const canonical = `${origin}/lounge/p/${postId}`
   const appTarget = `${origin}/?tab=home&post=${encodeURIComponent(postId)}`
@@ -226,17 +243,17 @@ export default async function handler(req, res) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 ${brand}
-  <title>${escapeAttr(title)}</title>
+  <title>${escapeAttr(docTitle)}</title>
   <link rel="canonical" href="${escapeAttr(canonical)}" />
   <meta property="og:site_name" content="Edge" />
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="${escapeAttr(title)}" />
-  <meta property="og:description" content="${escapeAttr(description)}" />
+  <meta property="og:title" content="${escapeAttr(ogTitle)}" />
+  <meta property="og:description" content="${escapeAttr(ogDescription)}" />
   <meta property="og:url" content="${escapeAttr(canonical)}" />
   <meta property="og:image" content="${escapeAttr(ogImage)}" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${escapeAttr(title)}" />
-  <meta name="twitter:description" content="${escapeAttr(description)}" />
+  <meta name="twitter:title" content="${escapeAttr(ogTitle)}" />
+  <meta name="twitter:description" content="${escapeAttr(ogDescription)}" />
   <meta name="twitter:image" content="${escapeAttr(ogImage)}" />
   <meta http-equiv="refresh" content="0;url=${escapeAttr(appTarget)}">
   <script>window.location.replace(${JSON.stringify(appTarget)})</script>

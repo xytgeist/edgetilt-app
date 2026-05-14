@@ -866,7 +866,7 @@ export default function LoungeVideoCropModal({ file, knownDurationSec, intent = 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[96] flex items-end justify-center overscroll-none bg-black/55 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6"
+      className="fixed inset-0 z-[105] flex items-end justify-center overscroll-none bg-black/55 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label="Trim and crop video"

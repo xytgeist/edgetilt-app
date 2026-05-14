@@ -259,6 +259,8 @@ export default function SocialFeed({
   const [quoteRepostBusy, setQuoteRepostBusy] = useState(false)
   const [repostManageBusy, setRepostManageBusy] = useState(false)
   const [quoteRepostErr, setQuoteRepostErr] = useState('')
+  const [quoteRepostQueuedToast, setQuoteRepostQueuedToast] = useState(false)
+  const quoteRepostQueuedToastTimerRef = useRef(0)
   const [quoteRepostImageItems, setQuoteRepostImageItems] = useState([])
   const composerImageItemsRef = useRef(composerImageItems)
   composerImageItemsRef.current = composerImageItems
@@ -1844,6 +1846,25 @@ export default function SocialFeed({
     loungePostSnapshotRef.current = snapshot
     clearQuoteRepostForPostAttemptRef.current?.({ preserveQuoteVideoPrep: preserveVideoPrep })
     void runBackgroundLoungePostSubmissionRef.current?.(snapshot)
+
+    const quoteMediaOrPrepPending =
+      (Array.isArray(snapshot.imageFiles) && snapshot.imageFiles.length > 0) ||
+      Boolean(String(snapshot.gifOnlyUrl || '').trim()) ||
+      Boolean(snapshot.videoFile) ||
+      Boolean(String(snapshot.streamVideoUid || '').trim()) ||
+      snapshot.awaitingComposerVideoPrepJobId != null
+    if (quoteMediaOrPrepPending) {
+      try {
+        window.clearTimeout(quoteRepostQueuedToastTimerRef.current)
+      } catch {
+        // ignore
+      }
+      setQuoteRepostQueuedToast(true)
+      quoteRepostQueuedToastTimerRef.current = window.setTimeout(() => {
+        quoteRepostQueuedToastTimerRef.current = 0
+        setQuoteRepostQueuedToast(false)
+      }, 2800)
+    }
   }, [
     clearQuoteRepostMedia,
     composerUserProfile?.avatar_url,
@@ -1891,6 +1912,17 @@ export default function SocialFeed({
       el.focus()
     }
   }, [quoteRepostModal])
+
+  useEffect(() => {
+    return () => {
+      try {
+        window.clearTimeout(quoteRepostQueuedToastTimerRef.current)
+      } catch {
+        // ignore
+      }
+      quoteRepostQueuedToastTimerRef.current = 0
+    }
+  }, [])
 
   const toggleBookmark = useCallback(async (postId) => {
     if (!composerUserId) return { ok: false }
@@ -3805,6 +3837,17 @@ export default function SocialFeed({
 
   return (
     <div className="mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      {quoteRepostQueuedToast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed left-1/2 z-[102] w-[min(calc(100vw-1.5rem),42rem)] -translate-x-1/2 rounded-xl border border-emerald-500/45 bg-emerald-950/92 px-3 py-2.5 text-center text-[14px] font-medium leading-snug text-emerald-100 shadow-[0_8px_30px_rgba(0,0,0,0.35)] backdrop-blur-md"
+          style={{ top: 'max(0.5rem, env(safe-area-inset-top))' }}
+        >
+          Sending your quote… It will show on the feed when upload finishes. You&apos;ll have 30 minutes to edit after it
+          posts.
+        </div>
+      ) : null}
       {/* Fixed title bar outside the scroll container so the nav dropdown stays clickable (not under overflow hit-testing). */}
       <div
         ref={loungeTitleBarRef}

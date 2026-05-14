@@ -2204,15 +2204,13 @@ export default function SocialFeed({
     setLoungeDockPanel((p) => (p === 'chat' ? null : 'chat'))
   }, [])
 
-  const onLoungeDockPickPostFromSearch = useCallback(
-    (postId) => {
-      const id = String(postId || '').trim()
-      if (!id) return
+  const onLoungeDockOpenPostFromSearch = useCallback(
+    (post) => {
+      if (!post?.id) return
       setLoungeDockPanel(null)
-      const post = communityPosts.find((p) => p && String(p.id) === id)
-      if (post) openLoungePostDetail(post, {})
+      openLoungePostDetail(post, {})
     },
-    [communityPosts, openLoungePostDetail]
+    [openLoungePostDetail]
   )
 
   useEffect(() => {
@@ -5735,7 +5733,8 @@ export default function SocialFeed({
           onChat={onLoungeDockChat}
           onDockFooterHeightChange={onLoungeDockFooterHeight}
           activePanel={loungeDockPanel}
-          onPickPost={onLoungeDockPickPostFromSearch}
+          postCardProps={profilePostCardProps}
+          onOpenPostFromSearch={onLoungeDockOpenPostFromSearch}
         />
       ) : null}
 
@@ -5839,7 +5838,7 @@ export default function SocialFeed({
               clearQuoteRepostMedia()
             }}
           />
-          <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 items-end pointer-events-none">
+          <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 items-end pointer-events-none">
             <div
               className="pointer-events-auto relative w-full overflow-hidden rounded-t-[36px] border border-zinc-700/40 bg-[#181b22]/92 shadow-[0_6px_16px_rgba(0,0,0,0.12)] backdrop-blur-md"
               style={{ height: 'calc(100dvh - (env(safe-area-inset-top) + 12px))' }}
@@ -6447,7 +6446,7 @@ export default function SocialFeed({
 
       {loungePostUploadBar ? (
         <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
-          <div className="mx-auto flex max-w-lg items-center gap-3">
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium text-zinc-200">
                 {loungePostUploadBar.mode === 'mediaPrep' ? 'Uploading media…' : 'Uploading post…'}

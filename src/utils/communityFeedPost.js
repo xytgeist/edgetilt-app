@@ -10,6 +10,17 @@ export function feedPostDisplayCaption(row) {
   return ''
 }
 
+/**
+ * Total engagement for ordering / discovery: likes + comments + reposts on a hydrated feed row.
+ */
+export function loungePostInteractionScore(row) {
+  const n = (v) => {
+    const x = Number(v)
+    return Number.isFinite(x) && x >= 0 ? x : 0
+  }
+  return n(row?.like_count) + n(row?.comment_count) + n(row?.repost_count)
+}
+
 /** Ordered uploaded image URLs from `image_urls` (jsonb array); empty for legacy rows. */
 export function feedPostImageUrls(row) {
   const raw = row?.image_urls

@@ -274,8 +274,6 @@ export async function executeLoungeCommunityPostSubmission({
     } else if (streamVideoUid) {
       insertPayload = communityFeedPostInsertPayload({
         caption,
-        gameTitle: 'Lounge',
-        gameSlug: null,
         pinned: isStaffPoster && wantsPin ? true : undefined,
         streamVideoUid,
         streamPosterUrl: streamPosterPublicUrl || undefined,
@@ -285,8 +283,6 @@ export async function executeLoungeCommunityPostSubmission({
     } else if (uploadedUrls.length > 0) {
       insertPayload = communityFeedPostInsertPayload({
         caption,
-        gameTitle: 'Lounge',
-        gameSlug: null,
         pinned: isStaffPoster && wantsPin ? true : undefined,
         imageUrls: uploadedUrls,
         gifUrl: gifOnlyUrl || undefined,
@@ -294,16 +290,12 @@ export async function executeLoungeCommunityPostSubmission({
     } else if (gifOnlyUrl) {
       insertPayload = communityFeedPostInsertPayload({
         caption,
-        gameTitle: 'Lounge',
-        gameSlug: null,
         pinned: isStaffPoster && wantsPin ? true : undefined,
         mediaUrl: gifOnlyUrl,
       })
     } else {
       insertPayload = communityFeedPostInsertPayload({
         caption,
-        gameTitle: 'Lounge',
-        gameSlug: null,
         pinned: isStaffPoster && wantsPin ? true : undefined,
       })
     }

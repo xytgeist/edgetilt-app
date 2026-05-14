@@ -1017,10 +1017,10 @@ export default function OffersCalendar({
 
   return (
     <div
-      className={`flex flex-col overflow-hidden px-4 pt-[max(0.5rem,env(safe-area-inset-top))] ${
+      className={`flex flex-col overflow-hidden px-3 pt-[max(0px,env(safe-area-inset-top))] ${
         weekLayoutFullBleed
           ? 'w-full max-w-none h-[100dvh] pb-[max(4rem,env(safe-area-inset-bottom))] box-border'
-          : 'max-w-lg mx-auto pb-2'
+          : 'mx-auto w-full max-w-2xl pb-2'
       }`}
       style={weekLayoutFullBleed ? undefined : { height: 'calc(100dvh - env(safe-area-inset-bottom) - 0.5rem)' }}
     >

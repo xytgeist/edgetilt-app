@@ -14,7 +14,7 @@ export default function BankrollTracker() {
   const projectedBankroll = parsedBankrollStart + sessionPnl
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
+    <div className="mx-auto w-full max-w-2xl px-3 py-6 pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <div className="mb-6">
         <div className="text-white text-2xl font-black tracking-tight">Bankroll Tracker</div>
         <div className="text-zinc-400 text-sm mt-0.5">Track sessions, win/loss trends, and bankroll growth</div>

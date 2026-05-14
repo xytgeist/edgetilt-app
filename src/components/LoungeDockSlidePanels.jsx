@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { feedPostDisplayCaption } from '../utils/communityFeedPost'
-import { renderRichCaption } from '../features/lounge/loungeCaption'
+import { feedPostDisplayCaption, loungePostInteractionScore } from '../utils/communityFeedPost'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
+import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
+import { LoungeFeedVideoAutoplayProvider } from '../features/lounge/LoungeFeedVideoAutoplayContext.jsx'
 import LoungeDockFooterBar from './LoungeDockFooterBar.jsx'
 import { dockChromeHeightFromTitleBarPx } from '../utils/loungeDockChrome.js'
 import {
@@ -22,11 +23,16 @@ const VERTICAL_BEATS_HORIZONTAL = 1.52
  * **dock footer stays fully visible** (`reveal={1}`) while the feed dock continues to hide/show with scroll
  * only when this panel is closed. Swipe horizontally to dismiss (left or right). `viewportTitleTopPx` must
  * match the feed title’s `top` offset so the bar aligns with the main Lounge shell.
+ *
+ * Search tab: `postCardProps` is the same shape as profile/feed `LoungePostArticle` handlers (without
+ * `repostMenuScrollRootRef`); this component injects `repostMenuScrollRootRef={panelScrollRef}`.
  */
 export default function LoungeDockSlidePanels({
   openPanel,
   onClose,
   communityPosts = [],
+  /** Props for `LoungePostArticle` on the search tab (e.g. `SocialFeed` `profilePostCardProps`). */
+  postCardProps = null,
   /** Matches `SocialFeed` `loungeFeedViewportTopPx` (title `top` under shell padding). */
   viewportTitleTopPx = 0,
   titleBarNavSlot = null,
@@ -37,8 +43,8 @@ export default function LoungeDockSlidePanels({
   onChat,
   onDockFooterHeightChange,
   activePanel = null,
-  /** Optional: focus a post in the parent feed (e.g. open detail). */
-  onPickPost,
+  /** Open a post from search (full row); closes the panel and opens post detail like the main feed. */
+  onOpenPostFromSearch,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -66,14 +72,24 @@ export default function LoungeDockSlidePanels({
 
   const [q, setQ] = useState('')
 
-  const filtered = useMemo(() => {
+  const filteredSearchPosts = useMemo(() => {
     const s = q.trim().toLowerCase()
-    if (!s) return communityPosts
-    return (communityPosts || []).filter((p) => {
-      const cap = feedPostDisplayCaption(p).toLowerCase()
-      const game = String(p?.game_title || '').toLowerCase()
-      return cap.includes(s) || game.includes(s)
+    const base = communityPosts || []
+    const list = !s
+      ? base.slice()
+      : base.filter((p) => {
+          const cap = feedPostDisplayCaption(p).toLowerCase()
+          const game = String(p?.game_title || '').toLowerCase()
+          return cap.includes(s) || game.includes(s)
+        })
+    list.sort((a, b) => {
+      const d = loungePostInteractionScore(b) - loungePostInteractionScore(a)
+      if (d !== 0) return d
+      const ta = new Date(a?.created_at || 0).getTime()
+      const tb = new Date(b?.created_at || 0).getTime()
+      return tb - ta
     })
+    return list
   }, [communityPosts, q])
 
   const panelTitleBarChromePx = panelTitleBarHeight > 0 ? panelTitleBarHeight : 56
@@ -346,29 +362,42 @@ export default function LoungeDockSlidePanels({
               autoComplete="off"
               className="mb-3 w-full rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-2.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-cyan-500/45 focus:ring-1 focus:ring-cyan-500/25"
             />
-            {filtered.length === 0 ? (
+            {!postCardProps ? (
+              <p className="text-[14px] leading-relaxed text-zinc-500">Search is not available.</p>
+            ) : filteredSearchPosts.length === 0 ? (
               <p className="text-[14px] leading-relaxed text-zinc-500">No posts match.</p>
             ) : (
-              <ul className="space-y-2 pb-2">
-                {filtered.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => onPickPost?.(p.id)}
-                      className="w-full rounded-xl border border-zinc-800/90 bg-zinc-900/60 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-800/70"
-                    >
-                      <div className="line-clamp-3 text-[14px] leading-snug text-zinc-200">
-                        {renderRichCaption(feedPostDisplayCaption(p) || ' ', {
-                          hashtagClassName: 'font-semibold text-cyan-400',
-                        })}
-                      </div>
-                      {p.game_title ? (
-                        <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-amber-400/85">{p.game_title}</div>
-                      ) : null}
-                    </button>
-                  </li>
+              <LoungeFeedVideoAutoplayProvider scrollRootRef={panelScrollRef}>
+                {filteredSearchPosts.map((post) => (
+                  <article
+                    key={post.id}
+                    style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
+                    className="border-t border-zinc-800 bg-zinc-950/35 px-3 py-4 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
+                    onClick={(e) => {
+                      const t = e.target
+                      if (!(t instanceof Element)) return
+                      const origHost = t.closest('[data-lounge-original-embed]')
+                      if (origHost && post.reposted_post?.id) {
+                        onOpenPostFromSearch?.(post.reposted_post)
+                        return
+                      }
+                      if (
+                        t.closest(
+                          'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-badge-tip]',
+                        )
+                      )
+                        return
+                      onOpenPostFromSearch?.(post)
+                    }}
+                  >
+                    <LoungePostArticle
+                      post={post}
+                      {...postCardProps}
+                      repostMenuScrollRootRef={panelScrollRef}
+                    />
+                  </article>
                 ))}
-              </ul>
+              </LoungeFeedVideoAutoplayProvider>
             )}
           </div>
         ) : (

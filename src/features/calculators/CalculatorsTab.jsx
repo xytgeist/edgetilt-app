@@ -16,7 +16,7 @@ function CalculatorLoadingFallback() {
 
 function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth, onLogout, onDeleteAccount, deleteAccountBusy }) {
   return (
-    <div className="max-w-lg mx-auto px-1 pt-2 sm:pt-3">
+    <div className="w-full pt-2 sm:pt-3">
     <div className="mb-10 text-left sm:mb-12">
       <p className="text-base text-zinc-400">Select a calculator</p>
     </div>

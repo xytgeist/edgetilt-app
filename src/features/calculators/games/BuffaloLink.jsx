@@ -218,7 +218,7 @@ function BuffaloLink({ onBack }) {
 
   return (
     <div className="min-h-full bg-gray-950 pb-12">
-      <div className="max-w-lg mx-auto px-4 pt-1">
+      <div className="w-full px-0 pt-1">
 
         {/* Large back chevron + Title with reduced padding */}
         <div className="flex items-center mb-4">

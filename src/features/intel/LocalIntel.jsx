@@ -178,7 +178,7 @@ export default function LocalIntel({ supabaseClient }) {
 
   if (intelView.screen === 'home') {
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="mx-auto w-full max-w-2xl px-3 py-6 pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <Header title="Local Intel" subtitle="City + casino updates (skeleton)" />
 
         <SetupHint />
@@ -222,7 +222,7 @@ export default function LocalIntel({ supabaseClient }) {
     const city = cities.find((c) => c.id === intelView.cityId)
     const isFollowing = intelView.cityId ? follows.city.has(intelView.cityId) : false
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="mx-auto w-full max-w-2xl px-3 py-6 pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <Header
           title={city?.name || 'City'}
           subtitle="City feed + casinos"
@@ -347,7 +347,7 @@ export default function LocalIntel({ supabaseClient }) {
     const casino = casinos.find((c) => c.id === intelView.casinoId)
     const isFollowing = intelView.casinoId ? follows.casino.has(intelView.casinoId) : false
     return (
-      <div className="max-w-lg mx-auto px-4 py-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <div className="mx-auto w-full max-w-2xl px-3 py-6 pt-[max(0px,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <Header
           title={casino?.name || 'Casino'}
           subtitle="Casino-specific updates"

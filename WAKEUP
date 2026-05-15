@@ -44,6 +44,7 @@ The agent should treat the following as **standing instructions for this session
   `supabase functions deploy lounge-cf-stream-delete-orphan --project-ref jtjgtucumuoswnbauxry`, and  
   `supabase functions deploy lounge-cf-stream-purge-pending-uploads --project-ref jtjgtucumuoswnbauxry`
 - **Lounge Stream (feed):** autoplay coordinator + shared **Tap for sound** live in **`LoungePostStreamVideo.jsx`** + **`LoungeFeedVideoAutoplayContext.jsx`**; quote repost **`z-[100]`** vs post detail **`z-[98]`** (profile sheet **`z-[97]`**) — see **`AGENTS.md`** quick anchors and **`docs/test-buildout-backlog.md`** smoke 11.
+- **Lounge FAB wheel (nav):** primary nav = **`LoungeDockArcCarouselPrototype`**; **`LoungeDockFooterBar`** disabled; long-press reposition + **1s** click-through guard; chip-heart likes + share in **⋯** menu — **`AGENTS.md`** anchors, roadmap Phase B FAB table, backlog smoke **§14** (test through commit **`2231883`**).
 - No prod writes / no commits / PR only: _[say which]_
 - Context: _[link, path, or "decision already in backlog heading …"]_
 

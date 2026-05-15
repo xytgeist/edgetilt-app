@@ -224,6 +224,12 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - Test validation: scroll multi-image post off/on; repost menu position; quote sheet height + media below text; 7th image attempt shows cap modal.
   - Production replay: N/A (client-only).
 
+- [x] Lounge **FAB wheel nav** + chip-heart likes + interaction polish (test / branch `test`, commits through **`2231883`**)
+  - Change: **`LoungeDockArcCarouselPrototype.jsx`** — draggable FAB + spin wheel (primary nav); long-press reposition; glow off, cyan **border tiers** (idle / following-on / active panel); compose opens keyboard via **`loungeDockComposeFocus.js`**; **1s** reposition click-through guard (document capture + overlay). **`LoungeDockFooterBar.jsx`** disabled in **`SocialFeed.jsx`** / profile (`LOUNGE_DOCK_FOOTER_BAR_DISABLED`). **`LoungeFlameIcon.jsx`** poker chip + heart (liked **`#ff3824`**); **`LoungeLikeStatContent`** fixed grid; **Share** in **`LoungePostRowMenu.jsx`** only. Bell optical centering `translate(-2, …)`.
+  - Source: `src/components/loungeDockArcCarouselItems.jsx`, `src/utils/loungeDockFabGlow.js`, `src/utils/loungeDockFabPosition.js`, `LoungePostInteractionBar.jsx`, `LoungePostArticle.jsx`.
+  - Test validation: manual on test — wheel open/close, panels, following toggle, compose from feed + from search/chat panel, FAB reposition without opening post under finger (spot-check iOS Safari if available).
+  - Production replay: N/A (client-only).
+
 - [x] Lounge **video** via **Cloudflare Stream** (test / branch `test`)
   - Change: **`stream_video_uid`** on posts; Edge **`lounge-cf-stream-direct-upload`**; client upload + HLS manifest poll (`loungeVideoUpload.js`); playback `LoungePostStreamVideo.jsx` (lazy `hls.js`); **`LoungeFeedVideoAutoplayContext.jsx`** — scroll-root **winner-only** inline attach/play + IO prefetch; first-tile / coordinator–IO race fixes (play when winner before in-view catches up); poster→video **crossfade** (`requestVideoFrameCallback` + staggered opacity) to reduce black flash; **shared feed inline sound** (Tap for sound / Tap to mute + **SoundOn** vs muted glyph); composer preview + post path in **`SocialFeed.jsx`**; selects include **`stream_video_uid`** in **`AppShell.jsx`**. **Quote repost** overlays **`z-[100]`** above opened post detail **`z-[98]`** (above profile **`z-[97]`**). Upload bar button label **Cancel**. Caps: **60s** duration, **200 MB** upload (Cloudflare basic POST).
   - Source: files in bullet + `supabase/lounge_feed_post_stream_video.sql`.
@@ -257,6 +263,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
         - [x] **Quote + upload bar Cancel** while video is **preparing** (quote prep cancels; quote UI still usable; no stuck modal). *(2026-05-18 **PASSED**.)*
         - [x] *(Optional)* **Staff crown / badge tip:** hover or tap **`LoungeBadgeHoverTip`** — reads/positions OK; dismiss on outside tap / **Escape** (`LoungeBadgeHoverTip.jsx`, 2026-05-18).
     13. **Lounge chat:** after **`chat_phase1.sql`** + Edge **`lounge-chat`** on test — dock **Chat** → Inbox / Topics; subscriber (or staff) can **Join** a topic; two completed profiles exchange a **DM** (profile **Message** beside Follow opens dock); send message; optional Realtime check (messages appear without refresh).
+    14. **Lounge FAB wheel:** tap **+** → wheel; open **Search** / **Chat** / **Settings**; toggle **Following** (cyan fill, no extra glow); **Compose** from feed and from an open panel (keyboard); long-press **+**, drag, release over a post — post must **not** open (brief ~1s dead zone OK); liked chip-heart + count alignment when toggling like.
   - **Sign-off:** Manual steps above passed on **test** (operator confirmation after latest `test` deploy).
   - **Sign-off (composer + quote media + badge tips, 2026-05-18, Ryan):** Smoke **§12** items **PASSED** on **test**; badge tip stickiness addressed with document **pointerdown** + **Escape** dismiss on open tip.
   - **Sign-off (Stream poster + dims, 2026-05-17, Ryan):** Extended checklist (session items **2–13**): all **PASSED** on **test**; SQL **`lounge_feed_post_stream_video.sql`** (including **`stream_poster_url`**, **`stream_video_width`**, **`stream_video_height`**) applied on the test Supabase project.
@@ -270,6 +277,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-14: **Lounge FAB wheel + likes (continuity):** Primary dock nav = **`LoungeDockArcCarouselPrototype`**; footer bar disabled; reposition click guard **1s** + document capture (**`2231883`**); chip-heart **`LoungeFlameIcon`**, share in **⋯** menu, compose focus helper. Documented in **`AGENTS.md`**, **`docs/social-feed-roadmap.md`** (Phase B FAB table), **`docs/frontend-architecture.md`**, smoke **§14**.
 - 2026-05-14: **Lounge Following feed filter:** **All** / **Following** switch on home (`LoungeFeedScopeSwitch`, `loungeFeedScope.js`, `AppShell` load/more queries). Backlog item checked; smoke on test pending.
 - 2026-05-14: **Planned (Lounge feed):** **Following** tab on Lounge home — backlog checkbox + Phase B roadmap note (`profile_follows`–scoped feed).
 - 2026-05-14: **Lounge feed Stream sound:** opening **post detail** resets **inline “Tap for sound”** to muted on the feed (`LoungeFeedVideoAutoplayContext` `resetFeedInlineSound` + `LoungeFeedInlineSoundResetBinder` in **`SocialFeed.jsx`**).

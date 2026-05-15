@@ -96,6 +96,21 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 - Production-like feed behavior for anonymous and signed-in read.
 
+### Lounge FAB wheel navigation (shipped on test — client only)
+
+Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDockArcCarouselPrototype.jsx`), not the legacy footer icon row (`LoungeDockFooterBar.jsx` remains in repo but is **commented out** in `SocialFeed.jsx` / profile).
+
+| Behavior | Notes |
+| --- | --- |
+| **Open / close** | Tap FAB → wheel; tap FAB or backdrop → close. **Home** chip when a dock panel is open (compact chrome). |
+| **Panels** | Search, notifications, chat, settings via `LoungeDockSlidePanels.jsx` (`activePanel` / `panelChrome`). |
+| **Following filter** | Wheel **Following** toggles feed scope (`LoungeFeedScopeSwitch` / `loungeFeedScope.js`); **cyan filled** person+ when on; **mid border** on chip, not full “page active” glow. |
+| **Compose** | Wheel compose expands feed composer + keyboard (`loungeDockComposeFocus.js`; panel must close first). |
+| **Reposition** | Long-press FAB (~450ms), drag, release → position saved (`loungeDockFabPosition.js`). Native text-selection suppressed while held; **~1s** click-through guard after release (synthesized click on feed under finger). |
+| **Visual** | Unified neon-cyan wheel; **glow off**; border-only active state. Icon optical tweaks (e.g. bell `translate(-2, …)`). |
+
+**Likes (interaction row):** poker-chip + heart icon (`LoungeFlameIcon.jsx`, solar red when liked); **Share** only in card **⋯** menu.
+
 ---
 
 ## Phase C - Profiles + first-interaction gating

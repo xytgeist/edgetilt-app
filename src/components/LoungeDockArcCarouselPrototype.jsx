@@ -770,12 +770,13 @@ export default function LoungeDockArcCarouselPrototype({
   )
 
   const onItemPointerEnd = useCallback(
-    (item, offScreen, e) => {
+    (item, e) => {
       e.preventDefault()
       e.stopPropagation()
       const moved = spinMovedRef.current
       onSpinPointerEnd(e.pointerId)
-      if (!moved && !item.disabled && !offScreen) selectItem(item)
+      /** Any visible chip is tappable in spin mode; `offset.onScreen` is layout bookkeeping, not a tap gate. */
+      if (!moved && !item.disabled) selectItem(item)
     },
     [onSpinPointerEnd, selectItem],
   )
@@ -920,21 +921,21 @@ export default function LoungeDockArcCarouselPrototype({
       type="button"
       disabled={item.disabled}
       aria-label={item.label}
-      title={isCornerL || !offScreen ? item.label : `${item.label} (spin wheel to reach)`}
+      title={item.label}
       onPointerDown={
         wheelSpin ? onItemPointerDown : wheelTapOnly || compactChip ? blockPointerDefault : undefined
       }
       onPointerMove={wheelSpin ? onSpinPointerMove : undefined}
       onPointerUp={
         wheelSpin
-          ? (e) => onItemPointerEnd(item, offScreen, e)
+          ? (e) => onItemPointerEnd(item, e)
           : wheelTapOnly || compactChip
             ? (e) => onCompactItemTap(item, e)
             : undefined
       }
       onPointerCancel={
         wheelSpin
-          ? (e) => onItemPointerEnd(item, offScreen, e)
+          ? (e) => onItemPointerEnd(item, e)
           : wheelTapOnly || compactChip
             ? (e) => onCompactItemTap(item, e)
             : undefined

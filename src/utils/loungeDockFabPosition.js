@@ -15,8 +15,8 @@ export const LOUNGE_DOCK_HOME_FROM_FAB_CENTER_PX =
   LOUNGE_DOCK_CAROUSEL_RADIUS_PX + LOUNGE_DOCK_FAB_SIZE_PX / 2 + 20
 /** Fixed angle between adjacent items (wide spacing; ring may extend off-screen). */
 export const LOUNGE_DOCK_CAROUSEL_ITEM_STEP_RAD = (52 * Math.PI) / 180
-/** Lounge list scroll padding so content clears FAB + wheel item at the anchor side. */
-export const LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX = 40
+/** Wheel / compact home chip — same diameter as the FAB menu button. */
+export const LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX = LOUNGE_DOCK_FAB_SIZE_PX
 export function loungeDockFabScrollBottomInsetPx() {
   return (
     LOUNGE_DOCK_FAB_SIZE_PX +

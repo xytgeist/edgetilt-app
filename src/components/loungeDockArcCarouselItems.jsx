@@ -8,8 +8,8 @@ const stroke = {
   fill: 'none',
 }
 
-const cyanStroke = {
-  stroke: '#22d3ee',
+const accentStroke = {
+  stroke: '#e4e4e7',
   strokeWidth: 1.85,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
@@ -20,7 +20,7 @@ function IconHome() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden>
       <path {...stroke} d="M4.5 10.25 12 4l7.5 6.25V19a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-4.5h-4v4.5a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75v-8.75z" />
-      <path {...cyanStroke} d="M4.5 10.25 12 4 19.5 10.25" />
+      <path {...accentStroke} d="M4.5 10.25 12 4 19.5 10.25" />
     </svg>
   )
 }
@@ -35,7 +35,8 @@ function IconSearch() {
 }
 
 function IconFollowing({ active }) {
-  const c = active ? '#22d3ee' : 'currentColor'
+  const c = active ? '#fafafa' : 'currentColor'
+  const plus = active ? '#e4e4e7' : '#d4d4d8'
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden>
       <circle cx="9" cy="7.5" r="3.25" fill="none" stroke={c} strokeWidth="1.65" />
@@ -47,7 +48,7 @@ function IconFollowing({ active }) {
         strokeLinejoin="round"
         d="M3.5 19.5c0-3.1 2.46-5.25 5.5-5.25s5.5 2.15 5.5 5.25"
       />
-      <path stroke="#22d3ee" strokeWidth="1.65" strokeLinecap="round" d="M16.5 14.5h4M18.5 12.5v4" />
+      <path stroke={plus} strokeWidth="1.65" strokeLinecap="round" d="M16.5 14.5h4M18.5 12.5v4" />
     </svg>
   )
 }
@@ -59,19 +60,26 @@ function IconBell() {
         {...stroke}
         d="M10.5 6.75a3.75 3.75 0 017.5 0v.75c0 4.25 1.75 6.5 1.75 6.5H8.75S10.5 12.75 10.5 8.5v-.75z"
       />
-      <circle cx="12" cy="19.25" r="1.35" className="fill-cyan-400" stroke="none" />
+      <circle cx="12" cy="19.25" r="1.35" className="fill-zinc-300" stroke="none" />
     </svg>
   )
 }
 
+/** Pen-in-square “new post” (open corner + diagonal pen). */
 function IconCompose() {
+  const penStroke = { ...stroke, strokeWidth: 1.75 }
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden>
       <path
-        {...stroke}
-        d="M16.862 4.487 19.513 7.138M5 19.5l3.25-1 9.25-9.25 2.651 2.651-9.25 9.25-1 3.25z"
+        {...penStroke}
+        d="M12 4.25H6.5a2 2 0 0 0-2 2v11.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6.75"
       />
-      <path {...cyanStroke} d="M14.25 6.75 17.25 9.75" />
+      <g transform="translate(0 -4.5)">
+        <path
+          {...penStroke}
+          d="M17.9 4.9a.95.95 0 0 1 1.35 0l2.45 2.45a.95.95 0 0 1 0 1.35l-8.1 8.1-4 1.35 1.35-4 8.1-8.1Z"
+        />
+      </g>
     </svg>
   )
 }
@@ -83,9 +91,9 @@ function IconChat() {
         {...stroke}
         d="M6.75 5.25h10.5a2.25 2.25 0 012.25 2.25v6a2.25 2.25 0 01-2.25 2.25h-5.03l-3.72 2.48V15.75H6.75a2.25 2.25 0 01-2.25-2.25v-6a2.25 2.25 0 012.25-2.25z"
       />
-      <circle cx="9" cy="10.5" r="1.05" className="fill-cyan-400" stroke="none" />
-      <circle cx="12" cy="10.5" r="1.05" className="fill-cyan-400" stroke="none" />
-      <circle cx="15" cy="10.5" r="1.05" className="fill-cyan-400" stroke="none" />
+      <circle cx="9" cy="10.5" r="1.05" className="fill-zinc-300" stroke="none" />
+      <circle cx="12" cy="10.5" r="1.05" className="fill-zinc-300" stroke="none" />
+      <circle cx="15" cy="10.5" r="1.05" className="fill-zinc-300" stroke="none" />
     </svg>
   )
 }

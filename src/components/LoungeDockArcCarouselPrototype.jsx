@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX,
   LOUNGE_DOCK_FAB_SIZE_PX,
   loungeDockCarouselSnapRotation,
   loungeDockFabDefaultPosition,
@@ -15,8 +16,7 @@ import {
 const HOME_ITEM_ID = 'home'
 const PANEL_CHROME_PANELS = new Set(['search', 'notifications', 'chat'])
 
-const ITEM_CIRCLE_PX = 40
-const ITEM_ICON_PX = 23
+const ITEM_ICON_PX = Math.round((23 * LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX) / 40)
 const DRAG_THRESHOLD_PX = 8
 const SPIN_WHEEL_SENSITIVITY = 0.0045
 /** Below this rotation delta (rad), pointer-up on an icon counts as a tap. */
@@ -178,7 +178,7 @@ export default function LoungeDockArcCarouselPrototype({
         spinEnabled: false,
       }
     }
-    const itemRadius = ITEM_CIRCLE_PX / 2
+    const itemRadius = LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX / 2
     return loungeDockWheelLayout(
       fabCenterX,
       fabCenterY,
@@ -193,7 +193,7 @@ export default function LoungeDockArcCarouselPrototype({
 
   const spinHitRadiusPx =
     wheelLayout.radius > 0
-      ? wheelLayout.radius + ITEM_CIRCLE_PX + LOUNGE_DOCK_FAB_SIZE_PX / 2
+      ? wheelLayout.radius + LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX + LOUNGE_DOCK_FAB_SIZE_PX / 2
       : 120
 
   const persistFabPrefs = useCallback(
@@ -209,7 +209,7 @@ export default function LoungeDockArcCarouselPrototype({
   const snapCarouselToPicker = useCallback(
     (rotation) => {
       if (fabCenterX == null || fabCenterY == null || wheelItems.length === 0) return rotation
-      const itemRadius = ITEM_CIRCLE_PX / 2
+      const itemRadius = LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX / 2
       const layout = loungeDockWheelLayout(
         fabCenterX,
         fabCenterY,
@@ -579,7 +579,7 @@ export default function LoungeDockArcCarouselPrototype({
             }
           : undefined
       }
-      className={`pointer-events-auto fixed z-[10] flex min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none ${
+      className={`pointer-events-auto fixed z-[10] flex min-h-[50px] min-w-[50px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none ${
         wheelSpin ? 'touch-none' : 'touch-manipulation'
       } ${
         wheelSpin
@@ -588,7 +588,7 @@ export default function LoungeDockArcCarouselPrototype({
             : 'cursor-grab opacity-100'
           : 'cursor-pointer opacity-100'
       } ${spinning ? 'cursor-grabbing' : ''} disabled:cursor-not-allowed ${
-        item.active ? 'text-cyan-300' : 'text-zinc-100'
+        item.active ? 'text-zinc-50' : 'text-zinc-300'
       } ${
         spinning
           ? ''
@@ -605,12 +605,12 @@ export default function LoungeDockArcCarouselPrototype({
       }}
     >
       <span
-        className={`flex items-center justify-center rounded-full border shadow-lg backdrop-blur-sm ${
+        className={`flex items-center justify-center rounded-full border backdrop-blur-sm ${
           isFocused || item.active
-            ? 'border-cyan-400/70 bg-zinc-900/95 shadow-cyan-500/20 ring-2 ring-cyan-400/40'
-            : 'border-zinc-700/90 bg-zinc-950/90'
+            ? 'border-zinc-400/60 bg-zinc-900/95 shadow-[0_0_18px_rgba(255,255,255,0.14)] ring-2 ring-white/10'
+            : 'border-zinc-700/80 bg-zinc-950/90 shadow-lg shadow-black/25'
         }`}
-        style={{ width: ITEM_CIRCLE_PX, height: ITEM_CIRCLE_PX }}
+        style={{ width: LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX, height: LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX }}
       >
         <span
           className="flex items-center justify-center [&_svg]:h-full [&_svg]:w-full"
@@ -658,7 +658,7 @@ export default function LoungeDockArcCarouselPrototype({
           onPointerCancel={(e) => onSpinPointerEnd(e.pointerId)}
         >
           <div
-            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-dashed border-cyan-500/40"
+            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-dashed border-zinc-500/35"
             style={{
               width: wheelLayout.radius * 2,
               height: wheelLayout.radius * 2,
@@ -667,7 +667,7 @@ export default function LoungeDockArcCarouselPrototype({
             aria-hidden
           />
           <div
-            className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 rounded-full border-2 border-cyan-400/80 bg-cyan-400/20 shadow-[0_0_10px_rgba(34,211,238,0.45)]"
+            className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 rounded-full border-2 border-zinc-300/55 bg-white/15 shadow-[0_0_12px_rgba(255,255,255,0.22)]"
             style={{
               transform: `translate(calc(-50% + ${pickerOffset.x}px), calc(-50% + ${pickerOffset.y}px))`,
             }}
@@ -715,10 +715,10 @@ export default function LoungeDockArcCarouselPrototype({
           onPointerCancel={onFabPointerCancel}
           className={`pointer-events-auto absolute inset-0 rounded-full border shadow-xl backdrop-blur-md transition-[border-color,box-shadow,colors] duration-300 ease-out [-webkit-tap-highlight-color:transparent] ${
             open
-              ? 'border-cyan-400/80 bg-zinc-900/95 text-cyan-300 shadow-cyan-500/25'
+              ? 'border-zinc-400/55 bg-zinc-900/95 text-zinc-100 shadow-[0_0_24px_rgba(255,255,255,0.16)]'
               : locked
-                ? 'border-zinc-600/90 bg-zinc-950/95 text-zinc-200'
-                : 'border-dashed border-zinc-500/80 bg-zinc-950/95 text-zinc-200'
+                ? 'border-zinc-600/90 bg-zinc-950/95 text-zinc-200 shadow-lg shadow-black/30'
+                : 'border-dashed border-zinc-500/80 bg-zinc-950/95 text-zinc-200 shadow-lg shadow-black/30'
           }`}
           style={{
             touchAction: locked || open ? 'manipulation' : 'none',
@@ -741,7 +741,7 @@ export default function LoungeDockArcCarouselPrototype({
           title={locked ? 'Unlock position' : 'Lock position'}
           className={`pointer-events-auto absolute -left-0.5 -top-0.5 z-50 flex h-5 w-5 items-center justify-center rounded-full border shadow-md transition-colors [-webkit-tap-highlight-color:transparent] ${
             locked
-              ? 'border-cyan-500/60 bg-zinc-900 text-cyan-300'
+              ? 'border-zinc-500/70 bg-zinc-900 text-zinc-200 shadow-[0_0_8px_rgba(255,255,255,0.1)]'
               : 'border-zinc-600 bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
           style={{ pointerEvents: fabVisible ? 'auto' : 'none' }}

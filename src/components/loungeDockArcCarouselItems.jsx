@@ -147,61 +147,70 @@ export function buildLoungeDockArcCarouselItems({
   activePanel,
 }) {
   const onFeedHome = !activePanel
-  /** Source order = wheel ring order: `home` index 0 at horizontal anchor; siblings follow clockwise. `cornerL`: first ⌈n/2⌉ along bottom (inside→out), rest up the side — home, compose, following, settings on bottom; search, chat, notifications on vertical leg. */
-  return [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: <IconHome />,
-      onSelect: onHome,
-      active: onFeedHome,
-    },
-    {
-      id: 'compose',
-      label: 'New post',
-      icon: <IconCompose />,
-      onSelect: onCompose,
-      active: composeActive,
-      disabled: composeDisabled,
-    },
-    {
-      id: 'following',
-      label: 'Following',
-      icon: <IconFollowing active={followingFilterOn} />,
-      onSelect: onFollowingFilterToggle,
-      filterOnBorder: followingFilterOn,
-      disabled: followingFilterDisabled,
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: <IconSettings />,
-      iconScale: 0.86,
-      onSelect: onSettings,
-      active: activePanel === 'settings',
-    },
-    {
-      id: 'search',
-      label: 'Search',
-      icon: <IconSearch />,
-      onSelect: onSearch,
-      active: activePanel === 'search',
-    },
-    {
-      id: 'chat',
-      label: 'Chat',
-      icon: <IconChat />,
-      iconScale: 1.14,
-      onSelect: onChat,
-      active: activePanel === 'chat',
-    },
-    {
-      id: 'notifications',
-      label: 'Alerts',
-      icon: <IconBell />,
-      iconScale: 1.2,
-      onSelect: onNotifications,
-      active: activePanel === 'notifications',
-    },
-  ]
+
+  const home = {
+    id: 'home',
+    label: 'Home',
+    icon: <IconHome />,
+    onSelect: onHome,
+    active: onFeedHome,
+  }
+  const compose = {
+    id: 'compose',
+    label: 'New post',
+    icon: <IconCompose />,
+    onSelect: onCompose,
+    active: composeActive,
+    disabled: composeDisabled,
+  }
+  const following = {
+    id: 'following',
+    label: 'Following',
+    icon: <IconFollowing active={followingFilterOn} />,
+    onSelect: onFollowingFilterToggle,
+    filterOnBorder: followingFilterOn,
+    disabled: followingFilterDisabled,
+  }
+  const settings = {
+    id: 'settings',
+    label: 'Settings',
+    icon: <IconSettings />,
+    iconScale: 0.86,
+    onSelect: onSettings,
+    active: activePanel === 'settings',
+  }
+  const search = {
+    id: 'search',
+    label: 'Search',
+    icon: <IconSearch />,
+    onSelect: onSearch,
+    active: activePanel === 'search',
+  }
+  const chat = {
+    id: 'chat',
+    label: 'Chat',
+    icon: <IconChat />,
+    iconScale: 1.14,
+    onSelect: onChat,
+    active: activePanel === 'chat',
+  }
+  const notifications = {
+    id: 'notifications',
+    label: 'Alerts',
+    icon: <IconBell />,
+    iconScale: 1.2,
+    onSelect: onNotifications,
+    active: activePanel === 'notifications',
+  }
+
+  /**
+   * Wheel (O) and Edge (L) use different source orderings; `LoungeDockArcCarouselPrototype` picks by `menuLayout`.
+   * Wheel: home at anchor; compose→…→notifications on the ring.
+   * Edge L (`loungeDockLShapeOffsets`): first ⌈n/2⌉ along bottom (inside→out), rest up the side — classic bottom leg
+   * **home → notifications → chat → search**, vertical leg **compose → following → settings**.
+   */
+  return {
+    wheelItems: [home, compose, following, settings, search, chat, notifications],
+    cornerLItems: [home, notifications, chat, search, compose, following, settings],
+  }
 }

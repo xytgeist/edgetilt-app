@@ -4273,7 +4273,7 @@ export default function SocialFeed({
     : 0
   const loungeFeedDockPaddingBottom = loungeDockFeedContentInsetPx
 
-  const loungeArcCarouselItems = useMemo(
+  const { wheelItems: loungeDockWheelItems, cornerLItems: loungeDockCornerLItems } = useMemo(
     () =>
       buildLoungeDockArcCarouselItems({
         onCompose: onLoungeDockCompose,
@@ -4374,7 +4374,8 @@ export default function SocialFeed({
 
       {showLoungeViewportDock ? (
         <LoungeDockArcCarouselPrototype
-          items={loungeArcCarouselItems}
+          items={loungeDockWheelItems}
+          cornerLItems={loungeDockCornerLItems}
           reveal={loungeDockPanel ? loungePanelTitleReveal : loungeTitleReveal}
           panelChrome={loungeDockPanel}
           menuLayout={loungeDockMenuLayout}

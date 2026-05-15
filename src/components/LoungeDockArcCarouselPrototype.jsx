@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import {
   LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX,
   LOUNGE_DOCK_CAROUSEL_RADIUS_PX,
@@ -79,7 +79,10 @@ const REPOSITION_CAPTURE_EVENT_TYPES = [
  * Experimental Lounge nav: draggable FAB + full spin wheel (home anchors left/right of FAB) (prototype only).
  */
 export default function LoungeDockArcCarouselPrototype({
+  /** Wheel (O) menu item row order (ring + signed step / compact chrome). */
   items = [],
+  /** Edge (L) menu item row order (`loungeDockLShapeOffsets`). Omit to reuse `items` for L. */
+  cornerLItems = null,
   defaultOpen = false,
   reveal = 1,
   /** When set (search / notifications / chat), FAB + home stay visible; tap FAB to expand full menu. */
@@ -253,15 +256,17 @@ export default function LoungeDockArcCarouselPrototype({
   const fabCenterX = fabPos ? fabPos.left + LOUNGE_DOCK_FAB_SIZE_PX / 2 : null
   const fabCenterY = fabPos ? fabPos.top + LOUNGE_DOCK_FAB_SIZE_PX / 2 : null
 
-  /** Home is always wheel index 0 so anchor angle lands on the home icon. */
-  const wheelItems = useMemo(() => {
-    const home = items.find((item) => item.id === HOME_ITEM_ID)
-    const rest = items.filter((item) => item.id !== HOME_ITEM_ID)
-    return home ? [home, ...rest] : items
-  }, [items])
+  /** Ordered list for the active menu layout (wheel vs Edge L can differ). Home stays index 0 after normalization. */
+  const dockItems = useMemo(() => {
+    const source =
+      isCornerL && Array.isArray(cornerLItems) && cornerLItems.length > 0 ? cornerLItems : items
+    const home = source.find((item) => item.id === HOME_ITEM_ID)
+    const rest = source.filter((item) => item.id !== HOME_ITEM_ID)
+    return home ? [home, ...rest] : source
+  }, [isCornerL, items, cornerLItems])
 
   const wheelLayout = useMemo(() => {
-    if (fabCenterX == null || fabCenterY == null || wheelItems.length === 0) {
+    if (fabCenterX == null || fabCenterY == null || dockItems.length === 0) {
       return {
         offsets: [],
         radius: 0,
@@ -276,7 +281,7 @@ export default function LoungeDockArcCarouselPrototype({
     const alignLeft = fabCenterX < viewport.width / 2
     if (isCornerL) {
       return {
-        offsets: loungeDockLShapeOffsets(wheelItems.length, alignLeft),
+        offsets: loungeDockLShapeOffsets(dockItems.length, alignLeft),
         radius: LOUNGE_DOCK_CAROUSEL_RADIUS_PX,
         pickerAngle: 0,
         focusedIndex: 0,
@@ -288,7 +293,7 @@ export default function LoungeDockArcCarouselPrototype({
     return loungeDockWheelLayout(
       fabCenterX,
       fabCenterY,
-      wheelItems.length,
+      dockItems.length,
       carouselRotation,
       viewport,
       itemRadius,
@@ -296,7 +301,7 @@ export default function LoungeDockArcCarouselPrototype({
   }, [
     fabCenterX,
     fabCenterY,
-    wheelItems.length,
+    dockItems.length,
     carouselRotation,
     viewport.width,
     viewport.height,
@@ -364,12 +369,12 @@ export default function LoungeDockArcCarouselPrototype({
 
   const snapCarouselToPicker = useCallback(
     (rotation) => {
-      if (fabCenterX == null || fabCenterY == null || wheelItems.length === 0) return rotation
+      if (fabCenterX == null || fabCenterY == null || dockItems.length === 0) return rotation
       const itemRadius = LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX / 2
       const layout = loungeDockWheelLayout(
         fabCenterX,
         fabCenterY,
-        wheelItems.length,
+        dockItems.length,
         rotation,
         viewport,
         itemRadius,
@@ -381,7 +386,7 @@ export default function LoungeDockArcCarouselPrototype({
         layout.homeAnchorAngle,
       )
     },
-    [wheelItems.length, viewport.width, viewport.height, fabCenterX, fabCenterY],
+    [dockItems.length, viewport.width, viewport.height, fabCenterX, fabCenterY],
   )
 
   const applyCarouselSnap = useCallback(
@@ -871,12 +876,12 @@ export default function LoungeDockArcCarouselPrototype({
   )
 
   const visibleWheelItems = useMemo(() => {
-    if (!menuExpanded && panelCompactChrome && wheelItems.length > 0) {
-      return wheelItems.slice(0, 1)
+    if (!menuExpanded && panelCompactChrome && dockItems.length > 0) {
+      return dockItems.slice(0, 1)
     }
-    if (menuExpanded) return wheelItems
+    if (menuExpanded) return dockItems
     return []
-  }, [menuExpanded, panelCompactChrome, wheelItems])
+  }, [menuExpanded, panelCompactChrome, dockItems])
 
   if (items.length === 0 || !fabPos || fabCenterX == null || fabCenterY == null) return null
 
@@ -999,8 +1004,8 @@ export default function LoungeDockArcCarouselPrototype({
     )
   }
 
-  return (
-    <div className="pointer-events-none fixed inset-0 z-[100]">
+  const dockLayer = (
+    <div className="pointer-events-none fixed inset-0 z-[115]">
       {clickShield ? (
         <button
           type="button"
@@ -1136,7 +1141,7 @@ export default function LoungeDockArcCarouselPrototype({
       </div>
 
       {visibleWheelItems.map((item) => {
-        const i = wheelItems.indexOf(item)
+        const i = dockItems.indexOf(item)
         let offset = wheelLayout.offsets[i] ?? { x: 0, y: 0, onScreen: true }
         const compactMenuClosed = panelCompactChrome && !menuExpanded
         if (compactMenuClosed && !isCornerL && item.id === HOME_ITEM_ID) {
@@ -1150,4 +1155,7 @@ export default function LoungeDockArcCarouselPrototype({
       })}
     </div>
   )
+
+  if (typeof document === 'undefined') return null
+  return createPortal(dockLayer, document.body)
 }

@@ -5919,7 +5919,6 @@ export default function SocialFeed({
           followingFilterDisabled={loungeFeedBrowseMode === 'anonymous'}
           onNotifications={onLoungeDockNotifications}
           onChat={onLoungeDockChat}
-          onDockFooterHeightChange={onLoungeDockFooterHeight}
           activePanel={loungeDockPanel}
           postCardProps={profilePostCardProps}
           onOpenPostFromSearch={onLoungeDockOpenPostFromSearch}

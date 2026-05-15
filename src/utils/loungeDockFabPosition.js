@@ -15,6 +15,16 @@ export const LOUNGE_DOCK_HOME_FROM_FAB_CENTER_PX =
   LOUNGE_DOCK_CAROUSEL_RADIUS_PX + LOUNGE_DOCK_FAB_SIZE_PX / 2 + 20
 /** Fixed angle between adjacent items (wide spacing; ring may extend off-screen). */
 export const LOUNGE_DOCK_CAROUSEL_ITEM_STEP_RAD = (52 * Math.PI) / 180
+/** Lounge list scroll padding so content clears FAB + wheel item at the anchor side. */
+export const LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX = 40
+export function loungeDockFabScrollBottomInsetPx() {
+  return (
+    LOUNGE_DOCK_FAB_SIZE_PX +
+    LOUNGE_DOCK_CAROUSEL_RADIUS_PX +
+    LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX +
+    20
+  )
+}
 const FAN_SWEEP_FILL = 0.9
 const TAU = Math.PI * 2
 
@@ -254,14 +264,9 @@ export function loungeDockFabOnLeftHalf(fabCenterX, viewportW) {
   return fabCenterX < viewportW / 2
 }
 
-/**
- * Pinned home offset: directly right of FAB on the left edge, directly left on the right edge.
- * @returns {{ x: number, y: number, onScreen: boolean }}
- */
-export function loungeDockHomeOffset(fabCenterX, viewportW) {
-  const dist = LOUNGE_DOCK_HOME_FROM_FAB_CENTER_PX
-  const x = loungeDockFabOnLeftHalf(fabCenterX, viewportW) ? dist : -dist
-  return { x, y: 0, onScreen: true }
+/** Wheel angle for item index 0 (home): right of FAB on left half, left of FAB on right half. */
+export function loungeDockHomeAnchorAngle(fabCenterX, viewportW) {
+  return loungeDockFabOnLeftHalf(fabCenterX, viewportW) ? -Math.PI / 2 : Math.PI / 2
 }
 
 /** Picker notch direction (interior of screen from FAB) — spin aligns nearest item here on release. */
@@ -269,12 +274,20 @@ export function loungeDockCarouselPickerAngle(fabCenterX, fabCenterY, bounds) {
   return fanSectorFromClosestEdges(fabCenterX, fabCenterY, bounds).centerAngle
 }
 
-export function loungeDockCarouselFocusedIndex(itemCount, rotationRad, step, pickerAngle) {
+export function loungeDockCarouselFocusedIndex(
+  itemCount,
+  rotationRad,
+  step,
+  pickerAngle,
+  homeAnchorAngle,
+) {
   if (itemCount <= 0) return 0
   let best = 0
   let bestDiff = Infinity
   for (let i = 0; i < itemCount; i += 1) {
-    const diff = Math.abs(normalizeAngleDelta(rotationRad + i * step - pickerAngle))
+    const diff = Math.abs(
+      normalizeAngleDelta(homeAnchorAngle + rotationRad + i * step - pickerAngle),
+    )
     if (diff < bestDiff) {
       bestDiff = diff
       best = i
@@ -283,9 +296,9 @@ export function loungeDockCarouselFocusedIndex(itemCount, rotationRad, step, pic
   return best
 }
 
-/** Snap rotation so `focusedIndex` sits at the picker angle. */
-export function loungeDockCarouselSnapRotation(focusedIndex, step, pickerAngle) {
-  return pickerAngle - focusedIndex * step
+/** Snap rotation so `focusedIndex` sits at the picker angle (home is index 0 at `homeAnchorAngle` when rotation is 0). */
+export function loungeDockCarouselSnapRotation(focusedIndex, step, pickerAngle, homeAnchorAngle) {
+  return pickerAngle - homeAnchorAngle - focusedIndex * step
 }
 
 function offsetOnScreen(fabCenterX, fabCenterY, offset, bounds) {
@@ -294,22 +307,11 @@ function offsetOnScreen(fabCenterX, fabCenterY, offset, bounds) {
   return cx >= bounds.minX && cx <= bounds.maxX && cy >= bounds.minY && cy <= bounds.maxY
 }
 
-function buildWheelOffsets(fabCenterX, fabCenterY, itemCount, rotationRad, step, radius, bounds) {
-  const offsets = []
-  for (let i = 0; i < itemCount; i += 1) {
-    const angle = rotationRad + i * step
-    const o = { x: -Math.sin(angle) * radius, y: -Math.cos(angle) * radius, angle }
-    offsets.push({ ...o, onScreen: offsetOnScreen(fabCenterX, fabCenterY, o, bounds) })
-  }
-  return offsets
-}
-
 /**
- * Static edge-aware fan when every item fits on-screen; otherwise a spinnable wheel
- * (wide fixed angular spacing) so off-screen items can be rotated into reach.
- * @returns {{ mode: 'fan' | 'wheel', offsets: { x: number, y: number, angle: number, onScreen: boolean }[], radius: number, pickerAngle: number, focusedIndex: number, step: number, spinEnabled: boolean }}
+ * Full ring: item 0 (home) starts at `loungeDockHomeAnchorAngle`, siblings follow clockwise.
+ * Pass items with home first. `rotationRad` spins the whole wheel.
  */
-export function loungeDockMenuLayout(
+export function loungeDockWheelLayout(
   fabCenterX,
   fabCenterY,
   itemCount,
@@ -318,88 +320,39 @@ export function loungeDockMenuLayout(
   itemRadius,
 ) {
   if (itemCount <= 0) {
-    return {
-      mode: 'fan',
-      offsets: [],
-      radius: 0,
-      pickerAngle: 0,
-      focusedIndex: 0,
-      step: 0,
-      spinEnabled: false,
-    }
+    return { offsets: [], radius: 0, pickerAngle: 0, focusedIndex: 0, step: 0, homeAnchorAngle: 0 }
   }
 
   const bounds = fanBounds(viewport, itemRadius)
   const pickerAngle = loungeDockCarouselPickerAngle(fabCenterX, fabCenterY, bounds)
-  const fanOffsets = loungeDockFanOffsets(fabCenterX, fabCenterY, itemCount, viewport, itemRadius)
-
-  if (offsetsInBounds(fabCenterX, fabCenterY, fanOffsets, bounds)) {
-    const offsets = fanOffsets.map((o) => ({
-      ...o,
-      angle: Math.atan2(-o.x, -o.y),
-      onScreen: true,
-    }))
-    const radius =
-      offsets.length > 0
-        ? offsets.reduce((sum, o) => sum + Math.hypot(o.x, o.y), 0) / offsets.length
-        : LOUNGE_DOCK_CAROUSEL_RADIUS_PX
-    return {
-      mode: 'fan',
-      offsets,
-      radius,
-      pickerAngle,
-      focusedIndex: 0,
-      step: 0,
-      spinEnabled: false,
-    }
-  }
-
+  const homeAnchorAngle = loungeDockHomeAnchorAngle(fabCenterX, viewport.width)
   const step = LOUNGE_DOCK_CAROUSEL_ITEM_STEP_RAD
   const radius = LOUNGE_DOCK_CAROUSEL_RADIUS_PX
-  const offsets = buildWheelOffsets(
-    fabCenterX,
-    fabCenterY,
+  const offsets = []
+
+  for (let i = 0; i < itemCount; i += 1) {
+    const angle = homeAnchorAngle + rotationRad + i * step
+    const o = { x: -Math.sin(angle) * radius, y: -Math.cos(angle) * radius, angle }
+    offsets.push({ ...o, onScreen: offsetOnScreen(fabCenterX, fabCenterY, o, bounds) })
+  }
+
+  const focusedIndex = loungeDockCarouselFocusedIndex(
     itemCount,
     rotationRad,
     step,
-    radius,
-    bounds,
-  )
-  const focusedIndex = loungeDockCarouselFocusedIndex(itemCount, rotationRad, step, pickerAngle)
-
-  return {
-    mode: 'wheel',
-    offsets,
-    radius,
     pickerAngle,
-    focusedIndex,
-    step,
-    spinEnabled: true,
-  }
+    homeAnchorAngle,
+  )
+
+  return { offsets, radius, pickerAngle, focusedIndex, step, homeAnchorAngle }
 }
 
-/** @deprecated Use loungeDockMenuLayout */
-export function loungeDockCarouselLayout(
-  fabCenterX,
-  fabCenterY,
-  itemCount,
-  rotationRad,
-  viewport,
-  itemRadius,
-) {
-  const layout = loungeDockMenuLayout(
-    fabCenterX,
-    fabCenterY,
-    itemCount,
-    rotationRad,
-    viewport,
-    itemRadius,
-  )
-  return {
-    offsets: layout.offsets,
-    radius: layout.radius,
-    pickerAngle: layout.pickerAngle,
-    focusedIndex: layout.focusedIndex,
-    step: layout.step,
-  }
+/** @deprecated Use loungeDockWheelLayout */
+export function loungeDockMenuLayout(...args) {
+  return loungeDockWheelLayout(...args)
+}
+
+/** @deprecated Use loungeDockWheelLayout */
+export function loungeDockCarouselLayout(...args) {
+  return loungeDockWheelLayout(...args)
 }

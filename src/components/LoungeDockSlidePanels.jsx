@@ -3,9 +3,8 @@ import { feedPostDisplayCaption, loungePostInteractionScore } from '../utils/com
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
 import { LoungeFeedVideoAutoplayProvider } from '../features/lounge/LoungeFeedVideoAutoplayContext.jsx'
-import LoungeDockFooterBar from './LoungeDockFooterBar.jsx'
 import LoungeChatPanel from '../features/lounge/LoungeChatPanel.jsx'
-import { dockChromeHeightFromTitleBarPx } from '../utils/loungeDockChrome.js'
+import { loungeDockFabScrollBottomInsetPx } from '../utils/loungeDockFabPosition.js'
 import {
   loungeTitleRevealAfterScrollStep,
   loungeTitleRevealClampScrollDelta,
@@ -21,8 +20,8 @@ const VERTICAL_BEATS_HORIZONTAL = 1.52
 /**
  * Full-screen Lounge dock panels (search / notifications / chat) over the feed column (`max-w-2xl`).
  * Same **title bar** chrome as the feed (logo, updating line, nav slot) with **scroll-linked hide/show**;
- * **dock footer stays fully visible** (`reveal={1}`) while the feed dock continues to hide/show with scroll
- * only when this panel is closed. Swipe horizontally to dismiss (left or right). `viewportTitleTopPx` must
+ * Bottom scroll inset clears the draggable FAB menu (`SocialFeed` mounts `LoungeDockArcCarouselPrototype` at
+ * `z-[100]` above this layer). Swipe horizontally to dismiss (left or right). `viewportTitleTopPx` must
  * match the feed title’s `top` offset so the bar aligns with the main Lounge shell.
  *
  * Search tab: `postCardProps` is the same shape as profile/feed `LoungePostArticle` handlers (without
@@ -45,7 +44,6 @@ export default function LoungeDockSlidePanels({
   followingFilterDisabled = false,
   onNotifications,
   onChat,
-  onDockFooterHeightChange,
   activePanel = null,
   /** Open a post from search (full row); closes the panel and opens post detail like the main feed. */
   onOpenPostFromSearch,
@@ -435,25 +433,7 @@ export default function LoungeDockSlidePanels({
           </div>
         )}
       </div>
-
-      <div className="relative z-30 mt-auto shrink-0">
-        <LoungeDockFooterBar
-          reveal={1}
-          barHeightPx={0}
-          matchTitleBarHeightPx={panelTitleBarChromePx}
-          onHeightChange={onDockFooterHeightChange}
-          onHome={onHome}
-          onSearch={onSearch}
-          onFollowingFilterToggle={onFollowingFilterToggle}
-          followingFilterOn={followingFilterOn}
-          followingFilterDisabled={followingFilterDisabled}
-          onNotifications={onNotifications}
-          onChat={onChat}
-          activePanel={activePanel}
-          layout="viewport"
-        />
       </div>
-    </div>
     </div>
   )
 }

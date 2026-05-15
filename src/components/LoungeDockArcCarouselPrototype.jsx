@@ -40,6 +40,8 @@ const POINTER_GUARD_MS = 400
 const REPOSITION_POINTER_GUARD_MS = 1000
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
 const FAB_REPOSITION_LONG_PRESS_MS = 450
+/** Backdrop: past this movement = pan/scroll (close menu, release capture); below = tap (close only, block click-through). */
+const BACKDROP_PAN_THRESHOLD_PX = 12
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n))
@@ -113,6 +115,7 @@ export default function LoungeDockArcCarouselPrototype({
   const spinEnabledRef = useRef(false)
   const suppressFabClickRef = useRef(false)
   const repositionCaptureCleanupRef = useRef(null)
+  const backdropGestureRef = useRef(null)
 
   const syncViewport = useCallback(() => {
     const next = loungeDockViewportSize()
@@ -180,6 +183,10 @@ export default function LoungeDockArcCarouselPrototype({
 
   useEffect(() => {
     openRef.current = open
+  }, [open])
+
+  useEffect(() => {
+    if (!open) backdropGestureRef.current = null
   }, [open])
 
   const syncPointerBlock = useCallback(() => {
@@ -771,6 +778,88 @@ export default function LoungeDockArcCarouselPrototype({
     blockPointerEvent(e)
   }, [])
 
+  const armBackdropTapClickTrap = useCallback(() => {
+    const trap = (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      ev.stopImmediatePropagation?.()
+    }
+    window.addEventListener('click', trap, { capture: true, once: true })
+  }, [])
+
+  const onBackdropPointerDown = useCallback((e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    backdropGestureRef.current = {
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+    }
+    try {
+      if (e.currentTarget instanceof Element) {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  const onBackdropPointerMove = useCallback((e) => {
+    const g = backdropGestureRef.current
+    if (!g || g.pointerId !== e.pointerId) return
+    const dx = e.clientX - g.x
+    const dy = e.clientY - g.y
+    if (Math.hypot(dx, dy) < BACKDROP_PAN_THRESHOLD_PX) return
+    backdropGestureRef.current = null
+    try {
+      if (e.currentTarget instanceof Element) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    } catch {
+      /* ignore */
+    }
+    requestAnimationFrame(() => {
+      setOpen(false)
+    })
+  }, [])
+
+  const onBackdropPointerUp = useCallback(
+    (e) => {
+      const g = backdropGestureRef.current
+      if (!g || g.pointerId !== e.pointerId) return
+      backdropGestureRef.current = null
+      try {
+        if (e.currentTarget instanceof Element) {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        }
+      } catch {
+        /* ignore */
+      }
+      e.preventDefault()
+      e.stopPropagation()
+      armBackdropTapClickTrap()
+      flushSync(() => {
+        setOpen(false)
+      })
+    },
+    [armBackdropTapClickTrap],
+  )
+
+  const onBackdropPointerCancel = useCallback((e) => {
+    const g = backdropGestureRef.current
+    if (!g || g.pointerId !== e.pointerId) return
+    backdropGestureRef.current = null
+    try {
+      if (e.currentTarget instanceof Element) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    } catch {
+      /* ignore */
+    }
+    flushSync(() => {
+      setOpen(false)
+    })
+  }, [])
+
   /** Panel screens: home chip beside FAB (menu collapsed) — tap only, no spin. */
   const onCompactItemTap = useCallback(
     (item, e) => {
@@ -912,19 +1001,13 @@ export default function LoungeDockArcCarouselPrototype({
           type="button"
           className="pointer-events-auto fixed inset-0 z-[5] bg-black/35 backdrop-blur-[2px] [-webkit-tap-highlight-color:transparent]"
           aria-label="Close menu"
-          onPointerDown={(e) => {
-            if (e.pointerType === 'mouse' && e.button !== 0) return
-            /**
-             * Defer unmount to the next frame so the same touch isn’t retargeted from a
-             * synchronously removed backdrop (iOS/WebKit: scroll “sticks” / rubber-bands).
-             */
-            requestAnimationFrame(() => {
-              setOpen(false)
-            })
-          }}
+          onPointerDown={onBackdropPointerDown}
+          onPointerMove={onBackdropPointerMove}
+          onPointerUp={onBackdropPointerUp}
+          onPointerCancel={onBackdropPointerCancel}
           onClick={(e) => {
             e.preventDefault()
-            setOpen(false)
+            e.stopPropagation()
           }}
         />
       ) : null}

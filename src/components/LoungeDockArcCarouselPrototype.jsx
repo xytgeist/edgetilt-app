@@ -70,7 +70,10 @@ export default function LoungeDockArcCarouselPrototype({
   const carouselRotationRef = useRef(0)
 
   const syncViewport = useCallback(() => {
-    setViewport(loungeDockViewportSize())
+    const next = loungeDockViewportSize()
+    setViewport((prev) =>
+      prev.width === next.width && prev.height === next.height ? prev : next,
+    )
   }, [])
 
   useEffect(() => {
@@ -78,11 +81,9 @@ export default function LoungeDockArcCarouselPrototype({
     const vv = window.visualViewport
     window.addEventListener('resize', syncViewport)
     vv?.addEventListener('resize', syncViewport)
-    vv?.addEventListener('scroll', syncViewport)
     return () => {
       window.removeEventListener('resize', syncViewport)
       vv?.removeEventListener('resize', syncViewport)
-      vv?.removeEventListener('scroll', syncViewport)
     }
   }, [syncViewport])
 
@@ -113,28 +114,23 @@ export default function LoungeDockArcCarouselPrototype({
     carouselRotationRef.current = carouselRotation
   }, [carouselRotation])
 
-  const fabCenter = useMemo(() => {
-    if (!fabPos) return null
-    return {
-      x: fabPos.left + LOUNGE_DOCK_FAB_SIZE_PX / 2,
-      y: fabPos.top + LOUNGE_DOCK_FAB_SIZE_PX / 2,
-    }
-  }, [fabPos])
+  const fabCenterX = fabPos ? fabPos.left + LOUNGE_DOCK_FAB_SIZE_PX / 2 : null
+  const fabCenterY = fabPos ? fabPos.top + LOUNGE_DOCK_FAB_SIZE_PX / 2 : null
 
   const carouselLayout = useMemo(() => {
-    if (!fabCenter || items.length === 0) {
+    if (fabCenterX == null || fabCenterY == null || items.length === 0) {
       return { offsets: [], radius: 0, pickerAngle: 0, focusedIndex: 0, step: 0 }
     }
     const itemRadius = ITEM_CIRCLE_PX / 2
     return loungeDockCarouselLayout(
-      fabCenter.x,
-      fabCenter.y,
+      fabCenterX,
+      fabCenterY,
       items.length,
       carouselRotation,
       viewport,
       itemRadius,
     )
-  }, [fabCenter, items.length, carouselRotation, viewport])
+  }, [fabCenterX, fabCenterY, items.length, carouselRotation, viewport.width, viewport.height])
 
   const hitSizePx = open
     ? Math.min(
@@ -159,11 +155,11 @@ export default function LoungeDockArcCarouselPrototype({
 
   const snapCarouselToPicker = useCallback(
     (rotation) => {
-      if (!fabCenter || items.length === 0) return rotation
+      if (fabCenterX == null || fabCenterY == null || items.length === 0) return rotation
       const itemRadius = ITEM_CIRCLE_PX / 2
       const layout = loungeDockCarouselLayout(
-        fabCenter.x,
-        fabCenter.y,
+        fabCenterX,
+        fabCenterY,
         items.length,
         rotation,
         viewport,
@@ -175,13 +171,18 @@ export default function LoungeDockArcCarouselPrototype({
         layout.pickerAngle,
       )
     },
-    [items.length, viewport, fabCenter],
+    [items.length, viewport.width, viewport.height, fabCenterX, fabCenterY],
   )
 
-  useEffect(() => {
-    if (!open || !fabCenter) return
-    setCarouselRotation((r) => snapCarouselToPicker(r))
-  }, [open, fabCenter, snapCarouselToPicker])
+  const applyCarouselSnap = useCallback(
+    (rotation) => {
+      const snapped = snapCarouselToPicker(rotation)
+      if (Math.abs(snapped - carouselRotationRef.current) < 1e-6) return
+      carouselRotationRef.current = snapped
+      setCarouselRotation(snapped)
+    },
+    [snapCarouselToPicker],
+  )
 
   useEffect(() => {
     if (!open) return undefined
@@ -257,9 +258,10 @@ export default function LoungeDockArcCarouselPrototype({
       }
 
       if (!fabVisible) return
+      applyCarouselSnap(carouselRotationRef.current)
       setOpen(true)
     },
-    [persistFabPrefs, fabVisible],
+    [persistFabPrefs, fabVisible, applyCarouselSnap],
   )
 
   const onFabPointerCancel = useCallback((e) => {
@@ -271,23 +273,23 @@ export default function LoungeDockArcCarouselPrototype({
 
   const onSpinPointerDown = useCallback(
     (e) => {
-      if (!openRef.current || !fabCenter || e.button !== 0) return
+      if (!openRef.current || fabCenterX == null || fabCenterY == null || e.button !== 0) return
       spinRef.current = {
         pointerId: e.pointerId,
-        startPointerAngle: angleFromPointer(fabCenter.x, fabCenter.y, e.clientX, e.clientY),
+        startPointerAngle: angleFromPointer(fabCenterX, fabCenterY, e.clientX, e.clientY),
         startRotation: carouselRotationRef.current,
       }
       setSpinning(true)
       e.currentTarget.setPointerCapture(e.pointerId)
     },
-    [fabCenter],
+    [fabCenterX, fabCenterY],
   )
 
   const onSpinPointerMove = useCallback(
     (e) => {
       const spin = spinRef.current
-      if (!spin || spin.pointerId !== e.pointerId || !fabCenter) return
-      const cur = angleFromPointer(fabCenter.x, fabCenter.y, e.clientX, e.clientY)
+      if (!spin || spin.pointerId !== e.pointerId || fabCenterX == null || fabCenterY == null) return
+      const cur = angleFromPointer(fabCenterX, fabCenterY, e.clientX, e.clientY)
       let delta = cur - spin.startPointerAngle
       if (delta > Math.PI) delta -= Math.PI * 2
       if (delta < -Math.PI) delta += Math.PI * 2
@@ -295,7 +297,7 @@ export default function LoungeDockArcCarouselPrototype({
       carouselRotationRef.current = next
       setCarouselRotation(next)
     },
-    [fabCenter],
+    [fabCenterX, fabCenterY],
   )
 
   const endSpin = useCallback(
@@ -304,11 +306,9 @@ export default function LoungeDockArcCarouselPrototype({
       if (!spin || spin.pointerId !== pointerId) return
       spinRef.current = null
       setSpinning(false)
-      const snapped = snapCarouselToPicker(carouselRotationRef.current)
-      carouselRotationRef.current = snapped
-      setCarouselRotation(snapped)
+      applyCarouselSnap(carouselRotationRef.current)
     },
-    [snapCarouselToPicker],
+    [applyCarouselSnap],
   )
 
   const onSpinWheel = useCallback(
@@ -343,7 +343,7 @@ export default function LoungeDockArcCarouselPrototype({
     setOpen(false)
   }, [])
 
-  if (items.length === 0 || !fabPos || !fabCenter) return null
+  if (items.length === 0 || !fabPos || fabCenterX == null || fabCenterY == null) return null
 
   const pickerOffset = carouselLayout.offsets[carouselLayout.focusedIndex] ?? { x: 0, y: 0 }
 

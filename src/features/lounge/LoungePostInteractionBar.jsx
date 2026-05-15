@@ -5,6 +5,7 @@ import { LoungeLikeStatContent } from './LoungeFlameIcon.jsx'
 
 /**
  * Comment / repost / like / bookmark row — same behavior as the feed post row or post-detail sheet.
+ * Layout: `flex` + `justify-between` so spacing between the four clusters is even (grid `1fr` columns skewed when outer columns differ in width).
  *
  * @param {'feed' | 'sheet'} [props.variant='feed'] — `feed`: fixed portaled repost menus (feed card). `sheet`: absolute repost dropdown (post detail sheet styling).
  * @param {string} [props.repostMenuPortalClass='z-[48]'] — Tailwind z class for portaled repost menus (`feed` only). Use `z-[101]` above media lightboxes (`z-[100]`).
@@ -48,22 +49,26 @@ export default function LoungePostInteractionBar({
   const ro = loungeReadOnly
   const commentClass = ro ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
   const repostClass = ro ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
-  const likeClass = ro ? 'text-zinc-500' : ui.liked ? 'text-[#ff3824]' : 'text-zinc-500'
-  const bookmarkClass = ro ? 'text-zinc-600' : isBookmarked ? 'text-[#ffd024]' : 'text-zinc-500'
+  const likeClass = ro ? 'text-zinc-500' : ui.liked ? 'text-lv-red' : 'text-zinc-500'
+  const bookmarkClass = ro ? 'text-zinc-600' : isBookmarked ? 'text-lv-yellow' : 'text-zinc-500'
   const plainId = ui.plainRepostChildId
   const quoteId = ui.quoteRepostChildId
 
   const isFeed = variant === 'feed'
-  const iconSz = isFeed ? 'h-[20px] w-[20px]' : 'h-[22px] w-[22px]'
-  const statFeedComment = 'inline-flex items-center justify-start gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70'
-  const statFeedCenter = 'inline-flex items-center justify-center gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70'
-  const statFeedBookmark = 'inline-flex items-center justify-end gap-1.5 rounded px-1.5 py-1 hover:bg-zinc-900/70'
-  const statSheetStart =
-    'inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation'
-  const statSheetCenter =
-    'inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation'
-  const statSheetEnd =
-    'inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation'
+  const iconSz = isFeed ? 'h-[22px] w-[22px]' : 'h-[24px] w-[24px]'
+  /** Four clusters with equal space between neighbors (`justify-between`). */
+  const statFeedComment =
+    'inline-flex shrink-0 items-center gap-1.5 rounded px-1 py-1 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const statFeedMid =
+    'inline-flex shrink-0 items-center gap-1.5 rounded px-1 py-1 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const statFeedBookmark =
+    'inline-flex shrink-0 items-center gap-1.5 rounded px-1 py-1 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const statSheetComment =
+    'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const statSheetMid =
+    'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const statSheetBookmark =
+    'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
 
   useEffect(() => {
     if (!repostMenuOpen) return
@@ -116,9 +121,9 @@ export default function LoungePostInteractionBar({
     toggleInteraction(post.id, 'commented')
   }
 
-  const gridClass = isFeed
-    ? `grid grid-cols-4 items-center text-[14px] ${rootClassName}`.trim()
-    : `grid grid-cols-4 items-center gap-1 text-[15px] ${rootClassName}`.trim()
+  const rowClass = isFeed
+    ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-x-1 text-[15px] ${rootClassName}`.trim()
+    : `flex w-full min-w-0 flex-nowrap items-center justify-between gap-x-1 text-[16px] ${rootClassName}`.trim()
 
   const repostMenusFeed =
     typeof document !== 'undefined' &&
@@ -436,13 +441,13 @@ export default function LoungePostInteractionBar({
     ) : null
 
   return (
-    <div className={gridClass} onClick={(e) => e.stopPropagation()} role="group">
+    <div className={rowClass} onClick={(e) => e.stopPropagation()} role="group">
         <LoungeFeedStatSlot
           readOnly={ro}
           title={ro ? 'Sign in to comment' : undefined}
           onReadOnlyClick={requireLoungeAuth}
           onClick={onComment}
-          className={isFeed ? statFeedComment : statSheetStart}
+          className={isFeed ? statFeedComment : statSheetComment}
         >
           <svg className={`${iconSz} ${commentClass}`} viewBox="0 0 20 20" aria-hidden>
             <path
@@ -457,7 +462,7 @@ export default function LoungePostInteractionBar({
           </svg>
           {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
         </LoungeFeedStatSlot>
-        <div className="relative flex justify-center" ref={repostMenuRef}>
+        <div className="relative shrink-0" ref={repostMenuRef}>
           <LoungeFeedStatSlot
             readOnly={ro}
             title={ro ? 'Sign in to repost' : ui.reposted ? 'Repost options' : 'Repost or quote repost'}
@@ -478,7 +483,7 @@ export default function LoungePostInteractionBar({
               }
               void toggleInteraction(post.id, 'reposted')
             }}
-            className={isFeed ? statFeedCenter : statSheetCenter}
+            className={isFeed ? statFeedMid : statSheetMid}
           >
             <svg className={`${iconSz} ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
               <path
@@ -495,30 +500,32 @@ export default function LoungePostInteractionBar({
         </div>
         {isFeed ? repostMenusFeed : null}
         {isFeed ? repostMenusFeedNotReposted : null}
-        <LoungeFeedStatSlot
-          readOnly={ro}
-          title={ro ? 'Sign in to like' : undefined}
-          onReadOnlyClick={requireLoungeAuth}
-          onClick={() => void toggleInteraction(post.id, 'liked')}
-          className={isFeed ? statFeedCenter : statSheetCenter}
-        >
-          <LoungeLikeStatContent
-            iconClassName={`${iconSz} ${likeClass}`}
-            countClassName={likeClass}
-            liked={ui.liked}
+        <div className="shrink-0">
+          <LoungeFeedStatSlot
             readOnly={ro}
-            likeCount={likeCount}
-            iconPx={isFeed ? 20 : 22}
-          />
-        </LoungeFeedStatSlot>
+            title={ro ? 'Sign in to like' : undefined}
+            onReadOnlyClick={requireLoungeAuth}
+            onClick={() => void toggleInteraction(post.id, 'liked')}
+            className={isFeed ? statFeedMid : statSheetMid}
+          >
+            <LoungeLikeStatContent
+              iconClassName={`${iconSz} ${likeClass}`}
+              countClassName={likeClass}
+              liked={ui.liked}
+              readOnly={ro}
+              likeCount={likeCount}
+              iconPx={isFeed ? 22 : 24}
+            />
+          </LoungeFeedStatSlot>
+        </div>
         {ro ? (
           <button
             type="button"
             onClick={requireLoungeAuth}
             className={
               isFeed
-                ? `${statFeedBookmark} text-zinc-600 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]`
-                : `${statSheetEnd} text-zinc-600`
+                ? `${statFeedBookmark} text-zinc-600 hover:bg-zinc-900/70`
+                : `${statSheetBookmark} text-zinc-600`
             }
             title="Sign in to save posts"
           >
@@ -538,7 +545,7 @@ export default function LoungePostInteractionBar({
           <button
             type="button"
             onClick={() => void toggleBookmark(post.id)}
-            className={isFeed ? statFeedBookmark : statSheetEnd}
+            className={isFeed ? statFeedBookmark : statSheetBookmark}
             title={isBookmarked ? 'Remove bookmark' : 'Save post'}
           >
             <svg className={`${iconSz} ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>

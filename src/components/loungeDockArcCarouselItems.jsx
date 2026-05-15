@@ -1,7 +1,7 @@
 /** Dock-style glyphs for the arc carousel prototype (mirrors `LoungeDockFooterBar` strokes). */
 
-/** Matches dock neon cyan (`loungeDockFabGlow` / center FAB). */
-const LOUNGE_DOCK_CYAN = '#00f5ff'
+/** Matches dock electric blue (`loungeDockFabGlow` / center FAB). */
+const LOUNGE_DOCK_CYAN = '#06cefc'
 
 const stroke = {
   stroke: 'currentColor',

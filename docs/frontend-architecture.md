@@ -10,6 +10,10 @@ How the React app is organized after the **feature-module split** (2026). Use th
 
 Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circular dependency story and keeps the entry file small (~hundreds of lines instead of thousands).
 
+## Brand palette (Tailwind + CSS)
+
+Canonical **`src/index.css`**: **`lv-*`** Tailwind colors (**`lv-red`**, **`lv-orange`**, **`lv-yellow`**, **`lv-blue`**, **`lv-green`**, **`lv-purple`**) plus **`--lv-*`** CSS variables on **`:root`**. The **`cyan-*`** utility scale is overridden so existing **`cyan-*`** classes align with electric blue (**`#06cefc`**). Violet accents map toward vivid purple (**`#9d00ff`**). Dock FAB accents live in **`loungeDockFabGlow.js`**; carousel glyphs use **`LOUNGE_DOCK_CYAN`** in **`loungeDockArcCarouselItems.jsx`**.
+
 ## Access model (public browse + member)
 
 - **Anonymous:** No Supabase session → user lands in **`AppShell`** immediately (Supabase **anon** key; public-read RLS paths work). A sticky strip invites **Log in**; Lounge and other surfaces follow **anon** policies (today: read-only patterns in Lounge where writes require auth).

@@ -5296,36 +5296,40 @@ export default function SocialFeed({
                   )}
                 </button>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const p = loungePostDetail
-                        void openProfileModal(p)
-                      }}
-                      className="min-w-0 inline-flex max-w-full overflow-hidden text-left hover:text-cyan-300"
-                    >
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug">
-                        <span className="min-w-0 max-w-[min(12rem,46vw)] truncate font-semibold text-[15px] text-zinc-100 sm:max-w-[14rem]">
-                          {displayNameFor(loungePostDetail)}
-                        </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = loungePostDetail
+                      void openProfileModal(p)
+                    }}
+                    className="block w-full min-w-0 text-left hover:text-cyan-300"
+                  >
+                    <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[15px] leading-snug">
+                      <span className="min-w-0 truncate font-semibold text-zinc-100">
+                        {displayNameFor(loungePostDetail)}
+                      </span>
+                      <span className="shrink-0">
                         <LoungeStaffRoleBadge role={loungePostDetail?.author_profile?.role} size="detail" />
+                      </span>
+                      <span className="shrink-0">
                         <LoungeOgBadge isOg={loungePostDetail?.author_profile?.is_og} size="detail" />
-                        <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[15px] text-zinc-500">
-                          <span className="min-w-0 truncate sm:max-w-[11rem]">{handleFor(loungePostDetail)}</span>
-                          <span className="shrink-0 text-zinc-600">·</span>
-                          <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
-                            {postAgeLabel(loungePostDetail.created_at)}
-                          </span>
+                      </span>
+                      <span className="inline-flex min-w-0 max-w-[min(11rem,52vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[15px] text-zinc-500 sm:max-w-[13rem]">
+                        <span className="min-w-0 truncate">{handleFor(loungePostDetail)}</span>
+                        <span className="shrink-0 text-zinc-600">·</span>
+                        <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
+                          {postAgeLabel(loungePostDetail.created_at)}
                         </span>
-                      </div>
-                    </button>
-                    {loungePostDetail.pinned ? (
-                      <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                      </span>
+                    </div>
+                  </button>
+                  {loungePostDetail.pinned ? (
+                    <div className="mt-1">
+                      <span className="inline-flex shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
                         Pinned
                       </span>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -5537,8 +5541,8 @@ export default function SocialFeed({
                 const repostCount = baseReposts
                 const commentClass = loungeReadOnly ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
                 const repostClass = loungeReadOnly ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
-                const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-[#ff3824]' : 'text-zinc-500'
-                const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-[#ffd024]' : 'text-zinc-500'
+                const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-lv-red' : 'text-zinc-500'
+                const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-lv-yellow' : 'text-zinc-500'
                 const ro = loungeReadOnly
                 const plainId = ui.plainRepostChildId
                 const quoteId = ui.quoteRepostChildId
@@ -5636,7 +5640,7 @@ export default function SocialFeed({
                       </>
                     ) : null}
                     <div
-                      className={`grid grid-cols-4 items-center gap-1 text-[15px] ${loungeDetailEditing ? 'mt-1' : ''}`}
+                      className={`flex w-full min-w-0 flex-nowrap items-center justify-between gap-x-1 text-[16px] ${loungeDetailEditing ? 'mt-1' : ''}`}
                       onClick={(e) => e.stopPropagation()}
                       role="group"
                     >
@@ -5651,9 +5655,9 @@ export default function SocialFeed({
                             block: 'start',
                           })
                         }}
-                        className="inline-flex items-center justify-start gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                        className="inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                       >
-                        <svg className={`h-[22px] w-[22px] ${commentClass}`} viewBox="0 0 20 20" aria-hidden>
+                        <svg className={`h-[24px] w-[24px] ${commentClass}`} viewBox="0 0 20 20" aria-hidden>
                           <path
                             d="M4.75 5.75h10.5a1.5 1.5 0 011.5 1.5v5a1.5 1.5 0 01-1.5 1.5H9l-3.25 2v-2H4.75a1.5 1.5 0 01-1.5-1.5v-5a1.5 1.5 0 011.5-1.5z"
                             fill="currentColor"
@@ -5666,7 +5670,7 @@ export default function SocialFeed({
                         </svg>
                         {Number.isFinite(commentCount) ? <span className={commentClass}>{commentCount}</span> : null}
                       </LoungeFeedStatSlot>
-                      <div className="relative flex justify-center" ref={loungeDetailRepostMenuRef}>
+                      <div className="relative shrink-0" ref={loungeDetailRepostMenuRef}>
                         <LoungeFeedStatSlot
                           readOnly={ro}
                           title={
@@ -5681,9 +5685,9 @@ export default function SocialFeed({
                             if (openProfileGateIfNeeded()) return
                             setLoungeDetailRepostMenuOpen((o) => !o)
                           }}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                         >
-                          <svg className={`h-[22px] w-[22px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+                          <svg className={`h-[24px] w-[24px] ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
                             <path
                               d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
                               stroke="currentColor"
@@ -5842,30 +5846,32 @@ export default function SocialFeed({
                           </div>
                         ) : null}
                       </div>
-                      <LoungeFeedStatSlot
-                        readOnly={ro}
-                        title={ro ? 'Sign in to like' : undefined}
-                        onReadOnlyClick={requireLoungeAuth}
-                        onClick={() => void toggleInteraction(d.id, 'liked')}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
-                      >
-                        <LoungeLikeStatContent
-                          iconClassName={`h-[22px] w-[22px] ${likeClass}`}
-                          countClassName={likeClass}
-                          liked={ui.liked}
+                      <div className="shrink-0">
+                        <LoungeFeedStatSlot
                           readOnly={ro}
-                          likeCount={likeCount}
-                          iconPx={22}
-                        />
-                      </LoungeFeedStatSlot>
+                          title={ro ? 'Sign in to like' : undefined}
+                          onReadOnlyClick={requireLoungeAuth}
+                          onClick={() => void toggleInteraction(d.id, 'liked')}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                        >
+                          <LoungeLikeStatContent
+                            iconClassName={`h-[24px] w-[24px] ${likeClass}`}
+                            countClassName={likeClass}
+                            liked={ui.liked}
+                            readOnly={ro}
+                            likeCount={likeCount}
+                            iconPx={24}
+                          />
+                        </LoungeFeedStatSlot>
+                      </div>
                       {ro ? (
                         <button
                           type="button"
                           onClick={requireLoungeAuth}
-                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 text-zinc-600 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 text-zinc-600 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                           title="Sign in to save posts"
                         >
-                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
+                          <svg className={`h-[24px] w-[24px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
                             <path
                               d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
                               fill="currentColor"
@@ -5881,10 +5887,10 @@ export default function SocialFeed({
                         <button
                           type="button"
                           onClick={() => void toggleBookmark(d.id)}
-                          className="inline-flex items-center justify-end gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                           title={isBookmarked ? 'Remove bookmark' : 'Save post'}
                         >
-                          <svg className={`h-[22px] w-[22px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
+                          <svg className={`h-[24px] w-[24px] ${bookmarkClass}`} viewBox="0 0 20 20" aria-hidden>
                             <path
                               d="M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z"
                               fill="currentColor"
@@ -6499,19 +6505,27 @@ export default function SocialFeed({
                                 aria-label="Quoted post preview"
                                 className="w-full rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit"
                               >
-                                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
-                                  <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
-                                    {displayNameFor(orig)}
-                                  </span>
-                                  <LoungeStaffRoleBadge role={orig?.author_profile?.role} size="detail" />
-                                  <LoungeOgBadge isOg={orig?.author_profile?.is_og} size="detail" />
-                                  <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[14px] text-zinc-500">
-                                    <span className="min-w-0 max-w-[min(9rem,36vw)] truncate sm:max-w-[11rem]">{handleFor(orig)}</span>
-                                  </span>
-                                  {orig.pinned ? (
-                                    <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
-                                      Pinned
+                                <div className="min-w-0">
+                                  <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
+                                    <span className="min-w-0 truncate font-semibold text-zinc-200">
+                                      {displayNameFor(orig)}
                                     </span>
+                                    <span className="shrink-0">
+                                      <LoungeStaffRoleBadge role={orig?.author_profile?.role} size="detail" />
+                                    </span>
+                                    <span className="shrink-0">
+                                      <LoungeOgBadge isOg={orig?.author_profile?.is_og} size="detail" />
+                                    </span>
+                                    <span className="inline-flex min-w-0 max-w-[min(10rem,48vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[14px] text-zinc-500 sm:max-w-[12rem]">
+                                      <span className="min-w-0 truncate">{handleFor(orig)}</span>
+                                    </span>
+                                  </div>
+                                  {orig.pinned ? (
+                                    <div className="mt-1">
+                                      <span className="inline-flex shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                                        Pinned
+                                      </span>
+                                    </div>
                                   ) : null}
                                 </div>
                                 <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">

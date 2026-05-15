@@ -1,5 +1,46 @@
 @import "tailwindcss";
 
+/*
+ * LVSlotPro brand palette
+ * - Tailwind: bg-lv-red, text-lv-blue, border-lv-purple, …
+ * - CSS-only: var(--lv-red), …
+ * - Extended cyan-* scale matches electric blue (#06cefc) so legacy cyan-* utilities follow the theme.
+ */
+:root {
+  --lv-red: #fd262d;
+  --lv-orange: #fd4506;
+  --lv-yellow: #ffea00;
+  --lv-blue: #06cefc;
+  --lv-green: #04f265;
+  --lv-purple: #9d00ff;
+}
+
+@theme {
+  --color-lv-red: #fd262d;
+  --color-lv-orange: #fd4506;
+  --color-lv-yellow: #ffea00;
+  --color-lv-blue: #06cefc;
+  --color-lv-green: #04f265;
+  --color-lv-purple: #9d00ff;
+
+  --color-cyan-50: #ecfbfe;
+  --color-cyan-100: #d4f7fd;
+  --color-cyan-200: #a8eefc;
+  --color-cyan-300: #6ae3fb;
+  --color-cyan-400: #32d8fa;
+  --color-cyan-500: #06cefc;
+  --color-cyan-600: #05a7cb;
+  --color-cyan-700: #04809d;
+  --color-cyan-800: #086682;
+  --color-cyan-900: #0c5469;
+  --color-cyan-950: #083844;
+
+  --color-violet-400: #c994ff;
+  --color-violet-500: #b366ff;
+  --color-violet-600: #9d00ff;
+  --color-violet-700: #7c00cc;
+}
+
 body {
   background-color: #0a0a0a;
   color: white;
@@ -58,11 +99,11 @@ input[list]::-webkit-list-button {
 }
 
 .offer-datepicker .react-datepicker__day:hover {
-  background-color: rgba(124, 58, 237, 0.15); /* violet-600/15 */
+  background-color: rgba(157, 0, 255, 0.15); /* lv-purple */
 }
 
 .offer-datepicker .react-datepicker__time-list-item--selected {
-  background-color: #7c3aed;
+  background-color: var(--lv-purple);
   color: #fff;
 }
 
@@ -84,11 +125,11 @@ input[list]::-webkit-list-button {
 }
 
 .offer-datepicker .react-datepicker__time-list-item:hover {
-  background-color: rgba(124, 58, 237, 0.15) !important;
+  background-color: rgba(157, 0, 255, 0.15) !important;
 }
 
 .offer-datepicker .react-datepicker__time-list-item--selected {
-  background-color: #7c3aed !important;
+  background-color: var(--lv-purple) !important;
   color: #ffffff !important;
 }
 
@@ -127,13 +168,13 @@ input[list]::-webkit-list-button {
 .react-datepicker__day--today {
   background: transparent !important;
   border: none !important;
-  box-shadow: 0 0 0 2px #7c3aed !important; /* violet-600 */
+  box-shadow: 0 0 0 2px var(--lv-purple) !important;
 }
 
 /* Inline calendar: today indicator is red text (no ring) */
 .offer-datepicker-inline .react-datepicker__day--today {
   box-shadow: none !important;
-  color: #06b6d4 !important; /* cyan-500 */
+  color: var(--lv-blue) !important;
 }
 
 /* Selected indicator: white rounded ring */
@@ -147,7 +188,7 @@ input[list]::-webkit-list-button {
 /* Inline calendar selected day: filled circle (iOS-style) */
 .offer-datepicker-inline .react-datepicker__day--selected,
 .offer-datepicker-inline .react-datepicker__day--keyboard-selected {
-  background: #06b6d4 !important; /* cyan-500 */
+  background: var(--lv-blue) !important;
   color: #ffffff !important;
   box-shadow: none !important;
   border-radius: 9999px !important;

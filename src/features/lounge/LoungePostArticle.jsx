@@ -146,54 +146,65 @@ export default function LoungePostArticle({
         )}
       </button>
       <div className="min-w-0 flex-1 pt-0.5">
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-0 items-start gap-2">
           <div className="min-w-0 flex-1 overflow-hidden text-left">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[15px] leading-snug">
-              <span className="min-w-0 max-w-[min(12rem,46vw)] truncate font-semibold text-zinc-100 sm:max-w-[14rem]">
+            {/* Meta row: left-packed (no flex-1 on name — avoids pushing badges/handle right); handle shrinks before name */}
+            <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[15px] leading-snug">
+              <span className="min-w-0 truncate font-semibold text-zinc-100">
                 {displayNameFor(post)}
               </span>
-              <LoungeStaffRoleBadge role={post?.author_profile?.role} />
-              <LoungeOgBadge isOg={post?.author_profile?.is_og} />
-              <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-zinc-500">
-                <span className="min-w-0 truncate sm:max-w-[11rem]">{handleFor(post)}</span>
+              <span className="shrink-0">
+                <LoungeStaffRoleBadge role={post?.author_profile?.role} />
+              </span>
+              <span className="shrink-0">
+                <LoungeOgBadge isOg={post?.author_profile?.is_og} />
+              </span>
+              <span className="inline-flex min-w-0 max-w-[min(11rem,52vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-zinc-500 sm:max-w-[13rem]">
+                <span className="min-w-0 truncate">{handleFor(post)}</span>
                 <span className="shrink-0 text-zinc-600">·</span>
                 <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{postAgeLabel(post.created_at)}</span>
               </span>
-              {post.pinned ? (
-                <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
-                  Pinned
-                </span>
-              ) : null}
-              {loungeViewerIsStaff && !loungeReadOnly ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    void setLoungePostPinned(post.id, !post.pinned)
-                  }}
-                  disabled={loungePinBusy}
-                  className="shrink-0 rounded-full border border-zinc-600/90 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-zinc-300 hover:border-fuchsia-500/50 hover:text-fuchsia-100 disabled:opacity-50 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                >
-                  {post.pinned ? 'Unpin' : 'Pin'}
-                </button>
-              ) : null}
             </div>
+            {post.pinned || (loungeViewerIsStaff && !loungeReadOnly) ? (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {post.pinned ? (
+                  <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                    Pinned
+                  </span>
+                ) : null}
+                {loungeViewerIsStaff && !loungeReadOnly ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void setLoungePostPinned(post.id, !post.pinned)
+                    }}
+                    disabled={loungePinBusy}
+                    className="shrink-0 rounded-full border border-zinc-600/90 bg-zinc-900/80 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-zinc-300 hover:border-fuchsia-500/50 hover:text-fuchsia-100 disabled:opacity-50 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                  >
+                    {post.pinned ? 'Unpin' : 'Pin'}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           {showPostRowMenu ? (
-            <LoungePostRowMenu
-              isOwn={menuIsOwn}
-              showEdit={menuShowEdit}
-              deleteBusy={Boolean(busyDeletingPostId && busyDeletingPostId === post.id)}
-              onEdit={() => onPostMenuEdit?.(post)}
-              onDelete={() => onPostMenuDelete?.(post)}
-              showStaffDelete={Boolean(loungeViewerIsStaff && !menuIsOwn && typeof onStaffPostDelete === 'function')}
-              staffDeleteBusy={Boolean(busyDeletingPostId && busyDeletingPostId === post.id)}
-              onStaffDelete={() => onStaffPostDelete?.(post)}
-              onBlock={() => onPostMenuBlock?.(post)}
-              onReport={() => onPostMenuReport?.(post)}
-              onShare={typeof onSharePost === 'function' ? () => onSharePost(post) : undefined}
-              positionScrollRootRef={repostMenuScrollRootRef}
-            />
+            <div className="shrink-0 self-start translate-y-px">
+              <LoungePostRowMenu
+                isOwn={menuIsOwn}
+                showEdit={menuShowEdit}
+                deleteBusy={Boolean(busyDeletingPostId && busyDeletingPostId === post.id)}
+                onEdit={() => onPostMenuEdit?.(post)}
+                onDelete={() => onPostMenuDelete?.(post)}
+                showStaffDelete={Boolean(loungeViewerIsStaff && !menuIsOwn && typeof onStaffPostDelete === 'function')}
+                staffDeleteBusy={Boolean(busyDeletingPostId && busyDeletingPostId === post.id)}
+                onStaffDelete={() => onStaffPostDelete?.(post)}
+                onBlock={() => onPostMenuBlock?.(post)}
+                onReport={() => onPostMenuReport?.(post)}
+                onShare={typeof onSharePost === 'function' ? () => onSharePost(post) : undefined}
+                positionScrollRootRef={repostMenuScrollRootRef}
+              />
+            </div>
           ) : null}
         </div>
         {post.game_slug ? (
@@ -228,19 +239,27 @@ export default function LoungePostArticle({
                 aria-label="View original post"
                 className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
               >
-                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
-                  <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
-                    {displayNameFor(post.reposted_post)}
-                  </span>
-                  <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
-                  <LoungeOgBadge isOg={post.reposted_post?.author_profile?.is_og} size="detail" />
-                  <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[14px] text-zinc-500">
-                    <span className="min-w-0 max-w-[min(9rem,36vw)] truncate sm:max-w-[11rem]">{handleFor(post.reposted_post)}</span>
-                  </span>
-                  {post.reposted_post.pinned ? (
-                    <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
-                      Pinned
+                <div className="min-w-0">
+                  <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
+                    <span className="min-w-0 truncate font-semibold text-zinc-200">
+                      {displayNameFor(post.reposted_post)}
                     </span>
+                    <span className="shrink-0">
+                      <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
+                    </span>
+                    <span className="shrink-0">
+                      <LoungeOgBadge isOg={post.reposted_post?.author_profile?.is_og} size="detail" />
+                    </span>
+                    <span className="inline-flex min-w-0 max-w-[min(10rem,48vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[14px] text-zinc-500 sm:max-w-[12rem]">
+                      <span className="min-w-0 truncate">{handleFor(post.reposted_post)}</span>
+                    </span>
+                  </div>
+                  {post.reposted_post.pinned ? (
+                    <div className="mt-1">
+                      <span className="inline-flex shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                        Pinned
+                      </span>
+                    </div>
                   ) : null}
                 </div>
                 <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">
@@ -275,19 +294,27 @@ export default function LoungePostArticle({
                 aria-label="View original post"
                 className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
               >
-                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
-                  <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
-                    {displayNameFor(post.reposted_post)}
-                  </span>
-                  <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
-                  <LoungeOgBadge isOg={post.reposted_post?.author_profile?.is_og} size="detail" />
-                  <span className="inline-flex min-w-0 max-w-full items-center gap-x-1 text-[14px] text-zinc-500">
-                    <span className="min-w-0 max-w-[min(9rem,36vw)] truncate sm:max-w-[11rem]">{handleFor(post.reposted_post)}</span>
-                  </span>
-                  {post.reposted_post.pinned ? (
-                    <span className="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
-                      Pinned
+                <div className="min-w-0">
+                  <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
+                    <span className="min-w-0 truncate font-semibold text-zinc-200">
+                      {displayNameFor(post.reposted_post)}
                     </span>
+                    <span className="shrink-0">
+                      <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
+                    </span>
+                    <span className="shrink-0">
+                      <LoungeOgBadge isOg={post.reposted_post?.author_profile?.is_og} size="detail" />
+                    </span>
+                    <span className="inline-flex min-w-0 max-w-[min(10rem,48vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[14px] text-zinc-500 sm:max-w-[12rem]">
+                      <span className="min-w-0 truncate">{handleFor(post.reposted_post)}</span>
+                    </span>
+                  </div>
+                  {post.reposted_post.pinned ? (
+                    <div className="mt-1">
+                      <span className="inline-flex shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
+                        Pinned
+                      </span>
+                    </div>
                   ) : null}
                 </div>
                 <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">

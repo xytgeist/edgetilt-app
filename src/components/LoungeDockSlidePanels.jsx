@@ -481,7 +481,7 @@ export default function LoungeDockSlidePanels({
                   onClick={() => onDockMenuLayoutChange?.('wheel')}
                   className={`min-h-12 w-full rounded-xl border px-4 py-3 text-left text-[15px] font-semibold touch-manipulation [-webkit-tap-highlight-color:transparent] ${
                     dockMenuLayout === 'wheel'
-                      ? 'border-[#00f5ff]/90 bg-[#001828]/95 text-white shadow-[0_0_14px_rgba(0,245,255,0.35)]'
+                      ? 'border-lv-blue/90 bg-[#001828]/95 text-white shadow-[0_0_14px_rgba(6,206,252,0.35)]'
                       : 'border-zinc-700/90 bg-zinc-950/80 text-zinc-200 hover:bg-zinc-900/70'
                   }`}
                 >
@@ -495,7 +495,7 @@ export default function LoungeDockSlidePanels({
                   onClick={() => onDockMenuLayoutChange?.('cornerL')}
                   className={`min-h-12 w-full rounded-xl border px-4 py-3 text-left text-[15px] font-semibold touch-manipulation [-webkit-tap-highlight-color:transparent] ${
                     dockMenuLayout === 'cornerL'
-                      ? 'border-[#00f5ff]/90 bg-[#001828]/95 text-white shadow-[0_0_14px_rgba(0,245,255,0.35)]'
+                      ? 'border-lv-blue/90 bg-[#001828]/95 text-white shadow-[0_0_14px_rgba(6,206,252,0.35)]'
                       : 'border-zinc-700/90 bg-zinc-950/80 text-zinc-200 hover:bg-zinc-900/70'
                   }`}
                 >

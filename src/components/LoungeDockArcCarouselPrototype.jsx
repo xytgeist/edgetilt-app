@@ -86,7 +86,7 @@ function LoungeDockMenuLayoutCoachDiagrams() {
         <figcaption className="mb-1 text-center text-[11px] font-semibold text-cyan-200/95">Wheel (O)</figcaption>
         <svg
           viewBox="0 0 80 80"
-          className="mx-auto aspect-square w-full max-w-[108px] text-cyan-400/85"
+          className="mx-auto aspect-square w-full max-w-[108px] text-lv-blue/85"
         >
           <circle
             cx={wheelCx}
@@ -99,7 +99,7 @@ function LoungeDockMenuLayoutCoachDiagrams() {
             opacity="0.5"
           />
           {wheelDotEls}
-          <circle cx={wheelCx} cy={wheelCy} r="9" fill="#0e7491" stroke="#22d3ee" strokeWidth="1" />
+          <circle cx={wheelCx} cy={wheelCy} r="9" fill="#057698" stroke="#06cefc" strokeWidth="1" />
           <text
             x={wheelCx}
             y={wheelCy}
@@ -121,7 +121,7 @@ function LoungeDockMenuLayoutCoachDiagrams() {
         <figcaption className="mb-1 text-center text-[11px] font-semibold text-cyan-200/95">Edge (L)</figcaption>
         <svg
           viewBox="0 0 80 80"
-          className="mx-auto aspect-square w-full max-w-[108px] text-cyan-400/85"
+          className="mx-auto aspect-square w-full max-w-[108px] text-lv-blue/85"
         >
           {/* Bottom-left corner L: vertical leg up the left, horizontal leg along the bottom — FAB at the inner corner. */}
           <path
@@ -139,7 +139,7 @@ function LoungeDockMenuLayoutCoachDiagrams() {
           <circle cx="36" cy="56" r="3.6" fill="currentColor" opacity="0.55" />
           <circle cx="48" cy="56" r="3.6" fill="currentColor" opacity="0.55" />
           <circle cx="58" cy="56" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="22" cy="56" r="9" fill="#0e7491" stroke="#22d3ee" strokeWidth="1" />
+          <circle cx="22" cy="56" r="9" fill="#057698" stroke="#06cefc" strokeWidth="1" />
           <text
             x="22"
             y="56"
@@ -1168,7 +1168,7 @@ export default function LoungeDockArcCarouselPrototype({
           onPointerCancel={(e) => onSpinPointerEnd(e.pointerId)}
         >
           <div
-            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-dashed border-[#00f5ff]/55"
+            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-dashed border-lv-blue/55"
             style={{
               width: wheelLayout.radius * 2,
               height: wheelLayout.radius * 2,
@@ -1177,7 +1177,7 @@ export default function LoungeDockArcCarouselPrototype({
             aria-hidden
           />
           <div
-            className={`pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 rounded-full border-2 border-[#7ffbff] bg-[#00f5ff]/35 ${
+            className={`pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 rounded-full border-2 border-[#94f3fd] bg-lv-blue/35 ${
               LOUNGE_DOCK_FAB_GLOW_ENABLED
                 ? 'shadow-[0_0_8px_rgba(0,245,255,0.32)]'
                 : 'shadow-none'

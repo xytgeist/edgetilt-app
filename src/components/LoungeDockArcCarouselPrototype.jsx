@@ -15,7 +15,9 @@ import {
   loungeDockWheelCompactHomeOffset,
   loungeDockWheelLayout,
   readLoungeDockFabPrefs,
+  readLoungeDockFabRepositionCoachDismissed,
   writeLoungeDockFabPrefs,
+  writeLoungeDockFabRepositionCoachDismissed,
 } from '../utils/loungeDockFabPosition.js'
 import {
   LOUNGE_DOCK_FAB_CENTER_GLOW,
@@ -103,6 +105,8 @@ export default function LoungeDockArcCarouselPrototype({
   const [viewport, setViewport] = useState(() => loungeDockViewportSize())
   const [carouselRotation, setCarouselRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
+  /** One-time overlay after first menu open: long-press drag to move FAB. */
+  const [repositionCoachOpen, setRepositionCoachOpen] = useState(false)
 
   const fabHostRef = useRef(null)
   const fabDragRef = useRef(null)
@@ -587,6 +591,9 @@ export default function LoungeDockArcCarouselPrototype({
       }
       resetWheelToHomeAnchor()
       setOpen(true)
+      if (!readLoungeDockFabRepositionCoachDismissed()) {
+        setRepositionCoachOpen(true)
+      }
     },
     [
       persistFabPrefs,
@@ -758,6 +765,20 @@ export default function LoungeDockArcCarouselPrototype({
   )
 
   const menuExpanded = open
+
+  const dismissRepositionCoach = useCallback(() => {
+    writeLoungeDockFabRepositionCoachDismissed()
+    setRepositionCoachOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!repositionCoachOpen) return undefined
+    const onKey = (e) => {
+      if (e.key === 'Escape') dismissRepositionCoach()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [repositionCoachOpen, dismissRepositionCoach])
 
   const onItemPointerDown = useCallback(
     (e) => {
@@ -1154,6 +1175,42 @@ export default function LoungeDockArcCarouselPrototype({
           panelCompactChrome && !isCornerL && item.id === HOME_ITEM_ID
         return renderMenuItem(item, offset, { isFocused, offScreen, wheelPanelChromeHome })
       })}
+
+      {repositionCoachOpen ? (
+        <div
+          className="pointer-events-auto fixed inset-0 z-[230] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lounge-dock-reposition-coach-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default [-webkit-tap-highlight-color:transparent]"
+            aria-label="Dismiss"
+            tabIndex={-1}
+            onClick={dismissRepositionCoach}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-cyan-500/35 bg-zinc-950/98 px-5 py-5 shadow-2xl backdrop-blur-md">
+            <h2
+              id="lounge-dock-reposition-coach-title"
+              className="text-lg font-bold leading-snug text-white"
+            >
+              Move the menu button
+            </h2>
+            <p className="mt-3 text-[15px] leading-relaxed text-zinc-300">
+              Press and hold the <span className="font-semibold text-cyan-200">+</span> button, then drag it
+              anywhere on the screen. Release to lock it where it&apos;s most comfortable.
+            </p>
+            <button
+              type="button"
+              className="mt-5 w-full min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white shadow-lg touch-manipulation hover:bg-cyan-500 active:bg-cyan-700 [-webkit-tap-highlight-color:transparent]"
+              onClick={dismissRepositionCoach}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 

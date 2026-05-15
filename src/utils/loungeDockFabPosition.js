@@ -4,6 +4,8 @@
 export const LOUNGE_DOCK_MENU_LAYOUT_KEY = 'loungeDockMenuLayout:v1'
 
 export const LOUNGE_DOCK_FAB_STORAGE_KEY = 'loungeDockFab:v1'
+/** One-time FAB reposition coach overlay (`1` = user dismissed). */
+export const LOUNGE_DOCK_FAB_REPOSITION_COACH_KEY = 'loungeDockFabRepositionCoach:v1'
 export const LOUNGE_DOCK_FAB_SIZE_PX = 50
 const EDGE_PAD_PX = 20
 const FAB_INSET_RIGHT_PX = 14
@@ -172,6 +174,25 @@ export function writeLoungeDockFabPrefs(prefs) {
         locked: Boolean(prefs.locked),
       }),
     )
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/** @returns {boolean} true if the user already dismissed the one-time reposition coach. */
+export function readLoungeDockFabRepositionCoachDismissed() {
+  if (typeof window === 'undefined') return true
+  try {
+    return window.localStorage.getItem(LOUNGE_DOCK_FAB_REPOSITION_COACH_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+
+export function writeLoungeDockFabRepositionCoachDismissed() {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(LOUNGE_DOCK_FAB_REPOSITION_COACH_KEY, '1')
   } catch {
     /* quota / private mode */
   }

@@ -132,16 +132,10 @@ export default function LoungeDockArcCarouselPrototype({
     )
   }, [fabCenterX, fabCenterY, items.length, carouselRotation, viewport.width, viewport.height])
 
-  const hitSizePx = open
-    ? Math.min(
-        viewport.width - 24,
-        viewport.height - 24,
-        Math.max(196, (carouselLayout.radius + ITEM_CIRCLE_PX) * 2 + LOUNGE_DOCK_FAB_SIZE_PX),
-      )
-    : LOUNGE_DOCK_FAB_SIZE_PX
-
-  const hostLeft = fabPos ? fabPos.left - (hitSizePx - LOUNGE_DOCK_FAB_SIZE_PX) / 2 : 0
-  const hostTop = fabPos ? fabPos.top - (hitSizePx - LOUNGE_DOCK_FAB_SIZE_PX) / 2 : 0
+  const spinHitRadiusPx =
+    carouselLayout.radius > 0
+      ? carouselLayout.radius + ITEM_CIRCLE_PX + LOUNGE_DOCK_FAB_SIZE_PX / 2
+      : 120
 
   const persistFabPrefs = useCallback(
     (pos, isLocked) => {
@@ -213,7 +207,7 @@ export default function LoungeDockArcCarouselPrototype({
   )
 
   const onFabPointerDown = useCallback((e) => {
-    if (e.button !== 0 || openRef.current) return
+    if (e.button !== 0) return
     fabDragRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
@@ -234,7 +228,7 @@ export default function LoungeDockArcCarouselPrototype({
       const dy = e.clientY - drag.startY
 
       if (!drag.dragging) {
-        if (lockedRef.current) return
+        if (lockedRef.current || openRef.current) return
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return
         drag.dragging = true
       }
@@ -258,6 +252,10 @@ export default function LoungeDockArcCarouselPrototype({
       }
 
       if (!fabVisible) return
+      if (openRef.current) {
+        setOpen(false)
+        return
+      }
       applyCarouselSnap(carouselRotationRef.current)
       setOpen(true)
     },
@@ -352,96 +350,102 @@ export default function LoungeDockArcCarouselPrototype({
       {open && fabVisible ? (
         <button
           type="button"
-          className="pointer-events-auto absolute inset-0 z-0 bg-black/35 backdrop-blur-[2px] [-webkit-tap-highlight-color:transparent]"
+          className="pointer-events-auto fixed inset-0 z-0 bg-black/35 backdrop-blur-[2px] [-webkit-tap-highlight-color:transparent]"
           aria-label="Close menu"
           onClick={() => setOpen(false)}
         />
       ) : null}
 
-      <div
-        ref={fabHostRef}
-        className="absolute z-10 overflow-visible transition-opacity duration-300 ease-out will-change-[opacity]"
-        style={{
-          left: hostLeft,
-          top: hostTop,
-          width: hitSizePx,
-          height: hitSizePx,
-          opacity: fabOpacity,
-          pointerEvents: fabVisible ? 'auto' : 'none',
-        }}
-      >
-        {open ? (
+      {open && fabVisible ? (
+        <div
+          className="pointer-events-auto fixed z-[1] touch-none select-none rounded-full"
+          style={{
+            left: fabCenterX - spinHitRadiusPx,
+            top: fabCenterY - spinHitRadiusPx,
+            width: spinHitRadiusPx * 2,
+            height: spinHitRadiusPx * 2,
+            touchAction: 'none',
+          }}
+          onWheel={onSpinWheel}
+          onPointerDown={onSpinPointerDown}
+          onPointerMove={onSpinPointerMove}
+          onPointerUp={(e) => endSpin(e.pointerId)}
+          onPointerCancel={(e) => endSpin(e.pointerId)}
+        >
           <div
-            className="absolute inset-0 touch-none select-none"
-            style={{ touchAction: 'none' }}
-            onWheel={onSpinWheel}
-            onPointerDown={onSpinPointerDown}
-            onPointerMove={onSpinPointerMove}
-            onPointerUp={(e) => endSpin(e.pointerId)}
-            onPointerCancel={(e) => endSpin(e.pointerId)}
-          >
-            <div
-              className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-cyan-500/25"
-              style={{
-                width: carouselLayout.radius * 2,
-                height: carouselLayout.radius * 2,
-                transform: 'translate(-50%, -50%)',
-              }}
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 rounded-full border-2 border-cyan-400/80 bg-cyan-400/20 shadow-[0_0_10px_rgba(34,211,238,0.45)]"
-              style={{
-                transform: `translate(calc(-50% + ${pickerOffset.x}px), calc(-50% + ${pickerOffset.y}px))`,
-              }}
-              aria-hidden
-            />
-          </div>
-        ) : null}
+            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-cyan-500/25"
+            style={{
+              width: carouselLayout.radius * 2,
+              height: carouselLayout.radius * 2,
+              transform: 'translate(-50%, -50%)',
+            }}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 rounded-full border-2 border-cyan-400/80 bg-cyan-400/20 shadow-[0_0_10px_rgba(34,211,238,0.45)]"
+            style={{
+              transform: `translate(calc(-50% + ${pickerOffset.x}px), calc(-50% + ${pickerOffset.y}px))`,
+            }}
+            aria-hidden
+          />
+        </div>
+      ) : null}
 
-        {open
-          ? items.map((item, i) => {
-              const offset = carouselLayout.offsets[i] ?? { x: 0, y: 0 }
-              const isFocused = i === carouselLayout.focusedIndex
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={item.disabled}
-                  aria-label={item.label}
-                  title={item.label}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    selectItem(item)
-                  }}
-                  className={`pointer-events-auto absolute left-1/2 top-1/2 flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-40 ${
-                    item.active ? 'text-cyan-300' : 'text-zinc-100'
-                  } ${spinning ? '' : 'transition-transform duration-200 ease-out'}`}
-                  style={{
-                    transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
-                    zIndex: isFocused ? 32 : 20,
-                  }}
+      {open
+        ? items.map((item, i) => {
+            const offset = carouselLayout.offsets[i] ?? { x: 0, y: 0 }
+            const isFocused = i === carouselLayout.focusedIndex
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled={item.disabled}
+                aria-label={item.label}
+                title={item.label}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  selectItem(item)
+                }}
+                className={`pointer-events-auto fixed z-[2] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center disabled:cursor-not-allowed disabled:opacity-40 ${
+                  item.active ? 'text-cyan-300' : 'text-zinc-100'
+                } ${spinning ? '' : 'transition-[left,top] duration-200 ease-out'}`}
+                style={{
+                  left: fabCenterX + offset.x,
+                  top: fabCenterY + offset.y,
+                  zIndex: isFocused ? 32 : 20,
+                }}
+              >
+                <span
+                  className={`flex items-center justify-center rounded-full border shadow-lg backdrop-blur-sm ${
+                    isFocused || item.active
+                      ? 'border-cyan-400/70 bg-zinc-900/95 shadow-cyan-500/20 ring-2 ring-cyan-400/40'
+                      : 'border-zinc-700/90 bg-zinc-950/90'
+                  }`}
+                  style={{ width: ITEM_CIRCLE_PX, height: ITEM_CIRCLE_PX }}
                 >
                   <span
-                    className={`flex items-center justify-center rounded-full border shadow-lg backdrop-blur-sm ${
-                      isFocused || item.active
-                        ? 'border-cyan-400/70 bg-zinc-900/95 shadow-cyan-500/20 ring-2 ring-cyan-400/40'
-                        : 'border-zinc-700/90 bg-zinc-950/90'
-                    }`}
-                    style={{ width: ITEM_CIRCLE_PX, height: ITEM_CIRCLE_PX }}
+                    className="flex items-center justify-center [&_svg]:h-full [&_svg]:w-full"
+                    style={{ width: ITEM_ICON_PX, height: ITEM_ICON_PX }}
                   >
-                    <span
-                      className="flex items-center justify-center [&_svg]:h-full [&_svg]:w-full"
-                      style={{ width: ITEM_ICON_PX, height: ITEM_ICON_PX }}
-                    >
-                      {item.icon}
-                    </span>
+                    {item.icon}
                   </span>
-                </button>
-              )
-            })
-          : null}
+                </span>
+              </button>
+            )
+          })
+        : null}
 
+      <div
+        ref={fabHostRef}
+        className="pointer-events-none fixed z-[3] overflow-visible transition-opacity duration-300 ease-out will-change-[opacity]"
+        style={{
+          left: fabPos.left,
+          top: fabPos.top,
+          width: LOUNGE_DOCK_FAB_SIZE_PX,
+          height: LOUNGE_DOCK_FAB_SIZE_PX,
+          opacity: fabOpacity,
+        }}
+      >
         <button
           type="button"
           aria-label={
@@ -458,7 +462,7 @@ export default function LoungeDockArcCarouselPrototype({
           onPointerMove={onFabPointerMove}
           onPointerUp={onFabPointerUp}
           onPointerCancel={onFabPointerCancel}
-          className={`pointer-events-auto absolute rounded-full border shadow-xl backdrop-blur-md transition-[border-color,box-shadow,colors] duration-300 ease-out [-webkit-tap-highlight-color:transparent] ${
+          className={`pointer-events-auto absolute inset-0 rounded-full border shadow-xl backdrop-blur-md transition-[border-color,box-shadow,colors] duration-300 ease-out [-webkit-tap-highlight-color:transparent] ${
             open
               ? 'border-cyan-400/80 bg-zinc-900/95 text-cyan-300 shadow-cyan-500/25'
               : locked
@@ -466,11 +470,8 @@ export default function LoungeDockArcCarouselPrototype({
                 : 'border-dashed border-zinc-500/80 bg-zinc-950/95 text-zinc-200'
           }`}
           style={{
-            width: LOUNGE_DOCK_FAB_SIZE_PX,
-            height: LOUNGE_DOCK_FAB_SIZE_PX,
-            left: (hitSizePx - LOUNGE_DOCK_FAB_SIZE_PX) / 2,
-            top: (hitSizePx - LOUNGE_DOCK_FAB_SIZE_PX) / 2,
             touchAction: locked || open ? 'manipulation' : 'none',
+            pointerEvents: fabVisible ? 'auto' : 'none',
           }}
         >
           <span
@@ -487,15 +488,12 @@ export default function LoungeDockArcCarouselPrototype({
           onClick={toggleLock}
           aria-label={locked ? 'Unlock menu button position' : 'Lock menu button position'}
           title={locked ? 'Unlock position' : 'Lock position'}
-          className={`pointer-events-auto absolute z-50 flex h-5 w-5 items-center justify-center rounded-full border shadow-md transition-colors [-webkit-tap-highlight-color:transparent] ${
+          className={`pointer-events-auto absolute -left-0.5 -top-0.5 z-50 flex h-5 w-5 items-center justify-center rounded-full border shadow-md transition-colors [-webkit-tap-highlight-color:transparent] ${
             locked
               ? 'border-cyan-500/60 bg-zinc-900 text-cyan-300'
               : 'border-zinc-600 bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
-          style={{
-            left: (hitSizePx - LOUNGE_DOCK_FAB_SIZE_PX) / 2 - 2,
-            top: (hitSizePx - LOUNGE_DOCK_FAB_SIZE_PX) / 2 - 2,
-          }}
+          style={{ pointerEvents: fabVisible ? 'auto' : 'none' }}
         >
           <IconLock locked={locked} />
         </button>

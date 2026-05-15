@@ -33,7 +33,7 @@ const SPIN_TAP_SLOP_RAD = 0.04
 /** Brief block on feed/panel under the wheel so synthesized clicks cannot pass through after tap. */
 const POINTER_GUARD_MS = 400
 /** After reposition, release often synthesizes a click on whatever is under the finger. */
-const REPOSITION_POINTER_GUARD_MS = 700
+const REPOSITION_POINTER_GUARD_MS = 1000
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
 const FAB_REPOSITION_LONG_PRESS_MS = 450
 
@@ -50,6 +50,23 @@ function clearDocumentTextSelection() {
   if (!sel || sel.rangeCount === 0) return
   sel.removeAllRanges()
 }
+
+function blockPointerEvent(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  e.stopImmediatePropagation?.()
+}
+
+const REPOSITION_CAPTURE_EVENT_TYPES = [
+  'click',
+  'pointerup',
+  'pointerdown',
+  'auxclick',
+  'touchend',
+  'touchstart',
+  'mousedown',
+  'mouseup',
+]
 
 /**
  * Experimental Lounge nav: draggable FAB + full spin wheel (home anchors left/right of FAB) (prototype only).
@@ -87,6 +104,8 @@ export default function LoungeDockArcCarouselPrototype({
   const pointerGuardRef = useRef(false)
   const pointerGuardTimerRef = useRef(0)
   const spinEnabledRef = useRef(false)
+  const suppressFabClickRef = useRef(false)
+  const repositionCaptureCleanupRef = useRef(null)
 
   const syncViewport = useCallback(() => {
     const next = loungeDockViewportSize()
@@ -180,13 +199,37 @@ export default function LoungeDockArcCarouselPrototype({
     [syncPointerBlock],
   )
 
+  const clearRepositionCapture = useCallback(() => {
+    repositionCaptureCleanupRef.current?.()
+    repositionCaptureCleanupRef.current = null
+  }, [])
+
   const armRepositionClickGuard = useCallback(() => {
     suppressFabClickRef.current = true
-    armPointerGuard(REPOSITION_POINTER_GUARD_MS)
-    window.setTimeout(() => {
+    clearRepositionCapture()
+
+    const blockCapture = (e) => blockPointerEvent(e)
+    REPOSITION_CAPTURE_EVENT_TYPES.forEach((type) => {
+      document.addEventListener(type, blockCapture, true)
+    })
+
+    const suppressTimer = window.setTimeout(() => {
       suppressFabClickRef.current = false
     }, REPOSITION_POINTER_GUARD_MS)
-  }, [armPointerGuard])
+
+    repositionCaptureCleanupRef.current = () => {
+      REPOSITION_CAPTURE_EVENT_TYPES.forEach((type) => {
+        document.removeEventListener(type, blockCapture, true)
+      })
+      window.clearTimeout(suppressTimer)
+    }
+
+    window.setTimeout(() => {
+      clearRepositionCapture()
+    }, REPOSITION_POINTER_GUARD_MS)
+
+    armPointerGuard(REPOSITION_POINTER_GUARD_MS)
+  }, [armPointerGuard, clearRepositionCapture])
 
   useEffect(() => {
     carouselRotationRef.current = carouselRotation
@@ -259,9 +302,10 @@ export default function LoungeDockArcCarouselPrototype({
   useEffect(
     () => () => {
       if (pointerGuardTimerRef.current) window.clearTimeout(pointerGuardTimerRef.current)
+      clearRepositionCapture()
       cancelFabLongPress()
     },
-    [cancelFabLongPress],
+    [cancelFabLongPress, clearRepositionCapture],
   )
 
   const snapCarouselToPicker = useCallback(
@@ -416,20 +460,31 @@ export default function LoungeDockArcCarouselPrototype({
       if (drag.dragging && repositioningRef.current) {
         e.preventDefault()
         e.stopPropagation()
+        armRepositionClickGuard()
         persistFabPrefs(fabPosRef.current)
         endFabReposition()
-        armRepositionClickGuard()
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        } catch {
+          /* already released */
+        }
         return
       }
 
       const wasRepositionGesture = repositioningRef.current
-      endFabReposition()
       if (wasRepositionGesture) {
         e.preventDefault()
         e.stopPropagation()
         armRepositionClickGuard()
+        endFabReposition()
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        } catch {
+          /* already released */
+        }
         return
       }
+      endFabReposition()
 
       if (!fabVisible) return
       if (openRef.current) {
@@ -451,8 +506,8 @@ export default function LoungeDockArcCarouselPrototype({
       setFabSelectionLock(false)
       clearDocumentTextSelection()
       if (drag.dragging && repositioningRef.current) {
-        persistFabPrefs(fabPosRef.current)
         armRepositionClickGuard()
+        persistFabPrefs(fabPosRef.current)
       } else if (repositioningRef.current) {
         armRepositionClickGuard()
       }
@@ -604,8 +659,7 @@ export default function LoungeDockArcCarouselPrototype({
   )
 
   const blockPointerDefault = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
+    blockPointerEvent(e)
   }, [])
 
   /** Panel screens: home chip beside FAB (menu collapsed) — tap only, no spin. */
@@ -736,7 +790,7 @@ export default function LoungeDockArcCarouselPrototype({
           type="button"
           aria-hidden
           tabIndex={-1}
-          className="pointer-events-auto fixed inset-0 z-[90] cursor-default bg-transparent [-webkit-tap-highlight-color:transparent]"
+          className="pointer-events-auto fixed inset-0 z-[200] cursor-default bg-transparent [-webkit-tap-highlight-color:transparent]"
           style={{ touchAction: 'none' }}
           onPointerDown={blockPointerDefault}
           onPointerUp={blockPointerDefault}

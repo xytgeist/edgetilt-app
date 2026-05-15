@@ -4,30 +4,55 @@ const CHIP_RED = '#ff3824'
 const HEART =
   'M12 17.15C9.35 14.85 7.85 13.35 7.85 11.2c0-1.55 1.15-2.65 2.55-2.65.75 0 1.45.35 2.05.95.6-.6 1.3-.95 2.05-.95 1.4 0 2.55 1.1 2.55 2.65 0 2.15-1.5 3.65-4.15 5.95z'
 
-/** Optical center — outline heart reads farther right than filled. */
-const HEART_NUDGE_X_LIT = -0.45
-const HEART_NUDGE_X_IDLE = -0.75
+/** Shared nudge so liked / unliked icons align in the same slot. */
+const HEART_NUDGE_X = -0.45
+const HEART_NUDGE_Y = -0.4
+
+/**
+ * Icon + count with fixed grid columns so the chip does not shift when the count changes.
+ */
+export function LoungeLikeStatContent({
+  iconClassName = 'h-5 w-5',
+  countClassName = '',
+  liked = false,
+  readOnly = false,
+  likeCount,
+  iconPx = 20,
+}) {
+  const countCol = iconPx >= 22 ? '0.875rem' : '0.8125rem'
+  return (
+    <span
+      className="inline-grid items-center gap-x-1.5"
+      style={{ gridTemplateColumns: `${iconPx}px ${countCol}` }}
+    >
+      <span className="flex items-center justify-center">
+        <LoungeFlameIcon className={iconClassName} liked={liked} readOnly={readOnly} />
+      </span>
+      <span className={`tabular-nums leading-none ${countClassName}`}>
+        {Number.isFinite(likeCount) ? likeCount : ''}
+      </span>
+    </span>
+  )
+}
 
 export default function LoungeFlameIcon({ className = 'h-5 w-5', liked = false, readOnly = false }) {
   const lit = liked && !readOnly
-  const heartNudgeX = lit ? HEART_NUDGE_X_LIT : HEART_NUDGE_X_IDLE
-  const rimOpacity = readOnly ? 0.35 : lit ? 1 : 0.55
-  const borderOpacity = readOnly ? 0.35 : lit ? 1 : 0.72
+  const rimOpacity = readOnly ? 0.35 : lit ? 1 : 0.5
   const faceOpacity = readOnly ? 0.2 : 0.95
 
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      {/* Outermost — visible red rim on dark backgrounds */}
-      <circle
-        cx="12"
-        cy="12"
-        r="9.55"
-        fill="none"
-        stroke={CHIP_RED}
-        strokeWidth="0.9"
-        strokeOpacity={borderOpacity}
-      />
-      {/* Dashed chip edge */}
+      {lit ? (
+        <circle
+          cx="12"
+          cy="12"
+          r="9.55"
+          fill="none"
+          stroke={CHIP_RED}
+          strokeWidth="0.65"
+          strokeOpacity={readOnly ? 0.35 : 1}
+        />
+      ) : null}
       <circle
         cx="12"
         cy="12"
@@ -41,7 +66,6 @@ export default function LoungeFlameIcon({ className = 'h-5 w-5', liked = false, 
       {lit ? (
         <>
           <circle cx="12" cy="12" r="8.35" fill="#fafafa" fillOpacity={faceOpacity} />
-          {/* Inner chip ring — painted before heart so it never clips the tip */}
           <circle
             cx="12"
             cy="12"
@@ -72,7 +96,7 @@ export default function LoungeFlameIcon({ className = 'h-5 w-5', liked = false, 
           fill="none"
         />
       )}
-      <g transform={`translate(${heartNudgeX}, 0)`}>
+      <g transform={`translate(${HEART_NUDGE_X}, ${HEART_NUDGE_Y})`}>
         {lit ? (
           <path
             d={HEART}
@@ -89,7 +113,7 @@ export default function LoungeFlameIcon({ className = 'h-5 w-5', liked = false, 
           stroke="currentColor"
           strokeWidth="1.1"
           strokeLinejoin="round"
-          fillOpacity={readOnly ? 0.25 : 1}
+          fillOpacity={readOnly ? 0.25 : lit ? 1 : 0}
         />
       </g>
     </svg>

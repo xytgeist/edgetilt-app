@@ -32,6 +32,8 @@ const SPIN_WHEEL_SENSITIVITY = 0.0045
 const SPIN_TAP_SLOP_RAD = 0.04
 /** Brief block on feed/panel under the wheel so synthesized clicks cannot pass through after tap. */
 const POINTER_GUARD_MS = 400
+/** After reposition, release often synthesizes a click on whatever is under the finger. */
+const REPOSITION_POINTER_GUARD_MS = 700
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
 const FAB_REPOSITION_LONG_PRESS_MS = 450
 
@@ -67,6 +69,7 @@ export default function LoungeDockArcCarouselPrototype({
   const [repositioning, setRepositioning] = useState(false)
   /** Blocks native text selection while the menu button is held (long-press reposition). */
   const [fabSelectionLock, setFabSelectionLock] = useState(false)
+  const [clickShield, setClickShield] = useState(false)
   const [viewport, setViewport] = useState(() => loungeDockViewportSize())
   const [carouselRotation, setCarouselRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
@@ -161,16 +164,29 @@ export default function LoungeDockArcCarouselPrototype({
     syncPointerBlock()
   }, [open, syncPointerBlock])
 
-  const armPointerGuard = useCallback(() => {
-    pointerGuardRef.current = true
-    syncPointerBlock()
-    if (pointerGuardTimerRef.current) window.clearTimeout(pointerGuardTimerRef.current)
-    pointerGuardTimerRef.current = window.setTimeout(() => {
-      pointerGuardTimerRef.current = 0
-      pointerGuardRef.current = false
+  const armPointerGuard = useCallback(
+    (durationMs = POINTER_GUARD_MS) => {
+      pointerGuardRef.current = true
+      setClickShield(true)
       syncPointerBlock()
-    }, POINTER_GUARD_MS)
-  }, [syncPointerBlock])
+      if (pointerGuardTimerRef.current) window.clearTimeout(pointerGuardTimerRef.current)
+      pointerGuardTimerRef.current = window.setTimeout(() => {
+        pointerGuardTimerRef.current = 0
+        pointerGuardRef.current = false
+        setClickShield(false)
+        syncPointerBlock()
+      }, durationMs)
+    },
+    [syncPointerBlock],
+  )
+
+  const armRepositionClickGuard = useCallback(() => {
+    suppressFabClickRef.current = true
+    armPointerGuard(REPOSITION_POINTER_GUARD_MS)
+    window.setTimeout(() => {
+      suppressFabClickRef.current = false
+    }, REPOSITION_POINTER_GUARD_MS)
+  }, [armPointerGuard])
 
   useEffect(() => {
     carouselRotationRef.current = carouselRotation
@@ -398,14 +414,22 @@ export default function LoungeDockArcCarouselPrototype({
       clearDocumentTextSelection()
 
       if (drag.dragging && repositioningRef.current) {
+        e.preventDefault()
+        e.stopPropagation()
         persistFabPrefs(fabPosRef.current)
         endFabReposition()
+        armRepositionClickGuard()
         return
       }
 
       const wasRepositionGesture = repositioningRef.current
       endFabReposition()
-      if (wasRepositionGesture) return
+      if (wasRepositionGesture) {
+        e.preventDefault()
+        e.stopPropagation()
+        armRepositionClickGuard()
+        return
+      }
 
       if (!fabVisible) return
       if (openRef.current) {
@@ -417,7 +441,7 @@ export default function LoungeDockArcCarouselPrototype({
       resetWheelToHomeAnchor()
       setOpen(true)
     },
-    [persistFabPrefs, fabVisible, resetWheelToHomeAnchor, endFabReposition],
+    [persistFabPrefs, fabVisible, resetWheelToHomeAnchor, endFabReposition, armRepositionClickGuard],
   )
 
   const onFabPointerCancel = useCallback(
@@ -426,11 +450,16 @@ export default function LoungeDockArcCarouselPrototype({
       if (!drag || drag.pointerId !== e.pointerId) return
       setFabSelectionLock(false)
       clearDocumentTextSelection()
-      if (drag.dragging && repositioningRef.current) persistFabPrefs(fabPosRef.current)
+      if (drag.dragging && repositioningRef.current) {
+        persistFabPrefs(fabPosRef.current)
+        armRepositionClickGuard()
+      } else if (repositioningRef.current) {
+        armRepositionClickGuard()
+      }
       endFabReposition()
       fabDragRef.current = null
     },
-    [persistFabPrefs, endFabReposition],
+    [persistFabPrefs, endFabReposition, armRepositionClickGuard],
   )
 
   const beginSpinGesture = useCallback(
@@ -702,6 +731,19 @@ export default function LoungeDockArcCarouselPrototype({
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[100]">
+      {clickShield ? (
+        <button
+          type="button"
+          aria-hidden
+          tabIndex={-1}
+          className="pointer-events-auto fixed inset-0 z-[90] cursor-default bg-transparent [-webkit-tap-highlight-color:transparent]"
+          style={{ touchAction: 'none' }}
+          onPointerDown={blockPointerDefault}
+          onPointerUp={blockPointerDefault}
+          onClick={blockPointerDefault}
+        />
+      ) : null}
+
       {menuExpanded && fabVisible ? (
         <button
           type="button"
@@ -792,6 +834,12 @@ export default function LoungeDockArcCarouselPrototype({
           onPointerMove={onFabPointerMove}
           onPointerUp={onFabPointerUp}
           onPointerCancel={onFabPointerCancel}
+          onClick={(e) => {
+            if (suppressFabClickRef.current) {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+          }}
           onContextMenu={(e) => {
             if (repositioning || fabSelectionLock) e.preventDefault()
           }}

@@ -61,7 +61,7 @@ import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFee
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
-import LoungeFlameIcon from './LoungeFlameIcon.jsx'
+import { LoungeLikeStatContent } from './LoungeFlameIcon.jsx'
 import { LoungeFeedInlineSoundResetBinder, LoungeFeedVideoAutoplayProvider } from './LoungeFeedVideoAutoplayContext.jsx'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
@@ -5795,8 +5795,14 @@ export default function SocialFeed({
                         onClick={() => void toggleInteraction(d.id, 'liked')}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation"
                       >
-                        <LoungeFlameIcon className={`h-[22px] w-[22px] ${likeClass}`} liked={ui.liked} readOnly={ro} />
-                        {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
+                        <LoungeLikeStatContent
+                          iconClassName={`h-[22px] w-[22px] ${likeClass}`}
+                          countClassName={likeClass}
+                          liked={ui.liked}
+                          readOnly={ro}
+                          likeCount={likeCount}
+                          iconPx={22}
+                        />
                       </LoungeFeedStatSlot>
                       {ro ? (
                         <button

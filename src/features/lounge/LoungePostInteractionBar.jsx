@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
-import LoungeFlameIcon from './LoungeFlameIcon.jsx'
+import { LoungeLikeStatContent } from './LoungeFlameIcon.jsx'
 
 /**
  * Comment / repost / like / bookmark row — same behavior as the feed post row or post-detail sheet.
@@ -502,8 +502,14 @@ export default function LoungePostInteractionBar({
           onClick={() => void toggleInteraction(post.id, 'liked')}
           className={isFeed ? statFeedCenter : statSheetCenter}
         >
-          <LoungeFlameIcon className={`${iconSz} ${likeClass}`} liked={ui.liked} readOnly={ro} />
-          {Number.isFinite(likeCount) ? <span className={likeClass}>{likeCount}</span> : null}
+          <LoungeLikeStatContent
+            iconClassName={`${iconSz} ${likeClass}`}
+            countClassName={likeClass}
+            liked={ui.liked}
+            readOnly={ro}
+            likeCount={likeCount}
+            iconPx={isFeed ? 20 : 22}
+          />
         </LoungeFeedStatSlot>
         {ro ? (
           <button

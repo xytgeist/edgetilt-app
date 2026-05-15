@@ -332,6 +332,8 @@ export default function SocialFeed({
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
   const [loungeDockPanel, setLoungeDockPanel] = useState(null)
+  const [loungeFabPointerBlocked, setLoungeFabPointerBlocked] = useState(false)
+  const [loungePanelTitleReveal, setLoungePanelTitleReveal] = useState(1)
   /** When set, Chat panel opens a DM with this user (cleared after `open_dm` runs). */
   const [chatDockInitialPeerUserId, setChatDockInitialPeerUserId] = useState(null)
   const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
@@ -2237,6 +2239,11 @@ export default function SocialFeed({
   const onLoungeDockFooterHeight = useCallback((px) => {
     if (typeof px !== 'number' || !Number.isFinite(px) || px <= 0) return
     setLoungeDockFooterHeight((cur) => (cur === px ? cur : px))
+  }, [])
+
+  const onLoungePanelTitleReveal = useCallback((reveal) => {
+    if (typeof reveal !== 'number' || !Number.isFinite(reveal)) return
+    setLoungePanelTitleReveal((prev) => (prev === reveal ? prev : reveal))
   }, [])
 
   const onLoungeDockHome = useCallback(() => {
@@ -4296,15 +4303,19 @@ export default function SocialFeed({
       {showLoungeViewportDock ? (
         <LoungeDockArcCarouselPrototype
           items={loungeArcCarouselItems}
-          reveal={loungeDockPanel ? 1 : loungeTitleReveal}
+          reveal={loungeDockPanel ? loungePanelTitleReveal : loungeTitleReveal}
           panelChrome={loungeDockPanel}
+          onPointerBlockChange={setLoungeFabPointerBlocked}
         />
       ) : null}
 
       <div
         ref={loungeFeedScrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
-        style={loungeFeedDockPaddingBottom > 0 ? { paddingBottom: loungeFeedDockPaddingBottom } : undefined}
+        style={{
+          ...(loungeFeedDockPaddingBottom > 0 ? { paddingBottom: loungeFeedDockPaddingBottom } : {}),
+          pointerEvents: loungeFabPointerBlocked ? 'none' : undefined,
+        }}
       >
         <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef}>
         <LoungeFeedInlineSoundResetBinder resetRef={resetFeedInlineSoundRef} />
@@ -5928,6 +5939,8 @@ export default function SocialFeed({
           chatIsStaff={chatDockIsStaff}
           chatInitialPeerUserId={chatDockInitialPeerUserId}
           onChatInitialPeerCleared={clearChatDockInitialPeer}
+          blockUnderlyingPointer={loungeFabPointerBlocked}
+          onTitleRevealChange={onLoungePanelTitleReveal}
         />
       ) : null}
 

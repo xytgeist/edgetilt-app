@@ -320,7 +320,15 @@ export function loungeDockWheelLayout(
   itemRadius,
 ) {
   if (itemCount <= 0) {
-    return { offsets: [], radius: 0, pickerAngle: 0, focusedIndex: 0, step: 0, homeAnchorAngle: 0 }
+    return {
+      offsets: [],
+      radius: 0,
+      pickerAngle: 0,
+      focusedIndex: 0,
+      step: 0,
+      homeAnchorAngle: 0,
+      spinEnabled: false,
+    }
   }
 
   const bounds = fanBounds(viewport, itemRadius)
@@ -344,7 +352,9 @@ export function loungeDockWheelLayout(
     homeAnchorAngle,
   )
 
-  return { offsets, radius, pickerAngle, focusedIndex, step, homeAnchorAngle }
+  const spinEnabled = offsets.some((o) => !o.onScreen)
+
+  return { offsets, radius, pickerAngle, focusedIndex, step, homeAnchorAngle, spinEnabled }
 }
 
 /** @deprecated Use loungeDockWheelLayout */

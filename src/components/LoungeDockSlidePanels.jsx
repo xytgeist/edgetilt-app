@@ -53,6 +53,10 @@ export default function LoungeDockSlidePanels({
   chatIsStaff = false,
   chatInitialPeerUserId = null,
   onChatInitialPeerCleared,
+  /** While FAB wheel is open or just tapped — ignore hits on panel content under icons. */
+  blockUnderlyingPointer = false,
+  /** Scroll-linked 0–1 reveal for `LoungeDockArcCarouselPrototype` (same curve as panel title bar). */
+  onTitleRevealChange,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -166,6 +170,13 @@ export default function LoungeDockSlidePanels({
   }, [])
 
   useEffect(() => {
+    if (!openPanel) return
+    panelTitleRevealRef.current = 1
+    setPanelTitleReveal(1)
+    onTitleRevealChange?.(1)
+  }, [openPanel, onTitleRevealChange])
+
+  useEffect(() => {
     const el = panelScrollRef.current
     if (!el || typeof window === 'undefined' || !openPanel) return
     panelScrollPrevTopRef.current = el.scrollTop
@@ -173,7 +184,9 @@ export default function LoungeDockSlidePanels({
       if (panelScrollVisualRafRef.current) return
       panelScrollVisualRafRef.current = window.requestAnimationFrame(() => {
         panelScrollVisualRafRef.current = 0
-        setPanelTitleReveal(panelTitleRevealRef.current)
+        const next = panelTitleRevealRef.current
+        setPanelTitleReveal(next)
+        onTitleRevealChange?.(next)
       })
     }
     const onScroll = () => {
@@ -197,7 +210,7 @@ export default function LoungeDockSlidePanels({
         panelScrollVisualRafRef.current = 0
       }
     }
-  }, [openPanel])
+  }, [openPanel, onTitleRevealChange])
 
   const dismissWithAnimation = useCallback((direction = 'left') => {
     const w = Math.round(panelRef.current?.getBoundingClientRect().width || panelW)
@@ -362,6 +375,7 @@ export default function LoungeDockSlidePanels({
         style={{
           paddingTop: scrollPaddingTopPx,
           paddingBottom: scrollBottomInsetPx,
+          pointerEvents: blockUnderlyingPointer ? 'none' : undefined,
         }}
       >
         {openPanel === 'search' ? (

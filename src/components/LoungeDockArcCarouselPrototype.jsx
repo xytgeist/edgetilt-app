@@ -68,6 +68,18 @@ function blockPointerEvent(e) {
 
 /** Tiny schematics for the one-time reposition coach (not pixel-perfect to the live dock). */
 function LoungeDockMenuLayoutCoachDiagrams() {
+  /** Full ring around the FAB — matches “wheel” concept (even spacing). */
+  const wheelCx = 40
+  const wheelCy = 40
+  const wheelR = 22
+  const wheelDots = 7
+  const wheelDotEls = Array.from({ length: wheelDots }, (_, i) => {
+    const a = (i / wheelDots) * Math.PI * 2 - Math.PI / 2
+    const x = wheelCx + wheelR * Math.cos(a)
+    const y = wheelCy + wheelR * Math.sin(a)
+    return <circle key={i} cx={x} cy={y} r="3.6" fill="currentColor" opacity="0.55" />
+  })
+
   return (
     <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3" aria-hidden="true">
       <figure className="rounded-xl border border-zinc-700/70 bg-zinc-900/70 p-2.5">
@@ -76,33 +88,34 @@ function LoungeDockMenuLayoutCoachDiagrams() {
           viewBox="0 0 80 80"
           className="mx-auto aspect-square w-full max-w-[108px] text-cyan-400/85"
         >
-          <path
-            d="M 56 24 A 26 26 0 0 0 24 24"
+          <circle
+            cx={wheelCx}
+            cy={wheelCy}
+            r={wheelR}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.25"
             strokeDasharray="3 3"
             opacity="0.5"
           />
-          <circle cx="56" cy="24" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="48" cy="19" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="40" cy="17" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="32" cy="19" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="24" cy="24" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="40" cy="40" r="9" fill="#0e7491" stroke="#22d3ee" strokeWidth="1" />
+          {wheelDotEls}
+          <circle cx={wheelCx} cy={wheelCy} r="9" fill="#0e7491" stroke="#22d3ee" strokeWidth="1" />
           <text
-            x="40"
-            y="44"
+            x={wheelCx}
+            y={wheelCy}
             textAnchor="middle"
-            dominantBaseline="middle"
+            dominantBaseline="central"
             fontSize="13"
             fill="white"
             fontWeight="600"
+            style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
           >
             +
           </text>
         </svg>
-        <p className="mt-1 text-center text-[10px] leading-snug text-zinc-500">Shortcuts in an arc; spin if some sit off-screen.</p>
+        <p className="mt-1 text-center text-[10px] leading-snug text-zinc-500">
+          Shortcuts in a full ring around the button; spin if some sit off-screen.
+        </p>
       </figure>
       <figure className="rounded-xl border border-zinc-700/70 bg-zinc-900/70 p-2.5">
         <figcaption className="mb-1 text-center text-[11px] font-semibold text-cyan-200/95">Edge (L)</figcaption>
@@ -110,8 +123,9 @@ function LoungeDockMenuLayoutCoachDiagrams() {
           viewBox="0 0 80 80"
           className="mx-auto aspect-square w-full max-w-[108px] text-cyan-400/85"
         >
+          {/* Bottom-left corner L: vertical leg up the left, horizontal leg along the bottom — FAB at the inner corner. */}
           <path
-            d="M 14 66 H 66 V 22"
+            d="M 22 20 V 56 H 62"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.35"
@@ -120,20 +134,21 @@ function LoungeDockMenuLayoutCoachDiagrams() {
             strokeDasharray="3 3"
             opacity="0.5"
           />
-          <circle cx="26" cy="66" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="40" cy="66" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="54" cy="66" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="66" cy="52" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="66" cy="36" r="3.6" fill="currentColor" opacity="0.55" />
-          <circle cx="66" cy="66" r="9" fill="#0e7491" stroke="#22d3ee" strokeWidth="1" />
+          <circle cx="22" cy="32" r="3.6" fill="currentColor" opacity="0.55" />
+          <circle cx="22" cy="44" r="3.6" fill="currentColor" opacity="0.55" />
+          <circle cx="36" cy="56" r="3.6" fill="currentColor" opacity="0.55" />
+          <circle cx="48" cy="56" r="3.6" fill="currentColor" opacity="0.55" />
+          <circle cx="58" cy="56" r="3.6" fill="currentColor" opacity="0.55" />
+          <circle cx="22" cy="56" r="9" fill="#0e7491" stroke="#22d3ee" strokeWidth="1" />
           <text
-            x="66"
-            y="70"
+            x="22"
+            y="56"
             textAnchor="middle"
-            dominantBaseline="middle"
+            dominantBaseline="central"
             fontSize="13"
             fill="white"
             fontWeight="600"
+            style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
           >
             +
           </text>
@@ -1268,32 +1283,36 @@ export default function LoungeDockArcCarouselPrototype({
             tabIndex={-1}
             onClick={dismissRepositionCoach}
           />
-          <div className="relative z-10 max-h-[min(32rem,calc(100vh-2rem))] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-cyan-500/35 bg-zinc-950/98 px-5 py-5 shadow-2xl backdrop-blur-md">
-            <h2
-              id="lounge-dock-reposition-coach-title"
-              className="text-lg font-bold leading-snug text-white"
-            >
-              Move the menu button
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-zinc-300">
-              Press and hold the <span className="font-semibold text-cyan-200">+</span> button (about 1 second), then
-              drag it anywhere on the screen. Release to drop it where it&apos;s most comfortable.
-            </p>
-            <p className="mt-3 text-[14px] leading-relaxed text-zinc-400">
-              <span className="font-semibold text-zinc-200">Wheel (O)</span> is the default — shortcuts form a ring around
-              the button. If you prefer a more traditional corner menu, switch to{' '}
-              <span className="font-semibold text-zinc-200">Edge (L)</span> in{' '}
-              <span className="text-zinc-200">Settings</span> (open the dock panel): the button hugs a bottom corner and
-              icons run in an L along the edges.
-            </p>
-            <LoungeDockMenuLayoutCoachDiagrams />
-            <button
-              type="button"
-              className="mt-5 w-full min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white shadow-lg touch-manipulation hover:bg-cyan-500 active:bg-cyan-700 [-webkit-tap-highlight-color:transparent]"
-              onClick={dismissRepositionCoach}
-            >
-              Got it
-            </button>
+          <div className="relative z-10 flex max-h-[min(32rem,calc(100vh-2rem))] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-cyan-500/35 bg-zinc-950/98 shadow-2xl backdrop-blur-md">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5">
+              <h2
+                id="lounge-dock-reposition-coach-title"
+                className="text-lg font-bold leading-snug text-white"
+              >
+                Move the menu button
+              </h2>
+              <p className="mt-3 text-[15px] leading-relaxed text-zinc-300">
+                Press and hold the <span className="font-semibold text-cyan-200">+</span> button (about 1 second), then
+                drag it anywhere on the screen. Release to drop it where it&apos;s most comfortable.
+              </p>
+              <p className="mt-3 text-[14px] leading-relaxed text-zinc-400">
+                <span className="font-semibold text-zinc-200">Wheel (O)</span> is the default — shortcuts form a ring around
+                the button. If you prefer a more traditional corner menu, switch to{' '}
+                <span className="font-semibold text-zinc-200">Edge (L)</span> in{' '}
+                <span className="text-zinc-200">Settings</span> (open the dock panel): the button hugs a bottom corner and
+                icons run in an L along the edges.
+              </p>
+              <LoungeDockMenuLayoutCoachDiagrams />
+            </div>
+            <div className="shrink-0 px-5 pb-5 pt-4">
+              <button
+                type="button"
+                className="w-full min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white shadow-lg touch-manipulation hover:bg-cyan-500 active:bg-cyan-700 [-webkit-tap-highlight-color:transparent]"
+                onClick={dismissRepositionCoach}
+              >
+                Got it
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

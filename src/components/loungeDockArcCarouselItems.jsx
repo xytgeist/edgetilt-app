@@ -71,7 +71,7 @@ function IconFollowing({ active }) {
 function IconBell() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden className="block h-full w-full">
-      <g transform="translate(-1.15 0.1)">
+      <g transform="translate(-2 0.1)">
         <path
           {...stroke}
           d="M10.5 6.75a3.75 3.75 0 017.5 0v.75c0 4.25 1.75 6.5 1.75 6.5H8.75S10.5 12.75 10.5 8.5v-.75z"

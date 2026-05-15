@@ -386,7 +386,9 @@ function offsetOnScreen(fabCenterX, fabCenterY, offset, bounds) {
 }
 
 /**
- * Full ring: item 0 (home) starts at `loungeDockHomeAnchorAngle`, siblings follow clockwise.
+ * Full ring: item 0 (home) starts at `loungeDockHomeAnchorAngle`, siblings follow by index with step `step`
+ * (positive when FAB is on the left half, negative on the right half so compose→…→notifications reads the
+ * same screen-relative direction as on the left — ring radius is constant).
  * Pass items with home first. `rotationRad` spins the whole wheel.
  */
 export function loungeDockWheelLayout(
@@ -412,7 +414,8 @@ export function loungeDockWheelLayout(
   const bounds = fanBounds(viewport, itemRadius)
   const pickerAngle = loungeDockCarouselPickerAngle(fabCenterX, fabCenterY, bounds)
   const homeAnchorAngle = loungeDockHomeAnchorAngle(fabCenterX, viewport.width)
-  const step = LOUNGE_DOCK_CAROUSEL_ITEM_STEP_RAD
+  const step =
+    LOUNGE_DOCK_CAROUSEL_ITEM_STEP_RAD * (loungeDockFabOnLeftHalf(fabCenterX, viewport.width) ? 1 : -1)
   const radius = LOUNGE_DOCK_CAROUSEL_RADIUS_PX
   const offsets = []
 

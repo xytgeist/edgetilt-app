@@ -942,7 +942,11 @@ export default function LoungeDockArcCarouselPrototype({
             }
           : undefined
       }
-      className={`pointer-events-auto fixed z-[10] flex min-h-[50px] min-w-[50px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none ${
+      className={`pointer-events-auto fixed flex select-none ${
+        !isCornerL && wheelOpen
+          ? 'min-h-[56px] min-w-[56px]'
+          : 'min-h-[50px] min-w-[50px]'
+      } -translate-x-1/2 -translate-y-1/2 items-center justify-center ${
         wheelSpin ? 'touch-none' : 'touch-manipulation'
       } ${
         wheelSpin
@@ -960,7 +964,15 @@ export default function LoungeDockArcCarouselPrototype({
       style={{
         left: fabCenterX + offset.x,
         top: fabCenterY + offset.y,
-        zIndex: isFocused ? 42 : 30,
+        zIndex: isCornerL
+          ? isFocused
+            ? 42
+            : 30
+          : menuExpanded && !compactChip
+            ? 55
+            : isFocused
+              ? 44
+              : 34,
         opacity: fadesWithReveal ? fabOpacity : 1,
         pointerEvents: fadesWithReveal && !fabVisible ? 'none' : undefined,
       }}
@@ -1060,24 +1072,14 @@ export default function LoungeDockArcCarouselPrototype({
         </div>
       ) : null}
 
-      {visibleWheelItems.map((item) => {
-        const i = wheelItems.indexOf(item)
-        let offset = wheelLayout.offsets[i] ?? { x: 0, y: 0, onScreen: true }
-        const compactMenuClosed = panelCompactChrome && !menuExpanded
-        if (compactMenuClosed && !isCornerL && item.id === HOME_ITEM_ID) {
-          offset = loungeDockWheelCompactHomeOffset(fabCenterX, viewport.width)
-        }
-        const isFocused = menuExpanded && spinEnabled && i === wheelLayout.focusedIndex
-        const offScreen = menuExpanded && spinEnabled && !offset.onScreen
-        const wheelPanelChromeHome =
-          panelCompactChrome && !isCornerL && item.id === HOME_ITEM_ID
-        return renderMenuItem(item, offset, { isFocused, offScreen, wheelPanelChromeHome })
-      })}
-
       <div
         ref={fabHostRef}
-        className={`pointer-events-none fixed z-[25] overflow-visible transition-opacity duration-300 ease-out will-change-[opacity] ${
-          isCornerL ? 'transition-[left,top] duration-300 ease-out' : ''
+        className={`pointer-events-none fixed overflow-visible transition-opacity duration-300 ease-out will-change-[opacity] ${
+          isCornerL
+            ? 'z-[25] transition-[left,top] duration-300 ease-out'
+            : menuExpanded
+              ? 'z-20'
+              : 'z-[25]'
         }`}
         style={{
           left: fabPos.left,
@@ -1132,6 +1134,20 @@ export default function LoungeDockArcCarouselPrototype({
           </span>
         </button>
       </div>
+
+      {visibleWheelItems.map((item) => {
+        const i = wheelItems.indexOf(item)
+        let offset = wheelLayout.offsets[i] ?? { x: 0, y: 0, onScreen: true }
+        const compactMenuClosed = panelCompactChrome && !menuExpanded
+        if (compactMenuClosed && !isCornerL && item.id === HOME_ITEM_ID) {
+          offset = loungeDockWheelCompactHomeOffset(fabCenterX, viewport.width)
+        }
+        const isFocused = menuExpanded && spinEnabled && i === wheelLayout.focusedIndex
+        const offScreen = menuExpanded && spinEnabled && !offset.onScreen
+        const wheelPanelChromeHome =
+          panelCompactChrome && !isCornerL && item.id === HOME_ITEM_ID
+        return renderMenuItem(item, offset, { isFocused, offScreen, wheelPanelChromeHome })
+      })}
     </div>
   )
 }

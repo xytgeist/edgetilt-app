@@ -77,6 +77,8 @@ import {
   loungeTitleRevealClampScrollDelta,
 } from '../../utils/loungeTitleRevealScroll.js'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
+import LoungePostCommentThread from './LoungePostCommentThread.jsx'
+import { loungeCommentRootId } from '../../utils/loungeFeedComments.js'
 
 /** DB raises exception 'MAX_PINNED_POSTS' when a third visible pin is attempted. */
 const LOUNGE_MAX_PINNED_ALERT =
@@ -309,6 +311,10 @@ export default function SocialFeed({
   const [loungeDetailCommentBusy, setLoungeDetailCommentBusy] = useState(false)
   const [loungeDetailCommentDraft, setLoungeDetailCommentDraft] = useState('')
   const [loungeDetailCommentErr, setLoungeDetailCommentErr] = useState('')
+  /** Reply target: `null` = top-level comment on the post. */
+  const [loungeCommentReplyTo, setLoungeCommentReplyTo] = useState(null)
+  /** Thread roots to auto-expand after posting a reply (merged in `LoungePostCommentThread`). */
+  const [loungeCommentExpandRoots, setLoungeCommentExpandRoots] = useState([])
   const [composerUserId, setComposerUserId] = useState('')
   /** Session user for email-based initials before `profiles` exists. */
   const [composerAuthUser, setComposerAuthUser] = useState(null)
@@ -1982,11 +1988,14 @@ export default function SocialFeed({
     if (!loungePostDetail?.id || !composerUserId || loungeReadOnly) return
     const body = loungeDetailCommentDraft.trim()
     if (body.length === 0) return
+    const parentId = loungeCommentReplyTo?.id || null
     setLoungeDetailCommentBusy(true)
     setLoungeDetailCommentErr('')
+    const insertRow = { post_id: loungePostDetail.id, user_id: composerUserId, body }
+    if (parentId) insertRow.parent_id = parentId
     const { data, error } = await supabaseClient
       .from('feed_comments')
-      .insert({ post_id: loungePostDetail.id, user_id: composerUserId, body })
+      .insert(insertRow)
       .select('id,body,created_at,user_id,parent_id')
       .single()
     setLoungeDetailCommentBusy(false)
@@ -2000,15 +2009,26 @@ export default function SocialFeed({
       .eq('user_id', composerUserId)
       .maybeSingle()
     const row = { ...data, author_profile: pr.data || composerUserProfile || null }
-    setLoungeDetailComments((c) => [...c, row])
+    setLoungeDetailComments((c) => {
+      const next = [...c, row]
+      if (parentId) {
+        const byId = new Map(next.map((r) => [r.id, r]))
+        const rootId = loungeCommentRootId(parentId, byId)
+        if (rootId) setLoungeCommentExpandRoots([rootId])
+      }
+      return next
+    })
     setLoungeDetailCommentDraft('')
-    const { data: countRow } = await supabaseClient
-      .from('community_feed_posts')
-      .select('comment_count')
-      .eq('id', loungePostDetail.id)
-      .maybeSingle()
-    if (countRow && typeof countRow.comment_count === 'number') {
-      patchPostAggregate(loungePostDetail.id, { comment_count: countRow.comment_count })
+    setLoungeCommentReplyTo(null)
+    if (!parentId) {
+      const { data: countRow } = await supabaseClient
+        .from('community_feed_posts')
+        .select('comment_count')
+        .eq('id', loungePostDetail.id)
+        .maybeSingle()
+      if (countRow && typeof countRow.comment_count === 'number') {
+        patchPostAggregate(loungePostDetail.id, { comment_count: countRow.comment_count })
+      }
     }
     setInteractionByPost((prev) => {
       const cur = prev[loungePostDetail.id] || defaultInteraction
@@ -2019,6 +2039,7 @@ export default function SocialFeed({
     composerUserId,
     composerUserProfile,
     defaultInteraction,
+    loungeCommentReplyTo?.id,
     loungeDetailCommentDraft,
     loungePostDetail?.id,
     loungeReadOnly,
@@ -2026,6 +2047,18 @@ export default function SocialFeed({
     scheduleLoungePostDetailTitleAfterReply,
     supabaseClient,
   ])
+
+  const onLoungeCommentReply = useCallback((comment) => {
+    if (!comment?.id) return
+    const p = comment.author_profile
+    const h = String(p?.handle || '').trim()
+    const label = h ? `@${h}` : String(p?.display_name || 'Member').trim() || 'Member'
+    setLoungeCommentReplyTo({ id: comment.id, label })
+    setLoungeDetailCommentErr('')
+    requestAnimationFrame(() => {
+      document.getElementById('lounge-detail-comment')?.focus()
+    })
+  }, [])
 
   useEffect(() => {
     if (!loungePostDetail?.id || loungeReadOnly) {
@@ -2043,7 +2076,6 @@ export default function SocialFeed({
         .from('feed_comments')
         .select('id,body,created_at,user_id,parent_id')
         .eq('post_id', postId)
-        .is('parent_id', null)
         .is('hidden_at', null)
         .order('created_at', { ascending: true })
       if (cancelled) return
@@ -2096,6 +2128,8 @@ export default function SocialFeed({
     setLoungeDetailCommentBusy(false)
     setLoungeDetailCommentDraft('')
     setLoungeDetailCommentErr('')
+    setLoungeCommentReplyTo(null)
+    setLoungeCommentExpandRoots([])
     loungeTitleRevealRef.current = 1
     setLoungeTitleReveal(1)
   }, [])
@@ -5699,57 +5733,64 @@ export default function SocialFeed({
                   <>
                     {loungeDetailCommentsLoading ? (
                       <div className="mt-2 text-[14px] text-zinc-500">Loading comments…</div>
-                    ) : loungeDetailCommentErr ? (
-                      <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
-                        {loungeDetailCommentErr}
-                      </div>
-                    ) : loungeDetailComments.length === 0 ? (
-                      <p className="mt-2 text-[14px] text-zinc-500">No comments yet. Be the first.</p>
                     ) : (
-                      <ul className="mt-3 space-y-3">
-                        {loungeDetailComments.map((c) => (
-                          <li key={c.id} className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-3 py-2">
-                            <div className="flex items-baseline justify-between gap-2 text-[13px] text-zinc-500">
-                              <span className="flex min-w-0 items-baseline gap-1.5 truncate font-semibold text-zinc-300">
+                      <LoungePostCommentThread
+                        comments={loungeDetailComments}
+                        postAuthorUserId={loungePostDetail.user_id || ''}
+                        postAgeLabel={postAgeLabel}
+                        readOnly={loungeReadOnly}
+                        onReply={onLoungeCommentReply}
+                        autoExpandThreadRootIds={loungeCommentExpandRoots}
+                        composerSlot={
+                          <>
+                            {loungeDetailCommentErr ? (
+                              <div className="mt-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
+                                {loungeDetailCommentErr}
+                              </div>
+                            ) : null}
+                            {loungeCommentReplyTo ? (
+                              <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-zinc-700/80 bg-zinc-900/70 px-3 py-2 text-[13px] text-zinc-400">
                                 <span className="min-w-0 truncate">
-                                  {c.author_profile?.display_name || c.author_profile?.handle || 'Member'}
+                                  Replying to{' '}
+                                  <span className="font-semibold text-zinc-200">{loungeCommentReplyTo.label}</span>
                                 </span>
-                                <LoungeStaffRoleBadge role={c.author_profile?.role} size="detail" />
-                                <LoungeOgBadge isOg={c.author_profile?.is_og} size="detail" />
-                              </span>
-                              <span className="shrink-0 tabular-nums">{postAgeLabel(c.created_at)}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setLoungeCommentReplyTo(null)}
+                                  className="shrink-0 min-h-9 rounded-lg px-2 text-[13px] font-semibold text-zinc-500 touch-manipulation hover:text-zinc-200"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : null}
+                            <div className="mt-4">
+                              <label htmlFor="lounge-detail-comment" className="sr-only">
+                                {loungeCommentReplyTo ? 'Write a reply' : 'Write a comment'}
+                              </label>
+                              <textarea
+                                id="lounge-detail-comment"
+                                value={loungeDetailCommentDraft}
+                                onChange={(e) => setLoungeDetailCommentDraft(e.target.value)}
+                                placeholder={loungeCommentReplyTo ? 'Write a reply…' : 'Write a comment…'}
+                                maxLength={2000}
+                                rows={3}
+                                className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] leading-snug text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
+                              />
+                              <div className="mt-2 flex justify-end">
+                                <button
+                                  type="button"
+                                  disabled={loungeDetailCommentBusy || !loungeDetailCommentDraft.trim()}
+                                  onClick={() => void submitLoungeDetailComment()}
+                                  className="min-h-10 rounded-xl bg-violet-600 px-4 text-[14px] font-bold text-white touch-manipulation hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                                >
+                                  {loungeDetailCommentBusy ? 'Posting…' : loungeCommentReplyTo ? 'Reply' : 'Comment'}
+                                </button>
+                              </div>
                             </div>
-                            <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-snug text-zinc-100">
-                              {c.body}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <div className="mt-4">
-                      <label htmlFor="lounge-detail-comment" className="sr-only">
-                        Write a comment
-                      </label>
-                      <textarea
-                        id="lounge-detail-comment"
-                        value={loungeDetailCommentDraft}
-                        onChange={(e) => setLoungeDetailCommentDraft(e.target.value)}
-                        placeholder="Write a comment…"
-                        maxLength={2000}
-                        rows={3}
-                        className="w-full resize-y rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] leading-snug text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30"
+                          </>
+                        }
                       />
-                      <div className="mt-2 flex justify-end">
-                        <button
-                          type="button"
-                          disabled={loungeDetailCommentBusy || !loungeDetailCommentDraft.trim()}
-                          onClick={() => void submitLoungeDetailComment()}
-                          className="min-h-10 rounded-xl bg-violet-600 px-4 text-[14px] font-bold text-white touch-manipulation hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
-                        >
-                          {loungeDetailCommentBusy ? 'Posting…' : 'Reply'}
-                        </button>
-                      </div>
-                    </div>
+                    )}
                   </>
                 )}
               </div>

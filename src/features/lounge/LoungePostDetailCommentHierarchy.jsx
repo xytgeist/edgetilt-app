@@ -2,7 +2,6 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { LoungeCommentCard } from './LoungePostCommentThread.jsx'
 import { formatLoungePostDetailWhen } from './loungeFormat.js'
 
-const COMMENT_AVATAR_BUTTON_SEL = 'button[aria-label^="Open profile"]'
 const END_PAD_PX = 3
 
 export function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRef }) {
@@ -33,15 +32,20 @@ export function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRe
 
   useLayoutEffect(() => {
     updateLine()
+    const raf = requestAnimationFrame(updateLine)
     const container = containerRef.current
     if (!container || typeof ResizeObserver === 'undefined') {
       window.addEventListener('resize', updateLine)
-      return () => window.removeEventListener('resize', updateLine)
+      return () => {
+        cancelAnimationFrame(raf)
+        window.removeEventListener('resize', updateLine)
+      }
     }
     const ro = new ResizeObserver(() => updateLine())
     ro.observe(container)
     window.addEventListener('resize', updateLine)
     return () => {
+      cancelAnimationFrame(raf)
       ro.disconnect()
       window.removeEventListener('resize', updateLine)
     }
@@ -78,16 +82,6 @@ function HierarchyCommentRow({
   const avatarWrapRef = useRef(null)
   const lineContainerRef = pathIndex === 0 && connectorRootRef ? connectorRootRef : rowRef
 
-  useLayoutEffect(() => {
-    const wrap = avatarWrapRef.current
-    if (!wrap) {
-      avatarRef.current = null
-      return
-    }
-    const btn = wrap.querySelector(COMMENT_AVATAR_BUTTON_SEL)
-    avatarRef.current = btn instanceof HTMLElement ? btn : null
-  }, [avatarRef, comment.id])
-
   const canNavigate = !isFocus && typeof onNavigateToPathIndex === 'function'
 
   const card = (
@@ -95,6 +89,7 @@ function HierarchyCommentRow({
       <LoungeCommentCard
         comment={comment}
         navigable={false}
+        avatarButtonRef={avatarRef}
         descendantFallback={descendantFallback}
         showDetailTimestamp={isFocus}
         detailTimestampLabel={
@@ -110,11 +105,13 @@ function HierarchyCommentRow({
       ref={rowRef}
       className={`relative min-w-0 ${pathIndex > 0 && !isCommentPostDetail ? 'mt-1 border-t border-zinc-800/60 pt-1.5' : pathIndex > 0 ? 'mt-1' : ''}`}
     >
-      <AvatarConnectorLine
-        containerRef={lineContainerRef}
-        topAvatarRef={topAvatarRef}
-        bottomAvatarRef={avatarRef}
-      />
+      {!isCommentPostDetail ? (
+        <AvatarConnectorLine
+          containerRef={lineContainerRef}
+          topAvatarRef={topAvatarRef}
+          bottomAvatarRef={avatarRef}
+        />
+      ) : null}
       <div id={isFocus ? 'lounge-detail-focus-comment' : undefined} className="relative z-[1]">
         {canNavigate ? (
           <button
@@ -153,6 +150,8 @@ export default function LoungePostDetailCommentHierarchy({
   if (!chain.length) return null
 
   avatarRefs.current = chain.map((c, i) => avatarRefs.current[i] || { current: null })
+  const focusAvatarRef = avatarRefs.current[chain.length - 1]
+  const focusCommentId = chain[chain.length - 1]?.id
 
   return (
     <section
@@ -178,6 +177,14 @@ export default function LoungePostDetailCommentHierarchy({
           />
         )
       })}
+      {isCommentPostDetail && connectorRootRef && focusCommentId ? (
+        <AvatarConnectorLine
+          key={focusCommentId}
+          containerRef={connectorRootRef}
+          topAvatarRef={postAvatarRef}
+          bottomAvatarRef={focusAvatarRef}
+        />
+      ) : null}
     </section>
   )
 }

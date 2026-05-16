@@ -85,6 +85,7 @@ export function LoungeCommentCard({
   resolveMediaFeedVariant,
   showDetailTimestamp = false,
   detailTimestampLabel = '',
+  avatarButtonRef = null,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -228,6 +229,7 @@ export function LoungeCommentCard({
   const metaRow = (
     <div className="flex items-start gap-3">
       <button
+        ref={avatarButtonRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation()

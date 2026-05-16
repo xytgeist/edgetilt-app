@@ -7520,7 +7520,7 @@ export default function SocialFeed({
                       </>
                     ) : null}
                     <div
-                      className={`flex w-full min-w-0 flex-nowrap items-center justify-between py-0.5 text-[16px] ${loungeDetailEditing ? 'mt-1' : ''} ${loungeCommentDetailPathIds.length > 0 ? '' : 'border-b border-zinc-800/90'}`}
+                      className={`flex w-full min-w-0 flex-nowrap items-center justify-between py-0.5 text-[16px] ${loungeDetailEditing ? 'mt-1' : ''}`}
                       onClick={(e) => e.stopPropagation()}
                       role="group"
                     >
@@ -7821,12 +7821,10 @@ export default function SocialFeed({
                 )
               })()}
 
-              {!loungeReadOnly && !loungeDetailCommentsLoading ? (
-                <div
-                  className={`flex justify-start pb-1 pt-0.5 ${
-                    loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''
-                  }`}
-                >
+              {!loungeReadOnly &&
+              !loungeDetailCommentsLoading &&
+              loungeCommentDetailPathIds.length === 0 ? (
+                <div className="flex justify-start pb-1 pt-0.5">
                   <LoungePostDetailCommentSort
                     value={loungeDetailCommentSort}
                     onChange={setLoungeDetailCommentSort}
@@ -7920,6 +7918,14 @@ export default function SocialFeed({
                       <div className="mt-1 text-[14px] text-zinc-500">Loading comments…</div>
                     ) : (
                       <>
+                        {loungeCommentDetailPathIds.length > 0 ? (
+                          <div className="flex justify-start pb-1 pt-0.5">
+                            <LoungePostDetailCommentSort
+                              value={loungeDetailCommentSort}
+                              onChange={setLoungeDetailCommentSort}
+                            />
+                          </div>
+                        ) : null}
                         <LoungePostCommentThread
                           variant={
                             loungeCommentDetailPathIds.length > 0 ? 'commentDetailReplies' : 'post'

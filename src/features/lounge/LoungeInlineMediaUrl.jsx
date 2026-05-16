@@ -175,7 +175,7 @@ export function LoungeInlineMediaUrl({
       ? 'block max-h-36 w-auto max-w-full h-auto object-contain sm:max-h-40'
       : isEmbed
         ? 'block max-h-40 w-auto max-w-full h-auto object-contain sm:max-h-44'
-        : 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52'
+        : 'block max-h-[312px] w-auto max-w-full h-auto object-contain'
   const rounding = isEmbed ? 'rounded-lg' : 'rounded-xl'
   const border = isEmbed ? 'border-zinc-600/40' : 'border-zinc-700/60'
 

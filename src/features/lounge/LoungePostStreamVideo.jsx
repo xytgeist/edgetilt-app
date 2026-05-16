@@ -7,7 +7,7 @@ import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
 const videoClassByVariant = {
-  feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
+  feed: 'block max-h-[312px] w-auto max-w-full h-auto object-contain',
   detail: 'block max-h-[min(70vh,520px)] w-auto max-w-full h-auto object-contain',
   commentInline: 'block max-h-36 w-auto max-w-full h-auto object-contain sm:max-h-40',
   embed: 'block max-h-40 w-auto max-w-full h-auto object-contain sm:max-h-44',
@@ -41,7 +41,7 @@ const borderByVariant = {
 
 /** Poster `<img>` can be 0×0 before decode; keep a floor so the tile (and absolute `<video>`) never collapses. */
 const posterFrameMinHByVariant = {
-  feed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
+  feed: 'min-h-[min(48vw,19.5rem)] sm:min-h-[19.5rem]',
   embed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
   detail: 'min-h-[min(32vw,11rem)] sm:min-h-[15rem]',
   commentInline: 'min-h-[min(24vw,7rem)] sm:min-h-[8rem]',
@@ -53,7 +53,7 @@ const posterFrameMinHByVariant = {
  * aspect (avoids a forced 16:9 “letterbox” that looks like a broken poster for portrait clips).
  */
 const posterFallbackFrameClassByVariant = {
-  feed: 'relative flex max-h-52 w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-h-52 sm:max-w-[min(72vw,17rem)]',
+  feed: 'relative flex max-h-[312px] w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-w-[min(72vw,17rem)]',
   embed: 'relative flex max-h-44 w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-h-44 sm:max-w-[min(72vw,17rem)]',
   detail: 'relative flex max-h-[min(70vh,520px)] w-fit max-w-full items-center justify-center bg-black',
   commentInline:

@@ -7,7 +7,7 @@ import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 
 /** Match `LoungeInlineMediaUrl`: border wraps intrinsic image size (`w-auto`), not a fixed slide width. */
 const imgClassByVariant = {
-  feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
+  feed: 'block max-h-[312px] w-auto max-w-full h-auto object-contain',
   detail: 'block max-h-56 w-auto max-w-full h-auto object-contain sm:max-h-60',
   /** Post detail comment list: ~⅔ of `detail` image caps. */
   commentInline: 'block max-h-36 w-auto max-w-full h-auto object-contain sm:max-h-40',

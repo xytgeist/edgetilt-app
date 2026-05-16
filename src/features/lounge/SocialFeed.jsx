@@ -449,8 +449,10 @@ export default function SocialFeed({
   const loungeDetailEditMirrorRef = useRef(null)
   const loungeDetailEditMediaInputRef = useRef(null)
   const loungeFeedScrollRef = useRef(null)
-  /** Bound inside `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
+  /** Bound inside feed `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
   const resetFeedInlineSoundRef = useRef(() => {})
+  /** Bound inside post-detail `LoungeFeedVideoAutoplayProvider` — reset comment-thread inline sound on close. */
+  const resetPostDetailInlineSoundRef = useRef(() => {})
   const loungeTitleBarRef = useRef(null)
   const loungeScrollPrevTopRef = useRef(0)
   const loungeTitleRevealRef = useRef(1)
@@ -3383,6 +3385,11 @@ export default function SocialFeed({
       window.clearTimeout(tid)
       loungePostDetailCloseFallbackTimerRef.current = 0
     }
+    try {
+      resetPostDetailInlineSoundRef.current?.()
+    } catch {
+      // ignore
+    }
     setLoungePostDetail(null)
     setLoungePostDetailVisible(true)
     setLoungePostDetailMenuOpen(false)
@@ -3458,6 +3465,11 @@ export default function SocialFeed({
       }
       try {
         resetFeedInlineSoundRef.current?.()
+      } catch {
+        /* ignore */
+      }
+      try {
+        resetPostDetailInlineSoundRef.current?.()
       } catch {
         /* ignore */
       }
@@ -3830,28 +3842,43 @@ export default function SocialFeed({
     }
   }, [])
 
+  const resetPostDetailInlineSound = useCallback(() => {
+    try {
+      resetPostDetailInlineSoundRef.current?.()
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const openLoungeCommentDrillFromRoots = useCallback(
     (comment) => {
       if (!comment?.id) return
       setLoungePostDetailMenuOpen(false)
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
+      resetPostDetailInlineSound()
       setLoungeCommentDetailPathIds([comment.id])
       requestAnimationFrame(() => {
         scrollLoungePostDetailToTopInstant()
       })
     },
-    [cancelLoungeDetailCommentEdit, cancelLoungeDetailEdit, scrollLoungePostDetailToTopInstant],
+    [
+      cancelLoungeDetailCommentEdit,
+      cancelLoungeDetailEdit,
+      resetPostDetailInlineSound,
+      scrollLoungePostDetailToTopInstant,
+    ],
   )
 
   const drillDeeperIntoLoungeComment = useCallback((comment) => {
     if (!comment?.id) return
     cancelLoungeDetailCommentEdit()
+    resetPostDetailInlineSound()
     setLoungeCommentDetailPathIds((prev) => [...prev, comment.id])
     requestAnimationFrame(() => {
       scrollLoungePostDetailToTopInstant()
     })
-  }, [cancelLoungeDetailCommentEdit, scrollLoungePostDetailToTopInstant])
+  }, [cancelLoungeDetailCommentEdit, resetPostDetailInlineSound, scrollLoungePostDetailToTopInstant])
 
   const buildLoungeCommentDrillPath = useCallback((commentId) => {
     const rows = loungeDetailComments
@@ -3881,6 +3908,7 @@ export default function SocialFeed({
       if (chain.length === 0) return
       setLoungeCommentDetailPathIds((prev) => {
         const same = prev.length === chain.length && prev.every((id, i) => id === chain[i])
+        if (!same) resetPostDetailInlineSound()
         queueMicrotask(() => {
           if (!same) scrollLoungePostDetailToTopInstant()
           expandAndFocusLoungeDetailCommentComposer()
@@ -3895,9 +3923,15 @@ export default function SocialFeed({
       loungeReadOnly,
       openProfileGateIfNeeded,
       requireLoungeAuth,
+      resetPostDetailInlineSound,
       scrollLoungePostDetailToTopInstant,
     ],
   )
+
+  useEffect(() => {
+    if (loungeCommentDetailPathIds.length === 0) return
+    resetPostDetailInlineSound()
+  }, [loungeCommentDetailPathIds, resetPostDetailInlineSound])
 
   const saveLoungeDetailCaption = useCallback(async () => {
     if (!loungePostDetail?.id) return
@@ -6958,6 +6992,8 @@ export default function SocialFeed({
               ref={loungePostDetailScrollRef}
               className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
             >
+              <LoungeFeedVideoAutoplayProvider scrollRootRef={loungePostDetailScrollRef}>
+              <LoungeFeedInlineSoundResetBinder resetRef={resetPostDetailInlineSoundRef} />
               <div
                 aria-hidden
                 className="shrink-0"
@@ -7797,6 +7833,7 @@ export default function SocialFeed({
               </div>
               )}
               </div>
+              </LoungeFeedVideoAutoplayProvider>
             </div>
             {!loungeReadOnly ? (
               <div

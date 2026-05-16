@@ -281,10 +281,13 @@ export function LoungePostFeedImagesAndGif({
   const persistedStreamPoster = streamUid ? feedPostStreamPosterUrl(post) : ''
   const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null
   const sessionStreamPosterUrl = streamUid ? peekLoungeStreamSessionPoster(streamUid) : ''
-  const feedAutoplayClientId =
-    (variant === 'feed' || variant === 'embed') && post?.id && streamUid && enableLightbox
-      ? `${post.id}:${streamUid}`
-      : undefined
+  const feedAutoplayClientId = (() => {
+    if (!enableLightbox || !post?.id || !streamUid) return undefined
+    if (variant === 'feed' || variant === 'embed') return `${post.id}:${streamUid}`
+    if (variant === 'commentInline') return `comment:${post.id}:${streamUid}`
+    if (variant === 'detail') return `detail:${post.id}:${streamUid}`
+    return undefined
+  })()
   if (streamUid) {
     return (
       <LoungePostStreamVideo

@@ -9,7 +9,7 @@ import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js
 const videoClassByVariant = {
   feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
   detail: 'block max-h-[min(70vh,520px)] w-auto max-w-full h-auto object-contain',
-  commentInline: 'block max-h-[min(47vh,347px)] w-auto max-w-full h-auto object-contain',
+  commentInline: 'block max-h-36 w-auto max-w-full h-auto object-contain sm:max-h-40',
   embed: 'block max-h-40 w-auto max-w-full h-auto object-contain sm:max-h-44',
   composer: 'block max-h-40 w-auto max-w-full h-auto object-contain',
 }
@@ -44,7 +44,7 @@ const posterFrameMinHByVariant = {
   feed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
   embed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
   detail: 'min-h-[min(32vw,11rem)] sm:min-h-[15rem]',
-  commentInline: 'min-h-[min(22vw,7.5rem)] sm:min-h-[10rem]',
+  commentInline: 'min-h-[min(24vw,7rem)] sm:min-h-[8rem]',
   composer: 'min-h-[8rem]',
 }
 
@@ -57,7 +57,7 @@ const posterFallbackFrameClassByVariant = {
   embed: 'relative flex max-h-44 w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-h-44 sm:max-w-[min(72vw,17rem)]',
   detail: 'relative flex max-h-[min(70vh,520px)] w-fit max-w-full items-center justify-center bg-black',
   commentInline:
-    'relative flex max-h-[min(47vh,347px)] w-fit max-w-full items-center justify-center bg-black',
+    'relative flex max-h-36 w-fit max-w-full items-center justify-center bg-black sm:max-h-40',
   composer: 'relative flex max-h-40 w-fit max-w-[min(78vw,18rem)] items-center justify-center bg-black',
 }
 
@@ -457,7 +457,8 @@ export default function LoungePostStreamVideo({
   }, [hasPersistedPoster, persistedPosterTrim, cfPosterActive, sessionPosterUrl, posterDisplayUrl])
 
   const showOpen = enableLightbox && variant !== 'composer'
-  const lazyStream = showOpen && (variant === 'feed' || variant === 'embed')
+  /** Mid-scroll winner + lazy HLS when registered with `LoungeFeedVideoAutoplayProvider` (feed, embed, post-detail comments). */
+  const lazyStream = showOpen && Boolean(feedAutoplayClientId)
 
   useEffect(() => {
     let cancelled = false
@@ -556,15 +557,17 @@ export default function LoungePostStreamVideo({
     coordinatorActive,
     isWinner,
     scheduleRecompute,
-    feedSoundFromProvider,
     feedInlineSoundUnmuted,
     toggleFeedInlineSound,
   } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
-  /** Feed/embed inside `LoungeFeedVideoAutoplayProvider`: one shared inline mute flag for all Stream tiles. */
-  const coordinatedFeedSound = Boolean(lazyStream && feedSoundFromProvider)
+  /** Inside `LoungeFeedVideoAutoplayProvider` with a client id: one shared “Tap for sound” for the scroll surface. */
+  const coordinatedInlineSound = coordinatorActive
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
-  const stripSoundUnmuted = coordinatedFeedSound ? feedInlineSoundUnmuted : localStripSoundUnmuted
-  const feedStyleAbr = variant === 'feed' || variant === 'embed' || variant === 'composer'
+  const stripSoundUnmuted = coordinatedInlineSound ? feedInlineSoundUnmuted : localStripSoundUnmuted
+  const inlineSoundScopeLabel =
+    variant === 'feed' || variant === 'embed' ? 'the feed' : 'this screen'
+  const feedStyleAbr =
+    variant === 'feed' || variant === 'embed' || variant === 'composer' || variant === 'commentInline'
   /** Coordinator can name a winner before IntersectionObserver fires; attach on winner alone (IO still gates pause for non-coordinator). */
   const attachStream = lazyStream ? (coordinatorActive ? isWinner : streamInView) : true
 
@@ -572,21 +575,21 @@ export default function LoungePostStreamVideo({
     isWinnerRef.current = !coordinatorActive || isWinner
   }, [coordinatorActive, isWinner])
 
-  /** Keep inline `<video>` muted in sync with shared feed sound (winner tile only has media while coordinating). */
+  /** Keep inline `<video>` muted in sync with shared provider sound (all registered tiles; winner may be playing). */
   useEffect(() => {
-    if (!coordinatedFeedSound || !attachStream) return
+    if (!coordinatedInlineSound) return
     const v = videoRef.current
     if (!v || lightboxOpenRef.current) return
     try {
       v.muted = !feedInlineSoundUnmuted
-      if (feedInlineSoundUnmuted) {
+      if (feedInlineSoundUnmuted && attachStream) {
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       }
     } catch {
       // ignore
     }
-  }, [coordinatedFeedSound, attachStream, feedInlineSoundUnmuted, streamAttachKey, isWinner])
+  }, [coordinatedInlineSound, attachStream, feedInlineSoundUnmuted, streamAttachKey, isWinner])
 
   useEffect(() => {
     if (!streamInView && lazyStream) recoveryBurstRef.current = 0
@@ -719,9 +722,9 @@ export default function LoungePostStreamVideo({
     setLightboxOpen(true)
   }, [])
 
-  /** Bottom strip: feed/embed under provider toggles shared inline sound; other variants toggle this tile only. */
+  /** Bottom strip: coordinated tiles share provider mute; others toggle this tile only. */
   const onSoundStripPress = useCallback(() => {
-    if (coordinatedFeedSound) {
+    if (coordinatedInlineSound) {
       const turningOn = !feedInlineSoundUnmuted
       toggleFeedInlineSound()
       if (turningOn && attachStream) {
@@ -783,7 +786,7 @@ export default function LoungePostStreamVideo({
       openLightbox()
     }
   }, [
-    coordinatedFeedSound,
+    coordinatedInlineSound,
     feedInlineSoundUnmuted,
     localStripSoundUnmuted,
     attachStream,
@@ -874,7 +877,7 @@ export default function LoungePostStreamVideo({
     let cleaned = false
     const go = () => {
       try {
-        v.muted = coordinatedFeedSound ? !feedInlineSoundUnmuted : true
+        v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : true
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       } catch {
@@ -899,7 +902,17 @@ export default function LoungePostStreamVideo({
       v.removeEventListener('loadeddata', onEarly)
       v.removeEventListener('canplay', onEarly)
     }
-  }, [lazyStream, attachStream, showOpen, streamAttachKey, lightboxOpen, coordinatorActive, isWinner, coordinatedFeedSound, feedInlineSoundUnmuted])
+  }, [
+    lazyStream,
+    attachStream,
+    showOpen,
+    streamAttachKey,
+    lightboxOpen,
+    coordinatorActive,
+    isWinner,
+    coordinatedInlineSound,
+    feedInlineSoundUnmuted,
+  ])
 
   /** After closing lightbox, resume muted autoplay if still in view. */
   useEffect(() => {
@@ -916,13 +929,21 @@ export default function LoungePostStreamVideo({
       return
     }
     try {
-      v.muted = coordinatedFeedSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
+      v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
       const p = v.play()
       if (p && typeof p.catch === 'function') p.catch(() => {})
     } catch {
       // ignore
     }
-  }, [lightboxOpen, showOpen, coordinatorActive, isWinner, coordinatedFeedSound, feedInlineSoundUnmuted, localStripSoundUnmuted])
+  }, [
+    lightboxOpen,
+    showOpen,
+    coordinatorActive,
+    isWinner,
+    coordinatedInlineSound,
+    feedInlineSoundUnmuted,
+    localStripSoundUnmuted,
+  ])
 
   /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
   useEffect(() => {
@@ -983,8 +1004,8 @@ export default function LoungePostStreamVideo({
           aria-label={
             showOpen
               ? stripSoundUnmuted
-                ? 'Post video, sound on in feed. Tap the video for full screen. Use the bottom-left mute control in the feed.'
-                : 'Post video, playing muted in feed. Tap the video for full screen. Use the bottom-left control for sound in the feed.'
+                ? `Post video, sound on in ${inlineSoundScopeLabel}. Tap the video for full screen. Use the bottom-left mute control.`
+                : `Post video, playing muted. Tap the video for full screen. Use the bottom-left control for sound in ${inlineSoundScopeLabel}.`
               : 'Post video'
           }
           title={
@@ -1104,7 +1125,11 @@ export default function LoungePostStreamVideo({
           {showOpen && !showStreamRetry ? (
             <button
               type="button"
-              aria-label={stripSoundUnmuted ? 'Mute video in the feed' : 'Play video with sound in the feed'}
+              aria-label={
+                stripSoundUnmuted
+                  ? `Mute video in ${inlineSoundScopeLabel}`
+                  : `Play video with sound in ${inlineSoundScopeLabel}`
+              }
               className="absolute bottom-2 left-2 z-[3] inline-flex min-h-[44px] min-w-[44px] max-w-[min(calc(100%-1rem),15rem)] items-center justify-center rounded-lg p-2 touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50 sm:bottom-2.5 sm:left-2.5 sm:p-2.5"
               onClick={(e) => {
                 e.stopPropagation()

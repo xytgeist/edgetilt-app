@@ -87,6 +87,7 @@ import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
 import {
+  blurLoungeComposerCaption,
   focusLoungeComposerCaption,
   LOUNGE_COMPOSER_FOCUS_AFTER_MEDIA_DELAYS_MS,
   loungeComposerToolbarKeepFocusHandlers,
@@ -650,6 +651,27 @@ export default function SocialFeed({
   const openQuoteRepostMediaPicker = useCallback(() => {
     quoteRepostMediaInputRef.current?.click()
   }, [])
+
+  const blurLoungeComposerCaptionForTarget = useCallback((target) => {
+    const getTextarea = () => {
+      if (target === 'detailComment') return loungeDetailCommentTextareaRef.current
+      if (target === 'quote') return quoteRepostTextareaRef.current
+      return composerTextareaRef.current
+    }
+    blurLoungeComposerCaption(getTextarea)
+    if (target === 'detailComment') setLoungeDetailCommentKbOverlapPx(0)
+  }, [])
+
+  const openKlipyPicker = useCallback(
+    (target) => {
+      if (openProfileGateIfNeeded()) return
+      if (target === 'detailComment') beginLoungeDetailCommentMediaSession()
+      setKlipyPickerTarget(target)
+      blurLoungeComposerCaptionForTarget(target)
+      setKlipyPickerOpen(true)
+    },
+    [beginLoungeDetailCommentMediaSession, blurLoungeComposerCaptionForTarget, openProfileGateIfNeeded],
+  )
 
   const expandAndFocusLoungeDetailCommentComposer = useCallback(() => {
     scrollLoungePostDetailToTopInstant()
@@ -2166,7 +2188,7 @@ export default function SocialFeed({
       }
       const u = chk.value
       if (!u) return
-      focusLoungeComposerCaptionNow(klipyPickerTarget)
+      const target = klipyPickerTarget
       if (klipyPickerTarget === 'quote') {
         cancelQuoteRepostMediaPrep()
         setQuoteRepostMediaUrl(u)
@@ -2193,10 +2215,10 @@ export default function SocialFeed({
         }
         setComposerMediaUrl(u)
       }
-      scheduleLoungeComposerCaptionRefocus(klipyPickerTarget, {
-        immediate: false,
+      scheduleLoungeComposerCaptionRefocus(target, {
+        immediate: true,
         afterMedia: true,
-        skipExpand: klipyPickerTarget === 'detailComment',
+        skipExpand: target === 'detailComment',
       })
     },
     [
@@ -2207,7 +2229,6 @@ export default function SocialFeed({
       cancelQuoteRepostMediaPrep,
       cancelLoungeDetailCommentMediaPrep,
       endLoungeDetailCommentMediaSession,
-      focusLoungeComposerCaptionNow,
       scheduleLoungeComposerCaptionRefocus,
     ],
   )
@@ -5962,11 +5983,7 @@ export default function SocialFeed({
               </button>
               <button
                 type="button"
-                {...loungeComposerToolbarKeepFocusHandlers(() => {
-                  if (openProfileGateIfNeeded()) return
-                  setKlipyPickerTarget('composer')
-                  setKlipyPickerOpen(true)
-                })}
+                onClick={() => openKlipyPicker('composer')}
                 className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                 title="Add GIF (Klipy)"
                 aria-label="Add GIF"
@@ -7568,12 +7585,7 @@ export default function SocialFeed({
                           </button>
                           <button
                             type="button"
-                            {...loungeComposerToolbarKeepFocusHandlers(() => {
-                              if (openProfileGateIfNeeded()) return
-                              beginLoungeDetailCommentMediaSession()
-                              setKlipyPickerTarget('detailComment')
-                              setKlipyPickerOpen(true)
-                            })}
+                            onClick={() => openKlipyPicker('detailComment')}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF"
                             aria-label="Add GIF"
@@ -8142,12 +8154,10 @@ export default function SocialFeed({
                           <button
                             type="button"
                             disabled={quoteRepostBusy}
-                            {...loungeComposerToolbarKeepFocusHandlers(() => {
+                            onClick={() => {
                               if (quoteRepostBusy) return
-                              if (openProfileGateIfNeeded()) return
-                              setKlipyPickerTarget('quote')
-                              setKlipyPickerOpen(true)
-                            })}
+                              openKlipyPicker('quote')
+                            }}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF (Klipy)"
                             aria-label="Add GIF"

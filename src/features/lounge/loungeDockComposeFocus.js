@@ -28,6 +28,17 @@ export function focusLoungeComposerCaption(getTextarea, opts = {}) {
   return true
 }
 
+/** Dismiss the software keyboard before a full-screen picker (e.g. Klipy) opens. */
+export function blurLoungeComposerCaption(getTextarea) {
+  const el = getTextarea?.()
+  if (!el) return
+  try {
+    el.blur()
+  } catch {
+    // ignore
+  }
+}
+
 /** Extra retries after image carousel mounts / previews decode (iOS often blurs again). */
 export const LOUNGE_COMPOSER_FOCUS_AFTER_MEDIA_DELAYS_MS = [600, 1000, 1500]
 

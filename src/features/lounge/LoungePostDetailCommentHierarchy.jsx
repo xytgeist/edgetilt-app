@@ -5,7 +5,7 @@ import { formatLoungePostDetailWhen } from './loungeFormat.js'
 const COMMENT_AVATAR_BUTTON_SEL = 'button[aria-label^="Open profile"]'
 const END_PAD_PX = 3
 
-function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRef }) {
+export function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRef }) {
   const [line, setLine] = useState(null)
 
   const updateLine = useCallback(() => {
@@ -65,16 +65,18 @@ function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRef }) {
 function HierarchyCommentRow({
   comment,
   isFocus,
-  postAvatarRef,
   topAvatarRef,
   avatarRef,
   pathIndex,
   onNavigateToPathIndex,
   cardProps,
   descendantFallback,
+  connectorRootRef,
+  isCommentPostDetail,
 }) {
   const rowRef = useRef(null)
   const avatarWrapRef = useRef(null)
+  const lineContainerRef = pathIndex === 0 && connectorRootRef ? connectorRootRef : rowRef
 
   useLayoutEffect(() => {
     const wrap = avatarWrapRef.current
@@ -106,9 +108,13 @@ function HierarchyCommentRow({
   return (
     <div
       ref={rowRef}
-      className={`relative min-w-0 ${pathIndex > 0 ? 'mt-1 border-t border-zinc-800/60 pt-1.5' : 'mt-1'}`}
+      className={`relative min-w-0 ${pathIndex > 0 && !isCommentPostDetail ? 'mt-1 border-t border-zinc-800/60 pt-1.5' : pathIndex > 0 ? 'mt-1' : ''}`}
     >
-      <AvatarConnectorLine containerRef={rowRef} topAvatarRef={topAvatarRef} bottomAvatarRef={avatarRef} />
+      <AvatarConnectorLine
+        containerRef={lineContainerRef}
+        topAvatarRef={topAvatarRef}
+        bottomAvatarRef={avatarRef}
+      />
       <div id={isFocus ? 'lounge-detail-focus-comment' : undefined} className="relative z-[1]">
         {canNavigate ? (
           <button
@@ -134,9 +140,11 @@ export default function LoungePostDetailCommentHierarchy({
   pathIds = [],
   comments = [],
   postAvatarRef,
+  connectorRootRef = null,
   onNavigateToPathIndex,
   descendantCountByCommentId,
   cardProps = {},
+  isCommentPostDetail = true,
 }) {
   const byId = new Map((comments || []).map((c) => [c.id, c]))
   const chain = (pathIds || []).map((id) => byId.get(id)).filter(Boolean)
@@ -147,7 +155,10 @@ export default function LoungePostDetailCommentHierarchy({
   avatarRefs.current = chain.map((c, i) => avatarRefs.current[i] || { current: null })
 
   return (
-    <section className="mt-2 border-t border-zinc-800/70 pt-2" aria-label="Comment thread">
+    <section
+      className={isCommentPostDetail ? 'mt-0' : 'mt-2 border-t border-zinc-800/70 pt-2'}
+      aria-label="Comment thread"
+    >
       {chain.map((comment, idx) => {
         const isFocus = idx === chain.length - 1
         const topAvatarRef = idx === 0 ? postAvatarRef : avatarRefs.current[idx - 1]
@@ -156,13 +167,14 @@ export default function LoungePostDetailCommentHierarchy({
             key={comment.id}
             comment={comment}
             isFocus={isFocus}
-            postAvatarRef={postAvatarRef}
             topAvatarRef={topAvatarRef}
             avatarRef={avatarRefs.current[idx]}
             pathIndex={idx}
             onNavigateToPathIndex={onNavigateToPathIndex}
             cardProps={cardProps}
             descendantFallback={descendantCountByCommentId?.get(comment.id) ?? 0}
+            connectorRootRef={connectorRootRef}
+            isCommentPostDetail={isCommentPostDetail}
           />
         )
       })}

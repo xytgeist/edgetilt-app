@@ -1,41 +1,81 @@
+import { useEffect, useRef, useState } from 'react'
 import {
   LOUNGE_DETAIL_COMMENT_SORT,
   writeLoungeDetailCommentSort,
 } from '../../utils/loungeFeedCommentSort.js'
 
 const OPTIONS = [
-  { value: LOUNGE_DETAIL_COMMENT_SORT.RANKED, label: 'Recommended' },
+  { value: LOUNGE_DETAIL_COMMENT_SORT.RANKED, label: 'Relevant' },
   { value: LOUNGE_DETAIL_COMMENT_SORT.POPULAR, label: 'Popular' },
   { value: LOUNGE_DETAIL_COMMENT_SORT.CHRONOLOGICAL, label: 'Oldest first' },
   { value: LOUNGE_DETAIL_COMMENT_SORT.LIKES, label: 'Most liked' },
 ]
 
+function labelForValue(value) {
+  return OPTIONS.find((o) => o.value === value)?.label || 'Relevant'
+}
+
 /**
- * Post detail: sort first-level comments only (replies use thread drill-down order).
+ * Minimal post-detail comment sort: `Relevant ▾` (compact menu, no "Sort" label).
  */
-export default function LoungePostDetailCommentSort({ value, onChange, disabled = false }) {
+export default function LoungePostDetailCommentSort({ value, onChange, disabled = false, className = '' }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDoc)
+    return () => document.removeEventListener('pointerdown', onDoc)
+  }, [open])
+
+  const currentLabel = labelForValue(value)
+
   return (
-    <div className="mb-2 flex items-center justify-end gap-2">
-      <label htmlFor="lounge-detail-comment-sort" className="text-[13px] font-medium text-zinc-500">
-        Sort
-      </label>
-      <select
-        id="lounge-detail-comment-sort"
-        value={value}
+    <div ref={wrapRef} className={`relative inline-flex ${className}`.trim()}>
+      <button
+        type="button"
         disabled={disabled}
-        onChange={(e) => {
-          const next = e.target.value
-          writeLoungeDetailCommentSort(next)
-          onChange?.(next)
-        }}
-        className="max-w-[11rem] rounded-lg border border-zinc-700/80 bg-zinc-900/90 px-2.5 py-1.5 text-[13px] font-medium text-zinc-100 outline-none focus-visible:border-cyan-600/70 focus-visible:ring-1 focus-visible:ring-cyan-600/40 disabled:opacity-50"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-0.5 rounded-md py-0.5 pr-0.5 text-[13px] font-medium leading-tight text-zinc-500 touch-manipulation hover:text-zinc-300 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
       >
-        {OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        <span>{currentLabel}</span>
+        <svg className="h-3.5 w-3.5 shrink-0 opacity-80" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+      {open ? (
+        <ul
+          role="listbox"
+          className="absolute left-0 top-full z-20 mt-0.5 min-w-[7.5rem] rounded-lg border border-zinc-700/90 bg-zinc-900 py-0.5 shadow-lg"
+        >
+          {OPTIONS.map((opt) => (
+            <li key={opt.value} role="option" aria-selected={opt.value === value}>
+              <button
+                type="button"
+                className={`block w-full px-2.5 py-1 text-left text-[13px] font-medium touch-manipulation hover:bg-zinc-800 ${
+                  opt.value === value ? 'text-zinc-100' : 'text-zinc-400'
+                }`}
+                onClick={() => {
+                  writeLoungeDetailCommentSort(opt.value)
+                  onChange?.(opt.value)
+                  setOpen(false)
+                }}
+              >
+                {opt.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

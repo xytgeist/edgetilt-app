@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useMemo, useCallback } from 'react'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -278,7 +278,7 @@ export function LoungeCommentCard({
     return (
       <article
         tabIndex={0}
-        aria-label="View replies to this comment"
+        aria-label="View comment"
         onClick={(e) => {
           const t = e.target
           if (!(t instanceof Element)) return
@@ -308,133 +308,14 @@ export function LoungeCommentCard({
   return <article className="min-w-0 px-1 py-1">{metaRow}</article>
 }
 
-/** Profile avatar control in `LoungeCommentCard` — stable selector for thread connector geometry. */
-const COMMENT_AVATAR_BUTTON_SEL = 'button[aria-label^="Open profile"]'
-
 /**
- * Root + OP replies: same layout as flat comments; vertical segment from just below the parent avatar
- * to just above the first OP avatar (no tail through OP body / bar).
- */
-function RootCommentWithOpConnector({
-  root,
-  nestedOp,
-  descendantCountByCommentId,
-  onOpenCommentThread,
-  cardProps,
-}) {
-  const liRef = useRef(null)
-  const rootWrapRef = useRef(null)
-  const firstOpWrapRef = useRef(null)
-  const [line, setLine] = useState(null)
-
-  const nestedKey = nestedOp.map((c) => c.id).join(',')
-
-  const updateLine = useCallback(() => {
-    const li = liRef.current
-    const rootW = rootWrapRef.current
-    const opW = firstOpWrapRef.current
-    if (!li || !rootW || !opW) {
-      setLine(null)
-      return
-    }
-    const rootBtn = rootW.querySelector(COMMENT_AVATAR_BUTTON_SEL)
-    const opBtn = opW.querySelector(COMMENT_AVATAR_BUTTON_SEL)
-    if (!(rootBtn instanceof HTMLElement) || !(opBtn instanceof HTMLElement)) {
-      setLine(null)
-      return
-    }
-    const liRect = li.getBoundingClientRect()
-    const rr = rootBtn.getBoundingClientRect()
-    const or = opBtn.getBoundingClientRect()
-    const cxRoot = (rr.left + rr.right) / 2 - liRect.left
-    const cxOp = (or.left + or.right) / 2 - liRect.left
-    const x = (cxRoot + cxOp) / 2
-
-    /** Small gap so the stroke does not touch the circular avatars. */
-    const END_PAD_PX = 3
-    const yStart = rr.bottom - liRect.top + END_PAD_PX
-    const yEnd = or.top - liRect.top - END_PAD_PX
-    if (yEnd <= yStart) {
-      setLine(null)
-      return
-    }
-    setLine({ left: x, top: yStart, height: yEnd - yStart })
-  }, [nestedKey, root.id])
-
-  useLayoutEffect(() => {
-    updateLine()
-    const el = liRef.current
-    if (!el || typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateLine)
-      return () => window.removeEventListener('resize', updateLine)
-    }
-    const ro = new ResizeObserver(() => updateLine())
-    ro.observe(el)
-    window.addEventListener('resize', updateLine)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', updateLine)
-    }
-  }, [updateLine])
-
-  return (
-    <li ref={liRef} className="relative min-w-0">
-      <div ref={rootWrapRef}>
-        <LoungeCommentCard
-          comment={root}
-          navigable={Boolean(onOpenCommentThread)}
-          onOpenCommentThread={onOpenCommentThread}
-          descendantFallback={descendantCountByCommentId.get(root.id) ?? 0}
-          {...cardProps}
-        />
-      </div>
-      <>
-        {line ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute z-0 w-0.5 bg-zinc-500/30"
-            style={{
-              left: line.left,
-              top: line.top,
-              height: line.height,
-              transform: 'translateX(-50%)',
-            }}
-          />
-        ) : null}
-        <div className="relative z-[1] mt-1 space-y-0" aria-label="Replies from the post author">
-          {nestedOp.map((reply, idx) => (
-            <div
-              key={reply.id}
-              ref={idx === 0 ? firstOpWrapRef : undefined}
-              className={idx > 0 ? 'border-t border-zinc-800/60 pt-1.5' : ''}
-            >
-              <LoungeCommentCard
-                comment={reply}
-                navigable={Boolean(onOpenCommentThread)}
-                onOpenCommentThread={onOpenCommentThread}
-                descendantFallback={descendantCountByCommentId.get(reply.id) ?? 0}
-                {...cardProps}
-              />
-            </div>
-          ))}
-        </div>
-      </>
-    </li>
-  )
-}
-
-/**
- * Post detail comments — roots tap through into threaded replies on separate drill-down screens.
+ * Post detail comments — tap any comment to open its own comment-detail screen (OP + ancestry + replies).
  *
- * **`variant === 'post'`:** On the main post detail list, only **one** kind of inline grouping is shown:
- * replies authored by **`postAuthorUserId`** (the post owner) whose `parent_id` is a **top-level** comment
- * on that post — rendered **below** that parent with the **same alignment** as other comments; a **short vertical segment**
- * from just below the parent commenter’s avatar to just above the **first** OP reply’s avatar marks the reply. Other replies stay drill-down only. OP replies whose parent is not a visible root render as
- * extra root rows (fallback) so nothing disappears.
+ * **`variant === 'post'`:** Top-level roots only; all replies (including OP) open via comment detail.
  *
  * @param {'post' | 'commentDetailReplies'} variant
  * @param {string | null} focusCommentId — Required when `variant === 'commentDetailReplies'`.
- * @param {string | null} [postAuthorUserId] — Post author's `user_id`; enables OP-only nesting when `variant === 'post'`.
+ * @param {string | null} [postAuthorUserId] — Post author's `user_id`; used for sort + orphan OP root rows.
  */
 export default function LoungePostCommentThread({
   comments,
@@ -443,7 +324,7 @@ export default function LoungePostCommentThread({
   displayNameFor,
   handleFor,
   variant = 'post',
-  /** Post owner's user id — used to nest their replies under parent comments on the main detail list only. */
+  /** Post owner's user id — used for ranked sort buckets and orphan OP root rows. */
   postAuthorUserId = null,
   focusCommentId = null,
   loungeReadOnly = false,
@@ -514,26 +395,7 @@ export default function LoungePostCommentThread({
 
   const rootIdSet = useMemo(() => new Set(rootsSorted.map((r) => r.id).filter(Boolean)), [rootsSorted])
 
-  /** OP-authored replies attached under a top-level parent (main detail only). */
-  const opAuthorRepliesByParentId = useMemo(() => {
-    const m = new Map()
-    if (!postAuthorUserId) return m
-    for (const c of comments || []) {
-      const pid = c.parent_id
-      if (!pid) continue
-      if (c.user_id !== postAuthorUserId) continue
-      if (!rootIdSet.has(pid)) continue
-      const arr = m.get(pid) || []
-      arr.push(c)
-      m.set(pid, arr)
-    }
-    for (const arr of m.values()) {
-      arr.sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
-    }
-    return m
-  }, [comments, postAuthorUserId, rootIdSet, viewerPinnedCommentIds])
-
-  /** OP replies to a non-root parent (not shown inline under a root) — keep visible as roots. */
+  /** OP replies to a non-root parent — show as extra root rows so nothing disappears. */
   const orphanOpAuthorReplies = useMemo(() => {
     if (!postAuthorUserId) return []
     return [...(comments || [])]
@@ -638,32 +500,17 @@ export default function LoungePostCommentThread({
 
   return (
     <ul className="mt-0 divide-y divide-zinc-800/70 space-y-0">
-      {rootsSorted.map((root) => {
-        const nestedOp = opAuthorRepliesByParentId.get(root.id) || []
-        if (nestedOp.length) {
-          return (
-            <RootCommentWithOpConnector
-              key={root.id}
-              root={root}
-              nestedOp={nestedOp}
-              descendantCountByCommentId={descendantCountByCommentId}
-              onOpenCommentThread={onOpenCommentThread}
-              cardProps={cardProps}
-            />
-          )
-        }
-        return (
-          <li key={root.id} className="min-w-0">
-            <LoungeCommentCard
-              comment={root}
-              navigable={Boolean(onOpenCommentThread)}
-              onOpenCommentThread={onOpenCommentThread}
-              descendantFallback={descendantCountByCommentId.get(root.id) ?? 0}
-              {...cardProps}
-            />
-          </li>
-        )
-      })}
+      {rootsSorted.map((root) => (
+        <li key={root.id} className="min-w-0">
+          <LoungeCommentCard
+            comment={root}
+            navigable={Boolean(onOpenCommentThread)}
+            onOpenCommentThread={onOpenCommentThread}
+            descendantFallback={descendantCountByCommentId.get(root.id) ?? 0}
+            {...cardProps}
+          />
+        </li>
+      ))}
       {orphanOpAuthorReplies.map((c) => (
         <li key={c.id} className="min-w-0">
           <LoungeCommentCard

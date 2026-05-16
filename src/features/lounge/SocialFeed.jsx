@@ -334,6 +334,7 @@ export default function SocialFeed({
   const loungeDetailRepostMenuRef = useRef(null)
   const loungePostDetailScrollRef = useRef(null)
   const loungePostDetailPostAvatarRef = useRef(null)
+  const loungePostDetailCommentConnectorRef = useRef(null)
   const loungeDetailCommentTextareaRef = useRef(null)
   const loungeDetailCommentDraftRef = useRef('')
   const loungePostDetailTitleBarRef = useRef(null)
@@ -3924,47 +3925,51 @@ export default function SocialFeed({
     return chain
   }, [loungeDetailComments])
 
-  const openLoungeCommentDrillFromRoots = useCallback(
-    (comment) => {
+  const openLoungeCommentDetail = useCallback(
+    (comment, { focusComposer = false } = {}) => {
       if (!comment?.id) return
+      if (loungeReadOnly) {
+        requireLoungeAuth()
+        return
+      }
+      if (openProfileGateIfNeeded()) return
       const chain = buildLoungeCommentDrillPath(comment.id)
       if (!chain.length) return
       setLoungePostDetailMenuOpen(false)
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
+      if (!focusComposer) collapseLoungeDetailCommentComposer()
       resetPostDetailInlineSound()
       setLoungeCommentDetailPathIds(chain)
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
+        requestAnimationFrame(() => {
+          scrollLoungePostDetailToFocusedComment()
+          if (focusComposer) expandAndFocusLoungeDetailCommentComposer()
+        })
       })
     },
     [
       buildLoungeCommentDrillPath,
       cancelLoungeDetailCommentEdit,
       cancelLoungeDetailEdit,
+      collapseLoungeDetailCommentComposer,
+      expandAndFocusLoungeDetailCommentComposer,
+      loungeReadOnly,
+      openProfileGateIfNeeded,
+      requireLoungeAuth,
       resetPostDetailInlineSound,
       scrollLoungePostDetailToFocusedComment,
     ],
   )
 
+  const openLoungeCommentDrillFromRoots = useCallback(
+    (comment) => openLoungeCommentDetail(comment, { focusComposer: false }),
+    [openLoungeCommentDetail],
+  )
+
   const drillDeeperIntoLoungeComment = useCallback(
-    (comment) => {
-      if (!comment?.id) return
-      const chain = buildLoungeCommentDrillPath(comment.id)
-      if (!chain.length) return
-      cancelLoungeDetailCommentEdit()
-      resetPostDetailInlineSound()
-      setLoungeCommentDetailPathIds(chain)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
-      })
-    },
-    [
-      buildLoungeCommentDrillPath,
-      cancelLoungeDetailCommentEdit,
-      resetPostDetailInlineSound,
-      scrollLoungePostDetailToFocusedComment,
-    ],
+    (comment) => openLoungeCommentDetail(comment, { focusComposer: false }),
+    [openLoungeCommentDetail],
   )
 
   const navigateLoungeCommentDetailToPathIndex = useCallback(
@@ -3983,41 +3988,8 @@ export default function SocialFeed({
   )
 
   const onLoungeCommentReplyInteraction = useCallback(
-    (comment) => {
-      if (!comment?.id) return
-      if (loungeReadOnly) {
-        requireLoungeAuth()
-        return
-      }
-      if (openProfileGateIfNeeded()) return
-      cancelLoungeDetailEdit()
-      setLoungePostDetailMenuOpen(false)
-      const chain = buildLoungeCommentDrillPath(comment.id)
-      if (chain.length === 0) return
-      setLoungeCommentDetailPathIds((prev) => {
-        const same = prev.length === chain.length && prev.every((id, i) => id === chain[i])
-        if (!same) resetPostDetailInlineSound()
-        queueMicrotask(() => {
-          if (!same) {
-            if (chain.length > 0) scrollLoungePostDetailToFocusedComment()
-            else scrollLoungePostDetailToTopInstant()
-          }
-          expandAndFocusLoungeDetailCommentComposer()
-        })
-        return same ? prev : chain
-      })
-    },
-    [
-      buildLoungeCommentDrillPath,
-      cancelLoungeDetailEdit,
-      expandAndFocusLoungeDetailCommentComposer,
-      loungeReadOnly,
-      openProfileGateIfNeeded,
-      requireLoungeAuth,
-      resetPostDetailInlineSound,
-      scrollLoungePostDetailToFocusedComment,
-      scrollLoungePostDetailToTopInstant,
-    ],
+    (comment) => openLoungeCommentDetail(comment, { focusComposer: true }),
+    [openLoungeCommentDetail],
   )
 
   useEffect(() => {
@@ -7138,6 +7110,12 @@ export default function SocialFeed({
               ) : null}
 
               <>
+              <div
+                ref={
+                  loungeCommentDetailPathIds.length > 0 ? loungePostDetailCommentConnectorRef : undefined
+                }
+                className={loungeCommentDetailPathIds.length > 0 ? 'relative' : ''}
+              >
               <div className="flex items-start gap-3">
                 <button
                   type="button"
@@ -7208,7 +7186,11 @@ export default function SocialFeed({
               </div>
 
               {loungePostDetail.game_slug ? (
-                <div className="mt-4 flex justify-start">
+                <div
+                  className={`mt-4 flex justify-start ${
+                    loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''
+                  }`}
+                >
                   <span className="inline-flex max-w-full items-center truncate rounded-full border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-tight text-amber-300 sm:max-w-[14rem]">
                     {loungePostDetail.game_title}
                   </span>
@@ -7304,7 +7286,7 @@ export default function SocialFeed({
                     <div
                       className={`text-left text-[18px] leading-snug text-zinc-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                         loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'
-                      }`}
+                      } ${loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''}`}
                     >
                       {renderRichCaption(feedPostDisplayCaption(loungePostDetail), {
                         hashtagClassName: 'font-semibold text-cyan-300',
@@ -7313,19 +7295,23 @@ export default function SocialFeed({
                       })}
                     </div>
                   ) : null}
-                  <LoungePostFeedImagesAndGif
-                    post={loungePostDetail}
-                    variant="detail"
-                    firstMarginTopClass={
-                      feedPostDisplayCaption(loungePostDetail)
-                        ? 'mt-2'
-                        : loungePostDetail.game_slug
-                          ? 'mt-1.5'
-                          : 'mt-4'
-                    }
-                    visibilityResetRootRef={loungePostDetailScrollRef}
-                    renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
-                  />
+                  <div
+                    className={loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''}
+                  >
+                    <LoungePostFeedImagesAndGif
+                      post={loungePostDetail}
+                      variant="detail"
+                      firstMarginTopClass={
+                        feedPostDisplayCaption(loungePostDetail)
+                          ? 'mt-2'
+                          : loungePostDetail.game_slug
+                            ? 'mt-1.5'
+                            : 'mt-4'
+                      }
+                      visibilityResetRootRef={loungePostDetailScrollRef}
+                      renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
+                    />
+                  </div>
                   <button
                     type="button"
                     data-lounge-original-embed
@@ -7371,7 +7357,7 @@ export default function SocialFeed({
                     <div
                       className={`text-left text-[18px] leading-snug text-zinc-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                         loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'
-                      }`}
+                      } ${loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''}`}
                     >
                       {renderRichCaption(feedPostDisplayCaption(loungePostDetail), {
                         hashtagClassName: 'font-semibold text-cyan-300',
@@ -7380,23 +7366,27 @@ export default function SocialFeed({
                       })}
                     </div>
                   ) : null}
-                  <LoungePostFeedImagesAndGif
-                    post={loungePostDetail}
-                    variant="detail"
-                    firstMarginTopClass={
-                      feedPostDisplayCaption(loungePostDetail)
-                        ? 'mt-2'
-                        : loungePostDetail.game_slug
-                          ? 'mt-1.5'
-                          : 'mt-4'
-                    }
-                    visibilityResetRootRef={loungePostDetailScrollRef}
-                    renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
-                  />
+                  <div
+                    className={loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''}
+                  >
+                    <LoungePostFeedImagesAndGif
+                      post={loungePostDetail}
+                      variant="detail"
+                      firstMarginTopClass={
+                        feedPostDisplayCaption(loungePostDetail)
+                          ? 'mt-2'
+                          : loungePostDetail.game_slug
+                            ? 'mt-1.5'
+                            : 'mt-4'
+                      }
+                      visibilityResetRootRef={loungePostDetailScrollRef}
+                      renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
+                    />
+                  </div>
                 </>
               )}
 
-              <div className="mt-2 text-[14px] leading-tight text-zinc-500">
+              <div className={`mt-2 text-[14px] leading-tight text-zinc-500 ${loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''}`}>
                 {formatLoungePostDetailWhen(loungePostDetail.created_at)}
                 {loungePostDetail.edited_at ? (
                   <span className="text-zinc-600"> · Edited</span>
@@ -7433,7 +7423,11 @@ export default function SocialFeed({
                 /** Post detail: keep icons aligned but avoid a tall “dead” band above/below the row. */
                 const dRailMinH = 38
                 return (
-                  <div className="mt-0.5">
+                  <div
+                    className={`mt-0.5 ${
+                      loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''
+                    }`}
+                  >
                     {loungeDetailEditing ? (
                       <>
                         <input
@@ -7526,7 +7520,7 @@ export default function SocialFeed({
                       </>
                     ) : null}
                     <div
-                      className={`flex w-full min-w-0 flex-nowrap items-center justify-between border-b border-zinc-800/90 py-0.5 text-[16px] ${loungeDetailEditing ? 'mt-1' : ''}`}
+                      className={`flex w-full min-w-0 flex-nowrap items-center justify-between py-0.5 text-[16px] ${loungeDetailEditing ? 'mt-1' : ''} ${loungeCommentDetailPathIds.length > 0 ? '' : 'border-b border-zinc-800/90'}`}
                       onClick={(e) => e.stopPropagation()}
                       role="group"
                     >
@@ -7827,11 +7821,29 @@ export default function SocialFeed({
                 )
               })()}
 
-              {loungeCommentDetailPathIds.length > 0 && !loungeDetailCommentsLoading ? (
+              {!loungeReadOnly && !loungeDetailCommentsLoading ? (
+                <div
+                  className={`flex justify-start pb-1 pt-0.5 ${
+                    loungeCommentDetailPathIds.length > 0 ? 'pl-11 sm:pl-[3.25rem]' : ''
+                  }`}
+                >
+                  <LoungePostDetailCommentSort
+                    value={loungeDetailCommentSort}
+                    onChange={setLoungeDetailCommentSort}
+                  />
+                </div>
+              ) : null}
+              {loungeCommentDetailPathIds.length === 0 ? (
+                <div className="border-b border-zinc-800/90" aria-hidden />
+              ) : null}
+
+              {loungeCommentDetailPathIds.length > 0 ? (
                 <LoungePostDetailCommentHierarchy
                   pathIds={loungeCommentDetailPathIds}
                   comments={loungeDetailComments}
                   postAvatarRef={loungePostDetailPostAvatarRef}
+                  connectorRootRef={loungePostDetailCommentConnectorRef}
+                  isCommentPostDetail
                   onNavigateToPathIndex={navigateLoungeCommentDetailToPathIndex}
                   descendantCountByCommentId={loungeDetailDescendantCountByCommentId}
                   cardProps={{
@@ -7884,6 +7896,7 @@ export default function SocialFeed({
                   }}
                 />
               ) : null}
+              </div>
 
               <div
                 id={
@@ -7907,10 +7920,6 @@ export default function SocialFeed({
                       <div className="mt-1 text-[14px] text-zinc-500">Loading comments…</div>
                     ) : (
                       <>
-                        <LoungePostDetailCommentSort
-                          value={loungeDetailCommentSort}
-                          onChange={setLoungeDetailCommentSort}
-                        />
                         <LoungePostCommentThread
                           variant={
                             loungeCommentDetailPathIds.length > 0 ? 'commentDetailReplies' : 'post'

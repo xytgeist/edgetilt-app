@@ -368,6 +368,8 @@ export default function SocialFeed({
   const quoteRepostMediaInputRef = useRef(null)
   const [loungeDetailComments, setLoungeDetailComments] = useState([])
   const [loungeDetailCommentsLoading, setLoungeDetailCommentsLoading] = useState(false)
+  /** Own just-posted comment ids — prepended at top of post-detail list for this viewer only. */
+  const [loungeDetailViewerPinnedCommentIds, setLoungeDetailViewerPinnedCommentIds] = useState([])
   const [loungeDetailCommentDraft, setLoungeDetailCommentDraft] = useState('')
   const [loungeDetailCommentErr, setLoungeDetailCommentErr] = useState('')
   /** Mirrors feed composer: collapsed one-line affordance → expanded textarea + toolbar. */
@@ -3234,6 +3236,7 @@ export default function SocialFeed({
         }
         const wasRoot = !c.parent_id
         setLoungeDetailComments((prev) => prev.filter((row) => !removeIds.has(row.id)))
+        setLoungeDetailViewerPinnedCommentIds((ids) => ids.filter((id) => !removeIds.has(id)))
         setLoungeCommentDetailPathIds((p) => p.filter((id) => !removeIds.has(id)))
         setInteractionByComment((prev) => {
           const next = { ...prev }
@@ -3286,6 +3289,7 @@ export default function SocialFeed({
   useEffect(() => {
     if (!loungePostDetail?.id || loungeReadOnly) {
       setLoungeDetailComments([])
+      setLoungeDetailViewerPinnedCommentIds([])
       setLoungeDetailCommentsLoading(false)
       setLoungeDetailCommentErr('')
       setLoungeCommentDetailPathIds([])
@@ -3295,6 +3299,7 @@ export default function SocialFeed({
     }
     let cancelled = false
     setLoungeCommentDetailPathIds([])
+    setLoungeDetailViewerPinnedCommentIds([])
     setLoungeDetailCommentsLoading(true)
     setLoungeDetailCommentErr('')
     setInteractionByComment({})
@@ -3405,6 +3410,7 @@ export default function SocialFeed({
     loungePostDeleteInflightRef.current = false
     setLoungeManageErr('')
     setLoungeDetailComments([])
+    setLoungeDetailViewerPinnedCommentIds([])
     setLoungeDetailCommentsLoading(false)
     const commentUploadInFlight = loungeDetailCommentBackgroundUploadInFlight()
     if (!commentUploadInFlight) {
@@ -5299,7 +5305,12 @@ export default function SocialFeed({
           .eq('user_id', snap.userId)
           .maybeSingle()
         const row = { ...data, author_profile: pr.data || composerUserProfile || null }
-        setLoungeDetailComments((c) => [...c, row])
+        if (row.id) {
+          setLoungeDetailViewerPinnedCommentIds((ids) =>
+            ids[0] === row.id ? ids : [row.id, ...ids.filter((id) => id !== row.id)],
+          )
+        }
+        setLoungeDetailComments((c) => (c.some((r) => r.id === row.id) ? c : [...c, row]))
         if (!snap.parentId) {
           const { data: countRow } = await supabaseClient
             .from('community_feed_posts')
@@ -7715,6 +7726,7 @@ export default function SocialFeed({
                         displayNameFor={displayNameFor}
                         handleFor={handleFor}
                         viewerUserId={composerUserId}
+                        viewerPinnedCommentIds={loungeDetailViewerPinnedCommentIds}
                         loungeReadOnly={loungeReadOnly}
                         requireLoungeAuth={requireLoungeAuth}
                         openProfileGateIfNeeded={openProfileGateIfNeeded}
@@ -7783,6 +7795,7 @@ export default function SocialFeed({
                         displayNameFor={displayNameFor}
                         handleFor={handleFor}
                         viewerUserId={composerUserId}
+                        viewerPinnedCommentIds={loungeDetailViewerPinnedCommentIds}
                         loungeReadOnly={loungeReadOnly}
                         requireLoungeAuth={requireLoungeAuth}
                         openProfileGateIfNeeded={openProfileGateIfNeeded}

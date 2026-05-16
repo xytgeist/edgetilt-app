@@ -408,6 +408,27 @@ function RootCommentWithOpConnector({
   )
 }
 
+/** Viewer’s own just-posted rows (session pin) sort first; everyone else stays chronological. */
+function compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds) {
+  const pins = viewerPinnedCommentIds || []
+  const pinIndex = new Map(pins.map((id, i) => [id, i]))
+  const ai = pinIndex.has(a.id) ? pinIndex.get(a.id) : Number.POSITIVE_INFINITY
+  const bi = pinIndex.has(b.id) ? pinIndex.get(b.id) : Number.POSITIVE_INFINITY
+  if (ai !== bi) return ai - bi
+  return String(a.created_at || '').localeCompare(String(b.created_at || ''))
+}
+
+/** Drill-down replies: pinned first, then newest-first for the rest. */
+function compareDirectRepliesForViewer(a, b, viewerPinnedCommentIds) {
+  const pins = viewerPinnedCommentIds || []
+  const pinIndex = new Map(pins.map((id, i) => [id, i]))
+  const aPin = pinIndex.has(a.id)
+  const bPin = pinIndex.has(b.id)
+  if (aPin !== bPin) return aPin ? -1 : 1
+  if (aPin && bPin) return pinIndex.get(a.id) - pinIndex.get(b.id)
+  return String(b.created_at || '').localeCompare(String(a.created_at || ''))
+}
+
 /**
  * Post detail comments — roots tap through into threaded replies on separate drill-down screens.
  *
@@ -463,6 +484,8 @@ export default function LoungePostCommentThread({
   onCommentEditCancel,
   commentEditBusy,
   commentEditHasRemoteMedia = false,
+  /** Comment ids the signed-in viewer just posted — shown at top of their list only (chronological for others). */
+  viewerPinnedCommentIds = [],
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -479,8 +502,8 @@ export default function LoungePostCommentThread({
   const rootsSorted = useMemo(() => {
     return [...(comments || [])]
       .filter((c) => !c.parent_id)
-      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
-  }, [comments])
+      .sort((a, b) => compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
+  }, [comments, viewerPinnedCommentIds])
 
   const rootIdSet = useMemo(() => new Set(rootsSorted.map((r) => r.id).filter(Boolean)), [rootsSorted])
 
@@ -498,10 +521,10 @@ export default function LoungePostCommentThread({
       m.set(pid, arr)
     }
     for (const arr of m.values()) {
-      arr.sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+      arr.sort((a, b) => compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
     }
     return m
-  }, [comments, postAuthorUserId, rootIdSet])
+  }, [comments, postAuthorUserId, rootIdSet, viewerPinnedCommentIds])
 
   /** OP replies to a non-root parent (not shown inline under a root) — keep visible as roots. */
   const orphanOpAuthorReplies = useMemo(() => {
@@ -513,8 +536,8 @@ export default function LoungePostCommentThread({
           c.user_id === postAuthorUserId &&
           !rootIdSet.has(c.parent_id),
       )
-      .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
-  }, [comments, postAuthorUserId, rootIdSet])
+      .sort((a, b) => compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
+  }, [comments, postAuthorUserId, rootIdSet, viewerPinnedCommentIds])
 
   const focusComment = useMemo(() => {
     if (!focusCommentId) return null
@@ -525,8 +548,8 @@ export default function LoungePostCommentThread({
     if (!focusCommentId) return []
     return [...(comments || [])]
       .filter((c) => c.parent_id === focusCommentId)
-      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-  }, [comments, focusCommentId])
+      .sort((a, b) => compareDirectRepliesForViewer(a, b, viewerPinnedCommentIds))
+  }, [comments, focusCommentId, viewerPinnedCommentIds])
 
   const mediaVariantForComment = useCallback(
     (comment) => {

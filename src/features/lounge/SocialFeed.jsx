@@ -362,6 +362,7 @@ export default function SocialFeed({
   const [loungeDetailCommentErr, setLoungeDetailCommentErr] = useState('')
   /** Mirrors feed composer: collapsed one-line affordance → expanded textarea + toolbar. */
   const [loungeDetailCommentComposerExpanded, setLoungeDetailCommentComposerExpanded] = useState(false)
+  const [loungeDetailCommentDiscardPromptOpen, setLoungeDetailCommentDiscardPromptOpen] = useState(false)
   const [loungeDetailCommentComposerHint, setLoungeDetailCommentComposerHint] = useState('')
   /** iOS / visualViewport: lift footer above software keyboard. */
   const [loungeDetailCommentKbOverlapPx, setLoungeDetailCommentKbOverlapPx] = useState(0)
@@ -1541,6 +1542,33 @@ export default function SocialFeed({
       // ignore
     }
   }, [cancelLoungeDetailCommentMediaPrep, endLoungeDetailCommentMediaSession])
+
+  const collapseLoungeDetailCommentComposer = useCallback(() => {
+    setLoungeDetailCommentDiscardPromptOpen(false)
+    setLoungeDetailCommentDraft('')
+    setLoungeDetailCommentErr('')
+    setLoungeDetailCommentComposerHint('')
+    clearLoungeDetailCommentComposerMedia()
+    setLoungeDetailCommentComposerExpanded(false)
+    try {
+      loungeDetailCommentTextareaRef.current?.blur()
+    } catch {
+      // ignore
+    }
+  }, [clearLoungeDetailCommentComposerMedia])
+
+  const requestDismissLoungeDetailCommentComposer = useCallback(() => {
+    const hasContent =
+      loungeDetailCommentDraftRef.current.trim().length > 0 ||
+      loungeDetailCommentImageItemsRef.current.length > 0 ||
+      loungeDetailCommentMediaUrlRef.current.length > 0 ||
+      loungeDetailCommentVideoSlotRef.current != null
+    if (hasContent) {
+      setLoungeDetailCommentDiscardPromptOpen(true)
+      return
+    }
+    collapseLoungeDetailCommentComposer()
+  }, [collapseLoungeDetailCommentComposer])
 
   const startLoungeDetailCommentVideoPrepFromSpec = useCallback(
     (spec, slotBase) => {
@@ -3201,6 +3229,7 @@ export default function SocialFeed({
       loungeDetailCommentComposerHintTimerRef.current = 0
     }
     setLoungeDetailCommentComposerExpanded(false)
+    setLoungeDetailCommentDiscardPromptOpen(false)
     setLoungeDetailCommentComposerHint('')
     setLoungeDetailCommentKbOverlapPx(0)
     clearLoungeDetailCommentComposerMedia()
@@ -7265,6 +7294,22 @@ export default function SocialFeed({
                 ) : null}
                 {loungeDetailCommentComposerExpanded ? (
                   <div className="relative shrink-0 rounded-xl border border-zinc-600/65 bg-zinc-700/55 px-2.5 pt-2 pb-1">
+                    <button
+                      type="button"
+                      onClick={requestDismissLoungeDetailCommentComposer}
+                      className="absolute right-2 top-2 z-10 flex h-6 w-6 touch-manipulation items-center justify-center rounded-full bg-zinc-800/95 text-zinc-500 shadow-sm hover:bg-zinc-700 hover:text-zinc-200 active:text-white [-webkit-tap-highlight-color:transparent]"
+                      title="Close reply"
+                      aria-label="Close reply"
+                    >
+                      <svg className="h-3 w-3" viewBox="0 0 20 20" fill="none" aria-hidden>
+                        <path
+                          d="M6 6l8 8M14 6l-8 8"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
                     <div className="flex items-start gap-2">
                       <button
                         type="button"
@@ -7311,7 +7356,7 @@ export default function SocialFeed({
                           </span>
                         )}
                       </button>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 pr-8">
                         <label htmlFor="lounge-detail-comment" className="sr-only">
                           Write a reply
                         </label>
@@ -7624,6 +7669,46 @@ export default function SocialFeed({
             </div>
           </div>
 
+        </div>
+      ) : null}
+
+      {loungeDetailCommentDiscardPromptOpen ? (
+        <div
+          className="fixed inset-0 z-[99] flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lounge-detail-comment-discard-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default touch-manipulation bg-transparent"
+            aria-label="Close"
+            onClick={() => setLoungeDetailCommentDiscardPromptOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/90 p-4 shadow-2xl backdrop-blur-md">
+            <h2 id="lounge-detail-comment-discard-title" className="text-[17px] font-bold text-white">
+              Discard reply?
+            </h2>
+            <p className="mt-2 text-[14px] leading-snug text-zinc-400">
+              Your reply text and any attached media will be cleared.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="order-2 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-1"
+                onClick={collapseLoungeDetailCommentComposer}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                className="order-1 min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-2"
+                onClick={() => setLoungeDetailCommentDiscardPromptOpen(false)}
+              >
+                Keep writing
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

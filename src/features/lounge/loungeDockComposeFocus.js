@@ -32,6 +32,34 @@ export function focusLoungeComposerCaption(getTextarea, opts = {}) {
 export const LOUNGE_COMPOSER_FOCUS_AFTER_MEDIA_DELAYS_MS = [600, 1000, 1500]
 
 /**
+ * Spread onto toolbar buttons beside a focused composer <textarea>. Prevents the button from
+ * taking focus on press so iOS keeps the software keyboard up until the picker/modal opens.
+ *
+ * @param {() => void} onActivate
+ */
+export function loungeComposerToolbarKeepFocusHandlers(onActivate) {
+  let activatedFromTouch = false
+  return {
+    onMouseDown: (e) => {
+      e.preventDefault()
+    },
+    onTouchStart: (e) => {
+      e.preventDefault()
+      activatedFromTouch = true
+      onActivate?.()
+    },
+    onClick: (e) => {
+      e.preventDefault()
+      if (activatedFromTouch) {
+        activatedFromTouch = false
+        return
+      }
+      onActivate?.()
+    },
+  }
+}
+
+/**
  * Focus the Lounge composer textarea after expand — retries cover panel close + lazy layout.
  *
  * @param {{ extraDelaysMs?: number[] }} [opts]

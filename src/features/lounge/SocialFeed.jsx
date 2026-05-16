@@ -89,6 +89,7 @@ import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarous
 import {
   focusLoungeComposerCaption,
   LOUNGE_COMPOSER_FOCUS_AFTER_MEDIA_DELAYS_MS,
+  loungeComposerToolbarKeepFocusHandlers,
   scheduleLoungeComposerTextareaFocus,
 } from './loungeDockComposeFocus.js'
 import { buildLoungeDockArcCarouselItems } from '../../components/loungeDockArcCarouselItems.jsx'
@@ -634,6 +635,19 @@ export default function SocialFeed({
 
   const endLoungeDetailCommentMediaSession = useCallback(() => {
     loungeDetailCommentMediaSessionRef.current = false
+  }, [])
+
+  const openComposerMediaPicker = useCallback(() => {
+    composerMediaInputRef.current?.click()
+  }, [])
+
+  const openDetailCommentMediaPicker = useCallback(() => {
+    beginLoungeDetailCommentMediaSession()
+    loungeDetailCommentMediaInputRef.current?.click()
+  }, [beginLoungeDetailCommentMediaSession])
+
+  const openQuoteRepostMediaPicker = useCallback(() => {
+    quoteRepostMediaInputRef.current?.click()
   }, [])
 
   const expandAndFocusLoungeDetailCommentComposer = useCallback(() => {
@@ -5890,7 +5904,7 @@ export default function SocialFeed({
             <div className="mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1">
               <button
                 type="button"
-                onClick={() => composerMediaInputRef.current?.click()}
+                {...loungeComposerToolbarKeepFocusHandlers(openComposerMediaPicker)}
                 className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                 title="Add media"
                 aria-label="Add media"
@@ -5919,11 +5933,11 @@ export default function SocialFeed({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                {...loungeComposerToolbarKeepFocusHandlers(() => {
                   if (openProfileGateIfNeeded()) return
                   setKlipyPickerTarget('composer')
                   setKlipyPickerOpen(true)
-                }}
+                })}
                 className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                 title="Add GIF (Klipy)"
                 aria-label="Add GIF"
@@ -7480,10 +7494,7 @@ export default function SocialFeed({
                         <div className="mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
                           <button
                             type="button"
-                            onClick={() => {
-                              beginLoungeDetailCommentMediaSession()
-                              loungeDetailCommentMediaInputRef.current?.click()
-                            }}
+                            {...loungeComposerToolbarKeepFocusHandlers(openDetailCommentMediaPicker)}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add media"
                             aria-label="Add media"
@@ -7512,12 +7523,12 @@ export default function SocialFeed({
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
+                            {...loungeComposerToolbarKeepFocusHandlers(() => {
                               if (openProfileGateIfNeeded()) return
                               beginLoungeDetailCommentMediaSession()
                               setKlipyPickerTarget('detailComment')
                               setKlipyPickerOpen(true)
-                            }}
+                            })}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF"
                             aria-label="Add GIF"
@@ -8016,7 +8027,7 @@ export default function SocialFeed({
                           <button
                             type="button"
                             disabled={quoteRepostBusy}
-                            onClick={() => quoteRepostMediaInputRef.current?.click()}
+                            {...loungeComposerToolbarKeepFocusHandlers(openQuoteRepostMediaPicker)}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add media"
                             aria-label="Add media"
@@ -8046,12 +8057,12 @@ export default function SocialFeed({
                           <button
                             type="button"
                             disabled={quoteRepostBusy}
-                            onClick={() => {
+                            {...loungeComposerToolbarKeepFocusHandlers(() => {
                               if (quoteRepostBusy) return
                               if (openProfileGateIfNeeded()) return
                               setKlipyPickerTarget('quote')
                               setKlipyPickerOpen(true)
-                            }}
+                            })}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF (Klipy)"
                             aria-label="Add GIF"

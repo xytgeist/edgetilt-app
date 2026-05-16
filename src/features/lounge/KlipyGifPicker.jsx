@@ -139,7 +139,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
 
   return (
     <div
-      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45 px-2 pt-8 backdrop-blur-[3px]"
+      className="fixed inset-0 z-[101] flex items-end justify-center bg-black/45 px-2 pt-8 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a GIF"

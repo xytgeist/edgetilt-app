@@ -367,6 +367,9 @@ export default function SocialFeed({
   const [loungeDetailCommentMediaUrl, setLoungeDetailCommentMediaUrl] = useState('')
   const [loungeDetailCommentVideoSlot, setLoungeDetailCommentVideoSlot] = useState(null)
   const loungeDetailCommentImageItemsRef = useRef(loungeDetailCommentImageItems)
+  const loungeDetailCommentMediaUrlRef = useRef('')
+  /** True while native picker / probe / crop is in flight — blocks blur from collapsing the reply composer early. */
+  const loungeDetailCommentMediaSessionRef = useRef(false)
   const loungeDetailCommentVideoSlotRef = useRef(null)
   const loungeDetailCommentMediaInputRef = useRef(null)
   const loungeDetailCommentVideoPrepJobIdRef = useRef(0)
@@ -553,19 +556,64 @@ export default function SocialFeed({
     setLoungePostDetailTitleReveal(1)
   }, [])
 
-  const expandAndFocusLoungeDetailCommentComposer = useCallback(() => {
+  /** Re-open the software keyboard after native/Klipy/crop pickers dismiss (iOS loses focus). */
+  const scheduleLoungeComposerCaptionRefocus = useCallback(
+    (target) => {
+      if (target === 'detailComment') {
+        flushSync(() => {
+          setLoungeDetailCommentComposerExpanded(true)
+        })
+      }
+      const scrollFeedToTop =
+        target === 'detailComment'
+          ? scrollLoungePostDetailToTopInstant
+          : target === 'composer'
+            ? scrollLoungeFeedToTopInstant
+            : undefined
+      const getTextarea = () => {
+        if (target === 'detailComment') return loungeDetailCommentTextareaRef.current
+        if (target === 'quote') return quoteRepostTextareaRef.current
+        return composerTextareaRef.current
+      }
+      scheduleLoungeComposerTextareaFocus({
+        getTextarea,
+        scrollFeedToTop,
+        isBlocked: () => {
+          if (target === 'detailComment') return !loungePostDetail
+          if (target === 'quote') {
+            return !quoteRepostModal || quoteRepostModal.mode !== 'compose'
+          }
+          return !composerExpanded
+        },
+      })
+    },
+    [
+      composerExpanded,
+      loungePostDetail,
+      quoteRepostModal,
+      scrollLoungeFeedToTopInstant,
+      scrollLoungePostDetailToTopInstant,
+    ],
+  )
+
+  const beginLoungeDetailCommentMediaSession = useCallback(() => {
+    loungeDetailCommentMediaSessionRef.current = true
     flushSync(() => {
       setLoungeDetailCommentComposerExpanded(true)
     })
+  }, [])
+
+  const endLoungeDetailCommentMediaSession = useCallback(() => {
+    loungeDetailCommentMediaSessionRef.current = false
+  }, [])
+
+  const expandAndFocusLoungeDetailCommentComposer = useCallback(() => {
     scrollLoungePostDetailToTopInstant()
     focusLoungeComposerCaption(() => loungeDetailCommentTextareaRef.current, {
       scrollFeedToTop: scrollLoungePostDetailToTopInstant,
     })
-    scheduleLoungeComposerTextareaFocus({
-      getTextarea: () => loungeDetailCommentTextareaRef.current,
-      scrollFeedToTop: scrollLoungePostDetailToTopInstant,
-    })
-  }, [scrollLoungePostDetailToTopInstant])
+    scheduleLoungeComposerCaptionRefocus('detailComment')
+  }, [scheduleLoungeComposerCaptionRefocus, scrollLoungePostDetailToTopInstant])
 
   const flashLoungeDetailCommentComposerHint = useCallback((msg) => {
     setLoungeDetailCommentComposerHint(msg)
@@ -580,6 +628,10 @@ export default function SocialFeed({
   useEffect(() => {
     loungeDetailCommentDraftRef.current = loungeDetailCommentDraft
   }, [loungeDetailCommentDraft])
+
+  useEffect(() => {
+    loungeDetailCommentMediaUrlRef.current = String(loungeDetailCommentMediaUrl || '').trim()
+  }, [loungeDetailCommentMediaUrl])
 
   useEffect(() => {
     if (!loungePostDetail || loungeReadOnly) {
@@ -1438,13 +1490,14 @@ export default function SocialFeed({
       return []
     })
     setLoungeDetailCommentMediaUrl('')
+    endLoungeDetailCommentMediaSession()
     try {
       const el = loungeDetailCommentMediaInputRef.current
       if (el) el.value = ''
     } catch {
       // ignore
     }
-  }, [cancelLoungeDetailCommentMediaPrep])
+  }, [cancelLoungeDetailCommentMediaPrep, endLoungeDetailCommentMediaSession])
 
   const startLoungeDetailCommentVideoPrepFromSpec = useCallback(
     (spec, slotBase) => {
@@ -1616,8 +1669,10 @@ export default function SocialFeed({
         if (!Number.isFinite(dur) || dur <= 0) {
           if (mode === 'composer') setPostErr('Could not read this video file.')
           else if (mode === 'quote') setQuoteRepostErr('Could not read this video file.')
-          else if (mode === 'detailComment') setLoungeDetailCommentErr('Could not read this video file.')
-          else setLoungeDetailEditErr('Could not read this video file.')
+          else if (mode === 'detailComment') {
+            setLoungeDetailCommentErr('Could not read this video file.')
+            loungeDetailCommentMediaSessionRef.current = false
+          } else setLoungeDetailEditErr('Could not read this video file.')
           return
         }
         if (dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
@@ -1638,6 +1693,7 @@ export default function SocialFeed({
               streamVideoUid: null,
             })
             setComposerMediaUrl('')
+            scheduleLoungeComposerCaptionRefocus('composer')
           } else if (mode === 'quote') {
             disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
             const spec = { kind: 'direct', file: vf }
@@ -1655,6 +1711,7 @@ export default function SocialFeed({
               streamVideoUid: null,
             })
             setQuoteRepostMediaUrl('')
+            scheduleLoungeComposerCaptionRefocus('quote')
           } else if (mode === 'detailComment') {
             disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
             const spec = { kind: 'direct', file: vf }
@@ -1672,6 +1729,8 @@ export default function SocialFeed({
               streamVideoUid: null,
             })
             setLoungeDetailCommentMediaUrl('')
+            loungeDetailCommentMediaSessionRef.current = false
+            scheduleLoungeComposerCaptionRefocus('detailComment')
           } else {
             setLoungeDetailEditMediaFile(vf)
             setLoungeDetailEditMediaKind('video')
@@ -1682,12 +1741,15 @@ export default function SocialFeed({
       } catch (e) {
         if (mode === 'composer') setPostErr(msgRead(e))
         else if (mode === 'quote') setQuoteRepostErr(msgRead(e))
-        else if (mode === 'detailComment') setLoungeDetailCommentErr(msgRead(e))
-        else setLoungeDetailEditErr(msgRead(e))
+        else if (mode === 'detailComment') {
+          setLoungeDetailCommentErr(msgRead(e))
+          loungeDetailCommentMediaSessionRef.current = false
+        } else setLoungeDetailEditErr(msgRead(e))
       }
     },
     [
       disposeComposerVideoMedia,
+      scheduleLoungeComposerCaptionRefocus,
       startComposerVideoPrepFromSpec,
       startLoungeDetailCommentVideoPrepFromSpec,
       startQuoteRepostVideoPrepFromSpec,
@@ -2031,6 +2093,7 @@ export default function SocialFeed({
       } else if (klipyPickerTarget === 'detailComment') {
         cancelLoungeDetailCommentMediaPrep()
         setLoungeDetailCommentMediaUrl(u)
+        endLoungeDetailCommentMediaSession()
       } else {
         disposeComposerVideoMedia(composerVideoSlotRef.current)
         composerVideoPrepJobIdRef.current += 1
@@ -2050,6 +2113,7 @@ export default function SocialFeed({
         }
         setComposerMediaUrl(u)
       }
+      scheduleLoungeComposerCaptionRefocus(klipyPickerTarget)
     },
     [
       klipyPickerTarget,
@@ -2058,6 +2122,8 @@ export default function SocialFeed({
       disposeComposerVideoMedia,
       cancelQuoteRepostMediaPrep,
       cancelLoungeDetailCommentMediaPrep,
+      endLoungeDetailCommentMediaSession,
+      scheduleLoungeComposerCaptionRefocus,
     ],
   )
 
@@ -5774,6 +5840,7 @@ export default function SocialFeed({
                 } catch {
                   // ignore
                 }
+                scheduleLoungeComposerCaptionRefocus('composer')
               }}
             />
             <div className="mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1">
@@ -7203,10 +7270,12 @@ export default function SocialFeed({
                             const next = e.relatedTarget
                             if (host && next instanceof Node && host.contains(next)) return
                             window.setTimeout(() => {
+                              if (loungeDetailCommentMediaSessionRef.current) return
+                              if (loungeVideoCrop?.mode === 'detailComment') return
                               const t = loungeDetailCommentDraftRef.current.trim()
                               const hasLocal =
                                 loungeDetailCommentImageItemsRef.current.length > 0 ||
-                                String(loungeDetailCommentMediaUrl || '').trim().length > 0 ||
+                                loungeDetailCommentMediaUrlRef.current.length > 0 ||
                                 loungeDetailCommentVideoSlotRef.current != null
                               if (!t && !hasLocal) {
                                 setLoungeDetailCommentComposerExpanded(false)
@@ -7231,12 +7300,17 @@ export default function SocialFeed({
                           onChange={(e) => {
                             const input = e.target
                             const files = Array.from(input.files || [])
-                            if (!files.length) return
+                            if (!files.length) {
+                              endLoungeDetailCommentMediaSession()
+                              return
+                            }
+                            beginLoungeDetailCommentMediaSession()
                             setLoungeDetailCommentErr('')
                             const hasVideo = files.some((f) => isProbablyVideoFile(f))
                             if (hasVideo) {
                               const vf = files.find((f) => isProbablyVideoFile(f))
                               if (!vf) {
+                                endLoungeDetailCommentMediaSession()
                                 try {
                                   input.value = ''
                                 } catch {
@@ -7267,6 +7341,7 @@ export default function SocialFeed({
                             const bad = files.some((f) => !isProbablyImageFile(f))
                             if (bad) {
                               setLoungeDetailCommentErr('Unsupported media type. Please choose an image or video file.')
+                              endLoungeDetailCommentMediaSession()
                               try {
                                 input.value = ''
                               } catch {
@@ -7285,6 +7360,8 @@ export default function SocialFeed({
                             } catch {
                               // ignore
                             }
+                            endLoungeDetailCommentMediaSession()
+                            scheduleLoungeComposerCaptionRefocus('detailComment')
                           }}
                         />
                         {(() => {
@@ -7354,7 +7431,10 @@ export default function SocialFeed({
                         <div className="mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
                           <button
                             type="button"
-                            onClick={() => loungeDetailCommentMediaInputRef.current?.click()}
+                            onClick={() => {
+                              beginLoungeDetailCommentMediaSession()
+                              loungeDetailCommentMediaInputRef.current?.click()
+                            }}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add media"
                             aria-label="Add media"
@@ -7385,6 +7465,7 @@ export default function SocialFeed({
                             type="button"
                             onClick={() => {
                               if (openProfileGateIfNeeded()) return
+                              beginLoungeDetailCommentMediaSession()
                               setKlipyPickerTarget('detailComment')
                               setKlipyPickerOpen(true)
                             }}
@@ -7807,6 +7888,7 @@ export default function SocialFeed({
                                 } catch {
                                   // ignore
                                 }
+                                scheduleLoungeComposerCaptionRefocus('quote')
                               }}
                             />
                             {(() => {
@@ -8311,25 +8393,24 @@ export default function SocialFeed({
             if (loungeVideoCrop.mode === 'detail') {
               setLoungeDetailEditMediaFile(null)
               setLoungeDetailEditMediaKind('')
+            } else if (loungeVideoCrop.mode === 'detailComment') {
+              loungeDetailCommentMediaSessionRef.current = false
             }
             setLoungeVideoCrop(null)
           }}
           onConfirm={(result) => {
-            if (
-              loungeVideoCrop.mode === 'composer' ||
-              loungeVideoCrop.mode === 'quote' ||
-              loungeVideoCrop.mode === 'detailComment'
-            ) {
+            const cropMode = loungeVideoCrop.mode
+            if (cropMode === 'composer' || cropMode === 'quote' || cropMode === 'detailComment') {
               const startPrep =
-                loungeVideoCrop.mode === 'quote'
+                cropMode === 'quote'
                   ? startQuoteRepostVideoPrepFromSpec
-                  : loungeVideoCrop.mode === 'detailComment'
+                  : cropMode === 'detailComment'
                     ? startLoungeDetailCommentVideoPrepFromSpec
                     : startComposerVideoPrepFromSpec
               const disposeSlot =
-                loungeVideoCrop.mode === 'quote'
+                cropMode === 'quote'
                   ? () => disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
-                  : loungeVideoCrop.mode === 'detailComment'
+                  : cropMode === 'detailComment'
                     ? () => disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
                     : () => disposeComposerVideoMedia(composerVideoSlotRef.current)
               if (result instanceof File) {
@@ -8339,8 +8420,8 @@ export default function SocialFeed({
                   { kind: 'direct', file: result },
                   { file: result, posterUrl: null, preview: previewUrl, streamVideoUid: null },
                 )
-                if (loungeVideoCrop.mode === 'quote') setQuoteRepostMediaUrl('')
-                else if (loungeVideoCrop.mode === 'detailComment') setLoungeDetailCommentMediaUrl('')
+                if (cropMode === 'quote') setQuoteRepostMediaUrl('')
+                else if (cropMode === 'detailComment') setLoungeDetailCommentMediaUrl('')
                 else setComposerMediaUrl('')
               } else if (result && typeof result === 'object' && result.type === 'composerTrimJob') {
                 disposeSlot()
@@ -8359,8 +8440,8 @@ export default function SocialFeed({
                   preview: result.posterUrl,
                   streamVideoUid: null,
                 })
-                if (loungeVideoCrop.mode === 'quote') setQuoteRepostMediaUrl('')
-                else if (loungeVideoCrop.mode === 'detailComment') setLoungeDetailCommentMediaUrl('')
+                if (cropMode === 'quote') setQuoteRepostMediaUrl('')
+                else if (cropMode === 'detailComment') setLoungeDetailCommentMediaUrl('')
                 else setComposerMediaUrl('')
               }
             } else if (result instanceof File) {
@@ -8368,6 +8449,10 @@ export default function SocialFeed({
               setLoungeDetailEditMediaKind('video')
             }
             setLoungeVideoCrop(null)
+            if (cropMode === 'composer' || cropMode === 'quote' || cropMode === 'detailComment') {
+              if (cropMode === 'detailComment') loungeDetailCommentMediaSessionRef.current = false
+              scheduleLoungeComposerCaptionRefocus(cropMode)
+            }
           }}
         />
       ) : null}

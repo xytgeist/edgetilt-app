@@ -24,6 +24,9 @@ import {
   feedCommentAuthorEditMediaSeed,
   feedCommentRowHasMedia,
   feedCommentStreamVideoUid,
+  bumpFeedCommentAncestorCountsInList,
+  feedCommentAncestorIdsAfterRemoval,
+  feedCommentDescendantCountById,
 } from '../../utils/communityFeedComment.js'
 import {
   isProbablyImageFile,
@@ -106,6 +109,9 @@ import {
 } from '../../utils/loungeTitleRevealScroll.js'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
 import LoungePostCommentThread from './LoungePostCommentThread.jsx'
+import LoungePostDetailCommentSort from './LoungePostDetailCommentSort.jsx'
+import LoungePostDetailCommentHierarchy from './LoungePostDetailCommentHierarchy.jsx'
+import { readLoungeDetailCommentSort } from '../../utils/loungeFeedCommentSort.js'
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
@@ -117,7 +123,7 @@ const LOUNGE_MAX_PINNED_ALERT =
 const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, pussy)"
 
 const FEED_COMMENT_SELECT_COLS =
-  'id,body,created_at,user_id,parent_id,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
+  'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
 
 /** Shown in upload bar `detail` instead of raw telemetry when `onUploadDiagnostic` fires. */
 const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying again...'
@@ -327,6 +333,7 @@ export default function SocialFeed({
   const [loungeDetailRepostMenuOpen, setLoungeDetailRepostMenuOpen] = useState(false)
   const loungeDetailRepostMenuRef = useRef(null)
   const loungePostDetailScrollRef = useRef(null)
+  const loungePostDetailPostAvatarRef = useRef(null)
   const loungeDetailCommentTextareaRef = useRef(null)
   const loungeDetailCommentDraftRef = useRef('')
   const loungePostDetailTitleBarRef = useRef(null)
@@ -370,6 +377,8 @@ export default function SocialFeed({
   const [loungeDetailCommentsLoading, setLoungeDetailCommentsLoading] = useState(false)
   /** Own just-posted comment ids — prepended at top of post-detail list for this viewer only. */
   const [loungeDetailViewerPinnedCommentIds, setLoungeDetailViewerPinnedCommentIds] = useState([])
+  const [loungeDetailCommentSort, setLoungeDetailCommentSort] = useState(() => readLoungeDetailCommentSort())
+  const [loungeDetailFollowingUserIds, setLoungeDetailFollowingUserIds] = useState([])
   const [loungeDetailCommentDraft, setLoungeDetailCommentDraft] = useState('')
   const [loungeDetailCommentErr, setLoungeDetailCommentErr] = useState('')
   /** Mirrors feed composer: collapsed one-line affordance → expanded textarea + toolbar. */
@@ -575,6 +584,22 @@ export default function SocialFeed({
     loungePostDetailTitleRevealRef.current = 1
     setLoungePostDetailTitleReveal(1)
   }, [])
+
+  const scrollLoungePostDetailToFocusedComment = useCallback(() => {
+    const sc = loungePostDetailScrollRef.current
+    const el = document.getElementById('lounge-detail-focus-comment')
+    if (!sc || !el) return
+    const barH = loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56
+    const scRect = sc.getBoundingClientRect()
+    const elRect = el.getBoundingClientRect()
+    const nextTop = Math.max(0, sc.scrollTop + (elRect.top - scRect.top) - barH)
+    sc.scrollTo({ top: nextTop, behavior: 'auto' })
+    loungePostDetailScrollPrevTopRef.current = nextTop
+    const maxScroll = sc.scrollHeight - sc.clientHeight
+    const reveal = maxScroll > 8 ? 1 - Math.min(1, Math.max(0, nextTop) / maxScroll) : 1
+    loungePostDetailTitleRevealRef.current = reveal
+    setLoungePostDetailTitleReveal(reveal)
+  }, [loungePostDetailTitleBarHeight])
 
   const loungeComposerCaptionTargetConfig = useCallback(
     (target) => {
@@ -3234,7 +3259,7 @@ export default function SocialFeed({
           }
           return
         }
-        const wasRoot = !c.parent_id
+        const ancestorIds = feedCommentAncestorIdsAfterRemoval(loungeDetailComments, removeIds)
         setLoungeDetailComments((prev) => prev.filter((row) => !removeIds.has(row.id)))
         setLoungeDetailViewerPinnedCommentIds((ids) => ids.filter((id) => !removeIds.has(id)))
         setLoungeCommentDetailPathIds((p) => p.filter((id) => !removeIds.has(id)))
@@ -3251,14 +3276,27 @@ export default function SocialFeed({
         if (loungeDetailCommentEditingId && removeIds.has(loungeDetailCommentEditingId)) {
           cancelLoungeDetailCommentEdit()
         }
-        if (wasRoot) {
-          const { data: countRow } = await supabaseClient
-            .from('community_feed_posts')
-            .select('comment_count')
-            .eq('id', loungePostDetail.id)
-            .maybeSingle()
-          if (countRow && typeof countRow.comment_count === 'number') {
-            patchPostAggregate(loungePostDetail.id, { comment_count: countRow.comment_count })
+        const { data: countRow } = await supabaseClient
+          .from('community_feed_posts')
+          .select('comment_count')
+          .eq('id', loungePostDetail.id)
+          .maybeSingle()
+        if (countRow && typeof countRow.comment_count === 'number') {
+          patchPostAggregate(loungePostDetail.id, { comment_count: countRow.comment_count })
+          setLoungePostDetail((prev) =>
+            prev?.id === loungePostDetail.id ? { ...prev, comment_count: countRow.comment_count } : prev,
+          )
+        }
+        if (ancestorIds.length > 0) {
+          const { data: countRows } = await supabaseClient
+            .from('feed_comments')
+            .select('id, comment_count')
+            .in('id', ancestorIds)
+          if (countRows?.length) {
+            const byId = Object.fromEntries(countRows.map((r) => [r.id, r.comment_count]))
+            setLoungeDetailComments((prev) =>
+              prev.map((r) => (byId[r.id] != null ? { ...r, comment_count: byId[r.id] } : r)),
+            )
           }
         }
       } finally {
@@ -3290,6 +3328,8 @@ export default function SocialFeed({
     if (!loungePostDetail?.id || loungeReadOnly) {
       setLoungeDetailComments([])
       setLoungeDetailViewerPinnedCommentIds([])
+      setLoungeDetailCommentSort(readLoungeDetailCommentSort())
+      setLoungeDetailFollowingUserIds([])
       setLoungeDetailCommentsLoading(false)
       setLoungeDetailCommentErr('')
       setLoungeCommentDetailPathIds([])
@@ -3300,6 +3340,7 @@ export default function SocialFeed({
     let cancelled = false
     setLoungeCommentDetailPathIds([])
     setLoungeDetailViewerPinnedCommentIds([])
+    setLoungeDetailFollowingUserIds([])
     setLoungeDetailCommentsLoading(true)
     setLoungeDetailCommentErr('')
     setInteractionByComment({})
@@ -3334,6 +3375,18 @@ export default function SocialFeed({
       if (cancelled) return
       const hydrated = rows.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
       setLoungeDetailComments(hydrated)
+      let followingIds = []
+      if (composerUserId) {
+        const folRes = await supabaseClient
+          .from('profile_follows')
+          .select('following_id')
+          .eq('follower_id', composerUserId)
+        if (!cancelled && !folRes.error) {
+          followingIds = (folRes.data || []).map((r) => r.following_id).filter(Boolean)
+        }
+      }
+      if (cancelled) return
+      setLoungeDetailFollowingUserIds(followingIds)
       const cids = hydrated.map((r) => r.id).filter(Boolean)
       if (!composerUserId || cids.length === 0) {
         setInteractionByComment({})
@@ -3411,6 +3464,7 @@ export default function SocialFeed({
     setLoungeManageErr('')
     setLoungeDetailComments([])
     setLoungeDetailViewerPinnedCommentIds([])
+    setLoungeDetailFollowingUserIds([])
     setLoungeDetailCommentsLoading(false)
     const commentUploadInFlight = loungeDetailCommentBackgroundUploadInFlight()
     if (!commentUploadInFlight) {
@@ -3856,36 +3910,6 @@ export default function SocialFeed({
     }
   }, [])
 
-  const openLoungeCommentDrillFromRoots = useCallback(
-    (comment) => {
-      if (!comment?.id) return
-      setLoungePostDetailMenuOpen(false)
-      cancelLoungeDetailEdit()
-      cancelLoungeDetailCommentEdit()
-      resetPostDetailInlineSound()
-      setLoungeCommentDetailPathIds([comment.id])
-      requestAnimationFrame(() => {
-        scrollLoungePostDetailToTopInstant()
-      })
-    },
-    [
-      cancelLoungeDetailCommentEdit,
-      cancelLoungeDetailEdit,
-      resetPostDetailInlineSound,
-      scrollLoungePostDetailToTopInstant,
-    ],
-  )
-
-  const drillDeeperIntoLoungeComment = useCallback((comment) => {
-    if (!comment?.id) return
-    cancelLoungeDetailCommentEdit()
-    resetPostDetailInlineSound()
-    setLoungeCommentDetailPathIds((prev) => [...prev, comment.id])
-    requestAnimationFrame(() => {
-      scrollLoungePostDetailToTopInstant()
-    })
-  }, [cancelLoungeDetailCommentEdit, resetPostDetailInlineSound, scrollLoungePostDetailToTopInstant])
-
   const buildLoungeCommentDrillPath = useCallback((commentId) => {
     const rows = loungeDetailComments
     const byId = new Map(rows.map((r) => [r.id, r]))
@@ -3899,6 +3923,64 @@ export default function SocialFeed({
     }
     return chain
   }, [loungeDetailComments])
+
+  const openLoungeCommentDrillFromRoots = useCallback(
+    (comment) => {
+      if (!comment?.id) return
+      const chain = buildLoungeCommentDrillPath(comment.id)
+      if (!chain.length) return
+      setLoungePostDetailMenuOpen(false)
+      cancelLoungeDetailEdit()
+      cancelLoungeDetailCommentEdit()
+      resetPostDetailInlineSound()
+      setLoungeCommentDetailPathIds(chain)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
+      })
+    },
+    [
+      buildLoungeCommentDrillPath,
+      cancelLoungeDetailCommentEdit,
+      cancelLoungeDetailEdit,
+      resetPostDetailInlineSound,
+      scrollLoungePostDetailToFocusedComment,
+    ],
+  )
+
+  const drillDeeperIntoLoungeComment = useCallback(
+    (comment) => {
+      if (!comment?.id) return
+      const chain = buildLoungeCommentDrillPath(comment.id)
+      if (!chain.length) return
+      cancelLoungeDetailCommentEdit()
+      resetPostDetailInlineSound()
+      setLoungeCommentDetailPathIds(chain)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
+      })
+    },
+    [
+      buildLoungeCommentDrillPath,
+      cancelLoungeDetailCommentEdit,
+      resetPostDetailInlineSound,
+      scrollLoungePostDetailToFocusedComment,
+    ],
+  )
+
+  const navigateLoungeCommentDetailToPathIndex = useCallback(
+    (pathIndex) => {
+      setLoungeCommentDetailPathIds((prev) => {
+        if (pathIndex < 0 || pathIndex >= prev.length) return prev
+        return prev.slice(0, pathIndex + 1)
+      })
+      cancelLoungeDetailCommentEdit()
+      resetPostDetailInlineSound()
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
+      })
+    },
+    [cancelLoungeDetailCommentEdit, resetPostDetailInlineSound, scrollLoungePostDetailToFocusedComment],
+  )
 
   const onLoungeCommentReplyInteraction = useCallback(
     (comment) => {
@@ -3916,7 +3998,10 @@ export default function SocialFeed({
         const same = prev.length === chain.length && prev.every((id, i) => id === chain[i])
         if (!same) resetPostDetailInlineSound()
         queueMicrotask(() => {
-          if (!same) scrollLoungePostDetailToTopInstant()
+          if (!same) {
+            if (chain.length > 0) scrollLoungePostDetailToFocusedComment()
+            else scrollLoungePostDetailToTopInstant()
+          }
           expandAndFocusLoungeDetailCommentComposer()
         })
         return same ? prev : chain
@@ -3930,14 +4015,37 @@ export default function SocialFeed({
       openProfileGateIfNeeded,
       requireLoungeAuth,
       resetPostDetailInlineSound,
+      scrollLoungePostDetailToFocusedComment,
       scrollLoungePostDetailToTopInstant,
     ],
   )
 
   useEffect(() => {
-    if (loungeCommentDetailPathIds.length === 0) return
+    if (loungeCommentDetailPathIds.length === 0 || loungeDetailCommentsLoading) return
     resetPostDetailInlineSound()
-  }, [loungeCommentDetailPathIds, resetPostDetailInlineSound])
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [
+    loungeCommentDetailPathIds,
+    loungeDetailCommentsLoading,
+    resetPostDetailInlineSound,
+    scrollLoungePostDetailToFocusedComment,
+  ])
+
+  const loungeDetailDescendantCountByCommentId = useMemo(
+    () => feedCommentDescendantCountById(loungeDetailComments),
+    [loungeDetailComments],
+  )
+
+  const loungeDetailCommentHierarchyFocusId = useMemo(
+    () =>
+      loungeCommentDetailPathIds.length > 0
+        ? loungeCommentDetailPathIds[loungeCommentDetailPathIds.length - 1]
+        : null,
+    [loungeCommentDetailPathIds],
+  )
 
   const saveLoungeDetailCaption = useCallback(async () => {
     if (!loungePostDetail?.id) return
@@ -5310,16 +5418,22 @@ export default function SocialFeed({
             ids[0] === row.id ? ids : [row.id, ...ids.filter((id) => id !== row.id)],
           )
         }
-        setLoungeDetailComments((c) => (c.some((r) => r.id === row.id) ? c : [...c, row]))
-        if (!snap.parentId) {
-          const { data: countRow } = await supabaseClient
-            .from('community_feed_posts')
-            .select('comment_count')
-            .eq('id', snap.postId)
-            .maybeSingle()
-          if (countRow && typeof countRow.comment_count === 'number') {
-            patchPostAggregate(snap.postId, { comment_count: countRow.comment_count })
-          }
+        setLoungeDetailComments((c) => {
+          const withNew = c.some((r) => r.id === row.id) ? c : [...c, row]
+          return snap.parentId
+            ? bumpFeedCommentAncestorCountsInList(withNew, snap.parentId, 1)
+            : withNew
+        })
+        const { data: countRow } = await supabaseClient
+          .from('community_feed_posts')
+          .select('comment_count')
+          .eq('id', snap.postId)
+          .maybeSingle()
+        if (countRow && typeof countRow.comment_count === 'number') {
+          patchPostAggregate(snap.postId, { comment_count: countRow.comment_count })
+          setLoungePostDetail((prev) =>
+            prev?.id === snap.postId ? { ...prev, comment_count: countRow.comment_count } : prev,
+          )
         }
         setInteractionByPost((prev) => {
           const cur = prev[snap.postId] || defaultInteraction
@@ -6878,7 +6992,13 @@ export default function SocialFeed({
                   }
                   if (loungeDetailEditing) cancelLoungeDetailEdit()
                   else if (loungeCommentDetailPathIds.length > 0) {
-                    setLoungeCommentDetailPathIds((p) => p.slice(0, -1))
+                    setLoungeCommentDetailPathIds((p) => {
+                      const next = p.slice(0, -1)
+                      if (next.length === 0) {
+                        requestAnimationFrame(() => scrollLoungePostDetailToTopInstant())
+                      }
+                      return next
+                    })
                   } else closeLoungePostDetail()
                 }}
                 className="flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]"
@@ -7017,11 +7137,12 @@ export default function SocialFeed({
                 </div>
               ) : null}
 
-              {loungeCommentDetailPathIds.length === 0 ? (
               <>
               <div className="flex items-start gap-3">
                 <button
                   type="button"
+                  id="lounge-detail-post-avatar"
+                  ref={loungePostDetailPostAvatarRef}
                   onClick={() => {
                     const p = loungePostDetail
                     void openProfileModal(p)
@@ -7706,145 +7827,158 @@ export default function SocialFeed({
                 )
               })()}
 
-              <div id="lounge-detail-comments" className="pt-0">
+              {loungeCommentDetailPathIds.length > 0 && !loungeDetailCommentsLoading ? (
+                <LoungePostDetailCommentHierarchy
+                  pathIds={loungeCommentDetailPathIds}
+                  comments={loungeDetailComments}
+                  postAvatarRef={loungePostDetailPostAvatarRef}
+                  onNavigateToPathIndex={navigateLoungeCommentDetailToPathIndex}
+                  descendantCountByCommentId={loungeDetailDescendantCountByCommentId}
+                  cardProps={{
+                    postAgeLabel,
+                    displayNameFor,
+                    handleFor,
+                    loungeReadOnly,
+                    viewerUserId: composerUserId,
+                    requireLoungeAuth,
+                    openProfileGateIfNeeded,
+                    onCommentReplyInteraction: onLoungeCommentReplyInteraction,
+                    interactionStateFor: interactionStateForComment,
+                    toggleInteraction: noopLoungeBarPostToggle,
+                    onPlainRepost: (p) => void addLoungeDetailCommentPlainRepost(p.id),
+                    onUndoPlainRepost: (p) => void undoLoungeDetailCommentPlainRepost(p.id),
+                    toggleBookmark: noopLoungeBarPostToggle,
+                    bookmarkedByPost,
+                    onToggleCommentLike: toggleLoungeDetailCommentLike,
+                    onToggleCommentBookmark: toggleLoungeDetailCommentBookmark,
+                    getCommentBookmarked: getLoungeDetailCommentBookmarked,
+                    repostActionBusy: repostManageBusy,
+                    onAvatarClickProfile: (c) =>
+                      void openProfileModal({
+                        user_id: c.user_id,
+                        author_profile: c.author_profile,
+                      }),
+                    positionScrollRootRef: loungePostDetailScrollRef,
+                    onCommentMenuEdit: onCommentMenuEditFromDetail,
+                    onCommentMenuDelete: deleteLoungeDetailComment,
+                    onCommentMenuBlock: onCommentMenuBlockFromDetail,
+                    onCommentMenuReport: onCommentMenuReportFromDetail,
+                    busyDeletingCommentId: loungeDetailCommentDeleteBusyId,
+                    editingCommentId: loungeDetailCommentEditingId,
+                    commentEditDraft: loungeDetailCommentEditDraft,
+                    onCommentEditDraftChange: setLoungeDetailCommentEditDraft,
+                    onCommentEditSave: saveLoungeDetailCommentEdit,
+                    onCommentEditCancel: cancelLoungeDetailCommentEdit,
+                    commentEditBusy: loungeDetailCommentEditBusy,
+                    commentEditHasRemoteMedia:
+                      loungeDetailCommentEditImageUrls.length > 0 ||
+                      String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
+                      Boolean(
+                        loungeDetailCommentEditingId &&
+                          feedCommentStreamVideoUid(
+                            loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId),
+                          ),
+                      ),
+                    resolveMediaFeedVariant: (c) =>
+                      c?.id === loungeDetailCommentHierarchyFocusId ? 'detail' : 'commentInline',
+                  }}
+                />
+              ) : null}
+
+              <div
+                id={
+                  loungeCommentDetailPathIds.length > 0
+                    ? 'lounge-detail-comments-thread'
+                    : 'lounge-detail-comments'
+                }
+                className="pt-0"
+              >
                 {loungeReadOnly ? (
                   <p className="mt-1 text-[14px] text-zinc-500">
-                    {typeof loungePostDetail.comment_count === 'number' && loungePostDetail.comment_count > 0
-                      ? `${loungePostDetail.comment_count} comment${loungePostDetail.comment_count === 1 ? '' : 's'} · Sign in to read and reply`
-                      : 'Sign in to join the conversation.'}
+                    {loungeCommentDetailPathIds.length > 0
+                      ? 'Sign in to read replies and participate.'
+                      : typeof loungePostDetail.comment_count === 'number' && loungePostDetail.comment_count > 0
+                        ? `${loungePostDetail.comment_count} comment${loungePostDetail.comment_count === 1 ? '' : 's'} · Sign in to read and reply`
+                        : 'Sign in to join the conversation.'}
                   </p>
                 ) : (
                   <>
                     {loungeDetailCommentsLoading ? (
                       <div className="mt-1 text-[14px] text-zinc-500">Loading comments…</div>
                     ) : (
-                      <LoungePostCommentThread
-                        variant="post"
-                        comments={loungeDetailComments}
+                      <>
+                        <LoungePostDetailCommentSort
+                          value={loungeDetailCommentSort}
+                          onChange={setLoungeDetailCommentSort}
+                        />
+                        <LoungePostCommentThread
+                          variant={
+                            loungeCommentDetailPathIds.length > 0 ? 'commentDetailReplies' : 'post'
+                          }
+                          focusCommentId={loungeDetailCommentHierarchyFocusId}
+                          comments={loungeDetailComments}
                         postAuthorUserId={loungePostDetail.user_id}
                         postAgeLabel={postAgeLabel}
                         displayNameFor={displayNameFor}
                         handleFor={handleFor}
                         viewerUserId={composerUserId}
                         viewerPinnedCommentIds={loungeDetailViewerPinnedCommentIds}
+                        rootCommentSortMode={loungeDetailCommentSort}
+                        followingUserIds={loungeDetailFollowingUserIds}
                         loungeReadOnly={loungeReadOnly}
                         requireLoungeAuth={requireLoungeAuth}
                         openProfileGateIfNeeded={openProfileGateIfNeeded}
                         onCommentReplyInteraction={onLoungeCommentReplyInteraction}
-                        onOpenCommentThread={openLoungeCommentDrillFromRoots}
-                        onAvatarClickProfile={(c) =>
-                          void openProfileModal({
-                            user_id: c.user_id,
-                            author_profile: c.author_profile,
-                          })
-                        }
-                        positionScrollRootRef={loungePostDetailScrollRef}
-                        onCommentMenuEdit={onCommentMenuEditFromDetail}
-                        onCommentMenuDelete={deleteLoungeDetailComment}
-                        onCommentMenuBlock={onCommentMenuBlockFromDetail}
-                        onCommentMenuReport={onCommentMenuReportFromDetail}
-                        busyDeletingCommentId={loungeDetailCommentDeleteBusyId}
-                        editingCommentId={loungeDetailCommentEditingId}
-                        commentEditDraft={loungeDetailCommentEditDraft}
-                        onCommentEditDraftChange={setLoungeDetailCommentEditDraft}
-                        onCommentEditSave={saveLoungeDetailCommentEdit}
-                        onCommentEditCancel={cancelLoungeDetailCommentEdit}
-                        commentEditBusy={loungeDetailCommentEditBusy}
-                        commentEditHasRemoteMedia={
-                          loungeDetailCommentEditImageUrls.length > 0 ||
-                          String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
-                          Boolean(
-                            loungeDetailCommentEditingId &&
-                              feedCommentStreamVideoUid(
-                                loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId),
-                              ),
-                          )
-                        }
-                        interactionStateFor={interactionStateForComment}
-                        toggleInteraction={noopLoungeBarPostToggle}
-                        onPlainRepost={(p) => void addLoungeDetailCommentPlainRepost(p.id)}
-                        onUndoPlainRepost={(p) => void undoLoungeDetailCommentPlainRepost(p.id)}
-                        toggleBookmark={noopLoungeBarPostToggle}
-                        bookmarkedByPost={bookmarkedByPost}
-                        onToggleCommentLike={toggleLoungeDetailCommentLike}
-                        onToggleCommentBookmark={toggleLoungeDetailCommentBookmark}
-                        getCommentBookmarked={getLoungeDetailCommentBookmarked}
-                        repostActionBusy={repostManageBusy}
-                      />
+                          onOpenCommentThread={
+                            loungeCommentDetailPathIds.length > 0
+                              ? drillDeeperIntoLoungeComment
+                              : openLoungeCommentDrillFromRoots
+                          }
+                          onAvatarClickProfile={(c) =>
+                            void openProfileModal({
+                              user_id: c.user_id,
+                              author_profile: c.author_profile,
+                            })
+                          }
+                          positionScrollRootRef={loungePostDetailScrollRef}
+                          onCommentMenuEdit={onCommentMenuEditFromDetail}
+                          onCommentMenuDelete={deleteLoungeDetailComment}
+                          onCommentMenuBlock={onCommentMenuBlockFromDetail}
+                          onCommentMenuReport={onCommentMenuReportFromDetail}
+                          busyDeletingCommentId={loungeDetailCommentDeleteBusyId}
+                          editingCommentId={loungeDetailCommentEditingId}
+                          commentEditDraft={loungeDetailCommentEditDraft}
+                          onCommentEditDraftChange={setLoungeDetailCommentEditDraft}
+                          onCommentEditSave={saveLoungeDetailCommentEdit}
+                          onCommentEditCancel={cancelLoungeDetailCommentEdit}
+                          commentEditBusy={loungeDetailCommentEditBusy}
+                          commentEditHasRemoteMedia={
+                            loungeDetailCommentEditImageUrls.length > 0 ||
+                            String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
+                            Boolean(
+                              loungeDetailCommentEditingId &&
+                                feedCommentStreamVideoUid(
+                                  loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId),
+                                ),
+                            )
+                          }
+                          interactionStateFor={interactionStateForComment}
+                          toggleInteraction={noopLoungeBarPostToggle}
+                          onPlainRepost={(p) => void addLoungeDetailCommentPlainRepost(p.id)}
+                          onUndoPlainRepost={(p) => void undoLoungeDetailCommentPlainRepost(p.id)}
+                          toggleBookmark={noopLoungeBarPostToggle}
+                          bookmarkedByPost={bookmarkedByPost}
+                          onToggleCommentLike={toggleLoungeDetailCommentLike}
+                          onToggleCommentBookmark={toggleLoungeDetailCommentBookmark}
+                          getCommentBookmarked={getLoungeDetailCommentBookmarked}
+                          repostActionBusy={repostManageBusy}
+                        />
+                      </>
                     )}
                   </>
                 )}
               </div>
               </>
-              ) : (
-              <div id="lounge-detail-comments-thread" className="pt-1">
-                {loungeReadOnly ? (
-                  <p className="mt-1 text-[14px] text-zinc-500">Sign in to read replies and participate.</p>
-                ) : (
-                  <>
-                    {loungeDetailCommentsLoading ? (
-                      <div className="mt-1 text-[14px] text-zinc-500">Loading comments…</div>
-                    ) : (
-                      <LoungePostCommentThread
-                        variant="commentDetail"
-                        focusCommentId={
-                          loungeCommentDetailPathIds[loungeCommentDetailPathIds.length - 1]
-                        }
-                        comments={loungeDetailComments}
-                        postAgeLabel={postAgeLabel}
-                        displayNameFor={displayNameFor}
-                        handleFor={handleFor}
-                        viewerUserId={composerUserId}
-                        viewerPinnedCommentIds={loungeDetailViewerPinnedCommentIds}
-                        loungeReadOnly={loungeReadOnly}
-                        requireLoungeAuth={requireLoungeAuth}
-                        openProfileGateIfNeeded={openProfileGateIfNeeded}
-                        onCommentReplyInteraction={onLoungeCommentReplyInteraction}
-                        onOpenCommentThread={drillDeeperIntoLoungeComment}
-                        onAvatarClickProfile={(c) =>
-                          void openProfileModal({
-                            user_id: c.user_id,
-                            author_profile: c.author_profile,
-                          })
-                        }
-                        positionScrollRootRef={loungePostDetailScrollRef}
-                        onCommentMenuEdit={onCommentMenuEditFromDetail}
-                        onCommentMenuDelete={deleteLoungeDetailComment}
-                        onCommentMenuBlock={onCommentMenuBlockFromDetail}
-                        onCommentMenuReport={onCommentMenuReportFromDetail}
-                        busyDeletingCommentId={loungeDetailCommentDeleteBusyId}
-                        editingCommentId={loungeDetailCommentEditingId}
-                        commentEditDraft={loungeDetailCommentEditDraft}
-                        onCommentEditDraftChange={setLoungeDetailCommentEditDraft}
-                        onCommentEditSave={saveLoungeDetailCommentEdit}
-                        onCommentEditCancel={cancelLoungeDetailCommentEdit}
-                        commentEditBusy={loungeDetailCommentEditBusy}
-                        commentEditHasRemoteMedia={
-                          loungeDetailCommentEditImageUrls.length > 0 ||
-                          String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
-                          Boolean(
-                            loungeDetailCommentEditingId &&
-                              feedCommentStreamVideoUid(
-                                loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId),
-                              ),
-                          )
-                        }
-                        interactionStateFor={interactionStateForComment}
-                        toggleInteraction={noopLoungeBarPostToggle}
-                        onPlainRepost={(p) => void addLoungeDetailCommentPlainRepost(p.id)}
-                        onUndoPlainRepost={(p) => void undoLoungeDetailCommentPlainRepost(p.id)}
-                        toggleBookmark={noopLoungeBarPostToggle}
-                        bookmarkedByPost={bookmarkedByPost}
-                        onToggleCommentLike={toggleLoungeDetailCommentLike}
-                        onToggleCommentBookmark={toggleLoungeDetailCommentBookmark}
-                        getCommentBookmarked={getLoungeDetailCommentBookmarked}
-                        repostActionBusy={repostManageBusy}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-              )}
               </div>
               </LoungeFeedVideoAutoplayProvider>
             </div>

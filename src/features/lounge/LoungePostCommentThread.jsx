@@ -8,7 +8,17 @@ import LoungeOgBadge from './LoungeOgBadge'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
-import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
+import {
+  feedCommentDescendantCountById,
+  feedCommentRowHasMedia,
+  feedCommentSubtreeReplyCount,
+} from '../../utils/communityFeedComment.js'
+import {
+  compareFeedCommentsChronologicalAsc,
+  LOUNGE_DETAIL_COMMENT_SORT,
+  orderCommentDetailDirectReplies,
+  orderPostDetailRootComments,
+} from '../../utils/loungeFeedCommentSort.js'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
 function CommentAvatar({ profile, comment, className }) {
@@ -31,7 +41,7 @@ function CommentAvatar({ profile, comment, className }) {
  *
  * @param {boolean} navigable — Whole row opens the comment thread (not nested interactive targets except avatar / menu / interaction bar).
  */
-function LoungeCommentCard({
+export function LoungeCommentCard({
   comment,
   postAgeLabel,
   displayNameFor,
@@ -39,7 +49,7 @@ function LoungeCommentCard({
   navigable,
   onOpenCommentThread,
   onAvatarClickProfile,
-  directReplyCount = 0,
+  descendantFallback = 0,
   loungeReadOnly = false,
   viewerUserId,
   requireLoungeAuth,
@@ -73,6 +83,8 @@ function LoungeCommentCard({
   commentEditHasRemoteMedia = false,
   mediaFeedVariant: mediaFeedVariantProp = 'commentInline',
   resolveMediaFeedVariant,
+  showDetailTimestamp = false,
+  detailTimestampLabel = '',
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -87,11 +99,11 @@ function LoungeCommentCard({
     if (!comment?.id) return null
     return {
       id: comment.id,
-      comment_count: directReplyCount,
+      comment_count: feedCommentSubtreeReplyCount(comment, descendantFallback),
       like_count: typeof comment.like_count === 'number' ? comment.like_count : 0,
       repost_count: typeof comment.repost_count === 'number' ? comment.repost_count : 0,
     }
-  }, [comment, directReplyCount])
+  }, [comment, descendantFallback])
 
   const onCommentBarClick = useCallback(() => {
     if (openProfileGateIfNeeded?.()) return
@@ -230,6 +242,9 @@ function LoungeCommentCard({
         {metaHeader}
         {bodyBlock}
         {commentMediaBlock}
+        {showDetailTimestamp && detailTimestampLabel && !bodyEditing ? (
+          <div className="mt-2 text-[14px] leading-tight text-zinc-500">{detailTimestampLabel}</div>
+        ) : null}
         {bodyEditing ? null : interactionBarPost ? (
           <LoungePostInteractionBar
             post={interactionBarPost}
@@ -303,7 +318,7 @@ const COMMENT_AVATAR_BUTTON_SEL = 'button[aria-label^="Open profile"]'
 function RootCommentWithOpConnector({
   root,
   nestedOp,
-  directReplyCountByCommentId,
+  descendantCountByCommentId,
   onOpenCommentThread,
   cardProps,
 }) {
@@ -369,7 +384,7 @@ function RootCommentWithOpConnector({
           comment={root}
           navigable={Boolean(onOpenCommentThread)}
           onOpenCommentThread={onOpenCommentThread}
-          directReplyCount={directReplyCountByCommentId.get(root.id) ?? 0}
+          descendantFallback={descendantCountByCommentId.get(root.id) ?? 0}
           {...cardProps}
         />
       </div>
@@ -397,7 +412,7 @@ function RootCommentWithOpConnector({
                 comment={reply}
                 navigable={Boolean(onOpenCommentThread)}
                 onOpenCommentThread={onOpenCommentThread}
-                directReplyCount={directReplyCountByCommentId.get(reply.id) ?? 0}
+                descendantFallback={descendantCountByCommentId.get(reply.id) ?? 0}
                 {...cardProps}
               />
             </div>
@@ -406,27 +421,6 @@ function RootCommentWithOpConnector({
       </>
     </li>
   )
-}
-
-/** Viewer’s own just-posted rows (session pin) sort first; everyone else stays chronological. */
-function compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds) {
-  const pins = viewerPinnedCommentIds || []
-  const pinIndex = new Map(pins.map((id, i) => [id, i]))
-  const ai = pinIndex.has(a.id) ? pinIndex.get(a.id) : Number.POSITIVE_INFINITY
-  const bi = pinIndex.has(b.id) ? pinIndex.get(b.id) : Number.POSITIVE_INFINITY
-  if (ai !== bi) return ai - bi
-  return String(a.created_at || '').localeCompare(String(b.created_at || ''))
-}
-
-/** Drill-down replies: pinned first, then newest-first for the rest. */
-function compareDirectRepliesForViewer(a, b, viewerPinnedCommentIds) {
-  const pins = viewerPinnedCommentIds || []
-  const pinIndex = new Map(pins.map((id, i) => [id, i]))
-  const aPin = pinIndex.has(a.id)
-  const bPin = pinIndex.has(b.id)
-  if (aPin !== bPin) return aPin ? -1 : 1
-  if (aPin && bPin) return pinIndex.get(a.id) - pinIndex.get(b.id)
-  return String(b.created_at || '').localeCompare(String(a.created_at || ''))
 }
 
 /**
@@ -438,8 +432,8 @@ function compareDirectRepliesForViewer(a, b, viewerPinnedCommentIds) {
  * from just below the parent commenter’s avatar to just above the **first** OP reply’s avatar marks the reply. Other replies stay drill-down only. OP replies whose parent is not a visible root render as
  * extra root rows (fallback) so nothing disappears.
  *
- * @param {'post' | 'commentDetail'} variant
- * @param {string | null} focusCommentId — Required when `variant === 'commentDetail'`.
+ * @param {'post' | 'commentDetailReplies'} variant
+ * @param {string | null} focusCommentId — Required when `variant === 'commentDetailReplies'`.
  * @param {string | null} [postAuthorUserId] — Post author's `user_id`; enables OP-only nesting when `variant === 'post'`.
  */
 export default function LoungePostCommentThread({
@@ -486,24 +480,37 @@ export default function LoungePostCommentThread({
   commentEditHasRemoteMedia = false,
   /** Comment ids the signed-in viewer just posted — shown at top of their list only (chronological for others). */
   viewerPinnedCommentIds = [],
+  /** First-level sort on post detail (`ranked` | `popular` | `chronological` | `likes`). */
+  rootCommentSortMode = LOUNGE_DETAIL_COMMENT_SORT.RANKED,
+  /** `profile_follows.following_id` for the signed-in viewer. */
+  followingUserIds = [],
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
-  const directReplyCountByCommentId = useMemo(() => {
-    const m = new Map()
-    for (const c of comments || []) {
-      const pid = c.parent_id
-      if (!pid) continue
-      m.set(pid, (m.get(pid) || 0) + 1)
-    }
-    return m
-  }, [comments])
+  const descendantCountByCommentId = useMemo(
+    () => feedCommentDescendantCountById(comments),
+    [comments],
+  )
 
   const rootsSorted = useMemo(() => {
-    return [...(comments || [])]
-      .filter((c) => !c.parent_id)
-      .sort((a, b) => compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
-  }, [comments, viewerPinnedCommentIds])
+    if (variant !== 'post') return []
+    return orderPostDetailRootComments({
+      roots: comments,
+      postAuthorUserId,
+      viewerUserId,
+      followingUserIds,
+      viewerPinnedCommentIds,
+      sortMode: rootCommentSortMode,
+    })
+  }, [
+    comments,
+    followingUserIds,
+    postAuthorUserId,
+    rootCommentSortMode,
+    variant,
+    viewerPinnedCommentIds,
+    viewerUserId,
+  ])
 
   const rootIdSet = useMemo(() => new Set(rootsSorted.map((r) => r.id).filter(Boolean)), [rootsSorted])
 
@@ -521,7 +528,7 @@ export default function LoungePostCommentThread({
       m.set(pid, arr)
     }
     for (const arr of m.values()) {
-      arr.sort((a, b) => compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
+      arr.sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
     }
     return m
   }, [comments, postAuthorUserId, rootIdSet, viewerPinnedCommentIds])
@@ -536,7 +543,7 @@ export default function LoungePostCommentThread({
           c.user_id === postAuthorUserId &&
           !rootIdSet.has(c.parent_id),
       )
-      .sort((a, b) => compareCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
+      .sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
   }, [comments, postAuthorUserId, rootIdSet, viewerPinnedCommentIds])
 
   const focusComment = useMemo(() => {
@@ -544,22 +551,25 @@ export default function LoungePostCommentThread({
     return byId.get(focusCommentId) || null
   }, [byId, focusCommentId])
 
-  const directRepliesNewestFirst = useMemo(() => {
-    if (!focusCommentId) return []
-    return [...(comments || [])]
-      .filter((c) => c.parent_id === focusCommentId)
-      .sort((a, b) => compareDirectRepliesForViewer(a, b, viewerPinnedCommentIds))
-  }, [comments, focusCommentId, viewerPinnedCommentIds])
-
   const mediaVariantForComment = useCallback(
     (comment) => {
-      if (variant === 'commentDetail' && focusCommentId && comment?.id === focusCommentId) {
+      if (variant === 'commentDetailReplies' && focusCommentId && comment?.id === focusCommentId) {
         return 'detail'
       }
       return 'commentInline'
     },
     [focusCommentId, variant],
   )
+
+  const directRepliesSorted = useMemo(() => {
+    if (variant !== 'commentDetailReplies' || !focusCommentId) return []
+    const direct = [...(comments || [])].filter((c) => c.parent_id === focusCommentId)
+    return orderCommentDetailDirectReplies({
+      replies: direct,
+      viewerPinnedCommentIds,
+      sortMode: rootCommentSortMode,
+    })
+  }, [comments, focusCommentId, rootCommentSortMode, variant, viewerPinnedCommentIds])
 
   const cardProps = {
     postAgeLabel,
@@ -599,37 +609,26 @@ export default function LoungePostCommentThread({
     commentEditHasRemoteMedia,
   }
 
-  if (variant === 'commentDetail') {
+  if (variant === 'commentDetailReplies') {
     if (!focusComment || !focusCommentId) {
       return <p className="mt-1 text-[14px] text-zinc-500">Could not load this comment.</p>
     }
-    return (
-      <>
-        <LoungeCommentCard
-          comment={focusComment}
-          navigable={false}
-          onOpenCommentThread={onOpenCommentThread}
-          directReplyCount={directReplyCountByCommentId.get(focusComment.id) ?? 0}
-          {...cardProps}
-        />
-        {directRepliesNewestFirst.length ? (
-          <ul className="mt-1.5 divide-y divide-zinc-800/70 space-y-0 border-t border-zinc-800/70 pt-1.5">
-            {directRepliesNewestFirst.map((r) => (
-              <li key={r.id}>
-                <LoungeCommentCard
-                  comment={r}
-                  navigable={Boolean(onOpenCommentThread)}
-                  onOpenCommentThread={onOpenCommentThread}
-                  directReplyCount={directReplyCountByCommentId.get(r.id) ?? 0}
-                  {...cardProps}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-1.5 border-t border-zinc-800/70 pt-1.5 text-[14px] text-zinc-500">No replies yet.</p>
-        )}
-      </>
+    return directRepliesSorted.length ? (
+      <ul className="mt-1.5 divide-y divide-zinc-800/70 space-y-0 border-t border-zinc-800/70 pt-1.5">
+        {directRepliesSorted.map((r) => (
+          <li key={r.id}>
+            <LoungeCommentCard
+              comment={r}
+              navigable={Boolean(onOpenCommentThread)}
+              onOpenCommentThread={onOpenCommentThread}
+              descendantFallback={descendantCountByCommentId.get(r.id) ?? 0}
+              {...cardProps}
+            />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="mt-1.5 border-t border-zinc-800/70 pt-1.5 text-[14px] text-zinc-500">No replies yet.</p>
     )
   }
 
@@ -647,7 +646,7 @@ export default function LoungePostCommentThread({
               key={root.id}
               root={root}
               nestedOp={nestedOp}
-              directReplyCountByCommentId={directReplyCountByCommentId}
+              descendantCountByCommentId={descendantCountByCommentId}
               onOpenCommentThread={onOpenCommentThread}
               cardProps={cardProps}
             />
@@ -659,7 +658,7 @@ export default function LoungePostCommentThread({
               comment={root}
               navigable={Boolean(onOpenCommentThread)}
               onOpenCommentThread={onOpenCommentThread}
-              directReplyCount={directReplyCountByCommentId.get(root.id) ?? 0}
+              descendantFallback={descendantCountByCommentId.get(root.id) ?? 0}
               {...cardProps}
             />
           </li>
@@ -671,7 +670,7 @@ export default function LoungePostCommentThread({
             comment={c}
             navigable={Boolean(onOpenCommentThread)}
             onOpenCommentThread={onOpenCommentThread}
-            directReplyCount={directReplyCountByCommentId.get(c.id) ?? 0}
+            descendantFallback={descendantCountByCommentId.get(c.id) ?? 0}
             {...cardProps}
           />
         </li>

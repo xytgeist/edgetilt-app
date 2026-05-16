@@ -230,15 +230,15 @@ export async function executeLoungeCommentSubmission({
       .from('feed_comments')
       .insert(insertRow)
       .select(
-        'id,body,created_at,user_id,parent_id,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at',
+        'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at',
       )
       .single()
 
     if (error) {
       const msg = String(error.message || '')
-      if (/media_url|gif_url|image_urls|stream_video_uid|stream_poster_url|stream_video_width|stream_video_height|schema cache/i.test(msg)) {
+      if (/media_url|gif_url|image_urls|stream_video_uid|stream_poster_url|stream_video_width|stream_video_height|comment_count|schema cache/i.test(msg)) {
         throw new Error(
-          'Reply media needs the latest DB migration (feed_comments media columns). Run supabase/migrations/20260516140000_feed_comments_media.sql on Supabase.',
+          'Reply needs the latest feed_comments migrations on Supabase (media + comment_count).',
         )
       }
       throw new Error(msg || 'Could not post reply.')

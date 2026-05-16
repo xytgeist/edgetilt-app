@@ -7,6 +7,8 @@ import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeOgBadge from './LoungeOgBadge'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
+import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
+import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
 function CommentAvatar({ profile, comment, className }) {
@@ -68,7 +70,14 @@ function LoungeCommentCard({
   onCommentEditSave,
   onCommentEditCancel,
   commentEditBusy,
+  commentEditHasRemoteMedia = false,
+  mediaFeedVariant: mediaFeedVariantProp = 'commentInline',
+  resolveMediaFeedVariant,
 }) {
+  const mediaFeedVariant =
+    typeof resolveMediaFeedVariant === 'function'
+      ? resolveMediaFeedVariant(comment)
+      : mediaFeedVariantProp
   const profile = comment.author_profile
   const displayName = typeof displayNameFor === 'function' ? displayNameFor(comment) : profile?.display_name || profile?.handle || 'Member'
   const handleLabel = typeof handleFor === 'function' ? handleFor(comment) : '@member'
@@ -170,7 +179,7 @@ function LoungeCommentCard({
           onClick={() => void onCommentEditSave?.()}
           disabled={
             commentEditBusy ||
-            !String(commentEditDraft || '').trim() ||
+            (!String(commentEditDraft || '').trim() && !commentEditHasRemoteMedia) ||
             String(commentEditDraft || '').length > LOUNGE_COMMENT_BODY_MAX
           }
           className="rounded-full border border-cyan-600/70 bg-cyan-950/40 px-3 py-1 text-[13px] font-semibold text-cyan-100 hover:bg-cyan-900/50 disabled:opacity-50 touch-manipulation"
@@ -183,8 +192,26 @@ function LoungeCommentCard({
       </div>
     </div>
   ) : (
-    <p className="mt-0.5 whitespace-pre-wrap break-words text-[15px] leading-snug text-zinc-100">{comment.body}</p>
+    (() => {
+      const bodyText = String(comment.body || '').trim()
+      if (!bodyText) return null
+      return (
+        <p className="mt-0.5 whitespace-pre-wrap break-words text-[15px] leading-snug text-zinc-100">
+          {comment.body}
+        </p>
+      )
+    })()
   )
+
+  const commentMediaBlock =
+    !bodyEditing && feedCommentRowHasMedia(comment) ? (
+      <LoungePostFeedImagesAndGif
+        post={comment}
+        variant={mediaFeedVariant}
+        firstMarginTopClass={String(comment.body || '').trim() ? 'mt-1.5' : 'mt-0.5'}
+        visibilityResetRootRef={positionScrollRootRef}
+      />
+    ) : null
 
   const metaRow = (
     <div className="flex items-start gap-3">
@@ -202,6 +229,7 @@ function LoungeCommentCard({
       <div className="min-w-0 flex-1">
         {metaHeader}
         {bodyBlock}
+        {commentMediaBlock}
         {bodyEditing ? null : interactionBarPost ? (
           <LoungePostInteractionBar
             post={interactionBarPost}
@@ -434,6 +462,7 @@ export default function LoungePostCommentThread({
   onCommentEditSave,
   onCommentEditCancel,
   commentEditBusy,
+  commentEditHasRemoteMedia = false,
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -499,10 +528,21 @@ export default function LoungePostCommentThread({
       .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
   }, [comments, focusCommentId])
 
+  const mediaVariantForComment = useCallback(
+    (comment) => {
+      if (variant === 'commentDetail' && focusCommentId && comment?.id === focusCommentId) {
+        return 'detail'
+      }
+      return 'commentInline'
+    },
+    [focusCommentId, variant],
+  )
+
   const cardProps = {
     postAgeLabel,
     displayNameFor,
     handleFor,
+    resolveMediaFeedVariant: mediaVariantForComment,
     loungeReadOnly,
     viewerUserId,
     requireLoungeAuth,
@@ -533,6 +573,7 @@ export default function LoungePostCommentThread({
     onCommentEditSave,
     onCommentEditCancel,
     commentEditBusy,
+    commentEditHasRemoteMedia,
   }
 
   if (variant === 'commentDetail') {

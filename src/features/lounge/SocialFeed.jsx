@@ -21,6 +21,11 @@ import {
   normalizeFeedCaption,
 } from '../../utils/communityFeedPost'
 import {
+  feedCommentAuthorEditMediaSeed,
+  feedCommentRowHasMedia,
+  feedCommentStreamVideoUid,
+} from '../../utils/communityFeedComment.js'
+import {
   isProbablyImageFile,
   isProbablyVideoFile,
   prepareAvatarImageForUpload,
@@ -51,6 +56,7 @@ import {
   writeProfileGateAck,
 } from './loungeStorage'
 import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob'
+import { executeLoungeCommentSubmission } from './loungeCommentSubmitJob.js'
 import {
   runComposerStreamVideoPrepWithRetries,
   uploadEncodedVideoToCfStreamWithRetries,
@@ -106,6 +112,9 @@ const LOUNGE_MAX_PINNED_ALERT =
 
 /** Post detail reply composer — collapsed pill copy when empty + expanded textarea placeholder. */
 const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, pussy)"
+
+const FEED_COMMENT_SELECT_COLS =
+  'id,body,created_at,user_id,parent_id,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
 
 /** Shown in upload bar `detail` instead of raw telemetry when `onUploadDiagnostic` fires. */
 const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying again...'
@@ -354,6 +363,19 @@ export default function SocialFeed({
   const [loungeDetailCommentComposerHint, setLoungeDetailCommentComposerHint] = useState('')
   /** iOS / visualViewport: lift footer above software keyboard. */
   const [loungeDetailCommentKbOverlapPx, setLoungeDetailCommentKbOverlapPx] = useState(0)
+  const [loungeDetailCommentImageItems, setLoungeDetailCommentImageItems] = useState([])
+  const [loungeDetailCommentMediaUrl, setLoungeDetailCommentMediaUrl] = useState('')
+  const [loungeDetailCommentVideoSlot, setLoungeDetailCommentVideoSlot] = useState(null)
+  const loungeDetailCommentImageItemsRef = useRef(loungeDetailCommentImageItems)
+  const loungeDetailCommentVideoSlotRef = useRef(null)
+  const loungeDetailCommentMediaInputRef = useRef(null)
+  const loungeDetailCommentVideoPrepJobIdRef = useRef(0)
+  const loungeDetailCommentVideoPrepAbortRef = useRef(null)
+  const loungeDetailCommentVideoPrepSpecRef = useRef(null)
+  const loungeDetailCommentVideoLastEncodedFileRef = useRef(/** @type {File | null} */ (null))
+  const loungeDetailCommentVideoPrepHandoffRef = useRef(null)
+  const [loungeDetailCommentEditImageUrls, setLoungeDetailCommentEditImageUrls] = useState([])
+  const [loungeDetailCommentEditGifUrl, setLoungeDetailCommentEditGifUrl] = useState('')
   /** Drill-down into a comment thread (`slice(-1)` = composer reply parent). */
   const [loungeCommentDetailPathIds, setLoungeCommentDetailPathIds] = useState([])
   const [loungeDetailCommentEditingId, setLoungeDetailCommentEditingId] = useState(null)
@@ -945,6 +967,14 @@ export default function SocialFeed({
   }, [quoteRepostVideoSlot])
 
   useEffect(() => {
+    loungeDetailCommentImageItemsRef.current = loungeDetailCommentImageItems
+  }, [loungeDetailCommentImageItems])
+
+  useEffect(() => {
+    loungeDetailCommentVideoSlotRef.current = loungeDetailCommentVideoSlot
+  }, [loungeDetailCommentVideoSlot])
+
+  useEffect(() => {
     loungePostUploadFailureDetailsRef.current = loungePostUploadFailureDetails
   }, [loungePostUploadFailureDetails])
 
@@ -1372,6 +1402,212 @@ export default function SocialFeed({
     setLoungePostUploadBar(null)
   }, [disposeComposerVideoMedia])
 
+  const cancelLoungeDetailCommentMediaPrep = useCallback(() => {
+    const h = loungeDetailCommentVideoPrepHandoffRef.current
+    if (h && !h.settled) {
+      try {
+        h.reject(new DOMException('Aborted', 'AbortError'))
+      } catch {
+        // ignore
+      }
+    }
+    loungeDetailCommentVideoPrepHandoffRef.current = null
+    loungeDetailCommentVideoPrepJobIdRef.current += 1
+    try {
+      loungeDetailCommentVideoPrepAbortRef.current?.abort()
+    } catch {
+      // ignore
+    }
+    loungeDetailCommentVideoPrepAbortRef.current = null
+    loungeDetailCommentVideoLastEncodedFileRef.current = null
+    disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
+    setLoungeDetailCommentVideoSlot(null)
+    setLoungePostUploadBar(null)
+  }, [disposeComposerVideoMedia])
+
+  const clearLoungeDetailCommentComposerMedia = useCallback(() => {
+    cancelLoungeDetailCommentMediaPrep()
+    setLoungeDetailCommentImageItems((prev) => {
+      for (const it of prev) {
+        try {
+          URL.revokeObjectURL(it.preview)
+        } catch {
+          // ignore
+        }
+      }
+      return []
+    })
+    setLoungeDetailCommentMediaUrl('')
+    try {
+      const el = loungeDetailCommentMediaInputRef.current
+      if (el) el.value = ''
+    } catch {
+      // ignore
+    }
+  }, [cancelLoungeDetailCommentMediaPrep])
+
+  const startLoungeDetailCommentVideoPrepFromSpec = useCallback(
+    (spec, slotBase) => {
+      const prevH = loungeDetailCommentVideoPrepHandoffRef.current
+      if (prevH && !prevH.settled) {
+        try {
+          prevH.reject(new DOMException('Aborted', 'AbortError'))
+        } catch {
+          // ignore
+        }
+      }
+      try {
+        loungeDetailCommentVideoPrepAbortRef.current?.abort()
+      } catch {
+        // ignore
+      }
+      const jobId = (loungeDetailCommentVideoPrepJobIdRef.current += 1)
+      loungeDetailCommentVideoLastEncodedFileRef.current = null
+      const ac = new AbortController()
+      loungeDetailCommentVideoPrepAbortRef.current = ac
+      loungeDetailCommentVideoPrepSpecRef.current = spec
+
+      let resHandoff = /** @type {((v: { encodedFile: File, streamVideoUid: string }) => void) | null} */ (null)
+      let rejHandoff = /** @type {((e: unknown) => void) | null} */ (null)
+      const prepPromise = new Promise((res, rej) => {
+        resHandoff = res
+        rejHandoff = rej
+      })
+      const handoff = {
+        jobId,
+        settled: false,
+        promise: prepPromise,
+        resolve: (v) => {
+          if (handoff.settled) return
+          handoff.settled = true
+          resHandoff?.(v)
+        },
+        reject: (e) => {
+          if (handoff.settled) return
+          handoff.settled = true
+          rejHandoff?.(e)
+        },
+      }
+      loungeDetailCommentVideoPrepHandoffRef.current = handoff
+
+      setLoungeDetailCommentVideoSlot({
+        ...slotBase,
+        prepJobId: jobId,
+        prepStatus: 'preparing',
+        prepError: '',
+      })
+      setLoungePostUploadBar({
+        mode: 'mediaPrep',
+        prepJobId: jobId,
+        progress: 0.02,
+        status: 'Starting…',
+        detail: '',
+      })
+
+      void (async () => {
+        try {
+          const result = await runComposerStreamVideoPrepWithRetries({
+            supabaseClient,
+            signal: ac.signal,
+            spec,
+            onEncodedFileReady: (f) => {
+              loungeDetailCommentVideoLastEncodedFileRef.current = f
+            },
+            onProgress: (info) => {
+              if (loungeDetailCommentVideoPrepJobIdRef.current !== jobId) return
+              setLoungePostUploadBar((bar) => {
+                if (!bar || bar?.mode !== 'mediaPrep' || bar.prepJobId !== jobId) return bar
+                const d = String(info.detail || '').trim()
+                return {
+                  mode: 'mediaPrep',
+                  prepJobId: jobId,
+                  progress: typeof info.progress === 'number' ? info.progress : 0,
+                  status: String(info.status || ''),
+                  detail: d !== '' ? d : typeof bar.detail === 'string' ? bar.detail : '',
+                }
+              })
+            },
+            onUploadDiagnostic: (detail) => {
+              if (loungeDetailCommentVideoPrepJobIdRef.current !== jobId) return
+              const d = String(detail || '').trim()
+              if (!d) return
+              setLoungePostUploadBar((bar) =>
+                bar?.mode === 'mediaPrep' && bar.prepJobId === jobId
+                  ? { ...bar, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL }
+                  : bar,
+              )
+            },
+          })
+          if (ac.signal.aborted || loungeDetailCommentVideoPrepJobIdRef.current !== jobId) {
+            if (!handoff.settled) handoff.reject(new DOMException('Aborted', 'AbortError'))
+            return
+          }
+          handoff.resolve(result)
+          loungeDetailCommentVideoLastEncodedFileRef.current = null
+          const { encodedFile, streamVideoUid } = result
+          setLoungeDetailCommentVideoSlot((prev) => {
+            if (!prev || prev.prepJobId !== jobId) return prev
+            const oldPreview = prev.preview
+            const oldPoster = prev.posterUrl
+            const vidUrl = URL.createObjectURL(encodedFile)
+            const posterToKeep =
+              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
+                ? oldPoster
+                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
+                  ? oldPreview
+                  : null
+            if (oldPreview && oldPreview !== posterToKeep) {
+              try {
+                URL.revokeObjectURL(oldPreview)
+              } catch {
+                // ignore
+              }
+            }
+            if (oldPoster && oldPoster !== posterToKeep) {
+              try {
+                URL.revokeObjectURL(oldPoster)
+              } catch {
+                // ignore
+              }
+            }
+            return {
+              ...prev,
+              file: encodedFile,
+              streamVideoUid,
+              preview: vidUrl,
+              posterUrl: posterToKeep,
+              prepStatus: 'ready',
+              prepError: '',
+            }
+          })
+          setLoungePostUploadBar((bar) =>
+            bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
+          )
+        } catch (e) {
+          if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
+          if (e?.name === 'AbortError') {
+            if (loungeDetailCommentVideoPrepJobIdRef.current !== jobId) return
+            setLoungePostUploadBar(null)
+            return
+          }
+          if (loungeDetailCommentVideoPrepJobIdRef.current !== jobId) return
+          const msg =
+            (e instanceof Error ? e.message : String(e || '')).trim() ||
+            'Video upload failed after multiple attempts.'
+          const slotStill = loungeDetailCommentVideoSlotRef.current
+          if (slotStill?.prepJobId === jobId) {
+            setLoungeDetailCommentVideoSlot((prev) =>
+              prev?.prepJobId === jobId ? { ...prev, prepStatus: 'failed', prepError: msg } : prev,
+            )
+            setLoungeDetailCommentErr(msg)
+          }
+          setLoungePostUploadBar(null)
+        }
+      })()
+    },
+    [supabaseClient],
+  )
+
   const queueLoungeVideoOrCrop = useCallback(
     async (vf, mode) => {
       const msgRead = (e) => (e instanceof Error ? e.message : 'Could not read this video file.')
@@ -1380,6 +1616,7 @@ export default function SocialFeed({
         if (!Number.isFinite(dur) || dur <= 0) {
           if (mode === 'composer') setPostErr('Could not read this video file.')
           else if (mode === 'quote') setQuoteRepostErr('Could not read this video file.')
+          else if (mode === 'detailComment') setLoungeDetailCommentErr('Could not read this video file.')
           else setLoungeDetailEditErr('Could not read this video file.')
           return
         }
@@ -1418,6 +1655,23 @@ export default function SocialFeed({
               streamVideoUid: null,
             })
             setQuoteRepostMediaUrl('')
+          } else if (mode === 'detailComment') {
+            disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
+            const spec = { kind: 'direct', file: vf }
+            const previewUrl = URL.createObjectURL(vf)
+            let posterUrl = null
+            try {
+              posterUrl = await captureVideoFilePosterObjectUrl(vf)
+            } catch {
+              posterUrl = null
+            }
+            startLoungeDetailCommentVideoPrepFromSpec(spec, {
+              file: vf,
+              posterUrl: posterUrl || null,
+              preview: previewUrl,
+              streamVideoUid: null,
+            })
+            setLoungeDetailCommentMediaUrl('')
           } else {
             setLoungeDetailEditMediaFile(vf)
             setLoungeDetailEditMediaKind('video')
@@ -1428,10 +1682,16 @@ export default function SocialFeed({
       } catch (e) {
         if (mode === 'composer') setPostErr(msgRead(e))
         else if (mode === 'quote') setQuoteRepostErr(msgRead(e))
+        else if (mode === 'detailComment') setLoungeDetailCommentErr(msgRead(e))
         else setLoungeDetailEditErr(msgRead(e))
       }
     },
-    [disposeComposerVideoMedia, startComposerVideoPrepFromSpec, startQuoteRepostVideoPrepFromSpec],
+    [
+      disposeComposerVideoMedia,
+      startComposerVideoPrepFromSpec,
+      startLoungeDetailCommentVideoPrepFromSpec,
+      startQuoteRepostVideoPrepFromSpec,
+    ],
   )
 
   const postAgeLabel = useCallback((createdAt) => {
@@ -1462,6 +1722,12 @@ export default function SocialFeed({
     if (!v) return false
     return v.prepStatus === 'failed'
   }, [quoteRepostVideoSlot])
+
+  const loungeDetailCommentVideoPostBlocked = useMemo(() => {
+    const v = loungeDetailCommentVideoSlot
+    if (!v) return false
+    return v.prepStatus === 'failed'
+  }, [loungeDetailCommentVideoSlot])
 
   const actionIconClass = 'h-[20px] w-[20px] text-zinc-500'
 
@@ -1753,6 +2019,7 @@ export default function SocialFeed({
       const chk = validateAtMostOneGifUrl(gifUrl)
       if (!chk.ok) {
         if (klipyPickerTarget === 'quote') setQuoteRepostErr(chk.message)
+        else if (klipyPickerTarget === 'detailComment') setLoungeDetailCommentErr(chk.message)
         else setPostErr(chk.message)
         return
       }
@@ -1761,6 +2028,9 @@ export default function SocialFeed({
       if (klipyPickerTarget === 'quote') {
         cancelQuoteRepostMediaPrep()
         setQuoteRepostMediaUrl(u)
+      } else if (klipyPickerTarget === 'detailComment') {
+        cancelLoungeDetailCommentMediaPrep()
+        setLoungeDetailCommentMediaUrl(u)
       } else {
         disposeComposerVideoMedia(composerVideoSlotRef.current)
         composerVideoPrepJobIdRef.current += 1
@@ -1781,7 +2051,14 @@ export default function SocialFeed({
         setComposerMediaUrl(u)
       }
     },
-    [klipyPickerTarget, setPostErr, setQuoteRepostErr, disposeComposerVideoMedia, cancelQuoteRepostMediaPrep],
+    [
+      klipyPickerTarget,
+      setPostErr,
+      setQuoteRepostErr,
+      disposeComposerVideoMedia,
+      cancelQuoteRepostMediaPrep,
+      cancelLoungeDetailCommentMediaPrep,
+    ],
   )
 
   const openQuoteRepostComposer = useCallback(
@@ -2357,59 +2634,146 @@ export default function SocialFeed({
   const submitLoungeDetailComment = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId || loungeReadOnly) return
     const body = loungeDetailCommentDraft.trim()
-    if (body.length === 0) return
+    setLoungeDetailCommentErr('')
+    const gifCheck = validateAtMostOneGifUrl(loungeDetailCommentMediaUrl)
+    if (!gifCheck.ok) {
+      setLoungeDetailCommentErr(gifCheck.message)
+      return
+    }
+    const gifOnlyUrl = gifCheck.value
+    const slotNow = loungeDetailCommentVideoSlotRef.current
+    const hasVideo = slotNow != null
+    const hasImages = loungeDetailCommentImageItems.length > 0
+    const hasMedia = hasImages || Boolean(gifOnlyUrl) || hasVideo
+    if (!body && !hasMedia) return
     if (body.length > LOUNGE_COMMENT_BODY_MAX) {
       setLoungeDetailCommentErr(`Reply must be ${LOUNGE_COMMENT_BODY_MAX} characters or fewer.`)
       return
     }
+    if (loungeDetailCommentVideoPostBlocked) return
+    if (hasVideo && gifOnlyUrl) {
+      setLoungeDetailCommentErr('Remove the GIF before posting a video.')
+      return
+    }
+    if (hasVideo && slotNow?.file && slotNow.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+      setLoungeDetailCommentErr('Video must be 200 MB or smaller for upload.')
+      return
+    }
+    if (hasVideo && slotNow?.prepStatus === 'failed') {
+      setLoungeDetailCommentErr(slotNow.prepError || 'Video processing failed. Remove the video or try again.')
+      return
+    }
+
     const parentId =
       loungeCommentDetailPathIds.length > 0
         ? loungeCommentDetailPathIds[loungeCommentDetailPathIds.length - 1]
         : null
+
+    const uid = hasVideo ? String(slotNow?.streamVideoUid || '').trim() || null : null
+    const awaiting =
+      hasVideo && !uid && slotNow?.prepStatus === 'preparing' && typeof slotNow?.prepJobId === 'number'
+        ? slotNow.prepJobId
+        : null
+
     setLoungeDetailCommentBusy(true)
-    setLoungeDetailCommentErr('')
-    const insertRow = { post_id: loungePostDetail.id, user_id: composerUserId, body }
-    if (parentId) insertRow.parent_id = parentId
-    const { data, error } = await supabaseClient
-      .from('feed_comments')
-      .insert(insertRow)
-      .select('id,body,created_at,user_id,parent_id,like_count,repost_count,bookmark_count')
-      .single()
-    setLoungeDetailCommentBusy(false)
-    if (error) {
-      setLoungeDetailCommentErr(error.message)
-      return
-    }
-    const pr = await supabaseClient
-      .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og')
-      .eq('user_id', composerUserId)
-      .maybeSingle()
-    const row = { ...data, author_profile: pr.data || composerUserProfile || null }
-    setLoungeDetailComments((c) => [...c, row])
-    setLoungeDetailCommentDraft('')
-    setLoungeDetailCommentComposerExpanded(false)
-    if (!parentId) {
-      const { data: countRow } = await supabaseClient
-        .from('community_feed_posts')
-        .select('comment_count')
-        .eq('id', loungePostDetail.id)
-        .maybeSingle()
-      if (countRow && typeof countRow.comment_count === 'number') {
-        patchPostAggregate(loungePostDetail.id, { comment_count: countRow.comment_count })
+    try {
+      if (awaiting != null) {
+        const handoff = loungeDetailCommentVideoPrepHandoffRef.current
+        if (handoff?.jobId === awaiting && handoff.promise) {
+          setLoungePostUploadBar({
+            mode: 'mediaPrep',
+            prepJobId: awaiting,
+            progress: 0.5,
+            status: 'Finishing video…',
+            detail: '',
+          })
+          await handoff.promise
+        }
       }
+
+      const slot = loungeDetailCommentVideoSlotRef.current
+      const streamUid = hasVideo ? String(slot?.streamVideoUid || '').trim() || null : null
+      const sessionPosterBlob =
+        hasVideo && slot?.posterUrl && String(slot.posterUrl).startsWith('blob:') ? String(slot.posterUrl) : null
+
+      const needsUploadBar = hasVideo && !streamUid && slot?.file
+      if (needsUploadBar) {
+        setLoungePostUploadBar({ mode: 'mediaPrep', prepJobId: -1, progress: 0.1, status: 'Publishing reply', detail: '' })
+      }
+
+      const data = await executeLoungeCommentSubmission({
+        supabaseClient,
+        snapshot: {
+          body,
+          gifOnlyUrl,
+          imageFiles: loungeDetailCommentImageItems.map((it) => it.file),
+          videoFile: hasVideo && slot?.file ? slot.file : null,
+          streamVideoUid: streamUid,
+          sessionStreamPosterBlobUrl: sessionPosterBlob,
+          postId: loungePostDetail.id,
+          parentId,
+          userId: composerUserId,
+        },
+        onProgress: needsUploadBar
+          ? (info) => {
+              setLoungePostUploadBar((bar) =>
+                bar
+                  ? {
+                      ...bar,
+                      progress: info.progress,
+                      status: info.status,
+                      detail: info.detail || '',
+                    }
+                  : bar,
+              )
+            }
+          : undefined,
+      })
+
+      setLoungePostUploadBar(null)
+      const pr = await supabaseClient
+        .from('profiles')
+        .select('user_id,handle,display_name,avatar_url,role,is_og')
+        .eq('user_id', composerUserId)
+        .maybeSingle()
+      const row = { ...data, author_profile: pr.data || composerUserProfile || null }
+      setLoungeDetailComments((c) => [...c, row])
+      setLoungeDetailCommentDraft('')
+      clearLoungeDetailCommentComposerMedia()
+      setLoungeDetailCommentComposerExpanded(false)
+      if (!parentId) {
+        const { data: countRow } = await supabaseClient
+          .from('community_feed_posts')
+          .select('comment_count')
+          .eq('id', loungePostDetail.id)
+          .maybeSingle()
+        if (countRow && typeof countRow.comment_count === 'number') {
+          patchPostAggregate(loungePostDetail.id, { comment_count: countRow.comment_count })
+        }
+      }
+      setInteractionByPost((prev) => {
+        const cur = prev[loungePostDetail.id] || defaultInteraction
+        return { ...prev, [loungePostDetail.id]: { ...cur, commented: true } }
+      })
+      scheduleLoungePostDetailTitleAfterReply()
+    } catch (e) {
+      if (e?.name !== 'AbortError') {
+        setLoungeDetailCommentErr(e instanceof Error ? e.message : String(e || 'Could not post reply.'))
+      }
+      setLoungePostUploadBar(null)
+    } finally {
+      setLoungeDetailCommentBusy(false)
     }
-    setInteractionByPost((prev) => {
-      const cur = prev[loungePostDetail.id] || defaultInteraction
-      return { ...prev, [loungePostDetail.id]: { ...cur, commented: true } }
-    })
-    scheduleLoungePostDetailTitleAfterReply()
   }, [
+    clearLoungeDetailCommentComposerMedia,
     composerUserId,
     composerUserProfile,
     defaultInteraction,
     loungeCommentDetailPathIds,
     loungeDetailCommentDraft,
+    loungeDetailCommentImageItems,
+    loungeDetailCommentMediaUrl,
+    loungeDetailCommentVideoPostBlocked,
     loungePostDetail?.id,
     loungeReadOnly,
     patchPostAggregate,
@@ -2420,27 +2784,48 @@ export default function SocialFeed({
   const cancelLoungeDetailCommentEdit = useCallback(() => {
     setLoungeDetailCommentEditingId(null)
     setLoungeDetailCommentEditDraft('')
+    setLoungeDetailCommentEditImageUrls([])
+    setLoungeDetailCommentEditGifUrl('')
   }, [])
 
   const onCommentMenuEditFromDetail = useCallback((c) => {
     if (!c?.id) return
+    const seed = feedCommentAuthorEditMediaSeed(c)
     setLoungeDetailCommentEditingId(c.id)
     setLoungeDetailCommentEditDraft(String(c.body ?? ''))
+    setLoungeDetailCommentEditImageUrls(seed.imageUrls)
+    setLoungeDetailCommentEditGifUrl(seed.gifUrl)
   }, [])
 
   const saveLoungeDetailCommentEdit = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId || !loungeDetailCommentEditingId) return
     const body = loungeDetailCommentEditDraft.trim()
-    if (!body || body.length > LOUNGE_COMMENT_BODY_MAX) return
+    const editingRow = loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId)
+    const keepStream = feedCommentStreamVideoUid(editingRow)
+    const hasRemoteMedia =
+      loungeDetailCommentEditImageUrls.length > 0 ||
+      String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
+      keepStream
+    if (!body && !hasRemoteMedia) return
+    if (body.length > LOUNGE_COMMENT_BODY_MAX) return
     setLoungeDetailCommentEditBusy(true)
     setLoungeDetailCommentErr('')
     try {
       const editedAt = new Date().toISOString()
-      const { error } = await supabaseClient
+      const mediaPatch = feedPostMediaUpdatePayload({
+        imageUrls: loungeDetailCommentEditImageUrls,
+        gifUrl: loungeDetailCommentEditGifUrl,
+      })
+      const updateBody = keepStream
+        ? { body, edited_at: editedAt, ...mediaPatch, stream_video_uid: keepStream }
+        : { body, edited_at: editedAt, ...mediaPatch }
+      const { data, error } = await supabaseClient
         .from('feed_comments')
-        .update({ body, edited_at: editedAt })
+        .update(updateBody)
         .eq('id', loungeDetailCommentEditingId)
         .eq('user_id', composerUserId)
+        .select(FEED_COMMENT_SELECT_COLS)
+        .maybeSingle()
       if (error) {
         const msg = String(error.message || '')
         if (error.code === '42501') {
@@ -2450,10 +2835,12 @@ export default function SocialFeed({
         }
         return
       }
+      if (!data?.id) {
+        setLoungeDetailCommentErr('Could not save. Try refreshing.')
+        return
+      }
       setLoungeDetailComments((prev) =>
-        prev.map((row) =>
-          row.id === loungeDetailCommentEditingId ? { ...row, body, edited_at: editedAt } : row,
-        ),
+        prev.map((row) => (row.id === loungeDetailCommentEditingId ? { ...row, ...data } : row)),
       )
       cancelLoungeDetailCommentEdit()
     } finally {
@@ -2463,7 +2850,10 @@ export default function SocialFeed({
     cancelLoungeDetailCommentEdit,
     composerUserId,
     loungeDetailCommentEditDraft,
+    loungeDetailCommentEditGifUrl,
+    loungeDetailCommentEditImageUrls,
     loungeDetailCommentEditingId,
+    loungeDetailComments,
     loungePostDetail?.id,
     supabaseClient,
   ])
@@ -2487,6 +2877,13 @@ export default function SocialFeed({
       setLoungeDetailCommentDeleteBusyId(c.id)
       setLoungeDetailCommentErr('')
       try {
+        for (const row of loungeDetailComments) {
+          if (!removeIds.has(row.id)) continue
+          const suid = feedCommentStreamVideoUid(row)
+          if (suid) await deleteCfStreamOrphanAsset(supabaseClient, suid)
+          const poster = feedPostStreamPosterUrl(row)
+          if (poster) await deleteLoungeFeedStreamPosterFromPublicUrl(supabaseClient, poster)
+        }
         const { error } = await supabaseClient
           .from('feed_comments')
           .delete()
@@ -2572,7 +2969,7 @@ export default function SocialFeed({
       const postId = loungePostDetail.id
       const { data, error } = await supabaseClient
         .from('feed_comments')
-        .select('id,body,created_at,user_id,parent_id,like_count,repost_count,bookmark_count')
+        .select(FEED_COMMENT_SELECT_COLS)
         .eq('post_id', postId)
         .is('hidden_at', null)
         .order('created_at', { ascending: true })
@@ -2683,14 +3080,17 @@ export default function SocialFeed({
     setLoungeDetailCommentComposerExpanded(false)
     setLoungeDetailCommentComposerHint('')
     setLoungeDetailCommentKbOverlapPx(0)
+    clearLoungeDetailCommentComposerMedia()
     setLoungeCommentDetailPathIds([])
     setLoungeDetailCommentEditingId(null)
     setLoungeDetailCommentEditDraft('')
     setLoungeDetailCommentEditBusy(false)
     setLoungeDetailCommentDeleteBusyId(null)
+    setLoungeDetailCommentEditImageUrls([])
+    setLoungeDetailCommentEditGifUrl('')
     loungeTitleRevealRef.current = 1
     setLoungeTitleReveal(1)
-  }, [])
+  }, [clearLoungeDetailCommentComposerMedia])
 
   const closeLoungePostDetail = useCallback(() => {
     setLoungePostDetailMenuOpen(false)
@@ -6623,6 +7023,16 @@ export default function SocialFeed({
                         onCommentEditSave={saveLoungeDetailCommentEdit}
                         onCommentEditCancel={cancelLoungeDetailCommentEdit}
                         commentEditBusy={loungeDetailCommentEditBusy}
+                        commentEditHasRemoteMedia={
+                          loungeDetailCommentEditImageUrls.length > 0 ||
+                          String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
+                          Boolean(
+                            loungeDetailCommentEditingId &&
+                              feedCommentStreamVideoUid(
+                                loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId),
+                              ),
+                          )
+                        }
                         interactionStateFor={interactionStateForComment}
                         toggleInteraction={noopLoungeBarPostToggle}
                         onPlainRepost={(p) => void addLoungeDetailCommentPlainRepost(p.id)}
@@ -6681,6 +7091,16 @@ export default function SocialFeed({
                         onCommentEditSave={saveLoungeDetailCommentEdit}
                         onCommentEditCancel={cancelLoungeDetailCommentEdit}
                         commentEditBusy={loungeDetailCommentEditBusy}
+                        commentEditHasRemoteMedia={
+                          loungeDetailCommentEditImageUrls.length > 0 ||
+                          String(loungeDetailCommentEditGifUrl || '').trim().length > 0 ||
+                          Boolean(
+                            loungeDetailCommentEditingId &&
+                              feedCommentStreamVideoUid(
+                                loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId),
+                              ),
+                          )
+                        }
                         interactionStateFor={interactionStateForComment}
                         toggleInteraction={noopLoungeBarPostToggle}
                         onPlainRepost={(p) => void addLoungeDetailCommentPlainRepost(p.id)}
@@ -6783,7 +7203,12 @@ export default function SocialFeed({
                             const next = e.relatedTarget
                             if (host && next instanceof Node && host.contains(next)) return
                             window.setTimeout(() => {
-                              if (!loungeDetailCommentDraftRef.current.trim()) {
+                              const t = loungeDetailCommentDraftRef.current.trim()
+                              const hasLocal =
+                                loungeDetailCommentImageItemsRef.current.length > 0 ||
+                                String(loungeDetailCommentMediaUrl || '').trim().length > 0 ||
+                                loungeDetailCommentVideoSlotRef.current != null
+                              if (!t && !hasLocal) {
                                 setLoungeDetailCommentComposerExpanded(false)
                               }
                             }, 220)
@@ -6797,11 +7222,139 @@ export default function SocialFeed({
                         {loungeDetailCommentComposerHint ? (
                           <p className="mb-0.5 text-[12px] leading-snug text-amber-200/90">{loungeDetailCommentComposerHint}</p>
                         ) : null}
+                        <input
+                          ref={loungeDetailCommentMediaInputRef}
+                          type="file"
+                          accept="image/*,video/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const input = e.target
+                            const files = Array.from(input.files || [])
+                            if (!files.length) return
+                            setLoungeDetailCommentErr('')
+                            const hasVideo = files.some((f) => isProbablyVideoFile(f))
+                            if (hasVideo) {
+                              const vf = files.find((f) => isProbablyVideoFile(f))
+                              if (!vf) {
+                                try {
+                                  input.value = ''
+                                } catch {
+                                  // ignore
+                                }
+                                return
+                              }
+                              setLoungeDetailCommentImageItems((prev) => {
+                                for (const it of prev) {
+                                  try {
+                                    URL.revokeObjectURL(it.preview)
+                                  } catch {
+                                    // ignore
+                                  }
+                                }
+                                return []
+                              })
+                              cancelLoungeDetailCommentMediaPrep()
+                              setLoungeDetailCommentMediaUrl('')
+                              try {
+                                input.value = ''
+                              } catch {
+                                // ignore
+                              }
+                              void queueLoungeVideoOrCrop(vf, 'detailComment')
+                              return
+                            }
+                            const bad = files.some((f) => !isProbablyImageFile(f))
+                            if (bad) {
+                              setLoungeDetailCommentErr('Unsupported media type. Please choose an image or video file.')
+                              try {
+                                input.value = ''
+                              } catch {
+                                // ignore
+                              }
+                              return
+                            }
+                            cancelLoungeDetailCommentMediaPrep()
+                            const prevImgs = loungeDetailCommentImageItemsRef.current
+                            const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+                            loungeDetailCommentImageItemsRef.current = next
+                            setLoungeDetailCommentImageItems(next)
+                            if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+                            try {
+                              input.value = ''
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                        />
+                        {(() => {
+                          const gifUrl = String(loungeDetailCommentMediaUrl || '').trim()
+                          const imageUrls = loungeDetailCommentImageItems.map((x) => x.preview)
+                          const carouselUrls = gifUrl ? [...imageUrls, gifUrl] : imageUrls
+                          if (carouselUrls.length === 0) return null
+                          const nImg = loungeDetailCommentImageItems.length
+                          return (
+                            <LoungeImageCarousel
+                              urls={carouselUrls}
+                              variant="composer"
+                              firstMarginTopClass="mt-1.5"
+                              regionAriaLabel={gifUrl ? 'Reply images and GIF' : 'Reply images'}
+                              removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
+                              onRemoveIndex={(i) => {
+                                if (i < nImg) {
+                                  setLoungeDetailCommentImageItems((prev) => {
+                                    const row = prev[i]
+                                    if (row?.preview) {
+                                      try {
+                                        URL.revokeObjectURL(row.preview)
+                                      } catch {
+                                        // ignore
+                                      }
+                                    }
+                                    return prev.filter((_, j) => j !== i)
+                                  })
+                                } else {
+                                  setLoungeDetailCommentMediaUrl('')
+                                }
+                              }}
+                            />
+                          )
+                        })()}
+                        {loungeDetailCommentVideoSlot ? (
+                          <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                            {!loungeDetailCommentVideoSlot.file && loungeDetailCommentVideoSlot.preview ? (
+                              <img
+                                src={loungeDetailCommentVideoSlot.preview}
+                                alt=""
+                                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
+                              />
+                            ) : loungeDetailCommentVideoSlot.preview ? (
+                              <video
+                                src={loungeDetailCommentVideoSlot.preview}
+                                poster={loungeDetailCommentVideoSlot.posterUrl || undefined}
+                                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
+                                controls
+                                playsInline
+                                preload="metadata"
+                                aria-label="Video preview"
+                              />
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => cancelLoungeDetailCommentMediaPrep()}
+                              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55"
+                              aria-label="Remove video"
+                              title="Remove video"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : null}
                         <div className="mx-auto mt-0.5 h-px w-[92%] bg-zinc-700/85" role="presentation" aria-hidden />
                         <div className="mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
                           <button
                             type="button"
-                            onClick={() => flashLoungeDetailCommentComposerHint('Photos and videos are not supported in replies yet.')}
+                            onClick={() => loungeDetailCommentMediaInputRef.current?.click()}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add media"
                             aria-label="Add media"
@@ -6830,7 +7383,11 @@ export default function SocialFeed({
                           </button>
                           <button
                             type="button"
-                            onClick={() => flashLoungeDetailCommentComposerHint('GIFs are not supported in replies yet.')}
+                            onClick={() => {
+                              if (openProfileGateIfNeeded()) return
+                              setKlipyPickerTarget('detailComment')
+                              setKlipyPickerOpen(true)
+                            }}
                             className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add GIF"
                             aria-label="Add GIF"
@@ -6874,7 +7431,11 @@ export default function SocialFeed({
                               onClick={() => void submitLoungeDetailComment()}
                               disabled={
                                 loungeDetailCommentBusy ||
-                                !loungeDetailCommentDraft.trim() ||
+                                loungeDetailCommentVideoPostBlocked ||
+                                (!loungeDetailCommentDraft.trim() &&
+                                  loungeDetailCommentImageItems.length === 0 &&
+                                  !String(loungeDetailCommentMediaUrl || '').trim() &&
+                                  !loungeDetailCommentVideoSlot) ||
                                 loungeDetailCommentDraft.length > LOUNGE_COMMENT_BODY_MAX
                               }
                               className="min-h-7 shrink-0 touch-manipulation rounded-md bg-cyan-600 px-2 py-0.5 text-[13px] font-bold leading-none text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent]"
@@ -7721,7 +8282,9 @@ export default function SocialFeed({
               type="button"
               onClick={() => {
                 if (loungePostUploadBar.mode === 'mediaPrep' && !loungePostUploadBar.postSubmission) {
-                  if (quoteRepostVideoSlotRef.current?.prepStatus === 'preparing') {
+                  if (loungeDetailCommentVideoSlotRef.current?.prepStatus === 'preparing') {
+                    cancelLoungeDetailCommentMediaPrep()
+                  } else if (quoteRepostVideoSlotRef.current?.prepStatus === 'preparing') {
                     cancelQuoteRepostMediaPrep()
                   } else {
                     cancelComposerMediaPrep()
@@ -7752,12 +8315,23 @@ export default function SocialFeed({
             setLoungeVideoCrop(null)
           }}
           onConfirm={(result) => {
-            if (loungeVideoCrop.mode === 'composer' || loungeVideoCrop.mode === 'quote') {
-              const startPrep = loungeVideoCrop.mode === 'quote' ? startQuoteRepostVideoPrepFromSpec : startComposerVideoPrepFromSpec
+            if (
+              loungeVideoCrop.mode === 'composer' ||
+              loungeVideoCrop.mode === 'quote' ||
+              loungeVideoCrop.mode === 'detailComment'
+            ) {
+              const startPrep =
+                loungeVideoCrop.mode === 'quote'
+                  ? startQuoteRepostVideoPrepFromSpec
+                  : loungeVideoCrop.mode === 'detailComment'
+                    ? startLoungeDetailCommentVideoPrepFromSpec
+                    : startComposerVideoPrepFromSpec
               const disposeSlot =
                 loungeVideoCrop.mode === 'quote'
                   ? () => disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
-                  : () => disposeComposerVideoMedia(composerVideoSlotRef.current)
+                  : loungeVideoCrop.mode === 'detailComment'
+                    ? () => disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
+                    : () => disposeComposerVideoMedia(composerVideoSlotRef.current)
               if (result instanceof File) {
                 disposeSlot()
                 const previewUrl = URL.createObjectURL(result)
@@ -7766,6 +8340,7 @@ export default function SocialFeed({
                   { file: result, posterUrl: null, preview: previewUrl, streamVideoUid: null },
                 )
                 if (loungeVideoCrop.mode === 'quote') setQuoteRepostMediaUrl('')
+                else if (loungeVideoCrop.mode === 'detailComment') setLoungeDetailCommentMediaUrl('')
                 else setComposerMediaUrl('')
               } else if (result && typeof result === 'object' && result.type === 'composerTrimJob') {
                 disposeSlot()
@@ -7785,6 +8360,7 @@ export default function SocialFeed({
                   streamVideoUid: null,
                 })
                 if (loungeVideoCrop.mode === 'quote') setQuoteRepostMediaUrl('')
+                else if (loungeVideoCrop.mode === 'detailComment') setLoungeDetailCommentMediaUrl('')
                 else setComposerMediaUrl('')
               }
             } else if (result instanceof File) {

@@ -9,6 +9,8 @@ import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 const imgClassByVariant = {
   feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
   detail: 'block max-h-56 w-auto max-w-full h-auto object-contain sm:max-h-60',
+  /** Post detail comment list: ~⅔ of `detail` image caps. */
+  commentInline: 'block max-h-36 w-auto max-w-full h-auto object-contain sm:max-h-40',
   embed: 'block max-h-40 w-auto max-w-full h-auto object-contain sm:max-h-44',
   composer: 'block max-h-40 w-auto max-w-full h-auto object-contain',
 }
@@ -158,7 +160,8 @@ export function LoungeImageCarousel({
     ? 'max-w-[min(78vw,18rem)]'
     : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
   const rounding = variant === 'embed' ? 'rounded-lg' : 'rounded-xl'
-  const border = variant === 'embed' ? 'border-zinc-600/40' : 'border-zinc-700/60'
+  const border =
+    variant === 'embed' ? 'border-zinc-600/40' : variant === 'commentInline' ? 'border-zinc-700/50' : 'border-zinc-700/60'
 
   const nudgeScrollStart = () => {
     const el = carouselScrollRef.current

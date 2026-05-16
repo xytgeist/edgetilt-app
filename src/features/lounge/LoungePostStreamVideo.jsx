@@ -9,6 +9,7 @@ import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js
 const videoClassByVariant = {
   feed: 'block max-h-48 w-auto max-w-full h-auto object-contain sm:max-h-52',
   detail: 'block max-h-[min(70vh,520px)] w-auto max-w-full h-auto object-contain',
+  commentInline: 'block max-h-[min(47vh,347px)] w-auto max-w-full h-auto object-contain',
   embed: 'block max-h-40 w-auto max-w-full h-auto object-contain sm:max-h-44',
   composer: 'block max-h-40 w-auto max-w-full h-auto object-contain',
 }
@@ -17,6 +18,7 @@ const videoClassByVariant = {
 const slideMaxWByVariant = {
   feed: 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]',
   detail: 'max-w-full',
+  commentInline: 'max-w-full',
   embed: 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]',
   composer: 'max-w-[min(78vw,18rem)]',
 }
@@ -24,6 +26,7 @@ const slideMaxWByVariant = {
 const roundingByVariant = {
   feed: 'rounded-xl',
   detail: 'rounded-xl',
+  commentInline: 'rounded-xl',
   embed: 'rounded-lg',
   composer: 'rounded-xl',
 }
@@ -31,6 +34,7 @@ const roundingByVariant = {
 const borderByVariant = {
   feed: 'border-zinc-700/60',
   detail: 'border-zinc-700/60',
+  commentInline: 'border-zinc-700/50',
   embed: 'border-zinc-600/40',
   composer: 'border-zinc-700/60',
 }
@@ -40,6 +44,7 @@ const posterFrameMinHByVariant = {
   feed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
   embed: 'min-h-[min(36vw,12rem)] sm:min-h-[13rem]',
   detail: 'min-h-[min(32vw,11rem)] sm:min-h-[15rem]',
+  commentInline: 'min-h-[min(22vw,7.5rem)] sm:min-h-[10rem]',
   composer: 'min-h-[8rem]',
 }
 
@@ -51,6 +56,8 @@ const posterFallbackFrameClassByVariant = {
   feed: 'relative flex max-h-52 w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-h-52 sm:max-w-[min(72vw,17rem)]',
   embed: 'relative flex max-h-44 w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-h-44 sm:max-w-[min(72vw,17rem)]',
   detail: 'relative flex max-h-[min(70vh,520px)] w-fit max-w-full items-center justify-center bg-black',
+  commentInline:
+    'relative flex max-h-[min(47vh,347px)] w-fit max-w-full items-center justify-center bg-black',
   composer: 'relative flex max-h-40 w-fit max-w-[min(78vw,18rem)] items-center justify-center bg-black',
 }
 

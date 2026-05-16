@@ -1149,6 +1149,26 @@ export default function SocialFeed({
     return () => window.clearTimeout(tid)
   }, [loungeShareFlash])
 
+  /** Feed / quote / reply background jobs share one upload bar — do not clear it from unrelated surface cleanup. */
+  const dismissLoungePostUploadBarIfIdle = useCallback(() => {
+    if (loungePostJobRunningRef.current || loungeDetailCommentJobRunningRef.current) return
+    setLoungePostUploadBar(null)
+  }, [])
+
+  const quoteRepostBackgroundUploadInFlight = useCallback(
+    () =>
+      Boolean(
+        loungePostJobRunningRef.current &&
+          String(loungePostSnapshotRef.current?.quoteRepostOfPostId || '').trim(),
+      ),
+    [],
+  )
+
+  const loungeDetailCommentBackgroundUploadInFlight = useCallback(
+    () => loungeDetailCommentJobRunningRef.current && loungeDetailCommentSnapshotRef.current != null,
+    [],
+  )
+
   const disposeComposerVideoMedia = useCallback(
     (slot) => {
       if (!slot) return
@@ -1275,6 +1295,12 @@ export default function SocialFeed({
           }
           handoff.resolve(result)
           composerVideoLastEncodedFileRef.current = null
+          if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
+            setLoungePostUploadBar((bar) =>
+              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
+            )
+            return
+          }
           const { encodedFile, streamVideoUid } = result
           setComposerVideoSlot((prev) => {
             if (!prev || prev.prepJobId !== jobId) return prev
@@ -1322,10 +1348,14 @@ export default function SocialFeed({
           }
           if (e?.name === 'AbortError') {
             if (composerVideoPrepJobIdRef.current !== jobId) return
-            setLoungePostUploadBar(null)
+            dismissLoungePostUploadBarIfIdle()
             return
           }
           if (composerVideoPrepJobIdRef.current !== jobId) return
+          if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
+            dismissLoungePostUploadBarIfIdle()
+            return
+          }
           const msg =
             (e instanceof Error ? e.message : String(e || '')).trim() ||
             'Video upload failed after multiple attempts.'
@@ -1447,6 +1477,12 @@ export default function SocialFeed({
           }
           handoff.resolve(result)
           quoteRepostVideoLastEncodedFileRef.current = null
+          if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
+            setLoungePostUploadBar((bar) =>
+              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
+            )
+            return
+          }
           const { encodedFile, streamVideoUid } = result
           setQuoteRepostVideoSlot((prev) => {
             if (!prev || prev.prepJobId !== jobId) return prev
@@ -1494,10 +1530,14 @@ export default function SocialFeed({
           }
           if (e?.name === 'AbortError') {
             if (quoteRepostVideoPrepJobIdRef.current !== jobId) return
-            setLoungePostUploadBar(null)
+            dismissLoungePostUploadBarIfIdle()
             return
           }
           if (quoteRepostVideoPrepJobIdRef.current !== jobId) return
+          if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
+            dismissLoungePostUploadBarIfIdle()
+            return
+          }
           const msg =
             (e instanceof Error ? e.message : String(e || '')).trim() ||
             'Video upload failed after multiple attempts.'
@@ -1541,57 +1581,70 @@ export default function SocialFeed({
     composerVideoLastEncodedFileRef.current = null
     disposeComposerVideoMedia(composerVideoSlotRef.current)
     setComposerVideoSlot(null)
-    setLoungePostUploadBar(null)
-  }, [disposeComposerVideoMedia])
+    dismissLoungePostUploadBarIfIdle()
+  }, [disposeComposerVideoMedia, dismissLoungePostUploadBarIfIdle])
 
   const cancelQuoteRepostMediaPrep = useCallback(() => {
-    const h = quoteRepostVideoPrepHandoffRef.current
-    if (h && !h.settled) {
+    const preserveForBackgroundQuote = quoteRepostBackgroundUploadInFlight()
+    if (!preserveForBackgroundQuote) {
+      const h = quoteRepostVideoPrepHandoffRef.current
+      if (h && !h.settled) {
+        try {
+          h.reject(new DOMException('Aborted', 'AbortError'))
+        } catch {
+          // ignore
+        }
+      }
+      quoteRepostVideoPrepHandoffRef.current = null
+      quoteRepostVideoPrepJobIdRef.current += 1
       try {
-        h.reject(new DOMException('Aborted', 'AbortError'))
+        quoteRepostVideoPrepAbortRef.current?.abort()
       } catch {
         // ignore
       }
+      quoteRepostVideoPrepAbortRef.current = null
+      quoteRepostVideoLastEncodedFileRef.current = null
+      disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
+      setQuoteRepostVideoSlot(null)
     }
-    quoteRepostVideoPrepHandoffRef.current = null
-    quoteRepostVideoPrepJobIdRef.current += 1
-    try {
-      quoteRepostVideoPrepAbortRef.current?.abort()
-    } catch {
-      // ignore
-    }
-    quoteRepostVideoPrepAbortRef.current = null
-    quoteRepostVideoLastEncodedFileRef.current = null
-    disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
-    setQuoteRepostVideoSlot(null)
-    setLoungePostUploadBar(null)
-  }, [disposeComposerVideoMedia])
+    dismissLoungePostUploadBarIfIdle()
+  }, [disposeComposerVideoMedia, dismissLoungePostUploadBarIfIdle, quoteRepostBackgroundUploadInFlight])
 
   const cancelLoungeDetailCommentMediaPrep = useCallback(() => {
-    const h = loungeDetailCommentVideoPrepHandoffRef.current
-    if (h && !h.settled) {
+    const preserveForBackgroundComment = loungeDetailCommentBackgroundUploadInFlight()
+    if (!preserveForBackgroundComment) {
+      const h = loungeDetailCommentVideoPrepHandoffRef.current
+      if (h && !h.settled) {
+        try {
+          h.reject(new DOMException('Aborted', 'AbortError'))
+        } catch {
+          // ignore
+        }
+      }
+      loungeDetailCommentVideoPrepHandoffRef.current = null
+      loungeDetailCommentVideoPrepJobIdRef.current += 1
       try {
-        h.reject(new DOMException('Aborted', 'AbortError'))
+        loungeDetailCommentVideoPrepAbortRef.current?.abort()
       } catch {
         // ignore
       }
+      loungeDetailCommentVideoPrepAbortRef.current = null
+      loungeDetailCommentVideoLastEncodedFileRef.current = null
+      disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
+      setLoungeDetailCommentVideoSlot(null)
     }
-    loungeDetailCommentVideoPrepHandoffRef.current = null
-    loungeDetailCommentVideoPrepJobIdRef.current += 1
-    try {
-      loungeDetailCommentVideoPrepAbortRef.current?.abort()
-    } catch {
-      // ignore
-    }
-    loungeDetailCommentVideoPrepAbortRef.current = null
-    loungeDetailCommentVideoLastEncodedFileRef.current = null
-    disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
-    setLoungeDetailCommentVideoSlot(null)
-    setLoungePostUploadBar(null)
-  }, [disposeComposerVideoMedia])
+    dismissLoungePostUploadBarIfIdle()
+  }, [
+    disposeComposerVideoMedia,
+    dismissLoungePostUploadBarIfIdle,
+    loungeDetailCommentBackgroundUploadInFlight,
+  ])
 
-  const clearLoungeDetailCommentComposerMedia = useCallback(() => {
-    cancelLoungeDetailCommentMediaPrep()
+  const clearLoungeDetailCommentComposerMedia = useCallback((opts = {}) => {
+    const preserveBackgroundUpload = Boolean(opts.preserveBackgroundUpload)
+    if (!preserveBackgroundUpload) {
+      cancelLoungeDetailCommentMediaPrep()
+    }
     setLoungeDetailCommentImageItems((prev) => {
       for (const it of prev) {
         try {
@@ -1610,7 +1663,10 @@ export default function SocialFeed({
     } catch {
       // ignore
     }
-  }, [cancelLoungeDetailCommentMediaPrep, endLoungeDetailCommentMediaSession])
+  }, [
+    cancelLoungeDetailCommentMediaPrep,
+    endLoungeDetailCommentMediaSession,
+  ])
 
   const collapseLoungeDetailCommentComposer = useCallback(() => {
     setLoungeDetailCommentDiscardPromptOpen(false)
@@ -2372,13 +2428,17 @@ export default function SocialFeed({
     (post) => {
       if (!post?.id || loungeReadOnly) return
       if (openProfileGateIfNeeded()) return
+      if (quoteRepostBackgroundUploadInFlight()) {
+        setLoungeManageErr('Your quote repost is still uploading. You can keep browsing while it finishes.')
+        return
+      }
       clearQuoteRepostMedia()
       setQuoteRepostDraft('')
       setQuoteRepostErr('')
       setQuoteRepostModal({ mode: 'compose', original: post })
       setLoungeDetailRepostMenuOpen(false)
     },
-    [clearQuoteRepostMedia, loungeReadOnly, openProfileGateIfNeeded]
+    [clearQuoteRepostMedia, loungeReadOnly, openProfileGateIfNeeded, quoteRepostBackgroundUploadInFlight]
   )
 
   const handlePlainRepost = useCallback(
@@ -3330,14 +3390,17 @@ export default function SocialFeed({
     setLoungeManageErr('')
     setLoungeDetailComments([])
     setLoungeDetailCommentsLoading(false)
-    try {
-      loungeDetailCommentAbortRef.current?.abort()
-    } catch {
-      // ignore
+    const commentUploadInFlight = loungeDetailCommentBackgroundUploadInFlight()
+    if (!commentUploadInFlight) {
+      try {
+        loungeDetailCommentAbortRef.current?.abort()
+      } catch {
+        // ignore
+      }
+      loungeDetailCommentAbortRef.current = null
+      loungeDetailCommentJobRunningRef.current = false
+      loungeDetailCommentSnapshotRef.current = null
     }
-    loungeDetailCommentAbortRef.current = null
-    loungeDetailCommentJobRunningRef.current = false
-    loungeDetailCommentSnapshotRef.current = null
     setLoungeDetailCommentDraft('')
     setLoungeDetailCommentErr('')
     setInteractionByComment({})
@@ -3345,7 +3408,7 @@ export default function SocialFeed({
     setLoungeDetailCommentComposerExpanded(false)
     setLoungeDetailCommentDiscardPromptOpen(false)
     setLoungeDetailCommentKbOverlapPx(0)
-    clearLoungeDetailCommentComposerMedia()
+    clearLoungeDetailCommentComposerMedia({ preserveBackgroundUpload: commentUploadInFlight })
     setLoungeCommentDetailPathIds([])
     setLoungeDetailCommentEditingId(null)
     setLoungeDetailCommentEditDraft('')
@@ -3355,7 +3418,7 @@ export default function SocialFeed({
     setLoungeDetailCommentEditGifUrl('')
     loungeTitleRevealRef.current = 1
     setLoungeTitleReveal(1)
-  }, [clearLoungeDetailCommentComposerMedia])
+  }, [clearLoungeDetailCommentComposerMedia, loungeDetailCommentBackgroundUploadInFlight])
 
   const closeLoungePostDetail = useCallback(() => {
     setLoungePostDetailMenuOpen(false)

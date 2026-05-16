@@ -90,7 +90,6 @@ import {
   blurLoungeComposerCaption,
   focusLoungeComposerCaption,
   LOUNGE_COMPOSER_FOCUS_AFTER_MEDIA_DELAYS_MS,
-  loungeComposerToolbarKeepFocusHandlers,
   scheduleLoungeComposerTextareaFocus,
 } from './loungeDockComposeFocus.js'
 import { buildLoungeDockArcCarouselItems } from '../../components/loungeDockArcCarouselItems.jsx'
@@ -132,6 +131,10 @@ function isLoungePostWithinAuthorEditWindow(createdAt) {
 }
 
 const LOUNGE_COMPOSER_MAX_IMAGES = 6
+
+const LOUNGE_COMPOSER_MEDIA_INPUT_ID = 'lounge-composer-media-input'
+const LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID = 'lounge-detail-comment-media-input'
+const LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID = 'lounge-quote-repost-media-input'
 
 function newComposerImageId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -637,19 +640,6 @@ export default function SocialFeed({
 
   const endLoungeDetailCommentMediaSession = useCallback(() => {
     loungeDetailCommentMediaSessionRef.current = false
-  }, [])
-
-  const openComposerMediaPicker = useCallback(() => {
-    composerMediaInputRef.current?.click()
-  }, [])
-
-  const openDetailCommentMediaPicker = useCallback(() => {
-    beginLoungeDetailCommentMediaSession()
-    loungeDetailCommentMediaInputRef.current?.click()
-  }, [beginLoungeDetailCommentMediaSession])
-
-  const openQuoteRepostMediaPicker = useCallback(() => {
-    quoteRepostMediaInputRef.current?.click()
   }, [])
 
   const blurLoungeComposerCaptionForTarget = useCallback((target) => {
@@ -5885,6 +5875,7 @@ export default function SocialFeed({
               aria-hidden
             />
             <input
+              id={LOUNGE_COMPOSER_MEDIA_INPUT_ID}
               ref={composerMediaInputRef}
               type="file"
               accept="image/*,video/*"
@@ -5952,10 +5943,10 @@ export default function SocialFeed({
               }}
             />
             <div className="mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1">
-              <button
-                type="button"
-                {...loungeComposerToolbarKeepFocusHandlers(openComposerMediaPicker)}
-                className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
+              <label
+                htmlFor={LOUNGE_COMPOSER_MEDIA_INPUT_ID}
+                onMouseDown={(e) => e.preventDefault()}
+                className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                 title="Add media"
                 aria-label="Add media"
               >
@@ -5980,7 +5971,7 @@ export default function SocialFeed({
                   />
                   <circle cx="8" cy="8" r="1" fill="currentColor" />
                 </svg>
-              </button>
+              </label>
               <button
                 type="button"
                 onClick={() => openKlipyPicker('composer')}
@@ -7412,6 +7403,7 @@ export default function SocialFeed({
                           <p className="mb-0.5 text-[12px] leading-snug text-amber-200/90">{loungeDetailCommentComposerHint}</p>
                         ) : null}
                         <input
+                          id={LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID}
                           ref={loungeDetailCommentMediaInputRef}
                           type="file"
                           accept="image/*,video/*"
@@ -7554,10 +7546,11 @@ export default function SocialFeed({
                         ) : null}
                         <div className="mx-auto mt-0.5 h-px w-[92%] bg-zinc-700/85" role="presentation" aria-hidden />
                         <div className="mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
-                          <button
-                            type="button"
-                            {...loungeComposerToolbarKeepFocusHandlers(openDetailCommentMediaPicker)}
-                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
+                          <label
+                            htmlFor={LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => beginLoungeDetailCommentMediaSession()}
+                            className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
                             title="Add media"
                             aria-label="Add media"
                           >
@@ -7582,7 +7575,7 @@ export default function SocialFeed({
                               />
                               <circle cx="8" cy="8" r="1" fill="currentColor" />
                             </svg>
-                          </button>
+                          </label>
                           <button
                             type="button"
                             onClick={() => openKlipyPicker('detailComment')}
@@ -7982,6 +7975,7 @@ export default function SocialFeed({
                               />
                             </div>
                             <input
+                              id={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
                               ref={quoteRepostMediaInputRef}
                               type="file"
                               accept="image/*,video/*"
@@ -8121,13 +8115,17 @@ export default function SocialFeed({
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-zinc-700/70 pt-1.5 pb-1">
                         <div className="flex h-10 shrink-0 items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            disabled={quoteRepostBusy}
-                            {...loungeComposerToolbarKeepFocusHandlers(openQuoteRepostMediaPicker)}
-                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                          <label
+                            htmlFor={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
+                            onMouseDown={(e) => {
+                              if (!quoteRepostBusy) e.preventDefault()
+                            }}
+                            className={`flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent] ${
+                              quoteRepostBusy ? 'pointer-events-none opacity-45' : ''
+                            }`}
                             title="Add media"
                             aria-label="Add media"
+                            aria-disabled={quoteRepostBusy || undefined}
                           >
                             <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
                               <rect
@@ -8150,7 +8148,7 @@ export default function SocialFeed({
                               />
                               <circle cx="8" cy="8" r="1" fill="currentColor" />
                             </svg>
-                          </button>
+                          </label>
                           <button
                             type="button"
                             disabled={quoteRepostBusy}

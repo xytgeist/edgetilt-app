@@ -498,7 +498,8 @@ export function loungeDockWheelLayout(
     homeAnchorAngle,
   )
 
-  const spinEnabled = offsets.some((o) => !o.onScreen)
+  /** Spin stays available even when every chip fits on-screen (rotation is optional, not gated). */
+  const spinEnabled = itemCount > 0
 
   return { offsets, radius, pickerAngle, focusedIndex, step, homeAnchorAngle, spinEnabled }
 }

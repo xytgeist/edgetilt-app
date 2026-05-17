@@ -55,6 +55,9 @@ const FAB_IDLE_DIM_OPACITY = 0.5
 const FAB_LONG_PRESS_RING_COUNT = 4
 /** ms per phase: ring2 in → ring3 in → ring4 in → rings 2–4 out (loops; ring1 stays). */
 const FAB_LONG_PRESS_RING_SEGMENT_MS = 280
+/** Home chip: compact panel chrome ↔ wheel / L menu slot. */
+const LOUNGE_DOCK_HOME_MORPH_MS = 440
+const LOUNGE_DOCK_HOME_MORPH_EASING = 'cubic-bezier(0.33, 1, 0.45, 1)'
 /** Circle 1 → 4: heaviest stroke innermost, thinnest outermost (user example 4→1). */
 const FAB_LONG_PRESS_RING_STROKES_PX = [3.5, 2.65, 1.75, 1]
 /** Ring 1 sits just outside the FAB; each next ring is one fixed step further out. */
@@ -240,7 +243,7 @@ function LoungeDockMenuLayoutCoachDiagrams() {
           </text>
         </svg>
         <p className="mt-1 text-center text-[10px] leading-snug text-zinc-500">
-          Shortcuts in a full ring around the button; spin if some sit off-screen.
+          Shortcuts in a full ring around the button; drag the ring to rotate.
         </p>
       </figure>
       <figure className="rounded-xl border border-zinc-700/70 bg-zinc-900/70 p-2.5">
@@ -1327,13 +1330,19 @@ export default function LoungeDockArcCarouselPrototype({
       } ${spinning ? 'cursor-grabbing' : ''} disabled:cursor-not-allowed ${glow.textIdle} ${
         spinning
           ? ''
-          : panelChromeHomeAnim || fadesWithReveal
+          : fadesWithReveal
             ? 'transition-[left,top,opacity] duration-300 ease-out'
-            : 'transition-[left,top,opacity] duration-200 ease-out'
+            : panelChromeHomeAnim
+              ? ''
+              : 'transition-[left,top,opacity] duration-200 ease-out'
       }`}
       style={{
         left: fabCenterX + offset.x,
         top: fabCenterY + offset.y,
+        transition:
+          spinning || !panelChromeHomeAnim
+            ? undefined
+            : `left ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}, top ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}, opacity 280ms ease-out`,
         zIndex: isCornerL
           ? isFocused
             ? 42

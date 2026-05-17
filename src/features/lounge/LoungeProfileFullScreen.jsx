@@ -33,6 +33,8 @@ import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeOgBadge from './LoungeOgBadge'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
+import LoungeProfileFollowList from './LoungeProfileFollowList.jsx'
+import { loadLoungeProfileScreenData } from './loungeProfileScreenLoad.js'
 import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
 import { LOUNGE_DOCK_FAB_SIZE_PX } from '../../utils/loungeDockFabPosition.js'
 
@@ -213,6 +215,10 @@ export default function LoungeProfileFullScreen({
   viewerCanUseLoungeChat = false,
   /** Scroll-linked FAB reveal while profile is open (arc carousel dock). */
   onDockRevealChange = null,
+  /** Open another member profile from feed rows (replaces modal). */
+  onNavigateToProfile = null,
+  /** Stacked profile opened from a parent sheet (follow list); uses absolute overlay. */
+  stackedOverlay = false,
 }) {
   const [tab, setTab] = useState('posts')
   const [interactionPosts, setInteractionPosts] = useState([])
@@ -255,6 +261,10 @@ export default function LoungeProfileFullScreen({
   const [profileDockReveal, setProfileDockReveal] = useState(1)
   const [profileDockFooterMeasured, setProfileDockFooterMeasured] = useState(44)
   const wasOwnProfileEditingRef = useRef(false)
+  /** @type {['following' | 'followers'] | null} */
+  const [followListTab, setFollowListTab] = useState(null)
+  /** Profiles opened from a follow list without dismissing the list (back returns to list). */
+  const [nestedProfileStack, setNestedProfileStack] = useState([])
 
   const displayName = String(profile?.display_name || profile?.handle || 'Member').trim() || 'Member'
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
@@ -965,17 +975,88 @@ export default function LoungeProfileFullScreen({
     [finalizeAvatarUpload]
   )
 
+  useEffect(() => {
+    if (!open) {
+      setFollowListTab(null)
+      setNestedProfileStack([])
+    }
+  }, [open])
+
+  const openNestedProfileFromFollowList = useCallback(
+    (entity) => {
+      const uid = String(entity?.user_id || '').trim()
+      if (!uid || !hydratePosts) return
+      const stub =
+        entity?.author_profile && typeof entity.author_profile === 'object'
+          ? entity.author_profile
+          : {}
+      setNestedProfileStack((prev) => [
+        ...prev,
+        {
+          userId: uid,
+          profile: { user_id: uid, ...stub },
+          posts: [],
+          loading: true,
+          error: '',
+        },
+      ])
+      void (async () => {
+        try {
+          const { profile, posts, postsErr } = await loadLoungeProfileScreenData(
+            supabaseClient,
+            uid,
+            stub,
+            hydratePosts,
+          )
+          setNestedProfileStack((prev) =>
+            prev.map((layer) =>
+              layer.userId === uid
+                ? {
+                    ...layer,
+                    profile: profile || layer.profile,
+                    posts,
+                    loading: false,
+                    error: postsErr || '',
+                  }
+                : layer,
+            ),
+          )
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Could not load profile.'
+          setNestedProfileStack((prev) =>
+            prev.map((layer) =>
+              layer.userId === uid ? { ...layer, loading: false, error: msg } : layer,
+            ),
+          )
+        }
+      })()
+    },
+    [hydratePosts, supabaseClient],
+  )
+
+  const popNestedProfile = useCallback(() => {
+    setNestedProfileStack((prev) => (prev.length > 0 ? prev.slice(0, -1) : prev))
+  }, [])
+
+  const rootShellClass = stackedOverlay
+    ? 'absolute inset-0 z-40 bg-zinc-950'
+    : 'fixed inset-0 z-[99] sm:bg-black/85'
+
   return (
-    <div className="fixed inset-0 z-[99] sm:bg-black/85" role="dialog" aria-modal="true" aria-label="Profile">
-      <button
-        type="button"
-        className="absolute inset-0 z-0 hidden cursor-default sm:block"
-        aria-label="Close profile"
-        onClick={onClose}
-      />
+    <div className={rootShellClass} role="dialog" aria-modal="true" aria-label="Profile">
+      {!stackedOverlay ? (
+        <button
+          type="button"
+          className="absolute inset-0 z-0 hidden cursor-default sm:block"
+          aria-label="Close profile"
+          onClick={onClose}
+        />
+      ) : null}
       <div
-        className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/90 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none ${
-          panelVisible ? 'translate-x-0' : 'translate-x-full'
+        className={`${
+          stackedOverlay ? 'absolute' : 'fixed'
+        } inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/90 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none ${
+          stackedOverlay || panelVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         onTransitionEnd={(e) => {
           if (e.propertyName !== 'transform') return
@@ -1252,18 +1333,26 @@ export default function LoungeProfileFullScreen({
             </div>
 
             <div className="mt-4 flex gap-6 text-[15px]">
-              <div>
+              <button
+                type="button"
+                onClick={() => setFollowListTab('following')}
+                className="touch-manipulation text-left [-webkit-tap-highlight-color:transparent] hover:opacity-90 active:opacity-80"
+              >
                 <span className="font-bold text-white" title={fullStatCountTitle(followingCount)}>
                   {formatCompactStatCount(followingCount)}
                 </span>{' '}
                 <span className="text-zinc-500">Following</span>
-              </div>
-              <div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFollowListTab('followers')}
+                className="touch-manipulation text-left [-webkit-tap-highlight-color:transparent] hover:opacity-90 active:opacity-80"
+              >
                 <span className="font-bold text-white" title={fullStatCountTitle(followerCount)}>
                   {formatCompactStatCount(followerCount)}
                 </span>{' '}
                 <span className="text-zinc-500">Followers</span>
-              </div>
+              </button>
             </div>
 
             <div className="mt-4">
@@ -1452,6 +1541,56 @@ export default function LoungeProfileFullScreen({
           />
         ) : null}
         */}
+        {followListTab ? (
+          <LoungeProfileFollowList
+            tab={followListTab}
+            onTabChange={setFollowListTab}
+            profileUserId={profileUserId}
+            profileDisplayName={displayName}
+            viewerUserId={viewerUserId}
+            supabaseClient={supabaseClient}
+            onClose={() => setFollowListTab(null)}
+            onOpenProfile={(entity) => {
+              const uid = String(entity?.user_id || '').trim()
+              if (!uid) return
+              if (uid === profileUserId) {
+                setFollowListTab(null)
+                return
+              }
+              openNestedProfileFromFollowList(entity)
+            }}
+          />
+        ) : null}
+        {nestedProfileStack.map((layer, index) => {
+          const isTop = index === nestedProfileStack.length - 1
+          if (!isTop) return null
+          return (
+            <LoungeProfileFullScreen
+              key={layer.userId}
+              stackedOverlay
+              open
+              panelVisible
+              profileUserId={layer.userId}
+              viewerUserId={viewerUserId}
+              supabaseClient={supabaseClient}
+              profile={layer.profile}
+              posts={layer.posts}
+              loading={layer.loading}
+              error={layer.error}
+              isOwnProfile={Boolean(viewerUserId && layer.userId === viewerUserId)}
+              onClose={popNestedProfile}
+              onAfterTransitionOut={popNestedProfile}
+              postCardProps={postCardProps}
+              onProfileUpdated={onProfileUpdated}
+              hydratePosts={hydratePosts}
+              onNavigateToProfile={(entity) => {
+                const uid = String(entity?.user_id || '').trim()
+                if (!uid) return
+                openNestedProfileFromFollowList(entity)
+              }}
+            />
+          )
+        })}
         </div>
       </div>
 

@@ -5961,6 +5961,13 @@ export default function SocialFeed({
     finalizeProfileModalCloseRef.current = finalizeProfileModalClose
   }, [finalizeProfileModalClose])
 
+  const profileStubFromOpenArg = useCallback((post) => {
+    if (!post || typeof post !== 'object') return {}
+    if (post.author_profile && typeof post.author_profile === 'object') return post.author_profile
+    const { user_id: _uid, author_profile: _ap, ...rest } = post
+    return rest
+  }, [])
+
   const openProfileModal = useCallback(
     async (post) => {
       if (loungeReadOnly) {
@@ -5969,6 +5976,7 @@ export default function SocialFeed({
       }
       const userId = post?.user_id
       if (!userId) return
+      const profileStub = profileStubFromOpenArg(post)
       const prevTid = profileModalCloseFallbackTimerRef.current
       if (prevTid) {
         window.clearTimeout(prevTid)
@@ -5979,7 +5987,7 @@ export default function SocialFeed({
       setProfileModalErr('')
       setProfileModalData({
         user_id: userId,
-        ...(post?.author_profile && typeof post.author_profile === 'object' ? post.author_profile : {}),
+        ...profileStub,
       })
       setProfileModalPosts([])
       const reduce =
@@ -6018,7 +6026,7 @@ export default function SocialFeed({
         }
         const mergedProfile = {
           user_id: userId,
-          ...(post?.author_profile && typeof post.author_profile === 'object' ? post.author_profile : {}),
+          ...profileStub,
           ...(coreProfile.data || {}),
         }
         if (!coreProfile.error && coreProfile.data) {
@@ -6049,7 +6057,7 @@ export default function SocialFeed({
         setProfileModalLoading(false)
       }
     },
-    [hydrateCommunityPosts, loungeReadOnly, onRequireAuth, supabaseClient]
+    [hydrateCommunityPosts, loungeReadOnly, onRequireAuth, profileStubFromOpenArg, supabaseClient]
   )
 
   /** Open another member's profile from a post/comment row (`user_id` + optional `author_profile`). */
@@ -6061,7 +6069,7 @@ export default function SocialFeed({
       void openProfileModal({
         user_id: userId,
         ...(entity?.author_profile && typeof entity.author_profile === 'object'
-          ? { author_profile: entity.author_profile }
+          ? entity.author_profile
           : {}),
       })
     },
@@ -8630,6 +8638,7 @@ export default function SocialFeed({
           onOpenChatWithUser={openChatWithUserFromProfile}
           viewerCanUseLoungeChat={viewerCanUseLoungeChat}
           onDockRevealChange={setLoungeProfileDockReveal}
+          onNavigateToProfile={openAuthorProfile}
         />
       ) : null}
 

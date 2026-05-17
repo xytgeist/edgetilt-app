@@ -86,7 +86,12 @@ import {
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
-import { loadLoungeProfileScreenData } from './loungeProfileScreenLoad.js'
+import {
+  fetchLoungeProfilePosts,
+  fetchLoungeProfileRow,
+  loadLoungeProfileScreenPostsRemainder,
+  LOUNGE_PROFILE_POST_INITIAL_LIMIT,
+} from './loungeProfileScreenLoad.js'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
@@ -331,6 +336,7 @@ export default function SocialFeed({
   const [profileModalVisible, setProfileModalVisible] = useState(true)
   const profileModalVisibleRef = useRef(true)
   const profileModalCloseFallbackTimerRef = useRef(0)
+  const profileModalLoadGenRef = useRef(0)
   /** `closeProfileModal` is defined later; dock Home uses this ref. */
   const closeProfileModalRef = useRef(() => {})
   /** `finalizeProfileModalClose` is defined later; dock compose dismisses profile without animation wait. */
@@ -466,6 +472,8 @@ export default function SocialFeed({
   const [chatDockInitialPeerUserId, setChatDockInitialPeerUserId] = useState(null)
   const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
   const [loungePostDetail, setLoungePostDetail] = useState(null)
+  /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
+  const [loungePostDetailAboveProfile, setLoungePostDetailAboveProfile] = useState(false)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
   const [loungeDetailDraftCaption, setLoungeDetailDraftCaption] = useState('')
   const [loungeDetailEditBusy, setLoungeDetailEditBusy] = useState(false)
@@ -3485,6 +3493,7 @@ export default function SocialFeed({
       // ignore
     }
     setLoungePostDetail(null)
+    setLoungePostDetailAboveProfile(false)
     setLoungePostDetailVisible(true)
     setLoungePostDetailMenuOpen(false)
     setLoungeDetailRepostMenuOpen(false)
@@ -3595,6 +3604,7 @@ export default function SocialFeed({
       setLoungeDetailCommentEditBusy(false)
       setLoungeDetailCommentDeleteBusyId(null)
       setLoungePostDetail(post)
+      setLoungePostDetailAboveProfile(profileModalOpen || profileOverlayStack.length > 0)
       setLoungeDetailEditImageUrls([])
       setLoungeDetailEditGifUrl('')
       if (
@@ -3631,7 +3641,7 @@ export default function SocialFeed({
         requestAnimationFrame(() => setLoungePostDetailVisible(true))
       })
     },
-    [composerUserId, loungeReadOnly, onRequireAuth]
+    [composerUserId, loungeReadOnly, onRequireAuth, profileModalOpen, profileOverlayStack.length]
   )
 
   const scrollLoungeFeedToTop = useCallback(() => {
@@ -5906,11 +5916,14 @@ export default function SocialFeed({
       window.clearTimeout(tid)
       profileModalCloseFallbackTimerRef.current = 0
     }
+    profileModalLoadGenRef.current += 1
+    setLoungePostDetailAboveProfile(false)
     setProfileModalOpen(false)
     setProfileModalData(null)
     setProfileModalPosts([])
     setProfileOverlayStack([])
     setProfileModalErr('')
+    setProfileModalLoading(false)
     setProfileModalVisible(true)
     setLoungeProfileDockReveal(1)
   }, [])
@@ -5948,6 +5961,22 @@ export default function SocialFeed({
     return rest
   }, [])
 
+  const revealProfileModalPanel = useCallback((reduceMotion) => {
+    if (reduceMotion) {
+      profileModalVisibleRef.current = true
+      setProfileModalVisible(true)
+      return
+    }
+    profileModalVisibleRef.current = false
+    setProfileModalVisible(false)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        profileModalVisibleRef.current = true
+        setProfileModalVisible(true)
+      })
+    })
+  }, [])
+
   const openProfileModal = useCallback(
     async (post) => {
       if (loungeReadOnly) {
@@ -5957,6 +5986,8 @@ export default function SocialFeed({
       const userId = post?.user_id
       if (!userId) return
       const profileStub = profileStubFromOpenArg(post)
+      const loadGen = ++profileModalLoadGenRef.current
+      setLoungePostDetailAboveProfile(false)
       setProfileOverlayStack([])
       const prevTid = profileModalCloseFallbackTimerRef.current
       if (prevTid) {
@@ -5974,71 +6005,70 @@ export default function SocialFeed({
       const reduce =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
-      if (reduce) {
-        profileModalVisibleRef.current = true
-        setProfileModalVisible(true)
-      } else {
-        profileModalVisibleRef.current = false
-        setProfileModalVisible(false)
-      }
+      revealProfileModalPanel(reduce)
       try {
-        const [{ data: postRows, error: postsErr }, coreProfile] = await Promise.all([
-          supabaseClient
-            .from('community_feed_posts')
-            .select('id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height')
-            .eq('user_id', userId)
-            .is('hidden_at', null)
-            .order('created_at', { ascending: false })
-            .order('id', { ascending: false })
-            .limit(30),
-          supabaseClient
-            .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,bio,created_at,role,handle_changed_at,is_og')
-            .eq('user_id', userId)
-            .maybeSingle(),
-        ])
+        const { profile, profileErr } = await fetchLoungeProfileRow(supabaseClient, userId, profileStub)
+        if (loadGen !== profileModalLoadGenRef.current) return
+        setProfileModalData(profile)
+        if (profileErr) {
+          setProfileModalErr(profileErr)
+        }
+
+        const { posts, postsErr } = await fetchLoungeProfilePosts(
+          supabaseClient,
+          userId,
+          hydrateCommunityPosts,
+          { limit: LOUNGE_PROFILE_POST_INITIAL_LIMIT },
+        )
+        if (loadGen !== profileModalLoadGenRef.current) return
         if (postsErr) {
-          setProfileModalErr(postsErr?.message || 'Could not load posts.')
-          if (!reduce) {
-            profileModalVisibleRef.current = true
-            setProfileModalVisible(true)
+          setProfileModalErr((prev) => prev || postsErr)
+        }
+        setProfileModalPosts(posts)
+
+        void (async () => {
+          const { posts: morePosts, postsErr: moreErr } = await loadLoungeProfileScreenPostsRemainder(
+            supabaseClient,
+            userId,
+            hydrateCommunityPosts,
+            posts.length,
+          )
+          if (loadGen !== profileModalLoadGenRef.current) return
+          if (moreErr) {
+            setProfileModalErr((prev) => prev || moreErr)
+            return
           }
-          return
-        }
-        const mergedProfile = {
-          user_id: userId,
-          ...profileStub,
-          ...(coreProfile.data || {}),
-        }
-        if (!coreProfile.error && coreProfile.data) {
-          const ext = await supabaseClient
-            .from('profiles')
-            .select('about_me, banner_url')
-            .eq('user_id', userId)
-            .maybeSingle()
-          if (!ext.error && ext.data) {
-            Object.assign(mergedProfile, ext.data)
-          }
-        }
-        setProfileModalData(mergedProfile)
-        const hydrated = await hydrateCommunityPosts(postRows || [])
-        setProfileModalPosts(hydrated)
-        if (reduce) {
-          profileModalVisibleRef.current = true
-          setProfileModalVisible(true)
-        } else {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              profileModalVisibleRef.current = true
-              setProfileModalVisible(true)
-            })
+          if (morePosts.length === 0) return
+          setProfileModalPosts((prev) => {
+            if (loadGen !== profileModalLoadGenRef.current) return prev
+            const seen = new Set(prev.map((p) => p.id))
+            const merged = [...prev]
+            for (const row of morePosts) {
+              if (row?.id && !seen.has(row.id)) {
+                seen.add(row.id)
+                merged.push(row)
+              }
+            }
+            return merged
           })
-        }
+        })()
+      } catch (e) {
+        if (loadGen !== profileModalLoadGenRef.current) return
+        setProfileModalErr(e instanceof Error ? e.message : 'Could not load profile.')
       } finally {
-        setProfileModalLoading(false)
+        if (loadGen === profileModalLoadGenRef.current) {
+          setProfileModalLoading(false)
+        }
       }
     },
-    [hydrateCommunityPosts, loungeReadOnly, onRequireAuth, profileStubFromOpenArg, supabaseClient]
+    [
+      hydrateCommunityPosts,
+      loungeReadOnly,
+      onRequireAuth,
+      profileStubFromOpenArg,
+      revealProfileModalPanel,
+      supabaseClient,
+    ]
   )
 
   const profileEntityStub = useCallback(
@@ -6058,6 +6088,7 @@ export default function SocialFeed({
       const stub = profileEntityStub(entity)
       if (!stub?.user_id) return
       const userId = stub.user_id
+      setLoungePostDetailAboveProfile(false)
       setProfileOverlayStack((prev) => {
         const topUid =
           prev.length > 0 ? prev[prev.length - 1].userId : String(profileModalData?.user_id || '').trim()
@@ -6075,11 +6106,24 @@ export default function SocialFeed({
       })
       void (async () => {
         try {
-          const { profile, posts, postsErr } = await loadLoungeProfileScreenData(
+          const { profile, profileErr } = await fetchLoungeProfileRow(supabaseClient, userId, stub)
+          setProfileOverlayStack((prev) =>
+            prev.map((layer) =>
+              layer.userId === userId
+                ? {
+                    ...layer,
+                    profile: profile || layer.profile,
+                    error: profileErr || layer.error,
+                  }
+                : layer,
+            ),
+          )
+
+          const { posts, postsErr } = await fetchLoungeProfilePosts(
             supabaseClient,
             userId,
-            stub,
             hydrateCommunityPosts,
+            { limit: LOUNGE_PROFILE_POST_INITIAL_LIMIT },
           )
           setProfileOverlayStack((prev) =>
             prev.map((layer) =>
@@ -6089,11 +6133,35 @@ export default function SocialFeed({
                     profile: profile || layer.profile,
                     posts,
                     loading: false,
-                    error: postsErr || '',
+                    error: postsErr || profileErr || '',
                   }
                 : layer,
             ),
           )
+
+          void (async () => {
+            const { posts: morePosts, postsErr: moreErr } = await loadLoungeProfileScreenPostsRemainder(
+              supabaseClient,
+              userId,
+              hydrateCommunityPosts,
+              posts.length,
+            )
+            if (moreErr || morePosts.length === 0) return
+            setProfileOverlayStack((prev) =>
+              prev.map((layer) => {
+                if (layer.userId !== userId) return layer
+                const seen = new Set((layer.posts || []).map((p) => p.id))
+                const merged = [...(layer.posts || [])]
+                for (const row of morePosts) {
+                  if (row?.id && !seen.has(row.id)) {
+                    seen.add(row.id)
+                    merged.push(row)
+                  }
+                }
+                return { ...layer, posts: merged }
+              }),
+            )
+          })()
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Could not load profile.'
           setProfileOverlayStack((prev) =>
@@ -7133,7 +7201,9 @@ export default function SocialFeed({
 
       {loungePostDetail ? (
         <div
-          className="fixed inset-0 z-[98] sm:bg-black/55 sm:backdrop-blur-[2px]"
+          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${
+            loungePostDetailAboveProfile ? 'z-[102]' : 'z-[98]'
+          }`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"

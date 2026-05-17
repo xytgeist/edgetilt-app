@@ -34,7 +34,12 @@ import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeOgBadge from './LoungeOgBadge'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeProfileFollowList from './LoungeProfileFollowList.jsx'
-import { loadLoungeProfileScreenData } from './loungeProfileScreenLoad.js'
+import {
+  fetchLoungeProfilePosts,
+  fetchLoungeProfileRow,
+  loadLoungeProfileScreenPostsRemainder,
+  LOUNGE_PROFILE_POST_INITIAL_LIMIT,
+} from './loungeProfileScreenLoad.js'
 import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
 import { LOUNGE_DOCK_FAB_SIZE_PX } from '../../utils/loungeDockFabPosition.js'
 
@@ -688,7 +693,10 @@ export default function LoungeProfileFullScreen({
 
   useEffect(() => {
     if (!open || !panelVisible) return
-    void refreshSocial()
+    const raf = window.requestAnimationFrame(() => {
+      void refreshSocial()
+    })
+    return () => window.cancelAnimationFrame(raf)
   }, [open, panelVisible, refreshSocial])
 
   useEffect(() => {
@@ -1035,12 +1043,22 @@ export default function LoungeProfileFullScreen({
       ])
       void (async () => {
         try {
-          const { profile, posts, postsErr } = await loadLoungeProfileScreenData(
-            supabaseClient,
-            uid,
-            stub,
-            hydratePosts,
+          const { profile, profileErr } = await fetchLoungeProfileRow(supabaseClient, uid, stub)
+          setNestedProfileStack((prev) =>
+            prev.map((layer) =>
+              layer.userId === uid
+                ? {
+                    ...layer,
+                    profile: profile || layer.profile,
+                    error: profileErr || layer.error,
+                  }
+                : layer,
+            ),
           )
+
+          const { posts, postsErr } = await fetchLoungeProfilePosts(supabaseClient, uid, hydratePosts, {
+            limit: LOUNGE_PROFILE_POST_INITIAL_LIMIT,
+          })
           setNestedProfileStack((prev) =>
             prev.map((layer) =>
               layer.userId === uid
@@ -1049,11 +1067,35 @@ export default function LoungeProfileFullScreen({
                     profile: profile || layer.profile,
                     posts,
                     loading: false,
-                    error: postsErr || '',
+                    error: postsErr || profileErr || '',
                   }
                 : layer,
             ),
           )
+
+          void (async () => {
+            const { posts: morePosts, postsErr: moreErr } = await loadLoungeProfileScreenPostsRemainder(
+              supabaseClient,
+              uid,
+              hydratePosts,
+              posts.length,
+            )
+            if (moreErr || morePosts.length === 0) return
+            setNestedProfileStack((prev) =>
+              prev.map((layer) => {
+                if (layer.userId !== uid) return layer
+                const seen = new Set((layer.posts || []).map((p) => p.id))
+                const merged = [...(layer.posts || [])]
+                for (const row of morePosts) {
+                  if (row?.id && !seen.has(row.id)) {
+                    seen.add(row.id)
+                    merged.push(row)
+                  }
+                }
+                return { ...layer, posts: merged }
+              }),
+            )
+          })()
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Could not load profile.'
           setNestedProfileStack((prev) =>

@@ -2,11 +2,12 @@ import LoungeBadgeHoverTip from './LoungeBadgeHoverTip.jsx'
 
 const BADGE_SRC = `${import.meta.env.BASE_URL}og-cohort-badge.svg`
 
-/** @type {Record<'feed' | 'detail' | 'modal', { cls: string, px: number, tip?: string }>} */
+/** @type {Record<'feed' | 'detail' | 'modal', { cls: string, px: number, yClass?: string }>} */
 const OG_BADGE_SIZE = {
-  feed: { cls: 'h-4 w-4', px: 16 },
-  detail: { cls: 'h-[17px] w-[17px]', px: 17 },
-  modal: { cls: 'h-[18px] w-[18px]', px: 18 },
+  feed: { cls: 'h-4 w-4', px: 16, yClass: 'translate-y-[3px]' },
+  detail: { cls: 'h-[17px] w-[17px]', px: 17, yClass: 'translate-y-[3px]' },
+  /** Profile full-screen header — between feed (+3px) and cap-align. */
+  modal: { cls: 'h-5 w-5', px: 20, yClass: 'translate-y-[2px]' },
 }
 
 /**
@@ -20,7 +21,7 @@ export default function LoungeOgBadge({ isOg, size = 'feed' }) {
   if (isOg !== true) return null
   const s = OG_BADGE_SIZE[size] ?? OG_BADGE_SIZE.feed
   const iconClass = `${s.cls} shrink-0 object-contain`
-  const tipClass = `inline-flex translate-y-[3px] items-center${s.tip ? ` ${s.tip}` : ''}`
+  const tipClass = `inline-flex items-center ${s.yClass ?? 'translate-y-[3px]'}`
 
   return (
     <LoungeBadgeHoverTip tip="OG" tone="amber" className={tipClass}>

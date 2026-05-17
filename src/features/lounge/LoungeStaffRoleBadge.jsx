@@ -22,6 +22,28 @@ function ShieldIcon({ className }) {
   )
 }
 
+/** @type {Record<'feed' | 'detail' | 'modal', { wrap: string, crown: string, shield: string, modInner: string }>} */
+const STAFF_BADGE_LAYOUT = {
+  feed: {
+    wrap: 'translate-y-[0.5px]',
+    crown: 'translate-y-[1.5px]',
+    shield: 'translate-y-0',
+    modInner: 'translate-y-0.5',
+  },
+  detail: {
+    wrap: 'translate-y-[0.5px]',
+    crown: 'translate-y-[1.5px]',
+    shield: 'translate-y-0',
+    modInner: 'translate-y-0.5',
+  },
+  modal: {
+    wrap: 'translate-y-[2px]',
+    crown: 'translate-y-[1px]',
+    shield: 'translate-y-0',
+    modInner: 'translate-y-0',
+  },
+}
+
 export default function LoungeStaffRoleBadge({ role, size = 'feed' }) {
   const r = String(role ?? '')
     .trim()
@@ -29,18 +51,21 @@ export default function LoungeStaffRoleBadge({ role, size = 'feed' }) {
 
   if (r !== 'admin' && r !== 'moderator') return null
 
-  const shieldClass = size === 'detail' || size === 'modal' ? 'h-4 w-4' : 'h-[16px] w-[16px]'
+  const layout = STAFF_BADGE_LAYOUT[size] ?? STAFF_BADGE_LAYOUT.feed
+  const shieldClass =
+    size === 'modal' ? 'h-5 w-5' : size === 'detail' ? 'h-4 w-4' : 'h-[16px] w-[16px]'
 
-  const crownClass = size === 'detail' || size === 'modal' ? 'h-4 w-4' : 'h-[18px] w-[18px]'
+  const crownClass =
+    size === 'modal' ? 'h-5 w-5' : size === 'detail' ? 'h-4 w-4' : 'h-[18px] w-[18px]'
 
   if (r === 'admin') {
     return (
-      <LoungeBadgeHoverTip tip="Admin" tone="crown" className="inline-flex translate-y-[0.5px] items-center">
+      <LoungeBadgeHoverTip tip="Admin" tone="crown" className={`inline-flex items-center ${layout.wrap}`}>
         <span className="inline-flex items-center gap-x-0.5" role="img" aria-label="Admin">
-          <span className="inline-flex translate-y-[1.5px]">
+          <span className={`inline-flex ${layout.crown}`}>
             <CrownIcon className={`${crownClass} text-amber-400`} />
           </span>
-          <span className="inline-flex translate-y-0">
+          <span className={`inline-flex ${layout.shield}`}>
             <ShieldIcon className={`${shieldClass} text-blue-500`} />
           </span>
         </span>
@@ -49,8 +74,12 @@ export default function LoungeStaffRoleBadge({ role, size = 'feed' }) {
   }
 
   return (
-    <LoungeBadgeHoverTip tip="Mod" tone="sky" className="translate-y-[0.5px]">
-      <span className="inline-flex translate-y-0.5 items-center justify-center" role="img" aria-label="Mod">
+    <LoungeBadgeHoverTip tip="Mod" tone="sky" className={layout.wrap}>
+      <span
+        className={`inline-flex items-center justify-center ${layout.modInner}`}
+        role="img"
+        aria-label="Mod"
+      >
         <ShieldIcon className={`${shieldClass} text-blue-500`} />
       </span>
     </LoungeBadgeHoverTip>

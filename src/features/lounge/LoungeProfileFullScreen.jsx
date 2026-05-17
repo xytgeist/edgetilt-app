@@ -12,14 +12,8 @@ import {
   uploadProfileAvatar,
   uploadProfileBanner,
 } from '../profiles/profileGate'
-import {
-  PROFILE_LOCATION_CUSTOM,
-  PROFILE_LOCATION_MAX_LEN,
-  PROFILE_LOCATION_PRESETS,
-  profileLocationDraftFromStored,
-  profileLocationStoredFromDraft,
-  normalizeProfileLocation,
-} from '../profiles/profileLocation.js'
+import { normalizeProfileLocation } from '../profiles/profileLocation.js'
+import ProfileLocationPicker from '../profiles/ProfileLocationPicker.jsx'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
@@ -39,6 +33,7 @@ import {
   LOUNGE_FEED_POST_ROW_CLASS,
   LOUNGE_FEED_POST_ROW_INNER_CLASS,
   LOUNGE_FEED_POST_INTERACTIONS_CLASS,
+  loungeFeedAuthorHasStaffBadge,
 } from './loungeFeedAvatar.js'
 import LoungePostDetailCommentHierarchy from './LoungePostDetailCommentHierarchy.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
@@ -66,8 +61,20 @@ const PROFILE_BANNER_CHROME_DOTS_CLASS =
 const PROFILE_BANNER_CHROME_BACK_CLASS =
   'block leading-none text-2xl -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
 
-const PROFILE_LOCATION_FIELD_CLASS =
-  'mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] text-zinc-100 outline-none focus:border-cyan-600/60 touch-manipulation'
+function ProfileHeaderBadges({ role, isOg }) {
+  const hasStaff = loungeFeedAuthorHasStaffBadge(role)
+  if (!hasStaff && isOg !== true) return null
+  return (
+    <span className="inline-flex shrink-0 items-baseline gap-x-1">
+      {hasStaff ? <LoungeStaffRoleBadge role={role} size="modal" /> : null}
+      {isOg === true ? (
+        <span className={hasStaff ? 'shrink-0 -ml-0.5' : 'shrink-0'}>
+          <LoungeOgBadge isOg size="modal" />
+        </span>
+      ) : null}
+    </span>
+  )
+}
 
 function ProfileLocationPinIcon({ className = 'h-4 w-4 shrink-0' }) {
   return (
@@ -445,8 +452,7 @@ export default function LoungeProfileFullScreen({
   const [profileFollowsViewer, setProfileFollowsViewer] = useState(false)
   const [socialBusy, setSocialBusy] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
-  const [locationSelectDraft, setLocationSelectDraft] = useState('')
-  const [locationCustomDraft, setLocationCustomDraft] = useState('')
+  const [locationDraft, setLocationDraft] = useState('')
   const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [handleSlugDraft, setHandleSlugDraft] = useState('')
   const [aboutBusy, setAboutBusy] = useState(false)
@@ -607,16 +613,12 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!open || !profileUserId) return
     setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
-    const locDraft = profileLocationDraftFromStored(profile?.location)
-    setLocationSelectDraft(locDraft.selectValue)
-    setLocationCustomDraft(locDraft.customText)
+    setLocationDraft(normalizeProfileLocation(profile?.location))
   }, [open, profileUserId, profile?.about_me, profile?.bio, profile?.location])
 
   useEffect(() => {
     if (!ownProfileEditing || !isOwnProfile || profile?.user_id == null) return
-    const locDraft = profileLocationDraftFromStored(profile?.location)
-    setLocationSelectDraft(locDraft.selectValue)
-    setLocationCustomDraft(locDraft.customText)
+    setLocationDraft(normalizeProfileLocation(profile?.location))
   }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location])
 
   useEffect(() => {
@@ -982,13 +984,9 @@ export default function LoungeProfileFullScreen({
       opts?.nextHandle !== undefined ? String(opts.nextHandle || '').trim() : String(profile?.handle || '').trim()
     )
     if (opts?.nextLocation !== undefined) {
-      const locDraft = profileLocationDraftFromStored(opts.nextLocation)
-      setLocationSelectDraft(locDraft.selectValue)
-      setLocationCustomDraft(locDraft.customText)
+      setLocationDraft(normalizeProfileLocation(opts.nextLocation))
     } else {
-      const locDraft = profileLocationDraftFromStored(profile?.location)
-      setLocationSelectDraft(locDraft.selectValue)
-      setLocationCustomDraft(locDraft.customText)
+      setLocationDraft(normalizeProfileLocation(profile?.location))
     }
     setAboutErr('')
     if (typeof document !== 'undefined') {
@@ -1180,11 +1178,7 @@ export default function LoungeProfileFullScreen({
   const saveProfileEdits = async (opts) => {
     if (!isOwnProfile || !viewerUserId || aboutBusy) return
     const nextAbout = String(aboutDraft || '').trim().slice(0, 140)
-    const nextLocation = profileLocationStoredFromDraft(locationSelectDraft, locationCustomDraft)
-    if (locationSelectDraft === PROFILE_LOCATION_CUSTOM && !nextLocation) {
-      setAboutErr('Enter a custom location or choose a city from the list.')
-      return
-    }
+    const nextLocation = normalizeProfileLocation(locationDraft)
     const dn = String(displayNameDraft || '').trim().slice(0, 24)
     if (!dn) {
       setAboutErr('Display name is required.')
@@ -1792,24 +1786,23 @@ export default function LoungeProfileFullScreen({
             <div className="mt-3 space-y-1">
               {showOwnEditControls ? (
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-start gap-2">
-                    <label className="min-w-0 flex-1 basis-[min(100%,14rem)]">
-                      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Display name</span>
-                      <input
-                        type="text"
-                        value={displayNameDraft}
-                        onChange={(e) => setDisplayNameDraft(e.target.value.slice(0, 24))}
-                        maxLength={24}
-                        autoComplete="name"
-                        className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] font-semibold text-white outline-none focus:border-cyan-600/60 touch-manipulation sm:text-[17px]"
-                        placeholder="Your name"
-                      />
-                    </label>
-                    <div className="flex shrink-0 items-center gap-1.5 pt-6 sm:pt-7">
-                      <LoungeStaffRoleBadge role={profile?.role} />
-                      <LoungeOgBadge isOg={profile?.is_og} size="modal" />
+                  <label className="block">
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Display name
+                      </span>
+                      <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} />
                     </div>
-                  </div>
+                    <input
+                      type="text"
+                      value={displayNameDraft}
+                      onChange={(e) => setDisplayNameDraft(e.target.value.slice(0, 24))}
+                      maxLength={24}
+                      autoComplete="name"
+                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] font-semibold text-white outline-none focus:border-cyan-600/60 touch-manipulation sm:text-[17px]"
+                      placeholder="Your name"
+                    />
+                  </label>
                   <label className="block">
                     <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Handle</span>
                     <input
@@ -1829,52 +1822,27 @@ export default function LoungeProfileFullScreen({
                   </label>
                   <label className="block">
                     <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Location</span>
-                    <select
-                      value={locationSelectDraft}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        setLocationSelectDraft(v)
-                        if (v !== PROFILE_LOCATION_CUSTOM) setLocationCustomDraft('')
-                      }}
-                      className={PROFILE_LOCATION_FIELD_CLASS}
-                    >
-                      <option value="">No location</option>
-                      {PROFILE_LOCATION_PRESETS.map((city) => (
-                        <option key={city} value={city}>
-                          {city}
-                        </option>
-                      ))}
-                      <option value={PROFILE_LOCATION_CUSTOM}>Custom…</option>
-                    </select>
+                    <ProfileLocationPicker
+                      value={locationDraft}
+                      onChange={setLocationDraft}
+                      disabled={aboutBusy}
+                    />
+                    {locationDraft ? (
+                      <button
+                        type="button"
+                        className="mt-2 text-[13px] font-semibold text-zinc-500 hover:text-zinc-300 touch-manipulation"
+                        onClick={() => setLocationDraft('')}
+                      >
+                        Clear location
+                      </button>
+                    ) : null}
                   </label>
-                  {locationSelectDraft === PROFILE_LOCATION_CUSTOM ? (
-                    <label className="block">
-                      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
-                        Custom location
-                      </span>
-                      <input
-                        type="text"
-                        value={locationCustomDraft}
-                        onChange={(e) =>
-                          setLocationCustomDraft(e.target.value.slice(0, PROFILE_LOCATION_MAX_LEN))
-                        }
-                        maxLength={PROFILE_LOCATION_MAX_LEN}
-                        autoComplete="address-level2"
-                        placeholder="City, region, or area"
-                        className={PROFILE_LOCATION_FIELD_CLASS}
-                      />
-                      <span className="mt-1 block text-[12px] text-zinc-500 tabular-nums">
-                        {locationCustomDraft.length}/{PROFILE_LOCATION_MAX_LEN}
-                      </span>
-                    </label>
-                  ) : null}
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xl font-bold text-white sm:text-2xl">{displayName}</span>
-                    <LoungeStaffRoleBadge role={profile?.role} />
-                    <LoungeOgBadge isOg={profile?.is_og} size="modal" />
+                  <div className="flex flex-wrap items-baseline gap-x-1">
+                    <span className="text-xl font-bold leading-none text-white sm:text-2xl">{displayName}</span>
+                    <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-[15px] text-cyan-300">
                     <span>{handle}</span>

@@ -647,6 +647,12 @@ export default function SocialFeed({
     const reveal = maxScroll > 8 ? 1 - Math.min(1, Math.max(0, nextTop) / maxScroll) : 1
     loungePostDetailTitleRevealRef.current = reveal
     setLoungePostDetailTitleReveal(reveal)
+    // Flash the focused comment so it's unmissable even when the list is too short to scroll.
+    el.classList.remove('lounge-focus-flash')
+    requestAnimationFrame(() => {
+      el.classList.add('lounge-focus-flash')
+      window.setTimeout(() => el.classList.remove('lounge-focus-flash'), 1700)
+    })
   }, [loungePostDetailTitleBarHeight])
 
   const loungeComposerCaptionTargetConfig = useCallback(
@@ -8459,6 +8465,7 @@ export default function SocialFeed({
                     : 'lounge-detail-comments'
                 }
                 className="pt-0"
+                style={loungeCommentDetailPathIds.length > 0 ? { paddingBottom: '50dvh' } : undefined}
               >
                 {loungeReadOnly ? (
                   <p className="mt-1 text-[14px] text-zinc-500">

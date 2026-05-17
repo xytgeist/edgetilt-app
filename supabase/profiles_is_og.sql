@@ -5,7 +5,7 @@ alter table public.profiles
   add column if not exists is_og boolean not null default false;
 
 comment on column public.profiles.is_og is
-  'True for the first 1000 profiles ordered by created_at (product OG cohort). Backfilled once; new signups stay false unless SQL is adjusted.';
+  'True for the first 1000 profiles (product OG cohort). Backfill below + `profiles_is_og_assign_on_insert.sql` trigger for new rows.';
 
 update public.profiles p
 set is_og = true

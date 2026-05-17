@@ -987,11 +987,13 @@ export default function LoungePostStreamVideo({
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
   const posterFallbackFrameClass =
     posterFallbackFrameClassByVariant[variant] || posterFallbackFrameClassByVariant.feed
+  /** Until the in-flow poster decodes, optional aspect-ratio reserves footprint; after decode the `<img>` is the only size authority (avoids letterbox gap under object-contain). */
   const posterFrameAspectStyle =
-    hasDisplayDims && !posterLayoutFailed
+    hasDisplayDims && !posterLayoutFailed && !posterDecodeOk
       ? { aspectRatio: `${Math.round(displayW)} / ${Math.round(displayH)}` }
       : undefined
-  const posterShellMinHClass = posterDecodeOk || hasDisplayDims ? 'min-h-0' : posterFrameMinH
+  const posterShellMinHClass =
+    posterDecodeOk ? 'min-h-0' : hasDisplayDims ? 'min-h-0' : posterFrameMinH
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle = attachStream
     ? {
@@ -1040,7 +1042,7 @@ export default function LoungePostStreamVideo({
               usePosterFrame
                 ? posterLayoutFailed
                   ? posterFallbackFrameClass
-                  : `relative inline-block w-fit max-w-full bg-black leading-none ${posterShellMinHClass}`
+                  : `relative block w-fit max-w-full overflow-hidden bg-black ${posterShellMinHClass}`
                 : 'relative'
             }
             style={posterFrameAspectStyle}

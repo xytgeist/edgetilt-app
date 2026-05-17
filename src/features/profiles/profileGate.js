@@ -1,3 +1,5 @@
+import { pickDefaultProfileBannerUrl } from './defaultProfileBanners'
+
 /** Strip invisible chars that often sneak in from mobile paste/autocorrect. */
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g
 
@@ -181,6 +183,7 @@ export async function saveProfileWithHandleFallback({
   displayName,
   requestedHandle,
   avatarUrl,
+  bannerUrl,
 }) {
   const seed = profileSeedFromUser(user)
   const normalizedBase = normalizeHandle(requestedHandle) || seed.baseHandle
@@ -234,6 +237,11 @@ export async function saveProfileWithHandleFallback({
       role: 'user',
     }
     if (avatarUrl !== undefined) insertPayload.avatar_url = avatarUrl || null
+    if (bannerUrl !== undefined) {
+      insertPayload.banner_url = bannerUrl || null
+    } else {
+      insertPayload.banner_url = pickDefaultProfileBannerUrl(user.id)
+    }
 
     const { data, error } = await supabaseClient
       .from('profiles')

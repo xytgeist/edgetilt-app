@@ -2344,6 +2344,16 @@ export default function SocialFeed({
     [communityPosts]
   )
 
+  // Comment IDs that appear as plain comment-repost cards in the feed — need separate interaction hydration.
+  const feedCommentRepostIdsKey = useMemo(
+    () =>
+      communityPosts
+        .map((p) => p?.repost_of_comment_id)
+        .filter(Boolean)
+        .join(','),
+    [communityPosts]
+  )
+
   useEffect(() => {
     if (!composerUserId || loungeReadOnly) return
     const ids = feedPostIdsKey ? feedPostIdsKey.split(',').filter(Boolean) : []
@@ -2379,6 +2389,21 @@ export default function SocialFeed({
       cancelled = true
     }
   }, [composerUserId, loungeReadOnly, feedPostIdsKey, refreshLoungePostInteractions, supabaseClient])
+
+  // Hydrate like/repost/bookmark state for comments that appear as repost cards in the feed.
+  useEffect(() => {
+    if (!composerUserId || loungeReadOnly) return
+    const ids = feedCommentRepostIdsKey ? feedCommentRepostIdsKey.split(',').filter(Boolean) : []
+    if (ids.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      if (cancelled) return
+      await hydrateCommentInteractionsForIds(ids)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [composerUserId, loungeReadOnly, feedCommentRepostIdsKey, hydrateCommentInteractionsForIds])
 
   const interactionStateFor = useCallback(
     (postId) => interactionByPost[postId] || defaultInteraction,

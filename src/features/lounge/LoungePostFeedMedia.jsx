@@ -306,6 +306,7 @@ export function LoungePostFeedImagesAndGif({
         streamVideoDisplayWidth={streamDims?.width}
         streamVideoDisplayHeight={streamDims?.height}
         mediaLightboxFooter={mediaLightboxFooter}
+        lightboxPortalClass={lightboxPortalClass}
       />
     )
   }

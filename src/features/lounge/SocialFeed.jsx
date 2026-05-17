@@ -3923,6 +3923,8 @@ export default function SocialFeed({
     }
   }, [communityPosts, hydrateCommunityPosts, openLoungePostDetail, setCommunityPosts, supabaseClient])
 
+  const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile ? 'z-[103]' : 'z-[100]'
+
   const renderDetailMediaLightboxFooter = useCallback(
     (mediaPost) => (
       <LoungePostInteractionBar
@@ -7723,6 +7725,7 @@ export default function SocialFeed({
                             : 'mt-4'
                       }
                       visibilityResetRootRef={loungePostDetailScrollRef}
+                      lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
                     />
                   </div>
@@ -7761,6 +7764,7 @@ export default function SocialFeed({
                       variant="embed"
                       firstMarginTopClass="mt-2"
                       visibilityResetRootRef={loungePostDetailScrollRef}
+                      lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
                     />
                   </button>
@@ -7794,6 +7798,7 @@ export default function SocialFeed({
                             : 'mt-4'
                       }
                       visibilityResetRootRef={loungePostDetailScrollRef}
+                      lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
                     />
                   </div>

@@ -89,6 +89,7 @@ export function LoungeCommentCard({
   avatarButtonRef = null,
   hideInteractionBar = false,
   lightboxPortalClass = 'z-[100]',
+  repostMenuPortalClass = 'z-[48]',
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -111,6 +112,67 @@ export function LoungeCommentCard({
     if (openProfileGateIfNeeded?.()) return
     onCommentReplyInteraction?.(comment)
   }, [comment, onCommentReplyInteraction, openProfileGateIfNeeded])
+
+  const renderCommentMediaLightboxFooter = useCallback(
+    (mediaComment) => {
+      if (hideInteractionBar || typeof interactionStateFor !== 'function' || !mediaComment?.id) return null
+      return (
+        <LoungePostInteractionBar
+          post={{
+            id: mediaComment.id,
+            comment_count: feedCommentSubtreeReplyCount(mediaComment, descendantFallback),
+            like_count: typeof mediaComment.like_count === 'number' ? mediaComment.like_count : 0,
+            repost_count: typeof mediaComment.repost_count === 'number' ? mediaComment.repost_count : 0,
+          }}
+          variant="comment"
+          rootClassName="w-full"
+          repostMenuPortalClass={repostMenuPortalClass}
+          loungeReadOnly={loungeReadOnly}
+          interactionStateFor={interactionStateFor}
+          toggleInteraction={toggleInteraction}
+          onPlainRepost={onPlainRepost}
+          onUndoPlainRepost={onUndoPlainRepost}
+          onRemoveQuoteRepost={onRemoveQuoteRepost}
+          onQuoteRepost={onQuoteRepost}
+          toggleBookmark={toggleBookmark}
+          bookmarkedByPost={bookmarkedByPost}
+          onToggleLike={onToggleCommentLike}
+          onToggleBookmark={onToggleCommentBookmark}
+          getBookmarked={getCommentBookmarked}
+          requireLoungeAuth={requireLoungeAuth}
+          openProfileGateIfNeeded={openProfileGateIfNeeded}
+          repostMenuScrollRootRef={positionScrollRootRef}
+          onCommentClick={() => {
+            if (openProfileGateIfNeeded?.()) return
+            onCommentReplyInteraction?.(mediaComment)
+          }}
+          repostActionBusy={repostActionBusy}
+        />
+      )
+    },
+    [
+      hideInteractionBar,
+      interactionStateFor,
+      descendantFallback,
+      repostMenuPortalClass,
+      loungeReadOnly,
+      toggleInteraction,
+      onPlainRepost,
+      onUndoPlainRepost,
+      onRemoveQuoteRepost,
+      onQuoteRepost,
+      toggleBookmark,
+      bookmarkedByPost,
+      onToggleCommentLike,
+      onToggleCommentBookmark,
+      getCommentBookmarked,
+      requireLoungeAuth,
+      openProfileGateIfNeeded,
+      positionScrollRootRef,
+      onCommentReplyInteraction,
+      repostActionBusy,
+    ],
+  )
 
   const menuIsOwn = Boolean(viewerUserId && comment.user_id === viewerUserId)
   const showCommentMenu = Boolean(
@@ -194,6 +256,7 @@ export function LoungeCommentCard({
         }
         visibilityResetRootRef={positionScrollRootRef}
         lightboxPortalClass={lightboxPortalClass}
+        renderMediaLightboxFooter={renderCommentMediaLightboxFooter}
       />
     ) : null
 

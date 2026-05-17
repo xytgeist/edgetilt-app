@@ -271,8 +271,35 @@ function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profileBodyS
     },
     positionScrollRootRef: profileBodyScrollRef,
     lightboxPortalClass: pp.mediaLightboxPortalClass || 'z-[103]',
+    repostMenuPortalClass: pp.repostMenuPortalClass || 'z-[104]',
     resolveMediaFeedVariant: (c) => (String(c?.id) === focusCommentId ? 'detail' : 'commentInline'),
   }
+
+  const renderPostMediaLightboxFooter =
+    typeof pp.interactionStateFor === 'function'
+      ? (mediaPost) =>
+          mediaPost?.id ? (
+            <LoungePostInteractionBar
+              post={mediaPost}
+              variant="feed"
+              rootClassName="w-full"
+              repostMenuPortalClass={pp.repostMenuPortalClass || 'z-[104]'}
+              loungeReadOnly={pp.loungeReadOnly}
+              interactionStateFor={pp.interactionStateFor}
+              toggleInteraction={pp.toggleInteraction}
+              onPlainRepost={pp.onPlainRepost}
+              onUndoPlainRepost={pp.onUndoPlainRepost}
+              onRemoveQuoteRepost={pp.onRemoveQuoteRepost}
+              onQuoteRepost={pp.onQuoteRepost}
+              toggleBookmark={pp.toggleBookmark}
+              bookmarkedByPost={pp.bookmarkedByPost}
+              onOpenComments={pp.onOpenComments}
+              requireLoungeAuth={pp.requireLoungeAuth}
+              openProfileGateIfNeeded={pp.openProfileGateIfNeeded}
+              repostMenuScrollRootRef={profileBodyScrollRef}
+            />
+          ) : null
+      : undefined
 
   if (!post?.id || !comment?.id) return null
 
@@ -361,6 +388,7 @@ function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profileBodyS
                     postCaption ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
                   }
                   visibilityResetRootRef={profileBodyScrollRef}
+                  renderMediaLightboxFooter={renderPostMediaLightboxFooter}
                 />
               ) : null}
               {typeof pp.interactionStateFor === 'function' && post?.id ? (

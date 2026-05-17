@@ -139,6 +139,13 @@ export default function LoungePostArticle({
     onAvatarClick(post)
   }
 
+  const onEmbeddedAuthorProfile = (e, embeddedPost) => {
+    e.stopPropagation()
+    if (openProfileGateIfNeeded?.()) return
+    if (!embeddedPost?.user_id || typeof onAvatarClick !== 'function') return
+    onAvatarClick(embeddedPost)
+  }
+
   const authorRole = post?.author_profile?.role
   const hasStaffBadge = loungeFeedAuthorHasStaffBadge(authorRole)
   const showOgBadge = post?.author_profile?.is_og === true
@@ -254,9 +261,13 @@ export default function LoungePostArticle({
               >
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
-                    <span className="min-w-0 truncate font-semibold text-zinc-200">
+                    <button
+                      type="button"
+                      onClick={(e) => onEmbeddedAuthorProfile(e, post.reposted_post)}
+                      className="min-w-0 truncate font-semibold text-zinc-200 text-left touch-manipulation hover:text-cyan-300 [-webkit-tap-highlight-color:transparent]"
+                    >
                       {displayNameFor(post.reposted_post)}
-                    </span>
+                    </button>
                     <span className="shrink-0">
                       <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
                     </span>
@@ -313,9 +324,13 @@ export default function LoungePostArticle({
               >
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
-                    <span className="min-w-0 truncate font-semibold text-zinc-200">
+                    <button
+                      type="button"
+                      onClick={(e) => onEmbeddedAuthorProfile(e, post.reposted_post)}
+                      className="min-w-0 truncate font-semibold text-zinc-200 text-left touch-manipulation hover:text-cyan-300 [-webkit-tap-highlight-color:transparent]"
+                    >
                       {displayNameFor(post.reposted_post)}
-                    </span>
+                    </button>
                     <span className="shrink-0">
                       <LoungeStaffRoleBadge role={post.reposted_post?.author_profile?.role} size="detail" />
                     </span>

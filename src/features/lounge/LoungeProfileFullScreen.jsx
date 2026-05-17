@@ -58,7 +58,7 @@ function profileTabLabel(id) {
   return id
 }
 
-function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, profileBodyScrollRef }) {
+function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, profileBodyScrollRef, onNavigateToProfile }) {
   const { comment, post } = item
   const displayNameFor = postCardProps?.displayNameFor
   const handleFor = postCardProps?.handleFor
@@ -75,6 +75,30 @@ function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, pro
   const postCaption = feedPostDisplayCaption(post)
   const bodyText = String(comment.body || '').trim()
   const open = () => onOpenProfileReply?.(comment, post)
+  const resolveOpenProfile = () =>
+    typeof onNavigateToProfile === 'function'
+      ? onNavigateToProfile
+      : typeof postCardProps?.onAvatarClick === 'function'
+        ? postCardProps.onAvatarClick
+        : null
+
+  const openProfileFromAvatar = (e) => {
+    e.stopPropagation()
+    if (postCardProps?.openProfileGateIfNeeded?.()) return
+    resolveOpenProfile()?.({ user_id: profile?.user_id, author_profile: profile })
+  }
+  const openPostAuthorProfile = (e) => {
+    e.stopPropagation()
+    if (postCardProps?.openProfileGateIfNeeded?.()) return
+    const openProfile = resolveOpenProfile()
+    if (!openProfile || !post?.user_id) return
+    openProfile({
+      user_id: post.user_id,
+      ...(post?.author_profile && typeof post.author_profile === 'object'
+        ? { author_profile: post.author_profile }
+        : {}),
+    })
+  }
 
   return (
     <article
@@ -94,11 +118,14 @@ function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, pro
     >
       <div className="min-w-0 px-3 pt-1 pb-0">
         <div className="flex items-start gap-3">
-          <div
-            className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white ${profileAvatarToneClass(
+          <button
+            type="button"
+            onClick={openProfileFromAvatar}
+            className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
               profile?.user_id || profile?.handle || 'member',
             )}`}
-            aria-hidden
+            aria-label={`Open profile for ${displayName}`}
+            title="View profile"
           >
             {profile?.avatar_url ? (
               <img
@@ -111,7 +138,7 @@ function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, pro
             ) : (
               <span>{profileAvatarInitials(profile?.display_name, profile?.handle)}</span>
             )}
-          </div>
+          </button>
           <div className="min-w-0 flex-1">
             <div className={LOUNGE_FEED_META_ROW_CLASS}>
               <LoungeFeedAuthorMetaBadges
@@ -164,7 +191,13 @@ function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, pro
             {comment.parent_id ? 'Reply in thread' : 'Replying to'}
           </p>
           <div className="mt-1 flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
-            <span className="min-w-0 truncate font-semibold text-zinc-200">{postAuthorName}</span>
+            <button
+              type="button"
+              onClick={openPostAuthorProfile}
+              className="min-w-0 truncate font-semibold text-zinc-200 text-left touch-manipulation hover:text-cyan-300 [-webkit-tap-highlight-color:transparent]"
+            >
+              {postAuthorName}
+            </button>
             <span className="shrink-0">
               <LoungeStaffRoleBadge role={post?.author_profile?.role} size="detail" />
             </span>
@@ -1040,7 +1073,7 @@ export default function LoungeProfileFullScreen({
 
   const rootShellClass = stackedOverlay
     ? 'absolute inset-0 z-40 bg-zinc-950'
-    : 'fixed inset-0 z-[99] sm:bg-black/85'
+    : 'fixed inset-0 z-[101] sm:bg-black/85'
 
   return (
     <div className={rootShellClass} role="dialog" aria-modal="true" aria-label="Profile">
@@ -1467,6 +1500,7 @@ export default function LoungeProfileFullScreen({
                       postCardProps={postCardPropsForLists}
                       onOpenProfileReply={postCardPropsForLists?.onOpenProfileReply}
                       profileBodyScrollRef={profileBodyScrollRef}
+                      onNavigateToProfile={onNavigateToProfile}
                     />
                   ))
                 )

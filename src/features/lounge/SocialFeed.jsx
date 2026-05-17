@@ -86,6 +86,7 @@ import {
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
+import { loadLoungeProfileScreenData } from './loungeProfileScreenLoad.js'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
@@ -339,6 +340,8 @@ export default function SocialFeed({
   const [profileModalErr, setProfileModalErr] = useState('')
   const [profileModalData, setProfileModalData] = useState(null)
   const [profileModalPosts, setProfileModalPosts] = useState([])
+  /** Profiles opened from feed/detail/profile without replacing the root sheet (back pops one layer). */
+  const [profileOverlayStack, setProfileOverlayStack] = useState([])
   /** Scroll-linked FAB reveal while profile sheet is open. */
   const [loungeProfileDockReveal, setLoungeProfileDockReveal] = useState(1)
   const [interactionByPost, setInteractionByPost] = useState({})
@@ -5930,6 +5933,7 @@ export default function SocialFeed({
     setProfileModalOpen(false)
     setProfileModalData(null)
     setProfileModalPosts([])
+    setProfileOverlayStack([])
     setProfileModalErr('')
     setProfileModalVisible(true)
     setLoungeProfileDockReveal(1)
@@ -5977,6 +5981,7 @@ export default function SocialFeed({
       const userId = post?.user_id
       if (!userId) return
       const profileStub = profileStubFromOpenArg(post)
+      setProfileOverlayStack([])
       const prevTid = profileModalCloseFallbackTimerRef.current
       if (prevTid) {
         window.clearTimeout(prevTid)
@@ -6060,20 +6065,92 @@ export default function SocialFeed({
     [hydrateCommunityPosts, loungeReadOnly, onRequireAuth, profileStubFromOpenArg, supabaseClient]
   )
 
+  const profileEntityStub = useCallback(
+    (entity) => {
+      const userId = String(entity?.user_id || '').trim()
+      if (!userId) return null
+      if (entity?.author_profile && typeof entity.author_profile === 'object') {
+        return { user_id: userId, ...entity.author_profile }
+      }
+      return { user_id: userId, ...profileStubFromOpenArg(entity) }
+    },
+    [profileStubFromOpenArg],
+  )
+
+  const pushProfileOverlay = useCallback(
+    (entity) => {
+      const stub = profileEntityStub(entity)
+      if (!stub?.user_id) return
+      const userId = stub.user_id
+      setProfileOverlayStack((prev) => {
+        const topUid =
+          prev.length > 0 ? prev[prev.length - 1].userId : String(profileModalData?.user_id || '').trim()
+        if (topUid === userId) return prev
+        return [
+          ...prev,
+          {
+            userId,
+            profile: stub,
+            posts: [],
+            loading: true,
+            error: '',
+          },
+        ]
+      })
+      void (async () => {
+        try {
+          const { profile, posts, postsErr } = await loadLoungeProfileScreenData(
+            supabaseClient,
+            userId,
+            stub,
+            hydrateCommunityPosts,
+          )
+          setProfileOverlayStack((prev) =>
+            prev.map((layer) =>
+              layer.userId === userId
+                ? {
+                    ...layer,
+                    profile: profile || layer.profile,
+                    posts,
+                    loading: false,
+                    error: postsErr || '',
+                  }
+                : layer,
+            ),
+          )
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Could not load profile.'
+          setProfileOverlayStack((prev) =>
+            prev.map((layer) =>
+              layer.userId === userId ? { ...layer, loading: false, error: msg } : layer,
+            ),
+          )
+        }
+      })()
+    },
+    [hydrateCommunityPosts, profileEntityStub, profileModalData?.user_id, supabaseClient],
+  )
+
+  const popProfileOverlay = useCallback(() => {
+    setProfileOverlayStack((prev) => (prev.length > 0 ? prev.slice(0, -1) : prev))
+  }, [])
+
   /** Open another member's profile from a post/comment row (`user_id` + optional `author_profile`). */
   const openAuthorProfile = useCallback(
     (entity) => {
-      const userId = entity?.user_id
-      if (!userId) return
+      const stub = profileEntityStub(entity)
+      if (!stub?.user_id) return
       if (openProfileGateIfNeeded()) return
+      if (profileModalOpen) {
+        pushProfileOverlay(entity)
+        return
+      }
       void openProfileModal({
-        user_id: userId,
-        ...(entity?.author_profile && typeof entity.author_profile === 'object'
-          ? entity.author_profile
-          : {}),
+        user_id: stub.user_id,
+        ...stub,
       })
     },
-    [openProfileGateIfNeeded, openProfileModal]
+    [openProfileGateIfNeeded, openProfileModal, profileEntityStub, profileModalOpen, pushProfileOverlay],
   )
 
   const onLoungeDockOpenOwnProfile = useCallback(() => {
@@ -7078,9 +7155,7 @@ export default function SocialFeed({
 
       {loungePostDetail ? (
         <div
-          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${
-            profileModalOpen ? 'z-[100]' : 'z-[98]'
-          }`}
+          className="fixed inset-0 z-[98] sm:bg-black/55 sm:backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"
@@ -8641,6 +8716,38 @@ export default function SocialFeed({
           onNavigateToProfile={openAuthorProfile}
         />
       ) : null}
+
+      {profileOverlayStack.map((layer, index) => {
+        const isTop = index === profileOverlayStack.length - 1
+        if (!isTop) return null
+        return (
+          <div
+            key={`${layer.userId}-${index}`}
+            className="fixed inset-0"
+            style={{ zIndex: 102 + index }}
+          >
+            <LoungeProfileFullScreen
+              stackedOverlay
+              open
+              panelVisible
+              profileUserId={layer.userId}
+              viewerUserId={composerUserId || ''}
+              supabaseClient={supabaseClient}
+              profile={layer.profile}
+              posts={layer.posts}
+              loading={layer.loading}
+              error={layer.error}
+              isOwnProfile={Boolean(composerUserId && layer.userId === composerUserId)}
+              onClose={popProfileOverlay}
+              onAfterTransitionOut={popProfileOverlay}
+              postCardProps={profilePostCardProps}
+              onProfileUpdated={onProfileScreenUpdated}
+              hydratePosts={hydrateCommunityPosts}
+              onNavigateToProfile={openAuthorProfile}
+            />
+          </div>
+        )
+      })}
 
       {quoteRepostModal?.mode === 'remove' ? (
         <div

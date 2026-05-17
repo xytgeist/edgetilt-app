@@ -7,6 +7,7 @@ import {
   loungeDockCarouselSnapRotation,
   loungeDockFabCornerPosition,
   loungeDockFabDefaultPosition,
+  loungeDockFabClampToBounds,
   loungeDockFabMoveBounds,
   loungeDockFabPctFromPosition,
   loungeDockFabPositionFromPct,
@@ -186,6 +187,8 @@ export default function LoungeDockArcCarouselPrototype({
   onPointerBlockChange,
   /** `'wheel'` = ring (O); `'cornerL'` = bottom-corner L / Г along edges. */
   menuLayout = 'wheel',
+  /** Reserve bottom viewport space (e.g. Lounge upload bar) so the FAB does not cover controls. */
+  bottomObstacleInsetPx = 0,
 }) {
   const panelCompactChrome = panelChrome != null && PANEL_CHROME_PANELS.has(panelChrome)
   const isCornerL = menuLayout === 'cornerL'
@@ -218,6 +221,13 @@ export default function LoungeDockArcCarouselPrototype({
   const repositionCaptureCleanupRef = useRef(null)
   const backdropGestureRef = useRef(null)
 
+  const bottomObstaclePx = Math.max(0, Math.round(Number(bottomObstacleInsetPx) || 0))
+
+  const fabMoveBounds = useMemo(
+    () => loungeDockFabMoveBounds(viewport.width, viewport.height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx),
+    [viewport.width, viewport.height, bottomObstaclePx],
+  )
+
   const syncViewport = useCallback(() => {
     const next = loungeDockViewportSize()
     setViewport((prev) =>
@@ -238,13 +248,23 @@ export default function LoungeDockArcCarouselPrototype({
 
   useEffect(() => {
     const { width, height } = viewport
-    const bounds = loungeDockFabMoveBounds(width, height)
+    const bounds = loungeDockFabMoveBounds(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     const saved = readLoungeDockFabPrefs()
     const pos = saved
       ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
-      : loungeDockFabDefaultPosition(width, height)
+      : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     setFabPos(pos)
-  }, [viewport.width, viewport.height])
+  }, [viewport.width, viewport.height, bottomObstaclePx])
+
+  /** Nudge FAB up when a bottom obstacle (upload bar) appears under it — keeps Cancel tappable. */
+  useEffect(() => {
+    const cur = fabPosRef.current
+    if (!cur) return
+    const next = loungeDockFabClampToBounds(cur.left, cur.top, fabMoveBounds)
+    if (Math.abs(next.left - cur.left) < 0.5 && Math.abs(next.top - cur.top) < 0.5) return
+    fabPosRef.current = next
+    setFabPos(next)
+  }, [fabMoveBounds, bottomObstaclePx])
 
   useEffect(() => {
     fabPosRef.current = fabPos
@@ -415,11 +435,10 @@ export default function LoungeDockArcCarouselPrototype({
   const persistFabPrefs = useCallback(
     (pos) => {
       if (!pos) return
-      const bounds = loungeDockFabMoveBounds(viewport.width, viewport.height)
-      const pct = loungeDockFabPctFromPosition(pos.left, pos.top, bounds)
+      const pct = loungeDockFabPctFromPosition(pos.left, pos.top, fabMoveBounds)
       writeLoungeDockFabPrefs({ ...pct, locked: true })
     },
-    [viewport.width, viewport.height],
+    [fabMoveBounds],
   )
 
   /** When using L layout, snap FAB to bottom corner for the screen half (preferences / resize / mode switch). */
@@ -434,12 +453,13 @@ export default function LoungeDockArcCarouselPrototype({
       viewport.height,
       LOUNGE_DOCK_FAB_SIZE_PX,
       alignLeft,
+      bottomObstaclePx,
     )
     if (Math.abs(pos.left - cur.left) < 0.5 && Math.abs(pos.top - cur.top) < 0.5) return
     fabPosRef.current = pos
     setFabPos(pos)
     persistFabPrefs(pos)
-  }, [isCornerL, viewport.width, viewport.height, persistFabPrefs])
+  }, [isCornerL, viewport.width, viewport.height, bottomObstaclePx, persistFabPrefs])
 
   const cancelFabLongPress = useCallback(() => {
     longPressArmedRef.current = false
@@ -538,14 +558,8 @@ export default function LoungeDockArcCarouselPrototype({
   const fabOpacity = clamp(reveal, 0, 1)
 
   const clampFabPos = useCallback(
-    (left, top) => {
-      const bounds = loungeDockFabMoveBounds(viewport.width, viewport.height)
-      return {
-        left: Math.min(bounds.maxLeft, Math.max(bounds.minLeft, left)),
-        top: Math.min(bounds.maxTop, Math.max(bounds.minTop, top)),
-      }
-    },
-    [viewport.width, viewport.height],
+    (left, top) => loungeDockFabClampToBounds(left, top, fabMoveBounds),
+    [fabMoveBounds],
   )
 
   /** After long-press reposition, snap FAB to the bottom-left or bottom-right corner for the drop side (half-width). */
@@ -559,10 +573,11 @@ export default function LoungeDockArcCarouselPrototype({
       viewport.height,
       LOUNGE_DOCK_FAB_SIZE_PX,
       alignLeft,
+      bottomObstaclePx,
     )
     fabPosRef.current = pos
     setFabPos(pos)
-  }, [viewport.width, viewport.height])
+  }, [viewport.width, viewport.height, bottomObstaclePx])
 
   const onFabPointerDown = useCallback(
     (e) => {
@@ -674,6 +689,7 @@ export default function LoungeDockArcCarouselPrototype({
             viewport.height,
             LOUNGE_DOCK_FAB_SIZE_PX,
             alignLeft,
+            bottomObstaclePx,
           )
           fabPosRef.current = pos
           setFabPos(pos)
@@ -696,6 +712,7 @@ export default function LoungeDockArcCarouselPrototype({
       viewport.width,
       viewport.height,
       snapFabToBottomCornerForDropSide,
+      bottomObstaclePx,
     ],
   )
 

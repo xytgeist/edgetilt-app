@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import {
   fetchOwnProfile,
@@ -78,6 +78,10 @@ import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LoungeInteractionGlyphRail } from './LoungeInteractionGlyphRail.jsx'
 import { LoungeFeedInlineSoundResetBinder, LoungeFeedVideoAutoplayProvider } from './LoungeFeedVideoAutoplayContext.jsx'
+import {
+  getLoungeStreamLightboxOpen,
+  subscribeLoungeStreamLightboxOpen,
+} from './loungeStreamLightboxRegistry.js'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
@@ -268,6 +272,8 @@ export default function SocialFeed({
   const [postErr, setPostErr] = useState('')
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
+  const loungeUploadBarRef = useRef(null)
+  const [loungeUploadBarHeightPx, setLoungeUploadBarHeightPx] = useState(0)
   /** Last step label when a background submission throws (paired with `loungePostUploadFailureDetails`). */
   const loungePostUploadLastPhaseRef = useRef('')
   /** Set on failed background submission for the retry modal. */
@@ -422,6 +428,8 @@ export default function SocialFeed({
   const loungeDetailCommentVideoPrepSpecRef = useRef(null)
   const loungeDetailCommentVideoLastEncodedFileRef = useRef(/** @type {File | null} */ (null))
   const loungeDetailCommentVideoPrepHandoffRef = useRef(null)
+  /** Set by profile Replies tab; cleared after `openLoungeCommentDetail` runs once comments load. */
+  const loungePostDetailPendingCommentIdRef = useRef(null)
   const [loungeDetailCommentEditImageUrls, setLoungeDetailCommentEditImageUrls] = useState([])
   const [loungeDetailCommentEditGifUrl, setLoungeDetailCommentEditGifUrl] = useState('')
   /** Drill-down into a comment thread (`slice(-1)` = composer reply parent). */
@@ -1201,6 +1209,29 @@ export default function SocialFeed({
     if (loungePostJobRunningRef.current || loungeDetailCommentJobRunningRef.current) return
     setLoungePostUploadBar(null)
   }, [])
+
+  /** Reserve bottom space for the dock FAB when the upload bar would overlap Cancel. */
+  useEffect(() => {
+    if (!loungePostUploadBar) {
+      setLoungeUploadBarHeightPx(0)
+      return undefined
+    }
+    const el = loungeUploadBarRef.current
+    if (!el) return undefined
+    const measure = () => {
+      const h = el.getBoundingClientRect().height
+      if (h > 0) setLoungeUploadBarHeightPx(Math.ceil(h))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(() => measure())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [loungePostUploadBar])
+
+  const loungeDockFabBottomObstaclePx = loungePostUploadBar
+    ? loungeUploadBarHeightPx + 10
+    : 0
 
   const quoteRepostBackgroundUploadInFlight = useCallback(
     () =>
@@ -3568,6 +3599,9 @@ export default function SocialFeed({
       setLoungePostDetailMenuOpen(false)
       setLoungeDetailRepostMenuOpen(false)
       setLoungeCommentDetailPathIds([])
+      loungePostDetailPendingCommentIdRef.current = opts?.focusCommentId
+        ? String(opts.focusCommentId)
+        : null
       setLoungeDetailCommentDraft('')
       setLoungeDetailCommentErr('')
       setLoungeDetailCommentComposerExpanded(false)
@@ -4023,6 +4057,21 @@ export default function SocialFeed({
     loungeDetailCommentsLoading,
     resetPostDetailInlineSound,
     scrollLoungePostDetailToFocusedComment,
+  ])
+
+  /** Profile Replies tab: open post detail first, then drill to the reply once comments are loaded. */
+  useEffect(() => {
+    const pendingId = loungePostDetailPendingCommentIdRef.current
+    if (!pendingId || !loungePostDetail?.id || loungeDetailCommentsLoading) return
+    const row = loungeDetailComments.find((c) => String(c.id) === pendingId)
+    if (!row) return
+    loungePostDetailPendingCommentIdRef.current = null
+    openLoungeCommentDetail(row, { focusComposer: false })
+  }, [
+    loungePostDetail?.id,
+    loungeDetailComments,
+    loungeDetailCommentsLoading,
+    openLoungeCommentDetail,
   ])
 
   const loungeDetailDescendantCountByCommentId = useMemo(
@@ -6057,6 +6106,10 @@ export default function SocialFeed({
       avatarToneClass,
       avatarText,
       onPostBodyClick: openLoungePostDetail,
+      onOpenProfileReply: (comment, post) => {
+        if (!post?.id || !comment?.id) return
+        openLoungePostDetail(post, { focusCommentId: comment.id })
+      },
       viewerUserId: composerUserId,
       captionEditableInMenu: (p) =>
         Boolean(
@@ -6104,7 +6157,13 @@ export default function SocialFeed({
     ]
   )
 
-  const showLoungeViewportDock = !loungePostDetail && !profileModalOpen
+  const loungeStreamLightboxOpen = useSyncExternalStore(
+    subscribeLoungeStreamLightboxOpen,
+    getLoungeStreamLightboxOpen,
+    () => false,
+  )
+  const showLoungeViewportDock =
+    !loungePostDetail && !profileModalOpen && !loungeStreamLightboxOpen
   const loungeTitleBarChromePx = loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56
   /** Scroll inset for the opaque dock icon row only. Outer column uses `pb-0`; home-indicator inset lives in feed bottom padding + scroll content. */
   const loungeDockFeedContentInsetPx = showLoungeViewportDock
@@ -6237,6 +6296,7 @@ export default function SocialFeed({
           reveal={loungeDockPanel ? loungePanelTitleReveal : loungeTitleReveal}
           panelChrome={loungeDockPanel}
           menuLayout={loungeDockMenuLayout}
+          bottomObstacleInsetPx={loungeDockFabBottomObstaclePx}
           onPointerBlockChange={setLoungeFabPointerBlocked}
         />
       ) : null}
@@ -9239,7 +9299,10 @@ export default function SocialFeed({
       />
 
       {loungePostUploadBar ? (
-        <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
+        <div
+          ref={loungeUploadBarRef}
+          className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
+        >
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium text-zinc-200">

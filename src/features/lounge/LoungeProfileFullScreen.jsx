@@ -13,8 +13,23 @@ import {
   uploadProfileBanner,
 } from '../profiles/profileGate'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
+import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
+import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
-import { LOUNGE_FEED_POST_ROW_CLASS } from './loungeFeedAvatar.js'
+import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
+import { renderRichCaption } from './loungeCaption'
+import {
+  LOUNGE_FEED_AVATAR_CLASS,
+  LOUNGE_FEED_CAPTION_TEXT_CLASS,
+  LOUNGE_FEED_CAPTION_TOP_CLASS,
+  LOUNGE_FEED_DISPLAY_NAME_CLASS,
+  LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS,
+  LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS,
+  LOUNGE_FEED_META_HANDLE_TIME_CLASS,
+  LOUNGE_FEED_META_ROW_CLASS,
+  LOUNGE_FEED_POST_ROW_CLASS,
+} from './loungeFeedAvatar.js'
+import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeOgBadge from './LoungeOgBadge'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
@@ -25,6 +40,11 @@ const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 const PROFILE_LIKED_POST_SELECT =
   'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
 
+const PROFILE_COMMENT_SELECT =
+  'id,body,created_at,user_id,parent_id,post_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
+
+const PROFILE_REPLY_POST_SELECT = PROFILE_LIKED_POST_SELECT
+
 const PROFILE_HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 
 function profileTabLabel(id) {
@@ -33,6 +53,138 @@ function profileTabLabel(id) {
   if (id === 'likes') return 'Likes'
   if (id === 'bookmarks') return 'Bookmarks'
   return id
+}
+
+function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, profileBodyScrollRef }) {
+  const { comment, post } = item
+  const displayNameFor = postCardProps?.displayNameFor
+  const handleFor = postCardProps?.handleFor
+  const postAgeLabel = postCardProps?.postAgeLabel
+  const displayName =
+    typeof displayNameFor === 'function'
+      ? displayNameFor({ author_profile: profile, user_id: profile?.user_id })
+      : profile?.display_name || profile?.handle || 'Member'
+  const handleLabel =
+    typeof handleFor === 'function'
+      ? handleFor({ author_profile: profile, user_id: profile?.user_id })
+      : '@member'
+  const postAuthorName = typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'
+  const postCaption = feedPostDisplayCaption(post)
+  const bodyText = String(comment.body || '').trim()
+  const open = () => onOpenProfileReply?.(comment, post)
+
+  return (
+    <article
+      className={LOUNGE_FEED_POST_ROW_CLASS}
+      onClick={(e) => {
+        const t = e.target
+        if (!(t instanceof Element)) return
+        if (
+          t.closest(
+            'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-badge-tip]',
+          )
+        ) {
+          return
+        }
+        open()
+      }}
+    >
+      <div className="min-w-0 px-3 pt-1 pb-0">
+        <div className="flex items-start gap-3">
+          <div
+            className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white ${profileAvatarToneClass(
+              profile?.user_id || profile?.handle || 'member',
+            )}`}
+            aria-hidden
+          >
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt=""
+                className="h-full w-full rounded-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <span>{profileAvatarInitials(profile?.display_name, profile?.handle)}</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className={LOUNGE_FEED_META_ROW_CLASS}>
+              <LoungeFeedAuthorMetaBadges
+                role={profile?.role}
+                isOg={profile?.is_og}
+                displayName={displayName}
+                displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
+              />
+              <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                <span className="min-w-0 truncate">{handleLabel}</span>
+                <span className="shrink-0 text-zinc-600">·</span>
+                <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
+                  {typeof postAgeLabel === 'function' ? postAgeLabel(comment.created_at) : ''}
+                </span>
+              </span>
+            </div>
+            {bodyText ? (
+              <div
+                className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
+              >
+                {renderRichCaption(bodyText)}
+              </div>
+            ) : null}
+            {feedCommentRowHasMedia(comment) ? (
+              <LoungePostFeedImagesAndGif
+                post={comment}
+                variant="commentInline"
+                firstMarginTopClass={
+                  bodyText ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
+                }
+                visibilityResetRootRef={profileBodyScrollRef}
+              />
+            ) : null}
+            {comment.edited_at ? (
+              <div className="mt-1 text-left text-[14px] leading-tight text-zinc-500">Edited</div>
+            ) : null}
+          </div>
+        </div>
+        <button
+          type="button"
+          data-lounge-original-embed
+          onClick={(e) => {
+            e.stopPropagation()
+            open()
+          }}
+          className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
+          aria-label="View post and thread"
+        >
+          <p className="text-[12px] font-medium uppercase tracking-wide text-zinc-500">
+            {comment.parent_id ? 'Reply in thread' : 'Replying to'}
+          </p>
+          <div className="mt-1 flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
+            <span className="min-w-0 truncate font-semibold text-zinc-200">{postAuthorName}</span>
+            <span className="shrink-0">
+              <LoungeStaffRoleBadge role={post?.author_profile?.role} size="detail" />
+            </span>
+            <span className="shrink-0">
+              <LoungeOgBadge isOg={post?.author_profile?.is_og} size="detail" />
+            </span>
+            <span className="inline-flex min-w-0 max-w-[min(10rem,48vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[14px] text-zinc-500 sm:max-w-[12rem]">
+              <span className="min-w-0 truncate">
+                {typeof handleFor === 'function' ? handleFor(post) : '@member'}
+              </span>
+            </span>
+          </div>
+          {postCaption ? (
+            <div className="mt-1 line-clamp-3 text-left text-[15px] leading-snug text-zinc-400 whitespace-pre-wrap break-words">
+              {renderRichCaption(postCaption)}
+            </div>
+          ) : (
+            <p className="mt-1 text-[14px] text-zinc-500">Post</p>
+          )}
+        </button>
+      </div>
+    </article>
+  )
 }
 
 export default function LoungeProfileFullScreen({
@@ -63,6 +215,9 @@ export default function LoungeProfileFullScreen({
   const [interactionPosts, setInteractionPosts] = useState([])
   const [interactionLoading, setInteractionLoading] = useState(false)
   const [interactionErr, setInteractionErr] = useState('')
+  const [profileReplies, setProfileReplies] = useState([])
+  const [profileRepliesLoading, setProfileRepliesLoading] = useState(false)
+  const [profileRepliesErr, setProfileRepliesErr] = useState('')
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -144,6 +299,9 @@ export default function LoungeProfileFullScreen({
     setInteractionPosts([])
     setInteractionErr('')
     setInteractionLoading(false)
+    setProfileReplies([])
+    setProfileRepliesErr('')
+    setProfileRepliesLoading(false)
   }, [open, profileUserId])
 
   useEffect(() => {
@@ -222,6 +380,92 @@ export default function LoungeProfileFullScreen({
       cancelled = true
     }
   }, [open, tab, isOwnProfile, profileUserId, supabaseClient, hydratePosts])
+
+  useEffect(() => {
+    if (!open || !profileUserId || tab !== 'replies') {
+      setProfileRepliesLoading(false)
+      return
+    }
+    if (typeof hydratePosts !== 'function') {
+      setProfileRepliesErr('Could not load replies.')
+      setProfileReplies([])
+      setProfileRepliesLoading(false)
+      return
+    }
+    let cancelled = false
+    setProfileRepliesLoading(true)
+    setProfileRepliesErr('')
+    ;(async () => {
+      try {
+        const { data: commentRows, error: ce } = await supabaseClient
+          .from('feed_comments')
+          .select(PROFILE_COMMENT_SELECT)
+          .eq('user_id', profileUserId)
+          .is('hidden_at', null)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        if (ce) throw ce
+        const comments = commentRows || []
+        if (comments.length === 0) {
+          if (!cancelled) setProfileReplies([])
+          return
+        }
+        const postIds = []
+        const seenPostIds = new Set()
+        for (const row of comments) {
+          const pid = row.post_id
+          if (pid == null || pid === '') continue
+          const key = String(pid)
+          if (seenPostIds.has(key)) continue
+          seenPostIds.add(key)
+          postIds.push(pid)
+        }
+        if (postIds.length === 0) {
+          if (!cancelled) setProfileReplies([])
+          return
+        }
+        const { data: postRows, error: pe } = await supabaseClient
+          .from('community_feed_posts')
+          .select(PROFILE_REPLY_POST_SELECT)
+          .in('id', postIds)
+          .is('hidden_at', null)
+        if (pe) throw pe
+        const hydratedPosts = await hydratePosts(postRows || [])
+        const postById = new Map((hydratedPosts || []).map((p) => [String(p.id), p]))
+        const authorProfile =
+          profile && typeof profile === 'object'
+            ? {
+                user_id: profile.user_id,
+                display_name: profile.display_name,
+                handle: profile.handle,
+                avatar_url: profile.avatar_url,
+                role: profile.role,
+                is_og: profile.is_og,
+              }
+            : null
+        const items = []
+        for (const comment of comments) {
+          const post = postById.get(String(comment.post_id))
+          if (!post?.id) continue
+          items.push({
+            comment: authorProfile ? { ...comment, author_profile: authorProfile } : comment,
+            post,
+          })
+        }
+        if (!cancelled) setProfileReplies(items)
+      } catch (e) {
+        if (!cancelled) {
+          setProfileRepliesErr(e?.message || 'Could not load replies.')
+          setProfileReplies([])
+        }
+      } finally {
+        if (!cancelled) setProfileRepliesLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, tab, profileUserId, supabaseClient, hydratePosts, profile])
 
   useEffect(() => {
     if (!ownProfileMenuOpen) return
@@ -1098,13 +1342,28 @@ export default function LoungeProfileFullScreen({
                   ))
                 )
               ) : tab === 'replies' ? (
-                <div className="px-4 py-8 text-center text-[15px] leading-relaxed text-zinc-500">
-                  <p className="font-semibold text-zinc-400">Replies</p>
-                  <p className="mt-2">
-                    Threaded replies are not available yet. When they are, this tab will show the parent post and each
-                    reply together.
-                  </p>
-                </div>
+                profileRepliesLoading ? (
+                  <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
+                ) : profileRepliesErr ? (
+                  <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
+                    {profileRepliesErr}
+                  </div>
+                ) : profileReplies.length === 0 ? (
+                  <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">
+                    {isOwnProfile ? 'Replies you post will show up here.' : 'No replies yet.'}
+                  </div>
+                ) : (
+                  profileReplies.map((item) => (
+                    <ProfileReplyRow
+                      key={item.comment.id}
+                      item={item}
+                      profile={profile}
+                      postCardProps={postCardPropsForLists}
+                      onOpenProfileReply={postCardPropsForLists?.onOpenProfileReply}
+                      profileBodyScrollRef={profileBodyScrollRef}
+                    />
+                  ))
+                )
               ) : tab === 'likes' || tab === 'bookmarks' ? (
                 interactionLoading ? (
                   <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>

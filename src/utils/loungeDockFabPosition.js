@@ -38,16 +38,34 @@ function clamp(n, min, max) {
 }
 
 /** Movable FAB bounds inside the viewport (safe-area friendly minimum padding). */
-export function loungeDockFabMoveBounds(viewportW, viewportH, fabSize = LOUNGE_DOCK_FAB_SIZE_PX) {
+export function loungeDockFabMoveBounds(
+  viewportW,
+  viewportH,
+  fabSize = LOUNGE_DOCK_FAB_SIZE_PX,
+  bottomObstaclePx = 0,
+) {
+  const obstacle = Math.max(0, Number(bottomObstaclePx) || 0)
   const minLeft = EDGE_PAD_PX
   const minTop = EDGE_PAD_PX
   const maxLeft = Math.max(minLeft, viewportW - fabSize - EDGE_PAD_PX)
-  const maxTop = Math.max(minTop, viewportH - fabSize - EDGE_PAD_PX)
+  const maxTop = Math.max(minTop, viewportH - fabSize - EDGE_PAD_PX - obstacle)
   return { minLeft, minTop, maxLeft, maxTop }
 }
 
-export function loungeDockFabDefaultPosition(viewportW, viewportH, fabSize = LOUNGE_DOCK_FAB_SIZE_PX) {
-  const { maxLeft, maxTop } = loungeDockFabMoveBounds(viewportW, viewportH, fabSize)
+export function loungeDockFabClampToBounds(left, top, bounds) {
+  return {
+    left: clamp(left, bounds.minLeft, bounds.maxLeft),
+    top: clamp(top, bounds.minTop, bounds.maxTop),
+  }
+}
+
+export function loungeDockFabDefaultPosition(
+  viewportW,
+  viewportH,
+  fabSize = LOUNGE_DOCK_FAB_SIZE_PX,
+  bottomObstaclePx = 0,
+) {
+  const { maxLeft, maxTop } = loungeDockFabMoveBounds(viewportW, viewportH, fabSize, bottomObstaclePx)
   return {
     left: maxLeft - FAB_INSET_RIGHT_PX,
     top: maxTop - FAB_INSET_BOTTOM_PX,
@@ -81,8 +99,14 @@ export function loungeDockLShapeStepPx() {
  * Snap FAB to bottom-left or bottom-right corner (vertex of the L).
  * @param {boolean} alignLeft — `true` → bottom-left, `false` → bottom-right
  */
-export function loungeDockFabCornerPosition(viewportW, viewportH, fabSize, alignLeft) {
-  const b = loungeDockFabMoveBounds(viewportW, viewportH, fabSize)
+export function loungeDockFabCornerPosition(
+  viewportW,
+  viewportH,
+  fabSize,
+  alignLeft,
+  bottomObstaclePx = 0,
+) {
+  const b = loungeDockFabMoveBounds(viewportW, viewportH, fabSize, bottomObstaclePx)
   return {
     left: alignLeft ? b.minLeft : b.maxLeft,
     top: b.maxTop,

@@ -4,6 +4,7 @@ import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoU
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
+import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
 const videoClassByVariant = {
@@ -279,7 +280,7 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black/75 backdrop-blur-[2px] p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="fixed inset-0 z-[100] flex flex-col bg-black p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       role="dialog"
       aria-modal="true"
       aria-label="Full screen video"
@@ -339,7 +340,7 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer }) {
       ) : null}
       {footer ? (
         <div
-          className="shrink-0 border-t border-zinc-700/50 bg-black/40 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
+          className="shrink-0 border-t border-zinc-700/50 bg-black px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
           onClick={(e) => e.stopPropagation()}
         >
           {footer}
@@ -797,6 +798,12 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     lightboxOpenRef.current = lightboxOpen
   }, [lightboxOpen])
+
+  useEffect(() => {
+    if (!lightboxOpen || !enableLightbox) return undefined
+    notifyLoungeStreamLightboxOpen(true)
+    return () => notifyLoungeStreamLightboxOpen(false)
+  }, [lightboxOpen, enableLightbox])
 
   /** Muted autoplay while sufficiently visible (X-style feed). Feed/embed: defer HLS until in view. */
   useEffect(() => {

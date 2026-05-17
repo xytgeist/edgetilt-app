@@ -17,6 +17,17 @@ alter table public.profiles
 comment on column public.profiles.banner_url is 'Optional wide banner shown on full-screen profile.';
 comment on column public.profiles.about_me is 'Short public bio on profile (max 140 chars). Distinct from gate bio.';
 
+alter table public.profiles
+  add column if not exists location text;
+
+alter table public.profiles
+  drop constraint if exists profiles_location_len;
+
+alter table public.profiles
+  add constraint profiles_location_len check (location is null or char_length(location) <= 80);
+
+comment on column public.profiles.location is 'Optional city or custom location shown on Lounge profile (max 80 chars).';
+
 -- Who follows whom (viewer is follower_id when they tap Follow on publisher following_id).
 create table if not exists public.profile_follows (
   follower_id uuid not null references auth.users (id) on delete cascade,

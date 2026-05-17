@@ -217,7 +217,7 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
   }, [src, attachKey, enabled, feedStyleAbr, onAutoReattach, recoveryBurstRef])
 }
 
-function LoungeStreamVideoLightbox({ uid, onClose, footer }) {
+function LoungeStreamVideoLightbox({ uid, onClose, footer, lightboxPortalClass = 'z-[100]' }) {
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
     onClose,
     allowSwipeOnVideo: true,
@@ -286,7 +286,7 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className={`fixed inset-0 ${lightboxPortalClass} flex flex-col bg-black p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]`}
       role="dialog"
       aria-modal="true"
       aria-label="Full screen video"
@@ -405,6 +405,7 @@ export default function LoungePostStreamVideo({
   streamVideoDisplayWidth: streamDisplayWProp,
   streamVideoDisplayHeight: streamDisplayHProp,
   mediaLightboxFooter,
+  lightboxPortalClass = 'z-[100]',
 }) {
   const sessionPosterUrl = String(sessionPosterUrlProp || '').trim()
   const persistedPosterTrim = useMemo(
@@ -1167,6 +1168,7 @@ export default function LoungePostStreamVideo({
         <LoungeStreamVideoLightbox
           uid={id}
           footer={mediaLightboxFooterMerged}
+          lightboxPortalClass={lightboxPortalClass}
           onClose={() => {
             setLightboxOpen(false)
           }}

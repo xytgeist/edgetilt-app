@@ -32,6 +32,7 @@ export function LoungeImageCarousel({
   enableLightbox = true,
   /** Shown under fullscreen image(s) (e.g. post interactions). */
   lightboxFooter,
+  lightboxPortalClass = 'z-[100]',
   /**
    * When set (feed/detail scroll container), carousel snaps back to slide 1 when this block
    * re-enters that scrollport after leaving — fixes nested scroll + `content-visibility` with `root: null`.
@@ -257,6 +258,7 @@ export function LoungeImageCarousel({
           initialIndex={lightbox.index}
           onClose={() => setLightbox(null)}
           footer={lightboxFooterMerged}
+          lightboxPortalClass={lightboxPortalClass}
         />
       ) : null}
     </div>
@@ -272,6 +274,7 @@ export function LoungePostFeedImagesAndGif({
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
   visibilityResetRootRef,
+  lightboxPortalClass = 'z-[100]',
   /** `(post) => ReactNode` — e.g. interaction bar for the same post as this media strip. */
   renderMediaLightboxFooter,
 }) {
@@ -319,6 +322,7 @@ export function LoungePostFeedImagesAndGif({
         enableLightbox={enableLightbox}
         visibilityResetRootRef={visibilityResetRootRef}
         lightboxFooter={mediaLightboxFooter}
+        lightboxPortalClass={lightboxPortalClass}
       />
     )
   }
@@ -330,6 +334,7 @@ export function LoungePostFeedImagesAndGif({
       firstMarginTopClass={firstMarginTopClass}
       enableLightbox={enableLightbox}
       lightboxFooter={mediaLightboxFooter}
+      lightboxPortalClass={lightboxPortalClass}
     />
   )
 }

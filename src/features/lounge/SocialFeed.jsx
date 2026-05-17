@@ -43,6 +43,7 @@ import {
 } from '../../utils/loungeVideoUpload'
 import {
   buildLoungePostShareUrl,
+  buildLoungeProfileShareUrl,
   isLoungePostShareId,
   LOUNGE_SINGLE_POST_SELECT,
   shareLoungePostHybrid,
@@ -444,6 +445,10 @@ export default function SocialFeed({
   const loungeDetailCommentVideoPrepHandoffRef = useRef(null)
   /** Set by profile Replies tab; cleared after `openLoungeCommentDetail` runs once comments load. */
   const loungePostDetailPendingCommentIdRef = useRef(null)
+  /** Profile Replies ⋯ → Edit: open post detail, then start inline edit when comments load. */
+  const loungePostDetailPendingCommentEditRef = useRef(null)
+  /** Profile Replies interaction bar → reply: focus composer after drill-in. */
+  const loungePostDetailPendingCommentComposerRef = useRef(false)
   const [loungeDetailCommentEditImageUrls, setLoungeDetailCommentEditImageUrls] = useState([])
   const [loungeDetailCommentEditGifUrl, setLoungeDetailCommentEditGifUrl] = useState('')
   /** Drill-down into a comment thread (`slice(-1)` = composer reply parent). */
@@ -1166,6 +1171,23 @@ export default function SocialFeed({
       onCopied: () => setLoungeShareFlash('Link copied to clipboard.'),
       onCopyFailed: () => setLoungeShareFlash('Could not copy link. Try copying from the address bar.'),
     })
+  }, [])
+
+  const handleShareLoungeProfile = useCallback((profileRow) => {
+    const uid = String(profileRow?.user_id || '').trim()
+    if (!uid) return
+    const url = buildLoungeProfileShareUrl(uid)
+    void shareLoungePostHybrid({
+      url,
+      title: 'Edge Lounge profile',
+      onCopied: () => setLoungeShareFlash('Link copied to clipboard.'),
+      onCopyFailed: () => setLoungeShareFlash('Could not copy link. Try copying from the address bar.'),
+    })
+  }, [])
+
+  const handleBlockLoungeProfile = useCallback((profileRow) => {
+    void profileRow
+    if (typeof window !== 'undefined') window.alert('Blocking users is not available yet.')
   }, [])
 
   const avatarText = useCallback((p) => {
@@ -2362,6 +2384,53 @@ export default function SocialFeed({
     [interactionByComment, defaultInteraction]
   )
 
+  const hydrateCommentInteractionsForIds = useCallback(
+    async (commentIds) => {
+      const cids = [...new Set((commentIds || []).map((id) => String(id)).filter(Boolean))]
+      if (!composerUserId || cids.length === 0 || loungeReadOnly) return
+      const [likesRes, repostsRes, bmRes] = await Promise.all([
+        supabaseClient.from('feed_comment_likes').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
+        supabaseClient.from('feed_comment_reposts').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
+        supabaseClient.from('feed_comment_bookmarks').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
+      ])
+      const intErr = likesRes.error?.message || repostsRes.error?.message || bmRes.error?.message
+      if (intErr) {
+        console.warn('profile comment interactions:', intErr)
+        return
+      }
+      setInteractionByComment((prev) => {
+        const next = { ...prev }
+        for (const id of cids) {
+          if (!next[id]) next[id] = { ...defaultInteraction }
+        }
+        for (const r of likesRes.data || []) {
+          const cid = r.comment_id
+          if (!cid || !next[cid]) continue
+          next[cid] = { ...next[cid], liked: true }
+        }
+        for (const r of repostsRes.data || []) {
+          const cid = r.comment_id
+          if (!cid || !next[cid]) continue
+          next[cid] = {
+            ...next[cid],
+            reposted: true,
+            plainRepostChildId: cid,
+            quoteRepostChildId: null,
+          }
+        }
+        return next
+      })
+      setBookmarkedByComment((prev) => {
+        const next = { ...prev }
+        for (const r of bmRes.data || []) {
+          if (r.comment_id) next[r.comment_id] = true
+        }
+        return next
+      })
+    },
+    [composerUserId, defaultInteraction, loungeReadOnly, supabaseClient],
+  )
+
   const toggleInteraction = useCallback(
     async (postId, key) => {
       if (!composerUserId) return
@@ -3377,8 +3446,10 @@ export default function SocialFeed({
       setLoungeDetailCommentsLoading(false)
       setLoungeDetailCommentErr('')
       setLoungeCommentDetailPathIds([])
-      setInteractionByComment({})
-      setBookmarkedByComment({})
+      if (!profileModalOpen && profileOverlayStack.length === 0) {
+        setInteractionByComment({})
+        setBookmarkedByComment({})
+      }
       return
     }
     let cancelled = false
@@ -3479,7 +3550,21 @@ export default function SocialFeed({
     return () => {
       cancelled = true
     }
-  }, [composerUserId, defaultInteraction, loungePostDetail?.id, loungeReadOnly, supabaseClient])
+  }, [
+    composerUserId,
+    defaultInteraction,
+    loungePostDetail?.id,
+    loungeReadOnly,
+    profileModalOpen,
+    profileOverlayStack.length,
+    supabaseClient,
+  ])
+
+  useEffect(() => {
+    if (profileModalOpen || profileOverlayStack.length > 0 || loungePostDetail?.id) return
+    setInteractionByComment({})
+    setBookmarkedByComment({})
+  }, [profileModalOpen, profileOverlayStack.length, loungePostDetail?.id])
 
   const finalizeLoungePostDetailClose = useCallback(() => {
     const tid = loungePostDetailCloseFallbackTimerRef.current
@@ -3596,6 +3681,7 @@ export default function SocialFeed({
       loungePostDetailPendingCommentIdRef.current = opts?.focusCommentId
         ? String(opts.focusCommentId)
         : null
+      loungePostDetailPendingCommentComposerRef.current = opts?.focusCommentComposer === true
       setLoungeDetailCommentDraft('')
       setLoungeDetailCommentErr('')
       setLoungeDetailCommentComposerExpanded(false)
@@ -4060,13 +4146,30 @@ export default function SocialFeed({
     if (!pendingId || !loungePostDetail?.id || loungeDetailCommentsLoading) return
     const row = loungeDetailComments.find((c) => String(c.id) === pendingId)
     if (!row) return
+    const focusComposer = loungePostDetailPendingCommentComposerRef.current
     loungePostDetailPendingCommentIdRef.current = null
-    openLoungeCommentDetail(row, { focusComposer: false })
+    loungePostDetailPendingCommentComposerRef.current = false
+    openLoungeCommentDetail(row, { focusComposer })
   }, [
     loungePostDetail?.id,
     loungeDetailComments,
     loungeDetailCommentsLoading,
     openLoungeCommentDetail,
+  ])
+
+  /** Profile Replies ⋯ → Edit: start inline edit once the post’s comments are loaded. */
+  useEffect(() => {
+    const pendingEditId = loungePostDetailPendingCommentEditRef.current
+    if (!pendingEditId || !loungePostDetail?.id || loungeDetailCommentsLoading) return
+    const row = loungeDetailComments.find((c) => String(c.id) === pendingEditId)
+    if (!row) return
+    loungePostDetailPendingCommentEditRef.current = null
+    onCommentMenuEditFromDetail(row)
+  }, [
+    loungePostDetail?.id,
+    loungeDetailComments,
+    loungeDetailCommentsLoading,
+    onCommentMenuEditFromDetail,
   ])
 
   const loungeDetailDescendantCountByCommentId = useMemo(
@@ -4483,7 +4586,7 @@ export default function SocialFeed({
         if (cached) setComposerUserProfile(cached)
         const { data } = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role,handle_changed_at,is_og')
+          .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,created_at,role,handle_changed_at,is_og')
           .eq('user_id', uid)
           .maybeSingle()
         if (cancelled) return
@@ -6232,6 +6335,7 @@ export default function SocialFeed({
         'handle',
         'banner_url',
         'about_me',
+        'location',
         'bio',
         'role',
         'handle_changed_at',
@@ -6279,10 +6383,37 @@ export default function SocialFeed({
       avatarToneClass,
       avatarText,
       onPostBodyClick: openLoungePostDetail,
-      onOpenProfileReply: (comment, post) => {
+      onOpenProfileReply: (comment, post, opts) => {
         if (!post?.id || !comment?.id) return
-        openLoungePostDetail(post, { focusCommentId: comment.id })
+        openLoungePostDetail(post, {
+          focusCommentId: comment.id,
+          focusCommentComposer: opts?.focusComposer === true,
+        })
       },
+      hydrateCommentInteractionsForIds,
+      interactionStateForComment,
+      onCommentReplyInteraction: onLoungeCommentReplyInteraction,
+      onToggleCommentLike: toggleLoungeDetailCommentLike,
+      onToggleCommentBookmark: toggleLoungeDetailCommentBookmark,
+      getCommentBookmarked: getLoungeDetailCommentBookmarked,
+      commentToggleInteraction: noopLoungeBarPostToggle,
+      onCommentPlainRepost: (p) => void addLoungeDetailCommentPlainRepost(p.id),
+      onCommentUndoPlainRepost: (p) => void undoLoungeDetailCommentPlainRepost(p.id),
+      repostActionBusy: repostManageBusy,
+      onCommentMenuEdit: (c, post) => {
+        if (!c?.id || !post?.id) return
+        openLoungePostDetail(post, { focusCommentId: c.id })
+        loungePostDetailPendingCommentEditRef.current = String(c.id)
+      },
+      onCommentMenuDelete: (c, post) => {
+        if (!c?.id || !post?.id) return
+        openLoungePostDetail(post, { focusCommentId: c.id })
+      },
+      onCommentMenuBlock: onCommentMenuBlockFromDetail,
+      onCommentMenuReport: onCommentMenuReportFromDetail,
+      busyDeletingCommentId: loungeDetailCommentDeleteBusyId,
+      mediaLightboxPortalClass: 'z-[103]',
+      repostMenuPortalClass: 'z-[104]',
       viewerUserId: composerUserId,
       captionEditableInMenu: (p) =>
         Boolean(
@@ -6328,6 +6459,19 @@ export default function SocialFeed({
       onPostMenuBlockFromFeed,
       onPostMenuReportFromFeed,
       loungeFeedDeleteBusyPostId,
+      hydrateCommentInteractionsForIds,
+      interactionStateForComment,
+      onLoungeCommentReplyInteraction,
+      toggleLoungeDetailCommentLike,
+      toggleLoungeDetailCommentBookmark,
+      getLoungeDetailCommentBookmarked,
+      noopLoungeBarPostToggle,
+      addLoungeDetailCommentPlainRepost,
+      undoLoungeDetailCommentPlainRepost,
+      repostManageBusy,
+      onCommentMenuBlockFromDetail,
+      onCommentMenuReportFromDetail,
+      loungeDetailCommentDeleteBusyId,
     ]
   )
 
@@ -8763,6 +8907,8 @@ export default function SocialFeed({
           viewerCanUseLoungeChat={viewerCanUseLoungeChat}
           onDockRevealChange={setLoungeProfileDockReveal}
           onNavigateToProfile={openAuthorProfile}
+          onShareProfile={handleShareLoungeProfile}
+          onBlockProfile={handleBlockLoungeProfile}
         />
       ) : null}
 
@@ -8793,6 +8939,8 @@ export default function SocialFeed({
               onProfileUpdated={onProfileScreenUpdated}
               hydratePosts={hydrateCommunityPosts}
               onNavigateToProfile={openAuthorProfile}
+              onShareProfile={handleShareLoungeProfile}
+              onBlockProfile={handleBlockLoungeProfile}
             />
           </div>
         )

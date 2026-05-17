@@ -70,6 +70,10 @@ export default function LoungePostArticle({
   onStaffPostDelete,
   /** Scroll container (e.g. main feed) so the portaled Repost/Quote menu stays aligned while scrolling. */
   repostMenuScrollRootRef,
+  /** Portaled image/video lightbox z-index (profile sheet uses `z-[103]`). */
+  mediaLightboxPortalClass = 'z-[100]',
+  /** Repost menu portal z-index on feed row + inside media lightbox footer. */
+  repostMenuPortalClass = 'z-[48]',
 }) {
   const ro = loungeReadOnly
   const menuIsOwn = Boolean(viewerUserId && post?.user_id === viewerUserId)
@@ -98,7 +102,7 @@ export default function LoungePostArticle({
         post={mediaPost}
         variant="feed"
         rootClassName="w-full"
-        repostMenuPortalClass="z-[101]"
+        repostMenuPortalClass={repostMenuPortalClass === 'z-[48]' ? 'z-[101]' : repostMenuPortalClass}
         loungeReadOnly={loungeReadOnly}
         interactionStateFor={interactionStateFor}
         toggleInteraction={toggleInteraction}
@@ -128,8 +132,15 @@ export default function LoungePostArticle({
       requireLoungeAuth,
       openProfileGateIfNeeded,
       repostMenuScrollRootRef,
+      repostMenuPortalClass,
     ],
   )
+
+  const mediaLightboxProps = {
+    lightboxPortalClass: mediaLightboxPortalClass,
+    visibilityResetRootRef: repostMenuScrollRootRef,
+    renderMediaLightboxFooter,
+  }
 
   const onAvatar = (e) => {
     e.stopPropagation()
@@ -253,8 +264,9 @@ export default function LoungePostArticle({
                     : `${displayNameFor(post)} reposted`}
                 </span>
               </div>
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 data-lounge-original-embed
                 aria-label="View original post"
                 className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
@@ -293,10 +305,9 @@ export default function LoungePostArticle({
                   post={post.reposted_post}
                   variant="embed"
                   firstMarginTopClass="mt-2"
-                  visibilityResetRootRef={repostMenuScrollRootRef}
-                  renderMediaLightboxFooter={renderMediaLightboxFooter}
+                  {...mediaLightboxProps}
                 />
-              </button>
+              </div>
             </>
           ) : (
             <>
@@ -313,11 +324,11 @@ export default function LoungePostArticle({
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
-                visibilityResetRootRef={repostMenuScrollRootRef}
-                renderMediaLightboxFooter={renderMediaLightboxFooter}
+                {...mediaLightboxProps}
               />
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 data-lounge-original-embed
                 aria-label="View original post"
                 className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
@@ -356,10 +367,9 @@ export default function LoungePostArticle({
                   post={post.reposted_post}
                   variant="embed"
                   firstMarginTopClass="mt-2"
-                  visibilityResetRootRef={repostMenuScrollRootRef}
-                  renderMediaLightboxFooter={renderMediaLightboxFooter}
+                  {...mediaLightboxProps}
                 />
-              </button>
+              </div>
             </>
           )
         ) : (
@@ -377,8 +387,7 @@ export default function LoungePostArticle({
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
-              visibilityResetRootRef={repostMenuScrollRootRef}
-              renderMediaLightboxFooter={renderMediaLightboxFooter}
+              {...mediaLightboxProps}
             />
           </>
         )}
@@ -389,7 +398,7 @@ export default function LoungePostArticle({
           post={post}
           variant="feed"
           rootClassName={LOUNGE_FEED_POST_INTERACTIONS_CLASS}
-          repostMenuPortalClass="z-[48]"
+          repostMenuPortalClass={repostMenuPortalClass}
           loungeReadOnly={loungeReadOnly}
           interactionStateFor={interactionStateFor}
           toggleInteraction={toggleInteraction}

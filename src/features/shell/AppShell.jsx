@@ -175,7 +175,7 @@ export default function AppShell({
         const coreFields = 'user_id,handle,display_name,avatar_url,bio,role,is_og'
         let res = await supabaseClient
           .from('profiles')
-          .select(`${coreFields},about_me,banner_url`)
+          .select(`${coreFields},about_me,banner_url,location`)
           .in('user_id', userIds)
         if (res.error) {
           res = await supabaseClient.from('profiles').select(coreFields).in('user_id', userIds)

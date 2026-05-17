@@ -86,6 +86,8 @@ export function LoungeCommentCard({
   showDetailTimestamp = false,
   detailTimestampLabel = '',
   avatarButtonRef = null,
+  hideInteractionBar = false,
+  lightboxPortalClass = 'z-[100]',
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -190,6 +192,7 @@ export function LoungeCommentCard({
             : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
         }
         visibilityResetRootRef={positionScrollRootRef}
+        lightboxPortalClass={lightboxPortalClass}
       />
     ) : null
 
@@ -238,7 +241,7 @@ export function LoungeCommentCard({
                 <span className="min-w-0 truncate">{handleLabel}</span>
                 <span className="shrink-0 text-zinc-600">·</span>
                 <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
-                  {postAgeLabel(comment.created_at)}
+                  {typeof postAgeLabel === 'function' ? postAgeLabel(comment.created_at) : ''}
                 </span>
               </span>
             </div>
@@ -265,7 +268,7 @@ export function LoungeCommentCard({
         {showDetailTimestamp && detailTimestampLabel && !bodyEditing ? (
           <div className="mt-2 text-[14px] leading-tight text-zinc-500">{detailTimestampLabel}</div>
         ) : null}
-        {bodyEditing ? null : interactionBarPost ? (
+        {bodyEditing || hideInteractionBar || typeof interactionStateFor !== 'function' ? null : interactionBarPost ? (
           <LoungePostInteractionBar
             post={interactionBarPost}
             variant="comment"

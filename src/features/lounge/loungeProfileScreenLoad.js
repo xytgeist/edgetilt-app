@@ -5,7 +5,7 @@ export const LOUNGE_PROFILE_POST_INITIAL_LIMIT = 10
 export const LOUNGE_PROFILE_POST_MAX_LIMIT = 30
 
 const PROFILE_SELECT_FULL =
-  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role,handle_changed_at,is_og'
+  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,created_at,role,handle_changed_at,is_og'
 
 const PROFILE_SELECT_CORE =
   'user_id,handle,display_name,avatar_url,bio,created_at,role,handle_changed_at,is_og'

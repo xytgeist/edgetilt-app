@@ -12,10 +12,19 @@ import {
   uploadProfileAvatar,
   uploadProfileBanner,
 } from '../profiles/profileGate'
+import {
+  PROFILE_LOCATION_CUSTOM,
+  PROFILE_LOCATION_MAX_LEN,
+  PROFILE_LOCATION_PRESETS,
+  profileLocationDraftFromStored,
+  profileLocationStoredFromDraft,
+  normalizeProfileLocation,
+} from '../profiles/profileLocation.js'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
+import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import { renderRichCaption } from './loungeCaption'
 import {
@@ -28,7 +37,10 @@ import {
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   LOUNGE_FEED_META_ROW_CLASS,
   LOUNGE_FEED_POST_ROW_CLASS,
+  LOUNGE_FEED_POST_ROW_INNER_CLASS,
+  LOUNGE_FEED_POST_INTERACTIONS_CLASS,
 } from './loungeFeedAvatar.js'
+import LoungePostDetailCommentHierarchy from './LoungePostDetailCommentHierarchy.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeOgBadge from './LoungeOgBadge'
@@ -45,6 +57,32 @@ import { LOUNGE_DOCK_FAB_SIZE_PX } from '../../utils/loungeDockFabPosition.js'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
+const PROFILE_BANNER_CHROME_BTN_CLASS =
+  'grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50'
+
+const PROFILE_BANNER_CHROME_DOTS_CLASS =
+  'block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+
+const PROFILE_BANNER_CHROME_BACK_CLASS =
+  'block leading-none text-2xl -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+
+const PROFILE_LOCATION_FIELD_CLASS =
+  'mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] text-zinc-100 outline-none focus:border-cyan-600/60 touch-manipulation'
+
+function ProfileLocationPinIcon({ className = 'h-4 w-4 shrink-0' }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden>
+      <path
+        d="M10 2.25a4.75 4.75 0 00-4.75 4.75c0 3.17 4.75 10.75 4.75 10.75s4.75-7.58 4.75-10.75A4.75 4.75 0 0010 2.25z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="7" r="1.5" fill="currentColor" />
+    </svg>
+  )
+}
+
 const PROFILE_LIKED_POST_SELECT =
   'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
 
@@ -52,6 +90,60 @@ const PROFILE_COMMENT_SELECT =
   'id,body,created_at,user_id,parent_id,post_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
 
 const PROFILE_REPLY_POST_SELECT = PROFILE_LIKED_POST_SELECT
+
+async function hydrateFeedCommentsWithProfiles(supabaseClient, rows) {
+  const list = rows || []
+  const authorIds = [...new Set(list.map((r) => String(r.user_id || '')).filter(Boolean))]
+  let profileBy = {}
+  if (authorIds.length > 0) {
+    const pr = await supabaseClient
+      .from('profiles')
+      .select('user_id,handle,display_name,avatar_url,role,is_og')
+      .in('user_id', authorIds)
+    if (!pr.error && pr.data) {
+      profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
+    }
+  }
+  return list.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
+}
+
+async function expandFeedCommentsWithAncestors(supabaseClient, seedRows) {
+  const byId = new Map()
+  for (const row of seedRows || []) {
+    if (row?.id) byId.set(String(row.id), row)
+  }
+  for (;;) {
+    const missing = new Set()
+    for (const c of byId.values()) {
+      const pid = c.parent_id ? String(c.parent_id) : ''
+      if (pid && !byId.has(pid)) missing.add(pid)
+    }
+    if (missing.size === 0) break
+    const { data, error } = await supabaseClient
+      .from('feed_comments')
+      .select(PROFILE_COMMENT_SELECT)
+      .in('id', [...missing])
+      .is('hidden_at', null)
+    if (error) throw error
+    for (const row of data || []) {
+      byId.set(String(row.id), row)
+    }
+  }
+  return [...byId.values()]
+}
+
+function feedCommentPathIds(comment, commentById) {
+  const chain = []
+  const seen = new Set()
+  let cur = comment
+  while (cur?.id && !seen.has(String(cur.id))) {
+    seen.add(String(cur.id))
+    chain.unshift(cur.id)
+    const pid = cur.parent_id ? String(cur.parent_id) : ''
+    cur = pid ? commentById.get(pid) : null
+  }
+  return chain
+}
 
 const PROFILE_HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -63,23 +155,42 @@ function profileTabLabel(id) {
   return id
 }
 
-function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, profileBodyScrollRef, onNavigateToProfile }) {
-  const { comment, post } = item
+/** Clicks on these targets keep their own action (avatars → profile, @links). */
+const PROFILE_REPLY_ROW_SKIP_CLICK =
+  'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-post-interaction-bar], [data-lounge-image-zoom], [data-lounge-video-zoom]'
+
+function patchProfileReplyItemsCount(items, commentId, field, delta) {
+  const cid = String(commentId)
+  return items.map((item) => ({
+    ...item,
+    comment:
+      String(item.comment?.id) === cid
+        ? { ...item.comment, [field]: Math.max(0, (Number(item.comment[field]) || 0) + delta) }
+        : item.comment,
+    threadComments: (item.threadComments || []).map((row) =>
+      String(row?.id) === cid ? { ...row, [field]: Math.max(0, (Number(row[field]) || 0) + delta) } : row,
+    ),
+  }))
+}
+
+function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profileBodyScrollRef, onNavigateToProfile }) {
+  const { comment, post, pathIds = [], threadComments = [] } = item || {}
   const displayNameFor = postCardProps?.displayNameFor
   const handleFor = postCardProps?.handleFor
   const postAgeLabel = postCardProps?.postAgeLabel
-  const displayName =
-    typeof displayNameFor === 'function'
-      ? displayNameFor({ author_profile: profile, user_id: profile?.user_id })
-      : profile?.display_name || profile?.handle || 'Member'
-  const handleLabel =
-    typeof handleFor === 'function'
-      ? handleFor({ author_profile: profile, user_id: profile?.user_id })
-      : '@member'
-  const postAuthorName = typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'
   const postCaption = feedPostDisplayCaption(post)
-  const bodyText = String(comment.body || '').trim()
-  const open = () => onOpenProfileReply?.(comment, post)
+  const postAvatarRef = useRef(null)
+  const connectorRootRef = useRef(null)
+  const focusCommentId = String(comment?.id || '')
+  const openReplyThread = () => {
+    const openFn =
+      onOpenProfileReply ||
+      postCardProps?.onOpenProfileReply ||
+      (postCardProps?.onPostBodyClick && post?.id
+        ? () => postCardProps.onPostBodyClick(post, { focusCommentId: comment.id })
+        : null)
+    if (typeof openFn === 'function') openFn(comment, post)
+  }
   const resolveOpenProfile = () =>
     typeof onNavigateToProfile === 'function'
       ? onNavigateToProfile
@@ -87,142 +198,202 @@ function ProfileReplyRow({ item, profile, postCardProps, onOpenProfileReply, pro
         ? postCardProps.onAvatarClick
         : null
 
-  const openProfileFromAvatar = (e) => {
+  const openProfileFromEntity = (e, entity) => {
     e.stopPropagation()
     if (postCardProps?.openProfileGateIfNeeded?.()) return
-    resolveOpenProfile()?.({ user_id: profile?.user_id, author_profile: profile })
-  }
-  const openPostAuthorProfile = (e) => {
-    e.stopPropagation()
-    if (postCardProps?.openProfileGateIfNeeded?.()) return
-    const openProfile = resolveOpenProfile()
-    if (!openProfile || !post?.user_id) return
-    openProfile({
-      user_id: post.user_id,
-      ...(post?.author_profile && typeof post.author_profile === 'object'
-        ? { author_profile: post.author_profile }
+    const uid = String(entity?.user_id || '').trim()
+    if (!uid) return
+    resolveOpenProfile()?.({
+      user_id: uid,
+      ...(entity?.author_profile && typeof entity.author_profile === 'object'
+        ? { author_profile: entity.author_profile }
         : {}),
     })
   }
 
+  const pp = postCardProps || {}
+  const safePostAgeLabel = typeof postAgeLabel === 'function' ? postAgeLabel : () => ''
+  const hierarchyCardProps = {
+    postAgeLabel: safePostAgeLabel,
+    displayNameFor,
+    handleFor,
+    loungeReadOnly: pp.loungeReadOnly,
+    viewerUserId: pp.viewerUserId,
+    requireLoungeAuth: pp.requireLoungeAuth,
+    openProfileGateIfNeeded: pp.openProfileGateIfNeeded,
+    onCommentReplyInteraction: (c) => {
+      if (pp.openProfileGateIfNeeded?.()) return
+      const target = c?.id ? c : comment
+      if (typeof onOpenProfileReply === 'function') {
+        onOpenProfileReply(target, post, { focusComposer: true })
+        return
+      }
+      if (typeof pp.onOpenProfileReply === 'function') {
+        pp.onOpenProfileReply(target, post, { focusComposer: true })
+        return
+      }
+      pp.onCommentReplyInteraction?.(target)
+    },
+    interactionStateFor:
+      typeof pp.interactionStateForComment === 'function' ? pp.interactionStateForComment : () => ({}),
+    toggleInteraction:
+      typeof pp.commentToggleInteraction === 'function' ? pp.commentToggleInteraction : async () => undefined,
+    onPlainRepost: pp.onCommentPlainRepost,
+    onUndoPlainRepost: pp.onCommentUndoPlainRepost,
+    toggleBookmark: pp.commentToggleInteraction,
+    bookmarkedByPost: pp.bookmarkedByPost,
+    onToggleCommentLike: pp.onToggleCommentLike,
+    onToggleCommentBookmark: pp.onToggleCommentBookmark,
+    getCommentBookmarked: pp.getCommentBookmarked,
+    repostActionBusy: pp.repostActionBusy,
+    onCommentMenuEdit:
+      typeof pp.onCommentMenuEdit === 'function' ? (c) => pp.onCommentMenuEdit(c, post) : undefined,
+    onCommentMenuDelete:
+      typeof pp.onCommentMenuDelete === 'function' ? (c) => pp.onCommentMenuDelete(c, post) : undefined,
+    onCommentMenuBlock: pp.onCommentMenuBlock,
+    onCommentMenuReport: pp.onCommentMenuReport,
+    busyDeletingCommentId: pp.busyDeletingCommentId,
+    onAvatarClickProfile: (c) => {
+      if (pp.openProfileGateIfNeeded?.()) return
+      const uid = String(c?.user_id || '').trim()
+      if (!uid) return
+      resolveOpenProfile()?.({
+        user_id: uid,
+        ...(c?.author_profile && typeof c.author_profile === 'object' ? { author_profile: c.author_profile } : {}),
+      })
+    },
+    positionScrollRootRef: profileBodyScrollRef,
+    lightboxPortalClass: pp.mediaLightboxPortalClass || 'z-[103]',
+    resolveMediaFeedVariant: (c) => (String(c?.id) === focusCommentId ? 'detail' : 'commentInline'),
+  }
+
+  if (!post?.id || !comment?.id) return null
+
   return (
     <article
-      className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer`}
+      tabIndex={0}
+      aria-label="View reply in post"
+      className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer touch-manipulation outline-none [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/35 focus-visible:ring-2 focus-visible:ring-violet-500/40`}
       onClick={(e) => {
         const t = e.target
         if (!(t instanceof Element)) return
-        if (
-          t.closest(
-            'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-badge-tip]',
-          )
-        ) {
-          return
-        }
-        open()
+        if (t.closest(PROFILE_REPLY_ROW_SKIP_CLICK)) return
+        openReplyThread()
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        if (e.target !== e.currentTarget) return
+        e.preventDefault()
+        openReplyThread()
       }}
     >
-      <div className="min-w-0 px-3 pt-1 pb-0">
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            onClick={openProfileFromAvatar}
-            className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
-              profile?.user_id || profile?.handle || 'member',
-            )}`}
-            aria-label={`Open profile for ${displayName}`}
-            title="View profile"
-          >
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt=""
-                className="h-full w-full rounded-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <span>{profileAvatarInitials(profile?.display_name, profile?.handle)}</span>
-            )}
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className={LOUNGE_FEED_META_ROW_CLASS}>
-              <LoungeFeedAuthorMetaBadges
-                role={profile?.role}
-                isOg={profile?.is_og}
-                displayName={displayName}
-                displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
-              />
-              <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                <span className="min-w-0 truncate">{handleLabel}</span>
-                <span className="shrink-0 text-zinc-600">·</span>
-                <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
-                  {typeof postAgeLabel === 'function' ? postAgeLabel(comment.created_at) : ''}
-                </span>
-              </span>
-            </div>
-            {bodyText ? (
-              <div
-                className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
-              >
-                {renderRichCaption(bodyText)}
-              </div>
-            ) : null}
-            {feedCommentRowHasMedia(comment) ? (
-              <LoungePostFeedImagesAndGif
-                post={comment}
-                variant="commentInline"
-                firstMarginTopClass={
-                  bodyText ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
-                }
-                visibilityResetRootRef={profileBodyScrollRef}
-              />
-            ) : null}
-            {comment.edited_at ? (
-              <div className="mt-1 text-left text-[14px] leading-tight text-zinc-500">Edited</div>
-            ) : null}
-          </div>
-        </div>
-        <button
-          type="button"
-          data-lounge-original-embed
-          onClick={(e) => {
-            e.stopPropagation()
-            open()
-          }}
-          className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
-          aria-label="View post and thread"
-        >
-          <p className="text-[12px] font-medium uppercase tracking-wide text-zinc-500">
-            {comment.parent_id ? 'Reply in thread' : 'Replying to'}
-          </p>
-          <div className="mt-1 flex min-w-0 flex-nowrap items-center justify-start gap-x-1.5 text-[14px] leading-snug">
+      <div className={`min-w-0 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
+        <div ref={connectorRootRef} className="relative min-w-0">
+          <div className="flex items-start gap-3">
             <button
+              ref={postAvatarRef}
               type="button"
-              onClick={openPostAuthorProfile}
-              className="min-w-0 truncate font-semibold text-zinc-200 text-left touch-manipulation hover:text-cyan-300 [-webkit-tap-highlight-color:transparent]"
+              onClick={(e) => openProfileFromEntity(e, post)}
+              className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
+                post?.author_profile?.user_id || post?.user_id || post?.author_profile?.handle || 'member',
+              )}`}
+              aria-label={`Open profile for ${typeof displayNameFor === 'function' ? displayNameFor(post) : 'member'}`}
+              title="View profile"
             >
-              {postAuthorName}
+              {post?.author_profile?.avatar_url ? (
+                <img
+                  src={post.author_profile.avatar_url}
+                  alt=""
+                  className="h-full w-full rounded-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span>
+                  {profileAvatarInitials(
+                    post?.author_profile?.display_name,
+                    post?.author_profile?.handle || post?.author_profile?.user_id,
+                  )}
+                </span>
+              )}
             </button>
-            <span className="shrink-0">
-              <LoungeStaffRoleBadge role={post?.author_profile?.role} size="detail" />
-            </span>
-            <span className="shrink-0">
-              <LoungeOgBadge isOg={post?.author_profile?.is_og} size="detail" />
-            </span>
-            <span className="inline-flex min-w-0 max-w-[min(10rem,48vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[14px] text-zinc-500 sm:max-w-[12rem]">
-              <span className="min-w-0 truncate">
-                {typeof handleFor === 'function' ? handleFor(post) : '@member'}
-              </span>
-            </span>
-          </div>
-          {postCaption ? (
-            <div className="mt-1 line-clamp-3 text-left text-[15px] leading-snug text-zinc-400 whitespace-pre-wrap break-words">
-              {renderRichCaption(postCaption)}
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={(e) => openProfileFromEntity(e, post)}
+                className="block w-full min-w-0 text-left hover:text-cyan-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              >
+                <div className={LOUNGE_FEED_META_ROW_CLASS}>
+                  <LoungeFeedAuthorMetaBadges
+                    role={post?.author_profile?.role}
+                    isOg={post?.author_profile?.is_og}
+                    displayName={typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'}
+                    displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
+                  />
+                  <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                    <span className="min-w-0 truncate">
+                      {typeof handleFor === 'function' ? handleFor(post) : '@member'}
+                    </span>
+                  </span>
+                </div>
+              </button>
+              {postCaption ? (
+                <div
+                  className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} line-clamp-4 text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
+                >
+                  {renderRichCaption(postCaption)}
+                </div>
+              ) : null}
+              {feedCommentRowHasMedia(post) ? (
+                <LoungePostFeedImagesAndGif
+                  post={post}
+                  variant="feed"
+                  enableLightbox
+                  lightboxPortalClass={pp.mediaLightboxPortalClass || 'z-[103]'}
+                  firstMarginTopClass={
+                    postCaption ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
+                  }
+                  visibilityResetRootRef={profileBodyScrollRef}
+                />
+              ) : null}
+              {typeof pp.interactionStateFor === 'function' && post?.id ? (
+                <LoungePostInteractionBar
+                  post={post}
+                  variant="feed"
+                  rootClassName={LOUNGE_FEED_POST_INTERACTIONS_CLASS}
+                  repostMenuPortalClass={pp.repostMenuPortalClass || 'z-[104]'}
+                  loungeReadOnly={pp.loungeReadOnly}
+                  interactionStateFor={pp.interactionStateFor}
+                  toggleInteraction={pp.toggleInteraction}
+                  onPlainRepost={pp.onPlainRepost}
+                  onUndoPlainRepost={pp.onUndoPlainRepost}
+                  onRemoveQuoteRepost={pp.onRemoveQuoteRepost}
+                  onQuoteRepost={pp.onQuoteRepost}
+                  toggleBookmark={pp.toggleBookmark}
+                  bookmarkedByPost={pp.bookmarkedByPost}
+                  onOpenComments={pp.onOpenComments}
+                  requireLoungeAuth={pp.requireLoungeAuth}
+                  openProfileGateIfNeeded={pp.openProfileGateIfNeeded}
+                  repostMenuScrollRootRef={profileBodyScrollRef}
+                />
+              ) : null}
             </div>
-          ) : (
-            <p className="mt-1 text-[14px] text-zinc-500">Post</p>
-          )}
-        </button>
+          </div>
+
+          {pathIds.length > 0 && threadComments.length > 0 ? (
+            <div className="mt-3.5">
+              <LoungePostDetailCommentHierarchy
+                pathIds={pathIds}
+                comments={threadComments}
+                postAvatarRef={postAvatarRef}
+                connectorRootRef={connectorRootRef}
+                isCommentPostDetail
+                betweenRowClassName="mt-3.5"
+                cardProps={hierarchyCardProps}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
     </article>
   )
@@ -253,6 +424,8 @@ export default function LoungeProfileFullScreen({
   viewerCanUseLoungeChat = false,
   /** Scroll-linked FAB reveal while profile is open (arc carousel dock). */
   onDockRevealChange = null,
+  onShareProfile = null,
+  onBlockProfile = null,
   /** Open another member profile from feed rows (replaces modal). */
   onNavigateToProfile = null,
   /** Stacked profile opened from a parent sheet (follow list); uses absolute overlay. */
@@ -272,6 +445,8 @@ export default function LoungeProfileFullScreen({
   const [profileFollowsViewer, setProfileFollowsViewer] = useState(false)
   const [socialBusy, setSocialBusy] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
+  const [locationSelectDraft, setLocationSelectDraft] = useState('')
+  const [locationCustomDraft, setLocationCustomDraft] = useState('')
   const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [handleSlugDraft, setHandleSlugDraft] = useState('')
   const [aboutBusy, setAboutBusy] = useState(false)
@@ -284,6 +459,8 @@ export default function LoungeProfileFullScreen({
   const [handleChangeDialog, setHandleChangeDialog] = useState(null)
   /** Own profile: overflow menu on banner (⋯). */
   const [ownProfileMenuOpen, setOwnProfileMenuOpen] = useState(false)
+  /** Other member profile: Share / Block overflow menu. */
+  const [otherProfileMenuOpen, setOtherProfileMenuOpen] = useState(false)
   /** Own profile: after "Edit", show Photo / Banner / About editor. */
   const [ownProfileEditing, setOwnProfileEditing] = useState(false)
   const showOwnEditControls = isOwnProfile && ownProfileEditing
@@ -292,6 +469,11 @@ export default function LoungeProfileFullScreen({
   const ownProfileBannerMenuRef = useRef(null)
   const ownProfileMenuButtonRef = useRef(null)
   const ownProfileMenuPanelRef = useRef(null)
+  const otherProfileMenuWrapRef = useRef(null)
+  const otherProfileMenuButtonRef = useRef(null)
+  const otherProfileMenuPanelRef = useRef(null)
+  const profileTopChromeRef = useRef(null)
+  const [profileTopChromeHeight, setProfileTopChromeHeight] = useState(52)
   const profileBodyScrollRef = useRef(null)
   const profileDockScrollPrevTopRef = useRef(0)
   const profileDockRevealRef = useRef(1)
@@ -307,6 +489,7 @@ export default function LoungeProfileFullScreen({
   const displayName = String(profile?.display_name || profile?.handle || 'Member').trim() || 'Member'
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
   const aboutDisplay = String(profile?.about_me || profile?.bio || '').trim()
+  const locationDisplay = normalizeProfileLocation(profile?.location)
   const profileTabsVisible = isOwnProfile ? PROFILE_TAB_IDS : PROFILE_TAB_IDS.slice(0, 2)
   const profileTabBtnClass =
     profileTabsVisible.length > 2 ? 'min-h-11 px-1 text-[13px]' : 'min-h-11 px-2 text-[15px]'
@@ -337,8 +520,66 @@ export default function LoungeProfileFullScreen({
             return r
           }
         : base.toggleInteraction
-    return { ...base, toggleBookmark: wrapBm, toggleInteraction: wrapLike }
+    const wrapCommentLike =
+      typeof base.onToggleCommentLike === 'function' && typeof base.interactionStateForComment === 'function'
+        ? async (commentId) => {
+            const was = !!base.interactionStateForComment(commentId)?.liked
+            setProfileReplies((prev) => patchProfileReplyItemsCount(prev, commentId, 'like_count', was ? -1 : 1))
+            await base.onToggleCommentLike(commentId)
+          }
+        : base.onToggleCommentLike
+    const wrapCommentBookmark =
+      typeof base.onToggleCommentBookmark === 'function' && typeof base.getCommentBookmarked === 'function'
+        ? async (commentId) => {
+            const was = !!base.getCommentBookmarked(commentId)
+            setProfileReplies((prev) =>
+              patchProfileReplyItemsCount(prev, commentId, 'bookmark_count', was ? -1 : 1),
+            )
+            await base.onToggleCommentBookmark(commentId)
+          }
+        : base.onToggleCommentBookmark
+    const wrapCommentPlainRepost =
+      typeof base.onCommentPlainRepost === 'function' && typeof base.interactionStateForComment === 'function'
+        ? (p) => {
+            const was = !!base.interactionStateForComment(p?.id)?.reposted
+            if (!was) setProfileReplies((prev) => patchProfileReplyItemsCount(prev, p.id, 'repost_count', 1))
+            base.onCommentPlainRepost(p)
+          }
+        : base.onCommentPlainRepost
+    const wrapCommentUndoRepost =
+      typeof base.onCommentUndoPlainRepost === 'function' && typeof base.interactionStateForComment === 'function'
+        ? (p) => {
+            const was = !!base.interactionStateForComment(p?.id)?.reposted
+            if (was) setProfileReplies((prev) => patchProfileReplyItemsCount(prev, p.id, 'repost_count', -1))
+            base.onCommentUndoPlainRepost(p)
+          }
+        : base.onCommentUndoPlainRepost
+    return {
+      ...base,
+      toggleBookmark: wrapBm,
+      toggleInteraction: wrapLike,
+      onToggleCommentLike: wrapCommentLike,
+      onToggleCommentBookmark: wrapCommentBookmark,
+      onCommentPlainRepost: wrapCommentPlainRepost,
+      onCommentUndoPlainRepost: wrapCommentUndoRepost,
+    }
   }, [postCardProps, tab])
+
+  useEffect(() => {
+    if (!open || tab !== 'replies') {
+      return
+    }
+    if (profileReplies.length === 0) return
+    const hydrate = postCardProps?.hydrateCommentInteractionsForIds
+    if (typeof hydrate !== 'function') return
+    const ids = []
+    for (const item of profileReplies) {
+      for (const row of item.threadComments || []) {
+        if (row?.id) ids.push(row.id)
+      }
+    }
+    void hydrate(ids)
+  }, [open, tab, profileReplies, postCardProps?.hydrateCommentInteractionsForIds])
 
   useEffect(() => {
     if (!open || !profileUserId) return
@@ -366,7 +607,17 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!open || !profileUserId) return
     setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
-  }, [open, profileUserId, profile?.about_me, profile?.bio])
+    const locDraft = profileLocationDraftFromStored(profile?.location)
+    setLocationSelectDraft(locDraft.selectValue)
+    setLocationCustomDraft(locDraft.customText)
+  }, [open, profileUserId, profile?.about_me, profile?.bio, profile?.location])
+
+  useEffect(() => {
+    if (!ownProfileEditing || !isOwnProfile || profile?.user_id == null) return
+    const locDraft = profileLocationDraftFromStored(profile?.location)
+    setLocationSelectDraft(locDraft.selectValue)
+    setLocationCustomDraft(locDraft.customText)
+  }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location])
 
   useEffect(() => {
     if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) {
@@ -485,6 +736,9 @@ export default function LoungeProfileFullScreen({
         if (pe) throw pe
         const hydratedPosts = await hydratePosts(postRows || [])
         const postById = new Map((hydratedPosts || []).map((p) => [String(p.id), p]))
+        const expandedRows = await expandFeedCommentsWithAncestors(supabaseClient, comments)
+        const hydratedComments = await hydrateFeedCommentsWithProfiles(supabaseClient, expandedRows)
+        const commentById = new Map(hydratedComments.map((c) => [String(c.id), c]))
         const authorProfile =
           profile && typeof profile === 'object'
             ? {
@@ -500,9 +754,23 @@ export default function LoungeProfileFullScreen({
         for (const comment of comments) {
           const post = postById.get(String(comment.post_id))
           if (!post?.id) continue
+          const focusComment = authorProfile
+            ? { ...(commentById.get(String(comment.id)) || comment), author_profile: authorProfile }
+            : commentById.get(String(comment.id)) || comment
+          const pathIds = feedCommentPathIds(focusComment, commentById)
+          const threadComments = pathIds
+            .map((id) => commentById.get(String(id)))
+            .filter(Boolean)
+            .map((row) =>
+              String(row.id) === String(focusComment.id) && authorProfile
+                ? { ...row, author_profile: authorProfile }
+                : row,
+            )
           items.push({
-            comment: authorProfile ? { ...comment, author_profile: authorProfile } : comment,
+            comment: focusComment,
             post,
+            pathIds,
+            threadComments,
           })
         }
         if (!cancelled) setProfileReplies(items)
@@ -519,6 +787,13 @@ export default function LoungeProfileFullScreen({
       cancelled = true
     }
   }, [open, tab, profileUserId, supabaseClient, hydratePosts, profile])
+
+  useEffect(() => {
+    if (!open) {
+      setOwnProfileMenuOpen(false)
+      setOtherProfileMenuOpen(false)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!ownProfileMenuOpen) return
@@ -539,6 +814,26 @@ export default function LoungeProfileFullScreen({
       document.removeEventListener('touchstart', onDown)
     }
   }, [ownProfileMenuOpen])
+
+  useEffect(() => {
+    if (!otherProfileMenuOpen) return
+    const onDown = (e) => {
+      const wrap = otherProfileMenuWrapRef.current
+      const panel = otherProfileMenuPanelRef.current
+      const t = e.target
+      if (t instanceof Node) {
+        if (wrap?.contains(t)) return
+        if (panel?.contains(t)) return
+      }
+      setOtherProfileMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('touchstart', onDown, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('touchstart', onDown)
+    }
+  }, [otherProfileMenuOpen])
 
   const placeOwnProfileMenu = useCallback(() => {
     const btn = ownProfileMenuButtonRef.current
@@ -592,6 +887,61 @@ export default function LoungeProfileFullScreen({
     }
   }, [ownProfileMenuOpen, placeOwnProfileMenu])
 
+  const placeOtherProfileMenu = useCallback(() => {
+    const btn = otherProfileMenuButtonRef.current
+    const panel = otherProfileMenuPanelRef.current
+    if (!btn || !panel) return
+    const r = btn.getBoundingClientRect()
+    const margin = 6
+    const vh = window.innerHeight
+    const vw = document.documentElement.clientWidth
+    const panelH = panel.offsetHeight || 96
+    let top = r.bottom + margin
+    if (top + panelH > vh - margin) {
+      top = Math.max(margin, r.top - margin - panelH)
+    }
+    if (top + panelH > vh - margin) {
+      top = Math.max(margin, vh - panelH - margin)
+    }
+    panel.style.position = 'fixed'
+    panel.style.zIndex = '200'
+    panel.style.top = `${top}px`
+    panel.style.bottom = 'auto'
+    panel.style.right = `${Math.max(margin, vw - r.right)}px`
+    panel.style.left = 'auto'
+    panel.style.minWidth = '11rem'
+    panel.style.maxWidth = `min(18rem, calc(100vw - ${margin * 2}px))`
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!otherProfileMenuOpen) return
+    const panel = otherProfileMenuPanelRef.current
+    const run = () => {
+      requestAnimationFrame(() => placeOtherProfileMenu())
+    }
+    run()
+    const onRe = () => run()
+    window.addEventListener('resize', onRe)
+    window.addEventListener('scroll', onRe, true)
+    return () => {
+      window.removeEventListener('resize', onRe)
+      window.removeEventListener('scroll', onRe, true)
+      if (panel) {
+        panel.style.position = ''
+        panel.style.zIndex = ''
+        panel.style.top = ''
+        panel.style.bottom = ''
+        panel.style.right = ''
+        panel.style.left = ''
+        panel.style.minWidth = ''
+        panel.style.maxWidth = ''
+      }
+    }
+  }, [otherProfileMenuOpen, placeOtherProfileMenu])
+
+  const profileTopChromeSlidePx =
+    (1 - profileDockReveal) * (profileTopChromeHeight > 0 ? profileTopChromeHeight : 52)
+
   /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */
   useLayoutEffect(() => {
     const was = wasOwnProfileEditingRef.current
@@ -631,6 +981,15 @@ export default function LoungeProfileFullScreen({
     setHandleSlugDraft(
       opts?.nextHandle !== undefined ? String(opts.nextHandle || '').trim() : String(profile?.handle || '').trim()
     )
+    if (opts?.nextLocation !== undefined) {
+      const locDraft = profileLocationDraftFromStored(opts.nextLocation)
+      setLocationSelectDraft(locDraft.selectValue)
+      setLocationCustomDraft(locDraft.customText)
+    } else {
+      const locDraft = profileLocationDraftFromStored(profile?.location)
+      setLocationSelectDraft(locDraft.selectValue)
+      setLocationCustomDraft(locDraft.customText)
+    }
     setAboutErr('')
     if (typeof document !== 'undefined') {
       try {
@@ -640,7 +999,7 @@ export default function LoungeProfileFullScreen({
         // ignore
       }
     }
-  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle])
+  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle, profile?.location])
 
   const refreshSocial = useCallback(async () => {
     if (!profileUserId || !viewerUserId) {
@@ -711,7 +1070,7 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     const el = profileBodyScrollRef.current
     if (!el || typeof window === 'undefined') return
-    if ((!shellDock && !onDockRevealChange) || showOwnEditControls || !open || !panelVisible) return
+    if (showOwnEditControls || !open || !panelVisible) return
     profileDockScrollPrevTopRef.current = el.scrollTop
     const titleRevealPerScrollPx = 220
     const titleHidePerScrollPx = 190
@@ -751,7 +1110,27 @@ export default function LoungeProfileFullScreen({
       el.removeEventListener('scroll', onScroll)
       if (profileDockScrollRafRef.current) window.cancelAnimationFrame(profileDockScrollRafRef.current)
     }
-  }, [shellDock, onDockRevealChange, showOwnEditControls, open, panelVisible])
+  }, [onDockRevealChange, showOwnEditControls, open, panelVisible])
+
+  useEffect(() => {
+    if (!showOwnEditControls) return
+    profileDockRevealRef.current = 1
+    setProfileDockReveal(1)
+    onDockRevealChange?.(1)
+  }, [showOwnEditControls, onDockRevealChange])
+
+  useLayoutEffect(() => {
+    const bar = profileTopChromeRef.current
+    if (!bar || typeof ResizeObserver === 'undefined') return
+    const apply = () => {
+      const h = Math.ceil(bar.getBoundingClientRect().height)
+      if (h > 0) setProfileTopChromeHeight((prev) => (prev === h ? prev : h))
+    }
+    apply()
+    const ro = new ResizeObserver(() => apply())
+    ro.observe(bar)
+    return () => ro.disconnect()
+  }, [open, panelVisible, isOwnProfile])
 
   const toggleFollow = async () => {
     if (!viewerUserId || !profileUserId || isOwnProfile || socialBusy) return
@@ -801,6 +1180,11 @@ export default function LoungeProfileFullScreen({
   const saveProfileEdits = async (opts) => {
     if (!isOwnProfile || !viewerUserId || aboutBusy) return
     const nextAbout = String(aboutDraft || '').trim().slice(0, 140)
+    const nextLocation = profileLocationStoredFromDraft(locationSelectDraft, locationCustomDraft)
+    if (locationSelectDraft === PROFILE_LOCATION_CUSTOM && !nextLocation) {
+      setAboutErr('Enter a custom location or choose a city from the list.')
+      return
+    }
     const dn = String(displayNameDraft || '').trim().slice(0, 24)
     if (!dn) {
       setAboutErr('Display name is required.')
@@ -864,17 +1248,17 @@ export default function LoungeProfileFullScreen({
       }
       const { error: upErr } = await supabaseClient
         .from('profiles')
-        .update({ about_me: nextAbout || null })
+        .update({ about_me: nextAbout || null, location: nextLocation || null })
         .eq('user_id', viewerUserId)
       if (upErr) {
         const raw = String(upErr.message || '')
-        if (/about_me|schema cache/i.test(raw)) {
+        if (/about_me|location|schema cache/i.test(raw)) {
           setAboutErr(
-            'The About field needs the profiles.about_me column. In Supabase → SQL Editor, run supabase/profile_lounge_fullscreen.sql (after feed_phase_a), then save again.'
+            'Profile fields need the latest SQL. In Supabase → SQL Editor, run supabase/profile_lounge_fullscreen.sql (or profile_location.sql), then save again.'
           )
           return
         }
-        setAboutErr(raw || 'Could not save About.')
+        setAboutErr(raw || 'Could not save profile.')
         return
       }
       try {
@@ -896,9 +1280,11 @@ export default function LoungeProfileFullScreen({
         ...profile,
         ...identityRow,
         about_me: nextAbout || null,
+        location: nextLocation || null,
       })
       exitOwnProfileEditing({
         nextAboutDraft: nextAbout,
+        nextLocation: nextLocation || null,
         nextDisplayName: identityRow.display_name,
         nextHandle: identityRow.handle,
       })
@@ -1143,64 +1529,27 @@ export default function LoungeProfileFullScreen({
         }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
         <div
-          ref={profileBodyScrollRef}
-          className={
-            showOwnEditControls
-              ? 'min-h-0 flex-1 overflow-hidden overscroll-y-none pb-[max(0.5rem,env(safe-area-inset-bottom))]'
-              : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain'
-          }
-          style={
-            showOwnEditControls
-              ? undefined
-              : {
-                  paddingBottom: `max(${
-                    profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
-                  }, env(safe-area-inset-bottom))`,
-                }
-          }
+          ref={profileTopChromeRef}
+          className="pointer-events-none absolute inset-x-0 top-0 z-30 will-change-transform"
+          style={{
+            transform: `translate3d(0, ${-profileTopChromeSlidePx}px, 0)`,
+            pointerEvents: profileDockReveal > 0.12 ? 'auto' : 'none',
+          }}
         >
-          {/* Banner; ⋯ in corner (edit mode: sheet does not scroll, so absolute only). */}
-          <div className="relative z-10 w-full shrink-0">
-            <div className="relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36">
-              <button
-                type="button"
-                onClick={onClose}
-                className="absolute left-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 sm:left-3"
-                aria-label="Back"
-              >
-                <span
-                  aria-hidden
-                  className="block leading-none text-2xl -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]"
-                >
-                  ←
-                </span>
-              </button>
-              {profile?.banner_url ? (
-                <img src={profile.banner_url} alt="" className="relative z-0 h-full w-full object-cover" />
-              ) : null}
-              {isOwnProfile ? (
-                <>
-                  <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
-                  {showOwnEditControls ? (
-                    <button
-                      type="button"
-                      disabled={bannerBusy}
-                      onClick={() => bannerInputRef.current?.click()}
-                      className="absolute bottom-2 right-2 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/90 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 shadow hover:bg-zinc-900 disabled:opacity-50 touch-manipulation"
-                    >
-                      {bannerBusy ? 'Uploading…' : 'Banner'}
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
+          <div className="flex items-start justify-between gap-2 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`${PROFILE_BANNER_CHROME_BTN_CLASS} pointer-events-auto`}
+              aria-label="Back"
+            >
+              <span aria-hidden className={PROFILE_BANNER_CHROME_BACK_CLASS}>
+                ←
+              </span>
+            </button>
             {isOwnProfile ? (
-              <div
-                ref={ownProfileBannerMenuRef}
-                className="absolute right-2 top-[max(0.5rem,env(safe-area-inset-top))] z-20 sm:right-3"
-              >
+              <div ref={ownProfileBannerMenuRef} className="pointer-events-auto shrink-0">
                 <button
                   ref={ownProfileMenuButtonRef}
                   type="button"
@@ -1208,12 +1557,9 @@ export default function LoungeProfileFullScreen({
                   aria-expanded={ownProfileMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Profile options"
-                  className="grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50"
+                  className={PROFILE_BANNER_CHROME_BTN_CLASS}
                 >
-                  <span
-                    aria-hidden
-                    className="block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]"
-                  >
+                  <span aria-hidden className={PROFILE_BANNER_CHROME_DOTS_CLASS}>
                     ···
                   </span>
                 </button>
@@ -1245,10 +1591,104 @@ export default function LoungeProfileFullScreen({
                     )
                   : null}
               </div>
+            ) : typeof onShareProfile === 'function' || typeof onBlockProfile === 'function' ? (
+              <div ref={otherProfileMenuWrapRef} className="pointer-events-auto shrink-0">
+                <button
+                  ref={otherProfileMenuButtonRef}
+                  type="button"
+                  onClick={() => setOtherProfileMenuOpen((o) => !o)}
+                  aria-expanded={otherProfileMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label="Profile options"
+                  className={PROFILE_BANNER_CHROME_BTN_CLASS}
+                >
+                  <span aria-hidden className={PROFILE_BANNER_CHROME_DOTS_CLASS}>
+                    ···
+                  </span>
+                </button>
+                {otherProfileMenuOpen
+                  ? createPortal(
+                      <div
+                        ref={otherProfileMenuPanelRef}
+                        className="min-w-[11rem] rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                        role="menu"
+                      >
+                        {typeof onShareProfile === 'function' ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                            onClick={() => {
+                              setOtherProfileMenuOpen(false)
+                              onShareProfile(profile)
+                            }}
+                          >
+                            Share
+                          </button>
+                        ) : null}
+                        {typeof onBlockProfile === 'function' ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+                            onClick={() => {
+                              setOtherProfileMenuOpen(false)
+                              onBlockProfile(profile)
+                            }}
+                          >
+                            Block
+                          </button>
+                        ) : null}
+                      </div>,
+                      document.body
+                    )
+                  : null}
+              </div>
             ) : null}
           </div>
+        </div>
+        {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
+        <div
+          ref={profileBodyScrollRef}
+          className={
+            showOwnEditControls
+              ? 'min-h-0 flex-1 overflow-hidden overscroll-y-none pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+              : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain'
+          }
+          style={
+            showOwnEditControls
+              ? undefined
+              : {
+                  paddingBottom: `max(${
+                    profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
+                  }, env(safe-area-inset-bottom))`,
+                }
+          }
+        >
+          <div className="relative z-10 w-full shrink-0">
+            <div className="relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36">
+              {profile?.banner_url ? (
+                <img src={profile.banner_url} alt="" className="relative z-0 h-full w-full object-cover" />
+              ) : null}
+              {isOwnProfile ? (
+                <>
+                  <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
+                  {showOwnEditControls ? (
+                    <button
+                      type="button"
+                      disabled={bannerBusy}
+                      onClick={() => bannerInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/90 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 shadow hover:bg-zinc-900 disabled:opacity-50 touch-manipulation"
+                    >
+                      {bannerBusy ? 'Uploading…' : 'Banner'}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          </div>
 
-          <div className="relative px-4 pb-4">
+          <div className="relative px-4">
             <div className="pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
               <div className="relative shrink-0 pointer-events-auto">
                 <div className="flex h-24 w-24 overflow-hidden rounded-full border-4 border-zinc-950 bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
@@ -1387,6 +1827,47 @@ export default function LoungeProfileFullScreen({
                       {handleSlugDraft || 'your_handle'} in Lounge.
                     </span>
                   </label>
+                  <label className="block">
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Location</span>
+                    <select
+                      value={locationSelectDraft}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setLocationSelectDraft(v)
+                        if (v !== PROFILE_LOCATION_CUSTOM) setLocationCustomDraft('')
+                      }}
+                      className={PROFILE_LOCATION_FIELD_CLASS}
+                    >
+                      <option value="">No location</option>
+                      {PROFILE_LOCATION_PRESETS.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                      <option value={PROFILE_LOCATION_CUSTOM}>Custom…</option>
+                    </select>
+                  </label>
+                  {locationSelectDraft === PROFILE_LOCATION_CUSTOM ? (
+                    <label className="block">
+                      <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Custom location
+                      </span>
+                      <input
+                        type="text"
+                        value={locationCustomDraft}
+                        onChange={(e) =>
+                          setLocationCustomDraft(e.target.value.slice(0, PROFILE_LOCATION_MAX_LEN))
+                        }
+                        maxLength={PROFILE_LOCATION_MAX_LEN}
+                        autoComplete="address-level2"
+                        placeholder="City, region, or area"
+                        className={PROFILE_LOCATION_FIELD_CLASS}
+                      />
+                      <span className="mt-1 block text-[12px] text-zinc-500 tabular-nums">
+                        {locationCustomDraft.length}/{PROFILE_LOCATION_MAX_LEN}
+                      </span>
+                    </label>
+                  ) : null}
                 </div>
               ) : (
                 <>
@@ -1403,6 +1884,12 @@ export default function LoungeProfileFullScreen({
                       </span>
                     ) : null}
                   </div>
+                  {locationDisplay ? (
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[14px] leading-snug text-zinc-400">
+                      <ProfileLocationPinIcon />
+                      <span className="min-w-0 truncate">{locationDisplay}</span>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
@@ -1460,7 +1947,9 @@ export default function LoungeProfileFullScreen({
                 </p>
               )}
             </div>
+          </div>
 
+          <div className="w-full min-w-0">
             <div className="mt-6 border-b border-zinc-800">
               <div className="flex gap-0">
                 {profileTabsVisible.map((id) => (
@@ -1481,7 +1970,7 @@ export default function LoungeProfileFullScreen({
               </div>
             </div>
 
-            <div className="min-h-[12rem]">
+            <div className="min-h-[12rem] pb-4">
               {error ? (
                 <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">{error}</div>
               ) : tab === 'posts' ? (
@@ -1538,7 +2027,6 @@ export default function LoungeProfileFullScreen({
                     <ProfileReplyRow
                       key={item.comment.id}
                       item={item}
-                      profile={profile}
                       postCardProps={postCardPropsForLists}
                       onOpenProfileReply={postCardPropsForLists?.onOpenProfileReply}
                       profileBodyScrollRef={profileBodyScrollRef}
@@ -1664,6 +2152,8 @@ export default function LoungeProfileFullScreen({
                 if (!uid) return
                 openNestedProfileFromFollowList(entity)
               }}
+              onShareProfile={onShareProfile}
+              onBlockProfile={onBlockProfile}
             />
           )
         })}

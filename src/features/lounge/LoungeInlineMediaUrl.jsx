@@ -13,7 +13,15 @@ function normalizeUrlList(urls) {
  * Pass `urls` + `initialIndex` for multi-image navigation; or legacy single `url`.
  * @param {import('react').ReactNode} [footer] — e.g. post interaction bar; clicks do not close the lightbox.
  */
-export function LoungeImageLightbox({ url, urls, initialIndex = 0, onClose, footer }) {
+export function LoungeImageLightbox({
+  url,
+  urls,
+  initialIndex = 0,
+  onClose,
+  footer,
+  /** Tailwind z-index on the portaled shell (default below profile sheet `z-[101]`). */
+  lightboxPortalClass = 'z-[100]',
+}) {
   const list = useMemo(() => {
     const fromArr = normalizeUrlList(urls)
     if (fromArr.length) return fromArr
@@ -85,7 +93,7 @@ export function LoungeImageLightbox({ url, urls, initialIndex = 0, onClose, foot
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black/75 backdrop-blur-[2px] p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className={`fixed inset-0 ${lightboxPortalClass} flex flex-col bg-black/75 backdrop-blur-[2px] p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]`}
       role="dialog"
       aria-modal="true"
       aria-label={multi ? `Image ${idx + 1} of ${list.length}` : 'Full image'}
@@ -173,6 +181,7 @@ export function LoungeInlineMediaUrl({
   marginTopClass = 'mt-2',
   enableLightbox = true,
   lightboxFooter,
+  lightboxPortalClass = 'z-[100]',
 }) {
   const [lightbox, setLightbox] = useState(null)
   const lightboxFooterMerged = useMemo(
@@ -232,6 +241,7 @@ export function LoungeInlineMediaUrl({
           initialIndex={lightbox.index}
           onClose={() => setLightbox(null)}
           footer={lightboxFooterMerged}
+          lightboxPortalClass={lightboxPortalClass}
         />
       ) : null}
     </div>
@@ -249,6 +259,7 @@ export function LoungePostMediaPair({
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
   lightboxFooter,
+  lightboxPortalClass = 'z-[100]',
 }) {
   const m = mediaUrl != null ? String(mediaUrl).trim() : ''
   const g = gifUrl != null ? String(gifUrl).trim() : ''
@@ -256,11 +267,34 @@ export function LoungePostMediaPair({
   if (m && g) {
     return (
       <>
-        <LoungeInlineMediaUrl url={m} variant={variant} marginTopClass={firstMarginTopClass} enableLightbox={enableLightbox} lightboxFooter={lightboxFooter} />
-        <LoungeInlineMediaUrl url={g} variant={variant} marginTopClass="mt-2" enableLightbox={enableLightbox} lightboxFooter={lightboxFooter} />
+        <LoungeInlineMediaUrl
+          url={m}
+          variant={variant}
+          marginTopClass={firstMarginTopClass}
+          enableLightbox={enableLightbox}
+          lightboxFooter={lightboxFooter}
+          lightboxPortalClass={lightboxPortalClass}
+        />
+        <LoungeInlineMediaUrl
+          url={g}
+          variant={variant}
+          marginTopClass="mt-2"
+          enableLightbox={enableLightbox}
+          lightboxFooter={lightboxFooter}
+          lightboxPortalClass={lightboxPortalClass}
+        />
       </>
     )
   }
   const single = m || g
-  return <LoungeInlineMediaUrl url={single} variant={variant} marginTopClass={firstMarginTopClass} enableLightbox={enableLightbox} lightboxFooter={lightboxFooter} />
+  return (
+    <LoungeInlineMediaUrl
+      url={single}
+      variant={variant}
+      marginTopClass={firstMarginTopClass}
+      enableLightbox={enableLightbox}
+      lightboxFooter={lightboxFooter}
+      lightboxPortalClass={lightboxPortalClass}
+    />
+  )
 }

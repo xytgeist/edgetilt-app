@@ -125,7 +125,7 @@ export function profileSeedFromUser(user) {
 export async function fetchOwnProfile(supabaseClient, userId) {
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role,handle_changed_at,is_og')
+    .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,created_at,role,handle_changed_at,is_og')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) return { data: null, error }
@@ -175,7 +175,7 @@ function isProfileHandleUniqueViolation(error) {
 }
 
 const PROFILE_SAVE_SELECT =
-  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,created_at,role,handle_changed_at,is_og'
+  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,created_at,role,handle_changed_at,is_og'
 
 export async function saveProfileWithHandleFallback({
   supabaseClient,

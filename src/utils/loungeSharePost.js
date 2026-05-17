@@ -22,6 +22,18 @@ export function buildLoungePostShareUrl(postId) {
   return u.toString()
 }
 
+/** Share link for a Lounge profile (`/?tab=home&profile=:userId`). */
+export function buildLoungeProfileShareUrl(userId) {
+  if (typeof window === 'undefined' || !userId) return ''
+  const id = String(userId).trim()
+  if (!LOUNGE_POST_ID_RE.test(id)) return ''
+  const u = new URL(window.location.href)
+  if (!u.searchParams.has('tab')) u.searchParams.set('tab', 'home')
+  u.searchParams.set('profile', id)
+  u.hash = ''
+  return u.toString()
+}
+
 export function stripLoungePostQueryParam() {
   if (typeof window === 'undefined') return
   const u = new URL(window.location.href)

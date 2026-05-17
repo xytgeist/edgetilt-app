@@ -78,10 +78,17 @@ function HierarchyCommentRow({
   descendantFallback,
   connectorRootRef,
   isCommentPostDetail,
+  betweenRowClassName = 'mt-1',
 }) {
   const rowRef = useRef(null)
   const avatarWrapRef = useRef(null)
   const lineContainerRef = pathIndex === 0 && connectorRootRef ? connectorRootRef : rowRef
+  const rowGapClass =
+    pathIndex > 0 && !isCommentPostDetail
+      ? 'mt-1 border-t border-zinc-800/60 pt-1.5'
+      : pathIndex > 0
+        ? betweenRowClassName
+        : ''
 
   const canNavigate = !isFocus && typeof onNavigateToPathIndex === 'function'
 
@@ -102,10 +109,7 @@ function HierarchyCommentRow({
   )
 
   return (
-    <div
-      ref={rowRef}
-      className={`relative min-w-0 ${pathIndex > 0 && !isCommentPostDetail ? 'mt-1 border-t border-zinc-800/60 pt-1.5' : pathIndex > 0 ? 'mt-1' : ''}`}
-    >
+    <div ref={rowRef} className={`relative min-w-0 ${rowGapClass}`}>
       {!isCommentPostDetail ? (
         <AvatarConnectorLine
           containerRef={lineContainerRef}
@@ -143,6 +147,7 @@ export default function LoungePostDetailCommentHierarchy({
   descendantCountByCommentId,
   cardProps = {},
   isCommentPostDetail = true,
+  betweenRowClassName = 'mt-1',
 }) {
   const byId = new Map((comments || []).map((c) => [c.id, c]))
   const chain = (pathIds || []).map((id) => byId.get(id)).filter(Boolean)
@@ -175,6 +180,7 @@ export default function LoungePostDetailCommentHierarchy({
             descendantFallback={descendantCountByCommentId?.get(comment.id) ?? 0}
             connectorRootRef={connectorRootRef}
             isCommentPostDetail={isCommentPostDetail}
+            betweenRowClassName={betweenRowClassName}
           />
         )
       })}

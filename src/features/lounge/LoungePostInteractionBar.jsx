@@ -42,13 +42,28 @@ export default function LoungePostInteractionBar({
   /** Extra classes on the outer grid wrapper (e.g. `w-full` in lightbox). */
   rootClassName = '',
 }) {
-  const ui = interactionStateFor(post.id)
+  const idleUi = {
+    liked: false,
+    reposted: false,
+    commented: false,
+    plainRepostChildId: null,
+    quoteRepostChildId: null,
+  }
+  const postId = post?.id
+  const ui =
+    typeof interactionStateFor === 'function' && postId
+      ? interactionStateFor(postId) || idleUi
+      : idleUi
   const [repostMenuOpen, setRepostMenuOpen] = useState(false)
   const repostMenuRef = useRef(null)
   const repostMenuPortalRef = useRef(null)
   const [repostMenuFixed, setRepostMenuFixed] = useState({ top: 0, left: 0 })
   const isBookmarked =
-    typeof getBookmarked === 'function' ? !!getBookmarked(post.id) : !!bookmarkedByPost[post.id]
+    typeof getBookmarked === 'function'
+      ? !!getBookmarked(postId)
+      : bookmarkedByPost && typeof bookmarkedByPost === 'object'
+        ? !!bookmarkedByPost[postId]
+        : false
   const baseComments = typeof post.comment_count === 'number' ? post.comment_count : 0
   const baseLikes = typeof post.like_count === 'number' ? post.like_count : 0
   const baseReposts = typeof post.repost_count === 'number' ? post.repost_count : 0

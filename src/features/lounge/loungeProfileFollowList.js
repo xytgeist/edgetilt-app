@@ -1,5 +1,5 @@
 const PROFILE_FOLLOW_LIST_SELECT =
-  'user_id,handle,display_name,avatar_url,bio,about_me,role,is_og'
+  'user_id,handle,display_name,avatar_url,bio,about_me,location,role,is_og'
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient

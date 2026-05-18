@@ -95,21 +95,46 @@ export default function LoungeDockSlidePanels({
   const filteredSearchPosts = useMemo(() => {
     const s = q.trim().toLowerCase()
     const base = communityPosts || []
-    const list = !s
-      ? base.slice()
-      : base.filter((p) => {
-          const cap = feedPostDisplayCaption(p).toLowerCase()
-          const game = String(p?.game_title || '').toLowerCase()
-          return cap.includes(s) || game.includes(s)
-        })
-    list.sort((a, b) => {
-      const d = loungePostInteractionScore(b) - loungePostInteractionScore(a)
-      if (d !== 0) return d
-      const ta = new Date(a?.created_at || 0).getTime()
-      const tb = new Date(b?.created_at || 0).getTime()
-      return tb - ta
-    })
-    return list
+    if (!s) {
+      const all = base.slice()
+      all.sort((a, b) => {
+        const d = loungePostInteractionScore(b) - loungePostInteractionScore(a)
+        if (d !== 0) return d
+        return new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime()
+      })
+      return all
+    }
+
+    // Strip leading # so "#lasvegas" and "lasvegas" search identically.
+    const hashBase = s.startsWith('#') ? s.slice(1) : s
+    // Only apply hashtag-bucket logic when the term is a single word (no spaces).
+    const isWordQuery = hashBase.length > 0 && !hashBase.includes(' ')
+    // Escape special regex chars in the term.
+    const esc = hashBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const exactRe = isWordQuery ? new RegExp(`#${esc}(?![\\w-])`, 'i') : null
+    const prefixRe = isWordQuery ? new RegExp(`#${esc}[\\w-]`, 'i') : null
+
+    const tsMs = (p) => new Date(p?.created_at || 0).getTime()
+
+    const buckets = [[], [], []] // 0=exact hashtag, 1=prefix hashtag, 2=text match
+    for (const p of base) {
+      const cap = feedPostDisplayCaption(p).toLowerCase()
+      const game = String(p?.game_title || '').toLowerCase()
+      if (exactRe?.test(cap)) {
+        buckets[0].push(p)
+      } else if (prefixRe?.test(cap)) {
+        buckets[1].push(p)
+      } else if (cap.includes(s) || game.includes(s)) {
+        buckets[2].push(p)
+      }
+    }
+
+    // Within each bucket: most recent first.
+    for (const bucket of buckets) {
+      bucket.sort((a, b) => tsMs(b) - tsMs(a))
+    }
+
+    return [...buckets[0], ...buckets[1], ...buckets[2]]
   }, [communityPosts, q])
 
   const panelTitleBarChromePx = panelTitleBarHeight > 0 ? panelTitleBarHeight : 56

@@ -6462,11 +6462,11 @@ export default function SocialFeed({
       try {
         const { data } = await supabaseClient
           .from('profiles')
-          .select('id, display_name, handle, avatar_url, role, is_og')
-          .eq('handle', cleanHandle)
+          .select('user_id, display_name, handle, avatar_url, role, is_og')
+          .ilike('handle', cleanHandle)
           .maybeSingle()
-        if (data?.id) {
-          void openProfileModal({ user_id: data.id, author_profile: data })
+        if (data?.user_id) {
+          void openProfileModal({ user_id: data.user_id, author_profile: data })
         }
       } catch {}
     },

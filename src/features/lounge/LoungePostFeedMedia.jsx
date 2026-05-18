@@ -266,6 +266,47 @@ export function LoungeImageCarousel({
 }
 
 /**
+ * Mid-scroll autoplay coordinator id — unique per feed/detail row surface, not canonical post id
+ * (reposts of the same clip must not share one DOM registration).
+ */
+function loungeFeedAutoplayClientId({
+  enableLightbox,
+  variant,
+  streamUid,
+  postId,
+  hostRowId,
+  slot,
+  scope,
+}) {
+  if (!enableLightbox || !streamUid) return undefined
+  const uid = String(streamUid).trim()
+  if (!uid) return undefined
+  const mediaPostId = String(postId || '').trim()
+  const rowId = String(hostRowId || mediaPostId || '').trim()
+  const scopePrefix = scope === 'detail' ? 'detail' : ''
+  const withScope = (tail) => (scopePrefix ? `${scopePrefix}:${tail}` : tail)
+
+  if (variant === 'commentInline') {
+    if (!mediaPostId) return undefined
+    if (hostRowId) {
+      const s = String(slot || 'comment').trim()
+      return withScope(s ? `${rowId}:${s}:${uid}` : `${rowId}:${uid}`)
+    }
+    return `comment:${mediaPostId}:${uid}`
+  }
+  if (variant === 'detail') {
+    if (!mediaPostId) return undefined
+    return `detail:${mediaPostId}:${uid}`
+  }
+  if (variant === 'feed' || variant === 'embed') {
+    if (!rowId) return undefined
+    const s = String(slot || (variant === 'embed' ? 'embed' : '')).trim()
+    return withScope(s ? `${rowId}:${s}:${uid}` : `${rowId}:${uid}`)
+  }
+  return undefined
+}
+
+/**
  * Feed / detail: multi-image carousel when `image_urls` is non-empty; otherwise legacy `media_url` + `gif_url`.
  */
 export function LoungePostFeedImagesAndGif({
@@ -277,6 +318,12 @@ export function LoungePostFeedImagesAndGif({
   lightboxPortalClass = 'z-[100]',
   /** `(post) => ReactNode` — e.g. interaction bar for the same post as this media strip. */
   renderMediaLightboxFooter,
+  /** Feed/detail row id when media `post` is not the host card (plain/quote/comment reposts). */
+  feedAutoplayRowId,
+  /** Optional slot when one row has multiple Stream tiles (e.g. quote caption + embed). */
+  feedAutoplaySlot,
+  /** Prefix coordinator ids in post detail (`detail:…`) while using feed/embed variant tiles. */
+  feedAutoplayScope,
 }) {
   const mediaLightboxFooter =
     typeof renderMediaLightboxFooter === 'function' ? renderMediaLightboxFooter(post) : null
@@ -284,17 +331,19 @@ export function LoungePostFeedImagesAndGif({
   const persistedStreamPoster = streamUid ? feedPostStreamPosterUrl(post) : ''
   const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null
   const sessionStreamPosterUrl = streamUid ? peekLoungeStreamSessionPoster(streamUid) : ''
-  const feedAutoplayClientId = (() => {
-    if (!enableLightbox || !post?.id || !streamUid) return undefined
-    if (variant === 'feed' || variant === 'embed') return `${post.id}:${streamUid}`
-    if (variant === 'commentInline') return `comment:${post.id}:${streamUid}`
-    if (variant === 'detail') return `detail:${post.id}:${streamUid}`
-    return undefined
-  })()
+  const feedAutoplayClientId = loungeFeedAutoplayClientId({
+    enableLightbox,
+    variant,
+    streamUid,
+    postId: post?.id,
+    hostRowId: feedAutoplayRowId,
+    slot: feedAutoplaySlot,
+    scope: feedAutoplayScope,
+  })
   if (streamUid) {
     return (
       <LoungePostStreamVideo
-        key={streamUid}
+        key={feedAutoplayClientId || streamUid}
         uid={streamUid}
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}

@@ -78,6 +78,34 @@ const STREAM_POSTER_FADE_DELAY_MS = 72
 /** If decode signals never fire, still unstick poster→video crossfade (rare HLS/Safari quirks). Intentionally long so we do not beat real decode and flash black. */
 const STREAM_FADE_LAST_RESORT_MS = 6500
 
+/** Clamp seek target for handoff between inline tile and full-screen lightbox. */
+function clampStreamSeekSeconds(video, timeSec) {
+  const t = Number(timeSec)
+  if (!Number.isFinite(t) || t <= 0) return 0
+  const d = video?.duration
+  if (Number.isFinite(d) && d > 0) return Math.min(t, Math.max(0, d - 0.05))
+  return t
+}
+
+/** Best-effort freeze of the inline frame for seamless lightbox open (may fail on tainted cross-origin video). */
+function captureInlineStreamFrameDataUrl(video) {
+  if (!video || video.readyState < 2) return null
+  const w = video.videoWidth
+  const h = video.videoHeight
+  if (!w || !h) return null
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(video, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', 0.88)
+  } catch {
+    return null
+  }
+}
+
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
@@ -217,16 +245,40 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
   }, [src, attachKey, enabled, feedStyleAbr, onAutoReattach, recoveryBurstRef])
 }
 
-function LoungeStreamVideoLightbox({ uid, onClose, footer, lightboxPortalClass = 'z-[100]' }) {
-  const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
-    onClose,
-    allowSwipeOnVideo: true,
-    className: 'relative flex min-h-0 flex-1 flex-col',
-  })
+function LoungeStreamVideoLightbox({
+  uid,
+  onClose,
+  onCloseWithState,
+  footer,
+  lightboxPortalClass = 'z-[100]',
+  initialTimeSec = 0,
+  initialMuted = false,
+  handoffFromInline = false,
+  handoffFrameUrl = null,
+}) {
   const videoRef = useRef(null)
   const recoveryBurstRef = useRef(0)
   const [attachKey, setAttachKey] = useState(0)
   const [showLoadRetry, setShowLoadRetry] = useState(false)
+  const [videoRevealed, setVideoRevealed] = useState(() => !handoffFromInline)
+  const handoffTimeRef = useRef(initialTimeSec)
+  const handoffMutedRef = useRef(initialMuted)
+  handoffTimeRef.current = initialTimeSec
+  handoffMutedRef.current = initialMuted
+  const deferHandoffReveal = handoffFromInline || Boolean(handoffFrameUrl)
+
+  const finishClose = useCallback(() => {
+    const v = videoRef.current
+    const timeSec = v && Number.isFinite(v.currentTime) ? v.currentTime : 0
+    onCloseWithState?.(timeSec)
+    onClose()
+  }, [onClose, onCloseWithState])
+
+  const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
+    onClose: finishClose,
+    allowSwipeOnVideo: true,
+    className: 'relative flex min-h-0 flex-1 flex-col',
+  })
   const id = String(uid || '').trim()
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
@@ -243,25 +295,45 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer, lightboxPortalClass =
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') finishClose()
     }
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
     }
-  }, [id, onClose])
+  }, [id, finishClose])
+
+  useEffect(() => {
+    setVideoRevealed(!deferHandoffReveal)
+  }, [id, attachKey, deferHandoffReveal, initialTimeSec])
 
   /** Prefer sound in full screen once media can play; fall back to muted if unmuted autoplay is blocked. */
   useEffect(() => {
     const v = videoRef.current
     if (!v) return undefined
-    const go = () => {
+    let cancelled = false
+    let revealTimer = 0
+    const revealVideo = () => {
+      if (cancelled) return
+      setVideoRevealed(true)
+    }
+    const seekAndPlay = () => {
+      if (cancelled) return
+      if (deferHandoffReveal) {
+        v.addEventListener('playing', revealVideo, { once: true })
+        revealTimer = window.setTimeout(revealVideo, 1200)
+      }
       try {
-        v.muted = false
+        const t = Number(handoffTimeRef.current)
+        if (Number.isFinite(t) && t > 0.05) {
+          v.currentTime = clampStreamSeekSeconds(v, t)
+        }
+        v.muted = handoffMutedRef.current
         const p = v.play()
         if (p && typeof p.catch === 'function') {
           p.catch(() => {
+            if (cancelled) return
             try {
               v.muted = true
               void v.play()
@@ -275,12 +347,21 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer, lightboxPortalClass =
       }
     }
     if (v.readyState >= 2) {
-      go()
-      return undefined
+      seekAndPlay()
+      return () => {
+        cancelled = true
+        window.clearTimeout(revealTimer)
+        v.removeEventListener('playing', revealVideo)
+      }
     }
-    v.addEventListener('canplay', go, { once: true })
-    return () => v.removeEventListener('canplay', go)
-  }, [id, attachKey])
+    v.addEventListener('canplay', seekAndPlay, { once: true })
+    return () => {
+      cancelled = true
+      window.clearTimeout(revealTimer)
+      v.removeEventListener('canplay', seekAndPlay)
+      v.removeEventListener('playing', revealVideo)
+    }
+  }, [id, attachKey, initialTimeSec, initialMuted, deferHandoffReveal])
 
   if (!id) return null
 
@@ -290,14 +371,14 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer, lightboxPortalClass =
       role="dialog"
       aria-modal="true"
       aria-label="Full screen video"
-      onClick={onClose}
+      onClick={finishClose}
     >
       <div className="flex shrink-0 justify-end" data-lounge-lightbox-no-swipe>
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation()
-            onClose()
+            finishClose()
           }}
           className="touch-manipulation rounded-lg border border-zinc-600/80 bg-zinc-900/80 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
         >
@@ -306,13 +387,25 @@ function LoungeStreamVideoLightbox({ uid, onClose, footer, lightboxPortalClass =
       </div>
       <div onClick={(e) => e.stopPropagation()} {...swipeSurfaceProps}>
       <div className="relative flex min-h-0 flex-1 items-center justify-center p-2">
+        {handoffFrameUrl ? (
+          <img
+            src={handoffFrameUrl}
+            alt=""
+            aria-hidden
+            className={`pointer-events-none absolute inset-0 m-auto max-h-full max-w-full object-contain transition-opacity duration-150 ${
+              videoRevealed ? 'opacity-0' : 'opacity-100'
+            }`}
+          />
+        ) : null}
         <video
           ref={videoRef}
-          className="max-h-full max-w-full object-contain"
+          className={`max-h-full max-w-full object-contain transition-opacity duration-150 ${
+            videoRevealed ? 'opacity-100' : 'opacity-0'
+          }`}
           controls
           playsInline
           controlsList="nodownload"
-          poster={poster}
+          poster={deferHandoffReveal ? undefined : poster}
           preload="auto"
           aria-label="Post video (full screen)"
           onError={() => {
@@ -424,7 +517,20 @@ export default function LoungePostStreamVideo({
   const lightboxOpenRef = useRef(false)
   const isWinnerRef = useRef(false)
   const recoveryBurstRef = useRef(0)
+  /** Inline resume position after lightbox closes (autoplay on only). */
+  const inlineResumeAfterLightboxRef = useRef(
+    /** @type {{ timeSec: number, feedSound: { unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null } | null} */ (
+      null
+    ),
+  )
+  /** Feed sound snapshot taken when lightbox opens (restored on close, independent of lightbox mute). */
+  const inlineFeedSoundSnapshotRef = useRef(
+    /** @type {{ unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null} */ (null),
+  )
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxHandoff, setLightboxHandoff] = useState(
+    /** @type {{ timeSec: number, muted: boolean, frameUrl?: string | null } | null} */ (null),
+  )
   const mediaLightboxFooterMerged = useMemo(
     () => mergeLightboxDismissOnQuoteRepost(mediaLightboxFooter, () => setLightboxOpen(false)),
     [mediaLightboxFooter, setLightboxOpen],
@@ -563,24 +669,29 @@ export default function LoungePostStreamVideo({
   const {
     coordinatorActive,
     isWinner,
+    feedAutoplayEnabled,
     scheduleRecompute,
     feedInlineSoundUnmuted,
+    feedInlineSoundExplicitlyMuted,
     toggleFeedInlineSound,
+    restoreFeedInlineSound,
   } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
   /** Inside `LoungeFeedVideoAutoplayProvider` with a client id: one shared “Tap for sound” for the scroll surface. */
   const coordinatedInlineSound = coordinatorActive
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
+  const [localStripSoundExplicitlyMuted, setLocalStripSoundExplicitlyMuted] = useState(false)
   const stripSoundUnmuted = coordinatedInlineSound ? feedInlineSoundUnmuted : localStripSoundUnmuted
   const inlineSoundScopeLabel =
     variant === 'feed' || variant === 'embed' ? 'the feed' : 'this screen'
   const feedStyleAbr =
     variant === 'feed' || variant === 'embed' || variant === 'composer' || variant === 'commentInline'
-  /** Coordinator can name a winner before IntersectionObserver fires; attach on winner alone (IO still gates pause for non-coordinator). */
-  const attachStream = lazyStream ? (coordinatorActive ? isWinner : streamInView) : true
+  const attachStream = lazyStream
+    ? feedAutoplayEnabled && (coordinatorActive ? isWinner : streamInView)
+    : true
 
   useEffect(() => {
-    isWinnerRef.current = !coordinatorActive || isWinner
-  }, [coordinatorActive, isWinner])
+    isWinnerRef.current = feedAutoplayEnabled && (!coordinatorActive || isWinner)
+  }, [coordinatorActive, isWinner, feedAutoplayEnabled])
 
   /** Keep inline `<video>` muted in sync with shared provider sound (all registered tiles; winner may be playing). */
   useEffect(() => {
@@ -601,6 +712,17 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     if (!streamInView && lazyStream) recoveryBurstRef.current = 0
   }, [streamInView, lazyStream])
+
+  useEffect(() => {
+    if (feedAutoplayEnabled) return
+    setLocalStripSoundUnmuted(false)
+    setLocalStripSoundExplicitlyMuted(false)
+    try {
+      videoRef.current?.pause()
+    } catch {
+      // ignore
+    }
+  }, [feedAutoplayEnabled])
 
   const bumpStreamAttach = useCallback(() => {
     setStreamAttachKey((k) => k + 1)
@@ -721,12 +843,55 @@ export default function LoungePostStreamVideo({
   }, [attachStream, poster, id, streamAttachKey])
 
   const openLightbox = useCallback(() => {
+    const v = videoRef.current
+    if (feedAutoplayEnabled && v && attachStream) {
+      const explicitlyMuted = coordinatedInlineSound
+        ? feedInlineSoundExplicitlyMuted
+        : localStripSoundExplicitlyMuted
+      inlineFeedSoundSnapshotRef.current = {
+        unmuted: stripSoundUnmuted,
+        explicitlyMuted,
+        coordinated: coordinatedInlineSound,
+      }
+      setLightboxHandoff({
+        timeSec: Number.isFinite(v.currentTime) ? v.currentTime : 0,
+        muted: explicitlyMuted,
+        frameUrl: captureInlineStreamFrameDataUrl(v),
+      })
+    } else {
+      inlineFeedSoundSnapshotRef.current = null
+      setLightboxHandoff(null)
+    }
     try {
-      videoRef.current?.pause()
+      v?.pause()
     } catch {
       // ignore
     }
     setLightboxOpen(true)
+  }, [
+    feedAutoplayEnabled,
+    attachStream,
+    coordinatedInlineSound,
+    feedInlineSoundExplicitlyMuted,
+    localStripSoundExplicitlyMuted,
+    stripSoundUnmuted,
+  ])
+
+  const handleLightboxCloseWithState = useCallback(
+    (timeSec) => {
+      if (!feedAutoplayEnabled) return
+      inlineResumeAfterLightboxRef.current = {
+        timeSec: Number.isFinite(timeSec) ? timeSec : 0,
+        feedSound: inlineFeedSoundSnapshotRef.current,
+      }
+      inlineFeedSoundSnapshotRef.current = null
+    },
+    [feedAutoplayEnabled],
+  )
+
+  const handleLightboxClose = useCallback(() => {
+    setLightboxOpen(false)
+    setLightboxHandoff(null)
   }, [])
 
   /** Bottom strip: coordinated tiles share provider mute; others toggle this tile only. */
@@ -766,6 +931,7 @@ export default function LoungePostStreamVideo({
         // ignore
       }
       setLocalStripSoundUnmuted(false)
+      setLocalStripSoundExplicitlyMuted(true)
       return
     }
     if (!v) {
@@ -777,7 +943,10 @@ export default function LoungePostStreamVideo({
       const p = v.play()
       if (p && typeof p.then === 'function') {
         p
-          .then(() => setLocalStripSoundUnmuted(true))
+          .then(() => {
+            setLocalStripSoundUnmuted(true)
+            setLocalStripSoundExplicitlyMuted(false)
+          })
           .catch(() => {
             try {
               v.muted = true
@@ -788,6 +957,7 @@ export default function LoungePostStreamVideo({
           })
       } else {
         setLocalStripSoundUnmuted(true)
+        setLocalStripSoundExplicitlyMuted(false)
       }
     } catch {
       openLightbox()
@@ -838,6 +1008,7 @@ export default function LoungePostStreamVideo({
         }
       }
       queueMicrotask(() => scheduleRecompute())
+      if (!feedAutoplayEnabled) return
       if (!attachOk || !won) return
       if (lightboxOpenRef.current) return
       if (lazyStream) return
@@ -876,19 +1047,21 @@ export default function LoungePostStreamVideo({
     scheduleRecompute,
     localStripSoundUnmuted,
     coordinatorActive,
+    feedAutoplayEnabled,
   ])
 
   /** After lazy HLS attach (feed/embed), start muted autoplay once media is ready. */
   useEffect(() => {
     if (!lazyStream || !attachStream) return undefined
     if (!showOpen) return undefined
-    if ((!inViewRef.current && !(coordinatorActive && isWinner)) || lightboxOpenRef.current)
-      return undefined
+    if (lightboxOpenRef.current) return undefined
+    if (!inViewRef.current && !(coordinatorActive && isWinner)) return undefined
     if (coordinatorActive && !isWinner) return undefined
     const v = videoRef.current
     if (!v) return undefined
     let cleaned = false
     const go = () => {
+      if (lightboxOpenRef.current) return
       try {
         v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : true
         const p = v.play()
@@ -930,6 +1103,7 @@ export default function LoungePostStreamVideo({
   /** After closing lightbox, resume muted autoplay if still in view. */
   useEffect(() => {
     if (lightboxOpen) return
+    if (!feedAutoplayEnabled) return
     const v = videoRef.current
     if (!v || !showOpen) return
     if (!inViewRef.current && !(coordinatorActive && isWinner)) return
@@ -941,13 +1115,57 @@ export default function LoungePostStreamVideo({
       }
       return
     }
-    try {
-      v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
-      const p = v.play()
-      if (p && typeof p.catch === 'function') p.catch(() => {})
-    } catch {
-      // ignore
+    const resume = inlineResumeAfterLightboxRef.current
+    let playMuted = coordinatedInlineSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
+    const startPlay = () => {
+      try {
+        v.muted = playMuted
+        const p = v.play()
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      } catch {
+        // ignore
+      }
     }
+    if (resume) {
+      inlineResumeAfterLightboxRef.current = null
+      const snap = resume.feedSound
+      if (snap) {
+        playMuted = !snap.unmuted
+        const applyResume = () => {
+          try {
+            if (resume.timeSec > 0.05) {
+              v.currentTime = clampStreamSeekSeconds(v, resume.timeSec)
+            }
+            if (snap.coordinated) {
+              restoreFeedInlineSound(snap.unmuted, snap.explicitlyMuted)
+            } else {
+              setLocalStripSoundUnmuted(snap.unmuted)
+              setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
+            }
+          } catch {
+            // ignore
+          }
+          startPlay()
+        }
+        if (v.readyState >= 1) applyResume()
+        else v.addEventListener('loadedmetadata', applyResume, { once: true })
+        return
+      }
+      const applyResume = () => {
+        try {
+          if (resume.timeSec > 0.05) {
+            v.currentTime = clampStreamSeekSeconds(v, resume.timeSec)
+          }
+        } catch {
+          // ignore
+        }
+        startPlay()
+      }
+      if (v.readyState >= 1) applyResume()
+      else v.addEventListener('loadedmetadata', applyResume, { once: true })
+      return
+    }
+    startPlay()
   }, [
     lightboxOpen,
     showOpen,
@@ -956,6 +1174,8 @@ export default function LoungePostStreamVideo({
     coordinatedInlineSound,
     feedInlineSoundUnmuted,
     localStripSoundUnmuted,
+    restoreFeedInlineSound,
+    feedAutoplayEnabled,
   ])
 
   /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
@@ -1018,16 +1238,20 @@ export default function LoungePostStreamVideo({
         className={`relative block w-fit max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
-              ? stripSoundUnmuted
-                ? `Post video, sound on in ${inlineSoundScopeLabel}. Tap the video for full screen. Use the bottom-left mute control.`
-                : `Post video, playing muted. Tap the video for full screen. Use the bottom-left control for sound in ${inlineSoundScopeLabel}.`
+              ? !feedAutoplayEnabled
+                ? 'Post video. Tap play for full screen.'
+                : stripSoundUnmuted
+                  ? `Post video, sound on in ${inlineSoundScopeLabel}. Tap the video for full screen. Use the bottom-left mute control.`
+                  : `Post video, playing muted. Tap the video for full screen. Use the bottom-left control for sound in ${inlineSoundScopeLabel}.`
               : 'Post video'
           }
           title={
             showOpen
-              ? stripSoundUnmuted
-                ? 'Tap video for full screen; bottom-left chip to mute'
-                : 'Tap video for full screen; bottom-left chip for sound'
+              ? !feedAutoplayEnabled
+                ? 'Tap play for full screen'
+                : stripSoundUnmuted
+                  ? 'Tap video for full screen; bottom-left chip to mute'
+                  : 'Tap video for full screen; bottom-left chip for sound'
               : undefined
           }
           onClick={(e) => {
@@ -1137,7 +1361,29 @@ export default function LoungePostStreamVideo({
               </button>
             </div>
           ) : null}
-          {showOpen && !showStreamRetry ? (
+          {showOpen && !showStreamRetry && !feedAutoplayEnabled ? (
+            <button
+              type="button"
+              aria-label="Play video in full screen"
+              className="absolute inset-0 z-[5] flex items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+              onClick={(e) => {
+                e.stopPropagation()
+                openLightbox()
+              }}
+            >
+              <span className="pointer-events-none flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-black/55 shadow-[0_0_24px_rgba(0,0,0,0.55)] backdrop-blur-[2px] sm:h-16 sm:w-16">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="ml-0.5 h-7 w-7 text-white drop-shadow-sm sm:h-8 sm:w-8"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <path d="M8 5.14v13.72L19 12 8 5.14z" />
+                </svg>
+              </span>
+            </button>
+          ) : null}
+          {showOpen && !showStreamRetry && feedAutoplayEnabled ? (
             <button
               type="button"
               aria-label={
@@ -1169,9 +1415,12 @@ export default function LoungePostStreamVideo({
           uid={id}
           footer={mediaLightboxFooterMerged}
           lightboxPortalClass={lightboxPortalClass}
-          onClose={() => {
-            setLightboxOpen(false)
-          }}
+          initialTimeSec={lightboxHandoff?.timeSec ?? 0}
+          initialMuted={lightboxHandoff?.muted ?? false}
+          handoffFromInline={Boolean(lightboxHandoff)}
+          handoffFrameUrl={lightboxHandoff?.frameUrl ?? null}
+          onCloseWithState={handleLightboxCloseWithState}
+          onClose={handleLightboxClose}
         />
       ) : null}
     </div>

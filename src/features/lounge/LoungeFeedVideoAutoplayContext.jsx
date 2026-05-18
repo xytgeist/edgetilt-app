@@ -9,6 +9,10 @@ import {
   useSyncExternalStore,
 } from 'react'
 import { createAutoplayStore } from './loungeFeedVideoAutoplayStore.js'
+import {
+  readLoungeFeedVideoAutoplayEnabled,
+  subscribeLoungeFeedVideoAutoplayEnabled,
+} from '../../utils/loungeFeedVideoAutoplayPref.js'
 
 const LoungeFeedVideoAutoplayContext = createContext(null)
 
@@ -18,12 +22,33 @@ const LoungeFeedVideoAutoplayContext = createContext(null)
  */
 export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
   const [store] = useState(() => createAutoplayStore())
+  const feedAutoplayEnabled = useSyncExternalStore(
+    subscribeLoungeFeedVideoAutoplayEnabled,
+    readLoungeFeedVideoAutoplayEnabled,
+    () => true,
+  )
 
   /** Shared across feed/embed Stream tiles: one “Tap for sound” enables inline audio on whichever tile is autoplaying. */
   const [feedInlineSoundUnmuted, setFeedInlineSoundUnmuted] = useState(false)
+  const [feedInlineSoundExplicitlyMuted, setFeedInlineSoundExplicitlyMuted] = useState(false)
   const toggleFeedInlineSound = useCallback(() => {
-    setFeedInlineSoundUnmuted((m) => !m)
+    setFeedInlineSoundUnmuted((wasUnmuted) => {
+      const next = !wasUnmuted
+      setFeedInlineSoundExplicitlyMuted(wasUnmuted && !next)
+      return next
+    })
   }, [])
+  const restoreFeedInlineSound = useCallback((unmuted, explicitlyMuted) => {
+    setFeedInlineSoundUnmuted(Boolean(unmuted))
+    setFeedInlineSoundExplicitlyMuted(Boolean(explicitlyMuted))
+  }, [])
+
+  useEffect(() => {
+    if (!feedAutoplayEnabled) {
+      setFeedInlineSoundUnmuted(false)
+      setFeedInlineSoundExplicitlyMuted(false)
+    }
+  }, [feedAutoplayEnabled])
 
   useEffect(() => {
     store.setScrollRootRef(scrollRootRef)
@@ -58,16 +83,26 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
 
   const resetFeedInlineSound = useCallback(() => {
     setFeedInlineSoundUnmuted(false)
+    setFeedInlineSoundExplicitlyMuted(false)
   }, [])
 
   const value = useMemo(
     () => ({
       store,
       feedInlineSoundUnmuted,
+      feedInlineSoundExplicitlyMuted,
       toggleFeedInlineSound,
+      restoreFeedInlineSound,
       resetFeedInlineSound,
     }),
-    [store, feedInlineSoundUnmuted, toggleFeedInlineSound, resetFeedInlineSound],
+    [
+      store,
+      feedInlineSoundUnmuted,
+      feedInlineSoundExplicitlyMuted,
+      toggleFeedInlineSound,
+      restoreFeedInlineSound,
+      resetFeedInlineSound,
+    ],
   )
 
   return <LoungeFeedVideoAutoplayContext.Provider value={value}>{children}</LoungeFeedVideoAutoplayContext.Provider>
@@ -91,34 +126,42 @@ export function LoungeFeedInlineSoundResetBinder({ resetRef }) {
 
 /**
  * Single-feed autoplay: only `clientId` matching the mid-scroll winner may attach/play inline.
- * @param {string | null | undefined} clientId stable id per post+asset (e.g. `${postId}:${streamUid}`)
+ * @param {string | null | undefined} clientId stable id per feed row surface + asset (e.g. `${rowId}:${streamUid}`, `${rowId}:embed:${streamUid}`)
  * @param {() => HTMLElement | null} getContainerEl
  */
 // eslint-disable-next-line react-refresh/only-export-components -- colocated store hook for this context module
 export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
   const ctx = useContext(LoungeFeedVideoAutoplayContext)
+  const feedAutoplayEnabled = useSyncExternalStore(
+    subscribeLoungeFeedVideoAutoplayEnabled,
+    readLoungeFeedVideoAutoplayEnabled,
+    () => true,
+  )
   const getEl = useCallback(() => getContainerEl(), [getContainerEl])
 
   useLayoutEffect(() => {
-    if (!ctx?.store || !clientId) return undefined
+    if (!ctx?.store || !clientId || !feedAutoplayEnabled) return undefined
     return ctx.store.register(clientId, getEl)
-  }, [ctx, clientId, getEl])
+  }, [ctx, clientId, getEl, feedAutoplayEnabled])
 
   const winnerId = useSyncExternalStore(
-    ctx?.store ? ctx.store.subscribe : () => () => {},
-    ctx?.store ? ctx.store.getSnapshot : () => null,
+    ctx?.store && feedAutoplayEnabled ? ctx.store.subscribe : () => () => {},
+    ctx?.store && feedAutoplayEnabled ? ctx.store.getSnapshot : () => null,
     () => null,
   )
 
-  const coordinatorActive = Boolean(ctx && clientId)
-  const isWinner = Boolean(ctx && clientId && winnerId === clientId)
+  const coordinatorActive = Boolean(ctx && clientId && feedAutoplayEnabled)
+  const isWinner = Boolean(ctx && clientId && winnerId === clientId && feedAutoplayEnabled)
 
   return {
     coordinatorActive,
     isWinner,
+    feedAutoplayEnabled,
     scheduleRecompute: ctx?.store?.schedule ?? (() => {}),
     feedSoundFromProvider: Boolean(ctx),
     feedInlineSoundUnmuted: ctx?.feedInlineSoundUnmuted ?? false,
+    feedInlineSoundExplicitlyMuted: ctx?.feedInlineSoundExplicitlyMuted ?? false,
     toggleFeedInlineSound: ctx?.toggleFeedInlineSound ?? (() => {}),
+    restoreFeedInlineSound: ctx?.restoreFeedInlineSound ?? (() => {}),
   }
 }

@@ -157,6 +157,11 @@ import {
 import LoungePostDetailCommentSort from './LoungePostDetailCommentSort.jsx'
 import LoungePostDetailCommentHierarchy from './LoungePostDetailCommentHierarchy.jsx'
 import { readLoungeDetailCommentSort } from '../../utils/loungeFeedCommentSort.js'
+import {
+  readLoungeFeedVideoAutoplayEnabled,
+  subscribeLoungeFeedVideoAutoplayEnabled,
+  writeLoungeFeedVideoAutoplayEnabled,
+} from '../../utils/loungeFeedVideoAutoplayPref.js'
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
@@ -165,7 +170,7 @@ const LOUNGE_MAX_PINNED_ALERT =
   'The maximum number of pinned posts is two. Unpin a post to pin this one.'
 
 /** Post detail reply composer — collapsed pill copy when empty + expanded textarea placeholder. */
-const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, pussy)"
+const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, nerd)"
 
 const FEED_COMMENT_SELECT_COLS =
   'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
@@ -583,6 +588,15 @@ export default function SocialFeed({
 
   /** No composer, server-only counts, gated taps until session is known and user is signed in. */
   const loungeReadOnly = !composerAuthResolved || !composerUserId
+
+  const loungeFeedVideoAutoplayEnabled = useSyncExternalStore(
+    subscribeLoungeFeedVideoAutoplayEnabled,
+    readLoungeFeedVideoAutoplayEnabled,
+    () => true,
+  )
+  const onLoungeFeedVideoAutoplayChange = useCallback((enabled) => {
+    writeLoungeFeedVideoAutoplayEnabled(enabled)
+  }, [])
 
   // ── @mention autocomplete — one instance per composer ──────────────────────
   const mentionComposer = useMentionState(postText, supabaseClient, !loungeReadOnly)
@@ -8451,6 +8465,8 @@ export default function SocialFeed({
                     <LoungePostFeedImagesAndGif
                       post={loungePostDetail.reposted_post}
                       variant="embed"
+                      feedAutoplayRowId={loungePostDetail.id}
+                      feedAutoplayScope="detail"
                       firstMarginTopClass="mt-2"
                       visibilityResetRootRef={loungePostDetailScrollRef}
                       lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
@@ -9583,6 +9599,8 @@ export default function SocialFeed({
           blockUnderlyingPointer={loungeFabPointerBlocked}
           dockMenuLayout={loungeDockMenuLayout}
           onDockMenuLayoutChange={writeLoungeDockMenuLayout}
+          feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
+          onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
           onTitleRevealChange={onLoungePanelTitleReveal}
         />
       ) : null}

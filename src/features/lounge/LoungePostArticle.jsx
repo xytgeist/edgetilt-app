@@ -374,6 +374,8 @@ export default function LoungePostArticle({
             <LoungePostFeedImagesAndGif
               post={rc}
               variant="feed"
+              feedAutoplayRowId={post.id}
+              feedAutoplaySlot="comment"
               firstMarginTopClass={rc?.body ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS}
               {...mediaLightboxProps}
             />
@@ -455,6 +457,7 @@ export default function LoungePostArticle({
               <LoungePostFeedImagesAndGif
                 post={post.reposted_post}
                 variant="embed"
+                feedAutoplayRowId={post.id}
                 firstMarginTopClass="mt-2"
                 {...mediaLightboxProps}
               />

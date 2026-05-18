@@ -59,6 +59,8 @@ export default function LoungeDockSlidePanels({
   /** `'wheel'` | `'cornerL'` — persisted in `loungeDockMenuLayout:v1`. */
   dockMenuLayout = 'wheel',
   onDockMenuLayoutChange,
+  feedVideoAutoplayEnabled = true,
+  onFeedVideoAutoplayChange,
   /** When true (e.g. FAB long-press), block scroll-region hits so gestures don’t fight the dock. */
   blockUnderlyingPointer = false,
   /** Scroll-linked 0–1 reveal for `LoungeDockArcCarouselPrototype` (same curve as panel title bar). */
@@ -495,6 +497,39 @@ export default function LoungeDockSlidePanels({
               <p className="px-1 text-[13px] leading-relaxed text-zinc-500">
                 Edit handle, display name, avatar, and bio. More Lounge settings will land here.
               </p>
+            </div>
+
+            <div className="mt-6 border-t border-zinc-800 pt-5">
+              <h3 className="text-[15px] font-semibold text-zinc-100">Feed playback</h3>
+              <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
+                Inline video across Lounge — home feed, search, profiles, and post detail.
+              </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={feedVideoAutoplayEnabled}
+                onClick={() => onFeedVideoAutoplayChange?.(!feedVideoAutoplayEnabled)}
+                className="mt-3 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold text-zinc-100">Autoplay while scrolling</span>
+                  <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                    Shows a play button; tap to open full screen.
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+                    feedVideoAutoplayEnabled ? 'bg-cyan-500' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                      feedVideoAutoplayEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+                    }`}
+                  />
+                </span>
+              </button>
             </div>
 
             <div className="mt-6 border-t border-zinc-800 pt-5">

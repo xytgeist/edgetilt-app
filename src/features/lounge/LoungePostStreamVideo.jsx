@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
@@ -78,32 +78,44 @@ const STREAM_POSTER_FADE_DELAY_MS = 72
 /** If decode signals never fire, still unstick poster→video crossfade (rare HLS/Safari quirks). Intentionally long so we do not beat real decode and flash black. */
 const STREAM_FADE_LAST_RESORT_MS = 6500
 
-/** Clamp seek target for handoff between inline tile and full-screen lightbox. */
-function clampStreamSeekSeconds(video, timeSec) {
-  const t = Number(timeSec)
-  if (!Number.isFinite(t) || t <= 0) return 0
-  const d = video?.duration
-  if (Number.isFinite(d) && d > 0) return Math.min(t, Math.max(0, d - 0.05))
-  return t
+/** Feed tile → hero full-screen grow (same `<video>`, no second HLS attach). */
+const HERO_EXPAND_MS = 300
+
+/** @returns {{ top: number, left: number, width: number, height: number }} */
+function readElementViewportRect(el) {
+  const r = el.getBoundingClientRect()
+  return { top: r.top, left: r.left, width: r.width, height: r.height }
 }
 
-/** Best-effort freeze of the inline frame for seamless lightbox open (may fail on tainted cross-origin video). */
-function captureInlineStreamFrameDataUrl(video) {
-  if (!video || video.readyState < 2) return null
-  const w = video.videoWidth
-  const h = video.videoHeight
-  if (!w || !h) return null
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return null
-    ctx.drawImage(video, 0, 0, w, h)
-    return canvas.toDataURL('image/jpeg', 0.88)
-  } catch {
-    return null
+/** @returns {boolean} */
+function heroRectUsableForShrinkBack(rect) {
+  if (!rect) return false
+  if (rect.width < 32 || rect.height < 32) return false
+  if (typeof window === 'undefined') return false
+  return rect.bottom > 0 && rect.top < window.innerHeight
+}
+
+/** Target hero frame: centered, object-contain aspect from source tile. */
+function computeHeroTargetRect(fromRect) {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 390
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const topInset = 12
+  const bottomInset = 12
+  const headerH = 44
+  const footerReserve = 56
+  const side = 8
+  const maxW = Math.max(120, vw - side * 2)
+  const maxH = Math.max(120, vh - topInset - bottomInset - headerH - footerReserve)
+  const aspect = fromRect.width / Math.max(fromRect.height, 1)
+  let w = maxW
+  let h = w / aspect
+  if (h > maxH) {
+    h = maxH
+    w = h * aspect
   }
+  const left = (vw - w) / 2
+  const top = topInset + headerH + Math.max(0, (maxH - h) / 2)
+  return { top, left, width: w, height: h }
 }
 
 /**
@@ -245,210 +257,6 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
   }, [src, attachKey, enabled, feedStyleAbr, onAutoReattach, recoveryBurstRef])
 }
 
-function LoungeStreamVideoLightbox({
-  uid,
-  onClose,
-  onCloseWithState,
-  footer,
-  lightboxPortalClass = 'z-[100]',
-  initialTimeSec = 0,
-  initialMuted = false,
-  handoffFromInline = false,
-  handoffFrameUrl = null,
-}) {
-  const videoRef = useRef(null)
-  const recoveryBurstRef = useRef(0)
-  const [attachKey, setAttachKey] = useState(0)
-  const [showLoadRetry, setShowLoadRetry] = useState(false)
-  const [videoRevealed, setVideoRevealed] = useState(() => !handoffFromInline)
-  const handoffTimeRef = useRef(initialTimeSec)
-  const handoffMutedRef = useRef(initialMuted)
-  handoffTimeRef.current = initialTimeSec
-  handoffMutedRef.current = initialMuted
-  const deferHandoffReveal = handoffFromInline || Boolean(handoffFrameUrl)
-
-  const finishClose = useCallback(() => {
-    const v = videoRef.current
-    const timeSec = v && Number.isFinite(v.currentTime) ? v.currentTime : 0
-    onCloseWithState?.(timeSec)
-    onClose()
-  }, [onClose, onCloseWithState])
-
-  const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
-    onClose: finishClose,
-    allowSwipeOnVideo: true,
-    className: 'relative flex min-h-0 flex-1 flex-col',
-  })
-  const id = String(uid || '').trim()
-  const src = cfStreamManifestUrl(id)
-  const poster = cfStreamPosterUrl(id, 720)
-  const bumpAttach = useCallback(() => setAttachKey((k) => k + 1), [])
-  useStreamHlsAttachment(videoRef, id ? src : '', attachKey, {
-    enabled: Boolean(id),
-    feedStyleAbr: false,
-    recoveryBurstRef,
-    onAutoReattach: bumpAttach,
-  })
-
-  useEffect(() => {
-    if (!id) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKey = (e) => {
-      if (e.key === 'Escape') finishClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prev
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [id, finishClose])
-
-  useEffect(() => {
-    setVideoRevealed(!deferHandoffReveal)
-  }, [id, attachKey, deferHandoffReveal, initialTimeSec])
-
-  /** Prefer sound in full screen once media can play; fall back to muted if unmuted autoplay is blocked. */
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v) return undefined
-    let cancelled = false
-    let revealTimer = 0
-    const revealVideo = () => {
-      if (cancelled) return
-      setVideoRevealed(true)
-    }
-    const seekAndPlay = () => {
-      if (cancelled) return
-      if (deferHandoffReveal) {
-        v.addEventListener('playing', revealVideo, { once: true })
-        revealTimer = window.setTimeout(revealVideo, 1200)
-      }
-      try {
-        const t = Number(handoffTimeRef.current)
-        if (Number.isFinite(t) && t > 0.05) {
-          v.currentTime = clampStreamSeekSeconds(v, t)
-        }
-        v.muted = handoffMutedRef.current
-        const p = v.play()
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {
-            if (cancelled) return
-            try {
-              v.muted = true
-              void v.play()
-            } catch {
-              // ignore
-            }
-          })
-        }
-      } catch {
-        // ignore
-      }
-    }
-    if (v.readyState >= 2) {
-      seekAndPlay()
-      return () => {
-        cancelled = true
-        window.clearTimeout(revealTimer)
-        v.removeEventListener('playing', revealVideo)
-      }
-    }
-    v.addEventListener('canplay', seekAndPlay, { once: true })
-    return () => {
-      cancelled = true
-      window.clearTimeout(revealTimer)
-      v.removeEventListener('canplay', seekAndPlay)
-      v.removeEventListener('playing', revealVideo)
-    }
-  }, [id, attachKey, initialTimeSec, initialMuted, deferHandoffReveal])
-
-  if (!id) return null
-
-  return createPortal(
-    <div
-      className={`fixed inset-0 ${lightboxPortalClass} flex flex-col bg-black p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]`}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Full screen video"
-      onClick={finishClose}
-    >
-      <div className="flex shrink-0 justify-end" data-lounge-lightbox-no-swipe>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            finishClose()
-          }}
-          className="touch-manipulation rounded-lg border border-zinc-600/80 bg-zinc-900/80 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
-        >
-          Close
-        </button>
-      </div>
-      <div onClick={(e) => e.stopPropagation()} {...swipeSurfaceProps}>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center p-2">
-        {handoffFrameUrl ? (
-          <img
-            src={handoffFrameUrl}
-            alt=""
-            aria-hidden
-            className={`pointer-events-none absolute inset-0 m-auto max-h-full max-w-full object-contain transition-opacity duration-150 ${
-              videoRevealed ? 'opacity-0' : 'opacity-100'
-            }`}
-          />
-        ) : null}
-        <video
-          ref={videoRef}
-          className={`max-h-full max-w-full object-contain transition-opacity duration-150 ${
-            videoRevealed ? 'opacity-100' : 'opacity-0'
-          }`}
-          controls
-          playsInline
-          controlsList="nodownload"
-          poster={deferHandoffReveal ? undefined : poster}
-          preload="auto"
-          aria-label="Post video (full screen)"
-          onError={() => {
-            if (recoveryBurstRef.current < 2) {
-              recoveryBurstRef.current += 1
-              setShowLoadRetry(false)
-              setAttachKey((k) => k + 1)
-              return
-            }
-            setShowLoadRetry(true)
-          }}
-        />
-      </div>
-      {showLoadRetry ? (
-        <div className="pointer-events-auto absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[1] flex -translate-x-1/2 flex-col items-center gap-2 rounded-xl border border-zinc-600/80 bg-zinc-950/90 px-4 py-2 text-center text-[13px] text-zinc-200 shadow-lg">
-          <span>Could not load this video.</span>
-          <button
-            type="button"
-            className="touch-manipulation rounded-lg bg-cyan-600 px-3 py-1.5 text-[14px] font-semibold text-white hover:bg-cyan-500"
-            onClick={() => {
-              recoveryBurstRef.current = 0
-              setShowLoadRetry(false)
-              setAttachKey((k) => k + 1)
-            }}
-          >
-            Retry
-          </button>
-        </div>
-      ) : null}
-      {footer ? (
-        <div
-          className="shrink-0 border-t border-zinc-700/50 bg-black px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {footer}
-        </div>
-      ) : null}
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
 function MutedGlyph({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -513,28 +321,32 @@ export default function LoungePostStreamVideo({
     Number.isFinite(displayW) && Number.isFinite(displayH) && displayW >= 2 && displayH >= 2
   const containerRef = useRef(null)
   const videoRef = useRef(null)
+  const videoFlyoutRef = useRef(null)
+  /** In-flow poster shell — idle flyout lives here; hero expand reparents flyout to `heroBodyHostRef`. */
+  const heroInlineSlotRef = useRef(null)
+  const heroBodyHostRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  /** Snapshot tile rect at open (before layout / portal updates). */
+  const heroFromRectRef = useRef(
+    /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
+  )
+  const heroPhaseRef = useRef('idle')
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const isWinnerRef = useRef(false)
   const recoveryBurstRef = useRef(0)
-  /** Inline resume position after lightbox closes (autoplay on only). */
-  const inlineResumeAfterLightboxRef = useRef(
-    /** @type {{ timeSec: number, feedSound: { unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null } | null} */ (
-      null
-    ),
-  )
-  /** Feed sound snapshot taken when lightbox opens (restored on close, independent of lightbox mute). */
+  /** Feed sound snapshot when hero opens (restored on close; same `<video>` keeps time). */
   const inlineFeedSoundSnapshotRef = useRef(
     /** @type {{ unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null} */ (null),
   )
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [lightboxHandoff, setLightboxHandoff] = useState(
-    /** @type {{ timeSec: number, muted: boolean, frameUrl?: string | null } | null} */ (null),
+  /** @type {'idle' | 'opening' | 'open' | 'closing'} */
+  const [heroPhase, setHeroPhase] = useState('idle')
+  const [heroLayout, setHeroLayout] = useState(
+    /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
-  const mediaLightboxFooterMerged = useMemo(
-    () => mergeLightboxDismissOnQuoteRepost(mediaLightboxFooter, () => setLightboxOpen(false)),
-    [mediaLightboxFooter, setLightboxOpen],
-  )
+  const [heroChromeVisible, setHeroChromeVisible] = useState(false)
+  /** After FLIP “from” paint, width/height/top/left may animate (not during initial opening snap). */
+  const [heroTransitionArmed, setHeroTransitionArmed] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
@@ -570,6 +382,7 @@ export default function LoungePostStreamVideo({
   }, [hasPersistedPoster, persistedPosterTrim, cfPosterActive, sessionPosterUrl, posterDisplayUrl])
 
   const showOpen = enableLightbox && variant !== 'composer'
+  const heroExpanded = lightboxOpen && heroPhase !== 'idle'
   /** Mid-scroll winner + lazy HLS when registered with `LoungeFeedVideoAutoplayProvider` (feed, embed, post-detail comments). */
   const lazyStream = showOpen && Boolean(feedAutoplayClientId)
 
@@ -685,9 +498,47 @@ export default function LoungePostStreamVideo({
     variant === 'feed' || variant === 'embed' ? 'the feed' : 'this screen'
   const feedStyleAbr =
     variant === 'feed' || variant === 'embed' || variant === 'composer' || variant === 'commentInline'
-  const attachStream = lazyStream
-    ? feedAutoplayEnabled && (coordinatorActive ? isWinner : streamInView)
-    : true
+  const attachStream = heroExpanded
+    ? Boolean(id)
+    : lazyStream
+      ? feedAutoplayEnabled && (coordinatorActive ? isWinner : streamInView)
+      : true
+
+  useEffect(() => {
+    heroPhaseRef.current = heroPhase
+  }, [heroPhase])
+
+  /** Body mount for hero expand only (idle flyout stays in the card and scrolls with the feed). */
+  useEffect(() => {
+    if (!showOpen || !id) return undefined
+    const host = document.createElement('div')
+    host.dataset.loungeStreamFlyoutHost = id
+    document.body.appendChild(host)
+    heroBodyHostRef.current = host
+    return () => {
+      host.remove()
+      heroBodyHostRef.current = null
+    }
+  }, [showOpen, id])
+
+  /** Reparent the same flyout DOM node — inline while idle, body while hero expanded (no remount). */
+  useLayoutEffect(() => {
+    const flyout = videoFlyoutRef.current
+    const slot = heroInlineSlotRef.current
+    if (!flyout || !slot) return
+    if (heroExpanded) {
+      let host = heroBodyHostRef.current
+      if (!host) {
+        host = document.createElement('div')
+        host.dataset.loungeStreamFlyoutHost = id
+        document.body.appendChild(host)
+        heroBodyHostRef.current = host
+      }
+      if (flyout.parentElement !== host) host.appendChild(flyout)
+      return
+    }
+    if (flyout.parentElement !== slot) slot.appendChild(flyout)
+  }, [heroExpanded, heroPhase, heroLayout, id])
 
   useEffect(() => {
     isWinnerRef.current = feedAutoplayEnabled && (!coordinatorActive || isWinner)
@@ -730,7 +581,7 @@ export default function LoungePostStreamVideo({
 
   useStreamHlsAttachment(videoRef, src, streamAttachKey, {
     enabled: attachStream,
-    feedStyleAbr,
+    feedStyleAbr: feedStyleAbr,
     recoveryBurstRef,
     onAutoReattach: bumpStreamAttach,
   })
@@ -842,9 +693,72 @@ export default function LoungePostStreamVideo({
     }
   }, [attachStream, poster, id, streamAttachKey])
 
+  const finalizeHeroClose = useCallback(() => {
+    setLightboxOpen(false)
+    setHeroPhase('idle')
+    setHeroLayout(null)
+    setHeroChromeVisible(false)
+    setHeroTransitionArmed(false)
+    heroFromRectRef.current = null
+  }, [])
+
+  const closeLightbox = useCallback(() => {
+    if (!lightboxOpenRef.current) return
+    const slot = heroInlineSlotRef.current
+    const back = slot ? readElementViewportRect(slot) : null
+    if (heroRectUsableForShrinkBack(back)) {
+      setHeroTransitionArmed(true)
+      setHeroPhase('closing')
+      setHeroChromeVisible(false)
+      setHeroLayout(back)
+      return
+    }
+    const snap = inlineFeedSoundSnapshotRef.current
+    inlineFeedSoundSnapshotRef.current = null
+    if (snap && feedAutoplayEnabled) {
+      try {
+        if (snap.coordinated) {
+          restoreFeedInlineSound(snap.unmuted, snap.explicitlyMuted)
+        } else {
+          setLocalStripSoundUnmuted(snap.unmuted)
+          setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
+        }
+        const v = videoRef.current
+        if (v) v.muted = !snap.unmuted
+      } catch {
+        // ignore
+      }
+    }
+    finalizeHeroClose()
+  }, [feedAutoplayEnabled, restoreFeedInlineSound, finalizeHeroClose])
+
+  const { swipeSurfaceProps: heroSwipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
+    onClose: closeLightbox,
+    allowSwipeOnVideo: true,
+    className: '',
+  })
+  const {
+    onPointerDown: heroSwipePointerDown,
+    onPointerMove: heroSwipePointerMove,
+    onPointerUp: heroSwipePointerUp,
+    onPointerCancel: heroSwipePointerCancel,
+    style: heroSwipeDragStyle,
+    className: heroSwipeTouchClass,
+  } = heroSwipeSurfaceProps
+
+  const mediaLightboxFooterMerged = useMemo(
+    () => mergeLightboxDismissOnQuoteRepost(mediaLightboxFooter, closeLightbox),
+    [mediaLightboxFooter, closeLightbox],
+  )
+
   const openLightbox = useCallback(() => {
+    const slot = heroInlineSlotRef.current
+    const wrap = containerRef.current
     const v = videoRef.current
-    if (feedAutoplayEnabled && v && attachStream) {
+    if (!wrap) return
+    const from = readElementViewportRect(slot || videoFlyoutRef.current || wrap)
+    heroFromRectRef.current = from
+    if (feedAutoplayEnabled && v) {
       const explicitlyMuted = coordinatedInlineSound
         ? feedInlineSoundExplicitlyMuted
         : localStripSoundExplicitlyMuted
@@ -853,20 +767,44 @@ export default function LoungePostStreamVideo({
         explicitlyMuted,
         coordinated: coordinatedInlineSound,
       }
-      setLightboxHandoff({
-        timeSec: Number.isFinite(v.currentTime) ? v.currentTime : 0,
-        muted: explicitlyMuted,
-        frameUrl: captureInlineStreamFrameDataUrl(v),
-      })
+      if (!explicitlyMuted) {
+        try {
+          if (coordinatedInlineSound) {
+            if (!feedInlineSoundUnmuted) toggleFeedInlineSound()
+          } else {
+            setLocalStripSoundUnmuted(true)
+            setLocalStripSoundExplicitlyMuted(false)
+          }
+          v.muted = false
+          const p = v.play()
+          if (p && typeof p.catch === 'function') {
+            p.catch(() => {
+              try {
+                v.muted = true
+              } catch {
+                // ignore
+              }
+            })
+          }
+        } catch {
+          // ignore
+        }
+      }
     } else {
       inlineFeedSoundSnapshotRef.current = null
-      setLightboxHandoff(null)
+      if (v && attachStream) {
+        try {
+          const p = v.play()
+          if (p && typeof p.catch === 'function') p.catch(() => {})
+        } catch {
+          // ignore
+        }
+      }
     }
-    try {
-      v?.pause()
-    } catch {
-      // ignore
-    }
+    setHeroLayout(from)
+    setHeroPhase('opening')
+    setHeroChromeVisible(false)
+    setHeroTransitionArmed(false)
     setLightboxOpen(true)
   }, [
     feedAutoplayEnabled,
@@ -875,24 +813,9 @@ export default function LoungePostStreamVideo({
     feedInlineSoundExplicitlyMuted,
     localStripSoundExplicitlyMuted,
     stripSoundUnmuted,
+    feedInlineSoundUnmuted,
+    toggleFeedInlineSound,
   ])
-
-  const handleLightboxCloseWithState = useCallback(
-    (timeSec) => {
-      if (!feedAutoplayEnabled) return
-      inlineResumeAfterLightboxRef.current = {
-        timeSec: Number.isFinite(timeSec) ? timeSec : 0,
-        feedSound: inlineFeedSoundSnapshotRef.current,
-      }
-      inlineFeedSoundSnapshotRef.current = null
-    },
-    [feedAutoplayEnabled],
-  )
-
-  const handleLightboxClose = useCallback(() => {
-    setLightboxOpen(false)
-    setLightboxHandoff(null)
-  }, [])
 
   /** Bottom strip: coordinated tiles share provider mute; others toggle this tile only. */
   const onSoundStripPress = useCallback(() => {
@@ -981,6 +904,97 @@ export default function LoungePostStreamVideo({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [lightboxOpen, enableLightbox])
 
+  useEffect(() => {
+    if (!lightboxOpen) return undefined
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e) => {
+      if (e.key === 'Escape') closeLightbox()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [lightboxOpen, closeLightbox])
+
+  /** Hero open: snap to tile rect (no transition), then grow to target on `document.body`. */
+  useLayoutEffect(() => {
+    if (!lightboxOpen || heroPhase !== 'opening') return undefined
+    const from = heroFromRectRef.current
+    if (!from) return undefined
+    setHeroTransitionArmed(false)
+    setHeroLayout(from)
+    let raf2 = 0
+    let raf3 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setHeroTransitionArmed(true)
+        raf3 = requestAnimationFrame(() => {
+          if (heroPhaseRef.current !== 'opening') return
+          setHeroLayout(computeHeroTargetRect(from))
+          setHeroPhase('open')
+        })
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      if (raf2) cancelAnimationFrame(raf2)
+      if (raf3) cancelAnimationFrame(raf3)
+    }
+  }, [lightboxOpen, heroPhase])
+
+  useEffect(() => {
+    if (heroPhase !== 'open' || heroChromeVisible) return undefined
+    const tid = window.setTimeout(() => setHeroChromeVisible(true), HERO_EXPAND_MS + 48)
+    return () => window.clearTimeout(tid)
+  }, [heroPhase, heroChromeVisible])
+
+  useEffect(() => {
+    const flyout = videoFlyoutRef.current
+    if (!flyout) return undefined
+    const onTransitionEnd = (e) => {
+      if (e.target !== flyout || e.propertyName !== 'width') return
+      const phase = heroPhaseRef.current
+      if (phase === 'open') {
+        setHeroChromeVisible(true)
+      }
+      if (phase === 'closing') {
+        const snap = inlineFeedSoundSnapshotRef.current
+        inlineFeedSoundSnapshotRef.current = null
+        if (snap && feedAutoplayEnabled) {
+          try {
+            if (snap.coordinated) {
+              restoreFeedInlineSound(snap.unmuted, snap.explicitlyMuted)
+            } else {
+              setLocalStripSoundUnmuted(snap.unmuted)
+              setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
+            }
+            const v = videoRef.current
+            if (v) {
+              v.muted = !snap.unmuted
+              if (attachStream || lazyStream) {
+                const p = v.play()
+                if (p && typeof p.catch === 'function') p.catch(() => {})
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        finalizeHeroClose()
+      }
+    }
+    flyout.addEventListener('transitionend', onTransitionEnd)
+    return () => flyout.removeEventListener('transitionend', onTransitionEnd)
+  }, [
+    feedAutoplayEnabled,
+    attachStream,
+    lazyStream,
+    restoreFeedInlineSound,
+    finalizeHeroClose,
+  ])
+
   /** Muted autoplay while sufficiently visible (X-style feed). Feed/embed: defer HLS until in view. */
   useEffect(() => {
     const wrap = containerRef.current
@@ -994,6 +1008,10 @@ export default function LoungePostStreamVideo({
       inViewRef.current = attachOk
       if (lazyStream) setStreamInView(attachOk)
       const won = isWinnerRef.current
+      if (lightboxOpenRef.current) {
+        queueMicrotask(() => scheduleRecompute())
+        return
+      }
       if (!won) {
         try {
           v.pause()
@@ -1100,10 +1118,32 @@ export default function LoungePostStreamVideo({
     feedInlineSoundUnmuted,
   ])
 
-  /** After closing lightbox, resume muted autoplay if still in view. */
+  /** Hero / lightbox open: ensure the same inline `<video>` keeps playing once HLS attaches (autoplay-off path). */
+  useEffect(() => {
+    if (!lightboxOpen || !attachStream) return undefined
+    const v = videoRef.current
+    if (!v) return undefined
+    const tryPlay = () => {
+      try {
+        const p = v.play()
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      } catch {
+        // ignore
+      }
+    }
+    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      tryPlay()
+      return undefined
+    }
+    v.addEventListener('canplay', tryPlay, { once: true })
+    return () => v.removeEventListener('canplay', tryPlay)
+  }, [lightboxOpen, attachStream, streamAttachKey])
+
+  /** After closing hero, resume inline autoplay if still in view (sound restored on shrink animation end). */
   useEffect(() => {
     if (lightboxOpen) return
     if (!feedAutoplayEnabled) return
+    if (inlineFeedSoundSnapshotRef.current) return
     const v = videoRef.current
     if (!v || !showOpen) return
     if (!inViewRef.current && !(coordinatorActive && isWinner)) return
@@ -1115,57 +1155,13 @@ export default function LoungePostStreamVideo({
       }
       return
     }
-    const resume = inlineResumeAfterLightboxRef.current
-    let playMuted = coordinatedInlineSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
-    const startPlay = () => {
-      try {
-        v.muted = playMuted
-        const p = v.play()
-        if (p && typeof p.catch === 'function') p.catch(() => {})
-      } catch {
-        // ignore
-      }
+    try {
+      v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : !localStripSoundUnmuted
+      const p = v.play()
+      if (p && typeof p.catch === 'function') p.catch(() => {})
+    } catch {
+      // ignore
     }
-    if (resume) {
-      inlineResumeAfterLightboxRef.current = null
-      const snap = resume.feedSound
-      if (snap) {
-        playMuted = !snap.unmuted
-        const applyResume = () => {
-          try {
-            if (resume.timeSec > 0.05) {
-              v.currentTime = clampStreamSeekSeconds(v, resume.timeSec)
-            }
-            if (snap.coordinated) {
-              restoreFeedInlineSound(snap.unmuted, snap.explicitlyMuted)
-            } else {
-              setLocalStripSoundUnmuted(snap.unmuted)
-              setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
-            }
-          } catch {
-            // ignore
-          }
-          startPlay()
-        }
-        if (v.readyState >= 1) applyResume()
-        else v.addEventListener('loadedmetadata', applyResume, { once: true })
-        return
-      }
-      const applyResume = () => {
-        try {
-          if (resume.timeSec > 0.05) {
-            v.currentTime = clampStreamSeekSeconds(v, resume.timeSec)
-          }
-        } catch {
-          // ignore
-        }
-        startPlay()
-      }
-      if (v.readyState >= 1) applyResume()
-      else v.addEventListener('loadedmetadata', applyResume, { once: true })
-      return
-    }
-    startPlay()
   }, [
     lightboxOpen,
     showOpen,
@@ -1174,13 +1170,13 @@ export default function LoungePostStreamVideo({
     coordinatedInlineSound,
     feedInlineSoundUnmuted,
     localStripSoundUnmuted,
-    restoreFeedInlineSound,
     feedAutoplayEnabled,
   ])
 
   /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
   useEffect(() => {
     if (!coordinatorActive || !lazyStream) return
+    if (lightboxOpenRef.current) return
     const v = videoRef.current
     if (!v) return
     if (!isWinner) {
@@ -1190,7 +1186,7 @@ export default function LoungePostStreamVideo({
         // ignore
       }
     }
-  }, [coordinatorActive, lazyStream, isWinner])
+  }, [coordinatorActive, lazyStream, isWinner, lightboxOpen])
 
   const onInlineStreamError = useCallback(() => {
     if (recoveryBurstRef.current < 2) {
@@ -1227,6 +1223,69 @@ export default function LoungePostStreamVideo({
         transitionDelay: streamFadeShowVideo ? `${STREAM_POSTER_FADE_DELAY_MS}ms` : '0ms',
       }
     : undefined
+  const heroTransitionCss =
+    heroTransitionArmed && (heroPhase === 'open' || heroPhase === 'closing')
+      ? `top ${HERO_EXPAND_MS}ms cubic-bezier(0.22, 1, 0.36, 1), left ${HERO_EXPAND_MS}ms cubic-bezier(0.22, 1, 0.36, 1), width ${HERO_EXPAND_MS}ms cubic-bezier(0.22, 1, 0.36, 1), height ${HERO_EXPAND_MS}ms cubic-bezier(0.22, 1, 0.36, 1), border-radius ${HERO_EXPAND_MS}ms ease-out`
+      : 'none'
+  const heroFlyoutStyle =
+    heroExpanded && heroLayout
+      ? {
+          position: 'fixed',
+          top: heroLayout.top,
+          left: heroLayout.left,
+          width: heroLayout.width,
+          height: heroLayout.height,
+          zIndex: 101,
+          transition: heroTransitionCss,
+          borderRadius: heroPhase === 'open' ? 0 : 12,
+          ...heroSwipeDragStyle,
+        }
+      : undefined
+  const heroFlyoutShellClass = heroExpanded
+    ? `overflow-hidden bg-black touch-manipulation ${heroSwipeTouchClass || ''}`.trim()
+    : 'absolute inset-0 z-[1] h-full w-full overflow-hidden bg-transparent'
+  const heroFlyoutPointerProps = heroExpanded
+    ? {
+        onPointerDown: heroSwipePointerDown,
+        onPointerMove: heroSwipePointerMove,
+        onPointerUp: heroSwipePointerUp,
+        onPointerCancel: heroSwipePointerCancel,
+      }
+    : {}
+  const inlineVideoOpacityClass =
+    heroExpanded || (attachStream && streamFadeShowVideo) ? 'opacity-100' : 'opacity-0'
+  const inlinePosterOpacityClass = heroExpanded
+    ? 'opacity-0'
+    : attachStream && streamFadeShowVideo
+      ? 'opacity-0'
+      : 'opacity-100'
+  /** Poster stays above the flyout while HLS loads so a transparent/black video plane never flashes over it. */
+  const inlinePosterZClass =
+    !heroExpanded && attachStream && !streamFadeShowVideo ? 'z-[2]' : 'relative z-0'
+  const streamVideoClass = heroExpanded
+    ? 'pointer-events-auto h-full w-full max-h-full max-w-full object-contain'
+    : 'pointer-events-none h-full w-full object-contain'
+
+  const streamVideoEl = (
+    <video
+      ref={videoRef}
+      className={`${streamVideoClass} ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlineVideoOpacityClass}`}
+      style={heroExpanded ? undefined : streamFadeTransitionStyle}
+      controls={heroExpanded}
+      controlsList={heroExpanded ? 'nodownload' : undefined}
+      muted={!stripSoundUnmuted}
+      loop
+      playsInline
+      preload={variant === 'composer' ? 'auto' : 'metadata'}
+      poster={visiblePosterSrc || poster}
+      aria-label={heroExpanded ? 'Post video (full screen)' : undefined}
+      aria-hidden={!heroExpanded}
+      onClick={(e) => {
+        if (heroExpanded) e.stopPropagation()
+      }}
+      onError={onInlineStreamError}
+    />
+  )
 
   return (
     <div className={`${firstMarginTopClass} inline-flex shrink-0 self-start ${slideMaxW}`}>
@@ -1256,10 +1315,10 @@ export default function LoungePostStreamVideo({
           }
           onClick={(e) => {
             e.stopPropagation()
-            if (showOpen) openLightbox()
+            if (showOpen && !heroExpanded) openLightbox()
           }}
           onKeyDown={(e) => {
-            if (!showOpen) return
+            if (!showOpen || heroExpanded) return
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               e.stopPropagation()
@@ -1268,77 +1327,41 @@ export default function LoungePostStreamVideo({
           }}
         >
           <div
+            ref={heroInlineSlotRef}
             className={
               usePosterFrame
                 ? posterLayoutFailed
                   ? posterFallbackFrameClass
                   : `relative block w-fit max-w-full overflow-hidden bg-black ${posterShellMinHClass}`
-                : 'relative'
+                : 'relative block w-fit max-w-full'
             }
             style={posterFrameAspectStyle}
           >
             {usePosterFrame ? (
-              posterLayoutFailed ? (
-                <video
-                  ref={videoRef}
-                  className={`pointer-events-none z-[1] max-h-full w-auto max-w-full object-contain transition-opacity ease-out ${
-                    attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
-                  }`}
+              posterLayoutFailed ? null : (
+                <img
+                  key={visiblePosterSrc}
+                  src={visiblePosterSrc}
+                  alt=""
+                  decoding="async"
+                  draggable={false}
+                  loading="eager"
+                  className={`pointer-events-none select-none transition-opacity ease-out ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`}
                   style={streamFadeTransitionStyle}
-                  muted={!stripSoundUnmuted}
-                  loop
-                  playsInline
-                  preload={variant === 'composer' ? 'auto' : 'metadata'}
-                  poster={visiblePosterSrc}
                   aria-hidden
-                  onError={onInlineStreamError}
+                  onLoad={() => setPosterDecodeOk(true)}
+                  onError={onPosterImgError}
                 />
-              ) : (
-                <>
-                  <img
-                    key={visiblePosterSrc}
-                    src={visiblePosterSrc}
-                    alt=""
-                    decoding="async"
-                    draggable={false}
-                    loading="eager"
-                    className={`pointer-events-none relative z-0 select-none transition-opacity ease-out ${videoClass} ${
-                      attachStream && streamFadeShowVideo ? 'opacity-0' : 'opacity-100'
-                    }`}
-                    style={streamFadeTransitionStyle}
-                    aria-hidden
-                    onLoad={() => setPosterDecodeOk(true)}
-                    onError={onPosterImgError}
-                  />
-                  <video
-                    ref={videoRef}
-                    className={`pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain transition-opacity ease-out ${
-                      attachStream && streamFadeShowVideo ? 'opacity-100' : 'opacity-0'
-                    }`}
-                    style={streamFadeTransitionStyle}
-                    muted={!stripSoundUnmuted}
-                    loop
-                    playsInline
-                    preload={variant === 'composer' ? 'auto' : 'metadata'}
-                    poster={visiblePosterSrc}
-                    aria-hidden
-                    onError={onInlineStreamError}
-                  />
-                </>
               )
-            ) : (
-              <video
-                ref={videoRef}
-                className={`pointer-events-none ${videoClass}`}
-                muted={!stripSoundUnmuted}
-                loop
-                playsInline
-                preload={variant === 'composer' ? 'auto' : 'metadata'}
-                poster={poster}
-                aria-hidden
-                onError={onInlineStreamError}
-              />
-            )}
+            ) : null}
+            <div
+              ref={videoFlyoutRef}
+              style={heroFlyoutStyle}
+              className={heroFlyoutShellClass}
+              {...heroFlyoutPointerProps}
+            >
+              {streamVideoEl}
+            </div>
           </div>
           {showStreamRetry ? (
             <div
@@ -1361,7 +1384,7 @@ export default function LoungePostStreamVideo({
               </button>
             </div>
           ) : null}
-          {showOpen && !showStreamRetry && !feedAutoplayEnabled ? (
+          {showOpen && !showStreamRetry && !feedAutoplayEnabled && !heroExpanded ? (
             <button
               type="button"
               aria-label="Play video in full screen"
@@ -1383,7 +1406,7 @@ export default function LoungePostStreamVideo({
               </span>
             </button>
           ) : null}
-          {showOpen && !showStreamRetry && feedAutoplayEnabled ? (
+          {showOpen && !showStreamRetry && feedAutoplayEnabled && !heroExpanded ? (
             <button
               type="button"
               aria-label={
@@ -1410,19 +1433,54 @@ export default function LoungePostStreamVideo({
             </button>
           ) : null}
         </div>
-      {lightboxOpen ? (
-        <LoungeStreamVideoLightbox
-          uid={id}
-          footer={mediaLightboxFooterMerged}
-          lightboxPortalClass={lightboxPortalClass}
-          initialTimeSec={lightboxHandoff?.timeSec ?? 0}
-          initialMuted={lightboxHandoff?.muted ?? false}
-          handoffFromInline={Boolean(lightboxHandoff)}
-          handoffFrameUrl={lightboxHandoff?.frameUrl ?? null}
-          onCloseWithState={handleLightboxCloseWithState}
-          onClose={handleLightboxClose}
-        />
-      ) : null}
+      {heroExpanded
+        ? createPortal(
+            <div
+              className={`fixed inset-0 ${lightboxPortalClass}`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Full screen video"
+            >
+              <div
+                className={`absolute inset-0 bg-black ${heroSwipeTouchClass || ''}`.trim()}
+                onClick={closeLightbox}
+                onPointerDown={heroSwipePointerDown}
+                onPointerMove={heroSwipePointerMove}
+                onPointerUp={heroSwipePointerUp}
+                onPointerCancel={heroSwipePointerCancel}
+                aria-hidden
+              />
+              <div className="pointer-events-none fixed inset-0 flex flex-col">
+                <div
+                  className={`pointer-events-auto flex shrink-0 justify-end p-3 pt-[max(0.75rem,env(safe-area-inset-top))] transition-opacity duration-200 ${
+                    heroChromeVisible ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  data-lounge-lightbox-no-swipe
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      closeLightbox()
+                    }}
+                    className="touch-manipulation rounded-lg border border-zinc-600/80 bg-zinc-900/80 px-3 py-1.5 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+                  >
+                    Close
+                  </button>
+                </div>
+                {mediaLightboxFooterMerged && heroChromeVisible ? (
+                  <div
+                    className="pointer-events-auto mt-auto shrink-0 border-t border-zinc-700/50 bg-black px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {mediaLightboxFooterMerged}
+                  </div>
+                ) : null}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

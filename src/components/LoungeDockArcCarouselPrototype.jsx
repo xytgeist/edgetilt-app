@@ -1730,9 +1730,18 @@ export default function LoungeDockArcCarouselPrototype({
         >
           <span
             key={followingFlash.key}
-            className={`lounge-filter-flash-fizzle inline-block text-[11px] font-semibold tracking-wide ${followingFlash.label === 'Only Frens' ? 'text-[#00AFF0] drop-shadow-[0_0_8px_rgba(0,175,240,0.75)]' : 'text-zinc-200 drop-shadow-[0_0_8px_rgba(6,206,252,0.55)]'}`}
+            className="lounge-filter-flash-fizzle inline-block text-sm font-semibold tracking-wide"
           >
-            {followingFlash.label}
+            {followingFlash.label === 'Only Frens' ? (
+              <>
+                <span className="text-white">Only </span>
+                <span className="font-bold text-[#06cefc] drop-shadow-[0_0_8px_rgba(6,206,252,0.75)]">Frens</span>
+              </>
+            ) : (
+              <span className="text-zinc-200 drop-shadow-[0_0_6px_rgba(6,206,252,0.45)]">
+                {followingFlash.label}
+              </span>
+            )}
           </span>
         </span>
       ) : null}

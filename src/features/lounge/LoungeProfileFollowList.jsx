@@ -3,11 +3,16 @@ import {
   profileAvatarInitials,
   profileAvatarToneClass,
 } from '../profiles/profileGate'
-import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
+import LoungeStaffRoleBadge from './LoungeStaffRoleBadge.jsx'
+import LoungeOgBadge from './LoungeOgBadge.jsx'
 import {
   LOUNGE_FEED_AVATAR_CLASS,
   LOUNGE_FEED_DISPLAY_NAME_CLASS,
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
+  loungeFeedAuthorHasStaffBadge,
+  loungeFeedAuthorIdentityClusterClass,
+  LOUNGE_FEED_META_BADGE_WRAP_CLASS,
+  LOUNGE_FEED_OG_AFTER_STAFF_CLASS,
 } from './loungeFeedAvatar.js'
 import {
   fetchProfileFollowListProfiles,
@@ -229,13 +234,33 @@ export default function LoungeProfileFollowList({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <LoungeFeedAuthorMetaBadges
-                          role={row.role}
-                          isOg={row.is_og}
-                          displayName={displayName}
-                          displayNameClassName={`${LOUNGE_FEED_DISPLAY_NAME_CLASS} text-[15px]`}
-                        />
+                      <div className="flex flex-wrap items-start gap-1.5 -translate-y-0.5">
+                        {/* Inlined here (not LoungeFeedAuthorMetaBadges) so OG badge nudge is isolated to this surface */}
+                        {(() => {
+                          const hasStaff = loungeFeedAuthorHasStaffBadge(row.role)
+                          const showOg = row.is_og === true
+                          return (
+                            <>
+                              <span className={loungeFeedAuthorIdentityClusterClass(hasStaff, showOg)}>
+                                <span className={`${LOUNGE_FEED_DISPLAY_NAME_CLASS} text-[15px]`}>{displayName}</span>
+                                {hasStaff ? (
+                                  <span className={`shrink-0 ${String(row.role).trim().toLowerCase() === 'admin' ? '-translate-y-px' : '-translate-y-[2px]'}`}>
+                                    <LoungeStaffRoleBadge role={row.role} />
+                                  </span>
+                                ) : showOg ? (
+                                  <span className="shrink-0 -translate-y-[3px]">
+                                    <LoungeOgBadge isOg />
+                                  </span>
+                                ) : null}
+                              </span>
+                              {hasStaff && showOg ? (
+                                <span className="shrink-0 -ml-0.5 -translate-y-[3px]">
+                                  <LoungeOgBadge isOg />
+                                </span>
+                              ) : null}
+                            </>
+                          )
+                        })()}
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
                         <span className={`${LOUNGE_FEED_META_HANDLE_TIME_CLASS} text-zinc-500`}>

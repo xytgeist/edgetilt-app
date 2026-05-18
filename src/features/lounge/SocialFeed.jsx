@@ -1278,9 +1278,18 @@ export default function SocialFeed({
 
   /** Feed / quote / reply background jobs share one upload bar — do not clear it from unrelated surface cleanup. */
   const dismissLoungePostUploadBarIfIdle = useCallback(() => {
-    if (loungePostJobRunningRef.current || loungeDetailCommentJobRunningRef.current || loungeSubmitQueueRunningRef.current) return
+    if (loungePostJobRunningRef.current || loungeDetailCommentJobRunningRef.current) return
     setLoungePostUploadBar(null)
   }, [])
+
+  /** True while a queued/running submit job may still own shared video prep / upload bar state. */
+  const loungeBackgroundSubmitBusy = useCallback(
+    () =>
+      loungePostJobRunningRef.current ||
+      loungeDetailCommentJobRunningRef.current ||
+      loungeSubmitQueueRunningRef.current,
+    [],
+  )
 
   const quoteRepostBackgroundUploadInFlight = useCallback(
     () =>
@@ -1372,13 +1381,15 @@ export default function SocialFeed({
         prepError: '',
       }
       setComposerVideoSlot(nextSlot)
-      setLoungePostUploadBar({
-        mode: 'mediaPrep',
-        prepJobId: jobId,
-        progress: 0.02,
-        status: 'Starting…',
-        detail: '',
-      })
+      if (!loungeBackgroundSubmitBusy()) {
+        setLoungePostUploadBar({
+          mode: 'mediaPrep',
+          prepJobId: jobId,
+          progress: 0.02,
+          status: 'Starting…',
+          detail: '',
+        })
+      }
 
       void (async () => {
         try {
@@ -1554,13 +1565,15 @@ export default function SocialFeed({
         prepError: '',
       }
       setQuoteRepostVideoSlot(nextSlot)
-      setLoungePostUploadBar({
-        mode: 'mediaPrep',
-        prepJobId: jobId,
-        progress: 0.02,
-        status: 'Starting…',
-        detail: '',
-      })
+      if (!loungeBackgroundSubmitBusy()) {
+        setLoungePostUploadBar({
+          mode: 'mediaPrep',
+          prepJobId: jobId,
+          progress: 0.02,
+          status: 'Starting…',
+          detail: '',
+        })
+      }
 
       void (async () => {
         try {
@@ -1832,22 +1845,24 @@ export default function SocialFeed({
       if (sl?.posterUrl && sl.posterUrl === pendingPoster) skipRevoke.add(sl.posterUrl)
     }
     if (!preserve) {
-      const h = loungeDetailCommentVideoPrepHandoffRef.current
-      if (h && !h.settled) {
+      if (!loungeDetailCommentJobRunningRef.current && !loungeSubmitQueueRunningRef.current) {
+        const h = loungeDetailCommentVideoPrepHandoffRef.current
+        if (h && !h.settled) {
+          try {
+            h.reject(new DOMException('Aborted', 'AbortError'))
+          } catch {
+            // ignore
+          }
+        }
+        loungeDetailCommentVideoPrepJobIdRef.current += 1
         try {
-          h.reject(new DOMException('Aborted', 'AbortError'))
+          loungeDetailCommentVideoPrepAbortRef.current?.abort()
         } catch {
           // ignore
         }
+        loungeDetailCommentVideoPrepAbortRef.current = null
       }
       loungeDetailCommentVideoPrepHandoffRef.current = null
-      loungeDetailCommentVideoPrepJobIdRef.current += 1
-      try {
-        loungeDetailCommentVideoPrepAbortRef.current?.abort()
-      } catch {
-        // ignore
-      }
-      loungeDetailCommentVideoPrepAbortRef.current = null
     }
     setLoungeDetailCommentDraft('')
     setLoungeDetailCommentErr('')
@@ -1965,13 +1980,15 @@ export default function SocialFeed({
         prepStatus: 'preparing',
         prepError: '',
       })
-      setLoungePostUploadBar({
-        mode: 'mediaPrep',
-        prepJobId: jobId,
-        progress: 0.02,
-        status: 'Starting…',
-        detail: '',
-      })
+      if (!loungeBackgroundSubmitBusy()) {
+        setLoungePostUploadBar({
+          mode: 'mediaPrep',
+          prepJobId: jobId,
+          progress: 0.02,
+          status: 'Starting…',
+          detail: '',
+        })
+      }
 
       void (async () => {
         try {
@@ -2609,15 +2626,18 @@ export default function SocialFeed({
           endLoungeDetailCommentMediaSession()
         } else {
           disposeComposerVideoMedia(composerVideoSlotRef.current)
-          composerVideoPrepJobIdRef.current += 1
-          try {
-            composerVideoPrepAbortRef.current?.abort()
-          } catch {
-            // ignore
+          if (!loungeBackgroundSubmitBusy()) {
+            composerVideoPrepJobIdRef.current += 1
+            try {
+              composerVideoPrepAbortRef.current?.abort()
+            } catch {
+              // ignore
+            }
+            composerVideoPrepAbortRef.current = null
           }
-          composerVideoPrepAbortRef.current = null
+          composerVideoPrepHandoffRef.current = null
           setComposerVideoSlot(null)
-          setLoungePostUploadBar(null)
+          dismissLoungePostUploadBarIfIdle()
           try {
             const el = composerMediaInputRef.current
             if (el) el.value = ''
@@ -2634,6 +2654,8 @@ export default function SocialFeed({
       setPostErr,
       setQuoteRepostErr,
       disposeComposerVideoMedia,
+      dismissLoungePostUploadBarIfIdle,
+      loungeBackgroundSubmitBusy,
       cancelQuoteRepostMediaPrep,
       cancelLoungeDetailCommentMediaPrep,
       endLoungeDetailCommentMediaSession,
@@ -4923,22 +4945,24 @@ export default function SocialFeed({
       if (sl?.preview && sl.preview === pendingPoster) skipRevoke.add(sl.preview)
     }
     if (!preserve) {
-      const h = composerVideoPrepHandoffRef.current
-      if (h && !h.settled) {
+      if (!loungePostJobRunningRef.current && !loungeSubmitQueueRunningRef.current) {
+        const h = composerVideoPrepHandoffRef.current
+        if (h && !h.settled) {
+          try {
+            h.reject(new DOMException('Aborted', 'AbortError'))
+          } catch {
+            // ignore
+          }
+        }
+        composerVideoPrepJobIdRef.current += 1
         try {
-          h.reject(new DOMException('Aborted', 'AbortError'))
+          composerVideoPrepAbortRef.current?.abort()
         } catch {
           // ignore
         }
+        composerVideoPrepAbortRef.current = null
       }
       composerVideoPrepHandoffRef.current = null
-      composerVideoPrepJobIdRef.current += 1
-      try {
-        composerVideoPrepAbortRef.current?.abort()
-      } catch {
-        // ignore
-      }
-      composerVideoPrepAbortRef.current = null
     }
     setPostText('')
     setComposerImageItems((prev) => {
@@ -5168,22 +5192,24 @@ export default function SocialFeed({
       if (sl?.posterUrl && sl.posterUrl === pendingPoster) skipRevoke.add(sl.posterUrl)
     }
     if (!preserve) {
-      const h = quoteRepostVideoPrepHandoffRef.current
-      if (h && !h.settled) {
+      if (!loungePostJobRunningRef.current && !loungeSubmitQueueRunningRef.current) {
+        const h = quoteRepostVideoPrepHandoffRef.current
+        if (h && !h.settled) {
+          try {
+            h.reject(new DOMException('Aborted', 'AbortError'))
+          } catch {
+            // ignore
+          }
+        }
+        quoteRepostVideoPrepJobIdRef.current += 1
         try {
-          h.reject(new DOMException('Aborted', 'AbortError'))
+          quoteRepostVideoPrepAbortRef.current?.abort()
         } catch {
           // ignore
         }
+        quoteRepostVideoPrepAbortRef.current = null
       }
       quoteRepostVideoPrepHandoffRef.current = null
-      quoteRepostVideoPrepJobIdRef.current += 1
-      try {
-        quoteRepostVideoPrepAbortRef.current?.abort()
-      } catch {
-        // ignore
-      }
-      quoteRepostVideoPrepAbortRef.current = null
     }
     setQuoteRepostModal(null)
     setQuoteRepostDraft('')
@@ -5584,7 +5610,6 @@ export default function SocialFeed({
         })
         setLoungePostUploadFailedOpen(true)
       } finally {
-        setLoungePostUploadBar(null)
         loungePostAbortRef.current = null
         loungePostJobRunningRef.current = false
         setLoungePostSubmitInFlight(false)
@@ -5847,7 +5872,6 @@ export default function SocialFeed({
         })
         setLoungePostUploadFailedOpen(true)
       } finally {
-        setLoungePostUploadBar(null)
         loungeDetailCommentAbortRef.current = null
         loungeDetailCommentJobRunningRef.current = false
         setLoungePostSubmitInFlight(false)
@@ -5938,13 +5962,18 @@ export default function SocialFeed({
           total: loungeSubmitQueueBatchRef.current.total,
           completed: loungeSubmitQueueBatchRef.current.completed + 1,
         }
+        const nextJob = loungeSubmitQueueRef.current[0]
+        if (!nextJob || !loungeSubmissionSnapshotIncludesVideo(nextJob.snapshot)) {
+          dismissLoungePostUploadBarIfIdle()
+        }
       }
     } finally {
       loungeSubmitQueueRunningRef.current = false
       loungeSubmitQueueBatchRef.current = { total: 0, completed: 0 }
       setLoungeSubmitQueueDisplay({ index: 0, total: 0 })
+      dismissLoungePostUploadBarIfIdle()
     }
-  }, [])
+  }, [dismissLoungePostUploadBarIfIdle])
 
   /** Add a submission to the queue and kick the drain loop if it isn't already running. */
   const enqueueAndRunLoungeSubmit = useCallback(
@@ -7453,11 +7482,10 @@ export default function SocialFeed({
             />
             <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/90 p-4 shadow-2xl backdrop-blur-md">
               <h2 id="composer-discard-title" className="text-[17px] font-bold text-white">
-                Save draft?
+                Discard post?
               </h2>
               <p className="mt-2 text-[14px] leading-snug text-zinc-400">
-                Save your text and linked GIF to drafts. Photos and videos in the composer are cleared and need to be
-                re-added when you continue.
+                Your post text and any attached media will be cleared.
               </p>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <button
@@ -7498,37 +7526,10 @@ export default function SocialFeed({
                 </button>
                 <button
                   type="button"
-                  className="order-1 min-h-11 rounded-xl bg-violet-600 px-4 text-[15px] font-semibold text-white hover:bg-violet-500 touch-manipulation sm:order-2"
-                  onClick={() => {
-                    persistLoungeComposerDraft(postText, false, false, composerMediaUrl)
-                    setComposerImageItems((prev) => {
-                      for (const it of prev) {
-                        try {
-                          URL.revokeObjectURL(it.preview)
-                        } catch {
-                          // ignore
-                        }
-                      }
-                      return []
-                    })
-                    cancelComposerMediaPrep()
-                    try {
-                      const el = composerMediaInputRef.current
-                      if (el) el.value = ''
-                    } catch {
-                      // ignore
-                    }
-                    setComposerDiscardPromptOpen(false)
-                    setComposerPinOnPost(false)
-                    setPostErr('Draft saved. Re-add photos if you had any.')
-                    composerFoldedFromFeedScrollRef.current = false
-                    composerFoldRevealRef.current = 0
-                    setComposerFoldReveal(0)
-                    composerExpandedRef.current = false
-                    setComposerExpanded(false)
-                  }}
+                  className="order-1 min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-2"
+                  onClick={() => setComposerDiscardPromptOpen(false)}
                 >
-                  Save draft
+                  Keep writing
                 </button>
               </div>
             </div>

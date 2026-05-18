@@ -508,18 +508,22 @@ export default function LoungePostStreamVideo({
     heroPhaseRef.current = heroPhase
   }, [heroPhase])
 
-  /** Body mount for hero expand only (idle flyout stays in the card and scrolls with the feed). */
-  useEffect(() => {
-    if (!showOpen || !id) return undefined
+  /** Body mount for hero expand only — created lazily on open, removed on close (not one per feed tile). */
+  const ensureHeroBodyHost = useCallback(() => {
+    if (heroBodyHostRef.current) return heroBodyHostRef.current
     const host = document.createElement('div')
     host.dataset.loungeStreamFlyoutHost = id
     document.body.appendChild(host)
     heroBodyHostRef.current = host
-    return () => {
-      host.remove()
-      heroBodyHostRef.current = null
-    }
-  }, [showOpen, id])
+    return host
+  }, [id])
+
+  const releaseHeroBodyHost = useCallback(() => {
+    const host = heroBodyHostRef.current
+    if (!host) return
+    host.remove()
+    heroBodyHostRef.current = null
+  }, [])
 
   /** Reparent the same flyout DOM node — inline while idle, body while hero expanded (no remount). */
   useLayoutEffect(() => {
@@ -527,18 +531,15 @@ export default function LoungePostStreamVideo({
     const slot = heroInlineSlotRef.current
     if (!flyout || !slot) return
     if (heroExpanded) {
-      let host = heroBodyHostRef.current
-      if (!host) {
-        host = document.createElement('div')
-        host.dataset.loungeStreamFlyoutHost = id
-        document.body.appendChild(host)
-        heroBodyHostRef.current = host
-      }
+      const host = ensureHeroBodyHost()
       if (flyout.parentElement !== host) host.appendChild(flyout)
       return
     }
     if (flyout.parentElement !== slot) slot.appendChild(flyout)
-  }, [heroExpanded, heroPhase, heroLayout, id])
+    releaseHeroBodyHost()
+  }, [heroExpanded, ensureHeroBodyHost, releaseHeroBodyHost])
+
+  useEffect(() => () => releaseHeroBodyHost(), [releaseHeroBodyHost])
 
   useEffect(() => {
     isWinnerRef.current = feedAutoplayEnabled && (!coordinatorActive || isWinner)
@@ -1006,7 +1007,7 @@ export default function LoungePostStreamVideo({
       const ratio = typeof e?.intersectionRatio === 'number' ? e.intersectionRatio : 0
       const attachOk = Boolean(e?.isIntersecting && (ratio >= LAZY_ATTACH_IO_THRESHOLD || ratio === 1))
       inViewRef.current = attachOk
-      if (lazyStream) setStreamInView(attachOk)
+      if (lazyStream && !coordinatorActive) setStreamInView(attachOk)
       const won = isWinnerRef.current
       if (lightboxOpenRef.current) {
         queueMicrotask(() => scheduleRecompute())
@@ -1025,7 +1026,8 @@ export default function LoungePostStreamVideo({
           // ignore
         }
       }
-      queueMicrotask(() => scheduleRecompute())
+      /** Scroll root already schedules winner picks; IO per tile was redundant and costly on mobile. */
+      if (!coordinatorActive) queueMicrotask(() => scheduleRecompute())
       if (!feedAutoplayEnabled) return
       if (!attachOk || !won) return
       if (lightboxOpenRef.current) return
@@ -1271,8 +1273,8 @@ export default function LoungePostStreamVideo({
       ref={videoRef}
       className={`${streamVideoClass} ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlineVideoOpacityClass}`}
       style={heroExpanded ? undefined : streamFadeTransitionStyle}
-      controls={heroExpanded}
-      controlsList={heroExpanded ? 'nodownload' : undefined}
+      controls={false}
+      controlsList="nodownload"
       muted={!stripSoundUnmuted}
       loop
       playsInline
@@ -1281,7 +1283,20 @@ export default function LoungePostStreamVideo({
       aria-label={heroExpanded ? 'Post video (full screen)' : undefined}
       aria-hidden={!heroExpanded}
       onClick={(e) => {
-        if (heroExpanded) e.stopPropagation()
+        if (!heroExpanded) return
+        e.stopPropagation()
+        const v = videoRef.current
+        if (!v) return
+        try {
+          if (v.paused) {
+            const p = v.play()
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          } else {
+            v.pause()
+          }
+        } catch {
+          // ignore
+        }
       }}
       onError={onInlineStreamError}
     />

@@ -1,29 +1,34 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { profileAvatarToneClass, profileAvatarInitials } from '../profiles/profileGate'
 
 /**
  * Autocomplete dropdown for @mention suggestions.
- * Renders directly below the textarea that triggered it.
+ * Opens downward by default; flips upward if it would overflow the viewport bottom.
  *
  * Props:
- *   suggestions   – array of profile rows { user_id, handle, display_name, avatar_url }
- *   activeIndex   – currently highlighted row index (controlled by parent)
- *   loading       – show a loading shimmer
- *   onSelect      – (profile) => void — called when a row is tapped/clicked
- *   onDismiss     – () => void — called on Escape or outside click
- *   anchorRef     – ref to the textarea (used to position the dropdown)
- *   portalClass   – extra z-index class (e.g. 'z-[132]')
+ *   suggestions  – array of profile rows { user_id, handle, display_name, avatar_url }
+ *   activeIndex  – currently highlighted row index (controlled by parent)
+ *   loading      – show a loading shimmer
+ *   onSelect     – (profile) => void — called when a row is tapped/clicked
+ *   portalClass  – extra z-index class (e.g. 'z-[132]')
  */
 export default function LoungeMentionDropdown({
   suggestions = [],
   activeIndex = 0,
   loading = false,
   onSelect,
-  onDismiss,
-  anchorRef,
   portalClass = 'z-[132]',
 }) {
   const ref = useRef(null)
+  const [openUp, setOpenUp] = useState(false)
+
+  // Flip upward if the dropdown would overflow the viewport bottom.
+  // useLayoutEffect fires before paint so there's no visible flash.
+  useLayoutEffect(() => {
+    if (!ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    setOpenUp(rect.bottom > window.innerHeight - 8)
+  }, [suggestions.length, loading])
 
   // Scroll the active row into view inside the dropdown list
   useEffect(() => {
@@ -33,12 +38,14 @@ export default function LoungeMentionDropdown({
 
   if (!loading && suggestions.length === 0) return null
 
+  const positionClass = openUp ? 'bottom-full mb-1' : 'top-full mt-1'
+
   return (
     <div
       ref={ref}
       role="listbox"
       aria-label="Mention suggestions"
-      className={`absolute left-0 right-0 mt-1 overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-900/98 shadow-2xl backdrop-blur-sm ${portalClass}`}
+      className={`absolute left-0 right-0 overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-900/98 shadow-2xl backdrop-blur-sm ${positionClass} ${portalClass}`}
     >
       {loading && suggestions.length === 0 ? (
         <div className="px-3 py-2.5 text-[13px] text-zinc-500">Searching…</div>

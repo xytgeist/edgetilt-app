@@ -9047,7 +9047,7 @@ export default function SocialFeed({
 
       {loungeDetailCommentDiscardPromptOpen ? (
         <div
-          className="fixed inset-0 z-[99] flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6"
+          className={`fixed inset-0 flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6 ${loungePostDetailAboveProfile ? 'z-[106]' : 'z-[99]'}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-detail-comment-discard-title"

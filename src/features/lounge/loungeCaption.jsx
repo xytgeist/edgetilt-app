@@ -17,7 +17,7 @@ export function hrefForUrlDisplay(display) {
 
 /**
  * Lounge caption: `http(s)://…` and `www.…` links (opens new tab), Unicode `#tags`, and `@handles`.
- * @param {{ hashtagClassName?: string, linkClassName?: string, mentionClassName?: string, onMentionClick?: (handle: string, e: MouseEvent) => void }} [opts]
+ * @param {{ hashtagClassName?: string, linkClassName?: string, mentionClassName?: string, onMentionClick?: (handle: string, e: MouseEvent) => void, onHashtagClick?: (tag: string, e: MouseEvent) => void }} [opts]
  */
 export function renderRichCaption(
   text,
@@ -26,6 +26,7 @@ export function renderRichCaption(
     linkClassName = 'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
     mentionClassName = 'font-medium text-orange-400',
     onMentionClick = null,
+    onHashtagClick = null,
   } = {}
 ) {
   const s = String(text ?? '')
@@ -71,11 +72,25 @@ export function renderRichCaption(
     let m
     while ((m = re.exec(fragment)) !== null) {
       if (m.index > last) pushMentionParsed(fragment.slice(last, m.index))
-      out.push(
-        <span key={`rk-h-${rk++}`} className={hashtagClassName}>
-          {m[0]}
-        </span>
-      )
+      const tag = m[0]
+      if (onHashtagClick) {
+        out.push(
+          <button
+            key={`rk-h-${rk++}`}
+            type="button"
+            onClick={(e) => onHashtagClick(tag, e)}
+            className={`${hashtagClassName} touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+          >
+            {tag}
+          </button>
+        )
+      } else {
+        out.push(
+          <span key={`rk-h-${rk++}`} className={hashtagClassName}>
+            {tag}
+          </span>
+        )
+      }
       last = m.index + m[0].length
     }
     if (last < fragment.length) pushMentionParsed(fragment.slice(last))

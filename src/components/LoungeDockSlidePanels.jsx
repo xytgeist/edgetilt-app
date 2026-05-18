@@ -63,6 +63,8 @@ export default function LoungeDockSlidePanels({
   blockUnderlyingPointer = false,
   /** Scroll-linked 0–1 reveal for `LoungeDockArcCarouselPrototype` (same curve as panel title bar). */
   onTitleRevealChange,
+  /** Pre-fill the search input when the panel opens (e.g. from a #hashtag tap). */
+  initialSearchQuery = '',
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -88,7 +90,7 @@ export default function LoungeDockSlidePanels({
   const panelScrollPrevTopRef = useRef(0)
   const panelScrollVisualRafRef = useRef(0)
 
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => initialSearchQuery || '')
 
   const filteredSearchPosts = useMemo(() => {
     const s = q.trim().toLowerCase()

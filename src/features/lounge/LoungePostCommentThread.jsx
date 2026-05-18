@@ -90,6 +90,8 @@ export function LoungeCommentCard({
   hideInteractionBar = false,
   lightboxPortalClass = 'z-[100]',
   repostMenuPortalClass = 'z-[48]',
+  onMentionClick,
+  onHashtagClick,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -238,7 +240,7 @@ export function LoungeCommentCard({
         <div
           className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
         >
-          {renderRichCaption(bodyText)}
+          {renderRichCaption(bodyText, { onMentionClick, onHashtagClick })}
         </div>
       )
     })()
@@ -452,6 +454,8 @@ export default function LoungePostCommentThread({
   rootCommentSortMode = LOUNGE_DETAIL_COMMENT_SORT.RANKED,
   /** `profile_follows.following_id` for the signed-in viewer. */
   followingUserIds = [],
+  onMentionClick,
+  onHashtagClick,
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -530,6 +534,8 @@ export default function LoungePostCommentThread({
     requireLoungeAuth,
     openProfileGateIfNeeded,
     onCommentReplyInteraction,
+    onMentionClick,
+    onHashtagClick,
     interactionStateFor,
     toggleInteraction,
     onPlainRepost,

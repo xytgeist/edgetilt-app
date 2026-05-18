@@ -90,6 +90,10 @@ export default function LoungePostArticle({
   getCommentBookmarked,
   /** Open the parent-post detail with the comment in focus (comment-repost cards). */
   onOpenCommentDetail,
+  /** Open a user's profile by handle (tapping @mention in caption). */
+  onMentionClick,
+  /** Open search filtered by hashtag (tapping #tag in caption). */
+  onHashtagClick,
 }) {
   const ro = loungeReadOnly
   // ── Plain repost type detection ──────────────────────────────────────────
@@ -320,7 +324,7 @@ export default function LoungePostArticle({
             ) : null}
             {rc?.body ? (
               <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
-                {renderRichCaption(rc.body)}
+                {renderRichCaption(rc.body, { onMentionClick, onHashtagClick })}
               </div>
             ) : null}
             <LoungePostFeedImagesAndGif
@@ -335,7 +339,7 @@ export default function LoungePostArticle({
           <>
             {feedPostDisplayCaption(displayPost) ? (
               <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
-                {renderRichCaption(feedPostDisplayCaption(displayPost))}
+                {renderRichCaption(feedPostDisplayCaption(displayPost), { onMentionClick, onHashtagClick })}
               </div>
             ) : null}
             <LoungePostFeedImagesAndGif
@@ -354,7 +358,7 @@ export default function LoungePostArticle({
           <>
             {feedPostDisplayCaption(post) ? (
               <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
-                {renderRichCaption(feedPostDisplayCaption(post))}
+                {renderRichCaption(feedPostDisplayCaption(post), { onMentionClick, onHashtagClick })}
               </div>
             ) : null}
             <LoungePostFeedImagesAndGif
@@ -402,7 +406,7 @@ export default function LoungePostArticle({
                 ) : null}
               </div>
               <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 line-clamp-4 whitespace-pre-wrap break-words">
-                {renderRichCaption(feedPostDisplayCaption(post.reposted_post))}
+                {renderRichCaption(feedPostDisplayCaption(post.reposted_post), { onMentionClick, onHashtagClick })}
               </div>
               <LoungePostFeedImagesAndGif
                 post={post.reposted_post}
@@ -417,7 +421,7 @@ export default function LoungePostArticle({
           <>
             {feedPostDisplayCaption(post) ? (
               <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
-                {renderRichCaption(feedPostDisplayCaption(post))}
+                {renderRichCaption(feedPostDisplayCaption(post), { onMentionClick, onHashtagClick })}
               </div>
             ) : null}
             <LoungePostFeedImagesAndGif

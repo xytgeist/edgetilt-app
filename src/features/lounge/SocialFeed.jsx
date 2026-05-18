@@ -471,6 +471,8 @@ export default function SocialFeed({
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
   const [loungeDockPanel, setLoungeDockPanel] = useState(null)
+  const [loungeDockSearchQuery, setLoungeDockSearchQuery] = useState('')
+  const [loungeDockSearchQueryVersion, setLoungeDockSearchQueryVersion] = useState(0)
   const [loungeFabPointerBlocked, setLoungeFabPointerBlocked] = useState(false)
   const [loungeDockMenuLayout, setLoungeDockMenuLayout] = useState(() =>
     typeof window !== 'undefined' ? readLoungeDockMenuLayout() : 'wheel',
@@ -6451,6 +6453,37 @@ export default function SocialFeed({
     [openProfileGateIfNeeded, openProfileModal, profileEntityStub, profileModalOpen, pushProfileOverlay],
   )
 
+  /** Open a profile by handle string — used when a viewer taps an @mention in a caption or comment. */
+  const openProfileByHandle = useCallback(
+    async (handle) => {
+      if (!handle) return
+      if (openProfileGateIfNeeded()) return
+      const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle
+      try {
+        const { data } = await supabaseClient
+          .from('profiles')
+          .select('id, display_name, handle, avatar_url, role, is_og')
+          .eq('handle', cleanHandle)
+          .maybeSingle()
+        if (data?.id) {
+          void openProfileModal({ user_id: data.id, author_profile: data })
+        }
+      } catch {}
+    },
+    [openProfileGateIfNeeded, openProfileModal, supabaseClient],
+  )
+
+  /** Open the search panel pre-filtered by a tapped #hashtag. */
+  const openSearchByHashtag = useCallback(
+    (tag) => {
+      const q = tag.startsWith('#') ? tag.slice(1) : tag
+      setLoungeDockSearchQuery(q)
+      setLoungeDockSearchQueryVersion((v) => v + 1)
+      setLoungeDockPanel('search')
+    },
+    [],
+  )
+
   const onLoungeDockOpenOwnProfile = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
       onRequireAuth?.()
@@ -6578,6 +6611,8 @@ export default function SocialFeed({
       onPostMenuBlock: onPostMenuBlockFromFeed,
       onPostMenuReport: onPostMenuReportFromFeed,
       busyDeletingPostId: loungeFeedDeleteBusyPostId,
+      onMentionClick: openProfileByHandle,
+      onHashtagClick: openSearchByHashtag,
     }),
     [
       loungeReadOnly,
@@ -6623,6 +6658,8 @@ export default function SocialFeed({
       onCommentMenuBlockFromDetail,
       onCommentMenuReportFromDetail,
       loungeDetailCommentDeleteBusyId,
+      openProfileByHandle,
+      openSearchByHashtag,
     ]
   )
 
@@ -7506,6 +7543,8 @@ export default function SocialFeed({
                   onToggleCommentBookmark={toggleLoungeDetailCommentBookmark}
                   getCommentBookmarked={getLoungeDetailCommentBookmarked}
                   onOpenCommentDetail={(rc) => void openCommentRepostDetail(rc)}
+                  onMentionClick={openProfileByHandle}
+                  onHashtagClick={openSearchByHashtag}
                 />
               </article>
             ))}
@@ -8584,6 +8623,8 @@ export default function SocialFeed({
                           onToggleCommentBookmark={toggleLoungeDetailCommentBookmark}
                           getCommentBookmarked={getLoungeDetailCommentBookmarked}
                           repostActionBusy={repostManageBusy}
+                          onMentionClick={openProfileByHandle}
+                          onHashtagClick={openSearchByHashtag}
                         />
                       </>
                     )}
@@ -9040,7 +9081,8 @@ export default function SocialFeed({
 
       {loungeDockPanel ? (
         <LoungeDockSlidePanels
-          key={loungeDockPanel}
+          key={loungeDockPanel === 'search' ? `search-${loungeDockSearchQueryVersion}` : loungeDockPanel}
+          initialSearchQuery={loungeDockPanel === 'search' ? loungeDockSearchQuery : ''}
           openPanel={loungeDockPanel}
           onClose={() => {
             setChatDockInitialPeerUserId(null)

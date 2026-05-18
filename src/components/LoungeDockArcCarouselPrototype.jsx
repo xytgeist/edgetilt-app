@@ -526,7 +526,7 @@ export default function LoungeDockArcCarouselPrototype({
     followingFlashTimerRef.current = window.setTimeout(() => {
       followingFlashTimerRef.current = 0
       setFollowingFlash(null)
-    }, 950)
+    }, 1850)
     return () => window.clearTimeout(followingFlashTimerRef.current)
   }, [followingFilterOnForFlash])
 
@@ -1724,7 +1724,7 @@ export default function LoungeDockArcCarouselPrototype({
           className="pointer-events-none fixed z-[116] -translate-x-1/2 whitespace-nowrap"
           style={{
             left: followingItemCenterRef.current.x,
-            top: followingItemCenterRef.current.y + LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX / 2 + 6,
+            top: followingItemCenterRef.current.y - LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX / 2 - 4,
           }}
           aria-hidden
         >

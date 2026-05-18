@@ -321,7 +321,7 @@ input[list]::-webkit-list-button {
 }
 
 .lounge-filter-flash-fizzle {
-  animation: loungeFilterFlashFizzle 0.9s ease-out forwards;
+  animation: loungeFilterFlashFizzle 1.8s ease-out forwards;
 }
 
 /* Lounge badge tips — short rise-in / gentle fade-up out (no blur / letter-spacing jitter) */

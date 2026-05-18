@@ -1581,9 +1581,11 @@ export default function LoungeProfileFullScreen({
                   aria-label="Profile options"
                   className={PROFILE_BANNER_CHROME_BTN_CLASS}
                 >
-                  <span aria-hidden className={PROFILE_BANNER_CHROME_DOTS_CLASS}>
-                    ···
-                  </span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                    <circle cx="4" cy="10" r="1.65" />
+                    <circle cx="10" cy="10" r="1.65" />
+                    <circle cx="16" cy="10" r="1.65" />
+                  </svg>
                 </button>
                 {ownProfileMenuOpen
                   ? createPortal(
@@ -1624,9 +1626,11 @@ export default function LoungeProfileFullScreen({
                   aria-label="Profile options"
                   className={PROFILE_BANNER_CHROME_BTN_CLASS}
                 >
-                  <span aria-hidden className={PROFILE_BANNER_CHROME_DOTS_CLASS}>
-                    ···
-                  </span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                    <circle cx="4" cy="10" r="1.65" />
+                    <circle cx="10" cy="10" r="1.65" />
+                    <circle cx="16" cy="10" r="1.65" />
+                  </svg>
                 </button>
                 {otherProfileMenuOpen
                   ? createPortal(

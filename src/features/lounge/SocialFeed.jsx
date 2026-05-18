@@ -569,9 +569,8 @@ export default function SocialFeed({
   )
 
   const loungeDetailShowPostMenu = useMemo(
-    () =>
-      Boolean(loungePostDetail?.id && !loungeDetailEditing && loungeCommentDetailPathIds.length === 0),
-    [loungePostDetail?.id, loungeDetailEditing, loungeCommentDetailPathIds.length]
+    () => Boolean(loungePostDetail?.id && !loungeDetailEditing),
+    [loungePostDetail?.id, loungeDetailEditing]
   )
 
   /** Starter row from `ensureDefaultProfileRow`: must confirm once (cannot dismiss until Save). */

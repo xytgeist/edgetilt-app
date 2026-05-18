@@ -814,10 +814,10 @@ export default function SocialFeed({
     [beginLoungeDetailCommentMediaSession, blurLoungeComposerCaptionForTarget, openProfileGateIfNeeded],
   )
 
-  const expandAndFocusLoungeDetailCommentComposer = useCallback(() => {
-    scrollLoungePostDetailToTopInstant()
+  const expandAndFocusLoungeDetailCommentComposer = useCallback(({ skipScrollToTop = false } = {}) => {
+    if (!skipScrollToTop) scrollLoungePostDetailToTopInstant()
     focusLoungeComposerCaption(() => loungeDetailCommentTextareaRef.current, {
-      scrollFeedToTop: scrollLoungePostDetailToTopInstant,
+      scrollFeedToTop: skipScrollToTop ? undefined : scrollLoungePostDetailToTopInstant,
     })
     scheduleLoungeComposerCaptionRefocus('detailComment')
   }, [scheduleLoungeComposerCaptionRefocus, scrollLoungePostDetailToTopInstant])
@@ -4236,7 +4236,7 @@ export default function SocialFeed({
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           scrollLoungePostDetailToFocusedComment()
-          if (focusComposer) expandAndFocusLoungeDetailCommentComposer()
+          if (focusComposer) expandAndFocusLoungeDetailCommentComposer({ skipScrollToTop: true })
         })
       })
     },

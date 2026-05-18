@@ -456,6 +456,8 @@ export default function LoungePostCommentThread({
   followingUserIds = [],
   onMentionClick,
   onHashtagClick,
+  /** Tailwind z-index for image/video lightboxes (must exceed the detail shell's z-index). */
+  lightboxPortalClass = 'z-[100]',
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -562,6 +564,7 @@ export default function LoungePostCommentThread({
     onCommentEditCancel,
     commentEditBusy,
     commentEditHasRemoteMedia,
+    lightboxPortalClass,
   }
 
   if (variant === 'commentDetailReplies') {

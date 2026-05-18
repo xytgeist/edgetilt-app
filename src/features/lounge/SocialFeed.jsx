@@ -8627,6 +8627,7 @@ export default function SocialFeed({
                           repostActionBusy={repostManageBusy}
                           onMentionClick={openProfileByHandle}
                           onHashtagClick={openSearchByHashtag}
+                          lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                         />
                       </>
                     )}

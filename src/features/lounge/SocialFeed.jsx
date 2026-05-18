@@ -3303,7 +3303,8 @@ export default function SocialFeed({
   /** Post-detail reply: clear composer immediately and upload in the background (feed composer parity). */
   const submitLoungeDetailComment = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId || loungeReadOnly) return
-    if (loungeDetailCommentJobRunningRef.current) return
+    // No job-running guard here — the queue serialises execution; the composer clears
+    // synchronously on submit so a rapid second tap fails the content check below.
     const body = loungeDetailCommentDraft.trim()
     setLoungeDetailCommentErr('')
     const gifCheck = validateAtMostOneGifUrl(loungeDetailCommentMediaUrl)

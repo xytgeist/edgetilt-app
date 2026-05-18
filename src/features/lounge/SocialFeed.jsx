@@ -6681,6 +6681,7 @@ export default function SocialFeed({
       avatarToneClass,
       avatarText,
       onPostBodyClick: openLoungePostDetail,
+      onOpenCommentRepost: openCommentRepostDetail,
       onOpenProfileReply: (comment, post, opts) => {
         if (!post?.id || !comment?.id) return
         openLoungePostDetail(post, {
@@ -6743,6 +6744,7 @@ export default function SocialFeed({
       requireLoungeAuth,
       openProfileGateIfNeeded,
       openLoungePostDetail,
+      openCommentRepostDetail,
       openAuthorProfile,
       openProfileModal,
       handleShareLoungePost,

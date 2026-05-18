@@ -1988,7 +1988,7 @@ export default function LoungeProfileFullScreen({
                         const t = e.target
                         if (!(t instanceof Element)) return
                         const origHost = t.closest('[data-lounge-original-embed]')
-                        if (origHost && post.reposted_post?.id) {
+                        if (origHost && post.reposted_post?.id && !post.repost_of_comment_id) {
                           postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
                           return
                         }
@@ -1998,6 +1998,16 @@ export default function LoungeProfileFullScreen({
                           )
                         )
                           return
+                        // Plain repost of a comment → open comment detail
+                        if (post.repost_of_comment_id && post.reposted_comment?.post_id) {
+                          postCardPropsForLists.onOpenCommentRepost?.(post.reposted_comment)
+                          return
+                        }
+                        // Plain repost of a post → open the original
+                        if (post.is_plain_repost && post.reposted_post?.id) {
+                          postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
+                          return
+                        }
                         postCardPropsForLists.onPostBodyClick?.(post)
                       }}
                     >
@@ -2057,7 +2067,7 @@ export default function LoungeProfileFullScreen({
                         const t = e.target
                         if (!(t instanceof Element)) return
                         const origHost = t.closest('[data-lounge-original-embed]')
-                        if (origHost && post.reposted_post?.id) {
+                        if (origHost && post.reposted_post?.id && !post.repost_of_comment_id) {
                           postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
                           return
                         }
@@ -2067,6 +2077,16 @@ export default function LoungeProfileFullScreen({
                           )
                         )
                           return
+                        // Plain repost of a comment → open comment detail
+                        if (post.repost_of_comment_id && post.reposted_comment?.post_id) {
+                          postCardPropsForLists.onOpenCommentRepost?.(post.reposted_comment)
+                          return
+                        }
+                        // Plain repost of a post → open the original
+                        if (post.is_plain_repost && post.reposted_post?.id) {
+                          postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
+                          return
+                        }
                         postCardPropsForLists.onPostBodyClick?.(post)
                       }}
                     >

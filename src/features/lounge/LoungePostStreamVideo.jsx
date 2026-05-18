@@ -118,6 +118,32 @@ function computeHeroTargetRect(fromRect) {
   return { top, left, width: w, height: h }
 }
 
+/** Imperative snap before React paint — flyout on body at tile rect (no transition). */
+function snapFlyoutToHeroRect(flyout, host, rect) {
+  if (!flyout || !host || !rect) return
+  if (flyout.parentElement !== host) host.appendChild(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${rect.top}px`
+  flyout.style.left = `${rect.left}px`
+  flyout.style.width = `${rect.width}px`
+  flyout.style.height = `${rect.height}px`
+  flyout.style.zIndex = '101'
+  flyout.style.transition = 'none'
+  flyout.style.borderRadius = '12px'
+}
+
+function clearFlyoutHeroInlineStyles(flyout) {
+  if (!flyout) return
+  flyout.style.position = ''
+  flyout.style.top = ''
+  flyout.style.left = ''
+  flyout.style.width = ''
+  flyout.style.height = ''
+  flyout.style.zIndex = ''
+  flyout.style.transition = ''
+  flyout.style.borderRadius = ''
+}
+
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
@@ -536,6 +562,7 @@ export default function LoungePostStreamVideo({
       return
     }
     if (flyout.parentElement !== slot) slot.appendChild(flyout)
+    clearFlyoutHeroInlineStyles(flyout)
     releaseHeroBodyHost()
   }, [heroExpanded, ensureHeroBodyHost, releaseHeroBodyHost])
 
@@ -802,6 +829,9 @@ export default function LoungePostStreamVideo({
         }
       }
     }
+    const host = ensureHeroBodyHost()
+    const flyout = videoFlyoutRef.current
+    snapFlyoutToHeroRect(flyout, host, from)
     setHeroLayout(from)
     setHeroPhase('opening')
     setHeroChromeVisible(false)
@@ -816,6 +846,7 @@ export default function LoungePostStreamVideo({
     stripSoundUnmuted,
     feedInlineSoundUnmuted,
     toggleFeedInlineSound,
+    ensureHeroBodyHost,
   ])
 
   /** Bottom strip: coordinated tiles share provider mute; others toggle this tile only. */
@@ -1268,6 +1299,17 @@ export default function LoungePostStreamVideo({
     ? 'pointer-events-auto h-full w-full max-h-full max-w-full object-contain'
     : 'pointer-events-none h-full w-full object-contain'
 
+  const heroBackdropTransitionCss =
+    heroTransitionArmed || heroPhase === 'closing'
+      ? `opacity ${HERO_EXPAND_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+      : 'none'
+  const heroBackdropOpacityClass =
+    heroPhase === 'closing'
+      ? 'opacity-0'
+      : heroTransitionArmed && (heroPhase === 'opening' || heroPhase === 'open')
+        ? 'opacity-100'
+        : 'opacity-0'
+  const heroBackdropInteractive = heroPhase === 'open' || heroPhase === 'closing'
   const streamVideoEl = (
     <video
       ref={videoRef}
@@ -1457,12 +1499,15 @@ export default function LoungePostStreamVideo({
               aria-label="Full screen video"
             >
               <div
-                className={`absolute inset-0 bg-black ${heroSwipeTouchClass || ''}`.trim()}
-                onClick={closeLightbox}
-                onPointerDown={heroSwipePointerDown}
-                onPointerMove={heroSwipePointerMove}
-                onPointerUp={heroSwipePointerUp}
-                onPointerCancel={heroSwipePointerCancel}
+                className={`absolute inset-0 bg-black ${heroBackdropOpacityClass} ${heroSwipeTouchClass || ''} ${
+                  heroBackdropInteractive ? '' : 'pointer-events-none'
+                }`.trim()}
+                style={{ transition: heroBackdropTransitionCss }}
+                onClick={heroBackdropInteractive ? closeLightbox : undefined}
+                onPointerDown={heroBackdropInteractive ? heroSwipePointerDown : undefined}
+                onPointerMove={heroBackdropInteractive ? heroSwipePointerMove : undefined}
+                onPointerUp={heroBackdropInteractive ? heroSwipePointerUp : undefined}
+                onPointerCancel={heroBackdropInteractive ? heroSwipePointerCancel : undefined}
                 aria-hidden
               />
               <div className="pointer-events-none fixed inset-0 flex flex-col">

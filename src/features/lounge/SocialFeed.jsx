@@ -8553,7 +8553,7 @@ export default function SocialFeed({
                     : 'lounge-detail-comments'
                 }
                 className="pt-0"
-                style={loungeCommentDetailPathIds.length > 0 ? { paddingBottom: '50dvh' } : undefined}
+                style={loungeCommentDetailPathIds.length > 0 ? { paddingBottom: '80dvh' } : undefined}
               >
                 {loungeReadOnly ? (
                   <p className="mt-1 text-[14px] text-zinc-500">

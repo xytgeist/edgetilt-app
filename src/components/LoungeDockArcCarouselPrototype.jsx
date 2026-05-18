@@ -1738,9 +1738,7 @@ export default function LoungeDockArcCarouselPrototype({
                 <span className="font-bold text-[#06cefc] drop-shadow-[0_0_8px_rgba(6,206,252,0.75)]">Frens</span>
               </>
             ) : (
-              <span className="text-zinc-200 drop-shadow-[0_0_6px_rgba(6,206,252,0.45)]">
-                {followingFlash.label}
-              </span>
+              <span className="lounge-filter-flash-discover font-bold not-italic tracking-wide">Discover</span>
             )}
           </span>
         </span>

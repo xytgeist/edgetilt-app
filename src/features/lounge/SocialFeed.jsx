@@ -7440,7 +7440,7 @@ export default function SocialFeed({
 
         {composerDiscardPromptOpen ? (
           <div
-            className="fixed inset-0 z-[91] flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6"
+            className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="composer-discard-title"

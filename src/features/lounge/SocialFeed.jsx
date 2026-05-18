@@ -652,9 +652,12 @@ export default function SocialFeed({
     const el = document.getElementById('lounge-detail-focus-comment')
     if (!sc || !el) return
     const barH = loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56
+    // 16px matches the py-4 top padding of the OP post content wrapper, giving the focused
+    // comment the same breathing room from the title bar as the original post has.
+    const GAP_PX = 16
     const scRect = sc.getBoundingClientRect()
     const elRect = el.getBoundingClientRect()
-    const nextTop = Math.max(0, sc.scrollTop + (elRect.top - scRect.top) - barH)
+    const nextTop = Math.max(0, sc.scrollTop + (elRect.top - scRect.top) - barH - GAP_PX)
     sc.scrollTo({ top: nextTop, behavior: 'auto' })
     loungePostDetailScrollPrevTopRef.current = nextTop
     // Always keep the title bar (back button) visible when landing on a focused comment.

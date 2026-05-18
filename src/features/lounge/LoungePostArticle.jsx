@@ -316,7 +316,7 @@ export default function LoungePostArticle({
                 <button
                   type="button"
                   onClick={(e) => onEmbeddedAuthorProfile(e, rc.reply_to_profile)}
-                  className="font-medium text-orange-400 hover:text-orange-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                  className="font-medium text-[#fd4506] hover:text-[#fd4506]/80 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                 >
                   <em>@{rc.reply_to_profile.handle}</em>
                 </button>

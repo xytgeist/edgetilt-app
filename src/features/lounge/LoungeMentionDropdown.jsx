@@ -109,7 +109,7 @@ export default function LoungeMentionDropdown({
                     {profile.display_name}
                   </span>
                 ) : null}
-                <span className="block truncate text-[12px] leading-tight text-orange-400">
+                <span className="block truncate text-[12px] leading-tight text-[#fd4506]">
                   @{profile.handle}
                 </span>
               </span>

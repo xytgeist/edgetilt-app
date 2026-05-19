@@ -784,6 +784,9 @@ export default function LoungePostStreamVideo({
       feedSoundAudibleRef.current = false
       return true
     }
+    const v = videoRef.current
+    // Handoff play() must stay muted until playback actually starts (React muted prop + iOS).
+    if (!v || v.paused) return true
     if (tileRatio >= LOUNGE_VIDEO_SOUND_ON_RATIO) feedSoundAudibleRef.current = true
     else if (tileRatio <= LOUNGE_VIDEO_SOUND_OFF_RATIO) feedSoundAudibleRef.current = false
     return !feedSoundAudibleRef.current
@@ -793,6 +796,13 @@ export default function LoungePostStreamVideo({
     isActive,
     tileRatio,
   ])
+
+  const inlineVideoMuted =
+    heroExpanded
+      ? !stripSoundUnmuted
+      : coordinatedInlineSound
+        ? computeCoordinatedSoundMuted()
+        : !stripSoundUnmuted
 
   const syncCoordinatedSoundMuted = useCallback(() => {
     const v = videoRef.current
@@ -946,6 +956,14 @@ export default function LoungePostStreamVideo({
         }).catch((err) => {
           finishPlayAttempt()
           reportPlayError(err)
+          if (err instanceof Error && err.name === 'NotAllowedError') {
+            lastInlinePlayAttemptMsRef.current = 0
+            window.setTimeout(() => {
+              if (isActiveRef.current && videoRef.current?.paused) {
+                tryCoordinatedInlinePlay()
+              }
+            }, 650)
+          }
           scheduleRecompute()
         })
       } else {
@@ -1106,6 +1124,46 @@ export default function LoungePostStreamVideo({
     isActive,
     lazyStream,
     lightboxOpen,
+    tileRatio,
+    tryCoordinatedInlinePlay,
+  ])
+
+  /** Active tile visible but paused — gentle retry (no releaseStalledActive cascade). */
+  useEffect(() => {
+    if (!coordinatorActive || !feedAutoplayEnabled || !lazyStream || !isActive || !attachStream) {
+      return undefined
+    }
+    if (tileRatio <= 0 || lightboxOpen || heroLocked) return undefined
+
+    let ticks = 0
+    const tick = () => {
+      const v = videoRef.current
+      if (!isActiveRef.current || lightboxOpenRef.current) return
+      if (!v || !v.paused) {
+        ticks = 0
+        return
+      }
+      if (inlinePlayInFlightRef.current) return
+      if (v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
+      ticks += 1
+      if (ticks > 10) return
+      tryCoordinatedInlinePlay()
+      if (ticks === 4 && lastPlayErrorRef.current.includes('NotAllowedError')) {
+        scheduleRecompute()
+      }
+    }
+
+    const intervalId = window.setInterval(tick, 1200)
+    return () => window.clearInterval(intervalId)
+  }, [
+    attachStream,
+    coordinatorActive,
+    feedAutoplayEnabled,
+    heroLocked,
+    isActive,
+    lazyStream,
+    lightboxOpen,
+    scheduleRecompute,
     tileRatio,
     tryCoordinatedInlinePlay,
   ])
@@ -2068,7 +2126,7 @@ export default function LoungePostStreamVideo({
       style={heroExpanded ? undefined : streamFadeTransitionStyle}
       controls={false}
       controlsList="nodownload"
-      muted={!stripSoundUnmuted}
+      muted={inlineVideoMuted}
       loop
       playsInline
       preload={variant === 'composer' ? 'auto' : 'metadata'}

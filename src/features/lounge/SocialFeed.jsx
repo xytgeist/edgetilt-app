@@ -167,6 +167,11 @@ import {
   subscribeLoungeFeedVideoAutoplayEnabled,
   writeLoungeFeedVideoAutoplayEnabled,
 } from '../../utils/loungeFeedVideoAutoplayPref.js'
+import {
+  readLoungeFeedVideoDebugEnabled,
+  subscribeLoungeFeedVideoDebugEnabled,
+  writeLoungeFeedVideoDebugEnabled,
+} from '../../utils/loungeFeedVideoDebugPref.js'
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
@@ -599,6 +604,17 @@ export default function SocialFeed({
   const onLoungeFeedVideoAutoplayChange = useCallback((enabled) => {
     writeLoungeFeedVideoAutoplayEnabled(enabled)
   }, [])
+
+  const loungeFeedVideoDebugEnabled = useSyncExternalStore(
+    subscribeLoungeFeedVideoDebugEnabled,
+    readLoungeFeedVideoDebugEnabled,
+    () => false,
+  )
+  const onLoungeFeedVideoDebugChange = useCallback((enabled) => {
+    writeLoungeFeedVideoDebugEnabled(enabled)
+  }, [])
+
+  const loungeFeedVideoDebugHudOnFeed = loungeFeedVideoDebugEnabled && !loungePostDetail?.id && loungeDockPanel !== 'search'
 
   // ── @mention autocomplete — one instance per composer ──────────────────────
   const mentionComposer = useMentionState(postText, supabaseClient, !loungeReadOnly)
@@ -7300,7 +7316,7 @@ export default function SocialFeed({
           pointerEvents: loungeFabPointerBlocked ? 'none' : undefined,
         }}
       >
-        <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef} showDebugHud>
+        <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef} showDebugHud={loungeFeedVideoDebugHudOnFeed}>
         <LoungeFeedAutoplayPostsKick postCount={communityPosts.length} />
         <LoungeFeedCoordinatorSuspendBinder suspended={Boolean(loungePostDetail?.id)} />
         <div
@@ -8194,7 +8210,10 @@ export default function SocialFeed({
               ref={loungePostDetailScrollRef}
               className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
             >
-              <LoungeFeedVideoAutoplayProvider scrollRootRef={loungePostDetailScrollRef}>
+              <LoungeFeedVideoAutoplayProvider
+                scrollRootRef={loungePostDetailScrollRef}
+                showDebugHud={loungeFeedVideoDebugEnabled && Boolean(loungePostDetail?.id)}
+              >
               <div
                 aria-hidden
                 className="shrink-0"
@@ -9571,6 +9590,8 @@ export default function SocialFeed({
           onDockMenuLayoutChange={writeLoungeDockMenuLayout}
           feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
           onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
+          feedVideoDebugEnabled={loungeFeedVideoDebugEnabled}
+          onFeedVideoDebugChange={onLoungeFeedVideoDebugChange}
           onTitleRevealChange={onLoungePanelTitleReveal}
         />
       ) : null}

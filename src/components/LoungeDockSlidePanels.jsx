@@ -61,6 +61,8 @@ export default function LoungeDockSlidePanels({
   onDockMenuLayoutChange,
   feedVideoAutoplayEnabled = true,
   onFeedVideoAutoplayChange,
+  feedVideoDebugEnabled = false,
+  onFeedVideoDebugChange,
   /** When true (e.g. FAB long-press), block scroll-region hits so gestures don’t fight the dock. */
   blockUnderlyingPointer = false,
   /** Scroll-linked 0–1 reveal for `LoungeDockArcCarouselPrototype` (same curve as panel title bar). */
@@ -436,7 +438,10 @@ export default function LoungeDockSlidePanels({
             ) : filteredSearchPosts.length === 0 ? (
               <p className="text-[14px] leading-relaxed text-zinc-500">No posts match.</p>
             ) : (
-              <LoungeFeedVideoAutoplayProvider scrollRootRef={panelScrollRef}>
+              <LoungeFeedVideoAutoplayProvider
+                scrollRootRef={panelScrollRef}
+                showDebugHud={feedVideoDebugEnabled && openPanel === 'search'}
+              >
                 {filteredSearchPosts.map((post) => (
                   <article
                     key={post.id}
@@ -526,6 +531,32 @@ export default function LoungeDockSlidePanels({
                   <span
                     className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
                       feedVideoAutoplayEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+                    }`}
+                  />
+                </span>
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={feedVideoDebugEnabled}
+                onClick={() => onFeedVideoDebugChange?.(!feedVideoDebugEnabled)}
+                className="mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold text-zinc-100">Video debug HUD</span>
+                  <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                    On-device coordinator overlay (PWA-friendly). Copy JSON to share captures.
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+                    feedVideoDebugEnabled ? 'bg-amber-500' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                      feedVideoDebugEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
                     }`}
                   />
                 </span>

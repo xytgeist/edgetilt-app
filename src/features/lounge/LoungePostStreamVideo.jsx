@@ -732,6 +732,8 @@ export default function LoungePostStreamVideo({
   const heroFrameShieldRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
   /** Hero opened before inline `<video>` existed (detail/comment tiles off DOM budget). */
   const heroColdMountRef = useRef(false)
+  /** Hero opened with `<video>` present but HLS not decoded yet — kick attach after open. */
+  const heroHlsKickRef = useRef(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -948,6 +950,17 @@ export default function LoungePostStreamVideo({
     (!coordinatorActive && lazyStream && streamInView)
   )
   const ringWarmPrefetch = coordinatorActive && inRing && !isActive && attachStream
+  const ringHlsCacheHeld = Boolean(
+    ringHlsHeld &&
+      !isActive &&
+      !ringWarmPrefetch &&
+      videoRef.current &&
+      videoRef.current.readyState >= HTMLMediaElement.HAVE_METADATA,
+  )
+  /** iOS: limit concurrent HLS — active/hero/lightbox + brief handoff hold on decoded ring tiles only (no prefetch HLS). */
+  const hlsAttachEnabled =
+    attachStream &&
+    (heroExpanded || lightboxOpen || isActive || ringHlsCacheHeld)
 
   /** Handoff away: next active clip starts muted unless user taps sound on that tile. */
   useEffect(() => {
@@ -1257,6 +1270,37 @@ export default function LoungePostStreamVideo({
     tryCoordinatedInlinePlay,
   ])
 
+  /** Active tile stuck at rs=0 — retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
+  useEffect(() => {
+    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !hlsAttachEnabled) {
+      return undefined
+    }
+    if (lightboxOpen || tileRatio <= 0) return undefined
+    const v = videoRef.current
+    if (!v || v.readyState >= HTMLMediaElement.HAVE_METADATA) return undefined
+    let cancelled = false
+    const tid = window.setTimeout(() => {
+      if (cancelled || lightboxOpenRef.current || !isActiveRef.current) return
+      const el = videoRef.current
+      if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
+      bumpStreamAttach('active-hls-stall')
+    }, 1400)
+    return () => {
+      cancelled = true
+      window.clearTimeout(tid)
+    }
+  }, [
+    bumpStreamAttach,
+    coordinatorActive,
+    feedAutoplayEnabled,
+    hlsAttachEnabled,
+    isActive,
+    lazyStream,
+    lightboxOpen,
+    streamAttachKey,
+    tileRatio,
+  ])
+
   /** Active tile visible but paused — gentle retry (no releaseStalledActive cascade). */
   useEffect(() => {
     if (!coordinatorActive || !feedAutoplayEnabled || !lazyStream || !isActive || !attachStream) {
@@ -1350,9 +1394,9 @@ export default function LoungePostStreamVideo({
   }, [attachStream])
 
   useStreamHlsAttachment(videoRef, src, streamAttachKey, {
-    enabled: attachStream,
+    enabled: hlsAttachEnabled,
     feedStyleAbr: feedStyleAbr,
-    ringWarmPrefetch,
+    ringWarmPrefetch: ringWarmPrefetch && hlsAttachEnabled,
     recoveryBurstRef,
     savedTimeRef: savedStreamTimeRef,
     onAutoReattach: bumpStreamAttach,
@@ -1376,6 +1420,7 @@ export default function LoungePostStreamVideo({
       mountStreamVideo,
       tileRatio,
       attachStream,
+      hlsAttachEnabled,
       ringHlsHeld,
       ringWarmPrefetch,
       flingerMode,
@@ -1396,6 +1441,7 @@ export default function LoungePostStreamVideo({
     }),
     [
       attachStream,
+      hlsAttachEnabled,
       coordinatorActive,
       feedAutoplayEnabled,
       flingerMode,
@@ -1627,6 +1673,7 @@ export default function LoungePostStreamVideo({
     heroFrameShieldRef.current = null
     heroTapSnapshotRef.current = null
     heroColdMountRef.current = false
+    heroHlsKickRef.current = false
     heroWantsSoundRef.current = true
     lightboxOpenRef.current = false
     exitFeedHeroLock()
@@ -1840,6 +1887,7 @@ export default function LoungePostStreamVideo({
     )
     const tapShowVideo = streamFadeShowVideo || hadDecodedVideo
     heroColdMountRef.current = !v
+    heroHlsKickRef.current = Boolean(v && !tapShowVideo)
     heroTapSnapshotRef.current = {
       showVideo: tapShowVideo,
       readyState: v?.readyState ?? 0,
@@ -2148,7 +2196,7 @@ export default function LoungePostStreamVideo({
 
   /** After lazy HLS attach, start playback once media is ready — active tile only (never prefetch ring). */
   useEffect(() => {
-    if (!lazyStream || !attachStream) return undefined
+    if (!lazyStream || !hlsAttachEnabled) return undefined
     if (!showOpen) return undefined
     const heroTile = lightboxOpenRef.current
     if (coordinatorActive && !isActive && !heroTile) return undefined
@@ -2207,7 +2255,7 @@ export default function LoungePostStreamVideo({
     }
   }, [
     lazyStream,
-    attachStream,
+    hlsAttachEnabled,
     showOpen,
     streamAttachKey,
     lightboxOpen,
@@ -2222,7 +2270,7 @@ export default function LoungePostStreamVideo({
 
   /** Hero / lightbox open: ensure the same inline `<video>` keeps playing once HLS attaches (autoplay-off path). */
   useEffect(() => {
-    if (!lightboxOpen || !attachStream) return undefined
+    if (!lightboxOpen || !hlsAttachEnabled) return undefined
     const v = videoRef.current
     if (!v) return undefined
     const tryPlay = () => {
@@ -2240,21 +2288,49 @@ export default function LoungePostStreamVideo({
     }
     v.addEventListener('canplay', tryPlay, { once: true })
     return () => v.removeEventListener('canplay', tryPlay)
-  }, [lightboxOpen, attachStream, streamAttachKey])
+  }, [lightboxOpen, hlsAttachEnabled, streamAttachKey])
 
   /** Detail/comment tiles often mount `<video>` only on lightbox open — force HLS attach once the node exists. */
   useEffect(() => {
-    if (!lightboxOpen || !heroColdMountRef.current) return undefined
-    if (!mountStreamVideo || !attachStream) return undefined
+    if (!lightboxOpen || (!heroColdMountRef.current && !heroHlsKickRef.current)) return undefined
+    if (!mountStreamVideo || !hlsAttachEnabled) return undefined
     const v = videoRef.current
     if (!v) return undefined
     heroColdMountRef.current = false
+    heroHlsKickRef.current = false
     if (videoDebugEnabled && feedAutoplayClientId) {
-      reportLoungeVideoDebugEvent(feedAutoplayClientId, 'attach', 'hero-cold-mount')
+      reportLoungeVideoDebugEvent(
+        feedAutoplayClientId,
+        'attach',
+        v.readyState >= HTMLMediaElement.HAVE_METADATA ? 'hero-hls-kick' : 'hero-cold-mount',
+      )
     }
     setStreamAttachKey((k) => k + 1)
     return undefined
-  }, [lightboxOpen, mountStreamVideo, attachStream, feedAutoplayClientId, videoDebugEnabled])
+  }, [lightboxOpen, mountStreamVideo, hlsAttachEnabled, feedAutoplayClientId, videoDebugEnabled])
+
+  /** Hero / lightbox: fade video over poster once HLS decodes (inline may still be on poster at rs=0). */
+  useEffect(() => {
+    if (!lightboxOpen || !hlsAttachEnabled) return undefined
+    const v = videoRef.current
+    if (!v) return undefined
+    let cleaned = false
+    const showVideo = () => {
+      if (cleaned) return
+      setStreamFadeShowVideo(true)
+    }
+    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      showVideo()
+      return undefined
+    }
+    v.addEventListener('loadeddata', showVideo, { once: true })
+    v.addEventListener('canplay', showVideo, { once: true })
+    return () => {
+      cleaned = true
+      v.removeEventListener('loadeddata', showVideo)
+      v.removeEventListener('canplay', showVideo)
+    }
+  }, [lightboxOpen, hlsAttachEnabled, streamAttachKey])
 
   /** After closing hero, resume inline autoplay if still in view (sound restored on shrink animation end). */
   useEffect(() => {
@@ -2352,7 +2428,7 @@ export default function LoungePostStreamVideo({
     })()
   const effectiveStreamFadeShowVideo =
     heroExpanded && heroTapSnapshotRef.current
-      ? heroTapShowVideo
+      ? heroTapShowVideo || streamFadeShowVideo
       : streamFadeShowVideo || pausedInlineFrameVisible
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle =
@@ -2397,7 +2473,13 @@ export default function LoungePostStreamVideo({
     : 'absolute inset-0 z-[1] h-full w-full overflow-hidden bg-transparent'
   const heroFlyoutPointerProps = {}
   const inlineVideoOpacityClass =
-    heroExpanded || (attachStream && effectiveStreamFadeShowVideo) ? 'opacity-100' : 'opacity-0'
+    heroExpanded
+      ? effectiveStreamFadeShowVideo
+        ? 'opacity-100'
+        : 'opacity-0'
+      : attachStream && effectiveStreamFadeShowVideo
+        ? 'opacity-100'
+        : 'opacity-0'
   const inlinePosterOpacityClass =
     heroExpanded || !(attachStream && effectiveStreamFadeShowVideo) ? 'opacity-100' : 'opacity-0'
   /** During HLS load poster sits above the flyout; during hero it stays behind (fills the card hole only). */
@@ -2529,6 +2611,17 @@ export default function LoungePostStreamVideo({
               className={heroFlyoutShellClass}
               {...heroFlyoutPointerProps}
             >
+              {heroExpanded && usePosterFrame && visiblePosterSrc && !effectiveStreamFadeShowVideo ? (
+                <img
+                  key={`hero-flyout-poster-${visiblePosterSrc}`}
+                  src={visiblePosterSrc}
+                  alt=""
+                  decoding="async"
+                  draggable={false}
+                  className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-contain"
+                  aria-hidden
+                />
+              ) : null}
               {streamVideoEl}
             </div>
           </div>

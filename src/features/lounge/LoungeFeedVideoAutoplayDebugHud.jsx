@@ -53,7 +53,7 @@ function eventKindClass(kind) {
 }
 
 /**
- * On-device autoplay coordinator HUD — enable with `?loungeVideoDebug=1` (persists in localStorage).
+ * On-device autoplay coordinator HUD — Settings → Video debug HUD, or `?loungeVideoDebug=1`.
  * @param {{ store: import('./loungeFeedVideoAutoplayStore.js').createAutoplayStore extends () => infer S ? S : never, scrollRootRef: import('react').RefObject<HTMLElement | null> }} props
  */
 export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }) {

@@ -98,10 +98,6 @@ const HERO_MOTION_CURVE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const HERO_MOTION_TRANSITION = `${HERO_EXPAND_MS}ms ${HERO_MOTION_CURVE}`
 /** Lightbox chrome fades in only after the flyout lands. */
 const HERO_CHROME_FADE_MS = 220
-/** Dismiss: fly off-screen in swipe direction (reverse of expand). */
-const HERO_FLYAWAY_SCALE = 0.84
-const HERO_FLYAWAY_TRAVEL_RATIO = 0.58
-const HERO_FLYAWAY_DEFAULT_DY = 48
 /** Hero stack (bottom → top): scrim 100, flyout 101, transparent gesture 102, chrome 103. */
 const HERO_SCRIM_Z_INDEX = 100
 const HERO_FLYOUT_Z_INDEX = 101
@@ -151,30 +147,12 @@ function readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH) {
   return shellRect
 }
 
-function computeFlyawayDragOpacity(offset) {
-  const x = offset?.x ?? 0
-  const y = offset?.y ?? 0
-  return 1 - Math.min(0.45, (Math.abs(y) + Math.abs(x) * 0.35) / 420)
-}
-
-/** End transform for hero flyaway dismiss — continues from finger drag offset. */
-function computeHeroFlyawayTransform(fromOffset) {
-  const dx = fromOffset?.x ?? 0
-  const dy = fromOffset?.y ?? 0
-  let dirX = dx
-  let dirY = dy
-  if (Math.abs(dirX) + Math.abs(dirY) < 8) {
-    dirY = 1
-    dirX = 0
-  }
-  const len = Math.hypot(dirX, dirY) || 1
-  dirX /= len
-  dirY /= len
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
-  const travel = Math.max(vh * HERO_FLYAWAY_TRAVEL_RATIO, 280)
-  const tx = dx + dirX * travel
-  const ty = dy + dirY * travel
-  return `translate3d(${tx}px, ${ty}px, 0) scale(${HERO_FLYAWAY_SCALE})`
+/** @returns {boolean} */
+function heroRectUsableForShrinkBack(rect) {
+  if (!rect) return false
+  if (rect.width < 32 || rect.height < 32) return false
+  if (typeof window === 'undefined') return false
+  return rect.bottom > 0 && rect.top < window.innerHeight
 }
 
 /** Target hero frame: centered, object-contain aspect from source tile. */
@@ -209,6 +187,15 @@ function computeHeroExpandTransform(fromRect, toRect) {
   return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
 }
 
+/** Closing FLIP invert: laid out at tile `toRect`, transform makes it match hero `fromRect`. */
+function computeHeroShrinkTransform(fromRect, toRect) {
+  const scaleX = fromRect.width / toRect.width
+  const scaleY = fromRect.height / toRect.height
+  const translateX = fromRect.left - toRect.left
+  const translateY = fromRect.top - toRect.top
+  return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
+}
+
 /** Imperative snap before React paint — flyout on body at feed tile size (transform identity). */
 function snapFlyoutToHeroTile(flyout, host, fromRect) {
   if (!flyout || !host || !fromRect) return
@@ -239,6 +226,17 @@ function clearFlyoutHeroInlineStyles(flyout) {
   flyout.style.transform = ''
   flyout.style.transformOrigin = ''
   flyout.style.willChange = ''
+  flyout.style.opacity = ''
+}
+
+/** Drop imperative motion styles so DOM shrink owns transform during dismiss. */
+function clearFlyoutHeroMotionStyles(flyout) {
+  if (!flyout) return
+  flyout.style.transition = ''
+  flyout.style.transform = ''
+  flyout.style.transformOrigin = ''
+  flyout.style.willChange = ''
+  flyout.style.opacity = ''
 }
 
 /** X-style: in-card poster fills the feed hole while the flyout grows on body. */
@@ -571,12 +569,11 @@ export default function LoungePostStreamVideo({
   const heroFromRectRef = useRef(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
-  /** Hero target rect at open — layout anchor for flyaway dismiss. */
+  /** Hero target rect at open — FLIP “from” when shrinking back to the card. */
   const heroTargetRectRef = useRef(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const heroPhaseRef = useRef('idle')
-  const heroFlyawayOffsetRef = useRef({ x: 0, y: 0 })
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const isActiveRef = useRef(false)
@@ -612,6 +609,8 @@ export default function LoungePostStreamVideo({
   const [heroTransitionArmed, setHeroTransitionArmed] = useState(false)
   /** Scrim opacity starts one frame after flyout motion on open (feed stays crisp on frame 1). */
   const [heroBackdropArmed, setHeroBackdropArmed] = useState(false)
+  /** While true, shrink-back close runs on the flyout DOM node (React must not clear transform). */
+  const [heroShrinkDomActive, setHeroShrinkDomActive] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
@@ -1336,9 +1335,9 @@ export default function LoungePostStreamVideo({
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
     setHeroBackdropArmed(false)
+    setHeroShrinkDomActive(false)
     heroFromRectRef.current = null
     heroTargetRectRef.current = null
-    heroFlyawayOffsetRef.current = { x: 0, y: 0 }
   }, [exitFeedHeroLock])
 
   const finishHeroCloseAnimation = useCallback(() => {
@@ -1363,26 +1362,29 @@ export default function LoungePostStreamVideo({
     finalizeHeroClose()
   }, [attachStream, feedAutoplayEnabled, finalizeHeroClose, lazyStream])
 
-  const closeLightbox = useCallback(
-    (opts) => {
-      if (!lightboxOpenRef.current) return
-      const frame = heroTargetRectRef.current
-      if (!frame) {
-        finishHeroCloseAnimation()
-        return
-      }
-      const swipe = opts?.swipeOffset
-      heroFlyawayOffsetRef.current = swipe
-        ? { x: Number(swipe.x) || 0, y: Number(swipe.y) || 0 }
-        : { x: 0, y: HERO_FLYAWAY_DEFAULT_DY }
-      setHeroTransitionArmed(false)
-      setHeroPhase('closing')
-      setHeroChromeVisible(false)
-      setHeroBackdropArmed(true)
-      setHeroLayout(frame)
-    },
-    [finishHeroCloseAnimation],
-  )
+  const closeLightbox = useCallback(() => {
+    if (!lightboxOpenRef.current) return
+    const slot = heroInlineSlotRef.current
+    const back = slot
+      ? readHeroMediaViewportRect(
+          slot,
+          videoFlyoutRef.current,
+          containerRef.current,
+          displayW,
+          displayH,
+        )
+      : null
+    if (!heroRectUsableForShrinkBack(back) || !heroTargetRectRef.current) {
+      finishHeroCloseAnimation()
+      return
+    }
+    setHeroShrinkDomActive(true)
+    setHeroTransitionArmed(false)
+    setHeroPhase('closing')
+    setHeroChromeVisible(false)
+    setHeroBackdropArmed(true)
+    setHeroLayout(back)
+  }, [displayW, displayH, finishHeroCloseAnimation])
 
   const toggleHeroVideoPlayPause = useCallback(() => {
     const v = videoRef.current
@@ -1626,13 +1628,13 @@ export default function LoungePostStreamVideo({
     }
   }, [lightboxOpen, closeLightbox])
 
-  /** Hero open/close: FLIP invert (no transition), then one rAF later animate transform to identity. */
+  /** Hero open: FLIP invert (no transition), then one rAF later animate transform to identity. */
   useLayoutEffect(() => {
     if (!lightboxOpen) return undefined
-    if (heroPhase !== 'opening' && heroPhase !== 'closing') return undefined
+    if (heroPhase !== 'opening') return undefined
 
     setHeroTransitionArmed(false)
-    if (heroPhase === 'opening') setHeroBackdropArmed(false)
+    setHeroBackdropArmed(false)
 
     let cancelled = false
 
@@ -1654,19 +1656,77 @@ export default function LoungePostStreamVideo({
     }
 
     const raf = requestAnimationFrame(() => {
-      if (cancelled || (heroPhaseRef.current !== 'opening' && heroPhaseRef.current !== 'closing')) return
+      if (cancelled || heroPhaseRef.current !== 'opening') return
       setHeroTransitionArmed(true)
-      if (heroPhaseRef.current === 'opening') {
-        requestAnimationFrame(() => {
-          if (!cancelled) armBackdropAfterFlyoutPaint()
-        })
-      }
+      requestAnimationFrame(() => {
+        if (!cancelled) armBackdropAfterFlyoutPaint()
+      })
     })
     return () => {
       cancelled = true
       cancelAnimationFrame(raf)
     }
   }, [lightboxOpen, heroPhase])
+
+  /** Hero close: DOM-driven FLIP shrink back to feed tile (reverse of expand). */
+  useLayoutEffect(() => {
+    if (!lightboxOpen || heroPhase !== 'closing' || !heroShrinkDomActive) return undefined
+
+    const flyout = videoFlyoutRef.current
+    const heroFrame = heroTargetRectRef.current
+    const tileFrame = heroLayout
+    if (!flyout || !heroFrame || !tileFrame) {
+      finishHeroCloseAnimation()
+      return undefined
+    }
+
+    clearFlyoutHeroMotionStyles(flyout)
+    flyout.style.position = 'fixed'
+    flyout.style.top = `${tileFrame.top}px`
+    flyout.style.left = `${tileFrame.left}px`
+    flyout.style.width = `${tileFrame.width}px`
+    flyout.style.height = `${tileFrame.height}px`
+    flyout.style.zIndex = String(HERO_FLYOUT_Z_INDEX)
+    flyout.style.transformOrigin = '0 0'
+    flyout.style.transition = 'none'
+    flyout.style.borderRadius = '12px'
+    flyout.style.transform = computeHeroShrinkTransform(heroFrame, tileFrame)
+
+    let cancelled = false
+    let fallbackTid = 0
+    let raf2 = 0
+
+    const finishDomShrink = () => {
+      if (cancelled || heroPhaseRef.current !== 'closing') return
+      cancelled = true
+      finishHeroCloseAnimation()
+    }
+
+    const onTransitionEnd = (e) => {
+      if (e.target !== flyout || e.propertyName !== 'transform') return
+      flyout.removeEventListener('transitionend', onTransitionEnd)
+      window.clearTimeout(fallbackTid)
+      finishDomShrink()
+    }
+
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (cancelled || heroPhaseRef.current !== 'closing') return
+        flyout.style.transition = `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
+        flyout.style.transform = 'none'
+        flyout.addEventListener('transitionend', onTransitionEnd)
+        fallbackTid = window.setTimeout(finishDomShrink, HERO_EXPAND_MS + 96)
+      })
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+      window.clearTimeout(fallbackTid)
+      flyout.removeEventListener('transitionend', onTransitionEnd)
+    }
+  }, [lightboxOpen, heroPhase, heroShrinkDomActive, heroLayout, finishHeroCloseAnimation])
 
   /** iOS sometimes skips `transitionend` on transform — ensure chrome still appears after land. */
   useEffect(() => {
@@ -1676,21 +1736,12 @@ export default function LoungePostStreamVideo({
       clearHeroFrameShield(videoFlyoutRef.current)
       heroFrameShieldRef.current = null
       if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
+      setHeroTransitionArmed(false)
       setHeroPhase('open')
       setHeroChromeVisible(true)
     }, HERO_EXPAND_MS + 96)
     return () => window.clearTimeout(tid)
   }, [heroPhase, heroChromeVisible])
-
-  /** Same fallback when flyaway dismiss `transitionend` is skipped on iOS. */
-  useEffect(() => {
-    if (heroPhase !== 'closing') return undefined
-    const tid = window.setTimeout(() => {
-      if (heroPhaseRef.current !== 'closing') return
-      finishHeroCloseAnimation()
-    }, HERO_EXPAND_MS + 96)
-    return () => window.clearTimeout(tid)
-  }, [heroPhase, finishHeroCloseAnimation])
 
   useEffect(() => {
     const flyout = videoFlyoutRef.current
@@ -1702,18 +1753,14 @@ export default function LoungePostStreamVideo({
         clearHeroFrameShield(videoFlyoutRef.current)
         heroFrameShieldRef.current = null
         if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
+        setHeroTransitionArmed(false)
         setHeroPhase('open')
         requestAnimationFrame(() => setHeroChromeVisible(true))
-      }
-      if (phase === 'closing') {
-        finishHeroCloseAnimation()
       }
     }
     flyout.addEventListener('transitionend', onTransitionEnd)
     return () => flyout.removeEventListener('transitionend', onTransitionEnd)
-  }, [
-    finishHeroCloseAnimation,
-  ])
+  }, [])
 
   /** Coordinated: track in-view locally. Scroll root drives coordinator recompute (avoid per-tile IO storms). */
   useEffect(() => {
@@ -1888,7 +1935,7 @@ export default function LoungePostStreamVideo({
     return () => v.removeEventListener('canplay', tryPlay)
   }, [lightboxOpen, attachStream, streamAttachKey])
 
-  /** After closing hero, resume inline autoplay if still in view (sound restored on flyaway end). */
+  /** After closing hero, resume inline autoplay if still in view (sound restored on shrink animation end). */
   useEffect(() => {
     if (lightboxOpen) return
     if (!feedAutoplayEnabled) return
@@ -1980,23 +2027,13 @@ export default function LoungePostStreamVideo({
         }
       : undefined
   const heroAnimating =
-    heroTransitionArmed && (heroPhase === 'opening' || heroPhase === 'closing')
-  const heroClosing = heroPhase === 'closing'
+    !heroShrinkDomActive && heroTransitionArmed && heroPhase === 'opening'
   const heroTransformTransition = heroAnimating
-    ? heroClosing
-      ? `transform ${HERO_MOTION_TRANSITION}, opacity ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
-      : `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
+    ? `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
     : 'none'
   let heroFlipTransform = 'none'
-  if (heroExpanded && heroLayout) {
-    if (heroPhase === 'opening' && heroTransitionArmed && heroFromRectRef.current && heroTargetRectRef.current) {
-      heroFlipTransform = computeHeroExpandTransform(heroFromRectRef.current, heroTargetRectRef.current)
-    } else if (heroClosing) {
-      const off = heroFlyawayOffsetRef.current
-      heroFlipTransform = heroTransitionArmed
-        ? computeHeroFlyawayTransform(off)
-        : `translate3d(${off.x}px, ${off.y}px, 0) scale(1)`
-    }
+  if (heroExpanded && heroLayout && heroPhase === 'opening' && heroTransitionArmed && heroFromRectRef.current && heroTargetRectRef.current) {
+    heroFlipTransform = computeHeroExpandTransform(heroFromRectRef.current, heroTargetRectRef.current)
   }
   const heroFlyoutStyle =
     heroExpanded && heroLayout
@@ -2008,15 +2045,14 @@ export default function LoungePostStreamVideo({
           height: heroLayout.height,
           zIndex: HERO_FLYOUT_Z_INDEX,
           transformOrigin: '0 0',
-          transform: heroFlipTransform,
-          transition: heroTransformTransition,
+          ...(heroShrinkDomActive
+            ? undefined
+            : {
+                transform: heroFlipTransform,
+                transition: heroTransformTransition,
+                willChange: heroAnimating ? 'transform' : undefined,
+              }),
           borderRadius: heroPhase === 'open' ? 0 : 12,
-          willChange: heroAnimating || heroClosing ? 'transform, opacity' : undefined,
-          ...(heroClosing
-            ? {
-                opacity: heroTransitionArmed ? 0 : computeFlyawayDragOpacity(heroFlyawayOffsetRef.current),
-              }
-            : undefined),
           ...(heroPhase === 'open' ? heroSwipeDragStyle : undefined),
         }
       : undefined
@@ -2145,7 +2181,7 @@ export default function LoungePostStreamVideo({
             ) : null}
             <div
               ref={videoFlyoutRef}
-              style={heroFlyoutStyle}
+              style={heroShrinkDomActive ? undefined : heroFlyoutStyle}
               className={heroFlyoutShellClass}
               {...heroFlyoutPointerProps}
             >

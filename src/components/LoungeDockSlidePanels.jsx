@@ -3,7 +3,10 @@ import { feedPostDisplayCaption, loungePostInteractionScore } from '../utils/com
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
 import { LOUNGE_FEED_POST_ROW_CLASS } from '../features/lounge/loungeFeedAvatar.js'
-import { LoungeFeedVideoAutoplayProvider } from '../features/lounge/LoungeFeedVideoAutoplayContext.jsx'
+import {
+  LoungeFeedCoordinatorSuspendBinder,
+  LoungeFeedVideoAutoplayProvider,
+} from '../features/lounge/LoungeFeedVideoAutoplayContext.jsx'
 import LoungeChatPanel from '../features/lounge/LoungeChatPanel.jsx'
 import { loungeDockFabScrollBottomInsetPx } from '../utils/loungeDockFabPosition.js'
 import {
@@ -69,6 +72,8 @@ export default function LoungeDockSlidePanels({
   onTitleRevealChange,
   /** Pre-fill the search input when the panel opens (e.g. from a #hashtag tap). */
   initialSearchQuery = '',
+  /** Freeze search scroll-root autoplay when post/comment detail is open over the panel. */
+  videoCoordinatorSuspended = false,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -442,6 +447,7 @@ export default function LoungeDockSlidePanels({
                 scrollRootRef={panelScrollRef}
                 showDebugHud={feedVideoDebugEnabled && openPanel === 'search'}
               >
+                <LoungeFeedCoordinatorSuspendBinder suspended={videoCoordinatorSuspended} />
                 {filteredSearchPosts.map((post) => (
                   <article
                     key={post.id}

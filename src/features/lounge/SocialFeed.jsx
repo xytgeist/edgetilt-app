@@ -101,6 +101,7 @@ import {
   getLoungeStreamLightboxOpen,
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
+import { pauseAllLoungeStreamInlineVideos } from '../../utils/loungeStreamInlineVideoControl.js'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import {
   fetchLoungeProfilePosts,
@@ -4056,6 +4057,7 @@ export default function SocialFeed({
   const openLoungePostDetail = useCallback(
     (post, opts) => {
       if (!post?.id) return
+      pauseAllLoungeStreamInlineVideos()
       if (loungeReadOnly && !opts?.fromPublicLink) {
         onRequireAuth?.()
         return
@@ -4485,6 +4487,7 @@ export default function SocialFeed({
   const openLoungeCommentDetail = useCallback(
     (comment, { focusComposer = false } = {}) => {
       if (!comment?.id) return
+      pauseAllLoungeStreamInlineVideos()
       if (loungeReadOnly) {
         requireLoungeAuth()
         return
@@ -9607,6 +9610,7 @@ export default function SocialFeed({
           feedVideoDebugEnabled={loungeFeedVideoDebugEnabled}
           onFeedVideoDebugChange={onLoungeFeedVideoDebugChange}
           onTitleRevealChange={onLoungePanelTitleReveal}
+          videoCoordinatorSuspended={Boolean(loungePostDetail?.id)}
         />
       ) : null}
 

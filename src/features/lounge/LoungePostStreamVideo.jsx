@@ -9,6 +9,10 @@ import {
   notifyLoungeStreamLightboxOpen,
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
+import {
+  pauseLoungeStreamInlineVideos,
+  subscribeLoungeStreamBackgroundPause,
+} from '../../utils/loungeStreamInlineVideoControl.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import {
   readLoungeFeedVideoDebugEnabled,
@@ -429,15 +433,7 @@ function afterHeroFlyoutPainted(video, onPainted) {
 
 /** Pause every feed Stream `<video>` except the one the user is engaging (hero or sound tap). */
 function pauseOtherLoungeStreamVideos(exceptVideo) {
-  try {
-    document.querySelectorAll('[data-lounge-video-zoom] video').forEach((el) => {
-      if (el === exceptVideo) return
-      el.pause()
-      el.muted = true
-    })
-  } catch {
-    // ignore
-  }
+  pauseLoungeStreamInlineVideos(exceptVideo)
 }
 
 /**
@@ -893,6 +889,7 @@ export default function LoungePostStreamVideo({
     tileRatio,
     flingerMode,
     heroLocked,
+    coordinatorSuspended,
     feedAutoplayEnabled,
     scheduleRecompute,
     forceFeedAutoplayActive,
@@ -909,7 +906,8 @@ export default function LoungePostStreamVideo({
     getLoungeStreamLightboxOpen,
     () => false,
   )
-  isActiveRef.current = feedAutoplayEnabled && (!coordinatorActive || isActive)
+  isActiveRef.current =
+    feedAutoplayEnabled && !coordinatorSuspended && (!coordinatorActive || isActive)
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
   const [localStripSoundExplicitlyMuted, setLocalStripSoundExplicitlyMuted] = useState(false)
   const localStripSoundUnmutedRef = useRef(false)
@@ -972,6 +970,37 @@ export default function LoungePostStreamVideo({
     setLocalStripSoundUnmuted(false)
     setLocalStripSoundExplicitlyMuted(false)
   }, [coordinatorActive, isActive])
+
+  /** Post/profile/search coordinator frozen under detail overlay — stop inline audio immediately. */
+  useLayoutEffect(() => {
+    if (!coordinatorSuspended || lightboxOpenRef.current) return
+    setLocalStripSoundUnmuted(false)
+    setLocalStripSoundExplicitlyMuted(false)
+    const v = videoRef.current
+    if (!v) return
+    try {
+      v.pause()
+      v.muted = true
+    } catch {
+      // ignore
+    }
+  }, [coordinatorSuspended, streamAttachKey, lightboxOpen])
+
+  useEffect(() => {
+    return subscribeLoungeStreamBackgroundPause(() => {
+      if (lightboxOpenRef.current) return
+      setLocalStripSoundUnmuted(false)
+      setLocalStripSoundExplicitlyMuted(false)
+      const v = videoRef.current
+      if (!v) return
+      try {
+        v.pause()
+        v.muted = true
+      } catch {
+        // ignore
+      }
+    })
+  }, [])
 
   const inlineVideoMuted = !stripSoundUnmuted
   const streamVideoMutedProps = { muted: inlineVideoMuted }
@@ -1137,6 +1166,16 @@ export default function LoungePostStreamVideo({
       return
     }
 
+    if (coordinatorSuspended) {
+      try {
+        v.pause()
+        v.muted = true
+      } catch {
+        // ignore
+      }
+      return
+    }
+
     if (!coordinatorActive || !lazyStream) return
 
     if (heroLocked) {
@@ -1204,6 +1243,7 @@ export default function LoungePostStreamVideo({
   }, [
     anyStreamLightboxOpen,
     coordinatorActive,
+    coordinatorSuspended,
     flingerMode,
     heroLocked,
     inDomBudget,
@@ -2203,6 +2243,7 @@ export default function LoungePostStreamVideo({
     if (!lazyStream || !hlsAttachEnabled) return undefined
     if (!showOpen) return undefined
     const heroTile = lightboxOpenRef.current
+    if (coordinatorActive && coordinatorSuspended && !heroTile) return undefined
     if (coordinatorActive && !isActive && !heroTile) return undefined
     if (!coordinatorActive && !inViewRef.current && !heroTile) return undefined
     const v = videoRef.current
@@ -2264,6 +2305,7 @@ export default function LoungePostStreamVideo({
     streamAttachKey,
     lightboxOpen,
     coordinatorActive,
+    coordinatorSuspended,
     isActive,
     flingerMode,
     heroLocked,

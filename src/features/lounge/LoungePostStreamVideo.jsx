@@ -950,16 +950,20 @@ export default function LoungePostStreamVideo({
     (!coordinatorActive && lazyStream && streamInView)
   )
   const ringWarmPrefetch = coordinatorActive && inRing && !isActive && attachStream
+  const hasDecodedStreamMetadata = Boolean(
+    videoRef.current && videoRef.current.readyState >= HTMLMediaElement.HAVE_METADATA,
+  )
+  /** Post-detail comments: no in-ring HLS on inactive tiles (iOS decoder budget). Feed: keep paused frame while still in ring. */
   const ringHlsCacheHeld = Boolean(
     ringHlsHeld &&
       !isActive &&
-      !ringWarmPrefetch &&
-      videoRef.current &&
-      videoRef.current.readyState >= HTMLMediaElement.HAVE_METADATA,
+      hasDecodedStreamMetadata &&
+      (variant === 'commentInline' || variant === 'detail' ? !inRing : true),
   )
-  /** iOS: limit concurrent HLS — active/hero/lightbox + brief handoff hold on decoded ring tiles only (no prefetch HLS). */
+  /** iOS: limit concurrent HLS — active/hero/lightbox + handoff hold; never cold-load prefetch slots. */
   const hlsAttachEnabled =
     attachStream &&
+    !(ringWarmPrefetch && !hasDecodedStreamMetadata) &&
     (heroExpanded || lightboxOpen || isActive || ringHlsCacheHeld)
 
   /** Handoff away: next active clip starts muted unless user taps sound on that tile. */

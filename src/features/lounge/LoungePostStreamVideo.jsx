@@ -1270,37 +1270,6 @@ export default function LoungePostStreamVideo({
     tryCoordinatedInlinePlay,
   ])
 
-  /** Active tile stuck at rs=0 — retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
-  useEffect(() => {
-    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !hlsAttachEnabled) {
-      return undefined
-    }
-    if (lightboxOpen || tileRatio <= 0) return undefined
-    const v = videoRef.current
-    if (!v || v.readyState >= HTMLMediaElement.HAVE_METADATA) return undefined
-    let cancelled = false
-    const tid = window.setTimeout(() => {
-      if (cancelled || lightboxOpenRef.current || !isActiveRef.current) return
-      const el = videoRef.current
-      if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
-      bumpStreamAttach('active-hls-stall')
-    }, 1400)
-    return () => {
-      cancelled = true
-      window.clearTimeout(tid)
-    }
-  }, [
-    bumpStreamAttach,
-    coordinatorActive,
-    feedAutoplayEnabled,
-    hlsAttachEnabled,
-    isActive,
-    lazyStream,
-    lightboxOpen,
-    streamAttachKey,
-    tileRatio,
-  ])
-
   /** Active tile visible but paused — gentle retry (no releaseStalledActive cascade). */
   useEffect(() => {
     if (!coordinatorActive || !feedAutoplayEnabled || !lazyStream || !isActive || !attachStream) {
@@ -1371,6 +1340,37 @@ export default function LoungePostStreamVideo({
     },
     [feedAutoplayClientId, videoDebugEnabled],
   )
+
+  /** Active tile stuck at rs=0 — retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
+  useEffect(() => {
+    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !hlsAttachEnabled) {
+      return undefined
+    }
+    if (lightboxOpen || tileRatio <= 0) return undefined
+    const v = videoRef.current
+    if (!v || v.readyState >= HTMLMediaElement.HAVE_METADATA) return undefined
+    let cancelled = false
+    const tid = window.setTimeout(() => {
+      if (cancelled || lightboxOpenRef.current || !isActiveRef.current) return
+      const el = videoRef.current
+      if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
+      bumpStreamAttach('active-hls-stall')
+    }, 1400)
+    return () => {
+      cancelled = true
+      window.clearTimeout(tid)
+    }
+  }, [
+    bumpStreamAttach,
+    coordinatorActive,
+    feedAutoplayEnabled,
+    hlsAttachEnabled,
+    isActive,
+    lazyStream,
+    lightboxOpen,
+    streamAttachKey,
+    tileRatio,
+  ])
 
   const lastSoftResetEpochRef = useRef(0)
   useEffect(() => {

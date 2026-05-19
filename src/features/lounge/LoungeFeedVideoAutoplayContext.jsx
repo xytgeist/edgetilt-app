@@ -28,34 +28,12 @@ const LoungeFeedVideoAutoplayContext = createContext(null)
  */
 export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showDebugHud = false }) {
   const [store] = useState(() => createAutoplayStore())
-  const feedAutoplayEnabled = useSyncExternalStore(
-    subscribeLoungeFeedVideoAutoplayEnabled,
-    readLoungeFeedVideoAutoplayEnabled,
-    () => true,
-  )
   const videoDebugEnabled = useSyncExternalStore(
     subscribeLoungeFeedVideoDebugEnabled,
     readLoungeFeedVideoDebugEnabled,
     () => false,
   )
 
-  /**
-   * Feed-wide sound mode: default muted until user taps “Tap for sound” on any tile.
-   * While enabled, visibility bands (60% / 40%) govern mute on the active clip.
-   */
-  const [feedInlineSoundUnmuted, setFeedInlineSoundUnmuted] = useState(false)
-  const [feedInlineSoundExplicitlyMuted, setFeedInlineSoundExplicitlyMuted] = useState(false)
-  const toggleFeedInlineSound = useCallback(() => {
-    setFeedInlineSoundUnmuted((wasUnmuted) => {
-      const next = !wasUnmuted
-      setFeedInlineSoundExplicitlyMuted(wasUnmuted && !next)
-      return next
-    })
-  }, [])
-  const restoreFeedInlineSound = useCallback((unmuted, explicitlyMuted) => {
-    setFeedInlineSoundUnmuted(Boolean(unmuted))
-    setFeedInlineSoundExplicitlyMuted(Boolean(explicitlyMuted))
-  }, [])
   const forceFeedAutoplayActive = useCallback(
     (clientId) => {
       if (clientId) store.forceActive(clientId)
@@ -75,13 +53,6 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
   useEffect(() => {
     syncLoungeFeedVideoDebugFromUrl()
   }, [])
-
-  useEffect(() => {
-    if (!feedAutoplayEnabled) {
-      setFeedInlineSoundUnmuted(false)
-      setFeedInlineSoundExplicitlyMuted(false)
-    }
-  }, [feedAutoplayEnabled])
 
   useEffect(() => {
     store.setScrollRootRef(scrollRootRef)
@@ -114,34 +85,14 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
     }
   }, [store, scrollRootRef])
 
-  const resetFeedInlineSound = useCallback(() => {
-    setFeedInlineSoundUnmuted(false)
-    setFeedInlineSoundExplicitlyMuted(false)
-  }, [])
-
   const value = useMemo(
     () => ({
       store,
-      feedInlineSoundUnmuted,
-      feedInlineSoundExplicitlyMuted,
-      toggleFeedInlineSound,
-      restoreFeedInlineSound,
-      resetFeedInlineSound,
       forceFeedAutoplayActive,
       enterFeedHeroLock,
       exitFeedHeroLock,
     }),
-    [
-      store,
-      feedInlineSoundUnmuted,
-      feedInlineSoundExplicitlyMuted,
-      toggleFeedInlineSound,
-      restoreFeedInlineSound,
-      resetFeedInlineSound,
-      forceFeedAutoplayActive,
-      enterFeedHeroLock,
-      exitFeedHeroLock,
-    ],
+    [store, forceFeedAutoplayActive, enterFeedHeroLock, exitFeedHeroLock],
   )
 
   return (
@@ -183,22 +134,6 @@ export function LoungeFeedAutoplayPostsKick({ postCount }) {
 }
 
 /**
- * Binds `resetRef.current` to `resetFeedInlineSound` from the nearest provider (for callers outside the subtree).
- * @param {{ resetRef: React.MutableRefObject<() => void> }} props
- */
-export function LoungeFeedInlineSoundResetBinder({ resetRef }) {
-  const ctx = useContext(LoungeFeedVideoAutoplayContext)
-  useLayoutEffect(() => {
-    const fn = ctx?.resetFeedInlineSound
-    resetRef.current = typeof fn === 'function' ? fn : () => {}
-    return () => {
-      resetRef.current = () => {}
-    }
-  }, [ctx, resetRef])
-  return null
-}
-
-/**
  * Suspend coordinator handoff/ring expansion (e.g. feed hidden under post detail overlay).
  * @param {{ suspended: boolean }} props
  */
@@ -230,6 +165,7 @@ const EMPTY_AUTOPLAY_SNAPSHOT = Object.freeze({
 
 /**
  * Visibility-band autoplay: `{prev, active, next}` HLS ring + hero resource lock.
+ * Inline sound is per-tile only (`LoungePostStreamVideo.jsx` local mute state).
  * @param {string | null | undefined} clientId stable id per feed row surface + asset
  * @param {() => HTMLElement | null} getContainerEl
  */
@@ -279,11 +215,6 @@ export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
     coordinatorSuspended: autoplaySnapshot.coordinatorSuspended,
     feedAutoplayEnabled,
     scheduleRecompute: ctx?.store?.schedule ?? (() => {}),
-    feedSoundFromProvider: Boolean(ctx),
-    feedInlineSoundUnmuted: ctx?.feedInlineSoundUnmuted ?? false,
-    feedInlineSoundExplicitlyMuted: ctx?.feedInlineSoundExplicitlyMuted ?? false,
-    toggleFeedInlineSound: ctx?.toggleFeedInlineSound ?? (() => {}),
-    restoreFeedInlineSound: ctx?.restoreFeedInlineSound ?? (() => {}),
     forceFeedAutoplayActive: ctx?.forceFeedAutoplayActive ?? (() => {}),
     enterFeedHeroLock: ctx?.enterFeedHeroLock ?? (() => {}),
     exitFeedHeroLock: ctx?.exitFeedHeroLock ?? (() => {}),

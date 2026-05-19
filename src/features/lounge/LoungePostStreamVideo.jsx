@@ -2,10 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { createPortal, flushSync } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
-import {
-  LOUNGE_VIDEO_SOUND_OFF_RATIO,
-  LOUNGE_VIDEO_SOUND_ON_RATIO,
-} from './loungeFeedVideoAutoplayStore.js'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 import {
@@ -502,7 +498,7 @@ function MutedGlyph({ className = 'h-4 w-4' }) {
   )
 }
 
-/** Same speaker cone as `MutedGlyph`, with waves (pairs with “Tap to mute”). */
+/** Speaker with waves (unmuted state). */
 function SoundOnGlyph({ className = 'h-4 w-4' }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -516,7 +512,7 @@ function SoundOnGlyph({ className = 'h-4 w-4' }) {
  * Cloudflare Stream playback (adaptive HLS). `uid` is the Stream asset id from `stream_video_uid`.
  *
  * Feed-style (when `enableLightbox` and not composer): muted autoplay while scrolled into view; no inline
- * controls. Tap the video for full screen; a wide bottom band unmutes in the feed (falls back to full screen if blocked).
+ * controls. Tap the video for full screen; bottom-left icon unmutes this clip only (falls back to full screen if blocked).
  *
  * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] — Optional scroll root for in-view
  *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
@@ -570,8 +566,6 @@ export default function LoungePostStreamVideo({
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const isActiveRef = useRef(false)
-  /** Hysteresis for feed-wide sound mode visibility bands (60% on / 40% off). */
-  const feedSoundAudibleRef = useRef(false)
   /** Hero session wants audible playback (restored from inline snapshot on open). */
   const heroWantsSoundRef = useRef(true)
   const recoveryBurstRef = useRef(0)
@@ -582,9 +576,9 @@ export default function LoungePostStreamVideo({
   /** After iOS NotAllowedError, back off before the next programmatic play(). */
   const inlinePlayBackoffUntilMsRef = useRef(0)
   const lastPlayErrorLogMsRef = useRef(0)
-  /** Feed sound snapshot when hero opens (restored on close; same `<video>` keeps time). */
+  /** Per-tile sound snapshot when hero opens (restored on close; same `<video>` keeps time). */
   const inlineFeedSoundSnapshotRef = useRef(
-    /** @type {{ unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null} */ (null),
+    /** @type {{ unmuted: boolean, explicitlyMuted: boolean } | null} */ (null),
   )
   /** Tile media state at hero tap — freeze poster/video fade for the expand. */
   const heroTapSnapshotRef = useRef(
@@ -747,10 +741,6 @@ export default function LoungePostStreamVideo({
     heroLocked,
     feedAutoplayEnabled,
     scheduleRecompute,
-    feedInlineSoundUnmuted,
-    feedInlineSoundExplicitlyMuted,
-    toggleFeedInlineSound,
-    restoreFeedInlineSound,
     forceFeedAutoplayActive,
     enterFeedHeroLock,
     exitFeedHeroLock,
@@ -765,14 +755,14 @@ export default function LoungePostStreamVideo({
     getLoungeStreamLightboxOpen,
     () => false,
   )
-  /** Inside `LoungeFeedVideoAutoplayProvider` with a client id: feed-wide “Tap for sound” + visibility bands. */
-  const coordinatedInlineSound = coordinatorActive
   isActiveRef.current = feedAutoplayEnabled && (!coordinatorActive || isActive)
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
   const [localStripSoundExplicitlyMuted, setLocalStripSoundExplicitlyMuted] = useState(false)
-  const stripSoundUnmuted = coordinatedInlineSound ? feedInlineSoundUnmuted : localStripSoundUnmuted
-  const inlineSoundScopeLabel =
-    variant === 'feed' || variant === 'embed' ? 'the feed' : 'this screen'
+  const localStripSoundUnmutedRef = useRef(false)
+  useEffect(() => {
+    localStripSoundUnmutedRef.current = localStripSoundUnmuted
+  }, [localStripSoundUnmuted])
+  const stripSoundUnmuted = localStripSoundUnmuted
   const feedStyleAbr =
     variant === 'feed' || variant === 'embed' || variant === 'composer' || variant === 'commentInline'
   const heroOverlayZIndex = useMemo(() => {
@@ -794,105 +784,19 @@ export default function LoungePostStreamVideo({
   )
   const ringWarmPrefetch = coordinatorActive && inRing && !isActive && attachStream
 
-  const computeCoordinatedSoundMuted = useCallback(() => {
-    if (feedInlineSoundExplicitlyMuted || !feedInlineSoundUnmuted) return true
-    if (!isActive || tileRatio <= 0) {
-      feedSoundAudibleRef.current = false
-      return true
-    }
-    const v = videoRef.current
-    // Handoff play() must stay muted until playback actually starts (React muted prop + iOS).
-    if (!v || v.paused) return true
-    if (tileRatio >= LOUNGE_VIDEO_SOUND_ON_RATIO) feedSoundAudibleRef.current = true
-    else if (tileRatio <= LOUNGE_VIDEO_SOUND_OFF_RATIO) feedSoundAudibleRef.current = false
-    return !feedSoundAudibleRef.current
-  }, [
-    feedInlineSoundExplicitlyMuted,
-    feedInlineSoundUnmuted,
-    isActive,
-    tileRatio,
-  ])
+  /** Handoff away: next active clip starts muted unless user taps sound on that tile. */
+  useEffect(() => {
+    if (!coordinatorActive || isActive) return
+    setLocalStripSoundUnmuted(false)
+    setLocalStripSoundExplicitlyMuted(false)
+  }, [coordinatorActive, isActive])
 
-  const inlineVideoMuted =
-    heroExpanded
-      ? !stripSoundUnmuted
-      : coordinatedInlineSound
-        ? computeCoordinatedSoundMuted()
-        : !stripSoundUnmuted
-  /** Coordinated feed: `defaultMuted` so React does not fight DOM unmute after handoff play(). */
-  const streamVideoMutedProps =
-    coordinatedInlineSound && !heroExpanded
-      ? { defaultMuted: true }
-      : { muted: inlineVideoMuted }
-
-  const syncCoordinatedSoundMuted = useCallback(() => {
-    const v = videoRef.current
-    if (!v || !coordinatedInlineSound || !isActiveRef.current || v.paused) return
-    try {
-      v.muted = computeCoordinatedSoundMuted()
-    } catch {
-      // ignore
-    }
-  }, [coordinatedInlineSound, computeCoordinatedSoundMuted])
+  const inlineVideoMuted = !stripSoundUnmuted
+  const streamVideoMutedProps = { muted: inlineVideoMuted }
 
   useEffect(() => {
     heroPhaseRef.current = heroPhase
   }, [heroPhase])
-
-  useEffect(() => {
-    if (!coordinatedInlineSound) return
-    if (isActive && tileRatio > LOUNGE_VIDEO_SOUND_OFF_RATIO) return
-    feedSoundAudibleRef.current = false
-    const v = videoRef.current
-    if (!v) return
-    try {
-      v.muted = true
-    } catch {
-      // ignore
-    }
-  }, [coordinatedInlineSound, isActive, tileRatio])
-
-  /** Fresh active handoff: don't inherit audible band from a prior clip on this tile. */
-  const prevCoordinatedActiveRef = useRef(false)
-  useEffect(() => {
-    if (!coordinatedInlineSound) {
-      prevCoordinatedActiveRef.current = false
-      return
-    }
-    if (isActive && !prevCoordinatedActiveRef.current) {
-      if (
-        feedInlineSoundUnmuted &&
-        !feedInlineSoundExplicitlyMuted &&
-        tileRatio >= LOUNGE_VIDEO_SOUND_ON_RATIO
-      ) {
-        feedSoundAudibleRef.current = true
-      } else {
-        feedSoundAudibleRef.current = false
-      }
-    }
-    prevCoordinatedActiveRef.current = Boolean(isActive)
-  }, [coordinatedInlineSound, isActive, feedInlineSoundUnmuted, feedInlineSoundExplicitlyMuted, tileRatio])
-
-  /** Feed-wide sound bands while playing — also on `playing` after muted handoff play() resolves. */
-  useEffect(() => {
-    if (!coordinatedInlineSound || !isActive || lightboxOpen) return undefined
-    const v = videoRef.current
-    if (!v) return undefined
-
-    syncCoordinatedSoundMuted()
-    v.addEventListener('playing', syncCoordinatedSoundMuted)
-    return () => {
-      v.removeEventListener('playing', syncCoordinatedSoundMuted)
-    }
-  }, [
-    coordinatedInlineSound,
-    isActive,
-    tileRatio,
-    lightboxOpen,
-    syncCoordinatedSoundMuted,
-    feedInlineSoundUnmuted,
-    feedInlineSoundExplicitlyMuted,
-  ])
 
   /** Body mount for hero expand only — created lazily on open, removed on close (not one per feed tile). */
   const ensureHeroBodyHost = useCallback(() => {
@@ -956,11 +860,13 @@ export default function LoungePostStreamVideo({
       reportLoungeVideoDebugEvent(feedAutoplayClientId, 'play', msg)
     }
     const applyAudibleAfterPlay = () => {
-      if (!v || v.paused || coordinatedInlineSound) return
-      try {
-        v.muted = !localStripSoundUnmuted
-      } catch {
-        // ignore
+      if (!v || v.paused) return
+      if (localStripSoundUnmutedRef.current && isActiveRef.current) {
+        try {
+          v.muted = false
+        } catch {
+          // ignore
+        }
       }
     }
     try {
@@ -976,8 +882,7 @@ export default function LoungePostStreamVideo({
           finishPlayAttempt()
           inlinePlayBackoffUntilMsRef.current = 0
           lastPlayErrorRef.current = ''
-          if (coordinatedInlineSound) syncCoordinatedSoundMuted()
-          else applyAudibleAfterPlay()
+          applyAudibleAfterPlay()
         }).catch((err) => {
           finishPlayAttempt()
           reportPlayError(err)
@@ -991,10 +896,7 @@ export default function LoungePostStreamVideo({
       } else {
         finishPlayAttempt()
         lastPlayErrorRef.current = ''
-        if (!v.paused) {
-          if (coordinatedInlineSound) syncCoordinatedSoundMuted()
-          else applyAudibleAfterPlay()
-        }
+        if (!v.paused) applyAudibleAfterPlay()
       }
       return !v.paused
     } catch (err) {
@@ -1005,15 +907,12 @@ export default function LoungePostStreamVideo({
     }
   }, [
     anyStreamLightboxOpen,
-    coordinatedInlineSound,
     coordinatorActive,
     feedAutoplayClientId,
     heroLocked,
     lazyStream,
-    localStripSoundUnmuted,
     scheduleRecompute,
     showOpen,
-    syncCoordinatedSoundMuted,
     tileRatio,
     videoDebugEnabled,
   ])
@@ -1100,14 +999,11 @@ export default function LoungePostStreamVideo({
   }, [
     anyStreamLightboxOpen,
     coordinatorActive,
-    coordinatedInlineSound,
-    computeCoordinatedSoundMuted,
     flingerMode,
     heroLocked,
     inRing,
     isActive,
     lazyStream,
-    localStripSoundUnmuted,
     showOpen,
     tileRatio,
     lightboxOpen,
@@ -1453,12 +1349,8 @@ export default function LoungePostStreamVideo({
     inlineFeedSoundSnapshotRef.current = null
     if (snap && feedAutoplayEnabled) {
       try {
-        if (snap.coordinated) {
-          restoreFeedInlineSound(snap.unmuted, snap.explicitlyMuted)
-        } else {
-          setLocalStripSoundUnmuted(snap.unmuted)
-          setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
-        }
+        setLocalStripSoundUnmuted(snap.unmuted)
+        setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
         const v = videoRef.current
         if (v) v.muted = !snap.unmuted
       } catch {
@@ -1466,7 +1358,7 @@ export default function LoungePostStreamVideo({
       }
     }
     finalizeHeroClose()
-  }, [feedAutoplayEnabled, restoreFeedInlineSound, finalizeHeroClose, displayW, displayH])
+  }, [feedAutoplayEnabled, finalizeHeroClose, displayW, displayH])
 
   const toggleHeroVideoPlayPause = useCallback(() => {
     const v = videoRef.current
@@ -1536,7 +1428,7 @@ export default function LoungePostStreamVideo({
     if (!wrap) return
 
     lightboxOpenRef.current = true
-    if (coordinatedInlineSound && feedAutoplayClientId) {
+    if (feedAutoplayClientId && coordinatorActive) {
       enterFeedHeroLock(feedAutoplayClientId)
       forceFeedAutoplayActive(feedAutoplayClientId)
     }
@@ -1585,19 +1477,11 @@ export default function LoungePostStreamVideo({
       heroWantsSoundRef.current = true
       inlineFeedSoundSnapshotRef.current = {
         unmuted: stripSoundUnmuted,
-        explicitlyMuted: coordinatedInlineSound
-          ? feedInlineSoundExplicitlyMuted
-          : localStripSoundExplicitlyMuted,
-        coordinated: coordinatedInlineSound,
-      }
-      if (coordinatedInlineSound) {
-        restoreFeedInlineSound(false, feedInlineSoundExplicitlyMuted)
+        explicitlyMuted: localStripSoundExplicitlyMuted,
       }
       try {
-        if (!coordinatedInlineSound) {
-          setLocalStripSoundUnmuted(true)
-          setLocalStripSoundExplicitlyMuted(false)
-        }
+        setLocalStripSoundUnmuted(true)
+        setLocalStripSoundExplicitlyMuted(false)
         v.muted = false
         const p = v.play()
         if (p && typeof p.catch === 'function') {
@@ -1627,9 +1511,8 @@ export default function LoungePostStreamVideo({
   }, [
     feedAutoplayEnabled,
     attachStream,
-    coordinatedInlineSound,
+    coordinatorActive,
     feedAutoplayClientId,
-    feedInlineSoundExplicitlyMuted,
     localStripSoundExplicitlyMuted,
     stripSoundUnmuted,
     ensureHeroBodyHost,
@@ -1638,41 +1521,10 @@ export default function LoungePostStreamVideo({
     streamFadeShowVideo,
     forceFeedAutoplayActive,
     enterFeedHeroLock,
-    restoreFeedInlineSound,
   ])
 
-  /** Bottom strip: coordinated tiles share provider mute; others toggle this tile only. */
+  /** Bottom strip: per-tile mute toggle (user gesture unmutes this clip only). */
   const onSoundStripPress = useCallback(() => {
-    if (coordinatedInlineSound) {
-      const turningOn = !feedInlineSoundUnmuted
-      if (turningOn && feedAutoplayClientId && !isActive) {
-        forceFeedAutoplayActive(feedAutoplayClientId)
-      }
-      toggleFeedInlineSound()
-      if (turningOn && attachStream) {
-        const v = videoRef.current
-        if (!v) return
-        try {
-          v.muted = false
-          const p = v.play()
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {
-              try {
-                v.muted = true
-              } catch {
-                // ignore
-              }
-              toggleFeedInlineSound()
-              openLightbox()
-            })
-          }
-        } catch {
-          toggleFeedInlineSound()
-          openLightbox()
-        }
-      }
-      return
-    }
     const v = videoRef.current
     if (localStripSoundUnmuted) {
       try {
@@ -1683,6 +1535,9 @@ export default function LoungePostStreamVideo({
       setLocalStripSoundUnmuted(false)
       setLocalStripSoundExplicitlyMuted(true)
       return
+    }
+    if (feedAutoplayClientId && coordinatorActive && !isActive) {
+      forceFeedAutoplayActive(feedAutoplayClientId)
     }
     if (!v) {
       openLightbox()
@@ -1713,12 +1568,9 @@ export default function LoungePostStreamVideo({
       openLightbox()
     }
   }, [
-    coordinatedInlineSound,
-    feedInlineSoundUnmuted,
     localStripSoundUnmuted,
-    attachStream,
+    coordinatorActive,
     openLightbox,
-    toggleFeedInlineSound,
     feedAutoplayClientId,
     isActive,
     forceFeedAutoplayActive,
@@ -1824,12 +1676,8 @@ export default function LoungePostStreamVideo({
         inlineFeedSoundSnapshotRef.current = null
         if (snap && feedAutoplayEnabled) {
           try {
-            if (snap.coordinated) {
-              restoreFeedInlineSound(snap.unmuted, snap.explicitlyMuted)
-            } else {
-              setLocalStripSoundUnmuted(snap.unmuted)
-              setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
-            }
+            setLocalStripSoundUnmuted(snap.unmuted)
+            setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
             const v = videoRef.current
             if (v) {
               v.muted = !snap.unmuted
@@ -1851,7 +1699,6 @@ export default function LoungePostStreamVideo({
     feedAutoplayEnabled,
     attachStream,
     lazyStream,
-    restoreFeedInlineSound,
     finalizeHeroClose,
   ])
 
@@ -1957,12 +1804,12 @@ export default function LoungePostStreamVideo({
         }
         return
       }
-      if (coordinatedInlineSound && isActiveRef.current) {
+      if (coordinatorActive && isActiveRef.current) {
         tryCoordinatedInlinePlay()
         return
       }
       try {
-        v.muted = !localStripSoundUnmuted
+        v.muted = !localStripSoundUnmutedRef.current
         const p = v.play()
         if (p && typeof p.catch === 'function') {
           p.catch(() => {
@@ -1999,8 +1846,6 @@ export default function LoungePostStreamVideo({
     lightboxOpen,
     coordinatorActive,
     isActive,
-    coordinatedInlineSound,
-    localStripSoundUnmuted,
     flingerMode,
     heroLocked,
     anyStreamLightboxOpen,
@@ -2050,12 +1895,12 @@ export default function LoungePostStreamVideo({
       }
       return
     }
-    if (coordinatedInlineSound && isActive) {
+    if (coordinatorActive && isActive) {
       tryCoordinatedInlinePlay()
       return
     }
     try {
-      v.muted = !localStripSoundUnmuted
+      v.muted = !localStripSoundUnmutedRef.current
       const p = v.play()
       if (p && typeof p.catch === 'function') p.catch(() => {})
     } catch {
@@ -2068,8 +1913,6 @@ export default function LoungePostStreamVideo({
     isActive,
     inRing,
     flingerMode,
-    coordinatedInlineSound,
-    localStripSoundUnmuted,
     feedAutoplayEnabled,
     anyStreamLightboxOpen,
     tryCoordinatedInlinePlay,
@@ -2222,8 +2065,8 @@ export default function LoungePostStreamVideo({
               ? !feedAutoplayEnabled
                 ? 'Post video. Tap play for full screen.'
                 : stripSoundUnmuted
-                  ? `Post video, sound on in ${inlineSoundScopeLabel}. Tap the video for full screen. Use the bottom-left mute control.`
-                  : `Post video, playing muted. Tap the video for full screen. Use the bottom-left control for sound in ${inlineSoundScopeLabel}.`
+                  ? 'Post video, sound on. Tap for full screen.'
+                  : 'Post video, playing muted. Tap for full screen. Unmute with bottom-left icon.'
               : 'Post video'
           }
           title={
@@ -2231,8 +2074,8 @@ export default function LoungePostStreamVideo({
               ? !feedAutoplayEnabled
                 ? 'Tap play for full screen'
                 : stripSoundUnmuted
-                  ? 'Tap video for full screen; bottom-left chip to mute'
-                  : 'Tap video for full screen; bottom-left chip for sound'
+                  ? 'Tap video for full screen; bottom-left icon mutes'
+                  : 'Tap video for full screen; bottom-left icon unmutes'
               : undefined
           }
           onClick={(e) => {
@@ -2331,27 +2174,18 @@ export default function LoungePostStreamVideo({
           {showOpen && !showStreamRetry && feedAutoplayEnabled && !heroExpanded ? (
             <button
               type="button"
-              aria-label={
-                stripSoundUnmuted
-                  ? `Mute video in ${inlineSoundScopeLabel}`
-                  : `Play video with sound in ${inlineSoundScopeLabel}`
-              }
-              className="absolute bottom-2 left-2 z-[3] inline-flex min-h-[44px] min-w-[44px] max-w-[min(calc(100%-1rem),15rem)] items-center justify-center rounded-lg p-2 touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50 sm:bottom-2.5 sm:left-2.5 sm:p-2.5"
+              aria-label={stripSoundUnmuted ? 'Mute video' : 'Unmute video'}
+              className="absolute bottom-2 left-2 z-[3] inline-flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50 sm:bottom-2.5 sm:left-2.5"
               onClick={(e) => {
                 e.stopPropagation()
                 onSoundStripPress()
               }}
             >
-              <span className="pointer-events-none flex w-max max-w-full items-center gap-1.5 rounded-md bg-black/55 px-2 py-1.5 text-[11px] font-medium text-zinc-200 sm:gap-2 sm:px-2.5 sm:py-2 sm:text-[12px]">
-                {stripSoundUnmuted ? (
-                  <SoundOnGlyph className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
-                ) : (
-                  <MutedGlyph className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" />
-                )}
-                <span className="min-w-0 max-w-[min(11rem,70vw)] truncate">
-                  {stripSoundUnmuted ? 'Tap to mute' : 'Tap for sound'}
-                </span>
-              </span>
+              {stripSoundUnmuted ? (
+                <SoundOnGlyph className="h-5 w-5 opacity-90" />
+              ) : (
+                <MutedGlyph className="h-5 w-5 opacity-90" />
+              )}
             </button>
           ) : null}
         </div>

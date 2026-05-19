@@ -94,7 +94,6 @@ import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LoungeInteractionGlyphRail } from './LoungeInteractionGlyphRail.jsx'
 import {
   LoungeFeedAutoplayPostsKick,
-  LoungeFeedInlineSoundResetBinder,
   LoungeFeedCoordinatorSuspendBinder,
   LoungeFeedVideoAutoplayProvider,
 } from './LoungeFeedVideoAutoplayContext.jsx'
@@ -564,9 +563,6 @@ export default function SocialFeed({
   const loungeDetailEditMediaInputRef = useRef(null)
   const loungeFeedScrollRef = useRef(null)
   /** Bound inside feed `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
-  const resetFeedInlineSoundRef = useRef(() => {})
-  /** Bound inside post-detail `LoungeFeedVideoAutoplayProvider` — reset comment-thread inline sound on close. */
-  const resetPostDetailInlineSoundRef = useRef(() => {})
   const loungeTitleBarRef = useRef(null)
   const loungeScrollPrevTopRef = useRef(0)
   const loungeTitleRevealRef = useRef(1)
@@ -3962,11 +3958,6 @@ export default function SocialFeed({
       window.clearTimeout(tid)
       loungePostDetailCloseFallbackTimerRef.current = 0
     }
-    try {
-      resetPostDetailInlineSoundRef.current?.()
-    } catch {
-      // ignore
-    }
     setLoungePostDetail(null)
     setLoungePostDetailAboveProfile(false)
     setLoungePostDetailVisible(true)
@@ -4042,16 +4033,6 @@ export default function SocialFeed({
       if (loungeReadOnly && !opts?.fromPublicLink) {
         onRequireAuth?.()
         return
-      }
-      try {
-        resetFeedInlineSoundRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        resetPostDetailInlineSoundRef.current?.()
-      } catch {
-        /* ignore */
       }
       const wantEdit = opts?.startEditing === true
       const tid = loungePostDetailCloseFallbackTimerRef.current
@@ -4461,14 +4442,6 @@ export default function SocialFeed({
     }
   }, [])
 
-  const resetPostDetailInlineSound = useCallback(() => {
-    try {
-      resetPostDetailInlineSoundRef.current?.()
-    } catch {
-      // ignore
-    }
-  }, [])
-
   const buildLoungeCommentDrillPath = useCallback((commentId) => {
     const rows = loungeDetailComments
     const byId = new Map(rows.map((r) => [r.id, r]))
@@ -4497,7 +4470,6 @@ export default function SocialFeed({
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
       if (!focusComposer) collapseLoungeDetailCommentComposer()
-      resetPostDetailInlineSound()
       setLoungeCommentDetailPathIds(chain)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -4515,7 +4487,6 @@ export default function SocialFeed({
       loungeReadOnly,
       openProfileGateIfNeeded,
       requireLoungeAuth,
-      resetPostDetailInlineSound,
       scrollLoungePostDetailToFocusedComment,
     ],
   )
@@ -4537,12 +4508,11 @@ export default function SocialFeed({
         return prev.slice(0, pathIndex + 1)
       })
       cancelLoungeDetailCommentEdit()
-      resetPostDetailInlineSound()
       requestAnimationFrame(() => {
         requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
       })
     },
-    [cancelLoungeDetailCommentEdit, resetPostDetailInlineSound, scrollLoungePostDetailToFocusedComment],
+    [cancelLoungeDetailCommentEdit, scrollLoungePostDetailToFocusedComment],
   )
 
   const onLoungeCommentReplyInteraction = useCallback(
@@ -4552,7 +4522,6 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (loungeCommentDetailPathIds.length === 0 || loungeDetailCommentsLoading) return
-    resetPostDetailInlineSound()
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
     })
@@ -4560,7 +4529,6 @@ export default function SocialFeed({
   }, [
     loungeCommentDetailPathIds,
     loungeDetailCommentsLoading,
-    resetPostDetailInlineSound,
     scrollLoungePostDetailToFocusedComment,
   ])
 
@@ -7334,7 +7302,6 @@ export default function SocialFeed({
       >
         <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef} showDebugHud>
         <LoungeFeedAutoplayPostsKick postCount={communityPosts.length} />
-        <LoungeFeedInlineSoundResetBinder resetRef={resetFeedInlineSoundRef} />
         <LoungeFeedCoordinatorSuspendBinder suspended={Boolean(loungePostDetail?.id)} />
         <div
           aria-hidden
@@ -8228,7 +8195,6 @@ export default function SocialFeed({
               className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
             >
               <LoungeFeedVideoAutoplayProvider scrollRootRef={loungePostDetailScrollRef}>
-              <LoungeFeedInlineSoundResetBinder resetRef={resetPostDetailInlineSoundRef} />
               <div
                 aria-hidden
                 className="shrink-0"

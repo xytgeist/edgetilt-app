@@ -36,6 +36,17 @@ from auth.users u
 where p.user_id = u.id and lower(u.email) = lower('you@example.com');
 ```
 
+**Promote another member to moderator (in app):** sign in as **admin** → open their Lounge profile → **⋯** menu → **Promote to moderator**. Requires **`supabase/admin_set_profile_role.sql`** (or migration **`20260518120000_admin_set_profile_role.sql`**) on the Supabase project.
+
+**Promote via SQL** (dashboard / bootstrap): `supabase/scripts/set_staff_roles_by_email.sql` or:
+
+```sql
+update public.profiles p
+set role = 'moderator'
+from auth.users u
+where p.user_id = u.id and lower(u.email) = lower('moderator-test@example.com');
+```
+
 **Mark a test account as subscriber:**
 
 ```sql

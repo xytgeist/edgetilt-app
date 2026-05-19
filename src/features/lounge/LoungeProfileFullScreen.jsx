@@ -474,8 +474,14 @@ export default function LoungeProfileFullScreen({
   suspendVideoCoordinator = false,
   /** Settings → Video debug HUD while this profile sheet is the active surface. */
   showVideoDebugHud = false,
+  /** Logged-in viewer is profiles.role = admin (may promote/demote moderators). */
+  viewerIsAdmin = false,
+  /** `(targetUserId, nextRole) => Promise<{ ok: boolean, error?: string }>` */
+  onAdminSetProfileRole = null,
 }) {
   const [tab, setTab] = useState('posts')
+  const [adminRoleBusy, setAdminRoleBusy] = useState(false)
+  const [adminRoleErr, setAdminRoleErr] = useState('')
   const [interactionPosts, setInteractionPosts] = useState([])
   const [interactionLoading, setInteractionLoading] = useState(false)
   const [interactionErr, setInteractionErr] = useState('')
@@ -534,6 +540,41 @@ export default function LoungeProfileFullScreen({
   const aboutDisplay = String(profile?.about_me || profile?.bio || '').trim()
   const locationDisplay = normalizeProfileLocation(profile?.location)
   const profileTabsVisible = isOwnProfile ? PROFILE_TAB_IDS : PROFILE_TAB_IDS.slice(0, 2)
+  const targetProfileRole = String(profile?.role || 'user').trim().toLowerCase()
+  const canAdminPromoteModerator =
+    Boolean(viewerIsAdmin && !isOwnProfile && onAdminSetProfileRole && targetProfileRole === 'user')
+  const canAdminDemoteModerator =
+    Boolean(viewerIsAdmin && !isOwnProfile && onAdminSetProfileRole && targetProfileRole === 'moderator')
+
+  useEffect(() => {
+    setAdminRoleErr('')
+    setAdminRoleBusy(false)
+  }, [profileUserId])
+
+  const runAdminProfileRoleChange = useCallback(
+    async (nextRole) => {
+      if (!onAdminSetProfileRole || !profileUserId || adminRoleBusy) return
+      const label =
+        nextRole === 'moderator'
+          ? `Promote ${displayName} to moderator? They can pin posts and staff-delete in Lounge.`
+          : `Remove moderator role from ${displayName}?`
+      if (!window.confirm(label)) return
+      setAdminRoleBusy(true)
+      setAdminRoleErr('')
+      setOtherProfileMenuOpen(false)
+      try {
+        const result = await onAdminSetProfileRole(profileUserId, nextRole)
+        if (!result?.ok) {
+          setAdminRoleErr(result?.error || 'Could not update role.')
+        }
+      } catch (e) {
+        setAdminRoleErr(e instanceof Error ? e.message : 'Could not update role.')
+      } finally {
+        setAdminRoleBusy(false)
+      }
+    },
+    [adminRoleBusy, displayName, onAdminSetProfileRole, profileUserId],
+  )
   const profileTabBtnClass =
     profileTabsVisible.length > 2 ? 'min-h-11 px-1 text-[13px]' : 'min-h-11 px-2 text-[15px]'
   const profileAutoplayPostCount =
@@ -1673,6 +1714,28 @@ export default function LoungeProfileFullScreen({
                             Share
                           </button>
                         ) : null}
+                        {canAdminPromoteModerator ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={adminRoleBusy}
+                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-fuchsia-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                            onClick={() => void runAdminProfileRoleChange('moderator')}
+                          >
+                            Promote to moderator
+                          </button>
+                        ) : null}
+                        {canAdminDemoteModerator ? (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={adminRoleBusy}
+                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-fuchsia-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
+                            onClick={() => void runAdminProfileRoleChange('user')}
+                          >
+                            Remove moderator role
+                          </button>
+                        ) : null}
                         {typeof onBlockProfile === 'function' ? (
                           <button
                             type="button"
@@ -1992,6 +2055,11 @@ export default function LoungeProfileFullScreen({
             </div>
 
             <div className="min-h-[12rem] pb-4">
+              {adminRoleErr ? (
+                <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
+                  {adminRoleErr}
+                </div>
+              ) : null}
               <LoungeFeedVideoAutoplayProvider
                 scrollRootRef={profileBodyScrollRef}
                 showDebugHud={showVideoDebugHud}
@@ -2204,6 +2272,8 @@ export default function LoungeProfileFullScreen({
               onBlockProfile={onBlockProfile}
               suspendVideoCoordinator={suspendVideoCoordinator}
               showVideoDebugHud={showVideoDebugHud}
+              viewerIsAdmin={viewerIsAdmin}
+              onAdminSetProfileRole={onAdminSetProfileRole}
             />
           )
         })}

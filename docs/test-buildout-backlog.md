@@ -96,12 +96,12 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] Basic public read feed path works on test (anon-visible rows, signed-in posting path from Guides).
 - [x] Cursor pagination on `(created_at, id)` is implemented with load-more pagination (infinite auto-load polish still optional).
 - [x] Pinned row: head load fetches at most one pinned row plus first unpinned page; pinned prepended; load-more uses unpinned-only cursor (matches roadmap “prepend one pinned” shape). RLS hides `hidden_at` rows.
-- [ ] **Staff pin/unpin (and broader Lounge moderation UI):** not shipped in the client. **Database is ready:** `profiles.role in ('moderator','admin')` may `UPDATE` any feed row (`community_feed_posts_update_moderator` in `supabase/feed_phase_a_profiles_public_read.sql`), and `community_feed_posts_author_guard` lets staff change `pinned` / hide fields without hitting the author-only restriction. Until an in-app mod surface exists, **test pinned ordering** by rerunning the pin block at the end of `supabase/seed/lounge_fake_posts.sql` (clears pins, pins one visible row) or with a one-off `UPDATE` in the Supabase SQL editor (respect the partial unique index: at most one `pinned = true` among non-hidden rows).
+- [ ] **Staff pin/unpin (and broader Lounge moderation UI):** **Admin → profile ⋯ → Promote to moderator / Remove moderator role** shipped on **test** (requires **`admin_set_profile_role.sql`** on Supabase). Pin/unpin + staff delete exist in post detail for staff; no dedicated mod queue yet. **Database is ready:** `profiles.role in ('moderator','admin')` may `UPDATE` any feed row (`community_feed_posts_update_moderator` in `supabase/feed_phase_a_profiles_public_read.sql`), and `community_feed_posts_author_guard` lets staff change `pinned` / hide fields without hitting the author-only restriction. Until an in-app mod surface exists, **test pinned ordering** by rerunning the pin block at the end of `supabase/seed/lounge_fake_posts.sql` (clears pins, pins one visible row) or with a one-off `UPDATE` in the Supabase SQL editor (respect the partial unique index: at most one `pinned = true` among non-hidden rows).
 - [x] Logged-out Lounge: composer hidden; like/comment/repost/bookmark are read-only (server counts only, no local mutation UI). Feed search is not a Lounge surface yet (Phase G). Guides search remains on Guides tab.
 
 ### Phases C-L
 
-- [ ] Phases **D–L** not complete end-to-end; **first slice:** Lounge signed-in persistence for likes, reposts, bookmarks, and flat comments (post detail) + SQL `feed_interactions_phase_ef.sql` (Phase E/F subset). Threaded ranking, search, notifications, etc. still roadmap scope.
+- [ ] Phases **D–L** not complete end-to-end; **E/F first slice validated on test** (likes, reposts, bookmarks, flat + threaded comments + comment interactions — see checked SQL/FE rows). Threaded **ranking**, server **search**, **notifications**, etc. still roadmap scope.
 - [ ] **Phase C (remaining):** dedicated **`/u/:handle`** profile route + authored-posts list + handle collision + reserved-handle policy as in roadmap. **Shipped on test (partial):** profile completion gate for first post (Lounge + Guides); **full-screen profile editor** in Lounge; **7-day handle change** rule (DB + modals); iOS-focused profile-save mitigations — see **`docs/social-feed-roadmap.md`** Phase C and backlog SQL/FE rows below.
 - [ ] **Freemium / subscriptions:** anonymous read-only where required; free-account vs subscriber entitlements (DB + **RLS** + Stripe webhooks); extend shell gating beyond today’s **`browseMode`**. Product spec: fill **`docs/access-tiers.md`**; roadmap: **`docs/social-feed-roadmap.md`** → *Freemium & subscriptions*.
 
@@ -305,6 +305,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 ---
 
 ## Update log
+
+- 2026-05-18: **Feed interactions Phase E/F (test sign-off, Ryan):** `feed_interactions_phase_ef.sql` + comment interaction migration on test; Lounge like/repost/bookmark + post/comment threads **PASSED** on **test** @ **`b8d55d3`**.
 
 - 2026-05-18: **Lounge Stream autoplay hardening (test sign-off, Ryan — good enough for now @ `dbd4fa1`):** Comment/detail black lightbox + iOS HLS decoder budget (`hlsAttachEnabled`); feed handoff pause-frame regression fix; profile Posts/Likes/Bookmarks **`LoungeFeedVideoAutoplayProvider`**; **`pauseAllLoungeStreamInlineVideos`** + **`coordinatorSuspended`** pause/mute on post/comment detail open; Settings **Video debug HUD** toggle. Commits **`718d014`** → **`dbd4fa1`**.
 

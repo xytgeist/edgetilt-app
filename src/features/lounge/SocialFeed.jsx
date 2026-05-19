@@ -10,6 +10,7 @@ import {
   saveProfileWithHandleFallback,
   uploadProfileAvatar,
 } from '../profiles/profileGate'
+import { adminSetProfileRole } from '../profiles/adminSetProfileRole.js'
 import {
   collectLoungePostInteractionHydrateIds,
   communityFeedPlainRepostInsertPayload,
@@ -636,6 +637,11 @@ export default function SocialFeed({
     const r = composerUserProfile?.role
     return r === 'moderator' || r === 'admin'
   }, [composerUserProfile?.role])
+
+  const loungeViewerIsAdmin = useMemo(
+    () => String(composerUserProfile?.role || '').toLowerCase() === 'admin',
+    [composerUserProfile?.role],
+  )
 
   const chatDockIsStaff = Boolean(isStaff || loungeViewerIsStaff)
 
@@ -7041,6 +7047,48 @@ export default function SocialFeed({
     }
   }, [composerUserId, setCommunityPosts])
 
+  const patchMemberRoleInFeed = useCallback(
+    (targetUserId, role) => {
+      const uid = String(targetUserId || '').trim()
+      if (!uid) return
+      const patchPostAuthor = (p) => {
+        if (!p || String(p.user_id) !== uid) return p
+        const ap = p.author_profile && typeof p.author_profile === 'object' ? p.author_profile : {}
+        return { ...p, author_profile: { ...ap, role, user_id: uid } }
+      }
+      setCommunityPosts((prev) => prev.map(patchPostAuthor))
+      setLoungePostDetail((d) => (d ? patchPostAuthor(d) : d))
+      setProfileModalData((prev) =>
+        prev && String(prev.user_id) === uid ? { ...prev, role } : prev,
+      )
+      setProfileOverlayStack((prev) =>
+        prev.map((layer) =>
+          layer.userId === uid && layer.profile
+            ? { ...layer, profile: { ...layer.profile, role } }
+            : layer,
+        ),
+      )
+    },
+    [setCommunityPosts],
+  )
+
+  const handleAdminSetProfileRole = useCallback(
+    async (targetUserId, nextRole) => {
+      const uid = String(targetUserId || '').trim()
+      if (!uid || !loungeViewerIsAdmin) {
+        return { ok: false, error: 'Admin access required.' }
+      }
+      const { data, error } = await adminSetProfileRole(supabaseClient, uid, nextRole)
+      if (error) {
+        return { ok: false, error: error.message || String(error) }
+      }
+      const role = String(data?.role || nextRole)
+      patchMemberRoleInFeed(uid, role)
+      return { ok: true }
+    },
+    [loungeViewerIsAdmin, patchMemberRoleInFeed, supabaseClient],
+  )
+
   const profilePostCardProps = useMemo(
     () => ({
       loungeReadOnly,
@@ -9649,6 +9697,8 @@ export default function SocialFeed({
           onBlockProfile={handleBlockLoungeProfile}
           suspendVideoCoordinator={Boolean(loungePostDetail?.id)}
           showVideoDebugHud={loungeProfileVideoDebugHud}
+          viewerIsAdmin={loungeViewerIsAdmin}
+          onAdminSetProfileRole={handleAdminSetProfileRole}
         />
       ) : null}
 
@@ -9683,6 +9733,8 @@ export default function SocialFeed({
               onBlockProfile={handleBlockLoungeProfile}
               suspendVideoCoordinator={Boolean(loungePostDetail?.id)}
               showVideoDebugHud={loungeProfileVideoDebugHud && isTop}
+              viewerIsAdmin={loungeViewerIsAdmin}
+              onAdminSetProfileRole={handleAdminSetProfileRole}
             />
           </div>
         )

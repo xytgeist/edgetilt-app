@@ -102,10 +102,26 @@ const HERO_MOTION_TRANSITION = `${HERO_EXPAND_MS}ms ${HERO_MOTION_CURVE}`
 const HERO_SHRINK_TRANSITION = `${HERO_SHRINK_MS}ms ${HERO_MOTION_CURVE}`
 /** Lightbox chrome fades in only after the flyout lands. */
 const HERO_CHROME_FADE_MS = 220
-/** Hero stack (bottom → top): scrim 100, flyout 101, transparent gesture 102, chrome 103. */
-const HERO_SCRIM_Z_INDEX = 100
-const HERO_FLYOUT_Z_INDEX = 101
-const HERO_OVERLAY_Z_INDEX = 102
+/** Default hero stack when no parent `lightboxPortalClass` is passed. */
+const HERO_STACK_BASE_Z_INDEX = 102
+
+/**
+ * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).
+ * @returns {{ scrim: number, flyout: number, overlay: number }}
+ */
+function resolveLoungeHeroStackZIndexes(lightboxPortalClass) {
+  const m = String(lightboxPortalClass || '').match(/z-\[(\d+)\]/)
+  const portalZ = m ? Number(m[1]) : 0
+  const stackTop =
+    Number.isFinite(portalZ) && portalZ > 0
+      ? Math.max(portalZ, HERO_STACK_BASE_Z_INDEX)
+      : HERO_STACK_BASE_Z_INDEX
+  return {
+    scrim: stackTop - 1,
+    flyout: stackTop,
+    overlay: stackTop + 1,
+  }
+}
 
 /** @returns {{ top: number, left: number, width: number, height: number }} */
 function readElementViewportRect(el) {
@@ -202,7 +218,12 @@ function computeHeroShrinkTransform(fromRect, toRect) {
 }
 
 /** Imperative hero shrink — avoids useLayoutEffect cleanup / React style races on iOS. */
-function runHeroShrinkAnimation(flyout, heroFrame, tileFrame, { animRef, finishTimerRef, onDone, onDebug }) {
+function runHeroShrinkAnimation(
+  flyout,
+  heroFrame,
+  tileFrame,
+  { animRef, finishTimerRef, onDone, onDebug, flyoutZIndex = HERO_STACK_BASE_Z_INDEX },
+) {
   if (!flyout || !heroFrame || !tileFrame) {
     onDebug?.('shrink missing node or rect')
     onDone('missing')
@@ -221,7 +242,7 @@ function runHeroShrinkAnimation(flyout, heroFrame, tileFrame, { animRef, finishT
   flyout.style.left = `${tileFrame.left}px`
   flyout.style.width = `${tileFrame.width}px`
   flyout.style.height = `${tileFrame.height}px`
-  flyout.style.zIndex = String(HERO_FLYOUT_Z_INDEX)
+  flyout.style.zIndex = String(flyoutZIndex)
   flyout.style.transformOrigin = '0 0'
   flyout.style.transition = 'none'
   flyout.style.borderRadius = '12px'
@@ -269,7 +290,7 @@ function runHeroShrinkAnimation(flyout, heroFrame, tileFrame, { animRef, finishT
 }
 
 /** Imperative snap before React paint — flyout on body at feed tile size (transform identity). */
-function snapFlyoutToHeroTile(flyout, host, fromRect) {
+function snapFlyoutToHeroTile(flyout, host, fromRect, flyoutZIndex = HERO_STACK_BASE_Z_INDEX) {
   if (!flyout || !host || !fromRect) return
   if (flyout.parentElement !== host) host.appendChild(flyout)
   flyout.style.position = 'fixed'
@@ -277,7 +298,7 @@ function snapFlyoutToHeroTile(flyout, host, fromRect) {
   flyout.style.left = `${fromRect.left}px`
   flyout.style.width = `${fromRect.width}px`
   flyout.style.height = `${fromRect.height}px`
-  flyout.style.zIndex = String(HERO_FLYOUT_Z_INDEX)
+  flyout.style.zIndex = String(flyoutZIndex)
   flyout.style.transformOrigin = '0 0'
   flyout.style.transform = 'none'
   flyout.style.transition = 'none'
@@ -709,6 +730,8 @@ export default function LoungePostStreamVideo({
     ),
   )
   const heroFrameShieldRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
+  /** Hero opened before inline `<video>` existed (detail/comment tiles off DOM budget). */
+  const heroColdMountRef = useRef(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -894,11 +917,11 @@ export default function LoungePostStreamVideo({
   const stripSoundUnmuted = localStripSoundUnmuted
   const feedStyleAbr =
     variant === 'feed' || variant === 'embed' || variant === 'composer' || variant === 'commentInline'
-  const heroOverlayZIndex = useMemo(() => {
-    const m = String(lightboxPortalClass || '').match(/z-\[(\d+)\]/)
-    const n = m ? Number(m[1]) : HERO_OVERLAY_Z_INDEX
-    return Number.isFinite(n) ? Math.max(n, HERO_OVERLAY_Z_INDEX) : HERO_OVERLAY_Z_INDEX
-  }, [lightboxPortalClass])
+  const {
+    scrim: heroScrimZIndex,
+    flyout: heroFlyoutZIndex,
+    overlay: heroOverlayZIndex,
+  } = useMemo(() => resolveLoungeHeroStackZIndexes(lightboxPortalClass), [lightboxPortalClass])
   const [ringHlsHeld, setRingHlsHeld] = useState(false)
   useEffect(() => {
     if (!coordinatorActive || !lazyStream) {
@@ -1603,6 +1626,7 @@ export default function LoungePostStreamVideo({
     clearHeroFrameShield(videoFlyoutRef.current)
     heroFrameShieldRef.current = null
     heroTapSnapshotRef.current = null
+    heroColdMountRef.current = false
     heroWantsSoundRef.current = true
     lightboxOpenRef.current = false
     exitFeedHeroLock()
@@ -1684,7 +1708,7 @@ export default function LoungePostStreamVideo({
       left: back.left,
       width: back.width,
       height: back.height,
-      zIndex: HERO_FLYOUT_Z_INDEX,
+      zIndex: heroFlyoutZIndex,
       transformOrigin: '0 0',
       borderRadius: 12,
     }
@@ -1716,6 +1740,7 @@ export default function LoungePostStreamVideo({
         runHeroShrinkAnimation(flyout, heroFrame, tileFrame, {
           animRef: heroShrinkAnimRef,
           finishTimerRef: heroShrinkFinishTimerRef,
+          flyoutZIndex: heroFlyoutZIndex,
           onDebug: reportHeroShrinkDebug,
           onDone: () => {
             heroShrinkInFlightRef.current = false
@@ -1724,7 +1749,7 @@ export default function LoungePostStreamVideo({
         })
       })
     })
-  }, [displayW, displayH, finishHeroCloseAnimation, reportHeroShrinkDebug])
+  }, [displayW, displayH, finishHeroCloseAnimation, reportHeroShrinkDebug, heroFlyoutZIndex])
 
   const toggleHeroVideoPlayPause = useCallback(() => {
     const v = videoRef.current
@@ -1814,6 +1839,7 @@ export default function LoungePostStreamVideo({
           (v.readyState >= HTMLMediaElement.HAVE_METADATA && v.currentTime > 0)),
     )
     const tapShowVideo = streamFadeShowVideo || hadDecodedVideo
+    heroColdMountRef.current = !v
     heroTapSnapshotRef.current = {
       showVideo: tapShowVideo,
       readyState: v?.readyState ?? 0,
@@ -1826,7 +1852,7 @@ export default function LoungePostStreamVideo({
     if (!tapShowVideo) revealInlinePosterForHero(slot)
 
     const host = ensureHeroBodyHost()
-    snapFlyoutToHeroTile(flyout, host, from)
+    snapFlyoutToHeroTile(flyout, host, from, heroFlyoutZIndex)
 
     heroFrameShieldRef.current = null
     if (tapShowVideo && v && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -1887,6 +1913,7 @@ export default function LoungePostStreamVideo({
     streamFadeShowVideo,
     forceFeedAutoplayActive,
     enterFeedHeroLock,
+    heroFlyoutZIndex,
   ])
 
   /** Bottom strip: per-tile mute toggle (user gesture unmutes this clip only). */
@@ -2215,6 +2242,20 @@ export default function LoungePostStreamVideo({
     return () => v.removeEventListener('canplay', tryPlay)
   }, [lightboxOpen, attachStream, streamAttachKey])
 
+  /** Detail/comment tiles often mount `<video>` only on lightbox open — force HLS attach once the node exists. */
+  useEffect(() => {
+    if (!lightboxOpen || !heroColdMountRef.current) return undefined
+    if (!mountStreamVideo || !attachStream) return undefined
+    const v = videoRef.current
+    if (!v) return undefined
+    heroColdMountRef.current = false
+    if (videoDebugEnabled && feedAutoplayClientId) {
+      reportLoungeVideoDebugEvent(feedAutoplayClientId, 'attach', 'hero-cold-mount')
+    }
+    setStreamAttachKey((k) => k + 1)
+    return undefined
+  }, [lightboxOpen, mountStreamVideo, attachStream, feedAutoplayClientId, videoDebugEnabled])
+
   /** After closing hero, resume inline autoplay if still in view (sound restored on shrink animation end). */
   useEffect(() => {
     if (lightboxOpen) return
@@ -2338,7 +2379,7 @@ export default function LoungePostStreamVideo({
           left: heroLayout.left,
           width: heroLayout.width,
           height: heroLayout.height,
-          zIndex: HERO_FLYOUT_Z_INDEX,
+          zIndex: heroFlyoutZIndex,
           transformOrigin: '0 0',
           ...(heroShrinkDomActive
             ? undefined
@@ -2557,7 +2598,7 @@ export default function LoungePostStreamVideo({
             <>
               <div
                 className="pointer-events-none fixed inset-0"
-                style={{ zIndex: HERO_SCRIM_Z_INDEX }}
+                style={{ zIndex: heroScrimZIndex }}
                 aria-hidden
               >
                 <div

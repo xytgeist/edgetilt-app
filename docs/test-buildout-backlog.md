@@ -85,7 +85,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 ### Phase A - Foundation (DB + auth shaping)
 
 - [x] A1 core `profiles` model in place on test (`handle`, `display_name`, `avatar_url`, `bio`, `role`, `banned_at`, timestamps, constraints/index).
-- [x] **Handle change audit (test):** `profiles.handle_changed_at` + `BEFORE UPDATE OF handle` trigger stamps last change time (**7-day cooldown removed** 2026-05-18). Sources: **`supabase/profile_handle_changed_at.sql`**, migration **`20260518143000_remove_profile_handle_change_cooldown.sql`**, tail of **`supabase/profile_lounge_fullscreen.sql`**. **Apply migration on test/prod** so DB matches client (no cooldown modals).
+- [x] **Handle change cadence (test):** `profiles.handle_changed_at` + `BEFORE UPDATE OF handle` cooldown trigger (one change per rolling 7 days; raises `PROFILE_HANDLE_CHANGE_COOLDOWN`). Restore migration: **`20260518150000_restore_profile_handle_change_cooldown.sql`** if cooldown was temporarily removed. Client: **`LoungeProfileFullScreen.jsx`** confirm/cooldown modals + **`ProfileHandleConflictDialog.jsx`**.
 - [x] A2 feed model on test: `community_feed_posts` is **caption-only** (legacy `title` / `body` dropped after backfill); `edited_at`, pin/moderation columns, denormalized `like_count` / `comment_count` / `repost_count` (after `feed_interactions_phase_ef.sql`).
 - [x] A3 baseline RLS/policy shape for public read + authed write + staff moderation is applied on test (includes author **30-minute** `UPDATE` window in SQL).
 - [x] A4 **DB-first** posting rate limit on test: `rate_limit_events` + indexes + `BEFORE INSERT` guard on `community_feed_posts` in `feed_phase_a_profiles_public_read.sql` (optional later: Redis/edge limiter per roadmap).
@@ -268,7 +268,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
     3. **Heavy tabs once:** Offers, Intel, Bankroll, Calculators (open each game once), Guides — no stuck `Suspense`; calculators work after first open.
     4. **Guides → Ask community:** insert succeeds where RLS allows (profile gate if applicable).
     5. **Offers / calendars / push:** offers save; calendar surfaces; edge paths per §4 / §5 in production checklist (align with Edge Functions rows above).
-    6. **Profile (Lounge):** own profile → edit → save display/avatar/about; change handle → saves immediately (no 7-day cooldown); taken handle → conflict dialog with suggestion; **mod/admin** save retains `role`. **Replies** tab + **Share profile** (`/u/<handle>`) as before.
+    6. **Profile (Lounge):** own profile → edit → save; change handle → **Confirm** → **Continue**; within 7 days → **Cooldown** → **Continue** keeps handle, saves rest; taken handle → conflict dialog; **mod/admin** save retains `role`. **Replies** tab + **Share profile** (`/u/<handle>`).
     7. **Feed carousels (incl. newly posted):** multi-image post — swipe to slide 2+; scroll the **feed** until that post’s media strip leaves the scroll area, then scroll back — carousel shows the **first** slide (scroll-root geometry + IO).
     8. **Repost:** menu opens **above** the Repost control on feed + post detail (portaled / `bottom-full`); already-reposted row shows manage actions in the same anchored popover (no bottom sheet).
     9. **Rate limit:** when posting is blocked, error strip is **above** the composer even with a tall draft.
@@ -314,6 +314,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - 2026-05-18: **Lounge Stream autoplay hardening (test sign-off, Ryan — good enough for now @ `dbd4fa1`):** Comment/detail black lightbox + iOS HLS decoder budget (`hlsAttachEnabled`); feed handoff pause-frame regression fix; profile Posts/Likes/Bookmarks **`LoungeFeedVideoAutoplayProvider`**; **`pauseAllLoungeStreamInlineVideos`** + **`coordinatorSuspended`** pause/mute on post/comment detail open; Settings **Video debug HUD** toggle. Commits **`718d014`** → **`dbd4fa1`**.
 
 - 2026-05-18: **Centerline handoff (test):** primary active swap when next/prev Stream tile **midpoint crosses scroll-column center**; clip thresholds remain fallback. **`loungeFeedVideoAutoplayStore.js`**.
+
+- 2026-05-18: **Restore 7-day handle change cooldown (test):** migration **`20260518150000_restore_profile_handle_change_cooldown.sql`**; client confirm/cooldown modals back in **`LoungeProfileFullScreen.jsx`** (with handle conflict dialog). **Apply migration on Supabase test.** Ryan sign-off **pending**.
 
 - 2026-05-18: **Remove 7-day handle change cooldown (test):** migration **`20260518143000_remove_profile_handle_change_cooldown.sql`**; client cooldown/confirm modals removed from **`LoungeProfileFullScreen.jsx`**. **Apply migration on Supabase test** (and prod on promote). Ryan sign-off **pending**.
 

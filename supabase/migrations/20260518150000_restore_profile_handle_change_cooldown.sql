@@ -1,11 +1,4 @@
--- Track last handle change for 7-day cooldown (one handle change per rolling week).
--- Run in Supabase SQL editor after feed_phase_a_profiles_public_read.sql (or any profiles migration).
-
-alter table public.profiles
-  add column if not exists handle_changed_at timestamptz;
-
-comment on column public.profiles.handle_changed_at is
-  'When the user last changed `handle`; used to enforce at most one handle change per 7 days.';
+-- Restore 7-day handle change cooldown (one handle change per rolling week).
 
 create or replace function public.profiles_enforce_handle_change_cooldown()
 returns trigger
@@ -30,8 +23,5 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_profiles_handle_change_cooldown on public.profiles;
-create trigger trg_profiles_handle_change_cooldown
-  before update of handle on public.profiles
-  for each row
-  execute function public.profiles_enforce_handle_change_cooldown();
+comment on column public.profiles.handle_changed_at is
+  'When the user last changed `handle`; used to enforce at most one handle change per 7 days.';

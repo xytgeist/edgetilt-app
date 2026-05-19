@@ -161,6 +161,8 @@ function feedCommentPathIds(comment, commentById) {
   return chain
 }
 
+const PROFILE_HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
+
 function profileTabLabel(id) {
   if (id === 'posts') return 'Posts'
   if (id === 'replies') return 'Replies'
@@ -506,6 +508,8 @@ export default function LoungeProfileFullScreen({
   const [avatarBusy, setAvatarBusy] = useState(false)
   /** Picked image file awaiting crop modal (own profile). */
   const [avatarCropFile, setAvatarCropFile] = useState(null)
+  /** Confirm handle change (7-day rule) or explain cooldown. */
+  const [handleChangeDialog, setHandleChangeDialog] = useState(null)
   const [handleConflictDialog, setHandleConflictDialog] = useState(null)
   /** Own profile: overflow menu on banner (⋯). */
   const [ownProfileMenuOpen, setOwnProfileMenuOpen] = useState(false)
@@ -681,6 +685,7 @@ export default function LoungeProfileFullScreen({
     setOwnProfileEditing(false)
     setDisplayNameDraft('')
     setHandleSlugDraft('')
+    setHandleChangeDialog(null)
     setHandleConflictDialog(null)
     setAvatarCropFile(null)
     setInteractionPosts([])
@@ -1280,14 +1285,33 @@ export default function LoungeProfileFullScreen({
       setAboutErr('Handle must be at least 2 characters (letters, numbers, underscore).')
       return
     }
+    const serverHandle = normalizeHandle(String(profile?.handle || ''))
+    const handleChanging = Boolean(serverHandle) && nextHandle !== serverHandle
+    const lastAt = profile?.handle_changed_at ? new Date(profile.handle_changed_at) : null
+    const inCooldown =
+      lastAt != null &&
+      !Number.isNaN(lastAt.getTime()) &&
+      Date.now() - lastAt.getTime() < PROFILE_HANDLE_COOLDOWN_MS
 
-    const handleForSave = nextHandle
+    if (!opts?.skipHandlePrompts && handleChanging) {
+      if (inCooldown) {
+        setHandleChangeDialog({
+          kind: 'cooldown',
+          unlockAt: new Date(lastAt.getTime() + PROFILE_HANDLE_COOLDOWN_MS).toISOString(),
+        })
+        return
+      }
+      setHandleChangeDialog({ kind: 'confirm' })
+      return
+    }
+
+    const handleForSave = opts?.preserveServerHandle ? serverHandle : nextHandle
     if (!handleForSave) {
       setAboutErr('Handle must be at least 2 characters (letters, numbers, underscore).')
       return
     }
 
-    if (!opts?.skipHandleConflictCheck && !opts?.forcedHandle) {
+    if (!opts?.preserveServerHandle && !opts?.skipHandleConflictCheck && !opts?.forcedHandle) {
       const availability = await checkProfileHandleAvailability({
         supabaseClient,
         requestedHandle: handleForSave,
@@ -1326,7 +1350,7 @@ export default function LoungeProfileFullScreen({
         strictHandle: true,
       })
       if (idErr || !identityRow) {
-        if (isProfileHandleUniqueViolation(idErr)) {
+        if (isProfileHandleUniqueViolation(idErr) && !opts?.preserveServerHandle) {
           const suggestedHandle = await suggestAvailableProfileHandle(
             supabaseClient,
             handleForSave,
@@ -1341,6 +1365,10 @@ export default function LoungeProfileFullScreen({
           return
         }
         const raw = formatProfileSaveDebugError(idErr, 'Save profile')
+        if (/PROFILE_HANDLE_CHANGE_COOLDOWN|once every 7 days|handle change cooldown/i.test(raw)) {
+          setAboutErr('You can only change your handle once every 7 days. Try again later.')
+          return
+        }
         setAboutErr(raw)
         return
       }
@@ -2315,10 +2343,82 @@ export default function LoungeProfileFullScreen({
           setHandleConflictDialog(null)
           void saveProfileEdits({
             ...resume,
+            skipHandlePrompts: true,
             forcedHandle: next,
           })
         }}
       />
+
+      {handleChangeDialog && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[250] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="profile-handle-dialog-title"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 z-0 cursor-default touch-manipulation"
+                aria-label="Dismiss"
+                disabled={aboutBusy}
+                onClick={() => {
+                  if (aboutBusy) return
+                  setHandleChangeDialog(null)
+                }}
+              />
+              <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-600 bg-zinc-900 p-5 shadow-2xl">
+                <h2 id="profile-handle-dialog-title" className="text-[16px] font-bold text-white">
+                  {handleChangeDialog.kind === 'confirm' ? 'Change handle?' : 'Handle change limit'}
+                </h2>
+                {handleChangeDialog.kind === 'confirm' ? (
+                  <p className="mt-3 text-[15px] leading-relaxed text-zinc-200">
+                    You can change your handle at most once every 7 days. After you save, you will not be able to change
+                    it again until a full week has passed.
+                  </p>
+                ) : (
+                  <p className="mt-3 text-[15px] leading-relaxed text-zinc-200">
+                    You already changed your handle within the last 7 days. The next change is allowed after{' '}
+                    <span className="font-semibold text-zinc-100">
+                      {new Date(handleChangeDialog.unlockAt).toLocaleString(undefined, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </span>
+                    . Continue saves your display name, photo, and About — your handle will stay{' '}
+                    <span className="font-semibold text-cyan-200">@{String(profile?.handle || '').trim()}</span>.
+                  </p>
+                )}
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    disabled={aboutBusy}
+                    onClick={() => setHandleChangeDialog(null)}
+                    className="min-h-11 w-full rounded-xl border border-zinc-600 bg-zinc-800/90 px-4 text-[15px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-700 disabled:opacity-50 sm:w-auto"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aboutBusy}
+                    onClick={() => {
+                      setHandleChangeDialog(null)
+                      if (handleChangeDialog.kind === 'confirm') {
+                        void saveProfileEdits({ skipHandlePrompts: true })
+                      } else {
+                        void saveProfileEdits({ preserveServerHandle: true, skipHandlePrompts: true })
+                      }
+                    }}
+                    className="min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:opacity-50 sm:w-auto"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

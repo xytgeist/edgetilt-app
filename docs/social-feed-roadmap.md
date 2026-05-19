@@ -171,7 +171,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 ## Phase C - Profiles + first-interaction gating
 
-- **Shipped (test, partial):** Full-screen **profile editor** in Lounge (`LoungeProfileFullScreen.jsx`) for own profile: display name, handle, avatar, About; saves respect RLS; **staff `role` is not stripped** on save. **Handle changes:** no cooldown (removed 2026-05-18); conflict dialog for taken/reserved handles. **iOS:** min **16px** text on handle/display fields and post-save **blur + window/visualViewport scroll**. **`/u/:handle` permalink** via **`api/lounge-profile-og.js`**.
+- **Shipped (test, partial):** Full-screen **profile editor** in Lounge. **Handle changes:** at most **once per rolling 7 days** (DB trigger + confirm/cooldown modals). **Handle conflict** dialog for taken/reserved handles. **`/u/:handle` permalink** via **`api/lounge-profile-og.js`**.
 - `/u/:handle` profile page (remaining polish):
   - profile data
   - authored posts

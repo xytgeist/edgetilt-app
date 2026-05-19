@@ -1420,6 +1420,14 @@ export default function LoungePostStreamVideo({
     let disarm = () => {}
     let rafId = 0
 
+    const videoHasDecodedFrame = (v) =>
+      Boolean(
+        v &&
+          (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
+            (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
+              ((Number.isFinite(v.currentTime) && v.currentTime > 0) || savedStreamTimeRef.current > 0.05))),
+      )
+
     queueMicrotask(() => {
       if (cleaned) return
       if (lightboxOpenRef.current) return
@@ -1430,6 +1438,11 @@ export default function LoungePostStreamVideo({
       const attachKeyBumped = prevFadeAttachKeyRef.current !== streamAttachKey
       prevFadeAttachKeyRef.current = streamAttachKey
       if (streamFadeShowVideo && attachStream && !attachKeyBumped) return
+      const v0 = videoRef.current
+      if (videoHasDecodedFrame(v0) && !attachKeyBumped) {
+        setStreamFadeShowVideo(true)
+        return
+      }
       setStreamFadeShowVideo(false)
 
       const arm = () => {
@@ -1491,6 +1504,8 @@ export default function LoungePostStreamVideo({
         }
         if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
           reveal()
+        } else if (videoHasDecodedFrame(v)) {
+          reveal()
         } else {
           v.addEventListener('playing', onPlaying, { once: true })
           v.addEventListener('timeupdate', onTime)
@@ -1523,6 +1538,28 @@ export default function LoungePostStreamVideo({
       disarm()
     }
   }, [attachStream, poster, id, streamAttachKey])
+
+  /** Handoff pause: keep last decoded frame visible — do not flash poster over a warm ring tile. */
+  useLayoutEffect(() => {
+    if (isActive || !attachStream || !inRing || lightboxOpenRef.current) return
+    const v = videoRef.current
+    if (!v) return
+    const saved = savedStreamTimeRef.current
+    if (saved > 0.05 && Math.abs(v.currentTime - saved) > 0.35) {
+      try {
+        v.currentTime = saved
+      } catch {
+        // ignore
+      }
+    }
+    if (
+      v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
+      (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
+        ((Number.isFinite(v.currentTime) && v.currentTime > 0) || saved > 0.05))
+    ) {
+      setStreamFadeShowVideo(true)
+    }
+  }, [isActive, inRing, attachStream])
 
   const finalizeHeroClose = useCallback(() => {
     heroShrinkInFlightRef.current = false
@@ -2230,8 +2267,23 @@ export default function LoungePostStreamVideo({
   const posterShellMinHClass =
     posterDecodeOk ? 'min-h-0' : hasDisplayDims ? 'min-h-0' : posterFrameMinH
   const heroTapShowVideo = heroTapSnapshotRef.current?.showVideo
+  const pausedInlineFrameVisible =
+    attachStream &&
+    !heroExpanded &&
+    (() => {
+      const v = videoRef.current
+      return Boolean(
+        v &&
+          (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
+            (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
+              ((Number.isFinite(v.currentTime) && v.currentTime > 0) ||
+                savedStreamTimeRef.current > 0.05))),
+      )
+    })()
   const effectiveStreamFadeShowVideo =
-    heroExpanded && heroTapSnapshotRef.current ? heroTapShowVideo : streamFadeShowVideo
+    heroExpanded && heroTapSnapshotRef.current
+      ? heroTapShowVideo
+      : streamFadeShowVideo || pausedInlineFrameVisible
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle =
     attachStream && !heroExpanded

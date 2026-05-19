@@ -71,12 +71,13 @@ export function useLoungeLightboxSwipeDismiss({
       }
       const dx = e.clientX - drag.startX
       const dy = e.clientY - drag.startY
-      resetDrag()
 
       if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dy) >= DISMISS_DRAG_PX) {
-        onClose()
+        onClose({ swipeOffset: { x: 0, y: dy } })
+        resetDrag()
         return
       }
+      resetDrag()
       if (onSwipeHorizontal && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) >= DISMISS_DRAG_PX) {
         onSwipeHorizontal(dx < 0 ? 1 : -1)
         return

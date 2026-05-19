@@ -808,6 +808,19 @@ export default function LoungePostStreamVideo({
     }
   }, [coordinatedInlineSound, isActive, tileRatio])
 
+  /** Fresh active handoff: don't inherit audible band from a prior clip on this tile. */
+  const prevCoordinatedActiveRef = useRef(false)
+  useEffect(() => {
+    if (!coordinatedInlineSound) {
+      prevCoordinatedActiveRef.current = false
+      return
+    }
+    if (isActive && !prevCoordinatedActiveRef.current) {
+      feedSoundAudibleRef.current = false
+    }
+    prevCoordinatedActiveRef.current = Boolean(isActive)
+  }, [coordinatedInlineSound, isActive])
+
   /** Body mount for hero expand only — created lazily on open, removed on close (not one per feed tile). */
   const ensureHeroBodyHost = useCallback(() => {
     if (heroBodyHostRef.current) return heroBodyHostRef.current
@@ -849,6 +862,7 @@ export default function LoungePostStreamVideo({
     if (heroLocked && !lightboxOpenRef.current) return false
     if (coordinatorActive && !isActiveRef.current) return false
     if (coordinatorActive && tileRatio <= 0) return false
+    if (lazyStream && v.readyState < HTMLMediaElement.HAVE_METADATA) return false
     const reportPlayError = (err) => {
       const msg =
         err instanceof Error
@@ -859,16 +873,32 @@ export default function LoungePostStreamVideo({
         reportLoungeVideoDebugEvent(feedAutoplayClientId, 'play', msg)
       }
     }
+    const wantAudible = coordinatedInlineSound
+      ? !computeCoordinatedSoundMuted()
+      : !localStripSoundUnmuted
+    const applyAudibleAfterPlay = () => {
+      if (!v || v.paused) return
+      try {
+        v.muted = !wantAudible
+      } catch {
+        // ignore
+      }
+    }
     try {
-      v.muted = coordinatedInlineSound ? computeCoordinatedSoundMuted() : !localStripSoundUnmuted
+      // iOS blocks unmuted programmatic play(); start muted, unmute only after play resolves.
+      v.muted = true
       const p = v.play()
-      if (p && typeof p.catch === 'function') {
-        p.catch((err) => {
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          lastPlayErrorRef.current = ''
+          applyAudibleAfterPlay()
+        }).catch((err) => {
           reportPlayError(err)
           scheduleRecompute()
         })
       } else {
         lastPlayErrorRef.current = ''
+        if (!v.paused) applyAudibleAfterPlay()
       }
       return !v.paused
     } catch (err) {
@@ -1738,17 +1768,22 @@ export default function LoungePostStreamVideo({
       if (anyStreamLightboxOpen && !lightboxOpenRef.current) return
       if (heroLocked && !lightboxOpenRef.current) return
       if (coordinatorActive && !isActiveRef.current && !lightboxOpenRef.current) return
-      try {
-        if (lightboxOpenRef.current) {
+      if (lightboxOpenRef.current) {
+        try {
           if (heroWantsSoundRef.current) v.muted = false
-        } else if (coordinatedInlineSound && isActiveRef.current) {
-          v.muted = computeCoordinatedSoundMuted()
-        } else if (!coordinatedInlineSound) {
-          v.muted = !localStripSoundUnmuted
-        } else {
-          v.muted = true
+          const p = v.play()
+          if (p && typeof p.catch === 'function') p.catch(() => {})
+        } catch {
+          // ignore
         }
-        if (coordinatorActive && !isActiveRef.current && !lightboxOpenRef.current) return
+        return
+      }
+      if (coordinatedInlineSound && isActiveRef.current) {
+        tryCoordinatedInlinePlay()
+        return
+      }
+      try {
+        v.muted = !localStripSoundUnmuted
         const p = v.play()
         if (p && typeof p.catch === 'function') {
           p.catch(() => {
@@ -1786,11 +1821,12 @@ export default function LoungePostStreamVideo({
     coordinatorActive,
     isActive,
     coordinatedInlineSound,
-    computeCoordinatedSoundMuted,
     localStripSoundUnmuted,
     flingerMode,
     heroLocked,
     anyStreamLightboxOpen,
+    tryCoordinatedInlinePlay,
+    scheduleRecompute,
   ])
 
   /** Hero / lightbox open: ensure the same inline `<video>` keeps playing once HLS attaches (autoplay-off path). */
@@ -1835,8 +1871,12 @@ export default function LoungePostStreamVideo({
       }
       return
     }
+    if (coordinatedInlineSound && isActive) {
+      tryCoordinatedInlinePlay()
+      return
+    }
     try {
-      v.muted = coordinatedInlineSound ? computeCoordinatedSoundMuted() : !localStripSoundUnmuted
+      v.muted = !localStripSoundUnmuted
       const p = v.play()
       if (p && typeof p.catch === 'function') p.catch(() => {})
     } catch {
@@ -1850,10 +1890,10 @@ export default function LoungePostStreamVideo({
     inRing,
     flingerMode,
     coordinatedInlineSound,
-    computeCoordinatedSoundMuted,
     localStripSoundUnmuted,
     feedAutoplayEnabled,
     anyStreamLightboxOpen,
+    tryCoordinatedInlinePlay,
   ])
 
   const onInlineStreamError = useCallback(() => {

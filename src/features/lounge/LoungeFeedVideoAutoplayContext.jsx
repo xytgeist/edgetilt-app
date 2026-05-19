@@ -28,7 +28,7 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
     () => true,
   )
 
-  /** Shared across feed/embed Stream tiles: one “Tap for sound” enables inline audio on whichever tile is autoplaying. */
+  /** Shared across feed/embed Stream tiles: “Tap for sound” unmutes the tile the user tapped (winner handoff when needed). */
   const [feedInlineSoundUnmuted, setFeedInlineSoundUnmuted] = useState(false)
   const [feedInlineSoundExplicitlyMuted, setFeedInlineSoundExplicitlyMuted] = useState(false)
   const toggleFeedInlineSound = useCallback(() => {
@@ -42,6 +42,12 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
     setFeedInlineSoundUnmuted(Boolean(unmuted))
     setFeedInlineSoundExplicitlyMuted(Boolean(explicitlyMuted))
   }, [])
+  const forceFeedAutoplayWinner = useCallback(
+    (clientId) => {
+      if (clientId) store.forceWinner(clientId)
+    },
+    [store],
+  )
 
   useEffect(() => {
     if (!feedAutoplayEnabled) {
@@ -94,6 +100,7 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
       toggleFeedInlineSound,
       restoreFeedInlineSound,
       resetFeedInlineSound,
+      forceFeedAutoplayWinner,
     }),
     [
       store,
@@ -102,6 +109,7 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
       toggleFeedInlineSound,
       restoreFeedInlineSound,
       resetFeedInlineSound,
+      forceFeedAutoplayWinner,
     ],
   )
 
@@ -202,5 +210,6 @@ export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
     feedInlineSoundExplicitlyMuted: ctx?.feedInlineSoundExplicitlyMuted ?? false,
     toggleFeedInlineSound: ctx?.toggleFeedInlineSound ?? (() => {}),
     restoreFeedInlineSound: ctx?.restoreFeedInlineSound ?? (() => {}),
+    forceFeedAutoplayWinner: ctx?.forceFeedAutoplayWinner ?? (() => {}),
   }
 }

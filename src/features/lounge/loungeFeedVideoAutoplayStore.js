@@ -171,5 +171,14 @@ export function createAutoplayStore() {
       return snapshot
     },
     schedule,
+    /** User tapped a specific tile for sound or hero — take winner immediately (skip hysteresis). */
+    forceWinner(id) {
+      if (!id || snapshot.winnerId === id) return
+      snapshot = Object.freeze({
+        winnerId: id,
+        stageIds: EMPTY_STAGE_IDS,
+      })
+      emit()
+    },
   }
 }

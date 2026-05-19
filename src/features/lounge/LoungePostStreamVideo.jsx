@@ -314,6 +314,19 @@ function afterHeroFlyoutPainted(video, onPainted) {
   })
 }
 
+/** Pause every feed Stream `<video>` except the one the user is engaging (hero or sound tap). */
+function pauseOtherLoungeStreamVideos(exceptVideo) {
+  try {
+    document.querySelectorAll('[data-lounge-video-zoom] video').forEach((el) => {
+      if (el === exceptVideo) return
+      el.pause()
+      el.muted = true
+    })
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * @param {React.RefObject<HTMLVideoElement | null>} videoRef
  * @param {string} src manifest URL
@@ -533,6 +546,8 @@ export default function LoungePostStreamVideo({
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const isWinnerRef = useRef(false)
+  /** Hero session wants audible playback (restored from inline snapshot on open). */
+  const heroWantsSoundRef = useRef(true)
   const recoveryBurstRef = useRef(0)
   /** Feed sound snapshot when hero opens (restored on close; same `<video>` keeps time). */
   const inlineFeedSoundSnapshotRef = useRef(
@@ -697,6 +712,7 @@ export default function LoungePostStreamVideo({
     feedInlineSoundExplicitlyMuted,
     toggleFeedInlineSound,
     restoreFeedInlineSound,
+    forceFeedAutoplayWinner,
   } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
   const anyStreamLightboxOpen = useSyncExternalStore(
     subscribeLoungeStreamLightboxOpen,
@@ -969,6 +985,7 @@ export default function LoungePostStreamVideo({
     clearHeroFrameShield(videoFlyoutRef.current)
     heroFrameShieldRef.current = null
     heroTapSnapshotRef.current = null
+    heroWantsSoundRef.current = true
     lightboxOpenRef.current = false
     setLightboxOpen(false)
     setHeroPhase('idle')
@@ -1079,15 +1096,21 @@ export default function LoungePostStreamVideo({
 
   const openLightbox = useCallback(() => {
     if (lightboxOpenRef.current) return
-    lightboxOpenRef.current = true
     const slot = heroInlineSlotRef.current
     const wrap = containerRef.current
     const flyout = videoFlyoutRef.current
     const v = videoRef.current
-    if (!wrap) {
-      lightboxOpenRef.current = false
-      return
+    if (!wrap) return
+
+    lightboxOpenRef.current = true
+    notifyLoungeStreamLightboxOpen(true)
+    flushSync(() => setLightboxOpen(true))
+    pauseOtherLoungeStreamVideos(v)
+
+    if (coordinatedInlineSound && feedAutoplayClientId) {
+      forceFeedAutoplayWinner(feedAutoplayClientId)
     }
+
     const from = readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH)
     const target = computeHeroTargetRect(from)
     heroFromRectRef.current = from
@@ -1124,17 +1147,19 @@ export default function LoungePostStreamVideo({
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
     setHeroBackdropArmed(false)
-    notifyLoungeStreamLightboxOpen(true)
-    flushSync(() => setLightboxOpen(true))
 
     if (feedAutoplayEnabled && v) {
       const explicitlyMuted = coordinatedInlineSound
         ? feedInlineSoundExplicitlyMuted
         : localStripSoundExplicitlyMuted
+      heroWantsSoundRef.current = !explicitlyMuted
       inlineFeedSoundSnapshotRef.current = {
         unmuted: stripSoundUnmuted,
         explicitlyMuted,
         coordinated: coordinatedInlineSound,
+      }
+      if (coordinatedInlineSound) {
+        restoreFeedInlineSound(false, explicitlyMuted)
       }
       if (!explicitlyMuted) {
         try {
@@ -1158,6 +1183,7 @@ export default function LoungePostStreamVideo({
         }
       }
     } else {
+      heroWantsSoundRef.current = false
       inlineFeedSoundSnapshotRef.current = null
       if (v && attachStream) {
         try {
@@ -1172,6 +1198,7 @@ export default function LoungePostStreamVideo({
     feedAutoplayEnabled,
     attachStream,
     coordinatedInlineSound,
+    feedAutoplayClientId,
     feedInlineSoundExplicitlyMuted,
     localStripSoundExplicitlyMuted,
     stripSoundUnmuted,
@@ -1179,12 +1206,17 @@ export default function LoungePostStreamVideo({
     displayW,
     displayH,
     streamFadeShowVideo,
+    forceFeedAutoplayWinner,
+    restoreFeedInlineSound,
   ])
 
   /** Bottom strip: coordinated tiles share provider mute; others toggle this tile only. */
   const onSoundStripPress = useCallback(() => {
     if (coordinatedInlineSound) {
       const turningOn = !feedInlineSoundUnmuted
+      if (turningOn && feedAutoplayClientId && !isWinner) {
+        forceFeedAutoplayWinner(feedAutoplayClientId)
+      }
       toggleFeedInlineSound()
       if (turningOn && attachStream) {
         const v = videoRef.current
@@ -1256,6 +1288,9 @@ export default function LoungePostStreamVideo({
     attachStream,
     openLightbox,
     toggleFeedInlineSound,
+    feedAutoplayClientId,
+    isWinner,
+    forceFeedAutoplayWinner,
   ])
 
   useEffect(() => {
@@ -1464,17 +1499,21 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     if (!lazyStream || !attachStream) return undefined
     if (!showOpen) return undefined
-    if (lightboxOpenRef.current) return undefined
-    if (!inViewRef.current && !(coordinatorActive && isWinner)) return undefined
-    if (coordinatorActive && !isWinner) return undefined
+    const heroTile = lightboxOpenRef.current
+    if (!inViewRef.current && !(coordinatorActive && isWinner) && !heroTile) return undefined
+    if (coordinatorActive && !isWinnerRef.current && !heroTile) return undefined
     const v = videoRef.current
     if (!v) return undefined
     let cleaned = false
     const go = () => {
       if (anyStreamLightboxOpen && !lightboxOpenRef.current) return
-      if (coordinatorActive && !isWinnerRef.current) return
+      if (coordinatorActive && !isWinnerRef.current && !lightboxOpenRef.current) return
       try {
-        v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : true
+        if (lightboxOpenRef.current) {
+          if (heroWantsSoundRef.current) v.muted = false
+        } else {
+          v.muted = coordinatedInlineSound ? !feedInlineSoundUnmuted : true
+        }
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       } catch {
@@ -1519,6 +1558,7 @@ export default function LoungePostStreamVideo({
     if (!v) return undefined
     const tryPlay = () => {
       try {
+        if (heroWantsSoundRef.current) v.muted = false
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       } catch {

@@ -16,6 +16,7 @@ import {
 import {
   readLoungeFeedVideoDebugEnabled,
   subscribeLoungeFeedVideoDebugEnabled,
+  syncLoungeFeedVideoDebugFromUrl,
 } from '../../utils/loungeFeedVideoDebugPref.js'
 import LoungeFeedVideoAutoplayDebugHud from './LoungeFeedVideoAutoplayDebugHud.jsx'
 
@@ -23,9 +24,9 @@ const LoungeFeedVideoAutoplayContext = createContext(null)
 
 /**
  * Wrap a lounge scroll column (feed, post detail, search panel).
- * @param {{ scrollRootRef: React.RefObject<HTMLElement | null>, children: React.React.ReactNode }} props
+ * @param {{ scrollRootRef: React.RefObject<HTMLElement | null>, children: React.React.ReactNode, showDebugHud?: boolean }} props
  */
-export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
+export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showDebugHud = false }) {
   const [store] = useState(() => createAutoplayStore())
   const feedAutoplayEnabled = useSyncExternalStore(
     subscribeLoungeFeedVideoAutoplayEnabled,
@@ -70,6 +71,10 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
   const exitFeedHeroLock = useCallback(() => {
     store.exitHeroLock()
   }, [store])
+
+  useEffect(() => {
+    syncLoungeFeedVideoDebugFromUrl()
+  }, [])
 
   useEffect(() => {
     if (!feedAutoplayEnabled) {
@@ -142,7 +147,7 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
   return (
     <LoungeFeedVideoAutoplayContext.Provider value={value}>
       {children}
-      {videoDebugEnabled ? (
+      {showDebugHud && videoDebugEnabled ? (
         <LoungeFeedVideoAutoplayDebugHud store={store} scrollRootRef={scrollRootRef} />
       ) : null}
     </LoungeFeedVideoAutoplayContext.Provider>

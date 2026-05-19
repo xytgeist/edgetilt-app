@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, useSyncExternalStore, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   clearLoungeVideoDebugEvents,
   getLoungeVideoDebugEvents,
@@ -37,6 +38,11 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
   const [collapsed, setCollapsed] = useState(false)
   const [copyStatus, setCopyStatus] = useState('')
   const [pollTick, setPollTick] = useState(0)
+  const [portalReady, setPortalReady] = useState(false)
+
+  useEffect(() => {
+    setPortalReady(true)
+  }, [])
 
   useEffect(() => {
     const id = window.setInterval(() => setPollTick((t) => t + 1), 450)
@@ -142,21 +148,25 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
     window.setTimeout(() => setCopyStatus(''), 1800)
   }, [buildExportPayload])
 
-  if (collapsed) {
-    return (
-      <button
-        type="button"
-        className="pointer-events-auto fixed bottom-3 left-3 z-[106] rounded-full border border-amber-400/50 bg-black/85 px-3 py-1.5 font-mono text-[11px] font-semibold text-amber-200 shadow-lg backdrop-blur-sm"
-        onClick={() => setCollapsed(false)}
-      >
-        Video debug
-      </button>
-    )
+  const hudBottomStyle = {
+    bottom: 'max(0.75rem, env(safe-area-inset-bottom))',
   }
 
-  return (
+  if (!portalReady || typeof document === 'undefined') return null
+
+  const hud = collapsed ? (
+    <button
+      type="button"
+      style={hudBottomStyle}
+      className="pointer-events-auto fixed left-3 z-[115] rounded-full border border-amber-400/50 bg-black/90 px-3 py-1.5 font-mono text-[11px] font-semibold text-amber-200 shadow-lg backdrop-blur-sm"
+      onClick={() => setCollapsed(false)}
+    >
+      Video debug
+    </button>
+  ) : (
     <div
-      className="pointer-events-auto fixed bottom-3 left-3 z-[106] flex max-h-[min(44vh,360px)] w-[min(calc(100vw-1.5rem),26rem)] flex-col overflow-hidden rounded-xl border border-amber-400/40 bg-black/90 font-mono text-[10px] leading-snug text-zinc-100 shadow-2xl backdrop-blur-md"
+      style={hudBottomStyle}
+      className="pointer-events-auto fixed left-3 z-[115] flex max-h-[min(44vh,360px)] w-[min(calc(100vw-1.5rem),26rem)] flex-col overflow-hidden rounded-xl border border-amber-400/40 bg-black/92 font-mono text-[10px] leading-snug text-zinc-100 shadow-2xl backdrop-blur-md"
       data-lounge-video-debug-hud
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-amber-400/25 bg-amber-950/40 px-2 py-1.5">
@@ -264,4 +274,6 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
       </div>
     </div>
   )
+
+  return createPortal(hud, document.body)
 }

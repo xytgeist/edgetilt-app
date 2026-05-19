@@ -7332,7 +7332,7 @@ export default function SocialFeed({
           pointerEvents: loungeFabPointerBlocked ? 'none' : undefined,
         }}
       >
-        <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef}>
+        <LoungeFeedVideoAutoplayProvider scrollRootRef={loungeFeedScrollRef} showDebugHud>
         <LoungeFeedAutoplayPostsKick postCount={communityPosts.length} />
         <LoungeFeedInlineSoundResetBinder resetRef={resetFeedInlineSoundRef} />
         <LoungeFeedCoordinatorSuspendBinder suspended={Boolean(loungePostDetail?.id)} />

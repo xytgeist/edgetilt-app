@@ -26,6 +26,7 @@ import {
   markPwaNotifPromptSeen,
   setPwaNotifEnablePending,
 } from '../../utils/pwaNotificationPrompt'
+import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 
 const SocialFeed = lazy(() => import('../lounge/SocialFeed.jsx'))
 const OffersCalendar = lazy(() => import('../offers/OffersCalendar.jsx'))
@@ -460,6 +461,11 @@ export default function AppShell({
     hydrateCommunityPosts,
     supabaseClient,
   ])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    syncLoungeFeedVideoDebugFromUrl()
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

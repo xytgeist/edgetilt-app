@@ -681,7 +681,7 @@ export default function LoungeProfileFullScreen({
     setOwnProfileEditing(false)
     setDisplayNameDraft('')
     setHandleSlugDraft('')
-    setHandleChangeDialog(null)
+    setHandleConflictDialog(null)
     setAvatarCropFile(null)
     setInteractionPosts([])
     setInteractionErr('')

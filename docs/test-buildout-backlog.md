@@ -73,10 +73,10 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Chat MVP (DMs, ≤10 member groups, subscriber topic rooms — code in repo):**
 
-- [ ] **SQL on test:** `supabase/chat_phase1.sql` — tables, member read RLS (**`chat_room_members`**: own rows only — avoids recursion; DM peer labels use **`dm_key`** in the client), seeded topic slugs. If an older policy was applied, run **`supabase/chat_room_members_rls_recursion_fix.sql`**. Production replay: `docs/production-rollout-checklist.md` when promoted.
-- [ ] **Edge:** deploy `supabase/functions/lounge-chat` (`open_dm`, `join_channel`, `create_group`, `send_message`). `supabase/config.toml` sets **`verify_jwt = true`** for this function.
-- [ ] **Client:** `LoungeChatPanel.jsx` in **`LoungeDockSlidePanels.jsx`**; profile **Message** control in **`LoungeProfileFullScreen.jsx`**; **`SocialFeed.jsx`** + **`AppShell.jsx`** pass `hasActiveSubscription` / `isStaff` and wire dock close → clear pending DM peer.
-- [ ] **Realtime (optional):** if new messages do not appear live, add **`chat_messages`** to the **`supabase_realtime`** publication on the project (see `supabase/functions/lounge-chat/README.md`).
+- [x] **SQL on test:** `supabase/chat_phase1.sql` — tables, member read RLS (**`chat_room_members`**: own rows only — avoids recursion; DM peer labels use **`dm_key`** in the client), seeded topic slugs. If an older policy was applied, run **`supabase/chat_room_members_rls_recursion_fix.sql`**. Production replay: `docs/production-rollout-checklist.md` when promoted.
+- [x] **Edge:** deploy `supabase/functions/lounge-chat` (`open_dm`, `join_channel`, `create_group`, `send_message`). `supabase/config.toml` sets **`verify_jwt = true`** for this function.
+- [x] **Client:** `LoungeChatPanel.jsx` in **`LoungeDockSlidePanels.jsx`**; profile **Message** control in **`LoungeProfileFullScreen.jsx`**; **`SocialFeed.jsx`** + **`AppShell.jsx`** pass `hasActiveSubscription` / `isStaff` and wire dock close → clear pending DM peer.
+- [x] **Realtime:** **`chat_messages`** live updates without refresh — **PASSED** on test (Ryan, smoke **§13**, 2026-05-18).
 
 ---
 
@@ -282,7 +282,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
         - [x] **Quote + media rules:** attach **GIF** then video (expect GIF cleared / rules as designed); attach **images** then video (expect images cleared). *(2026-05-18 **PASSED**.)* — **Why not mix?** One **visual** attachment model per row today: **`stream_video_uid`** (Cloudflare Stream) **or** still/GIF/carousel URLs (`image_urls` / `media_url` / `gif_url`), not both — see `supabase/lounge_feed_post_stream_video.sql` (“exclusive of `image_urls` / GIF in app logic”), feed tile (`LoungePostStreamVideo` vs images), upload/delete (Stream Edge vs Storage), and composer validation (`Remove the GIF before posting a video`). Image **+** external GIF in one post remains supported; **Stream video +** GIF/images would need product + schema + playback work to do safely.
         - [x] **Quote + upload bar Cancel** while video is **preparing** (quote prep cancels; quote UI still usable; no stuck modal). *(2026-05-18 **PASSED**.)*
         - [x] *(Optional)* **Staff crown / badge tip:** hover or tap **`LoungeBadgeHoverTip`** — reads/positions OK; dismiss on outside tap / **Escape** (`LoungeBadgeHoverTip.jsx`, 2026-05-18).
-    13. **Lounge chat:** after **`chat_phase1.sql`** + Edge **`lounge-chat`** on test — dock **Chat** → Inbox / Topics; subscriber (or staff) can **Join** a topic; two completed profiles exchange a **DM** (profile **Message** beside Follow opens dock); send message; optional Realtime check (messages appear without refresh).
+    13. **Lounge chat:** after **`chat_phase1.sql`** + Edge **`lounge-chat`** on test — dock **Chat** → Inbox / Topics; subscriber (or staff) can **Join** a topic; two completed profiles exchange a **DM** (profile **Message** beside Follow opens dock); send message; Realtime (messages appear without refresh). *(Ryan, 2026-05-18, **PASSED** on test @ **`aa222ec`**.)*
     14. **Lounge FAB wheel:** tap **+** → wheel; open **Search** / **Chat** / **Settings**; toggle **Following** (cyan fill, no extra glow); **Compose** from feed and from an open panel (keyboard); long-press **+**, drag, release over a post — post must **not** open (brief ~1s dead zone OK); liked chip-heart + count alignment when toggling like. **Upload bar:** while **Uploading post…** / prep bar is visible, FAB **nudges up** so **Cancel** is not covered. **Stream full-screen:** open feed video hero → dock **FAB hidden**; **swipe down on the video** dismisses; backdrop **solid black** when landed (not translucent during expand).
     15. **Video submit queue + parallel prep** (after **`57eaca2`** on test):
         - [x] **Back-to-back videos:** post video 1, immediately post video 2 → bar **Post 1 of 2** / **Post 2 of 2**; both appear in feed with playable video + poster. *(Ryan, 2026-05-18, **PASSED**.)*
@@ -296,6 +296,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - **Sign-off (Lounge Stream autoplay + detail overlay, 2026-05-18, Ryan):** Feed handoff pause frame, profile Posts autoplay, comment/detail HLS + lightbox, background audio stop on post/comment detail open — **good enough for now** on **test** @ **`dbd4fa1`** (iPhone PWA).
   - **Sign-off (feed video perf diet, 2026-05-18, Ryan):** 30s feed scroll (smooth, one winner), hero tap without poster-on-top flash, load-more **28** rows — **PASSED** on **test** @ **`dbd4fa1`**.
   - **Sign-off (feed interactions Phase E/F, 2026-05-18, Ryan):** Likes, reposts, bookmarks, post + comment threads on feed/post detail/profile — counts and toggles **PASSED** on **test** @ **`b8d55d3`** (SQL applied on test project).
+  - **Sign-off (Lounge chat MVP, 2026-05-18, Ryan):** Smoke **§13** **PASSED** on **test** @ **`aa222ec`** — Chat panel, topic join (subscriber/staff), profile **Message** → DM, send/receive, Realtime without refresh.
   - Production replay: same ordered pass on production after deploy.
 
 - [ ] Final pre-prod gate

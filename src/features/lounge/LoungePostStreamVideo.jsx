@@ -576,6 +576,12 @@ export default function LoungePostStreamVideo({
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const heroPhaseRef = useRef('idle')
+  /** Tile rect captured at dismiss — stable for shrink (avoid effect re-run on heroLayout state). */
+  const heroShrinkTileRectRef = useRef(
+    /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
+  )
+  const heroShrinkAnimRef = useRef(/** @type {Animation | null} */ (null))
+  const finishHeroCloseAnimationRef = useRef(/** @type {() => void} */ (() => {}))
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const isActiveRef = useRef(false)
@@ -1325,6 +1331,9 @@ export default function LoungePostStreamVideo({
   }, [attachStream, poster, id, streamAttachKey])
 
   const finalizeHeroClose = useCallback(() => {
+    heroShrinkAnimRef.current?.cancel()
+    heroShrinkAnimRef.current = null
+    heroShrinkTileRectRef.current = null
     clearHeroFrameShield(videoFlyoutRef.current)
     heroFrameShieldRef.current = null
     heroTapSnapshotRef.current = null
@@ -1364,10 +1373,20 @@ export default function LoungePostStreamVideo({
     finalizeHeroClose()
   }, [attachStream, feedAutoplayEnabled, finalizeHeroClose, lazyStream])
 
+  finishHeroCloseAnimationRef.current = finishHeroCloseAnimation
+
+  const reportHeroShrinkDebug = useCallback(
+    (detail) => {
+      if (!videoDebugEnabled || !feedAutoplayClientId) return
+      reportLoungeVideoDebugEvent(feedAutoplayClientId, 'hero', detail)
+    },
+    [feedAutoplayClientId, videoDebugEnabled],
+  )
+
   const closeLightbox = useCallback(() => {
     if (!lightboxOpenRef.current) return
     const slot = heroInlineSlotRef.current
-    const back = slot
+    const measuredBack = slot
       ? readHeroMediaViewportRect(
           slot,
           videoFlyoutRef.current,
@@ -1376,17 +1395,27 @@ export default function LoungePostStreamVideo({
           displayH,
         )
       : null
+    const back = heroRectUsableForShrinkBack(measuredBack)
+      ? measuredBack
+      : heroFromRectRef.current
     if (!heroRectUsableForShrinkBack(back) || !heroTargetRectRef.current) {
+      reportHeroShrinkDebug(
+        `shrink skip instant close measuredOk=${Boolean(measuredBack && heroRectUsableForShrinkBack(measuredBack))} fromFallback=${Boolean(heroFromRectRef.current)} target=${Boolean(heroTargetRectRef.current)}`,
+      )
       finishHeroCloseAnimation()
       return
     }
+    heroShrinkTileRectRef.current = back
+    reportHeroShrinkDebug(
+      `shrink arm tile=${Math.round(back.width)}x${Math.round(back.height)}@${Math.round(back.left)},${Math.round(back.top)}`,
+    )
     setHeroShrinkDomActive(true)
     setHeroTransitionArmed(false)
     setHeroPhase('closing')
     setHeroChromeVisible(false)
     setHeroBackdropArmed(true)
     setHeroLayout(back)
-  }, [displayW, displayH, finishHeroCloseAnimation])
+  }, [displayW, displayH, finishHeroCloseAnimation, reportHeroShrinkDebug])
 
   const toggleHeroVideoPlayPause = useCallback(() => {
     const v = videoRef.current
@@ -1670,18 +1699,22 @@ export default function LoungePostStreamVideo({
     }
   }, [lightboxOpen, heroPhase])
 
-  /** Hero close: DOM-driven FLIP shrink back to feed tile (reverse of expand). */
+  /** Hero close: WAAPI shrink back to feed tile (immune to React style re-renders clearing CSS transitions). */
   useLayoutEffect(() => {
     if (!lightboxOpen || heroPhase !== 'closing' || !heroShrinkDomActive) return undefined
 
     const flyout = videoFlyoutRef.current
     const heroFrame = heroTargetRectRef.current
-    const tileFrame = heroLayout
+    const tileFrame = heroShrinkTileRectRef.current
     if (!flyout || !heroFrame || !tileFrame) {
-      finishHeroCloseAnimation()
+      reportHeroShrinkDebug(
+        `shrink abort missing flyout=${Boolean(flyout)} hero=${Boolean(heroFrame)} tile=${Boolean(tileFrame)}`,
+      )
+      finishHeroCloseAnimationRef.current()
       return undefined
     }
 
+    heroShrinkAnimRef.current?.cancel()
     clearFlyoutHeroMotionStyles(flyout)
     flyout.style.position = 'fixed'
     flyout.style.top = `${tileFrame.top}px`
@@ -1692,43 +1725,50 @@ export default function LoungePostStreamVideo({
     flyout.style.transformOrigin = '0 0'
     flyout.style.transition = 'none'
     flyout.style.borderRadius = '12px'
-    flyout.style.transform = computeHeroShrinkTransform(heroFrame, tileFrame)
+
+    const fromTransform = computeHeroShrinkTransform(heroFrame, tileFrame)
+    flyout.style.transform = fromTransform
+    void flyout.offsetWidth
 
     let cancelled = false
     let fallbackTid = 0
-    let raf2 = 0
 
-    const finishDomShrink = () => {
+    const finishDomShrink = (reason) => {
       if (cancelled || heroPhaseRef.current !== 'closing') return
       cancelled = true
-      finishHeroCloseAnimation()
+      reportHeroShrinkDebug(`shrink done ${reason}`)
+      finishHeroCloseAnimationRef.current()
     }
 
-    const onTransitionEnd = (e) => {
-      if (e.target !== flyout || e.propertyName !== 'transform') return
-      flyout.removeEventListener('transitionend', onTransitionEnd)
-      window.clearTimeout(fallbackTid)
-      finishDomShrink()
-    }
+    const anim = flyout.animate(
+      [
+        { transform: fromTransform, borderRadius: '12px' },
+        { transform: 'none', borderRadius: '12px' },
+      ],
+      {
+        duration: HERO_SHRINK_MS,
+        easing: HERO_MOTION_CURVE,
+        fill: 'forwards',
+      },
+    )
+    heroShrinkAnimRef.current = anim
+    reportHeroShrinkDebug(`shrink waapi play ${HERO_SHRINK_MS}ms`)
 
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        if (cancelled || heroPhaseRef.current !== 'closing') return
-        flyout.style.transition = `transform ${HERO_SHRINK_TRANSITION}, border-radius ${HERO_SHRINK_TRANSITION}`
-        flyout.style.transform = 'none'
-        flyout.addEventListener('transitionend', onTransitionEnd)
-        fallbackTid = window.setTimeout(finishDomShrink, HERO_SHRINK_MS + 96)
-      })
-    })
+    anim.onfinish = () => finishDomShrink('waapi')
+    anim.oncancel = () => {
+      if (!cancelled) reportHeroShrinkDebug('shrink waapi cancelled')
+    }
+    fallbackTid = window.setTimeout(() => finishDomShrink('timeout'), HERO_SHRINK_MS + 120)
 
     return () => {
       cancelled = true
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
       window.clearTimeout(fallbackTid)
-      flyout.removeEventListener('transitionend', onTransitionEnd)
+      if (heroShrinkAnimRef.current === anim) {
+        anim.cancel()
+        heroShrinkAnimRef.current = null
+      }
     }
-  }, [lightboxOpen, heroPhase, heroShrinkDomActive, heroLayout, finishHeroCloseAnimation])
+  }, [lightboxOpen, heroPhase, heroShrinkDomActive, reportHeroShrinkDebug])
 
   /** iOS sometimes skips `transitionend` on transform — ensure chrome still appears after land. */
   useEffect(() => {

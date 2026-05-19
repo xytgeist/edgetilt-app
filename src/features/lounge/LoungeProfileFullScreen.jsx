@@ -15,7 +15,7 @@ import {
 import { normalizeProfileLocation } from '../profiles/profileLocation.js'
 import ProfileLocationPicker from '../profiles/ProfileLocationPicker.jsx'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
-import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
+import { collectLoungePostInteractionHydrateIds, feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
@@ -702,8 +702,8 @@ export default function LoungeProfileFullScreen({
         const hydrated = await hydratePosts(sorted)
         if (!cancelled) setInteractionPosts(hydrated || [])
         const refreshFn = postCardProps?.refreshPostInteractions
-        if (!cancelled && typeof refreshFn === 'function' && orderedIds.length > 0) {
-          void refreshFn(orderedIds)
+        if (!cancelled && typeof refreshFn === 'function' && hydrated?.length) {
+          void refreshFn([...collectLoungePostInteractionHydrateIds(hydrated)])
         }
       } catch (e) {
         if (!cancelled) {

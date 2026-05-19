@@ -155,7 +155,7 @@ export function LoungeFeedInlineSoundResetBinder({ resetRef }) {
 const EMPTY_AUTOPLAY_SNAPSHOT = Object.freeze({ winnerId: null, stageIds: Object.freeze([]) })
 
 /**
- * Single-feed autoplay: mid-scroll winner plays; staged neighbors in the prefetch band attach HLS paused.
+ * Single-feed autoplay: mid-scroll winner plays inline HLS (one decoder; IO prefetch margin only).
  * @param {string | null | undefined} clientId stable id per feed row surface + asset (e.g. `${rowId}:${streamUid}`, `${rowId}:embed:${streamUid}`)
  * @param {() => HTMLElement | null} getContainerEl
  */

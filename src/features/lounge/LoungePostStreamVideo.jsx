@@ -220,12 +220,22 @@ function revealInlinePosterForHero(slot) {
   img.style.opacity = '1'
 }
 
+/** Keep poster under flyout (z-0) on hero tap — load-time z-[2] must not sit above the growing video. */
+function pinInlinePosterBehindFlyout(slot) {
+  if (!slot) return
+  const img = slot.querySelector('img')
+  if (!(img instanceof HTMLImageElement)) return
+  img.style.transition = 'none'
+  img.style.zIndex = '0'
+}
+
 function clearInlinePosterHeroStyles(slot) {
   if (!slot) return
   const img = slot.querySelector('img')
   if (!(img instanceof HTMLImageElement)) return
   img.style.transition = ''
   img.style.opacity = ''
+  img.style.zIndex = ''
 }
 
 /** object-contain draw for canvas frame shield (matches flyout `<video>`). */
@@ -673,7 +683,6 @@ export default function LoungePostStreamVideo({
   const {
     coordinatorActive,
     isWinner,
-    isStaged,
     feedAutoplayEnabled,
     scheduleRecompute,
     feedInlineSoundUnmuted,
@@ -693,7 +702,7 @@ export default function LoungePostStreamVideo({
   const attachStream = heroExpanded
     ? Boolean(id)
     : lazyStream
-      ? feedAutoplayEnabled && (coordinatorActive ? isWinner || isStaged : streamInView)
+      ? feedAutoplayEnabled && (coordinatorActive ? isWinner : streamInView)
       : true
 
   useEffect(() => {
@@ -1008,6 +1017,7 @@ export default function LoungePostStreamVideo({
     }
     if (tapShowVideo) setStreamFadeShowVideo(true)
 
+    pinInlinePosterBehindFlyout(slot)
     /** Card-hole poster only when inline was still on poster — flyout grows immediately like X. */
     if (!tapShowVideo) revealInlinePosterForHero(slot)
 
@@ -1469,77 +1479,19 @@ export default function LoungePostStreamVideo({
     feedAutoplayEnabled,
   ])
 
-  /** Staged (non-winner) feed tiles: muted buffer prime so poster crossfade + hero open hit decoded frames. */
-  useEffect(() => {
-    if (!lazyStream || !attachStream || !coordinatorActive || !isStaged || isWinner) return undefined
-    if (lightboxOpenRef.current) return undefined
-    const v = videoRef.current
-    if (!v) return undefined
-    let cleaned = false
-    let pauseTimer = 0
-    const pauseIfStillStaged = () => {
-      if (cleaned || lightboxOpenRef.current || isWinnerRef.current) return
-      try {
-        v.pause()
-      } catch {
-        // ignore
-      }
-    }
-    const prime = () => {
-      if (cleaned || lightboxOpenRef.current || isWinnerRef.current) return
-      try {
-        v.muted = true
-        const p = v.play()
-        if (p && typeof p.catch === 'function') p.catch(() => {})
-      } catch {
-        // ignore
-      }
-    }
-    const schedulePauseAfterPrime = () => {
-      window.clearTimeout(pauseTimer)
-      pauseTimer = window.setTimeout(pauseIfStillStaged, 120)
-    }
-    const onBuffered = () => {
-      if (cleaned) return
-      prime()
-      schedulePauseAfterPrime()
-    }
-    v.addEventListener('loadeddata', onBuffered)
-    v.addEventListener('canplay', onBuffered)
-    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      onBuffered()
-    } else {
-      prime()
-    }
-    return () => {
-      cleaned = true
-      window.clearTimeout(pauseTimer)
-      v.removeEventListener('loadeddata', onBuffered)
-      v.removeEventListener('canplay', onBuffered)
-    }
-  }, [
-    lazyStream,
-    attachStream,
-    coordinatorActive,
-    isStaged,
-    isWinner,
-    streamAttachKey,
-    lightboxOpen,
-  ])
-
   /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
   useEffect(() => {
     if (!coordinatorActive || !lazyStream) return
     if (lightboxOpenRef.current) return
     const v = videoRef.current
     if (!v) return
-    if (isWinner || isStaged) return
+    if (isWinner) return
     try {
       v.pause()
     } catch {
       // ignore
     }
-  }, [coordinatorActive, lazyStream, isWinner, isStaged, lightboxOpen])
+  }, [coordinatorActive, lazyStream, isWinner, lightboxOpen])
 
   const onInlineStreamError = useCallback(() => {
     if (recoveryBurstRef.current < 2) {

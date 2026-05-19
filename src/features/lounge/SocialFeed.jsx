@@ -11,6 +11,7 @@ import {
   uploadProfileAvatar,
 } from '../profiles/profileGate'
 import {
+  collectLoungePostInteractionHydrateIds,
   communityFeedPlainRepostInsertPayload,
   communityFeedCommentRepostInsertPayload,
   deleteLoungeFeedStreamPosterFromPublicUrl,
@@ -2518,28 +2519,24 @@ export default function SocialFeed({
     [composerUserId, defaultInteraction, patchPostAggregate, supabaseClient]
   )
 
-  const feedPostIdsKey = useMemo(
-    () =>
-      communityPosts
-        .map((p) => p?.id)
-        .filter(Boolean)
-        .join(','),
-    [communityPosts]
-  )
+  const feedInteractionHydrateIdsKey = useMemo(() => {
+    const ids = collectLoungePostInteractionHydrateIds(communityPosts)
+    for (const id of collectLoungePostInteractionHydrateIds(profileModalPosts)) ids.add(id)
+    return [...ids].sort().join(',')
+  }, [communityPosts, profileModalPosts])
 
   // Comment IDs that appear as plain comment-repost cards in the feed — need separate interaction hydration.
-  const feedCommentRepostIdsKey = useMemo(
-    () =>
-      communityPosts
-        .map((p) => p?.repost_of_comment_id)
-        .filter(Boolean)
-        .join(','),
-    [communityPosts]
-  )
+  const feedCommentRepostIdsKey = useMemo(() => {
+    const ids = new Set()
+    for (const p of [...communityPosts, ...profileModalPosts]) {
+      if (p?.repost_of_comment_id) ids.add(String(p.repost_of_comment_id))
+    }
+    return [...ids].sort().join(',')
+  }, [communityPosts, profileModalPosts])
 
   useEffect(() => {
     if (!composerUserId || loungeReadOnly) return
-    const ids = feedPostIdsKey ? feedPostIdsKey.split(',').filter(Boolean) : []
+    const ids = feedInteractionHydrateIdsKey ? feedInteractionHydrateIdsKey.split(',').filter(Boolean) : []
     if (ids.length === 0) return
     let cancelled = false
     ;(async () => {
@@ -2571,7 +2568,7 @@ export default function SocialFeed({
     return () => {
       cancelled = true
     }
-  }, [composerUserId, loungeReadOnly, feedPostIdsKey, refreshLoungePostInteractions, supabaseClient])
+  }, [composerUserId, loungeReadOnly, feedInteractionHydrateIdsKey, refreshLoungePostInteractions, supabaseClient])
 
   const interactionStateFor = useCallback(
     (postId) => interactionByPost[postId] || defaultInteraction,

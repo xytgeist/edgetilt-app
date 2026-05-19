@@ -68,7 +68,7 @@ export default function AppShell({
   hasActiveSubscription = false,
   isStaff = false
 }) {
-  const COMMUNITY_FEED_PAGE_SIZE = 40
+  const COMMUNITY_FEED_PAGE_SIZE = 28
   const [tab, setTab] = useState('home')
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])

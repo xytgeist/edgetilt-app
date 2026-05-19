@@ -1,10 +1,6 @@
 /** Match `LAZY_ATTACH_ROOT_MARGIN` in `LoungePostStreamVideo.jsx` (expanded intersection for prefetch). */
 const SCROLL_ROOT_PAD_TOP = 180
 const SCROLL_ROOT_PAD_BOTTOM = 240
-/** Stage HLS on every tile in this band (not only the mid-scroll winner). Bottom ≈ one viewport so a fresh infinite-scroll page warms ahead of scroll. */
-const STAGE_PAD_TOP = SCROLL_ROOT_PAD_TOP
-/** Safety cap — feed tiles use conservative ABR; typical band is well under this. */
-const MAX_STAGED_TILES = 24
 /** Ignore sliver tiles (e.g. previous page peeking at top) so load-more rows can win mid-scroll. */
 const MIN_CANDIDATE_VISIBLE_PX = 48
 
@@ -19,18 +15,11 @@ function candidateVisiblePx(rect, rootTop, rootBottom, vh) {
   return Math.max(0, visBottom - visTop)
 }
 
-function stageIdsEqual(a, b) {
-  if (a === b) return true
-  if (a.length !== b.length) return false
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i] !== b[i]) return false
-  }
-  return true
-}
-
 /**
- * External store for mid-scroll Stream winner + staged prefetch tiles (no React state inside recompute).
+ * External store for mid-scroll Stream winner (no React state inside recompute).
  * Scroll root is wired later via `setScrollRootRef` so the factory needs no ref during React render.
+ *
+ * Perf: one HLS attach on the winner only — no multi-tile staging band (was up to 24 paused decoders).
  */
 export function createAutoplayStore() {
   /** @type {Map<string, () => HTMLElement | null>} */
@@ -61,31 +50,15 @@ export function createAutoplayStore() {
     const rootTop = rootRect?.top ?? 0
     const rootBottom = rootRect ? rootRect.bottom : typeof window !== 'undefined' ? window.innerHeight : 800
     const vh = typeof window !== 'undefined' ? window.innerHeight : rootBottom
-    const stagePadBottom = Math.max(SCROLL_ROOT_PAD_BOTTOM, vh)
 
     /** @type {{ id: string, centerY: number, top: number, bottom: number, visiblePx: number }[]} */
     const candidates = []
-    /** @type {{ id: string, centerY: number, dist: number }[]} */
-    const stageEntries = []
 
     for (const [id, getEl] of entries) {
       const el = getEl()
       if (!el) continue
       const rect = el.getBoundingClientRect()
       if (rect.width < 2 || rect.height < 2) continue
-
-      const inStageBand =
-        rect.bottom > rootTop - STAGE_PAD_TOP && rect.top < rootBottom + stagePadBottom
-      if (inStageBand) {
-        const belowViewport = rect.top >= vh
-        const visiblePx = candidateVisiblePx(rect, rootTop, rootBottom, vh)
-        const stageOk =
-          belowViewport || visiblePx >= MIN_CANDIDATE_VISIBLE_PX || (rect.bottom > 0 && rect.top < vh)
-        if (stageOk) {
-          const centerY = (rect.top + rect.bottom) / 2
-          stageEntries.push({ id, centerY, dist: Math.abs(centerY - midY) })
-        }
-      }
 
       const intersectsRootLoose =
         rect.bottom > rootTop - SCROLL_ROOT_PAD_TOP && rect.top < rootBottom + SCROLL_ROOT_PAD_BOTTOM
@@ -135,21 +108,14 @@ export function createAutoplayStore() {
       }
     }
 
-    stageEntries.sort((a, b) => a.dist - b.dist)
-    const nextStageIds =
-      stageEntries.length > 0
-        ? Object.freeze(stageEntries.slice(0, MAX_STAGED_TILES).map((s) => s.id))
-        : EMPTY_STAGE_IDS
-
     const candidateIds = new Set(candidates.map((c) => c.id))
     const prevWinnerStale = Boolean(snapshot.winnerId && !candidateIds.has(snapshot.winnerId))
     const winnerChanged = nextWinner !== snapshot.winnerId
-    const stageChanged = !stageIdsEqual(nextStageIds, snapshot.stageIds)
 
-    if (winnerChanged || stageChanged || prevWinnerStale) {
+    if (winnerChanged || prevWinnerStale) {
       snapshot = Object.freeze({
         winnerId: nextWinner,
-        stageIds: nextStageIds,
+        stageIds: EMPTY_STAGE_IDS,
       })
       emit()
     }

@@ -11,6 +11,24 @@ export function feedPostDisplayCaption(row) {
 }
 
 /**
+ * Post IDs whose like/repost/bookmark state must be hydrated for feed/profile cards.
+ * Plain repost rows show "You reposted" on the repost card but `LoungePostArticle` binds
+ * the interaction bar to the embedded original (`displayPost`), so include those IDs too.
+ */
+export function collectLoungePostInteractionHydrateIds(posts) {
+  const ids = new Set()
+  if (!Array.isArray(posts)) return ids
+  for (const p of posts) {
+    if (p?.id) ids.add(String(p.id))
+    if (p?.is_plain_repost === true) {
+      const origId = p.reposted_post?.id ?? p.repost_of_post_id
+      if (origId) ids.add(String(origId))
+    }
+  }
+  return ids
+}
+
+/**
  * Total engagement for ordering / discovery: likes + comments + reposts on a hydrated feed row.
  */
 export function loungePostInteractionScore(row) {

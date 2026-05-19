@@ -123,8 +123,8 @@ function computeHeroTargetRect(fromRect) {
   return { top, left, width: w, height: h }
 }
 
-/** FLIP invert: flyout laid out at `toRect`; transform makes it match `fromRect`. */
-function computeHeroFlipTransform(fromRect, toRect) {
+/** Closing FLIP invert: laid out at `toRect`, transform makes it match `fromRect`. */
+function computeHeroShrinkTransform(fromRect, toRect) {
   const scaleX = fromRect.width / toRect.width
   const scaleY = fromRect.height / toRect.height
   const translateX = fromRect.left - toRect.left
@@ -132,18 +132,27 @@ function computeHeroFlipTransform(fromRect, toRect) {
   return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
 }
 
-/** Imperative snap before React paint — flyout on body at hero target with FLIP invert (no transition). */
-function snapFlyoutToHeroOpen(flyout, host, fromRect, toRect) {
-  if (!flyout || !host || !fromRect || !toRect) return
+/** Opening FLIP: laid out at tile `fromRect`, transform grows toward hero `toRect`. */
+function computeHeroExpandTransform(fromRect, toRect) {
+  const scaleX = toRect.width / fromRect.width
+  const scaleY = toRect.height / fromRect.height
+  const translateX = toRect.left - fromRect.left
+  const translateY = toRect.top - fromRect.top
+  return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
+}
+
+/** Imperative snap before React paint — flyout on body at feed tile size (transform identity). */
+function snapFlyoutToHeroTile(flyout, host, fromRect) {
+  if (!flyout || !host || !fromRect) return
   if (flyout.parentElement !== host) host.appendChild(flyout)
   flyout.style.position = 'fixed'
-  flyout.style.top = `${toRect.top}px`
-  flyout.style.left = `${toRect.left}px`
-  flyout.style.width = `${toRect.width}px`
-  flyout.style.height = `${toRect.height}px`
+  flyout.style.top = `${fromRect.top}px`
+  flyout.style.left = `${fromRect.left}px`
+  flyout.style.width = `${fromRect.width}px`
+  flyout.style.height = `${fromRect.height}px`
   flyout.style.zIndex = '101'
   flyout.style.transformOrigin = '0 0'
-  flyout.style.transform = computeHeroFlipTransform(fromRect, toRect)
+  flyout.style.transform = 'none'
   flyout.style.transition = 'none'
   flyout.style.borderRadius = '12px'
   flyout.style.willChange = 'transform'
@@ -840,8 +849,8 @@ export default function LoungePostStreamVideo({
     /** Card-hole poster only — flyout (same `<video>`) snaps + grows immediately like X. */
     revealInlinePosterForHero(slot)
     const host = ensureHeroBodyHost()
-    snapFlyoutToHeroOpen(flyout, host, from, target)
-    setHeroLayout(target)
+    snapFlyoutToHeroTile(flyout, host, from)
+    setHeroLayout(from)
     setHeroPhase('opening')
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
@@ -1033,6 +1042,7 @@ export default function LoungePostStreamVideo({
     if (heroPhase !== 'opening' || heroChromeVisible) return undefined
     const tid = window.setTimeout(() => {
       if (heroPhaseRef.current !== 'opening') return
+      if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
       setHeroPhase('open')
       setHeroChromeVisible(true)
     }, HERO_EXPAND_MS + 96)
@@ -1046,6 +1056,7 @@ export default function LoungePostStreamVideo({
       if (e.target !== flyout || e.propertyName !== 'transform') return
       const phase = heroPhaseRef.current
       if (phase === 'opening') {
+        if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
         setHeroPhase('open')
         requestAnimationFrame(() => setHeroChromeVisible(true))
       }
@@ -1320,12 +1331,12 @@ export default function LoungePostStreamVideo({
     ? `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
     : 'none'
   let heroFlipTransform = 'none'
-  if (heroExpanded && heroLayout && !heroTransitionArmed) {
-    if (heroPhase === 'opening' && heroFromRectRef.current) {
-      heroFlipTransform = computeHeroFlipTransform(heroFromRectRef.current, heroLayout)
-    } else if (heroPhase === 'closing' && heroTargetRectRef.current) {
-      heroFlipTransform = computeHeroFlipTransform(heroTargetRectRef.current, heroLayout)
+  if (heroExpanded && heroLayout && heroTransitionArmed) {
+    if (heroPhase === 'opening' && heroFromRectRef.current && heroTargetRectRef.current) {
+      heroFlipTransform = computeHeroExpandTransform(heroFromRectRef.current, heroTargetRectRef.current)
     }
+  } else if (heroExpanded && heroLayout && !heroTransitionArmed && heroPhase === 'closing' && heroTargetRectRef.current) {
+    heroFlipTransform = computeHeroShrinkTransform(heroTargetRectRef.current, heroLayout)
   }
   const heroFlyoutStyle =
     heroExpanded && heroLayout

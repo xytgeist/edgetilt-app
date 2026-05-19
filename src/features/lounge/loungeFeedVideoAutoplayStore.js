@@ -17,7 +17,11 @@ export const LOUNGE_VIDEO_FLINGER_IDLE_MS = 120
 /** Only tiles near the scroll port participate in active/ring (mounted feed keeps every Stream row). */
 export const LOUNGE_VIDEO_COORDINATOR_VIEWPORT_MARGIN_RATIO = 1.5
 /** Recompute while idle so deep-feed stalls self-heal without opening hero. */
-export const LOUNGE_VIDEO_COORDINATOR_IDLE_WATCHDOG_MS = 600
+export const LOUNGE_VIDEO_COORDINATOR_IDLE_WATCHDOG_MS = 1200
+/** Min center distance advantage before idle handoff (reduces active flip-flop). */
+export const LOUNGE_VIDEO_IDLE_HANDOFF_CENTER_GAP_PX = 24
+/** Ignore tiny ratio deltas on ring tiles — cuts scroll-time React churn. */
+export const LOUNGE_VIDEO_RATIO_EMIT_EPSILON = 0.022
 
 const EMPTY_RING = Object.freeze([])
 const EMPTY_RATIOS = Object.freeze({})
@@ -89,6 +93,7 @@ export function createAutoplayStore() {
   let lastScrollTop = 0
   /** @type {1 | -1 | 0} */
   let scrollDirection = 0
+  let lastScrollRecomputeMs = 0
   /** @type {ReturnType<typeof setTimeout> | null} */
   let flingerIdleTimer = null
   /** @type {ReturnType<typeof setTimeout> | null} */
@@ -364,10 +369,24 @@ export function createAutoplayStore() {
       return next
     }
 
-    return bestCenter
+    return bestDist + LOUNGE_VIDEO_IDLE_HANDOFF_CENTER_GAP_PX < incDist ? bestCenter : next
   }
 
-  const armIdleWatchdog = () => {
+  const needsIdleWatchdog = (orderedIds, ratios, active) => {
+    if (!orderedIds.length) return false
+    if (!active) return orderedIds.some((id) => (ratios[id] ?? 0) > 0)
+    if ((ratios[active] ?? 0) > 0) return false
+    return orderedIds.some((id) => (ratios[id] ?? 0) > 0)
+  }
+
+  const armIdleWatchdog = (orderedIds, ratios, active) => {
+    if (!needsIdleWatchdog(orderedIds, ratios, active)) {
+      if (idleWatchdogTimer) {
+        window.clearTimeout(idleWatchdogTimer)
+        idleWatchdogTimer = null
+      }
+      return
+    }
     if (idleWatchdogTimer) window.clearTimeout(idleWatchdogTimer)
     idleWatchdogTimer = window.setTimeout(() => {
       idleWatchdogTimer = null
@@ -463,13 +482,17 @@ export function createAutoplayStore() {
       nextSnapshot.ringIds.some((id, i) => id !== snapshot.ringIds[i])
 
     const ratioIds = new Set([...Object.keys(snapshot.tileRatios), ...Object.keys(ratios)])
+    const ratioEmitIds = new Set(
+      [nextActive, snapshot.activeId, ...ringIds, ...snapshot.ringIds].filter(Boolean),
+    )
     let ratiosChanged = false
     let soundBandCrossed = false
     const activeForSound = nextActive ?? snapshot.activeId
     for (const id of ratioIds) {
+      if (!ratioEmitIds.has(id)) continue
       const prev = snapshot.tileRatios[id] ?? 0
       const next = ratios[id] ?? 0
-      if (Math.abs(prev - next) > 0.004) ratiosChanged = true
+      if (Math.abs(prev - next) > LOUNGE_VIDEO_RATIO_EMIT_EPSILON) ratiosChanged = true
       if (id === activeForSound) {
         const wasOn = prev >= LOUNGE_VIDEO_SOUND_ON_RATIO
         const wasOff = prev <= LOUNGE_VIDEO_SOUND_OFF_RATIO
@@ -491,7 +514,7 @@ export function createAutoplayStore() {
     const orderedIds = buildOrderedIds(rootEl)
     const { ratios, centerYs } = computeTileMetrics(rootEl, orderedIds)
     publish(orderedIds, ratios, centerYs, rootEl)
-    armIdleWatchdog()
+    armIdleWatchdog(orderedIds, ratios, activeId)
   }
 
   const schedule = () => {
@@ -515,9 +538,13 @@ export function createAutoplayStore() {
       flingerIdleTimer = window.setTimeout(() => {
         flingerIdleTimer = null
         flingerMode = false
+        lastScrollRecomputeMs = 0
         schedule()
       }, LOUNGE_VIDEO_FLINGER_IDLE_MS)
     }
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    if (flingerMode && now - lastScrollRecomputeMs < 50) return
+    lastScrollRecomputeMs = now
     schedule()
   }
 

@@ -964,15 +964,13 @@ export default function LoungePostStreamVideo({
 
     v.addEventListener('loadeddata', nudge)
     v.addEventListener('canplay', nudge)
-    v.addEventListener('playing', nudge)
-    const tid = window.setInterval(nudge, 450)
+    const tid = window.setTimeout(nudge, 900)
     queueMicrotask(nudge)
     return () => {
       cancelled = true
-      window.clearInterval(tid)
+      window.clearTimeout(tid)
       v.removeEventListener('loadeddata', nudge)
       v.removeEventListener('canplay', nudge)
-      v.removeEventListener('playing', nudge)
     }
   }, [
     attachStream,
@@ -1566,7 +1564,7 @@ export default function LoungePostStreamVideo({
     finalizeHeroClose,
   ])
 
-  /** Coordinated: poke store on visibility changes. Non-coordinated: IO attach/play. */
+  /** Coordinated: track in-view locally. Scroll root drives coordinator recompute (avoid per-tile IO storms). */
   useEffect(() => {
     const wrap = containerRef.current
     const v = videoRef.current
@@ -1580,13 +1578,12 @@ export default function LoungePostStreamVideo({
         const e = entries[0]
         const ratio = typeof e?.intersectionRatio === 'number' ? e.intersectionRatio : 0
         inViewRef.current = Boolean(e?.isIntersecting && ratio > 0)
-        scheduleRecompute()
       }
       let io
       try {
-        io = new IntersectionObserver(applyIo, { root, rootMargin: '0px', threshold: thresholds })
+        io = new IntersectionObserver(applyIo, { root, rootMargin: '0px', threshold: [0, 0.5, 1] })
       } catch {
-        io = new IntersectionObserver(applyIo, { root: null, rootMargin: '0px', threshold: thresholds })
+        io = new IntersectionObserver(applyIo, { root: null, rootMargin: '0px', threshold: [0, 0.5, 1] })
       }
       io.observe(wrap)
       return () => io.disconnect()
@@ -1642,7 +1639,6 @@ export default function LoungePostStreamVideo({
     streamAttachKey,
     localStripSoundUnmuted,
     feedAutoplayEnabled,
-    scheduleRecompute,
   ])
 
   /** After lazy HLS attach, start playback once media is ready — active tile only (never prefetch ring). */

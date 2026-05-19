@@ -280,6 +280,7 @@ export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
     forceFeedAutoplayActive: ctx?.forceFeedAutoplayActive ?? (() => {}),
     enterFeedHeroLock: ctx?.enterFeedHeroLock ?? (() => {}),
     exitFeedHeroLock: ctx?.exitFeedHeroLock ?? (() => {}),
+    releaseStalledActive: ctx?.store?.releaseStalledActive ?? (() => {}),
     /** @deprecated use isActive */
     isWinner: isActive,
     /** @deprecated unused */

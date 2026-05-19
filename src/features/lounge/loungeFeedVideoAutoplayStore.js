@@ -372,15 +372,11 @@ export function createAutoplayStore() {
     return bestDist + LOUNGE_VIDEO_IDLE_HANDOFF_CENTER_GAP_PX < incDist ? bestCenter : next
   }
 
-  const needsIdleWatchdog = (orderedIds, ratios, active) => {
-    if (!orderedIds.length) return false
-    if (!active) return orderedIds.some((id) => (ratios[id] ?? 0) > 0)
-    if ((ratios[active] ?? 0) > 0) return false
-    return orderedIds.some((id) => (ratios[id] ?? 0) > 0)
-  }
+  const needsIdleWatchdog = (orderedIds, ratios) =>
+    orderedIds.some((id) => (ratios[id] ?? 0) > 0)
 
-  const armIdleWatchdog = (orderedIds, ratios, active) => {
-    if (!needsIdleWatchdog(orderedIds, ratios, active)) {
+  const armIdleWatchdog = (orderedIds, ratios) => {
+    if (!needsIdleWatchdog(orderedIds, ratios)) {
       if (idleWatchdogTimer) {
         window.clearTimeout(idleWatchdogTimer)
         idleWatchdogTimer = null
@@ -514,7 +510,7 @@ export function createAutoplayStore() {
     const orderedIds = buildOrderedIds(rootEl)
     const { ratios, centerYs } = computeTileMetrics(rootEl, orderedIds)
     publish(orderedIds, ratios, centerYs, rootEl)
-    armIdleWatchdog(orderedIds, ratios, activeId)
+    armIdleWatchdog(orderedIds, ratios)
   }
 
   const schedule = () => {
@@ -610,6 +606,12 @@ export function createAutoplayStore() {
         window.clearTimeout(flingerIdleTimer)
         flingerIdleTimer = null
       }
+      schedule()
+    },
+    /** Active tile has HLS but stayed paused — clear incumbent so handoff can pick a fresh winner. */
+    releaseStalledActive(id) {
+      if (!id || activeId !== id) return
+      activeId = null
       schedule()
     },
     /** Post detail / overlay: freeze handoff and shrink ring (feed stays mounted). */

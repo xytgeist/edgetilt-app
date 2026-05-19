@@ -743,6 +743,7 @@ export default function LoungePostStreamVideo({
     forceFeedAutoplayActive,
     enterFeedHeroLock,
     exitFeedHeroLock,
+    releaseStalledActive,
   } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
   const videoDebugEnabled = useSyncExternalStore(
     subscribeLoungeFeedVideoDebugEnabled,
@@ -821,6 +822,26 @@ export default function LoungePostStreamVideo({
     prevCoordinatedActiveRef.current = Boolean(isActive)
   }, [coordinatedInlineSound, isActive])
 
+  /** Feed-wide sound bands: unmute/mute while already playing (not on play() — iOS handoff). */
+  useEffect(() => {
+    if (!coordinatedInlineSound || !isActive || lightboxOpen) return
+    const v = videoRef.current
+    if (!v || v.paused) return
+    try {
+      v.muted = computeCoordinatedSoundMuted()
+    } catch {
+      // ignore
+    }
+  }, [
+    coordinatedInlineSound,
+    isActive,
+    tileRatio,
+    lightboxOpen,
+    computeCoordinatedSoundMuted,
+    feedInlineSoundUnmuted,
+    feedInlineSoundExplicitlyMuted,
+  ])
+
   /** Body mount for hero expand only — created lazily on open, removed on close (not one per feed tile). */
   const ensureHeroBodyHost = useCallback(() => {
     if (heroBodyHostRef.current) return heroBodyHostRef.current
@@ -873,13 +894,10 @@ export default function LoungePostStreamVideo({
         reportLoungeVideoDebugEvent(feedAutoplayClientId, 'play', msg)
       }
     }
-    const wantAudible = coordinatedInlineSound
-      ? !computeCoordinatedSoundMuted()
-      : !localStripSoundUnmuted
     const applyAudibleAfterPlay = () => {
-      if (!v || v.paused) return
+      if (!v || v.paused || coordinatedInlineSound) return
       try {
-        v.muted = !wantAudible
+        v.muted = !localStripSoundUnmuted
       } catch {
         // ignore
       }
@@ -908,11 +926,11 @@ export default function LoungePostStreamVideo({
     }
   }, [
     anyStreamLightboxOpen,
-    computeCoordinatedSoundMuted,
     coordinatedInlineSound,
     coordinatorActive,
     feedAutoplayClientId,
     heroLocked,
+    lazyStream,
     localStripSoundUnmuted,
     scheduleRecompute,
     showOpen,
@@ -1050,6 +1068,53 @@ export default function LoungePostStreamVideo({
     lightboxOpen,
     tileRatio,
     tryCoordinatedInlinePlay,
+  ])
+
+  /** Active tile paused with media ready — retry play, then release incumbent (same heal as hero close). */
+  useEffect(() => {
+    if (!coordinatorActive || !feedAutoplayEnabled || !lazyStream || !isActive || !attachStream) {
+      return undefined
+    }
+    if (tileRatio <= 0 || lightboxOpen || heroLocked || !feedAutoplayClientId) return undefined
+
+    let stallTicks = 0
+    const tick = () => {
+      const v = videoRef.current
+      if (!isActiveRef.current || lightboxOpenRef.current) return
+      if (!v) return
+      if (!v.paused) {
+        stallTicks = 0
+        return
+      }
+      if (v.readyState < HTMLMediaElement.HAVE_METADATA) return
+      stallTicks += 1
+      if (stallTicks <= 2) {
+        tryCoordinatedInlinePlay()
+        return
+      }
+      stallTicks = 0
+      releaseStalledActive(feedAutoplayClientId)
+      if (videoDebugEnabled) {
+        reportLoungeVideoDebugEvent(feedAutoplayClientId, 'stall', 'released active after paused stall')
+      }
+    }
+
+    const intervalId = window.setInterval(tick, 900)
+    tick()
+    return () => window.clearInterval(intervalId)
+  }, [
+    attachStream,
+    coordinatorActive,
+    feedAutoplayClientId,
+    feedAutoplayEnabled,
+    heroLocked,
+    isActive,
+    lazyStream,
+    lightboxOpen,
+    releaseStalledActive,
+    tileRatio,
+    tryCoordinatedInlinePlay,
+    videoDebugEnabled,
   ])
 
   useEffect(() => {

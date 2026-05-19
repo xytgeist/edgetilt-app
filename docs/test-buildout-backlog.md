@@ -236,9 +236,9 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - Test validation: back-to-back two videos (**Post 1 of 2** → **Post 2 of 2**, both land); mixed stack video → text/image/GIF (fast lane immediate); DevTools — two **`lounge-cf-stream-tus-create`** + two tus lanes while job 1 active; profile Likes → open post → like without duplicate-key error.
   - Production replay: apply rate-limit migration if not on prod; N/A client-only otherwise.
 
-- [ ] Lounge **visibility-band feed video autoplay** (test — hero-first resource budget)
+- [x] Lounge **visibility-band feed video autoplay** (test — hero-first resource budget)
   - Change: **`loungeFeedVideoAutoplayStore.js`** — `{prev, active, next}` ring (max **3** HLS decoders), **centerline handoff** (challenger midpoint crosses scroll-column center) + clip fallbacks, flinger idle **200ms**, **`enterHeroLock`** / **`exitHeroLock`**, **`setCoordinatorSuspended`** when post detail open. **`LoungeFeedVideoAutoplayContext.jsx`** — feed-wide sound mode + visibility 60%/40% bands. **`LoungePostStreamVideo.jsx`** — ring attach/play FSM, hero opens with lock + sound on. **`SocialFeed.jsx`** — **`LoungeFeedCoordinatorSuspendBinder`**.
-  - Test validation: scroll — first-pixel muted play; handoff pauses (holds time); sound only after Tap for sound + 60% visible; hero expand → only hero decoder, flyout smooth; close hero → feed resumes; open post detail → feed ring suspended. Ryan sign-off **pending**.
+  - Test validation: scroll — first-pixel muted play; handoff pauses (holds time); sound only after Tap for sound + 60% visible; hero expand → only hero decoder, flyout smooth; close hero → feed resumes; open post detail → feed ring suspended. Ryan sign-off **good enough for now** on **test** @ **`dbd4fa1`** (2026-05-18).
 
 - [ ] Lounge **feed video perf diet** (test — after **`7dbbec7`** hero/staging work)
   - Change: **`loungeFeedVideoAutoplayStore.js`** — **winner-only** HLS (removed multi-tile staging band / play-pause prime on up to 24 neighbors). **`LoungePostStreamVideo.jsx`** — **`pinInlinePosterBehindFlyout`** on hero tap so poster stays **behind** flyout (not z-[2] above video). **`AppShell.jsx`** — **`COMMUNITY_FEED_PAGE_SIZE = 28`** (was 40).
@@ -293,6 +293,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - **Sign-off (composer + quote media + badge tips, 2026-05-18, Ryan):** Smoke **§12** items **PASSED** on **test**; badge tip stickiness addressed with document **pointerdown** + **Escape** dismiss on open tip.
   - **Sign-off (video submit queue + parallel prep, 2026-05-18, Ryan):** Smoke **§15** **PASSED** on **test** (`57eaca2`); async two-video test + DevTools two-mint/two-tus lanes; fast-lane mixed stack; profile likes re-like.
   - **Sign-off (Stream poster + dims, 2026-05-17, Ryan):** Extended checklist (session items **2–13**): all **PASSED** on **test**; SQL **`lounge_feed_post_stream_video.sql`** (including **`stream_poster_url`**, **`stream_video_width`**, **`stream_video_height`**) applied on the test Supabase project.
+  - **Sign-off (Lounge Stream autoplay + detail overlay, 2026-05-18, Ryan):** Feed handoff pause frame, profile Posts autoplay, comment/detail HLS + lightbox, background audio stop on post/comment detail open — **good enough for now** on **test** @ **`dbd4fa1`** (iPhone PWA).
   - Production replay: same ordered pass on production after deploy.
 
 - [ ] Final pre-prod gate

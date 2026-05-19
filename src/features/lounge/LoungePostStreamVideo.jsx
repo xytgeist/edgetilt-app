@@ -14,6 +14,15 @@ import {
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
+import {
+  readLoungeFeedVideoDebugEnabled,
+  subscribeLoungeFeedVideoDebugEnabled,
+} from '../../utils/loungeFeedVideoDebugPref.js'
+import {
+  readLoungeVideoElementDebug,
+  registerLoungeVideoDebugTile,
+  reportLoungeVideoDebugEvent,
+} from './loungeFeedVideoDebugRegistry.js'
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
 const videoClassByVariant = {
@@ -340,6 +349,7 @@ function pauseOtherLoungeStreamVideos(exceptVideo) {
  * @param {boolean} [opts.feedStyleAbr=false] conservative ABR for small tiles / composer
  * @param {React.MutableRefObject<number> | null} [opts.recoveryBurstRef] auto-reattach budget (shared with `<video onError>`)
  * @param {(() => void) | null} [opts.onAutoReattach] bump attachKey after built-in Hls recovery fails
+ * @param {((detail: string) => void) | null} [opts.onDebugHlsError] dev HUD: fatal HLS error detail
  */
 function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
   const {
@@ -347,6 +357,7 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
     feedStyleAbr = false,
     recoveryBurstRef = null,
     onAutoReattach = null,
+    onDebugHlsError = null,
   } = opts
 
   useEffect(() => {
@@ -417,6 +428,12 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
                 ref.current += 1
                 queueMicrotask(() => onAutoReattach())
                 return
+              }
+              if (onDebugHlsError) {
+                const detail = [data.type, data.details, data.response?.code]
+                  .filter((x) => x != null && x !== '')
+                  .join(' ')
+                onDebugHlsError(detail || 'fatal')
               }
             } catch {
               // ignore
@@ -555,6 +572,7 @@ export default function LoungePostStreamVideo({
   /** Hero session wants audible playback (restored from inline snapshot on open). */
   const heroWantsSoundRef = useRef(true)
   const recoveryBurstRef = useRef(0)
+  const lastPlayErrorRef = useRef('')
   /** Feed sound snapshot when hero opens (restored on close; same `<video>` keeps time). */
   const inlineFeedSoundSnapshotRef = useRef(
     /** @type {{ unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null} */ (null),
@@ -726,6 +744,11 @@ export default function LoungePostStreamVideo({
     enterFeedHeroLock,
     exitFeedHeroLock,
   } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
+  const videoDebugEnabled = useSyncExternalStore(
+    subscribeLoungeFeedVideoDebugEnabled,
+    readLoungeFeedVideoDebugEnabled,
+    () => false,
+  )
   const anyStreamLightboxOpen = useSyncExternalStore(
     subscribeLoungeStreamLightboxOpen,
     getLoungeStreamLightboxOpen,
@@ -826,16 +849,30 @@ export default function LoungePostStreamVideo({
     if (heroLocked && !lightboxOpenRef.current) return false
     if (coordinatorActive && !isActiveRef.current) return false
     if (coordinatorActive && tileRatio <= 0) return false
+    const reportPlayError = (err) => {
+      const msg =
+        err instanceof Error
+          ? `${err.name}: ${err.message || 'play failed'}`.trim()
+          : String(err || 'play failed')
+      lastPlayErrorRef.current = msg
+      if (videoDebugEnabled && feedAutoplayClientId) {
+        reportLoungeVideoDebugEvent(feedAutoplayClientId, 'play', msg)
+      }
+    }
     try {
       v.muted = coordinatedInlineSound ? computeCoordinatedSoundMuted() : !localStripSoundUnmuted
       const p = v.play()
       if (p && typeof p.catch === 'function') {
-        p.catch(() => {
+        p.catch((err) => {
+          reportPlayError(err)
           scheduleRecompute()
         })
+      } else {
+        lastPlayErrorRef.current = ''
       }
       return !v.paused
-    } catch {
+    } catch (err) {
+      reportPlayError(err)
       scheduleRecompute()
       return false
     }
@@ -844,11 +881,13 @@ export default function LoungePostStreamVideo({
     computeCoordinatedSoundMuted,
     coordinatedInlineSound,
     coordinatorActive,
+    feedAutoplayClientId,
     heroLocked,
     localStripSoundUnmuted,
     scheduleRecompute,
     showOpen,
     tileRatio,
+    videoDebugEnabled,
   ])
 
   useEffect(() => () => releaseHeroBodyHost(), [releaseHeroBodyHost])
@@ -1011,7 +1050,50 @@ export default function LoungePostStreamVideo({
     feedStyleAbr: feedStyleAbr,
     recoveryBurstRef,
     onAutoReattach: bumpStreamAttach,
+    onDebugHlsError:
+      videoDebugEnabled && feedAutoplayClientId
+        ? (detail) => reportLoungeVideoDebugEvent(feedAutoplayClientId, 'hls', detail)
+        : null,
   })
+
+  const getVideoDebugSnapshot = useCallback(
+    () => ({
+      streamUid: id,
+      variant,
+      isActive,
+      inRing,
+      tileRatio,
+      attachStream,
+      flingerMode,
+      heroLocked,
+      coordinatorActive,
+      feedAutoplayEnabled,
+      streamAttachKey,
+      showStreamRetry,
+      recoveryBurst: recoveryBurstRef.current,
+      lastPlayError: lastPlayErrorRef.current,
+      video: readLoungeVideoElementDebug(videoRef.current),
+    }),
+    [
+      attachStream,
+      coordinatorActive,
+      feedAutoplayEnabled,
+      flingerMode,
+      heroLocked,
+      id,
+      inRing,
+      isActive,
+      showStreamRetry,
+      streamAttachKey,
+      tileRatio,
+      variant,
+    ],
+  )
+
+  useLayoutEffect(() => {
+    if (!videoDebugEnabled || !feedAutoplayClientId) return undefined
+    return registerLoungeVideoDebugTile(feedAutoplayClientId, getVideoDebugSnapshot)
+  }, [videoDebugEnabled, feedAutoplayClientId, getVideoDebugSnapshot])
 
   /** Fade HLS over CF thumbnail once playing (all variants with poster frame; when not `attachStream`, keep video hidden). */
   useEffect(() => {
@@ -1775,6 +1857,15 @@ export default function LoungePostStreamVideo({
   ])
 
   const onInlineStreamError = useCallback(() => {
+    if (videoDebugEnabled && feedAutoplayClientId) {
+      const v = videoRef.current
+      const code = v?.error?.code
+      reportLoungeVideoDebugEvent(
+        feedAutoplayClientId,
+        'video',
+        code != null ? `media error code ${code}` : 'media element error',
+      )
+    }
     if (recoveryBurstRef.current < 2) {
       recoveryBurstRef.current += 1
       setShowStreamRetry(false)
@@ -1782,7 +1873,7 @@ export default function LoungePostStreamVideo({
       return
     }
     setShowStreamRetry(true)
-  }, [])
+  }, [feedAutoplayClientId, videoDebugEnabled])
 
   if (!id) return null
 
@@ -1897,6 +1988,9 @@ export default function LoungePostStreamVideo({
         role="button"
         tabIndex={0}
         data-lounge-video-zoom
+        {...(videoDebugEnabled && feedAutoplayClientId
+          ? { 'data-lounge-autoplay-id': feedAutoplayClientId }
+          : {})}
         className={`relative block w-fit max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen

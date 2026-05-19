@@ -574,6 +574,12 @@ export function createAutoplayStore() {
     getSnapshot() {
       return snapshot
     },
+    getDebugInfo() {
+      return {
+        registeredEntryCount: entries.size,
+        registeredIds: [...entries.keys()],
+      }
+    },
     schedule,
     markScroll,
     /** Promote a tile to active (tap for sound / hero intent). */

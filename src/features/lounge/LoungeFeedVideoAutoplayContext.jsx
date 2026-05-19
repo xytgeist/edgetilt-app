@@ -13,6 +13,11 @@ import {
   readLoungeFeedVideoAutoplayEnabled,
   subscribeLoungeFeedVideoAutoplayEnabled,
 } from '../../utils/loungeFeedVideoAutoplayPref.js'
+import {
+  readLoungeFeedVideoDebugEnabled,
+  subscribeLoungeFeedVideoDebugEnabled,
+} from '../../utils/loungeFeedVideoDebugPref.js'
+import LoungeFeedVideoAutoplayDebugHud from './LoungeFeedVideoAutoplayDebugHud.jsx'
 
 const LoungeFeedVideoAutoplayContext = createContext(null)
 
@@ -26,6 +31,11 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
     subscribeLoungeFeedVideoAutoplayEnabled,
     readLoungeFeedVideoAutoplayEnabled,
     () => true,
+  )
+  const videoDebugEnabled = useSyncExternalStore(
+    subscribeLoungeFeedVideoDebugEnabled,
+    readLoungeFeedVideoDebugEnabled,
+    () => false,
   )
 
   /**
@@ -129,7 +139,14 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children }) {
     ],
   )
 
-  return <LoungeFeedVideoAutoplayContext.Provider value={value}>{children}</LoungeFeedVideoAutoplayContext.Provider>
+  return (
+    <LoungeFeedVideoAutoplayContext.Provider value={value}>
+      {children}
+      {videoDebugEnabled ? (
+        <LoungeFeedVideoAutoplayDebugHud store={store} scrollRootRef={scrollRootRef} />
+      ) : null}
+    </LoungeFeedVideoAutoplayContext.Provider>
+  )
 }
 
 /** Schedule coordinator recompute (pagination append, layout). */

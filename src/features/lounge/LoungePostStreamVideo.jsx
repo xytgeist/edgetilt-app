@@ -792,6 +792,16 @@ export default function LoungePostStreamVideo({
     tileRatio,
   ])
 
+  const syncCoordinatedSoundMuted = useCallback(() => {
+    const v = videoRef.current
+    if (!v || !coordinatedInlineSound || !isActiveRef.current || v.paused) return
+    try {
+      v.muted = computeCoordinatedSoundMuted()
+    } catch {
+      // ignore
+    }
+  }, [coordinatedInlineSound, computeCoordinatedSoundMuted])
+
   useEffect(() => {
     heroPhaseRef.current = heroPhase
   }, [heroPhase])
@@ -817,27 +827,36 @@ export default function LoungePostStreamVideo({
       return
     }
     if (isActive && !prevCoordinatedActiveRef.current) {
-      feedSoundAudibleRef.current = false
+      if (
+        feedInlineSoundUnmuted &&
+        !feedInlineSoundExplicitlyMuted &&
+        tileRatio >= LOUNGE_VIDEO_SOUND_ON_RATIO
+      ) {
+        feedSoundAudibleRef.current = true
+      } else {
+        feedSoundAudibleRef.current = false
+      }
     }
     prevCoordinatedActiveRef.current = Boolean(isActive)
-  }, [coordinatedInlineSound, isActive])
+  }, [coordinatedInlineSound, isActive, feedInlineSoundUnmuted, feedInlineSoundExplicitlyMuted, tileRatio])
 
-  /** Feed-wide sound bands: unmute/mute while already playing (not on play() — iOS handoff). */
+  /** Feed-wide sound bands while playing — also on `playing` after muted handoff play() resolves. */
   useEffect(() => {
-    if (!coordinatedInlineSound || !isActive || lightboxOpen) return
+    if (!coordinatedInlineSound || !isActive || lightboxOpen) return undefined
     const v = videoRef.current
-    if (!v || v.paused) return
-    try {
-      v.muted = computeCoordinatedSoundMuted()
-    } catch {
-      // ignore
+    if (!v) return undefined
+
+    syncCoordinatedSoundMuted()
+    v.addEventListener('playing', syncCoordinatedSoundMuted)
+    return () => {
+      v.removeEventListener('playing', syncCoordinatedSoundMuted)
     }
   }, [
     coordinatedInlineSound,
     isActive,
     tileRatio,
     lightboxOpen,
-    computeCoordinatedSoundMuted,
+    syncCoordinatedSoundMuted,
     feedInlineSoundUnmuted,
     feedInlineSoundExplicitlyMuted,
   ])
@@ -909,14 +928,18 @@ export default function LoungePostStreamVideo({
       if (p && typeof p.then === 'function') {
         p.then(() => {
           lastPlayErrorRef.current = ''
-          applyAudibleAfterPlay()
+          if (coordinatedInlineSound) syncCoordinatedSoundMuted()
+          else applyAudibleAfterPlay()
         }).catch((err) => {
           reportPlayError(err)
           scheduleRecompute()
         })
       } else {
         lastPlayErrorRef.current = ''
-        if (!v.paused) applyAudibleAfterPlay()
+        if (!v.paused) {
+          if (coordinatedInlineSound) syncCoordinatedSoundMuted()
+          else applyAudibleAfterPlay()
+        }
       }
       return !v.paused
     } catch (err) {
@@ -934,6 +957,7 @@ export default function LoungePostStreamVideo({
     localStripSoundUnmuted,
     scheduleRecompute,
     showOpen,
+    syncCoordinatedSoundMuted,
     tileRatio,
     videoDebugEnabled,
   ])

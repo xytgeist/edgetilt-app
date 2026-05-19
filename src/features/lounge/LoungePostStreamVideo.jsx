@@ -428,6 +428,7 @@ function pauseOtherLoungeStreamVideos(exceptVideo) {
  * @param {(() => void) | null} [opts.onAutoReattach] bump attachKey after built-in Hls recovery fails
  * @param {((detail: string) => void) | null} [opts.onDebugHlsError] dev HUD: fatal HLS error detail
  * @param {((detail: string) => void) | null} [opts.onDebugLifecycle] dev HUD: attach/detach lifecycle
+ * @param {import('react').MutableRefObject<number> | null} [opts.savedTimeRef] restore currentTime after HLS reattach
  */
 function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
   const {
@@ -438,6 +439,7 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
     onAutoReattach = null,
     onDebugHlsError = null,
     onDebugLifecycle = null,
+    savedTimeRef = null,
   } = opts
 
   useEffect(() => {
@@ -453,7 +455,25 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
       }
     }
 
+    const savePlaybackTime = () => {
+      if (!savedTimeRef) return
+      if (!Number.isFinite(video.currentTime) || video.currentTime <= 0.05) return
+      savedTimeRef.current = video.currentTime
+    }
+
+    const restoreSavedTime = () => {
+      if (!savedTimeRef) return
+      const t = savedTimeRef.current
+      if (!Number.isFinite(t) || t <= 0.05) return
+      try {
+        if (Math.abs(video.currentTime - t) > 0.35) video.currentTime = t
+      } catch {
+        // ignore
+      }
+    }
+
     if (!enabled) {
+      savePlaybackTime()
       cleanupVideo()
       return undefined
     }
@@ -469,12 +489,15 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
       if (recoveryBurstRef) recoveryBurstRef.current = 0
     }
     video.addEventListener('canplay', onRecovered, { once: true })
+    video.addEventListener('loadedmetadata', restoreSavedTime, { once: true })
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src
       return () => {
         cancelled = true
+        savePlaybackTime()
         video.removeEventListener('canplay', onRecovered)
+        video.removeEventListener('loadedmetadata', restoreSavedTime)
         cleanupVideo()
       }
     }
@@ -556,8 +579,10 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
 
     return () => {
       cancelled = true
+      savePlaybackTime()
       if (onDebugLifecycle) onDebugLifecycle(`detach key=${attachKey}`)
       video.removeEventListener('canplay', onRecovered)
+      video.removeEventListener('loadedmetadata', restoreSavedTime)
       if (hlsInstance) {
         try {
           hlsInstance.destroy()
@@ -698,6 +723,8 @@ export default function LoungePostStreamVideo({
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   /** Detect HLS reattach bumps — must reset poster-over-video fade (avoid black layer at opacity-100). */
   const prevFadeAttachKeyRef = useRef(0)
+  /** Survives brief ring exit / HLS detach so scroll handoffs pause instead of restart. */
+  const savedStreamTimeRef = useRef(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
   /** After `playing` (or timeout): fade video in over poster; poster stays in-flow for layout (avoids Safari default video width flash). */
@@ -740,6 +767,7 @@ export default function LoungePostStreamVideo({
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
+      savedStreamTimeRef.current = 0
       setPosterLayoutFailed(false)
       setPosterDecodeOk(false)
       setPosterBust(0)
@@ -1072,6 +1100,9 @@ export default function LoungePostStreamVideo({
       try {
         v.pause()
         v.muted = true
+        if (Number.isFinite(v.currentTime) && v.currentTime > 0.05) {
+          savedStreamTimeRef.current = v.currentTime
+        }
       } catch {
         // ignore
       }
@@ -1079,6 +1110,7 @@ export default function LoungePostStreamVideo({
       if (tileRatio <= 0 && !inDomBudget) {
         try {
           v.currentTime = 0
+          savedStreamTimeRef.current = 0
         } catch {
           // ignore
         }
@@ -1092,8 +1124,10 @@ export default function LoungePostStreamVideo({
       } else if (tileRatio <= 0) {
         try {
           v.pause()
-          v.currentTime = 0
           v.muted = true
+          if (Number.isFinite(v.currentTime) && v.currentTime > 0.05) {
+            savedStreamTimeRef.current = v.currentTime
+          }
         } catch {
           // ignore
         }
@@ -1257,11 +1291,20 @@ export default function LoungePostStreamVideo({
     setStreamAttachKey((k) => k + 1)
   }, [softResetEpoch, coordinatorActive, attachStream, mountStreamVideo, feedAutoplayClientId, videoDebugEnabled])
 
+  useEffect(() => {
+    if (attachStream) return
+    const v = videoRef.current
+    if (v && Number.isFinite(v.currentTime) && v.currentTime > 0.05) {
+      savedStreamTimeRef.current = v.currentTime
+    }
+  }, [attachStream])
+
   useStreamHlsAttachment(videoRef, src, streamAttachKey, {
     enabled: attachStream,
     feedStyleAbr: feedStyleAbr,
     ringWarmPrefetch,
     recoveryBurstRef,
+    savedTimeRef: savedStreamTimeRef,
     onAutoReattach: bumpStreamAttach,
     onDebugHlsError:
       videoDebugEnabled && feedAutoplayClientId
@@ -1290,6 +1333,7 @@ export default function LoungePostStreamVideo({
       feedAutoplayEnabled,
       streamAttachKey,
       streamFadeShowVideo,
+      savedStreamTime: savedStreamTimeRef.current,
       showStreamRetry,
       recoveryBurst: recoveryBurstRef.current,
       lastPlayError: lastPlayErrorRef.current,

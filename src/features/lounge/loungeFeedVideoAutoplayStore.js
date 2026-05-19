@@ -481,14 +481,18 @@ export function createAutoplayStore() {
           prefetchPrevId = idx > 0 ? orderedIds[idx - 1] : null
           prefetchNextId = idx < orderedIds.length - 1 ? orderedIds[idx + 1] : null
           if (flingerMode) {
-            /** Fling: active + feed neighbor on scroll axis — keep outgoing tile HLS warm (pause, not reset). */
+            /** Fling: active + outgoing handoff tile or incoming feed neighbor on scroll axis. */
+            const outgoingId = activeId && activeId !== nextActive ? activeId : null
             ringIds = [nextActive]
-            const ringMate =
+            const scrollMate =
               scrollDirection > 0
-                ? prefetchPrevId
+                ? prefetchNextId
                 : scrollDirection < 0
-                  ? prefetchNextId
+                  ? prefetchPrevId
                   : prefetchNextId || prefetchPrevId
+            const ringMate =
+              outgoingId ||
+              (scrollMate && scrollMate !== nextActive ? scrollMate : null)
             if (ringMate && ringMate !== nextActive) {
               ringIds.push(ringMate)
             } else {

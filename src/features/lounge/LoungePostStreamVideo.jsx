@@ -598,6 +598,7 @@ export default function LoungePostStreamVideo({
   const {
     coordinatorActive,
     isWinner,
+    isStaged,
     feedAutoplayEnabled,
     scheduleRecompute,
     feedInlineSoundUnmuted,
@@ -617,7 +618,7 @@ export default function LoungePostStreamVideo({
   const attachStream = heroExpanded
     ? Boolean(id)
     : lazyStream
-      ? feedAutoplayEnabled && (coordinatorActive ? isWinner : streamInView)
+      ? feedAutoplayEnabled && (coordinatorActive ? isWinner || isStaged : streamInView)
       : true
 
   useEffect(() => {
@@ -663,14 +664,14 @@ export default function LoungePostStreamVideo({
     isWinnerRef.current = feedAutoplayEnabled && (!coordinatorActive || isWinner)
   }, [coordinatorActive, isWinner, feedAutoplayEnabled])
 
-  /** Keep inline `<video>` muted in sync with shared provider sound (all registered tiles; winner may be playing). */
+  /** Keep inline `<video>` muted in sync with shared provider sound (winner only when coordinated). */
   useEffect(() => {
     if (!coordinatedInlineSound) return
     const v = videoRef.current
     if (!v || lightboxOpenRef.current) return
     try {
       v.muted = !feedInlineSoundUnmuted
-      if (feedInlineSoundUnmuted && attachStream) {
+      if (feedInlineSoundUnmuted && attachStream && isWinner) {
         const p = v.play()
         if (p && typeof p.catch === 'function') p.catch(() => {})
       }
@@ -1323,20 +1324,77 @@ export default function LoungePostStreamVideo({
     feedAutoplayEnabled,
   ])
 
-  /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
+  /** Staged (non-winner) feed tiles: muted buffer prime so poster crossfade + hero open hit decoded frames. */
   useEffect(() => {
-    if (!coordinatorActive || !lazyStream) return
-    if (lightboxOpenRef.current) return
+    if (!lazyStream || !attachStream || !coordinatorActive || !isStaged || isWinner) return undefined
+    if (lightboxOpenRef.current) return undefined
     const v = videoRef.current
-    if (!v) return
-    if (!isWinner) {
+    if (!v) return undefined
+    let cleaned = false
+    let pauseTimer = 0
+    const pauseIfStillStaged = () => {
+      if (cleaned || lightboxOpenRef.current || isWinnerRef.current) return
       try {
         v.pause()
       } catch {
         // ignore
       }
     }
-  }, [coordinatorActive, lazyStream, isWinner, lightboxOpen])
+    const prime = () => {
+      if (cleaned || lightboxOpenRef.current || isWinnerRef.current) return
+      try {
+        v.muted = true
+        const p = v.play()
+        if (p && typeof p.catch === 'function') p.catch(() => {})
+      } catch {
+        // ignore
+      }
+    }
+    const schedulePauseAfterPrime = () => {
+      window.clearTimeout(pauseTimer)
+      pauseTimer = window.setTimeout(pauseIfStillStaged, 120)
+    }
+    const onBuffered = () => {
+      if (cleaned) return
+      prime()
+      schedulePauseAfterPrime()
+    }
+    v.addEventListener('loadeddata', onBuffered)
+    v.addEventListener('canplay', onBuffered)
+    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      onBuffered()
+    } else {
+      prime()
+    }
+    return () => {
+      cleaned = true
+      window.clearTimeout(pauseTimer)
+      v.removeEventListener('loadeddata', onBuffered)
+      v.removeEventListener('canplay', onBuffered)
+    }
+  }, [
+    lazyStream,
+    attachStream,
+    coordinatorActive,
+    isStaged,
+    isWinner,
+    streamAttachKey,
+    lightboxOpen,
+  ])
+
+  /** Coordinator handoff: pause immediately when another tile wins mid-scroll. */
+  useEffect(() => {
+    if (!coordinatorActive || !lazyStream) return
+    if (lightboxOpenRef.current) return
+    const v = videoRef.current
+    if (!v) return
+    if (isWinner || isStaged) return
+    try {
+      v.pause()
+    } catch {
+      // ignore
+    }
+  }, [coordinatorActive, lazyStream, isWinner, isStaged, lightboxOpen])
 
   const onInlineStreamError = useCallback(() => {
     if (recoveryBurstRef.current < 2) {

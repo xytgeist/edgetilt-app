@@ -152,8 +152,10 @@ export function LoungeFeedInlineSoundResetBinder({ resetRef }) {
   return null
 }
 
+const EMPTY_AUTOPLAY_SNAPSHOT = Object.freeze({ winnerId: null, stageIds: Object.freeze([]) })
+
 /**
- * Single-feed autoplay: only `clientId` matching the mid-scroll winner may attach/play inline.
+ * Single-feed autoplay: mid-scroll winner plays; staged neighbors in the prefetch band attach HLS paused.
  * @param {string | null | undefined} clientId stable id per feed row surface + asset (e.g. `${rowId}:${streamUid}`, `${rowId}:embed:${streamUid}`)
  * @param {() => HTMLElement | null} getContainerEl
  */
@@ -172,18 +174,27 @@ export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
     return ctx.store.register(clientId, getEl)
   }, [ctx, clientId, getEl, feedAutoplayEnabled])
 
-  const winnerId = useSyncExternalStore(
+  const autoplaySnapshot = useSyncExternalStore(
     ctx?.store && feedAutoplayEnabled ? ctx.store.subscribe : () => () => {},
-    ctx?.store && feedAutoplayEnabled ? ctx.store.getSnapshot : () => null,
-    () => null,
+    ctx?.store && feedAutoplayEnabled ? ctx.store.getSnapshot : () => EMPTY_AUTOPLAY_SNAPSHOT,
+    () => EMPTY_AUTOPLAY_SNAPSHOT,
   )
 
   const coordinatorActive = Boolean(ctx && clientId && feedAutoplayEnabled)
-  const isWinner = Boolean(ctx && clientId && winnerId === clientId && feedAutoplayEnabled)
+  const isWinner = Boolean(
+    ctx && clientId && autoplaySnapshot.winnerId === clientId && feedAutoplayEnabled,
+  )
+  const isStaged = Boolean(
+    ctx &&
+      clientId &&
+      feedAutoplayEnabled &&
+      autoplaySnapshot.stageIds.includes(clientId),
+  )
 
   return {
     coordinatorActive,
     isWinner,
+    isStaged,
     feedAutoplayEnabled,
     scheduleRecompute: ctx?.store?.schedule ?? (() => {}),
     feedSoundFromProvider: Boolean(ctx),

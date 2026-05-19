@@ -154,7 +154,8 @@ function heroRectUsableForShrinkBack(rect) {
   if (!rect) return false
   if (rect.width < 32 || rect.height < 32) return false
   if (typeof window === 'undefined') return false
-  return rect.bottom > 0 && rect.top < window.innerHeight
+  const bottom = Number.isFinite(rect.bottom) ? rect.bottom : rect.top + rect.height
+  return bottom > 0 && rect.top < window.innerHeight
 }
 
 /** Target hero frame: centered, object-contain aspect from source tile. */
@@ -1486,7 +1487,7 @@ export default function LoungePostStreamVideo({
     const heroFrame = heroTargetRectRef.current
     if (!heroRectUsableForShrinkBack(back) || !heroFrame) {
       reportHeroShrinkDebug(
-        `shrink skip instant close fromOk=${Boolean(heroFromRectRef.current && heroRectUsableForShrinkBack(heroFromRectRef.current))} measuredOk=${Boolean(measuredBack && heroRectUsableForShrinkBack(measuredBack))} target=${Boolean(heroFrame)}`,
+        `shrink skip instant close fromOk=${Boolean(heroFromRectRef.current && heroRectUsableForShrinkBack(heroFromRectRef.current))} measuredOk=${Boolean(measuredBack && heroRectUsableForShrinkBack(measuredBack))} target=${Boolean(heroFrame)} back=${back ? `${Math.round(back.width)}x${Math.round(back.height)}@${Math.round(back.top)}` : 'null'}`,
       )
       finishHeroCloseAnimation()
       return

@@ -405,7 +405,7 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
             maxBufferLength: feedStyleAbr ? 18 : 45,
             maxMaxBufferLength: feedStyleAbr ? 36 : 120,
             lowLatencyMode: false,
-            ...(feedStyleAbr ? { startLevel: -1, capLevelToPlayerSize: true } : {}),
+            ...(feedStyleAbr ? { startLevel: 0, capLevelToPlayerSize: true } : {}),
           })
           hlsInstance = hls
           let didMediaRecover = false
@@ -780,6 +780,13 @@ export default function LoungePostStreamVideo({
     : lazyStream
       ? feedAutoplayEnabled && (coordinatorActive ? isActive : streamInView)
       : true
+  /** iOS: one inline `<video>` in the DOM — mount only for active / hero / legacy in-view. */
+  const mountStreamVideo = Boolean(id) && (
+    attachStream ||
+    heroExpanded ||
+    lightboxOpen ||
+    (!coordinatorActive && lazyStream && streamInView)
+  )
 
   const computeCoordinatedSoundMuted = useCallback(() => {
     if (feedInlineSoundExplicitlyMuted || !feedInlineSoundUnmuted) return true
@@ -806,6 +813,11 @@ export default function LoungePostStreamVideo({
       : coordinatedInlineSound
         ? computeCoordinatedSoundMuted()
         : !stripSoundUnmuted
+  /** Coordinated feed: `defaultMuted` so React does not fight DOM unmute after handoff play(). */
+  const streamVideoMutedProps =
+    coordinatedInlineSound && !heroExpanded
+      ? { defaultMuted: true }
+      : { muted: inlineVideoMuted }
 
   const syncCoordinatedSoundMuted = useCallback(() => {
     const v = videoRef.current
@@ -965,7 +977,7 @@ export default function LoungePostStreamVideo({
           reportPlayError(err)
           if (err instanceof Error && err.name === 'NotAllowedError') {
             const backoffMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
-            inlinePlayBackoffUntilMsRef.current = backoffMs + 2400
+            inlinePlayBackoffUntilMsRef.current = backoffMs + 900
             lastInlinePlayAttemptMsRef.current = backoffMs
           }
           scheduleRecompute()
@@ -1098,25 +1110,48 @@ export default function LoungePostStreamVideo({
 
   /** Active tile: retry muted play when HLS becomes ready or mobile silently rejects autoplay. */
   useEffect(() => {
-    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !attachStream) return undefined
+    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !attachStream) {
+      return undefined
+    }
     if (tileRatio <= 0 || lightboxOpen) return undefined
-    const v = videoRef.current
-    if (!v) return undefined
 
     let cancelled = false
     const nudge = () => {
       if (cancelled || lightboxOpenRef.current) return
       if (!isActiveRef.current) return
-      if (!v.paused) return
+      const el = videoRef.current
+      if (!el || !el.paused) return
       tryCoordinatedInlinePlay()
     }
 
-    v.addEventListener('canplay', nudge, { once: true })
-    const tid = window.setTimeout(nudge, 1200)
+    const bindNudge = (v) => {
+      if (v.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        queueMicrotask(nudge)
+      } else {
+        v.addEventListener('loadeddata', nudge, { once: true })
+        v.addEventListener('canplay', nudge, { once: true })
+      }
+      const tid = window.setTimeout(nudge, 500)
+      return () => {
+        window.clearTimeout(tid)
+        v.removeEventListener('loadeddata', nudge)
+        v.removeEventListener('canplay', nudge)
+      }
+    }
+
+    const v = videoRef.current
+    if (v) {
+      const unbind = bindNudge(v)
+      return () => {
+        cancelled = true
+        unbind()
+      }
+    }
+
+    const mountTid = window.setTimeout(nudge, 64)
     return () => {
       cancelled = true
-      window.clearTimeout(tid)
-      v.removeEventListener('canplay', nudge)
+      window.clearTimeout(mountTid)
     }
   }, [
     attachStream,
@@ -1125,6 +1160,8 @@ export default function LoungePostStreamVideo({
     isActive,
     lazyStream,
     lightboxOpen,
+    mountStreamVideo,
+    streamAttachKey,
     tileRatio,
     tryCoordinatedInlinePlay,
   ])
@@ -2122,14 +2159,15 @@ export default function LoungePostStreamVideo({
   const heroChromeFadeStyle = {
     transition: `opacity ${HERO_CHROME_FADE_MS}ms ease-out`,
   }
-  const streamVideoEl = (
+  const streamVideoEl = mountStreamVideo ? (
     <video
+      key={`stream-v-${streamAttachKey}`}
       ref={videoRef}
       className={`${streamVideoClass} ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlineVideoOpacityClass}`}
       style={heroExpanded ? undefined : streamFadeTransitionStyle}
       controls={false}
       controlsList="nodownload"
-      muted={inlineVideoMuted}
+      {...streamVideoMutedProps}
       loop
       playsInline
       preload={
@@ -2144,7 +2182,7 @@ export default function LoungePostStreamVideo({
       aria-hidden={!heroExpanded}
       onError={onInlineStreamError}
     />
-  )
+  ) : null
 
   return (
     <div className={`${firstMarginTopClass} inline-flex shrink-0 self-start ${slideMaxW}`}>

@@ -360,6 +360,8 @@ export function createAutoplayStore() {
     if (thresholdTakeover) return thresholdTakeover
 
     if (flinger || scrollDirection !== 0) {
+      const lead = pickLeadingVisibleInFeed(orderedIds, ratios, incIdx, scrollDirection)
+      if (lead && lead !== next && (ratios[lead] ?? 0) > 0) return lead
       if (incRatio <= LOUNGE_VIDEO_ACTIVE_SCROLL_CONTEST_MAX && incIdx >= 0 && bestIdx >= 0) {
         const scrollingToNext = scrollDirection > 0 && bestIdx > incIdx
         const scrollingToPrev = scrollDirection < 0 && bestIdx < incIdx
@@ -369,6 +371,7 @@ export function createAutoplayStore() {
       return next
     }
 
+    if ((ratios[bestCenter] ?? 0) > incRatio) return bestCenter
     return bestDist + LOUNGE_VIDEO_IDLE_HANDOFF_CENTER_GAP_PX < incDist ? bestCenter : next
   }
 
@@ -397,7 +400,7 @@ export function createAutoplayStore() {
   const publish = (orderedIds, ratios, centerYs, rootEl) => {
     const midY = scrollPortMidY(rootEl)
     if (activeId && !orderedIds.includes(activeId)) activeId = null
-    if (activeId && (ratios[activeId] ?? 0) <= 0) activeId = null
+    if (activeId && (ratios[activeId] ?? 0) <= LOUNGE_VIDEO_ACTIVE_RELEASE_RATIO) activeId = null
     let nextActive = activeId
     let prefetchPrevId = null
     let prefetchNextId = null

@@ -402,8 +402,8 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
         if (cancelled || !videoRef.current || videoRef.current !== video) return
         if (Hls.isSupported()) {
           const hls = new Hls({
-            maxBufferLength: feedStyleAbr ? 28 : 45,
-            maxMaxBufferLength: feedStyleAbr ? 90 : 120,
+            maxBufferLength: feedStyleAbr ? 12 : 45,
+            maxMaxBufferLength: feedStyleAbr ? 24 : 120,
             lowLatencyMode: false,
             ...(feedStyleAbr ? { startLevel: 0, capLevelToPlayerSize: true } : {}),
           })
@@ -575,6 +575,7 @@ export default function LoungePostStreamVideo({
   const lastPlayErrorRef = useRef('')
   /** Prevent stacked play() calls on iOS (AbortError / NotAllowedError storms). */
   const inlinePlayInFlightRef = useRef(false)
+  const lastInlinePlayAttemptMsRef = useRef(0)
   /** Feed sound snapshot when hero opens (restored on close; same `<video>` keeps time). */
   const inlineFeedSoundSnapshotRef = useRef(
     /** @type {{ unmuted: boolean, explicitlyMuted: boolean, coordinated: boolean } | null} */ (null),
@@ -745,7 +746,6 @@ export default function LoungePostStreamVideo({
     forceFeedAutoplayActive,
     enterFeedHeroLock,
     exitFeedHeroLock,
-    releaseStalledActive,
   } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
   const videoDebugEnabled = useSyncExternalStore(
     subscribeLoungeFeedVideoDebugEnabled,
@@ -775,7 +775,7 @@ export default function LoungePostStreamVideo({
   const attachStream = heroExpanded
     ? Boolean(id)
     : lazyStream
-      ? feedAutoplayEnabled && (coordinatorActive ? inRing : streamInView)
+      ? feedAutoplayEnabled && (coordinatorActive ? isActive : streamInView)
       : true
 
   const computeCoordinatedSoundMuted = useCallback(() => {
@@ -906,7 +906,12 @@ export default function LoungePostStreamVideo({
     if (coordinatorActive && tileRatio <= 0) return false
     if (lazyStream && v.readyState < HTMLMediaElement.HAVE_METADATA) return false
     if (inlinePlayInFlightRef.current) return false
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    if (nowMs - lastInlinePlayAttemptMsRef.current < 380) return false
+    lastInlinePlayAttemptMsRef.current = nowMs
     const reportPlayError = (err) => {
+      const isAbort = err instanceof Error && err.name === 'AbortError'
+      if (isAbort) return
       const msg =
         err instanceof Error
           ? `${err.name}: ${err.message || 'play failed'}`.trim()
@@ -953,6 +958,7 @@ export default function LoungePostStreamVideo({
       }
       return !v.paused
     } catch (err) {
+      inlinePlayInFlightRef.current = false
       reportPlayError(err)
       scheduleRecompute()
       return false
@@ -1102,55 +1108,6 @@ export default function LoungePostStreamVideo({
     lightboxOpen,
     tileRatio,
     tryCoordinatedInlinePlay,
-  ])
-
-  /** Active tile paused with media ready — retry play; release incumbent only after repeated failures. */
-  useEffect(() => {
-    if (!coordinatorActive || !feedAutoplayEnabled || !lazyStream || !isActive || !attachStream) {
-      return undefined
-    }
-    if (tileRatio <= 0 || lightboxOpen || heroLocked || !feedAutoplayClientId) return undefined
-
-    let stallTicks = 0
-    const tick = () => {
-      const v = videoRef.current
-      if (!isActiveRef.current || lightboxOpenRef.current) return
-      if (!v) return
-      if (!v.paused) {
-        stallTicks = 0
-        return
-      }
-      if (inlinePlayInFlightRef.current) return
-      if (v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
-      stallTicks += 1
-      if (stallTicks <= 5) {
-        tryCoordinatedInlinePlay()
-        return
-      }
-      const err = lastPlayErrorRef.current
-      if (!err || stallTicks < 10) return
-      stallTicks = 0
-      releaseStalledActive(feedAutoplayClientId)
-      if (videoDebugEnabled) {
-        reportLoungeVideoDebugEvent(feedAutoplayClientId, 'stall', `released active: ${err}`)
-      }
-    }
-
-    const intervalId = window.setInterval(tick, 1000)
-    return () => window.clearInterval(intervalId)
-  }, [
-    attachStream,
-    coordinatorActive,
-    feedAutoplayClientId,
-    feedAutoplayEnabled,
-    heroLocked,
-    isActive,
-    lazyStream,
-    lightboxOpen,
-    releaseStalledActive,
-    tileRatio,
-    tryCoordinatedInlinePlay,
-    videoDebugEnabled,
   ])
 
   useEffect(() => {

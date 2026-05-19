@@ -80,7 +80,7 @@ const STREAM_FADE_LAST_RESORT_MS = 6500
 
 /** Feed tile → hero full-screen grow (same `<video>`, no second HLS attach). */
 const HERO_EXPAND_MS = 300
-/** Shared easing for flyout geometry + scrim opacity (match X: one motion). */
+/** Shared easing for flyout geometry + scrim opacity. */
 const HERO_MOTION_CURVE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const HERO_MOTION_TRANSITION = `${HERO_EXPAND_MS}ms ${HERO_MOTION_CURVE}`
 /** Lightbox chrome fades in only after the flyout lands. */
@@ -420,6 +420,8 @@ export default function LoungePostStreamVideo({
   const [heroChromeVisible, setHeroChromeVisible] = useState(false)
   /** After FLIP “from” paint, width/height/top/left may animate (not during initial opening snap). */
   const [heroTransitionArmed, setHeroTransitionArmed] = useState(false)
+  /** Scrim opacity starts one frame after flyout motion on open (feed stays crisp on frame 1). */
+  const [heroBackdropArmed, setHeroBackdropArmed] = useState(false)
   /** Poster over flyout `<video>` during opening — Safari can flash black when the node reparents to body. */
   const [heroFlyoutPosterVisible, setHeroFlyoutPosterVisible] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
@@ -781,6 +783,7 @@ export default function LoungePostStreamVideo({
     setHeroLayout(null)
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
+    setHeroBackdropArmed(false)
     heroFromRectRef.current = null
   }, [])
 
@@ -894,6 +897,7 @@ export default function LoungePostStreamVideo({
     setHeroPhase('opening')
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
+    setHeroBackdropArmed(false)
     setLightboxOpen(true)
   }, [
     feedAutoplayEnabled,
@@ -1028,19 +1032,25 @@ export default function LoungePostStreamVideo({
     const from = heroFromRectRef.current
     if (!from) return undefined
     setHeroTransitionArmed(false)
+    setHeroBackdropArmed(false)
     setHeroLayout(from)
     let raf2 = 0
+    let raf3 = 0
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         if (heroPhaseRef.current !== 'opening') return
-        /** One commit: scrim opacity + flyout geometry start the same frame. */
         setHeroTransitionArmed(true)
         setHeroLayout(computeHeroTargetRect(from))
+        raf3 = requestAnimationFrame(() => {
+          if (heroPhaseRef.current !== 'opening') return
+          setHeroBackdropArmed(true)
+        })
       })
     })
     return () => {
       cancelAnimationFrame(raf1)
       if (raf2) cancelAnimationFrame(raf2)
+      if (raf3) cancelAnimationFrame(raf3)
     }
   }, [lightboxOpen, heroPhase])
 
@@ -1412,11 +1422,13 @@ export default function LoungePostStreamVideo({
     ? 'pointer-events-auto h-full w-full max-h-full max-w-full object-contain'
     : 'pointer-events-none h-full w-full object-contain'
 
-  const heroBackdropTransitionCss = heroAnimating ? `opacity ${HERO_MOTION_TRANSITION}` : 'none'
+  const heroBackdropAnimating =
+    heroBackdropArmed && (heroPhase === 'opening' || heroPhase === 'closing')
+  const heroBackdropTransitionCss = heroBackdropAnimating ? `opacity ${HERO_MOTION_TRANSITION}` : 'none'
   const heroBackdropOpacityClass =
     heroPhase === 'closing'
       ? 'opacity-0'
-      : heroAnimating || heroPhase === 'open'
+      : heroBackdropAnimating || heroPhase === 'open'
         ? 'opacity-100'
         : 'opacity-0'
   const heroBackdropInteractive = heroPhase === 'open' || heroPhase === 'closing'

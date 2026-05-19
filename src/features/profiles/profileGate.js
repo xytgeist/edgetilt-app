@@ -162,8 +162,74 @@ function candidateHandle(base, index) {
   return `${trunk}${suffix}`.slice(0, 30)
 }
 
+export function isReservedProfileHandle(rawHandle) {
+  const handle = normalizeHandle(rawHandle)
+  return Boolean(handle && RESERVED_HANDLES.has(handle))
+}
+
+export function profileHandleCandidate(baseHandle, index) {
+  const base = normalizeHandle(baseHandle)
+  if (!base) return ''
+  return candidateHandle(base, index)
+}
+
+async function fetchProfileRowByHandleIlike(supabaseClient, handle) {
+  const slug = normalizeHandle(handle)
+  if (!slug) return null
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('user_id,handle')
+    .ilike('handle', slug)
+    .maybeSingle()
+  if (error) return null
+  return data
+}
+
+/** First slug starting at `baseHandle` (+ numeric suffix) not reserved and not owned by another user. */
+export async function suggestAvailableProfileHandle(supabaseClient, baseHandle, excludeUserId) {
+  const normalizedBase = normalizeHandle(baseHandle)
+  if (!normalizedBase) return null
+  let safeBase = normalizedBase
+  if (RESERVED_HANDLES.has(safeBase)) {
+    safeBase = candidateHandle(safeBase, 1)
+  }
+  const exclude = String(excludeUserId || '')
+
+  for (let i = 0; i < 30; i += 1) {
+    const candidate = candidateHandle(safeBase, i)
+    if (!candidate || RESERVED_HANDLES.has(candidate)) continue
+    const row = await fetchProfileRowByHandleIlike(supabaseClient, candidate)
+    if (!row || String(row.user_id) === exclude) return candidate
+  }
+  return null
+}
+
+/**
+ * Client preflight before an explicit handle save. Returns `{ ok: true, handle }` or
+ * `{ ok: false, reason: 'taken'|'reserved', handle, suggestedHandle }`.
+ */
+export async function checkProfileHandleAvailability({ supabaseClient, requestedHandle, excludeUserId }) {
+  const handle = normalizeHandle(requestedHandle)
+  if (!handle || handle.length < 2) {
+    return { ok: false, reason: 'invalid', handle: handle || '', suggestedHandle: null }
+  }
+
+  if (isReservedProfileHandle(handle)) {
+    const suggestedHandle = await suggestAvailableProfileHandle(supabaseClient, handle, excludeUserId)
+    return { ok: false, reason: 'reserved', handle, suggestedHandle }
+  }
+
+  const existing = await fetchProfileRowByHandleIlike(supabaseClient, handle)
+  if (existing && String(existing.user_id) !== String(excludeUserId || '')) {
+    const suggestedHandle = await suggestAvailableProfileHandle(supabaseClient, handle, excludeUserId)
+    return { ok: false, reason: 'taken', handle, suggestedHandle }
+  }
+
+  return { ok: true, handle }
+}
+
 /** Postgres 23505 on `profiles_handle_lower_key` / lower(handle) — try next handle candidate. */
-function isProfileHandleUniqueViolation(error) {
+export function isProfileHandleUniqueViolation(error) {
   if (!error) return false
   const pgMsg = [error.message, error.details, error.hint, error.constraint]
     .filter(Boolean)
@@ -184,6 +250,8 @@ export async function saveProfileWithHandleFallback({
   requestedHandle,
   avatarUrl,
   bannerUrl,
+  /** When true, save exactly `requestedHandle` (no silent `_1` suffix retries). */
+  strictHandle = false,
 }) {
   const seed = profileSeedFromUser(user)
   const normalizedBase = normalizeHandle(requestedHandle) || seed.baseHandle
@@ -197,8 +265,10 @@ export async function saveProfileWithHandleFallback({
   const preserveStaffRole =
     existingRole === 'moderator' || existingRole === 'admin' ? existing.data.role : null
 
-  for (let i = 0; i < 30; i += 1) {
-    const handle = candidateHandle(safeBase, i)
+  const attemptCount = strictHandle ? 1 : 30
+
+  for (let i = 0; i < attemptCount; i += 1) {
+    const handle = strictHandle ? normalizedBase : candidateHandle(safeBase, i)
 
     if (existing.data) {
       const updatePayload = {

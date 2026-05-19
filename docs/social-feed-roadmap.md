@@ -171,16 +171,16 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 ## Phase C - Profiles + first-interaction gating
 
-- **Shipped (test, partial):** Full-screen **profile editor** in Lounge (`LoungeProfileFullScreen.jsx`) for own profile: display name, handle, avatar, About; saves respect RLS; **staff `role` is not stripped** on save. **Handle changes:** at most **once per rolling 7 days** — DB column `profiles.handle_changed_at` + trigger in **`supabase/profile_handle_changed_at.sql`** (also bundled at end of **`profile_lounge_fullscreen.sql`**); client shows **Confirm** (first change in window) or **Cooldown** (within window: save other fields, keep server handle) on **Save**, with **Continue** performing the save without a second Save tap. **iOS:** min **16px** text on handle/display fields and post-save **blur + window/visualViewport scroll** to reduce Safari zoom/viewport glitches.
-- `/u/:handle` profile page:
+- **Shipped (test, partial):** Full-screen **profile editor** in Lounge (`LoungeProfileFullScreen.jsx`) for own profile: display name, handle, avatar, About; saves respect RLS; **staff `role` is not stripped** on save. **Handle changes:** no cooldown (removed 2026-05-18); conflict dialog for taken/reserved handles. **iOS:** min **16px** text on handle/display fields and post-save **blur + window/visualViewport scroll**. **`/u/:handle` permalink** via **`api/lounge-profile-og.js`**.
+- `/u/:handle` profile page (remaining polish):
   - profile data
   - authored posts
 - Gate first write interaction (post/comment/like):
   - if profile incomplete, show completion modal
   - defaults from email local-part + placeholder avatar
 - Handle collision strategy:
-  - suffix fallback
-  - reserved handle list
+  - suffix fallback (auto on `ensureDefaultProfileRow` only)
+  - reserved handle list — **conflict dialog** with suggested `@handle_1` on explicit save (profile gate + profile editor)
 
 ---
 

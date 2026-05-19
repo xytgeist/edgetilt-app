@@ -116,12 +116,12 @@ using (
   and (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Handle change cooldown (7 days). Standalone patch: supabase/profile_handle_changed_at.sql
+-- Handle change audit (`handle_changed_at`). Standalone patch: supabase/profile_handle_changed_at.sql
 alter table public.profiles
   add column if not exists handle_changed_at timestamptz;
 
 comment on column public.profiles.handle_changed_at is
-  'When the user last changed handle; at most one handle change per 7 days (trigger).';
+  'When the user last changed handle (audit; no cooldown enforced).';
 
 create or replace function public.profiles_enforce_handle_change_cooldown()
 returns trigger
@@ -135,11 +135,6 @@ begin
   end if;
   if lower(trim(coalesce(old.handle, ''))) is not distinct from lower(trim(coalesce(new.handle, ''))) then
     return new;
-  end if;
-  if old.handle_changed_at is not null
-     and old.handle_changed_at > (timezone('utc', now()) - interval '7 days') then
-    raise exception 'PROFILE_HANDLE_CHANGE_COOLDOWN'
-      using message = 'You can only change your handle once every 7 days. Try again later.';
   end if;
   new.handle_changed_at := timezone('utc', now());
   return new;

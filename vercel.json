@@ -12,6 +12,10 @@
       "source": "/lounge/p/:postId",
       "destination": "/api/lounge-post-og?postId=:postId"
     },
+    {
+      "source": "/u/:handle",
+      "destination": "/api/lounge-profile-og?handle=:handle"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

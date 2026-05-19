@@ -5,8 +5,24 @@ export const LOUNGE_SINGLE_POST_SELECT =
 /** Standard 8-4-4-4-12 hex UUID string (any version). */
 const LOUNGE_POST_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** Stored profile handle slug (matches `profileGate.normalizeHandle` output). */
+const LOUNGE_PROFILE_HANDLE_RE = /^[a-z0-9_]{2,30}$/
+
 export function isLoungePostShareId(value) {
   return typeof value === 'string' && LOUNGE_POST_ID_RE.test(value.trim())
+}
+
+export function isLoungeProfileHandleSlug(value) {
+  if (typeof value !== 'string') return false
+  const h = value.trim().replace(/^@/, '').toLowerCase()
+  return LOUNGE_PROFILE_HANDLE_RE.test(h)
+}
+
+/** Parse `/u/:handle` from a pathname (case-insensitive; returns lowercase slug). */
+export function parseLoungeProfilePathHandle(pathname) {
+  if (typeof pathname !== 'string') return ''
+  const m = pathname.match(/^\/u\/([a-z0-9_]{2,30})\/?$/i)
+  return m ? m[1].toLowerCase() : ''
 }
 
 /**
@@ -22,16 +38,47 @@ export function buildLoungePostShareUrl(postId) {
   return u.toString()
 }
 
-/** Share link for a Lounge profile (`/?tab=home&profile=:userId`). */
-export function buildLoungeProfileShareUrl(userId) {
-  if (typeof window === 'undefined' || !userId) return ''
-  const id = String(userId).trim()
-  if (!LOUNGE_POST_ID_RE.test(id)) return ''
+/**
+ * Share link for a Lounge profile: `/u/:handle` (OG via `api/lounge-profile-og.js`).
+ * Accepts a profile row `{ handle, user_id }`, a handle string, or legacy UUID (query fallback).
+ */
+export function buildLoungeProfileShareUrl(profileOrHandleOrUserId) {
+  if (typeof window === 'undefined' || profileOrHandleOrUserId == null) return ''
   const u = new URL(window.location.href)
-  if (!u.searchParams.has('tab')) u.searchParams.set('tab', 'home')
-  u.searchParams.set('profile', id)
-  u.hash = ''
-  return u.toString()
+
+  let handle = ''
+  let userId = ''
+  if (typeof profileOrHandleOrUserId === 'string') {
+    const raw = profileOrHandleOrUserId.trim()
+    if (isLoungeProfileHandleSlug(raw)) {
+      handle = raw.replace(/^@/, '').toLowerCase()
+    } else if (isLoungePostShareId(raw)) {
+      userId = raw
+    }
+  } else if (typeof profileOrHandleOrUserId === 'object') {
+    handle = String(profileOrHandleOrUserId.handle || '')
+      .trim()
+      .replace(/^@/, '')
+      .toLowerCase()
+    userId = String(profileOrHandleOrUserId.user_id || '').trim()
+  }
+
+  if (isLoungeProfileHandleSlug(handle)) {
+    u.pathname = `/u/${encodeURIComponent(handle)}`
+    u.search = ''
+    u.hash = ''
+    return u.toString()
+  }
+
+  if (isLoungePostShareId(userId)) {
+    if (!u.searchParams.has('tab')) u.searchParams.set('tab', 'home')
+    u.pathname = '/'
+    u.searchParams.set('profile', userId)
+    u.hash = ''
+    return u.toString()
+  }
+
+  return ''
 }
 
 export function stripLoungePostQueryParam() {
@@ -39,6 +86,27 @@ export function stripLoungePostQueryParam() {
   const u = new URL(window.location.href)
   if (!u.searchParams.has('post')) return
   u.searchParams.delete('post')
+  const qs = u.searchParams.toString()
+  const next = `${u.pathname}${qs ? `?${qs}` : ''}${u.hash}`
+  window.history.replaceState(window.history.state ?? {}, '', next)
+}
+
+/** Remove profile deep-link markers from the URL after the sheet opens. */
+export function stripLoungeProfileShareFromUrl() {
+  if (typeof window === 'undefined') return
+  const u = new URL(window.location.href)
+  let changed = false
+  if (parseLoungeProfilePathHandle(u.pathname)) {
+    u.pathname = '/'
+    changed = true
+  }
+  for (const key of ['u', 'profile']) {
+    if (u.searchParams.has(key)) {
+      u.searchParams.delete(key)
+      changed = true
+    }
+  }
+  if (!changed) return
   const qs = u.searchParams.toString()
   const next = `${u.pathname}${qs ? `?${qs}` : ''}${u.hash}`
   window.history.replaceState(window.history.state ?? {}, '', next)

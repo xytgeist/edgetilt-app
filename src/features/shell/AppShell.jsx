@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
-import { isLoungePostShareId } from '../../utils/loungeSharePost'
+import { isLoungePostShareId, isLoungeProfileHandleSlug, parseLoungeProfilePathHandle } from '../../utils/loungeSharePost'
 import {
   fetchLoungeFollowingAuthorIds,
   LOUNGE_FEED_SCOPE_ALL,
@@ -473,7 +473,15 @@ export default function AppShell({
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
       const postShareId = (params.get('post') || '').trim()
-      if (isLoungePostShareId(postShareId)) {
+      const profileHandle = (params.get('u') || '').trim().replace(/^@/, '').toLowerCase()
+      const profileUserId = (params.get('profile') || '').trim()
+      const profilePathHandle = parseLoungeProfilePathHandle(window.location.pathname || '')
+      if (
+        isLoungePostShareId(postShareId) ||
+        isLoungeProfileHandleSlug(profileHandle) ||
+        isLoungeProfileHandleSlug(profilePathHandle) ||
+        isLoungePostShareId(profileUserId)
+      ) {
         setTab('home')
         setMenuOpen(false)
       }

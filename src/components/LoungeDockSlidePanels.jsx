@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostDisplayCaption, loungePostInteractionScore } from '../utils/communityFeedPost'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
+import TitleBarStatusLine from './TitleBarStatusLine.jsx'
 import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
 import { LOUNGE_FEED_POST_ROW_CLASS } from '../features/lounge/loungeFeedAvatar.js'
 import {
@@ -399,9 +400,7 @@ export default function LoungeDockSlidePanels({
         <div className="flex items-center justify-between gap-2 px-3 py-2">
           <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
           <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-            <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
-              {communityFeedLoading ? 'Updating…' : ''}
-            </div>
+            <TitleBarStatusLine loading={communityFeedLoading} />
             {titleBarNavSlot}
             <button
               type="button"

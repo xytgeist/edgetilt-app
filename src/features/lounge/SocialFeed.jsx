@@ -1,15 +1,20 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import {
+  checkProfileHandleAvailability,
   fetchOwnProfile,
   formatProfileSaveDebugError,
   handleSlugFromAtInput,
+  isProfileHandleUniqueViolation,
+  normalizeHandle,
   profileAvatarInitials,
   profileAvatarToneClass,
   profileSeedFromUser,
   saveProfileWithHandleFallback,
+  suggestAvailableProfileHandle,
   uploadProfileAvatar,
 } from '../profiles/profileGate'
+import ProfileHandleConflictDialog from '../profiles/ProfileHandleConflictDialog.jsx'
 import { adminSetProfileRole } from '../profiles/adminSetProfileRole.js'
 import {
   collectLoungePostInteractionHydrateIds,
@@ -48,9 +53,12 @@ import {
   buildLoungePostShareUrl,
   buildLoungeProfileShareUrl,
   isLoungePostShareId,
+  isLoungeProfileHandleSlug,
   LOUNGE_SINGLE_POST_SELECT,
+  parseLoungeProfilePathHandle,
   shareLoungePostHybrid,
   stripLoungePostQueryParam,
+  stripLoungeProfileShareFromUrl,
 } from '../../utils/loungeSharePost'
 import {
   readLoungeProfileCache,
@@ -122,6 +130,7 @@ import {
 } from './loungeStreamSessionPoster.js'
 import KlipyGifPicker from './KlipyGifPicker.jsx'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
+import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED — classic dock icon row (FAB wheel is primary nav). Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
@@ -382,6 +391,7 @@ export default function SocialFeed({
   const [profileGateBusy, setProfileGateBusy] = useState(false)
   const [profileGateErr, setProfileGateErr] = useState('')
   const [profileGateHandle, setProfileGateHandle] = useState('')
+  const [profileGateHandleConflict, setProfileGateHandleConflict] = useState(null)
   const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
@@ -1280,9 +1290,8 @@ export default function SocialFeed({
   }, [])
 
   const handleShareLoungeProfile = useCallback((profileRow) => {
-    const uid = String(profileRow?.user_id || '').trim()
-    if (!uid) return
-    const url = buildLoungeProfileShareUrl(uid)
+    const url = buildLoungeProfileShareUrl(profileRow)
+    if (!url) return
     void shareLoungePostHybrid({
       url,
       title: 'Edge Lounge profile',
@@ -6613,11 +6622,16 @@ export default function SocialFeed({
     setProfileGateAvatarPreview(URL.createObjectURL(ready))
   }, [])
 
-  const saveProfileGate = useCallback(async () => {
+  const saveProfileGate = useCallback(async (opts) => {
     setProfileGateErr('')
     const display = profileGateDisplayName.trim()
     if (!display) {
       setProfileGateErr('Display name is required.')
+      return
+    }
+    const handle = normalizeHandle(opts?.forcedHandle ?? profileGateHandle)
+    if (!handle) {
+      setProfileGateErr('Handle must be at least 2 characters (letters, numbers, underscore).')
       return
     }
     setProfileGateBusy(true)
@@ -6631,6 +6645,27 @@ export default function SocialFeed({
         onRequireAuth?.()
         return
       }
+
+      if (!opts?.forcedHandle) {
+        const availability = await checkProfileHandleAvailability({
+          supabaseClient,
+          requestedHandle: handle,
+          excludeUserId: session.user.id,
+        })
+        if (!availability.ok && availability.reason !== 'invalid') {
+          setProfileGateHandleConflict({
+            requestedHandle: availability.handle,
+            reason: availability.reason,
+            suggestedHandle: availability.suggestedHandle,
+          })
+          return
+        }
+        if (!availability.ok) {
+          setProfileGateErr('Handle must be at least 2 characters (letters, numbers, underscore).')
+          return
+        }
+      }
+
       let avatarUrl
       if (profileGateAvatarFile) {
         const { data: uploadedUrl, error: uploadErr } = await uploadProfileAvatar({
@@ -6649,10 +6684,24 @@ export default function SocialFeed({
         supabaseClient,
         user: session.user,
         displayName: display,
-        requestedHandle: profileGateHandle,
+        requestedHandle: handle,
         avatarUrl,
+        strictHandle: true,
       })
       if (error) {
+        if (isProfileHandleUniqueViolation(error)) {
+          const suggestedHandle = await suggestAvailableProfileHandle(
+            supabaseClient,
+            handle,
+            session.user.id,
+          )
+          setProfileGateHandleConflict({
+            requestedHandle: handle,
+            reason: 'taken',
+            suggestedHandle,
+          })
+          return
+        }
         setProfileGateErr(formatProfileSaveDebugError(error, 'Save profile'))
         return
       }
@@ -6663,6 +6712,7 @@ export default function SocialFeed({
       }
       writeProfileGateAck(session.user.id)
       setProfileGateAvatarCropFile(null)
+      setProfileGateHandleConflict(null)
       setProfileGateOpen(false)
       await submitLoungePost()
     } finally {
@@ -6742,8 +6792,8 @@ export default function SocialFeed({
   }, [])
 
   const openProfileModal = useCallback(
-    async (post) => {
-      if (loungeReadOnly) {
+    async (post, opts) => {
+      if (loungeReadOnly && !opts?.fromPublicLink) {
         onRequireAuth?.()
         return
       }
@@ -6980,6 +7030,62 @@ export default function SocialFeed({
     },
     [openProfileGateIfNeeded, openProfileModal, supabaseClient],
   )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let cancelled = false
+    const run = async () => {
+      const params = new URLSearchParams(window.location.search || '')
+      const pathHandle = parseLoungeProfilePathHandle(window.location.pathname || '')
+      const queryHandle = (params.get('u') || '').trim().replace(/^@/, '').toLowerCase()
+      const legacyUserId = (params.get('profile') || '').trim()
+      const handle = pathHandle || (isLoungeProfileHandleSlug(queryHandle) ? queryHandle : '')
+
+      if (handle) {
+        await new Promise((resolve) => {
+          window.requestAnimationFrame(() => resolve(undefined))
+        })
+        if (cancelled) return
+        try {
+          const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('user_id, display_name, handle, avatar_url, role, is_og')
+            .ilike('handle', handle)
+            .maybeSingle()
+          if (cancelled) return
+          if (error || !data?.user_id) {
+            setLoungeShareFlash('This profile is unavailable.')
+            stripLoungeProfileShareFromUrl()
+            return
+          }
+          await openProfileModal({ user_id: data.user_id, author_profile: data }, { fromPublicLink: true })
+          if (cancelled) return
+          stripLoungeProfileShareFromUrl()
+        } catch {
+          if (cancelled) return
+          setLoungeShareFlash('This profile is unavailable.')
+          stripLoungeProfileShareFromUrl()
+        }
+        return
+      }
+
+      if (!isLoungePostShareId(legacyUserId)) return
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => resolve(undefined))
+      })
+      if (cancelled) return
+      await openProfileModal({ user_id: legacyUserId }, { fromPublicLink: true })
+      if (cancelled) return
+      stripLoungeProfileShareFromUrl()
+    }
+    void run()
+    const onPop = () => void run()
+    window.addEventListener('popstate', onPop)
+    return () => {
+      cancelled = true
+      window.removeEventListener('popstate', onPop)
+    }
+  }, [openProfileModal, supabaseClient])
 
   /** Open the search panel pre-filtered by a tapped #hashtag. */
   const openSearchByHashtag = useCallback(
@@ -7323,9 +7429,7 @@ export default function SocialFeed({
           <div className={`flex items-center justify-between gap-3 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
             <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
             <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-              <div className="pointer-events-none truncate text-right text-zinc-600 text-[13px]">
-                {communityFeedLoading ? 'Updating…' : ''}
-              </div>
+              <TitleBarStatusLine loading={communityFeedLoading} />
               {titleBarNavSlot}
             </div>
           </div>
@@ -10450,6 +10554,21 @@ export default function SocialFeed({
         file={profileGateAvatarCropFile}
         onCancel={onProfileGateAvatarCropCancel}
         onApply={onProfileGateAvatarCropApply}
+      />
+
+      <ProfileHandleConflictDialog
+        open={Boolean(profileGateHandleConflict)}
+        busy={profileGateBusy}
+        requestedHandle={profileGateHandleConflict?.requestedHandle}
+        reason={profileGateHandleConflict?.reason}
+        suggestedHandle={profileGateHandleConflict?.suggestedHandle}
+        onCancel={() => setProfileGateHandleConflict(null)}
+        onUseSuggested={(next) => {
+          if (!next) return
+          setProfileGateHandle(String(next))
+          setProfileGateHandleConflict(null)
+          void saveProfileGate({ forcedHandle: next })
+        }}
       />
 
       {loungePostUploadBar ? (

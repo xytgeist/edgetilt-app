@@ -6,7 +6,7 @@ How the React app is organized after the **feature-module split** (2026). Use th
 
 - **`src/main.jsx`** — mounts the root component (unchanged pattern).
 - **`src/App.jsx`** — **auth and session only**: Supabase client, login / signup / forgot password / reset password, OAuth callback handling, routing between auth panel vs the app shell, and **`browseMode`** (anonymous vs member). It imports **`AppShell`** when `currentView === 'app'`. **No client-side email whitelist** — any successful Supabase session is treated as a member for shell access (freemium / subscribe gates are separate).
-- **`src/features/shell/AppShell.jsx`** — **logged-in application**: bottom navigation, tab state, Lounge feed wiring, Offers / Guides / Intel / Bankroll / Calculators / Team surfaces, global confirm modal, URL query handling for **Offers** deep links and **Lounge post** deep links (`post` query → Home tab; share URLs use **`/lounge/p/<uuid>`** on Vercel for OG), and iOS PWA notification prompt coordination.
+- **`src/features/shell/AppShell.jsx`** — **logged-in application**: bottom navigation, tab state, Lounge feed wiring, Offers / Guides / Intel / Bankroll / Calculators / Team surfaces, global confirm modal, URL query handling for **Offers** deep links and **Lounge** deep links (`post` / `u` / legacy `profile` query → Home tab; share URLs use **`/lounge/p/<uuid>`** and **`/u/<handle>`** on Vercel for OG), and iOS PWA notification prompt coordination.
 
 Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circular dependency story and keeps the entry file small (~hundreds of lines instead of thousands).
 

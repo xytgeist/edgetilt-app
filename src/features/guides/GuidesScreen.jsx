@@ -36,15 +36,20 @@ import { defaultCardEvThresholdForSlug } from '../../constants/slotCardEvThresho
 import { communityFeedPostInsertPayload } from '../../utils/communityFeedPost'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
 import {
+  checkProfileHandleAvailability,
   fetchOwnProfile,
   formatProfileSaveDebugError,
   handleSlugFromAtInput,
+  isProfileHandleUniqueViolation,
+  normalizeHandle,
   profileAvatarInitials,
   profileAvatarToneClass,
   profileSeedFromUser,
   saveProfileWithHandleFallback,
+  suggestAvailableProfileHandle,
   uploadProfileAvatar,
 } from '../profiles/profileGate'
+import ProfileHandleConflictDialog from '../profiles/ProfileHandleConflictDialog.jsx'
 import { loungeProfileNeedsGate, writeProfileGateAck } from '../lounge/loungeStorage'
 import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
@@ -914,6 +919,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
   const [profileGateBusy, setProfileGateBusy] = useState(false)
   const [profileGateErr, setProfileGateErr] = useState('')
   const [profileGateHandle, setProfileGateHandle] = useState('')
+  const [profileGateHandleConflict, setProfileGateHandleConflict] = useState(null)
   const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
@@ -1039,11 +1045,16 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
     }
   }
 
-  const saveProfileGate = async () => {
+  const saveProfileGate = async (opts) => {
     setProfileGateErr('')
     const display = profileGateDisplayName.trim()
     if (!display) {
       setProfileGateErr('Display name is required.')
+      return
+    }
+    const handle = normalizeHandle(opts?.forcedHandle ?? profileGateHandle)
+    if (!handle) {
+      setProfileGateErr('Handle must be at least 2 characters (letters, numbers, underscore).')
       return
     }
     setProfileGateBusy(true)
@@ -1057,6 +1068,27 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         setAuthPromptOpen(true)
         return
       }
+
+      if (!opts?.forcedHandle) {
+        const availability = await checkProfileHandleAvailability({
+          supabaseClient,
+          requestedHandle: handle,
+          excludeUserId: session.user.id,
+        })
+        if (!availability.ok && availability.reason !== 'invalid') {
+          setProfileGateHandleConflict({
+            requestedHandle: availability.handle,
+            reason: availability.reason,
+            suggestedHandle: availability.suggestedHandle,
+          })
+          return
+        }
+        if (!availability.ok) {
+          setProfileGateErr('Handle must be at least 2 characters (letters, numbers, underscore).')
+          return
+        }
+      }
+
       let avatarUrl
       if (profileGateAvatarFile) {
         const { data: uploadedUrl, error: uploadErr } = await uploadProfileAvatar({
@@ -1075,15 +1107,30 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         supabaseClient,
         user: session.user,
         displayName: display,
-        requestedHandle: profileGateHandle,
+        requestedHandle: handle,
         avatarUrl,
+        strictHandle: true,
       })
       if (error) {
+        if (isProfileHandleUniqueViolation(error)) {
+          const suggestedHandle = await suggestAvailableProfileHandle(
+            supabaseClient,
+            handle,
+            session.user.id,
+          )
+          setProfileGateHandleConflict({
+            requestedHandle: handle,
+            reason: 'taken',
+            suggestedHandle,
+          })
+          return
+        }
         setProfileGateErr(formatProfileSaveDebugError(error, 'Save profile'))
         return
       }
       writeProfileGateAck(session.user.id)
       setProfileGateAvatarCropFile(null)
+      setProfileGateHandleConflict(null)
       setProfileGateOpen(false)
       await submit(null, caption)
     } finally {
@@ -1320,6 +1367,21 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         file={profileGateAvatarCropFile}
         onCancel={onProfileGateAvatarCropCancel}
         onApply={onProfileGateAvatarCropApply}
+      />
+
+      <ProfileHandleConflictDialog
+        open={Boolean(profileGateHandleConflict)}
+        busy={profileGateBusy}
+        requestedHandle={profileGateHandleConflict?.requestedHandle}
+        reason={profileGateHandleConflict?.reason}
+        suggestedHandle={profileGateHandleConflict?.suggestedHandle}
+        onCancel={() => setProfileGateHandleConflict(null)}
+        onUseSuggested={(next) => {
+          if (!next) return
+          setProfileGateHandle(String(next))
+          setProfileGateHandleConflict(null)
+          void saveProfileGate({ forcedHandle: next })
+        }}
       />
     </>
   )

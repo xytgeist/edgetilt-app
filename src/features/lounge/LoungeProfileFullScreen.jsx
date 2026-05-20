@@ -462,6 +462,8 @@ export default function LoungeProfileFullScreen({
   viewerIsAdmin = false,
   /** `(targetUserId, nextRole) => Promise<{ ok: boolean, error?: string }>` */
   onAdminSetProfileRole = null,
+  /** `(userId, isFollowing) => void` — sync feed session when follow toggles on profile / follow list. */
+  onViewerFollowChange = null,
 }) {
   const [tab, setTab] = useState('posts')
   const [adminRoleBusy, setAdminRoleBusy] = useState(false)
@@ -1209,8 +1211,9 @@ export default function LoungeProfileFullScreen({
   const toggleFollow = async () => {
     if (!viewerUserId || !profileUserId || isOwnProfile || socialBusy) return
     setSocialBusy(true)
+    const wasFollowing = isFollowing
     try {
-      if (isFollowing) {
+      if (wasFollowing) {
         await supabaseClient
           .from('profile_follows')
           .delete()
@@ -1222,7 +1225,9 @@ export default function LoungeProfileFullScreen({
           following_id: profileUserId,
         })
       }
-      setIsFollowing((v) => !v)
+      const nowFollowing = !wasFollowing
+      setIsFollowing(nowFollowing)
+      onViewerFollowChange?.(profileUserId, nowFollowing)
       await refreshSocial()
     } finally {
       setSocialBusy(false)
@@ -2254,6 +2259,7 @@ export default function LoungeProfileFullScreen({
             viewerUserId={viewerUserId}
             supabaseClient={supabaseClient}
             onClose={() => setFollowListTab(null)}
+            onViewerFollowChange={onViewerFollowChange}
             onOpenProfile={(entity) => {
               const uid = String(entity?.user_id || '').trim()
               if (!uid) return
@@ -2294,6 +2300,7 @@ export default function LoungeProfileFullScreen({
               }}
               onShareProfile={onShareProfile}
               onBlockProfile={onBlockProfile}
+              onViewerFollowChange={onViewerFollowChange}
               suspendVideoCoordinator={suspendVideoCoordinator}
               showVideoDebugHud={showVideoDebugHud}
               viewerIsAdmin={viewerIsAdmin}

@@ -30,6 +30,7 @@ import {
  * @param {import('@supabase/supabase-js').SupabaseClient} props.supabaseClient
  * @param {() => void} props.onClose
  * @param {(entity: { user_id: string, author_profile?: object }) => void} [props.onOpenProfile]
+ * @param {(userId: string, isFollowing: boolean) => void} [props.onViewerFollowChange]
  */
 export default function LoungeProfileFollowList({
   tab,
@@ -40,6 +41,7 @@ export default function LoungeProfileFollowList({
   supabaseClient,
   onClose,
   onOpenProfile,
+  onViewerFollowChange,
 }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -97,12 +99,14 @@ export default function LoungeProfileFollowList({
           next.delete(target)
           return next
         })
+        onViewerFollowChange?.(target, false)
       } else {
         await supabaseClient.from('profile_follows').insert({
           follower_id: viewer,
           following_id: target,
         })
         setViewerFollowing((prev) => new Set(prev).add(target))
+        onViewerFollowChange?.(target, true)
       }
     } finally {
       setRowBusyId('')

@@ -3422,7 +3422,9 @@ export default function SocialFeed({
   const handleLoungeFollowUser = useCallback(
     async (userId) => {
       if (!composerUserId || !userId || userId === composerUserId) return
+      if (loungeFollowingUserIds.has(userId)) return
       setLoungeFollowingUserIds((prev) => new Set([...prev, userId]))
+      setLoungeDetailFollowingUserIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]))
       const { error } = await supabaseClient
         .from('profile_follows')
         .insert({ follower_id: composerUserId, following_id: userId })
@@ -3432,9 +3434,32 @@ export default function SocialFeed({
           next.delete(userId)
           return next
         })
+        setLoungeDetailFollowingUserIds((prev) => prev.filter((id) => id !== userId))
       }
     },
-    [composerUserId, supabaseClient],
+    [composerUserId, loungeFollowingUserIds, supabaseClient],
+  )
+
+  /** Keep feed follow pills, comment sort, and Following filter in sync after profile / list toggles. */
+  const syncLoungeViewerFollowState = useCallback(
+    (userId, isFollowing) => {
+      const uid = String(userId || '').trim()
+      if (!uid || !composerUserId || uid === composerUserId) return
+      setLoungeFollowingUserIds((prev) => {
+        const next = new Set(prev)
+        if (isFollowing) next.add(uid)
+        else next.delete(uid)
+        return next
+      })
+      setLoungeDetailFollowingUserIds((prev) => {
+        if (isFollowing) return prev.includes(uid) ? prev : [...prev, uid]
+        return prev.filter((id) => id !== uid)
+      })
+      if (!isFollowing && loungeFeedScope === LOUNGE_FEED_SCOPE_FOLLOWING) {
+        void loadCommunityFeed({ silent: true, scope: LOUNGE_FEED_SCOPE_FOLLOWING })
+      }
+    },
+    [composerUserId, loungeFeedScope, loadCommunityFeed],
   )
 
   const noopLoungeBarPostToggle = useCallback(async () => undefined, [])
@@ -10309,6 +10334,7 @@ export default function SocialFeed({
           showVideoDebugHud={loungeProfileVideoDebugHud}
           viewerIsAdmin={loungeViewerIsAdmin}
           onAdminSetProfileRole={handleAdminSetProfileRole}
+          onViewerFollowChange={syncLoungeViewerFollowState}
           stackAboveStreamLightbox={profileStackAboveStreamLightbox}
         />
       ) : null}
@@ -10346,6 +10372,7 @@ export default function SocialFeed({
               showVideoDebugHud={loungeProfileVideoDebugHud && isTop}
               viewerIsAdmin={loungeViewerIsAdmin}
               onAdminSetProfileRole={handleAdminSetProfileRole}
+              onViewerFollowChange={syncLoungeViewerFollowState}
             />
           </div>
         )

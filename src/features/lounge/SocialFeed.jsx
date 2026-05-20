@@ -201,6 +201,56 @@ const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, nerd)"
 const FEED_COMMENT_SELECT_COLS =
   'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
 
+/** Root → focused comment ids for post-detail drill / comment-repost deep link. */
+function buildFeedCommentDrillPath(commentId, comments) {
+  const byId = new Map((comments || []).map((r) => [String(r.id), r]))
+  const chain = []
+  let cur = byId.get(String(commentId))
+  if (!cur) return chain
+  while (cur) {
+    chain.unshift(String(cur.id))
+    const pid = cur.parent_id
+    cur = pid != null && pid !== '' && byId.has(String(pid)) ? byId.get(String(pid)) : null
+  }
+  return chain
+}
+
+async function fetchHydratedFeedCommentsForPost(supabaseClient, postId) {
+  const { data, error } = await supabaseClient
+    .from('feed_comments')
+    .select(FEED_COMMENT_SELECT_COLS)
+    .eq('post_id', postId)
+    .is('hidden_at', null)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  const rows = data || []
+  const authorIds = [...new Set(rows.map((r) => String(r.user_id)).filter(Boolean))]
+  let profileBy = {}
+  if (authorIds.length) {
+    const pr = await supabaseClient
+      .from('profiles')
+      .select('user_id,handle,display_name,avatar_url,role,is_og')
+      .in('user_id', authorIds)
+    if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
+  }
+  return rows.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
+}
+
+/** Thread ancestor tap — same interactive exclusions as comment/post feed rows. */
+function loungePostDetailThreadAncestorClick(e, onNavigate) {
+  if (typeof onNavigate !== 'function') return
+  const t = e.target
+  if (!(t instanceof Element)) return
+  if (
+    t.closest(
+      'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-original-embed], [data-lounge-post-interaction-bar]',
+    )
+  ) {
+    return
+  }
+  onNavigate()
+}
+
 /** Shown in upload bar `detail` instead of raw telemetry when `onUploadDiagnostic` fires. */
 const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying again...'
 
@@ -523,6 +573,19 @@ export default function SocialFeed({
   const loungePostDetailPendingCommentEditRef = useRef(null)
   /** Profile Replies interaction bar → reply: focus composer after drill-in. */
   const loungePostDetailPendingCommentComposerRef = useRef(false)
+  /**
+   * Comment-repost deep link: prefetch comments + path before opening post detail so the first
+   * paint is already the Reply screen (not post-only, then drill).
+   */
+  const loungePostDetailDirectCommentOpenRef = useRef(
+    /** @type {null | { postId: string, pathIds: string[], comments: object[], focusComposer?: boolean }} */ (null),
+  )
+  /** When set, ← at this path depth closes detail instead of popping to post-only view. */
+  const loungeCommentDetailDirectEntryDepthRef = useRef(/** @type {null | number} */ (null))
+  /** Tracks which post the detail-comments effect last initialized (avoids clearing drill path on auth refresh). */
+  const loungeDetailCommentsEffectPostIdRef = useRef(/** @type {null | string} */ (null))
+  /** Post id whose comments finished loading — Strict Mode retry when unset after cancel. */
+  const loungeDetailCommentsLoadedPostIdRef = useRef(/** @type {null | string} */ (null))
   const [loungeDetailCommentEditImageUrls, setLoungeDetailCommentEditImageUrls] = useState([])
   const [loungeDetailCommentEditGifUrl, setLoungeDetailCommentEditGifUrl] = useState('')
   /** Drill-down into a comment thread (`slice(-1)` = composer reply parent). */
@@ -2622,7 +2685,7 @@ export default function SocialFeed({
   )
 
   const interactionStateForComment = useCallback(
-    (commentId) => interactionByComment[commentId] || defaultInteraction,
+    (commentId) => interactionByComment[String(commentId)] || defaultInteraction,
     [interactionByComment, defaultInteraction]
   )
 
@@ -2654,19 +2717,21 @@ export default function SocialFeed({
       setInteractionByComment((prev) => {
         const next = { ...prev }
         for (const id of cids) {
-          if (!next[id]) next[id] = { ...defaultInteraction }
+          const key = String(id)
+          if (!next[key]) next[key] = { ...defaultInteraction }
         }
         for (const r of likesRes.data || []) {
-          const cid = r.comment_id
+          const cid = r.comment_id != null ? String(r.comment_id) : ''
           if (!cid || !next[cid]) continue
           next[cid] = { ...next[cid], liked: true }
         }
         for (const cid of repostedCommentIds) {
-          if (!next[cid]) continue
-          next[cid] = {
-            ...next[cid],
+          const key = String(cid)
+          if (!next[key]) continue
+          next[key] = {
+            ...next[key],
             reposted: true,
-            plainRepostChildId: cid,
+            plainRepostChildId: key,
             quoteRepostChildId: null,
           }
         }
@@ -2675,7 +2740,7 @@ export default function SocialFeed({
       setBookmarkedByComment((prev) => {
         const next = { ...prev }
         for (const r of bmRes.data || []) {
-          if (r.comment_id) next[r.comment_id] = true
+          if (r.comment_id) next[String(r.comment_id)] = true
         }
         return next
       })
@@ -3863,8 +3928,19 @@ export default function SocialFeed({
     if (typeof window !== 'undefined') window.alert('Reporting comments is not available yet.')
   }, [])
 
+  /**
+   * Load post-detail comments once per opened post — not on every auth/interaction dep change.
+   * Do NOT reset `loungeCommentDetailPathIds` here when `composerUserId` (or similar) updates:
+   * comment-repost direct entry sets the drill path first; a re-run used to clear it and leave
+   * the user stuck on post-only detail ("Post" title) instead of Reply + hierarchy.
+   * Never put `loungeDetailCommentsLoading` in this effect's deps — toggling it re-ran the
+   * effect, cancelled the in-flight fetch, then bailed on "already loading" → stuck forever.
+   * Comment likes/reposts/bookmarks hydrate in the effect below.
+   */
   useEffect(() => {
     if (!loungePostDetail?.id || loungeReadOnly) {
+      loungeDetailCommentsEffectPostIdRef.current = null
+      loungeDetailCommentsLoadedPostIdRef.current = null
       setLoungeDetailComments([])
       setLoungeDetailViewerPinnedCommentIds([])
       setLoungeDetailCommentSort(readLoungeDetailCommentSort())
@@ -3872,68 +3948,127 @@ export default function SocialFeed({
       setLoungeDetailCommentsLoading(false)
       setLoungeDetailCommentErr('')
       setLoungeCommentDetailPathIds([])
-      if (!profileModalOpen && profileOverlayStack.length === 0) {
-        setInteractionByComment({})
-        setBookmarkedByComment({})
+      return
+    }
+
+    const postId = String(loungePostDetail.id)
+    if (loungeDetailCommentsLoadedPostIdRef.current === postId) return
+
+    const isNewPost = loungeDetailCommentsEffectPostIdRef.current !== postId
+      if (isNewPost) {
+      loungeDetailCommentsEffectPostIdRef.current = postId
+
+      const directOpen =
+        loungePostDetailDirectCommentOpenRef.current?.postId === postId
+          ? loungePostDetailDirectCommentOpenRef.current
+          : null
+      if (directOpen?.pathIds?.length) {
+        setLoungeCommentDetailPathIds(directOpen.pathIds)
+        loungeCommentDetailDirectEntryDepthRef.current = directOpen.pathIds.length
+        loungePostDetailPendingCommentIdRef.current = null
+        loungePostDetailPendingCommentComposerRef.current = false
+      } else if (!loungePostDetailPendingCommentIdRef.current) {
+        setLoungeCommentDetailPathIds([])
       }
+      setLoungeDetailViewerPinnedCommentIds([])
+      setLoungeDetailFollowingUserIds([])
+      setLoungeDetailCommentErr('')
+    }
+
+    const directOpen =
+      isNewPost &&
+      loungePostDetailDirectCommentOpenRef.current?.postId === postId
+        ? loungePostDetailDirectCommentOpenRef.current
+        : null
+    const directFocusComposer = directOpen?.focusComposer === true
+    const prefetchedComments = directOpen?.comments ?? null
+    if (prefetchedComments) {
+      loungePostDetailDirectCommentOpenRef.current = null
+    }
+
+    let cancelled = false
+    setLoungeDetailCommentsLoading(true)
+    ;(async () => {
+      let hydrated
+      if (prefetchedComments) {
+        hydrated = prefetchedComments
+      } else {
+        const { data, error } = await supabaseClient
+          .from('feed_comments')
+          .select(FEED_COMMENT_SELECT_COLS)
+          .eq('post_id', postId)
+          .is('hidden_at', null)
+          .order('created_at', { ascending: true })
+        if (cancelled) return
+        if (error) {
+          setLoungeDetailCommentErr(error.message)
+          setLoungeDetailComments([])
+          setLoungeDetailCommentsLoading(false)
+          return
+        }
+        const rows = data || []
+        const authorIds = [...new Set(rows.map((r) => String(r.user_id)).filter(Boolean))]
+        let profileBy = {}
+        if (authorIds.length) {
+          const pr = await supabaseClient
+            .from('profiles')
+            .select('user_id,handle,display_name,avatar_url,role,is_og')
+            .in('user_id', authorIds)
+          if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
+        }
+        if (cancelled) return
+        hydrated = rows.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
+      }
+      if (cancelled) return
+      setLoungeDetailComments(hydrated)
+      loungeDetailCommentsLoadedPostIdRef.current = postId
+      setLoungeDetailCommentsLoading(false)
+      if (directFocusComposer) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => expandAndFocusLoungeDetailCommentComposer({ skipScrollToTop: true }))
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    loungePostDetail?.id,
+    loungeReadOnly,
+    profileModalOpen,
+    profileOverlayStack.length,
+    supabaseClient,
+    expandAndFocusLoungeDetailCommentComposer,
+  ])
+
+  /** Post detail: who the viewer follows among comment authors (session may resolve after open). */
+  useEffect(() => {
+    if (!loungePostDetail?.id || loungeReadOnly || loungeDetailCommentsLoading) return
+    if (!composerUserId) {
+      setLoungeDetailFollowingUserIds([])
       return
     }
     let cancelled = false
-    setLoungeCommentDetailPathIds([])
-    setLoungeDetailViewerPinnedCommentIds([])
-    setLoungeDetailFollowingUserIds([])
-    setLoungeDetailCommentsLoading(true)
-    setLoungeDetailCommentErr('')
-    setInteractionByComment({})
-    setBookmarkedByComment({})
     ;(async () => {
-      const postId = loungePostDetail.id
-      const { data, error } = await supabaseClient
-        .from('feed_comments')
-        .select(FEED_COMMENT_SELECT_COLS)
-        .eq('post_id', postId)
-        .is('hidden_at', null)
-        .order('created_at', { ascending: true })
-      if (cancelled) return
-      setLoungeDetailCommentsLoading(false)
-      if (error) {
-        setLoungeDetailCommentErr(error.message)
-        setLoungeDetailComments([])
-        setInteractionByComment({})
-        setBookmarkedByComment({})
-        return
-      }
-      const rows = data || []
-      const authorIds = [...new Set(rows.map((r) => String(r.user_id)).filter(Boolean))]
-      let profileBy = {}
-      if (authorIds.length) {
-        const pr = await supabaseClient
-          .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,role,is_og')
-          .in('user_id', authorIds)
-        if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
-      }
-      if (cancelled) return
-      const hydrated = rows.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
-      setLoungeDetailComments(hydrated)
-      let followingIds = []
-      if (composerUserId) {
-        const folRes = await supabaseClient
-          .from('profile_follows')
-          .select('following_id')
-          .eq('follower_id', composerUserId)
-        if (!cancelled && !folRes.error) {
-          followingIds = (folRes.data || []).map((r) => r.following_id).filter(Boolean)
-        }
-      }
-      if (cancelled) return
-      setLoungeDetailFollowingUserIds(followingIds)
-      const cids = hydrated.map((r) => r.id).filter(Boolean)
-      if (!composerUserId || cids.length === 0) {
-        setInteractionByComment({})
-        setBookmarkedByComment({})
-        return
-      }
+      const folRes = await supabaseClient
+        .from('profile_follows')
+        .select('following_id')
+        .eq('follower_id', composerUserId)
+      if (cancelled || folRes.error) return
+      setLoungeDetailFollowingUserIds((folRes.data || []).map((r) => r.following_id).filter(Boolean))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [composerUserId, loungeDetailCommentsLoading, loungePostDetail?.id, loungeReadOnly, supabaseClient])
+
+  /** Hydrate comment likes/reposts/bookmarks when comments or viewer session changes — never reset drill path. */
+  useEffect(() => {
+    if (!loungePostDetail?.id || loungeReadOnly || loungeDetailCommentsLoading) return
+    const cids = loungeDetailComments.map((r) => r.id).filter(Boolean)
+    if (!composerUserId || cids.length === 0) return
+    let cancelled = false
+    ;(async () => {
       const [likesRes, legacyRepostsRes, newRepostsRes, bmRes] = await Promise.all([
         supabaseClient.from('feed_comment_likes').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
         supabaseClient.from('feed_comment_reposts').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
@@ -3949,38 +4084,42 @@ export default function SocialFeed({
       const intErr = likesRes.error?.message || legacyRepostsRes.error?.message || bmRes.error?.message
       if (intErr) {
         console.warn('feed comment interactions:', intErr)
-        setInteractionByComment({})
-        setBookmarkedByComment({})
         return
       }
       const repostedCommentIds = new Set([
         ...(legacyRepostsRes.data || []).map((r) => r.comment_id).filter(Boolean),
         ...(newRepostsRes.data || []).map((r) => r.repost_of_comment_id).filter(Boolean),
       ])
-      const nextInt = {}
-      for (const id of cids) {
-        nextInt[id] = { ...defaultInteraction }
-      }
-      for (const r of likesRes.data || []) {
-        const cid = r.comment_id
-        if (!cid || !nextInt[cid]) continue
-        nextInt[cid] = { ...nextInt[cid], liked: true }
-      }
-      for (const cid of repostedCommentIds) {
-        if (!nextInt[cid]) continue
-        nextInt[cid] = {
-          ...nextInt[cid],
-          reposted: true,
-          plainRepostChildId: cid,
-          quoteRepostChildId: null,
+      setInteractionByComment((prev) => {
+        const next = { ...prev }
+        for (const id of cids) {
+          const key = String(id)
+          if (!next[key]) next[key] = { ...defaultInteraction }
         }
-      }
-      const nextBm = {}
-      for (const r of bmRes.data || []) {
-        if (r.comment_id) nextBm[r.comment_id] = true
-      }
-      setInteractionByComment(nextInt)
-      setBookmarkedByComment(nextBm)
+        for (const r of likesRes.data || []) {
+          const cid = r.comment_id != null ? String(r.comment_id) : ''
+          if (!cid || !next[cid]) continue
+          next[cid] = { ...next[cid], liked: true }
+        }
+        for (const cid of repostedCommentIds) {
+          const key = String(cid)
+          if (!next[key]) continue
+          next[key] = {
+            ...next[key],
+            reposted: true,
+            plainRepostChildId: key,
+            quoteRepostChildId: null,
+          }
+        }
+        return next
+      })
+      setBookmarkedByComment((prev) => {
+        const next = { ...prev }
+        for (const r of bmRes.data || []) {
+          if (r.comment_id) next[String(r.comment_id)] = true
+        }
+        return next
+      })
     })()
     return () => {
       cancelled = true
@@ -3988,18 +4127,31 @@ export default function SocialFeed({
   }, [
     composerUserId,
     defaultInteraction,
+    loungeDetailComments,
+    loungeDetailCommentsLoading,
     loungePostDetail?.id,
     loungeReadOnly,
-    profileModalOpen,
-    profileOverlayStack.length,
     supabaseClient,
   ])
 
+  /** Re-hydrate feed comment-repost interaction glyphs after post detail closes (shared `interactionByComment` map). */
+  const loungePostDetailOpenRef = useRef(/** @type {null | string} */ (null))
   useEffect(() => {
-    if (profileModalOpen || profileOverlayStack.length > 0 || loungePostDetail?.id) return
-    setInteractionByComment({})
-    setBookmarkedByComment({})
-  }, [profileModalOpen, profileOverlayStack.length, loungePostDetail?.id])
+    const postId = loungePostDetail?.id ? String(loungePostDetail.id) : null
+    const wasOpen = loungePostDetailOpenRef.current
+    loungePostDetailOpenRef.current = postId
+    if (postId || !wasOpen) return
+    if (!composerUserId || loungeReadOnly) return
+    const ids = feedCommentRepostIdsKey ? feedCommentRepostIdsKey.split(',').filter(Boolean) : []
+    if (ids.length === 0) return
+    void hydrateCommentInteractionsForIds(ids)
+  }, [
+    composerUserId,
+    feedCommentRepostIdsKey,
+    hydrateCommentInteractionsForIds,
+    loungePostDetail?.id,
+    loungeReadOnly,
+  ])
 
   const finalizeLoungePostDetailClose = useCallback(() => {
     const tid = loungePostDetailCloseFallbackTimerRef.current
@@ -4039,8 +4191,6 @@ export default function SocialFeed({
     }
     setLoungeDetailCommentDraft('')
     setLoungeDetailCommentErr('')
-    setInteractionByComment({})
-    setBookmarkedByComment({})
     setLoungeDetailCommentComposerExpanded(false)
     setLoungeDetailCommentDiscardPromptOpen(false)
     setLoungeDetailCommentKbOverlapPx(0)
@@ -4052,6 +4202,10 @@ export default function SocialFeed({
     setLoungeDetailCommentDeleteBusyId(null)
     setLoungeDetailCommentEditImageUrls([])
     setLoungeDetailCommentEditGifUrl('')
+    loungePostDetailDirectCommentOpenRef.current = null
+    loungeCommentDetailDirectEntryDepthRef.current = null
+    loungeDetailCommentsEffectPostIdRef.current = null
+    loungeDetailCommentsLoadedPostIdRef.current = null
     loungeTitleRevealRef.current = 1
     setLoungeTitleReveal(1)
   }, [clearLoungeDetailCommentComposerMedia, loungeDetailCommentBackgroundUploadInFlight])
@@ -4098,11 +4252,22 @@ export default function SocialFeed({
       setLoungeDetailEditMediaKind('')
       setLoungePostDetailMenuOpen(false)
       setLoungeDetailRepostMenuOpen(false)
-      setLoungeCommentDetailPathIds([])
-      loungePostDetailPendingCommentIdRef.current = opts?.focusCommentId
-        ? String(opts.focusCommentId)
-        : null
-      loungePostDetailPendingCommentComposerRef.current = opts?.focusCommentComposer === true
+      const directOpen =
+        loungePostDetailDirectCommentOpenRef.current?.postId === String(post.id)
+          ? loungePostDetailDirectCommentOpenRef.current
+          : null
+      if (directOpen?.pathIds?.length) {
+        setLoungeCommentDetailPathIds(directOpen.pathIds)
+        loungeCommentDetailDirectEntryDepthRef.current = directOpen.pathIds.length
+        loungePostDetailPendingCommentIdRef.current = null
+        loungePostDetailPendingCommentComposerRef.current = false
+      } else {
+        setLoungeCommentDetailPathIds([])
+        loungePostDetailPendingCommentIdRef.current = opts?.focusCommentId
+          ? String(opts.focusCommentId)
+          : null
+        loungePostDetailPendingCommentComposerRef.current = opts?.focusCommentComposer === true
+      }
       setLoungeDetailCommentDraft('')
       setLoungeDetailCommentErr('')
       setLoungeDetailCommentComposerExpanded(false)
@@ -4155,8 +4320,8 @@ export default function SocialFeed({
   )
 
   /**
-   * Tap on a comment-repost feed card → open the parent post's detail with the comment in focus.
-   * Looks up the post in the current feed first; falls back to a DB fetch.
+   * Tap on a comment-repost feed card → open directly into Reply view with full ancestor hierarchy.
+   * Prefetches comments so the first paint is comment detail, not post-only then drill.
    */
   const openCommentRepostDetail = useCallback(
     async (repostedComment, { focusComposer = false } = {}) => {
@@ -4178,10 +4343,34 @@ export default function SocialFeed({
           parentPost = { id: repostedComment.post_id }
         }
       }
-      openLoungePostDetail(parentPost, {
-        focusCommentId: repostedComment.id,
-        focusCommentComposer: focusComposer,
-      })
+
+      let comments = []
+      try {
+        comments = await fetchHydratedFeedCommentsForPost(supabaseClient, repostedComment.post_id)
+      } catch {
+        openLoungePostDetail(parentPost, {
+          focusCommentId: repostedComment.id,
+          focusCommentComposer: focusComposer,
+        })
+        return
+      }
+
+      const pathIds = buildFeedCommentDrillPath(repostedComment.id, comments)
+      if (!pathIds.length) {
+        openLoungePostDetail(parentPost, {
+          focusCommentId: repostedComment.id,
+          focusCommentComposer: focusComposer,
+        })
+        return
+      }
+
+      loungePostDetailDirectCommentOpenRef.current = {
+        postId: String(parentPost.id),
+        pathIds,
+        comments,
+        focusComposer,
+      }
+      openLoungePostDetail(parentPost)
     },
     [communityPosts, hydrateCommunityPosts, openLoungePostDetail, supabaseClient],
   )
@@ -4428,19 +4617,44 @@ export default function SocialFeed({
     }
   }, [])
 
-  const buildLoungeCommentDrillPath = useCallback((commentId) => {
-    const rows = loungeDetailComments
-    const byId = new Map(rows.map((r) => [r.id, r]))
-    const chain = []
-    let cur = byId.get(commentId)
-    if (!cur) return chain
-    while (cur) {
-      chain.unshift(cur.id)
-      const pid = cur.parent_id
-      cur = pid && byId.has(pid) ? byId.get(pid) : null
+  const handleLoungePostDetailBack = useCallback(() => {
+    if (loungePostDetailMenuOpen) {
+      setLoungePostDetailMenuOpen(false)
+      return
     }
-    return chain
-  }, [loungeDetailComments])
+    if (loungeDetailEditing) {
+      cancelLoungeDetailEdit()
+      return
+    }
+    if (loungeCommentDetailPathIds.length > 0) {
+      const entryDepth = loungeCommentDetailDirectEntryDepthRef.current
+      if (entryDepth != null && loungeCommentDetailPathIds.length <= entryDepth) {
+        closeLoungePostDetail()
+        return
+      }
+      setLoungeCommentDetailPathIds((p) => {
+        const next = p.slice(0, -1)
+        if (next.length === 0) {
+          requestAnimationFrame(() => scrollLoungePostDetailToTopInstant())
+        }
+        return next
+      })
+      return
+    }
+    closeLoungePostDetail()
+  }, [
+    cancelLoungeDetailEdit,
+    closeLoungePostDetail,
+    loungeCommentDetailPathIds.length,
+    loungeDetailEditing,
+    loungePostDetailMenuOpen,
+    scrollLoungePostDetailToTopInstant,
+  ])
+
+  const buildLoungeCommentDrillPath = useCallback(
+    (commentId) => buildFeedCommentDrillPath(commentId, loungeDetailComments),
+    [loungeDetailComments],
+  )
 
   const openLoungeCommentDetail = useCallback(
     (comment, { focusComposer = false } = {}) => {
@@ -4490,6 +4704,7 @@ export default function SocialFeed({
 
   const navigateLoungeCommentDetailToPathIndex = useCallback(
     (pathIndex) => {
+      loungeCommentDetailDirectEntryDepthRef.current = null
       setLoungeCommentDetailPathIds((prev) => {
         if (pathIndex < 0 || pathIndex >= prev.length) return prev
         return prev.slice(0, pathIndex + 1)
@@ -4501,6 +4716,14 @@ export default function SocialFeed({
     },
     [cancelLoungeDetailCommentEdit, scrollLoungePostDetailToFocusedComment],
   )
+
+  const exitLoungeCommentDetailToPostView = useCallback(() => {
+    loungeCommentDetailDirectEntryDepthRef.current = null
+    setLoungeCommentDetailPathIds([])
+    setLoungePostDetailMenuOpen(false)
+    cancelLoungeDetailCommentEdit()
+    requestAnimationFrame(() => scrollLoungePostDetailToTopInstant())
+  }, [cancelLoungeDetailCommentEdit, scrollLoungePostDetailToTopInstant])
 
   const onLoungeCommentReplyInteraction = useCallback(
     (comment) => openLoungeCommentDetail(comment, { focusComposer: true }),
@@ -8282,22 +8505,7 @@ export default function SocialFeed({
               <div className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
               <button
                 type="button"
-                onClick={() => {
-                  if (loungePostDetailMenuOpen) {
-                    setLoungePostDetailMenuOpen(false)
-                    return
-                  }
-                  if (loungeDetailEditing) cancelLoungeDetailEdit()
-                  else if (loungeCommentDetailPathIds.length > 0) {
-                    setLoungeCommentDetailPathIds((p) => {
-                      const next = p.slice(0, -1)
-                      if (next.length === 0) {
-                        requestAnimationFrame(() => scrollLoungePostDetailToTopInstant())
-                      }
-                      return next
-                    })
-                  } else closeLoungePostDetail()
-                }}
+                onClick={handleLoungePostDetailBack}
                 className={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]`}
                 aria-label={loungeCommentDetailPathIds.length > 0 ? 'Back' : 'Back to Lounge'}
               >
@@ -8442,6 +8650,30 @@ export default function SocialFeed({
                   loungeCommentDetailPathIds.length > 0 ? loungePostDetailCommentConnectorRef : undefined
                 }
                 className={loungeCommentDetailPathIds.length > 0 ? 'relative' : ''}
+              >
+              <article
+                tabIndex={loungeCommentDetailPathIds.length > 0 ? 0 : undefined}
+                aria-label={loungeCommentDetailPathIds.length > 0 ? 'View post' : undefined}
+                onClick={
+                  loungeCommentDetailPathIds.length > 0
+                    ? (e) => loungePostDetailThreadAncestorClick(e, exitLoungeCommentDetailToPostView)
+                    : undefined
+                }
+                onKeyDown={
+                  loungeCommentDetailPathIds.length > 0
+                    ? (e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return
+                        if (e.target !== e.currentTarget) return
+                        e.preventDefault()
+                        exitLoungeCommentDetailToPostView()
+                      }
+                    : undefined
+                }
+                className={
+                  loungeCommentDetailPathIds.length > 0
+                    ? 'cursor-pointer rounded-lg touch-manipulation outline-none hover:bg-zinc-900/50 [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-violet-500/40'
+                    : undefined
+                }
               >
               <div className="flex items-start gap-3">
                 <button
@@ -8718,6 +8950,7 @@ export default function SocialFeed({
                   <span className="text-zinc-600"> · Edited</span>
                 ) : null}
               </div>
+              </article>
 
               {(() => {
                 const d = loungePostDetail

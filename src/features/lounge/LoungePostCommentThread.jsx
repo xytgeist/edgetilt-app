@@ -334,7 +334,7 @@ export function LoungeCommentCard({
           // Match feed post row: avoid drilling when tapping real controls (nested <button> inside role="button" breaks touch on iOS).
           if (
             t.closest(
-              'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-post-interaction-bar]',
+              'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-post-interaction-bar], [data-lounge-image-zoom], [data-lounge-video-zoom]',
             )
           ) {
             return

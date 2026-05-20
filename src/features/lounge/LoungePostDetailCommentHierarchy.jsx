@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { LoungeCommentCard } from './LoungePostCommentThread.jsx'
-import { LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS } from './loungeFeedAvatar.js'
 import { formatLoungePostDetailWhen } from './loungeFormat.js'
 
 const END_PAD_PX = 3
@@ -81,7 +80,6 @@ function HierarchyCommentRow({
   betweenRowClassName = 'mt-1',
 }) {
   const rowRef = useRef(null)
-  const avatarWrapRef = useRef(null)
   const lineContainerRef = pathIndex === 0 && connectorRootRef ? connectorRootRef : rowRef
   const rowGapClass =
     pathIndex > 0 && !isCommentPostDetail
@@ -91,22 +89,6 @@ function HierarchyCommentRow({
         : ''
 
   const canNavigate = !isFocus && typeof onNavigateToPathIndex === 'function'
-
-  const card = (
-    <div ref={avatarWrapRef}>
-      <LoungeCommentCard
-        comment={comment}
-        navigable={false}
-        avatarButtonRef={avatarRef}
-        descendantFallback={descendantFallback}
-        showDetailTimestamp={isFocus}
-        detailTimestampLabel={
-          isFocus && comment.created_at ? formatLoungePostDetailWhen(comment.created_at) : ''
-        }
-        {...cardProps}
-      />
-    </div>
-  )
 
   return (
     <div ref={rowRef} className={`relative min-w-0 ${rowGapClass}`}>
@@ -118,20 +100,20 @@ function HierarchyCommentRow({
         />
       ) : null}
       <div id={isFocus ? 'lounge-detail-focus-comment' : undefined} className="relative z-[1]">
-        {canNavigate ? (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => onNavigateToPathIndex(pathIndex)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigateToPathIndex(pathIndex) } }}
-            className={`block w-full ${LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS} cursor-pointer rounded-lg text-left touch-manipulation outline-none hover:bg-zinc-900/50 [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-violet-500/40`}
-            aria-label="View this comment in thread"
-          >
-            {card}
-          </div>
-        ) : (
-          card
-        )}
+        <LoungeCommentCard
+          comment={comment}
+          avatarButtonRef={avatarRef}
+          descendantFallback={descendantFallback}
+          showDetailTimestamp={isFocus}
+          detailTimestampLabel={
+            isFocus && comment.created_at ? formatLoungePostDetailWhen(comment.created_at) : ''
+          }
+          {...cardProps}
+          navigable={canNavigate}
+          onOpenCommentThread={
+            canNavigate ? () => onNavigateToPathIndex(pathIndex) : undefined
+          }
+        />
       </div>
     </div>
   )
@@ -139,6 +121,7 @@ function HierarchyCommentRow({
 
 /**
  * OP post → ancestor comments → focused comment, with avatar connector lines (X-style thread).
+ * Ancestor rows (not the focus) are tappable — opens that comment as the Reply focus + its replies.
  */
 export default function LoungePostDetailCommentHierarchy({
   pathIds = [],
@@ -151,8 +134,8 @@ export default function LoungePostDetailCommentHierarchy({
   isCommentPostDetail = true,
   betweenRowClassName = 'mt-1',
 }) {
-  const byId = new Map((comments || []).map((c) => [c.id, c]))
-  const chain = (pathIds || []).map((id) => byId.get(id)).filter(Boolean)
+  const byId = new Map((comments || []).map((c) => [String(c.id), c]))
+  const chain = (pathIds || []).map((id) => byId.get(String(id))).filter(Boolean)
   const avatarRefs = useRef([])
 
   if (!chain.length) return null

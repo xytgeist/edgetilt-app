@@ -971,6 +971,16 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     localStripSoundUnmutedRef.current = localStripSoundUnmuted
   }, [localStripSoundUnmuted])
+  const feedInlineSoundUnmutedRef = useRef(false)
+  const feedInlineSoundExplicitlyMutedRef = useRef(false)
+  useEffect(() => {
+    feedInlineSoundUnmutedRef.current = feedInlineSoundUnmuted
+    feedInlineSoundExplicitlyMutedRef.current = feedInlineSoundExplicitlyMuted
+  }, [feedInlineSoundUnmuted, feedInlineSoundExplicitlyMuted])
+  const tileRatioRef = useRef(0)
+  useEffect(() => {
+    tileRatioRef.current = tileRatio
+  }, [tileRatio])
   const stripSoundUnmuted = coordinatedInlineSound ? feedInlineSoundUnmuted : localStripSoundUnmuted
   const inlineSoundScopeLabel =
     variant === 'feed' || variant === 'embed' ? 'the feed' : 'this screen'
@@ -1100,12 +1110,67 @@ export default function LoungePostStreamVideo({
   const syncCoordinatedSoundMuted = useCallback(() => {
     const v = videoRef.current
     if (!v || !coordinatedInlineSound || !isActiveRef.current || v.paused) return
+    const shouldMute = computeCoordinatedSoundMuted()
+    if (shouldMute) {
+      feedSoundAudibleRef.current = false
+      try {
+        v.muted = true
+      } catch {
+        // ignore
+      }
+      return
+    }
+    // iOS MSE: never unmute inside scroll-band sync — unmute only after muted play() resolves.
+    if (appleWebKitInlineStreamRef.current) return
     try {
-      v.muted = computeCoordinatedSoundMuted()
+      v.muted = false
+      feedSoundAudibleRef.current = true
     } catch {
       // ignore
     }
   }, [coordinatedInlineSound, computeCoordinatedSoundMuted])
+
+  /** Feed-wide sound: unmute after muted autoplay play() (iOS-safe — resume muted if unmute stalls). */
+  const applyCoordinatedAudibleAfterPlay = useCallback(
+    (video) => {
+      if (!video || video.paused || !coordinatedInlineSound || !isActiveRef.current) return
+      if (!feedInlineSoundUnmutedRef.current || feedInlineSoundExplicitlyMutedRef.current) return
+      if (tileRatioRef.current < LOUNGE_VIDEO_SOUND_ON_RATIO) {
+        feedSoundAudibleRef.current = false
+        try {
+          video.muted = true
+        } catch {
+          // ignore
+        }
+        return
+      }
+      feedSoundAudibleRef.current = true
+      try {
+        video.muted = false
+      } catch {
+        // ignore
+      }
+      if (!appleWebKitInlineStreamRef.current) return
+      requestAnimationFrame(() => {
+        if (!video || !isActiveRef.current || !video.paused) return
+        try {
+          video.muted = true
+          const p = video.play()
+          if (p && typeof p.catch === 'function') p.catch(() => {})
+        } catch {
+          // ignore
+        }
+        if (videoDebugEnabled && feedAutoplayClientId) {
+          reportLoungeVideoDebugEvent(
+            feedAutoplayClientId,
+            'sound',
+            'ios-unmute-stall→muted-play',
+          )
+        }
+      })
+    },
+    [coordinatedInlineSound, feedAutoplayClientId, videoDebugEnabled],
+  )
 
   useEffect(() => {
     if (!coordinatedInlineSound) return
@@ -1148,9 +1213,24 @@ export default function LoungePostStreamVideo({
     if (!v) return undefined
 
     syncCoordinatedSoundMuted()
-    v.addEventListener('playing', syncCoordinatedSoundMuted)
+    const onPlayingSound = () => {
+      if (appleWebKitInlineStreamRef.current) {
+        if (
+          feedInlineSoundUnmutedRef.current &&
+          !feedInlineSoundExplicitlyMutedRef.current &&
+          tileRatioRef.current >= LOUNGE_VIDEO_SOUND_ON_RATIO
+        ) {
+          applyCoordinatedAudibleAfterPlay(v)
+        } else {
+          syncCoordinatedSoundMuted()
+        }
+        return
+      }
+      syncCoordinatedSoundMuted()
+    }
+    v.addEventListener('playing', onPlayingSound)
     return () => {
-      v.removeEventListener('playing', syncCoordinatedSoundMuted)
+      v.removeEventListener('playing', onPlayingSound)
     }
   }, [
     coordinatedInlineSound,
@@ -1158,8 +1238,27 @@ export default function LoungePostStreamVideo({
     tileRatio,
     lightboxOpen,
     syncCoordinatedSoundMuted,
+    applyCoordinatedAudibleAfterPlay,
     feedInlineSoundUnmuted,
     feedInlineSoundExplicitlyMuted,
+  ])
+
+  /** When the active tile crosses the 60% sound band while playing muted, retry audible unlock. */
+  useEffect(() => {
+    if (!coordinatedInlineSound || !isActive || lightboxOpen) return
+    const v = videoRef.current
+    if (!v || v.paused || !v.muted) return
+    if (!feedInlineSoundUnmuted || feedInlineSoundExplicitlyMuted) return
+    if (tileRatio < LOUNGE_VIDEO_SOUND_ON_RATIO) return
+    applyCoordinatedAudibleAfterPlay(v)
+  }, [
+    applyCoordinatedAudibleAfterPlay,
+    coordinatedInlineSound,
+    feedInlineSoundExplicitlyMuted,
+    feedInlineSoundUnmuted,
+    isActive,
+    lightboxOpen,
+    tileRatio,
   ])
 
   useEffect(() => {
@@ -1230,7 +1329,7 @@ export default function LoungePostStreamVideo({
     const applyAudibleAfterPlay = () => {
       if (!v || v.paused) return
       if (coordinatedInlineSound && isActiveRef.current) {
-        syncCoordinatedSoundMuted()
+        applyCoordinatedAudibleAfterPlay(v)
         return
       }
       if (localStripSoundUnmutedRef.current && isActiveRef.current) {
@@ -1303,7 +1402,9 @@ export default function LoungePostStreamVideo({
     lazyStream,
     scheduleRecompute,
     showOpen,
-    syncCoordinatedSoundMuted,
+    applyCoordinatedAudibleAfterPlay,
+    scheduleRecompute,
+    showOpen,
     tileRatio,
     videoDebugEnabled,
   ])
@@ -2338,23 +2439,37 @@ export default function LoungePostStreamVideo({
       if (turningOn && attachStream) {
         const v = videoRef.current
         if (!v) return
-        try {
-          v.muted = false
-          const p = v.play()
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {
-              try {
-                v.muted = true
-              } catch {
-                // ignore
-              }
-              toggleFeedInlineSound()
-              openLightbox()
-            })
+        const failSoundToggle = () => {
+          try {
+            v.muted = true
+          } catch {
+            // ignore
           }
-        } catch {
           toggleFeedInlineSound()
           openLightbox()
+        }
+        try {
+          v.muted = true
+          const p = v.play()
+          const unlockAudible = () => {
+            if (!v) return
+            try {
+              v.muted = false
+              const p2 = v.play()
+              if (p2 && typeof p2.catch === 'function') {
+                p2.catch(failSoundToggle)
+              }
+            } catch {
+              failSoundToggle()
+            }
+          }
+          if (p && typeof p.then === 'function') {
+            p.then(unlockAudible).catch(failSoundToggle)
+          } else {
+            unlockAudible()
+          }
+        } catch {
+          failSoundToggle()
         }
       }
       return

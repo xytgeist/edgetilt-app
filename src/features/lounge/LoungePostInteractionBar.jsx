@@ -16,6 +16,7 @@ import { LoungeInteractionGlyphRail } from './LoungeInteractionGlyphRail.jsx'
  * @param {(id: string) => void | Promise<unknown>} [props.onToggleBookmark] — When set, bookmark control calls this with `post.id` instead of `toggleBookmark(post.id)`.
  * @param {(id: string) => boolean} [props.getBookmarked] — When set, used instead of `bookmarkedByPost[id]` to decide bookmark highlight.
  * @param {boolean} [props.repostActionBusy=false] — Disables repost menu actions (`sheet` only).
+ * @param {() => void} [props.onShare] — When set, shows share control to the right of bookmark (e.g. Stream lightbox).
  */
 export default function LoungePostInteractionBar({
   post,
@@ -43,6 +44,7 @@ export default function LoungePostInteractionBar({
   pillOverlay = false,
   /** Extra classes on the outer grid wrapper (e.g. `w-full` in lightbox). */
   rootClassName = '',
+  onShare,
 }) {
   const idleUi = {
     liked: false,
@@ -104,6 +106,7 @@ export default function LoungePostInteractionBar({
       : overlayIdle
         ? 'text-zinc-200'
         : 'text-zinc-500'
+  const shareClass = overlayIdle ? 'text-zinc-200' : ro ? 'text-zinc-500' : 'text-zinc-200'
   const plainId = ui.plainRepostChildId
   const quoteId = ui.quoteRepostChildId
   const commentBubbleD =
@@ -683,6 +686,37 @@ export default function LoungePostInteractionBar({
           </button>
         )}
       </div>
+      {typeof onShare === 'function' ? (
+        <div
+          className="relative flex shrink-0 flex-none items-center justify-center self-center overflow-visible"
+          style={
+            pillOverlay
+              ? { minHeight: railMinH }
+              : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
+          }
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onShare()
+            }}
+            className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center ${shareClass}`}
+            title="Share"
+            aria-label="Share"
+          >
+            <svg className={`block shrink-0 ${iconSzBookmark} ${shareClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+              <path
+                d="M10 3v8M10 3L7 6M10 3l3 3M5 12v4a1 1 0 001 1h8a1 1 0 001-1v-4"
+                stroke="currentColor"
+                strokeWidth="1.35"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      ) : null}
       </div>
       {isFeed ? repostMenusFeed : null}
       {isFeed ? repostMenusFeedNotReposted : null}

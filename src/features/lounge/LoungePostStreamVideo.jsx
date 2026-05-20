@@ -15,7 +15,7 @@ import {
 } from '../../utils/loungeStreamInlineVideoControl.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
-import { LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS } from './loungeFeedAvatar.js'
+import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS } from './LoungeStreamVideoLightboxChrome.jsx'
 import {
   readLoungeFeedVideoDebugEnabled,
   subscribeLoungeFeedVideoDebugEnabled,
@@ -1915,35 +1915,15 @@ export default function LoungePostStreamVideo({
     [bumpHeroChrome, clearHeroChromeHideTimer],
   )
 
-  const onHeroGestureTap = useCallback(
-    (e) => {
-      if (heroPhaseRef.current !== 'open') return
-      if (!heroChromeVisibleRef.current) {
-        bumpHeroChrome()
-        return
-      }
-      const layout = heroTargetRectRef.current || heroLayout
-      const cx = e?.clientX
-      const cy = e?.clientY
-      if (layout && typeof cx === 'number' && typeof cy === 'number') {
-        const inside =
-          cx >= layout.left &&
-          cx <= layout.left + layout.width &&
-          cy >= layout.top &&
-          cy <= layout.top + layout.height
-        if (inside) {
-          toggleHeroVideoPlayPause()
-          bumpHeroChrome()
-          return
-        }
-        closeLightbox()
-        return
-      }
-      toggleHeroVideoPlayPause()
+  const onHeroGestureTap = useCallback(() => {
+    if (heroPhaseRef.current !== 'open') return
+    if (!heroChromeVisibleRef.current) {
       bumpHeroChrome()
-    },
-    [bumpHeroChrome, closeLightbox, heroLayout, toggleHeroVideoPlayPause],
-  )
+      return
+    }
+    toggleHeroVideoPlayPause()
+    bumpHeroChrome()
+  }, [bumpHeroChrome, toggleHeroVideoPlayPause])
 
   const { swipeSurfaceProps: heroSwipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
     onClose: closeLightbox,
@@ -2920,7 +2900,7 @@ export default function LoungePostStreamVideo({
                         closeLightbox()
                       }}
                       aria-label="Back"
-                      className={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]`}
+                      className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
                     >
                       <span className="text-[22px] leading-none" aria-hidden>
                         ←
@@ -2938,7 +2918,7 @@ export default function LoungePostStreamVideo({
                           onHeroSoundToggle()
                         }}
                         aria-label={heroSoundUnmuted ? 'Mute video' : 'Unmute video'}
-                        className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-white hover:bg-white/10 [-webkit-tap-highlight-color:transparent]"
+                        className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
                       >
                         {heroSoundUnmuted ? (
                           <SoundOnGlyph className="h-5 w-5 opacity-90" />

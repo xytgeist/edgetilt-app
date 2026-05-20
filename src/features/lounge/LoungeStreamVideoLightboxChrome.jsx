@@ -2,6 +2,10 @@ import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import { LOUNGE_FEED_AVATAR_CLASS } from './loungeFeedAvatar.js'
 import { renderRichCaption } from './loungeCaption'
 
+/** Top-bar icon buttons — matches lightbox interaction pill overlay. */
+export const LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS =
+  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 [-webkit-tap-highlight-color:transparent]'
+
 /**
  * X-style overlay chrome for Stream video hero (author, caption snippet, follow, ⋯ menu, interactions).
  * Video plays full-screen behind this layer.
@@ -57,8 +61,8 @@ export default function LoungeStreamVideoLightboxChrome({
   }
 
   return (
-    <div className="pointer-events-none flex w-full flex-col gap-2">
-      <div className="pointer-events-auto flex items-start gap-2.5 pr-1">
+    <div className="pointer-events-none flex w-full flex-col gap-2 landscape:flex-row landscape:items-center landscape:justify-between landscape:gap-4">
+      <div className="pointer-events-auto flex min-w-0 flex-1 items-start gap-2.5 pr-1 landscape:pr-0">
         <button
           type="button"
           onClick={openProfile}
@@ -100,12 +104,12 @@ export default function LoungeStreamVideoLightboxChrome({
                   if (openProfileGateIfNeeded?.()) return
                   onCaptionClick()
                 }}
-                className="mt-1 line-clamp-2 w-full text-left text-[14px] leading-snug text-zinc-100/95 touch-manipulation hover:text-white [-webkit-tap-highlight-color:transparent]"
+                className="mt-1 line-clamp-2 w-full text-left text-[14px] leading-snug text-zinc-100/95 touch-manipulation hover:text-white landscape:line-clamp-3 [-webkit-tap-highlight-color:transparent]"
               >
                 {renderRichCaption(caption, { onMentionClick, onHashtagClick })}
               </button>
             ) : (
-              <div className="mt-1 line-clamp-2 text-left text-[14px] leading-snug text-zinc-100/95">
+              <div className="mt-1 line-clamp-2 text-left text-[14px] leading-snug text-zinc-100/95 landscape:line-clamp-3">
                 {renderRichCaption(caption, { onMentionClick, onHashtagClick })}
               </div>
             )
@@ -126,7 +130,7 @@ export default function LoungeStreamVideoLightboxChrome({
       </div>
       {interactionBar ? (
         <div
-          className="pointer-events-auto"
+          className="pointer-events-auto shrink-0 landscape:max-w-[46vw] [&_[data-lounge-post-interaction-bar]]:landscape:w-auto [&_[data-lounge-post-interaction-bar]]:landscape:justify-end [&_[data-lounge-post-interaction-bar]]:landscape:gap-1.5"
           data-lounge-lightbox-no-swipe
           onClick={(e) => e.stopPropagation()}
         >

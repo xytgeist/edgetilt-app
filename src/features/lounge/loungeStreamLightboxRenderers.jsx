@@ -1,6 +1,8 @@
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
-import LoungeStreamVideoLightboxChrome from './LoungeStreamVideoLightboxChrome.jsx'
+import LoungeStreamVideoLightboxChrome, {
+  LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
+} from './LoungeStreamVideoLightboxChrome.jsx'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
@@ -152,6 +154,11 @@ export function createLoungeStreamLightboxRenderers(hostPost, ctx) {
         }
         pillOverlay
         repostActionBusy={ctx.repostActionBusy}
+        onShare={
+          !menuState.isPlainPostRepost && !menuState.isCommentRepost && typeof ctx.onSharePost === 'function'
+            ? () => ctx.onSharePost(hostPost)
+            : undefined
+        }
       />,
       dismissLightbox,
     )
@@ -220,7 +227,7 @@ export function createLoungeStreamLightboxRenderers(hostPost, ctx) {
         showAutoplayToggle={typeof ctx.onFeedVideoAutoplayChange === 'function'}
         feedVideoAutoplayEnabled={ctx.feedVideoAutoplayEnabled}
         onFeedVideoAutoplayChange={ctx.onFeedVideoAutoplayChange}
-        menuButtonClassName="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-white hover:bg-white/10 [-webkit-tap-highlight-color:transparent]"
+        menuButtonClassName={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
       />
     )
   }
@@ -305,7 +312,7 @@ export function createLoungeCommentStreamLightboxRenderers(comment, ctx) {
         showAutoplayToggle={typeof ctx.onFeedVideoAutoplayChange === 'function'}
         feedVideoAutoplayEnabled={ctx.feedVideoAutoplayEnabled}
         onFeedVideoAutoplayChange={ctx.onFeedVideoAutoplayChange}
-        menuButtonClassName="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-white hover:bg-white/10 [-webkit-tap-highlight-color:transparent]"
+        menuButtonClassName={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
       />
     )
   }

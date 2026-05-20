@@ -6,6 +6,7 @@ import {
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
+import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 
 function normalizeUrlList(urls) {
@@ -151,6 +152,13 @@ export function LoungeImageLightbox({
     }
     return null
   }, [renderMediaLightboxInteractionBar, onClose])
+
+  useEffect(() => {
+    notifyLoungeStreamLightboxOpen(true)
+    return () => {
+      notifyLoungeStreamLightboxOpen(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (!current) return

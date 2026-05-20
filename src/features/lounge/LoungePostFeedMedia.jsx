@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
+import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 
@@ -316,12 +317,14 @@ export function LoungePostFeedImagesAndGif({
   enableLightbox = true,
   visibilityResetRootRef,
   lightboxPortalClass = 'z-[100]',
-  /** `(post) => ReactNode` — e.g. interaction bar for the same post as this media strip. */
+  /** Feed/detail row or comment row for Stream hero chrome (defaults to `post`). */
+  streamLightboxHost,
+  /** Per-tile overrides merged into lightbox ctx (e.g. comment reply counts). */
+  streamLightboxTileCtx,
+  /** Surface overrides: repost menu portal z-index + scroll root for this strip. */
+  streamLightboxSurface,
+  /** `(post) => ReactNode` — image/GIF lightbox footer only (not Stream video). */
   renderMediaLightboxFooter,
-  /** `(post, dismissLightbox) => ReactNode` — Stream hero overlay (author, interactions). */
-  renderMediaLightboxChrome,
-  /** `() => ReactNode` — Stream hero top-right ⋯ menu (+ autoplay toggle). */
-  renderMediaLightboxMenu,
   /** Feed/detail row id when media `post` is not the host card (plain/quote/comment reposts). */
   feedAutoplayRowId,
   /** Optional slot when one row has multiple Stream tiles (e.g. quote caption + embed). */
@@ -329,12 +332,25 @@ export function LoungePostFeedImagesAndGif({
   /** Prefix coordinator ids in post detail (`detail:…`) while using feed/embed variant tiles. */
   feedAutoplayScope,
 }) {
+  const streamLightbox = useLoungeStreamLightbox()
+  const lightboxHost = streamLightboxHost ?? post
   const mediaLightboxFooter =
     typeof renderMediaLightboxFooter === 'function' ? renderMediaLightboxFooter(post) : null
-  const chromeRenderer = renderMediaLightboxChrome
-    ? (dismissLightbox) => renderMediaLightboxChrome(post, dismissLightbox)
-    : null
-  const menuRenderer = renderMediaLightboxMenu || null
+  const chromeRenderer =
+    streamLightbox && lightboxHost
+      ? (dismissLightbox) =>
+          streamLightbox.buildChrome(
+            lightboxHost,
+            post,
+            dismissLightbox,
+            streamLightboxTileCtx,
+            streamLightboxSurface,
+          )
+      : null
+  const menuRenderer =
+    streamLightbox && lightboxHost
+      ? () => streamLightbox.buildMenu(lightboxHost, streamLightboxTileCtx, streamLightboxSurface)
+      : null
   const streamUid = feedPostStreamVideoUid(post)
   const persistedStreamPoster = streamUid ? feedPostStreamPosterUrl(post) : ''
   const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null

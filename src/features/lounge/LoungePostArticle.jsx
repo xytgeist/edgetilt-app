@@ -7,7 +7,6 @@ import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import LoungeOgBadge from './LoungeOgBadge'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
-import { createLoungeStreamLightboxRenderers } from './loungeStreamLightboxRenderers.jsx'
 import {
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   LOUNGE_FEED_AVATAR_CLASS,
@@ -174,101 +173,20 @@ export default function LoungePostArticle({
     ],
   )
 
-  const streamLightboxRenderers = useMemo(
-    () =>
-      createLoungeStreamLightboxRenderers(post, {
-        loungeReadOnly,
-        viewerUserId,
-        onPostMenuEdit,
-        captionEditableInMenu,
-        loungeViewerIsStaff,
-        setLoungePostPinned,
-        onPostMenuDelete,
-        onStaffPostDelete,
-        onPostMenuBlock,
-        onPostMenuReport,
-        onSharePost,
-        repostMenuPortalClass,
-        interactionBarVariant: 'sheet',
-        interactionStateFor,
-        toggleInteraction,
-        onPlainRepost,
-        onUndoPlainRepost,
-        onRemoveQuoteRepost,
-        onQuoteRepost,
-        toggleBookmark,
-        bookmarkedByPost,
-        onOpenComments,
-        onLightboxOpenDetail: onStreamLightboxOpenDetail,
-        requireLoungeAuth,
-        openProfileGateIfNeeded,
-        repostMenuScrollRootRef,
-        displayNameFor,
-        handleFor,
-        avatarText,
-        avatarToneClass,
-        onAvatarClick,
-        viewerFollowingUserIds,
-        onFollowUser,
-        onMentionClick,
-        onHashtagClick,
-        busyDeletingPostId,
-        loungePinBusy,
-        feedVideoAutoplayEnabled,
-        onFeedVideoAutoplayChange,
-      }),
-    [
-      post,
-      loungeReadOnly,
-      viewerUserId,
-      onPostMenuEdit,
-      captionEditableInMenu,
-      loungeViewerIsStaff,
-      setLoungePostPinned,
-      onPostMenuDelete,
-      onStaffPostDelete,
-      onPostMenuBlock,
-      onPostMenuReport,
-      onSharePost,
-      repostMenuPortalClass,
-      interactionStateFor,
-      toggleInteraction,
-      onPlainRepost,
-      onUndoPlainRepost,
-      onRemoveQuoteRepost,
-      onQuoteRepost,
-      toggleBookmark,
-      bookmarkedByPost,
-      onOpenComments,
-      onStreamLightboxOpenDetail,
-      requireLoungeAuth,
-      openProfileGateIfNeeded,
+  const streamLightboxSurface = useMemo(
+    () => ({
+      repostMenuPortalClass: repostMenuPortalClass === 'z-[48]' ? 'z-[101]' : repostMenuPortalClass,
       repostMenuScrollRootRef,
-      displayNameFor,
-      handleFor,
-      avatarText,
-      avatarToneClass,
-      onAvatarClick,
-      viewerFollowingUserIds,
-      onFollowUser,
-      onMentionClick,
-      onHashtagClick,
-      busyDeletingPostId,
-      loungePinBusy,
-      feedVideoAutoplayEnabled,
-      onFeedVideoAutoplayChange,
-    ],
+    }),
+    [repostMenuPortalClass, repostMenuScrollRootRef],
   )
-
-  const renderMediaLightboxChrome = streamLightboxRenderers.renderMediaLightboxChrome
-  const renderMediaLightboxMenu = streamLightboxRenderers.renderMediaLightboxMenu
 
   const mediaLightboxProps = {
     lightboxPortalClass: mediaLightboxPortalClass,
     visibilityResetRootRef: repostMenuScrollRootRef,
     renderMediaLightboxFooter,
-    renderMediaLightboxChrome,
-    renderMediaLightboxMenu,
+    streamLightboxHost: post,
+    streamLightboxSurface,
   }
 
   const onAvatar = (e) => {

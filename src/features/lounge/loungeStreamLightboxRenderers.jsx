@@ -6,6 +6,89 @@ import LoungeStreamVideoLightboxChrome, {
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
+import { feedCommentSubtreeReplyCount } from '../../utils/communityFeedComment.js'
+
+/** @param {object | null | undefined} menuState */
+function resolveStreamLightboxShare(hostPost, mediaPost, menuState, ctx) {
+  if (typeof ctx.onSharePost !== 'function') return undefined
+  const media = mediaPost ?? hostPost
+  if (isFeedCommentEntity(media)) {
+    const pid = media?.post_id
+    return pid ? () => ctx.onSharePost({ id: pid }) : undefined
+  }
+  if (media?.id && hostPost?.id && String(media.id) !== String(hostPost.id)) {
+    return () => ctx.onSharePost(media)
+  }
+  if (menuState?.isPlainPostRepost || menuState?.isCommentRepost) return undefined
+  return hostPost ? () => ctx.onSharePost(hostPost) : undefined
+}
+
+function buildStreamLightboxInteractionPost(mediaPost, ctx) {
+  if (!isFeedCommentEntity(mediaPost)) return mediaPost
+  const descendantFallback =
+    typeof ctx.commentDescendantFallback === 'number' ? ctx.commentDescendantFallback : 0
+  return {
+    id: mediaPost.id,
+    comment_count: feedCommentSubtreeReplyCount(mediaPost, descendantFallback),
+    like_count: typeof mediaPost.like_count === 'number' ? mediaPost.like_count : 0,
+    repost_count: typeof mediaPost.repost_count === 'number' ? mediaPost.repost_count : 0,
+  }
+}
+
+function buildStreamLightboxInteractionBar(hostPost, mediaPost, menuState, ctx, dismissLightbox) {
+  const media = mediaPost ?? hostPost
+  const isCommentMedia = isFeedCommentEntity(media)
+  const menuPortalZ =
+    ctx.repostMenuPortalClass === 'z-[48]' ? 'z-[105]' : ctx.repostMenuPortalClass || 'z-[105]'
+
+  const openDetailFromLightbox = (focusComposer) => {
+    if (typeof ctx.onLightboxOpenDetail !== 'function') return
+    ctx.onLightboxOpenDetail(hostPost, media, { focusComposer })
+  }
+
+  const interactionStateFor =
+    isCommentMedia && typeof ctx.interactionStateForComment === 'function'
+      ? ctx.interactionStateForComment
+      : ctx.interactionStateFor
+
+  return mergeLightboxDismissOnQuoteRepost(
+    <LoungePostInteractionBar
+      post={buildStreamLightboxInteractionPost(media, ctx)}
+      variant={ctx.interactionBarVariant || 'sheet'}
+      rootClassName="w-full"
+      repostMenuPortalClass={menuPortalZ}
+      loungeReadOnly={ctx.loungeReadOnly}
+      interactionStateFor={interactionStateFor}
+      toggleInteraction={ctx.toggleInteraction}
+      onPlainRepost={isCommentMedia ? ctx.onCommentPlainRepost : ctx.onPlainRepost}
+      onUndoPlainRepost={isCommentMedia ? ctx.onCommentUndoPlainRepost : ctx.onUndoPlainRepost}
+      onRemoveQuoteRepost={ctx.onRemoveQuoteRepost}
+      onQuoteRepost={ctx.onQuoteRepost}
+      toggleBookmark={ctx.toggleBookmark}
+      bookmarkedByPost={ctx.bookmarkedByPost}
+      onToggleLike={isCommentMedia ? ctx.onToggleCommentLike : undefined}
+      onToggleBookmark={isCommentMedia ? ctx.onToggleCommentBookmark : undefined}
+      getBookmarked={isCommentMedia ? ctx.getCommentBookmarked : undefined}
+      onOpenComments={
+        typeof ctx.onLightboxOpenDetail === 'function'
+          ? () => openDetailFromLightbox(false)
+          : ctx.onOpenComments
+      }
+      requireLoungeAuth={ctx.requireLoungeAuth}
+      openProfileGateIfNeeded={ctx.openProfileGateIfNeeded}
+      repostMenuScrollRootRef={ctx.repostMenuScrollRootRef}
+      onCommentClick={
+        typeof ctx.onLightboxOpenDetail === 'function'
+          ? () => openDetailFromLightbox(true)
+          : ctx.onCommentClick
+      }
+      pillOverlay
+      repostActionBusy={ctx.repostActionBusy}
+      onShare={resolveStreamLightboxShare(hostPost, media, menuState, ctx)}
+    />,
+    dismissLightbox,
+  )
+}
 
 /** @param {object | null | undefined} row */
 export function isFeedCommentEntity(row) {
@@ -109,140 +192,56 @@ function loungeStreamLightboxMenuState(hostPost, ctx) {
 }
 
 /**
- * Factory for Stream hero overlay renderers (author block, interactions, ⋯ menu).
- * @param {object} hostPost — Feed/detail row post (menu + author resolution).
- * @param {object} ctx — Handlers and display helpers shared with `LoungePostArticle`.
+ * Stream hero overlay chrome (author, caption, interactions).
+ * @param {object} hostEntity — Feed row, comment row, or detail host for menu + author resolution.
+ * @param {object} mediaPost — Tile that owns the Stream uid (may differ on quote/repost embed).
+ * @param {() => void} dismissLightbox
+ * @param {object} ctx — Handlers from {@link LoungeStreamLightboxProvider}.
  */
-export function createLoungeStreamLightboxRenderers(hostPost, ctx) {
-  const menuState = loungeStreamLightboxMenuState(hostPost, ctx)
-
-  const renderMediaLightboxChrome = (mediaPost, dismissLightbox) => {
-    const { displayEntity, captionText } = loungeStreamLightboxMediaSource(hostPost, mediaPost)
-    const menuPortalZ =
-      ctx.repostMenuPortalClass === 'z-[48]' ? 'z-[105]' : ctx.repostMenuPortalClass || 'z-[105]'
-    const openDetailFromLightbox = (focusComposer) => {
-      if (typeof ctx.onLightboxOpenDetail !== 'function') return
-      ctx.onLightboxOpenDetail(hostPost, mediaPost, { focusComposer })
-    }
-    const interactionBar = mergeLightboxDismissOnQuoteRepost(
-      <LoungePostInteractionBar
-        post={mediaPost}
-        variant={ctx.interactionBarVariant || 'sheet'}
-        rootClassName="w-full"
-        repostMenuPortalClass={menuPortalZ}
-        loungeReadOnly={ctx.loungeReadOnly}
-        interactionStateFor={ctx.interactionStateFor}
-        toggleInteraction={ctx.toggleInteraction}
-        onPlainRepost={ctx.onPlainRepost}
-        onUndoPlainRepost={ctx.onUndoPlainRepost}
-        onRemoveQuoteRepost={ctx.onRemoveQuoteRepost}
-        onQuoteRepost={ctx.onQuoteRepost}
-        toggleBookmark={ctx.toggleBookmark}
-        bookmarkedByPost={ctx.bookmarkedByPost}
-        onOpenComments={
-          typeof ctx.onLightboxOpenDetail === 'function'
-            ? () => openDetailFromLightbox(false)
-            : ctx.onOpenComments
-        }
-        requireLoungeAuth={ctx.requireLoungeAuth}
-        openProfileGateIfNeeded={ctx.openProfileGateIfNeeded}
-        repostMenuScrollRootRef={ctx.repostMenuScrollRootRef}
-        onCommentClick={
-          typeof ctx.onLightboxOpenDetail === 'function'
-            ? () => openDetailFromLightbox(true)
-            : ctx.onCommentClick
-        }
-        pillOverlay
-        repostActionBusy={ctx.repostActionBusy}
-        onShare={
-          !menuState.isPlainPostRepost && !menuState.isCommentRepost && typeof ctx.onSharePost === 'function'
-            ? () => ctx.onSharePost(hostPost)
-            : undefined
-        }
-      />,
-      dismissLightbox,
-    )
-    return (
-      <LoungeStreamVideoLightboxChrome
-        post={mediaPost}
-        displayEntity={displayEntity}
-        captionText={captionText}
-        displayNameFor={ctx.displayNameFor}
-        handleFor={ctx.handleFor}
-        avatarText={ctx.avatarText}
-        avatarToneClass={ctx.avatarToneClass}
-        onAvatarClick={ctx.onAvatarClick}
-        openProfileGateIfNeeded={ctx.openProfileGateIfNeeded}
-        dismissLightbox={dismissLightbox}
-        viewerUserId={ctx.viewerUserId}
-        viewerFollowingUserIds={ctx.viewerFollowingUserIds}
-        onFollowUser={ctx.onFollowUser}
-        interactionBar={interactionBar}
-        onMentionClick={ctx.onMentionClick}
-        onHashtagClick={ctx.onHashtagClick}
-        onCaptionClick={
-          typeof ctx.onLightboxOpenDetail === 'function' && captionText
-            ? () => {
-                dismissLightbox()
-                openDetailFromLightbox(false)
-              }
-            : undefined
-        }
-      />
-    )
+export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLightbox, ctx) {
+  const host = hostEntity ?? mediaPost
+  const media = mediaPost ?? host
+  const menuState = isFeedCommentEntity(host)
+    ? { isPlainPostRepost: false, isCommentRepost: false }
+    : loungeStreamLightboxMenuState(host, ctx)
+  const { displayEntity, captionText } = loungeStreamLightboxMediaSource(host, media)
+  const openDetailFromLightbox = (focusComposer) => {
+    if (typeof ctx.onLightboxOpenDetail !== 'function') return
+    ctx.onLightboxOpenDetail(host, media, { focusComposer })
   }
-
-  const renderMediaLightboxMenu = () => {
-    if (!menuState.showPostRowMenu) return null
-    return (
-      <LoungePostRowMenu
-        isOwn={menuState.menuIsOwn}
-        showEdit={menuState.menuShowEdit}
-        deleteBusy={Boolean(ctx.busyDeletingPostId && ctx.busyDeletingPostId === hostPost.id)}
-        onEdit={() => ctx.onPostMenuEdit?.(hostPost)}
-        onDelete={() => ctx.onPostMenuDelete?.(hostPost)}
-        showStaffDelete={Boolean(
-          ctx.loungeViewerIsStaff &&
-            !menuState.menuIsOwn &&
-            !menuState.isPlainPostRepost &&
-            !menuState.isCommentRepost &&
-            typeof ctx.onStaffPostDelete === 'function',
-        )}
-        staffDeleteBusy={Boolean(ctx.busyDeletingPostId && ctx.busyDeletingPostId === hostPost.id)}
-        onStaffDelete={() => ctx.onStaffPostDelete?.(hostPost)}
-        onBlock={() => ctx.onPostMenuBlock?.(hostPost)}
-        onReport={() => ctx.onPostMenuReport?.(hostPost)}
-        onShare={
-          !menuState.isPlainPostRepost &&
-          !menuState.isCommentRepost &&
-          typeof ctx.onSharePost === 'function'
-            ? () => ctx.onSharePost(hostPost)
-            : undefined
-        }
-        showPin={menuState.showStaffPin}
-        pinned={Boolean(hostPost?.pinned)}
-        pinBusy={ctx.loungePinBusy}
-        onPinToggle={() => void ctx.setLoungePostPinned?.(hostPost.id, !hostPost.pinned)}
-        positionScrollRootRef={ctx.repostMenuScrollRootRef}
-        showAutoplayToggle={typeof ctx.onFeedVideoAutoplayChange === 'function'}
-        feedVideoAutoplayEnabled={ctx.feedVideoAutoplayEnabled}
-        onFeedVideoAutoplayChange={ctx.onFeedVideoAutoplayChange}
-        menuButtonClassName={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
-      />
-    )
-  }
-
-  return { renderMediaLightboxChrome, renderMediaLightboxMenu }
+  const interactionBar = buildStreamLightboxInteractionBar(host, media, menuState, ctx, dismissLightbox)
+  return (
+    <LoungeStreamVideoLightboxChrome
+      post={media}
+      displayEntity={displayEntity}
+      captionText={captionText}
+      displayNameFor={ctx.displayNameFor}
+      handleFor={ctx.handleFor}
+      avatarText={ctx.avatarText}
+      avatarToneClass={ctx.avatarToneClass}
+      onAvatarClick={ctx.onAvatarClick}
+      openProfileGateIfNeeded={ctx.openProfileGateIfNeeded}
+      dismissLightbox={dismissLightbox}
+      viewerUserId={ctx.viewerUserId}
+      viewerFollowingUserIds={ctx.viewerFollowingUserIds}
+      onFollowUser={ctx.onFollowUser}
+      interactionBar={interactionBar}
+      onMentionClick={ctx.onMentionClick}
+      onHashtagClick={ctx.onHashtagClick}
+      onCaptionClick={
+        typeof ctx.onLightboxOpenDetail === 'function' && captionText
+          ? () => {
+              dismissLightbox()
+              openDetailFromLightbox(false)
+            }
+          : undefined
+      }
+    />
+  )
 }
 
-/**
- * Stream hero overlay for comment-thread videos (author, body, comment interactions, ⋯ menu).
- * @param {object} comment — `feed_comments` row with `author_profile`.
- * @param {object} ctx
- * @param {(comment: object) => import('react').ReactNode} ctx.buildInteractionBar
- */
-export function createLoungeCommentStreamLightboxRenderers(comment, ctx) {
-  const menuIsOwn = Boolean(ctx.viewerUserId && comment?.user_id === ctx.viewerUserId)
+function loungeStreamLightboxCommentMenuState(hostComment, ctx) {
+  const menuIsOwn = Boolean(ctx.viewerUserId && hostComment?.user_id === ctx.viewerUserId)
   const showCommentMenu = Boolean(
     !ctx.loungeReadOnly &&
       ctx.viewerUserId &&
@@ -252,62 +251,39 @@ export function createLoungeCommentStreamLightboxRenderers(comment, ctx) {
         typeof ctx.onCommentMenuReport === 'function'),
   )
   const showLightboxMenu =
-    showCommentMenu || typeof ctx.onFeedVideoAutoplayChange === 'function'
+    showCommentMenu ||
+    typeof ctx.onFeedVideoAutoplayChange === 'function' ||
+    typeof ctx.onSharePost === 'function'
+  return { menuIsOwn, showCommentMenu, showLightboxMenu }
+}
 
-  const renderMediaLightboxChrome = (mediaPost, dismissLightbox) => {
-    const media = mediaPost ?? comment
-    const { displayEntity, captionText } = loungeStreamLightboxMediaSource(comment, media)
-    const openDetailFromLightbox = (focusComposer) => {
-      if (typeof ctx.onLightboxOpenDetail !== 'function') return
-      ctx.onLightboxOpenDetail(comment, media, { focusComposer })
-    }
-    const interactionBar =
-      typeof ctx.buildInteractionBar === 'function'
-        ? mergeLightboxDismissOnQuoteRepost(ctx.buildInteractionBar(media), dismissLightbox)
-        : null
+/**
+ * Stream hero top-right ⋯ menu (+ autoplay toggle, share on comments).
+ * @param {object} hostEntity
+ * @param {object} ctx
+ */
+export function buildLoungeStreamLightboxMenu(hostEntity, ctx) {
+  const host = hostEntity
+  if (!host) return null
 
-    return (
-      <LoungeStreamVideoLightboxChrome
-        post={media}
-        displayEntity={displayEntity}
-        captionText={captionText}
-        displayNameFor={ctx.displayNameFor}
-        handleFor={ctx.handleFor}
-        avatarText={ctx.avatarText}
-        avatarToneClass={ctx.avatarToneClass}
-        onAvatarClick={ctx.onAvatarClick}
-        openProfileGateIfNeeded={ctx.openProfileGateIfNeeded}
-        dismissLightbox={dismissLightbox}
-        viewerUserId={ctx.viewerUserId}
-        viewerFollowingUserIds={ctx.viewerFollowingUserIds}
-        onFollowUser={ctx.onFollowUser}
-        interactionBar={interactionBar}
-        onMentionClick={ctx.onMentionClick}
-        onHashtagClick={ctx.onHashtagClick}
-        onCaptionClick={
-          typeof ctx.onLightboxOpenDetail === 'function' && captionText
-            ? () => {
-                dismissLightbox()
-                openDetailFromLightbox(false)
-              }
-            : undefined
-        }
-      />
-    )
-  }
-
-  const renderMediaLightboxMenu = () => {
+  if (isFeedCommentEntity(host)) {
+    const { menuIsOwn, showLightboxMenu } = loungeStreamLightboxCommentMenuState(host, ctx)
     if (!showLightboxMenu) return null
     return (
       <LoungePostRowMenu
         menuAriaLabel="Comment options"
         isOwn={menuIsOwn}
         showEdit={Boolean(menuIsOwn && typeof ctx.onCommentMenuEdit === 'function')}
-        deleteBusy={Boolean(ctx.busyDeletingCommentId && ctx.busyDeletingCommentId === comment.id)}
-        onEdit={() => ctx.onCommentMenuEdit?.(comment)}
-        onDelete={() => ctx.onCommentMenuDelete?.(comment)}
-        onBlock={() => ctx.onCommentMenuBlock?.(comment)}
-        onReport={() => ctx.onCommentMenuReport?.(comment)}
+        deleteBusy={Boolean(ctx.busyDeletingCommentId && ctx.busyDeletingCommentId === host.id)}
+        onEdit={() => ctx.onCommentMenuEdit?.(host)}
+        onDelete={() => ctx.onCommentMenuDelete?.(host)}
+        onBlock={() => ctx.onCommentMenuBlock?.(host)}
+        onReport={() => ctx.onCommentMenuReport?.(host)}
+        onShare={
+          typeof ctx.onSharePost === 'function' && host?.post_id
+            ? () => ctx.onSharePost({ id: host.post_id })
+            : undefined
+        }
         positionScrollRootRef={ctx.repostMenuScrollRootRef}
         showAutoplayToggle={typeof ctx.onFeedVideoAutoplayChange === 'function'}
         feedVideoAutoplayEnabled={ctx.feedVideoAutoplayEnabled}
@@ -317,5 +293,60 @@ export function createLoungeCommentStreamLightboxRenderers(comment, ctx) {
     )
   }
 
-  return { renderMediaLightboxChrome, renderMediaLightboxMenu }
+  const menuState = loungeStreamLightboxMenuState(host, ctx)
+  if (!menuState.showPostRowMenu) return null
+  return (
+    <LoungePostRowMenu
+      isOwn={menuState.menuIsOwn}
+      showEdit={menuState.menuShowEdit}
+      deleteBusy={Boolean(ctx.busyDeletingPostId && ctx.busyDeletingPostId === host.id)}
+      onEdit={() => ctx.onPostMenuEdit?.(host)}
+      onDelete={() => ctx.onPostMenuDelete?.(host)}
+      showStaffDelete={Boolean(
+        ctx.loungeViewerIsStaff &&
+          !menuState.menuIsOwn &&
+          !menuState.isPlainPostRepost &&
+          !menuState.isCommentRepost &&
+          typeof ctx.onStaffPostDelete === 'function',
+      )}
+      staffDeleteBusy={Boolean(ctx.busyDeletingPostId && ctx.busyDeletingPostId === host.id)}
+      onStaffDelete={() => ctx.onStaffPostDelete?.(host)}
+      onBlock={() => ctx.onPostMenuBlock?.(host)}
+      onReport={() => ctx.onPostMenuReport?.(host)}
+      onShare={
+        !menuState.isPlainPostRepost &&
+        !menuState.isCommentRepost &&
+        typeof ctx.onSharePost === 'function'
+          ? () => ctx.onSharePost(host)
+          : undefined
+      }
+      showPin={menuState.showStaffPin}
+      pinned={Boolean(host?.pinned)}
+      pinBusy={ctx.loungePinBusy}
+      onPinToggle={() => void ctx.setLoungePostPinned?.(host.id, !host.pinned)}
+      positionScrollRootRef={ctx.repostMenuScrollRootRef}
+      showAutoplayToggle={typeof ctx.onFeedVideoAutoplayChange === 'function'}
+      feedVideoAutoplayEnabled={ctx.feedVideoAutoplayEnabled}
+      onFeedVideoAutoplayChange={ctx.onFeedVideoAutoplayChange}
+      menuButtonClassName={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
+    />
+  )
+}
+
+/** @deprecated Use {@link LoungeStreamLightboxProvider} + {@link buildLoungeStreamLightboxChrome}. */
+export function createLoungeStreamLightboxRenderers(hostPost, ctx) {
+  return {
+    renderMediaLightboxChrome: (mediaPost, dismissLightbox) =>
+      buildLoungeStreamLightboxChrome(hostPost, mediaPost, dismissLightbox, ctx),
+    renderMediaLightboxMenu: () => buildLoungeStreamLightboxMenu(hostPost, ctx),
+  }
+}
+
+/** @deprecated Use {@link LoungeStreamLightboxProvider} + {@link buildLoungeStreamLightboxChrome}. */
+export function createLoungeCommentStreamLightboxRenderers(comment, ctx) {
+  return {
+    renderMediaLightboxChrome: (mediaPost, dismissLightbox) =>
+      buildLoungeStreamLightboxChrome(comment, mediaPost ?? comment, dismissLightbox, ctx),
+    renderMediaLightboxMenu: () => buildLoungeStreamLightboxMenu(comment, ctx),
+  }
 }

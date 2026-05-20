@@ -98,7 +98,11 @@ import LoungeMentionDropdown from './LoungeMentionDropdown'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
-import { createLoungeStreamLightboxRenderers, isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
+import {
+  LoungeStreamLightboxProvider,
+  buildLoungeStreamLightboxCtxFromPostCardProps,
+} from './LoungeStreamLightboxContext.jsx'
+import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LoungeInteractionGlyphRail } from './LoungeInteractionGlyphRail.jsx'
@@ -4381,6 +4385,23 @@ export default function SocialFeed({
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile ? 'z-[103]' : 'z-[100]'
 
+  const loungeDetailStreamLightboxSurface = useMemo(
+    () => ({
+      repostMenuPortalClass:
+        loungeDetailMediaLightboxPortalClass === 'z-[103]' ? 'z-[106]' : 'z-[105]',
+      repostMenuScrollRootRef: loungePostDetailScrollRef,
+    }),
+    [loungeDetailMediaLightboxPortalClass, loungePostDetailScrollRef],
+  )
+
+  const quoteRepostStreamLightboxSurface = useMemo(
+    () => ({
+      repostMenuPortalClass: 'z-[110]',
+      repostMenuScrollRootRef: quoteRepostScrollRef,
+    }),
+    [quoteRepostScrollRef],
+  )
+
   const renderDetailMediaLightboxFooter = useCallback(
     (mediaPost) => (
       <LoungePostInteractionBar
@@ -7177,95 +7198,6 @@ export default function SocialFeed({
     [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
   )
 
-  const loungeDetailStreamLightboxRenderers = useMemo(() => {
-    if (!loungePostDetail?.id) return null
-    return createLoungeStreamLightboxRenderers(loungePostDetail, {
-      loungeReadOnly,
-      viewerUserId: composerUserId,
-      onPostMenuEdit: (p) => openLoungePostDetail(p, { startEditing: true }),
-      captionEditableInMenu: (p) =>
-        Boolean(
-          composerUserId &&
-            p?.user_id === composerUserId &&
-            isLoungePostWithinAuthorEditWindow(p?.created_at),
-        ),
-      loungeViewerIsStaff,
-      setLoungePostPinned,
-      onPostMenuDelete: deleteLoungePostFromFeed,
-      onStaffPostDelete: deleteStaffLoungePostFromFeed,
-      onPostMenuBlock: onPostMenuBlockFromFeed,
-      onPostMenuReport: onPostMenuReportFromFeed,
-      onSharePost: handleShareLoungePost,
-      repostMenuPortalClass: loungeDetailMediaLightboxPortalClass === 'z-[103]' ? 'z-[106]' : 'z-[105]',
-      interactionStateFor,
-      toggleInteraction,
-      onPlainRepost: handlePlainRepost,
-      onUndoPlainRepost: (p) => void undoPlainRepostForOriginal(p.id),
-      onRemoveQuoteRepost: openRemoveQuoteRepostForPost,
-      onQuoteRepost: openQuoteRepostComposer,
-      toggleBookmark,
-      bookmarkedByPost,
-      onOpenComments: openLoungePostDetail,
-      requireLoungeAuth,
-      openProfileGateIfNeeded,
-      repostMenuScrollRootRef: loungePostDetailScrollRef,
-      onLightboxOpenDetail: openLoungeStreamLightboxDetail,
-      repostActionBusy: repostManageBusy,
-      displayNameFor,
-      handleFor,
-      avatarText,
-      avatarToneClass,
-      onAvatarClick: openAuthorProfile,
-      viewerFollowingUserIds: loungeReadOnly ? null : loungeFollowingUserIds,
-      onFollowUser: loungeReadOnly ? undefined : handleLoungeFollowUser,
-      onMentionClick: openProfileByHandle,
-      onHashtagClick: openSearchByHashtag,
-      busyDeletingPostId: loungeFeedDeleteBusyPostId,
-      loungePinBusy,
-      feedVideoAutoplayEnabled: loungeFeedVideoAutoplayEnabled,
-      onFeedVideoAutoplayChange: onLoungeFeedVideoAutoplayChange,
-    })
-  }, [
-    loungePostDetail,
-    loungeReadOnly,
-    composerUserId,
-    loungeViewerIsStaff,
-    setLoungePostPinned,
-    deleteLoungePostFromFeed,
-    deleteStaffLoungePostFromFeed,
-    onPostMenuBlockFromFeed,
-    onPostMenuReportFromFeed,
-    handleShareLoungePost,
-    loungeDetailMediaLightboxPortalClass,
-    interactionStateFor,
-    toggleInteraction,
-    handlePlainRepost,
-    undoPlainRepostForOriginal,
-    openRemoveQuoteRepostForPost,
-    openQuoteRepostComposer,
-    toggleBookmark,
-    bookmarkedByPost,
-    openLoungePostDetail,
-    requireLoungeAuth,
-    openProfileGateIfNeeded,
-    loungePostDetailScrollRef,
-    openLoungeStreamLightboxDetail,
-    repostManageBusy,
-    displayNameFor,
-    handleFor,
-    avatarText,
-    avatarToneClass,
-    openAuthorProfile,
-    loungeFollowingUserIds,
-    handleLoungeFollowUser,
-    openProfileByHandle,
-    openSearchByHashtag,
-    loungeFeedDeleteBusyPostId,
-    loungePinBusy,
-    loungeFeedVideoAutoplayEnabled,
-    onLoungeFeedVideoAutoplayChange,
-  ])
-
   const onLoungeDockOpenOwnProfile = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
       onRequireAuth?.()
@@ -7501,6 +7433,25 @@ export default function SocialFeed({
     ]
   )
 
+  const routeLoungeStreamLightboxOpenDetail = useCallback(
+    (host, media, opts = {}) => {
+      if (isFeedCommentEntity(host)) {
+        openLoungeCommentStreamLightboxDetail(host, media, opts)
+      } else {
+        openLoungeStreamLightboxDetail(host, media, opts)
+      }
+    },
+    [openLoungeCommentStreamLightboxDetail, openLoungeStreamLightboxDetail],
+  )
+
+  const loungeStreamLightboxCtx = useMemo(
+    () =>
+      buildLoungeStreamLightboxCtxFromPostCardProps(profilePostCardProps, {
+        onLightboxOpenDetail: routeLoungeStreamLightboxOpenDetail,
+      }),
+    [profilePostCardProps, routeLoungeStreamLightboxOpenDetail],
+  )
+
   const loungeStreamLightboxOpen = useSyncExternalStore(
     subscribeLoungeStreamLightboxOpen,
     getLoungeStreamLightboxOpen,
@@ -7550,6 +7501,7 @@ export default function SocialFeed({
     <div
       className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))] pb-0`}
     >
+      <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
       {quoteRepostQueuedToast ? (
         <div
           role="status"
@@ -8765,8 +8717,8 @@ export default function SocialFeed({
                       visibilityResetRootRef={loungePostDetailScrollRef}
                       lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
-                      renderMediaLightboxChrome={loungeDetailStreamLightboxRenderers?.renderMediaLightboxChrome}
-                      renderMediaLightboxMenu={loungeDetailStreamLightboxRenderers?.renderMediaLightboxMenu}
+                      streamLightboxHost={loungePostDetail}
+                      streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
                   </div>
                   <button
@@ -8808,8 +8760,8 @@ export default function SocialFeed({
                       visibilityResetRootRef={loungePostDetailScrollRef}
                       lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
-                      renderMediaLightboxChrome={loungeDetailStreamLightboxRenderers?.renderMediaLightboxChrome}
-                      renderMediaLightboxMenu={loungeDetailStreamLightboxRenderers?.renderMediaLightboxMenu}
+                      streamLightboxHost={loungePostDetail}
+                      streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
                   </button>
                 </>
@@ -8844,8 +8796,8 @@ export default function SocialFeed({
                       visibilityResetRootRef={loungePostDetailScrollRef}
                       lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       renderMediaLightboxFooter={renderDetailMediaLightboxFooter}
-                      renderMediaLightboxChrome={loungeDetailStreamLightboxRenderers?.renderMediaLightboxChrome}
-                      renderMediaLightboxMenu={loungeDetailStreamLightboxRenderers?.renderMediaLightboxMenu}
+                      streamLightboxHost={loungePostDetail}
+                      streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
                   </div>
                 </>
@@ -9362,6 +9314,7 @@ export default function SocialFeed({
                     feedVideoAutoplayEnabled: loungeFeedVideoAutoplayEnabled,
                     onFeedVideoAutoplayChange: onLoungeFeedVideoAutoplayChange,
                     onStreamLightboxOpenDetail: openLoungeCommentStreamLightboxDetail,
+                    onSharePost: handleShareLoungePost,
                   }}
                 />
               ) : null}
@@ -9470,6 +9423,7 @@ export default function SocialFeed({
                           feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
                           onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
                           onStreamLightboxOpenDetail={openLoungeCommentStreamLightboxDetail}
+                          onSharePost={handleShareLoungePost}
                         />
                       </>
                     )}
@@ -10555,8 +10509,11 @@ export default function SocialFeed({
                                   post={orig}
                                   variant="embed"
                                   firstMarginTopClass="mt-2"
+                                  lightboxPortalClass="z-[110]"
                                   visibilityResetRootRef={quoteRepostScrollRef}
                                   renderMediaLightboxFooter={renderQuoteModalMediaLightboxFooter}
+                                  streamLightboxHost={orig}
+                                  streamLightboxSurface={quoteRepostStreamLightboxSurface}
                                 />
                               </div>
                             )
@@ -10981,6 +10938,7 @@ export default function SocialFeed({
           </div>
         </div>
       ) : null}
+      </LoungeStreamLightboxProvider>
     </div>
   )
 }

@@ -7,7 +7,6 @@ import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
-import { createLoungeCommentStreamLightboxRenderers } from './loungeStreamLightboxRenderers.jsx'
 import {
   feedCommentDescendantCountById,
   feedCommentRowHasMedia,
@@ -100,6 +99,7 @@ export function LoungeCommentCard({
   feedVideoAutoplayEnabled = true,
   onFeedVideoAutoplayChange,
   onStreamLightboxOpenDetail,
+  onSharePost,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -134,7 +134,7 @@ export function LoungeCommentCard({
             like_count: typeof mediaComment.like_count === 'number' ? mediaComment.like_count : 0,
             repost_count: typeof mediaComment.repost_count === 'number' ? mediaComment.repost_count : 0,
           }}
-          variant="comment"
+          variant="sheet"
           rootClassName="w-full"
           repostMenuPortalClass={repostMenuPortalClass}
           loungeReadOnly={loungeReadOnly}
@@ -158,6 +158,11 @@ export function LoungeCommentCard({
           }}
           pillOverlay
           repostActionBusy={repostActionBusy}
+          onShare={
+            typeof onSharePost === 'function' && mediaComment?.post_id
+              ? () => onSharePost({ id: mediaComment.post_id })
+              : undefined
+          }
         />
       )
     },
@@ -182,60 +187,16 @@ export function LoungeCommentCard({
       positionScrollRootRef,
       onCommentReplyInteraction,
       repostActionBusy,
+      onSharePost,
     ],
   )
 
-  const commentStreamLightboxRenderers = useMemo(
-    () =>
-      createLoungeCommentStreamLightboxRenderers(comment, {
-        buildInteractionBar: renderCommentMediaLightboxFooter,
-        displayNameFor,
-        handleFor,
-        avatarText,
-        avatarToneClass,
-        onAvatarClick: onAvatarClickProfile,
-        openProfileGateIfNeeded,
-        viewerUserId,
-        viewerFollowingUserIds,
-        onFollowUser,
-        onMentionClick,
-        onHashtagClick,
-        loungeReadOnly,
-        onCommentMenuEdit,
-        onCommentMenuDelete,
-        onCommentMenuBlock,
-        onCommentMenuReport,
-        busyDeletingCommentId,
-        repostMenuScrollRootRef: positionScrollRootRef,
-        feedVideoAutoplayEnabled,
-        onFeedVideoAutoplayChange,
-        onLightboxOpenDetail: onStreamLightboxOpenDetail,
-      }),
-    [
-      comment,
-      renderCommentMediaLightboxFooter,
-      displayNameFor,
-      handleFor,
-      avatarText,
-      avatarToneClass,
-      onAvatarClickProfile,
-      openProfileGateIfNeeded,
-      viewerUserId,
-      viewerFollowingUserIds,
-      onFollowUser,
-      onMentionClick,
-      onHashtagClick,
-      loungeReadOnly,
-      onCommentMenuEdit,
-      onCommentMenuDelete,
-      onCommentMenuBlock,
-      onCommentMenuReport,
-      busyDeletingCommentId,
-      positionScrollRootRef,
-      feedVideoAutoplayEnabled,
-      onFeedVideoAutoplayChange,
-      onStreamLightboxOpenDetail,
-    ],
+  const streamLightboxSurface = useMemo(
+    () => ({
+      repostMenuPortalClass,
+      repostMenuScrollRootRef: positionScrollRootRef,
+    }),
+    [repostMenuPortalClass, positionScrollRootRef],
   )
 
   const menuIsOwn = Boolean(viewerUserId && comment.user_id === viewerUserId)
@@ -321,8 +282,9 @@ export function LoungeCommentCard({
         visibilityResetRootRef={positionScrollRootRef}
         lightboxPortalClass={lightboxPortalClass}
         renderMediaLightboxFooter={renderCommentMediaLightboxFooter}
-        renderMediaLightboxChrome={commentStreamLightboxRenderers.renderMediaLightboxChrome}
-        renderMediaLightboxMenu={commentStreamLightboxRenderers.renderMediaLightboxMenu}
+        streamLightboxHost={comment}
+        streamLightboxTileCtx={{ commentDescendantFallback: descendantFallback }}
+        streamLightboxSurface={streamLightboxSurface}
       />
     ) : null
 
@@ -527,6 +489,7 @@ export default function LoungePostCommentThread({
   feedVideoAutoplayEnabled = true,
   onFeedVideoAutoplayChange,
   onStreamLightboxOpenDetail,
+  onSharePost,
   /** Tailwind z-index for image/video lightboxes (must exceed the detail shell's z-index). */
   lightboxPortalClass = 'z-[100]',
 }) {
@@ -643,6 +606,7 @@ export default function LoungePostCommentThread({
     feedVideoAutoplayEnabled,
     onFeedVideoAutoplayChange,
     onStreamLightboxOpenDetail,
+    onSharePost,
   }
 
   if (variant === 'commentDetailReplies') {

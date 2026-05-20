@@ -398,6 +398,11 @@ function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profileBodyS
                   }
                   visibilityResetRootRef={profileBodyScrollRef}
                   renderMediaLightboxFooter={renderPostMediaLightboxFooter}
+                  streamLightboxHost={post}
+                  streamLightboxSurface={{
+                    repostMenuPortalClass: pp.repostMenuPortalClass || 'z-[104]',
+                    repostMenuScrollRootRef: profileBodyScrollRef,
+                  }}
                 />
               ) : null}
               {typeof pp.interactionStateFor === 'function' && post?.id ? (

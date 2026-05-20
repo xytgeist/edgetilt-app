@@ -3,6 +3,10 @@
  */
 import { mapGenericNetworkErrorMessage } from './loungeVideoUpload.js'
 
+/** Content-addressed R2 keys — match Edge `LOUNGE_CF_R2_OBJECT_CACHE_CONTROL`. */
+export const LOUNGE_CF_R2_OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+
+
 /** @typedef {'feed' | 'detail' | 'commentInline' | 'embed' | 'composer' | 'lightbox' | 'poster' | 'og'} LoungeFeedImageDeliveryVariant */
 
 const DELIVERY_WIDTH_BY_VARIANT = {
@@ -165,6 +169,7 @@ export async function uploadFileToCfR2PresignedUrl(uploadURL, file, opts = {}) {
     method: 'PUT',
     headers: {
       'Content-Type': file.type || 'application/octet-stream',
+      'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
     },
     body: file,
     signal,

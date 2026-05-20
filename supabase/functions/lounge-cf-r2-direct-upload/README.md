@@ -16,12 +16,15 @@ supabase functions deploy lounge-cf-r2-delete-orphan
 
 1. **R2 bucket** (e.g. `lounge-media`) — private bucket is fine; expose via custom domain.
 2. **Custom domain** on the bucket (e.g. `media.yourdomain.com`) — must be on a Cloudflare zone you control.
-3. **Image Resizing** enabled on that zone (Speed → Optimization → Image Resizing, or included on paid plans).
-4. **R2 API token** with Object Read & Write on the bucket → Supabase secrets below.
+3. **CORS** on the bucket: allow **`Content-Type`** and **`Cache-Control`** in `AllowedHeaders` (browser presigned PUT sends both).
+4. **Image Resizing** enabled on that zone (Speed → Optimization → Image Resizing, or included on paid plans).
+5. **R2 API token** with Object Read & Write on the bucket → Supabase secrets below.
 
 Legacy **`lounge-feed`** Supabase Storage URLs remain readable; new uploads prefer R2 when secrets are set. Client falls back to Supabase upload if R2 returns **503**.
 
 **One-off legacy migration (test):** deploy **`lounge-cf-r2-migrate-lounge-feed`**, then `node scripts/migrate-lounge-feed-to-r2.mjs --target=test` (dry-run: `--dry-run`; keep Supabase copies: `--keep-old`). Service role bearer only.
+
+**Object cache headers:** uploads set **`Cache-Control: public, max-age=31536000, immutable`** on PUT (content-addressed keys). Backfill existing objects: deploy **`lounge-cf-r2-backfill-cache-control`**, then `node scripts/backfill-r2-cache-control.mjs --target=test`.
 
 ## Edge secrets (names only)
 

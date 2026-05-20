@@ -6,6 +6,9 @@ export const loungeCfR2CorsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/** Content-addressed keys ({userId}/{timestamp}-{rand}.ext) — safe for long immutable cache. */
+export const LOUNGE_CF_R2_OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+
 const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -43,6 +46,19 @@ export function loungeCfR2AwsClient(cfg: LoungeCfR2Config): AwsClient {
     service: 's3',
     region: 'auto',
   })
+}
+
+function loungeCfR2S3ObjectUrl(cfg: LoungeCfR2Config, objectKey: string): string {
+  const key = String(objectKey || '').replace(/^\/+/, '')
+  return `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')}`
+}
+
+function loungeCfR2CopySourcePath(cfg: LoungeCfR2Config, objectKey: string): string {
+  const key = String(objectKey || '').replace(/^\/+/, '')
+  return `/${cfg.bucket}/${key.split('/').map(encodeURIComponent).join('/')}`
 }
 
 export function loungeCfR2ObjectKey(userId: string, ext: string): string {
@@ -101,17 +117,14 @@ export async function loungeCfR2PresignedPutUrl(
   contentType: string,
   expiresSec = 3600,
 ): Promise<string> {
-  const key = String(objectKey || '').replace(/^\/+/, '')
-  const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`
   const client = loungeCfR2AwsClient(cfg)
+  const endpoint = loungeCfR2S3ObjectUrl(cfg, objectKey)
   const signed = await client.sign(
     new Request(endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': contentType || 'application/octet-stream',
+        'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
       },
     }),
     {
@@ -128,17 +141,14 @@ export async function loungeCfR2PutObject(
   body: Uint8Array,
   contentType: string,
 ): Promise<void> {
-  const key = String(objectKey || '').replace(/^\/+/, '')
-  const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`
+  const endpoint = loungeCfR2S3ObjectUrl(cfg, objectKey)
   const client = loungeCfR2AwsClient(cfg)
   const signed = await client.sign(
     new Request(endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': contentType || 'application/octet-stream',
+        'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
       },
       body,
     }),
@@ -153,12 +163,101 @@ export async function loungeCfR2PutObject(
   }
 }
 
+export async function loungeCfR2HeadObjectContentType(
+  cfg: LoungeCfR2Config,
+  objectKey: string,
+): Promise<string> {
+  const endpoint = loungeCfR2S3ObjectUrl(cfg, objectKey)
+  const client = loungeCfR2AwsClient(cfg)
+  const signed = await client.sign(new Request(endpoint, { method: 'HEAD' }), {
+    aws: { region: 'auto', service: 's3' },
+  })
+  const res = await fetch(signed)
+  if (!res.ok) {
+    throw new Error(`R2 head failed (${res.status}) for ${objectKey}`)
+  }
+  return res.headers.get('content-type') || 'application/octet-stream'
+}
+
+function parseListObjectsV2Keys(xml: string): {
+  keys: string[]
+  truncated: boolean
+  nextToken?: string
+} {
+  const keys = [...xml.matchAll(/<Key>([^<]+)<\/Key>/g)].map((m) => m[1])
+  const truncated = /<IsTruncated>true<\/IsTruncated>/.test(xml)
+  const nextMatch = xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/)
+  return { keys, truncated, nextToken: nextMatch?.[1] }
+}
+
+export async function loungeCfR2ListAllObjectKeys(cfg: LoungeCfR2Config): Promise<string[]> {
+  const client = loungeCfR2AwsClient(cfg)
+  const keys: string[] = []
+  let continuationToken: string | undefined
+  do {
+    const url = new URL(`https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}`)
+    url.searchParams.set('list-type', '2')
+    url.searchParams.set('max-keys', '1000')
+    if (continuationToken) url.searchParams.set('continuation-token', continuationToken)
+    const signed = await client.sign(new Request(url.toString(), { method: 'GET' }), {
+      aws: { region: 'auto', service: 's3' },
+    })
+    const res = await fetch(signed)
+    if (!res.ok) {
+      const raw = await res.text().catch(() => '')
+      throw new Error(`R2 list failed (${res.status})${raw ? `: ${raw.slice(0, 200)}` : ''}`)
+    }
+    const parsed = parseListObjectsV2Keys(await res.text())
+    keys.push(...parsed.keys)
+    continuationToken = parsed.truncated ? parsed.nextToken : undefined
+  } while (continuationToken)
+  return keys
+}
+
+/** Copy object onto itself to set Cache-Control (and preserve Content-Type). */
+export async function loungeCfR2CopyObjectReplaceCacheControl(
+  cfg: LoungeCfR2Config,
+  objectKey: string,
+  contentType: string,
+): Promise<void> {
+  const endpoint = loungeCfR2S3ObjectUrl(cfg, objectKey)
+  const client = loungeCfR2AwsClient(cfg)
+  const signed = await client.sign(
+    new Request(endpoint, {
+      method: 'PUT',
+      headers: {
+        'x-amz-copy-source': loungeCfR2CopySourcePath(cfg, objectKey),
+        'x-amz-metadata-directive': 'REPLACE',
+        'Content-Type': contentType || 'application/octet-stream',
+        'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
+      },
+    }),
+    {
+      aws: { region: 'auto', service: 's3' },
+    },
+  )
+  const res = await fetch(signed)
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '')
+    throw new Error(`R2 copy metadata failed (${res.status})${raw ? `: ${raw.slice(0, 200)}` : ''}`)
+  }
+}
+
+export function loungeCfR2RequireServiceRoleAdmin(req: Request): SupabaseClient {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const auth = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '').trim() || ''
+  if (!supabaseUrl || !serviceRoleKey || auth !== serviceRoleKey) {
+    throw new Response(JSON.stringify({ error: 'Forbidden — service role bearer required.' }), {
+      status: 403,
+      headers: { ...loungeCfR2CorsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+  return createClient(supabaseUrl, serviceRoleKey)
+}
+
 export async function loungeCfR2DeleteObject(cfg: LoungeCfR2Config, objectKey: string): Promise<void> {
-  const key = String(objectKey || '').replace(/^\/+/, '')
-  const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/')}`
+  const endpoint = loungeCfR2S3ObjectUrl(cfg, objectKey)
   const client = loungeCfR2AwsClient(cfg)
   const signed = await client.sign(new Request(endpoint, { method: 'DELETE' }), {
     aws: { region: 'auto', service: 's3' },

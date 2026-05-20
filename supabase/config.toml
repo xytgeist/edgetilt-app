@@ -7,6 +7,9 @@ verify_jwt = false
 [functions.lounge-cf-r2-migrate-lounge-feed]
 verify_jwt = false
 
+[functions.lounge-cf-r2-backfill-cache-control]
+verify_jwt = false
+
 # Lounge chat: JWT required (default); explicit for clarity alongside purge exception above.
 [functions.lounge-chat]
 verify_jwt = true

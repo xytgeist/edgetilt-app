@@ -961,13 +961,11 @@ export default function LoungePostStreamVideo({
     const tid = window.setTimeout(() => setRingHlsHeld(false), RING_HLS_DETACH_HOLD_MS)
     return () => window.clearTimeout(tid)
   }, [inRing, coordinatorActive, lazyStream])
-  const tapToPlayHeroOpen = lazyStream && !feedAutoplayEnabled && (lightboxOpen || heroExpanded)
-  const attachStream =
-    heroExpanded || tapToPlayHeroOpen
-      ? Boolean(id)
-      : lazyStream
-        ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
-        : true
+  const attachStream = heroExpanded
+    ? Boolean(id)
+    : lazyStream
+      ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
+      : true
   /** iOS: ≤5 inline `<video>` nodes (ring + lookahead); HLS only on ring (≤3). */
   const mountStreamVideo = Boolean(id) && (
     (coordinatorActive && inDomBudget) ||
@@ -1984,17 +1982,12 @@ export default function LoungePostStreamVideo({
     if (!wrap) return
 
     lightboxOpenRef.current = true
-    if (feedAutoplayClientId) {
+    if (feedAutoplayClientId && coordinatorActive) {
       enterFeedHeroLock(feedAutoplayClientId)
-      if (feedAutoplayEnabled && coordinatorActive) {
-        forceFeedAutoplayActive(feedAutoplayClientId)
-      }
+      forceFeedAutoplayActive(feedAutoplayClientId)
     }
     notifyLoungeStreamLightboxOpen(true)
-    flushSync(() => {
-      setLightboxOpen(true)
-      setHeroPhase('opening')
-    })
+    flushSync(() => setLightboxOpen(true))
     pauseOtherLoungeStreamVideos(v)
 
     const from = readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH)
@@ -2034,6 +2027,7 @@ export default function LoungePostStreamVideo({
     }
 
     setHeroLayout(from)
+    setHeroPhase('opening')
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
     setHeroBackdropArmed(false)

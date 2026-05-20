@@ -386,7 +386,9 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-20: **Feed-wide sound band retry (test):** handoffs often fire below 60% visible — one-shot unmute never ran when tile centered (video 5+ stayed `muted:true`). Fix: inherit feed-wide sound on handoff, **`tryCoordinatedDomUnmute`** retries on ratio settle (350ms throttle, no `play()`). Ryan sign-off **pending**.
+- 2026-05-20: **Feed-wide sound iOS MSE handoff storm (test):** @ **`ccf47d4`** Ryan — sound OK ~4 clips; video 5 glitches/restarts; video 6+ no sound + autoplay trouble; debug shows `play ok ct=0.0` storm + coordinator collapse. Root cause: continuous **`tryCoordinatedDomUnmute`** on every `tileRatio` tick + **`playing`** re-unmute on Apple MSE restarts the segment. Fix: **one DOM unmute per active handoff** (`iosFeedSoundHandoffDomUnmuteUsedRef`); **edge-trigger** unmute only when tile **crosses 60% ON band**; iOS **`playing`** listener **mute-only**; warm handoff already ≥60% gets delayed one-shot unmute. Ryan sign-off **pending**.
+
+- 2026-05-20: **Feed-wide sound band retry (test):** handoffs often fire below 60% visible — one-shot unmute never ran when tile centered (video 5+ stayed `muted:true`). Fix: inherit feed-wide sound on handoff, **`tryCoordinatedDomUnmute`** retries on ratio settle (350ms throttle, no `play()`). Superseded by iOS MSE handoff storm fix above. Ryan sign-off **pending**.
 
 - 2026-05-20: **Feed-wide sound iOS crash (test):** `4bc9660` rAF `play()` after unmute + `playing` listener re-entry caused infinite loop (feed cards vanish / WebKit crash). Fix: **one DOM unmute per handoff**, **never `play()` from sound sync**, playing listener **mute-only**. Ryan sign-off **pending**.
 

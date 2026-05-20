@@ -386,9 +386,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** reverted experiments #1–#5 (layout/decoder/timing — no fix, some regressions). **Active experiment:** **`preferMseHls`** — on iPhone/iPad use **hls.js MSE** instead of native `video.src` manifest when supported; falls back to native if MSE unavailable. Debug HUD attach line shows `mse` vs `native` vs `native-fallback`.
-
-- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (known issue):** iPhone/iPad native HLS inline feed — picture stalls ~frames 5–6, audio continues, then catches up; scroll-back repro. Android OK. Prior client mitigations reverted to baseline — see active MSE experiment above.
+- 2026-05-20: **Ryan sign-off (test):** **Lounge Stream ~frame-5 freeze on Apple WebKit — FIXED** @ **`8302abb`**. Root cause: **native HLS** (`video.src` manifest) compositor stall (~frames 5–6, audio continues, same frame every time). Fix: **`preferMseHls`** in **`LoungePostStreamVideo.jsx`** — iPhone/iPad use **hls.js MSE** when supported (debug attach **`mse`**); falls back to native if MSE unavailable. Ryan: cold open, scroll handoff, scroll-back — **behaves as expected** on iOS 18.7 Safari. Experiments #1–#5 (decoder limits, poster crossfade, in-flow layout, splash gating) did not fix; reverted before MSE. **Deferred:** ring prefetch polish / handoff nice-to-haves to reintroduce carefully on Apple.
 
 - 2026-05-20: **Lounge cold-boot splash timing:** member splash **2s min / 3s max** (feed-ready dismiss between those bounds).
 

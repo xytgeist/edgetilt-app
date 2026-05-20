@@ -115,6 +115,15 @@ const HERO_CHROME_AUTO_HIDE_MS = 3000
 /** Default hero stack when no parent `lightboxPortalClass` is passed. */
 const HERO_STACK_BASE_Z_INDEX = 102
 
+/** iPhone/iPad — inline feed uses native HLS by default; MSE via hls.js is an alternate pipeline. */
+function detectAppleWebKitInlineStream() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  if (/iPhone|iPad|iPod/i.test(ua)) return true
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true
+  return false
+}
+
 /**
  * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).
  * @returns {{ scrim: number, flyout: number, overlay: number }}
@@ -456,6 +465,7 @@ function pauseOtherLoungeStreamVideos(exceptVideo) {
  * @param {object} [opts]
  * @param {boolean} [opts.enabled=true] when false, detach (feed: off-screen)
  * @param {boolean} [opts.feedStyleAbr=false] conservative ABR for small tiles / composer
+ * @param {boolean} [opts.preferMseHls=false] skip native HLS attach; try hls.js MSE first (Apple inline experiment)
  * @param {React.MutableRefObject<number> | null} [opts.recoveryBurstRef] auto-reattach budget (shared with `<video onError>`)
  * @param {(() => void) | null} [opts.onAutoReattach] bump attachKey after built-in Hls recovery fails
  * @param {((detail: string) => void) | null} [opts.onDebugHlsError] dev HUD: fatal HLS error detail
@@ -467,6 +477,7 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
     enabled = true,
     feedStyleAbr = false,
     ringWarmPrefetch = false,
+    preferMseHls = false,
     recoveryBurstRef = null,
     onAutoReattach = null,
     onDebugHlsError = null,
@@ -523,7 +534,9 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
     video.addEventListener('canplay', onRecovered, { once: true })
     video.addEventListener('loadedmetadata', restoreSavedTime, { once: true })
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    const canNativeHls = Boolean(video.canPlayType('application/vnd.apple.mpegurl'))
+    const attachNativeHls = () => {
+      if (onDebugLifecycle) onDebugLifecycle(`attach key=${attachKey} native`)
       video.src = src
       return () => {
         cancelled = true
@@ -534,10 +547,15 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
       }
     }
 
+    if (canNativeHls && !preferMseHls) {
+      return attachNativeHls()
+    }
+
     import('hls.js')
       .then(({ default: Hls }) => {
         if (cancelled || !videoRef.current || videoRef.current !== video) return
         if (Hls.isSupported()) {
+          if (onDebugLifecycle) onDebugLifecycle(`attach key=${attachKey} mse`)
           const maxBufferLength = feedStyleAbr ? (ringWarmPrefetch ? 6 : 18) : 45
           const maxMaxBufferLength = feedStyleAbr ? (ringWarmPrefetch ? 12 : 36) : 120
           const hls = new Hls({
@@ -599,7 +617,8 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
           }
           hls.loadSource(src)
           hls.attachMedia(video)
-        } else {
+        } else if (canNativeHls) {
+          if (onDebugLifecycle) onDebugLifecycle(`attach key=${attachKey} native-fallback`)
           video.src = src
         }
       })
@@ -626,7 +645,7 @@ function useStreamHlsAttachment(videoRef, src, attachKey = 0, opts = {}) {
       cleanupVideo()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omit videoRef; opts refs stable
-  }, [src, attachKey, enabled, feedStyleAbr, onAutoReattach, recoveryBurstRef])
+  }, [src, attachKey, enabled, feedStyleAbr, preferMseHls, onAutoReattach, recoveryBurstRef])
 }
 
 function MutedGlyph({ className = 'h-4 w-4' }) {
@@ -752,6 +771,7 @@ export default function LoungePostStreamVideo({
   const heroColdMountRef = useRef(false)
   /** Hero opened with `<video>` present but HLS not decoded yet — kick attach after open. */
   const heroHlsKickRef = useRef(false)
+  const appleWebKitInlineStreamRef = useRef(detectAppleWebKitInlineStream())
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -1497,6 +1517,7 @@ export default function LoungePostStreamVideo({
   useStreamHlsAttachment(videoRef, src, streamAttachKey, {
     enabled: hlsAttachEnabled,
     feedStyleAbr: feedStyleAbr,
+    preferMseHls: appleWebKitInlineStreamRef.current,
     ringWarmPrefetch: ringWarmPrefetch && hlsAttachEnabled,
     recoveryBurstRef,
     savedTimeRef: savedStreamTimeRef,

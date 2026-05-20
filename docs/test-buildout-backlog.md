@@ -386,7 +386,9 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (known issue, reverted experiments):** iPhone/iPad native HLS inline feed — picture stalls ~frames 5–6 (same frame every time), audio continues, then catches up; also on scroll-back to first clip. **Reverted** client experiments #1–#5 (`webKitHlsSlot`, `webKitInlineVideoPaint`, `webKitSingleVideo`, splash-gated play / paint nudge, `webKitInFlowVideo`) — none fixed stall; some caused regressions (card collapse, black screen TDZ). **`LoungePostStreamVideo.jsx`** restored to pre-experiment baseline (`140a374` era). **Open:** force **hls.js/MSE** on Apple vs native HLS; Cloudflare Stream iframe embed; or WebKit bug report. Android OK.
+- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** reverted experiments #1–#5 (layout/decoder/timing — no fix, some regressions). **Active experiment:** **`preferMseHls`** — on iPhone/iPad use **hls.js MSE** instead of native `video.src` manifest when supported; falls back to native if MSE unavailable. Debug HUD attach line shows `mse` vs `native` vs `native-fallback`.
+
+- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (known issue):** iPhone/iPad native HLS inline feed — picture stalls ~frames 5–6, audio continues, then catches up; scroll-back repro. Android OK. Prior client mitigations reverted to baseline — see active MSE experiment above.
 
 - 2026-05-20: **Lounge cold-boot splash timing:** member splash **2s min / 3s max** (feed-ready dismiss between those bounds).
 

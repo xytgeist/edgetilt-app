@@ -8,8 +8,8 @@ export const LOUNGE_COLD_BOOT_BG_AT_KEY = 'loungeColdBootBgAt:v1'
 export const LOUNGE_COLD_BOOT_RESUME_AFTER_MS = 10 * 60 * 1000
 
 /** Member: hold splash while feed + chunk warm. */
-export const LOUNGE_COLD_BOOT_MEMBER_MIN_MS = 850
-export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 2800
+export const LOUNGE_COLD_BOOT_MEMBER_MIN_MS = 2000
+export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 3000
 
 /** Anonymous browse: short brand flash only. */
 export const LOUNGE_COLD_BOOT_ANON_MIN_MS = 380

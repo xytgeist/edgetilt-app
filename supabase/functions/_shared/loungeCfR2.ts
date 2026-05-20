@@ -122,6 +122,37 @@ export async function loungeCfR2PresignedPutUrl(
   return signed.url
 }
 
+export async function loungeCfR2PutObject(
+  cfg: LoungeCfR2Config,
+  objectKey: string,
+  body: Uint8Array,
+  contentType: string,
+): Promise<void> {
+  const key = String(objectKey || '').replace(/^\/+/, '')
+  const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')}`
+  const client = loungeCfR2AwsClient(cfg)
+  const signed = await client.sign(
+    new Request(endpoint, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType || 'application/octet-stream',
+      },
+      body,
+    }),
+    {
+      aws: { region: 'auto', service: 's3' },
+    },
+  )
+  const res = await fetch(signed)
+  if (!res.ok) {
+    const raw = await res.text().catch(() => '')
+    throw new Error(`R2 put failed (${res.status})${raw ? `: ${raw.slice(0, 200)}` : ''}`)
+  }
+}
+
 export async function loungeCfR2DeleteObject(cfg: LoungeCfR2Config, objectKey: string): Promise<void> {
   const key = String(objectKey || '').replace(/^\/+/, '')
   const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key

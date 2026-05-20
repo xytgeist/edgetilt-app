@@ -21,6 +21,8 @@ supabase functions deploy lounge-cf-r2-delete-orphan
 
 Legacy **`lounge-feed`** Supabase Storage URLs remain readable; new uploads prefer R2 when secrets are set. Client falls back to Supabase upload if R2 returns **503**.
 
+**One-off legacy migration (test):** deploy **`lounge-cf-r2-migrate-lounge-feed`**, then `node scripts/migrate-lounge-feed-to-r2.mjs --target=test` (dry-run: `--dry-run`; keep Supabase copies: `--keep-old`). Service role bearer only.
+
 ## Edge secrets (names only)
 
 | Secret | Purpose |

@@ -3,6 +3,10 @@
 [functions.lounge-cf-stream-purge-pending-uploads]
 verify_jwt = false
 
+# Ops-only: legacy lounge-feed → R2 migration (service role bearer checked in function).
+[functions.lounge-cf-r2-migrate-lounge-feed]
+verify_jwt = false
+
 # Lounge chat: JWT required (default); explicit for clarity alongside purge exception above.
 [functions.lounge-chat]
 verify_jwt = true

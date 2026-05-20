@@ -2792,7 +2792,7 @@ export default function LoungePostStreamVideo({
     posterFallbackFrameClassByVariant[variant] || posterFallbackFrameClassByVariant.feed
   /** Until the in-flow poster decodes, optional aspect-ratio reserves footprint; after decode the `<img>` is the only size authority (avoids letterbox gap under object-contain). */
   const posterFrameAspectStyle =
-    hasDisplayDims && !posterLayoutFailed && !posterDecodeOk
+    hasDisplayDims && !posterLayoutFailed && (!posterDecodeOk || webKitInFlowVideo)
       ? { aspectRatio: `${Math.round(displayW)} / ${Math.round(displayH)}` }
       : undefined
   const posterShellMinHClass =
@@ -2817,6 +2817,8 @@ export default function LoungePostStreamVideo({
       : streamFadeShowVideo || pausedInlineFrameVisible
   const webKitInlineVideoPaint =
     appleWebKitNativeHlsRef.current && attachStream && !heroExpanded
+  const webKitInFlowVideo = webKitInlineVideoPaint && mountStreamVideo
+  const webKitPosterOverlay = webKitInFlowVideo
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle =
     attachStream && !heroExpanded && !webKitInlineVideoPaint
@@ -2857,7 +2859,9 @@ export default function LoungePostStreamVideo({
       : undefined
   const heroFlyoutShellClass = heroExpanded
     ? `overflow-hidden ${heroPhase === 'opening' ? 'bg-transparent' : 'bg-black'} touch-none`.trim()
-    : 'absolute inset-0 z-[1] h-full w-full overflow-hidden bg-transparent'
+    : webKitInFlowVideo
+      ? 'relative z-[1] block w-fit max-w-full overflow-hidden bg-transparent'
+      : 'absolute inset-0 z-[1] h-full w-full overflow-hidden bg-transparent'
   const heroFlyoutPointerProps = {}
   const inlineVideoOpacityClass =
     heroExpanded
@@ -2877,15 +2881,22 @@ export default function LoungePostStreamVideo({
         : 'opacity-0'
   /** During HLS load poster sits above the flyout; during hero it stays behind (fills the card hole only). */
   const inlinePosterZClass =
-    inlinePosterCoveringVideo
+    webKitPosterOverlay
       ? 'z-[2]'
-      : !heroExpanded && attachStream && !effectiveStreamFadeShowVideo
+      : inlinePosterCoveringVideo
         ? 'z-[2]'
-        : 'relative z-0'
+        : !heroExpanded && attachStream && !effectiveStreamFadeShowVideo
+          ? 'z-[2]'
+          : 'relative z-0'
+  const inlinePosterImgClass = webKitPosterOverlay
+    ? `pointer-events-none select-none absolute inset-0 ${inlinePosterZClass} h-full w-full object-contain ${inlinePosterOpacityClass}`
+    : `pointer-events-none select-none ${heroExpanded || webKitInlineVideoPaint ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`
   /** Hero: touches on the flyout shell (swipe dismiss); video stays paint-only so iOS does not steal gestures. */
   const streamVideoClass = heroExpanded
     ? 'pointer-events-none h-full w-full max-h-full max-w-full object-contain'
-    : 'pointer-events-none h-full w-full object-contain'
+    : webKitInFlowVideo
+      ? `pointer-events-none ${videoClass}`
+      : 'pointer-events-none h-full w-full object-contain'
 
   const heroBackdropAnimating =
     heroBackdropArmed && (heroPhase === 'opening' || heroPhase === 'closing')
@@ -2908,13 +2919,7 @@ export default function LoungePostStreamVideo({
     <video
       ref={videoRef}
       className={`${streamVideoClass} ${heroExpanded || webKitInlineVideoPaint ? '' : 'transition-opacity ease-out'} ${inlineVideoOpacityClass}`}
-      style={
-        heroExpanded || webKitInlineVideoPaint
-          ? webKitInlineVideoPaint
-            ? { transform: 'translateZ(0)' }
-            : undefined
-          : streamFadeTransitionStyle
-      }
+      style={heroExpanded ? undefined : webKitInFlowVideo ? undefined : streamFadeTransitionStyle}
       controls={false}
       controlsList="nodownload"
       {...streamVideoMutedProps}
@@ -2996,9 +3001,9 @@ export default function LoungePostStreamVideo({
                   decoding="async"
                   draggable={false}
                   loading="eager"
-                  className={`pointer-events-none select-none ${heroExpanded || webKitInlineVideoPaint ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`}
+                  className={inlinePosterImgClass}
                   style={
-                    heroExpanded || inlinePosterCoveringVideo
+                    heroExpanded || inlinePosterCoveringVideo || webKitPosterOverlay
                       ? { transition: 'none' }
                       : streamFadeTransitionStyle
                   }

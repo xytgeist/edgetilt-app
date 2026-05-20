@@ -386,6 +386,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** experiment #5 — **`webKitInFlowVideo`**: inline `<video>` uses in-flow **`videoClass`** layout (not `absolute inset-0`); poster becomes absolute overlay only while covering. Prior experiments (#1–#4) did not fix stall.
+
 - 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** experiment #4 — defer inline **`play()`** until cold-boot splash clears; defer poster reveal until **`currentTime ≥ 0.35s`**; **320ms pause/play** compositor nudge after `play()` resolves. Prior decoder/paint-slot experiments did not fix stall.
 
 - 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** experiment #3 — **`webKitSingleVideo`**: on iPhone/iPad mount `<video>` + native HLS on **active tile only** (no ring DOM shells, no **`ringHlsCacheHeld`** handoff decode). Prior **`webKitHlsSlot`** + **`webKitInlineVideoPaint`** did not fix stall.

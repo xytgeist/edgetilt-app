@@ -70,6 +70,8 @@ import {
   loungeProfileNeedsGate,
   writeProfileGateAck,
 } from './loungeStorage'
+import { markLoungeColdBootFeedMounted } from '../../utils/loungeColdBootFeedMounted.js'
+import { setLoungeColdBootPendingWork } from '../../utils/loungeColdBootPendingWork.js'
 import {
   executeLoungeCommunityPostSubmission,
   loungeSubmissionSnapshotIncludesVideo,
@@ -696,6 +698,28 @@ export default function SocialFeed({
   const onLoungeFeedVideoAutoplayChange = useCallback((enabled) => {
     writeLoungeFeedVideoAutoplayEnabled(enabled)
   }, [])
+
+  useEffect(() => {
+    markLoungeColdBootFeedMounted()
+  }, [])
+
+  useEffect(() => {
+    const composerBusy =
+      postText.trim().length > 0 ||
+      composerImageItems.length > 0 ||
+      composerVideoSlot != null ||
+      String(composerMediaUrl || '').trim().length > 0 ||
+      composerVideoSlot?.prepStatus === 'preparing'
+    const uploadBusy = loungePostUploadBar != null || loungePostSubmitInFlight
+    setLoungeColdBootPendingWork(composerBusy || uploadBusy)
+  }, [
+    postText,
+    composerImageItems,
+    composerVideoSlot,
+    composerMediaUrl,
+    loungePostUploadBar,
+    loungePostSubmitInFlight,
+  ])
 
   const loungeFeedVideoDebugEnabled = useSyncExternalStore(
     subscribeLoungeFeedVideoDebugEnabled,

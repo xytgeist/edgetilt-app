@@ -386,6 +386,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-20: **Lounge cold-boot splash (client, unverified on test):** CSS **`LoungeAppSplash`** + **`useLoungeColdBootSplash`** — Home tab only; cold open + **>10 min** background resume (skip when composer draft / upload bar / in-flight submit); anonymous short flash; feed loads under overlay. Smoke: fresh tab → logo animation → feed; background **>10 min** without pending work → splash again; **`?tab=offers`** → no splash.
+
 - 2026-05-20: **Phase G search relevance ranking (test build):** **`lounge_search_match_relevance()`** (phrase > word-boundary > substring > fuzzy); **`lounge_search()`** returns **`search_relevance`** on posts/comments and ranks by it before Top/Latest tie-break; client merged feed sort uses **`search_relevance`** — migration **`20260520190000_lounge_search_relevance_ranking.sql`**.
 
 - 2026-05-20: **Phase G @handle + keyword (test build):** **`@selena buffalo`** parses handle **`selena`** + keyword filter on posts/comments — migration **`20260520180000_lounge_search_handle_keyword.sql`**.

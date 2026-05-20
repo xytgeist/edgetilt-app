@@ -300,6 +300,95 @@ input[list]::-webkit-list-button {
   animation: edgeGiggityFizzle 1s ease-out forwards;
 }
 
+/* Lounge cold-boot splash — logo breathe + soft cyan glow */
+@keyframes loungeColdBootLogoIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+    filter: blur(6px);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes loungeColdBootLogoPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 18px rgba(34, 211, 238, 0.22));
+  }
+  50% {
+    transform: scale(1.035);
+    filter: drop-shadow(0 0 28px rgba(34, 211, 238, 0.38));
+  }
+}
+
+@keyframes loungeColdBootGlowDrift {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes loungeColdBootSplashOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.lounge-cold-boot-splash {
+  animation: loungeColdBootSplashOut 0.01s linear reverse;
+}
+
+.lounge-cold-boot-splash--out {
+  animation: loungeColdBootSplashOut 320ms ease-out forwards;
+  pointer-events: none;
+}
+
+.lounge-cold-boot-splash__glow {
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(34, 211, 238, 0.14), transparent 68%),
+    radial-gradient(ellipse 90% 70% at 50% 100%, rgba(139, 92, 246, 0.08), transparent 72%);
+  animation: loungeColdBootGlowDrift 2.4s ease-in-out infinite;
+}
+
+.lounge-cold-boot-splash__logo-wrap {
+  animation: loungeColdBootLogoIn 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.lounge-cold-boot-splash__logo {
+  animation: loungeColdBootLogoPulse 2.1s ease-in-out 720ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lounge-cold-boot-splash__glow,
+  .lounge-cold-boot-splash__logo-wrap,
+  .lounge-cold-boot-splash__logo {
+    animation: none;
+  }
+
+  .lounge-cold-boot-splash__logo-wrap {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Lounge dock following-filter toggle flash — "Following" / "Everyone" fizzle label */
 @keyframes loungeFilterFlashFizzle {
   0% {

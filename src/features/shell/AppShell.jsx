@@ -27,6 +27,8 @@ import {
   setPwaNotifEnablePending,
 } from '../../utils/pwaNotificationPrompt'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
+import LoungeAppSplash from '../../components/LoungeAppSplash.jsx'
+import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 
 const SocialFeed = lazy(() => import('../lounge/SocialFeed.jsx'))
 const OffersCalendar = lazy(() => import('../offers/OffersCalendar.jsx'))
@@ -622,6 +624,14 @@ export default function AppShell({
     setMenuOpen(false)
   }, [browseMode, tab])
 
+  const { splashVisible, splashDismissing } = useLoungeColdBootSplash({
+    tab,
+    browseMode,
+    communityFeedLoading,
+    communityFeedQueryErr,
+    communityPostsCount: communityPosts.length,
+  })
+
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */
     const keepAliveSocialFeed = (
@@ -847,6 +857,8 @@ export default function AppShell({
         </div>
       ) : null}
       {renderTabContent()}
+
+      {splashVisible ? <LoungeAppSplash dismissing={splashDismissing} /> : null}
 
       {globalConfirmState.open ? (
         <div

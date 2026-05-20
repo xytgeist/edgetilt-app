@@ -42,6 +42,9 @@ Track **everything else** already used on test that production must also have ap
 - [ ] **`supabase/migrations/20260515180000_feed_comments_body_max_280.sql`** — `feed_comments.body` max **280** (matches captions); truncates existing long rows then replaces **`feed_comments_body_len`** check (**run test before prod**; optional no-op if table empty).
 - [ ] **`supabase/migrations/20260515183000_feed_comments_author_update.sql`** — **`feed_comments_update_own`** RLS + **`grant update`** + **`feed_comments_guard_identity_fields`** trigger so authors can **edit** replies from Lounge post detail ⋯ menu (**run after `feed_comments` exists**).
 - [ ] **`supabase/migrations/20260515190000_feed_comment_interactions.sql`** — per-comment **`like_count` / `repost_count` / `bookmark_count`** + **`feed_comment_likes` / `feed_comment_reposts` / `feed_comment_bookmarks`** (RLS + triggers). Required for post-detail comment interaction bar counts and toggles (**run after `feed_comments` exists**).
+- [ ] **`supabase/migrations/20260518103000_fix_rate_limit_profiles_user_id.sql`** — rate-limit guard uses **`profiles.user_id`** (not stale column name); required for Lounge post rate limiting on current schema.
+- [ ] **`supabase/migrations/20260518150000_restore_profile_handle_change_cooldown.sql`** — restore **7-day** handle change cooldown trigger + **`handle_changed_at`** guard after any interim removal migration.
+- [ ] **`supabase/migrations/20260518160000_lounge_search_phase_g.sql`** — Phase G **`pg_trgm`** indexes + auth-gated **`lounge_search_posts`** / **`lounge_search_profiles`** (requires **`pg_trgm`** extension; run before dock search smoke).
 - [ ] Any earlier schema you rely on: **`offers`** / **`offer_events`**, **`push_subscriptions`**, notification SQL, etc. — mirror **test** `supabase/` files that are not yet on prod
 
 **After deploy — quick smoke SQL (production):**
@@ -148,6 +151,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 - [ ] **`get-web-push-config`**: authenticated `GET` → `200` with `publicKey` (mirror prior smoke checklist).
 - [ ] **Lounge video (Cloudflare Stream):** post a short clip (composer, under **60 seconds**) from Lounge; it plays in feed/detail via HLS. Requires **`lounge_feed_post_stream_video.sql`** on the DB, **`lounge-cf-stream-direct-upload`** and **`lounge-cf-stream-delete-video`** deployed, and Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** / **`CLOUDFLARE_STREAM_API_TOKEN`** on that Supabase project. Delete the post and confirm the asset disappears from Cloudflare Stream (or returns 404 if re-deleted). If you use **purge cron** on prod, mirror **§2** migrations + **§4** **`LOUNGE_CF_STREAM_PURGE_SECRET`** / Vault parity and spot-check **`cron.job`** + **`net._http_response`** after a manual invoke.
 - [ ] **Lounge images (Cloudflare R2):** post a photo; URL should be on prod media subdomain (e.g. **`media.lvslotpro.com`**). Response headers include **`Cache-Control: public, max-age=31536000, immutable`**. Delete post removes R2 object. Legacy rows should already point at R2 if **§3.5** migrate ran.
+- [ ] **Lounge search (Phase G):** signed-in dock **Search** — **2+ chars** returns posts/profiles; logged-out tap → account gate. Requires **`20260518160000_lounge_search_phase_g.sql`** on prod DB.
+- [ ] **Lounge media lightbox:** image full-screen pinch-zoom + pan; Stream hero expand with interaction bar — spot-check feed + post detail (client-only; no extra deploy beyond app bundle).
 
 ---
 
@@ -173,4 +178,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: Lounge **Cloudflare R2** feed images (`lounge-cf-r2-*`, custom domain, migrate/backfill ops, immutable cache headers) + **Cloudflare Stream** (`stream_video_uid`, direct-upload, delete-video, delete-orphan, purge + pg_cron migrations / Vault). Frontend layout map: `docs/frontend-architecture.md`._
+_Last updated: Lounge **Cloudflare R2** feed images (`lounge-cf-r2-*`, custom domain, migrate/backfill ops, immutable cache headers) + **unified Stream/image lightbox** (`LoungeStreamLightboxContext`, pinch-zoom) + **Phase G search** migration + **Cloudflare Stream** (`stream_video_uid`, direct-upload, delete-video, delete-orphan, purge + pg_cron migrations / Vault). Frontend layout map: `docs/frontend-architecture.md`._

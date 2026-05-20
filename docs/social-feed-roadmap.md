@@ -181,6 +181,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 ### D1. Images (up to 12)
 
 - **Shipped (test):** Multi-image carousel + composer; uploads via **`uploadLoungeFeedPostImage`** (`communityFeedPost.js`) → **Cloudflare R2** presigned PUT (**`lounge-cf-r2-direct-upload`**) on custom domain **`https://media-test.lvslotpro.com`** (bucket **`lounge-media`** on **`lvslotpro.com`** zone). Client delivery **`loungeCfImageMedia.js`**; optional **`/cdn-cgi/image/`** when zone Image Resizing enabled (test uses **`VITE_LOUNGE_CF_IMAGE_RESIZE=false`** on Free plan — client WebP prep only). Objects use **`Cache-Control: public, max-age=31536000, immutable`**. Legacy **`lounge-feed`** URLs migrated on test (**`lounge-cf-r2-migrate-lounge-feed`**); client still falls back to Supabase upload when R2 Edge returns **503**. External Klipy **`gif_url`** unchanged.
+- **Shipped (test):** Unified **Stream + image/GIF lightbox** via **`LoungeStreamLightboxContext`** (feed, detail, comments, profile); image **pinch-to-zoom + pan** (`loungeLightboxImageZoom.js`); Stream hero expand shares interaction bar + repost menus with still lightboxes.
 - **Edge secrets (names only):** `LOUNGE_CF_R2_*` + shared **`CLOUDFLARE_ACCOUNT_ID`** — see **`supabase/functions/lounge-cf-r2-direct-upload/README.md`**. Ops (service role): **`scripts/migrate-lounge-feed-to-r2.mjs`**, **`scripts/backfill-r2-cache-control.mjs`**.
 - **Deferred:** normalized media rows table (`post_id`, `sort`, `type`, `path`); resumable upload for very large stills.
 

@@ -27,10 +27,6 @@ import {
   registerLoungeVideoDebugTile,
   reportLoungeVideoDebugEvent,
 } from './loungeFeedVideoDebugRegistry.js'
-import {
-  readLoungeColdBootSplashActive,
-  subscribeLoungeColdBootSplashActive,
-} from '../../utils/loungeColdBootSplashActive.js'
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
 const videoClassByVariant = {
@@ -104,10 +100,6 @@ const STREAM_ATTACH_FADE_MS = 220
 const STREAM_POSTER_FADE_DELAY_MS = 72
 /** If decode signals never fire, still unstick poster→video crossfade (rare HLS/Safari quirks). Intentionally long so we do not beat real decode and flash black. */
 const STREAM_FADE_LAST_RESORT_MS = 6500
-/** Apple WebKit: defer poster swap until playback is past startup compositor stall window. */
-const WEBKIT_POSTER_REVEAL_MIN_TIME_S = 0.35
-/** Apple WebKit: brief pause/play nudge when picture layer sticks (~few frames in). */
-const WEBKIT_PAINT_NUDGE_MS = 320
 
 /** Feed tile ↔ hero full-screen FLIP (same `<video>`, no second HLS attach). */
 const HERO_EXPAND_MS = 500
@@ -122,26 +114,6 @@ const HERO_CHROME_AUTO_HIDE_MS = 3000
 /** Landscape hero chrome: inset controls 10% from each viewport edge. */
 /** Default hero stack when no parent `lightboxPortalClass` is passed. */
 const HERO_STACK_BASE_Z_INDEX = 102
-
-/** iPhone/iPad use native HLS — concurrent ring decoders can stall the active tile (~few frames, audio keeps going). */
-function detectAppleWebKitNativeHls() {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent || ''
-  if (/iPhone|iPad|iPod/i.test(ua)) return true
-  /** iPadOS 13+ may report as Macintosh. */
-  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true
-  return false
-}
-
-/** Native `<video poster>` on iOS can stick over playing frames after HLS attach. */
-function stripWebKitVideoPoster(video) {
-  if (!video) return
-  try {
-    video.removeAttribute('poster')
-  } catch {
-    // ignore
-  }
-}
 
 /**
  * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).
@@ -780,9 +752,6 @@ export default function LoungePostStreamVideo({
   const heroColdMountRef = useRef(false)
   /** Hero opened with `<video>` present but HLS not decoded yet — kick attach after open. */
   const heroHlsKickRef = useRef(false)
-  const appleWebKitNativeHlsRef = useRef(detectAppleWebKitNativeHls())
-  const webKitPaintNudgeTimerRef = useRef(0)
-  const coldBootSplashActiveRef = useRef(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -963,14 +932,6 @@ export default function LoungePostStreamVideo({
     getLoungeStreamLightboxOpen,
     () => false,
   )
-  const coldBootSplashActive = useSyncExternalStore(
-    subscribeLoungeColdBootSplashActive,
-    readLoungeColdBootSplashActive,
-    () => false,
-  )
-  useEffect(() => {
-    coldBootSplashActiveRef.current = coldBootSplashActive
-  }, [coldBootSplashActive])
   isActiveRef.current =
     feedAutoplayEnabled && !coordinatorSuspended && (!coordinatorActive || isActive)
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
@@ -1006,14 +967,9 @@ export default function LoungePostStreamVideo({
       : lazyStream
         ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
         : true
-  /** Apple: one inline `<video>` + one native HLS decode — active tile only (no ring/handoff neighbors). */
-  const webKitSingleVideo =
-    !appleWebKitNativeHlsRef.current ||
-    isActive ||
-    heroExpanded ||
-    lightboxOpen
+  /** iOS: ≤5 inline `<video>` nodes (ring + lookahead); HLS only on ring (≤3). */
   const mountStreamVideo = Boolean(id) && (
-    (coordinatorActive && (webKitSingleVideo ? isActive : inDomBudget)) ||
+    (coordinatorActive && inDomBudget) ||
     heroExpanded ||
     lightboxOpen ||
     (!coordinatorActive && lazyStream && streamInView)
@@ -1029,16 +985,11 @@ export default function LoungePostStreamVideo({
       hasDecodedStreamMetadata &&
       (variant === 'commentInline' || variant === 'detail' ? !inRing : true),
   )
-  /** Apple native HLS: active tile only — no ring prefetch or handoff-hold decoders. */
-  const webKitHlsSlot = webKitSingleVideo
+  /** iOS: limit concurrent HLS — active/hero/lightbox + handoff hold; never cold-load prefetch slots. */
   const hlsAttachEnabled =
     attachStream &&
-    webKitHlsSlot &&
     !(ringWarmPrefetch && !hasDecodedStreamMetadata) &&
-    (heroExpanded ||
-      lightboxOpen ||
-      isActive ||
-      (!appleWebKitNativeHlsRef.current && ringHlsCacheHeld))
+    (heroExpanded || lightboxOpen || isActive || ringHlsCacheHeld)
 
   /** Handoff away: next active clip starts muted unless user taps sound on that tile. */
   useEffect(() => {
@@ -1126,7 +1077,6 @@ export default function LoungePostStreamVideo({
     if (heroLocked && !lightboxOpenRef.current) return false
     if (coordinatorActive && !isActiveRef.current) return false
     if (coordinatorActive && tileRatio <= 0) return false
-    if (appleWebKitNativeHlsRef.current && coldBootSplashActiveRef.current) return false
     if (lazyStream && v.readyState < HTMLMediaElement.HAVE_METADATA) return false
     if (inlinePlayInFlightRef.current) return false
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -1157,29 +1107,6 @@ export default function LoungePostStreamVideo({
         }
       }
     }
-    const scheduleWebKitPaintNudge = () => {
-      if (!appleWebKitNativeHlsRef.current) return
-      window.clearTimeout(webKitPaintNudgeTimerRef.current)
-      webKitPaintNudgeTimerRef.current = window.setTimeout(() => {
-        webKitPaintNudgeTimerRef.current = 0
-        const el = videoRef.current
-        if (!el || el.paused || !isActiveRef.current || lightboxOpenRef.current) return
-        if (el.currentTime > 1.2) return
-        try {
-          el.pause()
-          requestAnimationFrame(() => {
-            const p2 = el.play()
-            if (p2 && typeof p2.then === 'function') {
-              p2.then(() => applyAudibleAfterPlay()).catch(() => {})
-            } else if (!el.paused) {
-              applyAudibleAfterPlay()
-            }
-          })
-        } catch {
-          // ignore
-        }
-      }, WEBKIT_PAINT_NUDGE_MS)
-    }
     try {
       // iOS blocks unmuted programmatic play(); start muted, unmute only after play resolves.
       if (
@@ -1206,7 +1133,6 @@ export default function LoungePostStreamVideo({
           inlinePlayBackoffUntilMsRef.current = 0
           lastPlayErrorRef.current = ''
           applyAudibleAfterPlay()
-          scheduleWebKitPaintNudge()
           if (videoDebugEnabled && feedAutoplayClientId) {
             const rs = v?.readyState ?? 0
             const ct = Number.isFinite(v?.currentTime) ? v.currentTime.toFixed(1) : '0'
@@ -1225,10 +1151,7 @@ export default function LoungePostStreamVideo({
       } else {
         finishPlayAttempt()
         lastPlayErrorRef.current = ''
-        if (!v.paused) {
-          applyAudibleAfterPlay()
-          scheduleWebKitPaintNudge()
-        }
+        if (!v.paused) applyAudibleAfterPlay()
       }
       return !v.paused
     } catch (err) {
@@ -1247,50 +1170,6 @@ export default function LoungePostStreamVideo({
     showOpen,
     tileRatio,
     videoDebugEnabled,
-  ])
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(webKitPaintNudgeTimerRef.current)
-      webKitPaintNudgeTimerRef.current = 0
-    },
-    [],
-  )
-
-  /** Apple cold boot: hold inline playback until splash is gone (overlay confuses WebKit paint). */
-  useLayoutEffect(() => {
-    if (!appleWebKitNativeHlsRef.current || !coldBootSplashActive) return
-    const v = videoRef.current
-    if (!v || lightboxOpenRef.current || heroExpanded) return
-    try {
-      v.pause()
-      v.muted = true
-    } catch {
-      // ignore
-    }
-  }, [coldBootSplashActive, heroExpanded, lightboxOpen])
-
-  useEffect(() => {
-    if (!appleWebKitNativeHlsRef.current || coldBootSplashActive) return undefined
-    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !attachStream) {
-      return undefined
-    }
-    let cancelled = false
-    const tid = window.setTimeout(() => {
-      if (!cancelled) tryCoordinatedInlinePlay()
-    }, 64)
-    return () => {
-      cancelled = true
-      window.clearTimeout(tid)
-    }
-  }, [
-    coldBootSplashActive,
-    coordinatorActive,
-    lazyStream,
-    feedAutoplayEnabled,
-    isActive,
-    attachStream,
-    tryCoordinatedInlinePlay,
   ])
 
   /** Hero / manual-play: muted-first (iOS gesture-safe), unmute after decode when sound is wanted. */
@@ -1755,47 +1634,6 @@ export default function LoungePostStreamVideo({
         setStreamFadeShowVideo(false)
         return
       }
-
-      /** Apple inline: no opacity crossfade — poster `<img>` covers until `playing`, then instant swap. */
-      if (appleWebKitNativeHlsRef.current) {
-        setStreamFadeShowVideo(false)
-        const vWebKit = videoRef.current
-        if (!vWebKit) return
-        const revealWebKit = () => {
-          if (cleaned || lightboxOpenRef.current) return
-          stripWebKitVideoPoster(vWebKit)
-          requestAnimationFrame(() => {
-            if (!cleaned) setStreamFadeShowVideo(true)
-          })
-        }
-        const revealWebKitWhenReady = () => {
-          if (cleaned || lightboxOpenRef.current) return false
-          if (
-            !vWebKit.paused &&
-            vWebKit.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-            vWebKit.currentTime >= WEBKIT_POSTER_REVEAL_MIN_TIME_S
-          ) {
-            revealWebKit()
-            return true
-          }
-          return false
-        }
-        if (revealWebKitWhenReady()) return
-        const onWebKitProgress = () => {
-          if (revealWebKitWhenReady()) {
-            vWebKit.removeEventListener('playing', onWebKitProgress)
-            vWebKit.removeEventListener('timeupdate', onWebKitProgress)
-          }
-        }
-        vWebKit.addEventListener('playing', onWebKitProgress)
-        vWebKit.addEventListener('timeupdate', onWebKitProgress)
-        disarm = () => {
-          vWebKit.removeEventListener('playing', onWebKitProgress)
-          vWebKit.removeEventListener('timeupdate', onWebKitProgress)
-        }
-        return
-      }
-
       const attachKeyBumped = prevFadeAttachKeyRef.current !== streamAttachKey
       prevFadeAttachKeyRef.current = streamAttachKey
       if (streamFadeShowVideo && attachStream && !attachKeyBumped) return
@@ -1918,16 +1756,9 @@ export default function LoungePostStreamVideo({
       (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
         ((Number.isFinite(v.currentTime) && v.currentTime > 0) || saved > 0.05))
     ) {
-      if (appleWebKitNativeHlsRef.current) stripWebKitVideoPoster(v)
       setStreamFadeShowVideo(true)
     }
   }, [isActive, inRing, attachStream])
-
-  /** Apple: drop native `<video poster>` on HLS attach so it cannot stick over playing frames. */
-  useLayoutEffect(() => {
-    if (!appleWebKitNativeHlsRef.current || !attachStream || lightboxOpenRef.current) return
-    stripWebKitVideoPoster(videoRef.current)
-  }, [attachStream, streamAttachKey, lightboxOpen])
 
   const attachStreamRef = useRef(attachStream)
   attachStreamRef.current = attachStream
@@ -2790,13 +2621,9 @@ export default function LoungePostStreamVideo({
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
   const posterFallbackFrameClass =
     posterFallbackFrameClassByVariant[variant] || posterFallbackFrameClassByVariant.feed
-  const webKitInlineVideoPaint =
-    appleWebKitNativeHlsRef.current && attachStream && !heroExpanded
-  const webKitInFlowVideo = webKitInlineVideoPaint && mountStreamVideo
-  const webKitPosterOverlay = webKitInFlowVideo
   /** Until the in-flow poster decodes, optional aspect-ratio reserves footprint; after decode the `<img>` is the only size authority (avoids letterbox gap under object-contain). */
   const posterFrameAspectStyle =
-    hasDisplayDims && !posterLayoutFailed && (!posterDecodeOk || webKitInFlowVideo)
+    hasDisplayDims && !posterLayoutFailed && !posterDecodeOk
       ? { aspectRatio: `${Math.round(displayW)} / ${Math.round(displayH)}` }
       : undefined
   const posterShellMinHClass =
@@ -2821,7 +2648,7 @@ export default function LoungePostStreamVideo({
       : streamFadeShowVideo || pausedInlineFrameVisible
   /** Same delay on poster + video keeps poster visible through transparent video until fade starts (reduces black flash). */
   const streamFadeTransitionStyle =
-    attachStream && !heroExpanded && !webKitInlineVideoPaint
+    attachStream && !heroExpanded
       ? {
           transitionDuration: `${STREAM_ATTACH_FADE_MS}ms`,
           transitionDelay: streamFadeShowVideo ? `${STREAM_POSTER_FADE_DELAY_MS}ms` : '0ms',
@@ -2859,44 +2686,25 @@ export default function LoungePostStreamVideo({
       : undefined
   const heroFlyoutShellClass = heroExpanded
     ? `overflow-hidden ${heroPhase === 'opening' ? 'bg-transparent' : 'bg-black'} touch-none`.trim()
-    : webKitInFlowVideo
-      ? 'relative z-[1] block w-fit max-w-full overflow-hidden bg-transparent'
-      : 'absolute inset-0 z-[1] h-full w-full overflow-hidden bg-transparent'
+    : 'absolute inset-0 z-[1] h-full w-full overflow-hidden bg-transparent'
   const heroFlyoutPointerProps = {}
   const inlineVideoOpacityClass =
     heroExpanded
       ? effectiveStreamFadeShowVideo
         ? 'opacity-100'
         : 'opacity-0'
-      : webKitInlineVideoPaint || (attachStream && effectiveStreamFadeShowVideo)
+      : attachStream && effectiveStreamFadeShowVideo
         ? 'opacity-100'
         : 'opacity-0'
-  const inlinePosterCoveringVideo = webKitInlineVideoPaint && !streamFadeShowVideo
-  const inlinePosterOpacityClass = inlinePosterCoveringVideo
-    ? 'opacity-100'
-    : webKitInlineVideoPaint && streamFadeShowVideo
-      ? 'opacity-0'
-      : heroExpanded || !(attachStream && effectiveStreamFadeShowVideo)
-        ? 'opacity-100'
-        : 'opacity-0'
+  const inlinePosterOpacityClass =
+    heroExpanded || !(attachStream && effectiveStreamFadeShowVideo) ? 'opacity-100' : 'opacity-0'
   /** During HLS load poster sits above the flyout; during hero it stays behind (fills the card hole only). */
   const inlinePosterZClass =
-    webKitPosterOverlay
-      ? 'z-[2]'
-      : inlinePosterCoveringVideo
-        ? 'z-[2]'
-        : !heroExpanded && attachStream && !effectiveStreamFadeShowVideo
-          ? 'z-[2]'
-          : 'relative z-0'
-  const inlinePosterImgClass = webKitPosterOverlay
-    ? `pointer-events-none select-none absolute inset-0 ${inlinePosterZClass} h-full w-full object-contain ${inlinePosterOpacityClass}`
-    : `pointer-events-none select-none ${heroExpanded || webKitInlineVideoPaint ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`
+    !heroExpanded && attachStream && !effectiveStreamFadeShowVideo ? 'z-[2]' : 'relative z-0'
   /** Hero: touches on the flyout shell (swipe dismiss); video stays paint-only so iOS does not steal gestures. */
   const streamVideoClass = heroExpanded
     ? 'pointer-events-none h-full w-full max-h-full max-w-full object-contain'
-    : webKitInFlowVideo
-      ? `pointer-events-none ${videoClass}`
-      : 'pointer-events-none h-full w-full object-contain'
+    : 'pointer-events-none h-full w-full object-contain'
 
   const heroBackdropAnimating =
     heroBackdropArmed && (heroPhase === 'opening' || heroPhase === 'closing')
@@ -2918,8 +2726,8 @@ export default function LoungePostStreamVideo({
   const streamVideoEl = mountStreamVideo ? (
     <video
       ref={videoRef}
-      className={`${streamVideoClass} ${heroExpanded || webKitInlineVideoPaint ? '' : 'transition-opacity ease-out'} ${inlineVideoOpacityClass}`}
-      style={heroExpanded ? undefined : webKitInFlowVideo ? undefined : streamFadeTransitionStyle}
+      className={`${streamVideoClass} ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlineVideoOpacityClass}`}
+      style={heroExpanded ? undefined : streamFadeTransitionStyle}
       controls={false}
       controlsList="nodownload"
       {...streamVideoMutedProps}
@@ -2932,7 +2740,7 @@ export default function LoungePostStreamVideo({
             ? 'auto'
             : 'metadata'
       }
-      poster={webKitInlineVideoPaint ? undefined : visiblePosterSrc || poster}
+      poster={visiblePosterSrc || poster}
       aria-label={heroExpanded ? 'Post video (full screen)' : undefined}
       aria-hidden={!heroExpanded}
       onError={onInlineStreamError}
@@ -3001,12 +2809,8 @@ export default function LoungePostStreamVideo({
                   decoding="async"
                   draggable={false}
                   loading="eager"
-                  className={inlinePosterImgClass}
-                  style={
-                    heroExpanded || inlinePosterCoveringVideo || webKitPosterOverlay
-                      ? { transition: 'none' }
-                      : streamFadeTransitionStyle
-                  }
+                  className={`pointer-events-none select-none ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`}
+                  style={heroExpanded ? { transition: 'none' } : streamFadeTransitionStyle}
                   aria-hidden
                   onLoad={() => setPosterDecodeOk(true)}
                   onError={onPosterImgError}

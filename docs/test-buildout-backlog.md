@@ -386,6 +386,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** experiment #3 — **`webKitSingleVideo`**: on iPhone/iPad mount `<video>` + native HLS on **active tile only** (no ring DOM shells, no **`ringHlsCacheHeld`** handoff decode). Prior **`webKitHlsSlot`** + **`webKitInlineVideoPaint`** did not fix stall.
+
 - 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** **`webKitInlineVideoPaint`** fix — do not `hidden` the in-flow poster `<img>` on reveal (collapses iOS card layout); keep poster in document flow at **`opacity-0`** so it still sizes the frame while video paints underneath.
 
 - 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** **`webKitHlsSlot`** (single native HLS decode) did not fix stall — added **`webKitInlineVideoPaint`**: no inline video opacity crossfade on Apple; in-flow poster covers until `playing` then instant swap; strip native `<video poster>`. Smoke: cold open + scroll-back to first clip past ~frame 6; tap full-screen normal.

@@ -988,9 +988,14 @@ export default function LoungePostStreamVideo({
       : lazyStream
         ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
         : true
-  /** iOS: ≤5 inline `<video>` nodes (ring + lookahead); HLS only on ring (≤3). */
+  /** Apple: one inline `<video>` + one native HLS decode — active tile only (no ring/handoff neighbors). */
+  const webKitSingleVideo =
+    !appleWebKitNativeHlsRef.current ||
+    isActive ||
+    heroExpanded ||
+    lightboxOpen
   const mountStreamVideo = Boolean(id) && (
-    (coordinatorActive && inDomBudget) ||
+    (coordinatorActive && (webKitSingleVideo ? isActive : inDomBudget)) ||
     heroExpanded ||
     lightboxOpen ||
     (!coordinatorActive && lazyStream && streamInView)
@@ -1006,18 +1011,16 @@ export default function LoungePostStreamVideo({
       hasDecodedStreamMetadata &&
       (variant === 'commentInline' || variant === 'detail' ? !inRing : true),
   )
-  /** Apple native HLS: one decode on active (+ brief handoff hold); skip ring prefetch neighbors. */
-  const webKitHlsSlot =
-    !appleWebKitNativeHlsRef.current ||
-    isActive ||
-    heroExpanded ||
-    lightboxOpen ||
-    ringHlsCacheHeld
+  /** Apple native HLS: active tile only — no ring prefetch or handoff-hold decoders. */
+  const webKitHlsSlot = webKitSingleVideo
   const hlsAttachEnabled =
     attachStream &&
     webKitHlsSlot &&
     !(ringWarmPrefetch && !hasDecodedStreamMetadata) &&
-    (heroExpanded || lightboxOpen || isActive || ringHlsCacheHeld)
+    (heroExpanded ||
+      lightboxOpen ||
+      isActive ||
+      (!appleWebKitNativeHlsRef.current && ringHlsCacheHeld))
 
   /** Handoff away: next active clip starts muted unless user taps sound on that tile. */
   useEffect(() => {

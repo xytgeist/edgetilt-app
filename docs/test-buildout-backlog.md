@@ -386,6 +386,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-20: **Phase G search relevance ranking (test build):** **`lounge_search_match_relevance()`** (phrase > word-boundary > substring > fuzzy); **`lounge_search()`** returns **`search_relevance`** on posts/comments and ranks by it before Top/Latest tie-break; client merged feed sort uses **`search_relevance`** — migration **`20260520190000_lounge_search_relevance_ranking.sql`**.
+
 - 2026-05-20: **Phase G @handle + keyword (test build):** **`@selena buffalo`** parses handle **`selena`** + keyword filter on posts/comments — migration **`20260520180000_lounge_search_handle_keyword.sql`**.
 
 - 2026-05-20: **Phase G search bundled RPC (test build):** **`lounge_search()`** single call (pagination meta, **`about_me`** profile match, index-aware **`lounge_search_text_matches`**, **`lounge_search_analytics`**, rate limit **30/5min**); client **`loungeSearch()`** + **Load more** — migration **`20260520170000_lounge_search_bundled.sql`**.

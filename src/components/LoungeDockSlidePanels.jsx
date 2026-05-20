@@ -171,7 +171,6 @@ export default function LoungeDockSlidePanels({
     searchPosts.length > 0 || searchProfiles.length > 0 || searchComments.length > 0
   /** Full "Searching…" row only when there is nothing to show yet — refetches keep stale results. */
   const showSearchInitialLoading = searchLoading && !searchHasResults
-  const showSearchRefetchIndicator = searchLoading && searchHasResults
   const showSearchLoadMore =
     queryReady &&
     !searchLoading &&
@@ -293,6 +292,7 @@ export default function LoungeDockSlidePanels({
       ...searchPosts.map((post) => ({
         kind: 'post',
         post,
+        searchRelevance: Number(post.search_relevance) || 0,
         score: loungePostInteractionScore(post),
         createdAt: post?.created_at,
       })),
@@ -300,11 +300,14 @@ export default function LoungeDockSlidePanels({
         kind: 'comment',
         comment,
         post,
+        searchRelevance: Number(comment.search_relevance) || 0,
         score: loungePostInteractionScore(comment),
         createdAt: comment?.created_at,
       })),
     ]
     items.sort((a, b) => {
+      const relDiff = b.searchRelevance - a.searchRelevance
+      if (relDiff !== 0) return relDiff
       if (searchSort === LOUNGE_SEARCH_SORT.RECENT) {
         return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       }
@@ -314,6 +317,43 @@ export default function LoungeDockSlidePanels({
     })
     return items
   }, [queryReady, localTrendingPosts, searchPosts, searchComments, searchSort])
+
+  const searchSortToggle = (
+    <div className="relative z-[1] -mb-px shrink-0">
+      <div
+        role="group"
+        aria-label="Search sort"
+        className="flex items-stretch overflow-hidden rounded-t-md border border-b-0 border-zinc-700/90 bg-zinc-950/35"
+      >
+        {[
+          { value: LOUNGE_SEARCH_SORT.ENGAGEMENT, label: 'Top' },
+          { value: LOUNGE_SEARCH_SORT.RECENT, label: 'Latest' },
+        ].map((opt, idx) => {
+          const active = searchSort === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                writeLoungeSearchSort(opt.value)
+                setSearchSort(opt.value)
+              }}
+              className={`px-2 py-0.5 text-[12px] font-medium leading-tight touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                idx === 0 ? '' : 'border-l border-zinc-700/90'
+              } ${
+                active
+                  ? 'bg-cyan-500/15 text-cyan-100'
+                  : 'bg-transparent text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   /** Search-only lightbox ctx — media fullscreen stays on search; no caption/comment chrome → post detail. */
   const searchPostCardProps = useMemo(() => {
@@ -356,6 +396,7 @@ export default function LoungeDockSlidePanels({
     if (!searchSupabaseClient || !hydrateSearchPosts) return
 
     if (!queryReady) {
+      searchFetchSeqRef.current += 1
       setSearchPosts([])
       setSearchProfiles([])
       setSearchComments([])
@@ -384,6 +425,7 @@ export default function LoungeDockSlidePanels({
     return () => {
       cancelled = true
       window.clearTimeout(timer)
+      searchFetchSeqRef.current += 1
     }
   }, [
     openPanel,
@@ -687,53 +729,24 @@ export default function LoungeDockSlidePanels({
                 aria-busy={searchLoading}
                 className="min-w-0 flex-1 border-0 bg-transparent py-1.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none"
               />
-              {queryReady ? (
-                <div
-                  role="group"
-                  aria-label="Search sort"
-                  className="flex shrink-0 items-center overflow-hidden rounded-md border border-zinc-700/90"
-                >
-                  {[
-                    { value: LOUNGE_SEARCH_SORT.ENGAGEMENT, label: 'Top' },
-                    { value: LOUNGE_SEARCH_SORT.RECENT, label: 'Latest' },
-                  ].map((opt, idx) => {
-                    const active = searchSort === opt.value
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => {
-                          writeLoungeSearchSort(opt.value)
-                          setSearchSort(opt.value)
-                        }}
-                        className={`px-2 py-0.5 text-[12px] font-medium leading-tight touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                          idx === 0 ? '' : 'border-l border-zinc-700/90'
-                        } ${
-                          active
-                            ? 'bg-cyan-500/15 text-cyan-100'
-                            : 'bg-zinc-900/70 text-zinc-400 hover:text-zinc-200'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    )
-                  })}
+              {trimmedQuery || searchLoading ? (
+                <div className="flex shrink-0 items-center">
+                  {searchLoading ? (
+                    <span className="flex items-center px-0.5 text-zinc-500" aria-hidden>
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-cyan-400" />
+                    </span>
+                  ) : null}
+                  {trimmedQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setQ('')}
+                      aria-label="Clear search"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center text-[20px] leading-none text-zinc-500 touch-manipulation hover:text-zinc-300 [-webkit-tap-highlight-color:transparent]"
+                    >
+                      ×
+                    </button>
+                  ) : null}
                 </div>
-              ) : null}
-              {showSearchRefetchIndicator ? (
-                <span className="flex shrink-0 items-center px-0.5 text-zinc-500" aria-hidden>
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-cyan-400" />
-                </span>
-              ) : trimmedQuery ? (
-                <button
-                  type="button"
-                  onClick={() => setQ('')}
-                  aria-label="Clear search"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center text-[20px] leading-none text-zinc-500 touch-manipulation hover:text-zinc-300 [-webkit-tap-highlight-color:transparent]"
-                >
-                  ×
-                </button>
               ) : null}
             </div>
             {!queryReady && searchRecent.length > 0 ? (
@@ -788,9 +801,12 @@ export default function LoungeDockSlidePanels({
                 <LoungeStreamLightboxProvider ctx={searchLightboxCtx}>
                 {queryReady && searchProfiles.length > 0 ? (
                   <section className="mb-3">
-                    <h3 className="mb-1 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
-                      Profiles
-                    </h3>
+                    <div className="flex items-end justify-between gap-2 px-0.5">
+                      <h3 className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Profiles
+                      </h3>
+                      {searchSortToggle}
+                    </div>
                     <ul className="list-none p-0">
                       {searchProfiles.map((profile) => {
                         const displayName = String(profile.display_name || profile.handle || 'Member').trim()
@@ -848,10 +864,11 @@ export default function LoungeDockSlidePanels({
                     Trending in your feed
                   </h3>
                 ) : null}
-                {queryReady && displaySearchFeedItems.length > 0 && searchProfiles.length > 0 ? (
-                  <h3 className="mb-1 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Posts
-                  </h3>
+                {queryReady && displaySearchFeedItems.length > 0 ? (
+                  <div className="flex items-end justify-between gap-2 px-0.5">
+                    <h3 className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">Posts</h3>
+                    {searchProfiles.length === 0 ? searchSortToggle : null}
+                  </div>
                 ) : null}
                 {displaySearchFeedItems.map((item) =>
                   item.kind === 'comment' ? (

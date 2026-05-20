@@ -61,6 +61,96 @@ $$;
 comment on function public.lounge_search_text_matches(text, text) is
   'Escaped LIKE substring (GIN trgm-friendly) OR pg_trgm similarity when needle length >= 3.';
 
+create or replace function public.lounge_search_match_relevance(haystack text, needle text)
+returns numeric
+language plpgsql
+stable
+as $$
+declare
+  h text := lower(coalesce(haystack, ''));
+  n text := lower(trim(both from coalesce(needle, '')));
+  words text[];
+  w text;
+  total_w numeric := 0;
+  acc numeric := 0;
+  w_weight numeric;
+  w_score numeric;
+  full_score numeric := 0;
+begin
+  if n = '' or h = '' then
+    return 0;
+  end if;
+
+  if h like '%' || public.lounge_escape_like_pattern(n) || '%' escape '\' then
+    return 1.0 + coalesce(extensions.similarity(h, n), 0) * 0.05;
+  end if;
+
+  words := regexp_split_to_array(n, '\s+');
+  foreach w in array words loop
+    w := trim(both from w);
+    if w = '' then
+      continue;
+    end if;
+    if w in ('the', 'for', 'and', 'or', 'a', 'an', 'to', 'in', 'on', 'at', 'is', 'it', 'of') then
+      continue;
+    end if;
+
+    w_weight := case
+      when char_length(w) >= 5 then 1.0
+      when char_length(w) >= 4 then 0.9
+      when char_length(w) >= 3 then 0.75
+      else 0.5
+    end;
+    total_w := total_w + w_weight;
+
+    w_score := 0;
+    if h ~ (
+      '(^|[^[:alnum:]_])'
+      || regexp_replace(w, '([.*+?^${}()|\[\]\\])', '\\\1', 'g')
+      || '([^[:alnum:]_]|$)'
+    ) then
+      w_score := 1.0;
+    elsif h ~ (
+      '(^|[^[:alnum:]_])'
+      || regexp_replace(w, '([.*+?^${}()|\[\]\\])', '\\\1', 'g')
+    ) then
+      w_score := 0.88;
+    elsif h like '%' || public.lounge_escape_like_pattern(w) || '%' escape '\' then
+      w_score := 0.62;
+    elsif char_length(w) >= 3 then
+      w_score := greatest(
+        coalesce(extensions.word_similarity(w, h), 0),
+        coalesce(extensions.similarity(h, w), 0)
+      ) * 0.5;
+      if w_score < 0.08 then
+        w_score := 0;
+      end if;
+    end if;
+
+    acc := acc + w_score * w_weight;
+  end loop;
+
+  if total_w > 0 then
+    full_score := acc / total_w;
+  elsif char_length(n) >= 3 then
+    full_score := coalesce(extensions.similarity(h, n), 0);
+  end if;
+
+  if char_length(n) >= 3 then
+    full_score := greatest(
+      full_score,
+      coalesce(extensions.similarity(h, n), 0) * 0.32,
+      coalesce(extensions.word_similarity(n, h), 0) * 0.38
+    );
+  end if;
+
+  return round(full_score::numeric, 6);
+end;
+$$;
+
+comment on function public.lounge_search_match_relevance(text, text) is
+  'Lounge search ranking: full phrase > word-boundary tokens > substring > pg_trgm fuzzy (stop words skipped).';
+
 -- Shared rate limit for lounge_search_* RPCs (~30 logical searches / 5 min; staff exempt).
 create or replace function public.lounge_search_enforce_rate_limit()
 returns void

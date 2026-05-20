@@ -39,6 +39,8 @@ export default function LoungePostInteractionBar({
   onToggleBookmark,
   getBookmarked,
   repostActionBusy = false,
+  /** Stream hero overlay: pill per control instead of a shared bar background. */
+  pillOverlay = false,
   /** Extra classes on the outer grid wrapper (e.g. `w-full` in lightbox). */
   rootClassName = '',
 }) {
@@ -71,10 +73,37 @@ export default function LoungePostInteractionBar({
   const likeCount = baseLikes
   const repostCount = baseReposts
   const ro = loungeReadOnly
-  const commentClass = ro ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
-  const repostClass = ro ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
-  const likeClass = ro ? 'text-zinc-500' : ui.liked ? 'text-lv-red' : 'text-zinc-500'
-  const bookmarkClass = ro ? 'text-zinc-600' : isBookmarked ? 'text-lv-yellow' : 'text-zinc-500'
+  const overlayIdle = pillOverlay && !ro
+  const commentClass = ro
+    ? 'text-zinc-500'
+    : ui.commented
+      ? overlayIdle
+        ? 'text-white'
+        : 'text-zinc-100'
+      : overlayIdle
+        ? 'text-zinc-200'
+        : 'text-zinc-500'
+  const repostClass = ro
+    ? 'text-zinc-500'
+    : ui.reposted
+      ? 'text-emerald-400'
+      : overlayIdle
+        ? 'text-zinc-200'
+        : 'text-zinc-500'
+  const likeClass = ro
+    ? 'text-zinc-500'
+    : ui.liked
+      ? 'text-lv-red'
+      : overlayIdle
+        ? 'text-zinc-200'
+        : 'text-zinc-500'
+  const bookmarkClass = ro
+    ? 'text-zinc-600'
+    : isBookmarked
+      ? 'text-lv-yellow'
+      : overlayIdle
+        ? 'text-zinc-200'
+        : 'text-zinc-500'
   const plainId = ui.plainRepostChildId
   const quoteId = ui.quoteRepostChildId
   const commentBubbleD =
@@ -117,6 +146,13 @@ export default function LoungePostInteractionBar({
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const statSheetBookmark =
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const pillOverlayStat = isComment
+    ? 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/40 px-2 py-1.5 backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+    : 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-2 backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const pickStat = (feedCls, sheetCls) => (pillOverlay ? pillOverlayStat : statsCompact ? feedCls : sheetCls)
+  const statCommentCls = pickStat(statFeedComment, statSheetComment)
+  const statMidCls = pickStat(statFeedMid, statSheetMid)
+  const statBookmarkCls = pickStat(statFeedBookmark, statSheetBookmark)
 
   useEffect(() => {
     if (!repostMenuOpen) return
@@ -506,7 +542,8 @@ export default function LoungePostInteractionBar({
         title={ro ? 'Sign in to comment' : undefined}
         onReadOnlyClick={requireLoungeAuth}
         onClick={onComment}
-        statClass={statsCompact ? statFeedComment : statSheetComment}
+        statClass={statCommentCls}
+        pillOverlay={pillOverlay}
         glyph={
           <svg className={`block shrink-0 ${iconSzComment} ${commentClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
             {commentGlyphFilled ? (
@@ -556,7 +593,8 @@ export default function LoungePostInteractionBar({
           }
           void toggleInteraction(post.id, 'reposted')
         }}
-        statClass={statsCompact ? statFeedMid : statSheetMid}
+        statClass={statMidCls}
+        pillOverlay={pillOverlay}
         glyph={
           <svg className={`block shrink-0 ${iconSz} ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
             <path
@@ -582,7 +620,8 @@ export default function LoungePostInteractionBar({
         onClick={() =>
           typeof onToggleLike === 'function' ? void onToggleLike(post.id) : void toggleInteraction(post.id, 'liked')
         }
-        statClass={statsCompact ? statFeedMid : statSheetMid}
+        statClass={statMidCls}
+        pillOverlay={pillOverlay}
         glyph={<LoungeFlameIcon className={`shrink-0 ${iconSz} ${likeClass}`} liked={ui.liked} readOnly={ro} />}
         countClass={likeClass}
         countValue={likeCount}
@@ -590,17 +629,17 @@ export default function LoungePostInteractionBar({
 
       <div
         className="relative flex shrink-0 flex-none items-center justify-center self-center overflow-visible"
-        style={{ width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }}
+        style={
+          pillOverlay
+            ? { minHeight: railMinH }
+            : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
+        }
       >
         {ro ? (
           <button
             type="button"
             onClick={requireLoungeAuth}
-            className={
-              statsCompact
-                ? `${statFeedBookmark} box-border flex size-full shrink-0 items-center justify-center text-zinc-600 hover:bg-zinc-900/70`
-                : `${statSheetBookmark} box-border flex size-full shrink-0 items-center justify-center text-zinc-600`
-            }
+            className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center text-zinc-600`}
             title="Sign in to save posts"
           >
             <svg className={`block shrink-0 ${iconSzBookmark} ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -625,7 +664,7 @@ export default function LoungePostInteractionBar({
                 ? void onToggleBookmark(post.id)
                 : void toggleBookmark(post.id)
             }
-            className={`${statsCompact ? statFeedBookmark : statSheetBookmark} box-border flex size-full shrink-0 items-center justify-center`}
+            className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center`}
             title={isBookmarked ? 'Remove bookmark' : 'Save post'}
           >
             <svg className={`block shrink-0 ${iconSzBookmark} ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>

@@ -109,6 +109,8 @@ const HERO_SHRINK_TRANSITION = `${HERO_SHRINK_MS}ms ${HERO_MOTION_CURVE}`
 /** Lightbox chrome fades in only after the flyout lands. */
 const HERO_CHROME_FADE_MS = 220
 const HERO_CHROME_AUTO_HIDE_MS = 3000
+/** Landscape hero chrome: inset controls 10% from each viewport edge. */
+const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'
 /** Default hero stack when no parent `lightboxPortalClass` is passed. */
 const HERO_STACK_BASE_Z_INDEX = 102
 
@@ -751,6 +753,7 @@ export default function LoungePostStreamVideo({
   )
   const [heroChromeVisible, setHeroChromeVisible] = useState(false)
   const heroChromeVisibleRef = useRef(false)
+  const [heroSoundUnmuted, setHeroSoundUnmuted] = useState(true)
   const heroChromeHideTimerRef = useRef(0)
   const heroChromeScrubbingRef = useRef(false)
   /** After FLIP “from” paint, width/height/top/left may animate (not during initial opening snap). */
@@ -1018,7 +1021,7 @@ export default function LoungePostStreamVideo({
     })
   }, [])
 
-  const inlineVideoMuted = heroExpanded ? false : !stripSoundUnmuted
+  const inlineVideoMuted = heroExpanded ? !heroSoundUnmuted : !stripSoundUnmuted
   const streamVideoMutedProps = { muted: inlineVideoMuted }
 
   useEffect(() => {
@@ -1735,6 +1738,7 @@ export default function LoungePostStreamVideo({
     heroColdMountRef.current = false
     heroHlsKickRef.current = false
     heroWantsSoundRef.current = true
+    setHeroSoundUnmuted(true)
     lightboxOpenRef.current = false
     window.clearTimeout(heroChromeHideTimerRef.current)
     heroChromeHideTimerRef.current = 0
@@ -2035,6 +2039,7 @@ export default function LoungePostStreamVideo({
     setHeroBackdropArmed(false)
 
     heroWantsSoundRef.current = true
+    setHeroSoundUnmuted(true)
     if (feedAutoplayEnabled) {
       inlineFeedSoundSnapshotRef.current = {
         unmuted: stripSoundUnmuted,
@@ -2121,6 +2126,27 @@ export default function LoungePostStreamVideo({
       window.visualViewport?.removeEventListener('scroll', schedule)
     }
   }, [lightboxOpen, heroPhase, displayW, displayH])
+
+  const onHeroSoundToggle = useCallback(() => {
+    bumpHeroChrome()
+    const v = videoRef.current
+    setHeroSoundUnmuted((wasUnmuted) => {
+      const nextUnmuted = !wasUnmuted
+      heroWantsSoundRef.current = nextUnmuted
+      try {
+        if (v) {
+          v.muted = !nextUnmuted
+          if (nextUnmuted) {
+            const p = v.play()
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return nextUnmuted
+    })
+  }, [bumpHeroChrome])
 
   /** Bottom strip: per-tile mute toggle (user gesture unmutes this clip only). */
   const onSoundStripPress = useCallback(() => {
@@ -2880,7 +2906,7 @@ export default function LoungePostStreamVideo({
                 ) : null}
                 <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between">
                   <div
-                    className={`flex shrink-0 items-center justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] ${
+                    className={`flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] ${
                       heroChromeVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
                     }`}
                     style={heroChromeFadeStyle}
@@ -2900,15 +2926,32 @@ export default function LoungePostStreamVideo({
                         ←
                       </span>
                     </button>
-                    {lightboxMenuContent ? (
-                      <div data-lounge-lightbox-no-swipe onPointerDownCapture={() => bumpHeroChrome()}>
-                        {lightboxMenuContent}
-                      </div>
-                    ) : null}
+                    <div
+                      className="ml-auto flex items-center gap-0.5"
+                      data-lounge-lightbox-no-swipe
+                      onPointerDownCapture={() => bumpHeroChrome()}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onHeroSoundToggle()
+                        }}
+                        aria-label={heroSoundUnmuted ? 'Mute video' : 'Unmute video'}
+                        className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full text-white hover:bg-white/10 [-webkit-tap-highlight-color:transparent]"
+                      >
+                        {heroSoundUnmuted ? (
+                          <SoundOnGlyph className="h-5 w-5 opacity-90" />
+                        ) : (
+                          <MutedGlyph className="h-5 w-5 opacity-90" />
+                        )}
+                      </button>
+                      {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
+                    </div>
                   </div>
                   {lightboxChromeContent ? (
                     <div
-                      className={`pointer-events-none w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent px-3 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8 ${
+                      className={`pointer-events-none w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8 ${
                         heroChromeVisible ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={heroChromeFadeStyle}
@@ -2926,7 +2969,7 @@ export default function LoungePostStreamVideo({
                     </div>
                   ) : (
                     <div
-                      className={`pointer-events-auto w-full px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] ${
+                      className={`pointer-events-auto w-full ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] ${
                         heroChromeVisible ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={heroChromeFadeStyle}

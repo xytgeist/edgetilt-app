@@ -156,6 +156,7 @@ export function LoungeCommentCard({
             if (openProfileGateIfNeeded?.()) return
             onCommentReplyInteraction?.(mediaComment)
           }}
+          pillOverlay
           repostActionBusy={repostActionBusy}
         />
       )

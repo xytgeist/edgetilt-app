@@ -26,11 +26,46 @@ export function LoungeInteractionGlyphRail({
   countClass,
   countValue,
   railAlign = 'center',
+  pillOverlay = false,
 }) {
   const showCount = typeof countValue === 'number' && Number.isFinite(countValue) && countValue > 0
   const outerJustify = railAlign === 'start' ? 'justify-start' : 'justify-center'
   const statClassMerged =
     railAlign === 'start' ? `${statClass} w-full min-w-0 justify-start`.trim() : statClass
+
+  if (pillOverlay) {
+    const countEl =
+      showCount ? (
+        <span
+          className={`shrink-0 tabular-nums leading-none ${countClass}`}
+          title={fullStatCountTitle(countValue)}
+        >
+          {formatCompactStatCount(countValue)}
+        </span>
+      ) : null
+    return (
+      <div
+        ref={railRef}
+        className={`relative flex shrink-0 flex-none items-center self-center overflow-visible ${outerJustify}`}
+        style={{ minHeight: railMinH }}
+      >
+        <LoungeFeedStatSlot
+          readOnly={readOnly}
+          title={title}
+          onReadOnlyClick={onReadOnlyClick}
+          onClick={onClick}
+          className={statClassMerged}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            {glyph}
+            {countEl}
+          </span>
+        </LoungeFeedStatSlot>
+        {extraAfterStat}
+      </div>
+    )
+  }
+
   const innerSpanClass =
     railAlign === 'start' ? 'relative ml-0 block overflow-visible' : 'relative mx-auto block overflow-visible'
   return (

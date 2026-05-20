@@ -150,6 +150,7 @@ export function createLoungeStreamLightboxRenderers(hostPost, ctx) {
             ? () => openDetailFromLightbox(true)
             : ctx.onCommentClick
         }
+        pillOverlay
         repostActionBusy={ctx.repostActionBusy}
       />,
       dismissLightbox,

@@ -126,7 +126,7 @@ export default function LoungeStreamVideoLightboxChrome({
       </div>
       {interactionBar ? (
         <div
-          className="pointer-events-auto -mx-1 rounded-2xl bg-black/35 px-1 py-1 backdrop-blur-[2px]"
+          className="pointer-events-auto"
           data-lounge-lightbox-no-swipe
           onClick={(e) => e.stopPropagation()}
         >

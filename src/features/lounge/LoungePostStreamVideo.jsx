@@ -27,6 +27,10 @@ import {
   registerLoungeVideoDebugTile,
   reportLoungeVideoDebugEvent,
 } from './loungeFeedVideoDebugRegistry.js'
+import {
+  readLoungeColdBootSplashActive,
+  subscribeLoungeColdBootSplashActive,
+} from '../../utils/loungeColdBootSplashActive.js'
 
 /** Keep in sync with `imgClassByVariant` in `LoungePostFeedMedia.jsx` (same caps; media sets frame width via w-auto). */
 const videoClassByVariant = {
@@ -100,6 +104,10 @@ const STREAM_ATTACH_FADE_MS = 220
 const STREAM_POSTER_FADE_DELAY_MS = 72
 /** If decode signals never fire, still unstick poster→video crossfade (rare HLS/Safari quirks). Intentionally long so we do not beat real decode and flash black. */
 const STREAM_FADE_LAST_RESORT_MS = 6500
+/** Apple WebKit: defer poster swap until playback is past startup compositor stall window. */
+const WEBKIT_POSTER_REVEAL_MIN_TIME_S = 0.35
+/** Apple WebKit: brief pause/play nudge when picture layer sticks (~few frames in). */
+const WEBKIT_PAINT_NUDGE_MS = 320
 
 /** Feed tile ↔ hero full-screen FLIP (same `<video>`, no second HLS attach). */
 const HERO_EXPAND_MS = 500
@@ -773,6 +781,8 @@ export default function LoungePostStreamVideo({
   /** Hero opened with `<video>` present but HLS not decoded yet — kick attach after open. */
   const heroHlsKickRef = useRef(false)
   const appleWebKitNativeHlsRef = useRef(detectAppleWebKitNativeHls())
+  const webKitPaintNudgeTimerRef = useRef(0)
+  const coldBootSplashActiveRef = useRef(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -953,6 +963,14 @@ export default function LoungePostStreamVideo({
     getLoungeStreamLightboxOpen,
     () => false,
   )
+  const coldBootSplashActive = useSyncExternalStore(
+    subscribeLoungeColdBootSplashActive,
+    readLoungeColdBootSplashActive,
+    () => false,
+  )
+  useEffect(() => {
+    coldBootSplashActiveRef.current = coldBootSplashActive
+  }, [coldBootSplashActive])
   isActiveRef.current =
     feedAutoplayEnabled && !coordinatorSuspended && (!coordinatorActive || isActive)
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
@@ -1108,6 +1126,7 @@ export default function LoungePostStreamVideo({
     if (heroLocked && !lightboxOpenRef.current) return false
     if (coordinatorActive && !isActiveRef.current) return false
     if (coordinatorActive && tileRatio <= 0) return false
+    if (appleWebKitNativeHlsRef.current && coldBootSplashActiveRef.current) return false
     if (lazyStream && v.readyState < HTMLMediaElement.HAVE_METADATA) return false
     if (inlinePlayInFlightRef.current) return false
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -1138,6 +1157,29 @@ export default function LoungePostStreamVideo({
         }
       }
     }
+    const scheduleWebKitPaintNudge = () => {
+      if (!appleWebKitNativeHlsRef.current) return
+      window.clearTimeout(webKitPaintNudgeTimerRef.current)
+      webKitPaintNudgeTimerRef.current = window.setTimeout(() => {
+        webKitPaintNudgeTimerRef.current = 0
+        const el = videoRef.current
+        if (!el || el.paused || !isActiveRef.current || lightboxOpenRef.current) return
+        if (el.currentTime > 1.2) return
+        try {
+          el.pause()
+          requestAnimationFrame(() => {
+            const p2 = el.play()
+            if (p2 && typeof p2.then === 'function') {
+              p2.then(() => applyAudibleAfterPlay()).catch(() => {})
+            } else if (!el.paused) {
+              applyAudibleAfterPlay()
+            }
+          })
+        } catch {
+          // ignore
+        }
+      }, WEBKIT_PAINT_NUDGE_MS)
+    }
     try {
       // iOS blocks unmuted programmatic play(); start muted, unmute only after play resolves.
       if (
@@ -1164,6 +1206,7 @@ export default function LoungePostStreamVideo({
           inlinePlayBackoffUntilMsRef.current = 0
           lastPlayErrorRef.current = ''
           applyAudibleAfterPlay()
+          scheduleWebKitPaintNudge()
           if (videoDebugEnabled && feedAutoplayClientId) {
             const rs = v?.readyState ?? 0
             const ct = Number.isFinite(v?.currentTime) ? v.currentTime.toFixed(1) : '0'
@@ -1182,7 +1225,10 @@ export default function LoungePostStreamVideo({
       } else {
         finishPlayAttempt()
         lastPlayErrorRef.current = ''
-        if (!v.paused) applyAudibleAfterPlay()
+        if (!v.paused) {
+          applyAudibleAfterPlay()
+          scheduleWebKitPaintNudge()
+        }
       }
       return !v.paused
     } catch (err) {
@@ -1201,6 +1247,50 @@ export default function LoungePostStreamVideo({
     showOpen,
     tileRatio,
     videoDebugEnabled,
+  ])
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(webKitPaintNudgeTimerRef.current)
+      webKitPaintNudgeTimerRef.current = 0
+    },
+    [],
+  )
+
+  /** Apple cold boot: hold inline playback until splash is gone (overlay confuses WebKit paint). */
+  useLayoutEffect(() => {
+    if (!appleWebKitNativeHlsRef.current || !coldBootSplashActive) return
+    const v = videoRef.current
+    if (!v || lightboxOpenRef.current || heroExpanded) return
+    try {
+      v.pause()
+      v.muted = true
+    } catch {
+      // ignore
+    }
+  }, [coldBootSplashActive, heroExpanded, lightboxOpen])
+
+  useEffect(() => {
+    if (!appleWebKitNativeHlsRef.current || coldBootSplashActive) return undefined
+    if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled || !isActive || !attachStream) {
+      return undefined
+    }
+    let cancelled = false
+    const tid = window.setTimeout(() => {
+      if (!cancelled) tryCoordinatedInlinePlay()
+    }, 64)
+    return () => {
+      cancelled = true
+      window.clearTimeout(tid)
+    }
+  }, [
+    coldBootSplashActive,
+    coordinatorActive,
+    lazyStream,
+    feedAutoplayEnabled,
+    isActive,
+    attachStream,
+    tryCoordinatedInlinePlay,
   ])
 
   /** Hero / manual-play: muted-first (iOS gesture-safe), unmute after decode when sound is wanted. */
@@ -1678,24 +1768,30 @@ export default function LoungePostStreamVideo({
             if (!cleaned) setStreamFadeShowVideo(true)
           })
         }
-        if (
-          !vWebKit.paused &&
-          vWebKit.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-        ) {
-          revealWebKit()
-          return
+        const revealWebKitWhenReady = () => {
+          if (cleaned || lightboxOpenRef.current) return false
+          if (
+            !vWebKit.paused &&
+            vWebKit.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+            vWebKit.currentTime >= WEBKIT_POSTER_REVEAL_MIN_TIME_S
+          ) {
+            revealWebKit()
+            return true
+          }
+          return false
         }
-        const onWebKitPlaying = () => revealWebKit()
-        const onWebKitTime = () => {
-          if (cleaned || !vWebKit || vWebKit.currentTime <= 0) return
-          vWebKit.removeEventListener('timeupdate', onWebKitTime)
-          revealWebKit()
+        if (revealWebKitWhenReady()) return
+        const onWebKitProgress = () => {
+          if (revealWebKitWhenReady()) {
+            vWebKit.removeEventListener('playing', onWebKitProgress)
+            vWebKit.removeEventListener('timeupdate', onWebKitProgress)
+          }
         }
-        vWebKit.addEventListener('playing', onWebKitPlaying, { once: true })
-        vWebKit.addEventListener('timeupdate', onWebKitTime)
+        vWebKit.addEventListener('playing', onWebKitProgress)
+        vWebKit.addEventListener('timeupdate', onWebKitProgress)
         disarm = () => {
-          vWebKit.removeEventListener('playing', onWebKitPlaying)
-          vWebKit.removeEventListener('timeupdate', onWebKitTime)
+          vWebKit.removeEventListener('playing', onWebKitProgress)
+          vWebKit.removeEventListener('timeupdate', onWebKitProgress)
         }
         return
       }

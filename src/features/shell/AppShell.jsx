@@ -29,6 +29,7 @@ import {
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 import LoungeAppSplash from '../../components/LoungeAppSplash.jsx'
 import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
+import { setLoungeColdBootSplashActive } from '../../utils/loungeColdBootSplashActive.js'
 
 const SocialFeed = lazy(() => import('../lounge/SocialFeed.jsx'))
 const OffersCalendar = lazy(() => import('../offers/OffersCalendar.jsx'))
@@ -631,6 +632,11 @@ export default function AppShell({
     communityFeedQueryErr,
     communityPostsCount: communityPosts.length,
   })
+
+  useEffect(() => {
+    setLoungeColdBootSplashActive(splashVisible || splashDismissing)
+    return () => setLoungeColdBootSplashActive(false)
+  }, [splashVisible, splashDismissing])
 
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */

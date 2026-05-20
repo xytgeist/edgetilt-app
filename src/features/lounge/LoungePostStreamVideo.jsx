@@ -961,11 +961,12 @@ export default function LoungePostStreamVideo({
     const tid = window.setTimeout(() => setRingHlsHeld(false), RING_HLS_DETACH_HOLD_MS)
     return () => window.clearTimeout(tid)
   }, [inRing, coordinatorActive, lazyStream])
-  const attachStream = heroExpanded
-    ? Boolean(id)
-    : lazyStream
-      ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
-      : true
+  const attachStream =
+    heroExpanded || (lazyStream && !feedAutoplayEnabled && lightboxOpen)
+      ? Boolean(id)
+      : lazyStream
+        ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
+        : true
   /** iOS: ≤5 inline `<video>` nodes (ring + lookahead); HLS only on ring (≤3). */
   const mountStreamVideo = Boolean(id) && (
     (coordinatorActive && inDomBudget) ||
@@ -1170,6 +1171,36 @@ export default function LoungePostStreamVideo({
     tileRatio,
     videoDebugEnabled,
   ])
+
+  /** Hero / manual-play: muted-first (iOS gesture-safe), unmute after decode when sound is wanted. */
+  const tryHeroPlayback = useCallback((video) => {
+    if (!video || !lightboxOpenRef.current) return
+    try {
+      const wantSound = heroWantsSoundRef.current
+      const hasFrame = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      video.muted = !(wantSound && hasFrame)
+      const p = video.play()
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          if (!video || video.paused || !heroWantsSoundRef.current) return
+          if (
+            video.muted &&
+            video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+          ) {
+            try {
+              video.muted = false
+              const p2 = video.play()
+              if (p2 && typeof p2.catch === 'function') p2.catch(() => {})
+            } catch {
+              // ignore
+            }
+          }
+        }).catch(() => {})
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => () => releaseHeroBodyHost(), [releaseHeroBodyHost])
 
@@ -1729,6 +1760,11 @@ export default function LoungePostStreamVideo({
     }
   }, [isActive, inRing, attachStream])
 
+  const attachStreamRef = useRef(attachStream)
+  attachStreamRef.current = attachStream
+  const feedAutoplayEnabledRef = useRef(feedAutoplayEnabled)
+  feedAutoplayEnabledRef.current = feedAutoplayEnabled
+
   const finalizeHeroClose = useCallback(() => {
     heroShrinkInFlightRef.current = false
     heroShrinkFlyoutStyleRef.current = null
@@ -1765,14 +1801,14 @@ export default function LoungePostStreamVideo({
   const finishHeroCloseAnimation = useCallback(() => {
     const snap = inlineFeedSoundSnapshotRef.current
     inlineFeedSoundSnapshotRef.current = null
-    if (snap && feedAutoplayEnabled) {
+    if (snap && feedAutoplayEnabledRef.current) {
       try {
         setLocalStripSoundUnmuted(snap.unmuted)
         setLocalStripSoundExplicitlyMuted(snap.explicitlyMuted)
         const v = videoRef.current
         if (v) {
           v.muted = !snap.unmuted
-          if (attachStream || lazyStream) {
+          if (attachStreamRef.current || lazyStream) {
             const p = v.play()
             if (p && typeof p.catch === 'function') p.catch(() => {})
           }
@@ -1782,7 +1818,7 @@ export default function LoungePostStreamVideo({
       }
     }
     finalizeHeroClose()
-  }, [attachStream, feedAutoplayEnabled, finalizeHeroClose, lazyStream])
+  }, [finalizeHeroClose, lazyStream])
 
   const reportHeroShrinkDebug = useCallback(
     (detail) => {
@@ -1873,6 +1909,9 @@ export default function LoungePostStreamVideo({
       })
     })
   }, [displayW, displayH, finishHeroCloseAnimation, reportHeroShrinkDebug, heroFlyoutZIndex])
+
+  const closeLightboxRef = useRef(closeLightbox)
+  closeLightboxRef.current = closeLightbox
 
   const toggleHeroVideoPlayPause = useCallback(() => {
     const v = videoRef.current
@@ -1978,17 +2017,27 @@ export default function LoungePostStreamVideo({
     const slot = heroInlineSlotRef.current
     const wrap = containerRef.current
     const flyout = videoFlyoutRef.current
-    const v = videoRef.current
+    const vBeforeOpen = videoRef.current
     if (!wrap) return
 
     lightboxOpenRef.current = true
-    if (feedAutoplayClientId && coordinatorActive) {
+    if (feedAutoplayClientId) {
       enterFeedHeroLock(feedAutoplayClientId)
-      forceFeedAutoplayActive(feedAutoplayClientId)
+      if (feedAutoplayEnabled && coordinatorActive) {
+        forceFeedAutoplayActive(feedAutoplayClientId)
+      }
     }
     notifyLoungeStreamLightboxOpen(true)
-    flushSync(() => setLightboxOpen(true))
-    pauseOtherLoungeStreamVideos(v)
+    flushSync(() => {
+      setLightboxOpen(true)
+      setHeroPhase('opening')
+      if (!feedAutoplayEnabled) {
+        setStreamAttachKey((k) => k + 1)
+      }
+    })
+    pauseOtherLoungeStreamVideos(vBeforeOpen)
+
+    const v = videoRef.current ?? vBeforeOpen
 
     const from = readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH)
     const target = computeHeroTargetRect(from, {
@@ -2027,7 +2076,6 @@ export default function LoungePostStreamVideo({
     }
 
     setHeroLayout(from)
-    setHeroPhase('opening')
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
     setHeroBackdropArmed(false)
@@ -2049,25 +2097,10 @@ export default function LoungePostStreamVideo({
       inlineFeedSoundSnapshotRef.current = null
     }
     if (v) {
-      try {
-        v.muted = false
-        const p = v.play()
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {
-            try {
-              v.muted = true
-            } catch {
-              // ignore
-            }
-          })
-        }
-      } catch {
-        // ignore
-      }
+      tryHeroPlayback(v)
     }
   }, [
     feedAutoplayEnabled,
-    attachStream,
     coordinatorActive,
     feedAutoplayClientId,
     localStripSoundExplicitlyMuted,
@@ -2080,6 +2113,7 @@ export default function LoungePostStreamVideo({
     enterFeedHeroLock,
     heroFlyoutZIndex,
     mediaLightboxFooter,
+    tryHeroPlayback,
   ])
 
   /** Re-layout hero video when the device rotates or the viewport resizes while full-screen. */
@@ -2201,8 +2235,8 @@ export default function LoungePostStreamVideo({
 
   useEffect(() => {
     if (!lightboxOpen || !enableLightbox) return undefined
-    return bindLoungeLightboxHistory(closeLightbox)
-  }, [lightboxOpen, enableLightbox, closeLightbox])
+    return bindLoungeLightboxHistory(() => closeLightboxRef.current())
+  }, [lightboxOpen, enableLightbox])
 
   useEffect(() => {
     if (!lightboxOpen || !enableLightbox) return undefined
@@ -2396,13 +2430,7 @@ export default function LoungePostStreamVideo({
       if (heroLocked && !lightboxOpenRef.current) return
       if (coordinatorActive && !isActiveRef.current && !lightboxOpenRef.current) return
       if (lightboxOpenRef.current) {
-        try {
-          if (heroWantsSoundRef.current) v.muted = false
-          const p = v.play()
-          if (p && typeof p.catch === 'function') p.catch(() => {})
-        } catch {
-          // ignore
-        }
+        tryHeroPlayback(v)
         return
       }
       if (coordinatorActive && isActiveRef.current) {
@@ -2453,6 +2481,7 @@ export default function LoungePostStreamVideo({
     anyStreamLightboxOpen,
     tryCoordinatedInlinePlay,
     scheduleRecompute,
+    tryHeroPlayback,
   ])
 
   /** Hero / lightbox open: ensure the same inline `<video>` keeps playing once HLS attaches (autoplay-off path). */

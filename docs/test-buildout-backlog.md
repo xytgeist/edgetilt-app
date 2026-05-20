@@ -101,9 +101,9 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### Phases C-L
 
-- [ ] Phases **D–L** not complete end-to-end; **E/F first slice validated on test** (likes, reposts, bookmarks, flat + threaded comments + comment interactions — see checked SQL/FE rows). **Phase G search** shipped on **test** (pending Ryan smoke). Threaded **ranking**, **notifications**, etc. still roadmap scope.
+- [ ] Phases **D–L** not complete end-to-end; **E/F first slice validated on test** (likes, reposts, bookmarks, flat + threaded comments + comment interactions — see checked SQL/FE rows). **Phase G search** validated on **test** (Ryan smoke **§16** **PASSED** 2026-05-19). Threaded **ranking**, **notifications**, etc. still roadmap scope.
 - [x] **Phase C (profiles + identity, test):** profile gate (Lounge + Guides); full-screen profile editor; 7-day handle change (DB + modals); **`/u/:handle`** permalink + OG + deep link; **handle conflict** dialog (taken/reserved + suggested `@handle_1`). Ryan sign-off **PASSED** on **test** @ **`7ce7b44`** (2026-05-18). *Deferred (not blocking):* dedicated server-side reserved-handle SQL beyond client `RESERVED_HANDLES` + unique index; standalone marketing profile page beyond in-app sheet.
-- [ ] **Phase G (search, test):** **`supabase/lounge_search_phase_g.sql`** + migration **`20260518160000_lounge_search_phase_g.sql`** — auth-gated RPCs (`pg_trgm` indexes; posts by caption/game/hashtag; profiles by handle/display name). Client: **`loungeSearchApi.js`**, **`LoungeDockSlidePanels.jsx`** (debounced server search + profile rows); **`SocialFeed.jsx`** auth-gates dock search + hashtag tap. **Apply SQL on test** before smoke.
+- [x] **Phase G (search, test):** **`supabase/lounge_search_phase_g.sql`** + migration **`20260518160000_lounge_search_phase_g.sql`** — auth-gated RPCs (`pg_trgm` indexes; posts by caption/game/hashtag; profiles by handle/display name). Client: **`loungeSearchApi.js`**, **`LoungeDockSlidePanels.jsx`** (debounced server search + profile rows); **`SocialFeed.jsx`** auth-gates dock search + hashtag tap. Ryan sign-off **PASSED** on **test** (2026-05-19, smoke **§16**).
 - [ ] **Freemium / subscriptions:** anonymous read-only where required; free-account vs subscriber entitlements (DB + **RLS** + Stripe webhooks); extend shell gating beyond today’s **`browseMode`**. Product spec: fill **`docs/access-tiers.md`**; roadmap: **`docs/social-feed-roadmap.md`** → *Freemium & subscriptions*.
 
 ---
@@ -128,10 +128,10 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - Test validation: Run SQL on test project; signed-in user can like/repost/bookmark and post top-level comments; counts update; anon still read-only on actions. Ryan sign-off **PASSED** on **test** @ **`b8d55d3`** (2026-05-18) — feed, post detail, profile tabs, quote repost; comment like/repost/bookmark on post detail.
   - Production replay: `production-rollout-checklist.md` §2
 
-- [ ] Lounge search Phase G (posts + profiles RPCs) on test  
+- [x] Lounge search Phase G (posts + profiles RPCs) on test  
   - Change: `pg_trgm` indexes + **`lounge_search_posts`** / **`lounge_search_profiles`** (auth-gated); dock search client in **`LoungeDockSlidePanels.jsx`**.
   - Source: `supabase/lounge_search_phase_g.sql`, migration **`20260518160000_lounge_search_phase_g.sql`**
-  - Test validation: Smoke **§16** after SQL apply on test.
+  - Test validation: Smoke **§16** **PASSED** on **test** (2026-05-19, Ryan).
   - Production replay: `production-rollout-checklist.md` §2
 
 - [ ] Additional SQL parity audit against test history  
@@ -174,7 +174,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **`lounge-cf-r2-direct-upload`** + **`lounge-cf-r2-delete-object`** + **`lounge-cf-r2-delete-orphan`** (Lounge feed images + Stream tile posters → **Cloudflare R2**; delivery via **`/cdn-cgi/image/`** when Image Resizing enabled on zone). Client: **`src/utils/loungeCfImageMedia.js`**, **`uploadLoungeFeedPostImage`** in **`communityFeedPost.js`** (R2 when Edge secrets set, else legacy **`lounge-feed`** Supabase Storage). Deployed + secrets on **test** (`jtjgtucumuoswnbauxry`); custom domain **`https://media-test.lvslotpro.com`**; Vercel **`VITE_LOUNGE_CF_IMAGE_RESIZE=false`** (Free zone — client-side WebP prep only until Pro).
   - **Secrets (names only):** `LOUNGE_CF_R2_ACCESS_KEY_ID`, `LOUNGE_CF_R2_SECRET_ACCESS_KEY`, `LOUNGE_CF_R2_BUCKET`, `LOUNGE_CF_R2_PUBLIC_BASE_URL` (+ shared **`CLOUDFLARE_ACCOUNT_ID`**). Client/Vercel: **`VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL`** (match public base).
   - **Source:** `supabase/functions/lounge-cf-r2-direct-upload/README.md`, `LoungePostFeedMedia.jsx`, `LoungeInlineMediaUrl.jsx`, `loungePostSubmitJob.js`, `SocialFeed.jsx` delete paths, `api/lounge-post-og.js`.
-  - **Test validation:** Ryan **PASSED** on **test** (2026-05-19): image post + delete on **`media-test.lvslotpro.com`**; CORS includes **`Cache-Control`**. **Legacy migration PASSED:** **68** objects → R2 (**27** posts, **12** comments). **Cache-Control backfill PASSED:** **69** objects **`public, max-age=31536000, immutable`**. External Klipy **`gif_url`** unchanged. **Open:** video poster on R2 for **new** uploads (WebP via **`prepareLoungeFeedImageForUpload`** in submit jobs — Ryan smoke pending); **`/cdn-cgi/image/`** after Pro on **`lvslotpro.com`**.
+  - **Test validation:** Ryan **PASSED** on **test** (2026-05-19): image post + delete on **`media-test.lvslotpro.com`**; CORS includes **`Cache-Control`**. **Legacy migration PASSED:** **68** objects → R2 (**27** posts, **12** comments). **Cache-Control backfill PASSED:** **69** objects **`public, max-age=31536000, immutable`**. External Klipy **`gif_url`** unchanged. **Stream tile posters (new uploads):** WebP on R2 via **`prepareLoungeFeedImageForUpload`** — **PASSED** @ **`93dcc3f`**. **Open (deferred):** **`/cdn-cgi/image/`** after Pro on **`lvslotpro.com`**.
   - Production replay: `production-rollout-checklist.md` §2 + §4; add **`media.lvslotpro.com`** (or prod media subdomain) + prod secrets when promoting.
 
 - [ ] Function-by-function smoke notes captured  
@@ -245,19 +245,19 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] Lounge **unified Stream + image/GIF lightbox** (test / branch `test`, commits **`966b138`** → **`4cba554`**, polish **`7591f8d`**)
   - Change: **`LoungeStreamLightboxContext.jsx`** + **`loungeStreamLightboxRenderers.jsx`** centralize chrome (top bar, author row, interaction bar, repost menus) for **`LoungePostStreamVideo.jsx`**, **`LoungeInlineMediaUrl.jsx`**, **`LoungePostFeedMedia.jsx`** across feed, post detail, comment embeds, and profile. Stream lightbox: pill controls, mute toggle, landscape safe-area insets, **Follow** by orientation (author row portrait / top bar landscape), tighter handle spacing + **2-line caption** truncation.
   - Source: `LoungeStreamLightboxContext.jsx`, `loungeStreamLightboxRenderers.jsx`, `loungeStreamLightboxRegistry.js`, `SocialFeed.jsx`, `LoungePostArticle.jsx`.
-  - Test validation: smoke **§17** — open Stream + image lightboxes from feed, post detail, profile; interaction bar matches underlying post; repost menu portals above lightbox; dock hidden during Stream hero (existing **§14**).
+  - Test validation: smoke **§17** **PASSED** on **test** (2026-05-19, Ryan) — feed, post detail, profile; interaction bar + repost menus.
   - Production replay: N/A (client-only).
 
 - [x] Lounge **image lightbox pinch-to-zoom** (test / branch `test`, commit **`9b0f9b5`**)
   - Change: **`loungeLightboxImageZoom.js`** — pinch scale (1×–4×) + one-finger pan on still/GIF lightbox; vertical **swipe dismiss** via **`loungeLightboxSwipeDismiss.js`** still works at 1× scale.
   - Source: `loungeLightboxImageZoom.js`, `LoungeInlineMediaUrl.jsx`, `LoungePostFeedMedia.jsx`.
-  - Test validation: smoke **§17** — pinch zoom image/GIF; pan when zoomed; swipe down at 1× dismisses.
+  - Test validation: smoke **§17** **PASSED** on **test** (2026-05-19, Ryan).
   - Production replay: N/A (client-only).
 
 - [x] Lounge **comment-repost detail + thread navigation** (test / branch `test`, commit **`b782e69`**)
   - Change: Fix plain repost entry from comment detail, comment-thread back navigation, and feed repost interaction hydration for embedded originals.
   - Source: `SocialFeed.jsx`, `LoungePostCommentThread.jsx`, `communityFeedPost.js`.
-  - Test validation: repost from comment context; drill into reply thread and back; plain repost card shows active repost state.
+  - Test validation: **PASSED** on **test** (2026-05-19, Ryan) — repost from comment context; thread back-nav; plain repost hydration.
   - Production replay: N/A (client-only).
 
 - [x] Lounge **FAB wheel nav** + chip-heart likes + interaction polish (test / branch `test`, commits through **`2231883`**)
@@ -325,9 +325,10 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
         - [x] **Fast lane:** while video 1 uploading, post text-only, image-only, and GIF-only — each lands **without** waiting for the video queue to drain. *(2026-05-18 **PASSED**.)*
         - [x] **Parallel prep:** DevTools **Network** while **Post 1 of 2** active — **two** **`lounge-cf-stream-tus-create`** (201) and **two** tus upload ids (`?tusv2=true`) before job 2's bar turn; red **`video.m3u8`** poll noise OK if posts succeed. *(2026-05-18 **PASSED**.)*
         - [x] **Profile Likes hydration:** Likes tab → open liked post → like toggle does not **`post_likes_pk`** duplicate error. *(2026-05-18 **PASSED**.)*
-    16. **Lounge search (Phase G):** after **`20260518160000_lounge_search_phase_g.sql`** on test — **logged out:** dock **Search** or **#hashtag** tap → create-account modal (no panel). **Logged in:** search **2+ chars** finds posts **not** in loaded feed (caption / game / hashtag); **Profiles** section matches handle or display name; tap profile row → profile sheet; tap post → detail. Empty query shows **top posts from loaded feed** only.
-    17. **Lounge media lightbox (unified chrome + pinch):** feed image → full-screen lightbox — pinch zoom + pan; swipe down at 1× dismisses. Stream video → hero expand — author row / caption layout OK in portrait; interaction bar (like/repost/bookmark) works; repost submenu above controls. Repeat from post detail and profile Posts tab.
+    16. **Lounge search (Phase G):** after **`20260518160000_lounge_search_phase_g.sql`** on test — **logged out:** dock **Search** or **#hashtag** tap → create-account modal (no panel). **Logged in:** search **2+ chars** finds posts **not** in loaded feed (caption / game / hashtag); **Profiles** section matches handle or display name; tap profile row → profile sheet; tap post → detail. Empty query shows **top posts from loaded feed** only. *(Ryan, 2026-05-19, **PASSED** on test.)*
+    17. **Lounge media lightbox (unified chrome + pinch):** feed image → full-screen lightbox — pinch zoom + pan; swipe down at 1× dismisses. Stream video → hero expand — author row / caption layout OK in portrait; interaction bar (like/repost/bookmark) works; repost submenu above controls. Repeat from post detail and profile Posts tab. *(Ryan, 2026-05-19, **PASSED** on test.)*
   - **Sign-off:** Manual steps above passed on **test** (operator confirmation after latest `test` deploy).
+  - **Sign-off (Phase G search + lightbox + posters + comment repost, 2026-05-19, Ryan):** Smoke **§16** + **§17**; Stream poster **WebP on R2** (new upload + delete @ **`93dcc3f`**); comment-repost / thread nav (**`b782e69`**) — **PASSED** on **test**.
   - **Sign-off (Lounge R2 images, 2026-05-19, Ryan):** Upload + delete on **`media-test.lvslotpro.com`**; legacy migration (**68** objects); cache headers — **PASSED** on **test** @ **`0978782`**.
   - **Sign-off (composer + quote media + badge tips, 2026-05-18, Ryan):** Smoke **§12** items **PASSED** on **test**; badge tip stickiness addressed with document **pointerdown** + **Escape** dismiss on open tip.
   - **Sign-off (video submit queue + parallel prep, 2026-05-18, Ryan):** Smoke **§15** **PASSED** on **test** (`57eaca2`); async two-video test + DevTools two-mint/two-tus lanes; fast-lane mixed stack; profile likes re-like.
@@ -347,11 +348,13 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-19: **Ryan sign-off (test):** Smoke **§16** Phase G search, **§17** unified lightbox + pinch, Stream poster **WebP on R2** @ **`93dcc3f`**, comment-repost **`b782e69`** — **PASSED**.
+
 - 2026-05-19: **Stream tile posters → WebP on R2:** **`loungePostSubmitJob.js`** + **`loungeCommentSubmitJob.js`** run captured JPEG frames through **`prepareLoungeFeedImageForUpload`** before **`uploadLoungeFeedPostImage`** (parity with feed stills). Legacy **`.jpg`** poster URLs unchanged.
 
 - 2026-05-19: **Continuity docs (full May 18–19):** backlog FE rows for unified **`LoungeStreamLightboxContext`** lightbox, **`loungeLightboxImageZoom.js`** pinch/pan, comment-repost fix (**`b782e69`**); smoke **§17**; R2 sign-off line; **`WAKEUP`** + prod checklist §2 search/cooldown/rate-limit migrations; **`AGENTS.md`** / **`frontend-architecture.md`** lightbox anchors.
 
-- 2026-05-19: **Lounge unified media lightbox (test):** Stream + image/GIF share **`LoungeStreamLightboxContext`** + renderers (**`966b138`** → **`4cba554`**); Stream author row polish (**`7591f8d`**); image pinch-to-zoom (**`9b0f9b5`**). Ryan sign-off pending smoke **§17**.
+- 2026-05-19: **Lounge unified media lightbox (test):** Stream + image/GIF share **`LoungeStreamLightboxContext`** + renderers (**`966b138`** → **`4cba554`**); Stream author row polish (**`7591f8d`**); image pinch-to-zoom (**`9b0f9b5`**). Ryan sign-off **PASSED** smoke **§17** (2026-05-19).
 
 - 2026-05-19: **R2 continuity docs:** **`1472e31`** — canonical doc pass for test sign-off + prod §3.5 (follows code commits **`35ca49a`** → **`0978782`**).
 

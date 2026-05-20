@@ -236,7 +236,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 - Profile search on handle + display name.
 - Auth-gated RPC for search endpoints (`authenticated` role only; `auth.uid()` required).
 
-**Pending:** Ryan smoke on test after SQL apply (see **`docs/test-buildout-backlog.md`** smoke §16).
+**Validated on test (2026-05-19, Ryan):** smoke **§16** — anon gate, server search, profile rows, trending empty query.
 
 ---
 

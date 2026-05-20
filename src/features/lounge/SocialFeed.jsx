@@ -582,6 +582,11 @@ export default function SocialFeed({
   )
   /** When set, ← at this path depth closes detail instead of popping to post-only view. */
   const loungeCommentDetailDirectEntryDepthRef = useRef(/** @type {null | number} */ (null))
+  /** One-shot: smooth scroll from top when opening comment detail from profile / repost / deep link. */
+  const loungeCommentDetailDirectEntryAnimateRef = useRef(false)
+  const loungePostDetailFocusScrollRafRef = useRef(0)
+  /** While smooth-scrolling to a focused comment, ignore scroll-driven title hide until landed. */
+  const loungePostDetailFocusScrollTitleLockRef = useRef(false)
   /** Tracks which post the detail-comments effect last initialized (avoids clearing drill path on auth refresh). */
   const loungeDetailCommentsEffectPostIdRef = useRef(/** @type {null | string} */ (null))
   /** Post id whose comments finished loading — Strict Mode retry when unset after cancel. */
@@ -633,6 +638,11 @@ export default function SocialFeed({
   const [loungePostDetailVisible, setLoungePostDetailVisible] = useState(true)
   const [loungePostDetailMenuOpen, setLoungePostDetailMenuOpen] = useState(false)
   const loungePostDetailVisibleRef = useRef(true)
+  /** False while the detail sheet slide-in is running; focus scroll waits for true. */
+  const [loungePostDetailPanelEntered, setLoungePostDetailPanelEntered] = useState(true)
+  const loungePostDetailPanelEnteredRef = useRef(true)
+  /** If `transitionend` never runs on open, still allow focus scroll (matches close fallback). */
+  const loungePostDetailOpenFallbackTimerRef = useRef(0)
   /** If `transitionend` never runs, still tear down the full-screen detail shell (otherwise feed stays dead). */
   const loungePostDetailCloseFallbackTimerRef = useRef(0)
   const loungePostDetailMenuWrapRef = useRef(null)
@@ -810,29 +820,95 @@ export default function SocialFeed({
     setLoungePostDetailTitleReveal(1)
   }, [])
 
-  const scrollLoungePostDetailToFocusedComment = useCallback(() => {
+  const scrollLoungePostDetailToFocusedComment = useCallback((opts = {}) => {
+    const animate =
+      opts.animate === true &&
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches !== true
+
     const sc = loungePostDetailScrollRef.current
     const el = document.getElementById('lounge-detail-focus-comment')
-    if (!sc || !el) return
+    if (!sc || !el) return false
+
     const barH = loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56
     // 4px matches the mt-1 row-separator in LoungePostDetailCommentHierarchy so the title
     // bar lands just at the bottom of the interaction row of the card above the focused comment.
     const GAP_PX = 8
-    const scRect = sc.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
-    const nextTop = Math.max(0, sc.scrollTop + (elRect.top - scRect.top) - barH - GAP_PX)
-    sc.scrollTo({ top: nextTop, behavior: 'auto' })
-    loungePostDetailScrollPrevTopRef.current = nextTop
-    // Always keep the title bar (back button) visible when landing on a focused comment.
-    loungePostDetailTitleRevealRef.current = 1
-    setLoungePostDetailTitleReveal(1)
-    // Flash the focused comment so it's unmissable even when the list is too short to scroll.
-    el.classList.remove('lounge-focus-flash')
-    requestAnimationFrame(() => {
-      el.classList.add('lounge-focus-flash')
-      window.setTimeout(() => el.classList.remove('lounge-focus-flash'), 1700)
-    })
+
+    const computeTargetTop = () => {
+      const scRect = sc.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      return Math.max(0, sc.scrollTop + (elRect.top - scRect.top) - barH - GAP_PX)
+    }
+
+    const flashFocus = () => {
+      el.classList.remove('lounge-focus-flash')
+      requestAnimationFrame(() => {
+        el.classList.add('lounge-focus-flash')
+        window.setTimeout(() => el.classList.remove('lounge-focus-flash'), 1700)
+      })
+    }
+
+    const landOnTarget = (behavior) => {
+      const nextTop = computeTargetTop()
+      sc.scrollTo({ top: nextTop, behavior })
+      if (behavior === 'smooth') {
+        let done = false
+        const finish = () => {
+          if (done) return
+          done = true
+          loungePostDetailFocusScrollTitleLockRef.current = false
+          loungePostDetailScrollPrevTopRef.current = sc.scrollTop
+          loungePostDetailTitleRevealRef.current = 1
+          setLoungePostDetailTitleReveal(1)
+          flashFocus()
+        }
+        sc.addEventListener('scrollend', finish, { once: true })
+        window.setTimeout(finish, 650)
+      } else {
+        loungePostDetailScrollPrevTopRef.current = nextTop
+        loungePostDetailTitleRevealRef.current = 1
+        setLoungePostDetailTitleReveal(1)
+        flashFocus()
+      }
+    }
+
+    if (animate) {
+      loungePostDetailFocusScrollTitleLockRef.current = true
+      loungePostDetailTitleRevealRef.current = 1
+      setLoungePostDetailTitleReveal(1)
+      sc.scrollTo({ top: 0, behavior: 'auto' })
+      loungePostDetailScrollPrevTopRef.current = 0
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => landOnTarget('smooth'))
+      })
+    } else {
+      landOnTarget('auto')
+    }
+    return true
   }, [loungePostDetailTitleBarHeight])
+
+  const scheduleLoungePostDetailFocusScroll = useCallback(
+    (opts = {}) => {
+      if (loungePostDetailFocusScrollRafRef.current) {
+        window.cancelAnimationFrame(loungePostDetailFocusScrollRafRef.current)
+        loungePostDetailFocusScrollRafRef.current = 0
+      }
+      let triesLeft = 10
+      const attempt = () => {
+        loungePostDetailFocusScrollRafRef.current = 0
+        const ok = scrollLoungePostDetailToFocusedComment(opts)
+        if (!ok && triesLeft > 0) {
+          triesLeft -= 1
+          loungePostDetailFocusScrollRafRef.current = requestAnimationFrame(attempt)
+        }
+      }
+      loungePostDetailFocusScrollRafRef.current = requestAnimationFrame(() => {
+        loungePostDetailFocusScrollRafRef.current = requestAnimationFrame(attempt)
+      })
+    },
+    [scrollLoungePostDetailToFocusedComment],
+  )
 
   const loungeComposerCaptionTargetConfig = useCallback(
     (target) => {
@@ -1275,6 +1351,15 @@ export default function SocialFeed({
       const prev = loungePostDetailScrollPrevTopRef.current
       const rawDelta = st - prev
       loungePostDetailScrollPrevTopRef.current = st
+
+      if (loungePostDetailFocusScrollTitleLockRef.current) {
+        if (loungePostDetailTitleRevealRef.current !== 1) {
+          loungePostDetailTitleRevealRef.current = 1
+          queueDetailTitleFlush()
+        }
+        return
+      }
+
       const eff =
         rawDelta === 0 ? 0 : Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), maxAbsScrollStepPx)
 
@@ -4160,6 +4245,13 @@ export default function SocialFeed({
       window.clearTimeout(tid)
       loungePostDetailCloseFallbackTimerRef.current = 0
     }
+    const openTid = loungePostDetailOpenFallbackTimerRef.current
+    if (openTid) {
+      window.clearTimeout(openTid)
+      loungePostDetailOpenFallbackTimerRef.current = 0
+    }
+    loungePostDetailPanelEnteredRef.current = true
+    setLoungePostDetailPanelEntered(true)
     setLoungePostDetail(null)
     setLoungePostDetailAboveProfile(false)
     setLoungePostDetailVisible(true)
@@ -4205,6 +4297,12 @@ export default function SocialFeed({
     setLoungeDetailCommentEditGifUrl('')
     loungePostDetailDirectCommentOpenRef.current = null
     loungeCommentDetailDirectEntryDepthRef.current = null
+    loungeCommentDetailDirectEntryAnimateRef.current = false
+    loungePostDetailFocusScrollTitleLockRef.current = false
+    if (loungePostDetailFocusScrollRafRef.current) {
+      window.cancelAnimationFrame(loungePostDetailFocusScrollRafRef.current)
+      loungePostDetailFocusScrollRafRef.current = 0
+    }
     loungeDetailCommentsEffectPostIdRef.current = null
     loungeDetailCommentsLoadedPostIdRef.current = null
     loungeTitleRevealRef.current = 1
@@ -4268,6 +4366,9 @@ export default function SocialFeed({
           ? String(opts.focusCommentId)
           : null
         loungePostDetailPendingCommentComposerRef.current = opts?.focusCommentComposer === true
+        if (opts?.focusCommentId) {
+          loungeCommentDetailDirectEntryAnimateRef.current = true
+        }
       }
       setLoungeDetailCommentDraft('')
       setLoungeDetailCommentErr('')
@@ -4308,16 +4409,91 @@ export default function SocialFeed({
       const reduce =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+      const openTid = loungePostDetailOpenFallbackTimerRef.current
+      if (openTid) {
+        window.clearTimeout(openTid)
+        loungePostDetailOpenFallbackTimerRef.current = 0
+      }
       if (reduce) {
+        loungePostDetailPanelEnteredRef.current = true
+        setLoungePostDetailPanelEntered(true)
         setLoungePostDetailVisible(true)
         return
       }
+      loungePostDetailPanelEnteredRef.current = false
+      setLoungePostDetailPanelEntered(false)
       setLoungePostDetailVisible(false)
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => setLoungePostDetailVisible(true))
+        requestAnimationFrame(() => {
+          setLoungePostDetailVisible(true)
+          loungePostDetailOpenFallbackTimerRef.current = window.setTimeout(() => {
+            loungePostDetailOpenFallbackTimerRef.current = 0
+            if (loungePostDetailVisibleRef.current && !loungePostDetailPanelEnteredRef.current) {
+              loungePostDetailPanelEnteredRef.current = true
+              setLoungePostDetailPanelEntered(true)
+            }
+          }, 400)
+        })
       })
     },
     [composerUserId, loungeReadOnly, onRequireAuth, profileModalOpen, profileOverlayStack.length, refreshLoungePostInteractions]
+  )
+
+  /**
+   * Profile / repost / deep link: prefetch comments + drill path so first paint is Reply view,
+   * then smooth-scroll from top to the focused comment (see pathIds focus-scroll effect).
+   */
+  const openDirectCommentPostDetail = useCallback(
+    async (post, commentId, { focusComposer = false, prefetchedComments = null } = {}) => {
+      if (!post?.id || !commentId) return
+      let parentPost = post
+      if (!parentPost.user_id && !parentPost.caption) {
+        const { data } = await supabaseClient
+          .from('community_feed_posts')
+          .select(
+            'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height',
+          )
+          .eq('id', post.id)
+          .is('hidden_at', null)
+        if (data?.length) {
+          const hydrated = await hydrateCommunityPosts(data)
+          parentPost = hydrated?.[0] || parentPost
+        }
+      }
+
+      let comments = prefetchedComments
+      if (!comments) {
+        try {
+          comments = await fetchHydratedFeedCommentsForPost(supabaseClient, parentPost.id)
+        } catch {
+          openLoungePostDetail(parentPost, {
+            focusCommentId: commentId,
+            focusCommentComposer: focusComposer,
+          })
+          return
+        }
+      }
+
+      const pathIds = buildFeedCommentDrillPath(commentId, comments)
+      if (!pathIds.length) {
+        openLoungePostDetail(parentPost, {
+          focusCommentId: commentId,
+          focusCommentComposer: focusComposer,
+        })
+        return
+      }
+
+      loungeCommentDetailDirectEntryAnimateRef.current = true
+      loungePostDetailDirectCommentOpenRef.current = {
+        postId: String(parentPost.id),
+        pathIds,
+        comments,
+        focusComposer,
+      }
+      loungeCommentDetailDirectEntryDepthRef.current = pathIds.length
+      openLoungePostDetail(parentPost)
+    },
+    [hydrateCommunityPosts, openLoungePostDetail, supabaseClient],
   )
 
   /**
@@ -4332,7 +4508,7 @@ export default function SocialFeed({
         const { data } = await supabaseClient
           .from('community_feed_posts')
           .select(
-            'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
+            'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height',
           )
           .eq('id', repostedComment.post_id)
           .is('hidden_at', null)
@@ -4356,24 +4532,12 @@ export default function SocialFeed({
         return
       }
 
-      const pathIds = buildFeedCommentDrillPath(repostedComment.id, comments)
-      if (!pathIds.length) {
-        openLoungePostDetail(parentPost, {
-          focusCommentId: repostedComment.id,
-          focusCommentComposer: focusComposer,
-        })
-        return
-      }
-
-      loungePostDetailDirectCommentOpenRef.current = {
-        postId: String(parentPost.id),
-        pathIds,
-        comments,
+      await openDirectCommentPostDetail(parentPost, repostedComment.id, {
         focusComposer,
-      }
-      openLoungePostDetail(parentPost)
+        prefetchedComments: comments,
+      })
     },
-    [communityPosts, hydrateCommunityPosts, openLoungePostDetail, supabaseClient],
+    [communityPosts, hydrateCommunityPosts, openDirectCommentPostDetail, openLoungePostDetail, supabaseClient],
   )
 
   const scrollLoungeFeedToTop = useCallback(() => {
@@ -4596,7 +4760,18 @@ export default function SocialFeed({
     (e) => {
       if (e.propertyName !== 'transform') return
       if (e.target !== e.currentTarget) return
-      if (loungePostDetailVisibleRef.current) return
+      if (loungePostDetailVisibleRef.current) {
+        if (!loungePostDetailPanelEnteredRef.current) {
+          const openTid = loungePostDetailOpenFallbackTimerRef.current
+          if (openTid) {
+            window.clearTimeout(openTid)
+            loungePostDetailOpenFallbackTimerRef.current = 0
+          }
+          loungePostDetailPanelEnteredRef.current = true
+          setLoungePostDetailPanelEntered(true)
+        }
+        return
+      }
       finalizeLoungePostDetailClose()
     },
     [finalizeLoungePostDetailClose]
@@ -4672,24 +4847,17 @@ export default function SocialFeed({
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
       if (!focusComposer) collapseLoungeDetailCommentComposer()
+      else loungePostDetailPendingCommentComposerRef.current = true
       setLoungeCommentDetailPathIds(chain)
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollLoungePostDetailToFocusedComment()
-          if (focusComposer) expandAndFocusLoungeDetailCommentComposer({ skipScrollToTop: true })
-        })
-      })
     },
     [
       buildLoungeCommentDrillPath,
       cancelLoungeDetailCommentEdit,
       cancelLoungeDetailEdit,
       collapseLoungeDetailCommentComposer,
-      expandAndFocusLoungeDetailCommentComposer,
       loungeReadOnly,
       openProfileGateIfNeeded,
       requireLoungeAuth,
-      scrollLoungePostDetailToFocusedComment,
     ],
   )
 
@@ -4711,11 +4879,8 @@ export default function SocialFeed({
         return prev.slice(0, pathIndex + 1)
       })
       cancelLoungeDetailCommentEdit()
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
-      })
     },
-    [cancelLoungeDetailCommentEdit, scrollLoungePostDetailToFocusedComment],
+    [cancelLoungeDetailCommentEdit],
   )
 
   const exitLoungeCommentDetailToPostView = useCallback(() => {
@@ -4776,26 +4941,59 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (loungeCommentDetailPathIds.length === 0 || loungeDetailCommentsLoading) return
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollLoungePostDetailToFocusedComment())
-    })
-    return () => window.cancelAnimationFrame(id)
+    if (!loungePostDetailPanelEntered) return
+    const animate = loungeCommentDetailDirectEntryAnimateRef.current
+    if (animate) loungeCommentDetailDirectEntryAnimateRef.current = false
+    const run = () => scheduleLoungePostDetailFocusScroll({ animate })
+    if (animate) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(run)
+      })
+    } else {
+      run()
+    }
+    return () => {
+      if (loungePostDetailFocusScrollRafRef.current) {
+        window.cancelAnimationFrame(loungePostDetailFocusScrollRafRef.current)
+        loungePostDetailFocusScrollRafRef.current = 0
+      }
+    }
   }, [
     loungeCommentDetailPathIds,
     loungeDetailCommentsLoading,
-    scrollLoungePostDetailToFocusedComment,
+    loungePostDetailPanelEntered,
+    scheduleLoungePostDetailFocusScroll,
   ])
 
   /** Post detail opened from feed/lightbox with composer focus (no comment drill). */
   useEffect(() => {
     if (!loungePostDetail?.id) return
     if (loungePostDetailPendingCommentIdRef.current) return
+    if (loungeCommentDetailPathIds.length > 0) return
     if (!loungePostDetailPendingCommentComposerRef.current) return
     loungePostDetailPendingCommentComposerRef.current = false
     requestAnimationFrame(() => {
       requestAnimationFrame(() => expandAndFocusLoungeDetailCommentComposer())
     })
-  }, [loungePostDetail?.id, expandAndFocusLoungeDetailCommentComposer])
+  }, [
+    loungePostDetail?.id,
+    loungeCommentDetailPathIds.length,
+    expandAndFocusLoungeDetailCommentComposer,
+  ])
+
+  /** After comment drill-in, expand reply composer when requested (feed reply or profile Replies bar). */
+  useEffect(() => {
+    if (loungeCommentDetailPathIds.length === 0 || loungeDetailCommentsLoading) return
+    if (!loungePostDetailPendingCommentComposerRef.current) return
+    loungePostDetailPendingCommentComposerRef.current = false
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => expandAndFocusLoungeDetailCommentComposer({ skipScrollToTop: true }))
+    })
+  }, [
+    loungeCommentDetailPathIds.length,
+    loungeDetailCommentsLoading,
+    expandAndFocusLoungeDetailCommentComposer,
+  ])
 
   /** Profile Replies tab: open post detail first, then drill to the reply once comments are loaded. */
   useEffect(() => {
@@ -4805,7 +5003,7 @@ export default function SocialFeed({
     if (!row) return
     const focusComposer = loungePostDetailPendingCommentComposerRef.current
     loungePostDetailPendingCommentIdRef.current = null
-    loungePostDetailPendingCommentComposerRef.current = false
+    if (!focusComposer) loungePostDetailPendingCommentComposerRef.current = false
     openLoungeCommentDetail(row, { focusComposer })
   }, [
     loungePostDetail?.id,
@@ -7472,9 +7670,8 @@ export default function SocialFeed({
       onOpenCommentRepost: openCommentRepostDetail,
       onOpenProfileReply: (comment, post, opts) => {
         if (!post?.id || !comment?.id) return
-        openLoungePostDetail(post, {
-          focusCommentId: comment.id,
-          focusCommentComposer: opts?.focusComposer === true,
+        void openDirectCommentPostDetail(post, comment.id, {
+          focusComposer: opts?.focusComposer === true,
         })
       },
       hydrateCommentInteractionsForIds,
@@ -7489,12 +7686,12 @@ export default function SocialFeed({
       repostActionBusy: repostManageBusy,
       onCommentMenuEdit: (c, post) => {
         if (!c?.id || !post?.id) return
-        openLoungePostDetail(post, { focusCommentId: c.id })
+        void openDirectCommentPostDetail(post, c.id)
         loungePostDetailPendingCommentEditRef.current = String(c.id)
       },
       onCommentMenuDelete: (c, post) => {
         if (!c?.id || !post?.id) return
-        openLoungePostDetail(post, { focusCommentId: c.id })
+        void openDirectCommentPostDetail(post, c.id)
       },
       onCommentMenuBlock: onCommentMenuBlockFromDetail,
       onCommentMenuReport: onCommentMenuReportFromDetail,
@@ -7535,6 +7732,7 @@ export default function SocialFeed({
       requireLoungeAuth,
       openProfileGateIfNeeded,
       openLoungePostDetail,
+      openDirectCommentPostDetail,
       openCommentRepostDetail,
       openLoungeStreamLightboxDetail,
       openAuthorProfile,

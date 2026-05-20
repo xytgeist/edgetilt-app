@@ -84,7 +84,7 @@ The agent should treat the following as **standing instructions for this session
 | **Image pinch-zoom** | **`loungeLightboxImageZoom.js`** — pinch + pan on still/GIF lightbox; swipe dismiss preserved at 1× @ **`9b0f9b5`** |
 | **Comment repost fix** | Plain repost from comment detail + thread navigation + feed hydration @ **`b782e69`** |
 
-Ryan sign-off **pending** on lightbox/pinch smoke **§17** (non-blocking).
+Ryan sign-off **PASSED** smoke **§17** + comment-repost (2026-05-19).
 
 ### Cloudflare R2 feed images (May 19 — test fully wired)
 
@@ -99,7 +99,11 @@ Ryan sign-off **pending** on lightbox/pinch smoke **§17** (non-blocking).
 ### Phase G search + DB (May 18)
 
 - **`20260518160000_lounge_search_phase_g.sql`** — auth-gated **`lounge_search_posts`** / **`lounge_search_profiles`**; client **`loungeSearchApi.js`** + dock search panel.
-- **Apply SQL on test** before smoke **§16**; Ryan sign-off **pending**.
+- Ryan sign-off **PASSED** smoke **§16** (2026-05-19).
+
+### Stream poster WebP on R2 (May 19)
+
+- **`93dcc3f`** — new video posters → **WebP** on **`media-test.lvslotpro.com`**. Ryan **PASSED** (2026-05-19).
 
 ### Other May 18 (already on `test`)
 
@@ -107,8 +111,8 @@ Ryan sign-off **pending** on lightbox/pinch smoke **§17** (non-blocking).
 - **Handle cooldown restored:** **`20260518150000_restore_profile_handle_change_cooldown.sql`**
 - **Rate limit fix:** **`20260518103000_fix_rate_limit_profiles_user_id.sql`**
 
-**Commits through **`1472e31`** (docs). Prod replay: **`docs/production-rollout-checklist.md`** §2 + §3.5 + §4 + §5.
+**Commits through **`93dcc3f`**. Prod replay: **`docs/production-rollout-checklist.md`** §2 + §3.5 + §4 + §5.
 
-**Still open (non-blocking):** Phase G search smoke **§16**; lightbox/pinch smoke **§17**; Cloudflare **Pro** for **`/cdn-cgi/image/`**; **`media.lvslotpro.com`** when prod R2 ships; video **poster** uploads to R2 on new video posts.
+**Still open (non-blocking):** Cloudflare **Pro** for **`/cdn-cgi/image/`**; **`media.lvslotpro.com`** when prod R2 ships; per-tile sound sign-off; final pre-prod gate.
 
 

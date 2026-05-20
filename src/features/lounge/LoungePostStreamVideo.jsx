@@ -115,6 +115,16 @@ const HERO_CHROME_AUTO_HIDE_MS = 3000
 /** Default hero stack when no parent `lightboxPortalClass` is passed. */
 const HERO_STACK_BASE_Z_INDEX = 102
 
+/** iPhone/iPad use native HLS — concurrent ring decoders can stall the active tile (~few frames, audio keeps going). */
+function detectAppleWebKitNativeHls() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  if (/iPhone|iPad|iPod/i.test(ua)) return true
+  /** iPadOS 13+ may report as Macintosh. */
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true
+  return false
+}
+
 /**
  * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).
  * @returns {{ scrim: number, flyout: number, overlay: number }}
@@ -752,6 +762,7 @@ export default function LoungePostStreamVideo({
   const heroColdMountRef = useRef(false)
   /** Hero opened with `<video>` present but HLS not decoded yet — kick attach after open. */
   const heroHlsKickRef = useRef(false)
+  const appleWebKitNativeHlsRef = useRef(detectAppleWebKitNativeHls())
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -985,9 +996,16 @@ export default function LoungePostStreamVideo({
       hasDecodedStreamMetadata &&
       (variant === 'commentInline' || variant === 'detail' ? !inRing : true),
   )
-  /** iOS: limit concurrent HLS — active/hero/lightbox + handoff hold; never cold-load prefetch slots. */
+  /** Apple native HLS: one decode on active (+ brief handoff hold); skip ring prefetch neighbors. */
+  const webKitHlsSlot =
+    !appleWebKitNativeHlsRef.current ||
+    isActive ||
+    heroExpanded ||
+    lightboxOpen ||
+    ringHlsCacheHeld
   const hlsAttachEnabled =
     attachStream &&
+    webKitHlsSlot &&
     !(ringWarmPrefetch && !hasDecodedStreamMetadata) &&
     (heroExpanded || lightboxOpen || isActive || ringHlsCacheHeld)
 

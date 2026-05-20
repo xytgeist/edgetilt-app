@@ -386,6 +386,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-20: **Lounge Stream ~frame-5 freeze on Apple WebKit (client, unverified on test):** isolated experiment — **`webKitHlsSlot`** in **`LoungePostStreamVideo.jsx`**: on iPhone/iPad native HLS, attach only on **active** tile (+ **`ringHlsCacheHeld`** handoff hold); ring prefetch neighbors skip HLS cold-load. No hero/play-gating/poster changes. Smoke: cold open first clip past ~frame 6 without picture stall; scroll away and back to first; tap full-screen still normal.
+
 - 2026-05-20: **Lounge cold-boot splash timing:** member splash **2s min / 3s max** (feed-ready dismiss between those bounds).
 
 - 2026-05-20: **Lounge cold-boot splash (client, unverified on test):** CSS **`LoungeAppSplash`** + **`useLoungeColdBootSplash`** — Home tab only; cold open + **>10 min** background resume (skip when composer draft / upload bar / in-flight submit); anonymous short flash; feed loads under overlay. Smoke: fresh tab → logo animation → feed; background **>10 min** without pending work → splash again; **`?tab=offers`** → no splash.

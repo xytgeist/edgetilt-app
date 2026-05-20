@@ -665,6 +665,7 @@ function SoundOnGlyph({ className = 'h-4 w-4' }) {
  * @param {number} [streamVideoDisplayHeight] — Display height from DB for CSS `aspect-ratio` when set with width.
  * @param {import('react').ReactNode} [mediaLightboxFooter] — Deprecated: image lightbox footer only.
  * @param {(dismissLightbox: () => void) => import('react').ReactNode} [renderMediaLightboxChrome]
+ * @param {() => import('react').ReactNode} [renderMediaLightboxTopBarExtra]
  */
 export default function LoungePostStreamVideo({
   uid,
@@ -680,6 +681,7 @@ export default function LoungePostStreamVideo({
   mediaLightboxFooter,
   renderMediaLightboxChrome,
   renderMediaLightboxMenu,
+  renderMediaLightboxTopBarExtra,
   lightboxPortalClass = 'z-[100]',
 }) {
   const sessionPosterUrl = String(sessionPosterUrlProp || '').trim()
@@ -1952,6 +1954,13 @@ export default function LoungePostStreamVideo({
     return null
   }, [renderMediaLightboxMenu])
 
+  const lightboxTopBarExtraContent = useMemo(() => {
+    if (typeof renderMediaLightboxTopBarExtra === 'function') {
+      return renderMediaLightboxTopBarExtra()
+    }
+    return null
+  }, [renderMediaLightboxTopBarExtra])
+
   const lightboxChromeContent = useMemo(() => {
     if (typeof renderMediaLightboxChrome === 'function') {
       return renderMediaLightboxChrome(closeLightbox)
@@ -2907,7 +2916,7 @@ export default function LoungePostStreamVideo({
                       </span>
                     </button>
                     <div
-                      className="ml-auto flex items-center gap-0.5"
+                      className="ml-auto flex items-center gap-1"
                       data-lounge-lightbox-no-swipe
                       onPointerDownCapture={() => bumpHeroChrome()}
                     >
@@ -2926,6 +2935,7 @@ export default function LoungePostStreamVideo({
                           <MutedGlyph className="h-5 w-5 opacity-90" />
                         )}
                       </button>
+                      {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
                       {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
                     </div>
                   </div>

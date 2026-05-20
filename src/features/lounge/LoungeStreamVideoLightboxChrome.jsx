@@ -6,9 +6,53 @@ import { renderRichCaption } from './loungeCaption'
 export const LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS =
   'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 [-webkit-tap-highlight-color:transparent]'
 
+/** Top-bar Follow pill — same height as mute / ⋯ controls. */
+export const LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
+  'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-zinc-500/80 bg-black/40 px-3.5 text-[13px] font-bold text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 [-webkit-tap-highlight-color:transparent]'
+
+/** Portrait author-row Follow — aligned with display name / handle. */
+export const LOUNGE_HERO_LIGHTBOX_AUTHOR_FOLLOW_BTN_CLASS =
+  'shrink-0 rounded-full border border-zinc-500/80 bg-black/40 px-3.5 py-1.5 text-[13px] font-bold text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+
+export function LoungeStreamLightboxFollowButton({
+  author,
+  viewerUserId,
+  viewerFollowingUserIds,
+  onFollowUser,
+  /** @type {'topBar' | 'authorRow'} */
+  placement = 'topBar',
+}) {
+  const userId = author?.user_id
+  const showFollow = Boolean(
+    typeof onFollowUser === 'function' &&
+      viewerUserId &&
+      userId &&
+      userId !== viewerUserId &&
+      viewerFollowingUserIds instanceof Set &&
+      !viewerFollowingUserIds.has(userId),
+  )
+  if (!showFollow) return null
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onFollowUser(userId)
+      }}
+      className={
+        placement === 'authorRow'
+          ? LOUNGE_HERO_LIGHTBOX_AUTHOR_FOLLOW_BTN_CLASS
+          : LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS
+      }
+    >
+      Follow
+    </button>
+  )
+}
+
 /**
- * X-style overlay chrome for Stream video hero (author, caption snippet, follow, ⋯ menu, interactions).
- * Video plays full-screen behind this layer.
+ * X-style overlay chrome for Stream video hero (author, caption snippet, interactions).
+ * Portrait: Follow sits on the author row; landscape: Follow is in the top bar (mute-adjacent).
  */
 export default function LoungeStreamVideoLightboxChrome({
   post,
@@ -36,15 +80,6 @@ export default function LoungeStreamVideoLightboxChrome({
   const handle = handleFor?.(author) || (profile?.handle ? `@${profile.handle}` : '')
   const avatarUrl = profile?.avatar_url
   const caption = captionText
-
-  const showFollow = Boolean(
-    typeof onFollowUser === 'function' &&
-      viewerUserId &&
-      userId &&
-      userId !== viewerUserId &&
-      viewerFollowingUserIds instanceof Set &&
-      !viewerFollowingUserIds.has(userId),
-  )
 
   const openProfile = (e) => {
     e.stopPropagation()
@@ -115,18 +150,15 @@ export default function LoungeStreamVideoLightboxChrome({
             )
           ) : null}
         </div>
-        {showFollow ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onFollowUser(userId)
-            }}
-            className="shrink-0 rounded-full border border-zinc-500/80 bg-black/40 px-3.5 py-1.5 text-[13px] font-bold text-white touch-manipulation hover:bg-white/10 [-webkit-tap-highlight-color:transparent]"
-          >
-            Follow
-          </button>
-        ) : null}
+        <div className="shrink-0 self-start pt-0.5 landscape:hidden">
+          <LoungeStreamLightboxFollowButton
+            author={author}
+            viewerUserId={viewerUserId}
+            viewerFollowingUserIds={viewerFollowingUserIds}
+            onFollowUser={onFollowUser}
+            placement="authorRow"
+          />
+        </div>
       </div>
       {interactionBar ? (
         <div

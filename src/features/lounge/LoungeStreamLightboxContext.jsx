@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useMemo } from 'react'
 import {
   buildLoungeStreamLightboxChrome,
   buildLoungeStreamLightboxMenu,
+  buildLoungeStreamLightboxTopBarExtra,
 } from './loungeStreamLightboxRenderers.jsx'
 
 const LoungeStreamLightboxContext = createContext(null)
@@ -47,18 +48,31 @@ export function LoungeStreamLightboxProvider({ ctx, children }) {
     [ctx],
   )
 
+  const buildTopBarExtra = useCallback(
+    (hostEntity, mediaPost, tileCtx, surfaceCtx) =>
+      buildLoungeStreamLightboxTopBarExtra(hostEntity, mediaPost, {
+        ...ctx,
+        ...surfaceCtx,
+        ...(typeof tileCtx?.commentDescendantFallback === 'number'
+          ? { commentDescendantFallback: tileCtx.commentDescendantFallback }
+          : null),
+      }),
+    [ctx],
+  )
+
   const value = useMemo(
     () => ({
       buildChrome,
       buildMenu,
+      buildTopBarExtra,
     }),
-    [buildChrome, buildMenu],
+    [buildChrome, buildMenu, buildTopBarExtra],
   )
 
   return <LoungeStreamLightboxContext.Provider value={value}>{children}</LoungeStreamLightboxContext.Provider>
 }
 
-/** @returns {{ buildChrome: Function, buildMenu: Function } | null} */
+/** @returns {{ buildChrome: Function, buildMenu: Function, buildTopBarExtra: Function } | null} */
 export function useLoungeStreamLightbox() {
   return useContext(LoungeStreamLightboxContext)
 }

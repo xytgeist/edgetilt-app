@@ -351,6 +351,10 @@ export function LoungePostFeedImagesAndGif({
     streamLightbox && lightboxHost
       ? () => streamLightbox.buildMenu(lightboxHost, streamLightboxTileCtx, streamLightboxSurface)
       : null
+  const topBarExtraRenderer =
+    streamLightbox && lightboxHost
+      ? () => streamLightbox.buildTopBarExtra(lightboxHost, post, streamLightboxTileCtx, streamLightboxSurface)
+      : null
   const streamUid = feedPostStreamVideoUid(post)
   const persistedStreamPoster = streamUid ? feedPostStreamPosterUrl(post) : ''
   const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null
@@ -381,6 +385,7 @@ export function LoungePostFeedImagesAndGif({
         mediaLightboxFooter={mediaLightboxFooter}
         renderMediaLightboxChrome={chromeRenderer}
         renderMediaLightboxMenu={menuRenderer}
+        renderMediaLightboxTopBarExtra={topBarExtraRenderer}
         lightboxPortalClass={lightboxPortalClass}
       />
     )

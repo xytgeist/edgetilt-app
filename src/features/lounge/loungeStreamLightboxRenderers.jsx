@@ -2,6 +2,7 @@ import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungeStreamVideoLightboxChrome, {
   LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
+  LoungeStreamLightboxFollowButton,
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 
@@ -237,6 +238,26 @@ export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLi
           : undefined
       }
     />
+  )
+}
+
+/**
+ * Top-bar Follow control (landscape only — portrait uses author row in chrome).
+ */
+export function buildLoungeStreamLightboxTopBarExtra(hostEntity, mediaPost, ctx) {
+  const host = hostEntity ?? mediaPost
+  const media = mediaPost ?? host
+  const { displayEntity } = loungeStreamLightboxMediaSource(host, media)
+  return (
+    <div className="hidden landscape:block">
+      <LoungeStreamLightboxFollowButton
+        author={displayEntity}
+        viewerUserId={ctx.viewerUserId}
+        viewerFollowingUserIds={ctx.viewerFollowingUserIds}
+        onFollowUser={ctx.onFollowUser}
+        placement="topBar"
+      />
+    </div>
   )
 }
 

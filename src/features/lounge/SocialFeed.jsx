@@ -192,6 +192,9 @@ import {
   writeLoungeFeedVideoDebugEnabled,
 } from '../../utils/loungeFeedVideoDebugPref.js'
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
+import { LOUNGE_FEED_SORT } from '../../utils/loungeFeedSortPref'
+import LoungeFeedSortSwitch from './LoungeFeedSortSwitch.jsx'
+import LoungeFeedScopeSwitch from './LoungeFeedScopeSwitch.jsx'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
 /** DB raises exception 'MAX_PINNED_POSTS' when a third visible pin is attempted. */
@@ -345,6 +348,8 @@ export default function SocialFeed({
   isStaff = false,
   loungeFeedScope = LOUNGE_FEED_SCOPE_ALL,
   onLoungeFeedScopeChange,
+  loungeFeedSort = LOUNGE_FEED_SORT.LATEST,
+  onLoungeFeedSortChange,
   loungeFeedBrowseMode = 'member',
   /** True only when the Lounge tab is the active/visible screen; gates the portaled dock FAB. */
   isActivePage = true,
@@ -8644,6 +8649,23 @@ export default function SocialFeed({
           </div>
         ) : null}
 
+        {!loungePostDetail ? (
+          <div className="shrink-0 px-3 pt-1">
+            <div className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_ROW_CLASS} items-center gap-3`}>
+              <LoungeFeedScopeSwitch
+                scope={loungeFeedScope}
+                onScopeChange={onLoungeFeedScopeChange}
+                disabled={communityFeedLoading && communityPosts.length === 0}
+              />
+              <LoungeFeedSortSwitch
+                value={loungeFeedSort}
+                onChange={onLoungeFeedSortChange}
+                disabled={communityFeedLoading && communityPosts.length === 0}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="border-b border-zinc-800 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {loungeManageErr ? (
           <div className="px-3 pt-3">
@@ -8678,7 +8700,7 @@ export default function SocialFeed({
           ) : loungeFeedScope === LOUNGE_FEED_SCOPE_FOLLOWING ? (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
               No posts from people you follow yet. Follow members from their profile, or switch back to{' '}
-              <span className="text-zinc-300">All</span> to see the full lounge.
+              <span className="text-zinc-300">Discover</span> to see the full lounge.
             </div>
           ) : (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">

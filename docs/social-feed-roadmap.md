@@ -207,7 +207,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 ## Phase E - Comments (threaded)
 
-- **Shipped (test, first slice):** `supabase/feed_interactions_phase_ef.sql` defines `feed_comments` + RLS + top-level-only post `comment_count` triggers; Lounge post detail lists **top-level** comments and drill-down for full threads. **Inline OP replies (post detail only):** replies authored by the **post owner** (`user_id === post.user_id`) with `parent_id` set to a **root** comment render **below** that parent in `LoungePostCommentThread.jsx` with the **same horizontal layout** as other comments; a **vertical connector** at the parent avatar column marks the thread (other replies stay drill-down only). **Relevant sort (client, 2026-05-21):** post-detail **Relevant** mode in **`src/utils/loungeFeedCommentSort.js`** — weighted engagement (likes, reposts×2, bookmarks×1.5, replies×2) with gravity/time decay; viewer just-posted pins stay on top; modest boosts for post-author roots and followed authors; nested drill-down replies stay **oldest-first** in Relevant mode. Anon teaser rules and quality/collapse tuning still phased.
+- **Shipped (test, first slice):** `supabase/feed_interactions_phase_ef.sql` defines `feed_comments` + RLS + top-level-only post `comment_count` triggers; Lounge post detail lists **top-level** comments and drill-down for full threads. **Inline OP replies (post detail only):** replies authored by the **post owner** (`user_id === post.user_id`) with `parent_id` set to a **root** comment render **below** that parent in `LoungePostCommentThread.jsx` with the **same horizontal layout** as other comments; a **vertical connector** at the parent avatar column marks the thread (other replies stay drill-down only). **Relevant sort (client, validated test 2026-05-21 @ `f40ff0e`):** post-detail **Relevant** mode in **`src/utils/loungeFeedCommentSort.js`** — weighted engagement (likes, reposts×2, bookmarks×1.5, replies×2) with gravity/time decay; viewer just-posted pins stay on top; modest boosts for post-author roots and followed authors; nested drill-down replies **oldest-first** in Relevant mode; list order frozen on like/unlike until sort change or leave screen. Anon teaser rules and quality/collapse tuning still phased.
 - Table: `feed_comments` with `parent_id`, `post_id`, `body` (max **280** chars, same as post captions), `created_at`, `edited_at`, `hidden_at`.
 - RLS:
   - logged-out: no full comment body access (counts/teasers only as needed)
@@ -268,9 +268,10 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 ## Phase J - Block/mute + popular mode
 
+- **Shipped (test build, Popular slice 2026-05-21):** Home feed **Latest | Popular** toggle (`LoungeFeedSortSwitch.jsx`, `loungeFeedSortPref.js`); server **`lounge_feed_posts_page`** RPC + **`lounge_feed_popular_score()`** (likes + 2×reposts + 2×comments, gravity/time decay) — migration **`20260521120000_lounge_feed_popular_sort.sql`**. Pinned head unchanged; Following scope works in both sorts. Ryan smoke pending after SQL apply on test.
 - `blocks` and `mutes` tables.
 - Feed filtering and interaction restrictions by relationship.
-- Popular mode SQL sort with decay formula + stored counts (view/computed strategy optional).
+- Block/mute quality improvements (roadmap “J polish”).
 
 ---
 

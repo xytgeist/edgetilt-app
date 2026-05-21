@@ -1,5 +1,8 @@
 /** @typedef {'all' | 'following'} LoungeFeedScope */
 
+import { LOUNGE_FEED_SORT } from './loungeFeedSortPref.js'
+import { loungeFeedPopularScore } from './loungeFeedPopularScore.js'
+
 export const LOUNGE_FEED_SCOPE_ALL = 'all'
 export const LOUNGE_FEED_SCOPE_FOLLOWING = 'following'
 
@@ -40,46 +43,69 @@ export function loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds)
 }
 
 /**
- * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {LoungeFeedScope} scope
- * @param {string[] | null} followingAuthorIds
- * @param {number} limit
+ * @param {{
+ *   sort?: import('./loungeFeedSortPref.js').LoungeFeedSortMode,
+ *   scope?: LoungeFeedScope,
+ *   followingAuthorIds?: string[] | null,
+ *   limit?: number,
+ *   asOf?: string,
+ *   cursor?: { created_at?: string, id?: string, popular_score?: number | null } | null,
+ * }} opts
  */
+export function loungeFeedPageRpcQuery(supabaseClient, opts = {}) {
+  const sort = opts.sort === LOUNGE_FEED_SORT.POPULAR ? 'popular' : 'latest'
+  const followingAuthorIds =
+    opts.scope === LOUNGE_FEED_SCOPE_FOLLOWING && opts.followingAuthorIds?.length
+      ? opts.followingAuthorIds
+      : null
+  const cursor = opts.cursor || null
+  return supabaseClient.rpc('lounge_feed_posts_page', {
+    p_sort: sort,
+    p_following_user_ids: followingAuthorIds,
+    p_limit: opts.limit ?? 29,
+    p_as_of: opts.asOf || new Date().toISOString(),
+    p_cursor_created_at: cursor?.created_at ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_cursor_popular_score: cursor?.popular_score ?? null,
+  })
+}
+
+/** @deprecated Use loungeFeedPageRpcQuery — kept for callers migrating incrementally. */
 export function loungeFeedPageQuery(supabaseClient, scope, followingAuthorIds, limit) {
-  let q = supabaseClient
-    .from('community_feed_posts')
-    .select(COMMUNITY_FEED_SELECT)
-    .eq('pinned', false)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(limit)
-  if (scope === LOUNGE_FEED_SCOPE_FOLLOWING && followingAuthorIds) {
-    q = q.in('user_id', followingAuthorIds)
-  }
-  return q
+  return loungeFeedPageRpcQuery(supabaseClient, {
+    sort: LOUNGE_FEED_SORT.LATEST,
+    scope,
+    followingAuthorIds,
+    limit,
+    cursor: null,
+  })
+}
+
+/** @deprecated Use loungeFeedPageRpcQuery — kept for callers migrating incrementally. */
+export function loungeFeedPageQueryAfterCursor(supabaseClient, scope, followingAuthorIds, cursor, limit) {
+  return loungeFeedPageRpcQuery(supabaseClient, {
+    sort: LOUNGE_FEED_SORT.LATEST,
+    scope,
+    followingAuthorIds,
+    limit,
+    cursor,
+  })
 }
 
 /**
- * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {LoungeFeedScope} scope
- * @param {string[] | null} followingAuthorIds
- * @param {{ created_at: string, id: string }} cursor
- * @param {number} limit
+ * Build pagination cursor from the last row of a feed page.
+ * @param {object | null | undefined} pageLast
+ * @param {import('./loungeFeedSortPref.js').LoungeFeedSortMode} sort
+ * @param {string} asOf
  */
-export function loungeFeedPageQueryAfterCursor(supabaseClient, scope, followingAuthorIds, cursor, limit) {
-  const cursorFilter = `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`
-  let q = supabaseClient
-    .from('community_feed_posts')
-    .select(COMMUNITY_FEED_SELECT)
-    .eq('pinned', false)
-    .or(cursorFilter)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(limit)
-  if (scope === LOUNGE_FEED_SCOPE_FOLLOWING && followingAuthorIds) {
-    q = q.in('user_id', followingAuthorIds)
+export function loungeFeedCursorFromPageLast(pageLast, sort, asOf) {
+  if (!pageLast?.id) return null
+  return {
+    created_at: pageLast.created_at,
+    id: pageLast.id,
+    popular_score:
+      sort === LOUNGE_FEED_SORT.POPULAR ? loungeFeedPopularScore(pageLast, asOf) : null,
   }
-  return q
 }
 
 export { COMMUNITY_FEED_SELECT }

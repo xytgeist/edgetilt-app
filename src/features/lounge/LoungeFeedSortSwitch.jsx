@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
+import { LOUNGE_FEED_SORT, writeLoungeFeedSort } from '../../utils/loungeFeedSortPref.js'
 
 const OPTIONS = [
-  { value: LOUNGE_FEED_SCOPE_ALL, label: 'Discover' },
-  { value: LOUNGE_FEED_SCOPE_FOLLOWING, label: 'Following' },
+  { value: LOUNGE_FEED_SORT.LATEST, label: 'Latest' },
+  { value: LOUNGE_FEED_SORT.POPULAR, label: 'Popular' },
 ]
 
-function labelForScope(scope) {
-  return OPTIONS.find((o) => o.value === scope)?.label || 'Discover'
+function labelForValue(value) {
+  return OPTIONS.find((o) => o.value === value)?.label || 'Latest'
 }
 
 /**
- * Discover vs Following — compact dropdown (matches post-detail comment sort + feed sort menus).
+ * Minimal home feed sort: `Latest ▾` (compact menu, matches post-detail comment sort).
  */
-export default function LoungeFeedScopeSwitch({
-  scope = LOUNGE_FEED_SCOPE_ALL,
-  onScopeChange,
+export default function LoungeFeedSortSwitch({
+  value = LOUNGE_FEED_SORT.LATEST,
+  onChange,
   disabled = false,
   className = '',
 }) {
@@ -31,7 +31,7 @@ export default function LoungeFeedScopeSwitch({
     return () => document.removeEventListener('pointerdown', onDoc)
   }, [open])
 
-  const currentLabel = labelForScope(scope)
+  const currentLabel = labelForValue(value)
 
   return (
     <div ref={wrapRef} className={`relative inline-flex ${className}`.trim()}>
@@ -40,7 +40,7 @@ export default function LoungeFeedScopeSwitch({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Feed scope"
+        aria-label="Feed sort"
         onClick={() => setOpen((o) => !o)}
         className="inline-flex items-center gap-0.5 rounded-md py-0.5 pr-0.5 text-[13px] font-medium leading-tight text-zinc-500 touch-manipulation hover:text-zinc-300 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
       >
@@ -59,18 +59,19 @@ export default function LoungeFeedScopeSwitch({
           className="absolute left-0 top-full z-20 mt-0.5 min-w-[7.5rem] rounded-lg border border-zinc-700/90 bg-zinc-900 py-0.5 shadow-lg"
         >
           {OPTIONS.map((opt) => (
-            <li key={opt.value} role="option" aria-selected={opt.value === scope}>
+            <li key={opt.value} role="option" aria-selected={opt.value === value}>
               <button
                 type="button"
                 className={`block w-full px-2.5 py-1 text-left text-[13px] font-medium touch-manipulation hover:bg-zinc-800 ${
-                  opt.value === scope ? 'text-zinc-100' : 'text-zinc-400'
+                  opt.value === value ? 'text-zinc-100' : 'text-zinc-400'
                 }`}
                 onClick={() => {
-                  if (opt.value === scope) {
+                  if (opt.value === value) {
                     setOpen(false)
                     return
                   }
-                  onScopeChange?.(opt.value)
+                  writeLoungeFeedSort(opt.value)
+                  onChange?.(opt.value)
                   setOpen(false)
                 }}
               >

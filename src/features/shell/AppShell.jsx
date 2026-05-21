@@ -6,10 +6,11 @@ import {
   fetchLoungeFollowingAuthorIds,
   LOUNGE_FEED_SCOPE_ALL,
   LOUNGE_FEED_SCOPE_FOLLOWING,
-  loungeFeedPageQuery,
-  loungeFeedPageQueryAfterCursor,
+  loungeFeedCursorFromPageLast,
+  loungeFeedPageRpcQuery,
   loungeFeedPinnedQuery,
 } from '../../utils/loungeFeedScope'
+import { LOUNGE_FEED_SORT, readLoungeFeedSort } from '../../utils/loungeFeedSortPref'
 import { renderRichCaption } from '../lounge/loungeCaption'
 import {
   OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX,
@@ -87,6 +88,11 @@ export default function AppShell({
   const [loungeFeedScope, setLoungeFeedScope] = useState(LOUNGE_FEED_SCOPE_ALL)
   const loungeFeedScopeRef = useRef(loungeFeedScope)
   loungeFeedScopeRef.current = loungeFeedScope
+  const [loungeFeedSort, setLoungeFeedSort] = useState(() => readLoungeFeedSort())
+  const loungeFeedSortRef = useRef(loungeFeedSort)
+  loungeFeedSortRef.current = loungeFeedSort
+  /** Frozen `p_as_of` for Popular pagination within one head load + load-more chain. */
+  const loungeFeedPopularAsOfRef = useRef(/** @type {string | null} */ (null))
   /** True while the first page of the Lounge feed is being reloaded (including silent pull-to-refresh). */
   const communityFeedHeadReloadingRef = useRef(false)
   const iosPwaNotifPromptInFlightRef = useRef(false)
@@ -317,6 +323,7 @@ export default function AppShell({
   const loadCommunityFeed = useCallback(async (opts) => {
     const silent = opts?.silent === true
     const scope = opts?.scope ?? loungeFeedScopeRef.current
+    const sort = opts?.sort ?? loungeFeedSortRef.current
     if (!silent) {
       setCommunityFeedLoading(true)
       setCommunityFeedLoadingMore(false)
@@ -334,6 +341,7 @@ export default function AppShell({
           setCommunityPosts([])
           setCommunityFeedHasMore(false)
           setCommunityFeedCursor(null)
+          loungeFeedPopularAsOfRef.current = null
           return
         }
         followingAuthorIds = await fetchLoungeFollowingAuthorIds(supabaseClient, viewerId)
@@ -342,13 +350,24 @@ export default function AppShell({
           setCommunityPosts([])
           setCommunityFeedHasMore(false)
           setCommunityFeedCursor(null)
+          loungeFeedPopularAsOfRef.current = null
           return
         }
       }
 
+      const asOf = new Date().toISOString()
+      loungeFeedPopularAsOfRef.current = sort === LOUNGE_FEED_SORT.POPULAR ? asOf : null
+
       const [{ data: pinnedRows }, { data: rows, error }] = await Promise.all([
         loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds),
-        loungeFeedPageQuery(supabaseClient, scope, followingAuthorIds, COMMUNITY_FEED_PAGE_SIZE + 1),
+        loungeFeedPageRpcQuery(supabaseClient, {
+          sort,
+          scope,
+          followingAuthorIds,
+          limit: COMMUNITY_FEED_PAGE_SIZE + 1,
+          asOf,
+          cursor: null,
+        }),
       ])
 
       if (error) {
@@ -356,6 +375,7 @@ export default function AppShell({
         setCommunityPosts([])
         setCommunityFeedHasMore(false)
         setCommunityFeedCursor(null)
+        loungeFeedPopularAsOfRef.current = null
         return
       }
 
@@ -370,12 +390,13 @@ export default function AppShell({
 
       setCommunityPosts(hydrated)
       setCommunityFeedHasMore(hasMore)
-      setCommunityFeedCursor(pageLast ? { created_at: pageLast.created_at, id: pageLast.id } : null)
+      setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } catch (e) {
       setCommunityFeedQueryErr(String(e?.message || 'Could not load feed.'))
       setCommunityPosts([])
       setCommunityFeedHasMore(false)
       setCommunityFeedCursor(null)
+      loungeFeedPopularAsOfRef.current = null
     } finally {
       communityFeedHeadReloadingRef.current = false
       if (!silent) setCommunityFeedLoading(false)
@@ -394,6 +415,16 @@ export default function AppShell({
       void loadCommunityFeed({ scope: nextScope })
     },
     [browseMode, loadCommunityFeed, onRequireAuth],
+  )
+
+  const onLoungeFeedSortChange = useCallback(
+    (nextSort) => {
+      if (nextSort !== LOUNGE_FEED_SORT.LATEST && nextSort !== LOUNGE_FEED_SORT.POPULAR) return
+      setLoungeFeedSort(nextSort)
+      loungeFeedSortRef.current = nextSort
+      void loadCommunityFeed({ sort: nextSort })
+    },
+    [loadCommunityFeed],
   )
 
   useEffect(() => {
@@ -418,6 +449,8 @@ export default function AppShell({
     setCommunityFeedLoadingMore(true)
     try {
       const scope = loungeFeedScopeRef.current
+      const sort = loungeFeedSortRef.current
+      const asOf = loungeFeedPopularAsOfRef.current || new Date().toISOString()
       let followingAuthorIds = null
       if (scope === LOUNGE_FEED_SCOPE_FOLLOWING) {
         const {
@@ -429,13 +462,14 @@ export default function AppShell({
         if (followingAuthorIds.length === 0) return
       }
 
-      const { data: rows, error } = await loungeFeedPageQueryAfterCursor(
-        supabaseClient,
+      const { data: rows, error } = await loungeFeedPageRpcQuery(supabaseClient, {
+        sort,
         scope,
         followingAuthorIds,
-        communityFeedCursor,
-        COMMUNITY_FEED_PAGE_SIZE + 1,
-      )
+        limit: COMMUNITY_FEED_PAGE_SIZE + 1,
+        asOf,
+        cursor: communityFeedCursor,
+      })
 
       if (error) return
 
@@ -450,7 +484,7 @@ export default function AppShell({
         ...hydrated.filter((row) => !prev.some((existing) => existing.id === row.id)),
       ])
       setCommunityFeedHasMore(hasMore)
-      setCommunityFeedCursor(pageLast ? { created_at: pageLast.created_at, id: pageLast.id } : null)
+      setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } finally {
       setCommunityFeedLoadingMore(false)
     }
@@ -658,6 +692,8 @@ export default function AppShell({
             isStaff={isStaff}
             loungeFeedScope={loungeFeedScope}
             onLoungeFeedScopeChange={onLoungeFeedScopeChange}
+            loungeFeedSort={loungeFeedSort}
+            onLoungeFeedSortChange={onLoungeFeedSortChange}
             loungeFeedBrowseMode={browseMode}
             isActivePage={tab === 'home'}
           />

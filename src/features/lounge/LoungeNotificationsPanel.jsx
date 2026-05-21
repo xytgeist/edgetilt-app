@@ -3,7 +3,11 @@ import LoungeOgBadge from './LoungeOgBadge.jsx'
 import LoungeNotificationActionBadge from './LoungeNotificationActionBadge.jsx'
 import {
   LOUNGE_FEED_AVATAR_CLASS,
+  LOUNGE_FEED_DISPLAY_NAME_CLASS,
+  LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   LOUNGE_FEED_META_ROW_CLASS,
+  LOUNGE_FEED_POST_ROW_CLASS,
+  LOUNGE_FEED_POST_ROW_INNER_CLASS,
 } from './loungeFeedAvatar.js'
 import {
   profileAvatarInitials,
@@ -12,6 +16,7 @@ import {
 import {
   formatLoungeActivityWhen,
   isLoungeActivitySchemaMissingError,
+  loungeActivityActionPhrase,
   loungeActivityEventsPage,
   loungeActivityMarkAllRead,
   loungeActivityOpenPostTarget,
@@ -173,7 +178,7 @@ export default function LoungeNotificationsPanel({
       ) : items.length === 0 ? (
         <p className="mt-6 text-[14px] leading-relaxed text-zinc-400">{emptyCopy}</p>
       ) : (
-        <ul className="mt-4 flex flex-col gap-1">
+        <ul className="mt-4 -mx-3 list-none p-0">
           {items.map((event) => {
             const isNew = sessionNewIds.has(event.id)
             const actorProfile = {
@@ -187,7 +192,11 @@ export default function LoungeNotificationsPanel({
             const avatarUrl = String(actorProfile.avatar_url || '').trim()
             const avatarTone = profileAvatarToneClass(actorProfile.user_id)
             const avatarText = profileAvatarInitials(actorProfile.display_name, actorProfile.handle)
+            const displayName =
+              String(actorProfile.display_name || '').trim() ||
+              (actorProfile.handle ? `@${String(actorProfile.handle).trim()}` : 'Member')
             const when = formatLoungeActivityWhen(event.created_at)
+            const actionPhrase = loungeActivityActionPhrase(event)
             const summary = loungeActivitySummary(event)
 
             return (
@@ -195,44 +204,45 @@ export default function LoungeNotificationsPanel({
                 <button
                   type="button"
                   onClick={() => onRowActivate(event)}
-                  className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                    isNew
-                      ? 'border-cyan-500/35 bg-cyan-950/20 hover:bg-cyan-950/30'
-                      : 'border-zinc-800/90 bg-zinc-950/40 hover:bg-zinc-900/60'
+                  aria-label={summary}
+                  className={`${LOUNGE_FEED_POST_ROW_CLASS} flex w-full items-start gap-3 text-left touch-manipulation ${
+                    isNew ? 'bg-cyan-950/20 active:bg-cyan-950/35' : ''
                   }`}
                 >
-                  <span className="relative shrink-0">
-                    <span
-                      className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center overflow-hidden`}
-                      aria-hidden
-                    >
-                      {avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span
-                          className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarTone}`}
-                        >
-                          {avatarText}
-                        </span>
-                      )}
-                    </span>
-                    <LoungeNotificationActionBadge eventType={event.event_type} />
+                  <span
+                    className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center overflow-hidden`}
+                    aria-hidden
+                  >
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span
+                        className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarTone}`}
+                      >
+                        {avatarText}
+                      </span>
+                    )}
                   </span>
-                  <span className="min-w-0 flex-1">
+                  <span className={`min-w-0 flex-1 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
                     <span className={`${LOUNGE_FEED_META_ROW_CLASS} flex-wrap gap-x-1.5 gap-y-0.5`}>
-                      <span className="text-[15px] font-semibold text-zinc-100">{summary}</span>
+                      <span className={LOUNGE_FEED_DISPLAY_NAME_CLASS}>{displayName}</span>
                       {event.actor_is_og ? <LoungeOgBadge /> : null}
+                      {when ? (
+                        <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                          <span aria-hidden>·</span>
+                          <span>{when}</span>
+                        </span>
+                      ) : null}
                     </span>
-                    {when ? (
-                      <span className="mt-0.5 block text-[13px] text-zinc-500">{when}</span>
-                    ) : null}
+                    <span className="mt-0.5 block text-[15px] leading-snug text-zinc-400">{actionPhrase}</span>
                   </span>
+                  <LoungeNotificationActionBadge eventType={event.event_type} />
                 </button>
               </li>
             )

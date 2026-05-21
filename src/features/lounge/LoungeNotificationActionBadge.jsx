@@ -9,31 +9,33 @@ const BOOKMARK_RIBBON_D = 'M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1
 const REPOST_ARROWS_D =
   'M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2'
 
-function BadgeAnchor({ children, className = '' }) {
+/** Fixed right-rail slot — every notification action glyph uses the same box + 24px art. */
+const RAIL_CLASS =
+  'pointer-events-none flex h-10 w-10 shrink-0 items-center justify-center self-center'
+const GLYPH_CLASS = 'h-6 w-6'
+
+function IconRail({ children }) {
   return (
-    <span
-      className={`pointer-events-none absolute -bottom-1 -right-1 z-[1] flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] ${className}`}
-      aria-hidden
-    >
+    <span className={RAIL_CLASS} aria-hidden>
       {children}
     </span>
   )
 }
 
-function BadgeComment() {
+function IconComment() {
   return (
-    <BadgeAnchor>
-      <svg className="h-[22px] w-[22px] text-zinc-200" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <IconRail>
+      <svg className={`${GLYPH_CLASS} text-zinc-200`} viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d={COMMENT_BUBBLE_D} fill="currentColor" />
       </svg>
-    </BadgeAnchor>
+    </IconRail>
   )
 }
 
-function BadgeReply() {
+function IconReply() {
   return (
-    <BadgeAnchor>
-      <svg className="h-[22px] w-[22px] text-cyan-300" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <IconRail>
+      <svg className={`${GLYPH_CLASS} text-cyan-300`} viewBox="0 0 20 20" fill="none" aria-hidden>
         <path
           d="M6.5 11.5L4 14v-3.25A4.25 4.25 0 014.75 6.5h10.5a4.25 4.25 0 014.25 4.25v.5"
           stroke="currentColor"
@@ -49,41 +51,41 @@ function BadgeReply() {
           strokeLinejoin="round"
         />
       </svg>
-    </BadgeAnchor>
+    </IconRail>
   )
 }
 
-function BadgeMention() {
+function IconMention() {
   return (
-    <BadgeAnchor>
-      <span className="text-[20px] font-bold leading-none text-orange-400">@</span>
-    </BadgeAnchor>
+    <IconRail>
+      <span className="text-[24px] font-bold leading-none text-orange-400">@</span>
+    </IconRail>
   )
 }
 
-function BadgeFollow() {
+function IconFollow() {
   return (
-    <BadgeAnchor>
-      <svg className="h-[28px] w-[28px] text-cyan-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+    <IconRail>
+      <svg className={`${GLYPH_CLASS} text-cyan-400`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
         <circle cx="10" cy="7.25" r="2.75" />
         <path d="M5.25 15.5v-.75c0-2.07 1.68-3.75 3.75-3.75h1.5c2.07 0 3.75 1.68 3.75 3.75v.75H5.25z" />
       </svg>
-    </BadgeAnchor>
+    </IconRail>
   )
 }
 
-function BadgeLike() {
+function IconLike() {
   return (
-    <BadgeAnchor>
-      <LoungeFlameIcon className="h-[24px] w-[24px] text-zinc-200" liked readOnly={false} />
-    </BadgeAnchor>
+    <IconRail>
+      <LoungeFlameIcon className={`${GLYPH_CLASS} text-zinc-200`} liked readOnly={false} />
+    </IconRail>
   )
 }
 
-function BadgeRepost() {
+function IconRepost() {
   return (
-    <BadgeAnchor>
-      <svg className="h-[22px] w-[22px] text-emerald-400" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <IconRail>
+      <svg className={`${GLYPH_CLASS} text-emerald-400`} viewBox="0 0 20 20" fill="none" aria-hidden>
         <path
           d={REPOST_ARROWS_D}
           stroke="currentColor"
@@ -92,15 +94,15 @@ function BadgeRepost() {
           strokeLinejoin="round"
         />
       </svg>
-    </BadgeAnchor>
+    </IconRail>
   )
 }
 
 /** Quote repost — white note with writing lines + cyan repost arrows (no pencil). */
-function BadgeQuoteRepost() {
+function IconQuoteRepost() {
   return (
-    <BadgeAnchor>
-      <svg className="h-[24px] w-[24px]" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <IconRail>
+      <svg className={GLYPH_CLASS} viewBox="0 0 20 20" fill="none" aria-hidden>
         <rect x="4.5" y="3.25" width="11" height="13.5" rx="1.35" fill="#fafafa" />
         <path d="M6.75 6.5h6.5M6.75 9.25h6.5M6.75 12h4.5" stroke="#a1a1aa" strokeWidth="0.9" strokeLinecap="round" />
         <path
@@ -111,38 +113,38 @@ function BadgeQuoteRepost() {
           strokeLinejoin="round"
         />
       </svg>
-    </BadgeAnchor>
+    </IconRail>
   )
 }
 
-function BadgeBookmark() {
+function IconBookmark() {
   return (
-    <BadgeAnchor>
-      <svg className="h-[22px] w-[22px] text-lv-yellow" viewBox="0 0 20 20" fill="none" aria-hidden>
+    <IconRail>
+      <svg className={`${GLYPH_CLASS} text-lv-yellow`} viewBox="0 0 20 20" fill="none" aria-hidden>
         <path d={BOOKMARK_RIBBON_D} fill="currentColor" />
       </svg>
-    </BadgeAnchor>
+    </IconRail>
   )
 }
 
-const BADGE_BY_KIND = {
-  comment: BadgeComment,
-  reply: BadgeReply,
-  mention: BadgeMention,
-  follow: BadgeFollow,
-  like: BadgeLike,
-  repost: BadgeRepost,
-  quote_repost: BadgeQuoteRepost,
-  bookmark: BadgeBookmark,
+const ICON_BY_KIND = {
+  comment: IconComment,
+  reply: IconReply,
+  mention: IconMention,
+  follow: IconFollow,
+  like: IconLike,
+  repost: IconRepost,
+  quote_repost: IconQuoteRepost,
+  bookmark: IconBookmark,
 }
 
 /**
- * Interaction glyph on the avatar corner for notification rows.
+ * Interaction glyph in the notification row right rail.
  * @param {{ eventType?: string, kind?: string|null }} props
  */
 export default function LoungeNotificationActionBadge({ eventType, kind: kindProp }) {
   const kind = kindProp ?? loungeActivityNotificationBadgeKind(eventType)
-  const Badge = kind ? BADGE_BY_KIND[kind] : null
-  if (!Badge) return null
-  return <Badge />
+  const Icon = kind ? ICON_BY_KIND[kind] : null
+  if (!Icon) return null
+  return <Icon />
 }

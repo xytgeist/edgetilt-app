@@ -97,34 +97,34 @@ export function loungeActivityOpenPostTarget(event) {
   }
 }
 
-export function loungeActivitySummary(event) {
-  const who = loungeActivityActorLabel(event)
+export function loungeActivityActionPhrase(event) {
   switch (event?.event_type) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.COMMENT_ON_POST:
-      return `${who} commented on your post`
+      return 'commented on your post'
     case LOUNGE_ACTIVITY_EVENT_TYPES.REPLY_TO_COMMENT:
-      return `${who} replied to your comment`
+      return 'replied to your comment'
     case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_POST:
-      return `${who} mentioned you in a post`
+      return 'mentioned you in a post'
     case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_COMMENT:
-      return `${who} mentioned you in a comment`
+      return 'mentioned you in a comment'
     case LOUNGE_ACTIVITY_EVENT_TYPES.FOLLOW:
-      return `${who} followed you`
+      return 'followed you'
     case LOUNGE_ACTIVITY_EVENT_TYPES.REPOST:
-      return event?.comment_id
-        ? `${who} reposted your comment`
-        : `${who} reposted your post`
+      return event?.comment_id ? 'reposted your comment' : 'reposted your post'
     case LOUNGE_ACTIVITY_EVENT_TYPES.QUOTE_REPOST:
-      return `${who} quote reposted your post`
+      return 'quote reposted your post'
     case LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK:
-      return event?.comment_id
-        ? `${who} bookmarked your comment`
-        : `${who} bookmarked your post`
+      return event?.comment_id ? 'bookmarked your comment' : 'bookmarked your post'
     case LOUNGE_ACTIVITY_EVENT_TYPES.LIKE:
-      return event?.comment_id ? `${who} liked your comment` : `${who} liked your post`
+      return event?.comment_id ? 'liked your comment' : 'liked your post'
     default:
-      return `${who} interacted with you`
+      return 'interacted with you'
   }
+}
+
+export function loungeActivitySummary(event) {
+  const who = loungeActivityActorLabel(event)
+  return `${who} ${loungeActivityActionPhrase(event)}`
 }
 
 /**

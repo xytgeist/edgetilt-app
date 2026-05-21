@@ -10,7 +10,6 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   FOLLOW: 'follow',
   REPOST: 'repost',
   QUOTE_REPOST: 'quote_repost',
-  /** Reserved for H2+ notification slices. */
   LIKE: 'like',
   BOOKMARK: 'bookmark',
 }
@@ -90,7 +89,8 @@ export function loungeActivityOpenPostTarget(event) {
     type === LOUNGE_ACTIVITY_EVENT_TYPES.COMMENT_ON_POST ||
     type === LOUNGE_ACTIVITY_EVENT_TYPES.REPLY_TO_COMMENT ||
     type === LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_COMMENT ||
-    (type === LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK && event.comment_id)
+    (type === LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK && event.comment_id) ||
+    (type === LOUNGE_ACTIVITY_EVENT_TYPES.LIKE && event.comment_id)
   return {
     postId: event.post_id,
     commentId: drillComment && event.comment_id ? event.comment_id : null,
@@ -120,6 +120,8 @@ export function loungeActivitySummary(event) {
       return event?.comment_id
         ? `${who} bookmarked your comment`
         : `${who} bookmarked your post`
+    case LOUNGE_ACTIVITY_EVENT_TYPES.LIKE:
+      return event?.comment_id ? `${who} liked your comment` : `${who} liked your post`
     default:
       return `${who} interacted with you`
   }

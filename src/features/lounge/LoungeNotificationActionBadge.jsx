@@ -12,7 +12,7 @@ const REPOST_ARROWS_D =
 function BadgeAnchor({ children, className = '' }) {
   return (
     <span
-      className={`pointer-events-none absolute -right-1 -top-1 z-[1] flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] ${className}`}
+      className={`pointer-events-none absolute -bottom-1 -right-1 z-[1] flex items-center justify-center drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] ${className}`}
       aria-hidden
     >
       {children}
@@ -23,15 +23,8 @@ function BadgeAnchor({ children, className = '' }) {
 function BadgeComment() {
   return (
     <BadgeAnchor>
-      <svg className="h-[22px] w-[22px] text-zinc-100" viewBox="0 0 20 20" fill="none" aria-hidden>
-        <path
-          d={COMMENT_BUBBLE_D}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.35"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+      <svg className="h-[22px] w-[22px] text-zinc-200" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <path d={COMMENT_BUBBLE_D} fill="currentColor" />
       </svg>
     </BadgeAnchor>
   )
@@ -71,7 +64,7 @@ function BadgeMention() {
 function BadgeFollow() {
   return (
     <BadgeAnchor>
-      <svg className="h-[22px] w-[22px] text-cyan-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+      <svg className="h-[28px] w-[28px] text-cyan-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
         <circle cx="10" cy="7.25" r="2.75" />
         <path d="M5.25 15.5v-.75c0-2.07 1.68-3.75 3.75-3.75h1.5c2.07 0 3.75 1.68 3.75 3.75v.75H5.25z" />
       </svg>

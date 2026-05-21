@@ -4683,7 +4683,6 @@ export default function SocialFeed({
         }
       }
       if (!postRow) return
-      setLoungeDockPanel(null)
       if (commentId) {
         await openDirectCommentPostDetail(postRow, commentId)
       } else {
@@ -4807,7 +4806,12 @@ export default function SocialFeed({
   )
 
   useEffect(() => {
-    if (loungePostDetail && loungeDockPanel && loungeDockPanel !== 'search') {
+    if (
+      loungePostDetail &&
+      loungeDockPanel &&
+      loungeDockPanel !== 'search' &&
+      loungeDockPanel !== 'notifications'
+    ) {
       setChatDockInitialPeerUserId(null)
       setLoungeDockPanel(null)
     }
@@ -4862,7 +4866,9 @@ export default function SocialFeed({
   }, [communityPosts, hydrateCommunityPosts, openLoungePostDetail, setCommunityPosts, supabaseClient])
 
   const loungePostDetailOpenedOverSearch = Boolean(
-    loungePostDetail?.id && loungeDockPanel === 'search' && !loungePostDetailAboveProfile,
+    loungePostDetail?.id &&
+      (loungeDockPanel === 'search' || loungeDockPanel === 'notifications') &&
+      !loungePostDetailAboveProfile,
   )
   const loungePostDetailShellZClass = loungePostDetailAboveProfile
     ? 'z-[102]'

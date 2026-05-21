@@ -184,8 +184,9 @@ export default function LoungeNotificationsPanel({
               role: event.actor_role,
               is_og: event.actor_is_og,
             }
-            const avatarTone = profileAvatarToneClass(actorProfile)
-            const avatarText = profileAvatarInitials(actorProfile)
+            const avatarUrl = String(actorProfile.avatar_url || '').trim()
+            const avatarTone = profileAvatarToneClass(actorProfile.user_id)
+            const avatarText = profileAvatarInitials(actorProfile.display_name, actorProfile.handle)
             const when = formatLoungeActivityWhen(event.created_at)
             const summary = loungeActivitySummary(event)
 
@@ -201,10 +202,24 @@ export default function LoungeNotificationsPanel({
                   }`}
                 >
                   <span
-                    className={`${LOUNGE_FEED_AVATAR_CLASS} ${avatarTone} shrink-0`}
+                    className={`${LOUNGE_FEED_AVATAR_CLASS} flex shrink-0 items-center justify-center overflow-hidden`}
                     aria-hidden
                   >
-                    {avatarText}
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span
+                        className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarTone}`}
+                      >
+                        {avatarText}
+                      </span>
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={`${LOUNGE_FEED_META_ROW_CLASS} flex-wrap gap-x-1.5 gap-y-0.5`}>

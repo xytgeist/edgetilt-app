@@ -126,6 +126,10 @@ export function createAutoplayStore() {
   let handoffCount = 0
   let softResetEpoch = 0
 
+  /** @type {Map<string, () => void>} */
+  const soundGestureHandlers = new Map()
+  let feedSoundTouchActive = false
+
   const emit = () => {
     listeners.forEach((l) => {
       try {
@@ -747,6 +751,32 @@ export function createAutoplayStore() {
       if (coordinatorSuspended === next) return
       coordinatorSuspended = next
       schedule()
+    },
+    /** Active tile registers gesture-scoped unmute (iOS feed-wide sound handoffs). */
+    registerSoundGesture(id, fn) {
+      if (!id || typeof fn !== 'function') return () => {}
+      soundGestureHandlers.set(id, fn)
+      return () => {
+        soundGestureHandlers.delete(id)
+      }
+    },
+    /** Provider sets while finger is on the scroll column (handoff mid-scroll = still in gesture). */
+    setFeedSoundTouchActive(active) {
+      feedSoundTouchActive = Boolean(active)
+    },
+    isFeedSoundTouchActive() {
+      return feedSoundTouchActive
+    },
+    /** Scroll-root touch — invoke active tile unmute inside user-gesture stack. */
+    notifySoundGesture() {
+      if (!activeId) return
+      const fn = soundGestureHandlers.get(activeId)
+      if (typeof fn !== 'function') return
+      try {
+        fn()
+      } catch {
+        // ignore
+      }
     },
   }
 }

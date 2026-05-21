@@ -87,6 +87,34 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
     store.setScrollRootRef(scrollRootRef)
   }, [store, scrollRootRef])
 
+  /** iOS feed-wide sound: chain unmute to scroll touches (programmatic handoff unmute is blocked). */
+  useEffect(() => {
+    if (!feedInlineSoundUnmuted) {
+      store.setFeedSoundTouchActive(false)
+      return undefined
+    }
+    const el = scrollRootRef?.current
+    if (!el) return undefined
+
+    const onTouchStart = () => {
+      store.setFeedSoundTouchActive(true)
+      store.notifySoundGesture()
+    }
+    const onTouchEnd = () => {
+      store.setFeedSoundTouchActive(false)
+      store.notifySoundGesture()
+    }
+    el.addEventListener('touchstart', onTouchStart, { capture: true, passive: true })
+    el.addEventListener('touchend', onTouchEnd, { capture: true, passive: true })
+    el.addEventListener('touchcancel', onTouchEnd, { capture: true, passive: true })
+    return () => {
+      store.setFeedSoundTouchActive(false)
+      el.removeEventListener('touchstart', onTouchStart, { capture: true })
+      el.removeEventListener('touchend', onTouchEnd, { capture: true })
+      el.removeEventListener('touchcancel', onTouchEnd, { capture: true })
+    }
+  }, [feedInlineSoundUnmuted, scrollRootRef, store])
+
   useEffect(() => {
     const onScrollOrResize = () => store.markScroll()
     const el = scrollRootRef?.current
@@ -289,6 +317,8 @@ export function useLoungeFeedVideoAutoplay(clientId, getContainerEl) {
     enterFeedHeroLock: ctx?.enterFeedHeroLock ?? (() => {}),
     exitFeedHeroLock: ctx?.exitFeedHeroLock ?? (() => {}),
     releaseStalledActive: ctx?.store?.releaseStalledActive ?? (() => {}),
+    registerFeedSoundGesture: ctx?.store?.registerSoundGesture ?? (() => () => {}),
+    isFeedSoundTouchActive: ctx?.store?.isFeedSoundTouchActive ?? (() => false),
     /** @deprecated use isActive */
     isWinner: isActive,
     /** @deprecated unused */

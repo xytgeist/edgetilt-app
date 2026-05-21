@@ -5,6 +5,7 @@ import {
   plainTextFromComposerRoot,
   syncComposerHtml,
 } from './loungeRichComposerDom.js'
+import { LOUNGE_RICH_COMPOSER_VARIANTS } from './loungeRichComposerVariants.js'
 
 /**
  * Contenteditable Lounge caption field — real @ / # / link styling with aligned caret.
@@ -15,9 +16,11 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     value = '',
     onChange,
     maxLength = 280,
+    variant = 'feed',
     className = '',
     ariaLabel = 'Lounge post caption',
     placeholder = '',
+    id,
     onKeyDown,
     onKeyUp,
     onMouseUp,
@@ -25,12 +28,15 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     onFocus,
     onInput,
     disabled = false,
+    autoGrow = false,
+    enterInsertsNewline = true,
   },
   ref,
 ) {
   const rootRef = useRef(null)
   const lastValueRef = useRef(value)
   const composingRef = useRef(false)
+  const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
 
   useImperativeHandle(ref, () => rootRef.current, [])
 
@@ -64,6 +70,21 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     syncComposerHtml(el, value, caret)
   }, [value])
 
+  useLayoutEffect(() => {
+    if (!autoGrow) return
+    const el = rootRef.current
+    if (!el) return
+    try {
+      el.style.height = 'auto'
+      const max = Math.round(Math.min(window.innerHeight * 0.42, 352))
+      const lineFloor = 38
+      el.style.height = `${Math.min(Math.max(el.scrollHeight, lineFloor), max)}px`
+      el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden'
+    } catch {
+      // ignore
+    }
+  }, [autoGrow, value])
+
   const handleInput = useCallback(() => {
     readAndEmit()
   }, [readAndEmit])
@@ -83,13 +104,13 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     (e) => {
       onKeyDown?.(e)
       if (e.defaultPrevented) return
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (enterInsertsNewline && e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         insertPlainTextAtSelection(rootRef.current, '\n')
         readAndEmit()
       }
     },
-    [onKeyDown, readAndEmit],
+    [enterInsertsNewline, onKeyDown, readAndEmit],
   )
 
   return (
@@ -97,13 +118,14 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       {!value && placeholder ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute left-0 top-0 select-none whitespace-pre-wrap pt-[10px] text-[17px] leading-[1.25] text-zinc-500 sm:pt-[13px]"
+          className={`pointer-events-none absolute left-0 top-0 select-none whitespace-pre-wrap text-zinc-500 ${preset.placeholderClass}`}
         >
           {placeholder}
         </span>
       ) : null}
       <div
         ref={rootRef}
+        id={id}
         role="textbox"
         aria-multiline="true"
         aria-label={ariaLabel}
@@ -124,7 +146,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
           composingRef.current = false
           readAndEmit()
         }}
-        className={`min-h-[2.75rem] max-h-[min(50vh,22rem)] w-full touch-manipulation overflow-y-auto whitespace-pre-wrap break-words px-0 py-0 pt-[10px] text-left text-[17px] leading-[1.25] text-zinc-100 outline-none selection:bg-cyan-500/25 empty:min-h-[2.75rem] sm:min-h-[3rem] sm:pt-[13px] ${className}`}
+        className={`w-full touch-manipulation whitespace-pre-wrap break-words px-0 text-left text-zinc-100 outline-none selection:bg-cyan-500/25 [-webkit-tap-highlight-color:transparent] ${preset.fieldClass} ${autoGrow ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}
       />
     </div>
   )

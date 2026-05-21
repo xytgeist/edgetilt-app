@@ -508,7 +508,7 @@ export default function SocialFeed({
   const loungePostDetailScrollRef = useRef(null)
   const loungePostDetailPostAvatarRef = useRef(null)
   const loungePostDetailCommentConnectorRef = useRef(null)
-  const loungeDetailCommentTextareaRef = useRef(null)
+  const loungeDetailCommentFieldRef = useRef(null)
   const loungeDetailCommentDraftRef = useRef('')
   const loungePostDetailTitleBarRef = useRef(null)
   const loungePostDetailTitleRevealRef = useRef(1)
@@ -543,8 +543,7 @@ export default function SocialFeed({
   const quoteRepostVideoPrepSpecRef = useRef(null)
   const quoteRepostVideoLastEncodedFileRef = useRef(/** @type {File | null} */ (null))
   const quoteRepostVideoPrepHandoffRef = useRef(null)
-  const quoteRepostTextareaRef = useRef(null)
-  const quoteRepostMirrorRef = useRef(null)
+  const quoteRepostFieldRef = useRef(null)
   const quoteRepostScrollRef = useRef(null)
   const quoteRepostMediaInputRef = useRef(null)
   const [loungeDetailComments, setLoungeDetailComments] = useState([])
@@ -677,8 +676,7 @@ export default function SocialFeed({
   const mentionComposerAnchorRef = useRef(null)
   const mentionDetailCommentAnchorRef = useRef(null)
   const mentionQuoteRepostAnchorRef = useRef(null)
-  const loungeDetailEditTextareaRef = useRef(null)
-  const loungeDetailEditMirrorRef = useRef(null)
+  const loungeDetailEditFieldRef = useRef(null)
   const loungeDetailEditMediaInputRef = useRef(null)
   const loungeFeedScrollRef = useRef(null)
   /** Bound inside feed `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
@@ -966,8 +964,8 @@ export default function SocialFeed({
             ? scrollLoungeFeedToTopInstant
             : undefined
       const getTextarea = () => {
-        if (target === 'detailComment') return loungeDetailCommentTextareaRef.current
-        if (target === 'quote') return quoteRepostTextareaRef.current
+        if (target === 'detailComment') return loungeDetailCommentFieldRef.current
+        if (target === 'quote') return quoteRepostFieldRef.current
         return composerFieldRef.current
       }
       const isBlocked = () => {
@@ -1081,8 +1079,8 @@ export default function SocialFeed({
 
   const blurLoungeComposerCaptionForTarget = useCallback((target) => {
     const getTextarea = () => {
-      if (target === 'detailComment') return loungeDetailCommentTextareaRef.current
-      if (target === 'quote') return quoteRepostTextareaRef.current
+      if (target === 'detailComment') return loungeDetailCommentFieldRef.current
+      if (target === 'quote') return quoteRepostFieldRef.current
       return composerFieldRef.current
     }
     blurLoungeComposerCaption(getTextarea)
@@ -1102,7 +1100,7 @@ export default function SocialFeed({
 
   const expandAndFocusLoungeDetailCommentComposer = useCallback(({ skipScrollToTop = false } = {}) => {
     if (!skipScrollToTop) scrollLoungePostDetailToTopInstant()
-    focusLoungeComposerCaption(() => loungeDetailCommentTextareaRef.current, {
+    focusLoungeComposerCaption(() => loungeDetailCommentFieldRef.current, {
       scrollFeedToTop: skipScrollToTop ? undefined : scrollLoungePostDetailToTopInstant,
     })
     scheduleLoungeComposerCaptionRefocus('detailComment')
@@ -1157,17 +1155,11 @@ export default function SocialFeed({
   }, [loungePostDetail, loungeReadOnly])
 
   useLayoutEffect(() => {
-    const ta = loungeDetailCommentTextareaRef.current
-    if (!ta || !loungeDetailCommentComposerExpanded || !loungePostDetail) return
-    try {
-      ta.style.height = 'auto'
-      const max = Math.round(Math.min(window.innerHeight * 0.42, 352))
-      const lineFloor = 38
-      ta.style.height = `${Math.min(Math.max(ta.scrollHeight, lineFloor), max)}px`
-    } catch {
-      // ignore
-    }
-  }, [loungeDetailCommentDraft, loungeDetailCommentComposerExpanded, loungePostDetail])
+    if (!loungeDetailEditing) return
+    focusLoungeComposerCaption(() => loungeDetailEditFieldRef.current)
+    const el = loungeDetailEditFieldRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [loungeDetailEditing])
 
   useEffect(() => {
     if (!composerExpanded || composerFoldReveal < 0.88 || loungeDockPanel) return undefined
@@ -1176,33 +1168,6 @@ export default function SocialFeed({
       scrollFeedToTop: scrollLoungeFeedToTopInstant,
     })
   }, [composerExpanded, composerFoldReveal, loungeDockPanel, composerFocusToken, scrollLoungeFeedToTopInstant])
-
-  useLayoutEffect(() => {
-    if (!loungeDetailEditing) return
-    const el = loungeDetailEditTextareaRef.current
-    if (!el) return
-    try {
-      el.focus({ preventScroll: true })
-    } catch {
-      el.focus()
-    }
-    const len = el.value.length
-    try {
-      el.setSelectionRange(len, len)
-    } catch {
-      // ignore
-    }
-    el.scrollTop = el.scrollHeight
-    const m = loungeDetailEditMirrorRef.current
-    if (m) m.scrollTop = el.scrollTop
-  }, [loungeDetailEditing])
-
-  useLayoutEffect(() => {
-    const ta = loungeDetailEditTextareaRef.current
-    const m = loungeDetailEditMirrorRef.current
-    if (!ta || !m) return
-    m.scrollTop = ta.scrollTop
-  }, [loungeDetailDraftCaption, loungeDetailEditing])
 
   useLayoutEffect(() => {
     const bar = loungeTitleBarRef.current
@@ -2187,7 +2152,7 @@ export default function SocialFeed({
     clearLoungeDetailCommentComposerMedia()
     setLoungeDetailCommentComposerExpanded(false)
     try {
-      loungeDetailCommentTextareaRef.current?.blur()
+      loungeDetailCommentFieldRef.current?.blur()
     } catch {
       // ignore
     }
@@ -2268,7 +2233,7 @@ export default function SocialFeed({
       // ignore
     }
     try {
-      loungeDetailCommentTextareaRef.current?.blur()
+      loungeDetailCommentFieldRef.current?.blur()
     } catch {
       // ignore
     }
@@ -2554,7 +2519,7 @@ export default function SocialFeed({
           return
         }
         if (mode === 'detailComment') {
-          focusLoungeComposerCaption(() => loungeDetailCommentTextareaRef.current)
+          focusLoungeComposerCaption(() => loungeDetailCommentFieldRef.current)
         }
         setLoungeVideoCrop({ file: vf, mode, knownDurationSec: dur })
       } catch (e) {
@@ -3428,13 +3393,7 @@ export default function SocialFeed({
 
   useLayoutEffect(() => {
     if (!quoteRepostModal || quoteRepostModal.mode !== 'compose') return
-    const el = quoteRepostTextareaRef.current
-    if (!el) return
-    try {
-      el.focus({ preventScroll: true })
-    } catch {
-      el.focus()
-    }
+    focusLoungeComposerCaption(() => quoteRepostFieldRef.current)
   }, [quoteRepostModal])
 
   useEffect(() => {
@@ -8294,6 +8253,7 @@ export default function SocialFeed({
                   <div ref={mentionComposerAnchorRef}>
                     <LoungeRichComposerField
                       ref={composerFieldRef}
+                      variant="feed"
                       value={postText}
                       onChange={setPostText}
                       maxLength={280}
@@ -9167,36 +9127,16 @@ export default function SocialFeed({
                     </svg>
                   </button>
                   <div className="pr-8">
-                    <div className="grid min-h-[5rem] grid-cols-1 grid-rows-1 [&>*]:col-start-1 [&>*]:row-start-1">
-                      <div
-                        ref={loungeDetailEditMirrorRef}
-                        aria-hidden
-                        className={`pointer-events-none min-h-[5rem] w-full overflow-y-auto border border-transparent px-0 py-0 text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-100 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`}
-                      >
-                        {loungeDetailDraftCaption ? (
-                          renderRichCaption(loungeDetailDraftCaption, {
-                            hashtagClassName: 'pointer-events-none font-semibold text-cyan-300',
-                            linkClassName:
-                              'pointer-events-none font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
-                          })
-                        ) : (
-                          <span className="text-zinc-500">Are ya winning, son?</span>
-                        )}
-                      </div>
-                      <textarea
-                        ref={loungeDetailEditTextareaRef}
-                        value={loungeDetailDraftCaption}
-                        onChange={(e) => setLoungeDetailDraftCaption(e.target.value)}
-                        onScroll={(e) => {
-                          const m = loungeDetailEditMirrorRef.current
-                          if (m) m.scrollTop = e.currentTarget.scrollTop
-                        }}
-                        className={`z-10 min-h-[5rem] w-full resize-none touch-manipulation overflow-y-auto bg-transparent px-0 py-0 ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-transparent caret-white outline-none selection:bg-cyan-500/25`}
-                        placeholder=""
-                        aria-label="Edit caption"
-                        maxLength={280}
-                      />
-                    </div>
+                    <LoungeRichComposerField
+                      ref={loungeDetailEditFieldRef}
+                      variant="detailEdit"
+                      value={loungeDetailDraftCaption}
+                      onChange={setLoungeDetailDraftCaption}
+                      maxLength={280}
+                      placeholder="Are ya winning, son?"
+                      ariaLabel="Edit caption"
+                      disabled={loungeDetailEditBusy}
+                    />
                     {loungeDetailEditErr ? (
                       <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
                         {loungeDetailEditErr}
@@ -10063,14 +10003,32 @@ export default function SocialFeed({
                           Write a reply
                         </label>
                         <div ref={mentionDetailCommentAnchorRef}>
-                        <textarea
-                          ref={loungeDetailCommentTextareaRef}
+                        <LoungeRichComposerField
+                          ref={loungeDetailCommentFieldRef}
                           id="lounge-detail-comment"
+                          variant="detailComment"
+                          autoGrow
                           value={loungeDetailCommentDraft}
-                          onChange={(e) => { setLoungeDetailCommentDraft(e.target.value); mentionDetailComment.onCursorMove(e) }}
+                          onChange={setLoungeDetailCommentDraft}
+                          maxLength={LOUNGE_COMMENT_BODY_MAX}
+                          placeholder={LOUNGE_DETAIL_COMMENT_PLACEHOLDER}
+                          ariaLabel="Write a reply"
+                          onKeyDown={(e) =>
+                            mentionDetailComment.onMentionKeyDown(
+                              e,
+                              setLoungeDetailCommentDraft,
+                              loungeDetailCommentFieldRef.current,
+                            )
+                          }
                           onKeyUp={mentionDetailComment.onCursorMove}
                           onMouseUp={mentionDetailComment.onCursorMove}
-                          onKeyDown={(e) => mentionDetailComment.onMentionKeyDown(e, setLoungeDetailCommentDraft, loungeDetailCommentTextareaRef.current)}
+                          onInput={() => {
+                            if (loungeDetailCommentFieldRef.current) {
+                              mentionDetailComment.onCursorMove({
+                                target: loungeDetailCommentFieldRef.current,
+                              })
+                            }
+                          }}
                           onBlur={(e) => {
                             const host = e.currentTarget.closest('[data-lounge-detail-comment-host]')
                             const next = e.relatedTarget
@@ -10089,17 +10047,12 @@ export default function SocialFeed({
                               }
                             }, 220)
                           }}
-                          placeholder={LOUNGE_DETAIL_COMMENT_PLACEHOLDER}
-                          maxLength={LOUNGE_COMMENT_BODY_MAX}
-                          rows={1}
-                          className="min-h-[38px] w-full resize-none overflow-hidden bg-transparent px-0 py-1 text-[17px] leading-[1.3] text-zinc-100 outline-none placeholder:text-zinc-500 selection:bg-cyan-500/25 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                          aria-label="Write a reply"
                         />
                         <LoungeMentionDropdown
                           suggestions={mentionDetailComment.suggestions}
                           activeIndex={mentionDetailComment.activeIndex}
                           loading={mentionDetailComment.loading}
-                          onSelect={(p) => mentionDetailComment.onMentionSelect(p, setLoungeDetailCommentDraft, loungeDetailCommentTextareaRef.current)}
+                          onSelect={(p) => mentionDetailComment.onMentionSelect(p, setLoungeDetailCommentDraft, loungeDetailCommentFieldRef.current)}
                           anchorRef={mentionDetailCommentAnchorRef}
                         />
                         </div>
@@ -10714,41 +10667,37 @@ export default function SocialFeed({
                         <div className="min-w-0 flex-1">
                           <div className="mt-0.5 flex min-h-[6.5rem] flex-col">
                             <div ref={mentionQuoteRepostAnchorRef}>
-                            <div className="grid min-h-[2.75rem] max-h-[min(50vh,22rem)] shrink-0 grid-cols-1 grid-rows-1 sm:min-h-[3rem] [&>*]:col-start-1 [&>*]:row-start-1">
-                              <div
-                                ref={quoteRepostMirrorRef}
-                                aria-hidden
-                                className="pointer-events-none min-h-[2.75rem] max-h-[min(50vh,22rem)] w-full overflow-y-auto whitespace-pre-wrap break-words px-0 py-0 pt-[10px] text-left text-[17px] leading-[1.25] text-zinc-100 [overflow-wrap:anywhere] [scrollbar-width:none] [-ms-overflow-style:none] sm:min-h-[3rem] sm:pt-[13px] [&::-webkit-scrollbar]:hidden"
-                              >
-                                {quoteRepostDraft ? (
-                                  quoteRepostDraft
-                                ) : (
-                                  <span className="text-zinc-500">Add a comment</span>
-                                )}
-                              </div>
-                              <textarea
-                                ref={quoteRepostTextareaRef}
-                                value={quoteRepostDraft}
-                                onChange={(e) => { setQuoteRepostDraft(e.target.value); mentionQuoteRepost.onCursorMove(e) }}
-                                onKeyUp={mentionQuoteRepost.onCursorMove}
-                                onMouseUp={mentionQuoteRepost.onCursorMove}
-                                onKeyDown={(e) => mentionQuoteRepost.onMentionKeyDown(e, setQuoteRepostDraft, quoteRepostTextareaRef.current)}
-                                onBlur={() => window.setTimeout(() => mentionQuoteRepost.clearMention(), 150)}
-                                onScroll={(e) => {
-                                  const m = quoteRepostMirrorRef.current
-                                  if (m) m.scrollTop = e.currentTarget.scrollTop
-                                }}
-                                maxLength={280}
-                                className="z-10 min-h-[2.75rem] max-h-[min(50vh,22rem)] w-full resize-none touch-manipulation overflow-y-auto bg-transparent px-0 py-0 pt-[10px] text-[17px] leading-[1.25] text-transparent caret-white outline-none selection:bg-cyan-500/25 focus:outline-none focus:ring-0 sm:min-h-[3rem] sm:pt-[13px]"
-                                placeholder=""
-                                aria-label="Quote for repost"
-                              />
-                            </div>
+                            <LoungeRichComposerField
+                              ref={quoteRepostFieldRef}
+                              variant="quote"
+                              value={quoteRepostDraft}
+                              onChange={setQuoteRepostDraft}
+                              maxLength={280}
+                              placeholder="Add a comment"
+                              ariaLabel="Quote for repost"
+                              onKeyDown={(e) =>
+                                mentionQuoteRepost.onMentionKeyDown(
+                                  e,
+                                  setQuoteRepostDraft,
+                                  quoteRepostFieldRef.current,
+                                )
+                              }
+                              onKeyUp={mentionQuoteRepost.onCursorMove}
+                              onMouseUp={mentionQuoteRepost.onCursorMove}
+                              onInput={() => {
+                                if (quoteRepostFieldRef.current) {
+                                  mentionQuoteRepost.onCursorMove({
+                                    target: quoteRepostFieldRef.current,
+                                  })
+                                }
+                              }}
+                              onBlur={() => window.setTimeout(() => mentionQuoteRepost.clearMention(), 150)}
+                            />
                             <LoungeMentionDropdown
                               suggestions={mentionQuoteRepost.suggestions}
                               activeIndex={mentionQuoteRepost.activeIndex}
                               loading={mentionQuoteRepost.loading}
-                              onSelect={(p) => mentionQuoteRepost.onMentionSelect(p, setQuoteRepostDraft, quoteRepostTextareaRef.current)}
+                              onSelect={(p) => mentionQuoteRepost.onMentionSelect(p, setQuoteRepostDraft, quoteRepostFieldRef.current)}
                               anchorRef={mentionQuoteRepostAnchorRef}
                             />
                             </div>

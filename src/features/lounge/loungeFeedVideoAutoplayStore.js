@@ -129,6 +129,8 @@ export function createAutoplayStore() {
   /** @type {Map<string, () => void>} */
   const soundGestureHandlers = new Map()
   let feedSoundTouchActive = false
+  let feedSoundWanted = false
+  let lastSoundGestureNotifyMs = 0
 
   const emit = () => {
     listeners.forEach((l) => {
@@ -633,6 +635,15 @@ export function createAutoplayStore() {
       snapshot = nextSnapshot
       emit()
     }
+
+    if (
+      feedSoundWanted &&
+      feedSoundTouchActive &&
+      nextActive &&
+      prevActiveId !== nextActive
+    ) {
+      notifySoundGesture()
+    }
   }
 
   const recompute = () => {
@@ -670,9 +681,31 @@ export function createAutoplayStore() {
       }, LOUNGE_VIDEO_FLINGER_IDLE_MS)
     }
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    if (flingerMode && now - lastScrollRecomputeMs < 50) return
+    if (flingerMode && now - lastScrollRecomputeMs < 50) {
+      if (feedSoundWanted && feedSoundTouchActive && activeId) {
+        notifySoundGesture()
+      }
+      return
+    }
     lastScrollRecomputeMs = now
+    if (feedSoundWanted && feedSoundTouchActive && activeId) {
+      notifySoundGesture()
+    }
     schedule()
+  }
+
+  const notifySoundGesture = () => {
+    if (!activeId) return
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    if (now - lastSoundGestureNotifyMs < 90) return
+    lastSoundGestureNotifyMs = now
+    const fn = soundGestureHandlers.get(activeId)
+    if (typeof fn !== 'function') return
+    try {
+      fn()
+    } catch {
+      // ignore
+    }
   }
 
   return {
@@ -767,16 +800,11 @@ export function createAutoplayStore() {
     isFeedSoundTouchActive() {
       return feedSoundTouchActive
     },
-    /** Scroll-root touch — invoke active tile unmute inside user-gesture stack. */
-    notifySoundGesture() {
-      if (!activeId) return
-      const fn = soundGestureHandlers.get(activeId)
-      if (typeof fn !== 'function') return
-      try {
-        fn()
-      } catch {
-        // ignore
-      }
+    /** Feed-wide Tap for sound enabled — gate scroll/gesture unmute notifies. */
+    setFeedSoundWanted(wanted) {
+      feedSoundWanted = Boolean(wanted)
     },
+    /** Scroll-root touch — invoke active tile unmute inside user-gesture stack. */
+    notifySoundGesture,
   }
 }

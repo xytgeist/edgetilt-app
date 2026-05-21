@@ -89,7 +89,9 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
 
   /** iOS feed-wide sound: chain unmute to scroll touches (programmatic handoff unmute is blocked). */
   useEffect(() => {
-    if (!feedInlineSoundUnmuted) {
+    const wanted = feedInlineSoundUnmuted && !feedInlineSoundExplicitlyMuted
+    store.setFeedSoundWanted(wanted)
+    if (!wanted) {
       store.setFeedSoundTouchActive(false)
       return undefined
     }
@@ -113,7 +115,7 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
       el.removeEventListener('touchend', onTouchEnd, { capture: true })
       el.removeEventListener('touchcancel', onTouchEnd, { capture: true })
     }
-  }, [feedInlineSoundUnmuted, scrollRootRef, store])
+  }, [feedInlineSoundExplicitlyMuted, feedInlineSoundUnmuted, scrollRootRef, store])
 
   useEffect(() => {
     const onScrollOrResize = () => store.markScroll()

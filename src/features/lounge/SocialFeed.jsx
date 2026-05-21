@@ -631,7 +631,6 @@ export default function SocialFeed({
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
   const [loungeDockPanel, setLoungeDockPanel] = useState(null)
-  const loungeDockPanelRef = useRef(null)
   const [loungeDockSearchQuery, setLoungeDockSearchQuery] = useState('')
   const [loungeDockSearchQueryVersion, setLoungeDockSearchQueryVersion] = useState(0)
   const [loungeFabPointerBlocked, setLoungeFabPointerBlocked] = useState(false)
@@ -4702,62 +4701,11 @@ export default function SocialFeed({
   }, [composerUserId, loungeFeedBrowseMode, supabaseClient])
 
   useEffect(() => {
-    loungeDockPanelRef.current = loungeDockPanel
-  }, [loungeDockPanel])
-
-  useEffect(() => {
     void refreshLoungeNotificationsUnread()
     if (typeof window === 'undefined' || !composerUserId || loungeFeedBrowseMode === 'anonymous') return undefined
-    const id = window.setInterval(() => void refreshLoungeNotificationsUnread(), 30_000)
+    const id = window.setInterval(() => void refreshLoungeNotificationsUnread(), 60_000)
     return () => window.clearInterval(id)
   }, [composerUserId, loungeFeedBrowseMode, refreshLoungeNotificationsUnread])
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return undefined
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') void refreshLoungeNotificationsUnread()
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [refreshLoungeNotificationsUnread])
-
-  useEffect(() => {
-    if (!composerUserId || !supabaseClient || loungeFeedBrowseMode === 'anonymous') return undefined
-
-    const channel = supabaseClient
-      .channel(`lounge-activity-unread-${composerUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'activity_events',
-          filter: `recipient_user_id=eq.${composerUserId}`,
-        },
-        (payload) => {
-          if (payload.new?.read_at) return
-          if (loungeDockPanelRef.current === 'notifications') return
-          setLoungeNotificationsUnread((prev) => Math.min(prev + 1, 99))
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'activity_events',
-          filter: `recipient_user_id=eq.${composerUserId}`,
-        },
-        () => {
-          void refreshLoungeNotificationsUnread()
-        },
-      )
-      .subscribe()
-
-    return () => {
-      void supabaseClient.removeChannel(channel)
-    }
-  }, [composerUserId, loungeFeedBrowseMode, refreshLoungeNotificationsUnread, supabaseClient])
 
   const onLoungeNotificationsUnreadChange = useCallback((n) => {
     setLoungeNotificationsUnread(Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)

@@ -8264,11 +8264,7 @@ export default function SocialFeed({
                       }}
                       onKeyUp={mentionComposer.onCursorMove}
                       onMouseUp={mentionComposer.onCursorMove}
-                      onInput={() => {
-                        if (composerFieldRef.current) {
-                          mentionComposer.onCursorMove({ target: composerFieldRef.current })
-                        }
-                      }}
+                      onInput={mentionComposer.onCursorMove}
                       onBlur={() => window.setTimeout(() => mentionComposer.clearMention(), 150)}
                     />
                     <LoungeMentionDropdown
@@ -10022,13 +10018,7 @@ export default function SocialFeed({
                           }
                           onKeyUp={mentionDetailComment.onCursorMove}
                           onMouseUp={mentionDetailComment.onCursorMove}
-                          onInput={() => {
-                            if (loungeDetailCommentFieldRef.current) {
-                              mentionDetailComment.onCursorMove({
-                                target: loungeDetailCommentFieldRef.current,
-                              })
-                            }
-                          }}
+                          onInput={mentionDetailComment.onCursorMove}
                           onBlur={(e) => {
                             const host = e.currentTarget.closest('[data-lounge-detail-comment-host]')
                             const next = e.relatedTarget
@@ -10684,13 +10674,7 @@ export default function SocialFeed({
                               }
                               onKeyUp={mentionQuoteRepost.onCursorMove}
                               onMouseUp={mentionQuoteRepost.onCursorMove}
-                              onInput={() => {
-                                if (quoteRepostFieldRef.current) {
-                                  mentionQuoteRepost.onCursorMove({
-                                    target: quoteRepostFieldRef.current,
-                                  })
-                                }
-                              }}
+                              onInput={mentionQuoteRepost.onCursorMove}
                               onBlur={() => window.setTimeout(() => mentionQuoteRepost.clearMention(), 150)}
                             />
                             <LoungeMentionDropdown

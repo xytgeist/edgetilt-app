@@ -16,10 +16,12 @@ function wrapSpan(className, inner) {
   return `<span class="${className}">${inner}</span>`
 }
 
-function appendMentionHtml(out, fragment) {
+function appendMentionHtml(out, fragment, { committedOnly = false } = {}) {
   if (!fragment) return
   let last = 0
-  const re = /@([\w]+)/g
+  // Composer: only style @handles followed by whitespace so partial @queries stay
+  // plain text (Android caret + mention autocomplete rely on a stable DOM).
+  const re = committedOnly ? /@([\w]+)(?=\s)/g : /@([\w]+)/g
   let m
   while ((m = re.exec(fragment)) !== null) {
     if (m.index > last) out.push(escapeHtml(fragment.slice(last, m.index)))
@@ -29,18 +31,20 @@ function appendMentionHtml(out, fragment) {
   if (last < fragment.length) out.push(escapeHtml(fragment.slice(last)))
 }
 
-function appendHashtagHtml(out, fragment) {
+function appendHashtagHtml(out, fragment, mentionOpts) {
   if (!fragment) return
   let last = 0
   const re = /#(?:[\p{L}\p{N}_-]+)/gu
   let m
   while ((m = re.exec(fragment)) !== null) {
-    if (m.index > last) appendMentionHtml(out, fragment.slice(last, m.index))
+    if (m.index > last) appendMentionHtml(out, fragment.slice(last, m.index), mentionOpts)
     out.push(wrapSpan(HASHTAG_CLASS, escapeHtml(m[0])))
     last = m.index + m[0].length
   }
-  if (last < fragment.length) appendMentionHtml(out, fragment.slice(last))
+  if (last < fragment.length) appendMentionHtml(out, fragment.slice(last), mentionOpts)
 }
+
+const COMPOSER_MENTION_OPTS = { committedOnly: true }
 
 /** Build styled HTML for a plain caption string (composer contenteditable). */
 export function buildRichComposerHtml(text) {
@@ -54,15 +58,15 @@ export function buildRichComposerHtml(text) {
     const raw = um[0]
     const display = trimUrlTrail(raw)
     const href = hrefForUrlDisplay(display)
-    if (um.index > last) appendHashtagHtml(out, s.slice(last, um.index))
+    if (um.index > last) appendHashtagHtml(out, s.slice(last, um.index), COMPOSER_MENTION_OPTS)
     if (href) {
       out.push(wrapSpan(LINK_CLASS, escapeHtml(display || raw)))
     } else {
-      appendHashtagHtml(out, display || raw)
+      appendHashtagHtml(out, display || raw, COMPOSER_MENTION_OPTS)
     }
     last = um.index + raw.length
   }
-  if (last < s.length) appendHashtagHtml(out, s.slice(last))
+  if (last < s.length) appendHashtagHtml(out, s.slice(last), COMPOSER_MENTION_OPTS)
   return out.join('')
 }
 

@@ -116,9 +116,15 @@ export function useMentionState(value, supabaseClient, enabled = true) {
   const [cursorPos, setCursorPos] = useState(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const pendingCursorRef = useRef(null)
+  /** Plain text from the last input/selection sync — ahead of React value on mobile. */
+  const [liveValue, setLiveValue] = useState(value)
+
+  useEffect(() => {
+    setLiveValue(value)
+  }, [value])
 
   const { mention, suggestions, loading, clearMention } = useMentionAutocomplete({
-    value,
+    value: liveValue,
     cursorPos,
     supabaseClient,
     enabled,
@@ -143,6 +149,13 @@ export function useMentionState(value, supabaseClient, enabled = true) {
   const onCursorMove = useCallback((e) => {
     const el = e?.target
     if (!el) return
+    if (typeof e?.text === 'string') {
+      setLiveValue(e.text)
+    }
+    if (typeof e?.caret === 'number') {
+      setCursorPos(e.caret)
+      return
+    }
     if (isRichComposerElement(el)) {
       setCursorPos(getCaretTextOffset(el))
       return
@@ -168,7 +181,7 @@ export function useMentionState(value, supabaseClient, enabled = true) {
         const profile = suggestions[activeIndex]
         if (!profile?.handle) return false
         e.preventDefault()
-        const result = applyMentionSuggestion(value, mention, profile.handle)
+        const result = applyMentionSuggestion(liveValue, mention, profile.handle)
         pendingCursorRef.current = result.cursorPos
         setCursorPos(result.cursorPos)
         if (isRichComposerElement(textareaEl)) {
@@ -185,14 +198,14 @@ export function useMentionState(value, supabaseClient, enabled = true) {
       }
       return false
     },
-    [mention, suggestions, activeIndex, value, clearMention, applyCursor]
+    [mention, suggestions, activeIndex, liveValue, clearMention, applyCursor]
   )
 
   // Call from LoungeMentionDropdown onSelect
   const onMentionSelect = useCallback(
     (profile, setValue, textareaEl) => {
       if (!profile?.handle) return
-      const result = applyMentionSuggestion(value, mention, profile.handle)
+      const result = applyMentionSuggestion(liveValue, mention, profile.handle)
       pendingCursorRef.current = result.cursorPos
       setCursorPos(result.cursorPos)
       if (isRichComposerElement(textareaEl)) {
@@ -205,7 +218,7 @@ export function useMentionState(value, supabaseClient, enabled = true) {
         textareaEl?.focus()
       })
     },
-    [value, mention, clearMention, applyCursor]
+    [liveValue, mention, clearMention, applyCursor]
   )
 
   return {

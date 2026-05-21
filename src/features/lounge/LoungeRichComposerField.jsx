@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useImperativeHandle, useLayoutEffect, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import {
   getCaretTextOffset,
   insertPlainTextAtSelection,
@@ -36,9 +36,20 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const rootRef = useRef(null)
   const lastValueRef = useRef(value)
   const composingRef = useRef(false)
+  const onInputRef = useRef(onInput)
+  onInputRef.current = onInput
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
 
   useImperativeHandle(ref, () => rootRef.current, [])
+
+  /** Defer mention/caret sync so Android commits selection after input + HTML sync. */
+  const notifyComposerInput = useCallback((el, text, caret) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        onInputRef.current?.({ target: el, text, caret })
+      })
+    })
+  }, [])
 
   const readAndEmit = useCallback(() => {
     const el = rootRef.current
@@ -52,8 +63,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     lastValueRef.current = capped
     syncComposerHtml(el, capped, nextCaret)
     if (capped !== value) onChange?.(capped)
-    onInput?.()
-  }, [maxLength, onChange, onInput, value])
+    notifyComposerInput(el, capped, nextCaret)
+  }, [maxLength, notifyComposerInput, onChange, value])
 
   useLayoutEffect(() => {
     const el = rootRef.current
@@ -84,6 +95,21 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       // ignore
     }
   }, [autoGrow, value])
+
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el || disabled) return undefined
+    const onSelectionChange = () => {
+      if (composingRef.current) return
+      const root = rootRef.current
+      if (!root) return
+      const active = document.activeElement
+      if (active !== root && !root.contains(active)) return
+      notifyComposerInput(root, plainTextFromComposerRoot(root), getCaretTextOffset(root))
+    }
+    document.addEventListener('selectionchange', onSelectionChange)
+    return () => document.removeEventListener('selectionchange', onSelectionChange)
+  }, [disabled, notifyComposerInput])
 
   const handleInput = useCallback(() => {
     readAndEmit()

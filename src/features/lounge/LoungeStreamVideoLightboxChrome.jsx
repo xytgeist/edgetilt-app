@@ -1,5 +1,9 @@
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
-import { LOUNGE_FEED_AVATAR_CLASS } from './loungeFeedAvatar.js'
+import {
+  LOUNGE_FEED_AVATAR_CLASS,
+  LOUNGE_FEED_DISPLAY_NAME_CLASS,
+  LOUNGE_FEED_META_ROW_CLASS,
+} from './loungeFeedAvatar.js'
 import { renderRichCaption } from './loungeCaption'
 
 /** Top-bar icon buttons — matches lightbox interaction pill overlay. */
@@ -122,12 +126,12 @@ export default function LoungeStreamVideoLightboxChrome({
         <div className="min-w-0 flex-1 pt-0.5">
           <button type="button" onClick={openProfile} className="block max-w-full text-left touch-manipulation">
             <div className="flex min-w-0 flex-col gap-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0">
+              <div className={LOUNGE_FEED_META_ROW_CLASS}>
                 <LoungeFeedAuthorMetaBadges
                   role={profile?.role}
                   isOg={profile?.is_og === true}
                   displayName={displayName}
-                  displayNameClassName="truncate text-[15px] font-bold leading-none text-white"
+                  displayNameClassName={`${LOUNGE_FEED_DISPLAY_NAME_CLASS} text-white`}
                 />
               </div>
               {handle ? (

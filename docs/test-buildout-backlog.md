@@ -386,7 +386,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-21: **Feed-wide sound platform split (test):** Ryan — iOS feed-wide sound not achievable on per-tile `<video>` (WebKit); Android feed-wide works. Fix: **`coordinatedInlineSound`** only when **not** Apple WebKit — iOS **per-tile** Tap for sound (resets on handoff); Android/desktop keep feed-wide + 60%/40% bands. Disable iOS scroll gesture chain in provider. Ryan sign-off **pending**.
+- 2026-05-21: **Feed-wide sound platform split (test):** Ryan — iOS feed-wide sound not achievable on per-tile `<video>` (WebKit); Android feed-wide works. Fix: **`coordinatedInlineSound`** only when **not** Apple WebKit — iOS **per-tile** Tap for sound (resets on handoff); Android/desktop keep feed-wide + 60%/40% bands. Disable iOS scroll gesture chain in provider. @ **`f42f20a`** Ryan sign-off **acceptable tradeoff for now** — Android full expectation; iOS forced per-video unmute.
 
 - 2026-05-21: **Feed-wide sound iOS shared player reverted (test):** @ **`e74479a`** Ryan — **Tap for sound kills the app** (WebKit crash). Root cause: shared mode **`mountStreamVideo:false`** unmounts local `<video>` while Tap-for-sound still runs **muted `play()` + unmute** on tile **and** **`unmuteIosSharedStreamInGesture`** on shared host → stacked play/unmute on cold attach (same class as **`4bc9660`**). Fix: **disable `LoungeFeedIosSharedStreamHost`** integration; restore per-tile video + **`cf50c94`** gesture path (direct DOM unmute when already playing). Autoplay stable; feed-wide sound across scroll **still iOS-limited** (gesture / finger-down). Shared-player files kept for future rework. Ryan sign-off **pending**.
 

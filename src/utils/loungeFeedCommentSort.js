@@ -11,6 +11,11 @@ export const LOUNGE_DETAIL_COMMENT_SORT = {
 
 const SORT_VALUES = new Set(Object.values(LOUNGE_DETAIL_COMMENT_SORT))
 
+/** Gravity exponent for Relevant time decay — higher = faster falloff for older comments. */
+const RELEVANCE_DECAY_GRAVITY = 1.5
+/** Hours added before decay division — keeps brand-new comments from dividing by ~0. */
+const RELEVANCE_DECAY_OFFSET_HOURS = 2
+
 /** @returns {LoungeDetailCommentSortMode} */
 export function readLoungeDetailCommentSort() {
   if (typeof window === 'undefined') return LOUNGE_DETAIL_COMMENT_SORT.RANKED
@@ -38,6 +43,16 @@ const countField = (v) => {
   return Number.isFinite(x) && x >= 0 ? x : 0
 }
 
+/** Weighted engagement before time decay (Relevant + Popular raw signal). */
+export function feedCommentEngagementWeight(comment) {
+  return (
+    countField(comment?.like_count) +
+    countField(comment?.repost_count) * 2 +
+    countField(comment?.bookmark_count) * 1.5 +
+    countField(comment?.comment_count) * 2
+  )
+}
+
 /** Likes + reposts + bookmarks + reply subtree count on a `feed_comments` row. */
 export function feedCommentInteractionScore(comment) {
   return (
@@ -46,6 +61,44 @@ export function feedCommentInteractionScore(comment) {
     countField(comment?.bookmark_count) +
     countField(comment?.comment_count)
   )
+}
+
+/**
+ * @param {object} comment
+ * @param {number} nowMs
+ */
+function feedCommentAgeHours(comment, nowMs) {
+  const t = Date.parse(String(comment?.created_at || ''))
+  if (!Number.isFinite(t)) return 0
+  return Math.max(0, (nowMs - t) / (60 * 60 * 1000))
+}
+
+/**
+ * Relevant ranking score — weighted engagement with gravity/time decay.
+ * @param {object} comment
+ * @param {{
+ *   nowMs?: number,
+ *   postAuthorUserId?: string | null,
+ *   followingUserIds?: Set<string>,
+ * }} [opts]
+ */
+export function feedCommentRelevanceScore(comment, opts = {}) {
+  const nowMs = opts.nowMs ?? Date.now()
+  const engagement = feedCommentEngagementWeight(comment)
+  const ageHours = feedCommentAgeHours(comment, nowMs)
+  let score = engagement / (ageHours + RELEVANCE_DECAY_OFFSET_HOURS) ** RELEVANCE_DECAY_GRAVITY
+
+  const opId = String(opts.postAuthorUserId || '').trim()
+  if (opId && !comment?.parent_id && String(comment?.user_id || '') === opId) {
+    score *= 1.25
+  }
+
+  const following = opts.followingUserIds
+  if (following?.has?.(String(comment?.user_id || ''))) {
+    score *= 1.15
+  }
+
+  return score
 }
 
 /**
@@ -72,6 +125,27 @@ export function compareFeedCommentsByInteractionDesc(a, b) {
 /** @param {object} a @param {object} b */
 export function compareFeedCommentsByLikesDesc(a, b) {
   const d = countField(b?.like_count) - countField(a?.like_count)
+  if (d !== 0) return d
+  return compareFeedCommentsChronologicalAsc(a, b, [])
+}
+
+/**
+ * @param {object} a
+ * @param {object} b
+ * @param {{
+ *   nowMs?: number,
+ *   postAuthorUserId?: string | null,
+ *   followingUserIds?: Set<string>,
+ *   viewerPinnedCommentIds?: string[],
+ * }} opts
+ */
+function compareFeedCommentsByRelevanceDesc(a, b, opts) {
+  const pinIndex = new Map((opts.viewerPinnedCommentIds || []).map((id, i) => [id, i]))
+  const ai = pinIndex.has(a?.id) ? pinIndex.get(a.id) : Number.POSITIVE_INFINITY
+  const bi = pinIndex.has(b?.id) ? pinIndex.get(b.id) : Number.POSITIVE_INFINITY
+  if (ai !== bi) return ai - bi
+
+  const d = feedCommentRelevanceScore(b, opts) - feedCommentRelevanceScore(a, opts)
   if (d !== 0) return d
   return compareFeedCommentsChronologicalAsc(a, b, [])
 }
@@ -109,51 +183,14 @@ export function orderPostDetailRootComments({
   }
 
   const following = new Set((followingUserIds || []).filter(Boolean))
-  const assigned = new Set()
-  const out = []
-  const opId = String(postAuthorUserId || '').trim()
-  const viewerId = String(viewerUserId || '').trim()
-
-  const isOpRoot = (c) => opId && String(c.user_id || '') === opId
-  const isViewerRoot = (c) => viewerId && String(c.user_id || '') === viewerId
-
-  for (const c of [...list].filter(isOpRoot).sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, []))) {
-    if (assigned.has(c.id)) continue
-    assigned.add(c.id)
-    out.push(c)
+  const relevanceOpts = {
+    nowMs: Date.now(),
+    postAuthorUserId,
+    followingUserIds: following,
+    viewerPinnedCommentIds,
   }
 
-  for (const c of [...list]
-    .filter((c) => !assigned.has(c.id) && isViewerRoot(c))
-    .sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))) {
-    assigned.add(c.id)
-    out.push(c)
-  }
-
-  for (const c of [...list]
-    .filter((c) => !assigned.has(c.id) && following.has(c.user_id))
-    .sort((a, b) => {
-      const d = feedCommentInteractionScore(b) - feedCommentInteractionScore(a)
-      if (d !== 0) return d
-      return compareFeedCommentsChronologicalAsc(a, b, [])
-    })) {
-    assigned.add(c.id)
-    out.push(c)
-  }
-
-  const remainingForTop = list.filter((c) => !assigned.has(c.id))
-  const top3 = [...remainingForTop].sort(compareFeedCommentsByInteractionDesc).slice(0, 3)
-  for (const c of top3) {
-    assigned.add(c.id)
-    out.push(c)
-  }
-
-  const tail = list
-    .filter((c) => !assigned.has(c.id))
-    .sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, []))
-  out.push(...tail)
-
-  return out
+  return [...list].sort((a, b) => compareFeedCommentsByRelevanceDesc(a, b, relevanceOpts))
 }
 
 /**
@@ -171,7 +208,7 @@ export function orderCommentDetailDirectReplies({
 }) {
   const list = replies || []
   const mode = SORT_VALUES.has(sortMode) ? sortMode : LOUNGE_DETAIL_COMMENT_SORT.RANKED
-  if (mode === LOUNGE_DETAIL_COMMENT_SORT.CHRONOLOGICAL) {
+  if (mode === LOUNGE_DETAIL_COMMENT_SORT.CHRONOLOGICAL || mode === LOUNGE_DETAIL_COMMENT_SORT.RANKED) {
     return [...list].sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
   }
   if (mode === LOUNGE_DETAIL_COMMENT_SORT.POPULAR) {
@@ -180,13 +217,5 @@ export function orderCommentDetailDirectReplies({
   if (mode === LOUNGE_DETAIL_COMMENT_SORT.LIKES) {
     return [...list].sort(compareFeedCommentsByLikesDesc)
   }
-  const pins = viewerPinnedCommentIds || []
-  const pinIndex = new Map(pins.map((id, i) => [id, i]))
-  return [...list].sort((a, b) => {
-    const aPin = pinIndex.has(a.id)
-    const bPin = pinIndex.has(b.id)
-    if (aPin !== bPin) return aPin ? -1 : 1
-    if (aPin && bPin) return pinIndex.get(a.id) - pinIndex.get(b.id)
-    return String(b.created_at || '').localeCompare(String(a.created_at || ''))
-  })
+  return [...list].sort((a, b) => compareFeedCommentsChronologicalAsc(a, b, viewerPinnedCommentIds))
 }

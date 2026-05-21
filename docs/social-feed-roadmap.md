@@ -207,7 +207,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 ## Phase E - Comments (threaded)
 
-- **Shipped (test, first slice):** `supabase/feed_interactions_phase_ef.sql` defines `feed_comments` + RLS + top-level-only post `comment_count` triggers; Lounge post detail lists **top-level** comments and drill-down for full threads. **Inline OP replies (post detail only):** replies authored by the **post owner** (`user_id === post.user_id`) with `parent_id` set to a **root** comment render **below** that parent in `LoungePostCommentThread.jsx` with the **same horizontal layout** as other comments; a **vertical connector** at the parent avatar column marks the thread (other replies stay drill-down only). Threading, ranking, and anon teaser rules below are not all implemented yet.
+- **Shipped (test, first slice):** `supabase/feed_interactions_phase_ef.sql` defines `feed_comments` + RLS + top-level-only post `comment_count` triggers; Lounge post detail lists **top-level** comments and drill-down for full threads. **Inline OP replies (post detail only):** replies authored by the **post owner** (`user_id === post.user_id`) with `parent_id` set to a **root** comment render **below** that parent in `LoungePostCommentThread.jsx` with the **same horizontal layout** as other comments; a **vertical connector** at the parent avatar column marks the thread (other replies stay drill-down only). **Relevant sort (client, 2026-05-21):** post-detail **Relevant** mode in **`src/utils/loungeFeedCommentSort.js`** — weighted engagement (likes, reposts×2, bookmarks×1.5, replies×2) with gravity/time decay; viewer just-posted pins stay on top; modest boosts for post-author roots and followed authors; nested drill-down replies stay **oldest-first** in Relevant mode. Anon teaser rules and quality/collapse tuning still phased.
 - Table: `feed_comments` with `parent_id`, `post_id`, `body` (max **280** chars, same as post captions), `created_at`, `edited_at`, `hidden_at`.
 - RLS:
   - logged-out: no full comment body access (counts/teasers only as needed)
@@ -245,7 +245,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 - Profile search on handle + display name.
 - Auth-gated RPC for search endpoints (`authenticated` role only; `auth.uid()` required).
 
-**Validated on test (2026-05-19, Ryan):** smoke **§16** — anon gate, server search, profile rows, trending empty query.
+**Validated on test (2026-05-21, Ryan):** smoke **§16** full stack — migrations **`20260518160000`**–**`20260520190000`** (comments, highlight/recent/about, Top/Latest, **`@handle` keyword**, relevance ranking, rate limit).
 
 ---
 

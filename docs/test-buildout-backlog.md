@@ -101,9 +101,9 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### Phases C-L
 
-- [ ] Phases **D–L** not complete end-to-end; **E/F first slice validated on test** (likes, reposts, bookmarks, flat + threaded comments + comment interactions — see checked SQL/FE rows). **Phase G search** validated on **test** (Ryan smoke **§16** **PASSED** 2026-05-19). Threaded **ranking**, **notifications**, etc. still roadmap scope.
+- [ ] Phases **D–L** not complete end-to-end; **E/F first slice** and **Phase G search stack** validated on **test** (Ryan smoke **§16** **PASSED** 2026-05-21). **Comment ranking (Relevant)** client sort shipped (score + decay in **`loungeFeedCommentSort.js`**) — Ryan smoke pending. **Notifications**, **freemium**, etc. still roadmap scope.
 - [x] **Phase C (profiles + identity, test):** profile gate (Lounge + Guides); full-screen profile editor; 7-day handle change (DB + modals); **`/u/:handle`** permalink + OG + deep link; **handle conflict** dialog (taken/reserved + suggested `@handle_1`). Ryan sign-off **PASSED** on **test** @ **`7ce7b44`** (2026-05-18). *Deferred (not blocking):* dedicated server-side reserved-handle SQL beyond client `RESERVED_HANDLES` + unique index; standalone marketing profile page beyond in-app sheet.
-- [x] **Phase G (search, test):** **`supabase/lounge_search_phase_g.sql`** + migrations **`20260518160000_lounge_search_phase_g.sql`** / **`20260519120000_lounge_search_comments.sql`** — auth-gated RPCs (`pg_trgm` indexes; posts by caption/game/hashtag; profiles by handle/display name; **comments by body**). Client: **`loungeSearchApi.js`**, **`LoungeDockSlidePanels.jsx`** (debounced server search + profile + comment rows); **`SocialFeed.jsx`** auth-gates dock search + hashtag tap. Posts/profiles Ryan sign-off **PASSED** on **test** (2026-05-19, smoke **§16**); comment search pending apply + smoke.
+- [x] **Phase G (search, test):** Auth-gated **`lounge_search()`** stack — posts, profiles, comments, highlight/recent/about, Top/Latest, rate limit, bundled pagination, hardening, **`@handle` keyword**, relevance ranking, volatile helpers. Migrations **`20260518160000`** through **`20260520190000`**. Client: **`loungeSearchApi.js`**, **`LoungeDockSlidePanels.jsx`**. Ryan sign-off **PASSED** on **test** (smoke **§16**, 2026-05-21).
 - [ ] **Freemium / subscriptions:** anonymous read-only where required; free-account vs subscriber entitlements (DB + **RLS** + Stripe webhooks); extend shell gating beyond today’s **`browseMode`**. Product spec: fill **`docs/access-tiers.md`**; roadmap: **`docs/social-feed-roadmap.md`** → *Freemium & subscriptions*.
 
 ---
@@ -134,22 +134,28 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - Test validation: Smoke **§16** **PASSED** on **test** (2026-05-19, Ryan).
   - Production replay: `production-rollout-checklist.md` §2
 
-- [ ] Lounge search Phase G — **comment body** RPC on test  
+- [x] Lounge search Phase G — **comment body** RPC on test  
   - Change: **`lounge_search_comments`** + trgm index on **`feed_comments.body`**; unified post + comment feed (engagement order); **`LoungeSearchCommentResultRow`** (comment-repost-style with *…in reply to*); hydration in **`loungeSearchApi.js`**.
   - Source: `supabase/lounge_search_phase_g.sql`, migration **`20260519120000_lounge_search_comments.sql`**
-  - Test validation: Apply migration on test; smoke **§16** comment bullets (search body text → comment row → tap → detail over search → back preserves query).
+  - Test validation: Smoke **§16** comment bullets **PASSED** on **test** (Ryan, 2026-05-21).
   - Production replay: `production-rollout-checklist.md` §2
 
-- [ ] Lounge search Phase G — **ranking + rate limit + sort** on test  
+- [x] Lounge search Phase G — **ranking + rate limit + sort** on test  
   - Change: **`@handle`** query bias (profiles handle-only; posts by author + `@mention`); **`pg_trgm` `similarity()`** ranking; **`p_sort`** engagement/recent; **`lounge_search_enforce_rate_limit`** (~30 searches / 5 min, staff exempt); client **Top / Latest** toggle + **Trending in your feed** empty-query copy.
   - Source: `supabase/lounge_search_phase_g.sql`, migration **`20260520150000_lounge_search_ranking_rate_limit.sql`**, **`loungeSearchSortPref.js`**, **`LoungeDockSlidePanels.jsx`**
-  - Test validation: Smoke **§16** after apply.
+  - Test validation: Smoke **§16** **PASSED** on **test** (Ryan, 2026-05-21).
   - Production replay: `production-rollout-checklist.md` §2
 
-- [ ] Lounge search Phase G — **highlight + recent + profile about** on test  
+- [x] Lounge search Phase G — **highlight + recent + profile about** on test  
   - Change: **`loungeSearchHighlight.jsx`** (query term `<mark>` in captions, comment bodies, profile **about_me**); **`loungeSearchRecentPref.js`** (local **Recent** chips when query &lt; 2 chars; clear **×** on input); **`lounge_search_profiles`** returns **`about_me`** (2-line clamp in profile rows); migration **`20260520120000_lounge_search_profiles_about_me.sql`**.
   - Source: `supabase/lounge_search_phase_g.sql`, **`LoungeDockSlidePanels.jsx`**, **`loungeCaption.jsx`**
-  - Test validation: Smoke **§16** highlight/recent/about bullets after apply.
+  - Test validation: Smoke **§16** highlight/recent/about bullets **PASSED** on **test** (Ryan, 2026-05-21).
+  - Production replay: `production-rollout-checklist.md` §2
+
+- [x] Lounge search Phase G — **bundled RPC + hardening + handle keyword + relevance + volatile** on test  
+  - Change: single **`lounge_search()`** + Load more (**`20260520170000`**); term normalize + **`statement_timeout`** (**`20260520160000`**); **`@selena buffalo`** handle+keyword (**`20260520180000`**); volatile helpers (**`20260520181000`**); **`lounge_search_match_relevance()`** + client **`search_relevance`** sort (**`20260520190000`**).
+  - Source: `supabase/migrations/20260520160000_lounge_search_hardening.sql` through **`20260520190000_lounge_search_relevance_ranking.sql`**
+  - Test validation: Apply on test Supabase; smoke **§16** **PASSED** (Ryan, 2026-05-21).
   - Production replay: `production-rollout-checklist.md` §2
 
 - [ ] Additional SQL parity audit against test history  
@@ -361,10 +367,13 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
         - [x] **Fast lane:** while video 1 uploading, post text-only, image-only, and GIF-only — each lands **without** waiting for the video queue to drain. *(2026-05-18 **PASSED**.)*
         - [x] **Parallel prep:** DevTools **Network** while **Post 1 of 2** active — **two** **`lounge-cf-stream-tus-create`** (201) and **two** tus upload ids (`?tusv2=true`) before job 2's bar turn; red **`video.m3u8`** poll noise OK if posts succeed. *(2026-05-18 **PASSED**.)*
         - [x] **Profile Likes hydration:** Likes tab → open liked post → like toggle does not **`post_likes_pk`** duplicate error. *(2026-05-18 **PASSED**.)*
-    16. **Lounge search (Phase G):** after **`20260518160000_lounge_search_phase_g.sql`** (+ **`20260519120000_lounge_search_comments.sql`** for comment search; **`20260520120000_lounge_search_profiles_about_me.sql`** for profile bio) on test — **logged out:** dock **Search** or **#hashtag** tap → create-account modal (no panel). **Logged in:** search **2+ chars** finds posts **not** in loaded feed (caption / game / hashtag) and matching **comment bodies** in one mixed feed (engagement order); **Profiles** section when handle/display name matches — each row shows up to **2 lines** of **about me** (truncated) with query **highlight**; post/comment captions and bodies highlight matching terms. **Recent** chip row when query empty or &lt; 2 chars (tap refills input); **×** clears query. Tap comment → post detail over search with comment focus; tap post → detail; **←** back preserves search query. Empty query shows **top posts from loaded feed** only. *(Ryan, 2026-05-19, posts/profiles **PASSED** on test; comment + highlight/recent/about pending apply + smoke.)*
+    16. **Lounge search (Phase G):** migrations **`20260518160000`** through **`20260520190000`** on test — **logged out:** dock **Search** or **#hashtag** tap → create-account modal (no panel). **Logged in:** search **2+ chars** finds posts **not** in loaded feed (caption / game / hashtag) and matching **comment bodies** in one mixed feed; **Profiles** when handle/display/about match — **highlight**, **Recent** chips, **Top / Latest**, **`@handle` keyword**, relevance ordering; tap comment/post → detail over search; **←** back preserves query. *(Ryan, 2026-05-21, **PASSED** on test — full **§16** stack.)*
     17. **Lounge media lightbox (unified chrome + pinch):** feed image → full-screen lightbox — pinch zoom + pan; swipe down at 1× dismisses. Stream video → hero expand — author row / caption layout OK in portrait; interaction bar (like/repost/bookmark) works; repost submenu above controls. Repeat from post detail and profile Posts tab. *(Ryan, 2026-05-19, **PASSED** on test.)*
     18. **Direct comment entry + profile unfollow sync** (after **`59a26bd`** + **`dd02294`** on test): **Profile Replies** or **comment-repost** card → post detail opens, sheet lands, **smooth scroll** to focused comment (title bar stays put); in-feed comment drill still **instant**. **Unfollow** from profile or follow list → close sheet → feed **Follow** pill returns; **Following** filter drops them without refresh. *(Ryan, 2026-05-19, **PASSED** on test.)*
+    19. **Comment sort — Relevant (Phase E):** open a busy post detail → default **Relevant** puts freshly posted comment at top (viewer pin); older low-engagement roots sink below higher-engagement / recent activity; switch **Popular** / **Most liked** / **Oldest first** and back — order changes predictably. Drill into a thread → sibling replies read **oldest-first** in Relevant mode. *(Ryan smoke pending.)*
   - **Sign-off:** Manual steps above passed on **test** (operator confirmation after latest `test` deploy).
+  - **Sign-off (Phase G search full stack, 2026-05-21, Ryan):** Migrations **`20260518160000`**–**`20260520190000`** applied on test; smoke **§16** **PASSED** (comments, highlight/recent/about, Top/Latest, **`@handle` keyword**, relevance ranking).
+  - **Sign-off (Stream lightbox author badges + feed sound platform split, 2026-05-21, Ryan):** Lightbox admin/mod/OG badges match feed meta row @ **`07676a0`**; Android feed-wide sound + iOS per-tile unmute @ **`f42f20a`** — **PASSED** on fresh test deploy.
   - **Sign-off (Phase G search + lightbox + posters + comment repost, 2026-05-19, Ryan):** Smoke **§16** + **§17**; Stream poster **WebP on R2** (new upload + delete @ **`93dcc3f`**); comment-repost / thread nav (**`b782e69`**) — **PASSED** on **test**.
   - **Sign-off (comment entry scroll + FAB image lightbox + unfollow sync, 2026-05-19, Ryan):** **`f6a975e`** image/GIF FAB hide; **`59a26bd`** direct comment smooth entry; **`dd02294`** profile unfollow → feed session — **PASSED** on **test** (smoke **§14** / **§18**).
   - **Sign-off (Lounge R2 images, 2026-05-19, Ryan):** Upload + delete on **`media-test.lvslotpro.com`**; legacy migration (**68** objects); cache headers — **PASSED** on **test** @ **`0978782`**.
@@ -386,7 +395,13 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
-- 2026-05-21: **Feed-wide sound platform split (test):** Ryan — iOS feed-wide sound not achievable on per-tile `<video>` (WebKit); Android feed-wide works. Fix: **`coordinatedInlineSound`** only when **not** Apple WebKit — iOS **per-tile** Tap for sound (resets on handoff); Android/desktop keep feed-wide + 60%/40% bands. Disable iOS scroll gesture chain in provider. @ **`f42f20a`** Ryan sign-off **acceptable tradeoff for now** — Android full expectation; iOS forced per-video unmute.
+- 2026-05-21: **Phase E Relevant comment ranking (client build):** **`loungeFeedCommentSort.js`** — weighted engagement + gravity/time decay for post-detail **Relevant** roots; viewer just-posted pins stay first; modest OP-root and following boosts; nested drill-down replies **oldest-first** in Relevant mode. Smoke **§19** pending Ryan sign-off on **test**.
+
+- 2026-05-21: **Phase G search stack sign-off (test):** Ryan — migrations **`20260518160000`** through **`20260520190000`** (comments, about/highlight/recent, ranking/rate limit, bundled RPC, hardening, **`@handle` keyword**, volatile, relevance) applied on test Supabase; smoke **§16** **PASSED**.
+
+- 2026-05-21: **Stream lightbox author badges + feed sound platform split (test):** Ryan smoke **PASSED** on fresh deploy — lightbox badges match feed meta row @ **`07676a0`**; Android feed-wide + iOS per-tile sound @ **`f42f20a`**.
+
+- 2026-05-21: **Feed-wide sound platform split (test):** @ **`f42f20a`** — iOS per-tile Tap for sound; Android/desktop feed-wide + 60%/40% bands. Ryan sign-off **PASSED** (smoke 2026-05-21).
 
 - 2026-05-21: **Feed-wide sound iOS shared player reverted (test):** @ **`e74479a`** Ryan — **Tap for sound kills the app** (WebKit crash). Root cause: shared mode **`mountStreamVideo:false`** unmounts local `<video>` while Tap-for-sound still runs **muted `play()` + unmute** on tile **and** **`unmuteIosSharedStreamInGesture`** on shared host → stacked play/unmute on cold attach (same class as **`4bc9660`**). Fix: **disable `LoungeFeedIosSharedStreamHost`** integration; restore per-tile video + **`cf50c94`** gesture path (direct DOM unmute when already playing). Autoplay stable; feed-wide sound across scroll **still iOS-limited** (gesture / finger-down). Shared-player files kept for future rework. Ryan sign-off **pending**.
 

@@ -539,6 +539,15 @@ export default function SocialFeed({
   const quoteRepostMediaInputRef = useRef(null)
   const [loungeDetailComments, setLoungeDetailComments] = useState([])
   const [loungeDetailCommentsLoading, setLoungeDetailCommentsLoading] = useState(false)
+  const loungeDetailCommentIdsKey = useMemo(
+    () =>
+      loungeDetailComments
+        .map((r) => r.id)
+        .filter(Boolean)
+        .sort()
+        .join('\0'),
+    [loungeDetailComments],
+  )
   /** Own just-posted comment ids — prepended at top of post-detail list for this viewer only. */
   const [loungeDetailViewerPinnedCommentIds, setLoungeDetailViewerPinnedCommentIds] = useState([])
   const [loungeDetailCommentSort, setLoungeDetailCommentSort] = useState(() => readLoungeDetailCommentSort())
@@ -2831,7 +2840,14 @@ export default function SocialFeed({
         const next = { ...prev }
         for (const id of cids) {
           const key = String(id)
-          if (!next[key]) next[key] = { ...defaultInteraction }
+          const cur = next[key] || { ...defaultInteraction }
+          next[key] = {
+            ...cur,
+            liked: false,
+            reposted: false,
+            plainRepostChildId: null,
+            quoteRepostChildId: null,
+          }
         }
         for (const r of likesRes.data || []) {
           const cid = r.comment_id != null ? String(r.comment_id) : ''
@@ -2852,6 +2868,9 @@ export default function SocialFeed({
       })
       setBookmarkedByComment((prev) => {
         const next = { ...prev }
+        for (const id of cids) {
+          next[String(id)] = false
+        }
         for (const r of bmRes.data || []) {
           if (r.comment_id) next[String(r.comment_id)] = true
         }
@@ -4201,10 +4220,10 @@ export default function SocialFeed({
     }
   }, [composerUserId, loungeDetailCommentsLoading, loungePostDetail?.id, loungeReadOnly, supabaseClient])
 
-  /** Hydrate comment likes/reposts/bookmarks when comments or viewer session changes — never reset drill path. */
+  /** Hydrate comment likes/reposts/bookmarks when comment ids or viewer session changes — not on count-only updates. */
   useEffect(() => {
     if (!loungePostDetail?.id || loungeReadOnly || loungeDetailCommentsLoading) return
-    const cids = loungeDetailComments.map((r) => r.id).filter(Boolean)
+    const cids = loungeDetailCommentIdsKey ? loungeDetailCommentIdsKey.split('\0').filter(Boolean) : []
     if (!composerUserId || cids.length === 0) return
     let cancelled = false
     ;(async () => {
@@ -4233,7 +4252,14 @@ export default function SocialFeed({
         const next = { ...prev }
         for (const id of cids) {
           const key = String(id)
-          if (!next[key]) next[key] = { ...defaultInteraction }
+          const cur = next[key] || { ...defaultInteraction }
+          next[key] = {
+            ...cur,
+            liked: false,
+            reposted: false,
+            plainRepostChildId: null,
+            quoteRepostChildId: null,
+          }
         }
         for (const r of likesRes.data || []) {
           const cid = r.comment_id != null ? String(r.comment_id) : ''
@@ -4254,6 +4280,9 @@ export default function SocialFeed({
       })
       setBookmarkedByComment((prev) => {
         const next = { ...prev }
+        for (const id of cids) {
+          next[String(id)] = false
+        }
         for (const r of bmRes.data || []) {
           if (r.comment_id) next[String(r.comment_id)] = true
         }
@@ -4266,7 +4295,7 @@ export default function SocialFeed({
   }, [
     composerUserId,
     defaultInteraction,
-    loungeDetailComments,
+    loungeDetailCommentIdsKey,
     loungeDetailCommentsLoading,
     loungePostDetail?.id,
     loungeReadOnly,

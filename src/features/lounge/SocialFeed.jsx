@@ -8655,22 +8655,20 @@ export default function SocialFeed({
           </div>
         ) : null}
 
-        {!loungePostDetail ? (
-          <div className="shrink-0 px-3 pt-1">
-            <div className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_ROW_CLASS} items-center gap-3`}>
-              <LoungeFeedScopeSwitch
-                scope={loungeFeedScope}
-                onScopeChange={onLoungeFeedScopeChange}
-                disabled={communityFeedLoading && communityPosts.length === 0}
-              />
-              <LoungeFeedSortSwitch
-                value={loungeFeedSort}
-                onChange={onLoungeFeedSortChange}
-                disabled={communityFeedLoading && communityPosts.length === 0}
-              />
-            </div>
+        <div className="shrink-0 px-3 pt-1">
+          <div className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_ROW_CLASS} items-center gap-3`}>
+            <LoungeFeedScopeSwitch
+              scope={loungeFeedScope}
+              onScopeChange={onLoungeFeedScopeChange}
+              disabled={communityFeedLoading && communityPosts.length === 0}
+            />
+            <LoungeFeedSortSwitch
+              value={loungeFeedSort}
+              onChange={onLoungeFeedSortChange}
+              disabled={communityFeedLoading && communityPosts.length === 0}
+            />
           </div>
-        ) : null}
+        </div>
 
         <div className="border-b border-zinc-800 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {loungeManageErr ? (

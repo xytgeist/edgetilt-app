@@ -20,6 +20,7 @@ import { normalizeProfileLocation } from '../profiles/profileLocation.js'
 import ProfileLocationPicker from '../profiles/ProfileLocationPicker.jsx'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
 import { collectLoungePostInteractionHydrateIds, feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
+import { loungeFeedPostRowPerfStyle } from '../../utils/loungeFeedPostRowPerfStyle.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
@@ -521,6 +522,8 @@ export default function LoungeProfileFullScreen({
   const [followListTab, setFollowListTab] = useState(null)
   /** Profiles opened from a follow list without dismissing the list (back returns to list). */
   const [nestedProfileStack, setNestedProfileStack] = useState([])
+
+  const profilePostRowPerfStyle = useMemo(() => loungeFeedPostRowPerfStyle(), [])
 
   const displayName = String(profile?.display_name || profile?.handle || 'Member').trim() || 'Member'
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
@@ -2106,7 +2109,7 @@ export default function LoungeProfileFullScreen({
                   posts.map((post) => (
                     <article
                       key={post.id}
-                      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
+                      style={profilePostRowPerfStyle}
                       className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer`}
                       onClick={(e) => {
                         const t = e.target
@@ -2185,7 +2188,7 @@ export default function LoungeProfileFullScreen({
                   interactionPosts.map((post) => (
                     <article
                       key={post.id}
-                      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
+                      style={profilePostRowPerfStyle}
                       className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer`}
                       onClick={(e) => {
                         const t = e.target

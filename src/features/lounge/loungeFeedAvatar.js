@@ -16,7 +16,7 @@ export const LOUNGE_FEED_POST_ROW_CLASS =
 export const LOUNGE_FEED_POST_ROW_INNER_CLASS = 'min-w-0 pt-1 pb-0'
 
 /** Feed post interaction row — same caption→bar gap as post-detail comments. */
-export const LOUNGE_FEED_POST_INTERACTIONS_CLASS = 'mt-0.5 w-full -mb-1'
+export const LOUNGE_FEED_POST_INTERACTIONS_CLASS = 'mt-1.5 w-full -mb-1'
 
 /** Post detail comments — same avatar alignment as feed cards (`LoungePostArticle`). */
 export const LOUNGE_FEED_POST_DETAIL_COMMENT_AVATAR_CLASS = LOUNGE_FEED_AVATAR_CLASS
@@ -97,8 +97,8 @@ export const LOUNGE_FEED_POST_DETAIL_NAME_BADGE_ROW_CLASS =
 export const LOUNGE_FEED_POST_DETAIL_HANDLE_TIME_CLASS =
   'mt-1 -translate-y-px inline-flex min-w-0 max-w-full items-center gap-x-1 overflow-hidden text-[17px] leading-none text-zinc-500'
 
-/** Space between meta row and caption — tight; slight lift vs handle row. */
-export const LOUNGE_FEED_CAPTION_TOP_CLASS = 'mt-0 -translate-y-px'
+/** Space between meta row and caption — no transform (Android mis-hit-tests transformed caption text). */
+export const LOUNGE_FEED_CAPTION_TOP_CLASS = 'mt-0.5'
 
 /** Media directly under a caption, or first block when there is no caption. */
 export const LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS = 'mt-1'

@@ -534,7 +534,6 @@ export default function LoungePostInteractionBar({
       <div
         className={rowClass}
         data-lounge-post-interaction-bar
-        onClick={(e) => e.stopPropagation()}
         role="group"
       >
       <LoungeInteractionGlyphRail

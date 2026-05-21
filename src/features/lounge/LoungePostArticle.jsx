@@ -103,6 +103,8 @@ export default function LoungePostArticle({
   onFeedVideoAutoplayChange,
   /** Stream hero: caption / comment → post or comment detail (`hostPost`, `mediaPost`, `{ focusComposer }`). */
   onStreamLightboxOpenDetail,
+  /** Tap caption body → post detail (feed/profile cards). */
+  onPostBodyClick,
   /** Active Lounge search query — highlights matching terms in captions (search panel only). */
   loungeSearchHighlightQuery = '',
 }) {
@@ -212,6 +214,41 @@ export default function LoungePostArticle({
     if (hq.length >= 2) return { ...base, highlightQuery: hq }
     return base
   }, [onMentionClick, onHashtagClick, loungeSearchHighlightQuery])
+
+  const captionOpensDetail = Boolean(onPostBodyClick || onOpenCommentDetail)
+  const captionBlockClass = `${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200${
+    captionOpensDetail ? ' touch-manipulation cursor-pointer' : ''
+  }`
+
+  const onCaptionAreaClick = useCallback(
+    (e) => {
+      if (!(e.target instanceof Element)) return
+      if (e.target.closest('button, a')) return
+      if (openProfileGateIfNeeded?.()) return
+      if (isCommentRepost) {
+        onOpenCommentDetail?.(rc)
+        e.stopPropagation()
+        return
+      }
+      if (isPlainPostRepost) {
+        onPostBodyClick?.(displayPost)
+        e.stopPropagation()
+        return
+      }
+      onPostBodyClick?.(post)
+      e.stopPropagation()
+    },
+    [
+      displayPost,
+      isCommentRepost,
+      isPlainPostRepost,
+      onOpenCommentDetail,
+      onPostBodyClick,
+      openProfileGateIfNeeded,
+      post,
+      rc,
+    ],
+  )
 
   return (
     <div className={`flex items-start gap-3 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
@@ -350,7 +387,12 @@ export default function LoungePostArticle({
               </div>
             ) : null}
             {rc?.body ? (
-              <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
+              <div
+                data-lounge-post-caption
+                role="presentation"
+                onClick={captionOpensDetail ? onCaptionAreaClick : undefined}
+                className={captionBlockClass}
+              >
                 {renderRichCaption(rc.body, richCaptionOpts)}
               </div>
             ) : null}
@@ -367,7 +409,12 @@ export default function LoungePostArticle({
           // Plain post repost: show original post content directly (no embed box)
           <>
             {feedPostDisplayCaption(displayPost) ? (
-              <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
+              <div
+                data-lounge-post-caption
+                role="presentation"
+                onClick={captionOpensDetail ? onCaptionAreaClick : undefined}
+                className={captionBlockClass}
+              >
                 {renderRichCaption(feedPostDisplayCaption(displayPost), richCaptionOpts)}
               </div>
             ) : null}
@@ -387,7 +434,12 @@ export default function LoungePostArticle({
           // Quote repost: reposter's caption + embedded original card
           <>
             {feedPostDisplayCaption(post) ? (
-              <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
+              <div
+                data-lounge-post-caption
+                role="presentation"
+                onClick={captionOpensDetail ? onCaptionAreaClick : undefined}
+                className={captionBlockClass}
+              >
                 {renderRichCaption(feedPostDisplayCaption(post), richCaptionOpts)}
               </div>
             ) : null}
@@ -451,7 +503,12 @@ export default function LoungePostArticle({
           // Regular post
           <>
             {feedPostDisplayCaption(post) ? (
-              <div className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}>
+              <div
+                data-lounge-post-caption
+                role="presentation"
+                onClick={captionOpensDetail ? onCaptionAreaClick : undefined}
+                className={captionBlockClass}
+              >
                 {renderRichCaption(feedPostDisplayCaption(post), richCaptionOpts)}
               </div>
             ) : null}

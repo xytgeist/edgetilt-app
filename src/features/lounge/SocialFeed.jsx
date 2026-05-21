@@ -75,6 +75,7 @@ import {
   writeProfileGateAck,
 } from './loungeStorage'
 import { markLoungeColdBootFeedMounted } from '../../utils/loungeColdBootFeedMounted.js'
+import { loungeFeedPostRowPerfStyle } from '../../utils/loungeFeedPostRowPerfStyle.js'
 import { setLoungeColdBootPendingWork } from '../../utils/loungeColdBootPendingWork.js'
 import {
   executeLoungeCommunityPostSubmission,
@@ -4747,6 +4748,8 @@ export default function SocialFeed({
 
   const loungeFollowingFilterOn = loungeFeedScope === LOUNGE_FEED_SCOPE_FOLLOWING
 
+  const feedPostRowPerfStyle = useMemo(() => loungeFeedPostRowPerfStyle(), [])
+
   const onLoungeFollowingFilterToggle = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous') {
       onRequireAuth?.()
@@ -8717,7 +8720,7 @@ export default function SocialFeed({
             {communityPosts.map((post) => (
               <article
                 key={post.id}
-                style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 320px' }}
+                style={feedPostRowPerfStyle}
                 className={LOUNGE_FEED_POST_ROW_CLASS}
                 onClick={(e) => {
                   const t = e.target
@@ -8796,6 +8799,7 @@ export default function SocialFeed({
                   onToggleCommentBookmark={toggleLoungeDetailCommentBookmark}
                   getCommentBookmarked={getLoungeDetailCommentBookmarked}
                   onOpenCommentDetail={(rc, opts) => void openCommentRepostDetail(rc, opts)}
+                  onPostBodyClick={openLoungePostDetail}
                   onStreamLightboxOpenDetail={openLoungeStreamLightboxDetail}
                   onMentionClick={openProfileByHandle}
                   onHashtagClick={openSearchByHashtag}

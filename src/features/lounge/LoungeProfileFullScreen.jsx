@@ -465,6 +465,8 @@ export default function LoungeProfileFullScreen({
   onAdminSetProfileRole = null,
   /** `(userId, isFollowing) => void` — sync feed session when follow toggles on profile / follow list. */
   onViewerFollowChange = null,
+  /** Settings → Edit profile: open own sheet already in edit mode. */
+  requestOwnProfileEditing = false,
 }) {
   const [tab, setTab] = useState('posts')
   const [adminRoleBusy, setAdminRoleBusy] = useState(false)
@@ -680,6 +682,12 @@ export default function LoungeProfileFullScreen({
     setProfileRepliesErr('')
     setProfileRepliesLoading(false)
   }, [open, profileUserId])
+
+  useEffect(() => {
+    if (!open || !isOwnProfile || !requestOwnProfileEditing) return
+    setAboutErr('')
+    setOwnProfileEditing(true)
+  }, [open, isOwnProfile, requestOwnProfileEditing, profileUserId])
 
   useEffect(() => {
     if (!ownProfileEditing || !isOwnProfile || profile?.user_id == null) return

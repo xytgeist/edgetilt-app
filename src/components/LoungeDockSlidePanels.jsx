@@ -149,11 +149,17 @@ export default function LoungeDockSlidePanels({
   onLogout,
   onDeleteAccount,
   deleteAccountBusy = false,
+  /** Signed-in login email (read-only). */
+  settingsAccountEmail = '',
+  settingsHasActiveSubscription = false,
+  settingsSupabaseClient = null,
+  onSettingsEditProfile,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
   const panelTitleBarRef = useRef(null)
   const settingsNotificationsSectionRef = useRef(null)
+  const settingsAccountSectionRef = useRef(null)
   const [panelW, setPanelW] = useState(300)
   const [tx, setTx] = useState(0)
   const [txTransition, setTxTransition] = useState(false)
@@ -180,12 +186,16 @@ export default function LoungeDockSlidePanels({
   }, [onOpenSettingsSection])
 
   const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false)
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
   const [adminUtilsSettingsOpen, setAdminUtilsSettingsOpen] = useState(false)
   const [iosPwaHelpOpen, setIosPwaHelpOpen] = useState(false)
   const [iosInstallBannerHidden, setIosInstallBannerHidden] = useState(false)
   const [iosInstallRequired, setIosInstallRequired] = useState(false)
   const [iosSafariBrowser, setIosSafariBrowser] = useState(false)
+  const [passwordResetBusy, setPasswordResetBusy] = useState(false)
+  const [passwordResetMessage, setPasswordResetMessage] = useState('')
+  const [passwordResetError, setPasswordResetError] = useState('')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -196,9 +206,12 @@ export default function LoungeDockSlidePanels({
   useEffect(() => {
     if (openPanel !== 'settings') {
       setNotificationsSettingsOpen(false)
+      setAccountSettingsOpen(false)
       setMenuLayoutSettingsOpen(false)
       setAdminUtilsSettingsOpen(false)
       setIosPwaHelpOpen(false)
+      setPasswordResetMessage('')
+      setPasswordResetError('')
     }
   }, [openPanel])
 
@@ -232,6 +245,44 @@ export default function LoungeDockSlidePanels({
     scroller.scrollTop += sectionTop - scrollerTop - 8
     onSettingsFocusSectionHandled?.()
   }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
+
+  useLayoutEffect(() => {
+    if (openPanel !== 'settings' || settingsFocusSection !== 'account') return
+    setAccountSettingsOpen(true)
+    const scroller = panelScrollRef.current
+    const section = settingsAccountSectionRef.current
+    if (!scroller || !section) return
+    const top = section.offsetTop - 8
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+    onSettingsFocusSectionHandled?.()
+  }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
+
+  const settingsMembershipLabel = useMemo(() => {
+    if (settingsViewerIsStaff) return 'Staff'
+    if (settingsHasActiveSubscription) return 'Subscriber'
+    return 'Free'
+  }, [settingsHasActiveSubscription, settingsViewerIsStaff])
+
+  const onSettingsChangePassword = useCallback(async () => {
+    const email = String(settingsAccountEmail || '').trim()
+    if (!email || !settingsSupabaseClient || passwordResetBusy) return
+    setPasswordResetBusy(true)
+    setPasswordResetMessage('')
+    setPasswordResetError('')
+    try {
+      const { error } = await settingsSupabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
+      setPasswordResetMessage('If this email is on your account, a reset link is on its way.')
+    } catch (e) {
+      setPasswordResetError(e instanceof Error ? e.message : 'Could not send reset email.')
+    } finally {
+      setPasswordResetBusy(false)
+    }
+  }, [passwordResetBusy, settingsAccountEmail, settingsSupabaseClient])
+
+  const showAccountSection = typeof onLogout === 'function'
 
   const [q, setQ] = useState(() => initialSearchQuery || '')
   const [searchPosts, setSearchPosts] = useState([])
@@ -1093,6 +1144,126 @@ export default function LoungeDockSlidePanels({
                 </div>
               ) : null}
             </div>
+
+            {showAccountSection ? (
+              <div ref={settingsAccountSectionRef} className="mt-6 border-t border-zinc-800 pt-5">
+                <button
+                  type="button"
+                  aria-expanded={accountSettingsOpen}
+                  onClick={() => setAccountSettingsOpen((open) => !open)}
+                  className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-zinc-100">Account</span>
+                    <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                      Profile, sign-in email, password, and membership.
+                    </span>
+                  </span>
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+                      accountSettingsOpen ? 'rotate-180' : 'rotate-0'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </button>
+
+                {accountSettingsOpen ? (
+                  <div className="mt-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90">
+                    {typeof onSettingsEditProfile === 'function' ? (
+                      <button
+                        type="button"
+                        onClick={() => onSettingsEditProfile()}
+                        className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-[15px] font-semibold text-zinc-100">Edit profile</span>
+                          <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                            Photo, banner, handle, and about.
+                          </span>
+                        </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          className="h-5 w-5 shrink-0 text-zinc-500"
+                          fill="none"
+                          aria-hidden
+                        >
+                          <path
+                            d="M9 6l6 6-6 6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    ) : null}
+
+                    <div className="px-3.5 py-3">
+                      <div className="text-[15px] font-semibold text-zinc-100">Email</div>
+                      <div className="mt-1 break-all text-[14px] text-zinc-300">
+                        {settingsAccountEmail || '—'}
+                      </div>
+                      <p className="mt-1 text-[12px] leading-snug text-zinc-500">
+                        Login address for this account. Contact support to change it for now.
+                      </p>
+                    </div>
+
+                    <div className="px-3.5 py-3">
+                      <button
+                        type="button"
+                        disabled={!settingsAccountEmail || !settingsSupabaseClient || passwordResetBusy}
+                        onClick={() => void onSettingsChangePassword()}
+                        className="min-h-11 rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-4 text-[14px] font-semibold text-zinc-100 touch-manipulation transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                      >
+                        {passwordResetBusy ? 'Sending reset link…' : 'Change password'}
+                      </button>
+                      <p className="mt-2 text-[12px] leading-snug text-zinc-500">
+                        We&apos;ll email a link to set a new password.
+                      </p>
+                      {passwordResetMessage ? (
+                        <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{passwordResetMessage}</p>
+                      ) : null}
+                      {passwordResetError ? (
+                        <p className="mt-2 text-[12px] leading-snug text-red-300/90">{passwordResetError}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="px-3.5 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[15px] font-semibold text-zinc-100">Membership</span>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                            settingsViewerIsStaff
+                              ? 'bg-fuchsia-500/20 text-fuchsia-200'
+                              : settingsHasActiveSubscription
+                                ? 'bg-cyan-500/20 text-cyan-200'
+                                : 'bg-zinc-700/80 text-zinc-300'
+                          }`}
+                        >
+                          {settingsMembershipLabel}
+                        </span>
+                      </div>
+                      {!settingsHasActiveSubscription && !settingsViewerIsStaff ? (
+                        <p className="mt-2 text-[12px] leading-snug text-zinc-500">
+                          Subscriptions and billing are coming soon.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div
               ref={settingsNotificationsSectionRef}

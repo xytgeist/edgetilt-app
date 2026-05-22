@@ -497,6 +497,7 @@ export default function SocialFeed({
   const [profileModalErr, setProfileModalErr] = useState('')
   const [profileModalData, setProfileModalData] = useState(null)
   const [profileModalPosts, setProfileModalPosts] = useState([])
+  const [profileModalStartEditing, setProfileModalStartEditing] = useState(false)
   /** Profiles opened from feed/detail/profile without replacing the root sheet (back pops one layer). */
   const [profileOverlayStack, setProfileOverlayStack] = useState([])
   /** Root profile sits above Stream hero lightbox (z ~103+) while closing video behind the sheet. */
@@ -7433,9 +7434,10 @@ export default function SocialFeed({
     setProfileStackAboveStreamLightbox(false)
     const returnPanel = profileReturnDockPanelRef.current
     profileReturnDockPanelRef.current = null
-    if (returnPanel === 'notifications' || returnPanel === 'search') {
+    if (returnPanel === 'notifications' || returnPanel === 'search' || returnPanel === 'settings') {
       setLoungeDockPanel(returnPanel)
     }
+    setProfileModalStartEditing(false)
   }, [])
 
   const closeProfileModal = useCallback(() => {
@@ -7496,6 +7498,7 @@ export default function SocialFeed({
       const userId = post?.user_id
       if (!userId) return
       profileReturnDockPanelRef.current = opts?.returnDockPanel ?? null
+      setProfileModalStartEditing(opts?.startEditing === true)
       const profileStub = profileStubFromOpenArg(post)
       const loadGen = ++profileModalLoadGenRef.current
       setProfileStackAboveStreamLightbox(getLoungeStreamLightboxOpen())
@@ -7729,6 +7732,25 @@ export default function SocialFeed({
     },
     [openAuthorProfile],
   )
+
+  const onLoungeSettingsEditProfile = useCallback(() => {
+    if (!composerUserId || loungeReadOnly) return
+    if (openProfileGateIfNeeded()) return
+    setLoungeDockPanel(null)
+    void openProfileModal(
+      {
+        user_id: composerUserId,
+        author_profile: composerUserProfile,
+      },
+      { returnDockPanel: 'settings', startEditing: true },
+    )
+  }, [
+    composerUserId,
+    composerUserProfile,
+    loungeReadOnly,
+    openProfileGateIfNeeded,
+    openProfileModal,
+  ])
 
   /** Open a profile by handle string — used when a viewer taps an @mention in a caption or comment. */
   const openProfileByHandle = useCallback(
@@ -10552,6 +10574,10 @@ export default function SocialFeed({
           notificationPrefsSchemaMissing={loungeNotificationPrefsSchemaMissing}
           notificationPrefsError={loungeNotificationPrefsError}
           onNotificationPrefToggle={onLoungeNotificationPrefToggle}
+          settingsAccountEmail={String(composerAuthUser?.email || '').trim()}
+          settingsHasActiveSubscription={hasActiveSubscription}
+          settingsSupabaseClient={supabaseClient}
+          onSettingsEditProfile={onLoungeSettingsEditProfile}
           onLogout={onLogout}
           onDeleteAccount={onDeleteAccount}
           deleteAccountBusy={deleteAccountBusy}
@@ -10597,6 +10623,7 @@ export default function SocialFeed({
           onAdminSetProfileRole={handleAdminSetProfileRole}
           onViewerFollowChange={syncLoungeViewerFollowState}
           stackAboveStreamLightbox={profileStackAboveStreamLightbox}
+          requestOwnProfileEditing={profileModalStartEditing}
         />
       ) : null}
 

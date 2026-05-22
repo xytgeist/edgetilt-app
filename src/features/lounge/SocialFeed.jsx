@@ -643,6 +643,8 @@ export default function SocialFeed({
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
   const [loungeDockPanel, setLoungeDockPanel] = useState(null)
+  /** When opening Settings from another panel, scroll to this section (`notifications`, …). */
+  const [loungeSettingsFocusSection, setLoungeSettingsFocusSection] = useState(null)
   const [loungeDockSearchQuery, setLoungeDockSearchQuery] = useState('')
   const [loungeDockSearchQueryVersion, setLoungeDockSearchQueryVersion] = useState(0)
   const [loungeFabPointerBlocked, setLoungeFabPointerBlocked] = useState(false)
@@ -4741,6 +4743,22 @@ export default function SocialFeed({
     }
     setLoungeDockPanel((p) => (p === 'settings' ? null : 'settings'))
   }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
+
+  const onLoungeOpenSettingsSection = useCallback(
+    (section) => {
+      if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
+        onRequireAuth?.()
+        return
+      }
+      setLoungeSettingsFocusSection(section)
+      setLoungeDockPanel('settings')
+    },
+    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
+  )
+
+  const onLoungeSettingsFocusSectionHandled = useCallback(() => {
+    setLoungeSettingsFocusSection(null)
+  }, [])
 
   const onLoungeDockCompose = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
@@ -10437,6 +10455,7 @@ export default function SocialFeed({
           openPanel={loungeDockPanel}
           onClose={() => {
             setChatDockInitialPeerUserId(null)
+            setLoungeSettingsFocusSection(null)
             setLoungeDockPanel(null)
           }}
           communityPosts={communityPosts}
@@ -10451,6 +10470,9 @@ export default function SocialFeed({
           onNotifications={onLoungeDockNotifications}
           onChat={onLoungeDockChat}
           onSettings={onLoungeDockSettings}
+          onOpenSettingsSection={onLoungeOpenSettingsSection}
+          settingsFocusSection={loungeSettingsFocusSection}
+          onSettingsFocusSectionHandled={onLoungeSettingsFocusSectionHandled}
           onOpenOwnProfile={onLoungeDockOpenOwnProfile}
           activePanel={loungeDockPanel}
           postCardProps={profilePostCardProps}

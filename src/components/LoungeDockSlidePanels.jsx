@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { loungePostInteractionScore } from '../utils/communityFeedPost'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import TitleBarStatusLine from './TitleBarStatusLine.jsx'
@@ -48,6 +48,11 @@ import {
   readLoungeSearchSort,
   writeLoungeSearchSort,
 } from '../utils/loungeSearchSortPref.js'
+import {
+  readLoungePushNotificationsEnabled,
+  subscribeLoungePushNotificationsEnabled,
+  writeLoungePushNotificationsEnabled,
+} from '../utils/loungePushNotificationsPref.js'
 
 const OPEN_MS = 300
 const DISMISS_FRACTION = 0.22
@@ -84,6 +89,9 @@ export default function LoungeDockSlidePanels({
   onNotifications,
   onChat,
   onSettings,
+  onOpenSettingsSection,
+  settingsFocusSection = null,
+  onSettingsFocusSectionHandled,
   onOpenOwnProfile,
   activePanel = null,
   /** Open a post from search (full row); closes the panel and opens post detail like the main feed. */
@@ -128,6 +136,7 @@ export default function LoungeDockSlidePanels({
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
   const panelTitleBarRef = useRef(null)
+  const settingsNotificationsSectionRef = useRef(null)
   const [panelW, setPanelW] = useState(300)
   const [tx, setTx] = useState(0)
   const [txTransition, setTxTransition] = useState(false)
@@ -148,6 +157,30 @@ export default function LoungeDockSlidePanels({
   const [panelTitleReveal, setPanelTitleReveal] = useState(1)
   const panelScrollPrevTopRef = useRef(0)
   const panelScrollVisualRafRef = useRef(0)
+
+  const pushNotificationsEnabled = useSyncExternalStore(
+    subscribeLoungePushNotificationsEnabled,
+    readLoungePushNotificationsEnabled,
+    () => true,
+  )
+  const onPushNotificationsChange = useCallback((enabled) => {
+    writeLoungePushNotificationsEnabled(enabled)
+  }, [])
+
+  const onOpenNotificationSettings = useCallback(() => {
+    onOpenSettingsSection?.('notifications')
+  }, [onOpenSettingsSection])
+
+  useLayoutEffect(() => {
+    if (openPanel !== 'settings' || settingsFocusSection !== 'notifications') return
+    const scroller = panelScrollRef.current
+    const section = settingsNotificationsSectionRef.current
+    if (!scroller || !section) return
+    const scrollerTop = scroller.getBoundingClientRect().top
+    const sectionTop = section.getBoundingClientRect().top
+    scroller.scrollTop += sectionTop - scrollerTop - 8
+    onSettingsFocusSectionHandled?.()
+  }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
 
   const [q, setQ] = useState(() => initialSearchQuery || '')
   const [searchPosts, setSearchPosts] = useState([])
@@ -951,13 +984,14 @@ export default function LoungeDockSlidePanels({
             />
           </div>
         ) : openPanel === 'notifications' ? (
-          <div className="px-0 pt-2">
+          <div className="px-0 pt-1">
             <LoungeNotificationsPanel
               supabaseClient={notificationsSupabaseClient}
               viewerUserId={notificationsViewerUserId}
               onOpenPost={onOpenPostFromNotifications}
               onOpenProfile={onOpenProfileFromNotifications}
               onUnreadChange={onNotificationsUnreadChange}
+              onOpenNotificationSettings={onOpenNotificationSettings}
             />
           </div>
         ) : openPanel === 'settings' ? (
@@ -977,6 +1011,42 @@ export default function LoungeDockSlidePanels({
               <p className="px-1 text-[13px] leading-relaxed text-zinc-500">
                 Edit handle, display name, avatar, and bio. More Lounge settings will land here.
               </p>
+            </div>
+
+            <div
+              ref={settingsNotificationsSectionRef}
+              className="mt-6 border-t border-zinc-800 pt-5"
+            >
+              <h3 className="text-[15px] font-semibold text-zinc-100">Notifications</h3>
+              <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
+                Push alerts for likes, replies, and other Lounge activity on this device.
+              </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pushNotificationsEnabled}
+                onClick={() => onPushNotificationsChange(!pushNotificationsEnabled)}
+                className="mt-3 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold text-zinc-100">Push notifications</span>
+                  <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                    Off until browser permission and delivery are wired up.
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`relative h-7 w-11 shrink-0 overflow-hidden rounded-full transition-colors duration-200 ${
+                    pushNotificationsEnabled ? 'bg-cyan-500' : 'bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                      pushNotificationsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+                    }`}
+                  />
+                </span>
+              </button>
             </div>
 
             <div className="mt-6 border-t border-zinc-800 pt-5">

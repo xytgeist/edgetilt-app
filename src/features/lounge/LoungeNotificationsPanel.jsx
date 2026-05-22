@@ -36,8 +36,48 @@ import {
   buildLoungeActivityDisplayRows,
   loungeActivityEventToActorProfile,
   loungeActivityGroupedActionPhrase,
+  loungeActivityGroupedActionCopy,
 } from '../../utils/loungeActivityGroup.js'
 import { renderRichCaption } from './loungeCaption'
+
+function NotificationSettingsGearIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden className="h-4 w-4">
+      <path
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+      />
+      <path
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+      />
+    </svg>
+  )
+}
+
+function loungeNotificationIsNew(sessionNewIds, idOrIds) {
+  if (Array.isArray(idOrIds)) {
+    return idOrIds.some((id) => sessionNewIds.has(String(id)))
+  }
+  return sessionNewIds.has(String(idOrIds))
+}
+
+function LoungeNotificationNewRail() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-y-2 left-0 z-[2] w-[3px] rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.45)]"
+    />
+  )
+}
 
 /**
  * Lounge dock **Notifications** panel — in-app activity feed (Phase H1).
@@ -48,6 +88,7 @@ export default function LoungeNotificationsPanel({
   onOpenPost,
   onOpenProfile,
   onUnreadChange,
+  onOpenNotificationSettings,
 }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +97,7 @@ export default function LoungeNotificationsPanel({
   const [schemaMissing, setSchemaMissing] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const markedReadRef = useRef(false)
+  const fetchSeqRef = useRef(0)
   /** Unread at fetch time — stays "new" for this panel visit even after mark-all-read clears the badge. */
   const [sessionNewIds, setSessionNewIds] = useState(() => new Set())
 
@@ -67,6 +109,7 @@ export default function LoungeNotificationsPanel({
         setHasMore(false)
         return
       }
+      const seq = ++fetchSeqRef.current
       if (append) setLoadingMore(true)
       else setLoading(true)
       setErr('')
@@ -76,28 +119,32 @@ export default function LoungeNotificationsPanel({
           beforeCreatedAt: cursor?.created_at ?? null,
           beforeId: cursor?.id ?? null,
         })
+        if (seq !== fetchSeqRef.current) return
         rows = await hydrateLoungeActivityEventPreviews(supabaseClient, rows)
+        if (seq !== fetchSeqRef.current) return
         setSchemaMissing(false)
         setHasMore(rows.length >= LOUNGE_ACTIVITY_PAGE_SIZE)
         setItems((prev) => (append ? [...prev, ...rows] : rows))
         if (append) {
-          if (rows.some((row) => !row.read_at)) {
-            setSessionNewIds((prev) => {
-              const next = new Set(prev)
-              for (const row of rows) {
-                if (!row.read_at) next.add(row.id)
-              }
-              return next
-            })
-          }
+          setSessionNewIds((prev) => {
+            const next = new Set(prev)
+            for (const row of rows) {
+              if (!row.read_at) next.add(String(row.id))
+            }
+            return next
+          })
         } else {
-          const newIds = new Set()
-          for (const row of rows) {
-            if (!row.read_at) newIds.add(row.id)
-          }
-          setSessionNewIds(newIds)
+          setSessionNewIds((prev) => {
+            if (prev.size > 0) return prev
+            const newIds = new Set()
+            for (const row of rows) {
+              if (!row.read_at) newIds.add(String(row.id))
+            }
+            return newIds
+          })
         }
       } catch (e) {
+        if (seq !== fetchSeqRef.current) return
         if (isLoungeActivitySchemaMissingError(e)) {
           setSchemaMissing(true)
           setItems([])
@@ -107,6 +154,7 @@ export default function LoungeNotificationsPanel({
           if (!append) setItems([])
         }
       } finally {
+        if (seq !== fetchSeqRef.current) return
         setLoading(false)
         setLoadingMore(false)
       }
@@ -116,7 +164,11 @@ export default function LoungeNotificationsPanel({
 
   useEffect(() => {
     markedReadRef.current = false
+    setSessionNewIds(new Set())
     void loadPage()
+    return () => {
+      fetchSeqRef.current += 1
+    }
   }, [loadPage])
 
   useEffect(() => {
@@ -176,7 +228,8 @@ export default function LoungeNotificationsPanel({
   const previewClampClass = (eventType) => {
     if (
       eventType === LOUNGE_ACTIVITY_EVENT_TYPES.LIKE ||
-      eventType === LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK
+      eventType === LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK ||
+      eventType === LOUNGE_ACTIVITY_EVENT_TYPES.QUOTE_REPOST
     ) {
       return 'line-clamp-2'
     }
@@ -196,9 +249,10 @@ export default function LoungeNotificationsPanel({
 
   const renderGroupedRow = (row) => {
     const { event, actors, firstActor, othersCount, eventIds, groupKey } = row
-    const isNew = eventIds.some((id) => sessionNewIds.has(id))
+    const isNew = loungeNotificationIsNew(sessionNewIds, eventIds)
     const when = formatLoungeActivityWhen(event.created_at)
     const actionPhrase = loungeActivityGroupedActionPhrase(event, firstActor, othersCount, event)
+    const groupedActionCopy = loungeActivityGroupedActionCopy(event, firstActor, othersCount, event)
     const showContext = loungeActivityShowsContextPreview(event.event_type)
     const previewText = showContext ? String(event.preview_text || '').trim() : ''
     const previewPosterUrl = showContext ? String(event.preview_poster_url || '').trim() : ''
@@ -223,9 +277,10 @@ export default function LoungeNotificationsPanel({
           }}
           aria-label={actionPhrase}
           className={`${LOUNGE_FEED_POST_ROW_CLASS} relative flex w-full cursor-pointer items-center gap-3 overflow-hidden text-left touch-manipulation ${
-            isNew ? 'bg-cyan-950/20 active:bg-cyan-950/35' : ''
+            isNew ? 'bg-cyan-950/25 ring-1 ring-inset ring-cyan-500/20 active:bg-cyan-950/35' : ''
           }`}
         >
+          {isNew ? <LoungeNotificationNewRail /> : null}
           {groupedTintClass ? (
             <span aria-hidden className={`${LOUNGE_NOTIFICATION_GROUPED_TINT_RAIL_CLASS} ${groupedTintClass}`} />
           ) : null}
@@ -249,8 +304,9 @@ export default function LoungeNotificationsPanel({
                   }
                 />
               </div>
-              <span className="mt-0.5 flex min-w-0 flex-nowrap items-baseline gap-x-1 overflow-hidden text-[15px] leading-snug text-zinc-400">
-                <span className="min-w-0 truncate">{actionPhrase}</span>
+              <span className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1 text-[15px] leading-snug text-zinc-400">
+                <span className="max-w-[10ch] break-words">{groupedActionCopy.leadName}</span>
+                <span className="min-w-0 break-words">{groupedActionCopy.rest}</span>
                 {when ? (
                   <>
                     <span className="shrink-0 text-zinc-600">·</span>
@@ -294,7 +350,7 @@ export default function LoungeNotificationsPanel({
 
   const renderSingleRow = (row) => {
     const event = row.event
-    const isNew = sessionNewIds.has(event.id)
+    const isNew = loungeNotificationIsNew(sessionNewIds, event.id)
     const actorProfile = loungeActivityEventToActorProfile(event)
     const avatarUrl = String(actorProfile.avatar_url || '').trim()
     const avatarTone = profileAvatarToneClass(actorProfile.user_id)
@@ -326,11 +382,12 @@ export default function LoungeNotificationsPanel({
               onRowActivate(event)
             }
           }}
-          aria-label={summary}
-          className={`${LOUNGE_FEED_POST_ROW_CLASS} flex w-full cursor-pointer items-start gap-3 text-left touch-manipulation ${
-            isNew ? 'bg-cyan-950/20 active:bg-cyan-950/35' : ''
+          aria-label={isNew ? `${summary} — new notification` : summary}
+          className={`${LOUNGE_FEED_POST_ROW_CLASS} relative flex w-full cursor-pointer items-start gap-3 text-left touch-manipulation ${
+            isNew ? 'bg-cyan-950/25 ring-1 ring-inset ring-cyan-500/20 active:bg-cyan-950/35' : ''
           }`}
         >
+          {isNew ? <LoungeNotificationNewRail /> : null}
           <button
             type="button"
             title="View profile"
@@ -425,20 +482,27 @@ export default function LoungeNotificationsPanel({
   }
 
   return (
-    <div className="px-3 py-3">
-      <h2 className="text-[17px] font-semibold text-zinc-100">Notifications</h2>
-      <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
-        Replies, comments on your posts, @mentions, and new followers.
-      </p>
+    <div className="px-3 pt-1 pb-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-[17px] font-semibold leading-none text-zinc-100">Notifications</h2>
+        <button
+          type="button"
+          aria-label="Notification settings"
+          onClick={() => onOpenNotificationSettings?.()}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-zinc-400 touch-manipulation hover:bg-zinc-900/80 hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
+        >
+          <NotificationSettingsGearIcon />
+        </button>
+      </div>
 
       {loading ? (
-        <p className="mt-6 text-[14px] text-zinc-500">Loading…</p>
+        <p className="mt-4 text-[14px] text-zinc-500">Loading…</p>
       ) : err ? (
-        <p className="mt-6 text-[14px] text-red-300">{err}</p>
+        <p className="mt-4 text-[14px] text-red-300">{err}</p>
       ) : items.length === 0 ? (
-        <p className="mt-6 text-[14px] leading-relaxed text-zinc-400">{emptyCopy}</p>
+        <p className="mt-4 text-[14px] leading-relaxed text-zinc-400">{emptyCopy}</p>
       ) : (
-        <ul className="mt-4 -mx-3 list-none p-0">
+        <ul className="mt-3 -mx-3 list-none p-0">
           {displayRows.map((row) =>
             row.type === 'grouped' ? renderGroupedRow(row) : renderSingleRow(row),
           )}

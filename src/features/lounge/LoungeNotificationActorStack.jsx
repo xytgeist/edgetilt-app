@@ -9,7 +9,7 @@ import { LOUNGE_NOTIFICATION_STACK_AVATAR_CLASS } from './loungeFeedAvatar.js'
  */
 export default function LoungeNotificationActorStack({
   actors = [],
-  maxVisible = 3,
+  maxVisible = 12,
   onOpenProfile,
 }) {
   const shown = actors.slice(0, maxVisible)

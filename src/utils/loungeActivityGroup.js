@@ -51,6 +51,18 @@ function groupedVerb(eventType) {
   return eventType === LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK ? 'bookmarked' : 'liked'
 }
 
+/** Split grouped copy so the lead name can wrap in UI (`max-w-[10ch]`) without ellipsis. */
+export function loungeActivityGroupedActionCopy(event, firstActor, othersCount, previewMeta = {}) {
+  const targetPhrase = groupedTargetPhrase(loungeActivityGroupedTargetKind(event, previewMeta))
+  const verb = groupedVerb(event.event_type)
+  const leadName = loungeActivityActorDisplayName(firstActor)
+  if (othersCount <= 0) {
+    return { leadName, rest: `${verb} ${targetPhrase}` }
+  }
+  const otherLabel = othersCount === 1 ? '1 other' : `${othersCount} others`
+  return { leadName, rest: `and ${otherLabel} ${verb} ${targetPhrase}` }
+}
+
 /**
  * @param {object} event Representative row (newest in group).
  * @param {object} firstActor Chronologically first unique actor.
@@ -58,14 +70,8 @@ function groupedVerb(eventType) {
  * @param {object} [previewMeta]
  */
 export function loungeActivityGroupedActionPhrase(event, firstActor, othersCount, previewMeta = {}) {
-  const name = loungeActivityActorDisplayName(firstActor)
-  const targetPhrase = groupedTargetPhrase(loungeActivityGroupedTargetKind(event, previewMeta))
-  const verb = groupedVerb(event.event_type)
-  if (othersCount <= 0) {
-    return `${name} ${verb} ${targetPhrase}`
-  }
-  const otherLabel = othersCount === 1 ? '1 other' : `${othersCount} others`
-  return `${name} and ${otherLabel} ${verb} ${targetPhrase}`
+  const { leadName, rest } = loungeActivityGroupedActionCopy(event, firstActor, othersCount, previewMeta)
+  return `${leadName} ${rest}`
 }
 
 function uniqueActorsChronological(groupEvents) {

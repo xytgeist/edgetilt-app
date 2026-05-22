@@ -96,7 +96,7 @@ function IconMention({ slot }) {
 }
 
 function IconFollow({ slot }) {
-  const cls = slot === 'lead' ? 'h-8 w-8' : 'h-[22px] w-[22px]'
+  const cls = glyphClass(slot)
   return (
     <IconShell slot={slot}>
       <svg className={`${cls} text-cyan-400`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>

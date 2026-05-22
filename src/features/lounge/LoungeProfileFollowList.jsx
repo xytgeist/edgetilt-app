@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -11,14 +11,27 @@ import {
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   loungeFeedAuthorHasStaffBadge,
   loungeFeedAuthorIdentityClusterClass,
-  LOUNGE_FEED_META_BADGE_WRAP_CLASS,
-  LOUNGE_FEED_OG_AFTER_STAFF_CLASS,
 } from './loungeFeedAvatar.js'
 import {
   fetchProfileFollowListProfiles,
   fetchUsersFollowingViewerAmong,
   fetchViewerFollowingAmong,
 } from './loungeProfileFollowList.js'
+
+function followListFocusRowId(userId) {
+  const id = String(userId || '').trim()
+  return id ? `lounge-follow-list-focus-${id}` : ''
+}
+
+function flashFollowListRow(userId) {
+  const el = document.getElementById(followListFocusRowId(userId))
+  if (!el) return
+  el.classList.remove('lounge-focus-flash')
+  requestAnimationFrame(() => {
+    el.classList.add('lounge-focus-flash')
+    window.setTimeout(() => el.classList.remove('lounge-focus-flash'), 1700)
+  })
+}
 
 /**
  * @param {object} props
@@ -31,7 +44,7 @@ import {
  * @param {() => void} props.onClose
  * @param {(entity: { user_id: string, author_profile?: object }) => void} [props.onOpenProfile]
  * @param {(userId: string, isFollowing: boolean) => void} [props.onViewerFollowChange]
- * @param {string[]} [props.highlightUserIds] — temporary glow on follower rows (e.g. from grouped follow notification).
+ * @param {string[]} [props.highlightUserIds] — scroll + flash rows (e.g. grouped follow notification).
  */
 export default function LoungeProfileFollowList({
   tab,
@@ -51,7 +64,13 @@ export default function LoungeProfileFollowList({
   const [viewerFollowing, setViewerFollowing] = useState(() => new Set())
   const [followsViewer, setFollowsViewer] = useState(() => new Set())
   const [rowBusyId, setRowBusyId] = useState('')
-  const [activeHighlightIds, setActiveHighlightIds] = useState(() => new Set())
+  const listScrollRef = useRef(null)
+  const focusScrollRafRef = useRef(0)
+
+  const highlightIdSet = useMemo(
+    () => new Set((highlightUserIds || []).map(String).filter(Boolean)),
+    [highlightUserIds],
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -85,14 +104,85 @@ export default function LoungeProfileFollowList({
     void load()
   }, [load])
 
+  const scrollToHighlightedFollowers = useCallback(() => {
+    if (tab !== 'followers' || highlightIdSet.size === 0) return false
+    const sc = listScrollRef.current
+    if (!sc) return false
+
+    const focusIds = rows
+      .map((row) => String(row?.user_id || '').trim())
+      .filter((uid) => uid && highlightIdSet.has(uid))
+    if (focusIds.length === 0) return false
+
+    const firstEl = document.getElementById(followListFocusRowId(focusIds[0]))
+    if (!firstEl) return false
+
+    const animate =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches !== true
+
+    const HEADER_GAP = 12
+    const computeTargetTop = () => {
+      const scRect = sc.getBoundingClientRect()
+      const elRect = firstEl.getBoundingClientRect()
+      return Math.max(0, sc.scrollTop + (elRect.top - scRect.top) - HEADER_GAP)
+    }
+
+    const flashAll = () => {
+      for (const uid of focusIds) flashFollowListRow(uid)
+    }
+
+    const landOnTarget = (behavior) => {
+      sc.scrollTo({ top: computeTargetTop(), behavior })
+      if (behavior === 'smooth') {
+        let done = false
+        const finish = () => {
+          if (done) return
+          done = true
+          flashAll()
+        }
+        sc.addEventListener('scrollend', finish, { once: true })
+        window.setTimeout(finish, 650)
+      } else {
+        flashAll()
+      }
+    }
+
+    if (animate) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => landOnTarget('smooth'))
+      })
+    } else {
+      landOnTarget('auto')
+    }
+    return true
+  }, [highlightIdSet, rows, tab])
+
   useEffect(() => {
-    if (tab !== 'followers') return
-    const ids = [...new Set((highlightUserIds || []).map(String).filter(Boolean))]
-    if (ids.length === 0) return
-    setActiveHighlightIds(new Set(ids))
-    const timer = window.setTimeout(() => setActiveHighlightIds(new Set()), 4200)
-    return () => window.clearTimeout(timer)
-  }, [highlightUserIds, tab])
+    if (tab !== 'followers' || loading || highlightIdSet.size === 0) return undefined
+    if (focusScrollRafRef.current) {
+      window.cancelAnimationFrame(focusScrollRafRef.current)
+      focusScrollRafRef.current = 0
+    }
+    let triesLeft = 10
+    const attempt = () => {
+      focusScrollRafRef.current = 0
+      if (scrollToHighlightedFollowers()) return
+      if (triesLeft > 0) {
+        triesLeft -= 1
+        focusScrollRafRef.current = window.requestAnimationFrame(attempt)
+      }
+    }
+    focusScrollRafRef.current = window.requestAnimationFrame(() => {
+      focusScrollRafRef.current = window.requestAnimationFrame(attempt)
+    })
+    return () => {
+      if (focusScrollRafRef.current) {
+        window.cancelAnimationFrame(focusScrollRafRef.current)
+        focusScrollRafRef.current = 0
+      }
+    }
+  }, [highlightIdSet, loading, rows, scrollToHighlightedFollowers, tab])
 
   const toggleRowFollow = async (targetUserId) => {
     const target = String(targetUserId || '').trim()
@@ -179,7 +269,10 @@ export default function LoungeProfileFollowList({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div
+        ref={listScrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      >
         {loading ? (
           <div className="px-4 py-10 text-center text-[15px] text-zinc-500">Loading…</div>
         ) : err ? (
@@ -211,111 +304,111 @@ export default function LoungeProfileFollowList({
                 followsViewer.has(uid) &&
                 !followingThem
               const showFollow = viewerUserId && !isSelf
-              const isHighlighted = activeHighlightIds.has(String(uid))
+              const focusRowId = highlightIdSet.has(String(uid)) ? followListFocusRowId(uid) : undefined
 
               return (
                 <li key={uid}>
                   <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openRowProfile(row)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        openRowProfile(row)
-                      }
-                    }}
-                    className={`flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left touch-manipulation active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent] ${
-                      isHighlighted
-                        ? 'bg-cyan-950/35 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.45),0_0_18px_rgba(34,211,238,0.22)] transition-[background-color,box-shadow] duration-700'
-                        : ''
-                    }`}
-                    aria-label={`Open ${displayName} profile`}
+                    id={focusRowId}
+                    className="relative z-[1] px-1"
                   >
                     <div
-                      className={`${LOUNGE_FEED_AVATAR_CLASS} grid shrink-0 place-items-center`}
-                      aria-hidden
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openRowProfile(row)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          openRowProfile(row)
+                        }
+                      }}
+                      className="flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-left touch-manipulation active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
+                      aria-label={`Open ${displayName} profile`}
                     >
-                      {row.avatar_url ? (
-                        <img
-                          src={row.avatar_url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span
-                          className={`font-bold text-white ${profileAvatarToneClass(
-                            row.user_id || row.handle || 'member',
-                          )}`}
-                        >
-                          {profileAvatarInitials(row.display_name, row.handle)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start gap-1.5 -translate-y-0.5">
-                        {/* Inlined here (not LoungeFeedAuthorMetaBadges) so OG badge nudge is isolated to this surface */}
-                        {(() => {
-                          const hasStaff = loungeFeedAuthorHasStaffBadge(row.role)
-                          const showOg = row.is_og === true
-                          return (
-                            <>
-                              <span className={loungeFeedAuthorIdentityClusterClass(hasStaff, showOg)}>
-                                <span className={`${LOUNGE_FEED_DISPLAY_NAME_CLASS} text-[15px]`}>{displayName}</span>
-                                {hasStaff ? (
-                                  <span className={`shrink-0 ${String(row.role).trim().toLowerCase() === 'admin' ? '-translate-y-px' : '-translate-y-[2px]'}`}>
-                                    <LoungeStaffRoleBadge role={row.role} />
-                                  </span>
-                                ) : showOg ? (
-                                  <span className="shrink-0 -translate-y-[3px]">
+                      <div
+                        className={`${LOUNGE_FEED_AVATAR_CLASS} grid shrink-0 place-items-center`}
+                        aria-hidden
+                      >
+                        {row.avatar_url ? (
+                          <img
+                            src={row.avatar_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <span
+                            className={`font-bold text-white ${profileAvatarToneClass(
+                              row.user_id || row.handle || 'member',
+                            )}`}
+                          >
+                            {profileAvatarInitials(row.display_name, row.handle)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start gap-1.5 -translate-y-0.5">
+                          {(() => {
+                            const hasStaff = loungeFeedAuthorHasStaffBadge(row.role)
+                            const showOg = row.is_og === true
+                            return (
+                              <>
+                                <span className={loungeFeedAuthorIdentityClusterClass(hasStaff, showOg)}>
+                                  <span className={`${LOUNGE_FEED_DISPLAY_NAME_CLASS} text-[15px]`}>{displayName}</span>
+                                  {hasStaff ? (
+                                    <span className={`shrink-0 ${String(row.role).trim().toLowerCase() === 'admin' ? '-translate-y-px' : '-translate-y-[2px]'}`}>
+                                      <LoungeStaffRoleBadge role={row.role} />
+                                    </span>
+                                  ) : showOg ? (
+                                    <span className="shrink-0 -translate-y-[3px]">
+                                      <LoungeOgBadge isOg />
+                                    </span>
+                                  ) : null}
+                                </span>
+                                {hasStaff && showOg ? (
+                                  <span className="shrink-0 -ml-0.5 -translate-y-[3px]">
                                     <LoungeOgBadge isOg />
                                   </span>
                                 ) : null}
-                              </span>
-                              {hasStaff && showOg ? (
-                                <span className="shrink-0 -ml-0.5 -translate-y-[3px]">
-                                  <LoungeOgBadge isOg />
-                                </span>
-                              ) : null}
-                            </>
-                          )
-                        })()}
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        <span className={`${LOUNGE_FEED_META_HANDLE_TIME_CLASS} text-zinc-500`}>
-                          {handleLabel}
-                        </span>
-                        {showFollowsYouPill ? (
-                          <span className="rounded-full border border-zinc-600 bg-zinc-900/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                            Follows you
+                              </>
+                            )
+                          })()}
+                        </div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                          <span className={`${LOUNGE_FEED_META_HANDLE_TIME_CLASS} text-zinc-500`}>
+                            {handleLabel}
                           </span>
+                          {showFollowsYouPill ? (
+                            <span className="rounded-full border border-zinc-600 bg-zinc-900/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                              Follows you
+                            </span>
+                          ) : null}
+                        </div>
+                        {bio ? (
+                          <p className="mt-1 line-clamp-2 text-[14px] leading-snug text-zinc-400">{bio}</p>
                         ) : null}
                       </div>
-                      {bio ? (
-                        <p className="mt-1 line-clamp-2 text-[14px] leading-snug text-zinc-400">{bio}</p>
-                      ) : null}
+                      {showFollow ? (
+                        <button
+                          type="button"
+                          disabled={rowBusyId === uid}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void toggleRowFollow(uid)
+                          }}
+                          className={`mt-0.5 shrink-0 min-h-9 rounded-full px-4 text-[14px] font-bold touch-manipulation disabled:opacity-50 [-webkit-tap-highlight-color:transparent] ${
+                            followingThem
+                              ? 'border border-zinc-600 bg-zinc-900 text-zinc-100'
+                              : 'bg-white text-zinc-950 hover:bg-zinc-200'
+                          }`}
+                        >
+                          {followingThem ? 'Following' : 'Follow'}
+                        </button>
+                      ) : (
+                        <div className="w-[5.5rem] shrink-0" aria-hidden />
+                      )}
                     </div>
-                    {showFollow ? (
-                      <button
-                        type="button"
-                        disabled={rowBusyId === uid}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void toggleRowFollow(uid)
-                        }}
-                        className={`mt-0.5 shrink-0 min-h-9 rounded-full px-4 text-[14px] font-bold touch-manipulation disabled:opacity-50 [-webkit-tap-highlight-color:transparent] ${
-                          followingThem
-                            ? 'border border-zinc-600 bg-zinc-900 text-zinc-100'
-                            : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                        }`}
-                      >
-                        {followingThem ? 'Following' : 'Follow'}
-                      </button>
-                    ) : (
-                      <div className="w-[5.5rem] shrink-0" aria-hidden />
-                    )}
                   </div>
                 </li>
               )

@@ -116,6 +116,7 @@ export default function LoungeDockSlidePanels({
   onOpenPostFromNotifications,
   onOpenProfileFromNotifications,
   onNotificationsUnreadChange,
+  notificationInteractionProps = null,
   /** `'wheel'` | `'cornerL'` — persisted in `loungeDockMenuLayout:v1`. */
   dockMenuLayout = 'wheel',
   onDockMenuLayoutChange,
@@ -1095,6 +1096,8 @@ export default function LoungeDockSlidePanels({
               onOpenProfile={onOpenProfileFromNotifications}
               onUnreadChange={onNotificationsUnreadChange}
               onOpenNotificationSettings={onOpenNotificationSettings}
+              notificationPostCardProps={notificationInteractionProps}
+              repostMenuScrollRootRef={panelScrollRef}
             />
           </div>
         ) : openPanel === 'settings' ? (

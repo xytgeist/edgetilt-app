@@ -1,12 +1,16 @@
 import { feedPostDisplayCaption, feedPostImageUrls, feedPostStreamPosterUrl } from './communityFeedPost.js'
 import { normalizeFeedCommentBody } from './communityFeedComment.js'
 import { LOUNGE_ACTIVITY_EVENT_TYPES } from './loungeActivityApi.js'
+import {
+  loungeActivityInteractionBarKind,
+  loungeActivityInteractionEntityFromRow,
+} from './loungeActivityInteraction.js'
 
 const POST_PREVIEW_COLS =
-  'id,caption,image_urls,media_url,gif_url,stream_poster_url'
+  'id,caption,image_urls,media_url,gif_url,stream_poster_url,like_count,comment_count,repost_count'
 
 const COMMENT_PREVIEW_COLS =
-  'id,body,parent_id,image_urls,media_url,gif_url,stream_poster_url'
+  'id,body,parent_id,image_urls,media_url,gif_url,stream_poster_url,like_count,repost_count,comment_count'
 
 /** Event types that show actor text snippet + optional media poster. */
 export function loungeActivityShowsContextPreview(eventType) {
@@ -117,15 +121,27 @@ export async function hydrateLoungeActivityEventPreviews(supabaseClient, events)
     const previewText = previewTextFromRow(event.event_type, postRow, commentRow)
     const previewPosterUrl = loungeActivityPreviewPosterUrl(sourceRow)
     const previewIsReply = Boolean(commentRow?.parent_id)
+    const barKind = loungeActivityInteractionBarKind(event.event_type)
+    const barSourceRow =
+      barKind === 'comment' ? commentRow : barKind === 'post' ? postRow : null
+    const interaction_bar_kind = barKind
+    const interaction_bar_entity = loungeActivityInteractionEntityFromRow(barKind, barSourceRow)
     if (!previewText && !previewPosterUrl) {
-      if (!previewIsReply) return event
-      return { ...event, preview_is_reply: true }
+      if (!previewIsReply && !interaction_bar_entity) return event
+      return {
+        ...event,
+        preview_is_reply: previewIsReply,
+        interaction_bar_kind,
+        interaction_bar_entity,
+      }
     }
     return {
       ...event,
       preview_text: previewText || '',
       preview_poster_url: previewPosterUrl || null,
       preview_is_reply: previewIsReply,
+      interaction_bar_kind,
+      interaction_bar_entity,
     }
   })
 }

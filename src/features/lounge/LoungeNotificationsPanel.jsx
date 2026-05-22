@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeNotificationActionBadge from './LoungeNotificationActionBadge.jsx'
 import LoungeNotificationActorStack from './LoungeNotificationActorStack.jsx'
+import LoungeNotificationInteractionBar from './LoungeNotificationInteractionBar.jsx'
 import {
   LOUNGE_FEED_CAPTION_TEXT_CLASS,
   LOUNGE_FEED_DISPLAY_NAME_CLASS,
@@ -37,6 +38,7 @@ import {
   loungeActivityEventToActorProfile,
   loungeActivityGroupedActionPhrase,
 } from '../../utils/loungeActivityGroup.js'
+import { loungeActivityInteractionBarKind } from '../../utils/loungeActivityInteraction.js'
 import { renderRichCaption } from './loungeCaption'
 
 function NotificationSettingsGearIcon() {
@@ -88,6 +90,9 @@ export default function LoungeNotificationsPanel({
   onOpenProfile,
   onUnreadChange,
   onOpenNotificationSettings,
+  /** Same handlers as feed `LoungePostArticle` for inline like/repost/bookmark/comment. */
+  notificationPostCardProps = null,
+  repostMenuScrollRootRef = null,
 }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -171,6 +176,23 @@ export default function LoungeNotificationsPanel({
   }, [loadPage])
 
   useEffect(() => {
+    const pp = notificationPostCardProps
+    if (!pp || items.length === 0) return
+    const postIds = new Set()
+    const commentIds = new Set()
+    for (const event of items) {
+      const kind = event.interaction_bar_kind || loungeActivityInteractionBarKind(event.event_type)
+      if (kind === 'post' && event.post_id && event.interaction_bar_entity) {
+        postIds.add(String(event.post_id))
+      } else if (kind === 'comment' && event.comment_id && event.interaction_bar_entity) {
+        commentIds.add(String(event.comment_id))
+      }
+    }
+    if (postIds.size > 0) void pp.refreshPostInteractions?.([...postIds])
+    if (commentIds.size > 0) void pp.hydrateCommentInteractionsForIds?.([...commentIds])
+  }, [items, notificationPostCardProps])
+
+  useEffect(() => {
     if (!viewerUserId || !supabaseClient || schemaMissing || markedReadRef.current) return
     if (loading) return
     markedReadRef.current = true
@@ -220,6 +242,59 @@ export default function LoungeNotificationsPanel({
       }
     },
     [onOpenPost, onOpenProfile],
+  )
+
+  const patchNotificationInteractionEntity = useCallback((kind, entityId, patch) => {
+    if (!kind || entityId == null) return
+    const id = String(entityId)
+    setItems((prev) =>
+      prev.map((event) => {
+        const eventKind = event.interaction_bar_kind || loungeActivityInteractionBarKind(event.event_type)
+        if (eventKind !== kind || !event.interaction_bar_entity) return event
+        const targetId =
+          kind === 'comment' ? String(event.comment_id || '') : String(event.post_id || '')
+        if (targetId !== id) return event
+        return {
+          ...event,
+          interaction_bar_entity: { ...event.interaction_bar_entity, ...patch },
+        }
+      }),
+    )
+  }, [])
+
+  const onOpenPostFromInteraction = useCallback(
+    ({ postId, commentId, focusComposer = false }) => {
+      if (!postId) return
+      onOpenPost?.({ postId, commentId: commentId || null, focusComposer })
+    },
+    [onOpenPost],
+  )
+
+  const renderNotificationInteractionBar = useCallback(
+    (event) => {
+      if (!notificationPostCardProps || !event?.interaction_bar_entity) return null
+      const kind = event.interaction_bar_kind || loungeActivityInteractionBarKind(event.event_type)
+      if (!kind) return null
+      return (
+        <div className="mt-1 w-full pl-[calc(2.5rem+0.75rem)] pr-3 pb-1 sm:pl-[calc(2.75rem+0.75rem)]">
+          <LoungeNotificationInteractionBar
+            kind={kind}
+            entity={event.interaction_bar_entity}
+            event={event}
+            postCardProps={notificationPostCardProps}
+            repostMenuScrollRootRef={repostMenuScrollRootRef}
+            onOpenPost={onOpenPostFromInteraction}
+            onEntityCountsChange={patchNotificationInteractionEntity}
+          />
+        </div>
+      )
+    },
+    [
+      notificationPostCardProps,
+      onOpenPostFromInteraction,
+      patchNotificationInteractionEntity,
+      repostMenuScrollRootRef,
+    ],
   )
 
   const displayRows = useMemo(() => buildLoungeActivityDisplayRows(items), [items])
@@ -370,101 +445,108 @@ export default function LoungeNotificationsPanel({
     return (
       <li key={event.id}>
         <div
-          role="button"
-          tabIndex={0}
-          onClick={() => onRowActivate(event)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onRowActivate(event)
-            }
-          }}
-          aria-label={isNew ? `${summary} — new notification` : summary}
-          className={`${LOUNGE_FEED_POST_ROW_CLASS} relative flex w-full cursor-pointer items-start gap-3 text-left touch-manipulation ${
-            isNew ? 'bg-cyan-950/25 ring-1 ring-inset ring-cyan-500/20 active:bg-cyan-950/35' : ''
+          className={`${LOUNGE_FEED_POST_ROW_CLASS} relative flex w-full flex-col text-left touch-manipulation ${
+            isNew ? 'bg-cyan-950/25 ring-1 ring-inset ring-cyan-500/20' : ''
           }`}
         >
           {isNew ? <LoungeNotificationNewRail /> : null}
-          <button
-            type="button"
-            title="View profile"
-            aria-label={`View ${displayName}'s profile`}
-            onClick={(e) => {
-              e.stopPropagation()
-              openActorProfile(actorProfile)
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onRowActivate(event)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onRowActivate(event)
+              }
             }}
-            className={`${LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS} flex items-center justify-center overflow-hidden touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
+            aria-label={isNew ? `${summary} — new notification` : summary}
+            className={`relative flex w-full cursor-pointer items-start gap-3 ${
+              isNew ? 'active:bg-cyan-950/35' : ''
+            }`}
           >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <span
-                className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarTone}`}
-              >
-                {avatarText}
-              </span>
-            )}
-          </button>
-          <span className={`min-w-0 flex-1 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
-            <div className={LOUNGE_FEED_META_TEXT_COLUMN_CLASS}>
-              <div className={LOUNGE_FEED_META_ROW_CLASS}>
-                <LoungeFeedAuthorMetaBadges
-                  role={actorProfile.role}
-                  isOg={event.actor_is_og === true}
-                  displayName={displayName}
-                  displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
-                />
-                {when ? (
-                  <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                    <span className="min-w-0 truncate">{handleLabel}</span>
-                    <span className="shrink-0 text-zinc-600">·</span>
-                    <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{when}</span>
-                  </span>
-                ) : (
-                  <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                    <span className="min-w-0 truncate">{handleLabel}</span>
-                  </span>
-                )}
-              </div>
-              <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[15px] leading-snug text-zinc-400">
-                <LoungeNotificationActionBadge eventType={event.event_type} slot="inline" />
-                <span className="min-w-0">{actionPhrase}</span>
-              </span>
-              {previewText ? (
-                <p
-                  className={`${LOUNGE_FEED_CAPTION_TEXT_CLASS} mt-1 ${clampClass} text-zinc-300`}
-                  onClick={(e) => {
-                    if (e.target instanceof Element && e.target.closest('a, button')) {
-                      e.stopPropagation()
-                    }
-                  }}
-                >
-                  {renderRichCaption(previewText)}
-                </p>
-              ) : null}
-            </div>
-          </span>
-          {previewPosterUrl ? (
-            <span
-              className="pointer-events-none h-14 w-14 shrink-0 self-center overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900"
-              aria-hidden
+            <button
+              type="button"
+              title="View profile"
+              aria-label={`View ${displayName}'s profile`}
+              onClick={(e) => {
+                e.stopPropagation()
+                openActorProfile(actorProfile)
+              }}
+              className={`${LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS} flex items-center justify-center overflow-hidden touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
             >
-              <img
-                src={previewPosterUrl}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-                draggable={false}
-              />
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span
+                  className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarTone}`}
+                >
+                  {avatarText}
+                </span>
+              )}
+            </button>
+            <span className={`min-w-0 flex-1 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
+              <div className={LOUNGE_FEED_META_TEXT_COLUMN_CLASS}>
+                <div className={LOUNGE_FEED_META_ROW_CLASS}>
+                  <LoungeFeedAuthorMetaBadges
+                    role={actorProfile.role}
+                    isOg={event.actor_is_og === true}
+                    displayName={displayName}
+                    displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
+                  />
+                  {when ? (
+                    <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                      <span className="min-w-0 truncate">{handleLabel}</span>
+                      <span className="shrink-0 text-zinc-600">·</span>
+                      <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{when}</span>
+                    </span>
+                  ) : (
+                    <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                      <span className="min-w-0 truncate">{handleLabel}</span>
+                    </span>
+                  )}
+                </div>
+                <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[15px] leading-snug text-zinc-400">
+                  <LoungeNotificationActionBadge eventType={event.event_type} slot="inline" />
+                  <span className="min-w-0">{actionPhrase}</span>
+                </span>
+                {previewText ? (
+                  <p
+                    className={`${LOUNGE_FEED_CAPTION_TEXT_CLASS} mt-1 ${clampClass} text-zinc-300`}
+                    onClick={(e) => {
+                      if (e.target instanceof Element && e.target.closest('a, button')) {
+                        e.stopPropagation()
+                      }
+                    }}
+                  >
+                    {renderRichCaption(previewText)}
+                  </p>
+                ) : null}
+              </div>
             </span>
-          ) : null}
+            {previewPosterUrl ? (
+              <span
+                className="pointer-events-none h-14 w-14 shrink-0 self-center overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900"
+                aria-hidden
+              >
+                <img
+                  src={previewPosterUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              </span>
+            ) : null}
+          </div>
+          {renderNotificationInteractionBar(event)}
         </div>
       </li>
     )

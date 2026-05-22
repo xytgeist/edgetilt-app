@@ -4723,7 +4723,7 @@ export default function SocialFeed({
   }, [])
 
   const onLoungeOpenPostFromNotifications = useCallback(
-    async ({ postId, commentId }) => {
+    async ({ postId, commentId, focusComposer = false }) => {
       if (!postId) return
       let postRow = communityPosts.find((p) => p.id === postId)
       if (!postRow) {
@@ -4742,9 +4742,12 @@ export default function SocialFeed({
       }
       if (!postRow) return
       if (commentId) {
-        await openDirectCommentPostDetail(postRow, commentId)
+        await openDirectCommentPostDetail(postRow, commentId, { focusComposer })
       } else {
-        openLoungePostDetail(postRow)
+        openLoungePostDetail(
+          postRow,
+          focusComposer ? { focusCommentComposer: true } : undefined,
+        )
       }
     },
     [
@@ -8069,6 +8072,59 @@ export default function SocialFeed({
     [openLoungeCommentStreamLightboxDetail, openLoungeStreamLightboxDetail],
   )
 
+  const notificationInteractionProps = useMemo(
+    () => ({
+      loungeReadOnly,
+      interactionStateFor,
+      interactionStateForComment,
+      toggleInteraction,
+      toggleBookmark,
+      bookmarkedByPost,
+      onPlainRepost: handlePlainRepost,
+      onUndoPlainRepost: (p) => {
+        void undoPlainRepostForOriginal(p.id)
+      },
+      onRemoveQuoteRepost: openRemoveQuoteRepostForPost,
+      onQuoteRepost: openQuoteRepostComposer,
+      requireLoungeAuth,
+      openProfileGateIfNeeded,
+      onOpenComments: openLoungePostDetail,
+      onToggleCommentLike: toggleLoungeDetailCommentLike,
+      onToggleCommentBookmark: toggleLoungeDetailCommentBookmark,
+      getCommentBookmarked: getLoungeDetailCommentBookmarked,
+      onCommentPlainRepost: (p) => void addLoungeDetailCommentPlainRepost(p.id),
+      onCommentUndoPlainRepost: (p) => void undoLoungeDetailCommentPlainRepost(p.id),
+      commentToggleInteraction: noopLoungeBarPostToggle,
+      repostActionBusy: repostManageBusy,
+      refreshPostInteractions: refreshLoungePostInteractions,
+      hydrateCommentInteractionsForIds: hydrateCommentInteractionsForIds,
+    }),
+    [
+      loungeReadOnly,
+      interactionStateFor,
+      interactionStateForComment,
+      toggleInteraction,
+      toggleBookmark,
+      bookmarkedByPost,
+      handlePlainRepost,
+      undoPlainRepostForOriginal,
+      openRemoveQuoteRepostForPost,
+      openQuoteRepostComposer,
+      requireLoungeAuth,
+      openProfileGateIfNeeded,
+      openLoungePostDetail,
+      toggleLoungeDetailCommentLike,
+      toggleLoungeDetailCommentBookmark,
+      getLoungeDetailCommentBookmarked,
+      addLoungeDetailCommentPlainRepost,
+      undoLoungeDetailCommentPlainRepost,
+      noopLoungeBarPostToggle,
+      repostManageBusy,
+      refreshLoungePostInteractions,
+      hydrateCommentInteractionsForIds,
+    ],
+  )
+
   const loungeStreamLightboxCtx = useMemo(
     () =>
       buildLoungeStreamLightboxCtxFromPostCardProps(profilePostCardProps, {
@@ -10551,6 +10607,7 @@ export default function SocialFeed({
           onOpenPostFromNotifications={onLoungeOpenPostFromNotifications}
           onOpenProfileFromNotifications={onLoungeOpenProfileFromNotifications}
           onNotificationsUnreadChange={onLoungeNotificationsUnreadChange}
+          notificationInteractionProps={notificationInteractionProps}
           blockUnderlyingPointer={loungeFabPointerBlocked}
           dockMenuLayout={loungeDockMenuLayout}
           onDockMenuLayoutChange={writeLoungeDockMenuLayout}

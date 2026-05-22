@@ -9284,13 +9284,14 @@ export default function SocialFeed({
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
                   </div>
-                  <button
-                    type="button"
-                    data-lounge-original-embed
-                    aria-label="View original post"
-                    onClick={() => void openLoungePostDetail(loungePostDetail.reposted_post)}
-                    className="mt-3 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
-                  >
+                  <div className={LOUNGE_COMMENT_DETAIL_THREAD_PAD}>
+                    <button
+                      type="button"
+                      data-lounge-original-embed
+                      aria-label="View original post"
+                      onClick={() => void openLoungePostDetail(loungePostDetail.reposted_post)}
+                      className="mt-3 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
+                    >
                     <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-snug">
                       <span className="min-w-0 max-w-[min(11rem,42vw)] truncate font-semibold text-zinc-200 sm:max-w-[13rem]">
                         {displayNameFor(loungePostDetail.reposted_post)}
@@ -9325,7 +9326,8 @@ export default function SocialFeed({
                       streamLightboxHost={loungePostDetail}
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
-                  </button>
+                    </button>
+                  </div>
                 </>
               ) : (
                 <>

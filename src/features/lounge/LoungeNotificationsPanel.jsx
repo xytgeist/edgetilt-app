@@ -36,7 +36,6 @@ import {
   buildLoungeActivityDisplayRows,
   loungeActivityEventToActorProfile,
   loungeActivityGroupedActionPhrase,
-  loungeActivityGroupedActionCopy,
 } from '../../utils/loungeActivityGroup.js'
 import { renderRichCaption } from './loungeCaption'
 
@@ -252,7 +251,6 @@ export default function LoungeNotificationsPanel({
     const isNew = loungeNotificationIsNew(sessionNewIds, eventIds)
     const when = formatLoungeActivityWhen(event.created_at)
     const actionPhrase = loungeActivityGroupedActionPhrase(event, firstActor, othersCount, event)
-    const groupedActionCopy = loungeActivityGroupedActionCopy(event, firstActor, othersCount, event)
     const showContext = loungeActivityShowsContextPreview(event.event_type)
     const previewText = showContext ? String(event.preview_text || '').trim() : ''
     const previewPosterUrl = showContext ? String(event.preview_poster_url || '').trim() : ''
@@ -305,8 +303,7 @@ export default function LoungeNotificationsPanel({
                 />
               </div>
               <span className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1 text-[15px] leading-snug text-zinc-400">
-                <span className="max-w-[10ch] break-words">{groupedActionCopy.leadName}</span>
-                <span className="min-w-0 break-words">{groupedActionCopy.rest}</span>
+                <span className="min-w-0 break-words">{actionPhrase}</span>
                 {when ? (
                   <>
                     <span className="shrink-0 text-zinc-600">·</span>

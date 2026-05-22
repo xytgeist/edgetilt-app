@@ -67,6 +67,10 @@ import {
   loungeActivityMarkPushOpened,
   loungeActivityUnreadCount,
 } from '../../utils/loungeActivityApi.js'
+import {
+  drainLoungeActivityMarkReadQueue,
+  queueLoungeActivityMarkRead,
+} from '../../utils/loungeActivityMarkReadQueue.js'
 import useLoungePushNotifications from './hooks/useLoungePushNotifications.js'
 import useLoungeNotificationPreferences from './hooks/useLoungeNotificationPreferences.js'
 import {
@@ -4675,10 +4679,14 @@ export default function SocialFeed({
 
   const markLoungePushOpened = useCallback(
     async ({ activityEventId, activityBatchId } = {}) => {
-      if (!composerUserId || loungeFeedBrowseMode === 'anonymous') return
       const eventId = String(activityEventId || '').trim()
       const batchId = String(activityBatchId || '').trim()
       if (!eventId && !batchId) return
+
+      if (!composerUserId || loungeFeedBrowseMode === 'anonymous') {
+        queueLoungeActivityMarkRead({ activityEventId: eventId, activityBatchId: batchId })
+        return
+      }
 
       const dedupeKey = batchId ? `batch:${batchId}` : `event:${eventId}`
       if (loungePushMarkDedupeRef.current.has(dedupeKey)) return
@@ -4701,6 +4709,13 @@ export default function SocialFeed({
   )
 
   useEffect(() => {
+    if (!composerUserId || loungeFeedBrowseMode === 'anonymous') return
+    for (const item of drainLoungeActivityMarkReadQueue()) {
+      void markLoungePushOpened(item)
+    }
+  }, [composerUserId, loungeFeedBrowseMode, markLoungePushOpened])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return undefined
     const onPushOpened = (ev) => {
       void markLoungePushOpened(ev.detail || {})
@@ -4717,9 +4732,10 @@ export default function SocialFeed({
       const activityEventId = (params.get('activityEvent') || '').trim()
       const activityBatchId = (params.get('activityBatch') || '').trim()
       if (!activityEventId && !activityBatchId) return
-      stripLoungeActivityPushQueryParams()
       if (cancelled) return
       await markLoungePushOpened({ activityEventId, activityBatchId })
+      if (cancelled) return
+      stripLoungeActivityPushQueryParams()
     }
     void run()
     const onPop = () => void run()

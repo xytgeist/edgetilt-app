@@ -35,6 +35,7 @@ import {
   loungeActivityInAppPayloadFromMessage,
   navigateFromLoungeActivityPayload,
 } from '../../utils/loungeActivityInAppNavigate.js'
+import { queueLoungeActivityMarkRead } from '../../utils/loungeActivityMarkReadQueue.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
@@ -154,6 +155,7 @@ export default function AppShell({
         },
       })
       if (activityEventId || activityBatchId) {
+        queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
         window.dispatchEvent(
           new CustomEvent('lounge-push-opened', {
             detail: { activityEventId, activityBatchId },
@@ -655,6 +657,7 @@ export default function AppShell({
         const activityEventId = event?.data?.activityEventId || null
         const activityBatchId = event?.data?.activityBatchId || null
         if (event?.data?.markActivityRead || activityEventId || activityBatchId) {
+          queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
           window.dispatchEvent(
             new CustomEvent('lounge-push-opened', {
               detail: { activityEventId, activityBatchId },

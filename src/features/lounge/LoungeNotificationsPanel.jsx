@@ -24,8 +24,10 @@ import {
   loungeActivityActionPhrase,
   loungeActivityEventsPage,
   loungeActivityMarkAllRead,
+  loungeActivityMarkPushOpened,
   loungeActivityOpenPostTarget,
   loungeActivitySummary,
+  loungeActivityUnreadCount,
   LOUNGE_ACTIVITY_EVENT_TYPES,
   LOUNGE_ACTIVITY_PAGE_SIZE,
 } from '../../utils/loungeActivityApi.js'
@@ -311,10 +313,29 @@ export default function LoungeNotificationsPanel({
     return 'No notifications yet. When someone follows you, comments, replies, or @mentions you, it shows up here.'
   }, [schemaMissing])
 
+  const markNotificationEventsRead = useCallback(
+    async (readEventIds) => {
+      const ids = [...new Set((readEventIds || []).map(String).filter(Boolean))]
+      if (ids.length === 0 || !viewerUserId || !supabaseClient) return
+      try {
+        for (const id of ids) {
+          await loungeActivityMarkPushOpened(supabaseClient, { activityEventId: id })
+        }
+        const n = await loungeActivityUnreadCount(supabaseClient)
+        onUnreadChange?.(n)
+      } catch {
+        /* ignore transient mark-read errors */
+      }
+    },
+    [onUnreadChange, supabaseClient, viewerUserId],
+  )
+
   const onRowActivate = useCallback(
-    (event) => {
+    (event, readEventIds = null) => {
       if (!event) return
       markSessionNewSeen()
+      void markNotificationEventsRead(readEventIds || (event.id ? [event.id] : []))
+
       if (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.FOLLOW) {
         onOpenProfile?.({
           user_id: event.actor_user_id,
@@ -334,7 +355,7 @@ export default function LoungeNotificationsPanel({
         if (target) onOpenPost?.(target)
       }
     },
-    [markSessionNewSeen, onOpenPost, onOpenProfile],
+    [markNotificationEventsRead, markSessionNewSeen, onOpenPost, onOpenProfile],
   )
 
   const patchNotificationInteractionEntity = useCallback((kind, entityId, patch) => {
@@ -355,14 +376,6 @@ export default function LoungeNotificationsPanel({
     )
   }, [])
 
-  const onOpenPostFromInteraction = useCallback(
-    ({ postId, commentId, focusComposer = false }) => {
-      if (!postId) return
-      onOpenPost?.({ postId, commentId: commentId || null, focusComposer })
-    },
-    [onOpenPost],
-  )
-
   const renderNotificationInteractionBar = useCallback(
     (event) => {
       if (!notificationPostCardProps || !event?.interaction_bar_entity) return null
@@ -376,15 +389,20 @@ export default function LoungeNotificationsPanel({
             event={event}
             postCardProps={notificationPostCardProps}
             repostMenuScrollRootRef={repostMenuScrollRootRef}
-            onOpenPost={onOpenPostFromInteraction}
+            onOpenPost={({ postId, commentId, focusComposer = false }) => {
+              if (!postId) return
+              void markNotificationEventsRead(event.id ? [event.id] : [])
+              onOpenPost?.({ postId, commentId: commentId || null, focusComposer })
+            }}
             onEntityCountsChange={patchNotificationInteractionEntity}
           />
         </div>
       )
     },
     [
+      markNotificationEventsRead,
       notificationPostCardProps,
-      onOpenPostFromInteraction,
+      onOpenPost,
       patchNotificationInteractionEntity,
       repostMenuScrollRootRef,
     ],
@@ -434,11 +452,11 @@ export default function LoungeNotificationsPanel({
         <div
           role="button"
           tabIndex={0}
-          onClick={() => onRowActivate(event)}
+          onClick={() => onRowActivate(event, eventIds)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
-              onRowActivate(event)
+              onRowActivate(event, eventIds)
             }
           }}
           aria-label={actionPhrase}

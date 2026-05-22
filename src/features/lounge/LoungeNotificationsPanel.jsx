@@ -302,15 +302,15 @@ export default function LoungeNotificationsPanel({
                   }
                 />
               </div>
-              <span className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1 text-[15px] leading-snug text-zinc-400">
-                <span className="min-w-0 break-words">{actionPhrase}</span>
+              <p className="mt-0.5 min-w-0 text-[15px] leading-snug text-zinc-400">
+                <span className="break-words">{actionPhrase}</span>
                 {when ? (
                   <>
-                    <span className="shrink-0 text-zinc-600">·</span>
-                    <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{when}</span>
+                    <span className="text-zinc-600"> · </span>
+                    <span className="whitespace-nowrap tabular-nums">{when}</span>
                   </>
                 ) : null}
-              </span>
+              </p>
               {previewText ? (
                 <p
                   className={`${LOUNGE_FEED_CAPTION_TEXT_CLASS} mt-1 line-clamp-2 text-zinc-300`}

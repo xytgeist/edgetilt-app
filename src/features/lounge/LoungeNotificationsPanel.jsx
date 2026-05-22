@@ -38,7 +38,11 @@ import {
   loungeActivityEventToActorProfile,
   loungeActivityGroupedActionPhrase,
 } from '../../utils/loungeActivityGroup.js'
-import { loungeActivityInteractionBarKind } from '../../utils/loungeActivityInteraction.js'
+import {
+  fetchLoungeActivityInteractionCountRows,
+  loungeActivityInteractionBarKind,
+  loungeActivityInteractionEntityFromRow,
+} from '../../utils/loungeActivityInteraction.js'
 import { renderRichCaption } from './loungeCaption'
 
 function NotificationSettingsGearIcon() {
@@ -95,6 +99,8 @@ export default function LoungeNotificationsPanel({
   repostMenuScrollRootRef = null,
   /** Panel scroller — first scroll clears "new" highlights (inbox seen). */
   listScrollRootRef = null,
+  /** Bumped when post detail closes over this panel — refresh interaction counts. */
+  interactionCountsRefreshKey = 0,
 }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -205,6 +211,58 @@ export default function LoungeNotificationsPanel({
 
   const notificationPostCardPropsRef = useRef(notificationPostCardProps)
   notificationPostCardPropsRef.current = notificationPostCardProps
+
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+
+  const refreshInteractionEntityCounts = useCallback(async () => {
+    if (!viewerUserId || !supabaseClient) return
+    const postIds = []
+    const commentIds = []
+    for (const event of itemsRef.current) {
+      const kind = event.interaction_bar_kind || loungeActivityInteractionBarKind(event.event_type)
+      if (kind === 'post' && event.post_id && event.interaction_bar_entity) {
+        postIds.push(String(event.post_id))
+      } else if (kind === 'comment' && event.comment_id && event.interaction_bar_entity) {
+        commentIds.push(String(event.comment_id))
+      }
+    }
+    if (postIds.length === 0 && commentIds.length === 0) return
+    try {
+      const { postsById, commentsById } = await fetchLoungeActivityInteractionCountRows(
+        supabaseClient,
+        { postIds, commentIds },
+      )
+      setItems((prev) =>
+        prev.map((event) => {
+          const kind = event.interaction_bar_kind || loungeActivityInteractionBarKind(event.event_type)
+          if (!kind || !event.interaction_bar_entity) return event
+          const sourceRow =
+            kind === 'comment'
+              ? event.comment_id
+                ? commentsById.get(String(event.comment_id))
+                : null
+              : event.post_id
+                ? postsById.get(String(event.post_id))
+                : null
+          if (!sourceRow) return event
+          const entity = loungeActivityInteractionEntityFromRow(kind, sourceRow)
+          if (!entity) return event
+          return { ...event, interaction_bar_entity: entity }
+        }),
+      )
+      const pp = notificationPostCardPropsRef.current
+      if (commentIds.length > 0) void pp?.hydrateCommentInteractionsForIds?.(commentIds)
+      if (postIds.length > 0) void pp?.refreshPostInteractions?.(postIds)
+    } catch {
+      /* ignore transient count refresh errors */
+    }
+  }, [supabaseClient, viewerUserId])
+
+  useEffect(() => {
+    if (!interactionCountsRefreshKey) return
+    void refreshInteractionEntityCounts()
+  }, [interactionCountsRefreshKey, refreshInteractionEntityCounts])
 
   useEffect(() => {
     const pp = notificationPostCardPropsRef.current

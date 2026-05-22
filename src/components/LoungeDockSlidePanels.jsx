@@ -117,6 +117,8 @@ export default function LoungeDockSlidePanels({
   onOpenProfileFromNotifications,
   onNotificationsUnreadChange,
   notificationInteractionProps = null,
+  /** Bumped when post detail closes over notifications — refresh interaction bar counts. */
+  notificationInteractionCountsRefreshKey = 0,
   /** `'wheel'` | `'cornerL'` — persisted in `loungeDockMenuLayout:v1`. */
   dockMenuLayout = 'wheel',
   onDockMenuLayoutChange,
@@ -1099,6 +1101,7 @@ export default function LoungeDockSlidePanels({
               notificationPostCardProps={notificationInteractionProps}
               repostMenuScrollRootRef={panelScrollRef}
               listScrollRootRef={panelScrollRef}
+              interactionCountsRefreshKey={notificationInteractionCountsRefreshKey}
             />
           </div>
         ) : openPanel === 'settings' ? (

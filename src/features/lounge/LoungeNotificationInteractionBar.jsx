@@ -45,8 +45,15 @@ export default function LoungeNotificationInteractionBar({
     onEntityCountsChange?.(kind, entity.id, patch)
   }
 
+  const patchRepostCount = (delta) => {
+    patchCounts({
+      repost_count: Math.max(0, (Number(entity.repost_count) || 0) + delta),
+    })
+  }
+
   if (kind === 'comment') {
     const commentId = entity.id
+    const commentState = () => interactionStateForComment?.(commentId)
     return (
       <div
         className="w-full"
@@ -62,12 +69,26 @@ export default function LoungeNotificationInteractionBar({
           loungeReadOnly={loungeReadOnly}
           interactionStateFor={interactionStateForComment}
           toggleInteraction={commentToggleInteraction}
-          onPlainRepost={onCommentPlainRepost}
-          onUndoPlainRepost={onCommentUndoPlainRepost}
+          onPlainRepost={
+            onCommentPlainRepost
+              ? async (p) => {
+                  if (!commentState()?.reposted) patchRepostCount(1)
+                  await onCommentPlainRepost(p)
+                }
+              : undefined
+          }
+          onUndoPlainRepost={
+            onCommentUndoPlainRepost
+              ? async (p) => {
+                  if (commentState()?.reposted) patchRepostCount(-1)
+                  await onCommentUndoPlainRepost(p)
+                }
+              : undefined
+          }
           onToggleLike={
             onToggleCommentLike
               ? async () => {
-                  const was = interactionStateForComment?.(commentId)?.liked
+                  const was = commentState()?.liked
                   patchCounts({
                     like_count: Math.max(0, (Number(entity.like_count) || 0) + (was ? -1 : 1)),
                   })
@@ -96,6 +117,7 @@ export default function LoungeNotificationInteractionBar({
   }
 
   const postId = entity.id
+  const postState = () => interactionStateFor?.(postId)
   return (
     <div
       className="w-full"
@@ -112,16 +134,37 @@ export default function LoungeNotificationInteractionBar({
         interactionStateFor={interactionStateFor}
         toggleInteraction={async (id, key) => {
           if (key === 'liked') {
-            const was = interactionStateFor?.(id)?.liked
+            const was = postState()?.liked
             patchCounts({
               like_count: Math.max(0, (Number(entity.like_count) || 0) + (was ? -1 : 1)),
             })
           }
           await toggleInteraction?.(id, key)
         }}
-        onPlainRepost={onPlainRepost}
-        onUndoPlainRepost={onUndoPlainRepost}
-        onRemoveQuoteRepost={onRemoveQuoteRepost}
+        onPlainRepost={
+          onPlainRepost
+            ? async (p) => {
+                if (!postState()?.reposted) patchRepostCount(1)
+                await onPlainRepost(p)
+              }
+            : undefined
+        }
+        onUndoPlainRepost={
+          onUndoPlainRepost
+            ? async (p) => {
+                if (postState()?.reposted) patchRepostCount(-1)
+                await onUndoPlainRepost(p)
+              }
+            : undefined
+        }
+        onRemoveQuoteRepost={
+          onRemoveQuoteRepost
+            ? async (p) => {
+                if (postState()?.quoteRepostChildId) patchRepostCount(-1)
+                await onRemoveQuoteRepost(p)
+              }
+            : undefined
+        }
         onQuoteRepost={onQuoteRepost}
         toggleBookmark={toggleBookmark}
         bookmarkedByPost={bookmarkedByPost}

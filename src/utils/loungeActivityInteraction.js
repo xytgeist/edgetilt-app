@@ -29,3 +29,39 @@ export function loungeActivityInteractionEntityFromRow(kind, row) {
     repost_count: typeof row.repost_count === 'number' ? row.repost_count : 0,
   }
 }
+
+const INTERACTION_COUNT_COLS = 'id,like_count,comment_count,repost_count'
+
+/** Refresh like/repost/comment counts for notification interaction bars. */
+export async function fetchLoungeActivityInteractionCountRows(supabaseClient, { postIds = [], commentIds = [] } = {}) {
+  const postsById = new Map()
+  const commentsById = new Map()
+  if (!supabaseClient) return { postsById, commentsById }
+
+  const pids = [...new Set(postIds.map(String).filter(Boolean))]
+  const cids = [...new Set(commentIds.map(String).filter(Boolean))]
+
+  if (pids.length > 0) {
+    const { data } = await supabaseClient
+      .from('community_feed_posts')
+      .select(INTERACTION_COUNT_COLS)
+      .in('id', pids)
+      .is('hidden_at', null)
+    for (const row of data || []) {
+      postsById.set(String(row.id), row)
+    }
+  }
+
+  if (cids.length > 0) {
+    const { data } = await supabaseClient
+      .from('feed_comments')
+      .select(INTERACTION_COUNT_COLS)
+      .in('id', cids)
+      .is('hidden_at', null)
+    for (const row of data || []) {
+      commentsById.set(String(row.id), row)
+    }
+  }
+
+  return { postsById, commentsById }
+}

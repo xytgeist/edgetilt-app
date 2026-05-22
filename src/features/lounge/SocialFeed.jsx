@@ -665,6 +665,15 @@ export default function SocialFeed({
   const [chatDockInitialPeerUserId, setChatDockInitialPeerUserId] = useState(null)
   const [loungeNotificationsUnread, setLoungeNotificationsUnread] = useState(0)
   const loungePushMarkDedupeRef = useRef(new Set())
+  const loungePostDetailIdForNotifRefreshRef = useRef(null)
+  const [notificationInteractionCountsRefreshKey, setNotificationInteractionCountsRefreshKey] = useState(0)
+  const loungeDockPanelRef = useRef(loungeDockPanel)
+  loungeDockPanelRef.current = loungeDockPanel
+  const bumpNotificationInteractionRefreshIfOpen = useCallback(() => {
+    if (loungeDockPanelRef.current === 'notifications') {
+      setNotificationInteractionCountsRefreshKey((k) => k + 1)
+    }
+  }, [])
   const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
   const [loungePostDetail, setLoungePostDetail] = useState(null)
   /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
@@ -2823,53 +2832,67 @@ export default function SocialFeed({
       const cids = [...new Set((commentIds || []).map((id) => String(id)).filter(Boolean))]
       if (!composerUserId || cids.length === 0 || loungeReadOnly) return
       // Check both legacy feed_comment_reposts table and the new community_feed_posts path.
-      const [likesRes, legacyRepostsRes, newRepostsRes, bmRes] = await Promise.all([
+      const [likesRes, legacyRepostsRes, commentRepostsRes, bmRes, repliesRes] = await Promise.all([
         supabaseClient.from('feed_comment_likes').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
         supabaseClient.from('feed_comment_reposts').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
         supabaseClient
           .from('community_feed_posts')
-          .select('repost_of_comment_id')
+          .select('id,repost_of_comment_id,is_plain_repost')
           .eq('user_id', composerUserId)
-          .eq('is_plain_repost', true)
-          .in('repost_of_comment_id', cids),
+          .in('repost_of_comment_id', cids)
+          .is('hidden_at', null),
         supabaseClient.from('feed_comment_bookmarks').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
+        supabaseClient
+          .from('feed_comments')
+          .select('parent_id')
+          .eq('user_id', composerUserId)
+          .in('parent_id', cids)
+          .is('hidden_at', null),
       ])
-      const intErr = likesRes.error?.message || legacyRepostsRes.error?.message || bmRes.error?.message
+      const intErr =
+        likesRes.error?.message ||
+        legacyRepostsRes.error?.message ||
+        commentRepostsRes.error?.message ||
+        bmRes.error?.message ||
+        repliesRes.error?.message
       if (intErr) {
         console.warn('profile comment interactions:', intErr)
         return
       }
-      const repostedCommentIds = new Set([
-        ...(legacyRepostsRes.data || []).map((r) => r.comment_id).filter(Boolean),
-        ...(newRepostsRes.data || []).map((r) => r.repost_of_comment_id).filter(Boolean),
-      ])
+      const legacyRepostedCommentIds = new Set(
+        (legacyRepostsRes.data || []).map((r) => (r.comment_id != null ? String(r.comment_id) : '')).filter(Boolean),
+      )
+      const plainRepostByCommentId = new Map()
+      const quoteRepostByCommentId = new Map()
+      for (const r of commentRepostsRes.data || []) {
+        const cid = r.repost_of_comment_id != null ? String(r.repost_of_comment_id) : ''
+        if (!cid) continue
+        if (r.is_plain_repost === true) plainRepostByCommentId.set(cid, r.id)
+        else quoteRepostByCommentId.set(cid, r.id)
+      }
+      const repliedToCommentIds = new Set(
+        (repliesRes.data || []).map((r) => (r.parent_id != null ? String(r.parent_id) : '')).filter(Boolean),
+      )
       setInteractionByComment((prev) => {
         const next = { ...prev }
         for (const id of cids) {
           const key = String(id)
           const cur = next[key] || { ...defaultInteraction }
+          const plainId = plainRepostByCommentId.get(key) || null
+          const quoteId = quoteRepostByCommentId.get(key) || null
           next[key] = {
             ...cur,
             liked: false,
-            reposted: false,
-            plainRepostChildId: null,
-            quoteRepostChildId: null,
+            reposted: !!(plainId || quoteId || legacyRepostedCommentIds.has(key)),
+            commented: repliedToCommentIds.has(key),
+            plainRepostChildId: plainId,
+            quoteRepostChildId: quoteId,
           }
         }
         for (const r of likesRes.data || []) {
           const cid = r.comment_id != null ? String(r.comment_id) : ''
           if (!cid || !next[cid]) continue
           next[cid] = { ...next[cid], liked: true }
-        }
-        for (const cid of repostedCommentIds) {
-          const key = String(cid)
-          if (!next[key]) continue
-          next[key] = {
-            ...next[key],
-            reposted: true,
-            plainRepostChildId: key,
-            quoteRepostChildId: null,
-          }
         }
         return next
       })
@@ -3179,11 +3202,13 @@ export default function SocialFeed({
         }
         await loadCommunityFeed({ silent: true })
         await refreshLoungePostInteractions([post.id])
+        bumpNotificationInteractionRefreshIfOpen()
       } catch (e) {
         setLoungeManageErr(e?.message || 'Could not repost.')
       }
     },
     [
+      bumpNotificationInteractionRefreshIfOpen,
       composerUserId,
       composerUserProfile?.avatar_url,
       loungeReadOnly,
@@ -3220,11 +3245,12 @@ export default function SocialFeed({
         }
         await loadCommunityFeed({ silent: true })
         await refreshLoungePostInteractions([originalPostId])
+        bumpNotificationInteractionRefreshIfOpen()
       } finally {
         setRepostManageBusy(false)
       }
     },
-    [composerUserId, loadCommunityFeed, refreshLoungePostInteractions, supabaseClient]
+    [bumpNotificationInteractionRefreshIfOpen, composerUserId, loadCommunityFeed, refreshLoungePostInteractions, supabaseClient]
   )
 
   const openRemoveQuoteRepostForPost = useCallback(
@@ -3425,10 +3451,19 @@ export default function SocialFeed({
       clearQuoteRepostMedia()
       await loadCommunityFeed({ silent: true })
       if (origId) await refreshLoungePostInteractions([origId])
+      bumpNotificationInteractionRefreshIfOpen()
     } finally {
       setQuoteRepostBusy(false)
     }
-  }, [clearQuoteRepostMedia, quoteRepostModal, composerUserId, supabaseClient, loadCommunityFeed, refreshLoungePostInteractions])
+  }, [
+    bumpNotificationInteractionRefreshIfOpen,
+    clearQuoteRepostMedia,
+    quoteRepostModal,
+    composerUserId,
+    supabaseClient,
+    loadCommunityFeed,
+    refreshLoungePostInteractions,
+  ])
 
   useLayoutEffect(() => {
     if (!quoteRepostModal || quoteRepostModal.mode !== 'compose') return
@@ -3672,6 +3707,8 @@ export default function SocialFeed({
       const res = await supabaseClient
         .from('community_feed_posts')
         .insert(communityFeedCommentRepostInsertPayload({ originalCommentId: commentId }))
+        .select('id')
+        .maybeSingle()
       if (res.error) {
         // Roll back optimistic update
         setInteractionByComment((prev) => {
@@ -3692,6 +3729,16 @@ export default function SocialFeed({
         }
         return
       }
+      const childId = res.data?.id ? String(res.data.id) : null
+      if (childId) {
+        setInteractionByComment((prev) => {
+          const cur = prev[commentId] || defaultInteraction
+          return {
+            ...prev,
+            [commentId]: { ...cur, reposted: true, plainRepostChildId: childId, quoteRepostChildId: null },
+          }
+        })
+      }
       // Sync true count from DB (trigger on community_feed_posts updated it)
       const { data: row } = await supabaseClient
         .from('feed_comments')
@@ -3704,8 +3751,9 @@ export default function SocialFeed({
         )
       }
       await loadCommunityFeed({ silent: true })
+      bumpNotificationInteractionRefreshIfOpen()
     },
-    [composerUserId, defaultInteraction, loadCommunityFeed, supabaseClient]
+    [bumpNotificationInteractionRefreshIfOpen, composerUserId, defaultInteraction, loadCommunityFeed, supabaseClient]
   )
 
   const undoLoungeDetailCommentPlainRepost = useCallback(
@@ -3778,8 +3826,9 @@ export default function SocialFeed({
         )
       }
       await loadCommunityFeed({ silent: true })
+      bumpNotificationInteractionRefreshIfOpen()
     },
-    [composerUserId, defaultInteraction, loadCommunityFeed, supabaseClient]
+    [bumpNotificationInteractionRefreshIfOpen, composerUserId, defaultInteraction, loadCommunityFeed, supabaseClient]
   )
 
   /** Post-detail reply: clear composer immediately and upload in the background (feed composer parity). */
@@ -4226,81 +4275,14 @@ export default function SocialFeed({
     if (!loungePostDetail?.id || loungeReadOnly || loungeDetailCommentsLoading) return
     const cids = loungeDetailCommentIdsKey ? loungeDetailCommentIdsKey.split('\0').filter(Boolean) : []
     if (!composerUserId || cids.length === 0) return
-    let cancelled = false
-    ;(async () => {
-      const [likesRes, legacyRepostsRes, newRepostsRes, bmRes] = await Promise.all([
-        supabaseClient.from('feed_comment_likes').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
-        supabaseClient.from('feed_comment_reposts').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
-        supabaseClient
-          .from('community_feed_posts')
-          .select('repost_of_comment_id')
-          .eq('user_id', composerUserId)
-          .eq('is_plain_repost', true)
-          .in('repost_of_comment_id', cids),
-        supabaseClient.from('feed_comment_bookmarks').select('comment_id').eq('user_id', composerUserId).in('comment_id', cids),
-      ])
-      if (cancelled) return
-      const intErr = likesRes.error?.message || legacyRepostsRes.error?.message || bmRes.error?.message
-      if (intErr) {
-        console.warn('feed comment interactions:', intErr)
-        return
-      }
-      const repostedCommentIds = new Set([
-        ...(legacyRepostsRes.data || []).map((r) => r.comment_id).filter(Boolean),
-        ...(newRepostsRes.data || []).map((r) => r.repost_of_comment_id).filter(Boolean),
-      ])
-      setInteractionByComment((prev) => {
-        const next = { ...prev }
-        for (const id of cids) {
-          const key = String(id)
-          const cur = next[key] || { ...defaultInteraction }
-          next[key] = {
-            ...cur,
-            liked: false,
-            reposted: false,
-            plainRepostChildId: null,
-            quoteRepostChildId: null,
-          }
-        }
-        for (const r of likesRes.data || []) {
-          const cid = r.comment_id != null ? String(r.comment_id) : ''
-          if (!cid || !next[cid]) continue
-          next[cid] = { ...next[cid], liked: true }
-        }
-        for (const cid of repostedCommentIds) {
-          const key = String(cid)
-          if (!next[key]) continue
-          next[key] = {
-            ...next[key],
-            reposted: true,
-            plainRepostChildId: key,
-            quoteRepostChildId: null,
-          }
-        }
-        return next
-      })
-      setBookmarkedByComment((prev) => {
-        const next = { ...prev }
-        for (const id of cids) {
-          next[String(id)] = false
-        }
-        for (const r of bmRes.data || []) {
-          if (r.comment_id) next[String(r.comment_id)] = true
-        }
-        return next
-      })
-    })()
-    return () => {
-      cancelled = true
-    }
+    void hydrateCommentInteractionsForIds(cids)
   }, [
     composerUserId,
-    defaultInteraction,
+    hydrateCommentInteractionsForIds,
     loungeDetailCommentIdsKey,
     loungeDetailCommentsLoading,
     loungePostDetail?.id,
     loungeReadOnly,
-    supabaseClient,
   ])
 
   /** Re-hydrate feed comment-repost interaction glyphs after post detail closes (shared `interactionByComment` map). */
@@ -4953,6 +4935,15 @@ export default function SocialFeed({
       setLoungeDockPanel(null)
     }
   }, [loungePostDetail, loungeDockPanel])
+
+  useEffect(() => {
+    const prevId = loungePostDetailIdForNotifRefreshRef.current
+    const nextId = loungePostDetail?.id ?? null
+    loungePostDetailIdForNotifRefreshRef.current = nextId
+    if (prevId && !nextId && loungeDockPanel === 'notifications') {
+      setNotificationInteractionCountsRefreshKey((k) => k + 1)
+    }
+  }, [loungePostDetail?.id, loungeDockPanel])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -6542,6 +6533,7 @@ export default function SocialFeed({
         const quoteOrigId = String(snapshot.quoteRepostOfPostId || '').trim()
         if (quoteOrigId) {
           await refreshLoungePostInteractions([quoteOrigId])
+          bumpNotificationInteractionRefreshIfOpen()
         }
       } catch (e) {
         if (e?.name === 'AbortError') return
@@ -6573,7 +6565,7 @@ export default function SocialFeed({
         bumpLoungeSubmitInFlight(-1)
       }
     },
-    [loadCommunityFeed, rateLimitMessage, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight],
+    [bumpNotificationInteractionRefreshIfOpen, loadCommunityFeed, rateLimitMessage, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight],
   )
   runBackgroundLoungePostSubmissionRef.current = runBackgroundLoungePostSubmission
 
@@ -6787,6 +6779,13 @@ export default function SocialFeed({
           const cur = prev[snap.postId] || defaultInteraction
           return { ...prev, [snap.postId]: { ...cur, commented: true } }
         })
+        if (snap.parentId) {
+          setInteractionByComment((prev) => {
+            const key = String(snap.parentId)
+            const cur = prev[key] || defaultInteraction
+            return { ...prev, [key]: { ...cur, commented: true } }
+          })
+        }
         scheduleLoungePostDetailTitleAfterReply()
         if (snap.parentId) {
           requestAnimationFrame(() => {
@@ -6896,6 +6895,13 @@ export default function SocialFeed({
             const cur = prev[snap.postId] || defaultInteraction
             return { ...prev, [snap.postId]: { ...cur, commented: true } }
           })
+          if (snap.parentId) {
+            setInteractionByComment((prev) => {
+              const key = String(snap.parentId)
+              const cur = prev[key] || defaultInteraction
+              return { ...prev, [key]: { ...cur, commented: true } }
+            })
+          }
           scheduleLoungePostDetailTitleAfterReply()
           if (snap.parentId) {
             requestAnimationFrame(() => {
@@ -6913,6 +6919,7 @@ export default function SocialFeed({
           const quoteOrigId = String(snapshot.quoteRepostOfPostId || '').trim()
           if (quoteOrigId) {
             await refreshLoungePostInteractions([quoteOrigId])
+            bumpNotificationInteractionRefreshIfOpen()
           }
         }
       } catch (e) {
@@ -6932,6 +6939,7 @@ export default function SocialFeed({
       }
     },
     [
+      bumpNotificationInteractionRefreshIfOpen,
       bumpLoungeSubmitInFlight,
       composerUserProfile,
       defaultInteraction,
@@ -10668,6 +10676,7 @@ export default function SocialFeed({
           onOpenProfileFromNotifications={onLoungeOpenProfileFromNotifications}
           onNotificationsUnreadChange={onLoungeNotificationsUnreadChange}
           notificationInteractionProps={notificationInteractionProps}
+          notificationInteractionCountsRefreshKey={notificationInteractionCountsRefreshKey}
           blockUnderlyingPointer={loungeFabPointerBlocked}
           dockMenuLayout={loungeDockMenuLayout}
           onDockMenuLayoutChange={writeLoungeDockMenuLayout}

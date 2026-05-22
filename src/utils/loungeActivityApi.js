@@ -169,3 +169,22 @@ export async function loungeActivityMarkAllRead(supabaseClient) {
   const n = Number(data)
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
 }
+
+/**
+ * Mark the activity event(s) tied to a push notification as read (single event or batched push).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ activityEventId?: string | null, batchId?: string | null }} opts
+ */
+export async function loungeActivityMarkPushOpened(supabaseClient, { activityEventId, batchId } = {}) {
+  const eventId = String(activityEventId || '').trim()
+  const batch = String(batchId || '').trim()
+  if (!eventId && !batch) return 0
+
+  const { data, error } = await supabaseClient.rpc('lounge_activity_mark_push_opened', {
+    p_activity_event_id: eventId || null,
+    p_batch_id: batch || null,
+  })
+  if (error) throw error
+  const n = Number(data)
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}

@@ -34,25 +34,41 @@ self.addEventListener('push', (event) => {
     badge: payload.badge || '/favicon-32x32.png',
     data: {
       url: payload.url || '/?tab=home',
+      activityEventId: payload.activityEventId || null,
+      activityBatchId: payload.activityBatchId || null,
     },
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
-function parseAppNavigateMessage(relativeUrl) {
+function parseAppNavigateMessage(relativeUrl, extra = {}) {
   const fullUrl = new URL(relativeUrl, self.location.origin).href
   const params = new URL(fullUrl).searchParams
   const tab = params.get('tab') || 'home'
-  return { type: 'app-navigate', url: relativeUrl, tab }
+  const activityEventId =
+    extra.activityEventId || params.get('activityEvent') || null
+  const activityBatchId =
+    extra.activityBatchId || params.get('activityBatch') || null
+  return {
+    type: 'app-navigate',
+    url: relativeUrl,
+    tab,
+    activityEventId,
+    activityBatchId,
+    markActivityRead: Boolean(activityEventId || activityBatchId),
+  }
 }
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const relative =
-    typeof event.notification?.data?.url === 'string' ? event.notification.data.url : '/?tab=home'
+  const data = event.notification?.data || {}
+  const relative = typeof data.url === 'string' ? data.url : '/?tab=home'
   const fullUrl = new URL(relative, self.location.origin).href
-  const navigateMessage = parseAppNavigateMessage(relative)
+  const navigateMessage = parseAppNavigateMessage(relative, {
+    activityEventId: data.activityEventId,
+    activityBatchId: data.activityBatchId,
+  })
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {

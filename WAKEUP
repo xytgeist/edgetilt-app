@@ -73,6 +73,24 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
+## Last session recap (May 23 2026, branch `test`)
+
+### Lounge notifications + push (latest on `test`)
+
+| Commit | Area | Deploy / smoke |
+|--------|------|----------------|
+| **`309673a`** | Notification cards — interaction rows (comment/reply/mention/quote) via **`LoungeNotificationInteractionBar.jsx`** | Client only |
+| **_(this commit)_** | **Push tap clears badges** — RPC **`lounge_activity_mark_push_opened`**, Edge payload IDs, **`push-sw.js`**, **`lounge-push-opened`** in **`SocialFeed`** | Apply **`20260523180000`**, redeploy **`lounge-send-activity-push`**, refresh SW; smoke **§21b** badge step |
+| **`79288cb`** | Settings **Account** section (edit profile, email, password, membership stub) | Client only |
+| **`a8b1508`** | Klipy GIF picker — locked sheet height during search | Client only |
+| **`5471388`** | Pull-to-refresh below composer | Client only |
+
+**Phase H open on test:** H1 in-app notifications smoke **§21** pending; H2 push **§21b** tap **PASSED**, badge-on-tap pending migration + Edge; H3 batching **§21c** pending Ryan sign-off (**`20260523170000`**).
+
+**Before prod:** `docs/production-rollout-checklist.md` §4 Edge Functions + activity migrations in order.
+
+---
+
 ## Last session recap (May 18–19 2026, branch `test`)
 
 ### Lounge media lightbox (May 18–19)

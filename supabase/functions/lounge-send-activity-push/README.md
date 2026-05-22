@@ -27,6 +27,7 @@ Apply migrations in order:
 
 - **`20260523160000_lounge_activity_events_push.sql`** — immediate push trigger
 - **`20260523170000_lounge_activity_push_h3.sql`** — batched like/bookmark (10s debounce), `notification_preferences`, cron flush
+- **`20260523180000_lounge_activity_mark_push_opened.sql`** — RPC **`lounge_activity_mark_push_opened`** (tap marks single event or whole batch read)
 
 Then create Vault secrets (SQL Editor, once per project):
 
@@ -49,18 +50,20 @@ Lounge **Settings → Notifications**:
 
 Like/bookmark pushes are **debounced 10 seconds** and **grouped** (`@a and 4 others liked your post`). Replies, mentions, follows, and reposts stay **immediate**.
 
-Tap targets:
+Tap targets (URL + push JSON fields):
 
-- **Follow** → `/?tab=home&u=<handle>`
-- **Post activity** → `/?tab=home&post=<uuid>`
+- **Follow** → `/?tab=home&u=<handle>` (+ optional **`activityEventId`**)
+- **Post activity** → `/?tab=home&post=<uuid>` (+ **`activityEventId`** or batched **`activityBatchId`**)
 - Fallback → `/?tab=home&lounge=notifications`
+
+Push JSON also includes **`activityEventId`** / **`activityBatchId`** so **`push-sw.js`** can mark read on tap without waiting for the Alerts panel. Client: **`lounge_activity_mark_push_opened`** RPC + **`refreshLoungeNotificationsUnread`** in **`SocialFeed.jsx`** (via **`lounge-push-opened`** custom event from **`AppShell.jsx`** or cold-start URL params). **Redeploy Edge** after payload changes; old notifications without IDs still need Alerts open or the 60s poll to clear badges.
 
 ## Smoke
 
 1. Apply SQL + deploy function + set secrets.
 2. Signed in on test: Settings → enable push (allow browser permission).
 3. From another account, like/comment/follow the test user.
-4. Confirm OS notification; tap opens Lounge post/profile/notifications.
+4. Confirm OS notification; tap opens Lounge post/profile/notifications; **FAB/Alerts badge drops immediately** (new pushes only — requires **`20260523180000`** + Edge redeploy).
 
 Optional: invoke manually (replace ids/secrets):
 

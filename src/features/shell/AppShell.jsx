@@ -580,6 +580,15 @@ export default function AppShell({
       if (targetTab === 'home' || !targetTab) {
         setTab('home')
         setMenuOpen(false)
+        const activityEventId = event?.data?.activityEventId || null
+        const activityBatchId = event?.data?.activityBatchId || null
+        if (event?.data?.markActivityRead || activityEventId || activityBatchId) {
+          window.dispatchEvent(
+            new CustomEvent('lounge-push-opened', {
+              detail: { activityEventId, activityBatchId },
+            }),
+          )
+        }
       }
     }
     navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)

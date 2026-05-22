@@ -120,19 +120,48 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
   }
 }
 
+type PushMarkReadIds = {
+  activityEventId?: string
+  activityBatchId?: string
+}
+
+type PushNotificationPayload = {
+  title: string
+  body: string
+  url: string
+  activityEventId?: string
+  activityBatchId?: string
+}
+
 function buildTargetUrl(
   event: Pick<ActivityEventRow, 'event_type' | 'post_id'>,
   actor: ActorProfile | null | undefined,
+  markRead?: PushMarkReadIds,
 ): string {
+  const params = new URLSearchParams()
+  params.set('tab', 'home')
+
   if (event.event_type === 'follow') {
     const handle = String(actor?.handle || '').trim().replace(/^@/, '').toLowerCase()
-    if (handle) return `/?tab=home&u=${encodeURIComponent(handle)}`
-    return '/?tab=home&lounge=notifications'
+    if (handle) {
+      params.set('u', handle)
+    } else {
+      params.set('lounge', 'notifications')
+    }
+  } else if (event.post_id) {
+    params.set('post', event.post_id)
+  } else {
+    params.set('lounge', 'notifications')
   }
-  if (event.post_id) {
-    return `/?tab=home&post=${encodeURIComponent(event.post_id)}`
+
+  if (markRead?.activityEventId) {
+    params.set('activityEvent', markRead.activityEventId)
   }
-  return '/?tab=home&lounge=notifications'
+  if (markRead?.activityBatchId) {
+    params.set('activityBatch', markRead.activityBatchId)
+  }
+
+  return `/?${params.toString()}`
 }
 
 function buildGroupedBody(
@@ -156,13 +185,14 @@ function buildSingleNotification(
   event: ActivityEventRow,
   actor: ActorProfile | null | undefined,
   isReply = false,
-): { title: string; body: string; url: string } {
+): PushNotificationPayload {
   const who = actorLabel(actor)
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
   return {
     title: 'Edge Lounge',
     body: `${who} ${phrase}`,
-    url: buildTargetUrl(event, actor),
+    url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+    activityEventId: event.id,
   }
 }
 
@@ -190,7 +220,7 @@ async function markBatchSent(admin: ReturnType<typeof createClient>, batchId: st
 async function sendPushToUser(
   admin: ReturnType<typeof createClient>,
   userId: string,
-  notification: { title: string; body: string; url: string },
+  notification: PushNotificationPayload,
   vapidPublicKey: string,
   vapidPrivateKey: string,
   vapidSubject: string,
@@ -406,10 +436,11 @@ async function handleBatchPush(
   }
 
   const body = buildGroupedBody(batch.event_type, uniqueActors, batch.comment_id, isReply)
-  const notification = {
+  const notification: PushNotificationPayload = {
     title: 'Edge Lounge',
     body,
-    url: buildTargetUrl(batch, uniqueActors[0] || null),
+    url: buildTargetUrl(batch, uniqueActors[0] || null, { activityBatchId: batchId }),
+    activityBatchId: batchId,
   }
 
   const result = await sendPushToUser(

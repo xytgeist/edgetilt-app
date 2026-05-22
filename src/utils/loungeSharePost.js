@@ -123,6 +123,23 @@ export function stripLoungeDockQueryParam() {
   window.history.replaceState(window.history.state ?? {}, '', next)
 }
 
+/** Remove push mark-read deep link params after the client handles them. */
+export function stripLoungeActivityPushQueryParams() {
+  if (typeof window === 'undefined') return
+  const u = new URL(window.location.href)
+  let changed = false
+  for (const key of ['activityEvent', 'activityBatch']) {
+    if (u.searchParams.has(key)) {
+      u.searchParams.delete(key)
+      changed = true
+    }
+  }
+  if (!changed) return
+  const qs = u.searchParams.toString()
+  const next = `${u.pathname}${qs ? `?${qs}` : ''}${u.hash}`
+  window.history.replaceState(window.history.state ?? {}, '', next)
+}
+
 /**
  * Prefer `navigator.share` when allowed; otherwise copy `url` to the clipboard.
  * User cancel / dismiss of the native sheet → `AbortError` → no `onCopied` / `onCopyFailed`.

@@ -60,9 +60,11 @@ import {
   stripLoungePostQueryParam,
   stripLoungeProfileShareFromUrl,
   stripLoungeDockQueryParam,
+  stripLoungeActivityPushQueryParams,
 } from '../../utils/loungeSharePost'
 import {
   isLoungeActivitySchemaMissingError,
+  loungeActivityMarkPushOpened,
   loungeActivityUnreadCount,
 } from '../../utils/loungeActivityApi.js'
 import useLoungePushNotifications from './hooks/useLoungePushNotifications.js'
@@ -662,6 +664,7 @@ export default function SocialFeed({
   /** When set, Chat panel opens a DM with this user (cleared after `open_dm` runs). */
   const [chatDockInitialPeerUserId, setChatDockInitialPeerUserId] = useState(null)
   const [loungeNotificationsUnread, setLoungeNotificationsUnread] = useState(0)
+  const loungePushMarkDedupeRef = useRef(new Set())
   const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
   const [loungePostDetail, setLoungePostDetail] = useState(null)
   /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
@@ -4687,6 +4690,63 @@ export default function SocialFeed({
       setLoungeNotificationsUnread(0)
     }
   }, [composerUserId, loungeFeedBrowseMode, supabaseClient])
+
+  const markLoungePushOpened = useCallback(
+    async ({ activityEventId, activityBatchId } = {}) => {
+      if (!composerUserId || loungeFeedBrowseMode === 'anonymous') return
+      const eventId = String(activityEventId || '').trim()
+      const batchId = String(activityBatchId || '').trim()
+      if (!eventId && !batchId) return
+
+      const dedupeKey = batchId ? `batch:${batchId}` : `event:${eventId}`
+      if (loungePushMarkDedupeRef.current.has(dedupeKey)) return
+      loungePushMarkDedupeRef.current.add(dedupeKey)
+
+      try {
+        await loungeActivityMarkPushOpened(supabaseClient, {
+          activityEventId: eventId || null,
+          batchId: batchId || null,
+        })
+      } catch (e) {
+        loungePushMarkDedupeRef.current.delete(dedupeKey)
+        if (!isLoungeActivitySchemaMissingError(e)) {
+          /* ignore transient mark-read errors */
+        }
+      }
+      void refreshLoungeNotificationsUnread()
+    },
+    [composerUserId, loungeFeedBrowseMode, refreshLoungeNotificationsUnread, supabaseClient],
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onPushOpened = (ev) => {
+      void markLoungePushOpened(ev.detail || {})
+    }
+    window.addEventListener('lounge-push-opened', onPushOpened)
+    return () => window.removeEventListener('lounge-push-opened', onPushOpened)
+  }, [markLoungePushOpened])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    let cancelled = false
+    const run = async () => {
+      const params = new URLSearchParams(window.location.search || '')
+      const activityEventId = (params.get('activityEvent') || '').trim()
+      const activityBatchId = (params.get('activityBatch') || '').trim()
+      if (!activityEventId && !activityBatchId) return
+      stripLoungeActivityPushQueryParams()
+      if (cancelled) return
+      await markLoungePushOpened({ activityEventId, activityBatchId })
+    }
+    void run()
+    const onPop = () => void run()
+    window.addEventListener('popstate', onPop)
+    return () => {
+      cancelled = true
+      window.removeEventListener('popstate', onPop)
+    }
+  }, [markLoungePushOpened])
 
   useEffect(() => {
     void refreshLoungeNotificationsUnread()

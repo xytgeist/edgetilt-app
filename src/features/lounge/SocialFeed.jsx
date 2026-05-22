@@ -5030,8 +5030,8 @@ export default function SocialFeed({
       const params = new URLSearchParams(window.location.search || '')
       const loungePanel = (params.get('lounge') || '').trim().toLowerCase()
       if (loungePanel !== 'notifications') return
-      if (!authSessionReady) return
-      if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
+      if (!authSessionReady || !composerAuthResolved) return
+      if (loungeFeedBrowseMode === 'anonymous') {
         onRequireAuth?.()
         stripLoungeDockQueryParam()
         return
@@ -5049,7 +5049,7 @@ export default function SocialFeed({
       cancelled = true
       window.removeEventListener('popstate', onPop)
     }
-  }, [authSessionReady, loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
+  }, [authSessionReady, composerAuthResolved, loungeFeedBrowseMode, onRequireAuth])
 
   const loungePostDetailOpenedOverSearch = Boolean(
     loungePostDetail?.id &&

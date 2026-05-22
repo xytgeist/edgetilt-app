@@ -11,6 +11,7 @@ import {
   LOUNGE_FEED_POST_ROW_CLASS,
   LOUNGE_FEED_POST_ROW_INNER_CLASS,
   LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS,
+  LOUNGE_NOTIFICATION_GROUPED_TINT_RAIL_CLASS,
 } from './loungeFeedAvatar.js'
 import {
   profileAvatarInitials,
@@ -201,6 +202,12 @@ export default function LoungeNotificationsPanel({
     const showContext = loungeActivityShowsContextPreview(event.event_type)
     const previewText = showContext ? String(event.preview_text || '').trim() : ''
     const previewPosterUrl = showContext ? String(event.preview_poster_url || '').trim() : ''
+    const groupedTintClass =
+      event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.LIKE
+        ? 'bg-gradient-to-r from-lv-red/14 via-lv-red/6 to-transparent'
+        : event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK
+          ? 'bg-gradient-to-r from-lv-yellow/12 via-lv-yellow/5 to-transparent'
+          : ''
 
     return (
       <li key={groupKey}>
@@ -215,12 +222,17 @@ export default function LoungeNotificationsPanel({
             }
           }}
           aria-label={actionPhrase}
-          className={`${LOUNGE_FEED_POST_ROW_CLASS} flex w-full cursor-pointer items-center gap-3 text-left touch-manipulation ${
+          className={`${LOUNGE_FEED_POST_ROW_CLASS} relative flex w-full cursor-pointer items-center gap-3 overflow-hidden text-left touch-manipulation ${
             isNew ? 'bg-cyan-950/20 active:bg-cyan-950/35' : ''
           }`}
         >
-          <LoungeNotificationActionBadge eventType={event.event_type} slot="avatar" />
-          <span className={`min-w-0 flex-1 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
+          {groupedTintClass ? (
+            <span aria-hidden className={`${LOUNGE_NOTIFICATION_GROUPED_TINT_RAIL_CLASS} ${groupedTintClass}`} />
+          ) : null}
+          <span className="relative z-[1] shrink-0">
+            <LoungeNotificationActionBadge eventType={event.event_type} slot="avatar" />
+          </span>
+          <span className={`relative z-[1] min-w-0 flex-1 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
             <div className={LOUNGE_FEED_META_TEXT_COLUMN_CLASS}>
               <div className={LOUNGE_FEED_META_ROW_CLASS}>
                 <LoungeNotificationActorStack
@@ -237,8 +249,8 @@ export default function LoungeNotificationsPanel({
                   }
                 />
               </div>
-              <span className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1 text-[15px] leading-snug text-zinc-400">
-                <span className="min-w-0">{actionPhrase}</span>
+              <span className="mt-0.5 flex min-w-0 flex-nowrap items-baseline gap-x-1 overflow-hidden text-[15px] leading-snug text-zinc-400">
+                <span className="min-w-0 truncate">{actionPhrase}</span>
                 {when ? (
                   <>
                     <span className="shrink-0 text-zinc-600">·</span>
@@ -262,7 +274,7 @@ export default function LoungeNotificationsPanel({
           </span>
           {previewPosterUrl ? (
             <span
-              className="pointer-events-none h-14 w-14 shrink-0 self-center overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900"
+              className="pointer-events-none relative z-[1] h-14 w-14 shrink-0 self-center overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900"
               aria-hidden
             >
               <img

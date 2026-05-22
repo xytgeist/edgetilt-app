@@ -14,6 +14,10 @@ export const LOUNGE_NOTIFICATION_STACK_AVATAR_CLASS =
 export const LOUNGE_NOTIFICATION_ACTION_AVATAR_SLOT_CLASS =
   'flex h-10 w-10 shrink-0 items-center justify-center self-center sm:h-11 sm:w-11'
 
+/** Grouped like/bookmark — tint rail from panel edge through icon column to caption start. */
+export const LOUNGE_NOTIFICATION_GROUPED_TINT_RAIL_CLASS =
+  'pointer-events-none absolute inset-y-0 -left-3 z-0 w-[calc(0.75rem+2.5rem+0.75rem)] sm:w-[calc(0.75rem+2.75rem+0.75rem)]'
+
 /** Glyph size inside grouped like/bookmark left column — matches notification author avatar. */
 export const LOUNGE_NOTIFICATION_ACTION_AVATAR_GLYPH_CLASS = 'h-10 w-10 sm:h-11 sm:w-11'
 

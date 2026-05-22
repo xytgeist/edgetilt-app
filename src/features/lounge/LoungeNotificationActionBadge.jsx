@@ -73,13 +73,7 @@ function IconReply({ slot }) {
         fill="none"
         aria-hidden
       >
-        <path
-          d={LOUNGE_COMMENT_BUBBLE_D}
-          fill="#fafafa"
-          stroke="currentColor"
-          strokeWidth="1.25"
-          strokeLinejoin="round"
-        />
+        <path d={LOUNGE_COMMENT_BUBBLE_D} fill="currentColor" />
       </svg>
     </IconShell>
   )
@@ -158,16 +152,22 @@ function IconQuoteRepost({ slot }) {
   )
 }
 
+/** Bookmark ribbon is inset in 20×20 — tighter crop so inline size matches other notification glyphs. */
+const BOOKMARK_NOTIFICATION_VIEWBOX = '5.25 4.5 9.25 11.75'
+
 function IconBookmark({ slot }) {
   const cls =
     slot === 'avatar'
       ? LOUNGE_NOTIFICATION_ACTION_AVATAR_GLYPH_CLASS
-      : slot === 'lead'
-        ? 'h-8 w-8'
-        : 'h-[22px] w-[22px]'
+      : glyphClass(slot)
   return (
     <IconShell slot={slot}>
-      <svg className={`${cls} text-lv-yellow`} viewBox="0 0 20 20" fill="none" aria-hidden>
+      <svg
+        className={`${cls} text-lv-yellow`}
+        viewBox={slot === 'inline' || slot === 'lead' ? BOOKMARK_NOTIFICATION_VIEWBOX : '0 0 20 20'}
+        fill="none"
+        aria-hidden
+      >
         <path d={BOOKMARK_RIBBON_D} fill="currentColor" />
       </svg>
     </IconShell>

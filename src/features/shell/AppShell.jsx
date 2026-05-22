@@ -74,6 +74,8 @@ export default function AppShell({
   supabaseClient,
   onRequireAuth,
   browseMode = 'member',
+  /** False until first `getSession()` completes — avoids push deep links firing auth gate while session restores. */
+  authSessionReady = true,
   onOpenAuth,
   accessNotice = '',
   onDismissAccessNotice,
@@ -796,6 +798,7 @@ export default function AppShell({
             loungeFeedSort={loungeFeedSort}
             onLoungeFeedSortChange={onLoungeFeedSortChange}
             loungeFeedBrowseMode={browseMode}
+            authSessionReady={authSessionReady}
             isActivePage={tab === 'home'}
             onLogout={onLogout}
             onDeleteAccount={onDeleteAccount}

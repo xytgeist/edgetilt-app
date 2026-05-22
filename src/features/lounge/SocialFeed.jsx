@@ -378,6 +378,8 @@ export default function SocialFeed({
   loungeFeedSort = LOUNGE_FEED_SORT.LATEST,
   onLoungeFeedSortChange,
   loungeFeedBrowseMode = 'member',
+  /** False while Supabase session is still restoring (push / cold start). */
+  authSessionReady = true,
   /** True only when the Lounge tab is the active/visible screen; gates the portaled dock FAB. */
   isActivePage = true,
   onLogout,
@@ -5028,6 +5030,7 @@ export default function SocialFeed({
       const params = new URLSearchParams(window.location.search || '')
       const loungePanel = (params.get('lounge') || '').trim().toLowerCase()
       if (loungePanel !== 'notifications') return
+      if (!authSessionReady) return
       if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
         onRequireAuth?.()
         stripLoungeDockQueryParam()
@@ -5046,7 +5049,7 @@ export default function SocialFeed({
       cancelled = true
       window.removeEventListener('popstate', onPop)
     }
-  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
+  }, [authSessionReady, loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
 
   const loungePostDetailOpenedOverSearch = Boolean(
     loungePostDetail?.id &&

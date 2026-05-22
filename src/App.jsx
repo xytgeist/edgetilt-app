@@ -494,6 +494,7 @@ function App() {
       <>
         <AppShell
           browseMode={user ? 'member' : 'anonymous'}
+          authSessionReady={!isChecking}
           hasActiveSubscription={hasActiveSubscription}
           isStaff={isStaffRole}
           onOpenAuth={openAuthPanel}

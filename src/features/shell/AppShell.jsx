@@ -713,6 +713,9 @@ export default function AppShell({
             onLoungeFeedSortChange={onLoungeFeedSortChange}
             loungeFeedBrowseMode={browseMode}
             isActivePage={tab === 'home'}
+            onLogout={onLogout}
+            onDeleteAccount={onDeleteAccount}
+            deleteAccountBusy={deleteAccountBusy}
           />
         </div>
       </Suspense>
@@ -727,9 +730,6 @@ export default function AppShell({
           setActiveCalculator={setActiveCalculator}
           browseMode={browseMode}
           onOpenAuth={() => onOpenAuth?.('login')}
-          onLogout={onLogout}
-          onDeleteAccount={onDeleteAccount}
-          deleteAccountBusy={deleteAccountBusy}
           titleBarNavSlot={renderTitleBarNavSlot()}
         />
       )

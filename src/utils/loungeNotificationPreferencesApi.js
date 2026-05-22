@@ -11,42 +11,13 @@ export const LOUNGE_NOTIFICATION_PREF_DEFAULTS = {
 }
 
 export const LOUNGE_NOTIFICATION_PREF_ROWS = [
-  {
-    key: 'push_replies',
-    label: 'Replies & comments',
-    hint: 'Someone commented on your post or replied to you.',
-  },
-  {
-    key: 'push_mentions',
-    label: 'Mentions',
-    hint: '@you in a post or comment.',
-  },
-  {
-    key: 'push_follows',
-    label: 'New followers',
-    hint: 'When someone follows you.',
-  },
-  {
-    key: 'push_reposts',
-    label: 'Reposts',
-    hint: 'Plain or quote reposts of your content.',
-  },
-  {
-    key: 'push_likes',
-    label: 'Likes',
-    hint: 'Grouped ~10s — one alert per burst on the same post.',
-  },
-  {
-    key: 'push_bookmarks',
-    label: 'Bookmarks',
-    hint: 'Grouped ~10s like likes.',
-  },
-  {
-    key: 'push_messages',
-    label: 'Direct messages',
-    hint: 'Coming soon — saved for chat push.',
-    disabled: true,
-  },
+  { key: 'push_replies', label: 'Replies & comments' },
+  { key: 'push_mentions', label: 'Mentions' },
+  { key: 'push_follows', label: 'New followers' },
+  { key: 'push_reposts', label: 'Reposts' },
+  { key: 'push_likes', label: 'Likes' },
+  { key: 'push_bookmarks', label: 'Bookmarks' },
+  { key: 'push_messages', label: 'Direct messages', disabled: true },
 ]
 
 function mergePrefs(row) {

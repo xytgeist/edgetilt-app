@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import useWebPushNotifications from '../../offers/hooks/useWebPushNotifications.js'
+import { iosPwaInstallRequired } from '../../../utils/pwaNotificationPrompt.js'
 import {
   readLoungePushNotificationsEnabled,
   subscribeLoungePushNotificationsEnabled,
@@ -29,6 +30,9 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
 
   const pushStatusHint = useMemo(() => {
     if (!viewerUserId) return 'Sign in to enable push on this device.'
+    if (iosPwaInstallRequired()) {
+      return 'Add Edge to your Home Screen, then open from the icon to enable push here.'
+    }
     if (!isSupported) return 'This browser does not support web push here.'
     if (permission === 'denied') return 'Notifications are blocked in browser settings.'
     if (pushPrefEnabled && isSubscribed) return 'Alerts enabled on this device.'
@@ -46,6 +50,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
 
   const onPushToggle = useCallback(
     async (nextEnabled) => {
+      if (nextEnabled && iosPwaInstallRequired()) return
       writeLoungePushNotificationsEnabled(nextEnabled)
       if (!viewerUserId) return
       syncingPrefRef.current = true

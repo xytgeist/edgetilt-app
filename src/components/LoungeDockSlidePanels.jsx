@@ -49,6 +49,14 @@ import {
   writeLoungeSearchSort,
 } from '../utils/loungeSearchSortPref.js'
 import { LOUNGE_NOTIFICATION_PREF_ROWS } from '../utils/loungeNotificationPreferencesApi.js'
+import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
+import IosPwaInstallHelpDialog from './IosPwaInstallHelpDialog.jsx'
+import {
+  hasSeenLoungeIosPwaSetup,
+  iosPwaInstallRequired,
+  isSafariBrowser,
+  markLoungeIosPwaSetupSeen,
+} from '../utils/pwaNotificationPrompt.js'
 
 const OPEN_MS = 300
 const DISMISS_FRACTION = 0.22
@@ -88,7 +96,6 @@ export default function LoungeDockSlidePanels({
   onOpenSettingsSection,
   settingsFocusSection = null,
   onSettingsFocusSectionHandled,
-  onOpenOwnProfile,
   activePanel = null,
   /** Open a post from search (full row); closes the panel and opens post detail like the main feed. */
   onOpenPostFromSearch,
@@ -139,6 +146,9 @@ export default function LoungeDockSlidePanels({
   notificationPrefsSchemaMissing = false,
   notificationPrefsError = '',
   onNotificationPrefToggle,
+  onLogout,
+  onDeleteAccount,
+  deleteAccountBusy = false,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -170,10 +180,46 @@ export default function LoungeDockSlidePanels({
   }, [onOpenSettingsSection])
 
   const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false)
+  const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
+  const [adminUtilsSettingsOpen, setAdminUtilsSettingsOpen] = useState(false)
+  const [iosPwaHelpOpen, setIosPwaHelpOpen] = useState(false)
+  const [iosInstallBannerHidden, setIosInstallBannerHidden] = useState(false)
+  const [iosInstallRequired, setIosInstallRequired] = useState(false)
+  const [iosSafariBrowser, setIosSafariBrowser] = useState(false)
 
   useEffect(() => {
-    if (openPanel !== 'settings') setNotificationsSettingsOpen(false)
+    if (typeof window === 'undefined') return
+    setIosInstallRequired(iosPwaInstallRequired())
+    setIosSafariBrowser(isSafariBrowser())
+  }, [])
+
+  useEffect(() => {
+    if (openPanel !== 'settings') {
+      setNotificationsSettingsOpen(false)
+      setMenuLayoutSettingsOpen(false)
+      setAdminUtilsSettingsOpen(false)
+      setIosPwaHelpOpen(false)
+    }
   }, [openPanel])
+
+  useEffect(() => {
+    if (!notificationsSettingsOpen || !iosInstallRequired || hasSeenLoungeIosPwaSetup()) return
+    markLoungeIosPwaSetupSeen()
+    setIosPwaHelpOpen(true)
+  }, [notificationsSettingsOpen, iosInstallRequired])
+
+  const openIosPwaHelp = useCallback(() => {
+    setIosPwaHelpOpen(true)
+  }, [])
+
+  const onPushNotificationsToggle = useCallback(() => {
+    const nextEnabled = !pushNotificationsEnabled
+    if (nextEnabled && iosInstallRequired) {
+      openIosPwaHelp()
+      return
+    }
+    onPushNotificationsChange?.(nextEnabled)
+  }, [pushNotificationsEnabled, iosInstallRequired, openIosPwaHelp, onPushNotificationsChange])
 
   useLayoutEffect(() => {
     if (openPanel !== 'settings' || settingsFocusSection !== 'notifications') return
@@ -700,6 +746,7 @@ export default function LoungeDockSlidePanels({
   if (!openPanel) return null
 
   return (
+    <>
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[99] flex h-dvh max-h-dvh justify-center">
       <div
         ref={panelRef}
@@ -1003,19 +1050,48 @@ export default function LoungeDockSlidePanels({
           <div className="px-3 py-4">
             <h2 className="text-[17px] font-semibold text-zinc-100">Settings</h2>
             <p className="mt-1 text-[14px] leading-relaxed text-zinc-500">
-              Lounge account and preferences.
+              Lounge preferences.
             </p>
-            <div className="mt-4 flex flex-col gap-2">
+
+            <div className="mt-5">
               <button
                 type="button"
-                onClick={() => onOpenOwnProfile?.()}
-                className="min-h-12 w-full rounded-xl border border-[#ff3dff]/75 bg-[#180018]/90 px-4 py-3 text-left text-[15px] font-semibold text-white shadow-[0_0_18px_rgba(255,61,255,0.45)] touch-manipulation hover:bg-[#280028]/95 [-webkit-tap-highlight-color:transparent]"
+                aria-expanded={menuLayoutSettingsOpen}
+                onClick={() => setMenuLayoutSettingsOpen((open) => !open)}
+                className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
               >
-                Profile &amp; account
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold text-zinc-100">Menu button layout</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                    Wheel (O) or Edge (L), plus how to move the <span className="text-zinc-400">+</span> button.
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+                    menuLayoutSettingsOpen ? 'rotate-180' : 'rotate-0'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
               </button>
-              <p className="px-1 text-[13px] leading-relaxed text-zinc-500">
-                Edit handle, display name, avatar, and bio. More Lounge settings will land here.
-              </p>
+
+              {menuLayoutSettingsOpen ? (
+                <div className="mt-2">
+                  <LoungeDockMenuLayoutHelp
+                    dockMenuLayout={dockMenuLayout}
+                    onDockMenuLayoutChange={onDockMenuLayoutChange}
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div
@@ -1053,52 +1129,81 @@ export default function LoungeDockSlidePanels({
               </button>
 
               {notificationsSettingsOpen ? (
-                <div className="mt-2 space-y-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 p-2">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={pushNotificationsEnabled}
-                    aria-busy={pushNotificationsBusy}
-                    disabled={pushNotificationsBusy}
-                    onClick={() => onPushNotificationsChange?.(!pushNotificationsEnabled)}
-                    className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-zinc-700/90 bg-zinc-950/80 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70 disabled:opacity-70"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[15px] font-semibold text-zinc-100">Push notifications</span>
-                      <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                        {pushNotificationsStatusHint || 'Lounge activity alerts on this device.'}
-                      </span>
-                      {pushNotificationsStatusMessage ? (
-                        <span className="mt-1 block text-[11px] font-normal leading-snug text-cyan-200/85">
-                          {pushNotificationsStatusMessage}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span
-                      aria-hidden
-                      className={`relative h-7 w-11 shrink-0 overflow-hidden rounded-full transition-colors duration-200 ${
-                        pushNotificationsEnabled ? 'bg-cyan-500' : 'bg-zinc-700'
-                      }`}
+                <div className="mt-2 space-y-3">
+                  {iosInstallRequired && !iosInstallBannerHidden ? (
+                    <div className="rounded-lg border border-amber-400/40 bg-amber-950/30 p-3 text-[12px] leading-relaxed text-amber-100">
+                      <div className="mb-1 flex items-start justify-between gap-2">
+                        <span className="font-semibold text-amber-50">Save Edge to Home Screen</span>
+                        <button
+                          type="button"
+                          onClick={() => setIosInstallBannerHidden(true)}
+                          className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold text-amber-100/80 touch-manipulation hover:bg-amber-500/20 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          Hide
+                        </button>
+                      </div>
+                      <p className="text-amber-100/95">
+                        Push alerts on iPhone only work when you open Edge from a Home Screen icon — not a regular
+                        Safari tab.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openIosPwaHelp}
+                        className="mt-2 min-h-10 w-full rounded-lg border border-amber-300/35 bg-amber-600/90 px-3 text-[13px] font-semibold text-white touch-manipulation hover:bg-amber-500 [-webkit-tap-highlight-color:transparent]"
+                      >
+                        Show install steps
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="rounded-xl border border-zinc-800/90 bg-zinc-950/40 p-2">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={pushNotificationsEnabled}
+                      aria-busy={pushNotificationsBusy}
+                      disabled={pushNotificationsBusy}
+                      onClick={onPushNotificationsToggle}
+                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-2.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50 disabled:opacity-70"
                     >
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold text-zinc-100">Push notifications</span>
+                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                          {iosInstallRequired
+                            ? 'Add Edge to your Home Screen, then open from the icon to enable push here.'
+                            : pushNotificationsStatusHint || 'Lounge activity alerts on this device.'}
+                        </span>
+                        {pushNotificationsStatusMessage ? (
+                          <span className="mt-1 block text-[11px] font-normal leading-snug text-cyan-200/85">
+                            {pushNotificationsStatusMessage}
+                          </span>
+                        ) : null}
+                      </span>
                       <span
-                        className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
-                          pushNotificationsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+                        aria-hidden
+                        className={`relative h-7 w-11 shrink-0 overflow-hidden rounded-full transition-colors duration-200 ${
+                          pushNotificationsEnabled ? 'bg-cyan-500' : 'bg-zinc-700'
                         }`}
-                      />
-                    </span>
-                  </button>
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                            pushNotificationsEnabled ? 'translate-x-[18px]' : 'translate-x-0'
+                          }`}
+                        />
+                      </span>
+                    </button>
 
-                  {notificationPrefsSchemaMissing ? (
-                    <p className="px-1.5 text-[12px] leading-relaxed text-zinc-500">
-                      Apply migration{' '}
-                      <span className="font-mono text-zinc-400">20260523170000_lounge_activity_push_h3.sql</span> on
-                      test to save category preferences.
-                    </p>
-                  ) : null}
-                  {notificationPrefsError ? (
-                    <p className="px-1.5 text-[12px] leading-relaxed text-red-300/90">{notificationPrefsError}</p>
-                  ) : null}
-                  {LOUNGE_NOTIFICATION_PREF_ROWS.map((row) => {
+                    {notificationPrefsSchemaMissing ? (
+                      <p className="px-2.5 pb-2 text-[12px] leading-relaxed text-zinc-500">
+                        Apply migration{' '}
+                        <span className="font-mono text-zinc-400">20260523170000_lounge_activity_push_h3.sql</span> on
+                        test to save category preferences.
+                      </p>
+                    ) : null}
+                    {notificationPrefsError ? (
+                      <p className="px-2.5 pb-2 text-[12px] leading-relaxed text-red-300/90">{notificationPrefsError}</p>
+                    ) : null}
+                    <div className="divide-y divide-zinc-800/90 border-t border-zinc-800/90">
+                      {LOUNGE_NOTIFICATION_PREF_ROWS.map((row) => {
                     const checked = Boolean(notificationPrefs?.[row.key])
                     const rowBusy = notificationPrefsSavingKey === row.key
                     const rowDisabled =
@@ -1119,12 +1224,9 @@ export default function LoungeDockSlidePanels({
                           if (rowDisabled || row.disabled) return
                           onNotificationPrefToggle?.(row.key, !checked)
                         }}
-                        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-zinc-800/90 bg-zinc-950/50 px-3.5 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/60 disabled:opacity-55"
+                        className="flex min-h-11 w-full items-center justify-between gap-3 px-2.5 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50 disabled:opacity-55"
                       >
-                        <span className="min-w-0">
-                          <span className="block text-[14px] font-medium text-zinc-200">{row.label}</span>
-                          <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">{row.hint}</span>
-                        </span>
+                        <span className="min-w-0 text-[14px] font-medium text-zinc-200">{row.label}</span>
                         <span
                           aria-hidden
                           className={`relative h-6 w-10 shrink-0 overflow-hidden rounded-full transition-colors duration-200 ${
@@ -1139,27 +1241,25 @@ export default function LoungeDockSlidePanels({
                         </span>
                       </button>
                     )
-                  })}
+                      })}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>
 
             <div className="mt-6 border-t border-zinc-800 pt-5">
-              <h3 className="text-[15px] font-semibold text-zinc-100">Feed playback</h3>
-              <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
-                Inline video across Lounge — home feed, search, profiles, and post detail.
-              </p>
               <button
                 type="button"
                 role="switch"
                 aria-checked={feedVideoAutoplayEnabled}
                 onClick={() => onFeedVideoAutoplayChange?.(!feedVideoAutoplayEnabled)}
-                className="mt-3 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+                className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
               >
                 <span className="min-w-0">
                   <span className="block text-[15px] font-semibold text-zinc-100">Autoplay while scrolling</span>
                   <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                    Shows a play button; tap to open full screen.
+                    Inline video across Lounge — home feed, search, profiles, and post detail.
                   </span>
                 </span>
                 <span
@@ -1175,102 +1275,125 @@ export default function LoungeDockSlidePanels({
                   />
                 </span>
               </button>
-              {settingsViewerIsStaff ? (
-                <>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={feedVideoDebugEnabled}
-                onClick={() => onFeedVideoDebugChange?.(!feedVideoDebugEnabled)}
-                className="mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[15px] font-semibold text-zinc-100">Video debug HUD</span>
-                  <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                    On-device coordinator overlay (PWA-friendly). Copy JSON to share captures.
-                  </span>
-                </span>
-                <span
-                  aria-hidden
-                  className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-                    feedVideoDebugEnabled ? 'bg-amber-500' : 'bg-zinc-700'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
-                      feedVideoDebugEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-                    }`}
-                  />
-                </span>
-              </button>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={buildBadgeEnabled}
-                onClick={() => onBuildBadgeChange?.(!buildBadgeEnabled)}
-                className="mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[15px] font-semibold text-zinc-100">Build SHA in title bar</span>
-                  <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                    Shows the deployed git SHA next to the EDGE logo so you can confirm which bundle is live.
-                  </span>
-                </span>
-                <span
-                  aria-hidden
-                  className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-                    buildBadgeEnabled ? 'bg-amber-500' : 'bg-zinc-700'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
-                      buildBadgeEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-                    }`}
-                  />
-                </span>
-              </button>
-                </>
-              ) : null}
             </div>
 
-            <div className="mt-6 border-t border-zinc-800 pt-5">
-              <h3 className="text-[15px] font-semibold text-zinc-100">Menu button layout</h3>
-              <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
-                Choose how the <span className="text-zinc-400">+</span> menu arranges shortcuts. Applies on the Lounge
-                feed (max-width column).
-              </p>
-              <div className="mt-3 flex flex-col gap-2">
+            {settingsViewerIsStaff ? (
+              <div className="mt-6 border-t border-zinc-800 pt-5">
                 <button
                   type="button"
-                  onClick={() => onDockMenuLayoutChange?.('wheel')}
-                  className={`min-h-12 w-full rounded-xl border px-4 py-3 text-left text-[15px] font-semibold touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                    dockMenuLayout === 'wheel'
-                      ? 'border-lv-blue/90 bg-[#001828]/95 text-white shadow-[0_0_14px_rgba(6,206,252,0.35)]'
-                      : 'border-zinc-700/90 bg-zinc-950/80 text-zinc-200 hover:bg-zinc-900/70'
-                  }`}
+                  aria-expanded={adminUtilsSettingsOpen}
+                  onClick={() => setAdminUtilsSettingsOpen((open) => !open)}
+                  className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
                 >
-                  Wheel (O)
-                  <span className="mt-0.5 block text-[12px] font-normal text-zinc-500">
-                    Icons in an arc around the button; spin the ring if some sit off-screen.
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-zinc-100">Admin utils</span>
+                    <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                      Staff-only debugging and deploy verification toggles.
+                    </span>
+                  </span>
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+                      adminUtilsSettingsOpen ? 'rotate-180' : 'rotate-0'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onDockMenuLayoutChange?.('cornerL')}
-                  className={`min-h-12 w-full rounded-xl border px-4 py-3 text-left text-[15px] font-semibold touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                    dockMenuLayout === 'cornerL'
-                      ? 'border-lv-blue/90 bg-[#001828]/95 text-white shadow-[0_0_14px_rgba(6,206,252,0.35)]'
-                      : 'border-zinc-700/90 bg-zinc-950/80 text-zinc-200 hover:bg-zinc-900/70'
-                  }`}
-                >
-                  Edge (L)
-                  <span className="mt-0.5 block text-[12px] font-normal text-zinc-500">
-                    Button snaps to the bottom corner; icons run in an L along the bottom edge and side (mirrored on
-                    the right).
-                  </span>
-                </button>
+
+                {adminUtilsSettingsOpen ? (
+                  <div className="mt-2 space-y-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 p-2">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={feedVideoDebugEnabled}
+                      onClick={() => onFeedVideoDebugChange?.(!feedVideoDebugEnabled)}
+                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-zinc-700/90 bg-zinc-950/80 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold text-zinc-100">Video debug HUD</span>
+                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                          On-device coordinator overlay (PWA-friendly). Copy JSON to share captures.
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden
+                        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+                          feedVideoDebugEnabled ? 'bg-amber-500' : 'bg-zinc-700'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                            feedVideoDebugEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={buildBadgeEnabled}
+                      onClick={() => onBuildBadgeChange?.(!buildBadgeEnabled)}
+                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-zinc-700/90 bg-zinc-950/80 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold text-zinc-100">Build SHA in title bar</span>
+                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                          Shows the deployed git SHA next to the EDGE logo so you can confirm which bundle is live.
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden
+                        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+                          buildBadgeEnabled ? 'bg-amber-500' : 'bg-zinc-700'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                            buildBadgeEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            </div>
+            ) : null}
+
+            {typeof onLogout === 'function' ? (
+              <div className="mt-6 flex min-h-[50dvh] flex-col border-t border-zinc-800 pt-5">
+                <div className="flex-1" aria-hidden />
+                <div className="flex flex-col items-center gap-2 pb-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => void onLogout()}
+                    className="min-h-12 inline-flex items-center justify-center px-4 py-2 text-[15px] text-zinc-400 underline touch-manipulation transition-colors hover:text-red-400 [-webkit-tap-highlight-color:transparent]"
+                  >
+                    Log out
+                  </button>
+                  {typeof onDeleteAccount === 'function' ? (
+                    <button
+                      type="button"
+                      disabled={deleteAccountBusy}
+                      onClick={() => void onDeleteAccount()}
+                      className="min-h-11 inline-flex max-w-sm items-center justify-center px-4 py-2 text-[14px] leading-snug text-rose-400/95 underline decoration-rose-400/60 underline-offset-2 touch-manipulation transition-colors hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                    >
+                      {deleteAccountBusy
+                        ? 'Deleting account…'
+                        : 'Delete account (removes Auth user + cascaded data)'}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="px-3 py-4">
@@ -1282,5 +1405,11 @@ export default function LoungeDockSlidePanels({
       </div>
       </div>
     </div>
+    <IosPwaInstallHelpDialog
+      open={iosPwaHelpOpen}
+      onClose={() => setIosPwaHelpOpen(false)}
+      isSafariBrowser={iosSafariBrowser}
+    />
+    </>
   )
 }

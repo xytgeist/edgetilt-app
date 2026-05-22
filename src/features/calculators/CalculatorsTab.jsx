@@ -14,7 +14,7 @@ function CalculatorLoadingFallback() {
   )
 }
 
-function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth, onLogout, onDeleteAccount, deleteAccountBusy }) {
+function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth }) {
   return (
     <div className="w-full pt-2 sm:pt-3">
     <div className="mb-10 text-left sm:mb-12">
@@ -86,28 +86,8 @@ function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth, onLogout,
       </div>
     </button>
 
-    <div className="mt-10 sm:mt-12 flex flex-col items-center gap-2 text-center">
-      {browseMode === 'member' ? (
-        <>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="min-h-12 inline-flex items-center justify-center text-base text-gray-400 hover:text-red-400 underline touch-manipulation transition-colors px-4 py-2"
-          >
-            Log out
-          </button>
-          {typeof onDeleteAccount === 'function' ? (
-            <button
-              type="button"
-              disabled={deleteAccountBusy}
-              onClick={() => void onDeleteAccount()}
-              className="min-h-11 inline-flex max-w-sm items-center justify-center px-4 py-2 text-[15px] leading-snug text-rose-400/95 underline decoration-rose-400/60 underline-offset-2 hover:text-rose-300 touch-manipulation transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {deleteAccountBusy ? 'Deleting account…' : 'Delete account (removes Auth user + cascaded data)'}
-            </button>
-          ) : null}
-        </>
-      ) : (
+    {browseMode !== 'member' ? (
+      <div className="mt-10 sm:mt-12 flex flex-col items-center gap-2 text-center">
         <button
           type="button"
           onClick={onOpenAuth}
@@ -115,8 +95,8 @@ function CalculatorsHome({ onSelectCalculator, browseMode, onOpenAuth, onLogout,
         >
           Log in or create account
         </button>
-      )}
-    </div>
+      </div>
+    ) : null}
   </div>
   )
 }
@@ -126,9 +106,6 @@ export default function CalculatorsTab({
   setActiveCalculator,
   browseMode,
   onOpenAuth,
-  onLogout,
-  onDeleteAccount,
-  deleteAccountBusy = false,
   titleBarNavSlot = null,
 }) {
   if (!activeCalculator) {
@@ -141,9 +118,6 @@ export default function CalculatorsTab({
           onSelectCalculator={setActiveCalculator}
           browseMode={browseMode}
           onOpenAuth={onOpenAuth}
-          onLogout={onLogout}
-          onDeleteAccount={onDeleteAccount}
-          deleteAccountBusy={deleteAccountBusy}
         />
       </ScrollLinkedEdgeTitleBarShell>
     )

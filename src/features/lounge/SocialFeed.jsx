@@ -371,6 +371,9 @@ export default function SocialFeed({
   loungeFeedBrowseMode = 'member',
   /** True only when the Lounge tab is the active/visible screen; gates the portaled dock FAB. */
   isActivePage = true,
+  onLogout,
+  onDeleteAccount,
+  deleteAccountBusy = false,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -7818,26 +7821,6 @@ export default function SocialFeed({
     [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
   )
 
-  const onLoungeDockOpenOwnProfile = useCallback(() => {
-    if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
-      onRequireAuth?.()
-      return
-    }
-    if (!composerUserId) return
-    setLoungeDockPanel(null)
-    void openProfileModal({
-      user_id: composerUserId,
-      author_profile: composerUserProfile,
-    })
-  }, [
-    loungeFeedBrowseMode,
-    loungeReadOnly,
-    onRequireAuth,
-    composerUserId,
-    composerUserProfile,
-    openProfileModal,
-  ])
-
   const onProfileScreenUpdated = useCallback((next) => {
     setProfileModalData((prev) => ({ ...(prev || {}), ...next }))
     if (next?.user_id && composerUserId && next.user_id === composerUserId) {
@@ -10529,7 +10512,6 @@ export default function SocialFeed({
           onOpenSettingsSection={onLoungeOpenSettingsSection}
           settingsFocusSection={loungeSettingsFocusSection}
           onSettingsFocusSectionHandled={onLoungeSettingsFocusSectionHandled}
-          onOpenOwnProfile={onLoungeDockOpenOwnProfile}
           activePanel={loungeDockPanel}
           postCardProps={profilePostCardProps}
           onOpenPostFromSearch={onLoungeDockOpenPostFromSearch}
@@ -10570,6 +10552,9 @@ export default function SocialFeed({
           notificationPrefsSchemaMissing={loungeNotificationPrefsSchemaMissing}
           notificationPrefsError={loungeNotificationPrefsError}
           onNotificationPrefToggle={onLoungeNotificationPrefToggle}
+          onLogout={onLogout}
+          onDeleteAccount={onDeleteAccount}
+          deleteAccountBusy={deleteAccountBusy}
         />
       ) : null}
 

@@ -4,12 +4,12 @@ import { LOUNGE_ACTIVITY_EVENT_TYPES } from './loungeActivityApi.js'
 export function loungeActivityInteractionBarKind(eventType) {
   switch (eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.COMMENT_ON_POST:
-    case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_POST:
-    case LOUNGE_ACTIVITY_EVENT_TYPES.QUOTE_REPOST:
-      return 'post'
     case LOUNGE_ACTIVITY_EVENT_TYPES.REPLY_TO_COMMENT:
     case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_COMMENT:
       return 'comment'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_POST:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.QUOTE_REPOST:
+      return 'post'
     default:
       return null
   }

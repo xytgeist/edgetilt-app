@@ -134,10 +134,7 @@ export default function LoungeNotificationInteractionBar({
             ? () => {
                 onOpenPost?.({
                   postId: event.post_id,
-                  commentId:
-                    event.event_type === 'comment_on_post' && event.comment_id
-                      ? event.comment_id
-                      : null,
+                  commentId: event.comment_id || null,
                   focusComposer: true,
                 })
               }

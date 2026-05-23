@@ -9072,11 +9072,10 @@ export default function SocialFeed({
 
         <div ref={pullRefreshZoneRef}>
           <div
-            className="overflow-hidden text-[13px] text-zinc-400"
+            className="overflow-hidden text-[13px] text-zinc-400 transition-[max-height,opacity] duration-200"
             style={{
-              height: pullRefreshing ? 36 : Math.min(pullDistance, pullMaxVisualPx),
+              maxHeight: pullRefreshing || pullDistance > 0 ? '2.25rem' : '0rem',
               opacity: pullRefreshing || pullDistance > 0 ? 1 : 0,
-              transition: pullDistance > 0 && !pullRefreshing ? 'none' : 'height 200ms ease, opacity 200ms ease',
             }}
           >
             <div className="px-3 py-1 text-center">

@@ -52,9 +52,7 @@ export default function LoungeFeedCategoryFilter({
         aria-expanded={open}
         aria-label="Feed tribes"
         onClick={() => setOpen((o) => !o)}
-        className={`inline-flex max-w-[min(36vw,8.5rem)] items-center gap-0.5 rounded-md py-0.5 pr-0.5 text-[13px] font-medium leading-tight touch-manipulation hover:text-zinc-300 disabled:opacity-50 [-webkit-tap-highlight-color:transparent] ${
-          filterActive ? 'text-cyan-300/90' : 'text-zinc-500'
-        }`}
+        className="inline-flex max-w-[min(36vw,8.5rem)] items-center gap-0.5 rounded-md py-0.5 pr-0.5 text-[13px] font-medium leading-tight text-zinc-500 touch-manipulation hover:text-zinc-300 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
       >
         <span className="truncate">Tribes</span>
         <svg className="h-3.5 w-3.5 shrink-0 opacity-80" viewBox="0 0 20 20" fill="currentColor" aria-hidden>

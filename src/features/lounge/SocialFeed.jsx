@@ -729,6 +729,7 @@ export default function SocialFeed({
   const loungePostDetailMenuWrapRef = useRef(null)
   const loadMoreSentinelRef = useRef(null)
   const pullStartYRef = useRef(null)
+  const pullDistanceRef = useRef(0)
   const pullTriggeredRef = useRef(false)
   const composerMediaInputRef = useRef(null)
   const composerFieldRef = useRef(null)
@@ -738,6 +739,8 @@ export default function SocialFeed({
   const loungeDetailEditFieldRef = useRef(null)
   const loungeDetailEditMediaInputRef = useRef(null)
   const loungeFeedScrollRef = useRef(null)
+  /** Pull-to-refresh only when the gesture starts in the posts block (below Discover / Latest / Tribes). */
+  const pullRefreshZoneRef = useRef(null)
   /** Bound inside feed `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
   const resetFeedInlineSoundRef = useRef(() => {})
   /** Bound inside post-detail `LoungeFeedVideoAutoplayProvider` — reset comment-thread inline sound on close. */
@@ -5907,7 +5910,8 @@ export default function SocialFeed({
   useEffect(() => {
     if (typeof window === 'undefined') return
     const zone = loungeFeedScrollRef.current
-    if (!zone) return
+    const pullZone = pullRefreshZoneRef.current
+    if (!zone || !pullZone) return
     const thresholdPx = pullRefreshThresholdPx
 
     const onTouchStart = (e) => {
@@ -5915,7 +5919,12 @@ export default function SocialFeed({
         pullStartYRef.current = null
         return
       }
-      pullStartYRef.current = e.touches?.[0]?.clientY ?? null
+      const touch = e.touches?.[0]
+      if (!touch) {
+        pullStartYRef.current = null
+        return
+      }
+      pullStartYRef.current = touch.clientY
       pullTriggeredRef.current = false
     }
 
@@ -5924,19 +5933,24 @@ export default function SocialFeed({
       const startY = pullStartYRef.current
       if (startY == null) return
       const currentY = e.touches?.[0]?.clientY ?? startY
-      const dy = Math.max(0, currentY - startY)
+      const dy = currentY - startY
       if (dy <= 0) {
+        pullDistanceRef.current = 0
         setPullDistance(0)
         return
       }
+      e.preventDefault()
       const eased = Math.min(pullMaxVisualPx, Math.floor(dy * pullFingerGain))
+      pullDistanceRef.current = eased
       setPullDistance(eased)
     }
 
     const onTouchEnd = async () => {
-      const shouldRefresh = pullDistance >= thresholdPx && !pullTriggeredRef.current
+      const distance = pullDistanceRef.current
       pullStartYRef.current = null
+      pullDistanceRef.current = 0
       setPullDistance(0)
+      const shouldRefresh = distance >= thresholdPx && !pullTriggeredRef.current
       if (!shouldRefresh) return
       pullTriggeredRef.current = true
       setPullRefreshing(true)
@@ -5948,17 +5962,17 @@ export default function SocialFeed({
       }
     }
 
-    zone.addEventListener('touchstart', onTouchStart, { passive: true })
-    zone.addEventListener('touchmove', onTouchMove, { passive: true })
-    zone.addEventListener('touchend', onTouchEnd, { passive: true })
-    zone.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    pullZone.addEventListener('touchstart', onTouchStart, { passive: true })
+    zone.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+    zone.addEventListener('touchend', onTouchEnd, { passive: true, capture: true })
+    zone.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true })
     return () => {
-      zone.removeEventListener('touchstart', onTouchStart)
-      zone.removeEventListener('touchmove', onTouchMove)
-      zone.removeEventListener('touchend', onTouchEnd)
-      zone.removeEventListener('touchcancel', onTouchEnd)
+      pullZone.removeEventListener('touchstart', onTouchStart)
+      zone.removeEventListener('touchmove', onTouchMove, { capture: true })
+      zone.removeEventListener('touchend', onTouchEnd, { capture: true })
+      zone.removeEventListener('touchcancel', onTouchEnd, { capture: true })
     }
-  }, [loadCommunityFeed, pullDistance, pullRefreshing])
+  }, [loadCommunityFeed, pullRefreshing])
 
   useEffect(() => {
     if (!communityFeedHasMore || communityFeedLoadingMore || communityFeedLoading || pullRefreshing) return
@@ -8964,19 +8978,6 @@ export default function SocialFeed({
         </div>
         )}
 
-        <div
-          className="overflow-hidden transition-[max-height,opacity] duration-200"
-          style={{ maxHeight: pullRefreshing || pullDistance > 0 ? '2.25rem' : '0rem', opacity: pullRefreshing || pullDistance > 0 ? 1 : 0 }}
-        >
-          <div className="px-3 py-1 text-center text-[13px] text-zinc-400">
-            {pullRefreshing
-              ? 'Refreshing lounge…'
-              : pullDistance >= pullRefreshThresholdPx
-                ? 'Release to refresh'
-                : 'Pull down to refresh'}
-          </div>
-        </div>
-
         {composerDiscardPromptOpen ? (
           <div
             className="fixed inset-0 z-[95] flex items-center justify-center bg-black/45 px-4 p-6 backdrop-blur-[3px]"
@@ -9068,6 +9069,24 @@ export default function SocialFeed({
             />
           </div>
         </div>
+
+        <div ref={pullRefreshZoneRef}>
+          <div
+            className="overflow-hidden text-[13px] text-zinc-400"
+            style={{
+              height: pullRefreshing ? 36 : Math.min(pullDistance, pullMaxVisualPx),
+              opacity: pullRefreshing || pullDistance > 0 ? 1 : 0,
+              transition: pullDistance > 0 && !pullRefreshing ? 'none' : 'height 200ms ease, opacity 200ms ease',
+            }}
+          >
+            <div className="px-3 py-1 text-center">
+              {pullRefreshing
+                ? 'Refreshing lounge…'
+                : pullDistance >= pullRefreshThresholdPx
+                  ? 'Release to refresh'
+                  : 'Pull down to refresh'}
+            </div>
+          </div>
 
         <div className="border-b border-zinc-800 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {loungeManageErr ? (
@@ -9224,6 +9243,7 @@ export default function SocialFeed({
             ) : null}
           </>
         )}
+        </div>
         </div>
         </LoungeFeedVideoAutoplayProvider>
       </div>

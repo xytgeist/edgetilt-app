@@ -172,3 +172,9 @@ export function writeLoungeComposerLastCategoryPills(pills) {
     // ignore
   }
 }
+
+/** After a successful compose / quote / post-edit submit, remember tribes for the next post. */
+export function persistLoungeComposerLastCategoryPillsFromSubmit(snapshot) {
+  if (!snapshot || !Object.prototype.hasOwnProperty.call(snapshot, 'categoryPills')) return
+  writeLoungeComposerLastCategoryPills(snapshot.categoryPills)
+}

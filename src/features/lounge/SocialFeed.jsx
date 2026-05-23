@@ -88,6 +88,7 @@ import {
   clearLoungeComposerDraft,
   readLoungeComposerLastCategoryPills,
   writeLoungeComposerLastCategoryPills,
+  persistLoungeComposerLastCategoryPillsFromSubmit,
   LOUNGE_PROFILE_CACHE_KEY,
   loungeProfileNeedsGate,
   writeProfileGateAck,
@@ -445,6 +446,10 @@ export default function SocialFeed({
   /** Moderator/admin: create this lounge post already pinned (only one pinned post globally). */
   const [composerPinOnPost, setComposerPinOnPost] = useState(false)
   const [composerCategoryPills, setComposerCategoryPills] = useState(() => readLoungeComposerLastCategoryPills())
+
+  useEffect(() => {
+    writeLoungeComposerLastCategoryPills(composerCategoryPills)
+  }, [composerCategoryPills])
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
@@ -7761,7 +7766,7 @@ export default function SocialFeed({
             : undefined,
         })
         loungePostSnapshotRef.current = null
-        writeLoungeComposerLastCategoryPills(snapshot.categoryPills || [])
+        persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
         await loadCommunityFeed()
         const quoteOrigId = String(snapshot.quoteRepostOfPostId || '').trim()
         if (quoteOrigId) {
@@ -8311,6 +8316,7 @@ export default function SocialFeed({
         })
         loungeDetailEditSnapshotRef.current = null
         patchLoungePostEditResult(data)
+        persistLoungeComposerLastCategoryPillsFromSubmit(snap)
         setLoungePostUploadFailedOpen(false)
         setLoungePostUploadFailureDetails(null)
       } catch (e) {
@@ -8591,6 +8597,7 @@ export default function SocialFeed({
           })
           loungeDetailEditSnapshotRef.current = null
           patchLoungePostEditResult(data)
+          persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
         } else if (type === 'comment') {
           const snap = snapshot
           const data = await executeLoungeCommentSubmission({
@@ -8660,6 +8667,7 @@ export default function SocialFeed({
             signal: ac.signal,
             rateLimitMessage,
           })
+          persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
           await loadCommunityFeed({ silent: true })
           const quoteOrigId = String(snapshot.quoteRepostOfPostId || '').trim()
           if (quoteOrigId) {

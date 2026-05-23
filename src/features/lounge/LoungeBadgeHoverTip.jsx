@@ -36,7 +36,8 @@ const TONE = {
  * with a short leave delay so the pointer can reach the tip (tip uses pointer-events).
  * Outside **pointerdown** (capture) and **Escape** dismiss the tip so it does not stick when `mouseleave` does not fire.
  *
- * Enter on iOS WebKit: same keyframes as Android but paused until positioned, then unpaused for full duration.
+ * Enter on iOS WebKit: same keyframes as Android but paused until positioned, then unpaused once.
+ * Layout listeners must not depend on anim state — that re-ran the effect and turbo-compressed the rise.
  *
  * @param {{ tip: string, tone?: 'amber' | 'crown' | 'violet' | 'sky', children: import('react').ReactNode, className?: string }} props
  */
@@ -54,6 +55,7 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
   const leaveDelayTRef = useRef(null)
   const canRepositionRef = useRef(false)
   const exitingRef = useRef(false)
+  const animInReadyRef = useRef(false)
   const positionFrameRef = useRef(null)
   const animStartFrameRef = useRef(null)
   const showGenerationRef = useRef(0)
@@ -69,19 +71,27 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
     [],
   )
 
+  const debugStateRef = useRef({
+    mounted: false,
+    exiting: false,
+    animInReady: false,
+  })
+  debugStateRef.current = { mounted, exiting, animInReady: animInReadyRef.current }
+
   const syncDebugSnapshot = useCallback(() => {
+    const s = debugStateRef.current
     syncLoungeBadgeTipDebugSnapshot(tip, {
-      mounted,
-      exiting,
-      animInReady,
+      mounted: s.mounted,
+      exiting: s.exiting,
+      animInReady: animInReadyRef.current,
       showGeneration: showGenerationRef.current,
       finePointerHover: prefersFinePointerHover(),
       needsDeferredEnter,
-      tipEnterPaused: needsDeferredEnter && !exiting && !animInReady,
+      tipEnterPaused: needsDeferredEnter && !s.exiting && !animInReadyRef.current,
       tipTextEl: tipTextRef.current,
       tipShellEl: tipShellRef.current,
     })
-  }, [animInReady, exiting, mounted, needsDeferredEnter, tip])
+  }, [needsDeferredEnter, tip])
 
   const clearLeaveDelay = useCallback(() => {
     if (leaveDelayTRef.current != null) {
@@ -147,14 +157,28 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
     })
   }, [positionTip])
 
+  const unpauseEnterAnimation = useCallback(() => {
+    const el = tipTextRef.current
+    if (el) {
+      void el.offsetWidth
+      el.removeAttribute('data-tip-enter-paused')
+    }
+    animInReadyRef.current = true
+    setAnimInReady(true)
+  }, [])
+
   const armEnterAnimation = useCallback(() => {
     cancelAnimStartFrames()
+    animInReadyRef.current = false
     setAnimInReady(false)
+    const el = tipTextRef.current
+    if (el && needsDeferredEnter) {
+      el.setAttribute('data-tip-enter-paused', '')
+    }
 
     const markInReady = () => {
       if (!exitingRef.current && canRepositionRef.current) {
-        void tipTextRef.current?.offsetWidth
-        setAnimInReady(true)
+        unpauseEnterAnimation()
         logLoungeBadgeTipDebug(tip, 'anim', 'in ready', debugDom())
       } else {
         logLoungeBadgeTipDebug(
@@ -179,7 +203,7 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
         markInReady()
       })
     })
-  }, [cancelAnimStartFrames, debugDom, needsDeferredEnter, tip])
+  }, [cancelAnimStartFrames, debugDom, needsDeferredEnter, tip, unpauseEnterAnimation])
 
   const finishExit = useCallback(() => {
     if (hideTRef.current != null) {
@@ -189,6 +213,7 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
     cancelAnimStartFrames()
     canRepositionRef.current = false
     exitingRef.current = false
+    animInReadyRef.current = false
     setAnimInReady(false)
     setMounted(false)
     setExiting(false)
@@ -200,17 +225,18 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
       showGeneration: showGenerationRef.current,
       finePointerHover: prefersFinePointerHover(),
       needsDeferredEnter,
-      tipEnterPaused: needsDeferredEnter && !exiting && !animInReady,
+      tipEnterPaused: false,
       tipTextEl: null,
       tipShellEl: null,
     })
-  }, [cancelAnimStartFrames, debugDom, tip])
+  }, [cancelAnimStartFrames, debugDom, needsDeferredEnter, tip])
 
   const beginExit = useCallback(
     (source = 'unknown') => {
       if (exitingRef.current) return
       clearLeaveDelay()
       cancelAnimStartFrames()
+      animInReadyRef.current = false
       setAnimInReady(false)
       if (hideTRef.current != null) {
         clearTimeout(hideTRef.current)
@@ -245,6 +271,7 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
       clearAllTimers()
       exitingRef.current = false
       setExiting(false)
+      animInReadyRef.current = false
       setAnimInReady(false)
       scrollPosCountRef.current = 0
       setShowGeneration((g) => {
@@ -257,6 +284,15 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
     },
     [clearAllTimers, debugDom, tip],
   )
+
+  const positionTipRef = useRef(positionTip)
+  const schedulePositionTipRef = useRef(schedulePositionTip)
+  const armEnterAnimationRef = useRef(armEnterAnimation)
+  const cancelAnimStartFramesRef = useRef(cancelAnimStartFrames)
+  positionTipRef.current = positionTip
+  schedulePositionTipRef.current = schedulePositionTip
+  armEnterAnimationRef.current = armEnterAnimation
+  cancelAnimStartFramesRef.current = cancelAnimStartFrames
 
   /** Dismiss when the user taps/clicks outside the anchor and portaled tip (mouseleave is flaky on touch and when focus moves). */
   useEffect(() => {
@@ -282,16 +318,16 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
   useLayoutEffect(() => {
     if (!mounted) {
       canRepositionRef.current = false
+      animInReadyRef.current = false
       setAnimInReady(false)
       return undefined
     }
     logLoungeBadgeTipDebug(tip, 'layout', `mount gen=${showGenerationRef.current}`, debugDom())
     canRepositionRef.current = true
-    positionTip()
+    positionTipRef.current()
     void tipShellRef.current?.offsetHeight
-    armEnterAnimation()
-    syncDebugSnapshot()
-    const onScrollOrResize = () => schedulePositionTip()
+    armEnterAnimationRef.current()
+    const onScrollOrResize = () => schedulePositionTipRef.current()
     window.addEventListener('scroll', onScrollOrResize, true)
     window.addEventListener('resize', onScrollOrResize)
     let ro
@@ -310,16 +346,16 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
         cancelAnimationFrame(positionFrameRef.current)
         positionFrameRef.current = null
       }
-      cancelAnimStartFrames()
+      cancelAnimStartFramesRef.current()
     }
-  }, [mounted, showGeneration, tip, positionTip, schedulePositionTip, armEnterAnimation, cancelAnimStartFrames, debugDom, syncDebugSnapshot])
+  }, [mounted, showGeneration, tip])
 
   useEffect(() => {
     if (!mounted) return undefined
     syncDebugSnapshot()
     const id = window.setInterval(syncDebugSnapshot, 450)
     return () => window.clearInterval(id)
-  }, [mounted, exiting, animInReady, showGeneration, syncDebugSnapshot])
+  }, [mounted, syncDebugSnapshot])
 
   const onEnterAnchor = useCallback(() => {
     if (!prefersFinePointerHover()) {

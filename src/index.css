@@ -428,23 +428,30 @@ input[list]::-webkit-list-button {
 @keyframes loungeBadgeTipIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translate3d(0, 6px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes loungeBadgeTipOut {
   from {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
     opacity: 0;
-    transform: translateY(-5px);
+    transform: translate3d(0, -5px, 0);
   }
+}
+
+.lounge-badge-tip-in,
+.lounge-badge-tip-out {
+  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .lounge-badge-tip-in {

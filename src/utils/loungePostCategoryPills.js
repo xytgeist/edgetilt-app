@@ -136,6 +136,25 @@ export function normalizeLoungePostCategoryPills(value) {
   return out
 }
 
+/** Profile interests — same slug rules as posts, no cardinality cap. */
+export function normalizeLoungeProfileCategoryPills(value) {
+  const raw = Array.isArray(value) ? value : []
+  const out = []
+  const seen = new Set()
+  for (const item of raw) {
+    const slug = resolveCategoryPillSlug(item)
+    if (!slug || seen.has(slug)) continue
+    seen.add(slug)
+    out.push(slug)
+  }
+  return out
+}
+
+/** Interest tribes on a profile row (empty when missing). */
+export function profileCategoryPills(profile) {
+  return normalizeLoungeProfileCategoryPills(profile?.category_pills)
+}
+
 /** Ordered pills on a hydrated feed row (empty when missing/legacy). */
 export function feedPostCategoryPills(row) {
   return normalizeLoungePostCategoryPills(row?.category_pills)

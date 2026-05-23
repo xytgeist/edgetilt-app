@@ -2,29 +2,36 @@ import {
   loungePostCategoryPillChipClass,
   loungePostCategoryPillOptions,
   normalizeLoungePostCategoryPills,
+  normalizeLoungeProfileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 
-const MAX_PILLS = 3
+const DEFAULT_MAX_PILLS = 3
 
-/** Toggle chips for compose / quote / post edit (0–3 optional). */
+/** Toggle chips for compose / quote / post edit (0–3 optional) or profile interests (uncapped). */
 export default function LoungePostCategoryPillPicker({
   value,
   onChange,
   disabled = false,
+  maxPills = DEFAULT_MAX_PILLS,
   hint = 'Optional — helps interested members find your post.',
 }) {
-  const selected = normalizeLoungePostCategoryPills(value)
-  const atMax = selected.length >= MAX_PILLS
+  const uncapped = maxPills == null
+  const optionCount = loungePostCategoryPillOptions().length
+  const cap = uncapped ? optionCount : Math.max(0, Number(maxPills) || DEFAULT_MAX_PILLS)
+  const selected = uncapped
+    ? normalizeLoungeProfileCategoryPills(value)
+    : normalizeLoungePostCategoryPills(value)
+  const atMax = selected.length >= cap
 
   const toggle = (slug) => {
     if (disabled || typeof onChange !== 'function') return
-    const cur = normalizeLoungePostCategoryPills(selected)
+    const cur = uncapped ? normalizeLoungeProfileCategoryPills(selected) : normalizeLoungePostCategoryPills(selected)
     const idx = cur.indexOf(slug)
     if (idx >= 0) {
       onChange(cur.filter((s) => s !== slug))
       return
     }
-    if (cur.length >= MAX_PILLS) return
+    if (atMax) return
     onChange([...cur, slug])
   }
 
@@ -56,7 +63,7 @@ export default function LoungePostCategoryPillPicker({
         })}
       </div>
       <p className="mt-1 text-[10px] tabular-nums text-zinc-600">
-        {selected.length}/{MAX_PILLS} selected
+        {uncapped ? `${selected.length} selected` : `${selected.length}/${cap} selected`}
       </p>
     </div>
   )

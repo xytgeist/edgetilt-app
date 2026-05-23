@@ -35,6 +35,8 @@ import {
   displayPostCategoryPills,
   resolvePlainRepostCategoryPills,
   resolveQuoteRepostInitialCategoryPills,
+  normalizeLoungeProfileCategoryPills,
+  profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import {
   feedCommentRowHasMedia,
@@ -530,6 +532,7 @@ export default function SocialFeed({
   const [profileGateHandle, setProfileGateHandle] = useState('')
   const [profileGateHandleConflict, setProfileGateHandleConflict] = useState(null)
   const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
+  const [profileGateCategoryPills, setProfileGateCategoryPills] = useState([])
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
   /** Raw pick before crop modal (Complete your profile). */
@@ -945,6 +948,7 @@ export default function SocialFeed({
     setProfileGateAvatarFile(null)
     setProfileGateAvatarCropFile(null)
     setProfileGateAvatarPreview(String(composerUserProfile?.avatar_url || '').trim())
+    setProfileGateCategoryPills(profileCategoryPills(composerUserProfile))
     setProfileGateErr('')
     setProfileGateOpen(true)
     return true
@@ -3972,6 +3976,7 @@ export default function SocialFeed({
           setProfileGateAvatarFile(null)
           setProfileGateAvatarCropFile(null)
           setProfileGateAvatarPreview(ownProfile?.avatar_url || composerUserProfile?.avatar_url || '')
+          setProfileGateCategoryPills(profileCategoryPills(ownProfile || composerUserProfile))
           setProfileGateErr('')
           setProfileGateOpen(true)
           setLoungeManageErr('Complete your profile to repost.')
@@ -4183,6 +4188,7 @@ export default function SocialFeed({
         setProfileGateAvatarFile(null)
         setProfileGateAvatarCropFile(null)
         setProfileGateAvatarPreview(ownProfile?.avatar_url || composerUserProfile?.avatar_url || '')
+        setProfileGateCategoryPills(profileCategoryPills(ownProfile || composerUserProfile))
         setProfileGateErr('')
         setQuoteRepostModal(null)
         setQuoteRepostDraft('')
@@ -7027,7 +7033,7 @@ export default function SocialFeed({
         if (cached) setComposerUserProfile(cached)
         const { data } = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,created_at,role,handle_changed_at,is_og')
+          .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og')
           .eq('user_id', uid)
           .maybeSingle()
         if (cancelled) return
@@ -9159,6 +9165,7 @@ export default function SocialFeed({
         setProfileGateAvatarPreview(
           ownProfile?.avatar_url || composerUserProfile?.avatar_url || '',
         )
+        setProfileGateCategoryPills(profileCategoryPills(ownProfile || composerUserProfile))
         setProfileGateErr('')
         setProfileGateOpen(true)
         setPostErr('Complete your profile to post in Lounge.')
@@ -9353,6 +9360,24 @@ export default function SocialFeed({
         setProfileGateErr(formatProfileSaveDebugError(error, 'Save profile'))
         return
       }
+
+      const nextCategoryPills = normalizeLoungeProfileCategoryPills(profileGateCategoryPills)
+      const { error: categoryErr } = await supabaseClient
+        .from('profiles')
+        .update({ category_pills: nextCategoryPills })
+        .eq('user_id', session.user.id)
+      if (categoryErr) {
+        const raw = String(categoryErr.message || '')
+        if (/category_pills|schema cache/i.test(raw)) {
+          setProfileGateErr(
+            'Profile tribes need the latest SQL. In Supabase, run supabase/profile_category_pills.sql, then save again.',
+          )
+        } else {
+          setProfileGateErr(raw || 'Could not save tribes.')
+        }
+        return
+      }
+
       const { data: freshProfile, error: freshErr } = await fetchOwnProfile(supabaseClient, session.user.id)
       if (!freshErr && freshProfile) {
         setComposerUserProfile(freshProfile)
@@ -9366,7 +9391,7 @@ export default function SocialFeed({
     } finally {
       setProfileGateBusy(false)
     }
-  }, [onRequireAuth, profileGateAvatarFile, profileGateDisplayName, profileGateHandle, submitLoungePost, supabaseClient])
+  }, [onRequireAuth, profileGateAvatarFile, profileGateCategoryPills, profileGateDisplayName, profileGateHandle, submitLoungePost, supabaseClient])
 
   useEffect(() => {
     profileModalVisibleRef.current = profileModalVisible
@@ -13544,6 +13569,16 @@ export default function SocialFeed({
                   spellCheck={false}
                 />
               </label>
+              <div className="block">
+                <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Tribes</span>
+                <LoungePostCategoryPillPicker
+                  value={profileGateCategoryPills}
+                  onChange={setProfileGateCategoryPills}
+                  disabled={profileGateBusy}
+                  maxPills={null}
+                  hint="Choose your tribes - helps us to deliver you better results."
+                />
+              </div>
               {profileGateErr ? (
                 <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[13px] leading-relaxed break-words whitespace-pre-wrap">
                   {profileGateErr}

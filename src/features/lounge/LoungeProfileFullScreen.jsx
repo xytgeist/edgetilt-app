@@ -23,6 +23,8 @@ import { collectLoungePostInteractionHydrateIds, feedPostDisplayCaption } from '
 import { loungeFeedPostRowPerfStyle } from '../../utils/loungeFeedPostRowPerfStyle.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
+import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
+import LoungePostCategoryPillRow from './LoungePostCategoryPillRow.jsx'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import { renderRichCaption } from './loungeCaption'
@@ -59,6 +61,10 @@ import {
 } from './loungeProfileScreenLoad.js'
 import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
 import { LOUNGE_DOCK_FAB_SIZE_PX } from '../../utils/loungeDockFabPosition.js'
+import {
+  normalizeLoungeProfileCategoryPills,
+  profileCategoryPills,
+} from '../../utils/loungePostCategoryPills.js'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
@@ -489,6 +495,7 @@ export default function LoungeProfileFullScreen({
   const [socialBusy, setSocialBusy] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
   const [locationDraft, setLocationDraft] = useState('')
+  const [categoryPillsDraft, setCategoryPillsDraft] = useState([])
   const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [handleSlugDraft, setHandleSlugDraft] = useState('')
   const [aboutBusy, setAboutBusy] = useState(false)
@@ -542,6 +549,7 @@ export default function LoungeProfileFullScreen({
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
   const aboutDisplay = String(profile?.about_me || profile?.bio || '').trim()
   const locationDisplay = normalizeProfileLocation(profile?.location)
+  const profileInterestPills = profileCategoryPills(profile)
   const profileTabsVisible = isOwnProfile ? PROFILE_TAB_IDS : PROFILE_TAB_IDS.slice(0, 2)
   const targetProfileRole = String(profile?.role || 'user').trim().toLowerCase()
   const canAdminPromoteModerator =
@@ -710,12 +718,14 @@ export default function LoungeProfileFullScreen({
     if (!open || !profileUserId) return
     setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
     setLocationDraft(normalizeProfileLocation(profile?.location))
-  }, [open, profileUserId, profile?.about_me, profile?.bio, profile?.location])
+    setCategoryPillsDraft(profileCategoryPills(profile))
+  }, [open, profileUserId, profile?.about_me, profile?.bio, profile?.location, profile?.category_pills])
 
   useEffect(() => {
     if (!ownProfileEditing || !isOwnProfile || profile?.user_id == null) return
     setLocationDraft(normalizeProfileLocation(profile?.location))
-  }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location])
+    setCategoryPillsDraft(profileCategoryPills(profile))
+  }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location, profile?.category_pills])
 
   useEffect(() => {
     if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) {
@@ -1088,6 +1098,11 @@ export default function LoungeProfileFullScreen({
     } else {
       setLocationDraft(normalizeProfileLocation(profile?.location))
     }
+    if (opts?.nextCategoryPills !== undefined) {
+      setCategoryPillsDraft(normalizeLoungeProfileCategoryPills(opts.nextCategoryPills))
+    } else {
+      setCategoryPillsDraft(profileCategoryPills(profile))
+    }
     setAboutErr('')
     if (typeof document !== 'undefined') {
       try {
@@ -1097,7 +1112,7 @@ export default function LoungeProfileFullScreen({
         // ignore
       }
     }
-  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle, profile?.location])
+  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle, profile?.location, profile?.category_pills])
 
   const refreshSocial = useCallback(async () => {
     if (!profileUserId || !viewerUserId) {
@@ -1282,6 +1297,7 @@ export default function LoungeProfileFullScreen({
     if (!isOwnProfile || !viewerUserId || aboutBusy) return
     const nextAbout = String(aboutDraft || '').trim().slice(0, 140)
     const nextLocation = normalizeProfileLocation(locationDraft)
+    const nextCategoryPills = normalizeLoungeProfileCategoryPills(categoryPillsDraft)
     const dn = String(displayNameDraft || '').trim().slice(0, 24)
     if (!dn) {
       setAboutErr('Display name is required.')
@@ -1381,13 +1397,17 @@ export default function LoungeProfileFullScreen({
       }
       const { error: upErr } = await supabaseClient
         .from('profiles')
-        .update({ about_me: nextAbout || null, location: nextLocation || null })
+        .update({
+          about_me: nextAbout || null,
+          location: nextLocation || null,
+          category_pills: nextCategoryPills,
+        })
         .eq('user_id', viewerUserId)
       if (upErr) {
         const raw = String(upErr.message || '')
-        if (/about_me|location|schema cache/i.test(raw)) {
+        if (/about_me|location|category_pills|schema cache/i.test(raw)) {
           setAboutErr(
-            'Profile fields need the latest SQL. In Supabase → SQL Editor, run supabase/profile_lounge_fullscreen.sql (or profile_location.sql), then save again.'
+            'Profile fields need the latest SQL. In Supabase → SQL Editor, run supabase/profile_lounge_fullscreen.sql and supabase/profile_category_pills.sql, then save again.'
           )
           return
         }
@@ -1414,10 +1434,12 @@ export default function LoungeProfileFullScreen({
         ...identityRow,
         about_me: nextAbout || null,
         location: nextLocation || null,
+        category_pills: nextCategoryPills,
       })
       exitOwnProfileEditing({
         nextAboutDraft: nextAbout,
         nextLocation: nextLocation || null,
+        nextCategoryPills: nextCategoryPills,
         nextDisplayName: identityRow.display_name,
         nextHandle: identityRow.handle,
       })
@@ -2004,6 +2026,16 @@ export default function LoungeProfileFullScreen({
                       </button>
                     ) : null}
                   </label>
+                  <div className="block">
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Tribes</span>
+                    <LoungePostCategoryPillPicker
+                      value={categoryPillsDraft}
+                      onChange={setCategoryPillsDraft}
+                      disabled={aboutBusy}
+                      maxPills={null}
+                      hint="Choose your tribes - helps us to deliver you better results."
+                    />
+                  </div>
                 </div>
               ) : (
                 <>
@@ -2024,6 +2056,9 @@ export default function LoungeProfileFullScreen({
                       <ProfileLocationPinIcon />
                       <span className="min-w-0 truncate">{locationDisplay}</span>
                     </div>
+                  ) : null}
+                  {profileInterestPills.length > 0 ? (
+                    <LoungePostCategoryPillRow pills={profileInterestPills} className="mt-2" />
                   ) : null}
                 </>
               )}

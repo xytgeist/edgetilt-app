@@ -52,6 +52,11 @@ import {
 import ProfileHandleConflictDialog from '../profiles/ProfileHandleConflictDialog.jsx'
 import { loungeProfileNeedsGate, writeProfileGateAck } from '../lounge/loungeStorage'
 import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal'
+import LoungePostCategoryPillPicker from '../lounge/LoungePostCategoryPillPicker.jsx'
+import {
+  normalizeLoungeProfileCategoryPills,
+  profileCategoryPills,
+} from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 
 /** Calculator / generic placeholder art for Buffalo Link — also used when a guide hero fails to load. */
@@ -921,6 +926,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
   const [profileGateHandle, setProfileGateHandle] = useState('')
   const [profileGateHandleConflict, setProfileGateHandleConflict] = useState(null)
   const [profileGateDisplayName, setProfileGateDisplayName] = useState('')
+  const [profileGateCategoryPills, setProfileGateCategoryPills] = useState([])
   const [profileGateAvatarFile, setProfileGateAvatarFile] = useState(null)
   const [profileGateAvatarPreview, setProfileGateAvatarPreview] = useState('')
   const [profileGateAvatarCropFile, setProfileGateAvatarCropFile] = useState(null)
@@ -1005,6 +1011,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         setProfileGateAvatarFile(null)
         setProfileGateAvatarCropFile(null)
         setProfileGateAvatarPreview(ownProfile?.avatar_url || '')
+        setProfileGateCategoryPills(profileCategoryPills(ownProfile))
         setProfileGateErr('')
         setProfileGateOpen(true)
         setErr('Complete your profile before posting.')
@@ -1128,6 +1135,24 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
         setProfileGateErr(formatProfileSaveDebugError(error, 'Save profile'))
         return
       }
+
+      const nextCategoryPills = normalizeLoungeProfileCategoryPills(profileGateCategoryPills)
+      const { error: categoryErr } = await supabaseClient
+        .from('profiles')
+        .update({ category_pills: nextCategoryPills })
+        .eq('user_id', session.user.id)
+      if (categoryErr) {
+        const raw = String(categoryErr.message || '')
+        if (/category_pills|schema cache/i.test(raw)) {
+          setProfileGateErr(
+            'Profile tribes need the latest SQL. In Supabase, run supabase/profile_category_pills.sql, then save again.',
+          )
+        } else {
+          setProfileGateErr(raw || 'Could not save tribes.')
+        }
+        return
+      }
+
       writeProfileGateAck(session.user.id)
       setProfileGateAvatarCropFile(null)
       setProfileGateHandleConflict(null)
@@ -1332,6 +1357,16 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                   spellCheck={false}
                 />
               </label>
+              <div className="block">
+                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Tribes</span>
+                <LoungePostCategoryPillPicker
+                  value={profileGateCategoryPills}
+                  onChange={setProfileGateCategoryPills}
+                  disabled={profileGateBusy}
+                  maxPills={null}
+                  hint="Choose your tribes - helps us to deliver you better results."
+                />
+              </div>
               {profileGateErr ? (
                 <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-xs leading-relaxed break-words whitespace-pre-wrap">
                   {profileGateErr}

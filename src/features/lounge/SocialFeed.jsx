@@ -373,6 +373,15 @@ function validateAtMostOneGifUrl(urlField) {
   return { ok: true, value: t }
 }
 
+/** True when a post edit uploads new media and the feed row should show an updating spinner. */
+function loungePostEditSnapshotShowsFeedCardSpinner(snapshot) {
+  if (!snapshot?.postId) return false
+  const nImg = Array.isArray(snapshot.imageFiles) ? snapshot.imageFiles.length : 0
+  if (nImg > 0) return true
+  if (loungeSubmissionSnapshotIncludesVideo(snapshot)) return true
+  return false
+}
+
 export default function SocialFeed({
   supabaseClient,
   onRequireAuth,
@@ -743,6 +752,8 @@ export default function SocialFeed({
   const [loungeDetailEditVideoSlot, setLoungeDetailEditVideoSlot] = useState(null)
   const [loungeDetailEditKeepStreamUid, setLoungeDetailEditKeepStreamUid] = useState(null)
   const [loungeDetailEditCategoryPills, setLoungeDetailEditCategoryPills] = useState([])
+  /** Main feed row: unobtrusive spinner while a post edit with media upload finishes. */
+  const [loungeFeedPostEditPendingPostId, setLoungeFeedPostEditPendingPostId] = useState(null)
   const loungeDetailEditImageItemsRef = useRef(loungeDetailEditImageItems)
   const loungeDetailEditMediaUrlRef = useRef('')
   const loungeDetailEditVideoSlotRef = useRef(null)
@@ -1709,6 +1720,7 @@ export default function SocialFeed({
       setLoungeDetailCommentErr(pending.message)
     } else if (pending.kind === 'postEdit') {
       loungeDetailEditSnapshotRef.current = pending.snapshot
+      setLoungeFeedPostEditPendingPostId(null)
       setLoungeDetailEditErr(pending.message)
     } else {
       loungePostSnapshotRef.current = pending.snapshot
@@ -1744,6 +1756,7 @@ export default function SocialFeed({
       setLoungeDetailCommentErr(message)
     } else if (kind === 'postEdit') {
       loungeDetailEditSnapshotRef.current = snapshot
+      setLoungeFeedPostEditPendingPostId(null)
       setLoungeDetailEditErr(message)
     } else {
       loungePostSnapshotRef.current = snapshot
@@ -6668,6 +6681,9 @@ export default function SocialFeed({
     if (editPostUid && editPosterBlob.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(editPostUid, editPosterBlob)
     }
+    if (loungePostEditSnapshotShowsFeedCardSpinner(snapshot)) {
+      setLoungeFeedPostEditPendingPostId(loungePostDetail.id)
+    }
     clearLoungeDetailEditForPostAttempt({
       preserveDetailEditVideoPrep: preserveVideoPrep,
       pendingSnapshot: snapshot,
@@ -7443,6 +7459,7 @@ export default function SocialFeed({
     loungeDetailCommentJobRunningRef.current = false
     loungeDetailEditJobRunningRef.current = false
     loungePostUploadLastPhaseRef.current = ''
+    setLoungeFeedPostEditPendingPostId(null)
     setLoungePostUploadFailureDetails(null)
     setLoungePostUploadBar(null)
     const commentSnapForPrep = loungeDetailCommentSnapshotRef.current
@@ -8045,6 +8062,7 @@ export default function SocialFeed({
   const patchLoungePostEditResult = useCallback(
     (data) => {
       if (!data?.id) return
+      setLoungeFeedPostEditPendingPostId((prev) => (prev === data.id ? null : prev))
       setCommunityPosts((prev) =>
         prev.map((p) =>
           p.id === data.id
@@ -8303,6 +8321,7 @@ export default function SocialFeed({
         loungeDetailEditAbortRef.current = null
         loungeDetailEditJobRunningRef.current = false
         bumpLoungeSubmitInFlight(-1)
+        setLoungeFeedPostEditPendingPostId(null)
       }
     },
     [bumpLoungeSubmitInFlight, patchLoungePostEditResult, rateLimitMessage, supabaseClient],
@@ -8643,6 +8662,7 @@ export default function SocialFeed({
         if (type === 'postEdit') {
           loungeDetailEditAbortRef.current = null
           loungeDetailEditJobRunningRef.current = false
+          setLoungeFeedPostEditPendingPostId(null)
         }
         loungeFastLaneInFlightRef.current = Math.max(0, loungeFastLaneInFlightRef.current - 1)
         bumpLoungeSubmitInFlight(-1)
@@ -8948,6 +8968,7 @@ export default function SocialFeed({
       }
       loungeDetailEditSnapshotRef.current = null
       loungeDetailEditJobRunningRef.current = false
+      setLoungeFeedPostEditPendingPostId(null)
       setLoungePostUploadFailedOpen(false)
       setLoungePostUploadFailureDetails(null)
       return
@@ -8994,6 +9015,14 @@ export default function SocialFeed({
 
   const onLoungePostUploadFailureCancel = useCallback(() => {
     const fail = loungePostUploadFailureDetailsRef.current
+    if (fail?.kind === 'postEdit') {
+      loungeDetailEditSnapshotRef.current = null
+      loungeDetailEditJobRunningRef.current = false
+      setLoungeFeedPostEditPendingPostId(null)
+      setLoungePostUploadFailedOpen(false)
+      setLoungePostUploadFailureDetails(null)
+      return
+    }
     if (fail?.kind === 'mediaPrep') {
       if (fail?.target === 'quote') {
         disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
@@ -10868,6 +10897,7 @@ export default function SocialFeed({
               >
                 <LoungePostArticle
                   post={post}
+                  feedEditSavePending={loungeFeedPostEditPendingPostId === post.id}
                   loungeReadOnly={loungeReadOnly}
                   interactionStateFor={interactionStateFor}
                   toggleInteraction={toggleInteraction}

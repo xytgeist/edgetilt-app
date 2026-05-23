@@ -30,6 +30,8 @@ import {
  */
 export default function LoungePostArticle({
   post,
+  /** Main feed: show unobtrusive row spinner while a media edit save finishes. */
+  feedEditSavePending = false,
   loungeReadOnly,
   interactionStateFor,
   toggleInteraction,
@@ -287,6 +289,20 @@ export default function LoungePostArticle({
           <div className="mb-1 flex items-center gap-1.5 text-left text-[12px] leading-snug text-zinc-500">
             {repostIcon}
             <span className="min-w-0 truncate font-medium text-zinc-500">{reposterLabel}</span>
+          </div>
+        ) : null}
+
+        {feedEditSavePending ? (
+          <div
+            className="mb-1 flex items-center gap-1.5 text-[12px] leading-snug text-zinc-500"
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              className="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-zinc-600 border-t-cyan-400"
+              aria-hidden
+            />
+            Updating post…
           </div>
         ) : null}
 

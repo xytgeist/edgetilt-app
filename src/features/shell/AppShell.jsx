@@ -11,6 +11,7 @@ import {
   loungeFeedPinnedQuery,
 } from '../../utils/loungeFeedScope'
 import { LOUNGE_FEED_SORT, readLoungeFeedSort } from '../../utils/loungeFeedSortPref'
+import { readLoungeFeedCategoryFilter } from '../../utils/loungeFeedCategoryFilterPref.js'
 import { renderRichCaption } from '../lounge/loungeCaption'
 import {
   OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX,
@@ -101,6 +102,11 @@ export default function AppShell({
   const [loungeFeedSort, setLoungeFeedSort] = useState(() => readLoungeFeedSort())
   const loungeFeedSortRef = useRef(loungeFeedSort)
   loungeFeedSortRef.current = loungeFeedSort
+  const [loungeFeedCategoryExcludedSlugs, setLoungeFeedCategoryExcludedSlugs] = useState(() =>
+    readLoungeFeedCategoryFilter(),
+  )
+  const loungeFeedCategoryExcludedSlugsRef = useRef(loungeFeedCategoryExcludedSlugs)
+  loungeFeedCategoryExcludedSlugsRef.current = loungeFeedCategoryExcludedSlugs
   /** Frozen `p_as_of` for Popular pagination within one head load + load-more chain. */
   const loungeFeedPopularAsOfRef = useRef(/** @type {string | null} */ (null))
   /** True while the first page of the Lounge feed is being reloaded (including silent pull-to-refresh). */
@@ -265,7 +271,7 @@ export default function AppShell({
       }
 
       const originalPostSelect =
-        'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
+        'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
 
       let repostById = {}
       if (depth === 0) {
@@ -395,6 +401,7 @@ export default function AppShell({
     const silent = opts?.silent === true
     const scope = opts?.scope ?? loungeFeedScopeRef.current
     const sort = opts?.sort ?? loungeFeedSortRef.current
+    const excludedCategorySlugs = opts?.excludedCategorySlugs ?? loungeFeedCategoryExcludedSlugsRef.current
     if (!silent) {
       setCommunityFeedLoading(true)
       setCommunityFeedLoadingMore(false)
@@ -430,11 +437,12 @@ export default function AppShell({
       loungeFeedPopularAsOfRef.current = sort === LOUNGE_FEED_SORT.POPULAR ? asOf : null
 
       const [{ data: pinnedRows }, { data: rows, error }] = await Promise.all([
-        loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds),
+        loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds, excludedCategorySlugs),
         loungeFeedPageRpcQuery(supabaseClient, {
           sort,
           scope,
           followingAuthorIds,
+          excludedCategorySlugs,
           limit: COMMUNITY_FEED_PAGE_SIZE + 1,
           asOf,
           cursor: null,
@@ -498,6 +506,16 @@ export default function AppShell({
     [loadCommunityFeed],
   )
 
+  const onLoungeFeedCategoryFilterChange = useCallback(
+    (nextExcludedSlugs) => {
+      const normalized = Array.isArray(nextExcludedSlugs) ? nextExcludedSlugs : []
+      setLoungeFeedCategoryExcludedSlugs(normalized)
+      loungeFeedCategoryExcludedSlugsRef.current = normalized
+      void loadCommunityFeed({ excludedCategorySlugs: normalized })
+    },
+    [loadCommunityFeed],
+  )
+
   useEffect(() => {
     if (browseMode !== 'anonymous') return
     if (loungeFeedScope !== LOUNGE_FEED_SCOPE_FOLLOWING) return
@@ -521,6 +539,7 @@ export default function AppShell({
     try {
       const scope = loungeFeedScopeRef.current
       const sort = loungeFeedSortRef.current
+      const excludedCategorySlugs = loungeFeedCategoryExcludedSlugsRef.current
       const asOf = loungeFeedPopularAsOfRef.current || new Date().toISOString()
       let followingAuthorIds = null
       if (scope === LOUNGE_FEED_SCOPE_FOLLOWING) {
@@ -537,6 +556,7 @@ export default function AppShell({
         sort,
         scope,
         followingAuthorIds,
+        excludedCategorySlugs,
         limit: COMMUNITY_FEED_PAGE_SIZE + 1,
         asOf,
         cursor: communityFeedCursor,
@@ -797,6 +817,8 @@ export default function AppShell({
             onLoungeFeedScopeChange={onLoungeFeedScopeChange}
             loungeFeedSort={loungeFeedSort}
             onLoungeFeedSortChange={onLoungeFeedSortChange}
+            loungeFeedCategoryExcludedSlugs={loungeFeedCategoryExcludedSlugs}
+            onLoungeFeedCategoryFilterChange={onLoungeFeedCategoryFilterChange}
             loungeFeedBrowseMode={browseMode}
             authSessionReady={authSessionReady}
             isActivePage={tab === 'home'}

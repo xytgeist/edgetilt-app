@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { loungePostInteractionScore } from '../utils/communityFeedPost'
+import {
+  loungePostCategoryPillChipClass,
+  loungePostCategoryPillLabel,
+  matchLoungePostCategoryPillsForSearch,
+} from '../utils/loungePostCategoryPills.js'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import TitleBarStatusLine from './TitleBarStatusLine.jsx'
 import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
@@ -41,6 +46,7 @@ import {
 import { renderPlainTextWithSearchHighlight } from '../utils/loungeSearchHighlight.jsx'
 import {
   forgetLoungeSearchQuery,
+  LOUNGE_SEARCH_RECENT_COMMIT_IDLE_MS,
   readLoungeSearchRecent,
   rememberLoungeSearchQuery,
 } from '../utils/loungeSearchRecentPref.js'
@@ -289,6 +295,8 @@ export default function LoungeDockSlidePanels({
   const showAccountSection = typeof onLogout === 'function'
 
   const [q, setQ] = useState(() => initialSearchQuery || '')
+  const [searchTextAfterCategory, setSearchTextAfterCategory] = useState('')
+  const searchInputRef = useRef(null)
   const [searchPosts, setSearchPosts] = useState([])
   const [searchProfiles, setSearchProfiles] = useState([])
   const [searchComments, setSearchComments] = useState([])
@@ -296,6 +304,8 @@ export default function LoungeDockSlidePanels({
   const [searchError, setSearchError] = useState(null)
   /** Last query we finished fetching (success or error) — avoids "No results" during debounce. */
   const [searchSettledQuery, setSearchSettledQuery] = useState('')
+  const [searchCategorySlug, setSearchCategorySlug] = useState('')
+  const [searchSettledCategorySlug, setSearchSettledCategorySlug] = useState('')
   const [searchRecent, setSearchRecent] = useState(() => readLoungeSearchRecent())
   const [searchSort, setSearchSort] = useState(() => readLoungeSearchSort())
   const [searchPagination, setSearchPagination] = useState({
@@ -314,24 +324,54 @@ export default function LoungeDockSlidePanels({
   const refreshSearchInteractionsRef = useRef(postCardProps?.refreshPostInteractions)
   refreshSearchInteractionsRef.current = postCardProps?.refreshPostInteractions
 
-  const trimmedQuery = q.trim()
+  const trimmedQuery = searchCategorySlug ? searchTextAfterCategory.trim() : q.trim()
   const queryReady = trimmedQuery.length >= LOUNGE_SEARCH_MIN_CHARS
+  const searchFetchActive = queryReady || Boolean(searchCategorySlug)
+  const searchSettled =
+    searchSettledQuery === trimmedQuery && searchSettledCategorySlug === (searchCategorySlug || '')
+  const categorySuggestions = useMemo(
+    () => (searchCategorySlug ? [] : matchLoungePostCategoryPillsForSearch(q.trim())),
+    [q, searchCategorySlug],
+  )
+
+  const clearSearchInput = useCallback(() => {
+    setQ('')
+    setSearchTextAfterCategory('')
+    setSearchCategorySlug('')
+  }, [])
+
+  const selectSearchCategory = useCallback((slug) => {
+    setSearchCategorySlug(slug)
+    setSearchTextAfterCategory('')
+    setQ('')
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus()
+    })
+  }, [])
   const searchHasResults =
     searchPosts.length > 0 || searchProfiles.length > 0 || searchComments.length > 0
   /** Full "Searching…" row only when there is nothing to show yet — refetches keep stale results. */
   const showSearchInitialLoading = searchLoading && !searchHasResults
   const showSearchLoadMore =
-    queryReady &&
+    searchFetchActive &&
     !searchLoading &&
     !searchError &&
-    searchSettledQuery === trimmedQuery &&
+    searchSettled &&
     (searchPagination.postsHasMore ||
       searchPagination.commentsHasMore ||
       searchPagination.profilesHasMore)
 
   const runSearchFetch = useCallback(
-    async ({ append = false, query = trimmedQuery, sort = searchSort } = {}) => {
-      if (!searchSupabaseClient || !hydrateSearchPosts || query.length < LOUNGE_SEARCH_MIN_CHARS) return
+    async ({
+      append = false,
+      query = trimmedQuery,
+      sort = searchSort,
+      categorySlug = searchCategorySlug,
+    } = {}) => {
+      if (!searchSupabaseClient || !hydrateSearchPosts) return
+      const categorySlugs = categorySlug ? [categorySlug] : null
+      const canFetch = query.length >= LOUNGE_SEARCH_MIN_CHARS || categorySlugs
+      if (!canFetch) return
 
       const seq = ++searchFetchSeqRef.current
       const postsOffset = append ? searchPostsRef.current.length : 0
@@ -350,6 +390,7 @@ export default function LoungeDockSlidePanels({
           postsOffset,
           profilesOffset,
           commentsOffset,
+          categorySlugs,
         })
 
         const [hydrated, hydratedComments] = await Promise.all([
@@ -388,6 +429,7 @@ export default function LoungeDockSlidePanels({
 
         setSearchPagination(result.pagination)
         setSearchSettledQuery(query)
+        setSearchSettledCategorySlug(categorySlug || '')
       } catch (err) {
         if (!append) {
           setSearchPosts([])
@@ -401,13 +443,14 @@ export default function LoungeDockSlidePanels({
         }
         setSearchError(formatLoungeSearchError(err))
         setSearchSettledQuery(query)
+        setSearchSettledCategorySlug(categorySlug || '')
       } finally {
         if (seq !== searchFetchSeqRef.current) return
         if (append) setSearchLoadingMore(false)
         else setSearchLoading(false)
       }
     },
-    [searchSupabaseClient, hydrateSearchPosts, trimmedQuery, searchSort],
+    [searchSupabaseClient, hydrateSearchPosts, trimmedQuery, searchSort, searchCategorySlug],
   )
 
   const onSearchLoadMore = useCallback(() => {
@@ -416,10 +459,10 @@ export default function LoungeDockSlidePanels({
   }, [searchLoading, searchLoadingMore, showSearchLoadMore, runSearchFetch])
 
   const showSearchNoResults =
-    queryReady &&
+    searchFetchActive &&
     !searchLoading &&
     !searchError &&
-    searchSettledQuery === trimmedQuery &&
+    searchSettled &&
     !searchHasResults
 
   const localTrendingPosts = useMemo(() => {
@@ -434,7 +477,7 @@ export default function LoungeDockSlidePanels({
   }, [communityPosts])
 
   const displaySearchFeedItems = useMemo(() => {
-    if (!queryReady) {
+    if (!searchFetchActive) {
       return localTrendingPosts.map((post) => ({ kind: 'post', post }))
     }
     const items = [
@@ -445,14 +488,16 @@ export default function LoungeDockSlidePanels({
         score: loungePostInteractionScore(post),
         createdAt: post?.created_at,
       })),
-      ...searchComments.map(({ comment, post }) => ({
-        kind: 'comment',
-        comment,
-        post,
-        searchRelevance: Number(comment.search_relevance) || 0,
-        score: loungePostInteractionScore(comment),
-        createdAt: comment?.created_at,
-      })),
+      ...(searchCategorySlug
+        ? []
+        : searchComments.map(({ comment, post }) => ({
+            kind: 'comment',
+            comment,
+            post,
+            searchRelevance: Number(comment.search_relevance) || 0,
+            score: loungePostInteractionScore(comment),
+            createdAt: comment?.created_at,
+          }))),
     ]
     items.sort((a, b) => {
       const relDiff = b.searchRelevance - a.searchRelevance
@@ -465,7 +510,7 @@ export default function LoungeDockSlidePanels({
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     })
     return items
-  }, [queryReady, localTrendingPosts, searchPosts, searchComments, searchSort])
+  }, [searchFetchActive, localTrendingPosts, searchPosts, searchComments, searchSort, searchCategorySlug])
 
   const searchSortToggle = (
     <div className="relative z-[1] -mb-px shrink-0">
@@ -525,12 +570,34 @@ export default function LoungeDockSlidePanels({
     if (openPanel === 'search') setSearchRecent(readLoungeSearchRecent())
   }, [openPanel])
 
+  const commitSearchToRecent = useCallback(() => {
+    if (trimmedQuery.length < LOUNGE_SEARCH_MIN_CHARS) return
+    if (searchLoading || searchError) return
+    if (searchSettledQuery !== trimmedQuery) return
+    rememberLoungeSearchQuery(trimmedQuery)
+    setSearchRecent(readLoungeSearchRecent())
+  }, [trimmedQuery, searchLoading, searchError, searchSettledQuery])
+
+  const openPanelPrevRef = useRef(openPanel)
+  useEffect(() => {
+    const prev = openPanelPrevRef.current
+    openPanelPrevRef.current = openPanel
+    if (prev === 'search' && openPanel !== 'search') {
+      commitSearchToRecent()
+    }
+  }, [openPanel, commitSearchToRecent])
+
   useEffect(() => {
     if (openPanel !== 'search') return
     if (!queryReady || searchLoading || searchError) return
     if (searchSettledQuery !== trimmedQuery) return
-    rememberLoungeSearchQuery(trimmedQuery)
-    setSearchRecent(readLoungeSearchRecent())
+
+    const timer = window.setTimeout(() => {
+      rememberLoungeSearchQuery(trimmedQuery)
+      setSearchRecent(readLoungeSearchRecent())
+    }, LOUNGE_SEARCH_RECENT_COMMIT_IDLE_MS)
+
+    return () => window.clearTimeout(timer)
   }, [
     openPanel,
     queryReady,
@@ -544,7 +611,7 @@ export default function LoungeDockSlidePanels({
     if (openPanel !== 'search') return
     if (!searchSupabaseClient || !hydrateSearchPosts) return
 
-    if (!queryReady) {
+    if (!searchFetchActive) {
       searchFetchSeqRef.current += 1
       setSearchPosts([])
       setSearchProfiles([])
@@ -553,6 +620,7 @@ export default function LoungeDockSlidePanels({
       setSearchLoading(false)
       setSearchLoadingMore(false)
       setSearchSettledQuery('')
+      setSearchSettledCategorySlug('')
       setSearchPagination({
         postsHasMore: false,
         profilesHasMore: false,
@@ -562,14 +630,22 @@ export default function LoungeDockSlidePanels({
     }
 
     setSearchSettledQuery((prev) => (prev === trimmedQuery ? prev : ''))
+    setSearchSettledCategorySlug((prev) => (prev === (searchCategorySlug || '') ? prev : ''))
+
+    const debounceMs = searchCategorySlug && !queryReady ? 0 : SEARCH_DEBOUNCE_MS
 
     let cancelled = false
     const timer = window.setTimeout(() => {
       void (async () => {
         if (cancelled) return
-        await runSearchFetch({ append: false, query: trimmedQuery, sort: searchSort })
+        await runSearchFetch({
+          append: false,
+          query: trimmedQuery,
+          sort: searchSort,
+          categorySlug: searchCategorySlug,
+        })
       })()
-    }, SEARCH_DEBOUNCE_MS)
+    }, debounceMs)
 
     return () => {
       cancelled = true
@@ -580,6 +656,8 @@ export default function LoungeDockSlidePanels({
     openPanel,
     trimmedQuery,
     queryReady,
+    searchFetchActive,
+    searchCategorySlug,
     searchSort,
     runSearchFetch,
   ])
@@ -871,28 +949,71 @@ export default function LoungeDockSlidePanels({
         {openPanel === 'search' ? (
           <div className="px-3 pt-3">
             <div className="relative mb-2 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/90 py-1 pl-3 pr-1.5 focus-within:border-cyan-500/45 focus-within:ring-1 focus-within:ring-cyan-500/25">
-              <input
-                type="text"
-                role="searchbox"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search posts, profiles, hashtags, games…"
-                autoComplete="off"
-                maxLength={LOUNGE_SEARCH_MAX_CHARS}
-                aria-busy={searchLoading}
-                className="min-w-0 flex-1 border-0 bg-transparent py-1.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none"
-              />
-              {trimmedQuery || searchLoading ? (
+              {searchCategorySlug ? (
+                <>
+                  <span
+                    className={`inline-flex max-w-[min(42vw,9.5rem)] shrink-0 truncate rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${loungePostCategoryPillChipClass(searchCategorySlug, 'display')}`}
+                  >
+                    {loungePostCategoryPillLabel(searchCategorySlug)}
+                  </span>
+                  <span className="shrink-0 text-[16px] font-medium text-zinc-400" aria-hidden>
+                    +
+                  </span>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    role="searchbox"
+                    value={searchTextAfterCategory}
+                    onChange={(e) => setSearchTextAfterCategory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && searchTextAfterCategory === '') {
+                        e.preventDefault()
+                        setSearchCategorySlug('')
+                        return
+                      }
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        commitSearchToRecent()
+                      }
+                    }}
+                    autoComplete="off"
+                    maxLength={LOUNGE_SEARCH_MAX_CHARS}
+                    aria-busy={searchLoading}
+                    aria-label={`Search within ${loungePostCategoryPillLabel(searchCategorySlug)}`}
+                    className="min-w-0 flex-1 border-0 bg-transparent py-1.5 text-[16px] text-zinc-100 outline-none"
+                  />
+                </>
+              ) : (
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  role="searchbox"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      commitSearchToRecent()
+                    }
+                  }}
+                  placeholder="Search posts, profiles, hashtags, games…"
+                  autoComplete="off"
+                  maxLength={LOUNGE_SEARCH_MAX_CHARS}
+                  aria-busy={searchLoading}
+                  className="min-w-0 flex-1 border-0 bg-transparent py-1.5 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none"
+                />
+              )}
+              {trimmedQuery || searchCategorySlug || searchLoading ? (
                 <div className="flex shrink-0 items-center">
                   {searchLoading ? (
                     <span className="flex items-center px-0.5 text-zinc-500" aria-hidden>
                       <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-cyan-400" />
                     </span>
                   ) : null}
-                  {trimmedQuery ? (
+                  {trimmedQuery || searchCategorySlug ? (
                     <button
                       type="button"
-                      onClick={() => setQ('')}
+                      onClick={clearSearchInput}
                       aria-label="Clear search"
                       className="flex h-8 w-8 shrink-0 items-center justify-center text-[20px] leading-none text-zinc-500 touch-manipulation hover:text-zinc-300 [-webkit-tap-highlight-color:transparent]"
                     >
@@ -902,7 +1023,7 @@ export default function LoungeDockSlidePanels({
                 </div>
               ) : null}
             </div>
-            {!queryReady && searchRecent.length > 0 ? (
+            {!queryReady && !searchCategorySlug && searchRecent.length > 0 ? (
               <section className="mb-3">
                 <h3 className="mb-1.5 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
                   Recent
@@ -943,7 +1064,7 @@ export default function LoungeDockSlidePanels({
               <p className="text-[14px] leading-relaxed text-zinc-500">Search is not available.</p>
             ) : showSearchNoResults ? (
               <p className="text-[14px] leading-relaxed text-zinc-500">No results.</p>
-            ) : queryReady && showSearchInitialLoading ? null : !queryReady && localTrendingPosts.length === 0 ? (
+            ) : searchFetchActive && showSearchInitialLoading ? null : !searchFetchActive && localTrendingPosts.length === 0 ? (
               <p className="text-[14px] leading-relaxed text-zinc-500">No posts loaded yet.</p>
             ) : (
               <LoungeFeedVideoAutoplayProvider
@@ -952,6 +1073,30 @@ export default function LoungeDockSlidePanels({
               >
                 <LoungeFeedCoordinatorSuspendBinder suspended={videoCoordinatorSuspended} />
                 <LoungeStreamLightboxProvider ctx={searchLightboxCtx}>
+                {queryReady && !searchCategorySlug && categorySuggestions.length > 0 ? (
+                  <section className="mb-3">
+                    <h3 className="mb-1.5 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Categories
+                    </h3>
+                    <ul className="list-none p-0">
+                      {categorySuggestions.map(({ slug, label }) => (
+                        <li key={slug}>
+                          <button
+                            type="button"
+                            onClick={() => selectSearchCategory(slug)}
+                            className="flex w-full items-center border-t border-zinc-800/70 bg-zinc-950/35 px-0.5 py-2.5 text-left touch-manipulation active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
+                          >
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${loungePostCategoryPillChipClass(slug, 'display')}`}
+                            >
+                              {label}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
                 {queryReady && searchProfiles.length > 0 ? (
                   <section className="mb-3">
                     <div className="flex items-end justify-between gap-2 px-0.5">
@@ -1012,12 +1157,12 @@ export default function LoungeDockSlidePanels({
                     </ul>
                   </section>
                 ) : null}
-                {!queryReady && localTrendingPosts.length > 0 ? (
+                {!searchFetchActive && localTrendingPosts.length > 0 ? (
                   <h3 className="mb-1 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
                     Trending in your feed
                   </h3>
                 ) : null}
-                {queryReady && displaySearchFeedItems.length > 0 ? (
+                {searchFetchActive && displaySearchFeedItems.length > 0 ? (
                   <div className="flex items-end justify-between gap-2 px-0.5">
                     <h3 className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">Posts</h3>
                     {searchProfiles.length === 0 ? searchSortToggle : null}

@@ -11,7 +11,7 @@ const PROFILE_SELECT_CORE =
   'user_id,handle,display_name,avatar_url,bio,created_at,role,handle_changed_at,is_og'
 
 const PROFILE_POST_SELECT =
-  'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
+  'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
 
 function profilePostsQuery(supabaseClient, userId) {
   return supabaseClient

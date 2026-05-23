@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { feedPostDisplayCaption, isQuoteRepostPost, quoteRepostOriginalUnavailable } from '../../utils/communityFeedPost'
+import { feedPostCategoryPills } from '../../utils/loungePostCategoryPills.js'
 import { renderRichCaption } from './loungeCaption'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
@@ -8,6 +9,7 @@ import LoungeOgBadge from './LoungeOgBadge'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungePostOriginalUnavailableEmbed from './LoungePostOriginalUnavailableEmbed.jsx'
+import LoungePostCategoryPillRow from './LoungePostCategoryPillRow.jsx'
 import {
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   LOUNGE_FEED_AVATAR_CLASS,
@@ -369,6 +371,12 @@ export default function LoungePostArticle({
             <span className="inline-flex max-w-full items-center truncate rounded-full border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-tight text-amber-300 sm:max-w-[14rem]">
               {post.game_title}
             </span>
+          </div>
+        ) : null}
+
+        {feedPostCategoryPills(post).length > 0 ? (
+          <div className="mt-1.5 flex justify-start">
+            <LoungePostCategoryPillRow pills={feedPostCategoryPills(post)} />
           </div>
         ) : null}
 

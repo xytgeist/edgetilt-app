@@ -10,6 +10,7 @@ import {
   isLoungeSupabaseFeedMediaUrl,
   uploadLoungeFeedPostImageToCfR2,
 } from './loungeCfImageMedia.js'
+import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
 
 export { isLoungeCfR2MediaUrl, isLoungeHostedFeedMediaUrl, isLoungeSupabaseFeedMediaUrl } from './loungeCfImageMedia.js'
 
@@ -161,6 +162,11 @@ export function normalizeFeedCaption(caption) {
     .slice(0, 280)
 }
 
+function attachCategoryPills(out, categoryPills) {
+  out.category_pills = normalizeLoungePostCategoryPills(categoryPills)
+  return out
+}
+
 /**
  * Insert payload for `community_feed_posts` (caption + optional game context + optional media).
  * When `streamVideoUid` is set, stores Cloudflare Stream uid (`supabase/lounge_feed_post_stream_video.sql`) and optional poster + display dimensions.
@@ -184,14 +190,19 @@ export function communityFeedPostInsertPayload({
   /** Display width/height from source file at post time (Stream posts only). */
   streamVideoWidth,
   streamVideoHeight,
+  /** Up to 3 optional category slugs (`category_pills`). */
+  categoryPills,
 }) {
   const cap = normalizeFeedCaption(caption)
   const gt = String(gameTitle ?? '').trim()
-  const out = {
-    caption: cap,
-    game_title: gt,
-    game_slug: gameSlug || null,
-  }
+  const out = attachCategoryPills(
+    {
+      caption: cap,
+      game_title: gt,
+      game_slug: gameSlug || null,
+    },
+    categoryPills,
+  )
   if (pinned === true) out.pinned = true
   const sv = streamVideoUid != null ? String(streamVideoUid).trim() : ''
   if (sv) {
@@ -238,15 +249,19 @@ export function communityFeedQuoteRepostInsertPayload({
   streamPosterUrl,
   streamVideoWidth,
   streamVideoHeight,
+  categoryPills,
 }) {
   const cap = normalizeFeedCaption(caption)
-  const out = {
-    caption: cap,
-    game_title: '',
-    game_slug: null,
-    repost_of_post_id: originalPostId,
-    is_plain_repost: false,
-  }
+  const out = attachCategoryPills(
+    {
+      caption: cap,
+      game_title: '',
+      game_slug: null,
+      repost_of_post_id: originalPostId,
+      is_plain_repost: false,
+    },
+    categoryPills,
+  )
   const sv = streamVideoUid != null ? String(streamVideoUid).trim() : ''
   if (sv) {
     out.stream_video_uid = sv
@@ -293,14 +308,17 @@ export function communityFeedPlainRepostInsertPayload({ originalPostId }) {
  * Plain repost of a comment: creates a community_feed_posts row owned by the reposter
  * so the repost appears in the main feed (see `supabase/migrations/20260517000000_feed_comment_repost_on_feed.sql`).
  */
-export function communityFeedCommentRepostInsertPayload({ originalCommentId }) {
-  return {
-    caption: '',
-    game_title: '',
-    game_slug: null,
-    repost_of_comment_id: originalCommentId,
-    is_plain_repost: true,
-  }
+export function communityFeedCommentRepostInsertPayload({ originalCommentId, categoryPills }) {
+  return attachCategoryPills(
+    {
+      caption: '',
+      game_title: '',
+      game_slug: null,
+      repost_of_comment_id: originalCommentId,
+      is_plain_repost: true,
+    },
+    categoryPills,
+  )
 }
 
 const LOUNGE_FEED_MEDIA_BUCKET = 'lounge-feed'

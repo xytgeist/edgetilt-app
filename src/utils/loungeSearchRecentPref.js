@@ -2,6 +2,8 @@ import { LOUNGE_SEARCH_MIN_CHARS } from '../features/lounge/loungeSearchApi.js'
 
 export const LOUNGE_SEARCH_RECENT_STORAGE_KEY = 'loungeSearchRecent:v1'
 const MAX_RECENT = 8
+/** Wait after the last settled query before persisting to Recent (avoids saving each debounced keystroke). */
+export const LOUNGE_SEARCH_RECENT_COMMIT_IDLE_MS = 2000
 
 /** @returns {string[]} */
 export function readLoungeSearchRecent() {

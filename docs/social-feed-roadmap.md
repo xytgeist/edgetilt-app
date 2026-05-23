@@ -193,6 +193,10 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 - **Alternatives** (not implemented): Mux, Bunny Stream.
 - **Planned (not shipped):** **Up to two** Stream clips per post (ordered uids; still exclusive of still-image carousel). First ship caps at **2**; may raise toward **4** later. Needs migration from scalar `stream_video_uid`, multi-tile feed/detail, composer + quote paths, delete-each-uid, and an **inline autoplay** rule when two clips share one row — tracked **`[ ]`** in **`docs/test-buildout-backlog.md`** *Planned (Lounge media)*.
 
+### D3. Post category pills (optional 0–3)
+
+- **Shipped (test build, pending apply + smoke):** Authors pick up to **three** optional audience pills at compose, quote repost, and post edit. Staff-seeded slugs: AP Slots, AP Tables, Poker, Gaming, Tabletop, Investing, Trading, Stocks, Crypto, Collectibles. DB column **`community_feed_posts.category_pills`** (`text[]`, max 3, enum check) — migration **`20260525120000_community_feed_posts_category_pills.sql`** / **`supabase/lounge_feed_post_category_pills.sql`**. Pills show on feed rows + post detail; **plain repost** copies OP pills at insert (locked); **quote repost** inherits OP pills then reposter may swap (max 3). Compose defaults to **last post’s pills** (`localStorage`). **Category filter (v1.1):** home feed **Categories** dropdown beside **Latest** — all checked by default; uncheck hides posts with that pill (exclusion, **`loungeFeedCategoryFilter:v2`**, RPC **`p_excluded_category_slugs`**); search typeahead → chip + `+` text AND via **`lounge_search`** `p_category_slugs`. Migrations **`20260525140000_*`** + **`20260525150000_*`**. **Not in v1:** browse-all categories when search empty, profile interest chips, crowd-sourced tags.
+
 ### Deliverable
 
 - Create post with caption + optional game tag + media.

@@ -31,6 +31,11 @@ import {
   quoteRepostOriginalUnavailable,
 } from '../../utils/communityFeedPost'
 import {
+  feedPostCategoryPills,
+  resolvePlainRepostCategoryPills,
+  resolveQuoteRepostInitialCategoryPills,
+} from '../../utils/loungePostCategoryPills.js'
+import {
   feedCommentAuthorEditMediaSeed,
   feedCommentRowHasMedia,
   feedCommentStreamVideoUid,
@@ -81,6 +86,8 @@ import {
   readLoungeComposerDraft,
   persistLoungeComposerDraft,
   clearLoungeComposerDraft,
+  readLoungeComposerLastCategoryPills,
+  writeLoungeComposerLastCategoryPills,
   LOUNGE_PROFILE_CACHE_KEY,
   loungeProfileNeedsGate,
   writeProfileGateAck,
@@ -117,6 +124,8 @@ import LoungeMentionDropdown from './LoungeMentionDropdown'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
+import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
+import LoungePostCategoryPillRow from './LoungePostCategoryPillRow.jsx'
 import LoungePostOriginalUnavailableEmbed from './LoungePostOriginalUnavailableEmbed.jsx'
 import {
   LoungeStreamLightboxProvider,
@@ -221,6 +230,7 @@ import {
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
 import { LOUNGE_FEED_SORT } from '../../utils/loungeFeedSortPref'
 import LoungeFeedSortSwitch from './LoungeFeedSortSwitch.jsx'
+import LoungeFeedCategoryFilter from './LoungeFeedCategoryFilter.jsx'
 import LoungeFeedScopeSwitch from './LoungeFeedScopeSwitch.jsx'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 
@@ -377,6 +387,8 @@ export default function SocialFeed({
   onLoungeFeedScopeChange,
   loungeFeedSort = LOUNGE_FEED_SORT.LATEST,
   onLoungeFeedSortChange,
+  loungeFeedCategoryExcludedSlugs = [],
+  onLoungeFeedCategoryFilterChange,
   loungeFeedBrowseMode = 'member',
   /** False while Supabase session is still restoring (push / cold start). */
   authSessionReady = true,
@@ -415,6 +427,7 @@ export default function SocialFeed({
   const [klipyPickerTarget, setKlipyPickerTarget] = useState('composer')
   /** Moderator/admin: create this lounge post already pinned (only one pinned post globally). */
   const [composerPinOnPost, setComposerPinOnPost] = useState(false)
+  const [composerCategoryPills, setComposerCategoryPills] = useState(() => readLoungeComposerLastCategoryPills())
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
@@ -567,6 +580,7 @@ export default function SocialFeed({
   const quoteRepostImageItemsRef = useRef(quoteRepostImageItems)
   quoteRepostImageItemsRef.current = quoteRepostImageItems
   const [quoteRepostMediaUrl, setQuoteRepostMediaUrl] = useState('')
+  const [quoteRepostCategoryPills, setQuoteRepostCategoryPills] = useState([])
   /** Quote repost sheet: optional video (same slot shape as main composer). */
   const [quoteRepostVideoSlot, setQuoteRepostVideoSlot] = useState(null)
   const quoteRepostVideoSlotRef = useRef(null)
@@ -698,6 +712,7 @@ export default function SocialFeed({
   /** Remote URLs for the post being edited (remove-only in UI until upload-on-edit exists). */
   const [loungeDetailEditImageUrls, setLoungeDetailEditImageUrls] = useState([])
   const [loungeDetailEditGifUrl, setLoungeDetailEditGifUrl] = useState('')
+  const [loungeDetailEditCategoryPills, setLoungeDetailEditCategoryPills] = useState([])
   const [loungeDetailDeleteBusy, setLoungeDetailDeleteBusy] = useState(false)
   const loungePostDeleteInflightRef = useRef(false)
   const [loungeManageErr, setLoungeManageErr] = useState('')
@@ -3110,6 +3125,7 @@ export default function SocialFeed({
       clearQuoteRepostMedia()
       setQuoteRepostDraft('')
       setQuoteRepostErr('')
+      setQuoteRepostCategoryPills(resolveQuoteRepostInitialCategoryPills(post))
       setQuoteRepostModal({ mode: 'compose', original: post })
       setLoungeDetailRepostMenuOpen(false)
     },
@@ -3157,7 +3173,12 @@ export default function SocialFeed({
             // Repost of a comment card → create a new comment-repost feed card
             const { error: cErr } = await supabaseClient
               .from('community_feed_posts')
-              .insert(communityFeedCommentRepostInsertPayload({ originalCommentId: post.repost_of_comment_id }))
+              .insert(
+                communityFeedCommentRepostInsertPayload({
+                  originalCommentId: post.repost_of_comment_id,
+                  categoryPills: resolvePlainRepostCategoryPills(post),
+                }),
+              )
             if (cErr) {
               setLoungeManageErr(
                 cErr.code === '23505' ? 'You already reposted this comment.' : cErr.message || 'Could not repost.'
@@ -3171,7 +3192,12 @@ export default function SocialFeed({
             // Repost of a post card → target the original post ID directly
             const { error } = await supabaseClient
               .from('community_feed_posts')
-              .insert(communityFeedPlainRepostInsertPayload({ originalPostId: post.repost_of_post_id }))
+              .insert(
+                communityFeedPlainRepostInsertPayload({
+                  originalPostId: post.repost_of_post_id,
+                  categoryPills: resolvePlainRepostCategoryPills(post),
+                }),
+              )
             if (error) {
               const msg = String(error.message || '')
               setLoungeManageErr(
@@ -3189,7 +3215,12 @@ export default function SocialFeed({
 
         const { error } = await supabaseClient
           .from('community_feed_posts')
-          .insert(communityFeedPlainRepostInsertPayload({ originalPostId: post.id }))
+          .insert(
+            communityFeedPlainRepostInsertPayload({
+              originalPostId: post.id,
+              categoryPills: resolvePlainRepostCategoryPills(post),
+            }),
+          )
         if (error) {
           const msg = String(error.message || '')
           if (error.code === '23505') {
@@ -3385,6 +3416,7 @@ export default function SocialFeed({
         wantsPin: false,
         isStaffPoster: false,
         quoteRepostOfPostId: originalId,
+        categoryPills: quoteRepostCategoryPills,
         // Capture prep handoff by reference so queued jobs don't race on the shared ref
         _capturedPrepHandoff: quoteRepostVideoPrepHandoffRef.current ?? null,
       }
@@ -3439,6 +3471,7 @@ export default function SocialFeed({
     quoteRepostMediaUrl,
     quoteRepostModal,
     quoteRepostDraft,
+    quoteRepostCategoryPills,
     supabaseClient,
   ])
 
@@ -3717,7 +3750,12 @@ export default function SocialFeed({
       // Create a community_feed_posts row so the repost appears in the main feed.
       const res = await supabaseClient
         .from('community_feed_posts')
-        .insert(communityFeedCommentRepostInsertPayload({ originalCommentId: commentId }))
+        .insert(
+          communityFeedCommentRepostInsertPayload({
+            originalCommentId: commentId,
+            categoryPills: feedPostCategoryPills(loungePostDetail),
+          }),
+        )
         .select('id')
         .maybeSingle()
       if (res.error) {
@@ -3764,7 +3802,7 @@ export default function SocialFeed({
       await loadCommunityFeed({ silent: true })
       bumpNotificationInteractionRefreshIfOpen()
     },
-    [bumpNotificationInteractionRefreshIfOpen, composerUserId, defaultInteraction, loadCommunityFeed, supabaseClient]
+    [bumpNotificationInteractionRefreshIfOpen, composerUserId, defaultInteraction, loadCommunityFeed, loungePostDetail, supabaseClient]
   )
 
   const undoLoungeDetailCommentPlainRepost = useCallback(
@@ -4495,6 +4533,7 @@ export default function SocialFeed({
         const seed = feedPostAuthorEditMediaSeed(post)
         setLoungeDetailEditImageUrls(seed.imageUrls)
         setLoungeDetailEditGifUrl(seed.gifUrl)
+        setLoungeDetailEditCategoryPills(feedPostCategoryPills(post))
         setLoungeDetailEditing(true)
       }
       const reduce =
@@ -5123,6 +5162,7 @@ export default function SocialFeed({
     setLoungeDetailEditMediaKind('')
     setLoungeDetailEditImageUrls([])
     setLoungeDetailEditGifUrl('')
+    setLoungeDetailEditCategoryPills([])
     try {
       const el = loungeDetailEditMediaInputRef.current
       if (el) el.value = ''
@@ -5420,13 +5460,20 @@ export default function SocialFeed({
       const keepStreamUid = feedPostStreamVideoUid(loungePostDetail)
       const updateBody =
         keepStreamUid && !loungeDetailEditMediaFile
-          ? { caption: cap, ...mediaPatch, stream_video_uid: keepStreamUid }
-          : { caption: cap, ...mediaPatch }
+          ? {
+              caption: cap,
+              category_pills: loungeDetailEditCategoryPills,
+              ...mediaPatch,
+              stream_video_uid: keepStreamUid,
+            }
+          : { caption: cap, category_pills: loungeDetailEditCategoryPills, ...mediaPatch }
       const { data, error } = await supabaseClient
         .from('community_feed_posts')
         .update(updateBody)
         .eq('id', loungePostDetail.id)
-        .select('id,caption,edited_at,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height')
+        .select(
+          'id,caption,edited_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height',
+        )
         .maybeSingle()
       if (error) {
         const msg = String(error.message || '')
@@ -5452,6 +5499,7 @@ export default function SocialFeed({
                 ...p,
                 caption: data.caption,
                 edited_at: data.edited_at,
+                category_pills: data.category_pills,
                 image_urls: data.image_urls,
                 media_url: data.media_url,
                 gif_url: data.gif_url,
@@ -5469,6 +5517,7 @@ export default function SocialFeed({
               ...prev,
               caption: data.caption,
               edited_at: data.edited_at,
+              category_pills: data.category_pills,
               image_urls: data.image_urls,
               media_url: data.media_url,
               gif_url: data.gif_url,
@@ -5486,6 +5535,7 @@ export default function SocialFeed({
   }, [
     cancelLoungeDetailEdit,
     loungeDetailDraftCaption,
+    loungeDetailEditCategoryPills,
     loungeDetailEditGifUrl,
     loungeDetailEditImageUrls,
     loungeDetailEditMediaFile,
@@ -6080,6 +6130,9 @@ export default function SocialFeed({
       setComposerVideoSlot(null)
     }
     setComposerExpanded(true)
+    if (Array.isArray(snap.categoryPills)) {
+      setComposerCategoryPills(snap.categoryPills)
+    }
     composerExpandedRef.current = true
     composerFoldRevealRef.current = 1
     setComposerFoldReveal(1)
@@ -6105,6 +6158,7 @@ export default function SocialFeed({
       }
       setQuoteRepostModal({ mode: 'compose', original: orig })
       setQuoteRepostDraft(String(snap.caption || ''))
+      setQuoteRepostCategoryPills(Array.isArray(snap.categoryPills) ? snap.categoryPills : resolveQuoteRepostInitialCategoryPills(orig))
       setQuoteRepostMediaUrl(String(snap.gifOnlyUrl || '').trim())
       const files = Array.isArray(snap.imageFiles) ? snap.imageFiles : []
       setQuoteRepostImageItems(
@@ -6214,6 +6268,7 @@ export default function SocialFeed({
     setQuoteRepostModal(null)
     setQuoteRepostDraft('')
     setQuoteRepostErr('')
+    setQuoteRepostCategoryPills([])
     setQuoteRepostImageItems((prev) => {
       for (const it of prev) {
         try {
@@ -6562,6 +6617,7 @@ export default function SocialFeed({
             : undefined,
         })
         loungePostSnapshotRef.current = null
+        writeLoungeComposerLastCategoryPills(snapshot.categoryPills || [])
         await loadCommunityFeed()
         const quoteOrigId = String(snapshot.quoteRepostOfPostId || '').trim()
         if (quoteOrigId) {
@@ -7363,6 +7419,7 @@ export default function SocialFeed({
         isStaffPoster,
         // Capture prep handoff by reference so queued jobs don't race on the shared ref
         _capturedPrepHandoff: composerVideoPrepHandoffRef.current ?? null,
+        categoryPills: composerCategoryPills,
       }
     } finally {
       setPostBusy(false)
@@ -7390,6 +7447,7 @@ export default function SocialFeed({
   }, [
     loungeComposerVideoPostBlocked,
     clearComposerForPostAttempt,
+    composerCategoryPills,
     composerImageItems,
     composerMediaUrl,
     composerPinOnPost,
@@ -8592,6 +8650,11 @@ export default function SocialFeed({
                       onSelect={(p) => mentionComposer.onMentionSelect(p, setPostText, composerFieldRef.current)}
                       anchorRef={mentionComposerAnchorRef}
                     />
+                    <LoungePostCategoryPillPicker
+                      value={composerCategoryPills}
+                      onChange={setComposerCategoryPills}
+                      disabled={postBusy || loungePostSubmitInFlight}
+                    />
                   </div>
                   {(() => {
                     const gifUrl = String(composerMediaUrl || '').trim()
@@ -8984,16 +9047,24 @@ export default function SocialFeed({
         ) : null}
 
         <div className="shrink-0 px-3 pt-1">
-          <div className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_ROW_CLASS} items-center gap-3`}>
-            <LoungeFeedScopeSwitch
-              scope={loungeFeedScope}
-              onScopeChange={onLoungeFeedScopeChange}
+          <div className="flex items-center justify-between gap-3 pt-0 pb-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <LoungeFeedScopeSwitch
+                scope={loungeFeedScope}
+                onScopeChange={onLoungeFeedScopeChange}
+                disabled={communityFeedLoading && communityPosts.length === 0}
+              />
+              <LoungeFeedSortSwitch
+                value={loungeFeedSort}
+                onChange={onLoungeFeedSortChange}
+                disabled={communityFeedLoading && communityPosts.length === 0}
+              />
+            </div>
+            <LoungeFeedCategoryFilter
+              value={loungeFeedCategoryExcludedSlugs}
+              onChange={onLoungeFeedCategoryFilterChange}
               disabled={communityFeedLoading && communityPosts.length === 0}
-            />
-            <LoungeFeedSortSwitch
-              value={loungeFeedSort}
-              onChange={onLoungeFeedSortChange}
-              disabled={communityFeedLoading && communityPosts.length === 0}
+              className="shrink-0"
             />
           </div>
         </div>
@@ -9028,6 +9099,11 @@ export default function SocialFeed({
                   request, fix the Supabase schema or RLS issue, then pull to refresh.
                 </p>
               )}
+            </div>
+          ) : loungeFeedCategoryExcludedSlugs?.length > 0 ? (
+            <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
+              No posts match your category settings. Open Categories and check more boxes, or reset with Show all
+              categories.
             </div>
           ) : loungeFeedScope === LOUNGE_FEED_SCOPE_FOLLOWING ? (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
@@ -9434,6 +9510,16 @@ export default function SocialFeed({
                 </div>
               ) : null}
 
+              {!loungeDetailEditing && feedPostCategoryPills(loungePostDetail).length > 0 ? (
+                <div
+                  className={`flex justify-start ${
+                    loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'
+                  } ${loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}`}
+                >
+                  <LoungePostCategoryPillRow pills={feedPostCategoryPills(loungePostDetail)} />
+                </div>
+              ) : null}
+
               {loungeDetailEditing ? (
                 <div className={`relative ${loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'}`}>
                   <button
@@ -9472,6 +9558,11 @@ export default function SocialFeed({
                         {loungeDetailEditErr}
                       </div>
                     ) : null}
+                    <LoungePostCategoryPillPicker
+                      value={loungeDetailEditCategoryPills}
+                      onChange={setLoungeDetailEditCategoryPills}
+                      disabled={loungeDetailEditBusy}
+                    />
                   </div>
                   {(() => {
                     const gifUrl = String(loungeDetailEditGifUrl || '').trim()
@@ -11058,6 +11149,12 @@ export default function SocialFeed({
                               anchorRef={mentionQuoteRepostAnchorRef}
                             />
                             </div>
+                            <LoungePostCategoryPillPicker
+                              value={quoteRepostCategoryPills}
+                              onChange={setQuoteRepostCategoryPills}
+                              disabled={quoteRepostBusy}
+                              hint="Optional — inherited from the original post; swap up to 3."
+                            />
                             <input
                               id={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
                               ref={quoteRepostMediaInputRef}

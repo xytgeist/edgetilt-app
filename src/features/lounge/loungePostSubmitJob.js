@@ -45,6 +45,7 @@ export function loungeSubmissionSnapshotIncludesVideo(snapshot) {
  * @property {boolean} wantsPin
  * @property {boolean} isStaffPoster
  * @property {string | null | undefined} [quoteRepostOfPostId] When set, insert a quote repost row instead of a normal post.
+ * @property {string[] | null | undefined} [categoryPills] Optional audience category slugs (0–3).
  */
 
 /**
@@ -98,6 +99,7 @@ export async function executeLoungeCommunityPostSubmission({
     wantsPin,
     isStaffPoster,
     quoteRepostOfPostId,
+    categoryPills,
   } = snapshot
   const quoteParentId = quoteRepostOfPostId != null ? String(quoteRepostOfPostId).trim() : ''
   const preUid = String(preUploadedUid || '').trim()
@@ -258,6 +260,7 @@ export async function executeLoungeCommunityPostSubmission({
           streamPosterUrl: streamPosterPublicUrl || undefined,
           streamVideoWidth: streamVideoWidthOut || undefined,
           streamVideoHeight: streamVideoHeightOut || undefined,
+          categoryPills,
         })
       } else if (uploadedUrls.length > 0) {
         insertPayload = communityFeedQuoteRepostInsertPayload({
@@ -266,17 +269,20 @@ export async function executeLoungeCommunityPostSubmission({
           imageUrls: uploadedUrls,
           mediaUrl: uploadedUrls.length === 0 && gifOnlyUrl ? gifOnlyUrl : undefined,
           gifUrl: uploadedUrls.length > 0 && gifOnlyUrl ? gifOnlyUrl : undefined,
+          categoryPills,
         })
       } else if (gifOnlyUrl) {
         insertPayload = communityFeedQuoteRepostInsertPayload({
           caption,
           originalPostId: quoteParentId,
           mediaUrl: gifOnlyUrl,
+          categoryPills,
         })
       } else {
         insertPayload = communityFeedQuoteRepostInsertPayload({
           caption,
           originalPostId: quoteParentId,
+          categoryPills,
         })
       }
     } else if (streamVideoUid) {
@@ -287,6 +293,7 @@ export async function executeLoungeCommunityPostSubmission({
         streamPosterUrl: streamPosterPublicUrl || undefined,
         streamVideoWidth: streamVideoWidthOut || undefined,
         streamVideoHeight: streamVideoHeightOut || undefined,
+        categoryPills,
       })
     } else if (uploadedUrls.length > 0) {
       insertPayload = communityFeedPostInsertPayload({
@@ -294,17 +301,20 @@ export async function executeLoungeCommunityPostSubmission({
         pinned: isStaffPoster && wantsPin ? true : undefined,
         imageUrls: uploadedUrls,
         gifUrl: gifOnlyUrl || undefined,
+        categoryPills,
       })
     } else if (gifOnlyUrl) {
       insertPayload = communityFeedPostInsertPayload({
         caption,
         pinned: isStaffPoster && wantsPin ? true : undefined,
         mediaUrl: gifOnlyUrl,
+        categoryPills,
       })
     } else {
       insertPayload = communityFeedPostInsertPayload({
         caption,
         pinned: isStaffPoster && wantsPin ? true : undefined,
+        categoryPills,
       })
     }
 
@@ -324,7 +334,7 @@ export async function executeLoungeCommunityPostSubmission({
       if (msg.includes('MAX_PINNED_POSTS')) {
         throw new Error(LOUNGE_MAX_PINNED_ALERT)
       }
-      if (/media_url|gif_url|image_urls|stream_video_uid|stream_poster_url|stream_video_width|stream_video_height|schema cache/i.test(msg)) {
+      if (/media_url|gif_url|image_urls|stream_video_uid|stream_poster_url|stream_video_width|stream_video_height|category_pills|schema cache/i.test(msg)) {
         throw new Error(
           'Media attachments need the latest DB scripts. Run supabase/lounge_feed_post_media.sql, supabase/lounge_feed_post_gif_url.sql, supabase/lounge_feed_post_image_urls.sql, and supabase/lounge_feed_post_stream_video.sql in Supabase.',
         )

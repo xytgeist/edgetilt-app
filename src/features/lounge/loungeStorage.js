@@ -1,3 +1,5 @@
+import { normalizeLoungePostCategoryPills } from '../../utils/loungePostCategoryPills.js'
+
 /** Lounge composer: last loaded profile for this browser (validated against session user id). */
 export const LOUNGE_PROFILE_CACHE_KEY = 'lounge_composer_profile_v1'
 
@@ -139,6 +141,33 @@ export function clearLoungeComposerDraft() {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.removeItem(LOUNGE_COMPOSER_DRAFT_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+export const LOUNGE_COMPOSER_LAST_CATEGORY_PILLS_KEY = 'loungeComposerLastCategoryPills:v1'
+
+export function readLoungeComposerLastCategoryPills() {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(LOUNGE_COMPOSER_LAST_CATEGORY_PILLS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return normalizeLoungePostCategoryPills(parsed)
+  } catch {
+    return []
+  }
+}
+
+export function writeLoungeComposerLastCategoryPills(pills) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      LOUNGE_COMPOSER_LAST_CATEGORY_PILLS_KEY,
+      JSON.stringify(normalizeLoungePostCategoryPills(pills)),
+    )
   } catch {
     // ignore
   }

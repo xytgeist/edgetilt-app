@@ -7,7 +7,7 @@ export const LOUNGE_FEED_SCOPE_ALL = 'all'
 export const LOUNGE_FEED_SCOPE_FOLLOWING = 'following'
 
 const COMMUNITY_FEED_SELECT =
-  'id,caption,game_title,game_slug,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
+  'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
@@ -28,8 +28,9 @@ export async function fetchLoungeFollowingAuthorIds(supabaseClient, viewerUserId
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {LoungeFeedScope} scope
  * @param {string[] | null} followingAuthorIds — set when `scope === 'following'`
+ * @param {string[] | null | undefined} [excludedCategorySlugs] — unchecked pills; posts overlapping any are hidden
  */
-export function loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds) {
+export function loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds, excludedCategorySlugs) {
   let q = supabaseClient
     .from('community_feed_posts')
     .select(COMMUNITY_FEED_SELECT)
@@ -39,6 +40,10 @@ export function loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds)
   if (scope === LOUNGE_FEED_SCOPE_FOLLOWING && followingAuthorIds) {
     q = q.in('user_id', followingAuthorIds)
   }
+  if (excludedCategorySlugs?.length) {
+    const arr = `{${excludedCategorySlugs.join(',')}}`
+    q = q.or(`category_pills.is.null,not.category_pills.ov.${arr}`)
+  }
   return q
 }
 
@@ -47,6 +52,7 @@ export function loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds)
  *   sort?: import('./loungeFeedSortPref.js').LoungeFeedSortMode,
  *   scope?: LoungeFeedScope,
  *   followingAuthorIds?: string[] | null,
+ *   excludedCategorySlugs?: string[] | null,
  *   limit?: number,
  *   asOf?: string,
  *   cursor?: { created_at?: string, id?: string, popular_score?: number | null } | null,
@@ -59,6 +65,7 @@ export function loungeFeedPageRpcQuery(supabaseClient, opts = {}) {
       ? opts.followingAuthorIds
       : null
   const cursor = opts.cursor || null
+  const excludedCategorySlugs = opts.excludedCategorySlugs?.length ? opts.excludedCategorySlugs : null
   return supabaseClient.rpc('lounge_feed_posts_page', {
     p_sort: sort,
     p_following_user_ids: followingAuthorIds,
@@ -67,6 +74,7 @@ export function loungeFeedPageRpcQuery(supabaseClient, opts = {}) {
     p_cursor_created_at: cursor?.created_at ?? null,
     p_cursor_id: cursor?.id ?? null,
     p_cursor_popular_score: cursor?.popular_score ?? null,
+    p_excluded_category_slugs: excludedCategorySlugs,
   })
 }
 

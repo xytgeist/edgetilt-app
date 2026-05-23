@@ -62,14 +62,14 @@ If the user attempts **any** of the following, show the **create account** popup
 **Navigation**
 
 - May open **all** other app areas from the **hamburger menu** (no blanket “create account” wall).
-- **Hamburger UI:** Menu rows that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (Offers stays **unlocked** in the menu because the **calendar** is free; **alerts** and **OCR** stay subscribe-gated **inside** Offers.)
+- **Hamburger UI:** Menu rows that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar** stays **unlocked** in the menu because the calendar is free; **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
 
 **Per-feature subscribe requirements**
 
 | Area | Free tier |
 | --- | --- |
 | **Bankroll manager** | **Subscribe** to use (gate + subscribe CTA). |
-| **Offers / calendar** | May use calendar **without** subscribe. **Subscribe** for **alerts** and for **image upload AI OCR** on offers. |
+| **Calendar** | May use calendar **without** subscribe. **Subscribe** for **alerts** and for **image upload AI OCR** on offers. |
 | **Calculators** | **Subset unlocked**; **majority locked**. Locked rows: **lock icon** on calculator button; tap → **subscribe** popup with path to purchase. Unlocked calcs behave normally. |
 | **AP Guides** | **Some guides unlocked**, **many locked**; same pattern as calcs — lock affordance + tap → **subscribe** popup. |
 
@@ -111,7 +111,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | **Lounge** | Read-only full feed (no search/filter/post tap); forbidden actions → create account modal | Full + verified badge | Full + verified + subscriber on posts | Full + staff badges |
 | **Hamburger / other tabs** | Create account modal | Allowed; gated features show subscribe modal | Full | Full |
 | **Bankroll** | Create account modal | Subscribe | Full | Full |
-| **Offers calendar** | Create account modal | Calendar yes; **alerts + OCR** subscribe | Full | Full |
+| **Calendar** | Create account modal | Calendar yes; **alerts + OCR** subscribe | Full | Full |
 | **Calculators** | Create account modal | Some unlocked; locks → subscribe | Full; add-on paywalls **offered to subscribers only** | Full |
 | **AP Guides** | Create account modal | Some unlocked; locks → subscribe | Full; new-game add-ons **offered to subscribers only** | Full |
 
@@ -132,6 +132,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | --- | --- |
 | 2026-05-10 | Initial template; filled anon/create-account gating; free verified + subscribe gates; paid + add-on paywalls; staff; TBD + modal UX. |
 | 2026-05-10 | Removed **50 posts per day** cap; anon Lounge read-only is uncapped aside from normal pagination/RLS. |
-| 2026-05-10 | Hamburger: lock icons on **Calcs**, **AP Guides**, **Bankroll** for free non-subscribers; staff/subscribers see no locks; Offers menu row unlocked (gates in-feature). |
+| 2026-05-18 | Hamburger **Offers** row renamed **Calendar** (tab id `offers` unchanged; deep links `?tab=offers` unchanged). |
+| 2026-05-10 | Hamburger: lock icons on **Calcs**, **AP Guides**, **Bankroll** for free non-subscribers; staff/subscribers see no locks; Calendar menu row unlocked (gates in-feature). |
 | 2026-05-10 | **Signup:** no client **`allowed_emails`** whitelist; free tier = signed-in user until billing flags ship. |
 | 2026-05-10 | DB: **`profiles.has_active_subscription`** + testing doc **`docs/test-user-roles.md`** for tier checks. |

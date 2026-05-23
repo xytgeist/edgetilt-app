@@ -1021,7 +1021,7 @@ export default function OffersCalendar({
         <div className="mb-3">
           <div className="text-sm font-bold text-cyan-50">Offer reminders</div>
           <p className="mt-1 text-[11px] leading-relaxed text-cyan-200/85">
-            Get alerted before timed offers start. Turn on notifications on this phone, choose how early to remind, then keep your Offers calendar filled in.
+            Get alerted before timed offers start. Turn on notifications on this phone, choose how early to remind, then keep your calendar filled in.
             {!pushSupported ? ' This browser cannot use web push in this mode.' : null}
           </p>
         </div>
@@ -1049,7 +1049,7 @@ export default function OffersCalendar({
           {!pushSupported
             ? 'Not supported here'
             : pushSubscribed
-              ? 'Subscribed • tap a notification to open Offers'
+              ? 'Subscribed • tap a notification to open Calendar'
               : 'Not subscribed yet'}
         </div>
 

@@ -707,7 +707,7 @@ export default function AppShell({
   const navItems = [
     { id: 'home', label: 'Lounge', icon: '🍻', subscriberGated: false },
     { id: 'calculators', label: 'Calcs', icon: '🧮', subscriberGated: true },
-    { id: 'offers', label: 'Offers', icon: '📅', subscriberGated: false },
+    { id: 'offers', label: 'Calendar', icon: '📅', subscriberGated: false },
     { id: 'bankroll', label: 'Bankroll', icon: '💰', subscriberGated: true },
     { id: 'guides', label: 'AP Guides', icon: '📗', subscriberGated: true },
     { id: 'intel', label: 'Intel', icon: '📍', subscriberGated: false },
@@ -894,7 +894,7 @@ export default function AppShell({
                 onClick={() => setTab('offers')}
                 className="text-cyan-300 text-sm font-semibold hover:text-cyan-200"
               >
-                View offers →
+                View calendar →
               </button>
             </div>
             <p className="text-zinc-500 text-xs mb-3 leading-relaxed">

@@ -8,6 +8,13 @@ import {
   subscribeLoungeVideoDebug,
 } from './loungeFeedVideoDebugRegistry.js'
 import {
+  clearLoungeBadgeTipDebugEvents,
+  getLoungeBadgeTipDebugEvents,
+  getLoungeBadgeTipDebugRevision,
+  getLoungeBadgeTipDebugSnapshot,
+  subscribeLoungeBadgeTipDebug,
+} from './loungeBadgeTipDebugRegistry.js'
+import {
   getLoungeStreamLightboxOpen,
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
@@ -33,6 +40,18 @@ function formatTime(ts) {
 
 function eventKindClass(kind) {
   switch (kind) {
+    case 'open':
+      return 'text-emerald-300'
+    case 'anim':
+      return 'text-cyan-300'
+    case 'exit':
+      return 'text-rose-300'
+    case 'hover':
+      return 'text-violet-300'
+    case 'layout':
+      return 'text-orange-300'
+    case 'pos':
+      return 'text-zinc-400'
     case 'coord':
       return 'text-cyan-300'
     case 'active':
@@ -84,6 +103,7 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
   )
 
   useSyncExternalStore(subscribeLoungeVideoDebug, getLoungeVideoDebugRevision, getLoungeVideoDebugRevision)
+  useSyncExternalStore(subscribeLoungeBadgeTipDebug, getLoungeBadgeTipDebugRevision, getLoungeBadgeTipDebugRevision)
 
   const anyStreamLightboxOpen = useSyncExternalStore(
     subscribeLoungeStreamLightboxOpen,
@@ -94,6 +114,8 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
   const debugInfo = store.getDebugInfo?.() ?? { registeredEntryCount: 0, registeredIds: [] }
   const tileSnapshots = getLoungeVideoDebugTileSnapshots()
   const debugEvents = getLoungeVideoDebugEvents()
+  const badgeTipEvents = getLoungeBadgeTipDebugEvents()
+  const badgeTipSnapshot = getLoungeBadgeTipDebugSnapshot()
 
   const scrollRoot = scrollRootRef?.current ?? null
   const scrollTop = scrollRoot?.scrollTop ?? 0
@@ -145,9 +167,15 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
         ...row.snap,
       })),
       events: debugEvents,
+      badgeTips: {
+        live: badgeTipSnapshot,
+        events: badgeTipEvents,
+      },
     }
   }, [
     anyStreamLightboxOpen,
+    badgeTipEvents,
+    badgeTipSnapshot,
     coordinatorSnapshot,
     debugEvents,
     debugInfo,
@@ -216,6 +244,7 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
             className="rounded px-1.5 py-0.5 text-amber-100 hover:bg-amber-900/50"
             onClick={() => {
               clearLoungeVideoDebugEvents()
+              clearLoungeBadgeTipDebugEvents()
             }}
           >
             Clear log
@@ -300,6 +329,63 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
                 </div>
               )
             })
+          )}
+        </div>
+
+        <div className="mb-2 text-[9px] uppercase tracking-wide text-amber-300/80">Badge tips</div>
+        <div className="mb-2 rounded border border-violet-500/30 bg-violet-950/20 px-1.5 py-1 text-zinc-300">
+          {badgeTipSnapshot ? (
+            <>
+              <div>
+                live: <span className="text-white">{badgeTipSnapshot.tip || '—'}</span>
+                {' · '}
+                gen <span className="text-white">{badgeTipSnapshot.gen ?? '—'}</span>
+                {' · '}
+                mounted <span className="text-white">{String(badgeTipSnapshot.mounted)}</span>
+                {' · '}
+                animIn <span className="text-white">{String(badgeTipSnapshot.animInReady)}</span>
+                {' · '}
+                exiting <span className="text-white">{String(badgeTipSnapshot.exiting)}</span>
+              </div>
+              {badgeTipSnapshot.dom ? (
+                <div className="truncate text-zinc-400">
+                  cls=
+                  {String(badgeTipSnapshot.dom.className || '')
+                    .includes('preroll')
+                    ? 'preroll'
+                    : String(badgeTipSnapshot.dom.className || '').includes('tip-in')
+                      ? 'in'
+                      : String(badgeTipSnapshot.dom.className || '').includes('tip-out')
+                        ? 'out'
+                        : '?'}
+                  {' · '}
+                  play={String(badgeTipSnapshot.dom.animationPlayState)}
+                  {' · '}
+                  op={String(badgeTipSnapshot.dom.opacity)}
+                  {' · '}
+                  anim={String(badgeTipSnapshot.dom.animationName)}
+                </div>
+              ) : (
+                <div className="text-zinc-500">no live tip DOM</div>
+              )}
+            </>
+          ) : (
+            <div className="text-zinc-500">Tap Admin / Mod / OG badge to capture</div>
+          )}
+        </div>
+        <div className="mb-2 space-y-1">
+          {badgeTipEvents.length === 0 ? (
+            <div className="text-zinc-500">No badge tip events yet</div>
+          ) : (
+            badgeTipEvents.slice(0, 16).map((ev, i) => (
+              <div key={`badge-${ev.ts}-${i}`} className="rounded bg-violet-950/30 px-1.5 py-0.5 text-zinc-300">
+                <span className="text-zinc-500">{formatTime(ev.ts)}</span>{' '}
+                <span className={eventKindClass(ev.kind)}>{ev.kind}</span>
+                {ev.tip ? ` · ${ev.tip}` : ''}
+                {ev.gen != null ? ` · g${ev.gen}` : ''}
+                {ev.detail ? `: ${ev.detail}` : ''}
+              </div>
+            ))
           )}
         </div>
 

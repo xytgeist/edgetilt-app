@@ -25,7 +25,9 @@ export function snapshotNeedsBackgroundVideoPrep(snapshot) {
     snapshot?.videoPrepSpec ||
       snapshot?.videoFile instanceof File ||
       snapshot?.awaitingComposerVideoPrepJobId != null ||
-      snapshot?.awaitingDetailCommentVideoPrepJobId != null,
+      snapshot?.awaitingDetailCommentVideoPrepJobId != null ||
+      snapshot?.awaitingDetailEditVideoPrepJobId != null ||
+      snapshot?.awaitingDetailCommentEditVideoPrepJobId != null,
   )
 }
 
@@ -80,7 +82,9 @@ export async function resolveLoungeSubmissionVideoPrep({
 
   const awaitingComposer = snapshot?.awaitingComposerVideoPrepJobId
   const awaitingComment = snapshot?.awaitingDetailCommentVideoPrepJobId
-  const awaitingId = awaitingComposer ?? awaitingComment
+  const awaitingEdit = snapshot?.awaitingDetailEditVideoPrepJobId
+  const awaitingCommentEdit = snapshot?.awaitingDetailCommentEditVideoPrepJobId
+  const awaitingId = awaitingComposer ?? awaitingComment ?? awaitingEdit ?? awaitingCommentEdit
   const handoff = snapshot?._capturedPrepHandoff
   if (awaitingId != null && handoff && handoff.jobId === awaitingId) {
     try {
@@ -137,6 +141,8 @@ export function startParallelQueuedVideoPrep(job, supabaseClient) {
         streamVideoUid: out.streamVideoUid,
         awaitingComposerVideoPrepJobId: null,
         awaitingDetailCommentVideoPrepJobId: null,
+        awaitingDetailEditVideoPrepJobId: null,
+        awaitingDetailCommentEditVideoPrepJobId: null,
       }
       return out
     } catch (e) {

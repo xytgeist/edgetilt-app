@@ -21,6 +21,7 @@ import {
   stabilizeCommentListOrder,
 } from '../../utils/loungeFeedCommentSort.js'
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
+import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import { renderRichCaption } from './loungeCaption'
 import {
   LOUNGE_FEED_CAPTION_TEXT_CLASS,
@@ -38,6 +39,14 @@ import {
   LOUNGE_FEED_POST_DETAIL_COMMENT_INTERACTIONS_CLASS,
   LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS,
 } from './loungeFeedAvatar.js'
+
+function loungeCharCounterClass(len) {
+  const n = typeof len === 'number' ? len : 0
+  if (n >= LOUNGE_COMMENT_BODY_MAX) return 'font-semibold text-red-500'
+  if (n >= LOUNGE_COMMENT_BODY_MAX - 5) return 'font-semibold text-orange-400'
+  if (n >= LOUNGE_COMMENT_BODY_MAX - 15) return 'font-semibold text-yellow-400'
+  return 'text-zinc-500'
+}
 
 /**
  * Meta row matches `LoungePostArticle`: name, badges, handle · time (left); ⋯ menu on the right.
@@ -84,6 +93,9 @@ export function LoungeCommentCard({
   onCommentEditCancel,
   commentEditBusy,
   commentEditHasRemoteMedia = false,
+  commentEditMediaSlot = null,
+  commentEditFieldRef = null,
+  commentEditVideoPostBlocked = false,
   mediaFeedVariant: mediaFeedVariantProp = 'commentInline',
   resolveMediaFeedVariant,
   showDetailTimestamp = false,
@@ -155,14 +167,29 @@ export function LoungeCommentCard({
       }}
       role="presentation"
     >
-      <textarea
-        value={commentEditDraft}
-        onChange={(e) => onCommentEditDraftChange?.(e.target.value)}
-        rows={3}
-        maxLength={LOUNGE_COMMENT_BODY_MAX}
-        className={`w-full resize-y rounded-xl border border-zinc-600/70 bg-zinc-900/90 px-3 py-2 ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-100 outline-none focus:border-cyan-600/55 touch-manipulation`}
-        aria-label="Edit reply"
-      />
+      {commentEditFieldRef ? (
+        <LoungeRichComposerField
+          ref={commentEditFieldRef}
+          variant="detailCommentEdit"
+          autoGrow
+          value={commentEditDraft}
+          onChange={onCommentEditDraftChange}
+          maxLength={LOUNGE_COMMENT_BODY_MAX}
+          placeholder="Edit reply"
+          ariaLabel="Edit reply"
+          disabled={commentEditBusy}
+        />
+      ) : (
+        <textarea
+          value={commentEditDraft}
+          onChange={(e) => onCommentEditDraftChange?.(e.target.value)}
+          rows={3}
+          maxLength={LOUNGE_COMMENT_BODY_MAX}
+          className={`w-full resize-y rounded-xl border border-zinc-600/70 bg-zinc-900/90 px-3 py-2 ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-100 outline-none focus:border-cyan-600/55 touch-manipulation`}
+          aria-label="Edit reply"
+        />
+      )}
+      {commentEditMediaSlot}
       <div className="mt-1 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -177,6 +204,7 @@ export function LoungeCommentCard({
           onClick={() => void onCommentEditSave?.()}
           disabled={
             commentEditBusy ||
+            commentEditVideoPostBlocked ||
             (!String(commentEditDraft || '').trim() && !commentEditHasRemoteMedia) ||
             String(commentEditDraft || '').length > LOUNGE_COMMENT_BODY_MAX
           }
@@ -412,6 +440,9 @@ export default function LoungePostCommentThread({
   onCommentEditCancel,
   commentEditBusy,
   commentEditHasRemoteMedia = false,
+  commentEditMediaSlot = null,
+  commentEditFieldRef = null,
+  commentEditVideoPostBlocked = false,
   /** Comment ids the signed-in viewer just posted — shown at top of their list only (chronological for others). */
   viewerPinnedCommentIds = [],
   /** First-level sort on post detail (`ranked` | `popular` | `chronological` | `likes`). */
@@ -569,6 +600,9 @@ export default function LoungePostCommentThread({
     onCommentEditCancel,
     commentEditBusy,
     commentEditHasRemoteMedia,
+    commentEditMediaSlot,
+    commentEditFieldRef,
+    commentEditVideoPostBlocked,
     lightboxPortalClass,
     avatarText,
     avatarToneClass,

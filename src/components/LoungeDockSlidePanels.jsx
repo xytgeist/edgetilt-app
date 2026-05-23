@@ -307,6 +307,7 @@ export default function LoungeDockSlidePanels({
   const [searchCategorySlug, setSearchCategorySlug] = useState('')
   const [searchSettledCategorySlug, setSearchSettledCategorySlug] = useState('')
   const [searchRecent, setSearchRecent] = useState(() => readLoungeSearchRecent())
+  const [searchInputFocused, setSearchInputFocused] = useState(false)
   const [searchSort, setSearchSort] = useState(() => readLoungeSearchSort())
   const [searchPagination, setSearchPagination] = useState({
     postsHasMore: false,
@@ -567,7 +568,11 @@ export default function LoungeDockSlidePanels({
   }, [searchPostCardProps, openPanel])
 
   useEffect(() => {
-    if (openPanel === 'search') setSearchRecent(readLoungeSearchRecent())
+    if (openPanel === 'search') {
+      setSearchRecent(readLoungeSearchRecent())
+    } else {
+      setSearchInputFocused(false)
+    }
   }, [openPanel])
 
   const commitSearchToRecent = useCallback(() => {
@@ -965,6 +970,8 @@ export default function LoungeDockSlidePanels({
                     role="searchbox"
                     value={searchTextAfterCategory}
                     onChange={(e) => setSearchTextAfterCategory(e.target.value)}
+                    onFocus={() => setSearchInputFocused(true)}
+                    onBlur={() => setSearchInputFocused(false)}
                     onKeyDown={(e) => {
                       if (e.key === 'Backspace' && searchTextAfterCategory === '') {
                         e.preventDefault()
@@ -990,6 +997,8 @@ export default function LoungeDockSlidePanels({
                   role="searchbox"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
+                  onFocus={() => setSearchInputFocused(true)}
+                  onBlur={() => setSearchInputFocused(false)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
@@ -1023,7 +1032,7 @@ export default function LoungeDockSlidePanels({
                 </div>
               ) : null}
             </div>
-            {!queryReady && !searchCategorySlug && searchRecent.length > 0 ? (
+            {searchInputFocused && !queryReady && !searchCategorySlug && searchRecent.length > 0 ? (
               <section className="mb-3">
                 <h3 className="mb-1.5 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
                   Recent
@@ -1036,6 +1045,7 @@ export default function LoungeDockSlidePanels({
                     >
                       <button
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setQ(term)}
                         className="min-w-0 truncate py-1 pl-3 pr-1 touch-manipulation hover:text-zinc-100 active:text-zinc-100 [-webkit-tap-highlight-color:transparent]"
                       >
@@ -1044,6 +1054,7 @@ export default function LoungeDockSlidePanels({
                       <button
                         type="button"
                         aria-label={`Remove ${term} from recent searches`}
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => setSearchRecent(forgetLoungeSearchQuery(term))}
                         className="flex h-7 w-7 shrink-0 items-center justify-center text-[16px] leading-none text-zinc-500 touch-manipulation hover:text-zinc-300 active:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
                       >

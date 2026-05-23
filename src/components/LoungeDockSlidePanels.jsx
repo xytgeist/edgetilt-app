@@ -795,6 +795,7 @@ export default function LoungeDockSlidePanels({
     const t = e.target
     if (t instanceof Element) {
       if (t.closest('input, textarea, select, label')) return
+      if (t.closest('[data-lounge-panel-horizontal-scroll]')) return
       if (t.closest('button[aria-label="Close"]')) return
       if (t.closest('button[aria-label="Close panel"]')) return
     }
@@ -1037,7 +1038,11 @@ export default function LoungeDockSlidePanels({
                 <h3 className="mb-1.5 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
                   Recent
                 </h3>
-                <div className="-mx-3 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-3 pb-0.5 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] touch-pan-x">
+                <div
+                  data-lounge-panel-horizontal-scroll
+                  className="-mx-3 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-3 pb-0.5 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] touch-pan-x"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
                   {searchRecent.map((term) => (
                     <span
                       key={term}

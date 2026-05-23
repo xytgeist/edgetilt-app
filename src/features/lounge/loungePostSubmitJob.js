@@ -607,12 +607,19 @@ export async function executeLoungeCommunityPostUpdate({
       }
     }
 
-    const { game_title: _gt, game_slug: _gs, pinned: _pin, caption: _cap, ...mediaCols } = mediaPayload
+    const {
+      game_title: _gt,
+      game_slug: _gs,
+      pinned: _pin,
+      caption: _cap,
+      category_pills: _mediaCategoryPills,
+      ...mediaCols
+    } = mediaPayload
     const updateBody = {
       caption,
       edited_at: new Date().toISOString(),
-      category_pills: normalizeLoungePostCategoryPills(categoryPills),
       ...mediaCols,
+      category_pills: normalizeLoungePostCategoryPills(categoryPills),
     }
 
     const { data, error } = await supabaseClient

@@ -299,6 +299,14 @@ const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying ag
 
 const LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS = 30 * 60 * 1000
 
+/** Sublinear pull curve — approaches cap smoothly (avoids linear layout jumps). */
+function loungePullVisualOffsetPx(rawDy, cap) {
+  if (rawDy <= 0) return 0
+  return Math.min(cap, cap * (1 - Math.exp(-rawDy / 72)))
+}
+
+const LOUNGE_PULL_SNAP_MS = '220ms cubic-bezier(0.33, 1, 0.68, 1)'
+
 function isLoungePostWithinAuthorEditWindow(createdAt) {
   if (!createdAt) return false
   const t = new Date(createdAt).getTime()
@@ -672,7 +680,6 @@ export default function SocialFeed({
   const [composerUserProfile, setComposerUserProfile] = useState(null)
   /** False until first `getSession()` completes — avoids flashing guest "ME" while auth is unknown. */
   const [composerAuthResolved, setComposerAuthResolved] = useState(false)
-  const [pullDistance, setPullDistance] = useState(0)
   const [pullRefreshing, setPullRefreshing] = useState(false)
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
@@ -731,6 +738,10 @@ export default function SocialFeed({
   const pullStartYRef = useRef(null)
   const pullDistanceRef = useRef(0)
   const pullTriggeredRef = useRef(false)
+  const pullPostsWrapRef = useRef(null)
+  const pullIndicatorOverlayRef = useRef(null)
+  const pullLabelRef = useRef(null)
+  const pullVisualRafRef = useRef(0)
   const composerMediaInputRef = useRef(null)
   const composerFieldRef = useRef(null)
   const mentionComposerAnchorRef = useRef(null)
@@ -5916,6 +5927,49 @@ export default function SocialFeed({
     const pullZone = pullRefreshZoneRef.current
     if (!zone || !pullZone) return
     const thresholdPx = pullRefreshThresholdPx
+    const visualCapPx = pullIndicatorMaxPx
+    const refreshIndicatorPx = pullIndicatorBasePx
+
+    const applyPullVisual = (visualPx, { animate = false } = {}) => {
+      const posts = pullPostsWrapRef.current
+      const overlay = pullIndicatorOverlayRef.current
+      const transformTransition = animate ? `transform ${LOUNGE_PULL_SNAP_MS}` : 'none'
+      const overlayTransition = animate ? `height ${LOUNGE_PULL_SNAP_MS}, opacity 180ms ease` : 'none'
+      if (posts) {
+        posts.style.transition = transformTransition
+        posts.style.transform = visualPx > 0 ? `translate3d(0, ${visualPx}px, 0)` : ''
+      }
+      if (overlay) {
+        overlay.style.transition = overlayTransition
+        overlay.style.height = `${visualPx}px`
+        overlay.style.opacity = visualPx > 0 ? '1' : '0'
+      }
+    }
+
+    const setPullLabel = (rawDistance, refreshing = false) => {
+      const label = pullLabelRef.current
+      if (!label) return
+      label.textContent = refreshing
+        ? 'Refreshing lounge…'
+        : rawDistance >= thresholdPx
+          ? 'Release to refresh'
+          : 'Pull down to refresh'
+    }
+
+    const flushPullVisual = (rawDistance, { animate = false } = {}) => {
+      const visual = loungePullVisualOffsetPx(rawDistance, visualCapPx)
+      applyPullVisual(visual, { animate })
+      setPullLabel(rawDistance, false)
+    }
+
+    const schedulePullVisual = (rawDistance) => {
+      pullDistanceRef.current = rawDistance
+      if (pullVisualRafRef.current) return
+      pullVisualRafRef.current = window.requestAnimationFrame(() => {
+        pullVisualRafRef.current = 0
+        flushPullVisual(rawDistance, { animate: false })
+      })
+    }
 
     const onTouchStart = (e) => {
       if (zone.scrollTop > 0) {
@@ -5938,30 +5992,35 @@ export default function SocialFeed({
       const currentY = e.touches?.[0]?.clientY ?? startY
       const dy = currentY - startY
       if (dy <= 0) {
-        pullDistanceRef.current = 0
-        setPullDistance(0)
+        schedulePullVisual(0)
         return
       }
       e.preventDefault()
-      const eased = Math.min(pullMaxVisualPx, Math.floor(dy * pullFingerGain))
-      pullDistanceRef.current = eased
-      setPullDistance(eased)
+      const raw = Math.min(pullMaxVisualPx, Math.floor(dy * pullFingerGain))
+      schedulePullVisual(raw)
     }
 
     const onTouchEnd = async () => {
       const distance = pullDistanceRef.current
       pullStartYRef.current = null
       pullDistanceRef.current = 0
-      setPullDistance(0)
       const shouldRefresh = distance >= thresholdPx && !pullTriggeredRef.current
-      if (!shouldRefresh) return
+      if (!shouldRefresh) {
+        applyPullVisual(0, { animate: true })
+        setPullLabel(0, false)
+        return
+      }
       pullTriggeredRef.current = true
       setPullRefreshing(true)
+      applyPullVisual(refreshIndicatorPx, { animate: true })
+      setPullLabel(0, true)
       try {
         await loadCommunityFeed({ silent: true })
       } finally {
         setPullRefreshing(false)
         pullTriggeredRef.current = false
+        applyPullVisual(0, { animate: true })
+        setPullLabel(0, false)
       }
     }
 
@@ -5970,6 +6029,10 @@ export default function SocialFeed({
     zone.addEventListener('touchend', onTouchEnd, { passive: true, capture: true })
     zone.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true })
     return () => {
+      if (pullVisualRafRef.current) {
+        window.cancelAnimationFrame(pullVisualRafRef.current)
+        pullVisualRafRef.current = 0
+      }
       pullZone.removeEventListener('touchstart', onTouchStart)
       zone.removeEventListener('touchmove', onTouchMove, { capture: true })
       zone.removeEventListener('touchend', onTouchEnd, { capture: true })
@@ -9073,28 +9136,19 @@ export default function SocialFeed({
           </div>
         </div>
 
-        <div ref={pullRefreshZoneRef}>
+        <div ref={pullRefreshZoneRef} className="relative">
           <div
-            className="overflow-hidden text-[13px] text-zinc-400"
-            style={{
-              height: pullRefreshing
-                ? pullIndicatorBasePx
-                : pullDistance > 0
-                  ? Math.min(pullDistance, pullIndicatorMaxPx)
-                  : 0,
-              opacity: pullRefreshing || pullDistance > 0 ? 1 : 0,
-              transition: pullDistance > 0 && !pullRefreshing ? 'none' : 'height 200ms ease, opacity 200ms ease',
-            }}
+            ref={pullIndicatorOverlayRef}
+            className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex items-end justify-center overflow-hidden text-[13px] text-zinc-400"
+            style={{ height: 0, opacity: 0 }}
+            aria-live="polite"
           >
-            <div className="px-3 py-1 text-center">
-              {pullRefreshing
-                ? 'Refreshing lounge…'
-                : pullDistance >= pullRefreshThresholdPx
-                  ? 'Release to refresh'
-                  : 'Pull down to refresh'}
+            <div ref={pullLabelRef} className="px-3 py-1 text-center">
+              Pull down to refresh
             </div>
           </div>
 
+          <div ref={pullPostsWrapRef} className="relative z-0 will-change-transform">
         <div className="border-b border-zinc-800 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
         {loungeManageErr ? (
           <div className="px-3 pt-3">
@@ -9250,6 +9304,7 @@ export default function SocialFeed({
             ) : null}
           </>
         )}
+        </div>
         </div>
         </div>
         </LoungeFeedVideoAutoplayProvider>

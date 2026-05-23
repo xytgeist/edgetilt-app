@@ -69,41 +69,39 @@ export default function LoungeFeedCategoryFilter({
         <div
           role="listbox"
           aria-multiselectable="true"
-          className="absolute right-0 top-full z-30 mt-0.5 w-[min(92vw,22.5rem)] rounded-lg border border-zinc-700/90 bg-zinc-900 py-1.5 shadow-lg"
+          className="absolute right-0 top-full z-30 mt-0.5 max-h-[min(60vh,18rem)] w-max min-w-[9.5rem] max-w-[min(88vw,11.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-lg"
         >
           {filterActive ? (
             <button
               type="button"
-              className="mx-1.5 mb-1.5 block w-[calc(100%-0.75rem)] rounded-md border border-zinc-700/80 px-2.5 py-2 text-left text-[12px] font-medium text-zinc-400 touch-manipulation hover:bg-zinc-800 hover:text-zinc-200"
+              className="block w-full border-b border-zinc-800/90 px-2 py-1.5 text-left text-[11px] font-medium text-zinc-400 touch-manipulation hover:bg-zinc-800 hover:text-zinc-200"
               onClick={showAll}
             >
               Show all tribes
             </button>
           ) : null}
-          <div className="grid grid-cols-5 grid-rows-2 gap-1.5 px-1.5">
-            {loungePostCategoryPillOptions().map(({ slug, label }) => {
-              const visible = !excluded.includes(slug)
-              return (
-                <button
-                  key={slug}
-                  type="button"
-                  role="option"
-                  aria-selected={visible}
-                  title={label}
-                  onClick={() => toggleSlug(slug)}
-                  className="flex min-h-11 items-center justify-center rounded-lg p-1 touch-manipulation active:bg-zinc-800/60 [-webkit-tap-highlight-color:transparent]"
+          {loungePostCategoryPillOptions().map(({ slug, label }) => {
+            const visible = !excluded.includes(slug)
+            return (
+              <button
+                key={slug}
+                type="button"
+                role="option"
+                aria-selected={visible}
+                title={label}
+                onClick={() => toggleSlug(slug)}
+                className="flex w-full min-h-9 items-center px-2 py-1 touch-manipulation hover:bg-zinc-800/80 active:bg-zinc-800/60 [-webkit-tap-highlight-color:transparent]"
+              >
+                <span
+                  className={`inline-flex min-w-0 max-w-full truncate rounded-full border px-2 py-1 text-[11px] font-semibold leading-tight transition-[opacity,filter] duration-150 ${loungePostCategoryPillChipClass(slug, 'display')} ${
+                    visible ? 'opacity-100 saturate-100' : 'opacity-35 saturate-[0.35]'
+                  }`}
                 >
-                  <span
-                    className={`inline-flex max-w-full truncate rounded-full border px-2 py-1 text-[11px] font-semibold leading-tight transition-[opacity,filter] duration-150 sm:px-2.5 sm:py-1.5 sm:text-[12px] ${loungePostCategoryPillChipClass(slug, 'display')} ${
-                      visible ? 'opacity-100 saturate-100' : 'opacity-35 saturate-[0.35]'
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+                  {label}
+                </span>
+              </button>
+            )
+          })}
         </div>
       ) : null}
     </div>

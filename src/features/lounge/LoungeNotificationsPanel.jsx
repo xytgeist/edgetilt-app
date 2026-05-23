@@ -740,6 +740,7 @@ export default function LoungeNotificationsPanel({
         pullSpinnerRef={pullSpinnerRef}
         pullAriaRef={pullAriaRef}
         pullPostsWrapRef={pullPostsWrapRef}
+        leadingDivider
       >
       {loading && !pullRefreshing ? (
         <p className="mt-4 text-[14px] text-zinc-500">Loading…</p>
@@ -748,7 +749,7 @@ export default function LoungeNotificationsPanel({
       ) : items.length === 0 ? (
         <p className="mt-4 text-[14px] leading-relaxed text-zinc-400">{emptyCopy}</p>
       ) : (
-        <ul className="mt-3 -mx-3 list-none p-0">
+        <ul className="mt-0 -mx-3 list-none p-0 [&>li:first-child>div]:border-t-0">
           {displayRows.map((row) =>
             row.type === 'grouped' ? renderGroupedRow(row) : renderSingleRow(row),
           )}

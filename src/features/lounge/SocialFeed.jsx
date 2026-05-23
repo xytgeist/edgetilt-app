@@ -450,6 +450,7 @@ export default function SocialFeed({
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
   const loungeUploadBarRef = useRef(null)
+  const [loungeUploadBarHeightPx, setLoungeUploadBarHeightPx] = useState(0)
   /** Last step label when a background submission throws (paired with `loungePostUploadFailureDetails`). */
   const loungePostUploadLastPhaseRef = useRef('')
   /** Set on failed background submission for the retry modal. */
@@ -1345,6 +1346,32 @@ export default function SocialFeed({
       window.removeEventListener('resize', sync)
     }
   }, [])
+
+  /** Stable bottom inset for the dock FAB while the upload bar is visible (avoids collision feedback loops). */
+  useLayoutEffect(() => {
+    if (!loungePostUploadBar) {
+      setLoungeUploadBarHeightPx(0)
+      return undefined
+    }
+    const el = loungeUploadBarRef.current
+    if (!el) return undefined
+    const measure = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height)
+      if (h > 0) setLoungeUploadBarHeightPx((prev) => (prev === h ? prev : h))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [loungePostUploadBar])
 
   useEffect(() => {
     const sync = () => setLoungeDockMenuLayout(readLoungeDockMenuLayout())
@@ -10083,6 +10110,8 @@ export default function SocialFeed({
     getLoungeStreamLightboxOpen,
     () => false,
   )
+  const loungeDockFabBottomObstaclePx = loungePostUploadBar ? loungeUploadBarHeightPx + 10 : 0
+
   const showLoungeViewportDock = isActivePage && !loungePostDetail && !loungeStreamLightboxOpen
   const loungeTitleBarChromePx = loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56
   /** Scroll inset for the opaque dock icon row only. Outer column uses `pb-0`; home-indicator inset lives in feed bottom padding + scroll content. */
@@ -10226,6 +10255,7 @@ export default function SocialFeed({
           }
           panelChrome={loungeDockPanel}
           menuLayout={loungeDockMenuLayout}
+          bottomObstacleInsetPx={loungeDockFabBottomObstaclePx}
           onPointerBlockChange={setLoungeFabPointerBlocked}
           notificationsUnreadCount={loungeNotificationsUnread}
         />
@@ -13570,7 +13600,6 @@ export default function SocialFeed({
       {loungePostUploadBar ? (
         <div
           ref={loungeUploadBarRef}
-          data-lounge-fab-obstacle
           className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
         >
           <div className="mx-auto flex max-w-2xl items-center gap-3">

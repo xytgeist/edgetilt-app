@@ -360,6 +360,8 @@ export default function LoungeDockArcCarouselPrototype({
     }
   }, [viewport.width, viewport.height, bottomObstaclePx])
 
+  const measureCollisionRef = useRef(() => {})
+
   /** Nudge FAB up when a bottom obstacle (upload bar) appears under it — keeps Cancel tappable. */
   useEffect(() => {
     const cur = fabPosRef.current
@@ -368,6 +370,7 @@ export default function LoungeDockArcCarouselPrototype({
     if (Math.abs(next.left - cur.left) < 0.5 && Math.abs(next.top - cur.top) < 0.5) return
     fabPosRef.current = next
     setFabPos(next)
+    measureCollisionRef.current()
   }, [fabMoveBounds, totalBottomObstaclePx])
 
   /** Push FAB up only when it overlaps marked UI (fixed bars or in-scroll controls) — not when the keyboard opens alone. */
@@ -387,6 +390,8 @@ export default function LoungeDockArcCarouselPrototype({
       const next = loungeDockFabCollisionBottomInsetPx(fabRect, window.innerHeight)
       setCollisionInsetPx((prev) => (Math.abs(prev - next) < 0.5 ? prev : next))
     }
+
+    measureCollisionRef.current = measureCollision
 
     let scrollRaf = 0
     const measureCollisionOnScroll = () => {
@@ -430,7 +435,7 @@ export default function LoungeDockArcCarouselPrototype({
       vv?.removeEventListener('resize', measureCollision)
       vv?.removeEventListener('scroll', measureCollisionOnScroll)
     }
-  }, [fabPos, bottomObstaclePx])
+  }, [bottomObstaclePx])
 
   useEffect(() => {
     fabPosRef.current = fabPos
@@ -649,14 +654,14 @@ export default function LoungeDockArcCarouselPrototype({
       viewport.height,
       LOUNGE_DOCK_FAB_SIZE_PX,
       alignLeft,
-      totalBottomObstaclePx,
+      bottomObstaclePx,
       { raised: true },
     )
     if (Math.abs(pos.left - cur.left) < 0.5 && Math.abs(pos.top - cur.top) < 0.5) return
     fabPosRef.current = pos
     setFabPos(pos)
     persistFabPrefs(pos)
-  }, [isCornerL, viewport.width, viewport.height, totalBottomObstaclePx, persistFabPrefs])
+  }, [isCornerL, viewport.width, viewport.height, bottomObstaclePx, persistFabPrefs])
 
   const clearFabLongPressProgress = useCallback(() => {
     if (longPressRafRef.current) {

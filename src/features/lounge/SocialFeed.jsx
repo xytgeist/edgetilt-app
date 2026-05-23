@@ -4933,8 +4933,10 @@ export default function SocialFeed({
   const deleteLoungeDetailComment = useCallback(
     async (c) => {
       if (!c?.id || !composerUserId || !loungePostDetail?.id) return
-      const ok = window.confirm('Delete this reply? This cannot be undone.')
-      if (!ok) return
+      if (typeof window !== 'undefined') {
+        const ok = window.confirm('Delete this reply? This cannot be undone.')
+        if (!ok) return
+      }
       const removeIds = new Set([c.id])
       let grew = true
       while (grew) {
@@ -6740,6 +6742,10 @@ export default function SocialFeed({
   const performLoungePostDeleteFromDetail = useCallback(async () => {
     if (!loungePostDetail?.id || loungePostDetail.user_id !== composerUserId) return
     if (loungePostDeleteInflightRef.current) return
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm('Delete this post? This cannot be undone.')
+      if (!ok) return
+    }
     loungePostDeleteInflightRef.current = true
     const postId = loungePostDetail.id
     setLoungeManageErr('')

@@ -278,8 +278,7 @@ function loungeStreamLightboxCommentMenuState(hostComment, ctx, { countAutoplayF
   const showCommentMenu = Boolean(
     !ctx.loungeReadOnly &&
       ctx.viewerUserId &&
-      (typeof ctx.onCommentMenuEdit === 'function' ||
-        typeof ctx.onCommentMenuDelete === 'function' ||
+      (typeof ctx.onCommentMenuDelete === 'function' ||
         typeof ctx.onCommentMenuBlock === 'function' ||
         typeof ctx.onCommentMenuReport === 'function'),
   )
@@ -311,7 +310,7 @@ export function buildLoungeStreamLightboxMenu(hostEntity, ctx, options = {}) {
       <LoungePostRowMenu
         menuAriaLabel="Comment options"
         isOwn={menuIsOwn}
-        showEdit={Boolean(menuIsOwn && typeof ctx.onCommentMenuEdit === 'function')}
+        showEdit={false}
         deleteBusy={Boolean(ctx.busyDeletingCommentId && ctx.busyDeletingCommentId === host.id)}
         onEdit={() => ctx.onCommentMenuEdit?.(host)}
         onDelete={() => ctx.onCommentMenuDelete?.(host)}

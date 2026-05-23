@@ -418,6 +418,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-24: **Comment/reply edit UI removed (test):** Lounge post-detail ⋯ and Stream lightbox no longer expose **Edit** on comments/replies — **Delete** only. **`feed_comments_update_own`** SQL unchanged; edit pipeline left in **`SocialFeed.jsx`** but unreachable from UI. **`docs/frontend-architecture.md`** updated.
+
 - 2026-05-24: **Post delete denorm guard v2 (SQL):** migration **`20260524120000_community_feed_posts_delete_denorm_guard_v2.sql`** — fix tuple-modified error when deleting posts with plain reposts, quote reposts, comments, and likes (nested delete flag + `post_likes` skip). Apply after **`24110000`** on test.
 
 - 2026-05-23: **Lounge in-app toast + per-tap mark read (Ryan sign-off, test):** foreground banner, push/in-app tap marks single event read, badge −1 — smoke **§21d** **PASSED** @ **`dcc3852`**.

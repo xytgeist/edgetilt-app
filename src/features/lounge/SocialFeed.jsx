@@ -37,7 +37,6 @@ import {
   resolveQuoteRepostInitialCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import {
-  feedCommentAuthorEditMediaSeed,
   feedCommentRowHasMedia,
   feedCommentStreamVideoUid,
   bumpFeedCommentAncestorCountsInList,
@@ -660,8 +659,6 @@ export default function SocialFeed({
   const loungeDetailCommentVideoPrepHandoffRef = useRef(null)
   /** Set by profile Replies tab; cleared after `openLoungeCommentDetail` runs once comments load. */
   const loungePostDetailPendingCommentIdRef = useRef(null)
-  /** Profile Replies ⋯ → Edit: open post detail, then start inline edit when comments load. */
-  const loungePostDetailPendingCommentEditRef = useRef(null)
   /** Profile Replies interaction bar → reply: focus composer after drill-in. */
   const loungePostDetailPendingCommentComposerRef = useRef(false)
   /**
@@ -4818,19 +4815,6 @@ export default function SocialFeed({
     loungeDetailCommentEditBackgroundUploadInFlight,
   ])
 
-  const onCommentMenuEditFromDetail = useCallback((c) => {
-    if (!c?.id) return
-    cancelLoungeDetailCommentEditMediaPrep()
-    const seed = feedCommentAuthorEditMediaSeed(c)
-    setLoungeDetailCommentEditingId(c.id)
-    setLoungeDetailCommentEditDraft(String(c.body ?? ''))
-    setLoungeDetailCommentEditImageUrls(seed.imageUrls)
-    setLoungeDetailCommentEditImageItems([])
-    setLoungeDetailCommentEditMediaUrl(String(seed.gifUrl || '').trim())
-    setLoungeDetailCommentEditKeepStreamUid(feedCommentStreamVideoUid(c) || null)
-    setLoungeDetailCommentEditVideoSlot(null)
-  }, [cancelLoungeDetailCommentEditMediaPrep])
-
   const saveLoungeDetailCommentEdit = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId || !loungeDetailCommentEditingId) return
     const body = loungeDetailCommentEditDraft.trim()
@@ -6345,21 +6329,6 @@ export default function SocialFeed({
     loungeDetailComments,
     loungeDetailCommentsLoading,
     openLoungeCommentDetail,
-  ])
-
-  /** Profile Replies ⋯ → Edit: start inline edit once the post’s comments are loaded. */
-  useEffect(() => {
-    const pendingEditId = loungePostDetailPendingCommentEditRef.current
-    if (!pendingEditId || !loungePostDetail?.id || loungeDetailCommentsLoading) return
-    const row = loungeDetailComments.find((c) => String(c.id) === pendingEditId)
-    if (!row) return
-    loungePostDetailPendingCommentEditRef.current = null
-    onCommentMenuEditFromDetail(row)
-  }, [
-    loungePostDetail?.id,
-    loungeDetailComments,
-    loungeDetailCommentsLoading,
-    onCommentMenuEditFromDetail,
   ])
 
   const loungeDetailDescendantCountByCommentId = useMemo(
@@ -9951,11 +9920,6 @@ export default function SocialFeed({
       onCommentPlainRepost: (p) => void addLoungeDetailCommentPlainRepost(p.id),
       onCommentUndoPlainRepost: (p) => void undoLoungeDetailCommentPlainRepost(p.id),
       repostActionBusy: repostManageBusy,
-      onCommentMenuEdit: (c, post) => {
-        if (!c?.id || !post?.id) return
-        void openDirectCommentPostDetail(post, c.id)
-        loungePostDetailPendingCommentEditRef.current = String(c.id)
-      },
       onCommentMenuDelete: (c, post) => {
         if (!c?.id || !post?.id) return
         void openDirectCommentPostDetail(post, c.id)
@@ -12140,7 +12104,6 @@ export default function SocialFeed({
                     repostActionBusy: repostManageBusy,
                     onAvatarClickProfile: openAuthorProfile,
                     positionScrollRootRef: loungePostDetailScrollRef,
-                    onCommentMenuEdit: onCommentMenuEditFromDetail,
                     onCommentMenuDelete: deleteLoungeDetailComment,
                     onCommentMenuBlock: onCommentMenuBlockFromDetail,
                     onCommentMenuReport: onCommentMenuReportFromDetail,
@@ -12236,7 +12199,6 @@ export default function SocialFeed({
                           }
                           onAvatarClickProfile={openAuthorProfile}
                           positionScrollRootRef={loungePostDetailScrollRef}
-                          onCommentMenuEdit={onCommentMenuEditFromDetail}
                           onCommentMenuDelete={deleteLoungeDetailComment}
                           onCommentMenuBlock={onCommentMenuBlockFromDetail}
                           onCommentMenuReport={onCommentMenuReportFromDetail}

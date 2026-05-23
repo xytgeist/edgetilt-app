@@ -155,8 +155,7 @@ export function LoungeCommentCard({
   const showCommentMenu = Boolean(
     !loungeReadOnly &&
       viewerUserId &&
-      (typeof onCommentMenuEdit === 'function' ||
-        typeof onCommentMenuDelete === 'function' ||
+      (typeof onCommentMenuDelete === 'function' ||
         typeof onCommentMenuBlock === 'function' ||
         typeof onCommentMenuReport === 'function'),
   )
@@ -319,7 +318,7 @@ export function LoungeCommentCard({
               <LoungePostRowMenu
                 menuAriaLabel="Comment options"
                 isOwn={menuIsOwn}
-                showEdit={Boolean(menuIsOwn && typeof onCommentMenuEdit === 'function')}
+                showEdit={false}
                 deleteBusy={Boolean(busyDeletingCommentId && busyDeletingCommentId === comment.id)}
                 onEdit={() => onCommentMenuEdit?.(comment)}
                 onDelete={() => onCommentMenuDelete?.(comment)}

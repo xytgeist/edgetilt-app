@@ -1778,7 +1778,7 @@ export default function SocialFeed({
   )
 
   const loungeDetailEditBackgroundUploadInFlight = useCallback(
-    () => loungeDetailEditJobRunningRef.current && loungeDetailEditSnapshotRef.current != null,
+    () => loungeDetailEditSnapshotRef.current != null,
     [],
   )
 
@@ -6673,10 +6673,11 @@ export default function SocialFeed({
       pendingSnapshot: snapshot,
     })
     enqueueAndRunLoungeSubmitRef.current('postEdit', snapshot)
-    cancelLoungeDetailEdit()
+    setLoungeDetailEditing(false)
+    closeLoungePostDetail()
   }, [
-    cancelLoungeDetailEdit,
     clearLoungeDetailEditForPostAttempt,
+    closeLoungePostDetail,
     composerUserId,
     loungeDetailDraftCaption,
     loungeDetailEditCategoryPills,

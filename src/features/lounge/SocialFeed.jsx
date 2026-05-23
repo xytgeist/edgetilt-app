@@ -922,10 +922,13 @@ export default function SocialFeed({
     }
   }, [])
 
-  /** Pull-to-refresh: 1:1-ish finger travel in the feed scroller; cap avoids runaway state. */
+  /** Pull-to-refresh: finger travel in the feed scroller; cap avoids runaway state. */
   const pullRefreshThresholdPx = 88
   const pullMaxVisualPx = 300
   const pullFingerGain = 1
+  /** Fixed label row (~2.25rem); stretch grows with pull up to 3× that height. */
+  const pullIndicatorBasePx = 36
+  const pullIndicatorMaxPx = pullIndicatorBasePx * 3
 
   const scrollLoungeFeedToTopInstant = useCallback(() => {
     const el = loungeFeedScrollRef.current
@@ -9072,10 +9075,15 @@ export default function SocialFeed({
 
         <div ref={pullRefreshZoneRef}>
           <div
-            className="overflow-hidden text-[13px] text-zinc-400 transition-[max-height,opacity] duration-200"
+            className="overflow-hidden text-[13px] text-zinc-400"
             style={{
-              maxHeight: pullRefreshing || pullDistance > 0 ? '2.25rem' : '0rem',
+              height: pullRefreshing
+                ? pullIndicatorBasePx
+                : pullDistance > 0
+                  ? Math.min(pullDistance, pullIndicatorMaxPx)
+                  : 0,
               opacity: pullRefreshing || pullDistance > 0 ? 1 : 0,
+              transition: pullDistance > 0 && !pullRefreshing ? 'none' : 'height 200ms ease, opacity 200ms ease',
             }}
           >
             <div className="px-3 py-1 text-center">

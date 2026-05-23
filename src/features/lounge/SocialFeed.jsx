@@ -10400,7 +10400,7 @@ export default function SocialFeed({
                     <LoungePostCategoryPillPicker
                       value={composerCategoryPills}
                       onChange={setComposerCategoryPills}
-                      disabled={postBusy || loungePostSubmitInFlight}
+                      disabled={postBusy}
                     />
                   </div>
                   {(() => {

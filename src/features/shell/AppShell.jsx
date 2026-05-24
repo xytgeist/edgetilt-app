@@ -789,10 +789,13 @@ export default function AppShell({
     communityPostsCount: communityPosts.length,
   })
 
+  const homeSuspenseFallback =
+    tab === 'home' && splashVisible ? null : tab === 'home' ? <TabLoadingFallback /> : null
+
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */
     const keepAliveSocialFeed = (
-      <Suspense fallback={tab === 'home' ? <TabLoadingFallback /> : null}>
+      <Suspense fallback={homeSuspenseFallback}>
         <div
           key="lounge-keepalive"
           className={tab === 'home' ? 'contents min-h-0' : 'hidden'}

@@ -20,6 +20,13 @@ import {
 
 const SPLASH_FADE_MS = 320
 
+/** Sync eligibility on first paint — avoids one frame of feed "Loading…" before splash. */
+function readInitialColdBootSplashVisible(tab) {
+  if (typeof window === 'undefined') return false
+  const pendingWork = readLoungeColdBootPendingWork()
+  return shouldShowLoungeColdBootSplash({ tab, pendingWork })
+}
+
 /**
  * Lounge home-tab cold boot splash: eligibility, readiness gate, long-background resume.
  *
@@ -49,9 +56,9 @@ export function useLoungeColdBootSplash({
     () => false,
   )
 
-  const [visible, setVisible] = useState(false)
+  const [visible, setVisible] = useState(() => readInitialColdBootSplashVisible(tab))
   const [dismissing, setDismiss] = useState(false)
-  const shownAtRef = useRef(0)
+  const shownAtRef = useRef(visible ? Date.now() : 0)
   const dismissTimerRef = useRef(0)
   const cycleDoneRef = useRef(false)
   /** Set to true when the Lottie animation fires complete. Members wait for this before dismissing. */

@@ -4,7 +4,12 @@ import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/sh
 import { readAuthCallbackParams, getOAuthCallbackMessage } from './features/auth/oauthCallback'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AppShell from './features/shell'
+import LoungeColdBootBootstrapBackdrop from './components/LoungeColdBootBootstrapBackdrop.jsx'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
+import {
+  readLoungeComposerDraftPendingWork,
+  shouldShowLoungeColdBootSplash,
+} from './utils/loungeColdBootSplash.js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -435,7 +440,15 @@ function App() {
     }
   }, [authPanelOpen])
 
-  if (isChecking) return <div className={`${mobileShell} text-white`}>Loading...</div>
+  if (isChecking) {
+    const coldBootSplashPending =
+      shouldShowLoungeColdBootSplash({
+        tab: 'home',
+        pendingWork: readLoungeComposerDraftPendingWork(),
+      })
+    if (coldBootSplashPending) return <LoungeColdBootBootstrapBackdrop />
+    return <div className={`${mobileShell} text-white`}>Loading...</div>
+  }
 
   // Reset Password Page
   if (currentView === 'reset-password') {

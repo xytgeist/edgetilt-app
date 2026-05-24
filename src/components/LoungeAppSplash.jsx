@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { DotLottie } from '@lottiefiles/dotlottie-web'
 import wasmUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
 import drawData from '../assets/lottie/edge-splash-v1.json'
@@ -13,7 +13,8 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
   const onCompleteRef = useRef(onAnimationComplete)
   onCompleteRef.current = onAnimationComplete
 
-  useEffect(() => {
+  // useLayoutEffect so the first Lottie frame paints before the browser composites.
+  useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 

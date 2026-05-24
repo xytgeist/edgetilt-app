@@ -1,40 +1,39 @@
 import { useEffect, useRef } from 'react'
+import { DotLottie } from '@lottiefiles/dotlottie-web'
+import wasmUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
 import edgeSplashData from '../assets/lottie/edge-splash-v1.json'
+
+// Set WASM URL once at module load — must happen before any DotLottie instance is created
+DotLottie.setWasmUrl(wasmUrl)
+const SPLASH_DATA = JSON.stringify(edgeSplashData)
 
 /**
  * Full-screen Edge logo Lottie splash. Shown during Lounge cold boot / long resume.
  * @param {{ dismissing?: boolean, onAnimationComplete?: () => void }} props
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
-  const containerRef = useRef(null)
-  const onAnimationCompleteRef = useRef(onAnimationComplete)
-  onAnimationCompleteRef.current = onAnimationComplete
+  const canvasRef = useRef(null)
+  const onCompleteRef = useRef(onAnimationComplete)
+  onCompleteRef.current = onAnimationComplete
 
   useEffect(() => {
-    let animation = null
-    let cancelled = false
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    import('lottie-web').then(({ default: lottie }) => {
-      if (cancelled || !containerRef.current) return
-      animation = lottie.loadAnimation({
-        container: containerRef.current,
-        renderer: 'canvas',
-        loop: false,
-        autoplay: true,
-        animationData: edgeSplashData,
-        rendererSettings: {
-          preserveAspectRatio: 'xMidYMid meet',
-          clearCanvas: true,
-        },
-      })
-      animation.addEventListener('complete', () => {
-        onAnimationCompleteRef.current?.()
-      })
+    const dotLottie = new DotLottie({
+      canvas,
+      data: SPLASH_DATA,
+      autoplay: true,
+      loop: false,
+      useFrameInterpolation: false,
+    })
+
+    dotLottie.addEventListener('complete', () => {
+      onCompleteRef.current?.()
     })
 
     return () => {
-      cancelled = true
-      animation?.destroy()
+      dotLottie.destroy()
     }
   }, [])
 
@@ -48,8 +47,8 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       aria-label="Loading Lounge"
     >
       <div className="lounge-cold-boot-splash__glow pointer-events-none absolute inset-0" aria-hidden />
-      <div
-        ref={containerRef}
+      <canvas
+        ref={canvasRef}
         className="pointer-events-none h-56 w-56 sm:h-64 sm:w-64"
         aria-hidden
       />

@@ -23,6 +23,7 @@
     "@ffmpeg/core": "^0.12.6",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
+    "@lottiefiles/dotlottie-web": "^0.74.0",
     "@supabase/supabase-js": "^2.100.0",
     "chart.js": "^4.5.1",
     "country-state-city": "^3.2.1",

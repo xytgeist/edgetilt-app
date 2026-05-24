@@ -7,9 +7,9 @@ export const LOUNGE_COLD_BOOT_BG_AT_KEY = 'loungeColdBootBgAt:v1'
 
 export const LOUNGE_COLD_BOOT_RESUME_AFTER_MS = 10 * 60 * 1000
 
-/** Member: hold splash while feed + chunk warm. Min must exceed Lottie duration (300fr / 60fps = 5000ms). */
-export const LOUNGE_COLD_BOOT_MEMBER_MIN_MS = 2800
-export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 7000
+/** Member: hold splash while feed + chunk warm. Lottie duration = 49fr / 60fps ≈ 820ms; min gives feed time to settle. */
+export const LOUNGE_COLD_BOOT_MEMBER_MIN_MS = 1200
+export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 4000
 
 /** Anonymous browse: short brand flash only. */
 export const LOUNGE_COLD_BOOT_ANON_MIN_MS = 380

@@ -81,35 +81,23 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
 
   return (
     <div
-      className={`lounge-cold-boot-splash fixed inset-0 z-[120] flex flex-col items-center justify-center ${
+      className={`lounge-cold-boot-splash fixed inset-0 z-[120] flex flex-col items-center justify-center bg-zinc-950 ${
         dismissing ? 'lounge-cold-boot-splash--out' : ''
       }`}
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        // isolation: isolate creates a self-contained compositing group in
-        // zoom phase. Transparent pixels from destination-in fall through to
-        // app content sitting below z-[120], not to elements inside the group.
-        isolation: isZoom ? 'isolate' : 'auto',
       }}
       role="status"
       aria-live="polite"
       aria-label="Loading Lounge"
     >
-      {/* Dark background — in draw phase: solid splash bg.
-          In zoom phase: the destination for destination-in; kept opaque
-          wherever the D canvas is opaque (letter body + surroundings). */}
-      <div
-        className={`absolute inset-0 pointer-events-none ${isZoom ? '' : 'bg-zinc-950'}`}
-        style={isZoom ? { backgroundColor: '#09090b' } : undefined}
-        aria-hidden
-      />
       <div className="lounge-cold-boot-splash__glow pointer-events-none absolute inset-0" aria-hidden />
       <canvas
         ref={canvasRef}
-        // Draw phase: centered square, scaled 1.5× to zoom the logo in.
-        // Zoom phase: absolute inset-0 so the comp fills the full viewport —
-        //   no rectangular frame, no letterbox bands.
+        // Draw phase: centered square, scaled 1.5× to fill the logo nicely.
+        // Zoom phase: absolute full-screen so the D fills edge-to-edge with
+        //   no rectangular canvas frame or letterbox bands.
         className={
           isZoom
             ? 'pointer-events-none absolute inset-0 w-full h-full'
@@ -119,10 +107,6 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
           background: 'transparent',
           transform: isZoom ? 'none' : 'scale(1.5)',
           transformOrigin: 'center',
-          // destination-in: keeps the dark bg wherever the canvas is opaque
-          // (D body with even-odd fill); punches through wherever the canvas
-          // is transparent (D counter/hole) → live window into the app.
-          mixBlendMode: isZoom ? 'destination-in' : 'normal',
         }}
         aria-hidden
       />

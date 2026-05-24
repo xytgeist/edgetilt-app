@@ -16,6 +16,7 @@
       "source": "/u/:handle",
       "destination": "/api/lounge-profile-og?handle=:handle"
     },
+    { "source": "/slot-guide-form", "destination": "/slot-guide-form.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

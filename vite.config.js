@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -17,4 +18,12 @@ process.env.VITE_BUILD_SHA = resolveBuildSha()
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve('index.html'),
+        slotGuideForm: path.resolve('slot-guide-form.html'),
+      },
+    },
+  },
 })

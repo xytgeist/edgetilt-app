@@ -17,7 +17,8 @@
     "slots:sync:production": "node scripts/sync-slot-forms-to-supabase.mjs --target=production",
     "slots:sync:production:dry": "node scripts/sync-slot-forms-to-supabase.mjs --target=production --dry-run",
     "slots:sync:production:dry:quiet": "node scripts/sync-slot-forms-to-supabase.mjs --target=production --dry-run --dry-run-quiet",
-    "slots:backfill-card-fields": "node scripts/backfill-slot-card-fields.mjs"
+    "slots:backfill-card-fields": "node scripts/backfill-slot-card-fields.mjs",
+    "slot-guide:serve": "node scripts/slot-guide-ingest-server.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.6",
@@ -36,6 +37,7 @@
     "react-markdown": "^10.1.0",
     "react-mobile-picker": "^1.2.0",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.5",
     "tus-js-client": "^4.3.1"
   },
   "devDependencies": {
@@ -48,7 +50,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "sharp": "^0.34.5",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"
   }

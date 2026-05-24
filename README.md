@@ -150,6 +150,39 @@ node scripts/sync-slot-forms-to-supabase.mjs --target=test --slug=buffalo-link
 
 Run sync whenever you add games, change manifests, or update `guide.md` and want the database to reflect it.
 
+### AP Guide ingest form + API
+
+Web form for complete guide cards (machine fields, emoji-section markdown, hero + diagrams):
+
+| Surface | URL / command |
+| --- | --- |
+| Form (Vite dev) | `npm run dev` → `/slot-guide-form` |
+| Form (deployed) | `/slot-guide-form` on the app host (or map a subdomain to the same path) |
+| Vercel API | `POST /api/slot-guide-ingest` |
+| Local API (repo writes) | `npm run slot-guide:serve` → `http://localhost:8787/ingest` |
+
+**Auth:** request header `x-guide-ingest-secret` must match env **`GUIDE_INGEST_SECRET`** (set on Vercel per environment; use any strong secret locally).
+
+**Supabase:** API upserts `machines` + `guides` using **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`**. For two-project workflow, local server loads `.env.supabase.test` / `.env.supabase.production` from the form **target** field (same as `slots:sync`).
+
+**Images:** converted to WebP. Local server writes **`public/guides/<slug>/`** and **`Slots/<slug>/`**. Vercel API uploads to Supabase Storage bucket **`guide-assets`** (run **`supabase/guide_assets_storage.sql`** on test + prod first) and stores public URLs in `machines.thumbnail_url` + markdown when repo files are not written.
+
+**Typical local workflow:**
+
+```bash
+# Terminal 1
+npm run slot-guide:serve
+
+# Terminal 2
+npm run dev
+# Open /slot-guide-form — API URL http://localhost:8787/ingest, paste GUIDE_INGEST_SECRET
+
+git add Slots/ public/guides/
+npm run slots:sync:test   # optional if ingest already synced Supabase
+```
+
+Deployed-only workflow: form → `/api/slot-guide-ingest` with Vercel env vars; commit returned `files.cardMetaJson` / `files.guideMarkdown` + pull storage assets into `public/guides/` when you want repo parity.
+
 ### Windows note
 
 On a case-insensitive drive, mixed-case legacy folders (for example `Phoenix-Link`) collide with canonical `phoenix-link`. The sync script only reads **lowercase kebab-case** directories (`a-z`, `0-9`, hyphens). Asset-only trees were renamed to match (e.g. `igt-must-hit-by`, `rich-little-hens`, `cash-falls`).

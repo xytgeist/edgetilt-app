@@ -700,14 +700,17 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
     <div className="guide-lock-glitch absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
       <div className="guide-lock-glitch__veil pointer-events-none absolute inset-0" aria-hidden />
       <div className="guide-lock-glitch__static pointer-events-none absolute inset-0" aria-hidden />
+      <div className="guide-lock-glitch__static guide-lock-glitch__static--fine pointer-events-none absolute inset-0" aria-hidden />
       <div className="guide-lock-glitch__static guide-lock-glitch__static--chroma pointer-events-none absolute inset-0" aria-hidden />
       <div className="guide-lock-glitch__scanlines pointer-events-none absolute inset-0" aria-hidden />
       <div className="guide-lock-glitch__tear guide-lock-glitch__tear--1 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__tear guide-lock-glitch__tear--2 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__tear guide-lock-glitch__tear--3 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__tear guide-lock-glitch__tear--4 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__block guide-lock-glitch__block--1 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__block guide-lock-glitch__block--2 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__block guide-lock-glitch__block--3 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__block guide-lock-glitch__block--4 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="relative z-10 flex max-w-[16rem] flex-col items-center gap-3 text-center">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/5 shadow-[0_0_22px_rgba(255,255,255,0.08)] backdrop-blur-[2px]">
           <NavLockGlyph className="h-4 w-4 text-white/90" />

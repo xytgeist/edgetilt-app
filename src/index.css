@@ -520,42 +520,106 @@ input[list]::-webkit-list-button {
     background-position: 0 0;
   }
   to {
-    background-position: 160px 96px;
+    background-position: 128px 72px;
+  }
+}
+
+@keyframes guideLockStaticPanFine {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 64px 48px;
   }
 }
 
 @keyframes guideLockStaticFlicker {
   0%,
   100% {
+    opacity: 0.3;
+  }
+  12% {
+    opacity: 0.48;
+  }
+  13% {
     opacity: 0.18;
   }
+  14% {
+    opacity: 0.42;
+  }
+  15% {
+    opacity: 0.22;
+  }
+  16% {
+    opacity: 0.38;
+  }
   50% {
-    opacity: 0.32;
+    opacity: 0.36;
   }
   51% {
-    opacity: 0.14;
+    opacity: 0.16;
   }
   52% {
+    opacity: 0.44;
+  }
+}
+
+@keyframes guideLockSnowFineFlicker {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  25% {
+    opacity: 0.52;
+  }
+  26% {
+    opacity: 0.24;
+  }
+  27% {
+    opacity: 0.5;
+  }
+  28% {
     opacity: 0.28;
+  }
+  70% {
+    opacity: 0.4;
+  }
+  71% {
+    opacity: 0.2;
+  }
+  72% {
+    opacity: 0.46;
   }
 }
 
 @keyframes guideLockChromaShift {
   0%,
-  86%,
+  72%,
   100% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
-  87% {
-    opacity: 0.45;
-    transform: translate3d(-4px, 0, 0);
+  73% {
+    opacity: 0.62;
+    transform: translate3d(-6px, 0, 0);
+  }
+  74% {
+    opacity: 0.42;
+    transform: translate3d(7px, 1px, 0);
+  }
+  75% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
   }
   88% {
-    opacity: 0.3;
-    transform: translate3d(5px, 1px, 0);
+    opacity: 0.55;
+    transform: translate3d(5px, -1px, 0);
   }
   89% {
+    opacity: 0.35;
+    transform: translate3d(-8px, 0, 0);
+  }
+  90% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
@@ -572,20 +636,33 @@ input[list]::-webkit-list-button {
 
 @keyframes guideLockTearA {
   0%,
-  78%,
+  38%,
+  48%,
   100% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
-  79% {
-    opacity: 0.85;
-    transform: translate3d(-14px, 0, 0);
+  39% {
+    opacity: 1;
+    transform: translate3d(-22px, 0, 0);
   }
-  80% {
-    opacity: 0.55;
-    transform: translate3d(16px, 0, 0);
+  40% {
+    opacity: 0.72;
+    transform: translate3d(24px, 0, 0);
   }
-  81% {
+  41% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  49% {
+    opacity: 0.92;
+    transform: translate3d(18px, 0, 0);
+  }
+  50% {
+    opacity: 0.58;
+    transform: translate3d(-20px, 0, 0);
+  }
+  51% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
@@ -593,20 +670,33 @@ input[list]::-webkit-list-button {
 
 @keyframes guideLockTearB {
   0%,
-  64%,
+  28%,
+  58%,
   100% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
-  65% {
-    opacity: 0.7;
-    transform: translate3d(10px, 0, 0);
+  29% {
+    opacity: 0.88;
+    transform: translate3d(16px, 0, 0);
   }
-  66% {
-    opacity: 0.45;
-    transform: translate3d(-12px, 0, 0);
+  30% {
+    opacity: 0.55;
+    transform: translate3d(-18px, 0, 0);
   }
-  67% {
+  31% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  59% {
+    opacity: 0.95;
+    transform: translate3d(-14px, 0, 0);
+  }
+  60% {
+    opacity: 0.62;
+    transform: translate3d(20px, 0, 0);
+  }
+  61% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
@@ -614,20 +704,33 @@ input[list]::-webkit-list-button {
 
 @keyframes guideLockBlockShift {
   0%,
-  72%,
+  44%,
+  62%,
   100% {
     opacity: 0;
     transform: translate3d(0, 0, 0) scaleY(1);
   }
-  73% {
-    opacity: 0.95;
-    transform: translate3d(-18px, 0, 0) scaleY(1.35);
+  45% {
+    opacity: 1;
+    transform: translate3d(-26px, 0, 0) scaleY(1.5);
   }
-  74% {
-    opacity: 0.65;
-    transform: translate3d(22px, 0, 0) scaleY(0.75);
+  46% {
+    opacity: 0.72;
+    transform: translate3d(28px, 0, 0) scaleY(0.65);
   }
-  75% {
+  47% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+  63% {
+    opacity: 0.92;
+    transform: translate3d(22px, 0, 0) scaleY(1.25);
+  }
+  64% {
+    opacity: 0.58;
+    transform: translate3d(-24px, 0, 0) scaleY(0.7);
+  }
+  65% {
     opacity: 0;
     transform: translate3d(0, 0, 0) scaleY(1);
   }
@@ -637,46 +740,56 @@ input[list]::-webkit-list-button {
   background: linear-gradient(
     to bottom,
     rgb(0 0 0 / 0%) 0%,
-    rgb(0 0 0 / 8%) 28%,
-    rgb(0 0 0 / 22%) 58%,
-    rgb(0 0 0 / 38%) 100%
+    rgb(0 0 0 / 6%) 22%,
+    rgb(0 0 0 / 18%) 52%,
+    rgb(0 0 0 / 34%) 100%
   );
 }
 
 .guide-lock-glitch__static {
-  opacity: 0.24;
+  opacity: 0.34;
   mix-blend-mode: screen;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82 0.28' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.72'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95 0.34' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.82'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
   animation:
-    guideLockStaticPan 0.18s steps(6) infinite,
-    guideLockStaticFlicker 2.4s ease-in-out infinite;
+    guideLockStaticPan 0.1s steps(8) infinite,
+    guideLockStaticFlicker 1.6s steps(1) infinite;
+}
+
+.guide-lock-glitch__static--fine {
+  opacity: 0.38;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='turbulence' baseFrequency='1.18 1.18' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)' opacity='0.88'/%3E%3C/svg%3E");
+  background-size: 72px 72px;
+  animation:
+    guideLockStaticPanFine 0.06s steps(10) infinite,
+    guideLockSnowFineFlicker 0.9s steps(1) infinite;
 }
 
 .guide-lock-glitch__static--chroma {
-  opacity: 0.16;
+  opacity: 0.22;
   mix-blend-mode: screen;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78 0.32' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23ff4060' opacity='0.35'/%3E%3C/svg%3E");
-  background-size: 140px 140px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92 0.38' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23ff4060' opacity='0.42'/%3E%3C/svg%3E");
+  background-size: 112px 112px;
   animation:
-    guideLockStaticPan 0.22s steps(5) infinite reverse,
-    guideLockChromaShift 3.8s steps(1) infinite;
+    guideLockStaticPan 0.12s steps(7) infinite reverse,
+    guideLockChromaShift 2.4s steps(1) infinite;
 }
 
 .guide-lock-glitch__scanlines {
-  opacity: 0.34;
+  opacity: 0.42;
   mix-blend-mode: soft-light;
   background: repeating-linear-gradient(
     to bottom,
     rgb(255 255 255 / 0%) 0,
     rgb(255 255 255 / 0%) 1px,
-    rgb(255 255 255 / 16%) 1px,
-    rgb(255 255 255 / 16%) 2px,
-    rgb(0 0 0 / 10%) 2px,
-    rgb(0 0 0 / 10%) 3px
+    rgb(255 255 255 / 22%) 1px,
+    rgb(255 255 255 / 22%) 2px,
+    rgb(0 0 0 / 14%) 2px,
+    rgb(0 0 0 / 14%) 3px
   );
-  background-size: 100% 4px;
-  animation: guideLockScanDrift 9s linear infinite;
+  background-size: 100% 3px;
+  animation: guideLockScanDrift 5.5s linear infinite;
 }
 
 .guide-lock-glitch__tear {
@@ -685,65 +798,80 @@ input[list]::-webkit-list-button {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgb(255 255 255 / 18%) 18%,
-    rgb(255 255 255 / 42%) 50%,
-    rgb(255 255 255 / 16%) 82%,
+    rgb(255 255 255 / 24%) 16%,
+    rgb(255 255 255 / 58%) 50%,
+    rgb(255 255 255 / 22%) 84%,
     transparent 100%
   );
-  filter: drop-shadow(-2px 0 0 rgb(255 64 96 / 28%)) drop-shadow(2px 0 0 rgb(6 206 252 / 24%));
+  filter: drop-shadow(-3px 0 0 rgb(255 64 96 / 38%)) drop-shadow(3px 0 0 rgb(6 206 252 / 34%));
 }
 
 .guide-lock-glitch__tear--1 {
-  top: 22%;
-  animation: guideLockTearA 4.6s steps(1) infinite;
+  top: 18%;
+  animation: guideLockTearA 2.6s steps(1) infinite;
 }
 
 .guide-lock-glitch__tear--2 {
-  top: 41%;
-  animation: guideLockTearB 3.4s steps(1) infinite;
+  top: 36%;
+  animation: guideLockTearB 2.1s steps(1) infinite;
 }
 
 .guide-lock-glitch__tear--3 {
-  top: 68%;
-  animation: guideLockTearA 5.2s steps(1) infinite reverse;
+  top: 58%;
+  animation: guideLockTearA 2.9s steps(1) infinite reverse;
+}
+
+.guide-lock-glitch__tear--4 {
+  top: 74%;
+  height: 3px;
+  animation: guideLockTearB 1.9s steps(1) infinite;
+  animation-delay: 0.45s;
 }
 
 .guide-lock-glitch__block {
-  left: -10%;
-  width: 120%;
+  left: -12%;
+  width: 124%;
   mix-blend-mode: screen;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgb(255 255 255 / 6%) 12%,
-    rgb(255 255 255 / 22%) 48%,
-    rgb(255 255 255 / 8%) 88%,
+    rgb(255 255 255 / 10%) 10%,
+    rgb(255 255 255 / 32%) 48%,
+    rgb(255 255 255 / 12%) 90%,
     transparent 100%
   );
-  filter: drop-shadow(-3px 0 0 rgb(255 64 96 / 22%)) drop-shadow(3px 0 0 rgb(6 206 252 / 20%));
+  filter: drop-shadow(-4px 0 0 rgb(255 64 96 / 32%)) drop-shadow(4px 0 0 rgb(6 206 252 / 28%));
 }
 
 .guide-lock-glitch__block--1 {
-  top: 52%;
-  height: 10px;
-  animation: guideLockBlockShift 4.1s steps(1) infinite;
+  top: 48%;
+  height: 12px;
+  animation: guideLockBlockShift 2.4s steps(1) infinite;
 }
 
 .guide-lock-glitch__block--2 {
-  top: 61%;
-  height: 22px;
-  animation: guideLockBlockShift 5.5s steps(1) infinite reverse;
+  top: 57%;
+  height: 26px;
+  animation: guideLockBlockShift 3.1s steps(1) infinite reverse;
 }
 
 .guide-lock-glitch__block--3 {
-  top: 78%;
-  height: 16px;
-  animation: guideLockBlockShift 3.9s steps(1) infinite;
-  animation-delay: 1.2s;
+  top: 72%;
+  height: 18px;
+  animation: guideLockBlockShift 2.2s steps(1) infinite;
+  animation-delay: 0.6s;
+}
+
+.guide-lock-glitch__block--4 {
+  top: 84%;
+  height: 32px;
+  animation: guideLockBlockShift 2.8s steps(1) infinite reverse;
+  animation-delay: 0.25s;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .guide-lock-glitch__static,
+  .guide-lock-glitch__static--fine,
   .guide-lock-glitch__static--chroma,
   .guide-lock-glitch__scanlines,
   .guide-lock-glitch__tear,
@@ -752,10 +880,14 @@ input[list]::-webkit-list-button {
   }
 
   .guide-lock-glitch__static {
-    opacity: 0.14;
+    opacity: 0.2;
+  }
+
+  .guide-lock-glitch__static--fine {
+    opacity: 0.24;
   }
 
   .guide-lock-glitch__scanlines {
-    opacity: 0.2;
+    opacity: 0.24;
   }
 }

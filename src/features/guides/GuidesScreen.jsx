@@ -477,8 +477,67 @@ function tintRedGreenBlue(children) {
   return children
 }
 
+/**
+ * Compact skin-link card rendered inline inside guide markdown.
+ * Shows the linked guide's hero image + machine name; tappable to open.
+ */
+function GuideSkinCard({ targetSlug, label, allGuides, onOpen }) {
+  const row = allGuides?.find((r) => {
+    const m = machineForGuide(r)
+    return (m?.slug || r.slug) === targetSlug
+  })
+  const m = row ? machineForGuide(row) : null
+  const name = m?.name || row?.title || label
+  const src  = row ? heroImage(row) : defaultHeroSrc(targetSlug)
+  const gradient = heroGradientClass(m?.slug || targetSlug)
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen?.(targetSlug)}
+      className={[
+        'group my-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80',
+        'bg-zinc-900 shadow-[0_6px_24px_-4px_rgba(0,0,0,0.55)]',
+        'transition-[border-color,box-shadow] duration-150',
+        'hover:border-zinc-500 hover:shadow-[0_8px_28px_-4px_rgba(0,0,0,0.65)]',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60',
+      ].join(' ')}
+    >
+      {/* hero strip */}
+      <div className={`relative h-24 bg-gradient-to-br ${gradient} overflow-hidden`}>
+        <img
+          src={src}
+          alt={name}
+          className="h-full w-full object-cover opacity-90 transition-opacity duration-150 group-hover:opacity-100"
+          onError={(e) => {
+            if (e.currentTarget.dataset.fallback === '1') return
+            e.currentTarget.dataset.fallback = '1'
+            e.currentTarget.src = BUFFALO_PLACEHOLDER_SRC
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/15 to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 px-3 pb-2 pt-6 bg-gradient-to-t from-zinc-950/90 via-zinc-950/60 to-transparent">
+          <p className="text-white font-bold text-sm leading-tight drop-shadow truncate">{name}</p>
+          {m?.manufacturer && (
+            <p className="text-zinc-400 text-[11px] font-medium mt-0.5 truncate">{m.manufacturer}</p>
+          )}
+        </div>
+      </div>
+      {/* footer tap hint */}
+      <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/60">
+        <span className="text-[11px] font-semibold text-cyan-400 group-hover:text-cyan-300 transition-colors">
+          {row ? 'View guide →' : 'Guide coming soon'}
+        </span>
+        {!row && (
+          <span className="text-[10px] text-zinc-600 italic">No card yet</span>
+        )}
+      </div>
+    </button>
+  )
+}
+
 /** Markdown links `[label](guide:slug)` jump to another guide card (same list). */
-function makeGuideMarkdownComponents(machineSlug, { onOpenGuideSlug } = {}) {
+function makeGuideMarkdownComponents(machineSlug, { onOpenGuideSlug, allGuides } = {}) {
   const h2Tone =
     machineSlug === 'phoenix-link'
       ? 'text-orange-100'
@@ -551,15 +610,15 @@ function makeGuideMarkdownComponents(machineSlug, { onOpenGuideSlug } = {}) {
         const m = /^guide:/i.exec(href)
         if (m) {
           const target = href.slice(m[0].length).trim().replace(/^\/+|\/+$/g, '')
-          if (target && onOpenGuideSlug) {
+          if (target) {
+            const label = flattenMarkdownText(children)
             return (
-              <button
-                type="button"
-                className="text-cyan-400 underline font-medium hover:text-cyan-300 bg-transparent border-0 p-0 cursor-pointer text-left font-[inherit]"
-                onClick={() => onOpenGuideSlug(target)}
-              >
-                {children}
-              </button>
+              <GuideSkinCard
+                targetSlug={target}
+                label={label}
+                allGuides={allGuides}
+                onOpen={onOpenGuideSlug}
+              />
             )
           }
         }
@@ -2004,7 +2063,7 @@ export default function GuidesScreen({
                       <ReactMarkdown
                         urlTransform={guideMarkdownUrlTransform}
                         remarkPlugins={[remarkGfm]}
-                        components={makeGuideMarkdownComponents(slug, { onOpenGuideSlug: openGuideSlug })}
+                        components={makeGuideMarkdownComponents(slug, { onOpenGuideSlug: openGuideSlug, allGuides: rows })}
                       >
                         {row.content_markdown || ''}
                       </ReactMarkdown>

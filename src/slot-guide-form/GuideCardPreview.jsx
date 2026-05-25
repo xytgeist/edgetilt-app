@@ -180,7 +180,60 @@ function tintRGB(children) {
   return children
 }
 
-function makeMarkdownComponents(accent) {
+// ─── preview skin card (mirrors GuideSkinCard in GuidesScreen) ───────────────
+function resolveGuideHero(row) {
+  if (!row) return null
+  const m = Array.isArray(row.machines) ? row.machines[0] : row.machines
+  let thumb = row.thumbnail_url || m?.thumbnail_url
+  if (typeof thumb === 'string' && /buffalo-icon\.png/i.test(thumb)) thumb = null
+  return thumb || (m?.slug ? `/guides/${m.slug}/hero.webp` : null)
+}
+
+function PreviewSkinCard({ targetSlug, label, allGuides }) {
+  const row = allGuides?.find((g) => {
+    const m = Array.isArray(g.machines) ? g.machines[0] : g.machines
+    return (m?.slug || g.slug) === targetSlug
+  })
+  const m = row ? (Array.isArray(row.machines) ? row.machines[0] : row.machines) : null
+  const name = m?.name || row?.title || label
+  const src  = resolveGuideHero(row) || `/guides/${targetSlug}/hero.webp`
+  const gradient = heroGradientClass(m?.slug || targetSlug)
+
+  return (
+    <div className={[
+      'group my-3 w-full rounded-2xl overflow-hidden border border-zinc-700/80',
+      'bg-zinc-900 shadow-[0_6px_24px_-4px_rgba(0,0,0,0.55)]',
+    ].join(' ')}>
+      <div className={`relative h-24 bg-gradient-to-br ${gradient} overflow-hidden`}>
+        <img
+          src={src}
+          alt={name}
+          className="h-full w-full object-cover opacity-90"
+          onError={(e) => {
+            if (e.currentTarget.dataset.fallback === '1') return
+            e.currentTarget.dataset.fallback = '1'
+            e.currentTarget.src = BUFFALO_PLACEHOLDER
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/15 to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 px-3 pb-2 pt-6 bg-gradient-to-t from-zinc-950/90 via-zinc-950/60 to-transparent">
+          <p className="text-white font-bold text-sm leading-tight drop-shadow truncate">{name}</p>
+          {m?.manufacturer && (
+            <p className="text-zinc-400 text-[11px] font-medium mt-0.5 truncate">{m.manufacturer}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/60">
+        <span className="text-[11px] font-semibold text-cyan-400">
+          {row ? 'View guide →' : 'Guide coming soon'}
+        </span>
+        {!row && <span className="text-[10px] text-zinc-600 italic">No card yet</span>}
+      </div>
+    </div>
+  )
+}
+
+function makeMarkdownComponents(accent, allGuides) {
   const { h2Tone, hrVia, titleBarTo } = accent
   return {
     h1: ({ children }) => (
@@ -197,9 +250,19 @@ function makeMarkdownComponents(accent) {
     ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 text-zinc-300 mb-3">{children}</ol>,
     li: ({ children }) => <li className="leading-relaxed">{children}</li>,
     strong: ({ children }) => <strong className="text-white font-semibold">{children}</strong>,
-    a: ({ href, children }) => (
-      <a href={href} className="text-cyan-400 underline font-medium hover:text-cyan-300">{children}</a>
-    ),
+    a: ({ href, children }) => {
+      if (typeof href === 'string') {
+        const gm = /^guide:/i.exec(href)
+        if (gm) {
+          const target = href.slice(gm[0].length).trim().replace(/^\/+|\/+$/g, '')
+          if (target) {
+            const label = flattenText(children)
+            return <PreviewSkinCard targetSlug={target} label={label} allGuides={allGuides} />
+          }
+        }
+      }
+      return <a href={href} className="text-cyan-400 underline font-medium hover:text-cyan-300">{children}</a>
+    },
     img: ({ src, alt }) => (
       <img src={src} alt={alt ?? ''} className="max-w-full h-auto rounded-xl border border-zinc-800/90 my-4 block" loading="lazy" decoding="async" />
     ),
@@ -242,12 +305,13 @@ export default function GuideCardPreview({
   heroFile = null,
   heroUrl = null,
   contentMarkdown = '',
+  guideList = [],
 }) {
   const [expanded, setExpanded] = useState(false)
 
   const slug = machine.slug || guide.slug || ''
   const accent = useMemo(() => cardAccent(slug), [slug])
-  const mdComponents = useMemo(() => makeMarkdownComponents(accent), [accent])
+  const mdComponents = useMemo(() => makeMarkdownComponents(accent, guideList), [accent, guideList])
 
   const heroSrc = useMemo(() => {
     if (heroFile) return URL.createObjectURL(heroFile)

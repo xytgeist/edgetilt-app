@@ -901,197 +901,13 @@ input[list]::-webkit-list-button {
     -0.9s;
 }
 
-@keyframes guideLockSurgeRise {
-  0% {
-    top: 100%;
-    opacity: 0;
-  }
-  5% {
-    opacity: 0.82;
-  }
-  88% {
-    opacity: 0.52;
-  }
-  100% {
-    top: -34%;
-    opacity: 0;
-  }
-}
-
-@keyframes guideLockSurgeJitter {
-  0% {
-    transform: translate3d(-22px, 0, 0);
-  }
-  14% {
-    transform: translate3d(18px, 0, 0);
-  }
-  28% {
-    transform: translate3d(-16px, 0, 0);
-  }
-  42% {
-    transform: translate3d(24px, 0, 0);
-  }
-  57% {
-    transform: translate3d(-20px, 0, 0);
-  }
-  71% {
-    transform: translate3d(14px, 0, 0);
-  }
-  85% {
-    transform: translate3d(-12px, 0, 0);
-  }
-  100% {
-    transform: translate3d(20px, 0, 0);
-  }
-}
-
-@keyframes guideLockSurgeBodyFlicker {
-  0%,
-  100% {
-    opacity: 0.88;
-  }
-  17% {
-    opacity: 0.62;
-  }
-  18% {
-    opacity: 0.92;
-  }
-  19% {
-    opacity: 0.58;
-  }
-  20% {
-    opacity: 0.86;
-  }
-  61% {
-    opacity: 0.74;
-  }
-  62% {
-    opacity: 0.48;
-  }
-  63% {
-    opacity: 0.82;
-  }
-}
-
-.guide-lock-glitch__surge {
-  z-index: 1;
-}
-
-.guide-lock-glitch__surge-band {
-  position: absolute;
-  left: -16%;
-  width: 132%;
-  height: 32%;
-  animation: guideLockSurgeRise 4.4s linear infinite;
-  will-change: top, opacity;
-}
-
-.guide-lock-glitch__surge-band--1 {
-  animation-duration: 4.1s;
-}
-
-.guide-lock-glitch__surge-band--2 {
-  animation-duration: 5.2s;
-  animation-delay: 1.5s;
-}
-
-.guide-lock-glitch__surge-band--3 {
-  height: 26%;
-  animation-duration: 4.7s;
-  animation-delay: 3s;
-}
-
-.guide-lock-glitch__surge-band__body {
-  height: 100%;
+.guide-lock-glitch__wavy-surge {
   mix-blend-mode: screen;
-  background-repeat: repeat;
-  animation:
-    guideLockSurgeJitter 0.13s steps(4) infinite,
-    guideLockSurgeBodyFlicker 0.85s steps(1) infinite;
-  filter: drop-shadow(-5px 0 0 rgb(255 64 96 / 28%)) drop-shadow(5px 0 0 rgb(6 206 252 / 24%));
 }
 
-.guide-lock-glitch__surge-band__body--cyan {
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      rgb(255 255 255 / 0%) 0,
-      rgb(255 255 255 / 0%) 2px,
-      rgb(255 255 255 / 26%) 2px,
-      rgb(255 255 255 / 26%) 4px,
-      rgb(6 206 252 / 14%) 4px,
-      rgb(6 206 252 / 14%) 6px
-    ),
-    linear-gradient(
-      to bottom,
-      rgb(6 206 252 / 0%) 0%,
-      rgb(6 206 252 / 18%) 12%,
-      rgb(120 255 180 / 28%) 38%,
-      rgb(255 255 255 / 24%) 52%,
-      rgb(6 206 252 / 16%) 78%,
-      rgb(6 206 252 / 0%) 100%
-    );
-  background-size:
-    100% 6px,
-    100% 100%;
-}
-
-.guide-lock-glitch__surge-band__body--rgb {
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      rgb(255 255 255 / 0%) 0,
-      rgb(255 255 255 / 0%) 1px,
-      rgb(255 255 255 / 22%) 1px,
-      rgb(255 255 255 / 22%) 3px,
-      rgb(255 64 96 / 12%) 3px,
-      rgb(255 64 96 / 12%) 5px,
-      rgb(6 206 252 / 10%) 5px,
-      rgb(6 206 252 / 10%) 7px
-    ),
-    linear-gradient(
-      to bottom,
-      rgb(255 64 96 / 0%) 0%,
-      rgb(255 64 96 / 16%) 18%,
-      rgb(255 255 255 / 22%) 42%,
-      rgb(6 206 252 / 18%) 58%,
-      rgb(157 0 255 / 14%) 82%,
-      rgb(255 64 96 / 0%) 100%
-    );
-  background-size:
-    100% 7px,
-    100% 100%;
-  animation-delay:
-    -0.05s,
-    -0.2s;
-}
-
-.guide-lock-glitch__surge-band__body--magenta {
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      rgb(255 255 255 / 0%) 0,
-      rgb(255 255 255 / 0%) 2px,
-      rgb(255 255 255 / 20%) 2px,
-      rgb(255 255 255 / 20%) 4px,
-      rgb(157 0 255 / 12%) 4px,
-      rgb(157 0 255 / 12%) 6px
-    ),
-    linear-gradient(
-      to bottom,
-      rgb(157 0 255 / 0%) 0%,
-      rgb(157 0 255 / 16%) 16%,
-      rgb(255 64 96 / 20%) 44%,
-      rgb(6 206 252 / 14%) 68%,
-      rgb(120 255 180 / 10%) 88%,
-      rgb(157 0 255 / 0%) 100%
-    );
-  background-size:
-    100% 6px,
-    100% 100%;
-  animation-delay:
-    -0.08s,
-    -0.35s;
+.guide-lock-glitch__wavy-canvas {
+  display: block;
+  mix-blend-mode: screen;
 }
 
 .guide-lock-glitch__veil {
@@ -1234,20 +1050,12 @@ input[list]::-webkit-list-button {
   .guide-lock-glitch__scanlines,
   .guide-lock-glitch__tear,
   .guide-lock-glitch__block,
-  .guide-lock-glitch__wave,
-  .guide-lock-glitch__surge-band,
-  .guide-lock-glitch__surge-band__body {
+  .guide-lock-glitch__wave {
     animation: none;
   }
 
-  .guide-lock-glitch__waves,
-  .guide-lock-glitch__surge {
+  .guide-lock-glitch__waves {
     filter: none !important;
-  }
-
-  .guide-lock-glitch__surge-band {
-    top: 55%;
-    opacity: 0.22;
   }
 
   .guide-lock-glitch__wave {

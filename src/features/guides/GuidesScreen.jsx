@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import GuideLockWavySurgeCanvas from './GuideLockWavySurgeCanvas'
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { format, parseISO } from 'date-fns'
@@ -697,7 +698,6 @@ function IconEvTrendingUp({ className }) {
 
 function GuideLockedPaywallOverlay({ onUnlock }) {
   const waveFilterId = `guide-lock-wave-${useId().replace(/:/g, '')}`
-  const surgeFilterId = `guide-lock-surge-${useId().replace(/:/g, '')}`
 
   return (
     <div className="guide-lock-glitch absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
@@ -720,24 +720,6 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
               />
             </feTurbulence>
             <feDisplacementMap in="SourceGraphic" in2="waveNoise" scale="16" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-          <filter id={surgeFilterId} x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.01 0.42"
-              numOctaves="3"
-              seed="11"
-              result="surgeNoise"
-            >
-              <animate attributeName="seed" dur="0.55s" values="3;24;9;17;3" repeatCount="indefinite" />
-              <animate
-                attributeName="baseFrequency"
-                dur="1.6s"
-                values="0.01 0.42;0.014 0.52;0.008 0.36;0.01 0.42"
-                repeatCount="indefinite"
-              />
-            </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" in2="surgeNoise" scale="34" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
@@ -763,21 +745,7 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
       <div className="guide-lock-glitch__block guide-lock-glitch__block--2 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__block guide-lock-glitch__block--3 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="guide-lock-glitch__block guide-lock-glitch__block--4 pointer-events-none absolute inset-x-0" aria-hidden />
-      <div
-        className="guide-lock-glitch__surge pointer-events-none absolute inset-0 overflow-hidden"
-        style={{ filter: `url(#${surgeFilterId})` }}
-        aria-hidden
-      >
-        <div className="guide-lock-glitch__surge-band guide-lock-glitch__surge-band--1">
-          <div className="guide-lock-glitch__surge-band__body guide-lock-glitch__surge-band__body--cyan" />
-        </div>
-        <div className="guide-lock-glitch__surge-band guide-lock-glitch__surge-band--2">
-          <div className="guide-lock-glitch__surge-band__body guide-lock-glitch__surge-band__body--rgb" />
-        </div>
-        <div className="guide-lock-glitch__surge-band guide-lock-glitch__surge-band--3">
-          <div className="guide-lock-glitch__surge-band__body guide-lock-glitch__surge-band__body--magenta" />
-        </div>
-      </div>
+      <GuideLockWavySurgeCanvas className="guide-lock-glitch__wavy-surge pointer-events-none absolute inset-0 z-[1] overflow-hidden" />
       <div className="relative z-10 flex max-w-[16rem] flex-col items-center gap-3 text-center">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/5 shadow-[0_0_22px_rgba(255,255,255,0.08)] backdrop-blur-[2px]">
           <NavLockGlyph className="h-4 w-4 text-white/90" />

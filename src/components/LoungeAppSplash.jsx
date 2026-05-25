@@ -1,12 +1,10 @@
 import { useLayoutEffect, useRef } from 'react'
 import { DotLottie } from '@lottiefiles/dotlottie-web'
 import wasmUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
-import drawData from '../assets/lottie/edge-splash-v1.json'
-import zoomData from '../assets/lottie/edge-zoom-v1.json'
+import edgeSplashData from '../assets/lottie/edge-splash-v2.json'
 
 DotLottie.setWasmUrl(wasmUrl)
-const DRAW_DATA = JSON.stringify(drawData)
-const ZOOM_DATA = JSON.stringify(zoomData)
+const EDGE_SPLASH_DATA = JSON.stringify(edgeSplashData)
 
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
   const canvasRef = useRef(null)
@@ -18,17 +16,16 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     const canvas = canvasRef.current
     if (!canvas) return
 
-    let active = null
-
-    active = new DotLottie({ canvas, data: DRAW_DATA, autoplay: true, loop: false })
-
-    active.addEventListener('complete', () => {
-      active?.destroy()
-      active = new DotLottie({ canvas, data: ZOOM_DATA, autoplay: true, loop: false })
-      active.addEventListener('complete', () => onCompleteRef.current?.())
+    const player = new DotLottie({
+      canvas,
+      data: EDGE_SPLASH_DATA,
+      autoplay: true,
+      loop: false,
     })
 
-    return () => active?.destroy()
+    player.addEventListener('complete', () => onCompleteRef.current?.())
+
+    return () => player.destroy()
   }, [])
 
   return (
@@ -43,8 +40,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     >
       <canvas
         ref={canvasRef}
-        className="pointer-events-none h-[80vw] w-[80vw] max-h-[380px] max-w-[380px]"
-        style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}
+        className="pointer-events-none aspect-[9/16] h-[min(72dvh,560px)] w-auto max-w-[min(92vw,315px)]"
         aria-hidden
       />
     </div>

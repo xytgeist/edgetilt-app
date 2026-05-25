@@ -534,6 +534,7 @@ export default function SlotGuideFormApp() {
       if (mErr) throw new Error(`machines: ${mErr.message}`)
 
       const compiledMarkdown = buildGuideMarkdown({ title: guide.title || machine.name, guide })
+      const nowIso = new Date().toISOString()
 
       // Update guides row
       const guidePayload = {
@@ -541,10 +542,14 @@ export default function SlotGuideFormApp() {
         card_ev_threshold: guide.card_ev_threshold || null,
         published: guide.published,
         content_markdown: compiledMarkdown,
+        updated_at: nowIso,
       }
       if (newThumbnailUrl) guidePayload.thumbnail_url = newThumbnailUrl
       const { error: gErr } = await supabase.from('guides').update(guidePayload).eq('id', editIds.guideId)
       if (gErr) throw new Error(`guides: ${gErr.message}`)
+
+      // Reflect new timestamp in the preview
+      setGuide((g) => ({ ...g, _updated_at: nowIso }))
 
       setResult({ ok: true, message: newThumbnailUrl ? 'Guide and hero image updated.' : 'Guide updated successfully.' })
       setIsDirty(false)

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { diagramFilename, slugify } from './formUtils.js'
 
-const STORAGE_KEY = 'slotGuideFormSettings:v2'
+const STORAGE_KEY = 'slotGuideFormSettings:v3'
+
+const ENVS = [
+  { id: 'test',       label: 'test',       url: import.meta.env.VITE_SUPABASE_URL_TEST || 'https://jtjgtucumuoswnbauxry.supabase.co' },
+  { id: 'production', label: 'production', url: import.meta.env.VITE_SUPABASE_URL_PROD || import.meta.env.VITE_SUPABASE_URL },
+]
 
 const PLACEMENTS = [
   { id: 'when_to_play', label: 'After When to play' },
@@ -50,11 +55,14 @@ export default function SlotGuideFormApp() {
   const saved = useMemo(() => (typeof window !== 'undefined' ? readSettings() : null), [])
 
   // ── Connection settings
-  const [apiUrl, setApiUrl]               = useState(saved?.apiUrl || '/api/slot-guide-ingest')
-  const [secret, setSecret]               = useState(saved?.secret || '')
-  const [target, setTarget]               = useState(saved?.target || 'test')
-  const [supabaseUrl, setSupabaseUrl]     = useState(saved?.supabaseUrl || '')
-  const [supabaseKey, setSupabaseKey]     = useState(saved?.supabaseKey || '')
+  const [apiUrl, setApiUrl]           = useState(saved?.apiUrl || '/api/slot-guide-ingest')
+  const [secret, setSecret]           = useState(saved?.secret || '')
+  const [envId, setEnvId]             = useState(saved?.envId || 'test')
+  const [supabaseKey, setSupabaseKey] = useState(saved?.supabaseKey || '')
+
+  const activeEnv   = ENVS.find(e => e.id === envId) ?? ENVS[0]
+  const target      = activeEnv.id
+  const supabaseUrl = activeEnv.url
 
   // ── Mode: 'new' | 'edit'
   const [mode, setMode] = useState('new')
@@ -95,9 +103,9 @@ export default function SlotGuideFormApp() {
   // Persist settings
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiUrl, secret, target, supabaseUrl, supabaseKey }))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiUrl, secret, envId, supabaseKey }))
     } catch { /* ignore */ }
-  }, [apiUrl, secret, target, supabaseUrl, supabaseKey])
+  }, [apiUrl, secret, envId, supabaseKey])
 
   // Auto-slug from machine name
   useEffect(() => {
@@ -324,28 +332,26 @@ export default function SlotGuideFormApp() {
         <section className={sc}>
           <h2 className="text-lg font-semibold">Connection</h2>
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Environment selector — sets both ingest target and Supabase URL */}
             <div className="sm:col-span-2">
-              <label className={lc}>Ingest API URL</label>
-              <input className={ic} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="/api/slot-guide-ingest" />
+              <label className={lc}>Environment</label>
+              <select className={ic} value={envId} onChange={(e) => setEnvId(e.target.value)}>
+                {ENVS.map(e => (
+                  <option key={e.id} value={e.id}>{e.label} — {e.url}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={lc}>Supabase service key</label>
+              <input type="password" className={ic} value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} autoComplete="off" />
             </div>
             <div>
               <label className={lc}>Ingest secret</label>
               <input type="password" className={ic} value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off" />
             </div>
-            <div>
-              <label className={lc}>Target</label>
-              <select className={ic} value={target} onChange={(e) => setTarget(e.target.value)}>
-                <option value="test">test</option>
-                <option value="production">production</option>
-              </select>
-            </div>
-            <div>
-              <label className={lc}>Supabase URL <span className="text-gray-500">(for load/save edits)</span></label>
-              <input className={ic} value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} placeholder="https://xxxx.supabase.co" />
-            </div>
-            <div>
-              <label className={lc}>Supabase service key</label>
-              <input type="password" className={ic} value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} autoComplete="off" />
+            <div className="sm:col-span-2">
+              <label className={lc}>Ingest API URL</label>
+              <input className={ic} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="/api/slot-guide-ingest" />
             </div>
           </div>
         </section>

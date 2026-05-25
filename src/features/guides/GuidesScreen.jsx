@@ -698,18 +698,27 @@ function IconEvTrendingUp({ className }) {
 function GuideLockedPaywallOverlay({ onUnlock }) {
   return (
     <div className="guide-lock-glitch absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
-      <div className="guide-lock-glitch__scrim pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950/35 via-zinc-950/60 to-zinc-950/85" />
-      <div className="guide-lock-glitch__fx guide-lock-glitch__scanlines pointer-events-none absolute inset-0" aria-hidden />
-      <div className="guide-lock-glitch__fx guide-lock-glitch__sweep pointer-events-none absolute inset-0" aria-hidden />
-      <div className="guide-lock-glitch__fx guide-lock-glitch__rgb pointer-events-none absolute inset-0" aria-hidden />
-      <div className="guide-lock-glitch__fx guide-lock-glitch__slice pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__veil pointer-events-none absolute inset-0" aria-hidden />
+      <div className="guide-lock-glitch__static pointer-events-none absolute inset-0" aria-hidden />
+      <div className="guide-lock-glitch__static guide-lock-glitch__static--chroma pointer-events-none absolute inset-0" aria-hidden />
+      <div className="guide-lock-glitch__scanlines pointer-events-none absolute inset-0" aria-hidden />
+      <div className="guide-lock-glitch__tear guide-lock-glitch__tear--1 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__tear guide-lock-glitch__tear--2 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__tear guide-lock-glitch__tear--3 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__block guide-lock-glitch__block--1 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__block guide-lock-glitch__block--2 pointer-events-none absolute inset-x-0" aria-hidden />
+      <div className="guide-lock-glitch__block guide-lock-glitch__block--3 pointer-events-none absolute inset-x-0" aria-hidden />
       <div className="relative z-10 flex max-w-[16rem] flex-col items-center gap-3 text-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-500/35 bg-amber-500/10 shadow-[0_0_18px_rgba(6,206,252,0.12)]">
-          <NavLockGlyph className="h-4 w-4 text-amber-300" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/5 shadow-[0_0_22px_rgba(255,255,255,0.08)] backdrop-blur-[2px]">
+          <NavLockGlyph className="h-4 w-4 text-white/90" />
         </div>
         <div>
-          <p className="text-sm font-semibold leading-snug text-zinc-100">Full guide on Slots Edge</p>
-          <p className="mt-1 text-xs leading-snug text-zinc-400">Subscribe to unlock this playbook and the rest of AP Guides.</p>
+          <p className="text-sm font-semibold leading-snug text-zinc-100 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)]">
+            Full guide on Slots Edge
+          </p>
+          <p className="mt-1 text-xs leading-snug text-zinc-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">
+            Subscribe to unlock this playbook and the rest of AP Guides.
+          </p>
         </div>
         <button
           type="button"
@@ -717,7 +726,7 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
             event.stopPropagation()
             onUnlock?.()
           }}
-          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_20px_rgba(255,234,0,0.15)]"
+          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_24px_rgba(255,234,0,0.2)]"
         >
           Unlock guide
         </button>

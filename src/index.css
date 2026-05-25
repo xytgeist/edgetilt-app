@@ -514,159 +514,248 @@ input[list]::-webkit-list-button {
   }
 }
 
-/* ── Locked AP guide paywall — CRT / glitch light FX ─────────────────────── */
+/* ── Locked AP guide paywall — transparent TV static / glitch FX ─────────── */
+@keyframes guideLockStaticPan {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 160px 96px;
+  }
+}
+
+@keyframes guideLockStaticFlicker {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.32;
+  }
+  51% {
+    opacity: 0.14;
+  }
+  52% {
+    opacity: 0.28;
+  }
+}
+
+@keyframes guideLockChromaShift {
+  0%,
+  86%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  87% {
+    opacity: 0.45;
+    transform: translate3d(-4px, 0, 0);
+  }
+  88% {
+    opacity: 0.3;
+    transform: translate3d(5px, 1px, 0);
+  }
+  89% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @keyframes guideLockScanDrift {
   from {
     background-position: 0 0;
   }
   to {
-    background-position: 0 96px;
+    background-position: 0 88px;
   }
 }
 
-@keyframes guideLockLightSweep {
+@keyframes guideLockTearA {
   0%,
-  100% {
-    background-position: 130% 0;
-    opacity: 0.35;
-  }
-  45% {
-    background-position: -30% 0;
-    opacity: 0.85;
-  }
-}
-
-@keyframes guideLockGlitchBurst {
-  0%,
-  88%,
+  78%,
   100% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
-  89% {
-    opacity: 0.9;
-    transform: translate3d(-3px, 1px, 0);
+  79% {
+    opacity: 0.85;
+    transform: translate3d(-14px, 0, 0);
   }
-  90% {
+  80% {
     opacity: 0.55;
-    transform: translate3d(4px, -1px, 0);
+    transform: translate3d(16px, 0, 0);
   }
-  91% {
-    opacity: 0.75;
-    transform: translate3d(-2px, 0, 0);
-  }
-  92% {
+  81% {
     opacity: 0;
     transform: translate3d(0, 0, 0);
   }
 }
 
-@keyframes guideLockSliceJump {
+@keyframes guideLockTearB {
   0%,
-  82%,
+  64%,
   100% {
     opacity: 0;
-    transform: translateY(0) scaleY(1);
+    transform: translate3d(0, 0, 0);
   }
-  83% {
-    opacity: 0.85;
-    transform: translateY(18px) scaleY(1.4);
+  65% {
+    opacity: 0.7;
+    transform: translate3d(10px, 0, 0);
   }
-  84% {
-    opacity: 0.5;
-    transform: translateY(-32px) scaleY(0.6);
+  66% {
+    opacity: 0.45;
+    transform: translate3d(-12px, 0, 0);
   }
-  85% {
+  67% {
     opacity: 0;
-    transform: translateY(8px) scaleY(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
-@keyframes guideLockScrimPulse {
+@keyframes guideLockBlockShift {
   0%,
+  72%,
   100% {
-    opacity: 1;
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scaleY(1);
   }
-  48% {
-    opacity: 0.94;
+  73% {
+    opacity: 0.95;
+    transform: translate3d(-18px, 0, 0) scaleY(1.35);
   }
-  49% {
-    opacity: 1;
+  74% {
+    opacity: 0.65;
+    transform: translate3d(22px, 0, 0) scaleY(0.75);
   }
-  50% {
-    opacity: 0.97;
-  }
-  51% {
-    opacity: 1;
+  75% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scaleY(1);
   }
 }
 
-.guide-lock-glitch__scrim {
-  animation: guideLockScrimPulse 7s ease-in-out infinite;
+.guide-lock-glitch__veil {
+  background: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0%) 0%,
+    rgb(0 0 0 / 8%) 28%,
+    rgb(0 0 0 / 22%) 58%,
+    rgb(0 0 0 / 38%) 100%
+  );
+}
+
+.guide-lock-glitch__static {
+  opacity: 0.24;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82 0.28' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.72'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  animation:
+    guideLockStaticPan 0.18s steps(6) infinite,
+    guideLockStaticFlicker 2.4s ease-in-out infinite;
+}
+
+.guide-lock-glitch__static--chroma {
+  opacity: 0.16;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78 0.32' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23ff4060' opacity='0.35'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  animation:
+    guideLockStaticPan 0.22s steps(5) infinite reverse,
+    guideLockChromaShift 3.8s steps(1) infinite;
 }
 
 .guide-lock-glitch__scanlines {
+  opacity: 0.34;
+  mix-blend-mode: soft-light;
   background: repeating-linear-gradient(
     to bottom,
-    rgb(0 0 0 / 0%) 0,
-    rgb(0 0 0 / 0%) 2px,
-    rgb(0 0 0 / 14%) 2px,
-    rgb(0 0 0 / 14%) 3px
+    rgb(255 255 255 / 0%) 0,
+    rgb(255 255 255 / 0%) 1px,
+    rgb(255 255 255 / 16%) 1px,
+    rgb(255 255 255 / 16%) 2px,
+    rgb(0 0 0 / 10%) 2px,
+    rgb(0 0 0 / 10%) 3px
   );
-  background-size: 100% 6px;
-  opacity: 0.28;
-  animation: guideLockScanDrift 10s linear infinite;
+  background-size: 100% 4px;
+  animation: guideLockScanDrift 9s linear infinite;
 }
 
-.guide-lock-glitch__sweep {
-  background: linear-gradient(
-    108deg,
-    transparent 38%,
-    rgb(6 206 252 / 10%) 46%,
-    rgb(255 234 0 / 8%) 50%,
-    rgb(157 0 255 / 7%) 54%,
-    transparent 62%
-  );
-  background-size: 220% 100%;
+.guide-lock-glitch__tear {
+  height: 2px;
   mix-blend-mode: screen;
-  animation: guideLockLightSweep 5.5s ease-in-out infinite;
-}
-
-.guide-lock-glitch__rgb {
-  background:
-    linear-gradient(90deg, transparent 0%, rgb(6 206 252 / 18%) 48%, transparent 52%) 0 38% / 100% 2px
-      no-repeat,
-    linear-gradient(90deg, transparent 0%, rgb(253 38 45 / 14%) 48%, transparent 52%) 0 61% / 100% 1px
-      no-repeat;
-  mix-blend-mode: screen;
-  animation: guideLockGlitchBurst 4.2s steps(1) infinite;
-}
-
-.guide-lock-glitch__slice {
-  top: 28%;
-  height: 14%;
   background: linear-gradient(
-    to bottom,
-    transparent,
-    rgb(6 206 252 / 22%),
-    rgb(255 255 255 / 10%),
-    rgb(253 38 45 / 16%),
-    transparent
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 18%) 18%,
+    rgb(255 255 255 / 42%) 50%,
+    rgb(255 255 255 / 16%) 82%,
+    transparent 100%
   );
-  filter: blur(0.5px);
-  animation: guideLockSliceJump 5.8s steps(1) infinite;
+  filter: drop-shadow(-2px 0 0 rgb(255 64 96 / 28%)) drop-shadow(2px 0 0 rgb(6 206 252 / 24%));
+}
+
+.guide-lock-glitch__tear--1 {
+  top: 22%;
+  animation: guideLockTearA 4.6s steps(1) infinite;
+}
+
+.guide-lock-glitch__tear--2 {
+  top: 41%;
+  animation: guideLockTearB 3.4s steps(1) infinite;
+}
+
+.guide-lock-glitch__tear--3 {
+  top: 68%;
+  animation: guideLockTearA 5.2s steps(1) infinite reverse;
+}
+
+.guide-lock-glitch__block {
+  left: -10%;
+  width: 120%;
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 6%) 12%,
+    rgb(255 255 255 / 22%) 48%,
+    rgb(255 255 255 / 8%) 88%,
+    transparent 100%
+  );
+  filter: drop-shadow(-3px 0 0 rgb(255 64 96 / 22%)) drop-shadow(3px 0 0 rgb(6 206 252 / 20%));
+}
+
+.guide-lock-glitch__block--1 {
+  top: 52%;
+  height: 10px;
+  animation: guideLockBlockShift 4.1s steps(1) infinite;
+}
+
+.guide-lock-glitch__block--2 {
+  top: 61%;
+  height: 22px;
+  animation: guideLockBlockShift 5.5s steps(1) infinite reverse;
+}
+
+.guide-lock-glitch__block--3 {
+  top: 78%;
+  height: 16px;
+  animation: guideLockBlockShift 3.9s steps(1) infinite;
+  animation-delay: 1.2s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .guide-lock-glitch__scrim,
+  .guide-lock-glitch__static,
+  .guide-lock-glitch__static--chroma,
   .guide-lock-glitch__scanlines,
-  .guide-lock-glitch__sweep,
-  .guide-lock-glitch__rgb,
-  .guide-lock-glitch__slice {
+  .guide-lock-glitch__tear,
+  .guide-lock-glitch__block {
     animation: none;
   }
 
+  .guide-lock-glitch__static {
+    opacity: 0.14;
+  }
+
   .guide-lock-glitch__scanlines {
-    opacity: 0.18;
+    opacity: 0.2;
   }
 }

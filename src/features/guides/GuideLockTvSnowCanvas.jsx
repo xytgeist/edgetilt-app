@@ -2,17 +2,16 @@ import { useEffect, useRef } from 'react'
 
 const MEDIUM_GRID_X = 18
 const MEDIUM_GRID_Y = 15
-const MEDIUM_SHOW = 0.8
-const FINE_GRID_X = 8
-const FINE_GRID_Y = 6
-const FINE_SHOW = 0.48
-const FLAT_GRID_X = 10
-const FLAT_GRID_Y = 7
-const FLAT_SHOW = 0.5
-const MICRO_GRID_X = 7
-const MICRO_GRID_Y = 5
-const MICRO_SHOW = 0.44
-const RISING_SCAN_SPEED = 22
+const MEDIUM_SHOW = 0.74
+const FINE_GRID_X = 7
+const FINE_GRID_Y = 5
+const FINE_SHOW = 0.36
+const FLAT_GRID_X = 9
+const FLAT_GRID_Y = 6
+const FLAT_SHOW = 0.34
+const MICRO_GRID_X = 6
+const MICRO_GRID_Y = 4
+const MICRO_SHOW = 0.3
 const MIN_FRAME_MS = 96
 const FRAME_SEED_RATE = 10
 
@@ -67,17 +66,6 @@ function fillBlock(data, width, height, x, y, blockW, blockH, r, g, b, a) {
   }
 }
 
-function paintRisingScanBand(data, width, height, frameSeed) {
-  const thickness = 14 + Math.floor(hashNoise(frameSeed * 0.12, 0, 11.2) * 8)
-  const travel = (frameSeed * RISING_SCAN_SPEED) % (height + thickness + 48)
-  const bandY = Math.floor(height - travel + 24)
-  const flicker = 0.82 + hashNoise(frameSeed, 12.4, 3.8) * 0.18
-  const grey = 212 + Math.floor(hashNoise(frameSeed, 8.1, 4.6) * 28)
-  const alpha = 0.26 * flicker * 255
-
-  fillBlock(data, width, height, 0, bandY, width, thickness, grey + 6, grey + 10, grey + 16, alpha)
-}
-
 function paintSnowLayer(
   data,
   width,
@@ -113,7 +101,7 @@ function paintMediumSnow(data, width, height, frameSeed) {
     showThreshold: MEDIUM_SHOW,
     flakeWRange: [3, 3],
     flakeHRange: [2, 3],
-    alphaScale: 0.46,
+    alphaScale: 0.5,
     seedOffset: 0.6,
   })
 }
@@ -125,7 +113,7 @@ function paintFineSnow(data, width, height, frameSeed) {
     showThreshold: FINE_SHOW,
     flakeWRange: [2, 1],
     flakeHRange: [2, 1],
-    alphaScale: 0.4,
+    alphaScale: 0.44,
     seedOffset: 14.8,
   })
 }
@@ -137,7 +125,7 @@ function paintFlatSnow(data, width, height, frameSeed) {
     showThreshold: FLAT_SHOW,
     flakeWRange: [2, 3],
     flakeHRange: [1, 0],
-    alphaScale: 0.38,
+    alphaScale: 0.42,
     seedOffset: 22.4,
   })
 }
@@ -149,14 +137,13 @@ function paintMicroFlatSnow(data, width, height, frameSeed) {
     showThreshold: MICRO_SHOW,
     flakeWRange: [2, 2],
     flakeHRange: [1, 0],
-    alphaScale: 0.32,
+    alphaScale: 0.36,
     seedOffset: 31.6,
   })
 }
 
 function paintTvSnow(imageData, width, height, frameSeed) {
   imageData.data.fill(0)
-  paintRisingScanBand(imageData.data, width, height, frameSeed)
   paintMediumSnow(imageData.data, width, height, frameSeed)
   paintFineSnow(imageData.data, width, height, frameSeed)
   paintFlatSnow(imageData.data, width, height, frameSeed)

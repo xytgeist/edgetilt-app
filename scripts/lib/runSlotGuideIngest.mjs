@@ -154,15 +154,3 @@ export async function runSlotGuideIngest({
   return { ok: true, status: 200, result };
 }
 
-export function checkIngestSecret(req) {
-  const expected = process.env.GUIDE_INGEST_SECRET?.trim();
-  if (!expected) return { ok: false, status: 503, error: "GUIDE_INGEST_SECRET is not configured on the server." };
-  const got =
-    req.headers?.["x-guide-ingest-secret"] ||
-    req.headers?.["X-Guide-Ingest-Secret"] ||
-    req.headers?.get?.("x-guide-ingest-secret");
-  if (!got || String(got).trim() !== expected) {
-    return { ok: false, status: 401, error: "Invalid or missing x-guide-ingest-secret header." };
-  }
-  return { ok: true };
-}

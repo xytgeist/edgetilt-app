@@ -56,8 +56,7 @@ const blankGuide = {
 export default function SlotGuideFormApp() {
   const saved = useMemo(() => (typeof window !== 'undefined' ? readSettings() : null), [])
 
-  // ── Connection settings (ingest only — reads/writes use LoginGate's auth client)
-  const [secret, setSecret]     = useState(saved?.secret || '')
+  // ── Connection settings (ingest target only — auth uses LoginGate session token)
   const [ingestId, setIngestId] = useState(saved?.ingestId || 'test')
 
   const activeIngest = INGEST_TARGETS.find(t => t.id === ingestId) ?? INGEST_TARGETS[0]
@@ -89,9 +88,9 @@ export default function SlotGuideFormApp() {
   // Persist settings
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ secret, ingestId }))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ingestId }))
     } catch { /* ignore */ }
-  }, [secret, ingestId])
+  }, [ingestId])
 
   // Auto-slug from machine name
   useEffect(() => {
@@ -203,17 +202,19 @@ export default function SlotGuideFormApp() {
     setResult(null)
   }
 
-  // ── Submit: new guide via ingest API
+  // ── Submit: new guide via ingest API (auth via Supabase session token)
   async function handleIngest(e) {
     e.preventDefault()
     setError('')
     setResult(null)
-    if (!secret.trim()) { setError('Ingest secret is required.'); return }
     if (!heroFile) { setError('Hero image is required for new guides.'); return }
     if (!slug) { setError('Slug is required.'); return }
 
     setBusy(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) { setError('Session expired — please sign out and back in.'); setBusy(false); return }
+
       const payload = {
         machine: { ...machine, slug, release_year: machine.release_year ? Number(machine.release_year) : null, calculator_slug: machine.has_calculator ? machine.calculator_slug || slug : null },
         guide: { ...guide, title: guide.title || machine.name, risk_bullets: guide.risk_bullets.split('\n').map((s) => s.trim()).filter(Boolean) },
@@ -230,7 +231,7 @@ export default function SlotGuideFormApp() {
       }
       const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-guide-ingest-secret': secret.trim() },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify({ target, payload, heroImage, diagramImages }),
       })
       const data = await res.json().catch(() => ({}))
@@ -336,28 +337,18 @@ export default function SlotGuideFormApp() {
           </div>
         </header>
 
-        {/* ── New-guide ingest settings (hidden in edit mode) */}
+        {/* ── New-guide ingest target (hidden in edit mode) */}
         {!isEdit && (
           <section className={sc}>
-            <h2 className="text-lg font-semibold">New guide — ingest settings</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={lc}>Ingest target</label>
-                <select className={ic} value={ingestId} onChange={(e) => setIngestId(e.target.value)}>
-                  {INGEST_TARGETS.map(t => (
-                    <option key={t.id} value={t.id}>{t.label} — {t.apiUrl}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={`${lc} flex items-center gap-2`}>
-                  Ingest secret
-                  {secret.trim() && <span className="text-emerald-400 text-xs font-normal">✓ saved in browser</span>}
-                </label>
-                <input type="password" className={ic} value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="off"
-                  placeholder={secret.trim() ? '••••••••••••••••' : 'GUIDE_INGEST_SECRET from Vercel env vars'} />
-                <p className="text-xs text-gray-600 mt-1">Vercel → project → Settings → Environment Variables → GUIDE_INGEST_SECRET</p>
-              </div>
+            <h2 className="text-lg font-semibold">New guide — ingest target</h2>
+            <div>
+              <label className={lc}>Target environment</label>
+              <select className={ic} value={ingestId} onChange={(e) => setIngestId(e.target.value)}>
+                {INGEST_TARGETS.map(t => (
+                  <option key={t.id} value={t.id}>{t.label} — {t.apiUrl}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-600 mt-1">Auth uses your logged-in admin session — no secret key needed.</p>
             </div>
           </section>
         )}

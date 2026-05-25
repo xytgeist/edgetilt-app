@@ -377,7 +377,7 @@ export default function LoungePostArticle({
         </div>
 
         {/* ── Game tag (non-repost posts only) ────────────────────────────── */}
-        {!isPlainPostRepost && !isCommentRepost && post.game_slug ? (
+        {!isPlainPostRepost && !isCommentRepost && post.game_slug && !post.is_ap_guide_post ? (
           <div className="mt-1.5 flex justify-start">
             <span className="inline-flex max-w-full items-center truncate rounded-full border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-tight text-amber-300 sm:max-w-[14rem]">
               {post.game_title}

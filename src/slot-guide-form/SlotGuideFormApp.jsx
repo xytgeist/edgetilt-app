@@ -4,16 +4,18 @@ import { buildGuideMarkdown, diagramFilename, parseGuideMarkdown, slugify } from
 
 const STORAGE_KEY = 'slotGuideFormSettings:v3'
 
+// Publishable (non-secret) — safe to hardcode in client source.
+// Secrets (service key, ingest secret) are entered by the user at runtime.
 const ENVS = [
   {
     id: 'test', label: 'test',
-    url:     import.meta.env.VITE_SUPABASE_URL_TEST  || 'https://jtjgtucumuoswnbauxry.supabase.co',
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY_TEST,
+    url:     'https://jtjgtucumuoswnbauxry.supabase.co',
+    anonKey: 'sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B',
   },
   {
     id: 'production', label: 'production',
-    url:     import.meta.env.VITE_SUPABASE_URL_PROD  || import.meta.env.VITE_SUPABASE_URL,
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY_PROD || import.meta.env.VITE_SUPABASE_ANON_KEY,
+    url:     'https://wedrhwtsxifbnnbgxdkm.supabase.co',
+    anonKey: 'sb_publishable_jtH82joS6gk2_gfzwEgomA_AtmkXwOY',
   },
 ]
 

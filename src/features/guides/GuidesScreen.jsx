@@ -58,7 +58,6 @@ import {
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
   canOpenGuide,
@@ -1724,69 +1723,65 @@ export default function GuidesScreen({
                       : 'border-zinc-700/85 ring-1 ring-zinc-500/15 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.65)]'
                   }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleGuideExpanded(slug)}
-                    className={`w-full text-left touch-manipulation focus:outline-none focus-visible:ring-2 ${ringFocus}`}
-                    aria-expanded={expanded}
-                  >
-                    <div
-                      className={`relative w-full bg-gradient-to-br ${heroGradientClass(slug)} ${
-                        expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden'
-                      }`}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => toggleGuideExpanded(slug)}
+                      className={`w-full text-left touch-manipulation focus:outline-none focus-visible:ring-2 ${ringFocus}`}
+                      aria-expanded={expanded}
                     >
-                      {isAdmin ? (
-                        <div className="absolute right-3 top-3 z-20">
-                          <ContentAccessAdminSwitch
-                            locked={adminGuideLocked}
-                            busy={gateBusySlug === normalizedGuideSlug}
-                            disabled={!gatesDbReady}
-                            label={`${m?.name || row.title} Slots Edge lock`}
-                            onLockedChange={(nextLocked) =>
-                              void handleAdminGuideLockToggle(slug, nextLocked)
-                            }
-                          />
-                        </div>
-                      ) : null}
-                      <img
-                        src={heroImage(row)}
-                        alt=""
-                        className={
-                          expanded
-                            ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
-                            : 'h-full w-full object-cover opacity-95'
-                        }
-                        onError={guideHeroImgOnError}
-                      />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
-                        <div className="flex items-end justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <h2 className="min-w-0 flex-1 text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
+                      <div
+                        className={`relative w-full bg-gradient-to-br ${heroGradientClass(slug)} ${
+                          expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden'
+                        }`}
+                      >
+                        {isAdmin ? (
+                          <div className="absolute right-3 top-3 z-20">
+                            <ContentAccessAdminSwitch
+                              locked={adminGuideLocked}
+                              busy={gateBusySlug === normalizedGuideSlug}
+                              disabled={!gatesDbReady}
+                              label={`${m?.name || row.title} Slots Edge lock`}
+                              onLockedChange={(nextLocked) =>
+                                void handleAdminGuideLockToggle(slug, nextLocked)
+                              }
+                            />
+                          </div>
+                        ) : null}
+                        <img
+                          src={heroImage(row)}
+                          alt=""
+                          className={
+                            expanded
+                              ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+                              : 'h-full w-full object-cover opacity-95'
+                          }
+                          onError={guideHeroImgOnError}
+                        />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
+                          <div className="flex items-end justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
                                 {m?.name || row.title}
                               </h2>
-                              {guideLocked ? (
-                                <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-300/95 drop-shadow" />
-                              ) : null}
+                              <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
+                                {m?.manufacturer || '—'}
+                              </div>
                             </div>
-                            <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
-                              {m?.manufacturer || '—'}
-                            </div>
-                          </div>
-                          <div className="shrink-0 text-right leading-tight pb-px">
-                            <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">
-                              Released
-                            </div>
-                            <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
-                              {m?.release_year != null ? m.release_year : '—'}
+                            <div className="shrink-0 text-right leading-tight pb-px">
+                              <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">
+                                Released
+                              </div>
+                              <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
+                                {m?.release_year != null ? m.release_year : '—'}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="p-4 space-y-3">
+                      <div className="p-4 space-y-3">
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
                           <div className="flex flex-nowrap items-center gap-1 whitespace-nowrap overflow-hidden">
@@ -1871,38 +1866,47 @@ export default function GuidesScreen({
                           )}
                         </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
 
-                  <div className="px-4 pb-4 flex flex-col gap-2 border-t border-zinc-800/80 pt-3 -mt-px">
-                    <div className="flex gap-2">
-                      {calcKey ? (
+                    <div className="px-4 pb-4 flex flex-col gap-2 border-t border-zinc-800/80 pt-3 -mt-px">
+                      <div className="flex gap-2">
+                        {calcKey ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onOpenCalculator(calcKey)
+                            }}
+                            className="flex-1 min-h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold touch-manipulation"
+                          >
+                            Open calculator
+                          </button>
+                        ) : (
+                          <div className="flex-1 min-h-11 rounded-2xl bg-zinc-800 text-zinc-500 text-sm font-bold flex items-center justify-center">
+                            No calc yet
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            onOpenCalculator(calcKey)
+                            setAskFor(row)
                           }}
-                          className="flex-1 min-h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold touch-manipulation"
+                          className="flex-1 min-h-11 rounded-2xl bg-cyan-700 hover:bg-cyan-600 text-white text-sm font-bold touch-manipulation"
                         >
-                          Open calculator
+                          Ask community
                         </button>
-                      ) : (
-                        <div className="flex-1 min-h-11 rounded-2xl bg-zinc-800 text-zinc-500 text-sm font-bold flex items-center justify-center">
-                          No calc yet
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setAskFor(row)
-                        }}
-                        className="flex-1 min-h-11 rounded-2xl bg-cyan-700 hover:bg-cyan-600 text-white text-sm font-bold touch-manipulation"
-                      >
-                        Ask community
-                      </button>
+                      </div>
                     </div>
+
+                    {guideLocked && !expanded ? (
+                      <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 top-[10.5rem] z-10 overflow-hidden rounded-b-3xl"
+                        aria-hidden
+                      >
+                        <div className="absolute inset-0 backdrop-blur-xl bg-zinc-950/55 supports-[backdrop-filter]:bg-zinc-950/40" />
+                      </div>
+                    ) : null}
                   </div>
 
                   {expanded ? (

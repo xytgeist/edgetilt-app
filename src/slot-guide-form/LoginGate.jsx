@@ -26,20 +26,27 @@ export default function LoginGate({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { setState('login'); return }
-      userRef.current = session.user
-      const ok = await checkRole(session.user.id)
-      setState(ok ? 'ready' : 'not-admin')
-    })
+    // Timeout guard — if Supabase doesn't respond in 6s, drop to login screen
+    const timeout = setTimeout(() => setState('login'), 6000)
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        clearTimeout(timeout)
+        if (!session) { setState('login'); return }
+        userRef.current = session.user
+        const ok = await checkRole(session.user.id)
+        setState(ok ? 'ready' : 'not-admin')
+      })
+      .catch(() => { clearTimeout(timeout); setState('login') })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      clearTimeout(timeout)
       if (!session) { setState('login'); return }
       userRef.current = session.user
       const ok = await checkRole(session.user.id)
       setState(ok ? 'ready' : 'not-admin')
     })
-    return () => subscription.unsubscribe()
+    return () => { clearTimeout(timeout); subscription.unsubscribe() }
   }, [])
 
   async function handleLogin(e) {

@@ -697,6 +697,9 @@ function IconEvTrendingUp({ className }) {
 }
 
 function GuideLockedPaywallOverlay({ onUnlock }) {
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
+  const [checkoutError, setCheckoutError] = useState('')
+
   return (
     <div className="guide-lock-glitch absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
       <div className="guide-lock-glitch__veil pointer-events-none absolute inset-0" aria-hidden />
@@ -713,15 +716,26 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
             Subscribe to unlock this playbook and the rest of AP Guides.
           </p>
         </div>
+        {checkoutError ? (
+          <p className="text-xs leading-snug text-red-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">{checkoutError}</p>
+        ) : null}
         <button
           type="button"
-          onClick={(event) => {
+          disabled={checkoutBusy}
+          onClick={async (event) => {
             event.stopPropagation()
-            onUnlock?.()
+            setCheckoutError('')
+            setCheckoutBusy(true)
+            try {
+              await onUnlock?.()
+            } catch (error) {
+              setCheckoutBusy(false)
+              setCheckoutError(error instanceof Error ? error.message : String(error))
+            }
           }}
-          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_24px_rgba(255,234,0,0.2)]"
+          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_24px_rgba(255,234,0,0.2)] disabled:cursor-wait disabled:opacity-80"
         >
-          Unlock guide
+          {checkoutBusy ? 'Opening checkout…' : 'Unlock guide'}
         </button>
       </div>
     </div>
@@ -1939,7 +1953,9 @@ export default function GuidesScreen({
                     </div>
 
                     {guideLockedCollapsed ? (
-                      <GuideLockedPaywallOverlay onUnlock={() => onRequireSubscribe?.('slots-edge')} />
+                      <GuideLockedPaywallOverlay
+                        onUnlock={() => onRequireSubscribe?.('slots-edge', { directCheckout: true })}
+                      />
                     ) : null}
                   </div>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import { supabase } from './LoginGate.jsx'
 import { buildGuideMarkdown, diagramFilename, parseGuideMarkdown, slugify } from './formUtils.js'
 import GuideCardPreview from './GuideCardPreview.jsx'
@@ -95,6 +95,102 @@ function fileToBase64(file) {
 
 function emptyDiagram(slug) {
   return { id: crypto.randomUUID(), alt: '', placement: 'when_to_play', filename: `${slug}-diagram.webp`, file: null }
+}
+
+/** Fields that support inline image insertion. */
+const IMAGE_UPLOAD_FIELDS = new Set(['when_to_play', 'when_to_stop', 'how_to_check'])
+
+/**
+ * Textarea with an "Add image" toolbar button.
+ * Uploads the image to R2 (or Supabase Storage fallback) and inserts
+ * `![image](url)` markdown at the current cursor position.
+ */
+function InlineImageTextarea({ value, onChange, className, required, slug, guideTitle }) {
+  const taRef  = useRef(null)
+  const fileRef = useRef(null)
+  const inputId = useId()
+  const [uploading, setUploading]   = useState(false)
+  const [uploadErr, setUploadErr]   = useState('')
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+
+    const effectiveSlug = slug || slugify(guideTitle || 'guide') || 'guide'
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const filename = `content-${Date.now()}.${ext || 'jpg'}`
+
+    setUploading(true)
+    setUploadErr('')
+    try {
+      const url = await uploadGuideImageToR2OrStorage(file, { slug: effectiveSlug, filename })
+      const ta = taRef.current
+      const pos = ta?.selectionStart ?? value.length
+      const before = value.slice(0, pos)
+      const after  = value.slice(pos)
+      const pad    = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
+      const insert = `${pad}![image](${url})\n`
+      const next   = before + insert + after
+      onChange(next)
+      // Restore focus and park cursor after the inserted text
+      setTimeout(() => {
+        if (!ta) return
+        ta.focus()
+        const cur = (before + insert).length
+        ta.setSelectionRange(cur, cur)
+      }, 0)
+    } catch (err) {
+      setUploadErr(err.message || 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* toolbar */}
+      <div className="flex items-center justify-end mb-1">
+        <label
+          htmlFor={inputId}
+          className={`inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer transition-colors
+            ${uploading ? 'text-zinc-500 cursor-not-allowed' : 'text-cyan-400 hover:text-cyan-300'}`}
+          title="Upload image and insert at cursor"
+        >
+          {uploading ? (
+            <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : (
+            <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+          )}
+          {uploading ? 'Uploading…' : 'Insert image'}
+        </label>
+        <input
+          id={inputId}
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          className="sr-only"
+          onChange={handleFile}
+        />
+      </div>
+      <textarea
+        ref={taRef}
+        className={className}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+      />
+      {uploadErr && <p className="text-xs text-red-400 mt-1">{uploadErr}</p>}
+    </div>
+  )
 }
 
 const blankMachine = {
@@ -640,12 +736,23 @@ export default function SlotGuideFormApp() {
             ].map(([key, label]) => (
               <div key={key}>
                 <label className={lc}>{label}</label>
-                <textarea
-                  className={`${ic} min-h-28`}
-                  value={guide[key]}
-                  onChange={(e) => setGuideField(key, e.target.value)}
-                  required={!isEdit && !['skins_markdown', 'risk_bankroll'].includes(key)}
-                />
+                {IMAGE_UPLOAD_FIELDS.has(key) ? (
+                  <InlineImageTextarea
+                    className={`${ic} min-h-28`}
+                    value={guide[key]}
+                    onChange={(val) => setGuideField(key, val)}
+                    required={!isEdit}
+                    slug={machine.slug || guide._slug}
+                    guideTitle={guide.title}
+                  />
+                ) : (
+                  <textarea
+                    className={`${ic} min-h-28`}
+                    value={guide[key]}
+                    onChange={(e) => setGuideField(key, e.target.value)}
+                    required={!isEdit && !['skins_markdown', 'risk_bankroll'].includes(key)}
+                  />
+                )}
               </div>
             ))}
             <div>

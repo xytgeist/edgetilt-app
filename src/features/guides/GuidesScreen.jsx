@@ -699,6 +699,48 @@ function IconEvTrendingUp({ className }) {
 function GuideLockedPaywallOverlay({ onUnlock }) {
   const [checkoutBusy, setCheckoutBusy] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
+  const checkoutRedirectStartedRef = useRef(false)
+
+  useEffect(() => {
+    const resetCheckoutUi = () => {
+      checkoutRedirectStartedRef.current = false
+      setCheckoutBusy(false)
+      setCheckoutError('')
+    }
+
+    const shouldResetAfterStripeReturn = () => {
+      if (typeof window === 'undefined') return false
+      try {
+        return new URLSearchParams(window.location.search).get('billing') === 'cancel'
+      } catch {
+        return false
+      }
+    }
+
+    const onPageShow = (event) => {
+      if (!checkoutRedirectStartedRef.current) return
+      if (event.persisted || shouldResetAfterStripeReturn()) {
+        resetCheckoutUi()
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return
+      if (!checkoutRedirectStartedRef.current) return
+      resetCheckoutUi()
+    }
+
+    if (checkoutRedirectStartedRef.current && shouldResetAfterStripeReturn()) {
+      resetCheckoutUi()
+    }
+
+    window.addEventListener('pageshow', onPageShow)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('pageshow', onPageShow)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
 
   return (
     <div className="guide-lock-glitch absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
@@ -725,10 +767,12 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
           onClick={async (event) => {
             event.stopPropagation()
             setCheckoutError('')
+            checkoutRedirectStartedRef.current = true
             setCheckoutBusy(true)
             try {
               await onUnlock?.()
             } catch (error) {
+              checkoutRedirectStartedRef.current = false
               setCheckoutBusy(false)
               setCheckoutError(error instanceof Error ? error.message : String(error))
             }

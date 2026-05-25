@@ -1,14 +1,17 @@
 import { useEffect, useRef } from 'react'
 
-const MEDIUM_GRID_X = 16
-const MEDIUM_GRID_Y = 13
-const MEDIUM_SHOW = 0.66
-const FINE_GRID_X = 10
-const FINE_GRID_Y = 8
-const FINE_SHOW = 0.58
-const FLAT_GRID_X = 12
-const FLAT_GRID_Y = 9
-const FLAT_SHOW = 0.6
+const MEDIUM_GRID_X = 18
+const MEDIUM_GRID_Y = 15
+const MEDIUM_SHOW = 0.8
+const FINE_GRID_X = 8
+const FINE_GRID_Y = 6
+const FINE_SHOW = 0.48
+const FLAT_GRID_X = 10
+const FLAT_GRID_Y = 7
+const FLAT_SHOW = 0.5
+const MICRO_GRID_X = 7
+const MICRO_GRID_Y = 5
+const MICRO_SHOW = 0.44
 const SCAN_BAND_COUNT = 3
 const RISING_SCAN_SPEED = 22
 const MIN_FRAME_MS = 96
@@ -21,19 +24,22 @@ function hashNoise(x, y, seed = 0) {
 }
 
 function pickSnowColor(t, chromaBias) {
-  const base = 198 + Math.floor(t * 42)
+  const base = 192 + Math.floor(t * 48)
 
-  if (chromaBias > 0.945) {
-    return [base - 10, base + 8, base + 22]
+  if (chromaBias > 0.92) {
+    return [base - 18, base + 14, base + 32]
   }
-  if (chromaBias > 0.9) {
-    return [base + 16, base - 6, base + 4]
+  if (chromaBias > 0.84) {
+    return [base + 28, base - 12, base + 8]
   }
-  if (chromaBias > 0.855) {
-    return [base - 8, base + 12, base - 4]
+  if (chromaBias > 0.76) {
+    return [base - 14, base + 22, base - 8]
   }
-  if (chromaBias > 0.82) {
-    return [base + 4, base + 2, base + 10]
+  if (chromaBias > 0.68) {
+    return [base + 12, base - 6, base + 24]
+  }
+  if (chromaBias > 0.58) {
+    return [base + 18, base + 8, base + 20]
   }
   return [base + 2, base + 3, base + 4]
 }
@@ -119,9 +125,9 @@ function paintMediumSnow(data, width, height, frameSeed) {
     gridX: MEDIUM_GRID_X,
     gridY: MEDIUM_GRID_Y,
     showThreshold: MEDIUM_SHOW,
-    flakeWRange: [4, 5],
-    flakeHRange: [3, 5],
-    alphaScale: 0.58,
+    flakeWRange: [3, 3],
+    flakeHRange: [2, 3],
+    alphaScale: 0.46,
     seedOffset: 0.6,
   })
 }
@@ -131,9 +137,9 @@ function paintFineSnow(data, width, height, frameSeed) {
     gridX: FINE_GRID_X,
     gridY: FINE_GRID_Y,
     showThreshold: FINE_SHOW,
-    flakeWRange: [2, 2],
-    flakeHRange: [2, 2],
-    alphaScale: 0.34,
+    flakeWRange: [2, 1],
+    flakeHRange: [2, 1],
+    alphaScale: 0.4,
     seedOffset: 14.8,
   })
 }
@@ -143,21 +149,21 @@ function paintFlatSnow(data, width, height, frameSeed) {
     gridX: FLAT_GRID_X,
     gridY: FLAT_GRID_Y,
     showThreshold: FLAT_SHOW,
-    flakeWRange: [3, 5],
-    flakeHRange: [1, 1],
-    alphaScale: 0.36,
+    flakeWRange: [2, 3],
+    flakeHRange: [1, 0],
+    alphaScale: 0.38,
     seedOffset: 22.4,
   })
 }
 
 function paintMicroFlatSnow(data, width, height, frameSeed) {
   paintSnowLayer(data, width, height, frameSeed, {
-    gridX: 8,
-    gridY: 6,
-    showThreshold: 0.55,
-    flakeWRange: [2, 3],
+    gridX: MICRO_GRID_X,
+    gridY: MICRO_GRID_Y,
+    showThreshold: MICRO_SHOW,
+    flakeWRange: [2, 2],
     flakeHRange: [1, 0],
-    alphaScale: 0.26,
+    alphaScale: 0.32,
     seedOffset: 31.6,
   })
 }

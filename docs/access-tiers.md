@@ -98,7 +98,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 | Topic | Status |
 | --- | --- |
-| **Which calcs/guides are free vs locked** | **Calcs:** edit **`FREE_CALCULATOR_KEYS`** in **`src/features/calculators/calculatorAccess.js`** (default free: `stackup`, `phoenix`). **Guides:** curated list — **TBD**. |
+| **Which calcs/guides are free vs locked** | **Calcs:** **`FREE_CALCULATOR_KEYS`** in **`src/features/calculators/calculatorAccess.js`**. **Guides:** **`FREE_GUIDE_SLUGS`** in **`src/features/guides/guideAccess.js`**. **Admins:** lock switches on Calcs / AP Guides rows (persists to **`content_access_gates`** when migration applied). DB overrides beat code defaults. |
 | **Signup / verification** | Supabase auth + email verification policy for “free” tier — **TBD** (no `allowed_emails` gate in the client). |
 | **Stripe products** | **`slots-edge`**, **`sports-edge`**, **`crypto-edge`** product slugs; Price IDs in Supabase Edge secrets (`STRIPE_PRICE_SLOTS_EDGE`, …). **`user_subscriptions`** + **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **`slots-edge`**. See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
 

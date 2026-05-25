@@ -43,6 +43,9 @@ import {
   canOpenCalculator,
   calculatorsTabFullyGated,
 } from '../calculators/calculatorAccess.js'
+import {
+  guidesTabFullyGated,
+} from '../guides/guideAccess.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
@@ -75,6 +78,10 @@ export default function AppShell({
   onDismissAccessNotice,
   hasActiveSubscription = false,
   isStaff = false,
+  isAdmin = false,
+  contentAccessGatesMap = null,
+  contentAccessGatesDbReady = false,
+  onSetContentAccessGate,
   onRequireSubscribe,
 }) {
   const COMMUNITY_FEED_PAGE_SIZE = 28
@@ -692,7 +699,7 @@ export default function AppShell({
       setMenuOpen(false)
       return
     }
-    if (!canOpenCalculator(key, { isStaff, hasSlotsEdge: hasActiveSubscription })) {
+    if (!canOpenCalculator(key, { isStaff, hasSlotsEdge: hasActiveSubscription, gatesMap: contentAccessGatesMap })) {
       onRequireSubscribe?.('slots-edge')
       setMenuOpen(false)
       return
@@ -705,10 +712,10 @@ export default function AppShell({
   /** `subscriberGated`: show lock in menu for logged-in users without an active subscription (see `docs/access-tiers.md`). */
   const navItems = [
     { id: 'home', label: 'Lounge', icon: '🍻', subscriberGated: false },
-    { id: 'calculators', label: 'Calcs', icon: '🧮', subscriberGated: calculatorsTabFullyGated() },
+    { id: 'calculators', label: 'Calcs', icon: '🧮', subscriberGated: calculatorsTabFullyGated(contentAccessGatesMap) },
     { id: 'offers', label: 'Calendar', icon: '📅', subscriberGated: false },
     { id: 'bankroll', label: 'Bankroll', icon: '💰', subscriberGated: true },
-    { id: 'guides', label: 'AP Guides', icon: '📗', subscriberGated: true },
+    { id: 'guides', label: 'AP Guides', icon: '📗', subscriberGated: guidesTabFullyGated(contentAccessGatesMap) },
     { id: 'intel', label: 'Intel', icon: '📍', subscriberGated: false },
     { id: 'team', label: 'Team', icon: '🤝', subscriberGated: false }
   ]
@@ -716,7 +723,7 @@ export default function AppShell({
   const showNavSubscriberLocks =
     browseMode === 'member' && !isStaff && !hasActiveSubscription
 
-  const SLOTS_EDGE_GATED_TABS = new Set(['guides', 'bankroll'])
+  const SLOTS_EDGE_GATED_TABS = new Set(['bankroll'])
 
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
@@ -729,10 +736,10 @@ export default function AppShell({
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
     if (tab !== 'calculators' || !activeCalculator) return
-    if (!calculatorRequiresSlotsEdge(activeCalculator)) return
+    if (!calculatorRequiresSlotsEdge(activeCalculator, contentAccessGatesMap)) return
     onRequireSubscribe?.('slots-edge')
     setActiveCalculator(null)
-  }, [tab, activeCalculator, isStaff, hasActiveSubscription, onRequireSubscribe])
+  }, [tab, activeCalculator, isStaff, hasActiveSubscription, onRequireSubscribe, contentAccessGatesMap])
 
   const renderNavMenuItems = () =>
     navItems.map((item) => {
@@ -866,6 +873,10 @@ export default function AppShell({
           onOpenAuth={() => onOpenAuth?.('login')}
           hasSlotsEdge={hasActiveSubscription}
           isStaff={isStaff}
+          isAdmin={isAdmin}
+          gatesMap={contentAccessGatesMap}
+          gatesDbReady={contentAccessGatesDbReady}
+          onSetContentGate={onSetContentAccessGate}
           onRequireSubscribe={onRequireSubscribe}
           titleBarNavSlot={renderTitleBarNavSlot()}
         />
@@ -975,6 +986,13 @@ export default function AppShell({
           onNavigateHome={() => setTab('home')}
           onCommunityPosted={loadCommunityFeed}
           onRequireAuth={onRequireAuth}
+          hasSlotsEdge={hasActiveSubscription}
+          isStaff={isStaff}
+          isAdmin={isAdmin}
+          gatesMap={contentAccessGatesMap}
+          gatesDbReady={contentAccessGatesDbReady}
+          onSetContentGate={onSetContentAccessGate}
+          onRequireSubscribe={onRequireSubscribe}
           titleBarNavSlot={renderTitleBarNavSlot()}
         />
       )

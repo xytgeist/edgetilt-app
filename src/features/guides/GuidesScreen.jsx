@@ -58,6 +58,14 @@ import {
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
+import {
+  canOpenGuide,
+  guideRequiresSlotsEdge,
+  normalizeGuideAccessSlug,
+  showGuideLock,
+} from './guideAccess.js'
 
 /** Calculator / generic placeholder art for Buffalo Link — also used when a guide hero fails to load. */
 const BUFFALO_PLACEHOLDER_SRC = '/guides/buffalo-link/buffalo-link-calculator-icon.webp'
@@ -68,11 +76,6 @@ const ACTIVE_SUPABASE_HOST = (() => {
     return 'unknown-host'
   }
 })()
-
-/** Retired slugs → current slug (markdown `guide:` links, bookmarks). */
-const GUIDE_SLUG_CANONICAL = {
-  'legends-of-the-phoenix': 'legend-of-the-phoenix',
-}
 
 function formatGuideDate(iso) {
   if (!iso) return '—'
@@ -1428,6 +1431,13 @@ export default function GuidesScreen({
   onNavigateHome,
   onCommunityPosted,
   onRequireAuth,
+  hasSlotsEdge = false,
+  isStaff = false,
+  isAdmin = false,
+  gatesMap = null,
+  gatesDbReady = false,
+  onSetContentGate,
+  onRequireSubscribe,
   titleBarNavSlot = null,
 }) {
   const [query, setQuery] = useState('')
@@ -1436,17 +1446,68 @@ export default function GuidesScreen({
   const [loadErr, setLoadErr] = useState('')
   const [expandedSlug, setExpandedSlug] = useState(null)
   const [askFor, setAskFor] = useState(null)
+  const [gateBusySlug, setGateBusySlug] = useState(null)
   const guideCardRefs = useRef(Object.create(null))
 
-  const openGuideSlug = useCallback((rawSlug) => {
-    let s = String(rawSlug || '')
-      .trim()
-      .toLowerCase()
-    if (!s) return
-    s = GUIDE_SLUG_CANONICAL[s] || s
-    setQuery('')
-    setExpandedSlug(s)
-  }, [])
+  const access = useMemo(
+    () => ({ isStaff, hasSlotsEdge, gatesMap, browseMode: 'member' }),
+    [isStaff, hasSlotsEdge, gatesMap],
+  )
+
+  const openGuideSlug = useCallback(
+    (rawSlug) => {
+      const slug = normalizeGuideAccessSlug(rawSlug)
+      if (!slug) return
+      if (!canOpenGuide(slug, { isStaff, hasSlotsEdge, gatesMap })) {
+        onRequireSubscribe?.('slots-edge')
+        return
+      }
+      setQuery('')
+      setExpandedSlug(slug)
+    },
+    [gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe],
+  )
+
+  const toggleGuideExpanded = useCallback(
+    (rawSlug) => {
+      const slug = normalizeGuideAccessSlug(rawSlug)
+      if (!slug) return
+      const isExpanded =
+        expandedSlug != null && String(expandedSlug).toLowerCase() === String(slug).toLowerCase()
+      if (isExpanded) {
+        setExpandedSlug(null)
+        return
+      }
+      if (!canOpenGuide(slug, { isStaff, hasSlotsEdge, gatesMap })) {
+        onRequireSubscribe?.('slots-edge')
+        return
+      }
+      setExpandedSlug(slug)
+    },
+    [expandedSlug, gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe],
+  )
+
+  useEffect(() => {
+    if (!expandedSlug || isStaff || hasSlotsEdge) return
+    if (!guideRequiresSlotsEdge(expandedSlug, gatesMap)) return
+    onRequireSubscribe?.('slots-edge')
+    setExpandedSlug(null)
+  }, [expandedSlug, gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe])
+
+  const handleAdminGuideLockToggle = useCallback(
+    async (slug, locked) => {
+      if (!isAdmin || !gatesDbReady || !onSetContentGate) return
+      const normalized = normalizeGuideAccessSlug(slug)
+      if (!normalized) return
+      setGateBusySlug(normalized)
+      try {
+        await onSetContentGate('guide', normalized, locked)
+      } finally {
+        setGateBusySlug(null)
+      }
+    },
+    [gatesDbReady, isAdmin, onSetContentGate],
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1587,6 +1648,11 @@ export default function GuidesScreen({
       <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
         <h1 className="sr-only">AP Guides</h1>
         <div className="mb-5 mt-1 text-sm text-zinc-400">+EV quick read · expand for full playbook</div>
+        {isAdmin && !gatesDbReady ? (
+          <p className="mb-4 text-xs text-fuchsia-300/90">
+            Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.
+          </p>
+        ) : null}
 
       <label className="block mb-5">
         <span className="sr-only">Search guides</span>
@@ -1619,6 +1685,9 @@ export default function GuidesScreen({
             const calcKey = resolveCalculatorKey(m)
             const evThresholdLine = cardEvThresholdForRow(row)
             const accent = cardAccent(slug)
+            const guideLocked = showGuideLock(slug, access)
+            const adminGuideLocked = guideRequiresSlotsEdge(slug, gatesMap)
+            const normalizedGuideSlug = normalizeGuideAccessSlug(slug)
             const ringFocus =
               slug === 'phoenix-link'
                 ? 'focus-visible:ring-orange-500/60'
@@ -1657,7 +1726,7 @@ export default function GuidesScreen({
                 >
                   <button
                     type="button"
-                    onClick={() => setExpandedSlug((s) => (s === slug ? null : slug))}
+                    onClick={() => toggleGuideExpanded(slug)}
                     className={`w-full text-left touch-manipulation focus:outline-none focus-visible:ring-2 ${ringFocus}`}
                     aria-expanded={expanded}
                   >
@@ -1666,6 +1735,19 @@ export default function GuidesScreen({
                         expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden'
                       }`}
                     >
+                      {isAdmin ? (
+                        <div className="absolute right-3 top-3 z-20">
+                          <ContentAccessAdminSwitch
+                            locked={adminGuideLocked}
+                            busy={gateBusySlug === normalizedGuideSlug}
+                            disabled={!gatesDbReady}
+                            label={`${m?.name || row.title} Slots Edge lock`}
+                            onLockedChange={(nextLocked) =>
+                              void handleAdminGuideLockToggle(slug, nextLocked)
+                            }
+                          />
+                        </div>
+                      ) : null}
                       <img
                         src={heroImage(row)}
                         alt=""
@@ -1680,9 +1762,14 @@ export default function GuidesScreen({
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
                         <div className="flex items-end justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
-                              {m?.name || row.title}
-                            </h2>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <h2 className="min-w-0 flex-1 text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
+                                {m?.name || row.title}
+                              </h2>
+                              {guideLocked ? (
+                                <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-300/95 drop-shadow" />
+                              ) : null}
+                            </div>
                             <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
                               {m?.manufacturer || '—'}
                             </div>

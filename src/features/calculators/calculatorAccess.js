@@ -1,3 +1,5 @@
+import { resolveRequiresSlotsEdge } from '../billing/contentAccessGates.js'
+
 /** @typedef {'phoenix'|'buffalo'|'stackup'|'mhb'} CalculatorKey */
 
 export const CALCULATOR_KEYS = /** @type {CalculatorKey[]} */ (['phoenix', 'buffalo', 'stackup', 'mhb'])
@@ -5,32 +7,46 @@ export const CALCULATOR_KEYS = /** @type {CalculatorKey[]} */ (['phoenix', 'buff
 /**
  * Calculators available to free (logged-in) users without Slots Edge.
  * Toggle access here: add a key to offer free, remove to require subscribe.
+ * Admin UI overrides (when migration applied) take precedence.
  */
 export const FREE_CALCULATOR_KEYS = new Set(
   /** @type {CalculatorKey[]} */ (['stackup', 'phoenix']),
 )
 
-/** @param {string | null | undefined} key */
-export function calculatorRequiresSlotsEdge(key) {
+function codeDefaultCalculatorRequiresSlotsEdge(key) {
   if (!key || !CALCULATOR_KEYS.includes(/** @type {CalculatorKey} */ (key))) return true
   return !FREE_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))
 }
 
-/** @param {string | null | undefined} key @param {{ isStaff?: boolean, hasSlotsEdge?: boolean }} access */
-export function canOpenCalculator(key, { isStaff = false, hasSlotsEdge = false } = {}) {
+/** @param {string | null | undefined} key @param {Map<string, boolean> | null | undefined} [gatesMap] */
+export function calculatorRequiresSlotsEdge(key, gatesMap = null) {
+  const calcKey = String(key || '').trim().toLowerCase()
+  return resolveRequiresSlotsEdge(
+    'calculator',
+    calcKey,
+    gatesMap,
+    codeDefaultCalculatorRequiresSlotsEdge(calcKey),
+  )
+}
+
+/** @param {string | null | undefined} key @param {{ isStaff?: boolean, hasSlotsEdge?: boolean, gatesMap?: Map<string, boolean> | null }} [access] */
+export function canOpenCalculator(key, { isStaff = false, hasSlotsEdge = false, gatesMap = null } = {}) {
   if (isStaff || hasSlotsEdge) return true
-  return !calculatorRequiresSlotsEdge(key)
+  return !calculatorRequiresSlotsEdge(key, gatesMap)
 }
 
-/** Hamburger lock only when every calculator requires Slots Edge. */
-export function calculatorsTabFullyGated() {
-  return CALCULATOR_KEYS.every((key) => calculatorRequiresSlotsEdge(key))
+/** @param {Map<string, boolean> | null | undefined} [gatesMap] */
+export function calculatorsTabFullyGated(gatesMap = null) {
+  return CALCULATOR_KEYS.every((key) => calculatorRequiresSlotsEdge(key, gatesMap))
 }
 
-/** @param {string | null | undefined} key @param {{ browseMode?: string, isStaff?: boolean, hasSlotsEdge?: boolean }} access */
-export function showCalculatorLock(key, { browseMode = 'member', isStaff = false, hasSlotsEdge = false } = {}) {
+/** @param {string | null | undefined} key @param {{ browseMode?: string, isStaff?: boolean, hasSlotsEdge?: boolean, gatesMap?: Map<string, boolean> | null }} [access] */
+export function showCalculatorLock(
+  key,
+  { browseMode = 'member', isStaff = false, hasSlotsEdge = false, gatesMap = null } = {},
+) {
   if (browseMode !== 'member' || isStaff || hasSlotsEdge) return false
-  return calculatorRequiresSlotsEdge(key)
+  return calculatorRequiresSlotsEdge(key, gatesMap)
 }
 
 export const CALCULATOR_CATALOG = [

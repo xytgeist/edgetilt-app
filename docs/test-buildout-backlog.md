@@ -421,6 +421,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ## Update log
 
+- 2026-05-26: **Per-guide Slots Edge toggles + admin lock switches:** **`guideAccess.js`** (`FREE_GUIDE_SLUGS` default **`phoenix-link`**, **`stack-up-pays`**); AP Guides tab partially open like Calcs; lock icons + subscribe on expand. **`content_access_gates`** table + admin-only lock switches on calculator/guide rows (migration **`20260526150000_content_access_gates.sql`**). **`calculatorAccess.js`** honors DB overrides. **`docs/access-tiers.md`** updated.
+
 - 2026-05-26: **Per-calculator Slots Edge toggles:** **`src/features/calculators/calculatorAccess.js`** — **`FREE_CALCULATOR_KEYS`** (default **`stackup`**, **`phoenix`** free; **`buffalo`**, **`mhb`** locked). Calcs tab open for free users; lock icons on gated rows; **`openCalculator`** / Guides **Open calculator** respect same list. **`docs/access-tiers.md`** updated.
 
 - 2026-05-24: **Multi-product Edge billing (scaffold):** migration **`20260526120000_edge_subscriptions.sql`** (`slots-edge` / `sports-edge` / `crypto-edge`), Stripe Edge **`stripe-create-checkout-session`**, **`stripe-webhook`**, **`stripe-create-portal-session`**, client Subscribe modal + **`get_my_entitlements()`**; OCR gated on **`slots-edge`**; Lounge + calendar + alerts remain free. **Apply migration + deploy Edge + Stripe test secrets** before checkout smoke — see **`supabase/functions/stripe-create-checkout-session/README.md`**.

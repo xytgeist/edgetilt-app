@@ -1,8 +1,10 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
   CALCULATOR_CATALOG,
+  calculatorRequiresSlotsEdge,
   canOpenCalculator,
   showCalculatorLock,
 } from './calculatorAccess.js'
@@ -27,37 +29,69 @@ function CalculatorsHome({
   hasSlotsEdge = false,
   isStaff = false,
   onRequireSubscribe,
+  gatesMap = null,
+  isAdmin = false,
+  gatesDbReady = false,
+  onSetContentGate,
 }) {
-  const access = { browseMode, isStaff, hasSlotsEdge }
+  const access = { browseMode, isStaff, hasSlotsEdge, gatesMap }
+  const [gateBusyKey, setGateBusyKey] = useState(null)
 
   const handleSelect = (key) => {
     if (browseMode !== 'member') {
       onOpenAuth?.()
       return
     }
-    if (!canOpenCalculator(key, { isStaff, hasSlotsEdge })) {
+    if (!canOpenCalculator(key, { isStaff, hasSlotsEdge, gatesMap })) {
       onRequireSubscribe?.('slots-edge')
       return
     }
     onSelectCalculator(key)
   }
 
+  const handleAdminLockToggle = async (key, locked) => {
+    if (!isAdmin || !gatesDbReady || !onSetContentGate) return
+    setGateBusyKey(key)
+    try {
+      await onSetContentGate('calculator', key, locked)
+    } finally {
+      setGateBusyKey(null)
+    }
+  }
+
   return (
     <div className="w-full pt-2 sm:pt-3">
       <div className="mb-10 text-left sm:mb-12">
         <p className="text-base text-zinc-400">Select a calculator</p>
+        {isAdmin && !gatesDbReady ? (
+          <p className="mt-2 text-xs text-fuchsia-300/90">
+            Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.
+          </p>
+        ) : null}
       </div>
 
       {CALCULATOR_CATALOG.map((calc) => {
         const locked = showCalculatorLock(calc.key, access)
+        const adminLocked = calculatorRequiresSlotsEdge(calc.key, gatesMap)
         return (
           <button
             key={calc.key}
             type="button"
             title={locked ? 'Subscribe to unlock Slots Edge' : undefined}
             onClick={() => handleSelect(calc.key)}
-            className={calc.buttonClassName}
+            className={`relative ${calc.buttonClassName}`}
           >
+            {isAdmin ? (
+              <div className="absolute right-3 top-3 z-10">
+                <ContentAccessAdminSwitch
+                  locked={adminLocked}
+                  busy={gateBusyKey === calc.key}
+                  disabled={!gatesDbReady}
+                  label={`${calc.title} Slots Edge lock`}
+                  onLockedChange={(nextLocked) => void handleAdminLockToggle(calc.key, nextLocked)}
+                />
+              </div>
+            ) : null}
             {calc.iconWrapClassName?.includes('relative') ? (
               <div className={calc.iconWrapClassName}>
                 <img
@@ -74,10 +108,7 @@ function CalculatorsHome({
                 <div className={`min-w-0 flex-1 ${calc.titleClassName}`}>{calc.title}</div>
                 {locked ? <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" /> : null}
               </div>
-              <p
-                className={calc.subtitleClassName}
-                title={calc.subtitleTitle || undefined}
-              >
+              <p className={calc.subtitleClassName} title={calc.subtitleTitle || undefined}>
                 {calc.subtitle}
               </p>
             </div>
@@ -108,6 +139,10 @@ export default function CalculatorsTab({
   hasSlotsEdge = false,
   isStaff = false,
   onRequireSubscribe,
+  gatesMap = null,
+  isAdmin = false,
+  gatesDbReady = false,
+  onSetContentGate,
   titleBarNavSlot = null,
 }) {
   if (!activeCalculator) {
@@ -123,6 +158,10 @@ export default function CalculatorsTab({
           hasSlotsEdge={hasSlotsEdge}
           isStaff={isStaff}
           onRequireSubscribe={onRequireSubscribe}
+          gatesMap={gatesMap}
+          isAdmin={isAdmin}
+          gatesDbReady={gatesDbReady}
+          onSetContentGate={onSetContentGate}
         />
       </ScrollLinkedEdgeTitleBarShell>
     )

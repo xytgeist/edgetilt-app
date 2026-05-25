@@ -9,6 +9,7 @@ import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
 import { useEdgeEntitlements } from './features/billing/useEdgeEntitlements.js'
+import { useContentAccessGates } from './features/billing/useContentAccessGates.js'
 import {
   readLoungeComposerDraftPendingWork,
   shouldShowLoungeColdBootSplash,
@@ -59,6 +60,8 @@ function App() {
   const [accessNotice, setAccessNotice] = useState('')
   /** Moderator/admin: full access; hamburger hides subscriber-only lock icons. */
   const [isStaffRole, setIsStaffRole] = useState(false)
+  /** Admin only: content access lock switches on calcs/guides. */
+  const [isAdminRole, setIsAdminRole] = useState(false)
   /** From `profiles.has_active_subscription` when column exists (see `supabase/profiles_tier_testing.sql`). */
   const [hasActiveSubscriptionFromProfile, setHasActiveSubscriptionFromProfile] = useState(false)
   const [stripeCustomerId, setStripeCustomerId] = useState(null)
@@ -188,6 +191,7 @@ function App() {
     if (!user?.id) {
       queueMicrotask(() => {
         setIsStaffRole(false)
+        setIsAdminRole(false)
         setHasActiveSubscriptionFromProfile(false)
         setStripeCustomerId(null)
       })
@@ -204,12 +208,14 @@ function App() {
       if (wide.data) {
         const r = wide.data.role
         setIsStaffRole(r === 'moderator' || r === 'admin')
+        setIsAdminRole(r === 'admin')
         setHasActiveSubscriptionFromProfile(Boolean(wide.data.has_active_subscription))
         setStripeCustomerId(wide.data.stripe_customer_id ?? null)
         return
       }
       if (wide.error?.code === 'PGRST116') {
         setIsStaffRole(false)
+        setIsAdminRole(false)
         setHasActiveSubscriptionFromProfile(false)
         setStripeCustomerId(null)
         return
@@ -220,14 +226,17 @@ function App() {
         if (narrow.data) {
           const r = narrow.data.role
           setIsStaffRole(r === 'moderator' || r === 'admin')
+          setIsAdminRole(r === 'admin')
         } else {
           setIsStaffRole(false)
+          setIsAdminRole(false)
         }
         setHasActiveSubscriptionFromProfile(false)
         setStripeCustomerId(null)
         return
       }
       setIsStaffRole(false)
+      setIsAdminRole(false)
       setHasActiveSubscriptionFromProfile(false)
       setStripeCustomerId(null)
     }
@@ -242,6 +251,12 @@ function App() {
     refresh: refreshEntitlements,
     hasSlotsEdge: hasSlotsEdgeFromRpc,
   } = useEdgeEntitlements(supabase, user?.id)
+
+  const {
+    gatesMap: contentAccessGatesMap,
+    gatesDbReady: contentAccessGatesDbReady,
+    setContentGate: setContentAccessGate,
+  } = useContentAccessGates(supabase, isAdminRole)
 
   useEffect(() => {
     const billing = readBillingQueryParams()
@@ -603,6 +618,10 @@ function App() {
           authSessionReady={!isChecking}
           hasActiveSubscription={hasSlotsEdgeAccess}
           isStaff={isStaffRole}
+          isAdmin={isAdminRole}
+          contentAccessGatesMap={contentAccessGatesMap}
+          contentAccessGatesDbReady={contentAccessGatesDbReady}
+          onSetContentAccessGate={setContentAccessGate}
           onOpenAuth={openAuthPanel}
           onRequireSubscribe={openSubscribeModal}
           accessNotice={accessNotice}

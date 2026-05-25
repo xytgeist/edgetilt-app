@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { DotLottie } from '@lottiefiles/dotlottie-web'
 import wasmUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
 import edgeSplashData from '../assets/lottie/edge-splash-v2.json'
@@ -6,43 +6,31 @@ import edgeSplashData from '../assets/lottie/edge-splash-v2.json'
 DotLottie.setWasmUrl(wasmUrl)
 const EDGE_SPLASH_DATA = JSON.stringify(edgeSplashData)
 
-/** D zoom + counter hole begins in edge-splash-v2 (60fps comp, 219 frames). */
-const ZOOM_PHASE_FRAME = 168
-
 /**
- * Edge cold-boot splash: draw-on then fly through the D counter into the feed.
+ * Edge cold-boot splash.
  *
- * Phase 1 — draw: full-viewport Lottie on solid dark bg.
- * Phase 2 — zoom: `mix-blend-mode: destination-in` punches the D hole transparent so
- *   the Lounge feed beneath z-[120] shows through while the letter body keeps the cover.
+ * The Lottie is fully self-contained:
+ *   – "Black Solid 1" covers the entire canvas (opaque black) frames 0–165, giving
+ *     the draw-on phase its dark background.
+ *   – At frame 166–172 both Black Solid 1 (full bg) AND Black Solid 2 (the D hole
+ *     fill) fade opacity 100→0 together. After frame 172 the canvas has genuinely
+ *     transparent pixels in the D counter and the background, so the feed beneath
+ *     z-[120] naturally shows through — no blend-mode compositing required.
+ *   – The D then scales 100%→2146% (frames 168–194), growing the transparent hole
+ *     to fill the viewport and completing the fly-through reveal.
  *
  * @param {{ dismissing?: boolean, onAnimationComplete?: () => void }} props
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
   const canvasRef = useRef(null)
-  const shellRef = useRef(null)
   const onCompleteRef = useRef(onAnimationComplete)
   onCompleteRef.current = onAnimationComplete
-  const [phase, setPhase] = useState('draw') // 'draw' | 'zoom'
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    let player = null
-    let zoomStarted = false
-
-    const beginZoomPhase = () => {
-      if (zoomStarted) return
-      zoomStarted = true
-      if (shellRef.current) {
-        shellRef.current.style.isolation = 'isolate'
-      }
-      canvas.style.mixBlendMode = 'destination-in'
-      setPhase('zoom')
-    }
-
-    player = new DotLottie({
+    const player = new DotLottie({
       canvas,
       data: EDGE_SPLASH_DATA,
       autoplay: true,
@@ -53,49 +41,23 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       renderConfig: { autoResize: true },
     })
 
-    player.addEventListener('frame', (event) => {
-      if (event.currentFrame >= ZOOM_PHASE_FRAME) {
-        beginZoomPhase()
-      }
-    })
-
     player.addEventListener('complete', () => onCompleteRef.current?.())
 
     return () => player?.destroy()
   }, [])
 
-  const isZoom = phase === 'zoom'
-
   return (
     <div
-      ref={shellRef}
-      className={`lounge-cold-boot-splash fixed inset-0 z-[120] ${
+      className={`lounge-cold-boot-splash fixed inset-0 z-[120] pointer-events-none ${
         dismissing ? 'lounge-cold-boot-splash--out' : ''
       }`}
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        isolation: isZoom ? 'isolate' : 'auto',
-      }}
       role="status"
       aria-live="polite"
       aria-label="Loading Lounge"
     >
-      <div
-        className={`pointer-events-none absolute inset-0 ${isZoom ? '' : 'bg-zinc-950'}`}
-        style={isZoom ? { backgroundColor: '#09090b' } : undefined}
-        aria-hidden
-      />
-      {!isZoom ? (
-        <div className="lounge-cold-boot-splash__glow pointer-events-none absolute inset-0" aria-hidden />
-      ) : null}
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        style={{
-          background: 'transparent',
-          mixBlendMode: isZoom ? 'destination-in' : 'normal',
-        }}
+        className="absolute inset-0 h-full w-full"
         aria-hidden
       />
     </div>

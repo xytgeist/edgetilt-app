@@ -487,6 +487,7 @@ export default function SlotGuideFormApp() {
                   <option>Medium</option>
                   <option>Med-High</option>
                   <option>High</option>
+                  <option>High (extreme session swings)</option>
                 </select>
               </div>
               <div>

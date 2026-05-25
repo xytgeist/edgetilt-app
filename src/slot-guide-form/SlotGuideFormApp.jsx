@@ -727,6 +727,7 @@ export default function SlotGuideFormApp() {
                   machine={machine}
                   heroFile={heroFile}
                   heroUrl={currentThumbnail}
+                  contentMarkdown={buildGuideMarkdown({ title: guide.title, guide })}
                 />
               </div>
             </div>

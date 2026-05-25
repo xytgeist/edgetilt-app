@@ -1,15 +1,18 @@
 /**
- * GuideCardPreview — pixel-faithful replica of the collapsed AP guide card.
- * Reads the same fields as GuidesScreen and applies identical logic/classes
- * so what you see here is exactly what renders in the app.
+ * GuideCardPreview — pixel-faithful replica of the AP guide card (both views).
+ * Mirrors the exact logic/classes from GuidesScreen so what you see here is
+ * what renders in the app. Togglable collapsed ↔ expanded.
  *
  * Props:
- *   guide   — guide row fields (slug, title, card_ev_threshold, created_at, updated_at, …)
- *   machine — machines row fields (name, manufacturer, type, volatility_index, …)
- *   heroFile — optional File object for a newly chosen hero image (shows local preview)
- *   heroUrl  — existing stored hero URL (from DB / static fallback)
+ *   guide            — guide fields (slug, title, card_ev_threshold, created_at, updated_at)
+ *   machine          — machine fields (name, manufacturer, type, volatility_index, …)
+ *   heroFile         — optional File for a newly chosen hero image (local preview)
+ *   heroUrl          — existing stored hero URL
+ *   contentMarkdown  — assembled markdown string for the expanded view
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const BUFFALO_PLACEHOLDER =
   'https://media-test.lvslotpro.com/guides/buffalo-link/hero.webp'
@@ -21,83 +24,94 @@ function cardAccent(slug) {
       strong: 'text-orange-50', subtitle: 'text-orange-200/90',
       evTablesBox: 'rounded-xl border border-dashed border-orange-400/55 bg-gradient-to-br from-orange-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-orange-300', evTablesRule: 'border-orange-400/65',
+      h2Tone: 'text-orange-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
     }
   if (slug === 'legend-of-the-phoenix')
     return {
       strong: 'text-orange-50', subtitle: 'text-amber-200/88',
       evTablesBox: 'rounded-xl border border-dashed border-orange-400/55 bg-gradient-to-br from-red-950/30 via-orange-950/25 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-orange-300', evTablesRule: 'border-orange-400/65',
+      h2Tone: 'text-orange-100', hrVia: 'via-orange-500/52', titleBarTo: 'to-orange-500/62',
     }
   if (slug === 'stack-up-pays')
     return {
       strong: 'text-cyan-50', subtitle: 'text-cyan-200/90',
       evTablesBox: 'rounded-xl border border-dashed border-cyan-400/55 bg-gradient-to-br from-cyan-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-cyan-300', evTablesRule: 'border-cyan-400/65',
+      h2Tone: 'text-cyan-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
     }
   if (slug === 'lightning-buffalo-link')
     return {
       strong: 'text-indigo-50', subtitle: 'text-amber-200/85',
       evTablesBox: 'rounded-xl border border-dashed border-indigo-400/55 bg-gradient-to-br from-indigo-950/40 via-blue-950/25 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-indigo-300', evTablesRule: 'border-indigo-400/65',
+      h2Tone: 'text-indigo-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
     }
   if (slug === 'ainsworth-must-hit-by' || slug === 'must-hit-by-aig')
     return {
       strong: 'text-violet-50', subtitle: 'text-fuchsia-200/90',
       evTablesBox: 'rounded-xl border border-dashed border-violet-400/55 bg-gradient-to-br from-violet-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-violet-300', evTablesRule: 'border-violet-400/65',
+      h2Tone: 'text-violet-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
     }
   if (slug === 'ags-must-hit-by' || slug === 'must-hit-by-ags')
     return {
       strong: 'text-rose-50', subtitle: 'text-rose-200/90',
       evTablesBox: 'rounded-xl border border-dashed border-rose-400/55 bg-gradient-to-br from-rose-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-rose-300', evTablesRule: 'border-rose-400/65',
+      h2Tone: 'text-rose-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
     }
   if (slug === 'igt-must-hit-by' || slug === 'must-hit-by-igt')
     return {
       strong: 'text-sky-50', subtitle: 'text-sky-200/90',
       evTablesBox: 'rounded-xl border border-dashed border-sky-400/55 bg-gradient-to-br from-sky-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-sky-300', evTablesRule: 'border-sky-400/65',
+      h2Tone: 'text-sky-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
     }
   if (slug === 'aladdins-fortune')
     return {
       strong: 'text-emerald-50', subtitle: 'text-emerald-200/90',
       evTablesBox: 'rounded-xl border border-dashed border-emerald-400/55 bg-gradient-to-br from-emerald-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-emerald-300', evTablesRule: 'border-emerald-400/65',
+      h2Tone: 'text-emerald-100', hrVia: 'via-emerald-500/50', titleBarTo: 'to-emerald-500/60',
     }
   if (slug === 'aztec-banner')
     return {
       strong: 'text-lime-50', subtitle: 'text-orange-200/88',
       evTablesBox: 'rounded-xl border border-dashed border-lime-400/50 bg-gradient-to-br from-green-950/40 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-lime-300', evTablesRule: 'border-lime-400/60',
+      h2Tone: 'text-lime-100', hrVia: 'via-lime-500/55', titleBarTo: 'to-lime-500/65',
     }
   if (slug === 'pegasus-banner')
     return {
       strong: 'text-sky-50', subtitle: 'text-amber-200/88',
       evTablesBox: 'rounded-xl border border-dashed border-sky-400/55 bg-gradient-to-br from-blue-950/38 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
       evTablesHead: 'text-sky-300', evTablesRule: 'border-sky-400/60',
+      h2Tone: 'text-sky-100', hrVia: 'via-sky-500/50', titleBarTo: 'to-sky-500/60',
     }
   return {
     strong: 'text-amber-50', subtitle: 'text-amber-200/90',
     evTablesBox: 'rounded-xl border border-dashed border-amber-400/55 bg-gradient-to-br from-amber-950/35 via-zinc-950/40 to-zinc-950 px-4 py-3.5',
     evTablesHead: 'text-amber-300', evTablesRule: 'border-amber-400/65',
+    h2Tone: 'text-amber-100', hrVia: 'via-amber-500/48', titleBarTo: 'to-amber-500/55',
   }
 }
 
 function heroGradientClass(slug) {
   if (slug === 'lightning-buffalo-link') return 'from-indigo-950/85 via-sky-950/40 to-zinc-950'
-  if (slug === 'phoenix-link') return 'from-orange-950/80 via-zinc-900/40 to-zinc-950'
-  if (slug === 'legend-of-the-phoenix') return 'from-red-950/80 via-orange-950/40 to-zinc-950'
-  if (slug === 'stack-up-pays') return 'from-cyan-950/80 via-sky-950/40 to-zinc-950'
-  if (slug === 'aladdins-fortune') return 'from-emerald-950/75 via-amber-950/30 to-zinc-950'
-  if (slug === 'aztec-banner') return 'from-green-950/80 via-orange-950/35 to-zinc-950'
-  if (slug === 'pegasus-banner') return 'from-sky-950/80 via-amber-950/30 to-zinc-950'
+  if (slug === 'phoenix-link')           return 'from-orange-950/80 via-zinc-900/40 to-zinc-950'
+  if (slug === 'legend-of-the-phoenix')  return 'from-red-950/80 via-orange-950/40 to-zinc-950'
+  if (slug === 'stack-up-pays')          return 'from-cyan-950/80 via-sky-950/40 to-zinc-950'
+  if (slug === 'aladdins-fortune')       return 'from-emerald-950/75 via-amber-950/30 to-zinc-950'
+  if (slug === 'aztec-banner')           return 'from-green-950/80 via-orange-950/35 to-zinc-950'
+  if (slug === 'pegasus-banner')         return 'from-sky-950/80 via-amber-950/30 to-zinc-950'
   if (slug === 'ainsworth-must-hit-by' || slug === 'must-hit-by-aig') return 'from-violet-950/85 via-fuchsia-950/35 to-zinc-950'
-  if (slug === 'ags-must-hit-by' || slug === 'must-hit-by-ags') return 'from-rose-950/85 via-red-950/40 to-zinc-950'
-  if (slug === 'igt-must-hit-by' || slug === 'must-hit-by-igt') return 'from-sky-950/80 via-blue-950/45 to-zinc-950'
+  if (slug === 'ags-must-hit-by' || slug === 'must-hit-by-ags')       return 'from-rose-950/85 via-red-950/40 to-zinc-950'
+  if (slug === 'igt-must-hit-by' || slug === 'must-hit-by-igt')       return 'from-sky-950/80 via-blue-950/45 to-zinc-950'
   return 'from-amber-900/40 to-zinc-950'
 }
 
-// ─── ratings logic (mirrors GuidesScreen exactly) ─────────────────────────────
+// ─── ratings helpers ──────────────────────────────────────────────────────────
 function volatilityLabel(m) {
   if (!m) return '—'
   const vi = typeof m.volatility_index === 'string' ? m.volatility_index.trim() : m.volatility_index
@@ -147,7 +161,65 @@ function popularityCount(m) {
 function lightningMeter(n) { return '⚡'.repeat(Math.min(5, Math.max(1, n))) }
 function fireMeter(n)      { return '🔥'.repeat(Math.min(5, Math.max(1, n))) }
 
-// ─── +EV panel icon ───────────────────────────────────────────────────────────
+// ─── markdown helpers ─────────────────────────────────────────────────────────
+function flattenText(children) {
+  if (typeof children === 'string' || typeof children === 'number') return String(children)
+  if (!Array.isArray(children)) return ''
+  return children.map((c) => {
+    if (typeof c === 'string' || typeof c === 'number') return String(c)
+    if (c && typeof c === 'object' && 'props' in c) return flattenText(c.props?.children)
+    return ''
+  }).join('')
+}
+
+function tintRGB(children) {
+  const raw = flattenText(children).trim().toLowerCase()
+  if (raw === 'red')   return <span className="text-red-400 font-semibold">{children}</span>
+  if (raw === 'green') return <span className="text-emerald-400 font-semibold">{children}</span>
+  if (raw === 'blue')  return <span className="text-sky-400 font-semibold">{children}</span>
+  return children
+}
+
+function makeMarkdownComponents(accent) {
+  const { h2Tone, hrVia, titleBarTo } = accent
+  return {
+    h1: ({ children }) => (
+      <div className="flex items-center gap-3 w-full mb-5 mt-0.5 select-none">
+        <span className={`h-0.5 flex-1 min-w-[0.75rem] rounded-full bg-gradient-to-r from-zinc-800/20 ${titleBarTo}`} aria-hidden />
+        <h1 className="text-center text-[1.35rem] leading-tight font-black text-white tracking-tight m-0 px-1 shrink-0 max-w-[85%]">{children}</h1>
+        <span className={`h-0.5 flex-1 min-w-[0.75rem] rounded-full bg-gradient-to-l from-zinc-800/20 ${titleBarTo}`} aria-hidden />
+      </div>
+    ),
+    h2: ({ children }) => <h2 className={`text-lg font-black ${h2Tone} mt-6 first:mt-0 mb-2`}>{children}</h2>,
+    h3: ({ children }) => <h3 className="text-base font-bold text-zinc-100 mt-4 mb-1.5">{children}</h3>,
+    p:  ({ children }) => <p className="text-zinc-300 leading-relaxed mb-3 last:mb-0">{children}</p>,
+    ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 text-zinc-300 mb-3">{children}</ul>,
+    ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 text-zinc-300 mb-3">{children}</ol>,
+    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+    strong: ({ children }) => <strong className="text-white font-semibold">{children}</strong>,
+    a: ({ href, children }) => (
+      <a href={href} className="text-cyan-400 underline font-medium hover:text-cyan-300">{children}</a>
+    ),
+    img: ({ src, alt }) => (
+      <img src={src} alt={alt ?? ''} className="max-w-full h-auto rounded-xl border border-zinc-800/90 my-4 block" loading="lazy" decoding="async" />
+    ),
+    table: ({ children }) => (
+      <div className="my-4 overflow-x-auto rounded-xl border border-zinc-800/90">
+        <table className="min-w-full border-collapse text-sm text-zinc-200">{children}</table>
+      </div>
+    ),
+    thead: ({ children }) => <thead className="bg-zinc-900/80">{children}</thead>,
+    tbody: ({ children }) => <tbody className="divide-y divide-zinc-800/70">{children}</tbody>,
+    tr:    ({ children }) => <tr className="odd:bg-zinc-950/55 even:bg-zinc-950/25">{children}</tr>,
+    th:    ({ children }) => <th className="px-3 py-2 text-left font-bold uppercase tracking-wide text-zinc-100">{tintRGB(children)}</th>,
+    td:    ({ children }) => <td className="px-3 py-2 align-top">{tintRGB(children)}</td>,
+    hr: () => (
+      <hr role="separator" className={`my-7 border-0 h-0.5 w-full max-w-full rounded-full bg-gradient-to-r from-zinc-800/30 ${hrVia} to-zinc-800/30`} />
+    ),
+  }
+}
+
+// ─── icons ────────────────────────────────────────────────────────────────────
 function IconEvTrendingUp({ className }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -157,7 +229,6 @@ function IconEvTrendingUp({ className }) {
   )
 }
 
-// ─── date helper ──────────────────────────────────────────────────────────────
 function fmtDate(iso) {
   if (!iso) return '—'
   try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
@@ -165,9 +236,18 @@ function fmtDate(iso) {
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
-export default function GuideCardPreview({ guide = {}, machine = {}, heroFile = null, heroUrl = null }) {
+export default function GuideCardPreview({
+  guide = {},
+  machine = {},
+  heroFile = null,
+  heroUrl = null,
+  contentMarkdown = '',
+}) {
+  const [expanded, setExpanded] = useState(false)
+
   const slug = machine.slug || guide.slug || ''
   const accent = useMemo(() => cardAccent(slug), [slug])
+  const mdComponents = useMemo(() => makeMarkdownComponents(accent), [accent])
 
   const heroSrc = useMemo(() => {
     if (heroFile) return URL.createObjectURL(heroFile)
@@ -175,7 +255,7 @@ export default function GuideCardPreview({ guide = {}, machine = {}, heroFile = 
     return slug ? `/guides/${slug}/hero.webp` : BUFFALO_PLACEHOLDER
   }, [heroFile, heroUrl, slug])
 
-  const evLine = guide.card_ev_threshold?.trim() || guide.card_gist?.trim() || 'Verify +EV on the glass — open guide'
+  const evLine = guide.card_ev_threshold?.trim() || 'Verify +EV on the glass — open guide'
   const calcKey = machine.has_calculator
     ? (machine.calculator_slug || machine.slug || slug)
     : null
@@ -189,145 +269,160 @@ export default function GuideCardPreview({ guide = {}, machine = {}, heroFile = 
     <article
       className={[
         'rounded-3xl border overflow-hidden bg-zinc-900',
-        'border-zinc-700/85 ring-1 ring-zinc-500/15',
-        'shadow-[0_12px_40px_-8px_rgba(0,0,0,0.65)]',
+        expanded
+          ? `border-amber-500/50 ring-1 ring-white/[0.07] shadow-2xl`
+          : 'border-zinc-700/85 ring-1 ring-zinc-500/15 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.65)]',
       ].join(' ')}
     >
       {/* ── HERO ── */}
-      <div className={`relative h-[10.5rem] w-full overflow-hidden bg-gradient-to-br ${heroGradientClass(slug)}`}>
-        <img
-          src={heroSrc}
-          alt={machine.name || guide.title || 'Guide hero'}
-          className="h-full w-full object-cover opacity-95"
-          onError={(e) => {
-            if (e.currentTarget.dataset.fallback === '1') return
-            e.currentTarget.dataset.fallback = '1'
-            e.currentTarget.src = BUFFALO_PLACEHOLDER
-          }}
-        />
-        {/* vignette */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
-        {/* title bar */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
-                {machine.name || guide.title || (
-                  <span className="text-zinc-500 italic">Machine name</span>
-                )}
-              </h2>
-              <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
-                {machine.manufacturer || <span className="text-zinc-600 italic">Manufacturer</span>}
+      <button
+        type="button"
+        onClick={() => setExpanded((x) => !x)}
+        className="w-full text-left touch-manipulation focus:outline-none"
+        aria-expanded={expanded}
+        title={expanded ? 'Collapse preview' : 'Expand preview'}
+      >
+        <div
+          className={[
+            `relative w-full bg-gradient-to-br ${heroGradientClass(slug)}`,
+            expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden',
+          ].join(' ')}
+        >
+          <img
+            src={heroSrc}
+            alt={machine.name || guide.title || 'Guide hero'}
+            className={expanded
+              ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+              : 'h-full w-full object-cover opacity-95'}
+            onError={(e) => {
+              if (e.currentTarget.dataset.fallback === '1') return
+              e.currentTarget.dataset.fallback = '1'
+              e.currentTarget.src = BUFFALO_PLACEHOLDER
+            }}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-white font-black text-xl tracking-tight drop-shadow-md leading-tight">
+                  {machine.name || guide.title || <span className="text-zinc-500 italic">Machine name</span>}
+                </h2>
+                <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
+                  {machine.manufacturer || <span className="text-zinc-600 italic">Manufacturer</span>}
+                </div>
+              </div>
+              <div className="shrink-0 text-right leading-tight pb-px">
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">Released</div>
+                <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
+                  {machine.release_year ?? '—'}
+                </div>
               </div>
             </div>
-            <div className="shrink-0 text-right leading-tight pb-px">
-              <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">Released</div>
-              <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
-                {machine.release_year ?? '—'}
+          </div>
+        </div>
+
+        {/* ── SUMMARY ── */}
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
+              <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Volatility</div>
+              <div className="text-amber-300 mt-0.5">
+                <span className="inline-block origin-left scale-[0.65] text-sm leading-none" title={`${vCount} of 5`}>
+                  {lightningMeter(vCount)}
+                </span>
+              </div>
+              <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{vLabel}</div>
+            </div>
+
+            <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
+              <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Floor presence</div>
+              <div className="mt-0.5">
+                <span className="inline-block origin-left scale-[0.65] text-sm leading-none" title={`${pCount} of 5`}>
+                  {fireMeter(pCount)}
+                </span>
+              </div>
+              <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{pLabel}</div>
+            </div>
+
+            <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
+              <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Type</div>
+              <div className="text-zinc-200 font-semibold mt-0.5">
+                {machine.type || <span className="text-zinc-600 italic">—</span>}
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── SUMMARY ── */}
-      <div className="p-4 space-y-3">
-        <div className="grid grid-cols-2 gap-2 text-xs">
+          {/* +EV panel */}
+          <div className={accent.evTablesBox}>
+            <div className={`flex items-center gap-2 ${accent.evTablesHead} text-[10px] font-semibold uppercase tracking-[0.2em]`}>
+              <IconEvTrendingUp className="h-3.5 w-3.5 shrink-0" />
+              +EV Threshold
+            </div>
+            <div className={`relative mt-2 border-l-2 pl-3 ${accent.evTablesRule}`}>
+              <p className={`text-base font-normal leading-snug ${accent.strong}`}>
+                {evLine || <span className="text-zinc-500 italic">Enter +EV threshold above</span>}
+              </p>
+            </div>
+          </div>
 
-          {/* Volatility */}
-          <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
-            <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Volatility</div>
-            <div className="text-amber-300 mt-0.5">
-              <span
-                className="inline-block origin-left scale-[0.65] text-sm leading-none"
-                title={`${vCount} of 5`}
+          {/* Dates + tap hint */}
+          <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+              {guide.created_at && (
+                <span className="text-[10px] leading-snug text-zinc-500">
+                  <span className="text-zinc-600">Added </span>
+                  <span className="tabular-nums text-zinc-400">{fmtDate(guide.created_at)}</span>
+                </span>
+              )}
+              {guide.updated_at && (
+                <span className="text-[10px] leading-snug text-zinc-500">
+                  <span className="text-zinc-600">Updated </span>
+                  <span className="tabular-nums text-zinc-400">{fmtDate(guide.updated_at)}</span>
+                </span>
+              )}
+            </div>
+            <div className="inline-flex shrink-0 items-center gap-1.5 text-zinc-500 text-xs font-medium">
+              <svg
+                className={`h-3 w-3 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden
               >
-                {lightningMeter(vCount)}
-              </span>
-            </div>
-            <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{vLabel}</div>
-          </div>
-
-          {/* Popularity */}
-          <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
-            <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Floor presence</div>
-            <div className="mt-0.5">
-              <span
-                className="inline-block origin-left scale-[0.65] text-sm leading-none"
-                title={`${pCount} of 5`}
-              >
-                {fireMeter(pCount)}
-              </span>
-            </div>
-            <div className="text-zinc-100 font-bold mt-0.5 leading-snug">{pLabel}</div>
-          </div>
-
-          {/* Type — full width */}
-          <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
-            <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Type</div>
-            <div className="text-zinc-200 font-semibold mt-0.5">
-              {machine.type || <span className="text-zinc-600 italic">—</span>}
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              {expanded ? 'Tap to collapse' : 'Tap for full guide'}
             </div>
           </div>
         </div>
-
-        {/* +EV threshold panel */}
-        <div className={accent.evTablesBox}>
-          <div className={`flex items-center gap-2 ${accent.evTablesHead} text-[10px] font-semibold uppercase tracking-[0.2em]`}>
-            <IconEvTrendingUp className="h-3.5 w-3.5 shrink-0" />
-            +EV Threshold
-          </div>
-          <div className={`relative mt-2 border-l-2 pl-3 ${accent.evTablesRule}`}>
-            <p className={`text-base font-normal leading-snug ${accent.strong}`}>
-              {evLine || <span className="text-zinc-500 italic">Enter +EV threshold above</span>}
-            </p>
-          </div>
-        </div>
-
-        {/* Dates + expand hint */}
-        <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {guide.created_at && (
-              <span className="text-[10px] leading-snug text-zinc-500">
-                <span className="text-zinc-600">Added </span>
-                <span className="tabular-nums text-zinc-400">{fmtDate(guide.created_at)}</span>
-              </span>
-            )}
-            {guide.updated_at && (
-              <span className="text-[10px] leading-snug text-zinc-500">
-                <span className="text-zinc-600">Updated </span>
-                <span className="tabular-nums text-zinc-400">{fmtDate(guide.updated_at)}</span>
-              </span>
-            )}
-          </div>
-          <div className="inline-flex shrink-0 items-center gap-1.5 text-zinc-500 text-xs font-medium">
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-            Tap for full guide
-          </div>
-        </div>
-      </div>
+      </button>
 
       {/* ── ACTION BUTTONS ── */}
       <div className="px-4 pb-4 flex flex-col gap-2 border-t border-zinc-800/80 pt-3 -mt-px">
         <div className="flex gap-2">
           {calcKey && (
-            <button
-              type="button"
-              className="flex-1 min-h-11 rounded-2xl bg-emerald-600 text-white text-sm font-bold touch-manipulation cursor-default select-none"
-            >
+            <button type="button" className="flex-1 min-h-11 rounded-2xl bg-emerald-600 text-white text-sm font-bold cursor-default select-none">
               Open calculator
             </button>
           )}
-          <button
-            type="button"
-            className="flex-1 min-h-11 rounded-2xl bg-cyan-700 text-white text-sm font-bold touch-manipulation cursor-default select-none"
-          >
+          <button type="button" className="flex-1 min-h-11 rounded-2xl bg-cyan-700 text-white text-sm font-bold cursor-default select-none">
             Ask community
           </button>
         </div>
       </div>
+
+      {/* ── EXPANDED MARKDOWN CONTENT ── */}
+      {expanded && (
+        <div className="border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
+          {contentMarkdown ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+              {contentMarkdown}
+            </ReactMarkdown>
+          ) : (
+            <p className="text-zinc-500 italic text-sm text-center py-4">
+              Fill in the guide sections above to preview the full content here.
+            </p>
+          )}
+        </div>
+      )}
     </article>
   )
 }

@@ -192,6 +192,10 @@ export function communityFeedPostInsertPayload({
   streamVideoHeight,
   /** Up to 3 optional category slugs (`category_pills`). */
   categoryPills,
+  /** True when the post originates from "Ask Community" on an AP Guide card. */
+  isApGuidePost,
+  /** Snapshot of the guide hero URL at post time (null = static fallback). */
+  guideThumbnailUrl,
 }) {
   const cap = normalizeFeedCaption(caption)
   const gt = String(gameTitle ?? '').trim()
@@ -232,6 +236,11 @@ export function communityFeedPostInsertPayload({
   }
   const gu = gifUrl != null ? String(gifUrl).trim() : ''
   if (gu) out.gif_url = gu
+  if (isApGuidePost === true) {
+    out.is_ap_guide_post = true
+    const thu = guideThumbnailUrl != null ? String(guideThumbnailUrl).trim() : ''
+    if (thu) out.guide_thumbnail_url = thu
+  }
   return out
 }
 

@@ -1177,6 +1177,9 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
           caption: cleanedCaption,
           gameTitle,
           gameSlug: gameSlug || null,
+          categoryPills: ['ap_slots'],
+          isApGuidePost: true,
+          guideThumbnailUrl: heroImage(guideRow) || null,
         })
       )
 
@@ -1324,9 +1327,17 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
           <div className="p-5 border-b border-zinc-800 shrink-0">
             <div className="text-white font-bold text-lg">Ask the community</div>
             <div className="text-zinc-400 text-sm mt-1">
-              Posts to the <span className="text-cyan-300 font-semibold">Lounge</span> feed with this game tagged.
+              Posts to the <span className="text-cyan-300 font-semibold">Lounge</span> feed with the guide card attached.
             </div>
             <div className="mt-3 rounded-2xl bg-zinc-800/80 px-3 py-2 text-sm text-amber-100 font-semibold">{gameTitle}</div>
+            {/* Locked AP Slots pill — auto-applied, not removable */}
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-300">
+                <svg className="h-2.5 w-2.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                AP Slots
+              </span>
+              <span className="text-[10px] text-zinc-600">auto-tagged</span>
+            </div>
           </div>
           <form noValidate onSubmit={submit} className="p-5 flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto">
             <label className="block flex-1 min-h-[8rem]">
@@ -1589,6 +1600,8 @@ export default function GuidesScreen({
   onSetContentGate,
   onRequireSubscribe,
   titleBarNavSlot = null,
+  /** When set, scroll to and expand this guide card slug (used by Lounge guide embed tap). */
+  openCardSlug = null,
 }) {
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState([])
@@ -1596,6 +1609,17 @@ export default function GuidesScreen({
   const [loadErr, setLoadErr] = useState('')
   const [expandedSlug, setExpandedSlug] = useState(null)
   const [askFor, setAskFor] = useState(null)
+
+  // Deep-link: when openCardSlug is provided (from Lounge guide embed tap), expand + scroll to card
+  useEffect(() => {
+    if (!openCardSlug || loading) return
+    const slug = normalizeGuideAccessSlug(openCardSlug)
+    if (!slug) return
+    setExpandedSlug(slug)
+    setTimeout(() => {
+      document.getElementById(`guide-card-${slug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+  }, [openCardSlug, loading])
   const [gateBusySlug, setGateBusySlug] = useState(null)
   const guideCardRefs = useRef(Object.create(null))
 
@@ -1866,7 +1890,7 @@ export default function GuidesScreen({
                               : 'focus-visible:ring-amber-500/60'
 
             return (
-              <li key={row.id || row.slug}>
+              <li key={row.id || row.slug} id={`guide-card-${slug}`}>
                 <article
                   ref={(el) => {
                     if (el) guideCardRefs.current[slug] = el

@@ -112,6 +112,8 @@ export default function LoungePostArticle({
   onPostBodyClick,
   /** Active Lounge search query — highlights matching terms in captions (search panel only). */
   loungeSearchHighlightQuery = '',
+  /** Called with `game_slug` when the viewer taps the guide embed card (navigates to AP Guides). */
+  onOpenGuideCard,
 }) {
   const ro = loungeReadOnly
   // ── Plain repost type detection ──────────────────────────────────────────
@@ -527,6 +529,44 @@ export default function LoungePostArticle({
             />
           </>
         )}
+
+        {/* ── AP Guide embed card ─────────────────────────────────────────── */}
+        {!isPlainPostRepost && !isCommentRepost && post.is_ap_guide_post && post.game_slug ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenGuideCard?.(post.game_slug)
+            }}
+            className="mt-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            aria-label={`View AP Guide: ${post.game_title}`}
+          >
+            {/* Hero strip */}
+            <div className="relative h-[4.5rem] bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
+              {post.guide_thumbnail_url || post.game_slug ? (
+                <img
+                  src={post.guide_thumbnail_url || `/guides/${post.game_slug}/hero.webp`}
+                  alt=""
+                  className="h-full w-full object-cover opacity-80"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(ev) => { ev.currentTarget.style.display = 'none' }}
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
+              <div className="absolute bottom-0 inset-x-0 px-3 pb-2">
+                <p className="text-white font-bold text-sm leading-tight truncate">{post.game_title}</p>
+              </div>
+            </div>
+            {/* Footer row */}
+            <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/50">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                AP Guide
+              </span>
+              <span className="text-[11px] font-semibold text-cyan-400">View guide →</span>
+            </div>
+          </button>
+        ) : null}
 
         {/* Edited label — only for regular / quote-repost posts */}
         {!isPlainPostRepost && !isCommentRepost && post.edited_at ? (

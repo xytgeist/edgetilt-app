@@ -417,6 +417,8 @@ export default function SocialFeed({
   onLogout,
   onDeleteAccount,
   deleteAccountBusy = false,
+  /** Called with a guide machine slug when user taps a guide embed card in the feed. */
+  onOpenGuideCard,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -5531,7 +5533,7 @@ export default function SocialFeed({
         const { data } = await supabaseClient
           .from('community_feed_posts')
           .select(
-            'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height',
+            'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,is_ap_guide_post,guide_thumbnail_url',
           )
           .eq('id', post.id)
           .is('hidden_at', null)
@@ -5588,7 +5590,7 @@ export default function SocialFeed({
         const { data } = await supabaseClient
           .from('community_feed_posts')
           .select(
-            'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height',
+            'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,is_ap_guide_post,guide_thumbnail_url',
           )
           .eq('id', repostedComment.post_id)
           .is('hidden_at', null)
@@ -11024,6 +11026,7 @@ export default function SocialFeed({
                   onFollowUser={loungeReadOnly ? undefined : handleLoungeFollowUser}
                   feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
                   onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
+                  onOpenGuideCard={onOpenGuideCard}
                 />
               </article>
             ))}

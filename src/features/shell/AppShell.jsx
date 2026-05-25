@@ -87,6 +87,7 @@ export default function AppShell({
 }) {
   const COMMUNITY_FEED_PAGE_SIZE = 28
   const [tab, setTab] = useState('home')
+  const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -861,6 +862,10 @@ export default function AppShell({
             onLogout={onLogout}
             onDeleteAccount={onDeleteAccount}
             deleteAccountBusy={deleteAccountBusy}
+            onOpenGuideCard={(slug) => {
+              setGuideOpenCardSlug(slug)
+              setTab('guides')
+            }}
           />
         </div>
       </Suspense>
@@ -998,6 +1003,7 @@ export default function AppShell({
           onSetContentGate={onSetContentAccessGate}
           onRequireSubscribe={onRequireSubscribe}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          openCardSlug={guideOpenCardSlug}
         />
       )
     } else if (tab === 'offers') {

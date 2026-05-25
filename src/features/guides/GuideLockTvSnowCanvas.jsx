@@ -6,7 +6,11 @@ const MEDIUM_SHOW = 0.66
 const FINE_GRID_X = 10
 const FINE_GRID_Y = 8
 const FINE_SHOW = 0.58
+const FLAT_GRID_X = 12
+const FLAT_GRID_Y = 9
+const FLAT_SHOW = 0.6
 const SCAN_BAND_COUNT = 3
+const RISING_SCAN_SPEED = 38
 const MIN_FRAME_MS = 72
 
 function hashNoise(x, y, seed = 0) {
@@ -17,11 +21,17 @@ function hashNoise(x, y, seed = 0) {
 function pickSnowColor(t, chromaBias) {
   const base = 198 + Math.floor(t * 42)
 
+  if (chromaBias > 0.945) {
+    return [base - 10, base + 8, base + 22]
+  }
   if (chromaBias > 0.9) {
-    return [base + 5, base - 1, base + 6]
+    return [base + 16, base - 6, base + 4]
+  }
+  if (chromaBias > 0.855) {
+    return [base - 8, base + 12, base - 4]
   }
   if (chromaBias > 0.82) {
-    return [base + 3, base + 1, base - 2]
+    return [base + 4, base + 2, base + 10]
   }
   return [base + 2, base + 3, base + 4]
 }
@@ -61,6 +71,17 @@ function paintScanBands(data, width, height, frameSeed) {
 
     fillBlock(data, width, height, 0, bandY, width, thickness, grey, grey + 2, grey + 3, alpha)
   }
+}
+
+function paintRisingScanBand(data, width, height, frameSeed) {
+  const thickness = 14 + Math.floor(hashNoise(frameSeed * 0.22, 0, 11.2) * 8)
+  const travel = (frameSeed * RISING_SCAN_SPEED) % (height + thickness + 48)
+  const bandY = Math.floor(height - travel + 24)
+  const flicker = 0.82 + hashNoise(frameSeed, 12.4, 3.8) * 0.18
+  const grey = 212 + Math.floor(hashNoise(frameSeed, 8.1, 4.6) * 28)
+  const alpha = 0.26 * flicker * 255
+
+  fillBlock(data, width, height, 0, bandY, width, thickness, grey + 6, grey + 10, grey + 16, alpha)
 }
 
 function paintSnowLayer(
@@ -115,11 +136,38 @@ function paintFineSnow(data, width, height, frameSeed) {
   })
 }
 
+function paintFlatSnow(data, width, height, frameSeed) {
+  paintSnowLayer(data, width, height, frameSeed, {
+    gridX: FLAT_GRID_X,
+    gridY: FLAT_GRID_Y,
+    showThreshold: FLAT_SHOW,
+    flakeWRange: [3, 5],
+    flakeHRange: [1, 1],
+    alphaScale: 0.36,
+    seedOffset: 22.4,
+  })
+}
+
+function paintMicroFlatSnow(data, width, height, frameSeed) {
+  paintSnowLayer(data, width, height, frameSeed, {
+    gridX: 8,
+    gridY: 6,
+    showThreshold: 0.55,
+    flakeWRange: [2, 3],
+    flakeHRange: [1, 0],
+    alphaScale: 0.26,
+    seedOffset: 31.6,
+  })
+}
+
 function paintTvSnow(imageData, width, height, frameSeed) {
   imageData.data.fill(0)
   paintScanBands(imageData.data, width, height, frameSeed)
+  paintRisingScanBand(imageData.data, width, height, frameSeed)
   paintMediumSnow(imageData.data, width, height, frameSeed)
   paintFineSnow(imageData.data, width, height, frameSeed)
+  paintFlatSnow(imageData.data, width, height, frameSeed)
+  paintMicroFlatSnow(imageData.data, width, height, frameSeed)
 }
 
 export default function GuideLockTvSnowCanvas({ className = '' }) {

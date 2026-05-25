@@ -631,7 +631,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - 2026-05-10: Added **`docs/access-tiers.md`** fill-in template (three tiers × per-surface R/W matrix); linked from roadmap, **`AGENTS.md`**, architecture, backlog freemium item.
 - 2026-05-10: Documented **freemium / subscription** direction in **`docs/social-feed-roadmap.md`** (anonymous read → free account → subscriber gates; RLS + billing webhooks as source of truth); linked from **`docs/frontend-architecture.md`** and **`AGENTS.md`**.
 - 2026-05-10: **Public browse access:** app shell loads without login (Supabase anon); full-screen auth panel + sticky shell CTA for sign-in; removed dev-only guest button / `VITE_ALLOW_GUEST_MODE`. See **`docs/frontend-architecture.md`** (Access model).
-- 2026-05-10: **`session-chat-export.md`** removed from Git tracking (`.gitignore`); local export path unchanged for scripts — see **`AGENTS.md`** for backup note on first pull after this change.
+- 2026-05-25: **`session-chat-export.md`** and all `scripts/Run-CursorChatExport-*.ps1` / `Register-CursorChatExportScheduledTask-*.ps1` scripts deleted; scheduled tasks unregistered. Continuity is maintained via docs only.
 - 2026-05-10: Added root **`AGENTS.md`** (canonical doc map, when-to-update table, chat-export vs repo rules); linked from `README.md`, `docs/frontend-architecture.md`, roadmap, backlog, production checklist.
 - 2026-05-10: Recorded operator **manual smoke pass on test** (items 1–5 as applicable) under **Test smoke and release readiness**.
 - 2026-05-10: Adopted strict phase-order build policy; marked Phase B pinned + logged-out Lounge items complete; noted A2 counter triggers dependency on E/F tables.

@@ -88,7 +88,6 @@ Port these into the table above when they appear in conversation:
 
 ## What NOT to treat as canonical
 
-- **`session-chat-export.md`** — **gitignored**; lives at repo root for local export / search only. If something matters for building the product, **copy the distilled fact** into `docs/test-buildout-backlog.md`, `docs/social-feed-roadmap.md`, or `docs/frontend-architecture.md`, then future agents do not depend on a huge export. **First pull after it stops being tracked:** Git may remove your local copy of that file; **back it up** before pulling if you care about the bytes on disk, then recreate an empty file or restore from backup so scheduled exports keep the same path (`scripts/Run-CursorChatExport-*.ps1`).
 - **Secrets** — never commit values; document variable **names** and where to set them (Vercel, Supabase dashboard).
 
 ## Checklist before you finish a substantive task

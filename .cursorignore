@@ -8,8 +8,7 @@ coverage/
 .cache/
 .tmp/
 
-# -- Large generated files (grow unboundedly, no indexing value)
-session-chat-export.md
+# -- Large generated / transient files
 *.log
 
 # -- Binary / media assets
@@ -33,3 +32,4 @@ src/assets/lottie/
 # -- Minified / bundled JS
 *.min.js
 *.bundle.js
+

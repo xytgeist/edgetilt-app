@@ -25,6 +25,7 @@ const EDGE_SPLASH_DATA = JSON.stringify(edgeSplashData)
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
   const canvasRef = useRef(null)
+  const preFrameCoverRef = useRef(null)
   const onCompleteRef = useRef(onAnimationComplete)
   onCompleteRef.current = onAnimationComplete
 
@@ -43,6 +44,17 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       renderConfig: { autoResize: true },
     })
 
+    // Hide the dark pre-frame cover the moment the first Lottie frame paints.
+    // By that point the canvas has opaque content (Black Solid 1 = full black),
+    // so removing the cover produces no visible jump.
+    player.addEventListener('frame', () => {
+      const cover = preFrameCoverRef.current
+      if (cover) {
+        cover.style.display = 'none'
+        preFrameCoverRef.current = null
+      }
+    })
+
     player.addEventListener('complete', () => onCompleteRef.current?.())
 
     return () => player?.destroy()
@@ -57,6 +69,8 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       aria-live="polite"
       aria-label="Loading Lounge"
     >
+      {/* Covers the transparent canvas gap before WASM boots and the first frame renders */}
+      <div ref={preFrameCoverRef} className="absolute inset-0 bg-[#09090b]" aria-hidden />
       <canvas
         ref={canvasRef}
         className="absolute inset-0 h-full w-full"

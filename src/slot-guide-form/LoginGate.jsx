@@ -1,21 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
+const SB_URL = 'https://jtjgtucumuoswnbauxry.supabase.co'
+const SB_ANON = 'sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B'
+
 // Auth checks against the test environment (where the app currently lives).
-// Publishable key, safe to hardcode.
-const supabase = createClient(
-  'https://jtjgtucumuoswnbauxry.supabase.co',
-  'sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B',
-)
+const supabase = createClient(SB_URL, SB_ANON)
 
 const ic = 'w-full min-h-11 text-base text-white bg-gray-900 rounded-xl border border-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/40'
+
+/** Check localStorage for any Supabase session token synchronously. */
+function hasStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || ''
+      if (k.startsWith('sb-') && k.endsWith('-auth-token')) return true
+    }
+  } catch { /* ignore */ }
+  return false
+}
 
 /**
  * Wraps children behind a Supabase email/password login.
  * Only users with profiles.role = 'admin' are admitted.
  */
 export default function LoginGate({ children }) {
-  const [state, setState] = useState('checking') // 'checking' | 'login' | 'not-admin' | 'ready'
+  // Skip 'checking' entirely if there's no stored session token
+  const [state, setState] = useState(() => hasStoredSession() ? 'checking' : 'login')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy]         = useState(false)
@@ -28,7 +39,8 @@ export default function LoginGate({ children }) {
   }
 
   useEffect(() => {
-    // Timeout guard — if Supabase doesn't respond in 6s, drop to login screen
+    if (state !== 'checking') return  // no stored session, skip async check
+
     const timeout = setTimeout(() => setState('login'), 6000)
 
     supabase.auth.getSession()
@@ -41,15 +53,8 @@ export default function LoginGate({ children }) {
       })
       .catch(() => { clearTimeout(timeout); setState('login') })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      clearTimeout(timeout)
-      if (!session) { setState('login'); return }
-      userRef.current = session.user
-      const ok = await checkRole(session.user.id)
-      setState(ok ? 'ready' : 'not-admin')
-    })
-    return () => { clearTimeout(timeout); subscription.unsubscribe() }
-  }, [])
+    return () => clearTimeout(timeout)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogin(e) {
     e.preventDefault()

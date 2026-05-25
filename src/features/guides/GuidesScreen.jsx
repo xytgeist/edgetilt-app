@@ -58,6 +58,7 @@ import {
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
   canOpenGuide,
@@ -691,6 +692,33 @@ function IconEvTrendingUp({ className }) {
         strokeLinejoin="round"
       />
     </svg>
+  )
+}
+
+function GuideLockedPaywallOverlay({ onUnlock }) {
+  return (
+    <div className="absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950/20 via-zinc-950/50 to-zinc-950/75" />
+      <div className="relative z-10 flex max-w-[16rem] flex-col items-center gap-3 text-center">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-500/35 bg-amber-500/10">
+          <NavLockGlyph className="h-4 w-4 text-amber-300" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold leading-snug text-zinc-100">Full guide on Slots Edge</p>
+          <p className="mt-1 text-xs leading-snug text-zinc-400">Subscribe to unlock this playbook and the rest of AP Guides.</p>
+        </div>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onUnlock?.()
+          }}
+          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98]"
+        >
+          Unlock guide
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1688,7 +1716,7 @@ export default function GuidesScreen({
             const adminGuideLocked = guideRequiresSlotsEdge(slug, gatesMap)
             const guideLockedCollapsed = guideLocked && !expanded
             const lockedSectionBlurClass = guideLockedCollapsed
-              ? 'blur-[6px] brightness-[0.58] saturate-[0.85] select-none'
+              ? 'blur-[2px] brightness-[0.82] saturate-[0.94] select-none'
               : ''
             const normalizedGuideSlug = normalizeGuideAccessSlug(slug)
             const ringFocus =
@@ -1905,10 +1933,7 @@ export default function GuidesScreen({
                     </div>
 
                     {guideLockedCollapsed ? (
-                      <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 top-[10.5rem] z-10 overflow-hidden rounded-b-3xl bg-zinc-950/40"
-                        aria-hidden
-                      />
+                      <GuideLockedPaywallOverlay onUnlock={() => onRequireSubscribe?.('slots-edge')} />
                     ) : null}
                   </div>
 

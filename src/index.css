@@ -679,6 +679,15 @@ html.light .text-lv-yellow {
 }
 
 /*
+ * GIF picker sheet — hardcoded dark bg won't flip with the zinc scale,
+ * so override it explicitly in light mode.
+ */
+html.light .klipy-gif-sheet {
+  background-color: rgba(255, 255, 255, 0.97);
+  border-color: var(--color-zinc-300);
+}
+
+/*
  * Category pills in light mode — solid filled backgrounds.
  * Scoped to .lounge-pill-row so dark mode is completely untouched.
  * Text: white on all colors except lime (too light) which gets near-black.

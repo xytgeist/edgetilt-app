@@ -211,7 +211,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
         onClick={onClose}
       />
       <div
-        className="relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
+        className="klipy-gif-sheet relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
         style={{ height: resolvedSheetHeightPx }}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">

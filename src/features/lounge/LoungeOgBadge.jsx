@@ -26,7 +26,7 @@ export default function LoungeOgBadge({ isOg, size = 'feed' }) {
   return (
     <LoungeBadgeHoverTip tip="OG" tone="amber" className={tipClass}>
       <span className="inline-flex items-center leading-none" role="img" aria-label="OG">
-        <img src={BADGE_SRC} alt="" className={iconClass} draggable={false} width={s.px} height={s.px} aria-hidden />
+        <img src={BADGE_SRC} alt="" className={`lounge-og-badge ${iconClass}`} draggable={false} width={s.px} height={s.px} aria-hidden />
       </span>
     </LoungeBadgeHoverTip>
   )

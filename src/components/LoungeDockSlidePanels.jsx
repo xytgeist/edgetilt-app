@@ -932,7 +932,7 @@ export default function LoungeDockSlidePanels({
             <button
               type="button"
               onClick={() => dismissWithAnimation('left')}
-              className="pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
+              className="lounge-title-nav-btn pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
               aria-label="Close panel"
             >
               <span className="text-xl leading-none">×</span>

@@ -33,7 +33,8 @@ export default function EdgeLogoWithEasterEgg({ className = '' }) {
         className="m-0 inline-flex cursor-pointer border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 rounded-sm"
         aria-label="EDGE"
       >
-        <img src="/edge-lounge-logo.png" alt="" className={className} draggable={false} />
+        <img src="/edge-lounge-logo.png" alt="" className={`edge-logo--dark ${className}`} draggable={false} />
+        <img src="/edge-lounge-logo-light.png" alt="" className={`edge-logo--light ${className}`} draggable={false} />
       </button>
       {showGiggity ? (
         <span className="pointer-events-none absolute left-1/2 top-full z-[70] mt-1 -translate-x-1/2 whitespace-nowrap" aria-hidden>

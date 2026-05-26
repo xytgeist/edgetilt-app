@@ -67,7 +67,7 @@ export default function LoungeFeedCategoryFilter({
         <div
           role="listbox"
           aria-multiselectable="true"
-          className="absolute right-0 top-full z-30 mt-0.5 max-h-[min(60vh,18rem)] w-max min-w-[9.5rem] max-w-[min(88vw,11.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-lg"
+          className="lounge-pill-row absolute right-0 top-full z-30 mt-0.5 max-h-[min(60vh,18rem)] w-max min-w-[9.5rem] max-w-[min(88vw,11.5rem)] overflow-y-auto overscroll-contain rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-lg"
         >
           {filterActive ? (
             <button

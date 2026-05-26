@@ -898,7 +898,7 @@ export default function AppShell({
         aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        className="grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+        className="lounge-title-nav-btn grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
       >
         <span aria-hidden className="block leading-none text-xl -translate-y-px">
           {menuOpen ? '×' : '☰'}

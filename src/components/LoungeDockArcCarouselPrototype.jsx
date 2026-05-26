@@ -139,11 +139,18 @@ function fabLongPressRingStatesFromElapsed(elapsedMs, fabSizePx) {
   return [ring1, ...outer]
 }
 
-/** Cyan glow scaled by ring index (inner = stronger) and current opacity. */
-function fabLongPressRingGlow(ringIndex, opacity) {
+/** Glow scaled by ring index (inner = stronger) and current opacity. */
+function fabLongPressRingGlow(ringIndex, opacity, isLight) {
   const o = clamp(opacity, 0, 1)
   const tier = [1, 0.82, 0.64, 0.48][ringIndex] ?? 0.48
   const a = o * tier
+  if (isLight) {
+    return [
+      `0 0 ${6 + ringIndex}px rgba(59, 130, 246, ${0.55 * a})`,
+      `0 0 ${12 + ringIndex * 2}px rgba(59, 130, 246, ${0.35 * a})`,
+      `0 0 ${20 + ringIndex * 3}px rgba(59, 130, 246, ${0.22 * a})`,
+    ].join(', ')
+  }
   return [
     `0 0 ${6 + ringIndex}px rgba(6, 206, 252, ${0.65 * a})`,
     `0 0 ${12 + ringIndex * 2}px rgba(6, 206, 252, ${0.42 * a})`,
@@ -152,6 +159,9 @@ function fabLongPressRingGlow(ringIndex, opacity) {
 }
 
 function FabLongPressRingIndicator({ rings, sizePx }) {
+  const isLight = typeof document !== 'undefined' && document.documentElement.classList.contains('light')
+  const ringColor = isLight ? '#3b82f6' : '#06cefc'
+  const dropShadowRgb = isLight ? '59, 130, 246' : '6, 206, 252'
   return (
     <span
       className="pointer-events-none absolute left-1/2 top-1/2 z-0"
@@ -168,13 +178,15 @@ function FabLongPressRingIndicator({ rings, sizePx }) {
         return (
           <span
             key={ringIndex}
-            className="absolute inset-0 box-border rounded-full border-[#06cefc]"
+            className="absolute inset-0 box-border rounded-full"
             style={{
               borderWidth: ring.strokePx,
+              borderColor: ringColor,
+              borderStyle: 'solid',
               transform: `scale(${ring.scale})`,
               opacity: ring.opacity,
-              boxShadow: fabLongPressRingGlow(ringIndex, ring.opacity),
-              filter: `drop-shadow(0 0 ${5 + ringIndex}px rgba(6, 206, 252, ${0.45 * ring.opacity}))`,
+              boxShadow: fabLongPressRingGlow(ringIndex, ring.opacity, isLight),
+              filter: `drop-shadow(0 0 ${5 + ringIndex}px rgba(${dropShadowRgb}, ${0.45 * ring.opacity}))`,
             }}
           />
         )
@@ -1401,7 +1413,7 @@ export default function LoungeDockArcCarouselPrototype({
       }}
     >
       <span
-        className={`relative flex items-center justify-center rounded-full backdrop-blur-sm ${chromeBorder} ${
+        className={`lounge-dock-item-circle relative flex items-center justify-center rounded-full backdrop-blur-sm ${chromeBorder} ${
           useLitChrome
             ? `${glow.bgLit} ${glow.ringLit} ${glow.shadowLit}`
             : `${glow.bgIdle} ${glow.shadowIdle}`
@@ -1452,7 +1464,7 @@ export default function LoungeDockArcCarouselPrototype({
       {menuExpanded && fabVisible ? (
         <button
           type="button"
-          className="pointer-events-auto fixed inset-0 z-[5] bg-black/35 backdrop-blur-[2px] [-webkit-tap-highlight-color:transparent]"
+          className="lounge-dock-backdrop pointer-events-auto fixed inset-0 z-[5] bg-black/35 backdrop-blur-[2px] [-webkit-tap-highlight-color:transparent]"
           aria-label="Close menu"
           onPointerDown={onBackdropPointerDown}
           onPointerMove={onBackdropPointerMove}
@@ -1554,7 +1566,7 @@ export default function LoungeDockArcCarouselPrototype({
           onContextMenu={(e) => {
             if (repositioning || fabSelectionLock) e.preventDefault()
           }}
-          className={`pointer-events-auto absolute inset-0 z-[1] select-none rounded-full border-0 transition-[box-shadow,background-color,color,transform] duration-300 ease-out [-webkit-touch-callout:none] [-webkit-tap-highlight-color:transparent] [-webkit-user-select:none] ${loungeDockFabCenterShadowClass(open)} ${
+          className={`lounge-dock-fab-center pointer-events-auto absolute inset-0 z-[1] select-none rounded-full border-0 transition-[box-shadow,background-color,color,transform] duration-300 ease-out [-webkit-touch-callout:none] [-webkit-tap-highlight-color:transparent] [-webkit-user-select:none] ${loungeDockFabCenterShadowClass(open)} ${
             open
               ? `${LOUNGE_DOCK_FAB_CENTER_GLOW.bgOpen} ${LOUNGE_DOCK_FAB_CENTER_GLOW.text}`
               : `${LOUNGE_DOCK_FAB_CENTER_GLOW.bg} ${LOUNGE_DOCK_FAB_CENTER_GLOW.text}`

@@ -6574,7 +6574,7 @@ export default function SocialFeed({
             </button>
           </div>
         ) : null}
-        <div className="mt-1 flex w-full items-center gap-1.5">
+        <div className="lounge-media-toolbar mt-1 flex w-full items-center gap-1.5">
           <label
             htmlFor={LOUNGE_COMMENT_EDIT_MEDIA_INPUT_ID}
             onPointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
@@ -10676,7 +10676,7 @@ export default function SocialFeed({
             />
             <div
               data-lounge-fab-obstacle
-              className="mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1"
+              className="lounge-media-toolbar mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1"
             >
               <label
                 htmlFor={LOUNGE_COMPOSER_MEDIA_INPUT_ID}
@@ -11793,7 +11793,7 @@ export default function SocialFeed({
                             })
                           }}
                         />
-                        <div className="mb-1 flex w-full items-center gap-1.5 pr-2 pb-1 pt-1.5">
+                        <div className="lounge-media-toolbar mb-1 flex w-full items-center gap-1.5 pr-2 pb-1 pt-1.5">
                           <label
                             htmlFor={LOUNGE_DETAIL_EDIT_MEDIA_INPUT_ID}
                             onPointerDown={() => beginLoungeComposerMediaPicker('detailEdit')}
@@ -11889,6 +11889,7 @@ export default function SocialFeed({
                       className={`flex w-full min-w-0 flex-nowrap items-center justify-between py-0.5 text-[16px] ${loungeDetailEditing ? 'mt-1' : ''}`}
                       onClick={(e) => e.stopPropagation()}
                       role="group"
+                      data-lounge-post-interaction-bar
                     >
                       <LoungeInteractionGlyphRail
                         railAlign="start"
@@ -12651,7 +12652,7 @@ export default function SocialFeed({
                           </div>
                         ) : null}
                         <div className="mx-auto mt-0.5 h-px w-[92%] bg-zinc-700/85" role="presentation" aria-hidden />
-                        <div className="mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
+                        <div className="lounge-media-toolbar mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
                           <label
                             htmlFor={LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID}
                             onPointerDown={() => beginLoungeComposerMediaPicker('detailComment')}
@@ -13332,10 +13333,10 @@ export default function SocialFeed({
                           </div>
                         </div>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-zinc-700/70 pt-1.5 pb-1">
-                        <div className="flex h-10 shrink-0 items-center justify-center gap-1.5">
-                          <label
-                            htmlFor={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
+                        <div className="lounge-media-toolbar mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-zinc-700/70 pt-1.5 pb-1">
+                          <div className="flex h-10 shrink-0 items-center justify-center gap-1.5">
+                            <label
+                              htmlFor={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
                             onPointerDown={() => {
                               if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
                             }}

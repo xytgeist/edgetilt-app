@@ -569,19 +569,27 @@ input[list]::-webkit-list-button {
 
 /* ── Light mode overrides ─────────────────────────────────────────────────── */
 
+/* Remap lv-blue (cyan) → blue-500 everywhere in light mode via CSS variable */
+html.light {
+  --lv-blue: #3b82f6;
+  --color-lv-blue: #3b82f6;
+}
+
 /*
  * text-white doesn't use a zinc variable so it won't auto-flip.
  * Override globally so body/card/modal text becomes dark in light mode.
  * Elements that MUST stay white (text over dark hero images) should use
  * text-[#fff] (a hardcoded arbitrary value) instead of text-white.
  */
-html.light .text-white {
+/* Flip white text dark — but skip elements with their own colored bg
+   (action buttons, badges) which need white text on their background. */
+html.light .text-white:not([class*="bg-"]) {
   color: #18181b;
 }
-html.light .text-white\/90,
-html.light .text-white\/80,
-html.light .text-white\/70,
-html.light .text-white\/60 {
+html.light .text-white\/90:not([class*="bg-"]),
+html.light .text-white\/80:not([class*="bg-"]),
+html.light .text-white\/70:not([class*="bg-"]),
+html.light .text-white\/60:not([class*="bg-"]) {
   color: rgb(24 24 27 / var(--tw-text-opacity, 1));
 }
 html.light .placeholder\:text-white::placeholder {
@@ -593,55 +601,329 @@ html.light .placeholder\:text-white::placeholder {
  * invisible on light backgrounds. Map them to readable mid-dark equivalents.
  * These are used in guide card h2 headings, EV threshold text, subtitles, etc.
  */
+/* -50 / -100 / -200 / -300 pastel text → richer, darker variants for light bg */
 html.light .text-orange-50  { color: var(--color-orange-700); }
 html.light .text-orange-100 { color: var(--color-orange-600); }
 html.light .text-orange-200,
 html.light .text-orange-200\/90,
 html.light .text-orange-200\/88 { color: var(--color-orange-600); }
+html.light .text-orange-300 { color: var(--color-orange-600); }
 
 html.light .text-amber-50  { color: var(--color-amber-700); }
 html.light .text-amber-100 { color: var(--color-amber-700); }
 html.light .text-amber-200,
 html.light .text-amber-200\/90,
 html.light .text-amber-200\/88 { color: var(--color-amber-700); }
+html.light .text-amber-300 { color: var(--color-amber-700); }
 
 html.light .text-cyan-50   { color: var(--color-cyan-700); }
 html.light .text-cyan-100  { color: var(--color-cyan-600); }
 html.light .text-cyan-200  { color: var(--color-cyan-600); }
+html.light .text-cyan-300  { color: var(--color-cyan-600); }
 
 html.light .text-sky-50    { color: var(--color-sky-700); }
 html.light .text-sky-100   { color: var(--color-sky-600); }
 html.light .text-sky-200   { color: var(--color-sky-600); }
+html.light .text-sky-300   { color: var(--color-sky-600); }
 
 html.light .text-violet-50  { color: var(--color-violet-700); }
 html.light .text-violet-100 { color: var(--color-violet-700); }
 html.light .text-violet-200 { color: var(--color-violet-600); }
+html.light .text-violet-300 { color: var(--color-violet-600); }
 
 html.light .text-rose-50   { color: var(--color-rose-700); }
 html.light .text-rose-100  { color: var(--color-rose-600); }
 html.light .text-rose-200  { color: var(--color-rose-600); }
+html.light .text-rose-300  { color: var(--color-rose-600); }
 
 html.light .text-indigo-50  { color: var(--color-indigo-700); }
 html.light .text-indigo-100 { color: var(--color-indigo-600); }
 html.light .text-indigo-200 { color: var(--color-indigo-600); }
+html.light .text-indigo-300 { color: var(--color-indigo-600); }
 
 html.light .text-lime-50   { color: var(--color-lime-700); }
 html.light .text-lime-100  { color: var(--color-lime-700); }
 html.light .text-lime-200  { color: var(--color-lime-700); }
+html.light .text-lime-300  { color: var(--color-lime-700); }
 
 html.light .text-emerald-50  { color: var(--color-emerald-700); }
 html.light .text-emerald-100 { color: var(--color-emerald-700); }
 html.light .text-emerald-200 { color: var(--color-emerald-600); }
+html.light .text-emerald-300 { color: var(--color-emerald-600); }
 
 html.light .text-red-50  { color: var(--color-red-700); }
 html.light .text-red-100 { color: var(--color-red-600); }
+html.light .text-red-300 { color: var(--color-red-600); }
 
-/* EV Threshold panel: override the dark gradient bg + ensure text is readable */
+html.light .text-fuchsia-200 { color: var(--color-fuchsia-700); }
+html.light .text-fuchsia-300 { color: var(--color-fuchsia-700); }
+
+/*
+ * Interaction bar (data-lounge-post-interaction-bar):
+ * - Idle glyphs: zinc-500 in our inverted scale = #71717a, reads too dark on white →
+ *   bump to a lighter neutral (#a1a1aa). Also soften active commented state
+ *   (zinc-100 = #18181b ≈ near-black in light mode → dark-gray instead).
+ * - Bookmarked: lv-yellow (#ffea00) is blinding on white bg → warm amber.
+ */
+html.light [data-lounge-post-interaction-bar] .text-zinc-500 {
+  color: #a1a1aa;
+}
+/* Active/commented: filled glyph carries the "you commented" signal; slightly darker
+   than idle (#a1a1aa) so the fill reads as engaged without going near-black. */
+html.light [data-lounge-post-interaction-bar] .text-zinc-100 {
+  color: #71717a;
+}
+/* Bookmarked: lv-yellow on white is bad; blue is clean and distinct. */
+html.light .text-lv-yellow {
+  color: #2563eb;
+}
+
+/*
+ * Category pills in light mode — solid filled backgrounds.
+ * Scoped to .lounge-pill-row so dark mode is completely untouched.
+ * Text: white on all colors except lime (too light) which gets near-black.
+ */
+/* No outlines, subtle shadow for depth — borderless + floaty */
+html.light .lounge-pill-row .border {
+  border-width: 0 !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.20);
+}
+
+/*
+ * Masculine pill palette for light mode. All white text — colors are dark enough.
+ * ap_slots=deep gold  ap_tables=casino green  poker=crimson  gaming=navy
+ * tabletop=steel blue  investing=deep teal  trading=burnt orange
+ * stocks=forest green  crypto=bitcoin orange  collectibles=deep indigo
+ */
+/* display variant (/10 bg, /35 border) */
+html.light .lounge-pill-row .bg-amber-500\/10     { background-color: #b45309 !important; }
+html.light .lounge-pill-row .border-amber-500\/35 { border-color:     #92400e !important; }
+html.light .lounge-pill-row .text-amber-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-emerald-500\/10     { background-color: #15803d !important; }
+html.light .lounge-pill-row .border-emerald-500\/35 { border-color:     #166534 !important; }
+html.light .lounge-pill-row .text-emerald-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-rose-500\/10     { background-color: #991b1b !important; }
+html.light .lounge-pill-row .border-rose-500\/35 { border-color:     #7f1d1d !important; }
+html.light .lounge-pill-row .text-rose-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-violet-500\/10     { background-color: #1e40af !important; }
+html.light .lounge-pill-row .border-violet-500\/35 { border-color:     #1e3a8a !important; }
+html.light .lounge-pill-row .text-violet-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-sky-500\/10     { background-color: #0369a1 !important; }
+html.light .lounge-pill-row .border-sky-500\/35 { border-color:     #075985 !important; }
+html.light .lounge-pill-row .text-sky-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-teal-500\/10     { background-color: #0f766e !important; }
+html.light .lounge-pill-row .border-teal-500\/35 { border-color:     #134e4a !important; }
+html.light .lounge-pill-row .text-teal-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-orange-500\/10     { background-color: #c2410c !important; }
+html.light .lounge-pill-row .border-orange-500\/35 { border-color:     #9a3412 !important; }
+html.light .lounge-pill-row .text-orange-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-lime-500\/10     { background-color: #4d7c0f !important; }
+html.light .lounge-pill-row .border-lime-500\/35 { border-color:     #365314 !important; }
+html.light .lounge-pill-row .text-lime-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-pink-500\/10     { background-color: #6d28d9 !important; }
+html.light .lounge-pill-row .border-pink-500\/35 { border-color:     #5b21b6 !important; }
+html.light .lounge-pill-row .text-pink-300       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-\[\#F7931A\]\/12    { background-color: #d97706 !important; }
+html.light .lounge-pill-row .border-\[\#F7931A\]\/40 { border-color:    #b45309 !important; }
+html.light .lounge-pill-row .text-\[\#FBB040\]       { color: #fff !important; }
+
+/* picker selected variant (/20 bg, /50 border, text-*-100) — same palette */
+html.light .lounge-pill-row .bg-amber-500\/20     { background-color: #b45309 !important; }
+html.light .lounge-pill-row .border-amber-400\/50 { border-color:     #92400e !important; }
+html.light .lounge-pill-row .text-amber-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-emerald-500\/20     { background-color: #15803d !important; }
+html.light .lounge-pill-row .border-emerald-400\/50 { border-color:     #166534 !important; }
+html.light .lounge-pill-row .text-emerald-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-rose-500\/20     { background-color: #991b1b !important; }
+html.light .lounge-pill-row .border-rose-400\/50 { border-color:     #7f1d1d !important; }
+html.light .lounge-pill-row .text-rose-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-violet-500\/20     { background-color: #1e40af !important; }
+html.light .lounge-pill-row .border-violet-400\/50 { border-color:     #1e3a8a !important; }
+html.light .lounge-pill-row .text-violet-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-sky-500\/20     { background-color: #0369a1 !important; }
+html.light .lounge-pill-row .border-sky-400\/50 { border-color:     #075985 !important; }
+html.light .lounge-pill-row .text-sky-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-teal-500\/20     { background-color: #0f766e !important; }
+html.light .lounge-pill-row .border-teal-400\/50 { border-color:     #134e4a !important; }
+html.light .lounge-pill-row .text-teal-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-orange-500\/20     { background-color: #c2410c !important; }
+html.light .lounge-pill-row .border-orange-400\/50 { border-color:     #9a3412 !important; }
+html.light .lounge-pill-row .text-orange-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-lime-500\/20     { background-color: #4d7c0f !important; }
+html.light .lounge-pill-row .border-lime-400\/50 { border-color:     #365314 !important; }
+html.light .lounge-pill-row .text-lime-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-pink-500\/20     { background-color: #6d28d9 !important; }
+html.light .lounge-pill-row .border-pink-400\/50 { border-color:     #5b21b6 !important; }
+html.light .lounge-pill-row .text-pink-100       { color: #fff !important; }
+
+html.light .lounge-pill-row .bg-\[\#F7931A\]\/22    { background-color: #d97706 !important; }
+html.light .lounge-pill-row .border-\[\#F7931A\]\/55 { border-color:    #b45309 !important; }
+html.light .lounge-pill-row .text-\[\#FFE4B8\]       { color: #fff !important; }
+
+/* ============================================================
+   Light mode: global cyan → blue-500/600 remap
+   Covers text, border, bg, ring, and arbitrary #06cefc classes.
+   Dark mode is completely untouched.
+   ============================================================ */
+
+/* Text */
+html.light .text-cyan-100 { color: #bfdbfe !important; }
+html.light .text-cyan-200,
+html.light .text-cyan-200\/90,
+html.light .text-cyan-200\/95 { color: #93c5fd !important; }
+html.light .text-cyan-300,
+html.light .text-cyan-300\/95 { color: #2563eb !important; }
+html.light .text-cyan-400 { color: #2563eb !important; }
+html.light .text-cyan-500 { color: #1d4ed8 !important; }
+html.light .text-cyan-600 { color: #1d4ed8 !important; }
+html.light .text-\[\#06cefc\] { color: #3b82f6 !important; }
+html.light .text-\[\#94f3fd\] { color: #60a5fa !important; }
+
+/* Hover text */
+html.light .hover\:text-cyan-300:hover { color: #3b82f6 !important; }
+html.light .hover\:text-cyan-400:hover { color: #2563eb !important; }
+
+/* Background */
+html.light .bg-cyan-500 { background-color: #3b82f6 !important; }
+html.light .bg-cyan-600 { background-color: #2563eb !important; }
+html.light .bg-\[\#06cefc\] { background-color: #3b82f6 !important; }
+
+/* Hover background */
+html.light .hover\:bg-cyan-500:hover { background-color: #3b82f6 !important; }
+
+/* Border */
+html.light .border-cyan-500 { border-color: #3b82f6 !important; }
+html.light .border-cyan-600 { border-color: #2563eb !important; }
+html.light .border-\[\#06cefc\] { border-color: #3b82f6 !important; }
+
+/* Opacity-variant borders (Tailwind v4 generates these as separate classes) */
+html.light .border-cyan-500\/50 { border-color: rgba(59,130,246,0.50) !important; }
+html.light .border-cyan-500\/45 { border-color: rgba(59,130,246,0.45) !important; }
+html.light .border-cyan-500\/40 { border-color: rgba(59,130,246,0.40) !important; }
+html.light .focus-within\:border-cyan-500\/45:focus-within { border-color: rgba(59,130,246,0.45) !important; }
+html.light .focus-within\:ring-cyan-500\/25:focus-within { --tw-ring-color: rgba(59,130,246,0.25) !important; }
+html.light .border-cyan-700\/60 { border-color: rgba(59,130,246,0.60) !important; }
+html.light .border-\[\#06cefc\]\/70 { border-color: rgba(59,130,246,0.70) !important; }
+html.light .border-\[\#06cefc\]\/88 { border-color: rgba(59,130,246,0.88) !important; }
+
+/* Ring */
+html.light .ring-cyan-500\/40 { --tw-ring-color: rgba(59,130,246,0.40) !important; }
+html.light .focus\:ring-cyan-500\/40:focus { --tw-ring-color: rgba(59,130,246,0.40) !important; }
+html.light .has-\[\:focus-visible\]\:ring-cyan-500\/40:has(:focus-visible) { --tw-ring-color: rgba(59,130,246,0.40) !important; }
+
+/* Progress bar fill */
+html.light .bg-cyan-500 { background-color: #3b82f6 !important; }
+
+/* Dock "Following active" icon — swap cyan fill/stroke to match FAB blue */
+html.light .lounge-dock-item-circle svg [fill="#06cefc"] { fill: #3b82f6 !important; }
+html.light .lounge-dock-item-circle svg [stroke="#06cefc"] { stroke: #3b82f6 !important; }
+
+/* Menu layout help — selected card: lighten dark navy bg, remap shadow + SVG fills */
+html.light .bg-\[\#001828\]\/95 { background-color: rgba(239,246,255,0.95) !important; }
+html.light .shadow-\[0_0_14px_rgba\(6\,206\,252\,0\.35\)\] {
+  box-shadow: 0 0 14px rgba(59,130,246,0.30) !important;
+}
+html.light svg [fill="#057698"] { fill: #2563eb !important; }
+html.light svg [stroke="#06cefc"] { stroke: #3b82f6 !important; }
+
+/* Dock FAB center (+) button — match item border blue in light mode */
+html.light .lounge-dock-fab-center {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  outline: none !important;
+}
+
+/* OG badge — light mode color shift (placeholder, remove if unused) */
+
+/* Title bar nav button (hamburger/close) — white, hairline black border, blue shadow in light mode */
+html.light .lounge-title-nav-btn {
+  background-color: #ffffff !important;
+  border: none !important;
+  box-shadow:
+    inset 0 0 0 0.33px #000000,
+    0 4px 16px rgba(59, 130, 246, 0.18),
+    0 1px 4px rgba(59, 130, 246, 0.10) !important;
+  color: #27272a !important;
+}
+
+/* Dock menu backdrop — minimal blur with subtle dark tint in light mode */
+html.light .lounge-dock-backdrop {
+  background-color: transparent !important;
+  backdrop-filter: blur(1.5px) !important;
+  -webkit-backdrop-filter: blur(1.5px) !important;
+}
+
+/* Dock FAB menu item circles — solid white, hairline inset border in light mode */
+html.light .lounge-dock-item-circle {
+  background-color: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow:
+    inset 0 0 0 0.33px #3b82f6,
+    0 4px 16px rgba(59, 130, 246, 0.18),
+    0 1px 4px rgba(59, 130, 246, 0.10) !important;
+  color: #27272a;
+}
+
+/* Composer media/GIF icon buttons — no box, just the glyph in gray */
+html.light .lounge-media-toolbar .text-sky-400 {
+  color: #71717a !important;
+}
+html.light .lounge-media-toolbar svg rect {
+  fill-opacity: 0 !important;
+}
+
+/* Logo swap: white version in dark mode, black version in light mode */
+.edge-logo--light { display: none; }
+html.light .edge-logo--dark  { display: none; }
+html.light .edge-logo--light { display: inline; }
+
+/* Guide hero image scrims — lighter in light mode so less of the image is eaten */
+html.light .guide-hero-scrim {
+  background: linear-gradient(to top, rgba(0,0,0,0.50), rgba(0,0,0,0.08), transparent) !important;
+}
+html.light .guide-hero-footer {
+  background: linear-gradient(to top, rgba(0,0,0,0.68), rgba(0,0,0,0.38), transparent) !important;
+}
+html.light .guide-skin-scrim {
+  background: linear-gradient(to top, rgba(0,0,0,0.48), rgba(0,0,0,0.05), transparent) !important;
+}
+html.light .guide-skin-footer {
+  background: linear-gradient(to top, rgba(0,0,0,0.68), rgba(0,0,0,0.35), transparent) !important;
+}
+
+/*
+ * EV Threshold panel in light mode:
+ * - Override the dark zinc-based gradient bg with a subtle neutral wash
+ * - Apply saturate+darken filter to the whole panel so accent colors
+ *   (label, border-rule, outer dashed border) become vivid and readable.
+ *   The body text is near-neutral gray (#27272a) so the filter barely
+ *   affects it perceptually.
+ */
 html.light .guide-ev-threshold-panel {
   background: rgba(0, 0, 0, 0.04) !important;
+  filter: saturate(2.4) brightness(0.70);
 }
 html.light .guide-ev-threshold-text {
-  color: #27272a !important;
+  color: #27272a;
 }
 
 /* react-datepicker light theme */
@@ -694,4 +976,12 @@ html.light .offer-datepicker-inline .react-datepicker__day--keyboard-selected:no
 html.light .guide-lock-glitch__tv-snow-canvas {
   mix-blend-mode: multiply;
   opacity: 0.55;
+}
+
+/* Composer media/GIF icon buttons — gray, no visible background box in light mode */
+html.light .lounge-media-toolbar .text-sky-400,
+html.light .lounge-media-toolbar .text-sky-400:hover,
+html.light .lounge-media-toolbar .hover\:text-sky-300:hover,
+html.light .lounge-media-toolbar .active\:text-sky-200:active {
+  color: #71717a !important;
 }

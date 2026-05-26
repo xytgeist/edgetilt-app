@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
 import { isLoungePostShareId, isLoungeProfileHandleSlug, parseLoungeProfilePathHandle } from '../../utils/loungeSharePost'
@@ -63,6 +63,42 @@ function TabLoadingFallback() {
       Loading…
     </div>
   )
+}
+
+class TabErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="text-6xl select-none" aria-hidden>🚩</div>
+          <div>
+            <div className="text-white text-2xl font-black tracking-tight">False Start</div>
+            <div className="mt-1 text-zinc-400 text-sm leading-relaxed">
+              Dev gets 10 lashes.<br />
+              <span className="text-zinc-600 text-xs">{String(this.state.error?.message || 'Unknown penalty').slice(0, 120)}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="min-h-11 rounded-2xl border border-cyan-500/40 bg-cyan-600/20 hover:bg-cyan-600/30 px-5 py-2.5 text-sm font-bold text-cyan-300 touch-manipulation transition-colors"
+          >
+            Replay 2nd Down
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 export default function AppShell({
@@ -1056,7 +1092,9 @@ export default function AppShell({
       <>
         {keepAliveSocialFeed}
         {visibleTab != null ? (
-          <Suspense fallback={<TabLoadingFallback />}>{visibleTab}</Suspense>
+          <TabErrorBoundary>
+            <Suspense fallback={<TabLoadingFallback />}>{visibleTab}</Suspense>
+          </TabErrorBoundary>
         ) : null}
       </>
     )

@@ -71,26 +71,26 @@ class TabErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { error: null, attemptCount: 0 }
-    this.handleCopy = this.handleCopy.bind(this)
+    this.handleReport = this.handleReport.bind(this)
   }
 
   static getDerivedStateFromError(error) {
-    return { error }
+    // Read count before incrementing so first render shows the right screen immediately
+    const count = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
+    return { error, attemptCount: count }
   }
 
-  componentDidCatch(error) {
+  componentDidCatch() {
     const prev = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
     const next = prev + 1
     sessionStorage.setItem(TAB_ERROR_COUNT_KEY, String(next))
     this.setState({ attemptCount: next })
   }
 
-  componentDidMount() {
-    // Successful mount — clear the strike count
-    if (!this.state.error) sessionStorage.removeItem(TAB_ERROR_COUNT_KEY)
-  }
+  // No componentDidMount clear — sessionStorage persists across reloads within the session.
+  // It naturally clears when the browser tab is closed.
 
-  handleCopy() {
+  handleReport() {
     const errText = this.state.error?.stack || this.state.error?.message || 'Unknown error'
     const subject = encodeURIComponent('LVSlotPro App Error Report')
     const body = encodeURIComponent(
@@ -101,7 +101,7 @@ class TabErrorBoundary extends React.Component {
 
   render() {
     if (this.state.error) {
-      const isFumble = this.state.attemptCount >= 2
+      const isFumble = this.state.attemptCount > 0
 
       if (isFumble) {
         return (
@@ -122,7 +122,7 @@ class TabErrorBoundary extends React.Component {
             </div>
             <button
               type="button"
-              onClick={this.handleCopy}
+              onClick={this.handleReport}
               className="min-h-11 rounded-2xl border border-rose-500/40 bg-rose-600/15 hover:bg-rose-600/25 px-5 py-2.5 text-sm font-bold text-rose-300 touch-manipulation transition-colors"
             >
               Report Issue

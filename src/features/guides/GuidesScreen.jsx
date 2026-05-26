@@ -503,34 +503,28 @@ function GuideSkinCard({ targetSlug, label, allGuides, onOpen }) {
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60',
       ].join(' ')}
     >
-      {/* hero strip */}
-      <div className={`relative aspect-video bg-gradient-to-br ${gradient} overflow-hidden`}>
+      {/* hero — natural image height, overlay pinned to bottom */}
+      <div className={`relative bg-gradient-to-br ${gradient} min-h-[6rem]`}>
         <img
           src={src}
           alt={name}
-          className="h-full w-full object-cover opacity-90 transition-opacity duration-150 group-hover:opacity-100"
+          className="w-full h-auto block opacity-90 transition-opacity duration-150 group-hover:opacity-100"
           onError={(e) => {
             if (e.currentTarget.dataset.fallback === '1') return
             e.currentTarget.dataset.fallback = '1'
             e.currentTarget.src = BUFFALO_PLACEHOLDER_SRC
           }}
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/15 to-transparent" />
-        <div className="absolute bottom-0 inset-x-0 px-3 pb-2 pt-6 bg-gradient-to-t from-zinc-950/90 via-zinc-950/60 to-transparent">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/10 to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 px-3 pb-3 pt-10 bg-gradient-to-t from-zinc-950/90 via-zinc-950/60 to-transparent">
           <p className="text-white font-bold text-sm leading-tight drop-shadow truncate">{name}</p>
           {m?.manufacturer && (
             <p className="text-zinc-400 text-[11px] font-medium mt-0.5 truncate">{m.manufacturer}</p>
           )}
+          <span className="inline-flex items-center mt-1.5 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300">
+            View guide →
+          </span>
         </div>
-      </div>
-      {/* footer tap hint */}
-      <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/60">
-        <span className="text-[11px] font-semibold text-cyan-400 group-hover:text-cyan-300 transition-colors">
-          {row ? 'View guide →' : 'Guide coming soon'}
-        </span>
-        {!row && (
-          <span className="text-[10px] text-zinc-600 italic">No card yet</span>
-        )}
       </div>
     </button>
   )

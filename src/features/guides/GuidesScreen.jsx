@@ -1943,10 +1943,10 @@ export default function GuidesScreen({
                               </div>
                             </div>
                             <div className="shrink-0 text-right leading-tight pb-px">
-                              <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">
+                              <div className="text-[9px] font-semibold uppercase tracking-wider text-[#a1a1aa]">
                                 Released
                               </div>
-                              <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
+                              <div className="text-[11px] font-bold tabular-nums text-[#e4e4e7] drop-shadow-md">
                                 {m?.release_year != null ? m.release_year : '—'}
                               </div>
                             </div>

@@ -588,6 +588,47 @@ html.light .placeholder\:text-white::placeholder {
   color: #3f3f46;
 }
 
+/*
+ * Light-pastel overrides: *-50, *-100, *-200 accent colors are near-white and
+ * invisible on light backgrounds. Map them to readable mid-dark equivalents.
+ * These are used in guide card h2 headings, EV threshold text, subtitles, etc.
+ */
+html.light .text-orange-50  { color: var(--color-orange-700); }
+html.light .text-orange-100 { color: var(--color-orange-600); }
+html.light .text-orange-200,
+html.light .text-orange-200\/90,
+html.light .text-orange-200\/88 { color: var(--color-orange-600); }
+
+html.light .text-amber-50  { color: var(--color-amber-700); }
+html.light .text-amber-100 { color: var(--color-amber-700); }
+html.light .text-amber-200,
+html.light .text-amber-200\/90,
+html.light .text-amber-200\/88 { color: var(--color-amber-700); }
+
+html.light .text-cyan-100  { color: var(--color-cyan-600); }
+html.light .text-cyan-200  { color: var(--color-cyan-600); }
+
+html.light .text-sky-100   { color: var(--color-sky-600); }
+html.light .text-sky-200   { color: var(--color-sky-600); }
+
+html.light .text-violet-100 { color: var(--color-violet-700); }
+html.light .text-violet-200 { color: var(--color-violet-600); }
+
+html.light .text-rose-100  { color: var(--color-rose-600); }
+html.light .text-rose-200  { color: var(--color-rose-600); }
+
+html.light .text-indigo-100 { color: var(--color-indigo-600); }
+html.light .text-indigo-200 { color: var(--color-indigo-600); }
+
+html.light .text-lime-100  { color: var(--color-lime-700); }
+html.light .text-lime-200  { color: var(--color-lime-700); }
+
+html.light .text-emerald-100 { color: var(--color-emerald-700); }
+html.light .text-emerald-200 { color: var(--color-emerald-600); }
+
+html.light .text-red-50  { color: var(--color-red-700); }
+html.light .text-red-100 { color: var(--color-red-600); }
+
 /* react-datepicker light theme */
 html.light .offer-datepicker.react-datepicker {
   background-color: #ffffff;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import * as Sentry from '@sentry/react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
 import { isLoungePostShareId, isLoungeProfileHandleSlug, parseLoungeProfilePathHandle } from '../../utils/loungeSharePost'
@@ -80,11 +81,12 @@ class TabErrorBoundary extends React.Component {
     return { error, attemptCount: count }
   }
 
-  componentDidCatch() {
+  componentDidCatch(error, info) {
     const prev = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
     const next = prev + 1
     sessionStorage.setItem(TAB_ERROR_COUNT_KEY, String(next))
     this.setState({ attemptCount: next })
+    Sentry.captureException(error, { extra: { componentStack: info?.componentStack } })
   }
 
   // No componentDidMount clear — sessionStorage persists across reloads within the session.

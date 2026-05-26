@@ -4433,6 +4433,13 @@ export default function SocialFeed({
             : row,
         ),
       )
+      setCommunityPosts((prev) =>
+        prev.map((p) =>
+          p.reposted_comment != null && p.reposted_comment.id === commentId
+            ? { ...p, reposted_comment: { ...p.reposted_comment, like_count: Math.max(0, (Number(p.reposted_comment.like_count) || 0) + delta) } }
+            : p,
+        ),
+      )
       const res = was
         ? await supabaseClient
             .from('feed_comment_likes')
@@ -4491,7 +4498,7 @@ export default function SocialFeed({
         )
       }
     },
-    [composerUserId, defaultInteraction, supabaseClient]
+    [composerUserId, defaultInteraction, setCommunityPosts, supabaseClient]
   )
 
   const toggleLoungeDetailCommentBookmark = useCallback(

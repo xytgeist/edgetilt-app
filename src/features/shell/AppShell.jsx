@@ -70,7 +70,7 @@ const TAB_ERROR_COUNT_KEY = 'lvsp_tab_error_count'
 class TabErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { error: null, attemptCount: 0, copied: false }
+    this.state = { error: null, attemptCount: 0 }
     this.handleCopy = this.handleCopy.bind(this)
   }
 
@@ -91,11 +91,12 @@ class TabErrorBoundary extends React.Component {
   }
 
   handleCopy() {
-    const msg = `LVSlotPro tab error\n${new Date().toISOString()}\n${this.state.error?.stack || this.state.error?.message || 'Unknown error'}`
-    navigator.clipboard?.writeText(msg).then(() => {
-      this.setState({ copied: true })
-      setTimeout(() => this.setState({ copied: false }), 2500)
-    })
+    const errText = this.state.error?.stack || this.state.error?.message || 'Unknown error'
+    const subject = encodeURIComponent('LVSlotPro App Error Report')
+    const body = encodeURIComponent(
+      `App tab crashed twice — please investigate.\n\nTimestamp: ${new Date().toISOString()}\n\nError:\n${errText}`,
+    )
+    window.location.href = `mailto:operations@lvslotpro.com?subject=${subject}&body=${body}`
   }
 
   render() {
@@ -124,7 +125,7 @@ class TabErrorBoundary extends React.Component {
               onClick={this.handleCopy}
               className="min-h-11 rounded-2xl border border-rose-500/40 bg-rose-600/15 hover:bg-rose-600/25 px-5 py-2.5 text-sm font-bold text-rose-300 touch-manipulation transition-colors"
             >
-              {this.state.copied ? '✓ Copied to clipboard' : 'Report Issue'}
+              Report Issue
             </button>
           </div>
         )

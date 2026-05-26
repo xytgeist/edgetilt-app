@@ -11524,38 +11524,6 @@ export default function SocialFeed({
                     />
                   </div>
 
-                  {/* AP Guide embed card — detail view */}
-                  {loungePostDetail.is_ap_guide_post && loungePostDetail.game_slug ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenGuideCard?.(loungePostDetail.game_slug)}
-                      className="mt-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                      aria-label={`View AP Guide: ${loungePostDetail.game_title}`}
-                    >
-                      <div className="relative h-28 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
-                        {loungePostDetail.guide_thumbnail_url || loungePostDetail.game_slug ? (
-                          <img
-                            src={loungePostDetail.guide_thumbnail_url || `/guides/${loungePostDetail.game_slug}/hero.webp`}
-                            alt=""
-                            className="h-full w-full object-cover opacity-80"
-                            loading="lazy"
-                            decoding="async"
-                            onError={(ev) => { ev.currentTarget.style.display = 'none' }}
-                          />
-                        ) : null}
-                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-                        <div className="absolute bottom-0 inset-x-0 px-3 pb-2">
-                          <p className="text-white font-bold text-sm leading-tight truncate">{loungePostDetail.game_title}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/50">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
-                          AP Guide
-                        </span>
-                      </div>
-                    </button>
-                  ) : null}
-
                   <div className={LOUNGE_COMMENT_DETAIL_THREAD_PAD}>
                     {quoteRepostOriginalUnavailable(loungePostDetail) ? (
                       <LoungePostOriginalUnavailableEmbed
@@ -11632,6 +11600,37 @@ export default function SocialFeed({
                       streamLightboxHost={loungePostDetail}
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
+                    {/* AP Guide embed card — detail view */}
+                    {loungePostDetail.is_ap_guide_post && loungePostDetail.game_slug ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenGuideCard?.(loungePostDetail.game_slug)}
+                        className="mt-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                        aria-label={`View AP Guide: ${loungePostDetail.game_title}`}
+                      >
+                        <div className="relative h-28 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
+                          {loungePostDetail.guide_thumbnail_url || loungePostDetail.game_slug ? (
+                            <img
+                              src={loungePostDetail.guide_thumbnail_url || `/guides/${loungePostDetail.game_slug}/hero.webp`}
+                              alt=""
+                              className="h-full w-full object-cover opacity-80"
+                              loading="lazy"
+                              decoding="async"
+                              onError={(ev) => { ev.currentTarget.style.display = 'none' }}
+                            />
+                          ) : null}
+                          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
+                          <div className="absolute bottom-0 inset-x-0 px-3 pb-2">
+                            <p className="text-white font-bold text-sm leading-tight truncate">{loungePostDetail.game_title}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/50">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                            AP Guide
+                          </span>
+                        </div>
+                      </button>
+                    ) : null}
                   </div>
                 </>
               )}

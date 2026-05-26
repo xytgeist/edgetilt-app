@@ -501,6 +501,37 @@ export default function LoungePostArticle({
                 firstMarginTopClass="mt-2"
                 {...mediaLightboxProps}
               />
+              {post.reposted_post.is_ap_guide_post && post.reposted_post.game_slug ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenGuideCard?.(post.reposted_post.game_slug)
+                  }}
+                  className="mt-2 w-full text-left rounded-xl overflow-hidden border border-zinc-700/60 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                  aria-label={`View AP Guide: ${post.reposted_post.game_title}`}
+                >
+                  <div className="relative h-20 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
+                    {post.reposted_post.guide_thumbnail_url || post.reposted_post.game_slug ? (
+                      <img
+                        src={post.reposted_post.guide_thumbnail_url || `/guides/${post.reposted_post.game_slug}/hero.webp`}
+                        alt=""
+                        className="h-full w-full object-cover opacity-80"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(ev) => { ev.currentTarget.style.display = 'none' }}
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
+                    <div className="absolute bottom-0 inset-x-0 px-2.5 pb-2 flex flex-col items-start gap-1">
+                      <p className="text-white font-bold text-xs leading-tight truncate w-full">{post.reposted_post.game_title}</p>
+                      <span className="inline-flex items-center rounded-full border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-300">
+                        AP Guide
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              ) : null}
             </div>
             ) : null}
           </>
@@ -541,7 +572,6 @@ export default function LoungePostArticle({
             className="mt-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
             aria-label={`View AP Guide: ${post.game_title}`}
           >
-            {/* Hero strip */}
             <div className="relative h-28 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
               {post.guide_thumbnail_url || post.game_slug ? (
                 <img
@@ -553,16 +583,13 @@ export default function LoungePostArticle({
                   onError={(ev) => { ev.currentTarget.style.display = 'none' }}
                 />
               ) : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent" />
-              <div className="absolute bottom-0 inset-x-0 px-3 pb-2">
-                <p className="text-white font-bold text-sm leading-tight truncate">{post.game_title}</p>
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/20 to-transparent" />
+              <div className="absolute bottom-0 inset-x-0 px-3 pb-2.5 flex flex-col items-start gap-1">
+                <p className="text-white font-bold text-sm leading-tight truncate w-full">{post.game_title}</p>
+                <span className="inline-flex items-center rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                  AP Guide
+                </span>
               </div>
-            </div>
-            {/* Footer row */}
-            <div className="flex items-center px-3 py-2 border-t border-zinc-800/70 bg-zinc-950/50">
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
-                AP Guide
-              </span>
             </div>
           </button>
         ) : null}

@@ -1295,6 +1295,10 @@ html.light [data-calc="stackup"] .text-cyan-400 {
   color: #06cefc !important;
 }
 
+html.light [data-calc="stackup"] .text-emerald-400 {
+  color: #16A34A;
+}
+
 /* +EV / -EV pills */
 html.light [data-calc="stackup"] .bg-emerald-900 {
   background-color: #16A34A;

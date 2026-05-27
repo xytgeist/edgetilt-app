@@ -1198,6 +1198,7 @@ html.light [data-calc="buffalo"] .text-red-400 {
 html.light [data-calc="buffalo"] .bg-green-900 {
   background-color: #16A34A;
 }
+html.light [data-calc="buffalo"] .bg-green-900.text-green-300,
 html.light [data-calc="buffalo"] .bg-green-900 .text-green-300 {
   color: #ffffff;
 }

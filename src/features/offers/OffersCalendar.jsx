@@ -1579,6 +1579,7 @@ export default function OffersCalendar({
                   : ''
                 const dayLabel = startDate.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
                 const dayNum = startDate.getDate()
+                const monthLabel = startDate.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()
                 return (
                   <button
                     key={e.id}
@@ -1602,6 +1603,7 @@ export default function OffersCalendar({
                       <div className="w-10 shrink-0 text-center">
                         <div className="text-zinc-500 text-[9px] font-semibold tracking-wide">{dayLabel}</div>
                         <div className="text-zinc-100 text-xl leading-tight">{dayNum}</div>
+                        <div className="text-zinc-500 text-[9px] font-semibold tracking-wide">{monthLabel}</div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">

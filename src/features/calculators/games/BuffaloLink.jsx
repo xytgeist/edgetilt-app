@@ -430,15 +430,17 @@ function BuffaloLink({ onBack }) {
                 <span className="text-gray-400 text-xs">Scout Share</span>
                 <span className="text-amber-400 font-bold">{scoutPercentage}%</span>
               </div>
-              <input
-                type="range"
-                min="10"
-                max="15"
-                step="1"
-                value={scoutPercentage}
-                onChange={(e) => setScoutPercentage(Number(e.target.value))}
-                className="w-full range-touch-target accent-amber-500"
-              />
+              <div className="flex items-center bg-gray-800 rounded-2xl p-1 px-3">
+                <input
+                  type="range"
+                  min="10"
+                  max="15"
+                  step="1"
+                  value={scoutPercentage}
+                  onChange={(e) => setScoutPercentage(Number(e.target.value))}
+                  className="w-full range-touch-target accent-amber-500"
+                />
+              </div>
             </div>
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 mb-4 text-center">

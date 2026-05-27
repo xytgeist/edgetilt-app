@@ -387,40 +387,38 @@ function PhoenixLink({ onBack }) {
           <h2 className="text-xl font-semibold mb-4 text-orange-400">Acquisition Fee Calculator</h2>
           <p className="text-gray-400 text-sm mb-5">Fair finder's fee for scout</p>
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="flex flex-col">
+            <div>
               <label className="block text-gray-400 mb-1 text-xs">EV Basis</label>
-              <div className="flex bg-gray-800 rounded-2xl p-1">
+              <div className="flex h-14 items-stretch bg-gray-800 rounded-2xl p-1">
                 <button 
                   onClick={() => setUseFullRunForFee(false)} 
-                  className={`flex-1 py-3 text-sm font-semibold rounded-[14px] ${!useFullRunForFee ? 'bg-orange-600 text-white' : 'text-gray-400'}`}
+                  className={`flex-1 text-sm font-semibold rounded-[14px] ${!useFullRunForFee ? 'bg-orange-600 text-white' : 'text-gray-400'}`}
                 >
                   Average
                 </button>
                 <button 
                   onClick={() => setUseFullRunForFee(true)} 
-                  className={`flex-1 py-3 text-sm font-semibold rounded-[14px] ${useFullRunForFee ? 'bg-orange-600 text-white' : 'text-gray-400'}`}
+                  className={`flex-1 text-sm font-semibold rounded-[14px] ${useFullRunForFee ? 'bg-orange-600 text-white' : 'text-gray-400'}`}
                 >
                   Full Run
                 </button>
               </div>
             </div>
-            <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-2">
+            <div>
+              <div className="flex justify-between items-center mb-1">
                 <label className="block text-gray-400 text-xs">Scout Share</label>
                 <span className="font-bold text-orange-400 text-lg">{scoutPercentage}%</span>
               </div>
-              <div className="flex-1 flex items-center bg-gray-800 rounded-2xl p-1">
-                <div className="w-full px-2">
-                  <input 
-                    type="range" 
-                    min="10" 
-                    max="15" 
-                    step="1" 
-                    value={scoutPercentage} 
-                    onChange={(e) => setScoutPercentage(Number(e.target.value))} 
-                    className="w-full range-touch-target accent-orange-500" 
-                  />
-                </div>
+              <div className="flex h-14 items-center bg-gray-800 rounded-2xl px-3">
+                <input 
+                  type="range" 
+                  min="10" 
+                  max="15" 
+                  step="1" 
+                  value={scoutPercentage} 
+                  onChange={(e) => setScoutPercentage(Number(e.target.value))} 
+                  className="w-full range-touch-target accent-orange-500" 
+                />
               </div>
             </div>
           </div>

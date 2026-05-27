@@ -1090,20 +1090,23 @@ html.light [data-calc] .text-gray-500 {
   color: #a1a1aa;
 }
 
-/* ── PhoenixLink (orange) ────────────────────────────────────────────────── */
+/* ── PhoenixLink ─────────────────────────────────────────────────────────── */
 
-/* Accent color */
-html.light [data-calc="phoenix"] .text-orange-400 {
-  color: #ea6c00;
+/* Section title h2s → black */
+html.light [data-calc="phoenix"] h2 {
+  color: #000000;
 }
-/* Input border + info button border */
+
+/* Orange accent → exact brand orange */
+html.light [data-calc="phoenix"] .text-orange-400 {
+  color: #f97316;
+}
 html.light [data-calc="phoenix"] .border-orange-500,
 html.light [data-calc="phoenix"] .border-orange-400 {
-  border-color: #ea6c00;
+  border-color: #f97316;
 }
-/* EV basis + active toggle tab */
 html.light [data-calc="phoenix"] .bg-orange-600 {
-  background-color: #ea6c00;
+  background-color: #f97316;
 }
 /* White text ON orange buttons must stay white */
 html.light [data-calc="phoenix"] .bg-orange-600 .text-white,
@@ -1111,36 +1114,38 @@ html.light [data-calc="phoenix"] .bg-orange-600.text-white {
   color: #ffffff !important;
 }
 
-/* PLAY +EV status pill */
+/* Green → #16A34A */
+html.light [data-calc="phoenix"] .text-green-400 {
+  color: #16A34A;
+}
 html.light [data-calc="phoenix"] .bg-green-900 {
   background-color: #16A34A;
 }
 html.light [data-calc="phoenix"] .bg-green-900 .text-green-300 {
   color: #ffffff;
 }
-/* Still -EV status pill */
-html.light [data-calc="phoenix"] .bg-red-900 {
-  background-color: #b91c1c;
-}
-html.light [data-calc="phoenix"] .bg-red-900 .text-red-300 {
-  color: #ffffff;
-}
-
-/* Break-even value colors */
-html.light [data-calc="phoenix"] .text-green-400 {
-  color: #16A34A;
-}
-html.light [data-calc="phoenix"] .text-yellow-400 {
-  color: #b45309;
-}
-
-/* YES / Max Major button */
 html.light [data-calc="phoenix"] .bg-green-600 {
   background-color: #16A34A;
 }
 html.light [data-calc="phoenix"] .bg-green-600 .text-white,
 html.light [data-calc="phoenix"] .bg-green-600.text-white {
   color: #ffffff !important;
+}
+
+/* Red → #DC2626 */
+html.light [data-calc="phoenix"] .text-red-400 {
+  color: #DC2626;
+}
+html.light [data-calc="phoenix"] .bg-red-900 {
+  background-color: #DC2626;
+}
+html.light [data-calc="phoenix"] .bg-red-900 .text-red-300 {
+  color: #ffffff;
+}
+
+/* Yellow (Full Run break-even) */
+html.light [data-calc="phoenix"] .text-yellow-400 {
+  color: #b45309;
 }
 
 /* ── BuffaloLink (amber) ─────────────────────────────────────────────────── */

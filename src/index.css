@@ -867,8 +867,8 @@ html.light .lounge-title-nav-btn {
   border: none !important;
   box-shadow:
     inset 0 0 0 0.33px #000000,
-    0 4px 16px rgba(59, 130, 246, 0.18),
-    0 1px 4px rgba(59, 130, 246, 0.10) !important;
+    0 4px 16px rgba(0, 0, 0, 0.10),
+    0 1px 4px rgba(0, 0, 0, 0.06) !important;
   color: #27272a !important;
 }
 

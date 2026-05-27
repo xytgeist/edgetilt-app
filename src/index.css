@@ -1185,7 +1185,8 @@ html.light [data-calc="buffalo"] .text-amber-400,
 html.light [data-calc="buffalo"] .text-amber-100 {
   color: #b45309;
 }
-html.light [data-calc="buffalo"] .border-amber-500 {
+html.light [data-calc="buffalo"] .border-amber-500,
+html.light [data-calc="buffalo"] .border-amber-400 {
   border-color: #b45309;
 }
 /* EV / RTP positive/negative indicators */

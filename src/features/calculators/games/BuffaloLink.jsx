@@ -62,13 +62,16 @@ function BuffaloLink({ onBack }) {
     return Math.max(75, Math.min(245, walkAway))
   }
 
+  const chartLineColor = isLight ? '#b45309' : '#fcd34d'
+  const chartFillColor = isLight ? 'rgba(180, 83, 9, 0.15)' : 'rgba(252, 211, 77, 0.15)'
+
   const chartData = {
     labels: Array.from({ length: 21 }, (_, i) => 1300 + i * 28),
     datasets: [{
       label: 'Recommended Walk-Away',
       data: Array.from({ length: 21 }, (_, i) => getRecommendedWalkAway(1300 + i * 28)),
-      borderColor: '#fcd34d',
-      backgroundColor: 'rgba(252, 211, 77, 0.15)',
+      borderColor: chartLineColor,
+      backgroundColor: chartFillColor,
       tension: 0.45,
       borderWidth: 3.5,
       pointRadius: 3,

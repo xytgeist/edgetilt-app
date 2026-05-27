@@ -425,7 +425,7 @@ function BuffaloLink({ onBack }) {
                 </button>
               </div>
             </div>
-            <div className="flex flex-col justify-center">
+            <div>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-400 text-xs">Scout Share</span>
                 <span className="text-amber-400 font-bold">{scoutPercentage}%</span>

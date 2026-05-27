@@ -214,7 +214,7 @@ function PhoenixLink({ onBack }) {
             <h1 
               className="text-[33px] font-black tracking-[-1.6px] text-black"
               style={{
-                textShadow: `-1.6px -1.6px 0 #f97316, 1.6px -1.6px 0 #f97316, -1.6px 1.6px 0 #f97316, 1.6px 1.6px 0 #f97316`
+                textShadow: `-1px -1px 0 #f97316, 1px -1px 0 #f97316, -1px 1px 0 #f97316, 1px 1px 0 #f97316`
               }}
             >
               PHOENIX LINK

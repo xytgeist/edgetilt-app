@@ -1105,7 +1105,7 @@ html.light .phoenix-check-emoji { display: none; }
 
 /* Section title h2s → black (must beat .text-orange-400 specificity) */
 html.light [data-calc="phoenix"] h1 {
-  text-shadow: none !important;
+  text-shadow: -1px -1px 0 #f97316, 1px -1px 0 #f97316, -1px 1px 0 #f97316, 1px 1px 0 #f97316 !important;
 }
 
 html.light [data-calc="phoenix"] h2,

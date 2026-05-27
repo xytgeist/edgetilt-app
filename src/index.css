@@ -1256,6 +1256,14 @@ html.light [data-calc="mhb"] .bg-red-900 .text-red-300 {
 html.light .mhb-check-badge { display: inline-flex; }
 html.light .mhb-check-emoji { display: none; }
 
+/* Breakeven entry value — orange */
+html.light [data-calc="mhb"] .text-amber-300 {
+  color: #f97316;
+}
+html.light [data-calc="mhb"] .text-amber-300\/70 {
+  color: rgba(249, 115, 22, 0.70);
+}
+
 /* Red EV text matches pill red */
 html.light [data-calc="mhb"] .text-red-400 {
   color: #DC2626;

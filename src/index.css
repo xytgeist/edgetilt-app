@@ -1256,6 +1256,14 @@ html.light [data-calc="mhb"] .bg-red-900 .text-red-300 {
 html.light .mhb-check-badge { display: inline-flex; }
 html.light .mhb-check-emoji { display: none; }
 
+/* Red EV text matches pill red */
+html.light [data-calc="mhb"] .text-red-400 {
+  color: #DC2626;
+}
+html.light [data-calc="mhb"] .text-red-400\/70 {
+  color: rgba(220, 38, 38, 0.70);
+}
+
 /* Green EV text matches pill green */
 html.light [data-calc="mhb"] .text-emerald-400 {
   color: #16A34A;

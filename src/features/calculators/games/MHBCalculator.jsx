@@ -772,7 +772,7 @@ function MHBCalculator({ onBack }) {
                 <div>
                   <label className="block text-gray-400 text-[11px] mb-0.5">Denom</label>
                   <div className="grid grid-cols-2 gap-1 p-1 bg-gray-800 rounded-2xl">
-                    {[[0.01,'¢1'],[0.25,'25¢'],[1,'$1'],[2,'$2']].map(([val,label]) => (
+                    {[[0.01,'1¢'],[0.25,'25¢'],[1,'$1'],[2,'$2']].map(([val,label]) => (
                       <button key={val} type="button" onClick={() => setIgtDenom(val)}
                         className={`py-2 rounded-xl text-xs font-bold text-center transition-colors touch-manipulation ${igtDenom === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
                         {label}

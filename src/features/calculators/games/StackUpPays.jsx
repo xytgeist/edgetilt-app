@@ -410,11 +410,13 @@ function StackUpPays({ onBack }) {
           </div>
 
           <div className={`mt-6 p-4 rounded-2xl text-center font-bold ${isAlreadyPositive ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>
-            {isAlreadyPositive
-              ? currentRTP >= 110
-                ? '✅ PLAY — Strong +EV'
-                : '✅ PLAY — +EV'
-              : '❌ Still -EV — Keep Waiting'}
+            {isAlreadyPositive ? (
+              <>
+                <span className="stackup-check-emoji">✅ </span>
+                <span className="stackup-check-badge inline-flex items-center justify-center w-5 h-5 rounded border-2 border-[#fff] text-[#fff] text-xs font-black leading-none mr-1.5">✓</span>
+                {currentRTP >= 110 ? 'PLAY Strong +EV' : 'PLAY +EV Expected'}
+              </>
+            ) : '❌ Still -EV Keep Waiting'}
           </div>
         </div>
 

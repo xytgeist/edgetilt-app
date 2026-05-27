@@ -1269,3 +1269,25 @@ html.light [data-calc="stackup"] .bg-slate-800\/70 {
   background-color: #e4e4e7;
   box-shadow: none;
 }
+
+/* +EV / -EV pills */
+html.light [data-calc="stackup"] .bg-emerald-900 {
+  background-color: #16A34A;
+}
+html.light [data-calc="stackup"] .bg-emerald-900.text-emerald-300,
+html.light [data-calc="stackup"] .bg-emerald-900 .text-emerald-300 {
+  color: #ffffff;
+}
+html.light [data-calc="stackup"] .bg-red-900 {
+  background-color: #DC2626;
+}
+html.light [data-calc="stackup"] .bg-red-900.text-red-300,
+html.light [data-calc="stackup"] .bg-red-900 .text-red-300 {
+  color: #18181b;
+}
+
+/* Badge show/hide */
+.stackup-check-badge { display: none; }
+.stackup-check-emoji { display: inline; }
+html.light .stackup-check-badge { display: inline-flex; }
+html.light .stackup-check-emoji { display: none; }

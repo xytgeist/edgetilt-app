@@ -381,7 +381,7 @@ input[list]::-webkit-list-button {
 }
 
 .lounge-cold-boot-splash {
-  animation: loungeColdBootSplashOut 0.01s linear reverse;
+  /* No entrance animation — container is immediately opaque from mount */
 }
 
 .lounge-cold-boot-splash--out {

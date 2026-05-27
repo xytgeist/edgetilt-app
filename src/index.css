@@ -1092,6 +1092,12 @@ html.light [data-calc] .text-gray-500 {
 
 /* ── PhoenixLink ─────────────────────────────────────────────────────────── */
 
+/* PLAY pill checkmark: emoji in dark mode, white-outlined badge in light mode */
+.phoenix-check-badge { display: none; }
+.phoenix-check-emoji { display: inline; }
+html.light .phoenix-check-badge { display: inline-flex; }
+html.light .phoenix-check-emoji { display: none; }
+
 /* Section title h2s → black (must beat .text-orange-400 specificity) */
 html.light [data-calc="phoenix"] h2,
 html.light [data-calc="phoenix"] h2.text-orange-400 {

@@ -73,8 +73,8 @@ export const CALCULATOR_CATALOG = [
     iconImgClassName: 'h-full w-full object-cover object-center',
     buttonClassName:
       'mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-amber-700 via-orange-700 to-red-800 p-6 text-left ring-1 ring-orange-800/45 transition-all hover:from-amber-600 hover:via-orange-600 hover:to-red-700 hover:ring-orange-700/50 active:scale-[0.985] sm:gap-5 sm:p-8',
-    titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-amber-100',
-    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-amber-200/90 sm:line-clamp-2',
+    titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-[#fff]',
+    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-[rgba(255,255,255,0.82)] sm:line-clamp-2',
   },
   {
     key: 'stackup',
@@ -86,8 +86,8 @@ export const CALCULATOR_CATALOG = [
     iconWrapClassName: 'h-16 w-16 flex-shrink-0 rounded-2xl object-cover shadow-lg',
     buttonClassName:
       'w-full bg-gradient-to-br from-cyan-600 via-sky-600 to-blue-700 hover:from-cyan-500 hover:via-sky-500 hover:to-blue-600 p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation transition-all active:scale-[0.985]',
-    titleClassName: 'line-clamp-2 font-semibold text-2xl leading-snug text-cyan-100',
-    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-cyan-200 sm:line-clamp-2',
+    titleClassName: 'line-clamp-2 font-semibold text-2xl leading-snug text-[#fff]',
+    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-[rgba(255,255,255,0.82)] sm:line-clamp-2',
   },
   {
     key: 'mhb',
@@ -98,7 +98,7 @@ export const CALCULATOR_CATALOG = [
     iconWrapClassName: 'h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg',
     buttonClassName:
       'mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-indigo-700 via-violet-700 to-cyan-700 p-6 text-left shadow-lg shadow-black/30 transition-all hover:from-indigo-600 hover:via-violet-600 hover:to-cyan-600 active:scale-[0.985] sm:gap-5 sm:p-8',
-    titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-violet-50',
-    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-cyan-100/95 sm:line-clamp-2',
+    titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-[#fff]',
+    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-[rgba(255,255,255,0.82)] sm:line-clamp-2',
   },
 ]

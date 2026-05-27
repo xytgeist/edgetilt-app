@@ -1270,6 +1270,12 @@ html.light [data-calc="stackup"] .bg-slate-800\/70 {
   box-shadow: none;
 }
 
+html.light [data-calc="stackup"] h1 {
+  color: #164e63 !important;
+}
+html.light [data-calc="stackup"] h1 + p {
+  color: #0e7490 !important;
+}
 html.light [data-calc="stackup"] h2,
 html.light [data-calc="stackup"] h2.text-cyan-400 {
   color: #000000 !important;

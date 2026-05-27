@@ -212,11 +212,9 @@ function PhoenixLink({ onBack }) {
               className="w-14 h-14 rounded-xl object-contain" 
             />
             <h1 
-              className="text-[38px] text-black"
+              className="text-[33px] font-black tracking-[-1.6px] text-black"
               style={{
-                fontFamily: "'Bebas Neue', cursive",
-                letterSpacing: '0.04em',
-                textShadow: `-1.8px -1.8px 0 #f97316, 1.8px -1.8px 0 #f97316, -1.8px 1.8px 0 #f97316, 1.8px 1.8px 0 #f97316`
+                textShadow: `-1.6px -1.6px 0 #f97316, 1.6px -1.6px 0 #f97316, -1.6px 1.6px 0 #f97316, 1.6px 1.6px 0 #f97316`
               }}
             >
               PHOENIX LINK

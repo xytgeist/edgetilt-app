@@ -11,44 +11,30 @@ const EDGE_SPLASH_DATA = JSON.stringify(edgeSplashData)
 const FLY_THROUGH_START = 157
 const FLY_THROUGH_END = 190
 
-// Frame at which the status bar flips from black to the app theme color.
-// Tune this if the flip happens too early or too late relative to when the D crosses the top.
-const STATUS_BAR_FLIP_FRAME = 175
-
 // 251 frames @ 60 fps ≈ 4.2 s. Force-dismiss after 7 s if complete event is late.
 const SPLASH_MAX_MS = 7000
-
-// Derive the correct theme color from the current <html> class.
-function splashThemeColor() {
-  const isDark = document.documentElement.classList.contains('dark')
-  return { bg: isDark ? '#09090b' : '#fafafa', meta: isDark ? '#09090b' : '#ffffff' }
-}
 
 /**
  * Cold-boot Lottie splash.
  *
  * Layer stack (bottom → top inside the fixed container):
- *   1. overlay div  — bg-black, opacity driven by direct DOM ref (not React state).
- *                     Shows through the transparent D-hole pixels in the canvas.
- *                     Fades 1→0 during frames 157–190 to reveal the feed behind.
- *   2. canvas       — DotLottie renders here via OffscreenCanvas so the WASM path
- *                     calls set_background(0,0,0,0) → true transparent D-hole pixels.
- *   3. preFrameCover — always bg-black. Hides the blank canvas while WASM boots,
- *                     and keeps the iOS translucent status bar dark from the start.
- *                     Removed one rAF after the first Lottie frame to avoid a
- *                     transparent-canvas white flash.
+ *   1. overlay div    — bg-black, opacity driven by direct DOM ref (not React state).
+ *                       Shows through the transparent D-hole pixels in the canvas.
+ *                       Fades 1→0 during frames 157–190 to reveal the feed behind.
+ *   2. canvas         — DotLottie renders here via OffscreenCanvas so the WASM path
+ *                       calls set_background(0,0,0,0) → true transparent D-hole pixels.
+ *   3. preFrameCover  — always bg-black. Hides the blank canvas while WASM boots.
+ *                       Removed one rAF after the first Lottie frame to avoid a
+ *                       transparent-canvas white flash.
+ *   4. statusBar strip — height env(safe-area-inset-top), always bg-black. Sits in
+ *                       the exact pixels iOS samples for its translucent status bar tint,
+ *                       keeping the status bar dark for the full duration of the splash.
  *
- *   4. statusBar strip — absolutely-positioned div, height env(safe-area-inset-top),
- *                     topmost layer. Starts black. Its background changes at
- *                     STATUS_BAR_FLIP_FRAME as a belt-and-suspenders backup to the
- *                     primary apple-mobile-web-app-status-bar-style meta flip.
- *
- * Status bar flip mechanism:
- *   iOS does not resample DOM content for the translucent bar dynamically. The ONLY
- *   reliable trigger is changing apple-mobile-web-app-status-bar-style meta content.
- *   At STATUS_BAR_FLIP_FRAME: black-translucent → default (white opaque bar).
- *   At done(): restored to black-translucent under the --out fade so app layout
- *   shifts are hidden behind the fading splash.
+ * Status bar: iOS PWA caches apple-mobile-web-app-status-bar-style at install time
+ * and does not resample translucent-bar content dynamically during JS execution.
+ * The black preFrameCover + statusBar strip give a dark status bar throughout the
+ * splash. The bar transitions to the app theme color naturally when the splash fades
+ * out and the app's own background becomes the topmost content.
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
   const canvasRef = useRef(null)
@@ -59,46 +45,8 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
   onCompleteRef.current = onAnimationComplete
 
   useLayoutEffect(() => {
-    // ── Status bar control ──────────────────────────────────────────────────────
-    // The ONLY reliable way to dynamically change the iOS PWA status bar color is
-    // to change the apple-mobile-web-app-status-bar-style meta tag. iOS does not
-    // continuously resample DOM content for the translucent status bar — it only
-    // re-evaluates when this meta tag value changes.
-    //
-    // black-translucent → dark bar, content extends behind it (what the app uses)
-    // default           → opaque white bar, content does NOT extend behind it
-    //
-    // Switching black-translucent↔default changes the safe-area inset and would
-    // normally cause a layout shift, but the splash's fixed inset-0 overlay hides
-    // any app-content movement during the transition.
-    const sbMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-    // sbMeta starts as black-translucent (set in index.html) → dark status bar ✓
-
-    function flipStatusBarLight() {
-      // Switch to opaque default (white bar) — triggers iOS re-evaluation.
-      // Belt-and-suspenders: also update body background + theme-color.
-      if (sbMeta) sbMeta.setAttribute('content', 'default')
-      const { bg, meta } = splashThemeColor()
-      document.documentElement.style.setProperty('background', bg, 'important')
-      document.body.style.setProperty('background', bg, 'important')
-      const tc = document.querySelector('meta[name="theme-color"]')
-      if (tc) tc.setAttribute('content', meta)
-      if (statusBarRef.current) statusBarRef.current.style.backgroundColor = bg
-    }
-
-    function restoreStatusBarStyle() {
-      // Restore black-translucent before splash fully fades — layout shift is
-      // hidden behind the --out animation's remaining opacity.
-      if (sbMeta) sbMeta.setAttribute('content', 'black-translucent')
-      document.documentElement.style.removeProperty('background')
-      document.body.style.removeProperty('background')
-    }
-
     const canvas = canvasRef.current
-    if (!canvas) {
-      restoreStatusBarStyle()
-      return
-    }
+    if (!canvas) return
 
     // getBoundingClientRect() measures the actual rendered CSS size after layout —
     // correct on iOS PWA with viewport-fit:cover where window.innerHeight ≠ full screen.
@@ -124,13 +72,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       renderConfig: { autoResize: false },
     })
 
-    let barFlipped = false
-    const done = () => {
-      if (!barFlipped) { barFlipped = true; flipStatusBarLight() }
-      // Restore black-translucent now — --out animation (320ms) hides any layout shift.
-      restoreStatusBarStyle()
-      onCompleteRef.current?.()
-    }
+    const done = () => onCompleteRef.current?.()
     const fallback = setTimeout(done, SPLASH_MAX_MS)
 
     player.addEventListener('frame', ({ currentFrame }) => {
@@ -143,13 +85,6 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         const cover = preFrameCoverRef.current
         preFrameCoverRef.current = null
         requestAnimationFrame(() => { cover.style.display = 'none' })
-      }
-
-      // Flip status bar as the D crosses the top of the screen.
-      // Primary: change apple-mobile-web-app-status-bar-style → iOS re-evaluates.
-      if (!barFlipped && currentFrame >= STATUS_BAR_FLIP_FRAME) {
-        barFlipped = true
-        flipStatusBarLight()
       }
 
       // Fade the overlay via direct DOM mutation — not setState — so it works
@@ -166,7 +101,6 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     })
 
     return () => {
-      restoreStatusBarStyle()
       clearTimeout(fallback)
       player.destroy()
     }

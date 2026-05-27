@@ -1092,8 +1092,9 @@ html.light [data-calc] .text-gray-500 {
 
 /* ── PhoenixLink ─────────────────────────────────────────────────────────── */
 
-/* Section title h2s → black */
-html.light [data-calc="phoenix"] h2 {
+/* Section title h2s → black (must beat .text-orange-400 specificity) */
+html.light [data-calc="phoenix"] h2,
+html.light [data-calc="phoenix"] h2.text-orange-400 {
   color: #000000;
 }
 

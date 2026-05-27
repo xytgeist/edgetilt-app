@@ -4,7 +4,7 @@ export const mobileShell =
 export const inputBase =
   'w-full min-h-12 text-base text-zinc-100 bg-zinc-800 rounded-2xl border-0 px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 touch-manipulation'
 export const btnPrimary =
-  'w-full min-h-12 text-base font-bold touch-manipulation active:scale-[0.99] transition-transform'
+  'w-full min-h-12 text-base font-bold text-white touch-manipulation active:scale-[0.99] transition-transform'
 export const btnSecondary =
   'w-full min-h-12 text-base font-bold touch-manipulation active:scale-[0.99] transition-transform'
 export const linkBtn =

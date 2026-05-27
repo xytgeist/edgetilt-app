@@ -1239,12 +1239,15 @@ html.light [data-calc="buffalo"] .bg-green-600.text-white {
 html.light [data-calc="mhb"] .bg-cyan-600.text-white {
   color: #ffffff !important;
 }
-/* Toggle switch active state — match the cyan-600 pill color */
+/* Active pill and toggle switch — remap cyan to proper blue in light mode */
+html.light [data-calc="mhb"] .bg-cyan-600 {
+  background-color: #3b82f6;
+}
 html.light [data-calc="mhb"] .bg-cyan-500\/40 {
-  background-color: #0891b2;
+  background-color: #3b82f6;
 }
 html.light [data-calc="mhb"] .border-cyan-300\/70 {
-  border-color: #0891b2;
+  border-color: #3b82f6;
 }
 
 /* Meter input ring — the global bg-gray-800 box-shadow:none wipes Tailwind rings,

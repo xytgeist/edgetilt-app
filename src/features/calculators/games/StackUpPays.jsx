@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
 import { formatDenomLabel } from '../../../utils/formatDenomLabel'
+import { DropdownSelect } from '../DropdownSelect'
 
 const MUST_HIT = {
   mega: 350,
@@ -299,17 +300,13 @@ function StackUpPays({ onBack }) {
 
           <div>
             <label className="block text-slate-400 text-xs mb-1">Denomination</label>
-            <select
+            <DropdownSelect
               value={denom}
-              onChange={(e) => setDenom(parseFloat(e.target.value))}
-              className="h-14 w-full cursor-pointer rounded-2xl border-0 bg-slate-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-cyan-500/25"
-            >
-              {DENOM_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  ${formatDenomLabel(d)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setDenom(parseFloat(v))}
+              options={DENOM_OPTIONS.map((d) => ({ value: d, label: `$${formatDenomLabel(d)}` }))}
+              accentClass="text-cyan-400"
+              size="md"
+            />
           </div>
 
           <div>

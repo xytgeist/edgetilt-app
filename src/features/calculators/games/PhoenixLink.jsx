@@ -348,7 +348,9 @@ function PhoenixLink({ onBack }) {
             </div>
           </div>
           <div className={`p-4 rounded-2xl text-center text-base font-bold mb-8 ${currentX >= beAvg ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-            {currentX >= beAvg ? '✅ PLAY +EV Expected' : '❌ Still -EV keep waiting'}
+            {currentX >= beAvg ? (
+              <><span className="inline-flex items-center justify-center w-5 h-5 rounded border-2 border-[#fff] text-[#fff] text-xs font-black leading-none mr-1.5">✓</span>PLAY +EV Expected</>
+            ) : '❌ Still -EV keep waiting'}
           </div>
           <h2 className="text-xl font-semibold mb-5 text-orange-400">Break Even Points</h2>
           <div className="grid grid-cols-2 gap-4">

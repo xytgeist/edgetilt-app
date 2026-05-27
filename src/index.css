@@ -1235,6 +1235,10 @@ html.light [data-calc="buffalo"] .bg-green-600.text-white {
 }
 
 /* ── MHBCalculator (cyan → blue in light) ────────────────────────────────── */
+/* Active pill text must stay white even though the global .text-white rule flips it dark */
+html.light [data-calc="mhb"] .bg-cyan-600.text-white {
+  color: #ffffff !important;
+}
 /* Global html.light .text-cyan-* and .bg-cyan-* rules already remap cyan → blue.
    These just fill the gray-specific gaps for MHB. */
 html.light [data-calc="mhb"] .bg-cyan-500\/10 {

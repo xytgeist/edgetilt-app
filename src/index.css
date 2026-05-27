@@ -1256,6 +1256,20 @@ html.light [data-calc="mhb"] .bg-red-900 .text-red-300 {
 html.light .mhb-check-badge { display: inline-flex; }
 html.light .mhb-check-emoji { display: none; }
 
+/* Info modal — cards and text */
+html.light [data-calc="mhb"] .bg-gray-800\/60 {
+  background-color: #ebebed;
+}
+html.light [data-calc="mhb"] .text-cyan-200 {
+  color: #2563eb;
+}
+html.light [data-calc="mhb"] .border-cyan-500\/25 {
+  border-color: rgba(37, 99, 235, 0.25);
+}
+html.light [data-calc="mhb"] .border-cyan-500\/30 {
+  border-color: rgba(37, 99, 235, 0.20);
+}
+
 /* Breakeven entry value — orange */
 html.light [data-calc="mhb"] .text-amber-300 {
   color: #f97316;

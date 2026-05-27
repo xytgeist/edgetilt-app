@@ -305,7 +305,7 @@ function StackUpPays({ onBack }) {
               onChange={(v) => setDenom(parseFloat(v))}
               options={DENOM_OPTIONS.map((d) => ({ value: d, label: `$${formatDenomLabel(d)}` }))}
               accentClass="text-cyan-400"
-              size="md"
+              size="lg"
             />
           </div>
 

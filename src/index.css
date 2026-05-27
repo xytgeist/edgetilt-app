@@ -1276,10 +1276,10 @@ html.light [data-calc="stackup"] h2.text-cyan-400 {
 }
 
 html.light [data-calc="stackup"] .text-slate-400 {
-  color: #475569;
+  color: #64748b;
 }
 html.light [data-calc="stackup"] .text-slate-300 {
-  color: #374151;
+  color: #52525b;
 }
 
 /* +EV / -EV pills */

@@ -6,10 +6,11 @@ import edgeSplashLight from '../assets/lottie/edge-splash-v2-light.json'
 
 DotLottie.setWasmUrl(wasmUrl)
 
-// Resolved once at module load — theme class is applied by applyTheme() in main.jsx
-// before any React renders, so this is stable for the entire boot session.
-const isDarkTheme = document.documentElement.classList.contains('dark')
-const EDGE_SPLASH_DATA = JSON.stringify(isDarkTheme ? edgeSplashDark : edgeSplashLight)
+// Pre-stringify both at module load (expensive JSON.stringify done once, not per-render).
+// The CORRECT one is selected inside useLayoutEffect/render where applyTheme() has
+// already run — module-level code executes before main.jsx's own statements fire.
+const EDGE_SPLASH_DATA_DARK = JSON.stringify(edgeSplashDark)
+const EDGE_SPLASH_DATA_LIGHT = JSON.stringify(edgeSplashLight)
 
 // Black Solid 1 ends at frame 157 → D fly-through begins.
 // Overlay fully transparent at frame 190 (~1 s before animation ends at 251).
@@ -42,6 +43,10 @@ const SPLASH_MAX_MS = 7000
  * out and the app's own background becomes the topmost content.
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
+  // applyTheme() in main.jsx runs before React renders, so classList is correct here.
+  const isDark = document.documentElement.classList.contains('dark')
+  const splashBg = isDark ? '#000' : '#fff'
+
   const canvasRef = useRef(null)
   const overlayRef = useRef(null)
   const preFrameCoverRef = useRef(null)
@@ -50,6 +55,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
   onCompleteRef.current = onAnimationComplete
 
   useLayoutEffect(() => {
+    const isDarkEffect = document.documentElement.classList.contains('dark')
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -68,7 +74,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
 
     const player = new DotLottie({
       canvas: offscreen,
-      data: EDGE_SPLASH_DATA,
+      data: isDarkEffect ? EDGE_SPLASH_DATA_DARK : EDGE_SPLASH_DATA_LIGHT,
       autoplay: true,
       loop: false,
       useFrameInterpolation: false,
@@ -126,7 +132,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       <div
         ref={overlayRef}
         className="absolute inset-0 pointer-events-none"
-        style={{ backgroundColor: isDarkTheme ? '#000' : '#fff' }}
+        style={{ backgroundColor: splashBg }}
         aria-hidden
       />
 
@@ -138,7 +144,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       <div
         ref={preFrameCoverRef}
         className="absolute inset-0"
-        style={{ backgroundColor: isDarkTheme ? '#000' : '#fff' }}
+        style={{ backgroundColor: splashBg }}
         aria-hidden
       />
 
@@ -148,10 +154,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       <div
         ref={statusBarRef}
         className="absolute top-0 left-0 right-0 pointer-events-none"
-        style={{
-          height: 'env(safe-area-inset-top)',
-          backgroundColor: isDarkTheme ? '#000' : '#fff',
-        }}
+        style={{ height: 'env(safe-area-inset-top)', backgroundColor: splashBg }}
         aria-hidden
       />
     </div>

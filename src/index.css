@@ -994,3 +994,196 @@ html.light .lounge-media-toolbar .hover\:text-sky-300:hover,
 html.light .lounge-media-toolbar .active\:text-sky-200:active {
   color: #71717a !important;
 }
+
+/*
+ * ─── CALCULATOR LIGHT MODE ────────────────────────────────────────────────────
+ * ALL rules scoped to html.light [data-calc] — dark mode is 100% untouched.
+ *
+ * Calculators use Tailwind gray-* classes which do NOT auto-invert with the
+ * zinc-* scale. Every shade must be overridden here explicitly.
+ *
+ * data-calc="phoenix" | "buffalo" | "mhb" on each calculator root div.
+ */
+
+/* Page background — warm light gray so section cards pop above it */
+html.light [data-calc] {
+  background-color: #f4f4f5;
+}
+
+/* Section cards (bg-gray-900 / rounded-3xl blocks) → white with soft shadow */
+html.light [data-calc] .bg-gray-900 {
+  background-color: #ffffff;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.10);
+}
+
+/* Inner metric/input/display boxes (bg-gray-800) → subtle gray tint */
+html.light [data-calc] .bg-gray-800 {
+  background-color: #f0f0f2;
+}
+
+/* Inactive toggle bg (bg-gray-700) → slightly darker tint */
+html.light [data-calc] .bg-gray-700 {
+  background-color: #e4e4e7;
+}
+
+/* Hover states */
+html.light [data-calc] .hover\:bg-gray-800:hover {
+  background-color: #e4e4e7;
+}
+html.light [data-calc] .hover\:bg-gray-900:hover {
+  background-color: #f5f5f5;
+}
+
+/* Divider lines */
+html.light [data-calc] .border-gray-700 {
+  border-color: #d4d4d8;
+}
+html.light [data-calc] .border-gray-800 {
+  border-color: #e4e4e7;
+}
+
+/* Inputs — transparent so they inherit the wrapper bg */
+html.light [data-calc] input,
+html.light [data-calc] select {
+  background: transparent;
+  color: #18181b;
+}
+/* Native <option> text (best-effort — browser controls this) */
+html.light [data-calc] option {
+  background: #ffffff;
+  color: #18181b;
+}
+
+/* Primary text (text-white) → near-black */
+html.light [data-calc] .text-white {
+  color: #18181b;
+}
+html.light [data-calc] .text-white\/90 {
+  color: rgba(24, 24, 27, 0.90);
+}
+
+/* Label text */
+html.light [data-calc] .text-gray-400 {
+  color: #71717a;
+}
+html.light [data-calc] .text-gray-300 {
+  color: #52525b;
+}
+html.light [data-calc] .text-gray-500 {
+  color: #a1a1aa;
+}
+
+/* ── PhoenixLink (orange) ────────────────────────────────────────────────── */
+
+/* Accent color */
+html.light [data-calc="phoenix"] .text-orange-400 {
+  color: #ea6c00;
+}
+/* Input border + info button border */
+html.light [data-calc="phoenix"] .border-orange-500,
+html.light [data-calc="phoenix"] .border-orange-400 {
+  border-color: #ea6c00;
+}
+/* EV basis + active toggle tab */
+html.light [data-calc="phoenix"] .bg-orange-600 {
+  background-color: #ea6c00;
+}
+/* White text ON orange buttons must stay white */
+html.light [data-calc="phoenix"] .bg-orange-600 .text-white,
+html.light [data-calc="phoenix"] .bg-orange-600.text-white {
+  color: #ffffff !important;
+}
+
+/* PLAY +EV status pill */
+html.light [data-calc="phoenix"] .bg-green-900 {
+  background-color: #16A34A;
+}
+html.light [data-calc="phoenix"] .bg-green-900 .text-green-300 {
+  color: #ffffff;
+}
+/* Still -EV status pill */
+html.light [data-calc="phoenix"] .bg-red-900 {
+  background-color: #b91c1c;
+}
+html.light [data-calc="phoenix"] .bg-red-900 .text-red-300 {
+  color: #ffffff;
+}
+
+/* Break-even value colors */
+html.light [data-calc="phoenix"] .text-green-400 {
+  color: #16A34A;
+}
+html.light [data-calc="phoenix"] .text-yellow-400 {
+  color: #b45309;
+}
+
+/* YES / Max Major button */
+html.light [data-calc="phoenix"] .bg-green-600 {
+  background-color: #16A34A;
+}
+html.light [data-calc="phoenix"] .bg-green-600 .text-white,
+html.light [data-calc="phoenix"] .bg-green-600.text-white {
+  color: #ffffff !important;
+}
+
+/* ── BuffaloLink (amber) ─────────────────────────────────────────────────── */
+
+/* Accent colors */
+html.light [data-calc="buffalo"] .text-amber-400,
+html.light [data-calc="buffalo"] .text-amber-100 {
+  color: #b45309;
+}
+html.light [data-calc="buffalo"] .border-amber-500 {
+  border-color: #b45309;
+}
+/* EV / RTP positive/negative indicators */
+html.light [data-calc="buffalo"] .text-green-400 {
+  color: #16A34A;
+}
+html.light [data-calc="buffalo"] .text-red-400 {
+  color: #dc2626;
+}
+/* Max Exposure span */
+html.light [data-calc="buffalo"] .text-red-400 {
+  color: #dc2626;
+}
+/* +EV / -EV pills */
+html.light [data-calc="buffalo"] .bg-green-900 {
+  background-color: #16A34A;
+}
+html.light [data-calc="buffalo"] .bg-green-900 .text-green-300 {
+  color: #ffffff;
+}
+html.light [data-calc="buffalo"] .bg-red-900 {
+  background-color: #b91c1c;
+}
+html.light [data-calc="buffalo"] .bg-red-900 .text-red-300 {
+  color: #ffffff;
+}
+/* YES / Max Major button (same green) */
+html.light [data-calc="buffalo"] .bg-green-600 {
+  background-color: #16A34A;
+}
+html.light [data-calc="buffalo"] .bg-green-600 .text-white,
+html.light [data-calc="buffalo"] .bg-green-600.text-white {
+  color: #ffffff !important;
+}
+
+/* ── MHBCalculator (cyan → blue in light) ────────────────────────────────── */
+/* Global html.light .text-cyan-* and .bg-cyan-* rules already remap cyan → blue.
+   These just fill the gray-specific gaps for MHB. */
+html.light [data-calc="mhb"] .bg-cyan-500\/10 {
+  background-color: rgba(59, 130, 246, 0.10);
+}
+html.light [data-calc="mhb"] .hover\:bg-cyan-500\/20:hover {
+  background-color: rgba(59, 130, 246, 0.20);
+}
+html.light [data-calc="mhb"] .border-cyan-400\/45 {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+html.light [data-calc="mhb"] .ring-cyan-300\/80 {
+  --tw-ring-color: rgba(59, 130, 246, 0.80);
+}
+html.light [data-calc="mhb"] .focus\:ring-cyan-200\/85:focus {
+  --tw-ring-color: rgba(59, 130, 246, 0.85);
+}

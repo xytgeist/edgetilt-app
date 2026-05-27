@@ -707,7 +707,7 @@ function MHBCalculator({ onBack }) {
   }
 
   return (
-    <div className="min-h-full bg-gray-950 pb-12">
+    <div data-calc="mhb" className="min-h-full bg-gray-950 pb-12">
       <div className="w-full px-0 pt-1">
 
         {/* Title */}

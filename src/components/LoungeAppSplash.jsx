@@ -39,11 +39,16 @@ function splashThemeColor() {
  *                     transparent-canvas white flash.
  *
  *   4. statusBar strip — absolutely-positioned div, height env(safe-area-inset-top),
- *                     topmost layer. Starts bg-black. At STATUS_BAR_FLIP_FRAME its
- *                     background is set to the app theme color — iOS samples these exact
- *                     pixels for its translucent status bar tint, so this directly controls
- *                     what the status bar looks like without relying on body background
- *                     or theme-color meta (both kept as belt-and-suspenders).
+ *                     topmost layer. Starts black. Its background changes at
+ *                     STATUS_BAR_FLIP_FRAME as a belt-and-suspenders backup to the
+ *                     primary apple-mobile-web-app-status-bar-style meta flip.
+ *
+ * Status bar flip mechanism:
+ *   iOS does not resample DOM content for the translucent bar dynamically. The ONLY
+ *   reliable trigger is changing apple-mobile-web-app-status-bar-style meta content.
+ *   At STATUS_BAR_FLIP_FRAME: black-translucent → default (white opaque bar).
+ *   At done(): restored to black-translucent under the --out fade so app layout
+ *   shifts are hidden behind the fading splash.
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
   const canvasRef = useRef(null)
@@ -54,32 +59,44 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
   onCompleteRef.current = onAnimationComplete
 
   useLayoutEffect(() => {
-    // Force black body/html background + theme-color so iOS translucent status bar is dark.
-    const root = document.documentElement
-    const body = document.body
-    const themeMeta = document.querySelector('meta[name="theme-color"]')
-    root.style.setProperty('background', '#000', 'important')
-    body.style.setProperty('background', '#000', 'important')
-    if (themeMeta) themeMeta.setAttribute('content', '#000000')
+    // ── Status bar control ──────────────────────────────────────────────────────
+    // The ONLY reliable way to dynamically change the iOS PWA status bar color is
+    // to change the apple-mobile-web-app-status-bar-style meta tag. iOS does not
+    // continuously resample DOM content for the translucent status bar — it only
+    // re-evaluates when this meta tag value changes.
+    //
+    // black-translucent → dark bar, content extends behind it (what the app uses)
+    // default           → opaque white bar, content does NOT extend behind it
+    //
+    // Switching black-translucent↔default changes the safe-area inset and would
+    // normally cause a layout shift, but the splash's fixed inset-0 overlay hides
+    // any app-content movement during the transition.
+    const sbMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    // sbMeta starts as black-translucent (set in index.html) → dark status bar ✓
 
-    // Restore body/html background + theme-color to the current app theme.
-    // Explicitly setting (not just removeProperty) triggers iOS to re-evaluate the status bar.
-    function restoreStatusBar() {
+    function flipStatusBarLight() {
+      // Switch to opaque default (white bar) — triggers iOS re-evaluation.
+      // Belt-and-suspenders: also update body background + theme-color.
+      if (sbMeta) sbMeta.setAttribute('content', 'default')
       const { bg, meta } = splashThemeColor()
-      root.style.setProperty('background', bg, 'important')
-      body.style.setProperty('background', bg, 'important')
-      if (themeMeta) themeMeta.setAttribute('content', meta)
+      document.documentElement.style.setProperty('background', bg, 'important')
+      document.body.style.setProperty('background', bg, 'important')
+      const tc = document.querySelector('meta[name="theme-color"]')
+      if (tc) tc.setAttribute('content', meta)
+      if (statusBarRef.current) statusBarRef.current.style.backgroundColor = bg
     }
 
-    // Remove inline overrides entirely once the splash is fully gone.
-    function removeInlineOverrides() {
-      root.style.removeProperty('background')
-      body.style.removeProperty('background')
+    function restoreStatusBarStyle() {
+      // Restore black-translucent before splash fully fades — layout shift is
+      // hidden behind the --out animation's remaining opacity.
+      if (sbMeta) sbMeta.setAttribute('content', 'black-translucent')
+      document.documentElement.style.removeProperty('background')
+      document.body.style.removeProperty('background')
     }
 
     const canvas = canvasRef.current
     if (!canvas) {
-      removeInlineOverrides()
+      restoreStatusBarStyle()
       return
     }
 
@@ -109,8 +126,9 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
 
     let barFlipped = false
     const done = () => {
-      if (!barFlipped) { barFlipped = true; restoreStatusBar() }
-      removeInlineOverrides()
+      if (!barFlipped) { barFlipped = true; flipStatusBarLight() }
+      // Restore black-translucent now — --out animation (320ms) hides any layout shift.
+      restoreStatusBarStyle()
       onCompleteRef.current?.()
     }
     const fallback = setTimeout(done, SPLASH_MAX_MS)
@@ -127,31 +145,11 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         requestAnimationFrame(() => { cover.style.display = 'none' })
       }
 
-      // Flip status bar from black to theme color as the D crosses the top of the screen.
+      // Flip status bar as the D crosses the top of the screen.
+      // Primary: change apple-mobile-web-app-status-bar-style → iOS re-evaluates.
       if (!barFlipped && currentFrame >= STATUS_BAR_FLIP_FRAME) {
         barFlipped = true
-        const { bg, meta } = splashThemeColor()
-
-        // 1. CSS transition on the strip: an animating property keeps the GPU compositor
-        //    running, which forces iOS to resample the status bar content continuously
-        //    during the transition rather than lazily after a navigation event.
-        const strip = statusBarRef.current
-        if (strip) {
-          strip.style.transition = 'background-color 200ms linear'
-          strip.style.backgroundColor = bg
-        }
-
-        // 2. Remove + re-add theme-color meta: a structural DOM mutation to <head> is a
-        //    stronger iOS signal than setAttribute alone — it triggers a full re-evaluation.
-        const oldMeta = document.querySelector('meta[name="theme-color"]')
-        if (oldMeta) oldMeta.remove()
-        const newMeta = document.createElement('meta')
-        newMeta.setAttribute('name', 'theme-color')
-        newMeta.setAttribute('content', meta)
-        document.head.appendChild(newMeta)
-
-        // 3. Belt-and-suspenders: body/html background explicit set.
-        restoreStatusBar()
+        flipStatusBarLight()
       }
 
       // Fade the overlay via direct DOM mutation — not setState — so it works
@@ -168,7 +166,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     })
 
     return () => {
-      removeInlineOverrides()
+      restoreStatusBarStyle()
       clearTimeout(fallback)
       player.destroy()
     }

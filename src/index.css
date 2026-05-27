@@ -1316,8 +1316,9 @@ html.light [data-calc="mhb"] .text-cyan-300 {
 html.light [data-calc="mhb"] input[type="checkbox"] {
   accent-color: #3b82f6;
 }
-/* Active pill text must stay white even though the global .text-white rule flips it dark */
-html.light [data-calc="mhb"] .bg-cyan-600.text-white {
+/* Active pill + Got it button text must stay white */
+html.light [data-calc="mhb"] .bg-cyan-600.text-white,
+html.light [data-calc="mhb"] .bg-cyan-600 {
   color: #ffffff !important;
 }
 /* Toggle switch — no border, no focus ring in light mode */

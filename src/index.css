@@ -1126,6 +1126,10 @@ html.light [data-event-detail-card] {
 }
 html.light [data-event-detail] .text-white { color: #111827 !important; }
 
+/* Error / success alert boxes */
+html.light .bg-red-900\/50     { background-color: rgba(254,226,226,0.9) !important; }
+html.light .bg-emerald-900\/50 { background-color: rgba(209,250,229,0.9) !important; }
+
 /* TV snow uses screen blend which looks bad on light bg — switch to multiply */
 html.light .guide-lock-glitch__tv-snow-canvas {
   mix-blend-mode: multiply;

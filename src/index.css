@@ -1272,11 +1272,11 @@ html.light [data-calc="stackup"] .bg-slate-800\/70 {
 
 html.light [data-calc="stackup"] h1 {
   color: #0ea5e9 !important;
-  text-shadow: 0 1px 4px rgba(14, 165, 233, 0.25);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 html.light [data-calc="stackup"] h1 + p {
   color: #3b82f6 !important;
-  text-shadow: 0 1px 4px rgba(59, 130, 246, 0.25);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 html.light [data-calc="stackup"] h2,
 html.light [data-calc="stackup"] h2.text-cyan-400 {

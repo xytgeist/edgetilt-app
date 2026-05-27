@@ -1270,6 +1270,11 @@ html.light [data-calc="stackup"] .bg-slate-800\/70 {
   box-shadow: none;
 }
 
+html.light [data-calc="stackup"] h2,
+html.light [data-calc="stackup"] h2.text-cyan-400 {
+  color: #000000;
+}
+
 /* +EV / -EV pills */
 html.light [data-calc="stackup"] .bg-emerald-900 {
   background-color: #16A34A;

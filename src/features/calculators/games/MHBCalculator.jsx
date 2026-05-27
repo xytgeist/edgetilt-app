@@ -837,8 +837,8 @@ function MHBCalculator({ onBack }) {
               </div>
             </div>
             ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-2 gap-4 items-stretch">
+              <div className="flex flex-col">
                 <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
                 <input
                   type="text"
@@ -848,13 +848,13 @@ function MHBCalculator({ onBack }) {
                   onClick={(e) => e.currentTarget.select()}
                   onChange={handleJpMeterChange}
                   onBlur={handleJpMeterBlur}
-                  className={`w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
+                  className={`flex-1 w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
                     showMeterCue ? 'ring-2 ring-cyan-100 shadow-[0_0_0_3px_rgba(103,232,249,0.6)] animate-pulse' : ''
                   }`}
                 />
               </div>
 
-              <div>
+              <div className="flex flex-col">
                 <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
                   {manufacturer === 'manual' ? (
                     <input
@@ -865,10 +865,10 @@ function MHBCalculator({ onBack }) {
                       onClick={(e) => e.currentTarget.select()}
                       onChange={handleMustHitByChange}
                       onBlur={handleMustHitByBlur}
-                      className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="flex-1 w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     />
                   ) : (
-                    <div className="grid gap-1 p-1 bg-gray-800 rounded-2xl" style={{gridTemplateColumns: `repeat(${[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).length}, 1fr)`}}>
+                    <div className="flex-1 grid gap-1 p-1 bg-gray-800 rounded-2xl" style={{gridTemplateColumns: `repeat(${[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).length}, 1fr)`}}>
                       {[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).map((val) => (
                         <button key={val} type="button" onClick={() => setMustHitBy(val)}
                           className={`py-3 rounded-xl text-sm font-bold text-center transition-colors touch-manipulation ${mustHitBy === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>

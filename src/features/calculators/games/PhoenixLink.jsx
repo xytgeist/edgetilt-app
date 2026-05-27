@@ -409,17 +409,15 @@ function PhoenixLink({ onBack }) {
                 <label className="block text-gray-400 text-xs">Scout Share</label>
                 <span className="font-bold text-orange-400 text-lg">{scoutPercentage}%</span>
               </div>
-              <div className="bg-gray-800 rounded-2xl px-4 py-3">
-                <input 
-                  type="range" 
-                  min="10" 
-                  max="15" 
-                  step="1" 
-                  value={scoutPercentage} 
-                  onChange={(e) => setScoutPercentage(Number(e.target.value))} 
-                  className="w-full range-touch-target accent-orange-500" 
-                />
-              </div>
+              <input 
+                type="range" 
+                min="10" 
+                max="15" 
+                step="1" 
+                value={scoutPercentage} 
+                onChange={(e) => setScoutPercentage(Number(e.target.value))} 
+                className="w-full range-touch-target accent-orange-500" 
+              />
             </div>
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 text-center mb-4">

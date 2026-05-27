@@ -750,29 +750,13 @@ function MHBCalculator({ onBack }) {
         <div className="bg-gray-900 p-5 rounded-3xl">
           <div className="mb-4">
             <label className="block text-gray-400 text-xs mb-1">Manufacturer</label>
-            <div className="relative">
-              <select
-                value={manufacturer}
-                onChange={(e) => setManufacturer(e.target.value)}
-                className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-              >
-                <option value="ainsworth">Ainsworth</option>
-                <option value="ags">AGS</option>
-                <option value="igt">IGT</option>
-                <option value="manual">Manual Entry</option>
-              </select>
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 20 20"
-                className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                  clipRule="evenodd"
-                />
-              </svg>
+            <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-800 rounded-2xl">
+              {[['ainsworth','Ainsworth'],['ags','AGS'],['igt','IGT'],['manual','Manual']].map(([val,label]) => (
+                <button key={val} type="button" onClick={() => setManufacturer(val)}
+                  className={`py-2.5 rounded-xl text-sm font-semibold text-center transition-colors touch-manipulation ${manufacturer === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                  {label}
+                </button>
+              ))}
             </div>
             <p className="text-gray-500 text-[11px] mt-2 leading-snug">
               Switches the default meter, rise, reset, and RTP to typical for the selected manufacturer.
@@ -784,58 +768,25 @@ function MHBCalculator({ onBack }) {
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-gray-400 text-[11px] mb-0.5">Denom</label>
-                  <div className="relative">
-                    <select
-                      value={igtDenom}
-                      onChange={(e) => setIgtDenom(Number(e.target.value))}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                    >
-                      <option value={0.01}>$0.01</option>
-                      <option value={0.25}>$0.25</option>
-                      <option value={1}>$1</option>
-                      <option value={2}>$2</option>
-                    </select>
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <div className="grid grid-cols-2 gap-1 p-1 bg-gray-800 rounded-2xl">
+                    {[[0.01,'¢1'],[0.25,'25¢'],[1,'$1'],[2,'$2']].map(([val,label]) => (
+                      <button key={val} type="button" onClick={() => setIgtDenom(val)}
+                        className={`py-2 rounded-xl text-xs font-bold text-center transition-colors touch-manipulation ${igtDenom === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-gray-400 text-[11px] mb-0.5">Line Bet</label>
-                  <div className="relative">
-                    <select
-                      value={igtLineBet}
-                      onChange={(e) => setIgtLineBet(Number(e.target.value))}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                    >
-                      <option value={1}>Bet 1</option>
-                      <option value={2}>Bet 2</option>
-                      <option value={3}>Bet 3</option>
-                      <option value={5}>Bet 5</option>
-                      <option value={10}>Bet 10</option>
-                    </select>
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <div className="flex flex-col gap-1 p-1 bg-gray-800 rounded-2xl">
+                    {[[1,'×1'],[2,'×2'],[3,'×3'],[5,'×5'],[10,'×10']].map(([val,label]) => (
+                      <button key={val} type="button" onClick={() => setIgtLineBet(val)}
+                        className={`py-1.5 rounded-xl text-xs font-bold text-center transition-colors touch-manipulation ${igtLineBet === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -851,28 +802,13 @@ function MHBCalculator({ onBack }) {
                       i
                     </button>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={igtTier}
-                      onChange={(e) => setIgtTier(e.target.value)}
-                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                    >
-                      <option value="mini">Mini</option>
-                      <option value="minor">Minor</option>
-                      <option value="major">Major</option>
-                    </select>
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-gray-800 rounded-2xl">
+                    {[['mini','Mini'],['minor','Minor'],['major','Major']].map(([val,label]) => (
+                      <button key={val} type="button" onClick={() => setIgtTier(val)}
+                        className={`py-2 rounded-xl text-xs font-bold text-center transition-colors touch-manipulation ${igtTier === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -932,30 +868,13 @@ function MHBCalculator({ onBack }) {
                       className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     />
                   ) : (
-                    <div className="relative">
-                      <select
-                        value={mustHitBy}
-                        onChange={(e) => setMustHitBy(Number(e.target.value))}
-                        className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
-                      >
-                        <option value={500}>{formatUsd(500)}</option>
-                        {manufacturer !== 'ainsworth' ? (
-                          <option value={5000}>{formatUsd(5000)}</option>
-                        ) : null}
-                        {manufacturer !== 'ags' ? <option value={10000}>{formatUsd(10000)}</option> : null}
-                      </select>
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 20 20"
-                        className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/90"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
+                    <div className="grid gap-1 p-1 bg-gray-800 rounded-2xl" style={{gridTemplateColumns: `repeat(${[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).length}, 1fr)`}}>
+                      {[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).map((val) => (
+                        <button key={val} type="button" onClick={() => setMustHitBy(val)}
+                          className={`py-3 rounded-xl text-sm font-bold text-center transition-colors touch-manipulation ${mustHitBy === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                          {formatUsd(val)}
+                        </button>
+                      ))}
                     </div>
                   )}
               </div>

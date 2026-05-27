@@ -1603,7 +1603,7 @@ export default function OffersCalendar({
                       <div className="w-10 shrink-0 text-center">
                         <div className="text-zinc-500 text-[9px] font-semibold tracking-wide">{dayLabel}</div>
                         <div className="text-zinc-100 text-xl leading-tight">{dayNum}</div>
-                        <div className="text-zinc-500 text-[9px] font-semibold tracking-wide">{monthLabel}</div>
+                        <div className="text-zinc-400 text-[10px] font-bold tracking-wider">{monthLabel}</div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">

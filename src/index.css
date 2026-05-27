@@ -1276,6 +1276,7 @@ html.light [data-calc="stackup"] h1 {
 }
 html.light [data-calc="stackup"] h1 + p {
   color: #3b82f6 !important;
+  text-shadow: 0 1px 4px rgba(59, 130, 246, 0.25);
 }
 html.light [data-calc="stackup"] h2,
 html.light [data-calc="stackup"] h2.text-cyan-400 {

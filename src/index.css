@@ -1251,6 +1251,11 @@ html.light [data-calc="mhb"] input[type="checkbox"] {
 html.light [data-calc="mhb"] .bg-cyan-600.text-white {
   color: #ffffff !important;
 }
+/* Toggle switch — no border in light mode (both ON and OFF states), ON = solid blue */
+html.light [data-calc="mhb"] [role="switch"] {
+  border-color: transparent !important;
+}
+
 /* Active pill and toggle switch — remap cyan to proper blue in light mode */
 html.light [data-calc="mhb"] .bg-cyan-600 {
   background-color: #3b82f6;

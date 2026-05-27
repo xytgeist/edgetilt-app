@@ -26,6 +26,7 @@ export default function WeekEventDetailModal({
   const timeLabel = showTime ? new Date(e.start_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''
   const dayLabel = startDate.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase()
   const dayNum = startDate.getDate()
+  const monthLabel = startDate.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()
 
   return (
     <div
@@ -58,6 +59,7 @@ export default function WeekEventDetailModal({
           <div className="w-12 shrink-0 text-center">
             <div className="text-zinc-500 text-[10px] font-semibold tracking-wide">{dayLabel}</div>
             <div className="text-zinc-100 text-2xl font-black leading-tight">{dayNum}</div>
+            <div className="text-[10px] font-bold tracking-wider" style={{ color: 'var(--ot-color)' }}>{monthLabel}</div>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">

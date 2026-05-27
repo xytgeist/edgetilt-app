@@ -38,16 +38,18 @@ function splashThemeColor() {
  *                     Removed one rAF after the first Lottie frame to avoid a
  *                     transparent-canvas white flash.
  *
- * Status bar control:
- *   On mount we force body/html background + theme-color meta to #000 so iOS's
- *   translucent status bar appears black. At STATUS_BAR_FLIP_FRAME we restore both
- *   to the app's theme values, triggering iOS to re-evaluate the status bar tint.
- *   The overlay's opacity fade then reveals the white feed, completing the transition.
+ *   4. statusBar strip — absolutely-positioned div, height env(safe-area-inset-top),
+ *                     topmost layer. Starts bg-black. At STATUS_BAR_FLIP_FRAME its
+ *                     background is set to the app theme color — iOS samples these exact
+ *                     pixels for its translucent status bar tint, so this directly controls
+ *                     what the status bar looks like without relying on body background
+ *                     or theme-color meta (both kept as belt-and-suspenders).
  */
 export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
   const canvasRef = useRef(null)
   const overlayRef = useRef(null)
   const preFrameCoverRef = useRef(null)
+  const statusBarRef = useRef(null)
   const onCompleteRef = useRef(onAnimationComplete)
   onCompleteRef.current = onAnimationComplete
 
@@ -126,9 +128,13 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       }
 
       // Flip status bar from black to theme color as the D crosses the top of the screen.
-      // Explicitly setting background + theme-color triggers iOS to re-evaluate the tint.
+      // Primary mechanism: change the dedicated status bar strip div that sits on top of
+      // the canvas — iOS samples what's physically rendered in those pixels.
+      // Belt-and-suspenders: also update body/html background + theme-color meta.
       if (!barFlipped && currentFrame >= STATUS_BAR_FLIP_FRAME) {
         barFlipped = true
+        const { bg } = splashThemeColor()
+        if (statusBarRef.current) statusBarRef.current.style.background = bg
         restoreStatusBar()
       }
 
@@ -168,10 +174,20 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" aria-hidden />
 
       {/* 3. Pre-frame cover — on top, hides blank canvas until WASM boots.
-               Always black regardless of theme: the Lottie opens with a black
-               Black Solid 1 layer anyway, so preFrame→frame-1 is seamless, and
-               the black content makes the iOS translucent status bar appear black. */}
+               Always black: seamless with the Lottie's Black Solid 1 opener. */}
       <div ref={preFrameCoverRef} className="absolute inset-0 bg-black" aria-hidden />
+
+      {/* 4. Status bar strip — covers only env(safe-area-inset-top), the exact pixels
+               iOS samples for its translucent status bar tint. Sits above everything else.
+               Starts black (matches the Lottie opener). At STATUS_BAR_FLIP_FRAME we set
+               its background to the theme color so iOS sees white/dark directly in those
+               pixels and updates the status bar accordingly. */}
+      <div
+        ref={statusBarRef}
+        className="absolute top-0 left-0 right-0 bg-black pointer-events-none"
+        style={{ height: 'env(safe-area-inset-top)' }}
+        aria-hidden
+      />
     </div>
   )
 }

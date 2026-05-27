@@ -1452,6 +1452,7 @@ export default function OffersCalendar({
                                   key={`wk-${ev.id}-${ev._startCol}`}
                                   type="button"
                                   data-offer-type={ev.offer_type || 'other'}
+                                  data-card-view="week"
                                   onClick={() => setWeekDetailEvent(ev)}
                                   className={`pointer-events-auto ${meta.card} relative flex min-h-[3.5rem] min-w-0 flex-col items-start justify-center gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left text-[10px] leading-tight touch-manipulation`}
                                   style={{ gridColumn: `${ev._startCol + 1} / span ${ev._span}` }}
@@ -1583,6 +1584,7 @@ export default function OffersCalendar({
                     key={e.id}
                     type="button"
                     data-offer-type={e.offer_type || 'other'}
+                    data-card-view="list"
                     onClick={() => toggleExpandedEvent(e.id)}
                     aria-expanded={isExpanded}
                     className={`${meta.card} relative block w-full rounded-2xl p-2.5 text-left transition-colors hover:bg-opacity-90 ${isSpotlighted ? 'ring-2 ring-cyan-300/85 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : ''}`}

@@ -1061,12 +1061,35 @@ html.light [data-event-detail-card] {
 /* Chip: light tint bg, colored border + text                                */
 /* Dot:  full dark color                                                      */
 
-html.light [data-offer-type] {
+/* Week view cards: white card + colored left border */
+html.light [data-offer-type][data-card-view="week"] {
   background-color: #ffffff !important;
   border-color: rgba(0,0,0,0.10) !important;
   border-left-color: var(--ot-color) !important;
   border-left-width: 4px !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.10) !important;
+}
+
+/* List view cards: no card, thin colored line between date col and content */
+html.light [data-offer-type][data-card-view="list"] {
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(0,0,0,0.07) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+html.light [data-offer-type][data-card-view="list"] .flex-1 {
+  border-left: 2px solid var(--ot-color) !important;
+  padding-left: 10px !important;
+}
+
+/* Detail modal card: white + colored left border */
+html.light [data-offer-type][data-event-detail-card] {
+  background-color: #ffffff !important;
+  border-color: rgba(0,0,0,0.10) !important;
+  border-left-color: var(--ot-color) !important;
+  border-left-width: 4px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10) !important;
 }
 /* Chip (rounded-full + border) within offer card */
 html.light [data-offer-type] [class*="rounded-full"][class*="border"] {

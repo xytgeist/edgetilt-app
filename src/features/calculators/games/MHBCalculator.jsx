@@ -874,7 +874,7 @@ function MHBCalculator({ onBack }) {
                     <div className="flex-1 grid gap-1 p-1 bg-gray-800 rounded-2xl" style={{gridTemplateColumns: `repeat(${[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).length}, 1fr)`}}>
                       {[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).map((val) => (
                         <button key={val} type="button" onClick={() => setMustHitBy(val)}
-                          className={`py-3 rounded-xl text-sm font-bold text-center transition-colors touch-manipulation ${mustHitBy === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                          className={`py-3 rounded-xl text-xl font-bold text-center transition-colors touch-manipulation ${mustHitBy === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
                           {formatUsd(val)}
                         </button>
                       ))}

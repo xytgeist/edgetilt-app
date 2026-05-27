@@ -240,7 +240,7 @@ function BuffaloLink({ onBack }) {
             </div>
             <h1
               className="text-[32px] font-black tracking-[-1.6px] text-amber-100"
-              style={{ textShadow: `-2px -2px 0 #b45309, 2px -2px 0 #b45309, -2px 2px 0 #b45309, 2px 2px 0 #b45309` }}
+              style={{ textShadow: `-1px -1px 0 #b45309, 1px -1px 0 #b45309, -1px 1px 0 #b45309, 1px 1px 0 #b45309` }}
             >
               BUFFALO LINK
             </h1>

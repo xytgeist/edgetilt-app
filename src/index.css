@@ -1242,10 +1242,10 @@ html.light [data-calc="mhb"] .bg-cyan-600.text-white {
 /* Meter input ring — the global bg-gray-800 box-shadow:none wipes Tailwind rings,
    so we restore it explicitly as a blue outline matching dark mode's cyan ring. */
 html.light [data-calc="mhb"] .mhb-meter-input {
-  box-shadow: 0 0 0 1.5px rgba(96, 165, 250, 0.70) !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.75) !important;
 }
 html.light [data-calc="mhb"] .mhb-meter-input:focus {
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.80) !important;
 }
 /* Global html.light .text-cyan-* and .bg-cyan-* rules already remap cyan → blue.
    These just fill the gray-specific gaps for MHB. */

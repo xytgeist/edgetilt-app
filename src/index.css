@@ -1237,8 +1237,8 @@ html.light [data-calc="buffalo"] .bg-green-600.text-white {
 /* ── MHBCalculator (cyan → blue in light) ────────────────────────────────── */
 /* Title — remove dark mode purple/cyan outline shadow, use subtle drop shadow */
 html.light [data-calc="mhb"] h1 {
-  color: #18181b !important;
-  text-shadow: -1px -1px 0 #5b21b6, 1px -1px 0 #5b21b6, -1px 1px 0 #0e7490, 1px 1px 0 #0e7490 !important;
+  color: #6d28d9 !important;
+  text-shadow: 0 0 18px rgba(6, 182, 212, 0.45), 0 1px 3px rgba(0, 0, 0, 0.15) !important;
 }
 html.light [data-calc="mhb"] h1 + div {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);

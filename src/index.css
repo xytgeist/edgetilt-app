@@ -1122,6 +1122,8 @@ html.light [data-calc="phoenix"] .text-green-400 {
 html.light [data-calc="phoenix"] .bg-green-900 {
   background-color: #16A34A;
 }
+/* text-green-300 is on the same element as bg-green-900 — combined selector */
+html.light [data-calc="phoenix"] .bg-green-900.text-green-300,
 html.light [data-calc="phoenix"] .bg-green-900 .text-green-300 {
   color: #ffffff;
 }
@@ -1140,6 +1142,8 @@ html.light [data-calc="phoenix"] .text-red-400 {
 html.light [data-calc="phoenix"] .bg-red-900 {
   background-color: #DC2626;
 }
+/* text-red-300 is on the same element as bg-red-900 — combined selector */
+html.light [data-calc="phoenix"] .bg-red-900.text-red-300,
 html.light [data-calc="phoenix"] .bg-red-900 .text-red-300 {
   color: #ffffff;
 }

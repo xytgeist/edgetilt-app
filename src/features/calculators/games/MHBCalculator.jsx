@@ -752,7 +752,10 @@ function MHBCalculator({ onBack }) {
             <label className="block text-gray-400 text-xs mb-1">Manufacturer</label>
             <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-800 rounded-2xl">
               {[['ainsworth','Ainsworth'],['ags','AGS'],['igt','IGT'],['manual','Manual']].map(([val,label]) => (
-                <button key={val} type="button" onClick={() => setManufacturer(val)}
+                <button key={val} type="button" onClick={() => {
+                  setManufacturer(val)
+                  if (val === 'ainsworth' || val === 'ags') setMustHitBy(500)
+                }}
                   className={`py-2.5 rounded-xl text-sm font-semibold text-center transition-colors touch-manipulation ${manufacturer === val ? 'bg-cyan-600 text-white' : 'text-gray-400 hover:text-gray-200'}`}>
                   {label}
                 </button>

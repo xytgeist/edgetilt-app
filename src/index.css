@@ -1260,8 +1260,12 @@ html.light .mhb-check-emoji { display: none; }
 html.light [data-calc="mhb"] .bg-gray-800\/60 {
   background-color: #ebebed;
 }
-html.light [data-calc="mhb"] .text-cyan-200 {
-  color: #2563eb;
+html.light [data-calc="mhb"] h3.text-cyan-200,
+html.light [data-calc="mhb"] summary.text-cyan-200 {
+  color: #3b82f6;
+}
+html.light [data-calc="mhb"] span.text-cyan-200 {
+  color: #60a5fa;
 }
 html.light [data-calc="mhb"] .border-cyan-500\/25 {
   border-color: rgba(37, 99, 235, 0.25);

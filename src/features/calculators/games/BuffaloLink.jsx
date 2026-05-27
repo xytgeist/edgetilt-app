@@ -535,10 +535,14 @@ function BuffaloLink({ onBack }) {
           <div className="bg-gray-900 rounded-3xl max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-amber-400 mb-4">Walk-Away Advisor</h3>
             <div className="text-gray-300 text-[15px] leading-relaxed space-y-4">
-              <p>This advisor recommends the <strong>optimal stopping threshold</strong> — the profit level (in bets) at which you should consider walking away, even while the machine remains in positive expected value (+EV).</p>
-              <p>Buffalo Link has high volatility. The advisor uses a logistic S-curve to balance remaining EV and drawdown risk.</p>
+              <p>This advisor recommends the <strong>optimal stopping threshold</strong>: the profit level (in bets) at which you should consider walking away, even while the machine remains in positive expected value (+EV).</p>
+              <p>Buffalo Link has extreme <strong>volatility drag</strong> and <strong>drawdown risk</strong>. Even with strong positive remaining EV, large drawdowns occur frequently.</p>
+              <p>The advisor calculates a <strong>risk-adjusted certainty equivalent</strong> by combining remaining EV and a logistic S-curve calibrated through Monte Carlo simulations.</p>
+              <p>In short: it converts raw theoretical EV into a practical, utility-aware stopping rule.</p>
             </div>
-            <button onClick={() => setShowInfoModal(false)} className="mt-6 w-full bg-amber-600 py-4 rounded-2xl font-bold">Got it</button>
+            <button onClick={() => setShowInfoModal(false)} className="mt-6 w-full bg-amber-600 hover:bg-amber-500 py-4 rounded-2xl font-bold text-lg transition-colors">
+              Got it
+            </button>
           </div>
         </div>
       )}

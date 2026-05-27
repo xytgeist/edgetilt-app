@@ -553,7 +553,7 @@ function App() {
     tab: 'home',
     pendingWork: readLoungeComposerDraftPendingWork(),
   })) {
-    return <div className={`${mobileShell} text-white`}>Loading...</div>
+    return <div className={`${mobileShell} text-gray-900 dark:text-white`}>Loading...</div>
   }
 
   // Reset Password Page

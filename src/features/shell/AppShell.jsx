@@ -933,7 +933,7 @@ export default function AppShell({
   })
 
   const homeSuspenseFallback =
-    tab === 'home' ? <div className="min-h-dvh w-full bg-gray-950" aria-hidden /> : null
+    tab === 'home' ? <div className="min-h-dvh w-full bg-white dark:bg-gray-950" aria-hidden /> : null
 
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */
@@ -1187,7 +1187,7 @@ export default function AppShell({
   }
 
   return (
-    <div className="min-h-dvh bg-gray-950">
+    <div className="min-h-dvh bg-white dark:bg-gray-950">
       {accessNotice ? (
         <div
           role="status"

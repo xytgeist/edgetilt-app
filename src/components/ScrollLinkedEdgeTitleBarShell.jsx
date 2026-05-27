@@ -111,11 +111,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
 
   return (
     <div
-      className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]`}
+      className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full ${colMax} flex-col overflow-hidden bg-white dark:bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]`}
     >
       <div
         ref={titleBarRef}
-        className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
+        className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-200/95 dark:border-zinc-800/95 bg-white/95 dark:bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
         style={{
           top: feedViewportTopPx,
           transform: `translate3d(-50%, ${-(1 - titleReveal) * (titleBarHeight > 0 ? titleBarHeight : 56)}px, 0)`,
@@ -133,7 +133,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
 
       <div
         ref={feedScrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white dark:bg-zinc-950 [-webkit-overflow-scrolling:touch]"
       >
         <div
           aria-hidden

@@ -1271,10 +1271,10 @@ html.light [data-calc="stackup"] .bg-slate-800\/70 {
 }
 
 html.light [data-calc="stackup"] h1 {
-  color: #0891b2 !important;
+  color: #0ea5e9 !important;
 }
 html.light [data-calc="stackup"] h1 + p {
-  color: #06b6d4 !important;
+  color: #38bdf8 !important;
 }
 html.light [data-calc="stackup"] h2,
 html.light [data-calc="stackup"] h2.text-cyan-400 {

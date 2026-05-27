@@ -1362,6 +1362,9 @@ html.light [data-calc="mhb"] .mhb-meter-input {
 html.light [data-calc="mhb"] .mhb-meter-input:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.80) !important;
 }
+html.light [data-calc="mhb"] .mhb-meter-cue {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.55) !important;
+}
 /* Global html.light .text-cyan-* and .bg-cyan-* rules already remap cyan → blue.
    These just fill the gray-specific gaps for MHB. */
 html.light [data-calc="mhb"] .bg-cyan-500\/10 {

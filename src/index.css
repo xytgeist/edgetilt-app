@@ -1041,6 +1041,9 @@ html.light [data-calc] .bg-gray-700 {
 }
 
 /* Hover states */
+html.light [data-calc] .hover\:bg-gray-700:hover {
+  background-color: #d4d4d8;
+}
 html.light [data-calc] .hover\:bg-gray-800:hover {
   background-color: #e4e4e7;
 }

@@ -53,23 +53,23 @@ export function DropdownSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center justify-between gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 text-zinc-50 transition-colors touch-manipulation ${SIZE[size]}`}
+        className={`flex w-full items-center justify-between gap-2 rounded-2xl border border-gray-700 bg-gray-800 text-white transition-colors touch-manipulation ${SIZE[size]}`}
       >
         <span className="min-w-0 flex-1 truncate text-center">{selected?.label ?? String(value)}</span>
-        <span className={`shrink-0 text-zinc-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+        <span className={`shrink-0 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
           {CHEVRON}
         </span>
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[60] overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-800 shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[60] overflow-hidden rounded-2xl border border-gray-700 bg-gray-800 shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
           {options.map((opt) => (
             <button
               key={String(opt.value)}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false) }}
-              className={`flex w-full items-center justify-between px-4 py-3 text-base font-semibold transition-colors hover:bg-zinc-700 touch-manipulation ${
-                opt.value === value ? accentClass : 'text-zinc-50'
+              className={`flex w-full items-center justify-between px-4 py-3 text-base font-semibold transition-colors hover:bg-gray-700 touch-manipulation ${
+                opt.value === value ? accentClass : 'text-white'
               }`}
             >
               <span>{opt.label}</span>

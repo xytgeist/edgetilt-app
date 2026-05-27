@@ -1056,15 +1056,15 @@ html.light [data-event-detail] { background-color: rgba(0,0,0,0.35) !important; 
 html.light [data-event-detail-card] {
   background-color: #ffffff !important;
 }
-/* Event cards — white bg, solid left stripe in the 500-level color (Google/Apple Calendar style) */
-html.light .bg-violet-500\/18  { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #8b5cf6 !important; }
-html.light .bg-sky-500\/16     { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #0ea5e9 !important; }
-html.light .bg-emerald-500\/16 { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #10b981 !important; }
-html.light .bg-amber-500\/16   { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #f59e0b !important; }
-html.light .bg-fuchsia-500\/16 { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #d946ef !important; }
-html.light .bg-rose-500\/16    { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #f43f5e !important; }
-html.light .bg-cyan-500\/16    { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #06b6d4 !important; }
-html.light .bg-zinc-700\/45    { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #71717a !important; }
+/* Event cards — white bg, solid left stripe + shadow for contrast */
+html.light .bg-violet-500\/18  { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #8b5cf6, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-sky-500\/16     { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #0ea5e9, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-emerald-500\/16 { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #10b981, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-amber-500\/16   { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #f59e0b, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-fuchsia-500\/16 { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #d946ef, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-rose-500\/16    { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #f43f5e, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-cyan-500\/16    { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #06b6d4, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
+html.light .bg-zinc-700\/45    { background-color: #ffffff !important; box-shadow: inset 4px 0 0 #71717a, 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06) !important; }
 
 /* Detail card borders match */
 html.light [data-event-detail-card].bg-violet-500\/18  { border-color: rgba(139,92,246,0.60)  !important; }

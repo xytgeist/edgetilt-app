@@ -707,7 +707,7 @@ function MHBCalculator({ onBack }) {
   }
 
   return (
-    <div className="min-h-full bg-zinc-900 pb-12">
+    <div className="min-h-full bg-gray-950 pb-12">
       <div className="w-full px-0 pt-1">
 
         {/* Title */}
@@ -747,14 +747,14 @@ function MHBCalculator({ onBack }) {
         </div>
 
         {/* Main Inputs */}
-        <div className="bg-zinc-900 p-5 rounded-3xl">
+        <div className="bg-gray-900 p-5 rounded-3xl">
           <div className="mb-4">
-            <label className="block text-zinc-400 text-xs mb-1">Manufacturer</label>
+            <label className="block text-gray-400 text-xs mb-1">Manufacturer</label>
             <div className="relative">
               <select
                 value={manufacturer}
                 onChange={(e) => setManufacturer(e.target.value)}
-                className="w-full appearance-none rounded-2xl bg-zinc-900 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
               >
                 <option value="ainsworth">Ainsworth</option>
                 <option value="ags">AGS</option>
@@ -774,7 +774,7 @@ function MHBCalculator({ onBack }) {
                 />
               </svg>
             </div>
-            <p className="text-zinc-500 text-[11px] mt-2 leading-snug">
+            <p className="text-gray-500 text-[11px] mt-2 leading-snug">
               Switches the default meter, rise, reset, and RTP to typical for the selected manufacturer.
             </p>
           </div>
@@ -783,12 +783,12 @@ function MHBCalculator({ onBack }) {
             <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-zinc-400 text-[11px] mb-0.5">Denom</label>
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Denom</label>
                   <div className="relative">
                     <select
                       value={igtDenom}
                       onChange={(e) => setIgtDenom(Number(e.target.value))}
-                      className="w-full appearance-none rounded-2xl bg-zinc-900 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value={0.01}>$0.01</option>
                       <option value={0.25}>$0.25</option>
@@ -811,12 +811,12 @@ function MHBCalculator({ onBack }) {
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 text-[11px] mb-0.5">Line Bet</label>
+                  <label className="block text-gray-400 text-[11px] mb-0.5">Line Bet</label>
                   <div className="relative">
                     <select
                       value={igtLineBet}
                       onChange={(e) => setIgtLineBet(Number(e.target.value))}
-                      className="w-full appearance-none rounded-2xl bg-zinc-900 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value={1}>Bet 1</option>
                       <option value={2}>Bet 2</option>
@@ -841,7 +841,7 @@ function MHBCalculator({ onBack }) {
 
                 <div>
                   <div className="mb-0.5 flex items-center gap-1">
-                    <label className="block text-zinc-400 text-[11px]">Jackpot Tier</label>
+                    <label className="block text-gray-400 text-[11px]">Jackpot Tier</label>
                     <button
                       type="button"
                       onClick={() => setShowIgtTierInfo(true)}
@@ -855,7 +855,7 @@ function MHBCalculator({ onBack }) {
                     <select
                       value={igtTier}
                       onChange={(e) => setIgtTier(e.target.value)}
-                      className="w-full appearance-none rounded-2xl bg-zinc-900 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full appearance-none rounded-2xl bg-gray-800 p-3 pr-10 text-center text-base font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     >
                       <option value="mini">Mini</option>
                       <option value="minor">Minor</option>
@@ -879,7 +879,7 @@ function MHBCalculator({ onBack }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-zinc-400 text-xs mb-1">MHB Meter (Current)</label>
+                  <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -887,14 +887,14 @@ function MHBCalculator({ onBack }) {
                     onFocus={handleJpMeterFocus}
                     onChange={handleJpMeterChange}
                     onBlur={handleJpMeterBlur}
-                    className={`w-full rounded-2xl bg-zinc-900 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
+                    className={`w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
                       showMeterCue ? 'ring-2 ring-cyan-100 shadow-[0_0_0_3px_rgba(103,232,249,0.6)] animate-pulse' : ''
                     }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-zinc-400 text-xs mb-1">Must Hit By</label>
-                  <div className="w-full rounded-2xl bg-zinc-900 p-4 text-center text-2xl font-bold text-white tabular-nums">
+                  <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
+                  <div className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white tabular-nums">
                     {formatUsd(mustHitBy)}
                   </div>
                 </div>
@@ -903,7 +903,7 @@ function MHBCalculator({ onBack }) {
             ) : (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-zinc-400 text-xs mb-1">MHB Meter (Current)</label>
+                <label className="block text-gray-400 text-xs mb-1">MHB Meter (Current)</label>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -912,14 +912,14 @@ function MHBCalculator({ onBack }) {
                   onClick={(e) => e.currentTarget.select()}
                   onChange={handleJpMeterChange}
                   onBlur={handleJpMeterBlur}
-                  className={`w-full rounded-2xl bg-zinc-900 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
+                  className={`w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
                     showMeterCue ? 'ring-2 ring-cyan-100 shadow-[0_0_0_3px_rgba(103,232,249,0.6)] animate-pulse' : ''
                   }`}
                 />
               </div>
 
               <div>
-                <label className="block text-zinc-400 text-xs mb-1">Must Hit By</label>
+                <label className="block text-gray-400 text-xs mb-1">Must Hit By</label>
                   {manufacturer === 'manual' ? (
                     <input
                       type="text"
@@ -929,14 +929,14 @@ function MHBCalculator({ onBack }) {
                       onClick={(e) => e.currentTarget.select()}
                       onChange={handleMustHitByChange}
                       onBlur={handleMustHitByBlur}
-                      className="w-full rounded-2xl bg-zinc-900 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     />
                   ) : (
                     <div className="relative">
                       <select
                         value={mustHitBy}
                         onChange={(e) => setMustHitBy(Number(e.target.value))}
-                        className="w-full appearance-none rounded-2xl bg-zinc-900 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                        className="w-full appearance-none rounded-2xl bg-gray-800 p-4 pr-12 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                       >
                         <option value={500}>{formatUsd(500)}</option>
                         {manufacturer !== 'ainsworth' ? (
@@ -964,13 +964,13 @@ function MHBCalculator({ onBack }) {
         </div>
 
         {/* Advanced Settings */}
-        <div className="mt-4 bg-zinc-900 rounded-3xl overflow-hidden">
-          <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex w-full items-center justify-between p-5 text-left hover:bg-zinc-900">
+        <div className="mt-4 bg-gray-900 rounded-3xl overflow-hidden">
+          <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex w-full items-center justify-between p-5 text-left hover:bg-gray-800">
             <span className="font-semibold text-white">Advanced Settings</span>
             <span className={`text-white transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>▼</span>
           </button>
           {showAdvanced && (
-            <div className="p-4 pt-3 space-y-4 border-t border-zinc-800">
+            <div className="p-4 pt-3 space-y-4 border-t border-gray-800">
               <p className="text-[11px] italic leading-snug text-zinc-500">
                 {manufacturer === 'manual'
                   ? 'RTP and Meter Rise are required. Provide Reset Value if possible for more precise analysis - if unknown, we will estimate based on the Must Hit By value.'
@@ -978,19 +978,19 @@ function MHBCalculator({ onBack }) {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-zinc-400 text-[11px] mb-1">RTP %</label>
+                  <label className="block text-gray-400 text-[11px] mb-1">RTP %</label>
                   <input
                     type="text"
                     value={overallRTP}
                   onFocus={(e) => e.currentTarget.select()}
                     onChange={handleFloatChange(setOverallRTP, activePreset.rtp)}
                     onBlur={handleFloatBlur(setOverallRTP, activePreset.rtp)}
-                    className="h-12 w-full rounded-2xl bg-zinc-900 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className="h-12 w-full rounded-2xl bg-gray-800 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 text-[11px] mb-1">Reset Value</label>
+                  <label className="block text-gray-400 text-[11px] mb-1">Reset Value</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -999,14 +999,14 @@ function MHBCalculator({ onBack }) {
                     onClick={(e) => e.currentTarget.select()}
                     onChange={handleResetValueChange}
                     onBlur={handleResetValueBlur}
-                    className="h-12 w-full rounded-2xl bg-zinc-900 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className="h-12 w-full rounded-2xl bg-gray-800 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
               </div>
 
               <div>
                 <div>
-                  <label className="block text-zinc-400 text-[11px] mb-1">Meter Rise ($ per $0.01 increment)</label>
+                  <label className="block text-gray-400 text-[11px] mb-1">Meter Rise ($ per $0.01 increment)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1015,20 +1015,20 @@ function MHBCalculator({ onBack }) {
                     onClick={(e) => e.currentTarget.select()}
                     onChange={handleMeterRiseChange}
                     onBlur={handleMeterRiseBlur}
-                    className="h-12 w-full rounded-2xl bg-zinc-900 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    className="h-12 w-full rounded-2xl bg-gray-800 px-3 text-center text-xl font-bold text-white outline-none focus:ring-2 focus:ring-cyan-500/30"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl bg-zinc-900 px-3 touch-manipulation">
+                <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl bg-gray-800 px-3 touch-manipulation">
                   <button
                     type="button"
                     role="switch"
                     aria-checked={useMidpoint}
                     onClick={() => setUseMidpoint((v) => !v)}
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/45 ${
-                      useMidpoint ? 'border-cyan-300/70 bg-cyan-500/40' : 'border-zinc-600 bg-zinc-700'
+                      useMidpoint ? 'border-cyan-300/70 bg-cyan-500/40' : 'border-gray-600 bg-gray-700'
                     }`}
                   >
                     <span
@@ -1037,13 +1037,13 @@ function MHBCalculator({ onBack }) {
                       }`}
                     />
                   </button>
-                  <span className="text-zinc-300 text-[13px] leading-snug">Use Midpoint for EV & Breakeven</span>
+                  <span className="text-gray-300 text-[13px] leading-snug">Use Midpoint for EV & Breakeven</span>
                 </label>
               </div>
 
               {jpCheckboxJackpots.length > 0 && (
                 <div>
-                  <div className="rounded-2xl bg-zinc-900 p-3">
+                  <div className="rounded-2xl bg-gray-800 p-3">
                     <div className="mb-2 text-center text-[11px] font-semibold text-cyan-300">
                       Include MHB Contribution to RTP
                     </div>
@@ -1055,7 +1055,7 @@ function MHBCalculator({ onBack }) {
                         return (
                           <label
                             key={jp.key}
-                            className="flex items-center justify-between gap-2 rounded-xl bg-zinc-900/70 px-3 py-2 text-[11px] font-semibold text-white tabular-nums"
+                            className="flex items-center justify-between gap-2 rounded-xl bg-gray-900/70 px-3 py-2 text-[11px] font-semibold text-white tabular-nums"
                           >
                             <span>{label}</span>
                             <input
@@ -1065,7 +1065,7 @@ function MHBCalculator({ onBack }) {
                                 const isChecked = e.target.checked
                                 setIncludedJpContributions((prev) => ({ ...prev, [jp.key]: isChecked }))
                               }}
-                              className="h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-700 accent-cyan-500"
+                              className="h-4 w-4 shrink-0 rounded border-gray-600 bg-gray-700 accent-cyan-500"
                             />
                           </label>
                         )
@@ -1080,7 +1080,7 @@ function MHBCalculator({ onBack }) {
         </div>
 
         {/* Outputs */}
-        <div className="mt-5 bg-zinc-900 p-6 rounded-3xl">
+        <div className="mt-5 bg-gray-900 p-6 rounded-3xl">
           <h2
             className="mb-6 text-center font-black text-[26px] tracking-[-1px] text-white"
             style={{
@@ -1092,8 +1092,8 @@ function MHBCalculator({ onBack }) {
           </h2>
 
           <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="bg-zinc-900 p-5 rounded-2xl">
-              <div className="text-zinc-400 text-sm">Expected Value</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Expected Value</div>
               <div className={`text-2xl leading-tight font-bold tracking-tight tabular-nums ${ev >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {formatUsd(ev)}
               </div>
@@ -1101,21 +1101,21 @@ function MHBCalculator({ onBack }) {
                 ${evExact.toFixed(2)}
               </div>
             </div>
-            <div className="bg-zinc-900 p-5 rounded-2xl">
-              <div className="text-zinc-400 text-sm">Breakeven Entry</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Breakeven Entry</div>
               <div className="text-2xl leading-tight font-bold tracking-tight tabular-nums text-amber-300">{formatUsd(breakeven)}</div>
               <div className="text-xs text-amber-300/70 mt-1">
                 ${breakevenExact.toFixed(2)}
               </div>
             </div>
-            <div className="bg-zinc-900 p-5 rounded-2xl">
-              <div className="text-zinc-400 text-sm">Coin-in Expected</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Coin-in Expected</div>
               <div className="text-2xl leading-tight font-bold tracking-tight tabular-nums text-white">
                 {formatUsd(coinInExpected)}
               </div>
             </div>
-            <div className="bg-zinc-900 p-5 rounded-2xl">
-              <div className="text-zinc-400 text-sm">Max Exposure</div>
+            <div className="bg-gray-800 p-5 rounded-2xl">
+              <div className="text-gray-400 text-sm">Max Exposure</div>
               <div className="text-2xl leading-tight font-bold tracking-tight tabular-nums text-red-400">
                 -{formatUsd(exposure)}
               </div>
@@ -1131,9 +1131,9 @@ function MHBCalculator({ onBack }) {
 
         {showIgtTierInfo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-            <div className="w-full max-w-sm rounded-2xl bg-zinc-900 p-5 text-white shadow-xl">
+            <div className="w-full max-w-sm rounded-2xl bg-gray-900 p-5 text-white shadow-xl">
               <h3 className="text-lg font-bold text-cyan-300">IGT Jackpot Tier</h3>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-300">
+              <p className="mt-3 text-sm leading-relaxed text-gray-300">
                 This calculator uses
                 <span className="font-semibold text-cyan-200"> Mini</span>,
                 <span className="font-semibold text-cyan-200"> Minor</span>, and
@@ -1144,7 +1144,7 @@ function MHBCalculator({ onBack }) {
                 <span className="font-semibold text-cyan-200"> Money Storm Deluxe</span>,
                 <span className="font-semibold text-cyan-200"> Lobstermania Deluxe</span>).
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+              <p className="mt-2 text-sm leading-relaxed text-gray-300">
                 Many IGT games are the same underlying math with different skins, and the jackpot tier names shown on the cabinet can vary by title. Pick the tier by relative level (lowest/middle/highest).
               </p>
               <button
@@ -1160,15 +1160,15 @@ function MHBCalculator({ onBack }) {
 
         {showCalcInfo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-            <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-cyan-500/30 bg-zinc-900 p-5 text-white shadow-xl [scrollbar-width:thin] [scrollbar-color:rgba(34,211,238,0.25)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-300/20 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/35">
+            <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-cyan-500/30 bg-gray-900 p-5 text-white shadow-xl [scrollbar-width:thin] [scrollbar-color:rgba(34,211,238,0.25)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-300/20 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/35">
               <h3 className="border-b border-cyan-500/25 pb-2 text-center text-lg font-semibold tracking-[0.08em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
                 Analytical Methodology
               </h3>
-              <details className="mt-3 rounded-xl border border-cyan-500/25 bg-zinc-900/60 p-3">
+              <details className="mt-3 rounded-xl border border-cyan-500/25 bg-gray-800/60 p-3">
                 <summary className="cursor-pointer select-none text-sm font-semibold tracking-[0.03em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
                   Non-techie version
                 </summary>
-                <div className="mt-2 max-h-40 space-y-2 overflow-y-auto pr-1 text-sm leading-relaxed text-zinc-300 [font-family:Georgia,'Times_New_Roman',serif] [scrollbar-width:thin] [scrollbar-color:rgba(34,211,238,0.2)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-300/15 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/30">
+                <div className="mt-2 max-h-40 space-y-2 overflow-y-auto pr-1 text-sm leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif] [scrollbar-width:thin] [scrollbar-color:rgba(34,211,238,0.2)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-300/15 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/30">
                   <p>
                     The calculator estimates whether a jackpot is worth playing right now, based on where the meter currently is and how fast it grows.
                   </p>
@@ -1186,15 +1186,15 @@ function MHBCalculator({ onBack }) {
                   </p>
                 </div>
               </details>
-              <details className="mt-3 rounded-xl border border-cyan-500/25 bg-zinc-900/60 p-3">
+              <details className="mt-3 rounded-xl border border-cyan-500/25 bg-gray-800/60 p-3">
                 <summary className="cursor-pointer select-none text-sm font-semibold tracking-[0.03em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
                   Dweeb-speak
                 </summary>
                 <div className="mt-2 max-h-52 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(34,211,238,0.2)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-300/15 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/30">
-                  <p className="text-sm italic leading-relaxed text-zinc-300 [font-family:Georgia,'Times_New_Roman',serif]">
+                  <p className="text-sm italic leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif]">
                     This analyzer is a quantitative framework for progressive-jackpot valuation, breakeven threshold detection, and stressed-loss envelope estimation.
                   </p>
-                  <div className="mt-2 space-y-2 text-sm leading-relaxed text-zinc-300 [font-family:Georgia,'Times_New_Roman',serif]">
+                  <div className="mt-2 space-y-2 text-sm leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif]">
                   <p>
                     <span className="font-semibold text-cyan-200">I. State Space:</span> Let x denote entry meter, M the must-hit boundary, m the observed current meter, R the reset baseline, r the meter-rise coefficient ($ coin-in per $0.01 meter increment), and p the total machine RTP.
                   </p>

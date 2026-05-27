@@ -1256,6 +1256,14 @@ html.light [data-calc="mhb"] .bg-red-900 .text-red-300 {
 html.light .mhb-check-badge { display: inline-flex; }
 html.light .mhb-check-emoji { display: none; }
 
+/* Green EV text matches pill green */
+html.light [data-calc="mhb"] .text-emerald-400 {
+  color: #16A34A;
+}
+html.light [data-calc="mhb"] .text-emerald-400\/70 {
+  color: rgba(22, 163, 74, 0.70);
+}
+
 /* JP checkbox rows — bg-gray-900/70 has no opacity variant override so it stays dark */
 html.light [data-calc="mhb"] .bg-gray-900\/70 {
   background-color: rgba(0, 0, 0, 0.06);

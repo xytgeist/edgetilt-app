@@ -76,6 +76,20 @@ function BuffaloLink({ onBack }) {
     }]
   }
 
+  const isLight = typeof document !== 'undefined' && document.documentElement.classList.contains('light')
+  const chartAxisColor = isLight ? '#18181b' : '#d1d5db'
+  const chartGridColor = isLight ? '#c4c4c8' : '#374151'
+  const chartBgPlugins = isLight ? [{
+    id: 'chartAreaBg',
+    beforeDraw(chart) {
+      const { ctx } = chart
+      ctx.save()
+      ctx.fillStyle = '#e4e4e7'
+      ctx.fillRect(0, 0, chart.width, chart.height)
+      ctx.restore()
+    },
+  }] : []
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -91,8 +105,8 @@ function BuffaloLink({ onBack }) {
       }
     },
     scales: {
-      x: { title: { display: true, text: 'Counter', color: '#d1d5db' }, grid: { color: '#374151' }, ticks: { color: '#d1d5db' } },
-      y: { title: { display: true, text: 'Walk-Away (Bets)', color: '#d1d5db' }, grid: { color: '#374151' }, ticks: { color: '#d1d5db' }, min: 0, max: 260 }
+      x: { title: { display: true, text: 'Counter', color: chartAxisColor }, grid: { color: chartGridColor }, ticks: { color: chartAxisColor }, border: { color: chartGridColor } },
+      y: { title: { display: true, text: 'Walk-Away (Bets)', color: chartAxisColor }, grid: { color: chartGridColor }, ticks: { color: chartAxisColor }, border: { color: chartGridColor }, min: 0, max: 260 }
     },
     plugins: { legend: { display: false }, tooltip: { enabled: false } }
   }
@@ -472,7 +486,7 @@ function BuffaloLink({ onBack }) {
             </div>
           </div>
           <div className="h-80 bg-gray-950 rounded-2xl p-4 border border-gray-700 mb-6">
-            <Line data={chartData} options={chartOptions} />
+            <Line data={chartData} options={chartOptions} plugins={chartBgPlugins} />
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 text-center">
             {hoverCounter !== null ? (

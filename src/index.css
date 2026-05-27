@@ -1030,7 +1030,7 @@ html.light [data-calc] .bg-gray-950 {
 /* Section cards (bg-gray-900 / rounded-3xl blocks) → light gray + strong shadow */
 html.light [data-calc] .bg-gray-900 {
   background-color: #f4f4f5;
-  box-shadow: 0 4px 18px -3px rgba(0, 0, 0, 0.42);
+  box-shadow: 0 3px 15px -2px rgba(0, 0, 0, 0.36);
 }
 
 /* Inner metric/input/display boxes (bg-gray-800) → clearly distinct mid-gray */

@@ -1156,7 +1156,7 @@ html.light [data-calc="phoenix"] .bg-red-900 {
 /* text-red-300 is on the same element as bg-red-900 — combined selector */
 html.light [data-calc="phoenix"] .bg-red-900.text-red-300,
 html.light [data-calc="phoenix"] .bg-red-900 .text-red-300 {
-  color: #ffffff;
+  color: #18181b;
 }
 
 /* Yellow (Full Run break-even) */

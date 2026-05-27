@@ -34,7 +34,7 @@ export default function EdgeLogoWithEasterEgg({ className = '' }) {
         aria-label="EDGE"
       >
         <img src="/edge-lounge-logo.png" alt="" className={`edge-logo--dark ${className}`} draggable={false} />
-        <img src="/edge-lounge-logo-light.png" alt="" className={`edge-logo--light ${className}`} draggable={false} />
+        <img src="/edge-lounge-logo-transparent.png" alt="" className={`edge-logo--light ${className}`} draggable={false} />
       </button>
       {showGiggity ? (
         <span className="pointer-events-none absolute left-1/2 top-full z-[70] mt-1 -translate-x-1/2 whitespace-nowrap" aria-hidden>

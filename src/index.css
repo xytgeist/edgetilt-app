@@ -1056,15 +1056,15 @@ html.light [data-event-detail] { background-color: rgba(0,0,0,0.35) !important; 
 html.light [data-event-detail-card] {
   background-color: #ffffff !important;
 }
-/* Event card colors — replace washed-out translucent pastels with solid tints */
-html.light .bg-violet-500\/18  { background-color: #ddd6fe !important; }
-html.light .bg-sky-500\/16     { background-color: #bae6fd !important; }
-html.light .bg-emerald-500\/16 { background-color: #a7f3d0 !important; }
-html.light .bg-amber-500\/16   { background-color: #fde68a !important; }
-html.light .bg-fuchsia-500\/16 { background-color: #f5d0fe !important; }
-html.light .bg-rose-500\/16    { background-color: #fecdd3 !important; }
-html.light .bg-cyan-500\/16    { background-color: #a5f3fc !important; }
-html.light .bg-zinc-700\/45    { background-color: #e4e4e7 !important; }
+/* Event card colors — subtle 50-level tints, chip/dot carry the color identity */
+html.light .bg-violet-500\/18  { background-color: #f5f3ff !important; }
+html.light .bg-sky-500\/16     { background-color: #f0f9ff !important; }
+html.light .bg-emerald-500\/16 { background-color: #ecfdf5 !important; }
+html.light .bg-amber-500\/16   { background-color: #fffbeb !important; }
+html.light .bg-fuchsia-500\/16 { background-color: #fdf4ff !important; }
+html.light .bg-rose-500\/16    { background-color: #fff1f2 !important; }
+html.light .bg-cyan-500\/16    { background-color: #ecfeff !important; }
+html.light .bg-zinc-700\/45    { background-color: #fafafa !important; }
 
 /* Detail card borders match */
 html.light [data-event-detail-card].bg-violet-500\/18  { border-color: rgba(139,92,246,0.60)  !important; }

@@ -49,6 +49,7 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
 
       {/* Keypad panel */}
       <div
+        data-money-keypad
         className="fixed bottom-0 left-0 right-0 z-[201] select-none"
         onPointerDown={e => e.stopPropagation()}
       >

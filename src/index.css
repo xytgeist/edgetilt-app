@@ -1749,3 +1749,40 @@ html.light [data-session-card] .text-zinc-400 {
 html.light [data-session-card] .text-emerald-200 {
   color: #047857 !important;
 }
+
+/* MoneyKeypad — always dark regardless of theme */
+html.light [data-money-keypad],
+html.light [data-money-keypad] .bg-zinc-950,
+html.light [data-money-keypad] .bg-zinc-900,
+html.light [data-money-keypad] .bg-zinc-800 {
+  background-color: unset !important;
+}
+[data-money-keypad] {
+  background-color: #09090b;
+}
+[data-money-keypad] .bg-zinc-950 {
+  background-color: #09090b !important;
+}
+[data-money-keypad] .bg-zinc-900 {
+  background-color: #18181b !important;
+}
+[data-money-keypad] .bg-zinc-800 {
+  background-color: #27272a !important;
+}
+[data-money-keypad] .text-white {
+  color: #ffffff !important;
+}
+[data-money-keypad] .text-zinc-300 {
+  color: #d4d4d8 !important;
+}
+[data-money-keypad] .text-zinc-400 {
+  color: #a1a1aa !important;
+}
+[data-money-keypad] .text-zinc-500 {
+  color: #71717a !important;
+}
+[data-money-keypad] .border-zinc-700\/60,
+[data-money-keypad] .border-zinc-800\/60,
+[data-money-keypad] .border-zinc-800 {
+  border-color: #3f3f46 !important;
+}

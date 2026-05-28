@@ -536,8 +536,17 @@ Deno.serve(async (req) => {
 
       try {
         const bucketId = upload.bucket_id || 'offer-mailers'
-        const { data: fileBlob, error: fileError } = await admin.storage.from(bucketId).download(upload.storage_path)
-        if (fileError || !fileBlob) throw fileError || new Error('Image download failed.')
+        let fileBlob: Blob
+        if (bucketId === 'cf-r2') {
+          // storage_path is the full R2 public URL
+          const r2Res = await fetch(upload.storage_path)
+          if (!r2Res.ok) throw new Error(`R2 image fetch failed (${r2Res.status}): ${upload.storage_path}`)
+          fileBlob = await r2Res.blob()
+        } else {
+          const { data, error: fileError } = await admin.storage.from(bucketId).download(upload.storage_path)
+          if (fileError || !data) throw fileError || new Error('Image download failed.')
+          fileBlob = data
+        }
 
         const parsedRawList = await parseOffersFromImage(openaiApiKey, upload.mime_type || 'image/jpeg', new Uint8Array(await fileBlob.arrayBuffer()))
         const parsedList = parsedRawList

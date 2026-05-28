@@ -826,6 +826,25 @@ export default function OffersCalendar({
     setWeekDetailEvent(null)
   }, [activeCalendarView, setWeekDetailEvent])
 
+  const [weekDetailImageUrl, setWeekDetailImageUrl] = useState(null)
+  useEffect(() => {
+    setWeekDetailImageUrl(null)
+    const path = weekDetailEvent?.source_image_path
+    if (!path) return
+    // R2 images are full public URLs; Supabase Storage paths are relative and need a signed URL
+    if (path.startsWith('https://') || path.startsWith('http://')) {
+      setWeekDetailImageUrl(path)
+      return
+    }
+    let cancelled = false
+    supabaseClient.storage
+      .from('offer-mailers')
+      .createSignedUrl(path, 1800)
+      .then(({ data }) => { if (!cancelled && data?.signedUrl) setWeekDetailImageUrl(data.signedUrl) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [weekDetailEvent, supabaseClient])
+
   const startOfWeekMonday = (d) => {
     const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate())
     const day = dt.getDay()
@@ -1655,6 +1674,7 @@ export default function OffersCalendar({
         event={weekDetailEvent}
         offerTypeMeta={offerTypeMeta}
         hasVisibleTime={hasVisibleTime}
+        sourceImageUrl={weekDetailImageUrl}
         onClose={() => setWeekDetailEvent(null)}
         onEdit={(event) => {
           setWeekDetailEvent(null)
@@ -1771,7 +1791,11 @@ export default function OffersCalendar({
           </div>
         </div>
       ) : null}
-      <UploadProgressOverlay show={uploading} message={uploadSpinnerMessage} />
+      <UploadProgressOverlay
+        show={uploading}
+        message={uploadSpinnerMessage}
+        onCancel={() => setUploading(false)}
+      />
     </>
   )
 }

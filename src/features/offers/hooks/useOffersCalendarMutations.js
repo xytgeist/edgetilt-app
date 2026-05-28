@@ -6,6 +6,11 @@ import {
   draftFromAiReviewPayload,
   OFFER_ALERT_DAY_9AM
 } from '../utils'
+import {
+  requestCfR2DirectUpload,
+  uploadFileToCfR2PresignedUrl,
+  deleteCfR2OrphanObject,
+} from '../../../utils/loungeCfImageMedia'
 
 function isMissingAlertColumnsError(err) {
   const code = String(err?.code || '')
@@ -388,24 +393,63 @@ export default function useOffersCalendarMutations({
           batchId = batchRow.id
         }
 
+        // Try R2 first for the first file to check if configured (avoid repeated 503s)
+        let r2Configured = null // null = unknown, true/false once determined
         for (const file of files) {
-          const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
-          const safeName = `${crypto.randomUUID()}${ext}`
-          const path = `${user.id}/${safeName}`
-          const { error: upErr } = await supabaseClient.storage.from('offer-mailers').upload(path, file, {
-            cacheControl: '3600',
-            upsert: false
-          })
-          if (upErr) throw upErr
+          let storagePath = null
+          let bucketId = null
+
+          if (r2Configured !== false) {
+            // Attempt R2 presigned upload
+            let mint = null
+            try {
+              mint = await requestCfR2DirectUpload(supabaseClient, {
+                contentType: file.type || 'image/jpeg',
+                fileName: file.name || '',
+              })
+            } catch (r2Err) {
+              if (r2Configured === null) r2Configured = false
+            }
+            if (mint) {
+              if (!mint.configured) {
+                r2Configured = false
+              } else {
+                r2Configured = true
+                await uploadFileToCfR2PresignedUrl(mint.data.uploadURL, file)
+                storagePath = mint.data.publicUrl
+                bucketId = 'cf-r2'
+              }
+            }
+          }
+
+          if (!storagePath) {
+            // Fall back to Supabase Storage
+            const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+            const safeName = `${crypto.randomUUID()}${ext}`
+            const path = `${user.id}/${safeName}`
+            const { error: upErr } = await supabaseClient.storage.from('offer-mailers').upload(path, file, {
+              cacheControl: '3600',
+              upsert: false
+            })
+            if (upErr) throw upErr
+            storagePath = path
+            bucketId = 'offer-mailers'
+          }
+
           const row = {
-            storage_path: path,
+            storage_path: storagePath,
+            bucket_id: bucketId,
             file_name: file.name,
             mime_type: file.type || null,
             status: 'queued',
             ...(batchId ? { batch_id: batchId } : {})
           }
           const { error: rowErr } = await supabaseClient.from('offer_uploads').insert(row)
-          if (rowErr) throw rowErr
+          if (rowErr) {
+            // If we uploaded to R2 but failed to save the row, clean up the orphan
+            if (bucketId === 'cf-r2') void deleteCfR2OrphanObject(supabaseClient, storagePath)
+            throw rowErr
+          }
         }
 
         if (batchId) {

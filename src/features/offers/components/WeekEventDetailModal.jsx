@@ -2,6 +2,7 @@ export default function WeekEventDetailModal({
   event,
   offerTypeMeta,
   hasVisibleTime,
+  sourceImageUrl,
   onClose,
   onEdit,
   onDuplicate,
@@ -81,6 +82,12 @@ export default function WeekEventDetailModal({
             )}
           </div>
           {e.notes && <div className="mt-3 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-400">{e.notes}</div>}
+
+          {sourceImageUrl && (
+            <a href={sourceImageUrl} target="_blank" rel="noreferrer" className="mt-4 inline-block overflow-hidden rounded-2xl border border-zinc-700/50" title="Open full mailer image">
+              <img src={sourceImageUrl} alt="Source mailer" className="block max-h-48 max-w-full" />
+            </a>
+          )}
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-zinc-700/80 pt-4">
           <button type="button" onClick={() => onDelete(e.id)} className="text-red-400 hover:text-red-300 text-sm font-medium touch-manipulation mr-auto">

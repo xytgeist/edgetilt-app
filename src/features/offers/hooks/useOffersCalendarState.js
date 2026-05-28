@@ -441,6 +441,44 @@ export default function useOffersCalendarState({
     }
   }, [makeBaseDraft])
 
+  const beginDuplicate = useCallback((ev) => {
+    setCompletingReviewItemId(null)
+    setCompletingReviewUploadId(null)
+    setPropagateCasinoOnSave(false)
+    setPropagateTitleOnSave(false)
+    setPropagateValueOnSave(false)
+    setReviewSourceImagePath(null)
+    setReviewSourceImageUrl('')
+    setReviewSourceImageLoading(false)
+    setEditingId(null)
+    setShowForm(true)
+    const todayKey = localDateKeyFromDate(new Date())
+    const st = new Date(ev.start_at)
+    const stHasVisibleTime = st.getHours() !== 0 || st.getMinutes() !== 0
+    const en = ev.end_at ? new Date(ev.end_at) : null
+    const enHasVisibleTime = en ? en.getHours() !== 0 || en.getMinutes() !== 0 : false
+    const isAllDay = !(stHasVisibleTime || enHasVisibleTime)
+    setAllDay(isAllDay)
+    const ap = ev.alert_preset
+    const alertPreset =
+      ap === undefined || ap === null || ap === ''
+        ? OFFER_ALERT_NONE
+        : coerceAlertPresetForMode(String(ap), isAllDay)
+    setDraft({
+      casinoName: ev.casino_name || '',
+      offerType: ev.offer_type || 'free_play',
+      title: ev.title || '',
+      startAt: `${todayKey}T00:00`,
+      endAt: `${todayKey}T00:00`,
+      valueAmount: ev.value_amount !== null && ev.value_amount !== undefined ? String(ev.value_amount) : '',
+      notes: ev.notes || '',
+      alertPreset,
+    })
+    setShowCasinoSuggestions(false)
+    setShowTitleSuggestions(false)
+    setError('')
+  }, [])
+
   const beginEdit = useCallback((ev) => {
     setCompletingReviewItemId(null)
     setCompletingReviewUploadId(null)
@@ -591,6 +629,7 @@ export default function useOffersCalendarState({
     skipCurrentReviewFromForm,
     closeForm,
     openForm,
-    beginEdit
+    beginEdit,
+    beginDuplicate,
   }
 }

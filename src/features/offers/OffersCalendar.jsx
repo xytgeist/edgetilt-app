@@ -608,7 +608,8 @@ export default function OffersCalendar({
     skipCurrentReviewFromForm,
     closeForm,
     openForm,
-    beginEdit
+    beginEdit,
+    beginDuplicate,
   } = useOffersCalendarState({
     supabaseClient,
     normalizeLoadedEvent,
@@ -820,7 +821,7 @@ export default function OffersCalendar({
   }, [calendarMode, isLandscape])
 
   useEffect(() => {
-    if (activeCalendarView !== 'week') setWeekDetailEvent(null)
+    setWeekDetailEvent(null)
   }, [activeCalendarView, setWeekDetailEvent])
 
   const startOfWeekMonday = (d) => {
@@ -1586,7 +1587,7 @@ export default function OffersCalendar({
                     type="button"
                     data-offer-type={e.offer_type || 'other'}
                     data-card-view="list"
-                    onClick={() => toggleExpandedEvent(e.id)}
+                    onClick={() => setWeekDetailEvent(e)}
                     aria-expanded={isExpanded}
                     className={`${meta.card} relative block w-full rounded-2xl p-2.5 text-left transition-colors hover:bg-opacity-90 ${isSpotlighted ? 'ring-2 ring-cyan-300/85 shadow-[0_0_20px_rgba(34,211,238,0.35)]' : ''}`}
                   >
@@ -1612,61 +1613,28 @@ export default function OffersCalendar({
                             {meta.label}
                           </span>
                         </div>
-                        <div className={`text-zinc-100 text-base mt-0.5 leading-tight ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>
+                        <div className="text-zinc-100 text-base mt-0.5 leading-tight truncate">
                           {timeLabel ? `${timeLabel} ` : ''}
                           {e.title}
                         </div>
                         {dateRangeLabel && <div className="text-zinc-300 text-xs mt-0.5">{dateRangeLabel}</div>}
-                        <div className={`mt-0.5 flex items-center gap-2 text-xs min-w-0 ${isExpanded ? 'flex-wrap' : ''}`}>
-                          <span className={`text-zinc-400 min-w-0 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>{e.casino_name}</span>
+                        <div className="mt-0.5 flex items-center gap-2 text-xs min-w-0">
+                          <span className="text-zinc-400 min-w-0 truncate">{e.casino_name}</span>
                           {e.value_amount !== null && (
-                            <span className={`text-emerald-300 min-w-0 ${isExpanded ? 'whitespace-normal break-words' : 'truncate'}`}>
+                            <span className="text-emerald-300 min-w-0 truncate">
                               {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}
                             </span>
                           )}
                         </div>
                         {e.notes && (
                           <div
-                            ref={
-                              isExpanded
-                                ? undefined
-                                : (el) => {
-                                    notesPreviewRefs.current[e.id] = el
-                                  }
-                            }
-                            className={`text-zinc-400 text-xs mt-0.5 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'}`}
+                            ref={(el) => { notesPreviewRefs.current[e.id] = el }}
+                            className="text-zinc-400 text-xs mt-0.5 truncate"
                           >
                             {e.notes}
                           </div>
                         )}
-                        {e.notes && !isExpanded && notesOverflowById[e.id] && (
-                          <div className="text-zinc-500 text-[10px] mt-0.5">Tap card to expand</div>
-                        )}
                       </div>
-                    </div>
-                    <div className="mt-1 flex justify-end gap-3">
-                      <button
-                        type="button"
-                        onMouseDown={(ev) => ev.stopPropagation()}
-                        onClick={(ev) => {
-                          ev.stopPropagation()
-                          beginEdit(e)
-                        }}
-                        className="text-cyan-300 hover:text-cyan-200 text-[11px] font-semibold touch-manipulation"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onMouseDown={(ev) => ev.stopPropagation()}
-                        onClick={(ev) => {
-                          ev.stopPropagation()
-                          deleteEvent(e.id)
-                        }}
-                        className="text-red-300 hover:text-red-200 text-[11px] font-semibold touch-manipulation"
-                      >
-                        Delete
-                      </button>
                     </div>
                   </button>
                 )
@@ -1687,6 +1655,10 @@ export default function OffersCalendar({
         onEdit={(event) => {
           setWeekDetailEvent(null)
           beginEdit(event)
+        }}
+        onDuplicate={(event) => {
+          setWeekDetailEvent(null)
+          beginDuplicate(event)
         }}
         onDelete={(eventId) => {
           setWeekDetailEvent(null)

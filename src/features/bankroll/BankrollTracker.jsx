@@ -587,8 +587,8 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-semibold text-sm truncate">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-semibold text-sm truncate flex-1 min-w-0">
                             {session.casino_name || 'Session'}
                           </span>
                           <span className="text-zinc-600 text-xs shrink-0">{fmtDate(session.start_at)}</span>

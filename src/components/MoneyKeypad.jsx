@@ -30,8 +30,8 @@ const MAIN_ROWS = [
   ['−', '0', '⌫'],
 ]
 
-// Always-dark palette — bypasses Tailwind CSS variable chain entirely
-const C = {
+// Dark palette
+const DARK = {
   bg:        '#1c1c1e',
   border:    '#3a3a3c',
   keyNum:    '#2c2c2e',
@@ -39,6 +39,18 @@ const C = {
   keyShadow: 'rgba(0,0,0,0.55)',
   textKey:   '#ffffff',
   textMuted: '#8e8e93',
+  cyan:      '#0891b2',
+}
+
+// Light palette — gray bg, white keys, black text
+const LIGHT = {
+  bg:        '#adb5bd',
+  border:    '#9ea7b0',
+  keyNum:    '#ffffff',
+  keyFn:     '#adb5bd',
+  keyShadow: 'rgba(0,0,0,0.25)',
+  textKey:   '#000000',
+  textMuted: '#555e68',
   cyan:      '#0891b2',
 }
 
@@ -51,10 +63,12 @@ const keyBase = {
   WebkitTapHighlightColor: 'transparent',
   userSelect: 'none',
   cursor: 'pointer',
-  transition: 'filter 0.08s',
 }
 
 export default function MoneyKeypad({ value, onChange, onClose, allowNegative = false }) {
+  const isLight = document.documentElement.classList.contains('light')
+  const C = isLight ? LIGHT : DARK
+
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
@@ -102,8 +116,8 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
         </div>
 
         {/* Key grid */}
-        <div style={{ padding: '6px 6px 6px 6px', backgroundColor: C.bg }}>
-          {/* Main 4 rows (3 cols each) */}
+        <div style={{ padding: 6, backgroundColor: C.bg }}>
+          {/* Main 4 rows */}
           {MAIN_ROWS.map((row, ri) => (
             <div key={ri} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
               {row.map(key => {
@@ -132,7 +146,7 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
             </div>
           ))}
 
-          {/* Bottom row: . | Done (2×) */}
+          {/* Bottom row: . | space | Done */}
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               onPointerDown={e => { e.preventDefault(); press('.') }}
@@ -147,14 +161,24 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
                 boxShadow: `0 2px 0 ${C.keyShadow}`,
               }}
             >.</button>
+
+            {/* Space bar — inert, visual balance only */}
+            <div style={{
+              flex: 1,
+              height: 54,
+              borderRadius: 10,
+              backgroundColor: C.keyNum,
+              boxShadow: `0 2px 0 ${C.keyShadow}`,
+            }} />
+
             <button
               onPointerDown={e => { e.preventDefault(); press('Done') }}
               style={{
                 ...keyBase,
-                flex: 2,
+                flex: 1,
                 height: 54,
                 backgroundColor: C.cyan,
-                color: C.textKey,
+                color: '#ffffff',
                 fontSize: 17,
                 fontWeight: 700,
                 letterSpacing: 0.3,

@@ -461,7 +461,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
 
         {/* Active session card */}
         {activeSession ? (
-          <div className="rounded-3xl bg-emerald-950/60 border border-emerald-500/30 p-5 mb-4">
+          <div data-session-card className="rounded-3xl bg-emerald-950/60 border border-emerald-500/30 p-5 mb-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-emerald-300 text-xs font-bold uppercase tracking-wide">Session in progress</span>

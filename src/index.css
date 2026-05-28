@@ -1701,3 +1701,21 @@ html.light [data-bankroll-sheet] .text-zinc-400 {
 html.light [data-bankroll-sheet] .bg-cyan-600 {
   background-color: #0891b2 !important;
 }
+
+/* Active session card — light mode */
+html.light [data-session-card] {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+html.light [data-session-card] .text-emerald-300 {
+  color: #059669 !important;
+}
+html.light [data-session-card] .text-white {
+  color: #064e3b !important;
+}
+html.light [data-session-card] .text-zinc-400 {
+  color: #6b7280 !important;
+}
+html.light [data-session-card] .text-emerald-200 {
+  color: #047857 !important;
+}

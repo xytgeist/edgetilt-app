@@ -115,3 +115,48 @@ values
   ('Sycuan Casino Resort', 'seed'),
   ('Pala Casino Spa Resort', 'seed')
 on conflict (lower(name)) do nothing;
+
+-- European casinos
+insert into public.casinos (name, source)
+values
+  ('Casino de Monte-Carlo', 'seed'),
+  ('Grand Casino de Monte-Carlo', 'seed'),
+  ('Casino Baden-Baden', 'seed'),
+  ('Casino Wiesbaden', 'seed'),
+  ('Casino Hohensyburg', 'seed'),
+  ('Spielbank Berlin', 'seed'),
+  ('Spielbank Hamburg', 'seed'),
+  ('Casino Estoril', 'seed'),
+  ('Casino Lisboa', 'seed'),
+  ('Casino do Estoril', 'seed'),
+  ('Casino de Marbella', 'seed'),
+  ('Casino de Barcelona', 'seed'),
+  ('Gran Casino de Madrid', 'seed'),
+  ('Casino de Santander', 'seed'),
+  ('Casino Campione', 'seed'),
+  ('Casino di Venezia', 'seed'),
+  ('Casino di Sanremo', 'seed'),
+  ('Casino di Saint-Vincent', 'seed'),
+  ('Casino de Deauville', 'seed'),
+  ('Casino Barrière Enghien-les-Bains', 'seed'),
+  ('Casino Barrière Deauville', 'seed'),
+  ('Empire Casino', 'seed'),
+  ('The Hippodrome Casino', 'seed'),
+  ('Aspers Casino', 'seed'),
+  ('Grosvenor Casino', 'seed'),
+  ('Casino Admiral', 'seed'),
+  ('Casino Corinthia', 'seed'),
+  ('Casino Royale', 'seed'),
+  ('Olympic Casino', 'seed'),
+  ('Casino Helsinki', 'seed'),
+  ('Casino Cosmopol', 'seed'),
+  ('Grand Casino Liechtenstein', 'seed'),
+  ('Casino Kursaal Interlaken', 'seed'),
+  ('Casino Lugano', 'seed'),
+  ('Casino Bern', 'seed'),
+  ('Casino Baden', 'seed'),
+  ('Casino Vienna', 'seed'),
+  ('Casino Salzburg', 'seed'),
+  ('Casino Innsbruck', 'seed'),
+  ('Casino Graz', 'seed')
+on conflict (lower(name)) do nothing;

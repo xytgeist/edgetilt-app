@@ -909,52 +909,28 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                     </div>
                     <div>
                       <label className="block text-zinc-400 text-xs mb-1.5">Win / Loss</label>
-                      <div className="flex items-center gap-1.5">
-                        {/* Sign toggle — tap to flip positive/negative */}
-                        <button
-                          type="button"
-                          onPointerDown={e => e.preventDefault()}
-                          onClick={() => {
-                            const num = parseFloat(pastFields.win_loss)
-                            if (isNaN(num) || num === 0) return
-                            const flipped = String((-num).toFixed(2))
+                      <div className="relative">
+                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none ${
+                          !pastFields.win_loss ? 'text-zinc-400' : parseFloat(pastFields.win_loss) < 0 ? 'text-red-400' : 'text-emerald-400'
+                        }`}>$</span>
+                        <input
+                          type="text"
+                          inputMode="text"
+                          value={pastFields.win_loss}
+                          onChange={e => {
+                            const val = e.target.value.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
+                            const wl = parseFloat(val)
                             const s = parseFloat(pastFields.start_amount)
-                            const end = !isNaN(s) ? String((s + parseFloat(flipped)).toFixed(2)) : pastFields.end_amount
-                            setPastFields(p => ({ ...p, win_loss: flipped, end_amount: end }))
+                            const end = !isNaN(wl) && !isNaN(s) ? String((s + wl).toFixed(2)) : pastFields.end_amount
+                            setPastFields(p => ({ ...p, win_loss: val, end_amount: end }))
                           }}
-                          className={`shrink-0 w-10 min-h-12 rounded-2xl font-bold text-base touch-manipulation transition-colors ${
-                            parseFloat(pastFields.win_loss) < 0
-                              ? 'bg-red-900/40 text-red-400 border border-red-700/40'
-                              : 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/40'
+                          placeholder="0"
+                          className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-7 pr-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40 font-semibold ${
+                            pastFields.win_loss
+                              ? parseFloat(pastFields.win_loss) >= 0 ? 'text-emerald-300' : 'text-red-300'
+                              : 'text-white'
                           }`}
-                        >
-                          {parseFloat(pastFields.win_loss) < 0 ? '−' : '+'}
-                        </button>
-                        <div className="relative flex-1">
-                          <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none ${
-                            !pastFields.win_loss ? 'text-zinc-400' : parseFloat(pastFields.win_loss) < 0 ? 'text-red-400' : 'text-emerald-400'
-                          }`}>$</span>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={pastFields.win_loss.replace('-', '')}
-                            onChange={e => {
-                              const raw = e.target.value.replace(/[^0-9.]/g, '')
-                              const isNeg = pastFields.win_loss.startsWith('-')
-                              const val = raw === '' ? '' : (isNeg ? '-' : '') + raw
-                              const wl = parseFloat(val)
-                              const s = parseFloat(pastFields.start_amount)
-                              const end = !isNaN(wl) && !isNaN(s) ? String((s + wl).toFixed(2)) : pastFields.end_amount
-                              setPastFields(p => ({ ...p, win_loss: val, end_amount: end }))
-                            }}
-                            placeholder="0"
-                            className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-7 pr-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40 font-semibold ${
-                              pastFields.win_loss
-                                ? parseFloat(pastFields.win_loss) >= 0 ? 'text-emerald-300' : 'text-red-300'
-                                : 'text-white'
-                            }`}
-                          />
-                        </div>
+                        />
                       </div>
                     </div>
                   </div>

@@ -1,3 +1,4 @@
+import { Calculator, CalendarDays, Wallet, BookOpen, Radar } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import { calculatorsTabFullyGated } from '../calculators/calculatorAccess.js'
@@ -7,35 +8,40 @@ const SLOTS_TOOLS = [
   {
     id: 'calculators',
     label: 'Calcs',
-    icon: '🧮',
+    Icon: Calculator,
+    color: '#22d3ee',
     description: 'EV calculators for slot games',
     subscriberGated: (gatesMap) => calculatorsTabFullyGated(gatesMap),
   },
   {
     id: 'offers',
     label: 'Calendar',
-    icon: '📅',
+    Icon: CalendarDays,
+    color: '#a78bfa',
     description: 'Offers, mailers, and trip planning',
     subscriberGated: () => false,
   },
   {
     id: 'bankroll',
     label: 'Bankroll',
-    icon: '💰',
+    Icon: Wallet,
+    color: '#34d399',
     description: 'Track sessions and bankroll growth',
     subscriberGated: () => true,
   },
   {
     id: 'guides',
     label: 'AP Guides',
-    icon: '📗',
+    Icon: BookOpen,
+    color: '#fb923c',
     description: 'Advantage-play guides and community Q&A',
     subscriberGated: (gatesMap) => guidesTabFullyGated(gatesMap),
   },
   {
     id: 'intel',
     label: 'Intel',
-    icon: '📍',
+    Icon: Radar,
+    color: '#60a5fa',
     description: 'Local casino conditions and field reports',
     subscriberGated: () => false,
   },
@@ -79,6 +85,7 @@ export default function SlotsScreen({
       <div className="space-y-3">
         {SLOTS_TOOLS.map((tool) => {
           const locked = showSubscriberLocks && tool.subscriberGated(gatesMap)
+          const { Icon, color } = tool
           return (
             <button
               key={tool.id}
@@ -89,9 +96,10 @@ export default function SlotsScreen({
             >
               <span
                 aria-hidden
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-zinc-800 text-2xl"
+                className="slots-icon-tile grid h-12 w-12 shrink-0 place-items-center rounded-2xl backdrop-blur-md"
+                style={{ '--tc': color }}
               >
-                {tool.icon}
+                <Icon size={22} strokeWidth={1.5} style={{ color }} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-2">

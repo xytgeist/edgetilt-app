@@ -1126,6 +1126,14 @@ html.light [data-event-detail-card] {
 }
 html.light [data-event-detail] .text-white { color: #111827 !important; }
 
+/* Suppress Chrome autofill teal/yellow background in light mode */
+html.light input:-webkit-autofill,
+html.light input:-webkit-autofill:hover,
+html.light input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #e4e4e7 inset !important;
+  -webkit-text-fill-color: #18181b !important;
+}
+
 /* Auth modal card */
 html.light [data-auth-modal]                        { background-color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05) !important; }
 html.light [data-auth-modal] .border-gray-700       { border-color: #e4e4e7 !important; }

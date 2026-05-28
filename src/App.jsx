@@ -560,7 +560,7 @@ function App() {
   if (currentView === 'reset-password') {
     return (
       <div className={mobileShell}>
-        <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full">
+        <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full" data-auth-modal>
           <h2 className="text-2xl font-bold text-white mb-6 text-center">Reset Your Password</h2>
 
           {resetError && <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-2xl text-red-300 text-sm text-center">{resetError}</div>}

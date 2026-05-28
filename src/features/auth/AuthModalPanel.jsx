@@ -44,14 +44,11 @@ export default function AuthModalPanel({
           role="note"
         >
           <p>
-            <span className="font-semibold text-white">Signed up with Google?</span>
-            {' '}
-            Use <span className="text-orange-300">Continue with Google</span> below — you don&apos;t have an Edge password.
+            If you <span className="font-semibold text-white">signed up with Google</span>, use{' '}
+            <span className="text-orange-300">Continue with Google</span> below. You won&apos;t have an Edge password.
           </p>
           <p>
-            <span className="font-semibold text-white">Use email + password?</span>
-            {' '}
-            Enter your email and we&apos;ll send a reset link.
+            Still having trouble? Enter your email and we&apos;ll send you a reset link.
           </p>
         </div>
         <button

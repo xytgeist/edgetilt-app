@@ -5,6 +5,7 @@
  * Props:
  *   value    — "YYYY-MM-DD" string or ''
  *   onChange — fn(string) called with "YYYY-MM-DD"
+ *   showYear — show year column (default false; month+day fits narrow grids)
  */
 import { useState, useEffect, useMemo } from 'react'
 import Picker from 'react-mobile-picker'
@@ -45,18 +46,14 @@ function displayLabel(yyyymmdd) {
 const currentYear = new Date().getFullYear()
 const YEARS = Array.from({ length: 5 }, (_, i) => String(currentYear - 3 + i))
 
-export default function DateWheelPicker({ value, onChange }) {
+export default function DateWheelPicker({ value, onChange, showYear = false }) {
   const [open, setOpen] = useState(false)
   const [pickerValue, setPickerValue] = useState(() => partsFrom(value))
 
-  // Emit current date on mount if no value
   useEffect(() => {
-    if (!value) {
-      onChange(toYYYYMMDD(nowParts()))
-    }
+    if (!value) onChange(toYYYYMMDD(nowParts()))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync picker if parent value changes externally
   useEffect(() => {
     if (value) setPickerValue(partsFrom(value))
   }, [value])
@@ -69,7 +66,6 @@ export default function DateWheelPicker({ value, onChange }) {
   }, [pickerValue.month, pickerValue.year])
 
   const handleChange = (next) => {
-    // Clamp day if month/year change reduces the max
     const monthIdx = MONTHS.indexOf(next.month)
     const year = Number(next.year)
     const maxDay = daysInMonth(monthIdx >= 0 ? monthIdx : 0, year || currentYear)
@@ -83,7 +79,6 @@ export default function DateWheelPicker({ value, onChange }) {
 
   return (
     <div>
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -93,38 +88,37 @@ export default function DateWheelPicker({ value, onChange }) {
         <span className={`text-zinc-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>
 
-      {/* Wheel */}
       {open && (
         <div className="mt-2 rounded-2xl bg-zinc-800 overflow-hidden">
           <div className="relative px-1 py-2">
             <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-[30px] -translate-y-1/2 rounded-full bg-zinc-600/50" />
-            <div className="mx-auto w-[220px]">
-              <Picker
-                className="offers-time-wheel"
-                value={pickerValue}
-                onChange={handleChange}
-                height={170}
-                itemHeight={44}
-                wheelMode="natural"
-              >
-                <Picker.Column name="month">
-                  {MONTHS.map(m => (
-                    <Picker.Item key={m} value={m}>
-                      {({ selected }) => (
-                        <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{m}</div>
-                      )}
-                    </Picker.Item>
-                  ))}
-                </Picker.Column>
-                <Picker.Column name="day">
-                  {days.map(d => (
-                    <Picker.Item key={d} value={d}>
-                      {({ selected }) => (
-                        <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{d}</div>
-                      )}
-                    </Picker.Item>
-                  ))}
-                </Picker.Column>
+            <Picker
+              className="offers-time-wheel"
+              value={pickerValue}
+              onChange={handleChange}
+              height={170}
+              itemHeight={44}
+              wheelMode="natural"
+            >
+              <Picker.Column name="month">
+                {MONTHS.map(m => (
+                  <Picker.Item key={m} value={m}>
+                    {({ selected }) => (
+                      <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{m}</div>
+                    )}
+                  </Picker.Item>
+                ))}
+              </Picker.Column>
+              <Picker.Column name="day">
+                {days.map(d => (
+                  <Picker.Item key={d} value={d}>
+                    {({ selected }) => (
+                      <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{d}</div>
+                    )}
+                  </Picker.Item>
+                ))}
+              </Picker.Column>
+              {showYear && (
                 <Picker.Column name="year">
                   {YEARS.map(y => (
                     <Picker.Item key={y} value={y}>
@@ -134,8 +128,8 @@ export default function DateWheelPicker({ value, onChange }) {
                     </Picker.Item>
                   ))}
                 </Picker.Column>
-              </Picker>
-            </div>
+              )}
+            </Picker>
           </div>
         </div>
       )}

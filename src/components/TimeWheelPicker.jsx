@@ -1,6 +1,7 @@
 /**
  * iOS-style scroll-wheel time picker (react-mobile-picker).
- * Renders as a tappable display → opens wheel on tap.
+ * Infinite-ish scroll: repeats hour/minute arrays and recenters silently.
+ * Minute carry rolls the hour; hour crossing 11↔12 flips AM/PM.
  *
  * Props:
  *   value    — "HH:MM" 24-hour string or ''
@@ -11,7 +12,7 @@ import Picker from 'react-mobile-picker'
 
 const HOUR_REPEAT = 9
 const HOUR_MID = Math.floor(HOUR_REPEAT / 2)
-const MINUTE_REPEAT = 5
+const MINUTE_REPEAT = 7
 const MINUTE_MID = Math.floor(MINUTE_REPEAT / 2)
 
 const HOURS = Array.from({ length: HOUR_REPEAT * 12 }, (_, i) => {
@@ -59,7 +60,6 @@ export default function TimeWheelPicker({ value, onChange }) {
   const recenterRef = useRef(null)
   const applyRef = useRef(null)
 
-  // Emit current time on mount so parent always has a value
   useEffect(() => {
     if (!value) {
       const pv = nowPickerValue()
@@ -71,8 +71,6 @@ export default function TimeWheelPicker({ value, onChange }) {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggle = () => setOpen(o => !o)
-
   const handleChange = (nextValue) => {
     if (recenterRef.current) { window.clearTimeout(recenterRef.current); recenterRef.current = null }
     if (applyRef.current) { window.clearTimeout(applyRef.current); applyRef.current = null }
@@ -81,7 +79,8 @@ export default function TimeWheelPicker({ value, onChange }) {
     const [, prevHourRaw] = String(prev.hour).split(':')
     const [prevMinRepRaw, prevMinuteRaw] = String(prev.minute).split(':')
     const [hourRepRaw, hourRawToken] = String(nextValue.hour).split(':')
-    const [minRepRaw, minuteRawToken] = String(nextValue.minute).split(':')
+    const [minRepRaw] = String(nextValue.minute).split(':')
+    const minuteRawToken = String(nextValue.minute).split(':')[1]
 
     let hourRaw = hourRawToken ?? String(nextValue.hour)
     const minuteRaw = minuteRawToken ?? String(nextValue.minute)
@@ -90,31 +89,35 @@ export default function TimeWheelPicker({ value, onChange }) {
     let period = nextValue.period
     const periodChangedByUser = nextValue.period !== prev.period
 
-    // Carry / borrow hour when minute wraps at edges
+    const prevHourNum = Number(prevHourRaw)
+
+    // ── Minute carry: roll the hour when crossing 59→00 or 00→59 ──────────────
     if (prevMinuteRaw === '59' && minuteRaw === '00') {
       const n = (Number(hourRaw) % 12) + 1
-      hourRaw = String(n)
       if (Number.isFinite(hourRep) && n === 1) hourRep += 1
+      hourRaw = String(n)
     }
     if (prevMinuteRaw === '00' && minuteRaw === '59') {
       const n = Number(hourRaw) - 1 || 12
-      hourRaw = String(n)
       if (Number.isFinite(hourRep) && n === 12) hourRep -= 1
+      hourRaw = String(n)
     }
-    // Toggle AM/PM when crossing 11 ↔ 12
-    if (!periodChangedByUser && prevMinuteRaw === minuteRaw) {
-      if (prevHourRaw === '11' && hourRaw === '12') period = period === 'AM' ? 'PM' : 'AM'
-      else if (prevHourRaw === '12' && hourRaw === '11') period = period === 'AM' ? 'PM' : 'AM'
+
+    // ── AM/PM flip when crossing 11↔12 (direct scroll OR minute-carry) ────────
+    if (!periodChangedByUser) {
+      const newHourNum = Number(hourRaw)
+      if (prevHourNum === 11 && newHourNum === 12) period = period === 'AM' ? 'PM' : 'AM'
+      else if (prevHourNum === 12 && newHourNum === 11) period = period === 'AM' ? 'PM' : 'AM'
     }
 
     const resolved = {
       hour: `${Number.isFinite(hourRep) ? hourRep : HOUR_MID}:${hourRaw}`,
       minute: `${Number.isFinite(minuteRep) ? minuteRep : MINUTE_MID}:${minuteRaw}`,
-      period
+      period,
     }
     setPickerValue(resolved)
 
-    // Recenter if near edge
+    // Silently recenter if drifting near the edge of the repeated array
     const hRepN = Number.isFinite(hourRep) ? hourRep : HOUR_MID
     const mRepN = Number.isFinite(minuteRep) ? minuteRep : MINUTE_MID
     if (hRepN < 2 || hRepN > HOUR_REPEAT - 3 || mRepN < 2 || mRepN > MINUTE_REPEAT - 3) {
@@ -122,13 +125,13 @@ export default function TimeWheelPicker({ value, onChange }) {
         setPickerValue(r => ({
           ...r,
           hour: `${HOUR_MID}:${r.hour.split(':')[1]}`,
-          minute: `${MINUTE_MID}:${r.minute.split(':')[1]}`
+          minute: `${MINUTE_MID}:${r.minute.split(':')[1]}`,
         }))
         recenterRef.current = null
       }, 140)
     }
 
-    // Debounce emit
+    // Debounce the parent onChange emit
     applyRef.current = window.setTimeout(() => {
       const h = Number(hourRaw)
       const m = Number(minuteRaw)
@@ -142,68 +145,60 @@ export default function TimeWheelPicker({ value, onChange }) {
 
   const label = displayLabel(value) ?? displayLabel((() => {
     const now = new Date()
-    const h = now.getHours()
-    const m = now.getMinutes()
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   })())
 
   return (
     <div>
-      {/* Trigger */}
       <button
         type="button"
-        onClick={toggle}
-        className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-left flex items-center justify-between touch-manipulation"
+        onClick={() => setOpen(o => !o)}
+        className="w-full min-h-12 rounded-2xl bg-zinc-800 px-3 text-left flex items-center justify-between touch-manipulation"
       >
-        <span className="text-white font-semibold">
-          {label}
-        </span>
-        <span className={`text-zinc-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+        <span className="text-white font-semibold text-sm truncate">{label}</span>
+        <span className={`text-zinc-500 text-xs ml-1 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>
 
-      {/* Wheel */}
       {open && (
         <div className="mt-2 rounded-2xl bg-zinc-800 overflow-hidden">
           <div className="relative px-1 py-2">
             <div className="pointer-events-none absolute left-0 right-0 top-1/2 h-[30px] -translate-y-1/2 rounded-full bg-zinc-600/50" />
-            <div className="mx-auto w-[200px]">
-              <Picker
-                className="offers-time-wheel"
-                value={pickerValue}
-                onChange={handleChange}
-                height={170}
-                itemHeight={44}
-                wheelMode="natural"
-              >
-                <Picker.Column name="hour">
-                  {HOURS.map(h => (
-                    <Picker.Item key={h.token} value={h.token}>
-                      {({ selected }) => (
-                        <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{h.label}</div>
-                      )}
-                    </Picker.Item>
-                  ))}
-                </Picker.Column>
-                <Picker.Column name="minute">
-                  {MINUTES.map(m => (
-                    <Picker.Item key={m.token} value={m.token}>
-                      {({ selected }) => (
-                        <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{m.label}</div>
-                      )}
-                    </Picker.Item>
-                  ))}
-                </Picker.Column>
-                <Picker.Column name="period">
-                  {PERIODS.map(p => (
-                    <Picker.Item key={p} value={p}>
-                      {({ selected }) => (
-                        <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{p}</div>
-                      )}
-                    </Picker.Item>
-                  ))}
-                </Picker.Column>
-              </Picker>
-            </div>
+            <Picker
+              className="offers-time-wheel"
+              value={pickerValue}
+              onChange={handleChange}
+              height={170}
+              itemHeight={44}
+              wheelMode="natural"
+            >
+              <Picker.Column name="hour">
+                {HOURS.map(h => (
+                  <Picker.Item key={h.token} value={h.token}>
+                    {({ selected }) => (
+                      <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{h.label}</div>
+                    )}
+                  </Picker.Item>
+                ))}
+              </Picker.Column>
+              <Picker.Column name="minute">
+                {MINUTES.map(m => (
+                  <Picker.Item key={m.token} value={m.token}>
+                    {({ selected }) => (
+                      <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{m.label}</div>
+                    )}
+                  </Picker.Item>
+                ))}
+              </Picker.Column>
+              <Picker.Column name="period">
+                {PERIODS.map(p => (
+                  <Picker.Item key={p} value={p}>
+                    {({ selected }) => (
+                      <div className={`text-center text-lg ${selected ? 'text-white font-semibold' : 'text-zinc-500'}`}>{p}</div>
+                    )}
+                  </Picker.Item>
+                ))}
+              </Picker.Column>
+            </Picker>
           </div>
         </div>
       )}

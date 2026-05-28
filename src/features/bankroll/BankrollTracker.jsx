@@ -341,7 +341,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
             distanceMi: haversine(latitude, longitude, c.lat, c.lng),
           })).sort((a, b) => a.distanceMi - b.distanceMi)
 
-          const top5 = withDist.slice(0, 5)
+          const top5 = withDist.slice(0, 20)
           setNearbyCasinos(top5)
           if (top5.length > 0) onNearest(top5[0].name)
           setGpsLoading(false)

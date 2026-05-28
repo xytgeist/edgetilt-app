@@ -3,6 +3,7 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
+import MoneyKeypad from '../../components/MoneyKeypad.jsx'
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -909,29 +910,19 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                     </div>
                     <div>
                       <label className="block text-zinc-400 text-xs mb-1.5">Win / Loss</label>
-                      <div className="relative">
-                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold pointer-events-none ${
-                          !pastFields.win_loss ? 'text-zinc-400' : parseFloat(pastFields.win_loss) < 0 ? 'text-red-400' : 'text-emerald-400'
-                        }`}>$</span>
-                        <input
-                          type="text"
-                          inputMode="text"
-                          value={pastFields.win_loss}
-                          onChange={e => {
-                            const val = e.target.value.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
-                            const wl = parseFloat(val)
-                            const s = parseFloat(pastFields.start_amount)
-                            const end = !isNaN(wl) && !isNaN(s) ? String((s + wl).toFixed(2)) : pastFields.end_amount
-                            setPastFields(p => ({ ...p, win_loss: val, end_amount: end }))
-                          }}
-                          placeholder="0"
-                          className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-7 pr-2 text-sm outline-none focus:ring-2 focus:ring-cyan-500/40 font-semibold ${
-                            pastFields.win_loss
-                              ? parseFloat(pastFields.win_loss) >= 0 ? 'text-emerald-300' : 'text-red-300'
-                              : 'text-white'
-                          }`}
-                        />
-                      </div>
+                      <MoneyInput
+                        value={pastFields.win_loss}
+                        onChange={val => {
+                          const wl = parseFloat(val)
+                          const s = parseFloat(pastFields.start_amount)
+                          const end = !isNaN(wl) && !isNaN(s) ? String((s + wl).toFixed(2)) : pastFields.end_amount
+                          setPastFields(p => ({ ...p, win_loss: val, end_amount: end }))
+                        }}
+                        placeholder="0"
+                        allowNegative
+                        colorize
+                        tight
+                      />
                     </div>
                   </div>
                   <div>
@@ -1020,20 +1011,47 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
 }
 
 
-function MoneyInput({ value, onChange, placeholder = '0', tight = false, inputClassName = '', ...rest }) {
+function MoneyInput({
+  value, onChange, placeholder = '0',
+  tight = false, inputClassName = '',
+  allowNegative = false, colorize = false,
+  autoFocus: shouldAutoFocus = false,
+}) {
+  const [open, setOpen] = useState(shouldAutoFocus)
+
+  const numVal = parseFloat(value)
+  const hasValue = value !== '' && value !== '-'
+  const textColor = colorize && hasValue
+    ? numVal >= 0 ? 'text-emerald-300' : 'text-red-300'
+    : 'text-white'
+
   return (
-    <div className="relative">
-      <span className={`absolute top-1/2 -translate-y-1/2 text-zinc-400 font-semibold pointer-events-none ${tight ? 'left-3 text-sm' : 'left-4'}`}>$</span>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full min-h-12 rounded-2xl bg-zinc-800 ${tight ? 'pl-6 pr-1 text-sm' : 'pl-8 pr-4'} text-white outline-none focus:ring-2 focus:ring-cyan-500/40 ${inputClassName}`}
-        {...rest}
-      />
-    </div>
+    <>
+      <div
+        className="relative cursor-pointer"
+        onPointerDown={() => setOpen(true)}
+      >
+        <span className={`absolute top-1/2 -translate-y-1/2 text-zinc-400 font-semibold pointer-events-none ${tight ? 'left-3 text-sm' : 'left-4'}`}>$</span>
+        <div className={[
+          'w-full min-h-12 rounded-2xl bg-zinc-800 flex items-center',
+          tight ? 'pl-6 pr-1 text-sm' : 'pl-8 pr-4',
+          hasValue ? textColor : 'text-zinc-500',
+          'font-semibold',
+          open ? 'ring-2 ring-cyan-500/40' : '',
+          inputClassName,
+        ].join(' ')}>
+          {hasValue ? value : <span className="font-normal">{placeholder}</span>}
+        </div>
+      </div>
+      {open && (
+        <MoneyKeypad
+          value={value}
+          onChange={onChange}
+          onClose={() => setOpen(false)}
+          allowNegative={allowNegative}
+        />
+      )}
+    </>
   )
 }
 

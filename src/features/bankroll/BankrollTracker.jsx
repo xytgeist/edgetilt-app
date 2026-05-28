@@ -87,6 +87,8 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
   const [startTime, setStartTime] = useState('')
   const [startAmount, setStartAmount] = useState('')
   const [endAmount, setEndAmount] = useState('')
+  const [rebuyAmount, setRebuyAmount] = useState('')
+  const [editStartAmount, setEditStartAmount] = useState('')
   const [sessionNotes, setSessionNotes] = useState('')
   const [editFields, setEditFields] = useState({})
   const [pastFields, setPastFields] = useState({})
@@ -378,6 +380,54 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
   const openEndSession = () => {
     setEndAmount(''); setSessionNotes(''); setError(''); setSheet('endSession')
   }
+  const openRebuy = () => {
+    setRebuyAmount(''); setError(''); setSheet('rebuy')
+  }
+  const openEditStartAmount = () => {
+    setEditStartAmount(activeSession ? String(activeSession.start_amount) : ''); setError(''); setSheet('editStartAmount')
+  }
+
+  const saveRebuy = async () => {
+    const amt = parseFloat(rebuyAmount)
+    if (isNaN(amt) || amt <= 0) { setError('Enter a valid rebuy amount.'); return }
+    setSaving(true); setError('')
+    try {
+      const newStart = Number(activeSession.start_amount) + amt
+      const { data, error: err } = await supabaseClient
+        .from('bankroll_sessions')
+        .update({ start_amount: newStart })
+        .eq('id', activeSession.id)
+        .select().single()
+      if (err) throw err
+      setSessions(prev => prev.map(s => s.id === data.id ? data : s))
+      setSheet(null)
+    } catch (e) {
+      setError(e.message || 'Could not save rebuy.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveEditStartAmount = async () => {
+    const amt = parseFloat(editStartAmount)
+    if (isNaN(amt) || amt < 0) { setError('Enter a valid amount.'); return }
+    setSaving(true); setError('')
+    try {
+      const { data, error: err } = await supabaseClient
+        .from('bankroll_sessions')
+        .update({ start_amount: amt })
+        .eq('id', activeSession.id)
+        .select().single()
+      if (err) throw err
+      setSessions(prev => prev.map(s => s.id === data.id ? data : s))
+      setSheet(null)
+    } catch (e) {
+      setError(e.message || 'Could not update amount.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const openEditSession = (session) => {
     setEditingSession(session)
     setEditFields({
@@ -471,15 +521,34 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                 {activeSession.casino_name && (
                   <div className="text-white font-bold text-lg leading-tight truncate">{activeSession.casino_name}</div>
                 )}
-                <div className="text-zinc-400 text-sm mt-0.5">Started with {fmt$(activeSession.start_amount)}</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-zinc-400 text-sm">Started with {fmt$(activeSession.start_amount)}</span>
+                  <button
+                    onClick={openEditStartAmount}
+                    className="text-zinc-500 hover:text-zinc-300 touch-manipulation active:text-white leading-none"
+                    title="Edit starting amount"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                      <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.583 1.707a.25.25 0 0 0 .316.316l1.708-.583a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.475ZM3.75 11A.75.75 0 0 0 3 11.75v.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 0-1.5h-8.5Z" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="text-emerald-200 text-3xl font-black mt-2 tabular-nums">{fmtDuration(elapsed)}</div>
               </div>
-              <button
-                onClick={openEndSession}
-                className="shrink-0 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-              >
-                End Session
-              </button>
+              <div className="flex flex-col gap-2 shrink-0">
+                <button
+                  onClick={openRebuy}
+                  className="rounded-2xl border border-emerald-500/60 px-4 py-2 text-sm font-bold text-emerald-300 touch-manipulation active:bg-emerald-900/40"
+                >
+                  Rebuy
+                </button>
+                <button
+                  onClick={openEndSession}
+                  className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                >
+                  End Session
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -704,6 +773,67 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
             )}
 
             {/* Log past session */}
+            {/* Rebuy */}
+            {sheet === 'rebuy' && activeSession && (
+              <>
+                <SheetHeader title="Rebuy" onClose={closeSheet} />
+                <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
+                  How much are you adding to your session bankroll?
+                </p>
+                <div className="mb-5">
+                  <label className="block text-zinc-400 text-xs mb-1.5">Rebuy amount</label>
+                  <MoneyInput
+                    value={rebuyAmount}
+                    onChange={setRebuyAmount}
+                    placeholder="e.g. 200"
+                    autoFocus
+                    inputClassName="min-h-14 text-xl font-bold"
+                  />
+                  {rebuyAmount && !isNaN(parseFloat(rebuyAmount)) && (
+                    <p className="text-zinc-400 text-xs mt-2">
+                      New total: {fmt$(Number(activeSession.start_amount) + parseFloat(rebuyAmount))}
+                    </p>
+                  )}
+                </div>
+                {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+                <button
+                  onClick={saveRebuy}
+                  disabled={saving}
+                  className="w-full min-h-12 rounded-2xl bg-emerald-600 text-white font-bold touch-manipulation active:bg-emerald-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving…' : 'Add to Session'}
+                </button>
+              </>
+            )}
+
+            {/* Edit start amount */}
+            {sheet === 'editStartAmount' && activeSession && (
+              <>
+                <SheetHeader title="Edit Starting Amount" onClose={closeSheet} />
+                <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
+                  Correct the amount you started this session with.
+                </p>
+                <div className="mb-5">
+                  <label className="block text-zinc-400 text-xs mb-1.5">Starting amount</label>
+                  <MoneyInput
+                    value={editStartAmount}
+                    onChange={setEditStartAmount}
+                    placeholder="0"
+                    autoFocus
+                    inputClassName="min-h-14 text-xl font-bold"
+                  />
+                </div>
+                {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+                <button
+                  onClick={saveEditStartAmount}
+                  disabled={saving}
+                  className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              </>
+            )}
+
             {sheet === 'logPast' && (
               <>
                 <SheetHeader title="Log Past Session" onClose={closeSheet} />

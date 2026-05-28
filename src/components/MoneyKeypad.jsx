@@ -11,26 +11,19 @@ function applyKey(current, key, allowNegative) {
     return current.startsWith('-') ? current.slice(1) : '-' + current
   }
 
-  if (key === '.') {
-    if (current.includes('.')) return current
-    if (current === '' || current === '-') return current + '0.'
-    return current + '.'
-  }
-
   // Digit
   if (current === '0') return key
   if (current === '-0') return '-' + key
   return current + key
 }
 
-const MAIN_ROWS = [
+const ROWS = [
   ['7', '8', '9'],
   ['4', '5', '6'],
   ['1', '2', '3'],
   ['−', '0', '⌫'],
 ]
 
-// Dark palette
 const DARK = {
   bg:        '#1c1c1e',
   border:    '#3a3a3c',
@@ -39,10 +32,8 @@ const DARK = {
   keyShadow: 'rgba(0,0,0,0.55)',
   textKey:   '#ffffff',
   textMuted: '#8e8e93',
-  cyan:      '#0891b2',
 }
 
-// Light palette — gray bg, white keys, black text
 const LIGHT = {
   bg:        '#adb5bd',
   border:    '#9ea7b0',
@@ -51,7 +42,6 @@ const LIGHT = {
   keyShadow: 'rgba(0,0,0,0.25)',
   textKey:   '#000000',
   textMuted: '#555e68',
-  cyan:      '#0891b2',
 }
 
 const keyBase = {
@@ -75,17 +65,7 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const press = key => {
-    if (key === 'Done') { onClose(); return }
-    onChange(applyKey(value, key, allowNegative))
-  }
-
-  const num = parseFloat(value)
-  const hasValue = value !== '' && value !== '-'
-  const previewColor = !hasValue ? C.textMuted : num < 0 ? '#f87171' : '#34d399'
-  const previewText = hasValue
-    ? (num < 0 ? '−$' + Math.abs(num) : '+$' + value)
-    : value === '-' ? '−$…' : '$—'
+  const press = key => onChange(applyKey(value, key, allowNegative))
 
   return createPortal(
     <>
@@ -98,28 +78,43 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
         style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201, backgroundColor: C.bg }}
         onPointerDown={e => e.stopPropagation()}
       >
-        {/* Preview bar */}
+        {/* Top bar: Cancel | Done */}
         <div style={{
           borderTop: `1px solid ${C.border}`,
-          padding: '10px 20px',
+          padding: '8px 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           backgroundColor: C.bg,
         }}>
-          <span style={{ color: C.textMuted, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Amount
-          </span>
-          <span style={{ color: previewColor, fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-            {previewText}
-          </span>
+          <button
+            onPointerDown={e => { e.preventDefault(); onClose() }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: C.textMuted, fontSize: 16, fontWeight: 500,
+              padding: '4px 8px',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onPointerDown={e => { e.preventDefault(); onClose() }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#0891b2', fontSize: 16, fontWeight: 700,
+              padding: '4px 8px',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Done
+          </button>
         </div>
 
-        {/* Key grid */}
+        {/* Keys */}
         <div style={{ padding: 6, backgroundColor: C.bg }}>
-          {/* Main 4 rows */}
-          {MAIN_ROWS.map((row, ri) => (
-            <div key={ri} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+          {ROWS.map((row, ri) => (
+            <div key={ri} style={{ display: 'flex', gap: 6, marginBottom: ri < ROWS.length - 1 ? 6 : 0 }}>
               {row.map(key => {
                 const isFn = key === '−' || key === '⌫'
                 const disabled = key === '−' && !allowNegative
@@ -145,47 +140,6 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
               })}
             </div>
           ))}
-
-          {/* Bottom row: . | space | Done */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onPointerDown={e => { e.preventDefault(); press('.') }}
-              style={{
-                ...keyBase,
-                flex: 1,
-                height: 54,
-                backgroundColor: C.keyFn,
-                color: C.textKey,
-                fontSize: 28,
-                fontWeight: 400,
-                boxShadow: `0 2px 0 ${C.keyShadow}`,
-              }}
-            >.</button>
-
-            {/* Space bar — inert, visual balance only */}
-            <div style={{
-              flex: 1,
-              height: 54,
-              borderRadius: 10,
-              backgroundColor: C.keyNum,
-              boxShadow: `0 2px 0 ${C.keyShadow}`,
-            }} />
-
-            <button
-              onPointerDown={e => { e.preventDefault(); press('Done') }}
-              style={{
-                ...keyBase,
-                flex: 1,
-                height: 54,
-                backgroundColor: C.cyan,
-                color: '#ffffff',
-                fontSize: 17,
-                fontWeight: 700,
-                letterSpacing: 0.3,
-                boxShadow: `0 2px 0 rgba(0,0,0,0.4)`,
-              }}
-            >Done</button>
-          </div>
         </div>
 
         {/* iOS safe-area spacer */}

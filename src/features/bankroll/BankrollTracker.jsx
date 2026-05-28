@@ -3,7 +3,6 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
-import MoneyKeypad from '../../components/MoneyKeypad.jsx'
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -1015,58 +1014,8 @@ function MoneyInput({
   value, onChange, placeholder = '0',
   tight = false, inputClassName = '',
   allowNegative = false, colorize = false,
-  autoFocus: shouldAutoFocus = false,
+  autoFocus,
 }) {
-  const [open, setOpen] = useState(shouldAutoFocus)
-  const containerRef = useRef(null)
-  const scrollableRef = useRef(null)
-  const prevPbRef = useRef('')
-
-  // Find the nearest scrollable ancestor once on mount
-  useEffect(() => {
-    let node = containerRef.current?.parentElement
-    while (node && node !== document.body) {
-      const { overflow, overflowY } = getComputedStyle(node)
-      if (/(auto|scroll)/.test(overflow + overflowY)) {
-        scrollableRef.current = node
-        break
-      }
-      node = node.parentElement
-    }
-  }, [])
-
-  // Lift sheet when keypad opens; restore when it closes
-  useEffect(() => {
-    const scrollable = scrollableRef.current
-    if (!scrollable || !containerRef.current) return
-
-    if (open) {
-      // Wait one frame for the keypad portal to render, then measure it
-      const timer = setTimeout(() => {
-        const keypad = document.querySelector('[data-money-keypad]')
-        const kh = keypad ? keypad.getBoundingClientRect().height : 340
-        const GAP = 16
-
-        // Pad the sheet so content can scroll past the keypad
-        prevPbRef.current = scrollable.style.paddingBottom
-        scrollable.style.paddingBottom = `${kh}px`
-
-        // Scroll the field into the visible window above the keypad
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (rect) {
-          const visibleBottom = window.innerHeight - kh - GAP
-          if (rect.bottom > visibleBottom) {
-            scrollable.scrollBy({ top: rect.bottom - visibleBottom, behavior: 'smooth' })
-          }
-        }
-      }, 60)
-      return () => clearTimeout(timer)
-    } else {
-      // Restore original padding
-      scrollable.style.paddingBottom = prevPbRef.current
-    }
-  }, [open])
-
   const numVal = parseFloat(value)
   const hasValue = value !== '' && value !== '-'
   const textColor = colorize && hasValue
@@ -1074,33 +1023,27 @@ function MoneyInput({
     : 'text-white'
 
   return (
-    <>
-      <div
-        ref={containerRef}
-        className="relative cursor-pointer"
-        onPointerDown={() => setOpen(true)}
-      >
-        <span className={`absolute top-1/2 -translate-y-1/2 text-zinc-400 font-semibold pointer-events-none ${tight ? 'left-3 text-sm' : 'left-4'}`}>$</span>
-        <div className={[
-          'w-full min-h-12 rounded-2xl bg-zinc-800 flex items-center',
-          tight ? 'pl-6 pr-1 text-sm' : 'pl-8 pr-4',
-          hasValue ? textColor : 'text-zinc-500',
-          'font-semibold',
-          open ? 'ring-2 ring-cyan-500/40' : '',
-          inputClassName,
-        ].join(' ')}>
-          {hasValue ? value : <span className="font-normal">{placeholder}</span>}
-        </div>
-      </div>
-      {open && (
-        <MoneyKeypad
-          value={value}
-          onChange={onChange}
-          onClose={() => setOpen(false)}
-          allowNegative={allowNegative}
-        />
-      )}
-    </>
+    <div className="relative">
+      <span className={`absolute top-1/2 -translate-y-1/2 text-zinc-400 font-semibold pointer-events-none ${tight ? 'left-3 text-sm' : 'left-4'}`}>$</span>
+      <input
+        type="text"
+        inputMode={allowNegative ? 'text' : 'decimal'}
+        value={value}
+        onChange={e => {
+          const raw = e.target.value
+          if (allowNegative) {
+            // Allow minus only at start, strip other non-numeric chars
+            const cleaned = raw.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
+            onChange(cleaned)
+          } else {
+            onChange(raw)
+          }
+        }}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className={`w-full min-h-12 rounded-2xl bg-zinc-800 ${tight ? 'pl-6 pr-1 text-sm' : 'pl-8 pr-4'} outline-none focus:ring-2 focus:ring-cyan-500/40 font-semibold ${hasValue ? textColor : ''} ${inputClassName}`}
+      />
+    </div>
   )
 }
 

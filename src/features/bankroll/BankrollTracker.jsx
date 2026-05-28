@@ -407,7 +407,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
       >
 
         {/* Overall bankroll card */}
-        <div className="rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-800 border border-zinc-700/40 p-5 mb-4 shadow-[0_8px_30px_rgba(0,0,0,0.30)]">
+        <div className="rounded-3xl bg-gradient-to-br from-zinc-900 to-zinc-800 border border-zinc-700/40 p-5 mb-4 shadow-lg shadow-black/30">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="text-zinc-400 text-xs font-semibold uppercase tracking-wide mb-1">Overall Bankroll</div>
@@ -461,7 +461,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
 
         {/* Active session card */}
         {activeSession ? (
-          <div data-session-card className="rounded-3xl bg-emerald-950/60 border border-emerald-500/30 p-5 mb-4 shadow-[0_8px_30px_rgba(0,0,0,0.30)]">
+          <div data-session-card className="rounded-3xl bg-emerald-950/60 border border-emerald-500/30 p-5 mb-4 shadow-lg shadow-black/30">
             <div className="flex items-center gap-2 mb-3">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-emerald-300 text-xs font-bold uppercase tracking-wide">Session in progress</span>
@@ -514,7 +514,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                   <button
                     key={session.id}
                     onClick={() => openEditSession(session)}
-                    className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation active:bg-zinc-800 transition-colors shadow-[0_4px_16px_rgba(0,0,0,0.22)]"
+                    className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation active:bg-zinc-800 transition-colors shadow-md shadow-black/30"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">

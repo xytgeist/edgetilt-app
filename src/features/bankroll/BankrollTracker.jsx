@@ -71,6 +71,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
   const [loading, setLoading] = useState(true)
   const [sheet, setSheet] = useState(null) // null | 'setBankroll' | 'startSession' | 'endSession' | 'editSession' | 'logPast'
   const [editingSession, setEditingSession] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [elapsed, setElapsed] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -579,14 +580,19 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                 const wl = sessionWinLoss(session)
                 const hr = hourlyRate(session)
                 const durSecs = Math.round(sessionDurationHours(session) * 3600)
+                const isDeleting = deletingId === session.id
                 return (
-                  <button
+                  <div
                     key={session.id}
-                    onClick={() => openEditSession(session)}
-                    className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation active:bg-zinc-800 transition-colors shadow-md shadow-black/30"
+                    className="rounded-2xl bg-zinc-900 border border-zinc-800/60 shadow-md shadow-black/30 overflow-hidden"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                    {/* Main row */}
+                    <div className="flex items-center gap-3 p-4">
+                      {/* Tappable info area → edit */}
+                      <button
+                        onClick={() => { setDeletingId(null); openEditSession(session) }}
+                        className="flex-1 min-w-0 text-left touch-manipulation"
+                      >
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-white font-semibold text-sm truncate">
                             {session.casino_name || 'Session'}
@@ -601,17 +607,64 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                             </span>
                           )}
                         </div>
-                      </div>
-                      {wl != null && (
-                        <div className={`shrink-0 font-black text-xl tabular-nums ${wl >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                          {wl >= 0 ? '+' : ''}{fmt$(wl)}
+                        {session.notes && (
+                          <div className="text-zinc-500 text-xs mt-1.5 line-clamp-1">{session.notes}</div>
+                        )}
+                      </button>
+
+                      {/* Right side: W/L + action icons */}
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        {wl != null && (
+                          <div className={`font-black text-xl tabular-nums ${wl >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                            {wl >= 0 ? '+' : ''}{fmt$(wl)}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3">
+                          {/* Edit */}
+                          <button
+                            onClick={() => { setDeletingId(null); openEditSession(session) }}
+                            className="text-zinc-500 hover:text-zinc-300 active:text-white touch-manipulation"
+                            title="Edit session"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                              <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.583 1.707a.25.25 0 0 0 .316.316l1.708-.583a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.475ZM3.75 11A.75.75 0 0 0 3 11.75v.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 0-1.5h-8.5Z" />
+                            </svg>
+                          </button>
+                          {/* Delete */}
+                          <button
+                            onClick={() => setDeletingId(isDeleting ? null : session.id)}
+                            className={`touch-manipulation transition-colors ${isDeleting ? 'text-red-400' : 'text-zinc-600 hover:text-red-400 active:text-red-300'}`}
+                            title="Delete session"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                              <path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.493-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.05 6a.75.75 0 0 1 .787.713l.275 5.5a.75.75 0 0 1-1.498.075l-.275-5.5A.75.75 0 0 1 6.05 6Zm3.9 0a.75.75 0 0 1 .712.787l-.275 5.5a.75.75 0 0 1-1.498-.075l.275-5.5A.75.75 0 0 1 9.95 6Z" clipRule="evenodd" />
+                            </svg>
+                          </button>
                         </div>
-                      )}
+                      </div>
                     </div>
-                    {session.notes && (
-                      <div className="text-zinc-500 text-xs mt-2 line-clamp-1">{session.notes}</div>
+
+                    {/* Inline delete confirm */}
+                    {isDeleting && (
+                      <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-0">
+                        <span className="text-red-400 text-xs font-semibold">Delete this session?</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 font-semibold touch-manipulation active:bg-zinc-800"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => { setDeletingId(null); deleteSession(session.id) }}
+                            className="rounded-xl bg-red-600 px-3 py-1.5 text-xs text-white font-bold touch-manipulation active:bg-red-700"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 )
               })}
             </div>

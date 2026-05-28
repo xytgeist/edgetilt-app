@@ -26,7 +26,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 const DEBOUNCE_MS = 280
 const MIN_CHARS = 2
-const LOCAL_LIMIT = 6
+const LOCAL_LIMIT = 20
 
 function fmtMiles(mi) {
   return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`

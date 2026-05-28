@@ -83,6 +83,8 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
   // Sheet form state
   const [bankrollInput, setBankrollInput] = useState('')
   const [startCasino, setStartCasino] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [startTime, setStartTime] = useState('')
   const [startAmount, setStartAmount] = useState('')
   const [endAmount, setEndAmount] = useState('')
   const [sessionNotes, setSessionNotes] = useState('')
@@ -170,9 +172,12 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
     if (activeSession) { setError('You already have a session in progress.'); return }
     setSaving(true); setError('')
     try {
+      const startAt = startDate && startTime
+        ? new Date(`${startDate}T${startTime}:00`).toISOString()
+        : new Date().toISOString()
       const { data, error: err } = await supabaseClient
         .from('bankroll_sessions')
-        .insert({ user_id: userId, casino_name: startCasino.trim() || null, start_amount: amt, start_at: new Date().toISOString(), status: 'active' })
+        .insert({ user_id: userId, casino_name: startCasino.trim() || null, start_amount: amt, start_at: startAt, status: 'active' })
         .select().single()
       if (err) throw err
       setSessions(prev => [data, ...prev])
@@ -362,8 +367,12 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
     setError(''); setSheet('setBankroll')
   }
   const openStartSession = () => {
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10)
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
     setNearbyCasinos([])
-    setStartCasino(''); setStartAmount(''); setError(''); setSheet('startSession')
+    setStartCasino(''); setStartDate(today); setStartTime(`${hh}:${mm}`); setStartAmount(''); setError(''); setSheet('startSession')
     fetchNearby(name => setStartCasino(name))
   }
   const openEndSession = () => {
@@ -597,6 +606,22 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                       nearbyCasinos={nearbyCasinos}
                       gpsLoading={gpsLoading}
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Date</label>
+                      <DateWheelPicker
+                        value={startDate}
+                        onChange={setStartDate}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Start time</label>
+                      <TimeWheelPicker
+                        value={startTime}
+                        onChange={setStartTime}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-zinc-400 text-xs mb-1.5">Session starting amount</label>

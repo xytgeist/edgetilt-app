@@ -14,7 +14,8 @@ function applyKey(current, key, allowNegative) {
 
   if (key === '−') {
     if (!allowNegative) return current
-    if (current === '' || current === '-') return current
+    if (current === '') return '-'       // start negative before typing digits
+    if (current === '-') return ''       // tap again to cancel
     return current.startsWith('-') ? current.slice(1) : '-' + current
   }
 

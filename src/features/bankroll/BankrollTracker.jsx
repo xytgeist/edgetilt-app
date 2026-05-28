@@ -1019,30 +1019,52 @@ function MoneyInput({
 }) {
   const [open, setOpen] = useState(shouldAutoFocus)
   const containerRef = useRef(null)
+  const scrollableRef = useRef(null)
+  const prevPbRef = useRef('')
 
-  // Scroll the focused field above the keypad when it opens
+  // Find the nearest scrollable ancestor once on mount
   useEffect(() => {
-    if (!open || !containerRef.current) return
-    const KEYPAD_HEIGHT = 360 // approx keypad + preview + safe area
-    const timer = setTimeout(() => {
-      const el = containerRef.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      const visibleBottom = window.innerHeight - KEYPAD_HEIGHT - 16
-      if (rect.bottom > visibleBottom) {
-        const scrollBy = rect.bottom - visibleBottom
-        let parent = el.parentElement
-        while (parent && parent !== document.body) {
-          const { overflow, overflowY } = getComputedStyle(parent)
-          if (/(auto|scroll)/.test(overflow + overflowY)) {
-            parent.scrollBy({ top: scrollBy, behavior: 'smooth' })
-            break
-          }
-          parent = parent.parentElement
-        }
+    let node = containerRef.current?.parentElement
+    while (node && node !== document.body) {
+      const { overflow, overflowY } = getComputedStyle(node)
+      if (/(auto|scroll)/.test(overflow + overflowY)) {
+        scrollableRef.current = node
+        break
       }
-    }, 60)
-    return () => clearTimeout(timer)
+      node = node.parentElement
+    }
+  }, [])
+
+  // Lift sheet when keypad opens; restore when it closes
+  useEffect(() => {
+    const scrollable = scrollableRef.current
+    if (!scrollable || !containerRef.current) return
+
+    if (open) {
+      // Wait one frame for the keypad portal to render, then measure it
+      const timer = setTimeout(() => {
+        const keypad = document.querySelector('[data-money-keypad]')
+        const kh = keypad ? keypad.getBoundingClientRect().height : 340
+        const GAP = 16
+
+        // Pad the sheet so content can scroll past the keypad
+        prevPbRef.current = scrollable.style.paddingBottom
+        scrollable.style.paddingBottom = `${kh}px`
+
+        // Scroll the field into the visible window above the keypad
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (rect) {
+          const visibleBottom = window.innerHeight - kh - GAP
+          if (rect.bottom > visibleBottom) {
+            scrollable.scrollBy({ top: rect.bottom - visibleBottom, behavior: 'smooth' })
+          }
+        }
+      }, 60)
+      return () => clearTimeout(timer)
+    } else {
+      // Restore original padding
+      scrollable.style.paddingBottom = prevPbRef.current
+    }
   }, [open])
 
   const numVal = parseFloat(value)

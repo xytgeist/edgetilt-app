@@ -9,6 +9,7 @@ import {
   normalizeLoadedEvent,
 } from './utils'
 import ReviewQueuePanel from './components/ReviewQueuePanel'
+import CasinoListPanel from './components/CasinoListPanel'
 import UploadProgressOverlay from './components/UploadProgressOverlay'
 import OfferFormModal from './components/OfferFormModal'
 import WeekEventDetailModal from './components/WeekEventDetailModal'
@@ -35,6 +36,7 @@ export default function OffersCalendar({
   hasSlotsEdge = true,
   onRequireSubscribe,
   titleBarNavSlot = null,
+  isAdmin = false,
 }) {
   /** Gate for the large legacy push / iOS help block below (was `false &&`). */
   const showLegacyOffersPushPanel = false
@@ -1194,6 +1196,8 @@ export default function OffersCalendar({
       ) : null}
 
       <ReviewQueuePanel reviewQueue={reviewQueue} onComplete={beginReviewItem} onSkip={(itemId) => void skipReviewItem(itemId)} />
+
+      {isAdmin && <CasinoListPanel supabaseClient={supabaseClient} />}
 
       <div className={isWeekView ? 'flex flex-col gap-2' : 'mb-2'}>
           <div className={`flex shrink-0 flex-col gap-1 ${isWeekView ? '' : 'mb-2'}`}>

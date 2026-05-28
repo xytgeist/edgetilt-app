@@ -1139,6 +1139,7 @@ export default function AppShell({
           hasSlotsEdge={hasActiveSubscription || isStaff}
           onRequireSubscribe={() => onRequireSubscribe?.('slots-edge')}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          isAdmin={isAdmin}
         />
       )
     } else if (tab === 'bankroll') {

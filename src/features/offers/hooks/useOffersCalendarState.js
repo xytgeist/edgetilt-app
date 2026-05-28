@@ -163,13 +163,13 @@ export default function useOffersCalendarState({
 
   const offerTypeMeta = useMemo(
     () => ({
-      free_play:  { label: 'Free play',       dot: 'bg-[#AA00FF]', chip: 'bg-[#AA00FF]/15 text-white border-[#AA00FF]/40', card: 'bg-[#AA00FF]/30' },
+      free_play:  { label: 'Free play',       dot: 'bg-[#2979FF]', chip: 'bg-[#2979FF]/15 text-white border-[#2979FF]/40', card: 'bg-[#2979FF]/30' },
       hotel:      { label: 'Hotel stay',      dot: 'bg-[#00BCD4]', chip: 'bg-[#00BCD4]/15 text-white border-[#00BCD4]/40', card: 'bg-[#00BCD4]/30' },
       dining:     { label: 'Dining credit',   dot: 'bg-[#FF6D00]', chip: 'bg-[#FF6D00]/15 text-white border-[#FF6D00]/40', card: 'bg-[#FF6D00]/30' },
       gift:       { label: 'Gift day',        dot: 'bg-[#FFD600]', chip: 'bg-[#FFD600]/15 text-white border-[#FFD600]/40', card: 'bg-[#FFD600]/30' },
       multiplier: { label: 'Tier multiplier', dot: 'bg-[#E040FB]', chip: 'bg-[#E040FB]/15 text-white border-[#E040FB]/40', card: 'bg-[#E040FB]/30' },
       tournament: { label: 'Tournament',      dot: 'bg-[#FF1744]', chip: 'bg-[#FF1744]/15 text-white border-[#FF1744]/40', card: 'bg-[#FF1744]/30' },
-      drawing:    { label: 'Drawing',         dot: 'bg-[#2979FF]', chip: 'bg-[#2979FF]/15 text-white border-[#2979FF]/40', card: 'bg-[#2979FF]/30' },
+      drawing:    { label: 'Drawing',         dot: 'bg-[#AA00FF]', chip: 'bg-[#AA00FF]/15 text-white border-[#AA00FF]/40', card: 'bg-[#AA00FF]/30' },
       other:      { label: 'Other',           dot: 'bg-[#90A4AE]', chip: 'bg-[#90A4AE]/15 text-white border-[#90A4AE]/40', card: 'bg-[#90A4AE]/30' }
     }),
     []

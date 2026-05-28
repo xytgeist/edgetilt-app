@@ -296,6 +296,11 @@ export default function useOffersCalendarMutations({
           }
         }
       }
+      // Fire-and-forget: add casino name to global list if new
+      if (draft.casinoName?.trim()) {
+        supabaseClient.rpc('upsert_casino_name', { p_name: draft.casinoName.trim() }).then(() => {}).catch(() => {})
+      }
+
       saveCompleted = true
       if (!editingId && !pendingReviewId) {
         const focusDate = new Date(normalizedStart.getFullYear(), normalizedStart.getMonth(), normalizedStart.getDate())

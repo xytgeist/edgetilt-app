@@ -1110,13 +1110,13 @@ html.light [data-offer-type] [class*="h-2"][class*="rounded-full"]:not([class*="
 html.light [data-offer-type] { --list-month-color: var(--ot-color); }
 
 /* Dark mode: --ot-color = vibrant accent per event type */
-[data-offer-type="free_play"]  { --ot-color: #AA00FF; }
+[data-offer-type="free_play"]  { --ot-color: #2979FF; }
 [data-offer-type="hotel"]      { --ot-color: #00BCD4; }
 [data-offer-type="dining"]     { --ot-color: #FF6D00; }
 [data-offer-type="gift"]       { --ot-color: #FFD600; }
 [data-offer-type="multiplier"] { --ot-color: #E040FB; }
 [data-offer-type="tournament"] { --ot-color: #FF1744; }
-[data-offer-type="drawing"]    { --ot-color: #2979FF; }
+[data-offer-type="drawing"]    { --ot-color: #AA00FF; }
 [data-offer-type="other"]      { --ot-color: #90A4AE; }
 
 /* Light mode: --ot-color = darker hex (readable on white) */

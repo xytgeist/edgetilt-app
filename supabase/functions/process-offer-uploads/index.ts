@@ -28,12 +28,65 @@ const AUTO_CREATE_CONFIDENCE = Number(Deno.env.get('AI_AUTO_CREATE_CONFIDENCE') 
 const MAX_BATCH_SIZE = Number(Deno.env.get('AI_PROCESS_BATCH_SIZE') ?? '20')
 const MAX_EVENTS_PER_IMAGE = Number(Deno.env.get('AI_MAX_EVENTS_PER_IMAGE') ?? '30')
 const DEFAULT_TIMEZONE = Deno.env.get('AI_DEFAULT_TIMEZONE') ?? 'America/Los_Angeles'
+const CASINO_MATCH_THRESHOLD = Number(Deno.env.get('AI_CASINO_MATCH_THRESHOLD') ?? '0.35')
+
+type KnownCasino = { name: string; aliases: string[] }
 
 function normalizeText(value: string | null | undefined): string {
   return (value ?? '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
+}
+
+// ── Casino fuzzy matching ────────────────────────────────────────────────────
+
+function trigramSet(str: string): Set<string> {
+  const s = ` ${str} `
+  const grams = new Set<string>()
+  for (let i = 0; i < s.length - 2; i++) grams.add(s.slice(i, i + 3))
+  return grams
+}
+
+function trigramSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0
+  const ga = trigramSet(a)
+  const gb = trigramSet(b)
+  let shared = 0
+  for (const g of ga) if (gb.has(g)) shared++
+  return (2 * shared) / (ga.size + gb.size)
+}
+
+function matchCasinoName(
+  extracted: string,
+  casinos: KnownCasino[]
+): { matched: boolean; canonical: string | null } {
+  if (!casinos.length) return { matched: false, canonical: null }
+  const norm = normalizeText(extracted)
+  if (!norm) return { matched: false, canonical: null }
+
+  let bestScore = 0
+  let bestName: string | null = null
+
+  for (const casino of casinos) {
+    const candidates = [casino.name, ...casino.aliases].map(normalizeText).filter(Boolean)
+    for (const candidate of candidates) {
+      // Exact match shortcut
+      if (candidate === norm) return { matched: true, canonical: casino.name }
+      // Substring shortcut (e.g. "bellagio" in "bellagio hotel casino")
+      if (candidate.includes(norm) || norm.includes(candidate)) {
+        const score = 0.85
+        if (score > bestScore) { bestScore = score; bestName = casino.name }
+        continue
+      }
+      const score = trigramSimilarity(norm, candidate)
+      if (score > bestScore) { bestScore = score; bestName = casino.name }
+    }
+  }
+
+  return bestScore >= CASINO_MATCH_THRESHOLD
+    ? { matched: true, canonical: bestName }
+    : { matched: false, canonical: null }
 }
 
 function textOrNull(value: unknown): string | null {
@@ -462,6 +515,18 @@ Deno.serve(async (req) => {
       await admin.from('offer_import_batches').update({ status: 'processing', error_message: null }).eq('id', batchId).eq('user_id', userId)
     }
 
+    // Load the global casino name list once per request (empty = no validation)
+    let knownCasinos: KnownCasino[] = []
+    try {
+      const { data: casinoRows } = await admin
+        .from('casinos')
+        .select('name, aliases')
+        .order('name', { ascending: true })
+      if (Array.isArray(casinoRows)) knownCasinos = casinoRows as KnownCasino[]
+    } catch (_) {
+      // Table may not exist yet; proceed without casino validation
+    }
+
     let created = 0
     let queuedForReview = 0
     let failed = 0
@@ -510,7 +575,20 @@ Deno.serve(async (req) => {
           const hasCasino = !!(parsed.casino_name && parsed.casino_name.trim())
           const hasTitle = !!(parsed.title && parsed.title.trim())
           const hasStart = !!parsed.start_at
-          const hasRequiredFields = hasCasino && hasTitle && hasStart
+
+          // Casino name validation — only runs when the global list is populated
+          let casinoKnown = true
+          if (hasCasino && knownCasinos.length > 0) {
+            const match = matchCasinoName(parsed.casino_name!, knownCasinos)
+            if (match.matched) {
+              parsed.casino_name = match.canonical ?? parsed.casino_name
+            } else {
+              casinoKnown = false
+              warnings.push(`Unrecognized casino: "${parsed.casino_name}" — please verify and add to the casino list.`)
+            }
+          }
+
+          const hasRequiredFields = hasCasino && casinoKnown && hasTitle && hasStart
           const shouldAutoCreate = confidence >= AUTO_CREATE_CONFIDENCE && hasRequiredFields
 
           if (shouldAutoCreate) {
@@ -560,7 +638,11 @@ Deno.serve(async (req) => {
                   ? [`Auto-create skipped: confidence ${confidence.toFixed(2)} below threshold ${AUTO_CREATE_CONFIDENCE.toFixed(2)}.`]
                   : [
                       `Auto-create skipped: missing required field(s): ${
-                        [hasCasino ? null : 'casino_name', hasTitle ? null : 'title', hasStart ? null : 'start_at']
+                        [
+                          hasCasino && casinoKnown ? null : !hasCasino ? 'casino_name' : 'unrecognized casino',
+                          hasTitle ? null : 'title',
+                          hasStart ? null : 'start_at'
+                        ]
                           .filter(Boolean)
                           .join(', ') || 'unknown'
                       }.`

@@ -1143,7 +1143,12 @@ export default function AppShell({
         />
       )
     } else if (tab === 'bankroll') {
-      visibleTab = <BankrollTracker titleBarNavSlot={renderTitleBarNavSlot()} />
+      visibleTab = (
+        <BankrollTracker
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+        />
+      )
     } else if (tab === 'intel') {
       visibleTab = <LocalIntel supabaseClient={supabaseClient} titleBarNavSlot={renderTitleBarNavSlot()} />
     } else if (tab === 'team') {

@@ -382,6 +382,11 @@ export default function useOffersCalendarState({
         }
       }
       if (!path) return
+      // R2 images are full public URLs; Supabase Storage paths need a signed URL
+      if (path.startsWith('https://') || path.startsWith('http://')) {
+        setReviewSourceImageUrl(path)
+        return
+      }
       setReviewSourceImageLoading(true)
       try {
         const { data, error: signedErr } = await supabaseClient.storage.from('offer-mailers').createSignedUrl(path, 60 * 30)

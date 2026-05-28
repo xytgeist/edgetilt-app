@@ -519,7 +519,7 @@ Deno.serve(async (req) => {
     let knownCasinos: KnownCasino[] = []
     try {
       const { data: casinoRows } = await admin
-        .from('offer_casino_names')
+        .from('casinos')
         .select('name, aliases')
         .order('name', { ascending: true })
       if (Array.isArray(casinoRows)) knownCasinos = casinoRows as KnownCasino[]

@@ -16,7 +16,7 @@ export default function CasinoListPanel({ supabaseClient }) {
     setError('')
     try {
       const { data, error: err } = await supabaseClient
-        .from('offer_casino_names')
+        .from('casinos')
         .select('id, name, aliases, source, created_at')
         .order('created_at', { ascending: false })
       if (err) throw err
@@ -39,7 +39,7 @@ export default function CasinoListPanel({ supabaseClient }) {
     setError('')
     try {
       const { error: err } = await supabaseClient
-        .from('offer_casino_names')
+        .from('casinos')
         .insert({ name, source: 'admin' })
       if (err) throw err
       setAddName('')
@@ -55,7 +55,7 @@ export default function CasinoListPanel({ supabaseClient }) {
     setDeletingId(id)
     setError('')
     try {
-      const { error: err } = await supabaseClient.from('offer_casino_names').delete().eq('id', id)
+      const { error: err } = await supabaseClient.from('casinos').delete().eq('id', id)
       if (err) throw err
       setCasinos((prev) => prev.filter((c) => c.id !== id))
     } catch (e) {

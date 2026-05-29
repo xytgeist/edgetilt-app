@@ -421,7 +421,7 @@ input[list]::-webkit-list-button {
 }
 
 .lounge-cold-boot-splash--out {
-  animation: loungeColdBootSplashOut 120ms ease-out forwards;
+  animation: loungeColdBootSplashOut 320ms ease-out forwards;
   pointer-events: none;
 }
 

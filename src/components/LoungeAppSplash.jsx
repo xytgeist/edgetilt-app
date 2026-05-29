@@ -40,7 +40,7 @@ const SPLASH_MAX_MS = 7000
  *                       keeping the status bar dark for the full duration of the splash.
  *   5. bottomCover strip — masks the viewport band below the shifted canvas so the feed
  *                       cannot leak through transparent canvas pixels during fly-through.
- *                       Hidden once fly-through finishes (frame 190); splash dismiss follows.
+ *                       Hidden when fly-through finishes (frame 190); splash dismiss is unchanged.
  *
  * Status bar: iOS PWA caches apple-mobile-web-app-status-bar-style at install time
  * and does not resample translucent-bar content dynamically during JS execution.
@@ -59,14 +59,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
   const bottomCoverRef = useRef(null)
   const statusBarRef = useRef(null)
   const onCompleteRef = useRef(onAnimationComplete)
-  const animationCompleteFiredRef = useRef(false)
   onCompleteRef.current = onAnimationComplete
-
-  const signalAnimationComplete = () => {
-    if (animationCompleteFiredRef.current) return
-    animationCompleteFiredRef.current = true
-    onCompleteRef.current?.()
-  }
 
   useLayoutEffect(() => {
     const isDarkEffect = document.documentElement.classList.contains('dark')
@@ -97,7 +90,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       renderConfig: { autoResize: false },
     })
 
-    const done = () => signalAnimationComplete()
+    const done = () => onCompleteRef.current?.()
     const fallback = setTimeout(done, SPLASH_MAX_MS)
 
     player.addEventListener('frame', ({ currentFrame }) => {
@@ -119,20 +112,16 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         overlayRef.current.style.opacity = String(1 - t)
       }
 
-      // Fly-through ends at frame 190; frames 190–251 are a static tail before `complete`.
-      // Drop the bottom cover and signal readiness so the splash can dismiss without
-      // ~1s of dead time with the bar still masking the feed.
-      if (currentFrame >= FLY_THROUGH_END) {
-        if (bottomCoverRef.current) {
-          bottomCoverRef.current.style.display = 'none'
-        }
-        signalAnimationComplete()
+      // Fly-through done — drop the bottom cover only. Splash dismiss still waits for `complete`.
+      if (currentFrame >= FLY_THROUGH_END && bottomCoverRef.current) {
+        bottomCoverRef.current.style.display = 'none'
+        bottomCoverRef.current = null
       }
     })
 
     player.addEventListener('complete', () => {
       clearTimeout(fallback)
-      signalAnimationComplete()
+      done()
     })
 
     return () => {

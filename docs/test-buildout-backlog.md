@@ -55,6 +55,101 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ---
 
+## Planned (Play Logbook — not started)
+
+**Product intent (Ryan, 2026-05-29):** AP slot players — especially on **newer titles** — need a **Play Logbook** to capture floor data during scouting/plays and **analyze** it later for exploitation (hit distributions, bonus frequency, counter behavior, etc.). Distinct from **Bankroll Tracker** (session P&L only) and from **Local Intel** (public field reports).
+
+**Surface:** new **Slots hub** tile (**Logbook** or **Play Log**) under `src/features/slots/SlotsScreen.jsx`; lazy-loaded feature module (e.g. `src/features/play-logbook/`). Subscribe gate TBD — align with **Bankroll** / **Slots Edge** in `docs/access-tiers.md` when implementing.
+
+### Capture (log entry)
+
+- **Game picker:** dropdown of **known AP slot games** (seed from `machines` catalog + calculator slugs where applicable: Phoenix Link, Buffalo Link, Stack Up Pays, MHB, …).
+- **Per-game metric schema:** each template defines which fields appear on the entry form. Examples Ryan specified:
+  - **Phoenix Link / Buffalo Link** (MHB-style counter games): `counter`, `bet_size`, `denom`, `spin_count`, `bonus_count`, `money_in`, `money_out`, `counter_at_hit`.
+  - **Stack Up Pays** (multi-meter): `bet_size`, `denom`, `mega`, `grand`, `major`, `minor`, `mini`, `spin_count`, `money_in`, `money_out`, `target_bonus_paid`.
+- **Metric registry:** one canonical list of **quantifiable capture fields** (shared subset across games). Templates pick a subset; types include integer counter, money, denom, spin count, etc.
+- **Custom games:** **Create new** → user names the game → multi-select from the **full metric registry** → saves a **user-owned template** (reusable for future entries).
+- **Entry row:** one logbook row = one captured play/sample (optionally: casino, date/time, free-text notes — TBD at implementation).
+
+### Analysis (read path)
+
+- Filter/slice logged entries **by game template** (and date range, casino — TBD).
+- **Derived metrics** computed from captured fields, e.g.:
+  - average **money out per entry** (or per winning entry)
+  - average **bonuses per 100 spins**
+  - average **counter increment per spin** (where counter + spin_count present)
+  - hit-band stats when `counter_at_hit` logged (distribution, avg hit counter vs cap — ties to MHB calcs)
+  - Stack Up: frequency / payout stats per meter tier when meter fields + `target_bonus_paid` present
+- Start with **obvious aggregates** in v1; charting optional follow-on (reuse `chart.js` patterns from Bankroll tabs).
+
+### Implementation sketch (when picked up)
+
+- **SQL (test first):** e.g. `play_log_metric_defs` (slug, label, value_type), `play_log_game_templates` (builtin flag, `user_id` nullable for system templates, `machine_slug` optional FK, `metric_slugs text[]`), `play_log_entries` (`user_id`, `template_id`, `captured_at`, `casino_name` optional, `values jsonb` keyed by metric slug). RLS: users CRUD own templates (custom) + own entries; public read on builtin template defs only.
+- **Seed:** map known games → metric sets (Phoenix, Buffalo, Stack Up, generic MHB preset).
+- **Client:** Logbook home (recent entries + **+ Log play**), game picker, dynamic form from template, history list, **Analysis** tab/screen with game filter + computed stats.
+- **Cross-links (later):** pre-fill from open calculator session; attach entry to active **bankroll session**; export CSV.
+
+### Status
+
+- [x] **Phase 0 — spec + schema:** `supabase/play_logbook.sql` + migration **`20260529120000_play_logbook.sql`** — metric registry, system templates (Phoenix Link, Buffalo Link, Stack Up Pays, MHB generic), RLS. **Apply on test before UI works.**
+- [x] **Phase 1 — capture UI:** `src/features/play-logbook/PlayLogbook.jsx` — Slots hub **Logbook** tile, game picker, dynamic form, custom template builder, entry list.
+- [x] **Phase 2 — analysis UI:** ANALYZE tab — per-game derived stats (`playLogAnalysis.js`).
+- [ ] **Phase 3 — polish:** calculator pre-fill, bankroll session link, CSV export (optional).
+
+**Built on `test` (2026-05-29)** — Ryan smoke pending. Apply SQL on test Supabase first.
+
+---
+
+## Shipped (Quick links — title bar shortcuts — v1, 2026-05-29)
+
+**Product intent (Ryan, 2026-05-29):** Members want **one-tap** access to tools they use constantly (e.g. Bankroll) without hamburger → Slots hub → tile every time.
+
+### Decisions (Ryan)
+
+| Topic | Decision |
+| --- | --- |
+| **Default** | **Empty** until the user turns on quick links themselves (no pre-fill for subscribers). |
+| **Calcs shortcut** | Opens **Calculators tab home** (picker) — **not** a specific game or last-opened calc. |
+| **Anonymous** | Non-issue — anon is Lounge read-only; quick links only on member tool surfaces. |
+| **Configuration UX** | **Per-screen toggle** on the tool page itself (not Profile / hamburger settings). Unobtrusive **“Quick link”** switch at the **top** of each eligible screen. ON → adds that destination to the title bar. |
+| **Max slots** | **2** quick links globally. Attempting a **3rd** → modal: explains limit, lists the **two active** links with their switches so user can turn one (or both) off, then enable the new one. |
+| **Title bar placement** | Up to **2 icon buttons** in the fixed title bar row, **left of hamburger** (same cluster as `titleBarNavSlot` in `ScrollLinkedEdgeTitleBarShell` / Lounge feed bar). On **Lounge dock panels** (search, notifications, settings, chat), the hamburger cluster **slides left** to make room for the panel **×** close button — logo max-width reserves extra space via `titleBarLayout.js` (`panelCloseVisible`). |
+
+### Eligible destinations (v1 allowlist)
+
+Each maps to an `AppShell` tab (and subscribe/auth gates unchanged):
+
+- **Calculators** (`calculators` — home only, `activeCalculator` null)
+- **Calendar** (`offers`)
+- **Bankroll** (`bankroll` — Slots Edge)
+- **Logbook** (`logbook` — Slots Edge)
+- **AP Guides** (`guides`)
+
+**Not quick-linkable:** Lounge home, Team, Slots hub, individual calculator games, **Local Intel** (hidden from Slots hub; Lounge covers field intel for now).
+
+Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel.
+
+### Implementation sketch (when picked up)
+
+- **Registry:** `src/features/shell/quickLinkDestinations.js` — id, label, icon, `tab`, optional `requiresSlotsEdge` / calc gate flags.
+- **Persist:** `localStorage` key e.g. `lvsp:quickLinks:v1` → `string[]` of ≤2 destination ids (profile column optional later).
+- **Shell:** `AppShell.jsx` — read store, render icons in `renderTitleBarNavSlot()`; tap → same navigation + subscribe/auth as hub tiles.
+- **Shared UI:** `QuickLinkPageToggle.jsx` — small switch row for top of each eligible screen; coordinates with store + **at-cap modal** (`QuickLinkAtCapModal.jsx`).
+- **Light/dark:** reuse title bar / zinc patterns; scope any light overrides under `data-quick-link-*` if needed (same discipline as bankroll/logbook).
+- **Do not** add switches on **individual game calculator** roots — only **CalculatorsTab** home.
+
+### Status
+
+- [x] Registry + localStorage store (`quickLinkDestinations.js`, `quickLinksStore.js`)
+- [x] Title bar icon buttons (`TitleBarQuickLinks.jsx` in `AppShell` `renderTitleBarNavSlot`; Lounge feed + dock panels via `titleBarNavSlot` + dynamic logo width)
+- [x] Per-page “Quick link” toggle + at-cap modal (`QuickLinkPageToggle.jsx`, `QuickLinkAtCapModal.jsx`)
+- [x] Wire toggles on: CalculatorsTab (home only), BankrollTracker, PlayLogbook, OffersCalendar, GuidesScreen
+- [x] Light-mode scoped overrides (`data-quick-link-*` in `index.css`)
+
+**Shipped v1.** Optional later: persist to profile column instead of `localStorage` only.
+
+---
+
 ## Planned (partner / server API — medium priority)
 
 - [ ] **Lounge — trusted partner auto-post (HTTP API):** Let an external system (cron, Zapier, another product’s backend) publish **text-first** Lounge posts **without** a browser session. **Do not** share Supabase **service role** with the partner; they call **your** URL only (e.g. **Vercel serverless** or **Supabase Edge Function**). **Auth:** `Authorization: Bearer <integration secret>` (rotate in env); optional **IP allowlist**; **`Idempotency-Key`** header to dedupe retries; tight **rate limit** (e.g. a few posts per day per key). **Implementation sketch:** server validates secret, then uses **service-role** Supabase on **your** side to `insert` into **`community_feed_posts`** with fixed **`user_id`** = a **dedicated** `auth.users` row + **`profiles`** (clear handle for attribution). Align insert columns with **`communityFeedPostInsertPayload`** in `src/utils/communityFeedPost.js` (caption ≤280; optional `game_title` / `game_slug`; extend later for image URL if product allows). **Watch:** existing **`rate_limit_events`** / `BEFORE INSERT` guard on posts (`feed_phase_a_profiles_public_read.sql` §A4) may apply to that user — decide exempt vs. partner account tuned for low volume. **Test validation:** `curl` happy path + wrong secret + duplicate idempotency key; confirm feed row + author profile in app. **Production replay:** env var names in `production-rollout-checklist.md` §1; add Edge row + §4 if shipped as a function.
@@ -646,4 +741,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - 2026-05-09: Started Phase C gating with profile completion modal (handle/display name) before posting from Lounge or Guides.
 - 2026-05-09: Documented modular frontend: `App.jsx` (auth) + `features/shell/AppShell.jsx` (logged-in shell); Lounge, Offers, Intel, Bankroll, Calculators under `src/features/`; calculator games under `features/calculators/games/` (see `docs/frontend-architecture.md`).
 - 2026-05-09: Doc sync — marked **A2** (caption-only, legacy columns dropped) and **A4** (DB rate limit in phase A SQL) complete on test; clarified A3 includes 30-minute author update policy in SQL.
+- 2026-05-29: **Quick links v1 (test):** Title bar shortcuts (max 2, `localStorage`); **`TitleBarQuickLinks`** in hamburger cluster; per-page **`QuickLinkPageToggle`** on Calcs home, Bankroll, Logbook, Calendar, AP Guides; at-cap modal; dynamic logo width via **`titleBarLayout.js`** (extra reserve on Lounge dock panels for **×** close). Light-mode **`data-quick-link-*`** CSS.
+- 2026-05-29: **Play Logbook (test / branch `test`):** Schema **`supabase/play_logbook.sql`** + migration **`20260529120000`**; client **`src/features/play-logbook/`** (LOG + ANALYZE tabs, custom templates); Slots hub **Logbook** tile; Slots Edge gate; light-mode scoped CSS **`data-play-logbook*`** in **`index.css`**. **Apply SQL on test before smoke.**
+- 2026-05-29: **Planned (Play Logbook):** Ryan spec captured → shipped v1 (see row above).
 - 2026-05-26: **Fix: comment repost like counter optimistic update (`test`):** `toggleLoungeDetailCommentLike` was only patching `setLoungeDetailComments` (detail view), never `communityPosts`. Added `setCommunityPosts` patch that updates `p.reposted_comment.like_count` when a matching comment id is found. Ryan **PASSED** on `test` @ `e1d09a4`.

@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import TitleBarStatusLine from './TitleBarStatusLine.jsx'
 import { LOUNGE_FEED_TITLE_BAR_ROW_CLASS } from '../features/lounge/loungeFeedAvatar.js'
+import { useQuickLinkIds } from '../features/shell/quickLinksStore.js'
+import { edgeLogoTitleBarClassName } from '../features/shell/titleBarLayout.js'
 
 /**
  * Fixed EDGE title bar + scroll-linked hide/show — same chrome and tuning as
@@ -29,6 +31,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const [titleBarHeight, setTitleBarHeight] = useState(0)
   const [titleReveal, setTitleReveal] = useState(1)
   const [feedViewportTopPx, setFeedViewportTopPx] = useState(0)
+  const quickLinkIds = useQuickLinkIds()
+  const logoClassName = edgeLogoTitleBarClassName(quickLinkIds.length)
 
   useLayoutEffect(() => {
     const bar = titleBarRef.current
@@ -125,7 +129,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
         }}
       >
         <div className={`flex items-center justify-between gap-3 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
-          <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
+          <EdgeLogoWithEasterEgg className={logoClassName} />
           <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
             <TitleBarStatusLine />
             {titleBarNavSlot}

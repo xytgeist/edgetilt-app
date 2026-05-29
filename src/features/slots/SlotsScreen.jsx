@@ -1,10 +1,26 @@
-import { Calculator, CalendarDays, Wallet, BookOpen, Radar } from 'lucide-react'
+import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import { calculatorsTabFullyGated } from '../calculators/calculatorAccess.js'
 import { guidesTabFullyGated } from '../guides/guideAccess.js'
 
 const SLOTS_TOOLS = [
+  {
+    id: 'guides',
+    label: 'AP Guides',
+    Icon: BookOpen,
+    color: '#fb923c',
+    description: 'Advantage-play guides and community Q&A',
+    subscriberGated: (gatesMap) => guidesTabFullyGated(gatesMap),
+  },
+  {
+    id: 'bankroll',
+    label: 'Bankroll Manager',
+    Icon: Wallet,
+    color: '#34d399',
+    description: 'Track sessions and bankroll growth',
+    subscriberGated: () => true,
+  },
   {
     id: 'calculators',
     label: 'Calcs',
@@ -22,29 +38,14 @@ const SLOTS_TOOLS = [
     subscriberGated: () => false,
   },
   {
-    id: 'bankroll',
-    label: 'Bankroll',
-    Icon: Wallet,
-    color: '#34d399',
-    description: 'Track sessions and bankroll growth',
+    id: 'logbook',
+    label: 'Logbook',
+    Icon: ClipboardList,
+    color: '#f472b6',
+    description: 'Log AP plays and analyze your data',
     subscriberGated: () => true,
   },
-  {
-    id: 'guides',
-    label: 'AP Guides',
-    Icon: BookOpen,
-    color: '#fb923c',
-    description: 'Advantage-play guides and community Q&A',
-    subscriberGated: (gatesMap) => guidesTabFullyGated(gatesMap),
-  },
-  {
-    id: 'intel',
-    label: 'Intel',
-    Icon: Radar,
-    color: '#60a5fa',
-    description: 'Local casino conditions and field reports',
-    subscriberGated: () => false,
-  },
+  // Local Intel (`intel` tab) remains routable from AppShell for future use — not listed in hub (Ryan, 2026-05-29).
 ]
 
 export default function SlotsScreen({

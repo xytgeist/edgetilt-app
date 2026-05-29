@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -639,6 +640,8 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
         titleBarNavSlot={titleBarNavSlot}
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
+
+        <QuickLinkPageToggle destinationId="bankroll" />
 
         {/* Tab navigation */}
         <div className="flex gap-1 overflow-x-auto no-scrollbar mb-5 -mx-3 px-3">

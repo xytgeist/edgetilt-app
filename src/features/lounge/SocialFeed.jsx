@@ -216,6 +216,8 @@ import {
   LOUNGE_FEED_TITLE_BAR_ROW_CLASS,
   LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
 } from './loungeFeedAvatar.js'
+import { useQuickLinkIds } from '../shell/quickLinksStore.js'
+import { edgeLogoTitleBarClassName } from '../shell/titleBarLayout.js'
 import LoungePostDetailCommentSort from './LoungePostDetailCommentSort.jsx'
 import LoungePostDetailCommentHierarchy from './LoungePostDetailCommentHierarchy.jsx'
 import { readLoungeDetailCommentSort } from '../../utils/loungeFeedCommentSort.js'
@@ -817,6 +819,8 @@ export default function SocialFeed({
   const composerExpandedRef = useRef(loungeComposerInitial.expanded)
   const [loungeTitleBarHeight, setLoungeTitleBarHeight] = useState(0)
   const [loungeTitleReveal, setLoungeTitleReveal] = useState(1)
+  const quickLinkIds = useQuickLinkIds()
+  const loungeTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length)
   const [loungeFeedViewportTopPx, setLoungeFeedViewportTopPx] = useState(0)
   /** True when feed scroll auto-collapsed the composer; cleared on explicit open / post / discard. */
   const composerFoldedFromFeedScrollRef = useRef(false)
@@ -10252,7 +10256,7 @@ export default function SocialFeed({
           }}
         >
           <div className={`flex items-center justify-between gap-3 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
-            <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
+            <EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />
             <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
               <TitleBarStatusLine
                 loading={communityFeedLoading}

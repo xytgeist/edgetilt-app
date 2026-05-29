@@ -73,11 +73,34 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-## Last session recap (May 28 2026, branch `test`) — PICK UP HERE
+## Last session recap (May 29 2026, branch `test`) — PICK UP HERE
+
+### Next big feature — Play Logbook (v1 built 2026-05-29)
+
+Shipped on **`test`** (code only until SQL applied):
+
+- **Slots → Logbook** — LOG tab (capture + custom templates) + ANALYZE tab (derived stats)
+- **SQL:** run **`supabase/play_logbook.sql`** or migration **`20260529120000_play_logbook.sql`** on test Supabase
+- **Phase 3 still open:** calculator pre-fill, bankroll session link, CSV export
+
+See **`docs/test-buildout-backlog.md`** → *Planned (Play Logbook)*.
+
+### Shipped — Quick links (v1, 2026-05-29)
+
+Title-bar shortcuts (max **2**, empty by default). Per-page **Quick link** toggle on Calcs home, Calendar, Bankroll, Logbook, AP Guides. Lounge dock panels reserve extra logo width for **×** close. See backlog *Shipped (Quick links)*.
+
+### Also open from May 28
+
+- **Bankroll Risk Advisor** — move card **higher** in Phoenix/Buffalo/MHB layouts (still at bottom after disclaimer)
+- **"A few adjustments"** Ryan had in mind for Risk Advisor — ask if still relevant
+
+---
+
+## Last session recap (May 28 2026, branch `test`)
 
 ### What we were in the middle of
 
-We built the **Bankroll Risk Advisor** section for the calculators and Ryan had "a few adjustments" in mind when he had to switch computers. **Start by asking Ryan what those adjustments were before touching anything.**
+We built the **Bankroll Risk Advisor** section for the calculators and Ryan had "a few adjustments" in mind when he had to switch computers.
 
 ### What shipped today (all on `test`, all pushed)
 

@@ -40,10 +40,14 @@ import {
 } from '../../utils/loungeActivityInAppNavigate.js'
 import { queueLoungeActivityMarkRead } from '../../utils/loungeActivityMarkReadQueue.js'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
 import {
   calculatorRequiresSlotsEdge,
   canOpenCalculator,
+  calculatorsTabFullyGated,
 } from '../calculators/calculatorAccess.js'
+import { guidesTabFullyGated } from '../guides/guideAccess.js'
+import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
@@ -53,6 +57,7 @@ const GuidesScreen = lazy(() => import('../guides/GuidesScreen.jsx'))
 const BankrollTracker = lazy(() => import('../bankroll/BankrollTracker.jsx'))
 const LocalIntel = lazy(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazy(() => import('../calculators/CalculatorsTab.jsx'))
+const PlayLogbook = lazy(() => import('../play-logbook/PlayLogbook.jsx'))
 const SlotsScreen = lazy(() => import('../slots/SlotsScreen.jsx'))
 
 function TabLoadingFallback() {
@@ -815,7 +820,8 @@ export default function AppShell({
     setTab(toolId)
   }, [])
 
-  const SLOTS_TOOL_TAB_IDS = new Set(['calculators', 'offers', 'bankroll', 'guides', 'intel'])
+  const SLOTS_TOOL_TAB_IDS = new Set(['calculators', 'offers', 'bankroll', 'guides', 'intel', 'logbook'])
+  // `intel` — routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
 
   /** `subscriberGated`: show lock in menu for logged-in users without an active subscription (see `docs/access-tiers.md`). */
@@ -828,7 +834,7 @@ export default function AppShell({
   const showNavSubscriberLocks =
     browseMode === 'member' && !isStaff && !hasActiveSubscription
 
-  const SLOTS_EDGE_GATED_TABS = new Set(['bankroll'])
+  const SLOTS_EDGE_GATED_TABS = new Set(['bankroll', 'logbook'])
 
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
@@ -891,7 +897,15 @@ export default function AppShell({
     })
 
   const renderTitleBarNavSlot = () => (
-    <div className="relative z-[55] shrink-0">
+    <div className="flex items-center gap-1.5 shrink-0" data-title-bar-nav-cluster>
+      <TitleBarQuickLinks
+        browseMode={browseMode}
+        hasSlotsEdge={hasActiveSubscription}
+        isStaff={isStaff}
+        gatesMap={contentAccessGatesMap}
+        onNavigate={handleQuickLinkNavigate}
+      />
+      <div className="relative z-[55] shrink-0">
       {menuOpen ? (
         <div
           className="lounge-title-nav-menu absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
@@ -912,8 +926,42 @@ export default function AppShell({
           {menuOpen ? '×' : '☰'}
         </span>
       </button>
+      </div>
     </div>
   )
+
+  const handleQuickLinkNavigate = useCallback((id) => {
+    const dest = QUICK_LINK_BY_ID[id]
+    if (!dest) return
+    setMenuOpen(false)
+    setActiveCalculator(null)
+    if (browseMode !== 'member') {
+      onRequireAuth?.()
+      return
+    }
+    if (!isStaff && !hasActiveSubscription) {
+      if (dest.requiresSlotsEdge) {
+        onRequireSubscribe?.('slots-edge')
+        return
+      }
+      if (dest.guidesTabGate && guidesTabFullyGated(contentAccessGatesMap)) {
+        onRequireSubscribe?.('slots-edge')
+        return
+      }
+      if (id === 'calculators' && calculatorsTabFullyGated(contentAccessGatesMap)) {
+        onRequireSubscribe?.('slots-edge')
+        return
+      }
+    }
+    setTab(dest.tab)
+  }, [
+    browseMode,
+    contentAccessGatesMap,
+    hasActiveSubscription,
+    isStaff,
+    onRequireAuth,
+    onRequireSubscribe,
+  ])
 
   useEffect(() => {
     if (browseMode !== 'anonymous') return
@@ -1147,6 +1195,13 @@ export default function AppShell({
     } else if (tab === 'bankroll') {
       visibleTab = (
         <BankrollTracker
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+        />
+      )
+    } else if (tab === 'logbook') {
+      visibleTab = (
+        <PlayLogbook
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
         />

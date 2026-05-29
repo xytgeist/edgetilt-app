@@ -62,7 +62,7 @@ If the user attempts **any** of the following, show the **create account** popup
 **Navigation**
 
 - May open **all** other app areas from the **hamburger menu** (no blanket “create account” wall).
-- **Hamburger UI:** Top-level rows are **Lounge**, **Slots** (hub), and **Team**. **Slots** opens a hub that links to Calcs, Calendar, Bankroll, AP Guides, and Intel. Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar** stays **unlocked** at the hub because the calendar is free; **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
+- **Hamburger UI:** Top-level rows are **Lounge**, **Slots** (hub), and **Team**. **Slots** opens a hub that links to Calcs, Calendar, Bankroll, Logbook, and AP Guides (**Local Intel** removed from hub UI — route/code retained; Lounge covers field intel for now). Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar** stays **unlocked** at the hub because the calendar is free; **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
 
 **Per-feature subscribe requirements**
 

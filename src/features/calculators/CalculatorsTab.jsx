@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
@@ -152,6 +153,7 @@ export default function CalculatorsTab({
         titleBarNavSlot={titleBarNavSlot}
         contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
+        <QuickLinkPageToggle destinationId="calculators" />
         <CalculatorsHome
           onSelectCalculator={setActiveCalculator}
           browseMode={browseMode}

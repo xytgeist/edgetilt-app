@@ -14,6 +14,8 @@ import {
   LOUNGE_FEED_META_ROW_CLASS,
   LOUNGE_FEED_POST_ROW_CLASS,
 } from '../features/lounge/loungeFeedAvatar.js'
+import { useQuickLinkIds } from '../features/shell/quickLinksStore.js'
+import { edgeLogoTitleBarClassName } from '../features/shell/titleBarLayout.js'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -189,6 +191,8 @@ export default function LoungeDockSlidePanels({
   const [panelTitleBarHeight, setPanelTitleBarHeight] = useState(0)
   const panelTitleRevealRef = useRef(1)
   const [panelTitleReveal, setPanelTitleReveal] = useState(1)
+  const quickLinkIds = useQuickLinkIds()
+  const panelTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, { panelCloseVisible: true })
   const panelScrollPrevTopRef = useRef(0)
   const panelScrollVisualRafRef = useRef(0)
 
@@ -922,7 +926,7 @@ export default function LoungeDockSlidePanels({
         }}
       >
         <div className="flex items-center justify-between gap-2 px-3 py-2">
-          <EdgeLogoWithEasterEgg className="h-6 w-auto max-w-[min(140px,calc(100vw-9rem))] shrink-0 object-contain object-left" />
+          <EdgeLogoWithEasterEgg className={panelTitleLogoClassName} />
           <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
             <TitleBarStatusLine
               loading={communityFeedLoading}

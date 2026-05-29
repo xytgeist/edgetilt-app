@@ -15,6 +15,7 @@ import OfferFormModal from './components/OfferFormModal'
 import WeekEventDetailModal from './components/WeekEventDetailModal'
 import AddEventFab from './components/AddEventFab'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import useOffersCalendarState from './hooks/useOffersCalendarState'
 import useOffersCalendarMutations from './hooks/useOffersCalendarMutations'
 import useWebPushNotifications from './hooks/useWebPushNotifications'
@@ -1004,6 +1005,8 @@ export default function OffersCalendar({
             : 'px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
         }
       >
+
+      <QuickLinkPageToggle destinationId="offers" />
 
       {error && (
         <div className="mb-4 p-4 rounded-3xl bg-red-900/40 border border-red-500/40 text-red-200 text-sm leading-relaxed">

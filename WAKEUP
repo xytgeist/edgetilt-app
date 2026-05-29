@@ -73,6 +73,37 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
+## Last session recap (May 28 2026, branch `test`) — PICK UP HERE
+
+### What we were in the middle of
+
+We built the **Bankroll Risk Advisor** section for the calculators and Ryan had "a few adjustments" in mind when he had to switch computers. **Start by asking Ryan what those adjustments were before touching anything.**
+
+### What shipped today (all on `test`, all pushed)
+
+| Commit | Area | Notes |
+|--------|------|-------|
+| `c055a47` | **Trend chart — tappable HTML tooltips** | Canvas tooltip replaced with real DOM card. Single tap on historical point → session P/L + cumulative P/L + "View details" opens `SessionDetailModal`. Tap fan area → projected percentile callout (p10–p90 + RoR at that horizon step). Full-screen fixed backdrop dismisses on any outside tap. Light/dark mode aware via `isDark` (`matchMedia`). |
+| `7794697` | **Advanced Metrics — collapsible** | Card starts collapsed (chevron toggle). No behavior change to the 15 metrics themselves. |
+| `1554c69` | **Monte Carlo off by default** | Toggle still works; just starts off. |
+| `d5aa6bb` | **BankrollRiskAdvisor + calculator wiring** | New `src/features/calculators/BankrollRiskAdvisor.jsx`; wired into Phoenix Link, Buffalo Link, MHB. `supabaseClient` threaded: AppShell → CalculatorsTab → calculators. Stack Up Pays skipped (no max exposure metric yet). |
+
+### BankrollRiskAdvisor — how it works
+
+- Reads `bankroll_profiles.overall_bankroll` for the logged-in user
+- Risk % stepper (1–5%, default 2%, persisted in `localStorage` key `lvsp:bankrollRiskPct`)
+- Shows: Bankroll / Risk Budget / Play Cost stat tiles + a coverage progress bar
+- Fully funded → "✓ You're fully funded for this play" in green
+- Underfunded → "Consider selling **$X** of action" + **Need Help?** button
+- **Need Help modal**: pre-fills game, counter, bet size (or meter/MHB fields), max cost, your coverage %, looking to sell %. Free-text comment field. On Send: looks up admin by `role='admin'`, calls `lounge-chat` Edge `open_dm` → `send_message`. Success state shows ✓.
+
+### Known TODO from this session
+
+- **Move `BankrollRiskAdvisor` higher** in each calculator layout. Currently it renders at the very bottom (after `CalculatorDisclaimer`), which requires scrolling to reach. Ryan noticed this. Needs to move up to right below the main EV / Max Exposure output cards. Do this for Phoenix Link, Buffalo Link, and MHB.
+- **"A few adjustments"** Ryan had in mind for the Bankroll Risk section — ask him at the start of next session.
+
+---
+
 ## Last session recap (May 23 2026, branch `test`)
 
 ### Lounge notifications + push (latest on `test`)

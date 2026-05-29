@@ -316,7 +316,7 @@ function DetailStat({ label, value, colored, positive }) {
 export default function BankrollTrendTab({ sessions, adjustments, initialBankroll }) {
   const [filter, setFilter] = useState('MAX')
   const [fanHorizon, setFanHorizon] = useState(100)
-  const [showMonteCarlo, setShowMonteCarlo] = useState(true)
+  const [showMonteCarlo, setShowMonteCarlo] = useState(false)
   const [sessionModal, setSessionModal] = useState(null)
   const [infoModal, setInfoModal] = useState(null)
   const [tooltip, setTooltip] = useState(null) // { type:'session'|'fan', x, y, side, ... }

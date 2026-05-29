@@ -82,7 +82,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     const player = new DotLottie({
       canvas: offscreen,
       data: isDarkEffect ? EDGE_SPLASH_DATA_DARK : EDGE_SPLASH_DATA_LIGHT,
-      autoplay: false,
+      autoplay: true,
       loop: false,
       useFrameInterpolation: false,
       backgroundColor: '#00000000',
@@ -95,7 +95,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     const fallback = setTimeout(done, SPLASH_MAX_MS)
     let dismissSignaled = false
     let flyThroughFinished = false
-    let pollRaf = 0
+    let sawFrameEvent = false
 
     const signalDismiss = () => {
       if (dismissSignaled) return
@@ -103,17 +103,9 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       done()
     }
 
-    const stopPolling = () => {
-      if (pollRaf) {
-        cancelAnimationFrame(pollRaf)
-        pollRaf = 0
-      }
-    }
-
     const finishFlyThrough = () => {
       if (flyThroughFinished) return
       flyThroughFinished = true
-      stopPolling()
 
       try {
         player.pause()
@@ -150,20 +142,14 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         const t = Math.min(1, (currentFrame - FLY_THROUGH_START) / (FLY_THROUGH_END - FLY_THROUGH_START))
         overlayRef.current.style.opacity = String(1 - t)
       }
-      if (currentFrame >= FLY_THROUGH_END) {
+      // Only finish after real playback — currentFrame can read end-of-segment before play().
+      if (sawFrameEvent && currentFrame >= FLY_THROUGH_END) {
         finishFlyThrough()
       }
     }
 
-    const pollCurrentFrame = () => {
-      if (flyThroughFinished) return
-      syncFlyThroughFromFrame(player.currentFrame)
-      if (!flyThroughFinished) {
-        pollRaf = requestAnimationFrame(pollCurrentFrame)
-      }
-    }
-
     player.addEventListener('frame', ({ currentFrame }) => {
+      sawFrameEvent = true
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(offscreen, 0, 0)
 
@@ -183,14 +169,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       finishFlyThrough()
     })
 
-    player.addEventListener('ready', () => {
-      player.setSegment(0, FLY_THROUGH_END)
-      player.play()
-      pollRaf = requestAnimationFrame(pollCurrentFrame)
-    })
-
     return () => {
-      stopPolling()
       clearTimeout(fallback)
       player.destroy()
     }

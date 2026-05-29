@@ -21,6 +21,9 @@ const FLY_THROUGH_END = 190
 const CANVAS_OFFSET_Y = -40
 
 // 251 frames @ 60 fps ≈ 4.2 s. Force-dismiss after 7 s if complete event is late.
+const SPLASH_LAST_FRAME = 251
+const SPLASH_DISMISS_EARLY_FRAMES = 20
+const SPLASH_DISMISS_FRAME = SPLASH_LAST_FRAME - SPLASH_DISMISS_EARLY_FRAMES
 const SPLASH_MAX_MS = 7000
 
 /**
@@ -40,7 +43,7 @@ const SPLASH_MAX_MS = 7000
  *                       keeping the status bar dark for the full duration of the splash.
  *   5. bottomCover strip — masks the viewport band below the shifted canvas so the feed
  *                       cannot leak through transparent canvas pixels during fly-through.
- *                       Hidden when fly-through finishes (frame 190); splash dismiss is unchanged.
+ *                       Hidden when fly-through finishes (frame 190). Splash dismiss at frame 231.
  *
  * Status bar: iOS PWA caches apple-mobile-web-app-status-bar-style at install time
  * and does not resample translucent-bar content dynamically during JS execution.
@@ -92,6 +95,12 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
 
     const done = () => onCompleteRef.current?.()
     const fallback = setTimeout(done, SPLASH_MAX_MS)
+    let dismissSignaled = false
+    const signalDismiss = () => {
+      if (dismissSignaled) return
+      dismissSignaled = true
+      done()
+    }
 
     player.addEventListener('frame', ({ currentFrame }) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -112,16 +121,20 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         overlayRef.current.style.opacity = String(1 - t)
       }
 
-      // Fly-through done — drop the bottom cover only. Splash dismiss still waits for `complete`.
+      // Fly-through done — drop the bottom cover only.
       if (currentFrame >= FLY_THROUGH_END && bottomCoverRef.current) {
         bottomCoverRef.current.style.display = 'none'
         bottomCoverRef.current = null
+      }
+
+      if (currentFrame >= SPLASH_DISMISS_FRAME) {
+        signalDismiss()
       }
     })
 
     player.addEventListener('complete', () => {
       clearTimeout(fallback)
-      done()
+      signalDismiss()
     })
 
     return () => {

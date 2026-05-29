@@ -53,10 +53,6 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
     setVisible(true)
   }, [visible])
 
-  const onSplashAnimationComplete = useCallback(() => {
-    animationDoneRef.current = true
-  }, [])
-
   const finishSplash = useCallback(() => {
     if (!visible || dismissing) return
     if (!cycleDoneRef.current) {
@@ -70,6 +66,26 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
       setDismiss(false)
     }, SPLASH_FADE_MS)
   }, [visible, dismissing])
+
+  const canFinishSplash = useCallback(() => {
+    const minMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MIN_MS : LOUNGE_COLD_BOOT_ANON_MIN_MS
+    const maxMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MAX_MS : LOUNGE_COLD_BOOT_ANON_MAX_MS
+    const elapsed = Date.now() - shownAtRef.current
+    if (elapsed < minMs) return false
+    if (!isMember) return true
+    if (animationDoneRef.current) return true
+    if (elapsed >= maxMs) return true
+    return false
+  }, [isMember])
+
+  const attemptFinishSplash = useCallback(() => {
+    if (canFinishSplash()) finishSplash()
+  }, [canFinishSplash, finishSplash])
+
+  const onSplashAnimationComplete = useCallback(() => {
+    animationDoneRef.current = true
+    attemptFinishSplash()
+  }, [attemptFinishSplash])
 
   /** Initial cold boot (killed app / fresh tab). */
   useEffect(() => {
@@ -111,17 +127,9 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   useEffect(() => {
     if (!visible || dismissing) return undefined
 
-    const minMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MIN_MS : LOUNGE_COLD_BOOT_ANON_MIN_MS
     const maxMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MAX_MS : LOUNGE_COLD_BOOT_ANON_MAX_MS
 
-    const tryFinish = () => {
-      const elapsed = Date.now() - shownAtRef.current
-      if (elapsed < minMs) return false
-      if (!isMember) return true
-      if (animationDoneRef.current) return true
-      if (elapsed >= maxMs) return true
-      return false
-    }
+    const tryFinish = () => canFinishSplash()
 
     if (tryFinish()) {
       finishSplash()
@@ -143,7 +151,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   }, [
     visible,
     dismissing,
-    isMember,
+    canFinishSplash,
     finishSplash,
   ])
 

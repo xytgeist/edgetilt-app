@@ -144,6 +144,7 @@ export default function CalculatorsTab({
   gatesDbReady = false,
   onSetContentGate,
   titleBarNavSlot = null,
+  supabaseClient = null,
 }) {
   if (!activeCalculator) {
     return (
@@ -179,12 +180,12 @@ export default function CalculatorsTab({
     >
       {activeCalculator === 'phoenix' ? (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
-          <PhoenixLink onBack={() => setActiveCalculator(null)} />
+          <PhoenixLink onBack={() => setActiveCalculator(null)} supabaseClient={supabaseClient} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'buffalo' ? (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
-          <BuffaloLink onBack={() => setActiveCalculator(null)} />
+          <BuffaloLink onBack={() => setActiveCalculator(null)} supabaseClient={supabaseClient} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'stackup' ? (
@@ -194,7 +195,7 @@ export default function CalculatorsTab({
       ) : null}
       {activeCalculator === 'mhb' ? (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
-          <MHBCalculator onBack={() => setActiveCalculator(null)} />
+          <MHBCalculator onBack={() => setActiveCalculator(null)} supabaseClient={supabaseClient} />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
     </Suspense>

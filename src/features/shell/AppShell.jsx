@@ -1010,6 +1010,7 @@ export default function AppShell({
           onSetContentGate={onSetContentAccessGate}
           onRequireSubscribe={onRequireSubscribe}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          supabaseClient={supabaseClient}
         />
       )
     } else if (tab === 'dashboard') {

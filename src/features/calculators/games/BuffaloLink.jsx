@@ -3,6 +3,7 @@ import { DropdownSelect } from '../DropdownSelect'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
 import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 import { Line } from 'react-chartjs-2'
+import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -18,7 +19,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 const MUST_HIT = 1800
 const RTP_FLOOR_COUNTER = 850
 
-function BuffaloLink({ onBack }) {
+function BuffaloLink({ onBack, supabaseClient = null }) {
   const [currentX, setCurrentX] = useState(1234)   // Changed default to 1234
   const [betSize, setBetSize] = useState(25)
   const [denom, setDenom] = useState(1.00)
@@ -536,6 +537,13 @@ function BuffaloLink({ onBack }) {
 
         <CalculatorDisclaimer />
       </div>
+
+      <BankrollRiskAdvisor
+        supabaseClient={supabaseClient}
+        maxExpectedLoss={maxExposureFull * betSize}
+        playLabel="Buffalo Link"
+        playDetails={{ counter: currentX, betSize }}
+      />
 
       {/* Info Modal */}
       {showInfoModal && (

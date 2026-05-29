@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DropdownSelect } from '../DropdownSelect'
 import { Line } from 'react-chartjs-2'
+import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -18,7 +19,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const MUST_HIT = 1888
 
-function PhoenixLink({ onBack }) {
+function PhoenixLink({ onBack, supabaseClient = null }) {
   const [currentX, setCurrentX] = useState(1400)
   const [betSize, setBetSize] = useState(25)
   const [denom, setDenom] = useState(1.00)
@@ -517,6 +518,13 @@ function PhoenixLink({ onBack }) {
       </div>
 
       {/* Info Modal */}
+      <BankrollRiskAdvisor
+        supabaseClient={supabaseClient}
+        maxExpectedLoss={maxExposureFull * betSize}
+        playLabel="Phoenix Link"
+        playDetails={{ counter: currentX, betSize }}
+      />
+
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-3xl max-w-md w-full p-6">

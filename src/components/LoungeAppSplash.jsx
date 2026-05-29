@@ -16,6 +16,10 @@ const EDGE_SPLASH_DATA_LIGHT = JSON.stringify(edgeSplashLight)
 // Overlay fully transparent at frame 190 (~1 s before animation ends at 251).
 const FLY_THROUGH_START = 157
 const FLY_THROUGH_END = 190
+// Bottom cover lags overlay fade — was dismissing ~10 frames early when locked together.
+const BOTTOM_COVER_FADE_LAG_FRAMES = 10
+const BOTTOM_COVER_FADE_START = FLY_THROUGH_START + BOTTOM_COVER_FADE_LAG_FRAMES
+const BOTTOM_COVER_FADE_END = FLY_THROUGH_END + BOTTOM_COVER_FADE_LAG_FRAMES
 
 // Shift canvas up so the animation reads centered under the status bar.
 const CANVAS_OFFSET_Y = -40
@@ -40,7 +44,7 @@ const SPLASH_MAX_MS = 7000
  *                       keeping the status bar dark for the full duration of the splash.
  *   5. bottomCover strip — masks the viewport band below the shifted canvas so the feed
  *                       cannot leak through transparent canvas pixels during fly-through.
- *                       Fades out with the overlay during frames 157–190, then removed.
+ *                       Fades out frames 167–200 (10f after overlay), then removed.
  *
  * Status bar: iOS PWA caches apple-mobile-web-app-status-bar-style at install time
  * and does not resample translucent-bar content dynamically during JS execution.
@@ -93,12 +97,10 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     const done = () => onCompleteRef.current?.()
     const fallback = setTimeout(done, SPLASH_MAX_MS)
 
-    const setFlyThroughOpacity = (opacity) => {
-      const value = String(opacity)
-      if (overlayRef.current) overlayRef.current.style.opacity = value
-      // Bottom cover was added as a separate opaque strip — fade it with the overlay
-      // so it dismisses when fly-through finishes instead of lingering to splash end.
-      if (bottomCoverRef.current) bottomCoverRef.current.style.opacity = value
+    const fadeOpacity = (currentFrame, start, end) => {
+      if (currentFrame < start) return 1
+      const t = Math.min(1, (currentFrame - start) / (end - start))
+      return 1 - t
     }
 
     player.addEventListener('frame', ({ currentFrame }) => {
@@ -115,12 +117,16 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
 
       // Fade overlay + bottom cover via direct DOM mutation — not setState — so it works
       // reliably inside DotLottie's native event listener on iOS PWA.
-      if (currentFrame >= FLY_THROUGH_START) {
-        const t = Math.min(1, (currentFrame - FLY_THROUGH_START) / (FLY_THROUGH_END - FLY_THROUGH_START))
-        setFlyThroughOpacity(1 - t)
+      if (currentFrame >= FLY_THROUGH_START && overlayRef.current) {
+        overlayRef.current.style.opacity = String(fadeOpacity(currentFrame, FLY_THROUGH_START, FLY_THROUGH_END))
+      }
+      if (currentFrame >= BOTTOM_COVER_FADE_START && bottomCoverRef.current) {
+        bottomCoverRef.current.style.opacity = String(
+          fadeOpacity(currentFrame, BOTTOM_COVER_FADE_START, BOTTOM_COVER_FADE_END),
+        )
       }
 
-      if (currentFrame >= FLY_THROUGH_END && bottomCoverRef.current) {
+      if (currentFrame >= BOTTOM_COVER_FADE_END && bottomCoverRef.current) {
         bottomCoverRef.current.style.display = 'none'
         bottomCoverRef.current = null
       }
@@ -174,7 +180,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       />
 
       {/* 4. Bottom cover — opaque band below shifted canvas; blocks feed leak outside D-hole.
-               Fades with overlay during fly-through; removed at frame 190. */}
+               Fades 167–200 (10f after overlay); removed at frame 200. */}
       <div
         ref={bottomCoverRef}
         className="absolute bottom-0 left-0 right-0 pointer-events-none"

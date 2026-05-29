@@ -194,7 +194,7 @@ function PhoenixLink({ onBack, supabaseClient = null }) {
   };
 
   return (
-    <div data-calc="phoenix" className="min-h-full bg-gray-950 pb-12">
+    <div data-calc="phoenix" className="min-h-full pb-12">
       <div className="w-full px-0 pt-1">
 
         {/* Large back chevron + Title with reduced padding */}
@@ -383,6 +383,15 @@ function PhoenixLink({ onBack, supabaseClient = null }) {
           )}
         </div>
 
+        <BankrollRiskAdvisor
+          supabaseClient={supabaseClient}
+          maxExpectedLoss={maxExposureFull * betSize}
+          playLabel="Phoenix Link"
+          playDetails={{ counter: currentX, betSize }}
+          accentClass="text-orange-400"
+          accentBtnClass="bg-orange-600 hover:bg-orange-500"
+        />
+
         {/* Acquisition Fee Calculator */}
         <div className="bg-gray-900 p-6 rounded-3xl mb-6">
           <h2 className="text-xl font-semibold mb-4 text-orange-400">Acquisition Fee Calculator</h2>
@@ -518,13 +527,6 @@ function PhoenixLink({ onBack, supabaseClient = null }) {
       </div>
 
       {/* Info Modal */}
-      <BankrollRiskAdvisor
-        supabaseClient={supabaseClient}
-        maxExpectedLoss={maxExposureFull * betSize}
-        playLabel="Phoenix Link"
-        playDetails={{ counter: currentX, betSize }}
-      />
-
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-3xl max-w-md w-full p-6">

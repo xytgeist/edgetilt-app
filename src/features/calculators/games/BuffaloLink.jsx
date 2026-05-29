@@ -235,7 +235,7 @@ function BuffaloLink({ onBack, supabaseClient = null }) {
   }
 
   return (
-    <div data-calc="buffalo" className="min-h-full bg-gray-950 pb-12">
+    <div data-calc="buffalo" className="min-h-full pb-12">
       <div className="w-full px-0 pt-1">
 
         {/* Large back chevron + Title with reduced padding */}
@@ -404,6 +404,15 @@ function BuffaloLink({ onBack, supabaseClient = null }) {
           )}
         </div>
 
+        <BankrollRiskAdvisor
+          supabaseClient={supabaseClient}
+          maxExpectedLoss={maxExposureFull * betSize}
+          playLabel="Buffalo Link"
+          playDetails={{ counter: currentX, betSize }}
+          accentClass="text-amber-400"
+          accentBtnClass="bg-amber-600 hover:bg-amber-500"
+        />
+
         {/* Acquisition Fee */}
         <div className="bg-gray-900 p-6 rounded-3xl mb-6">
           <h2 className="text-xl font-semibold text-amber-400 mb-4">Acquisition Fee Calculator</h2>
@@ -537,13 +546,6 @@ function BuffaloLink({ onBack, supabaseClient = null }) {
 
         <CalculatorDisclaimer />
       </div>
-
-      <BankrollRiskAdvisor
-        supabaseClient={supabaseClient}
-        maxExpectedLoss={maxExposureFull * betSize}
-        playLabel="Buffalo Link"
-        playDetails={{ counter: currentX, betSize }}
-      />
 
       {/* Info Modal */}
       {showInfoModal && (

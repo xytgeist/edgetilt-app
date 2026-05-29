@@ -3,7 +3,13 @@
 html,
 body,
 #root {
-  background-color: #09090b;
+  background-color: #030712;
+}
+
+html.light,
+html.light body,
+html.light #root {
+  background-color: var(--color-zinc-950);
 }
 
 /*
@@ -37,6 +43,11 @@ html.light {
   --color-zinc-100: #18181b;
   --color-zinc-50:  #09090b;
   color-scheme: light;
+}
+
+/* Edge scroll shell: dark = gray-950 canvas (#030712); light = remapped zinc-950 (#fafafa) */
+html:not(.light) [data-edge-scroll-shell] {
+  background-color: #030712 !important;
 }
 
 /*
@@ -81,13 +92,21 @@ html.light {
 }
 
 body {
-  background-color: var(--color-zinc-950, #0a0a0a);
+  background-color: #030712;
   color: var(--color-zinc-50, white);
+}
+
+html.light body {
+  background-color: var(--color-zinc-950, #fafafa);
 }
 
 #root {
   min-height: 100dvh;
-  background-color: var(--color-zinc-950, #0a0a0a);
+  background-color: #030712;
+}
+
+html.light #root {
+  background-color: var(--color-zinc-950, #fafafa);
 }
 
 /* Native range look; expand hit-testing vertically without changing layout much. */
@@ -1242,6 +1261,11 @@ html.light .calc-list-btn {
 html.light [data-calc] {
   background-color: #fafafa;
   color: #18181b;
+  min-height: 100%;
+}
+
+html:not(.light) [data-calc] {
+  background-color: transparent;
 }
 
 /* Chart container and any other bg-gray-950 inner elements → match inner-box gray */
@@ -1326,6 +1350,11 @@ html.light [data-calc] .text-gray-300 {
 }
 html.light [data-calc] .text-gray-500 {
   color: #a1a1aa;
+}
+
+/* Bankroll Risk — Need Help? keeps white label on cyan button in light mode */
+html.light [data-calc] [data-bankroll-need-help-btn] {
+  color: #ffffff !important;
 }
 
 /* ── PhoenixLink ─────────────────────────────────────────────────────────── */

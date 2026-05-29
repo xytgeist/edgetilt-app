@@ -111,10 +111,12 @@ export default function ScrollLinkedEdgeTitleBarShell({
 
   return (
     <div
+      data-edge-scroll-shell
       className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]`}
     >
       <div
         ref={titleBarRef}
+        data-edge-scroll-shell
         className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
         style={{
           top: feedViewportTopPx,
@@ -133,6 +135,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
 
       <div
         ref={feedScrollRef}
+        data-edge-scroll-shell
         className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
       >
         <div

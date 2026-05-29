@@ -716,7 +716,7 @@ function MHBCalculator({ onBack, supabaseClient = null }) {
   }
 
   return (
-    <div data-calc="mhb" className="min-h-full bg-gray-950 pb-12">
+    <div data-calc="mhb" className="min-h-full pb-12">
       <div className="w-full px-0 pt-1">
 
         {/* Title */}
@@ -1064,6 +1064,15 @@ function MHBCalculator({ onBack, supabaseClient = null }) {
           </div>
         </div>
 
+        <BankrollRiskAdvisor
+          supabaseClient={supabaseClient}
+          maxExpectedLoss={exposure}
+          playLabel="Must Hit By"
+          playDetails={{ current, mustHitBy, playStake: igtLineBet }}
+          accentClass="text-cyan-400"
+          accentBtnClass="bg-cyan-600 hover:bg-cyan-500"
+        />
+
         <CalculatorDisclaimer className="mt-8" />
 
         {showIgtTierInfo && (
@@ -1169,13 +1178,6 @@ function MHBCalculator({ onBack, supabaseClient = null }) {
             </div>
           </div>
         )}
-
-        <BankrollRiskAdvisor
-          supabaseClient={supabaseClient}
-          maxExpectedLoss={exposure}
-          playLabel="Must Hit By"
-          playDetails={{ current, mustHitBy }}
-        />
 
       </div>
     </div>

@@ -13,17 +13,14 @@ const EDGE_SPLASH_DATA_DARK = JSON.stringify(edgeSplashDark)
 const EDGE_SPLASH_DATA_LIGHT = JSON.stringify(edgeSplashLight)
 
 // Black Solid 1 ends at frame 157 → D fly-through begins.
-// Overlay fully transparent at frame 190 (~1 s before animation ends at 251).
+// Overlay fully transparent at frame 190 — fly-through done; dismiss here (frames 191–251 are file tail).
 const FLY_THROUGH_START = 157
 const FLY_THROUGH_END = 190
 
 // Shift canvas up so the animation reads centered under the status bar.
 const CANVAS_OFFSET_Y = -40
 
-// 251 frames @ 60 fps ≈ 4.2 s. Force-dismiss after 7 s if complete event is late.
-const SPLASH_LAST_FRAME = 251
-const SPLASH_DISMISS_EARLY_FRAMES = 40
-const SPLASH_DISMISS_FRAME = SPLASH_LAST_FRAME - SPLASH_DISMISS_EARLY_FRAMES
+// Force-dismiss if frame events stall.
 const SPLASH_MAX_MS = 7000
 
 /**
@@ -43,7 +40,7 @@ const SPLASH_MAX_MS = 7000
  *                       keeping the status bar dark for the full duration of the splash.
  *   5. bottomCover strip — masks the viewport band below the shifted canvas so the feed
  *                       cannot leak through transparent canvas pixels during fly-through.
- *                       Hidden when fly-through finishes (frame 190). Splash dismiss at frame 211.
+ *                       Hidden when fly-through finishes (frame 190). Splash dismisses then too.
  *
  * Status bar: iOS PWA caches apple-mobile-web-app-status-bar-style at install time
  * and does not resample translucent-bar content dynamically during JS execution.
@@ -121,13 +118,12 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         overlayRef.current.style.opacity = String(1 - t)
       }
 
-      // Fly-through done — drop the bottom cover only.
-      if (currentFrame >= FLY_THROUGH_END && bottomCoverRef.current) {
-        bottomCoverRef.current.style.display = 'none'
-        bottomCoverRef.current = null
-      }
-
-      if (currentFrame >= SPLASH_DISMISS_FRAME) {
+      // Fly-through done — drop bottom cover and dismiss (Lottie file tail after 190 is dead air).
+      if (currentFrame >= FLY_THROUGH_END) {
+        if (bottomCoverRef.current) {
+          bottomCoverRef.current.style.display = 'none'
+          bottomCoverRef.current = null
+        }
         signalDismiss()
       }
     })

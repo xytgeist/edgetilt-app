@@ -17,10 +17,16 @@ html.light #root {
  * Setting a 16px floor prevents the zoom from triggering in the first place,
  * which is friendlier than disabling user-scalable on the viewport meta.
  */
-input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not(.calc-field-lg),
 textarea,
 select {
   font-size: max(16px, 1em) !important;
+}
+
+/* Calculator primary fields — match DropdownSelect size=lg (text-2xl / 1.5rem) */
+input.calc-field-lg {
+  font-size: 1.5rem !important;
+  line-height: 2rem !important;
 }
 
 /*
@@ -900,6 +906,19 @@ html.light .lounge-title-nav-btn {
     0 4px 16px rgba(0, 0, 0, 0.10),
     0 1px 4px rgba(0, 0, 0, 0.06) !important;
   color: #27272a !important;
+}
+
+/* Title bar nav dropdown — selected item readable on light gray highlight */
+html.light .lounge-title-nav-menu {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+html.light .lounge-title-nav-menu-item--active {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
 }
 
 /* Dock menu backdrop — minimal blur with subtle dark tint in light mode */

@@ -293,7 +293,7 @@ function StackUpPays({ onBack }) {
                 value={betSize}
                 onChange={(e) => setBetSize(e.target.value.replace(/[^0-9.]/g, ''))}
                 onBlur={(e) => setBetSize(parseFloat(e.target.value) || 25)}
-                className="min-w-0 flex-1 bg-transparent text-center text-2xl font-bold leading-none text-white outline-none focus:ring-0"
+                className="calc-field-lg min-w-0 flex-1 bg-transparent text-center text-2xl font-bold leading-none text-white outline-none focus:ring-0"
               />
             </div>
           </div>
@@ -330,7 +330,7 @@ function StackUpPays({ onBack }) {
                 setOverallRTP(safeRtp)
                 setRtpInput(String(safeRtp))
               }}
-              className="h-14 w-full rounded-2xl border-0 bg-slate-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-cyan-500/25"
+              className="calc-field-lg h-14 w-full rounded-2xl border-0 bg-slate-800 px-2 text-center text-2xl font-bold leading-none text-white outline-none focus:ring-2 focus:ring-cyan-500/25"
             />
           </div>
         </div>

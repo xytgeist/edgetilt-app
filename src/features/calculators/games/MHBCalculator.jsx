@@ -835,7 +835,7 @@ function MHBCalculator({ onBack, supabaseClient = null }) {
                     onFocus={handleJpMeterFocus}
                     onChange={handleJpMeterChange}
                     onBlur={handleJpMeterBlur}
-                    className={`mhb-meter-input w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-inset ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
+                    className={`calc-field-lg mhb-meter-input w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-inset ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
                       showMeterCue ? (isLight ? 'mhb-meter-cue animate-pulse' : 'ring-2 ring-cyan-100 shadow-[0_0_0_3px_rgba(103,232,249,0.6)] animate-pulse') : ''
                     }`}
                   />
@@ -860,7 +860,7 @@ function MHBCalculator({ onBack, supabaseClient = null }) {
                   onClick={(e) => e.currentTarget.select()}
                   onChange={handleJpMeterChange}
                   onBlur={handleJpMeterBlur}
-                  className={`mhb-meter-input flex-1 w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-inset ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
+                  className={`calc-field-lg mhb-meter-input flex-1 w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none transition-all duration-300 ring-1 ring-inset ring-cyan-300/80 focus:ring-2 focus:ring-cyan-200/85 ${
                     showMeterCue ? (isLight ? 'mhb-meter-cue animate-pulse' : 'ring-2 ring-cyan-100 shadow-[0_0_0_3px_rgba(103,232,249,0.6)] animate-pulse') : ''
                   }`}
                 />
@@ -1011,7 +1011,7 @@ function MHBCalculator({ onBack, supabaseClient = null }) {
         </div>
 
         {/* Outputs */}
-        <div className="mt-5 bg-gray-900 p-6 rounded-3xl">
+        <div className="mt-5 mb-6 bg-gray-900 p-6 rounded-3xl">
           <h2
             className="mb-6 text-center font-black text-[26px] tracking-[-1px] text-white"
             style={{

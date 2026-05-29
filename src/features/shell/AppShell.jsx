@@ -849,6 +849,7 @@ export default function AppShell({
   const renderNavMenuItems = () =>
     navItems.map((item) => {
       const showLock = showNavSubscriberLocks && item.subscriberGated
+      const isActive = tab === item.id || (item.id === 'slots' && isSlotsAreaTab(tab))
       return (
         <button
           key={item.id}
@@ -874,9 +875,9 @@ export default function AppShell({
             }
             setMenuOpen(false)
           }}
-          className={`w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
-            tab === item.id || (item.id === 'slots' && isSlotsAreaTab(tab))
-              ? 'bg-zinc-800 text-white'
+          className={`lounge-title-nav-menu-item w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
+            isActive
+              ? 'lounge-title-nav-menu-item--active bg-zinc-800 text-white'
               : 'text-zinc-300 hover:bg-zinc-900'
           }`}
         >
@@ -893,7 +894,7 @@ export default function AppShell({
     <div className="relative z-[55] shrink-0">
       {menuOpen ? (
         <div
-          className="absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+          className="lounge-title-nav-menu absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
           role="menu"
         >
           {renderNavMenuItems()}

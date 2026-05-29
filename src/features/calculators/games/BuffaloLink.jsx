@@ -276,7 +276,7 @@ function BuffaloLink({ onBack, supabaseClient = null }) {
               value={currentX}
               onChange={handleIntegerChange(setCurrentX, 1234)}
               onBlur={handleIntegerBlur(setCurrentX, 1234)}
-              className="w-full p-3 bg-gray-800 rounded-2xl text-2xl font-bold text-center border-2 border-amber-500"
+              className="calc-field-lg w-full p-3 bg-gray-800 rounded-2xl text-2xl font-bold text-center border-2 border-amber-500"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -292,7 +292,7 @@ function BuffaloLink({ onBack, supabaseClient = null }) {
                   value={betSize}
                   onChange={handleFloatChange(setBetSize, 25)}
                   onBlur={handleFloatBlur(setBetSize, 25)}
-                  className="min-w-0 flex-1 border-0 bg-transparent text-center text-2xl font-bold leading-none text-white outline-none focus:ring-0"
+                  className="calc-field-lg min-w-0 flex-1 border-0 bg-transparent text-center text-2xl font-bold leading-none text-white outline-none focus:ring-0"
                 />
               </div>
             </div>

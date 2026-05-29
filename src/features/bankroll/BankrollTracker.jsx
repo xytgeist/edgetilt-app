@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -6,6 +6,7 @@ import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import BankrollTrendTab from './BankrollTrendTab.jsx'
 import BankrollChartsTab from './BankrollChartsTab.jsx'
 import BankrollLocationsTab from './BankrollLocationsTab.jsx'
+import BankrollImportSheet from './BankrollImportSheet.jsx'
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -100,12 +101,48 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
   const [editFields, setEditFields] = useState({})
   const [pastFields, setPastFields] = useState({})
 
+  // Bulk-select / delete state
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const deleteConfirmTimerRef = useRef(null)
+
+  // Session history filter state
+  const [historyFilterOpen, setHistoryFilterOpen] = useState(false)
+  const [historyGameFilter, setHistoryGameFilter] = useState('all')
+  const [historyResultFilter, setHistoryResultFilter] = useState('all')
+  const [historyCasinoFilter, setHistoryCasinoFilter] = useState([])
+  const [casinoPickerOpen, setCasinoPickerOpen] = useState(false)
+
   const activeSession = sessions.find(s => s.status === 'active') ?? null
   const completedSessions = sessions.filter(s => s.status === 'completed')
   const tabSessions = gameTypeFilter === 'all'
     ? completedSessions
     : completedSessions.filter(s => (s.game_type || 'slots') === gameTypeFilter)
   const overallBankroll = profile ? Number(profile.overall_bankroll) : null
+
+  const uniqueCasinos = useMemo(() => {
+    const counts = {}
+    for (const s of completedSessions) {
+      const name = (s.casino_name || '').trim()
+      if (name) counts[name] = (counts[name] || 0) + 1
+    }
+    return Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [completedSessions])
+
+  const filteredHistory = useMemo(() => completedSessions.filter(s => {
+    if (historyGameFilter !== 'all' && (s.game_type || 'slots') !== historyGameFilter) return false
+    const wl = sessionWinLoss(s)
+    if (historyResultFilter === 'wins' && (wl == null || wl <= 0)) return false
+    if (historyResultFilter === 'losses' && (wl == null || wl >= 0)) return false
+    if (historyCasinoFilter.length > 0 && !historyCasinoFilter.includes((s.casino_name || '').trim())) return false
+    return true
+  }), [completedSessions, historyGameFilter, historyResultFilter, historyCasinoFilter])
+
+  const historyActiveFilters =
+    (historyGameFilter !== 'all' ? 1 : 0) +
+    (historyResultFilter !== 'all' ? 1 : 0) +
+    (historyCasinoFilter.length > 0 ? 1 : 0)
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -468,6 +505,68 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
   }
   const closeSheet = () => { setSheet(null); setError('') }
 
+  // ── Bulk select / delete ──────────────────────────────────────────────────
+
+  function enterSelectMode() {
+    setSelectMode(true)
+    setSelectedIds(new Set())
+    setDeleteConfirm(false)
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    setDeleteConfirm(false)
+    clearTimeout(deleteConfirmTimerRef.current)
+  }
+
+  function toggleSelectSession(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === completedSessions.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(completedSessions.map(s => s.id)))
+    }
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.size === 0) return
+    if (!deleteConfirm) {
+      setDeleteConfirm(true)
+      clearTimeout(deleteConfirmTimerRef.current)
+      deleteConfirmTimerRef.current = setTimeout(() => setDeleteConfirm(false), 3500)
+      return
+    }
+    // Second tap — confirmed
+    clearTimeout(deleteConfirmTimerRef.current)
+    setSaving(true)
+    const ids = [...selectedIds]
+    // Supabase .in() handles up to ~500 ids comfortably; batch just in case
+    const BATCH = 200
+    try {
+      for (let i = 0; i < ids.length; i += BATCH) {
+        const { error: delErr } = await supabaseClient
+          .from('bankroll_sessions')
+          .delete()
+          .in('id', ids.slice(i, i + BATCH))
+        if (delErr) throw delErr
+      }
+      exitSelectMode()
+      await loadData()
+    } catch (e) {
+      setError(e.message || 'Delete failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // ── End-session preview ───────────────────────────────────────────────────
 
   const endAmtParsed = parseFloat(endAmount)
@@ -654,7 +753,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                 onClick={openLogPast}
                 className="w-full rounded-2xl py-3 text-zinc-400 text-sm font-semibold touch-manipulation active:text-zinc-200"
               >
-                Log a past session
+                Log previous session(s)
               </button>
             </div>
           )
@@ -663,45 +762,231 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
         {/* Session history */}
         {completedSessions.length > 0 && (
           <div>
-            <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide mb-2 px-1">Session History</div>
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">Session History</div>
+              <div className="flex items-center gap-3">
+                {/* Filter toggle */}
+                <button
+                  onClick={() => setHistoryFilterOpen(v => !v)}
+                  className="relative touch-manipulation"
+                  aria-label="Filter sessions"
+                >
+                  <svg viewBox="0 0 16 16" fill="currentColor" className={`w-4 h-4 transition-colors ${historyFilterOpen || historyActiveFilters > 0 ? 'text-cyan-400' : 'text-zinc-500'}`}>
+                    <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v.756a3 3 0 0 1-.879 2.122L10 9.5v4.572a.75.75 0 0 1-1.148.637l-2.5-1.667A.75.75 0 0 1 6 12.25V9.5L2.879 6.378A3 3 0 0 1 2 4.256V3.5Z" />
+                  </svg>
+                  {historyActiveFilters > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyan-500 text-white text-[8px] font-bold flex items-center justify-center leading-none">
+                      {historyActiveFilters}
+                    </span>
+                  )}
+                </button>
+                {/* Select / Cancel */}
+                {!selectMode ? (
+                  <button
+                    onClick={enterSelectMode}
+                    className="text-zinc-500 text-xs font-semibold touch-manipulation active:text-zinc-300"
+                  >
+                    Select
+                  </button>
+                ) : (
+                  <button
+                    onClick={exitSelectMode}
+                    className="text-zinc-400 text-xs font-semibold touch-manipulation active:text-zinc-200"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Inline filter panel */}
+            {historyFilterOpen && (
+              <div className="rounded-2xl bg-zinc-900 border border-zinc-800/60 p-3 mb-3 space-y-2.5">
+                {/* Game type row */}
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500 text-xs w-14 shrink-0">Game</span>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[['all','All'],['slots','Slots'],['tables','Tables']].map(([v,label]) => (
+                      <button
+                        key={v}
+                        onClick={() => setHistoryGameFilter(v)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                          historyGameFilter === v
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Result row */}
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500 text-xs w-14 shrink-0">Result</span>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[['all','All'],['wins','Wins'],['losses','Losses']].map(([v,label]) => (
+                      <button
+                        key={v}
+                        onClick={() => setHistoryResultFilter(v)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold touch-manipulation transition-colors ${
+                          historyResultFilter === v
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Casino picker */}
+                {uniqueCasinos.length > 0 && (
+                  <div>
+                    <button
+                      onClick={() => setCasinoPickerOpen(v => !v)}
+                      className="flex items-center gap-2 w-full touch-manipulation"
+                    >
+                      <span className="text-zinc-500 text-xs w-14 shrink-0">Casino</span>
+                      <span className={`flex-1 text-left text-xs font-semibold ${historyCasinoFilter.length > 0 ? 'text-cyan-400' : 'text-zinc-500'}`}>
+                        {historyCasinoFilter.length === 0
+                          ? 'Any'
+                          : historyCasinoFilter.length === 1
+                          ? historyCasinoFilter[0]
+                          : `${historyCasinoFilter.length} casinos`}
+                      </span>
+                      <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${casinoPickerOpen ? 'rotate-180' : ''}`}>
+                        <path fillRule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+
+                    {casinoPickerOpen && (
+                      <div className="mt-2 max-h-44 overflow-y-auto rounded-xl bg-zinc-800/60 divide-y divide-zinc-700/40">
+                        {/* "Any" — clears all selections */}
+                        <button
+                          onClick={() => setHistoryCasinoFilter([])}
+                          className="flex items-center gap-2.5 w-full px-3 py-2.5 touch-manipulation active:bg-zinc-700/40"
+                        >
+                          <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border-2 transition-colors ${
+                            historyCasinoFilter.length === 0 ? 'bg-cyan-500 border-cyan-500' : 'border-zinc-600'
+                          }`}>
+                            {historyCasinoFilter.length === 0 && (
+                              <svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5">
+                                <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className="text-xs text-zinc-300 font-medium">Any</span>
+                        </button>
+                        {uniqueCasinos.map(([name, count]) => {
+                          const checked = historyCasinoFilter.includes(name)
+                          return (
+                            <button
+                              key={name}
+                              onClick={() => setHistoryCasinoFilter(prev =>
+                                checked ? prev.filter(n => n !== name) : [...prev, name]
+                              )}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 touch-manipulation active:bg-zinc-700/40"
+                            >
+                              <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border-2 transition-colors ${
+                                checked ? 'bg-cyan-500 border-cyan-500' : 'border-zinc-600'
+                              }`}>
+                                {checked && (
+                                  <svg viewBox="0 0 10 10" fill="none" className="w-2.5 h-2.5">
+                                    <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="flex-1 text-left text-xs text-zinc-300 font-medium truncate">{name}</span>
+                              <span className="text-zinc-600 text-[10px] shrink-0">{count}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Clear all filters */}
+                {historyActiveFilters > 0 && (
+                  <button
+                    onClick={() => { setHistoryGameFilter('all'); setHistoryResultFilter('all'); setHistoryCasinoFilter([]); setCasinoPickerOpen(false) }}
+                    className="text-zinc-500 text-xs touch-manipulation active:text-zinc-300"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Result count when filtering */}
+            {historyActiveFilters > 0 && (
+              <div className="text-zinc-600 text-xs px-1 mb-2">
+                {filteredHistory.length} of {completedSessions.length} sessions
+              </div>
+            )}
             <div className="space-y-2">
-              {completedSessions.map(session => {
+              {filteredHistory.length === 0 && (
+                <div className="text-center text-zinc-600 text-sm py-8">No sessions match the current filters.</div>
+              )}
+              {filteredHistory.map(session => {
                 const wl = sessionWinLoss(session)
                 const hr = hourlyRate(session)
                 const durSecs = Math.round(sessionDurationHours(session) * 3600)
+                const isSelected = selectedIds.has(session.id)
                 return (
                   <button
                     key={session.id}
-                    onClick={() => openEditSession(session)}
+                    onClick={() => selectMode ? toggleSelectSession(session.id) : openEditSession(session)}
                     data-session-row
-                    className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation active:bg-zinc-800 transition-colors"
+                    className={`w-full text-left rounded-2xl border p-4 touch-manipulation transition-colors ${
+                      isSelected
+                        ? 'bg-cyan-950/40 border-cyan-700/60 active:bg-cyan-950/60'
+                        : 'bg-zinc-900 border-zinc-800/60 active:bg-zinc-800'
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-white font-semibold text-sm truncate min-w-0">
-                            {session.casino_name || 'Session'}
-                          </span>
-                          <span className="text-zinc-600 text-xs shrink-0">{fmtDate(session.start_at)}</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-zinc-500 text-xs">{fmtDuration(durSecs)}</span>
-                          {hr != null && (
-                            <span className={`text-xs font-semibold ${hr >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                              {hr >= 0 ? '+' : ''}{fmt$(hr)}/hr
-                            </span>
+                    <div className="flex items-center gap-3">
+                      {selectMode && (
+                        <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                          isSelected ? 'bg-cyan-500 border-cyan-500' : 'border-zinc-600'
+                        }`}>
+                          {isSelected && (
+                            <svg viewBox="0 0 10 10" fill="none" className="w-3 h-3">
+                              <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                           )}
                         </div>
-                      </div>
-                      {wl != null && (
-                        <div className={`shrink-0 font-black text-xl tabular-nums ${wl >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                          {wl >= 0 ? '+' : ''}{fmt$(wl)}
-                        </div>
                       )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-white font-semibold text-sm truncate min-w-0">
+                                {session.casino_name || 'Session'}
+                              </span>
+                              <span className="text-zinc-600 text-xs shrink-0">{fmtDate(session.start_at)}</span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-zinc-500 text-xs">{fmtDuration(durSecs)}</span>
+                              {hr != null && (
+                                <span className={`text-xs font-semibold ${hr >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {hr >= 0 ? '+' : ''}{fmt$(hr)}/hr
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {wl != null && (
+                            <div className={`shrink-0 font-black text-xl tabular-nums ${wl >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                              {wl >= 0 ? '+' : ''}{fmt$(wl)}
+                            </div>
+                          )}
+                        </div>
+                        {session.notes && (
+                          <div className="text-zinc-500 text-xs mt-2 line-clamp-1">{session.notes}</div>
+                        )}
+                      </div>
                     </div>
-                    {session.notes && (
-                      <div className="text-zinc-500 text-xs mt-2 line-clamp-1">{session.notes}</div>
-                    )}
                   </button>
                 )
               })}
@@ -719,7 +1004,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
 
       {/* ── Bottom sheets ─────────────────────────────────────── */}
 
-      {sheet && (
+      {sheet && sheet !== 'import' && (
         <div
           className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
           onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
@@ -934,7 +1219,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
 
             {sheet === 'logPast' && (
               <>
-                <SheetHeader title="Log Past Session" onClose={closeSheet} />
+                <SheetHeader title="Log Previous Session(s)" onClose={closeSheet} />
                 <div className="space-y-3 mb-5">
                   <div>
                     <label className="block text-zinc-400 text-xs mb-1.5">Casino / Location</label>
@@ -1064,6 +1349,22 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
                 >
                   {saving ? 'Saving…' : 'Save Session'}
                 </button>
+
+                <div className="flex items-center gap-3 mt-5 mb-1">
+                  <div className="flex-1 h-px bg-zinc-800" />
+                  <span className="text-zinc-600 text-xs">have multiple sessions?</span>
+                  <div className="flex-1 h-px bg-zinc-800" />
+                </div>
+                <button
+                  onClick={() => setSheet('import')}
+                  className="w-full py-3 text-zinc-500 text-sm font-semibold touch-manipulation active:text-zinc-300 flex items-center justify-center gap-2"
+                >
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 shrink-0">
+                    <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z" />
+                    <path d="M3.5 9.75a.75.75 0 0 0-1.5 0v1.5A2.75 2.75 0 0 0 4.75 14h6.5A2.75 2.75 0 0 0 14 11.25v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-1.5Z" />
+                  </svg>
+                  Import from CSV
+                </button>
               </>
             )}
 
@@ -1128,6 +1429,44 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
               </>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {sheet === 'import' && (
+        <BankrollImportSheet
+          supabaseClient={supabaseClient}
+          userId={userId}
+          completedSessions={completedSessions}
+          onClose={closeSheet}
+          onImported={loadData}
+        />
+      )}
+
+      {/* ── Bulk-select action bar ─────────────────────────────────────── */}
+      {selectMode && (
+        <div className="fixed bottom-0 left-0 right-0 z-[50] bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+          <div className="max-w-lg mx-auto flex items-center gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="shrink-0 text-zinc-400 text-sm font-semibold touch-manipulation active:text-zinc-200"
+            >
+              {selectedIds.size === completedSessions.length ? 'Deselect All' : 'Select All'}
+            </button>
+            <div className="flex-1 text-center text-zinc-500 text-sm">
+              {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'None selected'}
+            </div>
+            <button
+              onClick={deleteSelected}
+              disabled={selectedIds.size === 0 || saving}
+              className={`shrink-0 min-w-[90px] px-4 py-2 rounded-2xl text-sm font-bold touch-manipulation transition-colors disabled:opacity-30 ${
+                deleteConfirm
+                  ? 'bg-red-600 text-white active:bg-red-700'
+                  : 'text-red-500 active:text-red-300'
+              }`}
+            >
+              {saving ? 'Deleting…' : deleteConfirm ? 'Confirm?' : `Delete ${selectedIds.size > 0 ? selectedIds.size : ''}`}
+            </button>
           </div>
         </div>
       )}

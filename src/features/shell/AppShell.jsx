@@ -1267,31 +1267,6 @@ export default function AppShell({
         />
       )}
 
-      {tab !== 'home' && tab !== 'calculators' && tab !== 'guides' && tab !== 'offers' ? (
-        <div className="fixed right-4 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-50 flex flex-col items-end gap-2">
-          {menuOpen ? (
-            <div
-              className="min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-2rem))] w-max max-h-[min(22rem,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-6rem))] overflow-y-auto overscroll-y-contain rounded-2xl bg-zinc-950/95 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85"
-              role="menu"
-            >
-              {renderNavMenuItems()}
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-            className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900/95 text-white shadow-lg backdrop-blur touch-manipulation [-webkit-tap-highlight-color:transparent]"
-          >
-            <span aria-hidden className="block leading-none text-2xl -translate-y-px">
-              {menuOpen ? '×' : '☰'}
-            </span>
-          </button>
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -10,3 +10,13 @@ export const Z_LOUNGE_DOCK_VIEWPORT = 48
 
 /** Default floor for full-screen app sheets/dialogs (bankroll, logbook, offers, lounge prompts). */
 export const Z_APP_MODAL = 120
+
+/** Bottom sheet overlay (above EDGE title bar z-50). */
+export const APP_MODAL_OVERLAY_CLASS = `fixed inset-0 z-[${Z_APP_MODAL}] bg-black/60 backdrop-blur-sm flex items-end justify-center`
+
+/**
+ * Scrollable sheet panel — max height clears EDGE title bar + safe-area top.
+ * Render outside ScrollLinkedEdgeTitleBarShell (sibling), not inside scroll content.
+ */
+export const APP_MODAL_SHEET_PANEL_CLASS =
+  'w-full max-w-lg rounded-t-3xl bg-zinc-900 border-t border-zinc-700/50 px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] min-h-0 max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top,0px)-4.5rem))] overflow-y-auto'

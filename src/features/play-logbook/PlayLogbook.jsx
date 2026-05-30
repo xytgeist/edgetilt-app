@@ -5,6 +5,7 @@ import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import LogPlayOptionPicker from '../../components/LogPlayOptionPicker.jsx'
+import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { resolveDefaultCaptureCasino } from '../../utils/nearbyCasinos.js'
 import { consumePlayLogPrefill } from '../../utils/playLogPrefill.js'
 import {
@@ -356,6 +357,7 @@ export default function PlayLogbook({
   )
 
   return (
+    <>
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       titleBarToolCloseVisible={titleBarToolCloseVisible}
@@ -569,15 +571,16 @@ export default function PlayLogbook({
           </>
         )}
       </div>
+    </ScrollLinkedEdgeTitleBarShell>
 
       {sheet && (
         <div
-          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+          className={APP_MODAL_OVERLAY_CLASS}
           onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
         >
           <div
             data-bankroll-sheet
-            className="w-full max-w-lg rounded-t-3xl bg-zinc-900 border-t border-zinc-700/50 px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] min-h-[55vh] max-h-[92vh] overflow-y-auto"
+            className={APP_MODAL_SHEET_PANEL_CLASS}
             onClick={e => e.stopPropagation()}
           >
             {sheet === 'logPlay' && selectedTemplate && (
@@ -703,7 +706,7 @@ export default function PlayLogbook({
           </div>
         </div>
       )}
-    </ScrollLinkedEdgeTitleBarShell>
+    </>
   )
 }
 

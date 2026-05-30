@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -1064,10 +1065,10 @@ export default function BankrollTracker({
 
       {sheet && sheet !== 'import' && (
         <div
-          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+          className={APP_MODAL_OVERLAY_CLASS}
           onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
         >
-          <div data-bankroll-sheet className="w-full max-w-lg rounded-t-3xl bg-zinc-900 border-t border-zinc-700/50 px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] min-h-[55vh] max-h-[92vh] overflow-y-auto">
+          <div data-bankroll-sheet className={APP_MODAL_SHEET_PANEL_CLASS}>
 
             {/* Set / update bankroll */}
             {sheet === 'setBankroll' && (

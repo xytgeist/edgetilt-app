@@ -1819,30 +1819,7 @@ html.light [data-session-row] {
   box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);
 }
 
-/* Play Logbook — light mode (scoped; dark unchanged) */
-html.light [data-play-logbook-sheet] input,
-html.light [data-play-logbook-sheet] textarea,
-html.light [data-play-logbook-sheet] select {
-  background-color: #f4f4f5 !important;
-  color: #18181b !important;
-}
-html.light [data-play-logbook-sheet] input::placeholder,
-html.light [data-play-logbook-sheet] textarea::placeholder {
-  color: #a1a1aa !important;
-}
-html.light [data-play-logbook-sheet] .bg-zinc-800 {
-  background-color: #f4f4f5 !important;
-}
-html.light [data-play-logbook-sheet] .border-zinc-700 {
-  border-color: #d4d4d8 !important;
-}
-html.light [data-play-logbook-sheet] .text-zinc-400 {
-  color: #71717a !important;
-}
-html.light [data-play-logbook] select.bg-zinc-800 {
-  background-color: #f4f4f5 !important;
-  color: #18181b !important;
-}
+/* Play Logbook page — light mode (Log Play sheet uses data-bankroll-sheet rules above) */
 html.light [data-play-logbook-card] {
   box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);
 }

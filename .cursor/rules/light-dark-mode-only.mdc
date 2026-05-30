@@ -1,0 +1,26 @@
+---
+description: Light vs dark UI edits must not leak across themes unless Ryan agrees
+alwaysApply: true
+---
+
+# Light mode / dark mode — mode-specific changes only
+
+When **Ryan** asks for a change on **light mode only** or **dark mode only**:
+
+1. **Scope the change to that mode only** — it must **not** alter how the other mode looks or behaves.
+2. **Do not** edit shared classes, unscoped Tailwind, or root tokens in a way that affects both themes, unless Ryan explicitly asked for both or you confirmed with him first.
+3. If a fix **seems** like it should apply to both modes, **ask Ryan** before changing both.
+
+## How this repo usually scopes themes
+
+- **Light:** `html.light` selectors in `src/index.css` (and similar).
+- **Feature-scoped light overrides:** `data-*` roots (e.g. `data-play-logbook`, `data-quick-link`, bankroll sheet patterns) under `html.light …` in `index.css`.
+- **Dark:** default (no `html.light` on `<html>`) — shared component classes often assume dark zinc surfaces.
+
+## Implementation checklist
+
+- Prefer **adding** mode-specific rules over **changing** shared `className` strings used in both modes.
+- Grep for whether a selector or class is shared before editing.
+- After editing, mentally diff: “Would this still look right in the *other* mode?”
+
+`AGENT_RULE_THEME_MODE_ONLY` — searchability token.

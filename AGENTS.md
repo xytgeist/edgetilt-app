@@ -18,6 +18,16 @@ Clarify or analyze in prose; **do not make edits, refactors, or unsolicited patc
 
 `AGENT_RULE_QUESTIONS_ANSWER_ONLY` — searchability token for this rule.
 
+## CRITICAL — LIGHT MODE vs DARK MODE (mode-specific UI)
+
+> When **Ryan** says a change is for **light mode only** or **dark mode only**, that change **MUST apply only to that mode** and **MUST NOT** affect the other mode.
+
+- **Do not** change shared classes, unscoped styles, or root tokens in ways that shift **both** themes—unless Ryan explicitly asked for both, or you **verify with Ryan first** if you believe both should change.
+- **Prefer scoping:** light → `html.light` and/or feature `data-*` overrides in `src/index.css` (see bankroll / play-logbook / quick-link patterns); dark → default (no `html.light` on `<html>`).
+- If unsure whether an edit leaks across modes, **ask Ryan** before implementing.
+
+`AGENT_RULE_THEME_MODE_ONLY` — searchability token for this rule. Cursor: `.cursor/rules/light-dark-mode-only.mdc` (`alwaysApply: true`).
+
 ## Architecture and design reasoning
 
 > **When thinking about architecture, features, or any design decision, always reason from a logical / first-principles perspective. Don't just think about the code — evaluate the overall concept, trade-offs, user experience, long-term maintainability, performance implications, and whether the solution actually makes sense in the real world.**

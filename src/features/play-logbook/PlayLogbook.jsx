@@ -4,11 +4,17 @@ import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
+import LogPlayOptionPicker from '../../components/LogPlayOptionPicker.jsx'
 import { resolveDefaultCaptureCasino } from '../../utils/nearbyCasinos.js'
 import { consumePlayLogPrefill } from '../../utils/playLogPrefill.js'
 import {
   formatMetricValue,
   metricDefMap,
+  LOG_PLAY_DENOM_DEFAULT,
+  LOG_PLAY_DENOM_OPTIONS,
+  normalizeDenomFormValue,
+  orderedLogPlayFormFields,
+  playLogWinLoss,
   sortMetricSlugs,
   templatesSorted,
   valuesForStorage,
@@ -42,7 +48,9 @@ function fmtCapturedAt(iso) {
 function emptyFormFields(metricSlugs) {
   /** @type {Record<string, string>} */
   const o = {}
-  for (const s of metricSlugs) o[s] = ''
+  for (const s of metricSlugs) {
+    o[s] = s === 'denom' ? LOG_PLAY_DENOM_DEFAULT : ''
+  }
   return o
 }
 
@@ -53,6 +61,9 @@ function formFieldsFromPrefill(values, metricSlugs) {
   for (const slug of metricSlugs) {
     const v = values[slug]
     if (v != null && v !== '') fields[slug] = String(v)
+  }
+  if (metricSlugs.includes('denom')) {
+    fields.denom = normalizeDenomFormValue(fields.denom)
   }
   return fields
 }
@@ -115,6 +126,11 @@ export default function PlayLogbook({
     if (!analyzeTemplate) return []
     return analyzePlayLogEntries(filteredAnalyzeEntries, analyzeTemplate.metric_slugs || [])
   }, [filteredAnalyzeEntries, analyzeTemplate])
+
+  const logPlayFormFields = useMemo(() => {
+    if (!selectedTemplate) return []
+    return orderedLogPlayFormFields(selectedTemplate.metric_slugs || [], defsMap)
+  }, [selectedTemplate, defsMap])
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -506,15 +522,13 @@ export default function PlayLogbook({
           <>
             <div className="mb-4">
               <label className="block text-zinc-400 text-xs mb-1.5">Game</label>
-              <select
+              <LogPlayOptionPicker
                 value={analyzeTemplate?.id || ''}
-                onChange={e => setAnalyzeTemplateId(e.target.value)}
-                className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40"
-              >
-                {sortedTemplates.map(t => (
-                  <option key={t.id} value={t.id}>{t.display_name}</option>
-                ))}
-              </select>
+                onChange={setAnalyzeTemplateId}
+                options={sortedTemplates.map(t => ({ value: t.id, label: t.display_name }))}
+                ariaLabel="Game"
+                placeholder="Select game"
+              />
             </div>
 
             {filteredAnalyzeEntries.length === 0 ? (
@@ -557,10 +571,13 @@ export default function PlayLogbook({
       </div>
 
       {sheet && (
-        <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/60" onClick={closeSheet}>
+        <div
+          className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+          onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
+        >
           <div
-            data-play-logbook-sheet
-            className="w-full max-w-lg mx-auto rounded-t-3xl bg-zinc-900 border-t border-zinc-700/50 px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] min-h-[55vh] max-h-[92vh] overflow-y-auto"
+            data-bankroll-sheet
+            className="w-full max-w-lg rounded-t-3xl bg-zinc-900 border-t border-zinc-700/50 px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] min-h-[55vh] max-h-[92vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             {sheet === 'logPlay' && selectedTemplate && (
@@ -569,20 +586,18 @@ export default function PlayLogbook({
                 <div className="space-y-3 mb-5">
                   <div>
                     <label className="block text-zinc-400 text-xs mb-1.5">Game</label>
-                    <select
+                    <LogPlayOptionPicker
                       value={selectedTemplateId}
-                      onChange={e => onTemplateChange(e.target.value)}
-                      className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40"
-                    >
-                      {sortedTemplates.map(t => (
-                        <option key={t.id} value={t.id}>{t.display_name}</option>
-                      ))}
-                    </select>
+                      onChange={onTemplateChange}
+                      options={sortedTemplates.map(t => ({ value: t.id, label: t.display_name }))}
+                      ariaLabel="Game"
+                      placeholder="Select game"
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-zinc-400 text-xs mb-1.5">Date</label>
-                      <DateWheelPicker value={captureDate} onChange={setCaptureDate} />
+                      <DateWheelPicker value={captureDate} onChange={setCaptureDate} showYear />
                     </div>
                     <div>
                       <label className="block text-zinc-400 text-xs mb-1.5">Time</label>
@@ -590,31 +605,23 @@ export default function PlayLogbook({
                     </div>
                   </div>
                   <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Casino / location (optional)</label>
+                    <label className="block text-zinc-400 text-xs mb-1.5">Casino</label>
                     <CasinoAutocomplete
                       value={captureCasino}
                       onChange={setCaptureCasino}
                       supabaseClient={supabaseClient}
                       nearbyCasinos={nearbyCasinos}
                       gpsLoading={gpsLoading}
+                      placeholder="Optional"
                     />
                   </div>
-                  {sortMetricSlugs(selectedTemplate.metric_slugs || [], defsMap).map(slug => {
-                    const def = defsMap[slug]
-                    if (!def) return null
-                    return (
-                      <div key={slug}>
-                        <label className="block text-zinc-400 text-xs mb-1.5">{def.label}</label>
-                        <MetricFieldInput
-                          value={formFields[slug] ?? ''}
-                          onChange={v => setFormFields(p => ({ ...p, [slug]: v }))}
-                          valueType={def.value_type}
-                        />
-                      </div>
-                    )
-                  })}
+                  <LogPlayMetricFieldsList
+                    fields={logPlayFormFields}
+                    formFields={formFields}
+                    setFormFields={setFormFields}
+                  />
                   <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Notes (optional)</label>
+                    <label className="block text-zinc-400 text-xs mb-1.5">Notes</label>
                     <textarea
                       value={captureNotes}
                       onChange={e => setCaptureNotes(e.target.value)}
@@ -697,6 +704,178 @@ export default function PlayLogbook({
         </div>
       )}
     </ScrollLinkedEdgeTitleBarShell>
+  )
+}
+
+function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
+  const winLoss = useMemo(
+    () => playLogWinLoss(formFields.money_in, formFields.money_out),
+    [formFields.money_in, formFields.money_out],
+  )
+
+  const nodes = []
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i]
+    if (field.slug === 'counter') {
+      const endField = fields[i + 1]?.slug === 'counter_at_hit' ? fields[i + 1] : null
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="counter-start-end"
+          left={field}
+          right={endField}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      if (endField) i += 1
+      continue
+    }
+    if (field.slug === 'counter_at_hit') {
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="counter-end-only"
+          left={null}
+          right={field}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      continue
+    }
+    if (field.slug === 'bet_size') {
+      const denomField = fields[i + 1]?.slug === 'denom' ? fields[i + 1] : null
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="bet-denom"
+          left={field}
+          right={denomField}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      if (denomField) i += 1
+      continue
+    }
+    if (field.slug === 'denom') {
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="denom-only"
+          left={null}
+          right={field}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      continue
+    }
+    if (field.slug === 'money_in') {
+      const outField = fields[i + 1]?.slug === 'money_out' ? fields[i + 1] : null
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="money-in-out"
+          left={field}
+          right={outField}
+          formFields={formFields}
+          setFormFields={setFormFields}
+          footer={field && outField ? (
+            <div className="mt-1.5 flex items-center justify-between gap-3 px-0.5">
+              <span className="text-zinc-500 text-xs font-medium">Win / loss</span>
+              <span
+                className={`text-sm font-bold tabular-nums ${
+                  winLoss == null ? 'text-zinc-500' : winLoss >= 0 ? 'text-emerald-300' : 'text-red-300'
+                }`}
+              >
+                {winLoss == null ? '—' : formatMetricValue(winLoss, 'money')}
+              </span>
+            </div>
+          ) : null}
+        />,
+      )
+      if (outField) i += 1
+      continue
+    }
+    if (field.slug === 'money_out') {
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="money-out-only"
+          left={null}
+          right={field}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      continue
+    }
+    nodes.push(
+      <div key={field.slug}>
+        <label className="block text-zinc-400 text-xs mb-1.5">{field.label}</label>
+        <LogPlayFormMetricControl
+          field={field}
+          value={formFields[field.slug] ?? ''}
+          onChange={v => setFormFields(p => ({ ...p, [field.slug]: v }))}
+        />
+      </div>,
+    )
+  }
+  return nodes
+}
+
+function LogPlayMetricPairRow({ left, right, formFields, setFormFields, footer = null }) {
+  return (
+    <div>
+      <div className={`grid gap-2 ${left && right ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {left ? (
+          <div>
+            <label className="block text-zinc-400 text-xs mb-1.5">{left.label}</label>
+            <LogPlayFormMetricControl
+              field={left}
+              value={formFields[left.slug] ?? ''}
+              onChange={v => setFormFields(p => ({ ...p, [left.slug]: v }))}
+            />
+          </div>
+        ) : null}
+        {right ? (
+          <div>
+            <label className="block text-zinc-400 text-xs mb-1.5">{right.label}</label>
+            <LogPlayFormMetricControl
+              field={right}
+              value={formFields[right.slug] ?? ''}
+              onChange={v => setFormFields(p => ({ ...p, [right.slug]: v }))}
+            />
+          </div>
+        ) : null}
+      </div>
+      {footer}
+    </div>
+  )
+}
+
+function LogPlayFormMetricControl({ field, value, onChange }) {
+  if (field.slug === 'denom') {
+    return (
+      <DenomSelect
+        value={normalizeDenomFormValue(value)}
+        onChange={onChange}
+      />
+    )
+  }
+  return (
+    <MetricFieldInput
+      value={value}
+      onChange={onChange}
+      valueType={field.value_type}
+    />
+  )
+}
+
+function DenomSelect({ value, onChange }) {
+  return (
+    <LogPlayOptionPicker
+      value={value || LOG_PLAY_DENOM_DEFAULT}
+      onChange={onChange}
+      options={LOG_PLAY_DENOM_OPTIONS}
+      ariaLabel="Denom"
+    />
   )
 }
 

@@ -105,6 +105,88 @@ export function sum(nums) {
   return nums.reduce((a, b) => a + b, 0)
 }
 
+/** Log Play denom dropdown (stored as numeric dollars in entry values). */
+export const LOG_PLAY_DENOM_DEFAULT = '0.01'
+
+export const LOG_PLAY_DENOM_OPTIONS = [
+  { value: '0.01', label: '$0.01' },
+  { value: '0.02', label: '$0.02' },
+  { value: '0.05', label: '$0.05' },
+  { value: '0.10', label: '$0.10' },
+  { value: '0.25', label: '$0.25' },
+  { value: '0.50', label: '$0.50' },
+  { value: '1', label: '$1' },
+  { value: '2', label: '$2' },
+  { value: '5', label: '$5' },
+  { value: '10', label: '$10' },
+  { value: '25', label: '$25' },
+  { value: '50', label: '$50' },
+  { value: '100', label: '$100' },
+]
+
+const LOG_PLAY_DENOM_VALUES = new Set(LOG_PLAY_DENOM_OPTIONS.map(o => o.value))
+
+/** @param {unknown} raw */
+export function normalizeDenomFormValue(raw) {
+  const s = String(raw ?? '').trim().replace(/[^0-9.]/g, '')
+  if (LOG_PLAY_DENOM_VALUES.has(s)) return s
+  const n = Number(s)
+  if (!Number.isFinite(n)) return LOG_PLAY_DENOM_DEFAULT
+  for (const opt of LOG_PLAY_DENOM_OPTIONS) {
+    if (Number(opt.value) === n) return opt.value
+  }
+  return LOG_PLAY_DENOM_DEFAULT
+}
+
+/** Log Play sheet field order + display labels (slugs unchanged in DB). */
+export const LOG_PLAY_FORM_FIELDS = [
+  { slug: 'bet_size', label: 'Bet Size' },
+  { slug: 'denom', label: 'Denom' },
+  { slug: 'counter', label: 'Counter Start' },
+  { slug: 'counter_at_hit', label: 'Counter End' },
+  { slug: 'money_in', label: 'Money In' },
+  { slug: 'money_out', label: 'Money Out' },
+  { slug: 'spin_count', label: '# Spins' },
+  { slug: 'bonus_count', label: '# Bonuses' },
+]
+
+const LOG_PLAY_FORM_SLUGS = new Set(LOG_PLAY_FORM_FIELDS.map(f => f.slug))
+
+/**
+ * @param {string[]} templateSlugs
+ * @param {Record<string, PlayLogMetricDef>} defsMap
+ * @returns {{ slug: string, label: string, value_type: PlayLogValueType }[]}
+ */
+export function orderedLogPlayFormFields(templateSlugs, defsMap) {
+  const inTemplate = new Set(templateSlugs)
+  /** @type {{ slug: string, label: string, value_type: PlayLogValueType }[]} */
+  const out = []
+
+  for (const spec of LOG_PLAY_FORM_FIELDS) {
+    if (!inTemplate.has(spec.slug)) continue
+    const def = defsMap[spec.slug]
+    if (!def) continue
+    out.push({ slug: spec.slug, label: spec.label, value_type: def.value_type })
+  }
+
+  for (const slug of sortMetricSlugs(templateSlugs, defsMap)) {
+    if (LOG_PLAY_FORM_SLUGS.has(slug)) continue
+    const def = defsMap[slug]
+    if (!def) continue
+    out.push({ slug, label: def.label, value_type: def.value_type })
+  }
+
+  return out
+}
+
+/** @param {string} inRaw @param {string} outRaw */
+export function playLogWinLoss(inRaw, outRaw) {
+  const inn = Number(String(inRaw ?? '').replace(/[^0-9.\-]/g, ''))
+  const out = Number(String(outRaw ?? '').replace(/[^0-9.\-]/g, ''))
+  if (!Number.isFinite(inn) || !Number.isFinite(out)) return null
+  return out - inn
+}
+
 /** @param {PlayLogTemplate[]} templates */
 export function templatesSorted(templates) {
   return [...templates].sort((a, b) => {

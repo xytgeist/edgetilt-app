@@ -23,6 +23,7 @@ The agent should treat the following as **standing instructions for this session
 - **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
 - **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
 - **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning* (includes the **Lounge unmount vs Cloudflare Stream uploads** example).
+- **Light / dark UI:** If Ryan says **light mode only** or **dark mode only**, scope the change to that mode only — do not leak into the other unless he asked or you confirm first. See **`AGENTS.md`** → *LIGHT MODE vs DARK MODE* (`AGENT_RULE_THEME_MODE_ONLY`).
 
 ---
 
@@ -60,6 +61,7 @@ The agent should treat the following as **standing instructions for this session
 - **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
 - **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
 - **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning* (includes the **Lounge unmount vs Cloudflare Stream uploads** example).
+- **Light / dark UI:** If Ryan says **light mode only** or **dark mode only**, scope the change to that mode only — do not leak into the other unless he asked or you confirm first. See **`AGENTS.md`** → *LIGHT MODE vs DARK MODE* (`AGENT_RULE_THEME_MODE_ONLY`).
 
 ---
 

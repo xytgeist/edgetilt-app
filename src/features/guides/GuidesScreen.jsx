@@ -59,7 +59,7 @@ import {
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
+import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
@@ -1597,6 +1597,7 @@ export default function GuidesScreen({
   titleBarNavSlot = null,
   /** When set, scroll to and expand this guide card slug (used by Lounge guide embed tap). */
   openCardSlug = null,
+  onBackToSlotsHub = null,
 }) {
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState([])
@@ -1815,9 +1816,8 @@ export default function GuidesScreen({
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
-        <QuickLinkPageToggle destinationId="guides" />
+        <SlotsToolPageHeader onBackToSlotsHub={onBackToSlotsHub} quickLinkDestinationId="guides" />
         <h1 className="sr-only">AP Guides</h1>
-        <div className="mb-5 mt-1 text-sm text-zinc-400">+EV quick read · expand for full playbook</div>
         {isAdmin && !gatesDbReady ? (
           <p className="mb-4 text-xs text-fuchsia-300/90">
             Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.

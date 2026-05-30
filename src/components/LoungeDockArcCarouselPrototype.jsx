@@ -36,7 +36,8 @@ import {
 } from '../utils/loungeDockFabGlow.js'
 
 const HOME_ITEM_ID = 'home'
-const PANEL_CHROME_PANELS = new Set(['search', 'notifications', 'chat', 'settings'])
+/** Compact FAB + home chip (search/notifications/settings/chat panels, or any non-feed screen). */
+const PANEL_CHROME_PANELS = new Set(['search', 'notifications', 'chat', 'settings', 'awayFromFeed'])
 
 const ITEM_ICON_PX = Math.round((23 * LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX) / 40)
 const DRAG_THRESHOLD_PX = 8
@@ -232,7 +233,7 @@ export default function LoungeDockArcCarouselPrototype({
   cornerLItems = null,
   defaultOpen = false,
   reveal = 1,
-  /** When set (search / notifications / chat), FAB + home stay visible; tap FAB to expand full menu. */
+  /** When set (search / notifications / chat / settings / awayFromFeed), FAB + home stay visible; tap FAB to expand full menu. */
   panelChrome = null,
   /** True while the wheel is open or briefly after a wheel icon tap (blocks feed/panel hits). */
   onPointerBlockChange,

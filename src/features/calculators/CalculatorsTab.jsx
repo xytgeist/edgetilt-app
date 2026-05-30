@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
+import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
@@ -62,14 +62,11 @@ function CalculatorsHome({
 
   return (
     <div className="w-full pt-2 sm:pt-3">
-      <div className="mb-10 text-left sm:mb-12">
-        <p className="text-base text-zinc-400">Select a calculator</p>
-        {isAdmin && !gatesDbReady ? (
-          <p className="mt-2 text-xs text-fuchsia-300/90">
-            Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.
-          </p>
-        ) : null}
-      </div>
+      {isAdmin && !gatesDbReady ? (
+        <p className="mb-6 text-left text-xs text-fuchsia-300/90 sm:mb-8">
+          Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.
+        </p>
+      ) : null}
 
       {CALCULATOR_CATALOG.map((calc) => {
         const locked = showCalculatorLock(calc.key, access)
@@ -145,6 +142,7 @@ export default function CalculatorsTab({
   gatesDbReady = false,
   onSetContentGate,
   titleBarNavSlot = null,
+  onBackToSlotsHub = null,
   supabaseClient = null,
 }) {
   if (!activeCalculator) {
@@ -153,7 +151,7 @@ export default function CalculatorsTab({
         titleBarNavSlot={titleBarNavSlot}
         contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
-        <QuickLinkPageToggle destinationId="calculators" />
+        <SlotsToolPageHeader onBackToSlotsHub={onBackToSlotsHub} quickLinkDestinationId="calculators" />
         <CalculatorsHome
           onSelectCalculator={setActiveCalculator}
           browseMode={browseMode}

@@ -820,15 +820,19 @@ export default function AppShell({
     setTab(toolId)
   }, [])
 
+  const backToSlotsHub = useCallback(() => {
+    setActiveCalculator(null)
+    setTab('slots')
+    setMenuOpen(false)
+  }, [])
+
   const SLOTS_TOOL_TAB_IDS = new Set(['calculators', 'offers', 'bankroll', 'guides', 'intel', 'logbook'])
   // `intel` — routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
 
-  /** `subscriberGated`: show lock in menu for logged-in users without an active subscription (see `docs/access-tiers.md`). */
+  /** Title bar ☰ menu — Slots hub only (Lounge via dock home; Team not in menu). */
   const navItems = [
-    { id: 'home', label: 'Lounge', icon: '🍻', subscriberGated: false },
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
-    { id: 'team', label: 'Team', icon: '🤝', subscriberGated: false },
   ]
 
   const showNavSubscriberLocks =
@@ -1017,6 +1021,10 @@ export default function AppShell({
             loungeFeedBrowseMode={browseMode}
             authSessionReady={authSessionReady}
             isActivePage={tab === 'home'}
+            onNavigateToLoungeFeed={() => {
+              setTab('home')
+              setMenuOpen(false)
+            }}
             onLogout={onLogout}
             onDeleteAccount={onDeleteAccount}
             deleteAccountBusy={deleteAccountBusy}
@@ -1059,6 +1067,7 @@ export default function AppShell({
           onSetContentGate={onSetContentAccessGate}
           onRequireSubscribe={onRequireSubscribe}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          onBackToSlotsHub={backToSlotsHub}
           supabaseClient={supabaseClient}
         />
       )
@@ -1176,6 +1185,7 @@ export default function AppShell({
           onRequireSubscribe={onRequireSubscribe}
           titleBarNavSlot={renderTitleBarNavSlot()}
           openCardSlug={guideOpenCardSlug}
+          onBackToSlotsHub={backToSlotsHub}
         />
       )
     } else if (tab === 'offers') {
@@ -1190,6 +1200,7 @@ export default function AppShell({
           onRequireSubscribe={() => onRequireSubscribe?.('slots-edge')}
           titleBarNavSlot={renderTitleBarNavSlot()}
           isAdmin={isAdmin}
+          onBackToSlotsHub={backToSlotsHub}
         />
       )
     } else if (tab === 'bankroll') {
@@ -1197,6 +1208,7 @@ export default function AppShell({
         <BankrollTracker
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          onBackToSlotsHub={backToSlotsHub}
         />
       )
     } else if (tab === 'logbook') {
@@ -1204,10 +1216,17 @@ export default function AppShell({
         <PlayLogbook
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          onBackToSlotsHub={backToSlotsHub}
         />
       )
     } else if (tab === 'intel') {
-      visibleTab = <LocalIntel supabaseClient={supabaseClient} titleBarNavSlot={renderTitleBarNavSlot()} />
+      visibleTab = (
+        <LocalIntel
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          onBackToSlotsHub={backToSlotsHub}
+        />
+      )
     } else if (tab === 'team') {
       visibleTab = (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">

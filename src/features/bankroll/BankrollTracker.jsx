@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
+import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -96,7 +96,7 @@ function isoToLocalHm(iso) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null }) {
+export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null, onBackToSlotsHub = null }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
   const [sessions, setSessions] = useState([])
@@ -641,7 +641,7 @@ export default function BankrollTracker({ supabaseClient, titleBarNavSlot = null
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
 
-        <QuickLinkPageToggle destinationId="bankroll" />
+        <SlotsToolPageHeader onBackToSlotsHub={onBackToSlotsHub} quickLinkDestinationId="bankroll" />
 
         {/* Tab navigation */}
         <div className="flex gap-1 overflow-x-auto no-scrollbar mb-5 -mx-3 px-3">

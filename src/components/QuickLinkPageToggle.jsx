@@ -31,28 +31,23 @@ export default function QuickLinkPageToggle({ destinationId, className = '' }) {
   return (
     <>
       <div
-        className={`flex items-center justify-between gap-3 rounded-2xl border border-zinc-800/70 bg-zinc-900/50 px-3 py-2 mb-3 ${className}`}
+        className={`inline-flex max-w-full items-center justify-between gap-2 rounded-2xl border border-zinc-800/70 bg-zinc-900/50 px-2.5 py-1.5 ${className}`}
         data-quick-link-toggle
       >
-        <div className="min-w-0">
-          <div className="text-zinc-300 text-xs font-semibold">Quick link</div>
-          <div className="text-zinc-500 text-[11px] leading-snug mt-0.5">
-            Pin {dest.label} to the title bar
-          </div>
-        </div>
+        <span className="text-zinc-300 text-xs font-semibold whitespace-nowrap">Quick link</span>
         <button
           type="button"
           role="switch"
           aria-checked={enabled}
           aria-label={`Quick link for ${dest.label}`}
           onClick={onToggle}
-          className={`relative h-7 w-12 shrink-0 rounded-full touch-manipulation transition-colors ${
+          className={`relative h-5 w-9 shrink-0 rounded-full touch-manipulation transition-colors ${
             enabled ? 'bg-cyan-600' : 'bg-zinc-700'
           }`}
         >
           <span
-            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-[left] ${
-              enabled ? 'left-[22px]' : 'left-0.5'
+            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left] ${
+              enabled ? 'left-[18px]' : 'left-0.5'
             }`}
           />
         </button>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 
-export default function LocalIntel({ supabaseClient, titleBarNavSlot = null }) {
+export default function LocalIntel({ supabaseClient, titleBarNavSlot = null, onBackToSlotsHub = null }) {
   const [intelView, setIntelView] = useState({ screen: 'home', cityId: null, casinoId: null })
 
   const [cities, setCities] = useState([])
@@ -180,6 +181,7 @@ export default function LocalIntel({ supabaseClient, titleBarNavSlot = null }) {
   if (intelView.screen === 'home') {
     return (
       <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <SlotsToolPageHeader onBackToSlotsHub={onBackToSlotsHub} />
         <Header title="Local Intel" subtitle="City + casino updates (skeleton)" />
 
         <SetupHint />

@@ -416,6 +416,8 @@ export default function SocialFeed({
   authSessionReady = true,
   /** True only when the Lounge tab is the active/visible screen; gates the portaled dock FAB. */
   isActivePage = true,
+  /** Called when the user should return to the Lounge feed tab (e.g. dock home from another shell tab). */
+  onNavigateToLoungeFeed,
   onLogout,
   onDeleteAccount,
   deleteAccountBusy = false,
@@ -726,6 +728,18 @@ export default function SocialFeed({
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
   /** Left dock: search / notifications / chat (Lounge shell). */
   const [loungeDockPanel, setLoungeDockPanel] = useState(null)
+  const prevLoungeFeedActiveRef = useRef(isActivePage)
+  const ensureLoungeFeedVisible = useCallback(() => {
+    if (!isActivePage) onNavigateToLoungeFeed?.()
+  }, [isActivePage, onNavigateToLoungeFeed])
+  useEffect(() => {
+    if (prevLoungeFeedActiveRef.current && !isActivePage) {
+      setLoungeDockPanel(null)
+      setChatDockInitialPeerUserId(null)
+      setLoungeSettingsFocusSection(null)
+    }
+    prevLoungeFeedActiveRef.current = isActivePage
+  }, [isActivePage])
   /** When opening Settings from another panel, scroll to this section (`notifications`, …). */
   const [loungeSettingsFocusSection, setLoungeSettingsFocusSection] = useState(null)
   const [loungeDockSearchQuery, setLoungeDockSearchQuery] = useState('')
@@ -5650,6 +5664,10 @@ export default function SocialFeed({
   }, [])
 
   const onLoungeDockHome = useCallback(() => {
+    if (!isActivePage) {
+      onNavigateToLoungeFeed?.()
+      return
+    }
     setLoungeDockPanel(null)
     setChatDockInitialPeerUserId(null)
     if (profileModalOpen) closeProfileModalRef.current()
@@ -5657,18 +5675,20 @@ export default function SocialFeed({
     scrollLoungeFeedToTop()
     loungeTitleRevealRef.current = 1
     setLoungeTitleReveal(1)
-  }, [profileModalOpen, loungePostDetail, closeLoungePostDetail, scrollLoungeFeedToTop])
+  }, [isActivePage, onNavigateToLoungeFeed, profileModalOpen, loungePostDetail, closeLoungePostDetail, scrollLoungeFeedToTop])
 
   const onLoungeDockSearch = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
       onRequireAuth?.()
       return
     }
+    ensureLoungeFeedVisible()
     setLoungeDockPanel((p) => (p === 'search' ? null : 'search'))
-  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
+  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible])
   const onLoungeDockNotifications = useCallback(() => {
+    ensureLoungeFeedVisible()
     setLoungeDockPanel((p) => (p === 'notifications' ? null : 'notifications'))
-  }, [])
+  }, [ensureLoungeFeedVisible])
 
   const refreshLoungeNotificationsUnread = useCallback(async () => {
     if (!composerUserId || loungeFeedBrowseMode === 'anonymous') {
@@ -5836,6 +5856,7 @@ export default function SocialFeed({
     ],
   )
   const onLoungeDockChat = useCallback(() => {
+    ensureLoungeFeedVisible()
     setLoungeDockPanel((p) => {
       if (p === 'chat') {
         setChatDockInitialPeerUserId(null)
@@ -5843,15 +5864,16 @@ export default function SocialFeed({
       }
       return 'chat'
     })
-  }, [])
+  }, [ensureLoungeFeedVisible])
 
   const onLoungeDockSettings = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
       onRequireAuth?.()
       return
     }
+    ensureLoungeFeedVisible()
     setLoungeDockPanel((p) => (p === 'settings' ? null : 'settings'))
-  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
+  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible])
 
   const onLoungeOpenSettingsSection = useCallback(
     (section) => {
@@ -5859,10 +5881,11 @@ export default function SocialFeed({
         onRequireAuth?.()
         return
       }
+      ensureLoungeFeedVisible()
       setLoungeSettingsFocusSection(section)
       setLoungeDockPanel('settings')
     },
-    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
+    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible],
   )
 
   const onLoungeSettingsFocusSectionHandled = useCallback(() => {
@@ -5874,6 +5897,7 @@ export default function SocialFeed({
       onRequireAuth?.()
       return
     }
+    ensureLoungeFeedVisible()
     /** Dismiss z-stacked chrome synchronously so the caption is focusable in the same user gesture (iOS keyboard). */
     if (loungePostDetail) finalizeLoungePostDetailClose()
     if (profileModalOpen) finalizeProfileModalCloseRef.current?.()
@@ -5903,6 +5927,7 @@ export default function SocialFeed({
     loungeFeedBrowseMode,
     loungeReadOnly,
     onRequireAuth,
+    ensureLoungeFeedVisible,
     profileModalOpen,
     loungePostDetail,
     finalizeLoungePostDetailClose,
@@ -5918,10 +5943,11 @@ export default function SocialFeed({
       onRequireAuth?.()
       return
     }
+    ensureLoungeFeedVisible()
     const next =
       loungeFeedScope === LOUNGE_FEED_SCOPE_FOLLOWING ? LOUNGE_FEED_SCOPE_ALL : LOUNGE_FEED_SCOPE_FOLLOWING
     onLoungeFeedScopeChange?.(next)
-  }, [loungeFeedBrowseMode, loungeFeedScope, onLoungeFeedScopeChange, onRequireAuth])
+  }, [loungeFeedBrowseMode, loungeFeedScope, onLoungeFeedScopeChange, onRequireAuth, ensureLoungeFeedVisible])
 
   const clearChatDockInitialPeer = useCallback(() => setChatDockInitialPeerUserId(null), [])
 
@@ -10158,7 +10184,18 @@ export default function SocialFeed({
   )
   const loungeDockFabBottomObstaclePx = loungePostUploadBar ? loungeUploadBarHeightPx + 10 : 0
 
-  const showLoungeViewportDock = isActivePage && !loungePostDetail && !loungeStreamLightboxOpen
+  const showLoungeViewportDock = !loungePostDetail && !loungeStreamLightboxOpen
+  const loungeDockPanelChrome =
+    loungeDockPanel ?? (!isActivePage ? 'awayFromFeed' : null)
+  const loungeDockReveal = !isActivePage
+    ? 1
+    : profileModalOpen
+      ? loungeProfileDockReveal
+      : loungeDockPanel
+        ? loungePanelTitleReveal
+        : loungeTitleReveal
+  const loungeDockBottomObstaclePx = isActivePage ? loungeDockFabBottomObstaclePx : 0
+  const loungeFeedHomeActive = isActivePage && !loungeDockPanel
   const loungeTitleBarChromePx = loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56
   /** Scroll inset for the opaque dock icon row only. Outer column uses `pb-0`; home-indicator inset lives in feed bottom padding + scroll content. */
   const loungeDockFeedContentInsetPx = showLoungeViewportDock
@@ -10182,6 +10219,7 @@ export default function SocialFeed({
         onSettings: onLoungeDockSettings,
         activePanel: loungeDockPanel,
         notificationsUnreadCount: loungeNotificationsUnread,
+        feedHomeActive: loungeFeedHomeActive,
       }),
     [
       onLoungeDockCompose,
@@ -10197,8 +10235,22 @@ export default function SocialFeed({
       onLoungeDockSettings,
       loungeDockPanel,
       loungeNotificationsUnread,
+      loungeFeedHomeActive,
     ],
   )
+
+  const loungeDockCarousel = showLoungeViewportDock ? (
+    <LoungeDockArcCarouselPrototype
+      items={loungeDockWheelItems}
+      cornerLItems={loungeDockCornerLItems}
+      reveal={loungeDockReveal}
+      panelChrome={loungeDockPanelChrome}
+      menuLayout={loungeDockMenuLayout}
+      bottomObstacleInsetPx={loungeDockBottomObstaclePx}
+      onPointerBlockChange={setLoungeFabPointerBlocked}
+      notificationsUnreadCount={loungeNotificationsUnread}
+    />
+  ) : null
 
   return (
     <div
@@ -10288,24 +10340,11 @@ export default function SocialFeed({
       ) : null}
       */}
 
-      {showLoungeViewportDock ? (
-        <LoungeDockArcCarouselPrototype
-          items={loungeDockWheelItems}
-          cornerLItems={loungeDockCornerLItems}
-          reveal={
-            profileModalOpen
-              ? loungeProfileDockReveal
-              : loungeDockPanel
-                ? loungePanelTitleReveal
-                : loungeTitleReveal
-          }
-          panelChrome={loungeDockPanel}
-          menuLayout={loungeDockMenuLayout}
-          bottomObstacleInsetPx={loungeDockFabBottomObstaclePx}
-          onPointerBlockChange={setLoungeFabPointerBlocked}
-          notificationsUnreadCount={loungeNotificationsUnread}
-        />
-      ) : null}
+      {isActivePage ? loungeDockCarousel : null}
+
+      {!isActivePage && loungeDockCarousel && typeof document !== 'undefined'
+        ? createPortal(loungeDockCarousel, document.body)
+        : null}
 
       <div
         ref={loungeFeedScrollRef}

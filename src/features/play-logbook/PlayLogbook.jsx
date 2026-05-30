@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
+import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -44,7 +44,7 @@ function emptyFormFields(metricSlugs) {
   return o
 }
 
-export default function PlayLogbook({ supabaseClient, titleBarNavSlot = null }) {
+export default function PlayLogbook({ supabaseClient, titleBarNavSlot = null, onBackToSlotsHub = null }) {
   const [userId, setUserId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -303,7 +303,7 @@ export default function PlayLogbook({ supabaseClient, titleBarNavSlot = null }) 
       contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
     >
       <div data-play-logbook>
-        <QuickLinkPageToggle destinationId="logbook" />
+        <SlotsToolPageHeader onBackToSlotsHub={onBackToSlotsHub} quickLinkDestinationId="logbook" />
         <div className="mb-5">
           <div className="text-white text-2xl font-black tracking-tight">Play Logbook</div>
           <div className="text-zinc-400 text-sm mt-0.5">Capture AP slot data · analyze later</div>

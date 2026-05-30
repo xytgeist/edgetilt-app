@@ -146,15 +146,15 @@ export function buildLoungeDockArcCarouselItems({
   onSettings,
   activePanel,
   notificationsUnreadCount = 0,
+  /** True when Lounge feed is the visible tab with no dock panel open (home icon "lit" in full wheel). */
+  feedHomeActive = true,
 }) {
-  const onFeedHome = !activePanel
-
   const home = {
     id: 'home',
     label: 'Home',
     icon: <IconHome />,
     onSelect: onHome,
-    active: onFeedHome,
+    active: feedHomeActive,
   }
   const compose = {
     id: 'compose',

@@ -1377,6 +1377,115 @@ html.light [data-offer-form] .text-emerald-100  { color: #166534 !important; }
 /* Discard confirm dialog */
 html.light [data-offer-form] .bg-zinc-700\/95 { background-color: #e5e7eb !important; }
 
+/* ── Lounge quote repost sheet – light mode ─────────────────────────────── */
+html.light [data-lounge-quote-repost-sheet] {
+  background-color: #f2f2f7 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] #quote-repost-sheet-title,
+html.light [data-lounge-quote-repost-sheet] #quote-remove-confirm-title {
+  color: #18181b !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .text-zinc-100 {
+  color: #18181b !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .text-zinc-300 {
+  color: #52525b !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .text-zinc-400 {
+  color: #3f3f46 !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .text-zinc-500 {
+  color: #71717a !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .text-zinc-600 {
+  color: #71717a !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .border-zinc-600,
+html.light [data-lounge-quote-repost-sheet] .border-zinc-600\/80 {
+  border-color: #d4d4d8 !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .border-zinc-700\/40,
+html.light [data-lounge-quote-repost-sheet] .border-zinc-700\/70,
+html.light [data-lounge-quote-repost-sheet] .border-zinc-700\/80 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .bg-zinc-800\/90 {
+  background-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .bg-zinc-900\/55 {
+  background-color: #ffffff !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .hover\:bg-zinc-800\/90:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] button[aria-label='Cancel'] {
+  color: #52525b !important;
+}
+html.light [data-lounge-quote-repost-sheet] button[aria-label='Cancel']:hover,
+html.light [data-lounge-quote-repost-sheet] button[aria-label='Cancel']:active {
+  color: #18181b !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-header-fade {
+  background-color: rgba(242, 242, 247, 0.92) !important;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(242, 242, 247, 1) 0%,
+    rgba(242, 242, 247, 0.95) 18%,
+    rgba(242, 242, 247, 0.82) 42%,
+    rgba(242, 242, 247, 0.5) 62%,
+    rgba(242, 242, 247, 0) 78%
+  ) !important;
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(242, 242, 247, 1) 0%,
+    rgba(242, 242, 247, 0.95) 18%,
+    rgba(242, 242, 247, 0.82) 42%,
+    rgba(242, 242, 247, 0.5) 62%,
+    rgba(242, 242, 247, 0) 78%
+  ) !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-scroll {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'] {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'] .text-zinc-400 {
+  color: #3f3f46 !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .bg-rose-950\/20 {
+  background-color: rgba(254, 226, 226, 0.85) !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .text-rose-200 {
+  color: #b91c1c !important;
+}
+
+html.light [data-lounge-quote-repost-sheet] .border-rose-500\/40 {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
 /* ── Week Event Detail Modal – dark mode ────────────────────────────────── */
 html:not(.light) [data-event-detail-card] {
   background: color-mix(in srgb, var(--ot-color) 28%, #18181b) !important;

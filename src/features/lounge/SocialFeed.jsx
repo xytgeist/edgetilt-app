@@ -13059,7 +13059,10 @@ export default function SocialFeed({
             }}
           />
           <div className="pointer-events-none relative z-10 mx-auto w-full max-w-md pb-[max(1.25rem,env(safe-area-inset-bottom)+28px)]">
-            <div className="pointer-events-auto rounded-t-2xl border border-zinc-600/80 bg-[#181b22]/96 px-4 pb-6 pt-5 shadow-2xl backdrop-blur-md">
+            <div
+              data-lounge-quote-repost-sheet=""
+              className="pointer-events-auto rounded-t-2xl border border-zinc-600/80 bg-[#181b22]/96 px-4 pb-6 pt-5 shadow-2xl backdrop-blur-md"
+            >
               <p id="quote-remove-confirm-title" className="text-[16px] font-semibold leading-snug text-white">
                 Are you sure you want to delete your quote of this post?
               </p>
@@ -13115,6 +13118,7 @@ export default function SocialFeed({
           />
           <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 items-end pointer-events-none">
             <div
+              data-lounge-quote-repost-sheet=""
               className="pointer-events-auto relative w-full overflow-hidden rounded-t-[36px] border border-zinc-700/40 bg-[#181b22]/92 shadow-[0_6px_16px_rgba(0,0,0,0.12)] backdrop-blur-md"
               style={{ height: 'calc(100dvh - (env(safe-area-inset-top) + 12px))' }}
             >
@@ -13146,7 +13150,7 @@ export default function SocialFeed({
               </div>
 
               <div
-                className="pointer-events-none absolute inset-x-0 top-0 z-20 h-20 bg-black/4 backdrop-blur-xl"
+                className="lounge-quote-repost-header-fade pointer-events-none absolute inset-x-0 top-0 z-20 h-20 bg-black/4 backdrop-blur-xl"
                 style={{
                   WebkitMaskImage:
                     'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 18%, rgba(0,0,0,0.82) 42%, rgba(0,0,0,0.5) 62%, rgba(0,0,0,0) 78%)',
@@ -13157,7 +13161,7 @@ export default function SocialFeed({
 
               <div
                 ref={quoteRepostScrollRef}
-                className="relative h-full overscroll-contain overflow-y-auto touch-pan-y"
+                className="lounge-quote-repost-scroll relative h-full overscroll-contain overflow-y-auto touch-pan-y"
                 style={{
                   WebkitOverflowScrolling: 'touch',
                   WebkitMaskImage:

@@ -4,8 +4,8 @@
 let uiSyncBack = false
 
 /**
- * Bind browser / hardware back to `onClose` for one open lightbox session.
- * Call the returned cleanup when the lightbox closes (unmount or `lightboxOpen` → false).
+ * Bind browser / hardware back to `onClose` for Stream video hero lightbox only.
+ * Image/GIF lightboxes do not use this — UI dismiss must not call `history.back()`.
  *
  * @param {() => void} onClose
  * @returns {() => void}
@@ -13,7 +13,7 @@ let uiSyncBack = false
 export function bindLoungeLightboxHistory(onClose) {
   if (typeof window === 'undefined') return () => {}
 
-  window.history.pushState({ loungeLightbox: true }, '')
+  window.history.pushState({ loungeLightbox: true }, '', window.location.href)
   let active = true
   let popClosed = false
 

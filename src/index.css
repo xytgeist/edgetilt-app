@@ -789,103 +789,315 @@ html.light .klipy-gif-sheet {
 }
 
 /*
- * Category pills in light mode — solid filled backgrounds.
- * Scoped to .lounge-pill-row so dark mode is completely untouched.
- * Text: white on all colors except lime (too light) which gets near-black.
+ * Tribe/category pills — solid fills via CSS variables (dark :root, light html.light).
+ * Tailwind chip class names are legacy tokens; see loungePostCategoryPills.js slug map.
+ * Scoped to .lounge-pill-row and .lounge-category-pill (search chrome).
  */
-/* No outlines, subtle shadow for depth — borderless + floaty */
-html.light .lounge-pill-row .border {
+:root {
+  --lounge-pill-ap_slots: #7a45ff;
+  --lounge-pill-ap_tables: #4754ff;
+  --lounge-pill-poker: #38b8ff;
+  --lounge-pill-gaming: #14c9bc;
+  --lounge-pill-tabletop: #d4b83a;
+  --lounge-pill-investing: #f5936a;
+  --lounge-pill-trading: #f5727d;
+  --lounge-pill-stocks: #52597a;
+  --lounge-pill-crypto: #ffc247;
+  --lounge-pill-collectibles: #95a0dc;
+  --lounge-pill-on-dark-fg: #fff;
+  --lounge-pill-on-light-fg: #18181b;
+  --lounge-pill-tabletop-fg: var(--lounge-pill-on-light-fg);
+  --lounge-pill-crypto-fg: var(--lounge-pill-on-light-fg);
+  --lounge-pill-collectibles-fg: var(--lounge-pill-on-dark-fg);
+}
+
+html.light {
+  --lounge-pill-ap_slots: #661fff;
+  --lounge-pill-ap_tables: #3333ff;
+  --lounge-pill-poker: #1fa2ff;
+  --lounge-pill-gaming: #03b5aa;
+  --lounge-pill-tabletop: #f9d94e;
+  --lounge-pill-investing: #eb8258;
+  --lounge-pill-trading: #eb5c68;
+  --lounge-pill-stocks: #2d3047;
+  --lounge-pill-crypto: #fba92c;
+  --lounge-pill-collectibles: #b3b7ee;
+  --lounge-pill-collectibles-fg: var(--lounge-pill-on-light-fg);
+}
+
+.lounge-pill-row .border,
+.lounge-category-pill.border {
   border-width: 0 !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.20);
+}
+html.light .lounge-pill-row .border,
+html.light .lounge-category-pill.border {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+html:not(.light) .lounge-pill-row .border,
+html:not(.light) .lounge-category-pill.border {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+/* display + selected chip tokens → tribe fill */
+.lounge-pill-row .bg-amber-500\/10,
+.lounge-pill-row .bg-amber-500\/20,
+.lounge-category-pill.bg-amber-500\/10,
+.lounge-category-pill.bg-amber-500\/20 {
+  background-color: var(--lounge-pill-ap_slots) !important;
+}
+.lounge-pill-row .border-amber-500\/35,
+.lounge-pill-row .border-amber-400\/50,
+.lounge-category-pill.border-amber-500\/35,
+.lounge-category-pill.border-amber-400\/50 {
+  border-color: var(--lounge-pill-ap_slots) !important;
+}
+.lounge-pill-row .text-amber-300,
+.lounge-pill-row .text-amber-100,
+.lounge-category-pill.text-amber-300,
+.lounge-category-pill.text-amber-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-emerald-500\/10,
+.lounge-pill-row .bg-emerald-500\/20,
+.lounge-category-pill.bg-emerald-500\/10,
+.lounge-category-pill.bg-emerald-500\/20 {
+  background-color: var(--lounge-pill-ap_tables) !important;
+}
+.lounge-pill-row .border-emerald-500\/35,
+.lounge-pill-row .border-emerald-400\/50,
+.lounge-category-pill.border-emerald-500\/35,
+.lounge-category-pill.border-emerald-400\/50 {
+  border-color: var(--lounge-pill-ap_tables) !important;
+}
+.lounge-pill-row .text-emerald-300,
+.lounge-pill-row .text-emerald-100,
+.lounge-category-pill.text-emerald-300,
+.lounge-category-pill.text-emerald-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-rose-500\/10,
+.lounge-pill-row .bg-rose-500\/20,
+.lounge-category-pill.bg-rose-500\/10,
+.lounge-category-pill.bg-rose-500\/20 {
+  background-color: var(--lounge-pill-poker) !important;
+}
+.lounge-pill-row .border-rose-500\/35,
+.lounge-pill-row .border-rose-400\/50,
+.lounge-category-pill.border-rose-500\/35,
+.lounge-category-pill.border-rose-400\/50 {
+  border-color: var(--lounge-pill-poker) !important;
+}
+.lounge-pill-row .text-rose-300,
+.lounge-pill-row .text-rose-100,
+.lounge-category-pill.text-rose-300,
+.lounge-category-pill.text-rose-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-violet-500\/10,
+.lounge-pill-row .bg-violet-500\/20,
+.lounge-category-pill.bg-violet-500\/10,
+.lounge-category-pill.bg-violet-500\/20 {
+  background-color: var(--lounge-pill-gaming) !important;
+}
+.lounge-pill-row .border-violet-500\/35,
+.lounge-pill-row .border-violet-400\/50,
+.lounge-category-pill.border-violet-500\/35,
+.lounge-category-pill.border-violet-400\/50 {
+  border-color: var(--lounge-pill-gaming) !important;
+}
+.lounge-pill-row .text-violet-300,
+.lounge-pill-row .text-violet-100,
+.lounge-category-pill.text-violet-300,
+.lounge-category-pill.text-violet-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-sky-500\/10,
+.lounge-pill-row .bg-sky-500\/20,
+.lounge-category-pill.bg-sky-500\/10,
+.lounge-category-pill.bg-sky-500\/20 {
+  background-color: var(--lounge-pill-tabletop) !important;
+}
+.lounge-pill-row .border-sky-500\/35,
+.lounge-pill-row .border-sky-400\/50,
+.lounge-category-pill.border-sky-500\/35,
+.lounge-category-pill.border-sky-400\/50 {
+  border-color: var(--lounge-pill-tabletop) !important;
+}
+.lounge-pill-row .text-sky-300,
+.lounge-pill-row .text-sky-100,
+.lounge-category-pill.text-sky-300,
+.lounge-category-pill.text-sky-100 {
+  color: var(--lounge-pill-tabletop-fg) !important;
+}
+
+.lounge-pill-row .bg-teal-500\/10,
+.lounge-pill-row .bg-teal-500\/20,
+.lounge-category-pill.bg-teal-500\/10,
+.lounge-category-pill.bg-teal-500\/20 {
+  background-color: var(--lounge-pill-investing) !important;
+}
+.lounge-pill-row .border-teal-500\/35,
+.lounge-pill-row .border-teal-400\/50,
+.lounge-category-pill.border-teal-500\/35,
+.lounge-category-pill.border-teal-400\/50 {
+  border-color: var(--lounge-pill-investing) !important;
+}
+.lounge-pill-row .text-teal-300,
+.lounge-pill-row .text-teal-100,
+.lounge-category-pill.text-teal-300,
+.lounge-category-pill.text-teal-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-orange-500\/10,
+.lounge-pill-row .bg-orange-500\/20,
+.lounge-category-pill.bg-orange-500\/10,
+.lounge-category-pill.bg-orange-500\/20 {
+  background-color: var(--lounge-pill-trading) !important;
+}
+.lounge-pill-row .border-orange-500\/35,
+.lounge-pill-row .border-orange-400\/50,
+.lounge-category-pill.border-orange-500\/35,
+.lounge-category-pill.border-orange-400\/50 {
+  border-color: var(--lounge-pill-trading) !important;
+}
+.lounge-pill-row .text-orange-300,
+.lounge-pill-row .text-orange-100,
+.lounge-category-pill.text-orange-300,
+.lounge-category-pill.text-orange-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-lime-500\/10,
+.lounge-pill-row .bg-lime-500\/20,
+.lounge-category-pill.bg-lime-500\/10,
+.lounge-category-pill.bg-lime-500\/20 {
+  background-color: var(--lounge-pill-stocks) !important;
+}
+.lounge-pill-row .border-lime-500\/35,
+.lounge-pill-row .border-lime-400\/50,
+.lounge-category-pill.border-lime-500\/35,
+.lounge-category-pill.border-lime-400\/50 {
+  border-color: var(--lounge-pill-stocks) !important;
+}
+.lounge-pill-row .text-lime-300,
+.lounge-pill-row .text-lime-100,
+.lounge-category-pill.text-lime-300,
+.lounge-category-pill.text-lime-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-pink-500\/10,
+.lounge-pill-row .bg-pink-500\/20,
+.lounge-category-pill.bg-pink-500\/10,
+.lounge-category-pill.bg-pink-500\/20 {
+  background-color: var(--lounge-pill-collectibles) !important;
+}
+.lounge-pill-row .border-pink-500\/35,
+.lounge-pill-row .border-pink-400\/50,
+.lounge-category-pill.border-pink-500\/35,
+.lounge-category-pill.border-pink-400\/50 {
+  border-color: var(--lounge-pill-collectibles) !important;
+}
+.lounge-pill-row .text-pink-300,
+.lounge-pill-row .text-pink-100,
+.lounge-category-pill.text-pink-300,
+.lounge-category-pill.text-pink-100 {
+  color: var(--lounge-pill-collectibles-fg) !important;
+}
+
+.lounge-pill-row .bg-\[\#F7931A\]\/12,
+.lounge-pill-row .bg-\[\#F7931A\]\/22,
+.lounge-category-pill.bg-\[\#F7931A\]\/12,
+.lounge-category-pill.bg-\[\#F7931A\]\/22 {
+  background-color: var(--lounge-pill-crypto) !important;
+}
+.lounge-pill-row .border-\[\#F7931A\]\/40,
+.lounge-pill-row .border-\[\#F7931A\]\/55,
+.lounge-category-pill.border-\[\#F7931A\]\/40,
+.lounge-category-pill.border-\[\#F7931A\]\/55 {
+  border-color: var(--lounge-pill-crypto) !important;
+}
+.lounge-pill-row .text-\[\#FBB040\],
+.lounge-pill-row .text-\[\#FFE4B8\],
+.lounge-category-pill.text-\[\#FBB040\],
+.lounge-category-pill.text-\[\#FFE4B8\] {
+  color: var(--lounge-pill-crypto-fg) !important;
 }
 
 /*
- * Masculine pill palette for light mode. All white text — colors are dark enough.
- * ap_slots=deep gold  ap_tables=casino green  poker=crimson  gaming=navy
- * tabletop=steel blue  investing=deep teal  trading=burnt orange
- * stocks=forest green  crypto=bitcoin orange  collectibles=deep indigo
+ * Compose / edit / profile picker — selected = tribe fill; deselected = neutral chip.
  */
-/* display variant (/10 bg, /35 border) */
-html.light .lounge-pill-row .bg-amber-500\/10     { background-color: #b45309 !important; }
-html.light .lounge-pill-row .border-amber-500\/35 { border-color:     #92400e !important; }
-html.light .lounge-pill-row .text-amber-300       { color: #fff !important; }
+html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled),
+html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--color-zinc-900) 50%, transparent) !important;
+  border-color: color-mix(in srgb, var(--color-zinc-600) 70%, transparent) !important;
+  color: var(--color-zinc-400) !important;
+  box-shadow: none !important;
+}
 
-html.light .lounge-pill-row .bg-emerald-500\/10     { background-color: #15803d !important; }
-html.light .lounge-pill-row .border-emerald-500\/35 { border-color:     #166534 !important; }
-html.light .lounge-pill-row .text-emerald-300       { color: #fff !important; }
+html:not(.light) .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled),
+html:not(.light) .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled):hover {
+  background-color: color-mix(in srgb, #18181b 50%, transparent) !important;
+  border-color: color-mix(in srgb, #52525b 70%, transparent) !important;
+  color: #a1a1aa !important;
+  box-shadow: none !important;
+}
 
-html.light .lounge-pill-row .bg-rose-500\/10     { background-color: #991b1b !important; }
-html.light .lounge-pill-row .border-rose-500\/35 { border-color:     #7f1d1d !important; }
-html.light .lounge-pill-row .text-rose-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-violet-500\/10     { background-color: #1e40af !important; }
-html.light .lounge-pill-row .border-violet-500\/35 { border-color:     #1e3a8a !important; }
-html.light .lounge-pill-row .text-violet-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-sky-500\/10     { background-color: #0369a1 !important; }
-html.light .lounge-pill-row .border-sky-500\/35 { border-color:     #075985 !important; }
-html.light .lounge-pill-row .text-sky-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-teal-500\/10     { background-color: #0f766e !important; }
-html.light .lounge-pill-row .border-teal-500\/35 { border-color:     #134e4a !important; }
-html.light .lounge-pill-row .text-teal-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-orange-500\/10     { background-color: #c2410c !important; }
-html.light .lounge-pill-row .border-orange-500\/35 { border-color:     #9a3412 !important; }
-html.light .lounge-pill-row .text-orange-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-lime-500\/10     { background-color: #4d7c0f !important; }
-html.light .lounge-pill-row .border-lime-500\/35 { border-color:     #365314 !important; }
-html.light .lounge-pill-row .text-lime-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-pink-500\/10     { background-color: #6d28d9 !important; }
-html.light .lounge-pill-row .border-pink-500\/35 { border-color:     #5b21b6 !important; }
-html.light .lounge-pill-row .text-pink-300       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-\[\#F7931A\]\/12    { background-color: #d97706 !important; }
-html.light .lounge-pill-row .border-\[\#F7931A\]\/40 { border-color:    #b45309 !important; }
-html.light .lounge-pill-row .text-\[\#FBB040\]       { color: #fff !important; }
-
-/* picker selected variant (/20 bg, /50 border, text-*-100) — same palette */
-html.light .lounge-pill-row .bg-amber-500\/20     { background-color: #b45309 !important; }
-html.light .lounge-pill-row .border-amber-400\/50 { border-color:     #92400e !important; }
-html.light .lounge-pill-row .text-amber-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-emerald-500\/20     { background-color: #15803d !important; }
-html.light .lounge-pill-row .border-emerald-400\/50 { border-color:     #166534 !important; }
-html.light .lounge-pill-row .text-emerald-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-rose-500\/20     { background-color: #991b1b !important; }
-html.light .lounge-pill-row .border-rose-400\/50 { border-color:     #7f1d1d !important; }
-html.light .lounge-pill-row .text-rose-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-violet-500\/20     { background-color: #1e40af !important; }
-html.light .lounge-pill-row .border-violet-400\/50 { border-color:     #1e3a8a !important; }
-html.light .lounge-pill-row .text-violet-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-sky-500\/20     { background-color: #0369a1 !important; }
-html.light .lounge-pill-row .border-sky-400\/50 { border-color:     #075985 !important; }
-html.light .lounge-pill-row .text-sky-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-teal-500\/20     { background-color: #0f766e !important; }
-html.light .lounge-pill-row .border-teal-400\/50 { border-color:     #134e4a !important; }
-html.light .lounge-pill-row .text-teal-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-orange-500\/20     { background-color: #c2410c !important; }
-html.light .lounge-pill-row .border-orange-400\/50 { border-color:     #9a3412 !important; }
-html.light .lounge-pill-row .text-orange-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-lime-500\/20     { background-color: #4d7c0f !important; }
-html.light .lounge-pill-row .border-lime-400\/50 { border-color:     #365314 !important; }
-html.light .lounge-pill-row .text-lime-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-pink-500\/20     { background-color: #6d28d9 !important; }
-html.light .lounge-pill-row .border-pink-400\/50 { border-color:     #5b21b6 !important; }
-html.light .lounge-pill-row .text-pink-100       { color: #fff !important; }
-
-html.light .lounge-pill-row .bg-\[\#F7931A\]\/22    { background-color: #d97706 !important; }
-html.light .lounge-pill-row .border-\[\#F7931A\]\/55 { border-color:    #b45309 !important; }
-html.light .lounge-pill-row .text-\[\#FFE4B8\]       { color: #fff !important; }
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="ap_slots"] {
+  background-color: var(--lounge-pill-ap_slots) !important;
+  border-color: var(--lounge-pill-ap_slots) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="ap_tables"] {
+  background-color: var(--lounge-pill-ap_tables) !important;
+  border-color: var(--lounge-pill-ap_tables) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="poker"] {
+  background-color: var(--lounge-pill-poker) !important;
+  border-color: var(--lounge-pill-poker) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="gaming"] {
+  background-color: var(--lounge-pill-gaming) !important;
+  border-color: var(--lounge-pill-gaming) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="tabletop"] {
+  background-color: var(--lounge-pill-tabletop) !important;
+  border-color: var(--lounge-pill-tabletop) !important;
+  color: var(--lounge-pill-tabletop-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="investing"] {
+  background-color: var(--lounge-pill-investing) !important;
+  border-color: var(--lounge-pill-investing) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="trading"] {
+  background-color: var(--lounge-pill-trading) !important;
+  border-color: var(--lounge-pill-trading) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="stocks"] {
+  background-color: var(--lounge-pill-stocks) !important;
+  border-color: var(--lounge-pill-stocks) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="crypto"] {
+  background-color: var(--lounge-pill-crypto) !important;
+  border-color: var(--lounge-pill-crypto) !important;
+  color: var(--lounge-pill-crypto-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="collectibles"] {
+  background-color: var(--lounge-pill-collectibles) !important;
+  border-color: var(--lounge-pill-collectibles) !important;
+  color: var(--lounge-pill-collectibles-fg) !important;
+}
 
 /* ============================================================
    Light mode: global cyan → blue-500/600 remap

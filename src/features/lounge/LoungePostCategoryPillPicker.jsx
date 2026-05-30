@@ -38,7 +38,10 @@ export default function LoungePostCategoryPillPicker({
   return (
     <div className="mt-2">
       <p className="mb-1.5 text-[11px] leading-snug text-zinc-500">{hint}</p>
-      <div className="lounge-pill-row flex flex-wrap gap-1.5">
+      <div
+        className="lounge-pill-row flex flex-wrap gap-1.5"
+        data-lounge-category-picker=""
+      >
         {loungePostCategoryPillOptions().map(({ slug, label }) => {
           const on = selected.includes(slug)
           const chipDisabled = disabled || (!on && atMax)
@@ -46,6 +49,7 @@ export default function LoungePostCategoryPillPicker({
             <button
               key={slug}
               type="button"
+              data-lounge-category-slug={slug}
               disabled={chipDisabled}
               aria-pressed={on}
               onClick={() => toggle(slug)}

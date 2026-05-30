@@ -964,7 +964,7 @@ export default function LoungeDockSlidePanels({
               {searchCategorySlug ? (
                 <>
                   <span
-                    className={`inline-flex max-w-[min(42vw,9.5rem)] shrink-0 truncate rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${loungePostCategoryPillChipClass(searchCategorySlug, 'display')}`}
+                    className={`lounge-category-pill inline-flex max-w-[min(42vw,9.5rem)] shrink-0 truncate rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${loungePostCategoryPillChipClass(searchCategorySlug, 'display')}`}
                   >
                     {loungePostCategoryPillLabel(searchCategorySlug)}
                   </span>
@@ -1109,7 +1109,7 @@ export default function LoungeDockSlidePanels({
                             className="flex w-full items-center border-t border-zinc-800/70 bg-zinc-950/35 px-0.5 py-2.5 text-left touch-manipulation active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]"
                           >
                             <span
-                              className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${loungePostCategoryPillChipClass(slug, 'display')}`}
+                              className={`lounge-category-pill inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none ${loungePostCategoryPillChipClass(slug, 'display')}`}
                             >
                               {label}
                             </span>

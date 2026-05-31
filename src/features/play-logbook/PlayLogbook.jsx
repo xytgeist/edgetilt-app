@@ -184,6 +184,11 @@ export default function PlayLogbook({
     return orderedLogPlayFormFields(selectedTemplate.metric_slugs || [], defsMap)
   }, [selectedTemplate, defsMap])
 
+  const logPlayNetOutcome = useMemo(
+    () => playLogWinLoss(formFields.money_in, formFields.money_out, formFields.acquisition_fee),
+    [formFields.money_in, formFields.money_out, formFields.acquisition_fee],
+  )
+
   const realRtpSnapByEntryId = useMemo(() => runningRealRtpByEntryId(entries), [entries])
 
   const viewingEntry = useMemo(() => {
@@ -459,6 +464,7 @@ export default function PlayLogbook({
           casinoName: casino_name,
           notes,
           values: stored,
+          partners: playLogPartnersToRpcPayload(partners),
         })
       } else if (useShared) {
         await savePlayLogSharedSession(supabaseClient, {
@@ -621,7 +627,8 @@ export default function PlayLogbook({
             <div className="font-semibold text-amber-300 mb-1">Database not ready</div>
             Apply play logbook SQL on your Supabase test project, then refresh. Migrations:{' '}
             <code className="text-cyan-300">20260529120000_play_logbook.sql</code>,{' '}
-            <code className="text-cyan-300">20260531140000_play_log_shared_sessions.sql</code> (shared partners).
+            <code className="text-cyan-300">20260531140000_play_log_shared_sessions.sql</code> (shared partners),{' '}
+            <code className="text-cyan-300">20260531180000_play_log_update_shared_partners.sql</code> (edit attributions).
           </div>
         )}
 
@@ -911,7 +918,7 @@ export default function PlayLogbook({
                         viewerProfile={viewerProfile}
                         partners={partners}
                         onPartnersChange={setPartners}
-                        readOnly={Boolean(editingSessionId)}
+                        netOutcome={logPlayNetOutcome}
                       />
                     ) : null}
                   </div>
@@ -938,6 +945,11 @@ export default function PlayLogbook({
               const realRtpSnap = realRtpSnapByEntryId[viewingEntry.id]
               const runningRtpLabel = realRtpSnap?.label
               const runningRtpTone = rtpToneFromPercentLabel(runningRtpLabel)
+              const detailNetOutcome = playLogWinLoss(
+                viewingEntry.values?.money_in,
+                viewingEntry.values?.money_out,
+                viewingEntry.values?.acquisition_fee,
+              )
               return (
                 <>
                   <SheetHeader title={tpl?.display_name || 'Play entry'} onClose={closeSheet} />
@@ -993,6 +1005,7 @@ export default function PlayLogbook({
                           partners={detailPartners}
                           onPartnersChange={() => {}}
                           readOnly
+                          netOutcome={detailNetOutcome}
                         />
                       ) : null}
                     </div>

@@ -86,6 +86,7 @@ export async function savePlayLogSharedSession(supabaseClient, args) {
  *   casinoName: string | null,
  *   notes: string | null,
  *   values: Record<string, unknown>,
+ *   partners: unknown[],
  * }} args
  */
 export async function updatePlayLogSharedSession(supabaseClient, args) {
@@ -95,6 +96,7 @@ export async function updatePlayLogSharedSession(supabaseClient, args) {
     p_casino_name: args.casinoName,
     p_notes: args.notes,
     p_values: args.values,
+    p_partners: args.partners,
   })
   if (error) throw error
 }

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchPlayLogPartnerCandidates } from './playLogApi.js'
 import {
   defaultCreatorPartnerRow,
+  formatPlayLogPartnerOutcomeShare,
   playLogPartnerLabel,
+  playLogPartnerOutcomeShareToneClass,
+  playLogPartnerOutcomeShareUsd,
   playLogPartnersPercentSum,
 } from './playLogPartners.js'
 
@@ -14,6 +17,7 @@ import {
  *   partners: import('./playLogPartners.js').PlayLogPartnerRow[],
  *   onPartnersChange: (rows: import('./playLogPartners.js').PlayLogPartnerRow[]) => void,
  *   readOnly?: boolean,
+ *   netOutcome?: number | null,
  * }} props
  */
 export default function PlayLogPartnersSection({
@@ -23,6 +27,7 @@ export default function PlayLogPartnersSection({
   partners,
   onPartnersChange,
   readOnly = false,
+  netOutcome = null,
 }) {
   const [candidates, setCandidates] = useState([])
   const [loadingCandidates, setLoadingCandidates] = useState(false)
@@ -129,7 +134,10 @@ export default function PlayLogPartnersSection({
                   <span className="text-zinc-500"> (you)</span>
                 ) : null}
               </span>
-              <span className="text-cyan-300 font-semibold tabular-nums shrink-0">{row.sharePercent}%</span>
+              <span className="shrink-0 text-cyan-300 font-semibold tabular-nums text-sm">
+                {row.sharePercent}%
+                <PartnerShareParenthetical netOutcome={netOutcome} sharePercent={row.sharePercent} />
+              </span>
             </li>
           ))}
         </ul>
@@ -163,17 +171,22 @@ export default function PlayLogPartnersSection({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={row.sharePercent}
-                onChange={e => updateRow(row.key, { sharePercent: e.target.value })}
-                placeholder="%"
-                className="w-14 min-h-9 rounded-xl bg-zinc-900 px-2 text-center text-sm text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
-                aria-label="Share percent"
-              />
-              <span className="text-zinc-500 text-xs">%</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 min-w-0">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={row.sharePercent}
+                  onChange={e => updateRow(row.key, { sharePercent: e.target.value })}
+                  placeholder="%"
+                  className="w-14 min-h-9 rounded-xl bg-zinc-900 px-2 text-center text-sm text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  aria-label="Share percent"
+                />
+                <span className="text-zinc-500 text-xs font-semibold tabular-nums whitespace-nowrap">
+                  %
+                  <PartnerShareParenthetical netOutcome={netOutcome} sharePercent={row.sharePercent} />
+                </span>
+              </div>
               {partners.length > 1 || row.kind !== 'user' || String(row.userId) !== String(userId) ? (
                 <button
                   type="button"
@@ -251,7 +264,25 @@ export default function PlayLogPartnersSection({
 
       <p className="text-zinc-500 text-xs leading-snug mt-1">
         Registered partners get this play in their logbook and a Lounge alert. Guests are attribution only.
+        {netOutcome != null && Number.isFinite(netOutcome) ? (
+          <> Dollar share is each partner&apos;s % of session net win/loss.</>
+        ) : null}
       </p>
     </div>
+  )
+}
+
+/** @param {{ netOutcome: number | null, sharePercent: string }} props */
+function PartnerShareParenthetical({ netOutcome, sharePercent }) {
+  const usd = playLogPartnerOutcomeShareUsd(netOutcome, sharePercent)
+  const label = formatPlayLogPartnerOutcomeShare(netOutcome, sharePercent)
+  if (!label) return null
+  return (
+    <span
+      className={`font-bold ${playLogPartnerOutcomeShareToneClass(usd)}`}
+      title="Share of session net win/loss"
+    >
+      {` (${label})`}
+    </span>
   )
 }

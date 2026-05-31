@@ -1,3 +1,5 @@
+import { formatMetricValue } from './playLogMetrics.js'
+
 /** @typedef {'user' | 'guest'} PlayLogPartnerKind */
 
 /**
@@ -106,6 +108,34 @@ export function playLogPartnersFromSessionList(rows) {
       sharePercent: String(row.share_percent ?? ''),
     }
   })
+}
+
+/**
+ * Partner attribution: share of session net P&L (money out − money in − acquisition fee).
+ * @param {number | null | undefined} netOutcome
+ * @param {string} sharePercentStr
+ * @returns {number | null}
+ */
+export function playLogPartnerOutcomeShareUsd(netOutcome, sharePercentStr) {
+  if (netOutcome == null || !Number.isFinite(netOutcome)) return null
+  const pct = Number(String(sharePercentStr ?? '').replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(pct) || pct <= 0) return null
+  return netOutcome * (pct / 100)
+}
+
+/** @param {number | null | undefined} netOutcome @param {string} sharePercentStr */
+export function formatPlayLogPartnerOutcomeShare(netOutcome, sharePercentStr) {
+  const usd = playLogPartnerOutcomeShareUsd(netOutcome, sharePercentStr)
+  if (usd == null) return null
+  return formatMetricValue(usd, 'money')
+}
+
+/** @param {number | null | undefined} usd */
+export function playLogPartnerOutcomeShareToneClass(usd) {
+  if (usd == null || !Number.isFinite(usd)) return 'text-zinc-400'
+  if (usd > 0) return 'text-emerald-300'
+  if (usd < 0) return 'text-red-300'
+  return 'text-zinc-300'
 }
 
 /** @param {{ handle?: string, display_name?: string, user_id?: string, avatar_url?: string }} profile */

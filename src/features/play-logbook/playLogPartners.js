@@ -1,5 +1,3 @@
-import { formatMetricValue } from './playLogMetrics.js'
-
 /** @typedef {'user' | 'guest'} PlayLogPartnerKind */
 
 /**
@@ -177,11 +175,20 @@ export function playLogPartnerOutcomeShareUsd(netOutcome, sharePercentStr) {
   return netOutcome * (pct / 100)
 }
 
-/** @param {number | null | undefined} netOutcome @param {string} sharePercentStr */
-export function formatPlayLogPartnerOutcomeShare(netOutcome, sharePercentStr) {
+/** Partner row display: nearest whole dollar. */
+export function playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr) {
   const usd = playLogPartnerOutcomeShareUsd(netOutcome, sharePercentStr)
   if (usd == null) return null
-  return formatMetricValue(usd, 'money')
+  return Math.round(usd)
+}
+
+/** @param {number | null | undefined} netOutcome @param {string} sharePercentStr */
+export function formatPlayLogPartnerOutcomeShare(netOutcome, sharePercentStr) {
+  const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr)
+  if (usd == null) return null
+  const abs = Math.abs(usd)
+  const str = abs >= 1000 ? `$${abs.toLocaleString()}` : `$${abs}`
+  return usd < 0 ? `-${str}` : str
 }
 
 /** @param {number | null | undefined} usd */

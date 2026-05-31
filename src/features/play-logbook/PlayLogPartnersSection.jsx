@@ -5,7 +5,7 @@ import {
   formatPlayLogPartnerOutcomeShare,
   playLogPartnerLabel,
   playLogPartnerOutcomeShareToneClass,
-  playLogPartnerOutcomeShareUsd,
+  playLogPartnerOutcomeShareUsdRounded,
   playLogPartnersEnsureManager,
   playLogPartnersPercentSum,
   playLogPartnersWithManager,
@@ -326,7 +326,7 @@ function PaidCheckbox({ checked, disabled = false, onChange }) {
 
 /** @param {{ netOutcome: number | null, sharePercent: string }} props */
 function PartnerShareAmount({ netOutcome, sharePercent }) {
-  const usd = playLogPartnerOutcomeShareUsd(netOutcome, sharePercent)
+  const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercent)
   const label = formatPlayLogPartnerOutcomeShare(netOutcome, sharePercent)
   if (!label) {
     return <span className="text-zinc-600 text-xs font-semibold tabular-nums">—</span>
@@ -336,7 +336,7 @@ function PartnerShareAmount({ netOutcome, sharePercent }) {
       className={`text-xs font-bold tabular-nums whitespace-nowrap ${playLogPartnerOutcomeShareToneClass(usd)}`}
       title="Share of session net win/loss"
     >
-      ({label})
+      {label}
     </span>
   )
 }

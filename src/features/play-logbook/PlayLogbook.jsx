@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -728,13 +729,24 @@ export default function PlayLogbook({
                   const shared = Boolean(entry.session_id)
                   const highlight =
                     highlightEntryId && String(highlightEntryId) === String(entry.id)
+                  const entryTitle = tpl?.display_name || 'Unknown game'
                   return (
-                    <button
+                    <div
                       key={entry.id}
-                      type="button"
+                      tabIndex={0}
                       data-play-log-entry-id={entry.id}
-                      onClick={() => void openEntryDetail(entry)}
-                      className={`w-full text-left rounded-2xl bg-zinc-900 border p-4 touch-manipulation active:bg-zinc-800/90 ${
+                      aria-label={`${entryTitle}, ${fmtCapturedAt(entry.captured_at)}. Open entry details.`}
+                      onClick={() => {
+                        if (isPlayLogEntryOpenSuppressed()) return
+                        void openEntryDetail(entry)
+                      }}
+                      onKeyDown={e => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return
+                        if (e.currentTarget !== e.target) return
+                        e.preventDefault()
+                        void openEntryDetail(entry)
+                      }}
+                      className={`w-full text-left rounded-2xl bg-zinc-900 border p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90 ${
                         highlight ? 'border-cyan-500/70 ring-1 ring-cyan-500/30' : 'border-zinc-800/60'
                       }`}
                       data-play-logbook-card
@@ -790,7 +802,7 @@ export default function PlayLogbook({
                           </span>
                         ))}
                       </div>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -1510,53 +1522,156 @@ function wagerAgnosticRtpPctToneClass(wagerAgnosticRtpPct) {
   return 'text-zinc-300'
 }
 
+const RTP_POPOVER_VIEWPORT_MARGIN = 12
+const RTP_POPOVER_ANCHOR_GAP = 6
+
+/** After RTP popover dismiss, block entry-card open (avoids click-through on touch). */
+let playLogEntryOpenSuppressUntil = 0
+
+function suppressPlayLogEntryOpenBriefly(ms = 450) {
+  playLogEntryOpenSuppressUntil = Date.now() + ms
+}
+
+function isPlayLogEntryOpenSuppressed() {
+  return Date.now() < playLogEntryOpenSuppressUntil
+}
+
+/** @param {HTMLElement} anchorEl @param {HTMLElement} panelEl */
+function layoutRtpPopoverPosition(anchorEl, panelEl) {
+  const ar = anchorEl.getBoundingClientRect()
+  const pw = panelEl.offsetWidth
+  const ph = panelEl.offsetHeight
+  const margin = RTP_POPOVER_VIEWPORT_MARGIN
+  const gap = RTP_POPOVER_ANCHOR_GAP
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  let left = ar.left
+  if (left + pw > vw - margin) left = vw - margin - pw
+  if (left < margin) left = margin
+
+  const belowTop = ar.bottom + gap
+  const aboveTop = ar.top - gap - ph
+  let top = belowTop
+  if (belowTop + ph > vh - margin && aboveTop >= margin) {
+    top = aboveTop
+  } else if (belowTop + ph > vh - margin) {
+    top = Math.max(margin, vh - margin - ph)
+  }
+  top = Math.max(margin, Math.min(top, vh - margin - ph))
+
+  return { left, top }
+}
+
 function RunningRtpLabelButton({ label, toneClass, wagerAgnosticRtpPct }) {
   const [open, setOpen] = useState(false)
+  const [popoverPos, setPopoverPos] = useState(/** @type {{ left: number, top: number } | null} */ (null))
+  const anchorRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
+  const popoverRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const wagerAgnosticLabel = formatPlayLogRealRtp(wagerAgnosticRtpPct)
 
+  const repositionPopover = useCallback(() => {
+    const anchor = anchorRef.current
+    const panel = popoverRef.current
+    if (!anchor || !panel) return
+    setPopoverPos(layoutRtpPopoverPosition(anchor, panel))
+  }, [])
+
+  const closePopover = useCallback(() => {
+    suppressPlayLogEntryOpenBriefly()
+    setOpen(false)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPopoverPos(null)
+      return undefined
+    }
+    repositionPopover()
+    const onReflow = () => repositionPopover()
+    window.addEventListener('resize', onReflow)
+    window.addEventListener('scroll', onReflow, true)
+    return () => {
+      window.removeEventListener('resize', onReflow)
+      window.removeEventListener('scroll', onReflow, true)
+    }
+  }, [open, repositionPopover, wagerAgnosticLabel])
+
+  const popoverLayer =
+    open && typeof document !== 'undefined'
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 cursor-default bg-transparent touch-none"
+              style={{ zIndex: Z_APP_ALERT - 1 }}
+              aria-label="Close RTP info"
+              onPointerDown={e => {
+                e.preventDefault()
+                e.stopPropagation()
+                closePopover()
+              }}
+              onClick={e => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            />
+            <div
+              ref={popoverRef}
+              role="tooltip"
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: 'fixed',
+                left: popoverPos?.left ?? -9999,
+                top: popoverPos?.top ?? -9999,
+                zIndex: Z_APP_ALERT,
+                visibility: popoverPos ? 'visible' : 'hidden',
+                maxHeight: `calc(100dvh - ${RTP_POPOVER_VIEWPORT_MARGIN * 2}px)`,
+              }}
+              className="w-[min(17rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-zinc-600/80 bg-zinc-800 px-3 py-2.5 text-left text-[11px] leading-snug text-zinc-200 shadow-lg"
+            >
+              <p>{PLAY_LOG_REAL_RTP_INFO_INTRO}</p>
+              {wagerAgnosticLabel ? (
+                <>
+                  <hr className="my-2 border-zinc-600/60" />
+                  <p className="font-bold leading-snug text-zinc-200">
+                    Your wager-agnostic total RTP is{' '}
+                    <span
+                      className={`font-bold tabular-nums ${wagerAgnosticRtpPctToneClass(wagerAgnosticRtpPct)}`}
+                    >
+                      {wagerAgnosticLabel}
+                    </span>
+                  </p>
+                </>
+              ) : null}
+            </div>
+          </>,
+          document.body,
+        )
+      : null
+
   return (
-    <span className={`relative inline-flex shrink-0 ${toneClass}`}>
+    <span className={`inline-flex shrink-0 ${toneClass}`}>
       <button
+        ref={anchorRef}
         type="button"
         aria-expanded={open}
         aria-label={`Aggregate weighted RTP ${label}. Tap for details.`}
+        onPointerDown={e => e.stopPropagation()}
         onClick={e => {
           e.stopPropagation()
-          setOpen(v => !v)
+          if (open) {
+            closePopover()
+          } else {
+            setOpen(true)
+          }
         }}
         className={`shrink-0 touch-manipulation border-0 bg-transparent p-0 text-xs font-bold tabular-nums underline decoration-dotted decoration-current/50 underline-offset-2 opacity-95 hover:opacity-100 active:opacity-100 [-webkit-tap-highlight-color:transparent] ${toneClass}`}
       >
         {label}
       </button>
-      {open ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            aria-label="Close RTP info"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="tooltip"
-            className="absolute left-0 top-full z-50 mt-1 w-[min(17rem,calc(100vw-2.5rem))] rounded-xl border border-zinc-600/80 bg-zinc-800 px-3 py-2.5 text-left text-[11px] leading-snug text-zinc-200 shadow-lg"
-          >
-            <p>{PLAY_LOG_REAL_RTP_INFO_INTRO}</p>
-            {wagerAgnosticLabel ? (
-              <>
-                <hr className="my-2 border-zinc-600/60" />
-                <p className="font-bold leading-snug text-zinc-200">
-                  Your wager-agnostic total RTP is{' '}
-                  <span
-                    className={`font-bold tabular-nums ${wagerAgnosticRtpPctToneClass(wagerAgnosticRtpPct)}`}
-                  >
-                    {wagerAgnosticLabel}
-                  </span>
-                </p>
-              </>
-            ) : null}
-          </div>
-        </>
-      ) : null}
+      {popoverLayer}
     </span>
   )
 }

@@ -15,9 +15,9 @@ export const PLAY_LOG_METRIC_FALLBACK = /** @type {Record<string, { label: strin
   denom: { label: 'Denom', value_type: 'money' },
   spin_count: { label: 'Spins', value_type: 'integer' },
   bonus_count: { label: 'Bonuses', value_type: 'integer' },
-  money_in: { label: 'Total money in', value_type: 'money' },
-  money_out: { label: 'Total money out', value_type: 'money' },
-  counter_at_hit: { label: 'Counter hit at', value_type: 'integer' },
+  money_in: { label: 'Cash in', value_type: 'money' },
+  money_out: { label: 'Cash out', value_type: 'money' },
+  counter_at_hit: { label: 'Counter Pop', value_type: 'integer' },
   mega: { label: 'Mega', value_type: 'integer' },
   grand: { label: 'Grand', value_type: 'integer' },
   major: { label: 'Major', value_type: 'integer' },
@@ -84,8 +84,8 @@ export const LOG_PLAY_SAVE_REQUIRED_PREFIX = 'Required fields: '
 
 const LOG_PLAY_SAVE_REQUIRED = [
   { slug: 'bet_size', label: 'Bet size' },
-  { slug: 'money_in', label: 'Money in' },
-  { slug: 'money_out', label: 'Money Out' },
+  { slug: 'money_in', label: 'Cash in' },
+  { slug: 'money_out', label: 'Cash out' },
 ]
 
 /** @param {string[]} labels */
@@ -204,9 +204,9 @@ export const LOG_PLAY_FORM_FIELDS = [
   { slug: 'bet_size', label: 'Bet Size' },
   { slug: 'denom', label: 'Denom' },
   { slug: 'counter', label: 'Counter Start' },
-  { slug: 'counter_at_hit', label: 'Counter End' },
-  { slug: 'money_in', label: 'Money In' },
-  { slug: 'money_out', label: 'Money Out' },
+  { slug: 'counter_at_hit', label: 'Counter Pop' },
+  { slug: 'money_in', label: 'Cash in' },
+  { slug: 'money_out', label: 'Cash out' },
   { slug: 'spin_count', label: '# Spins' },
   { slug: 'bonus_count', label: '# Bonuses' },
   { slug: 'current_ev_rtp', label: 'Current EV' },

@@ -200,7 +200,11 @@ export default function CalculatorsTab({
       ) : null}
       {activeCalculator === 'stackup' ? (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
-          <StackUpPays onBack={() => setActiveCalculator(null)} onOpenLogbook={onOpenLogbook} />
+          <StackUpPays
+            onBack={() => setActiveCalculator(null)}
+            supabaseClient={supabaseClient}
+            onOpenLogbook={onOpenLogbook}
+          />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'mhb' ? (

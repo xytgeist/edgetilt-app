@@ -122,6 +122,7 @@ function BuffaloLink({ onBack, supabaseClient = null, onOpenLogbook = null }) {
     else if (denom === 0.05) baseOverall = 88.25
     else if (denom === 0.10) baseOverall = 88.4
     else if (denom === 0.25) baseOverall = 88.6
+    else if (denom === 0.5) baseOverall = 90
     else if (denom > 1) baseOverall = 91.5
 
     // Keep the UI RTP stable; Max Major affects calculations only.
@@ -302,7 +303,10 @@ function BuffaloLink({ onBack, supabaseClient = null, onOpenLogbook = null }) {
               <DropdownSelect
                 value={denom}
                 onChange={setDenom}
-                options={[0.01,0.02,0.05,0.10,0.25,1,2,5,10,25,50,100].map(d => ({ value: d, label: `$${formatDenomLabel(d)}` }))}
+                options={[0.01, 0.02, 0.05, 0.10, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100].map((d) => ({
+                  value: d,
+                  label: `$${formatDenomLabel(d)}`,
+                }))}
                 accentClass="text-amber-400"
                 size="lg"
               />

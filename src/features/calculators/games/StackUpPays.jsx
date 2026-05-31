@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
 import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 import { DropdownSelect } from '../DropdownSelect'
@@ -47,6 +48,16 @@ const RESET = {
 /** Denoms available in the UI (no options above $2). */
 const DENOM_OPTIONS = [0.01, 0.02, 0.05, 0.1, 0.25, 1, 2]
 
+/** Volatility index for max-exposure grind (σ on realized RTP % ≈ 100 × VI / √N). */
+const MAX_EXPOSURE_VOLATILITY_INDEX = 10
+/** Credit this fraction of target meter avg bonus pay against grind losses. */
+const MAX_EXPOSURE_BONUS_PAY_FRACTION = 0.5
+
+/** Slider may use full must-hit on the track; stored counter stops one below must-hit. */
+function meterCounterValue(value, mustHit, reset) {
+  return Math.min(mustHit - 1, Math.max(reset, Number(value) || reset))
+}
+
 /** Where to draw the +EV tick (0–100%) along the range min→max. */
 function plusEvMarkerPercent(min, max, plusEv) {
   if (max <= min) return 0
@@ -54,12 +65,12 @@ function plusEvMarkerPercent(min, max, plusEv) {
 }
 
 /**
- * Dynamic +EV counter based on current base RTP:
- * meterEV = payout - (1 - baseRTP) * spinsRemaining
- * Solve meterEV = 0 for counter.
+ * Approx. break-even counter for this meter alone (green marker).
+ * meterEV = payout − (1 − grindRtp) × spinsRemaining; solve for counter.
+ * Uses nominal SPI and overall paytable RTP for the BE marker (original behavior).
  */
-function dynamicPlusEvCounter(mustHit, payout, spi, baseRTP, reset) {
-  const lossPerSpin = 1 - baseRTP
+function dynamicPlusEvCounter(mustHit, payout, spi, grindRtpDecimal, reset) {
+  const lossPerSpin = 1 - grindRtpDecimal
   if (lossPerSpin <= 0) return reset
 
   const spinsToBreakEven = payout / lossPerSpin
@@ -67,6 +78,17 @@ function dynamicPlusEvCounter(mustHit, payout, spi, baseRTP, reset) {
   const clamped = Math.min(mustHit, Math.max(reset, rawCounter))
   // Round up so the displayed threshold is the first whole number at or above +EV.
   return Math.ceil(clamped)
+}
+
+/**
+ * SPI (avg spins per +1 counter) so standalone RTP at grindRtpDecimal is ~100% at breakEvenCounter.
+ */
+function spiCalibratedForBreakEvenRtp(mustHit, payout, breakEvenCounter, grindRtpDecimal) {
+  const houseEdge = 1 - grindRtpDecimal
+  if (houseEdge <= 0) return null
+  const ticksRemaining = Math.max(0.5, mustHit - breakEvenCounter)
+  const spinsToMustHit = payout / houseEdge
+  return spinsToMustHit / ticksRemaining
 }
 
 function getCalibrationFromCycle(overallRTP, meters) {
@@ -92,6 +114,70 @@ function getCalibrationFromCycle(overallRTP, meters) {
 }
 
 /**
+ * Standalone RTP for one meter at the current counter (same base-RTP grind as green +EV BE).
+ * 100 + 100 × (avg payout ÷ spins to must-hit − house edge).
+ */
+function perMeterStandaloneStateRtpPct(mustHit, counter, payout, spi, baseRtpDecimal) {
+  const spinsRemaining = Math.max(0.0001, (mustHit - counter) * spi)
+  const houseEdge = 1 - baseRtpDecimal
+  return 100 + 100 * (payout / spinsRemaining - houseEdge)
+}
+
+/** 1σ below overall RTP % over N spins (VI = volatility index). */
+function stressRtpOneSigmaBelow(overallRtpPct, spins, vi = MAX_EXPOSURE_VOLATILITY_INDEX) {
+  if (!Number.isFinite(spins) || spins <= 0) return overallRtpPct
+  const sigmaPts = (100 * vi) / Math.sqrt(spins)
+  return Math.max(0, overallRtpPct - sigmaPts)
+}
+
+/**
+ * Target = highest solo RTP meter. Max exposure = grind loss to must-hit at -1σ RTP
+ * minus 50% of that meter's avg expected bonus return (configured avg pay).
+ */
+function targetMeterMaxExposure(snapshots, overallRtpPct) {
+  const empty = {
+    label: 'n/a',
+    standaloneRtp: 0,
+    counter: 0,
+    mustHit: 0,
+    spins: 0,
+    overallRtpPct,
+    sigmaRtpPts: 0,
+    stressRtpPct: overallRtpPct,
+    grindLossBets: 0,
+    bonusRecoveryBets: 0,
+    exposureBets: 0,
+  }
+  if (!snapshots?.length) return empty
+
+  let target = snapshots[0]
+  for (let i = 1; i < snapshots.length; i += 1) {
+    if (snapshots[i].standaloneRtp > target.standaloneRtp) target = snapshots[i]
+  }
+  const ticksRemaining = Math.max(0, target.mustHit - target.counter)
+  const spins = Math.round(ticksRemaining * target.nominalSpi)
+  const sigmaRtpPts = spins > 0 ? (100 * MAX_EXPOSURE_VOLATILITY_INDEX) / Math.sqrt(spins) : 0
+  const stressRtpPct = stressRtpOneSigmaBelow(overallRtpPct, spins)
+  const grindLossBets = spins * Math.max(0, 1 - stressRtpPct / 100)
+  const bonusRecoveryBets = MAX_EXPOSURE_BONUS_PAY_FRACTION * target.payout
+  const exposureBets = Math.round(Math.max(0, grindLossBets - bonusRecoveryBets))
+
+  return {
+    label: target.label,
+    standaloneRtp: target.standaloneRtp,
+    counter: target.counter,
+    mustHit: target.mustHit,
+    spins,
+    overallRtpPct,
+    sigmaRtpPts,
+    stressRtpPct,
+    grindLossBets: Math.round(grindLossBets),
+    bonusRecoveryBets,
+    exposureBets,
+  }
+}
+
+/**
  * Calibrated current-state RTP:
  * 1) Compute bonus share from reset-cycle math.
  * 2) Split that bonus share across meters by long-run weight.
@@ -104,7 +190,6 @@ function getCalibratedStateRTP(overallRTP, meters) {
     const meterWeight = totalBonusBets > 0 ? (m.bonusBetsPerMegaCycle / totalBonusBets) : 0
     const meterBaselineRTP = bonusRTP * meterWeight
 
-    // Prevent explosive values when a meter is extremely close to must-hit.
     const remainingTicks = Math.max(0.5, m.mustHit - m.counter)
     const scale = (m.mustHit - m.reset) / remainingTicks
     return sum + (meterBaselineRTP * scale)
@@ -113,7 +198,7 @@ function getCalibratedStateRTP(overallRTP, meters) {
   return baseRTP + stateBonusRTP
 }
 
-function StackUpPays({ onBack, onOpenLogbook = null }) {
+function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null }) {
   const [mega, setMega] = useState(300)
   const [grand, setGrand] = useState(225)
   const [major, setMajor] = useState(175)
@@ -159,11 +244,11 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
 
   const calculate = useCallback(() => {
     const meterData = [
-      { label: 'Mega',  counter: mega,  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega, reset: RESET.mega,  mid: MIDPOINT.mega },
-      { label: 'Grand', counter: grand, mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand, reset: RESET.grand, mid: MIDPOINT.grand },
-      { label: 'Major', counter: major, mustHit: MUST_HIT.major, payout: AVG_PAYOUT.major, spi: SPINS_PER_INCREMENT.major, reset: RESET.major, mid: MIDPOINT.major },
-      { label: 'Minor', counter: minor, mustHit: MUST_HIT.minor, payout: AVG_PAYOUT.minor, spi: SPINS_PER_INCREMENT.minor, reset: RESET.minor, mid: MIDPOINT.minor },
-      { label: 'Mini',  counter: mini,  mustHit: MUST_HIT.mini,  payout: AVG_PAYOUT.mini,  spi: SPINS_PER_INCREMENT.mini, reset: RESET.mini,  mid: MIDPOINT.mini },
+      { label: 'Mega',  counter: meterCounterValue(mega, MUST_HIT.mega, RESET.mega),  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega, reset: RESET.mega,  mid: MIDPOINT.mega },
+      { label: 'Grand', counter: meterCounterValue(grand, MUST_HIT.grand, RESET.grand), mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand, reset: RESET.grand, mid: MIDPOINT.grand },
+      { label: 'Major', counter: meterCounterValue(major, MUST_HIT.major, RESET.major), mustHit: MUST_HIT.major, payout: AVG_PAYOUT.major, spi: SPINS_PER_INCREMENT.major, reset: RESET.major, mid: MIDPOINT.major },
+      { label: 'Minor', counter: meterCounterValue(minor, MUST_HIT.minor, RESET.minor), mustHit: MUST_HIT.minor, payout: AVG_PAYOUT.minor, spi: SPINS_PER_INCREMENT.minor, reset: RESET.minor, mid: MIDPOINT.minor },
+      { label: 'Mini',  counter: meterCounterValue(mini, MUST_HIT.mini, RESET.mini),  mustHit: MUST_HIT.mini,  payout: AVG_PAYOUT.mini,  spi: SPINS_PER_INCREMENT.mini, reset: RESET.mini,  mid: MIDPOINT.mini },
     ]
 
     const stateRTP = getCalibratedStateRTP(overallRTP, meterData)
@@ -248,6 +333,63 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
   useEffect(() => {
     queueMicrotask(() => calculate())
   }, [calculate])
+
+  const meterSliderMetrics = useMemo(() => {
+    const rows = [
+      { label: 'Mega', counter: mega, mustHit: MUST_HIT.mega, reset: RESET.mega, payout: AVG_PAYOUT.mega, nominalSpi: SPINS_PER_INCREMENT.mega },
+      { label: 'Grand', counter: grand, mustHit: MUST_HIT.grand, reset: RESET.grand, payout: AVG_PAYOUT.grand, nominalSpi: SPINS_PER_INCREMENT.grand },
+      { label: 'Major', counter: major, mustHit: MUST_HIT.major, reset: RESET.major, payout: AVG_PAYOUT.major, nominalSpi: SPINS_PER_INCREMENT.major },
+      { label: 'Minor', counter: minor, mustHit: MUST_HIT.minor, reset: RESET.minor, payout: AVG_PAYOUT.minor, nominalSpi: SPINS_PER_INCREMENT.minor },
+      { label: 'Mini', counter: mini, mustHit: MUST_HIT.mini, reset: RESET.mini, payout: AVG_PAYOUT.mini, nominalSpi: SPINS_PER_INCREMENT.mini },
+    ]
+    const meterData = rows.map((r) => ({
+      label: r.label,
+      counter: meterCounterValue(r.counter, r.mustHit, r.reset),
+      mustHit: r.mustHit,
+      reset: r.reset,
+      payout: r.payout,
+      spi: r.nominalSpi,
+    }))
+    const baseRtpDecimal = getCalibrationFromCycle(overallRTP, meterData).baseRTP / 100
+    const overallRtpDecimal = overallRTP / 100
+
+    /** @type {Record<string, { breakEvenCounter: number, rtpSpi: number, grindRtpDecimal: number }>} */
+    const byLabel = {}
+    /** @type {{ label: string, counter: number, mustHit: number, payout: number, nominalSpi: number, standaloneRtp: number }[]} */
+    const snapshots = []
+    for (const r of rows) {
+      const counter = meterCounterValue(r.counter, r.mustHit, r.reset)
+      const breakEvenCounter = dynamicPlusEvCounter(
+        r.mustHit,
+        r.payout,
+        r.nominalSpi,
+        overallRtpDecimal,
+        r.reset,
+      )
+      const rtpSpi =
+        spiCalibratedForBreakEvenRtp(r.mustHit, r.payout, breakEvenCounter, baseRtpDecimal) ??
+        r.nominalSpi
+      byLabel[r.label] = { breakEvenCounter, rtpSpi, grindRtpDecimal: baseRtpDecimal }
+      snapshots.push({
+        label: r.label,
+        counter,
+        mustHit: r.mustHit,
+        payout: r.payout,
+        nominalSpi: r.nominalSpi,
+        standaloneRtp: perMeterStandaloneStateRtpPct(
+          r.mustHit,
+          counter,
+          r.payout,
+          rtpSpi,
+          baseRtpDecimal,
+        ),
+      })
+    }
+    return {
+      byLabel,
+      maxExposure: targetMeterMaxExposure(snapshots, overallRTP),
+    }
+  }, [mega, grand, major, minor, mini, overallRTP])
 
   return (
     <div data-calc="stackup" className="min-h-full pb-12">
@@ -357,8 +499,8 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
           ) : null}
         </div>
 
-        {/* Meters — green labels + arrow = approx +EV threshold (same scale as slider) */}
-        <div className="bg-slate-900 p-5 rounded-3xl mb-6 space-y-2.5">
+        {/* Meters: green labels + arrow = approx +EV threshold (same scale as slider) */}
+        <div className="bg-slate-900 p-4 rounded-3xl mb-6 space-y-0">
           {[
             { label: 'Mega',  value: mega,  setter: setMega,  accent: 'accent-red-500',    text: 'text-red-400',   min: RESET.mega,  mustHit: MUST_HIT.mega,  payout: AVG_PAYOUT.mega,  spi: SPINS_PER_INCREMENT.mega },
             { label: 'Grand', value: grand, setter: setGrand, accent: 'accent-orange-500', text: 'text-orange-400', min: RESET.grand, mustHit: MUST_HIT.grand, payout: AVG_PAYOUT.grand, spi: SPINS_PER_INCREMENT.grand },
@@ -366,30 +508,33 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
             { label: 'Minor', value: minor, setter: setMinor, accent: 'accent-green-500',  text: 'text-green-400',  min: RESET.minor, mustHit: MUST_HIT.minor, payout: AVG_PAYOUT.minor, spi: SPINS_PER_INCREMENT.minor },
             { label: 'Mini',  value: mini,  setter: setMini,  accent: 'accent-blue-500',   text: 'text-blue-400',   min: RESET.mini,  mustHit: MUST_HIT.mini,  payout: AVG_PAYOUT.mini,  spi: SPINS_PER_INCREMENT.mini },
           ].map((m, i) => {
-            const dynamicBe = dynamicPlusEvCounter(m.mustHit, m.payout, m.spi, overallRTP / 100, m.min)
+            const counter = meterCounterValue(m.value, m.mustHit, m.min)
+            const sliderMetrics = meterSliderMetrics.byLabel[m.label]
+            const dynamicBe = sliderMetrics?.breakEvenCounter ?? m.min
             const bePct = plusEvMarkerPercent(m.min, m.mustHit, dynamicBe)
             return (
-            <div key={i}>
-              <div className="flex justify-between mb-0.5">
-                <div className={`font-semibold ${m.text}`}>{m.label}</div>
-                <div className={`font-mono text-base sm:text-lg font-bold tabular-nums ${m.text}`}>
-                  <span>{m.value}</span>
+            <div key={i} className={i > 0 ? '-mt-1.5' : ''}>
+              <div className="flex justify-between items-baseline leading-none mb-0">
+                <div className={`font-semibold text-sm ${m.text}`}>{m.label}</div>
+                <div className={`font-mono text-sm font-bold tabular-nums ${m.text}`}>
+                  <span>{counter}</span>
                   <span className="text-slate-500 font-semibold">/</span>
                   <span className="opacity-80">{m.mustHit}</span>
                 </div>
               </div>
               {/* +EV tick aligned to slider min→max (same scale as the range input) */}
-              <div className="relative w-full h-5 mb-0.5" aria-hidden>
+              <div className="relative w-full h-4 -mb-0.5" aria-hidden>
                 <div
-                  className="absolute -top-1.5 -translate-x-1/2 text-[11px] italic text-emerald-400 whitespace-nowrap"
+                  className="absolute -top-1 -translate-x-1/2 text-[11px] italic text-emerald-400 whitespace-nowrap leading-none"
                   style={{ left: `${bePct}%` }}
+                  title={`Approx. +EV break-even counter (${dynamicBe})`}
                 >
                   {dynamicBe}
                 </div>
                 <div
-                  className="absolute top-2 -translate-x-1/2 text-[12px] leading-none text-emerald-400"
+                  className="absolute top-1 -translate-x-1/2 text-[12px] leading-none text-emerald-400"
                   style={{ left: `${bePct}%` }}
-                  title={`Approx. +EV — counter at or above ${dynamicBe} (meter in +EV territory)`}
+                  title={`Break-even near counter ${dynamicBe}`}
                 >
                   ▼
                 </div>
@@ -398,20 +543,23 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
                 type="range"
                 min={m.min}
                 max={m.mustHit}
-                value={m.value}
-                onChange={(e) => m.setter(Number(e.target.value))}
+                value={counter}
+                onChange={(e) => {
+                  const next = Number(e.target.value)
+                  m.setter(meterCounterValue(next, m.mustHit, m.min))
+                }}
                 className={`range-touch-target w-full ${m.accent} relative z-10`}
               />
             </div>
             )
           })}
-          <div className="pt-1 text-[11px] italic text-slate-400 leading-relaxed">
-            Green arrow values show each meter's standalone +EV threshold, independent of the other meters.
+          <div className="pt-0.5 text-[10px] italic text-slate-400 leading-snug">
+            Green arrow: ~ break-even point (overall RTP, nominal SPI). Current EV is the full machine state.
           </div>
         </div>
 
         {/* Current EV */}
-        <div className="bg-slate-900 p-6 rounded-3xl mb-8">
+        <div className="bg-slate-900 p-6 rounded-3xl mb-6">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-xl font-semibold text-cyan-400">Current EV</h2>
             <div className={`text-lg font-bold ${currentRTP >= 100 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -424,8 +572,31 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
             <div className={`text-4xl font-bold ${evAvg >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{evAvg.toFixed(1)}×</div>
             <div className="text-sm text-slate-300">${(evAvg * betSize).toFixed(0)}</div>
             <div className="mt-1.5 text-xs italic text-slate-400 leading-relaxed">
-              Expected bets won is based on the number of spins until the machine's calibrated current RTP drops below 100%, at which point play is stopped.
+              Expected win based on play until the machine's calibrated current RTP drops below 100%, at which point play is stopped.
             </div>
+            {currentRTP >= 99 && (
+              <div className="mt-4 pt-3 border-t border-slate-600/80 text-xs text-slate-400 leading-relaxed">
+                <div>
+                  Max Exposure:{' '}
+                  <span className="text-red-400 font-bold tabular-nums">
+                    {meterSliderMetrics.maxExposure.exposureBets.toLocaleString()} bets
+                  </span>
+                  <span className="text-slate-500">
+                    {' '}
+                    (${(meterSliderMetrics.maxExposure.exposureBets * betSize).toLocaleString()})
+                  </span>
+                </div>
+                <div className="mt-1">
+                  Target{' '}
+                <span className="font-semibold text-slate-300">{meterSliderMetrics.maxExposure.label}</span>{' '}
+                (highest solo RTP {meterSliderMetrics.maxExposure.standaloneRtp.toFixed(1)}%), ~{' '}
+                {meterSliderMetrics.maxExposure.spins.toLocaleString()} spins to must-hit; grind modeled at{' '}
+                {meterSliderMetrics.maxExposure.stressRtpPct.toFixed(1)}% (
+                {meterSliderMetrics.maxExposure.overallRtpPct.toFixed(0)}% - 1σ, VI {MAX_EXPOSURE_VOLATILITY_INDEX}); +{' '}
+                {(MAX_EXPOSURE_BONUS_PAY_FRACTION * 100).toFixed(0)}% expected bonus return.
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={`mt-6 p-4 rounded-2xl text-center font-bold ${isAlreadyPositive ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>
@@ -438,6 +609,43 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
             ) : '❌ Still -EV Keep Waiting'}
           </div>
         </div>
+
+        <BankrollRiskAdvisor
+          supabaseClient={supabaseClient}
+          maxExpectedLoss={
+            currentRTP >= 99 ? meterSliderMetrics.maxExposure.exposureBets * betSize : 0
+          }
+          playLabel="Stack Up Pays"
+          playDetails={{
+            betSize,
+            stackUpTarget: currentRTP >= 99 ? meterSliderMetrics.maxExposure.label : null,
+            stackUpMeters: {
+              Mega: meterCounterValue(mega, MUST_HIT.mega, RESET.mega),
+              Grand: meterCounterValue(grand, MUST_HIT.grand, RESET.grand),
+              Major: meterCounterValue(major, MUST_HIT.major, RESET.major),
+              Minor: meterCounterValue(minor, MUST_HIT.minor, RESET.minor),
+              Mini: meterCounterValue(mini, MUST_HIT.mini, RESET.mini),
+            },
+          }}
+          accentClass="text-cyan-400"
+          accentBtnClass="bg-cyan-600 hover:bg-cyan-500"
+          cardClassName="bg-slate-900 p-6 rounded-3xl mb-6"
+        />
+
+        <CalculatorLogPlayButton
+          calculatorSlug="stackup"
+          prefillValues={{
+            mega: meterCounterValue(mega, MUST_HIT.mega, RESET.mega),
+            grand: meterCounterValue(grand, MUST_HIT.grand, RESET.grand),
+            major: meterCounterValue(major, MUST_HIT.major, RESET.major),
+            minor: meterCounterValue(minor, MUST_HIT.minor, RESET.minor),
+            mini: meterCounterValue(mini, MUST_HIT.mini, RESET.mini),
+            bet_size: betSize,
+            denom,
+          }}
+          onOpenLogbook={onOpenLogbook}
+          accentBtnClass="bg-cyan-600 hover:bg-cyan-500"
+        />
 
         {/* Acquisition Fee */}
         <div className="bg-slate-900 p-6 rounded-3xl mb-8">
@@ -475,13 +683,6 @@ function StackUpPays({ onBack, onOpenLogbook = null }) {
             <div className="text-xs text-slate-400 mt-1">to scout ({scoutPercentage}% of expected profit)</div>
           </div>
         </div>
-
-        <CalculatorLogPlayButton
-          calculatorSlug="stackup"
-          prefillValues={{ mega, grand, major, minor, mini, bet_size: betSize, denom }}
-          onOpenLogbook={onOpenLogbook}
-          accentBtnClass="bg-cyan-600 hover:bg-cyan-500"
-        />
 
         <CalculatorDisclaimer className="border-slate-800/80" />
       </div>

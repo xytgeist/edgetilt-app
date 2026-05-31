@@ -112,6 +112,13 @@ function NeedHelpModal({ playLabel, maxExpectedLoss, riskBudget, playDetails, su
 
       const lines = [`🎰 Play Action Request`, ``, `Game: ${playLabel}`]
       if (playDetails.counter != null) lines.push(`Counter: ${Number(playDetails.counter).toLocaleString()}`)
+      if (playDetails.stackUpMeters) {
+        for (const label of ['Mega', 'Grand', 'Major', 'Minor', 'Mini']) {
+          const v = playDetails.stackUpMeters[label]
+          if (v != null) lines.push(`${label}: ${Number(v).toLocaleString()}`)
+        }
+      }
+      if (playDetails.stackUpTarget) lines.push(`Max exposure target: ${playDetails.stackUpTarget}`)
       if (playDetails.betSize != null)  lines.push(`Bet Size: $${playDetails.betSize}/spin`)
       if (playDetails.current != null)  lines.push(`Current Meter: $${Number(playDetails.current).toFixed(2)}`)
       if (playDetails.mustHitBy != null) lines.push(`Must Hit By: $${Number(playDetails.mustHitBy).toFixed(2)}`)
@@ -172,6 +179,23 @@ function NeedHelpModal({ playLabel, maxExpectedLoss, riskBudget, playDetails, su
                 <div className="flex justify-between">
                   <span className="text-zinc-400">Counter</span>
                   <span className="text-white">{Number(playDetails.counter).toLocaleString()}</span>
+                </div>
+              )}
+              {playDetails.stackUpMeters &&
+                ['Mega', 'Grand', 'Major', 'Minor', 'Mini'].map((label) => {
+                  const v = playDetails.stackUpMeters[label]
+                  if (v == null) return null
+                  return (
+                    <div key={label} className="flex justify-between">
+                      <span className="text-zinc-400">{label}</span>
+                      <span className="text-white tabular-nums">{Number(v).toLocaleString()}</span>
+                    </div>
+                  )
+                })}
+              {playDetails.stackUpTarget && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">Exposure target</span>
+                  <span className="text-white">{playDetails.stackUpTarget}</span>
                 </div>
               )}
               {playDetails.betSize != null && (
@@ -381,6 +405,7 @@ function BankrollRiskInfoModal({ accentClass, accentBtnClass, onClose }) {
  * @param {object}  props.playDetails      Fields shown in the Need Help modal
  * @param {string}  [props.accentClass]    Section title color (game accent)
  * @param {string}  [props.accentBtnClass] Primary button classes for info modal
+ * @param {string}  [props.cardClassName]  Outer card wrapper (default gray game card)
  */
 export default function BankrollRiskAdvisor({
   supabaseClient,
@@ -389,6 +414,7 @@ export default function BankrollRiskAdvisor({
   playDetails = {},
   accentClass = 'text-gray-300',
   accentBtnClass = 'bg-cyan-600 hover:bg-cyan-500',
+  cardClassName = 'bg-gray-900 p-6 rounded-3xl mb-6',
 }) {
   const [bankroll, setBankroll] = useState(null)
   const [loggedIn, setLoggedIn] = useState(false)
@@ -490,7 +516,7 @@ export default function BankrollRiskAdvisor({
 
   return (
     <>
-      <div className="bg-gray-900 p-6 rounded-3xl mb-6">
+      <div className={cardClassName}>
         {/* Header + risk % stepper */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1 min-w-0">

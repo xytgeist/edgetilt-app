@@ -652,6 +652,15 @@ html.light .text-amber-200\/90,
 html.light .text-amber-200\/88 { color: var(--color-amber-700); }
 html.light .text-amber-300 { color: var(--color-amber-700); }
 
+/* Play Logbook — manager partner name: warmer orange in light mode only */
+html.light .play-log-manager-name.text-amber-300 {
+  color: var(--color-orange-600);
+}
+html.light .play-log-manager-owner-tag.text-amber-300\/70 {
+  color: var(--color-orange-600);
+  opacity: 0.75;
+}
+
 html.light .text-cyan-50   { color: var(--color-cyan-700); }
 html.light .text-cyan-100  { color: var(--color-cyan-600); }
 html.light .text-cyan-200  { color: var(--color-cyan-600); }

@@ -172,7 +172,9 @@ export default function PlayLogPartnersSection({
       ) : row.kind === 'user' && String(row.userId) === String(ownerUserId) ? (
         <span
           className={
-            row.isManager ? 'text-amber-300/70 font-normal' : 'text-cyan-300/90 font-normal'
+            row.isManager
+              ? 'play-log-manager-owner-tag text-amber-300/70 font-normal'
+              : 'text-cyan-300/90 font-normal'
           }
         >
           {' '}(owner)
@@ -186,7 +188,7 @@ export default function PlayLogPartnersSection({
 
   /** Manager = amber; owner (when someone else manages) = cyan; else zinc. */
   const partnerNameClass = row => {
-    if (row.isManager) return 'text-amber-300 font-semibold'
+    if (row.isManager) return 'play-log-manager-name text-amber-300 font-semibold'
     if (partnerIsOwner(row)) return 'text-cyan-300 font-semibold'
     return 'text-zinc-200'
   }

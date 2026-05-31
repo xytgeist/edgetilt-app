@@ -9,6 +9,7 @@ import LogPlayOptionPicker from '../../components/LogPlayOptionPicker.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS, Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { resolveDefaultCaptureCasino } from '../../utils/nearbyCasinos.js'
 import { consumePlayLogPrefill } from '../../utils/playLogPrefill.js'
+import { playLogCalcSnapshotNotes } from '../../utils/playLogCalcSnapshot.js'
 import {
   formatMetricValue,
   metricDefMap,
@@ -31,6 +32,12 @@ import {
   templatesSorted,
   valuesForStorage,
   getLogPlaySaveValidationError,
+  defsMapForTemplate,
+  buildCustomMetricDefsForTemplate,
+  CUSTOM_METRIC_TYPE_OPTIONS,
+  standardTemplatePickerSlugs,
+  metricSlugsForUserTemplate,
+  PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS,
 } from './playLogMetrics.js'
 import { analyzePlayLogEntries } from './playLogAnalysis.js'
 import { buildPlayLogCsv, downloadPlayLogCsv } from './playLogExport.js'
@@ -156,6 +163,12 @@ export default function PlayLogbook({
 
   const [customName, setCustomName] = useState('')
   const [customMetrics, setCustomMetrics] = useState(() => new Set())
+  /** @type {[Array<{ id: string, label: string, value_type: import('./playLogMetrics.js').PlayLogValueType }>, Function]} */
+  const [customFieldDrafts, setCustomFieldDrafts] = useState([])
+  const [newFieldLabel, setNewFieldLabel] = useState('')
+  const [newFieldType, setNewFieldType] = useState(
+    /** @type {import('./playLogMetrics.js').PlayLogValueType} */ ('integer'),
+  )
 
   const [analyzeTemplateId, setAnalyzeTemplateId] = useState('')
 
@@ -176,6 +189,15 @@ export default function PlayLogbook({
   const selectedTemplate = selectedTemplateId ? templateById[selectedTemplateId] : null
   const analyzeTemplate = analyzeTemplateId ? templateById[analyzeTemplateId] : sortedTemplates[0] || null
 
+  const selectedDefsMap = useMemo(
+    () => defsMapForTemplate(defsMap, selectedTemplate),
+    [defsMap, selectedTemplate],
+  )
+  const analyzeDefsMap = useMemo(
+    () => defsMapForTemplate(defsMap, analyzeTemplate),
+    [defsMap, analyzeTemplate],
+  )
+
   const filteredAnalyzeEntries = useMemo(() => {
     if (!analyzeTemplate) return []
     return entries.filter(e => e.template_id === analyzeTemplate.id)
@@ -188,8 +210,8 @@ export default function PlayLogbook({
 
   const logPlayFormFields = useMemo(() => {
     if (!selectedTemplate) return []
-    return orderedLogPlayFormFields(selectedTemplate.metric_slugs || [], defsMap)
-  }, [selectedTemplate, defsMap])
+    return orderedLogPlayFormFields(selectedTemplate.metric_slugs || [], selectedDefsMap)
+  }, [selectedTemplate, selectedDefsMap])
 
   const logPlayNetOutcome = useMemo(
     () => playLogWinLoss(formFields.money_in, formFields.money_out, formFields.acquisition_fee),
@@ -352,7 +374,7 @@ export default function PlayLogbook({
           : emptyFormFields(slugs),
       )
       setCaptureCasino(opts.casinoName?.trim() || '')
-      setCaptureNotes('')
+      setCaptureNotes(String(opts.notes ?? '').trim())
       setCaptureDate(localYmd())
       const d = new Date()
       setCaptureTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
@@ -426,6 +448,7 @@ export default function PlayLogbook({
     openLogPlay({
       templateId: tpl.id,
       prefillValues: pre.values || {},
+      notes: pre.notes || playLogCalcSnapshotNotes(pre.values) || null,
       casinoName: pre.casinoName || null,
       skipCasinoPopulate: Boolean(pre.casinoName),
     })
@@ -433,8 +456,33 @@ export default function PlayLogbook({
 
   const openCreateTemplate = () => {
     setCustomName('')
-    setCustomMetrics(new Set(['bet_size', 'spin_count', 'money_in', 'money_out']))
+    setCustomMetrics(new Set(['spin_count']))
+    setCustomFieldDrafts([])
+    setNewFieldLabel('')
+    setNewFieldType('integer')
     setSheet('createTemplate')
+    setError('')
+  }
+
+  const addCustomFieldDraft = () => {
+    const label = newFieldLabel.trim()
+    if (!label) {
+      setError('Enter a field name.')
+      return
+    }
+    if (customFieldDrafts.some(f => f.label.trim().toLowerCase() === label.toLowerCase())) {
+      setError('You already have a field with that name.')
+      return
+    }
+    if (customFieldDrafts.length >= 20) {
+      setError('Maximum 20 custom fields per template.')
+      return
+    }
+    setCustomFieldDrafts(prev => [
+      ...prev,
+      { id: crypto.randomUUID(), label, value_type: newFieldType },
+    ])
+    setNewFieldLabel('')
     setError('')
   }
 
@@ -452,7 +500,7 @@ export default function PlayLogbook({
       selectedTemplate,
       formFields,
       metricSlugs: selectedTemplate.metric_slugs,
-      defsMap,
+      defsMap: selectedDefsMap,
     })
     if (validationMsg) {
       setSaveAlertMessage(validationMsg)
@@ -477,7 +525,7 @@ export default function PlayLogbook({
     setSaving(true)
     try {
       const slugs = selectedTemplate.metric_slugs || []
-      const stored = valuesForStorage(formFields, slugs, defsMap)
+      const stored = valuesForStorage(formFields, slugs, selectedDefsMap)
       const capturedAt = localDateTimeToIso(captureDate, captureTime)
       const casino_name = captureCasino.trim() || null
       const notes = captureNotes.trim() || null
@@ -543,20 +591,26 @@ export default function PlayLogbook({
       setError('Name your game template.')
       return
     }
-    if (customMetrics.size === 0) {
-      setError('Select at least one metric.')
-      return
-    }
+    const customDefs = buildCustomMetricDefsForTemplate(customFieldDrafts, [
+      ...Object.keys(defsMap),
+      ...PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS,
+      ...customMetrics,
+    ])
     setSaving(true)
     setError('')
     try {
-      const metric_slugs = sortMetricSlugs([...customMetrics], defsMap)
+      const sortMap = defsMapForTemplate(defsMap, { custom_metric_defs: customDefs })
+      const metric_slugs = metricSlugsForUserTemplate(
+        [...customMetrics, ...customDefs.map(d => d.slug)],
+        sortMap,
+      )
       const { data, error: e } = await supabaseClient
         .from('play_log_game_templates')
         .insert({
           user_id: userId,
           display_name: name,
           metric_slugs,
+          custom_metric_defs: customDefs,
           is_system: false,
         })
         .select('*')
@@ -630,8 +684,8 @@ export default function PlayLogbook({
     }
   }
 
-  const allMetricSlugsSorted = useMemo(
-    () => sortMetricSlugs(Object.keys(defsMap), defsMap),
+  const standardFieldSlugsSorted = useMemo(
+    () => standardTemplatePickerSlugs(defsMap),
     [defsMap],
   )
 
@@ -724,7 +778,7 @@ export default function PlayLogbook({
                 </div>
                 {entries.map(entry => {
                   const tpl = templateById[entry.template_id]
-                  const chips = recentEntryDisplayChips(entry, defsMap)
+                  const chips = recentEntryDisplayChips(entry, defsMapForTemplate(defsMap, tpl))
                   const realRtpSnap = realRtpSnapByEntryId[entry.id]
                   const runningRtpLabel = realRtpSnap?.label
                   const runningRtpTone = rtpToneFromPercentLabel(runningRtpLabel)
@@ -824,7 +878,7 @@ export default function PlayLogbook({
                     >
                       <div className="min-w-0">
                         <div className="text-white font-semibold truncate">{t.display_name}</div>
-                        <div className="text-zinc-500 text-xs">{t.metric_slugs?.length || 0} metrics</div>
+                        <div className="text-zinc-500 text-xs">{t.metric_slugs?.length || 0} fields</div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
@@ -886,7 +940,7 @@ export default function PlayLogbook({
                     type="button"
                     onClick={() => {
                       const slug = analyzeTemplate?.slug || 'game'
-                      const csv = buildPlayLogCsv(filteredAnalyzeEntries, analyzeTemplate, defsMap)
+                      const csv = buildPlayLogCsv(filteredAnalyzeEntries, analyzeTemplate, analyzeDefsMap)
                       downloadPlayLogCsv(csv, `play-logbook-${slug}-${localYmd()}.csv`)
                     }}
                     className="w-full min-h-12 rounded-2xl bg-zinc-800 text-sm font-semibold text-cyan-300 touch-manipulation active:bg-zinc-700"
@@ -1024,7 +1078,11 @@ export default function PlayLogbook({
 
             {sheet === 'entryDetail' && viewingEntry && (() => {
               const tpl = templateById[viewingEntry.template_id]
-              const detailRows = entryDetailFieldsForEntry(viewingEntry, tpl, defsMap)
+              const detailRows = entryDetailFieldsForEntry(
+                viewingEntry,
+                tpl,
+                defsMapForTemplate(defsMap, tpl),
+              )
               const shared = Boolean(viewingEntry.session_id)
               const isOwner = playLogEntryIsSessionOwner(viewingEntry, userId, sessionMetaById)
               const canEdit = !shared || isOwner
@@ -1150,7 +1208,7 @@ export default function PlayLogbook({
               <>
                 <SheetHeader title="Create Game Template" onClose={closeSheet} />
                 <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
-                  Name your game and pick which metrics to capture each time you log a play.
+                  Name your game and pick which fields to capture each time you log a play.
                 </p>
                 <div className="mb-4">
                   <label className="block text-zinc-400 text-xs mb-1.5">Game name</label>
@@ -1163,9 +1221,12 @@ export default function PlayLogbook({
                   />
                 </div>
                 <div className="mb-5">
-                  <label className="block text-zinc-400 text-xs mb-2">Metrics</label>
+                  <label className="block text-zinc-400 text-xs mb-1">Standard fields</label>
+                  <p className="text-zinc-600 text-xs mb-2">
+                    Bet size, denom, cash in, and cash out are always included.
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    {allMetricSlugsSorted.map(slug => {
+                    {standardFieldSlugsSorted.map(slug => {
                       const def = defsMap[slug]
                       const on = customMetrics.has(slug)
                       return (
@@ -1191,6 +1252,82 @@ export default function PlayLogbook({
                       )
                     })}
                   </div>
+                </div>
+                <div className="mb-5">
+                  <label className="block text-zinc-400 text-xs mb-2">Custom fields</label>
+                  <div className="rounded-2xl border border-zinc-700/60 bg-zinc-900/80 p-3 space-y-3">
+                    <div>
+                      <label className="block text-zinc-500 text-[11px] mb-1">Field name</label>
+                      <input
+                        type="text"
+                        value={newFieldLabel}
+                        onChange={e => setNewFieldLabel(e.target.value)}
+                        placeholder="e.g. Chomp Size"
+                        className="w-full min-h-11 rounded-xl bg-zinc-800 px-3 text-white text-sm font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-500 text-[11px] mb-1.5">Data type</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {CUSTOM_METRIC_TYPE_OPTIONS.map(opt => {
+                          const on = newFieldType === opt.value
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setNewFieldType(opt.value)}
+                              className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold touch-manipulation border ${
+                                on
+                                  ? 'bg-cyan-600/20 border-cyan-500/50 text-cyan-300'
+                                  : 'bg-zinc-800 border-zinc-700/60 text-zinc-400 active:bg-zinc-700'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addCustomFieldDraft}
+                      className="w-full min-h-11 rounded-xl bg-zinc-800 text-cyan-300 text-sm font-bold touch-manipulation border border-cyan-500/30 active:bg-zinc-700"
+                    >
+                      Create field
+                    </button>
+                  </div>
+                  {customFieldDrafts.length > 0 ? (
+                    <ul className="mt-2 space-y-1.5">
+                      {customFieldDrafts.map(field => {
+                        const typeLabel =
+                          CUSTOM_METRIC_TYPE_OPTIONS.find(o => o.value === field.value_type)?.label ||
+                          field.value_type
+                        return (
+                          <li
+                            key={field.id}
+                            className="flex items-center gap-2 rounded-xl bg-zinc-800/80 px-3 py-2"
+                          >
+                            <span className="min-w-0 flex-1 text-white text-sm font-semibold truncate">
+                              {field.label}
+                            </span>
+                            <span className="shrink-0 text-zinc-500 text-[11px] font-medium">{typeLabel}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCustomFieldDrafts(prev => prev.filter(f => f.id !== field.id))
+                              }
+                              className="shrink-0 text-zinc-500 text-xs font-semibold px-2 py-1 touch-manipulation active:text-red-400"
+                              aria-label={`Remove ${field.label}`}
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="text-zinc-600 text-xs mt-2">Optional — add fields unique to this game.</p>
+                  )}
                 </div>
                 {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
                 <button
@@ -1503,6 +1640,17 @@ function MetricFieldInput({ value, onChange, valueType, trailingHint = null }) {
         inputMode="numeric"
         value={value}
         onChange={e => onChange(e.target.value.replace(/[^0-9]/g, ''))}
+        className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40 tabular-nums"
+      />
+    )
+  }
+  if (valueType === 'decimal') {
+    return (
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value}
+        onChange={e => onChange(e.target.value.replace(/[^0-9.\-]/g, ''))}
         className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40 tabular-nums"
       />
     )

@@ -21,8 +21,9 @@ create table if not exists public.play_log_game_templates (
   display_name     text        not null,
   machine_slug     text,
   calculator_slug  text,
-  metric_slugs     text[]      not null,
-  is_system        boolean     not null default false,
+  metric_slugs         text[]      not null,
+  custom_metric_defs   jsonb       not null default '[]'::jsonb,
+  is_system            boolean     not null default false,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now(),
   constraint play_log_templates_system_no_user check (
@@ -129,7 +130,7 @@ create policy "play_log_entries_delete"
 -- ── Seed metric defs + system templates ───────────────────────
 
 insert into public.play_log_metric_defs (slug, label, value_type, sort_order) values
-  ('counter',           'Counter',              'integer', 10),
+  ('counter',           'Counter Start',        'integer', 10),
   ('bet_size',          'Bet size',             'money',   20),
   ('denom',             'Denom',                'money',   30),
   ('spin_count',        'Spins',                'integer', 40),

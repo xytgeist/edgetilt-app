@@ -1,4 +1,4 @@
-/** @typedef {{ calculatorSlug?: string, templateSlug?: string, values?: Record<string, number | string>, casinoName?: string, at?: number }} PlayLogPrefillPayload */
+/** @typedef {{ calculatorSlug?: string, templateSlug?: string, values?: Record<string, number | string>, notes?: string | null, casinoName?: string, at?: number }} PlayLogPrefillPayload */
 
 const STORAGE_KEY = 'lvsp:playLogPrefill:v1'
 const MAX_AGE_MS = 30 * 60 * 1000
@@ -16,6 +16,7 @@ export function stashPlayLogPrefill(payload) {
         calculatorSlug: payload.calculatorSlug || null,
         templateSlug: payload.templateSlug || null,
         values: payload.values || {},
+        notes: payload.notes?.trim() || null,
         casinoName: payload.casinoName || null,
         at: Date.now(),
       }),

@@ -4,13 +4,15 @@ import { formatPlayLogCalcMetricDisplay } from '../../utils/playLogCalcSnapshot.
 
 /** @typedef {{ slug: string, label: string, value_type: PlayLogValueType, sort_order: number }} PlayLogMetricDef */
 
-/** @typedef {{ id: string, slug?: string | null, display_name: string, machine_slug?: string | null, calculator_slug?: string | null, metric_slugs: string[], is_system: boolean, user_id?: string | null }} PlayLogTemplate */
+/** @typedef {{ slug: string, label: string, value_type: PlayLogValueType }} PlayLogCustomMetricDef */
+
+/** @typedef {{ id: string, slug?: string | null, display_name: string, machine_slug?: string | null, calculator_slug?: string | null, metric_slugs: string[], custom_metric_defs?: PlayLogCustomMetricDef[] | null, is_system: boolean, user_id?: string | null }} PlayLogTemplate */
 
 /** @typedef {{ id: string, template_id: string, captured_at: string, casino_name?: string | null, notes?: string | null, values: Record<string, unknown> }} PlayLogEntry */
 
 /** Fallback labels when DB metric defs have not loaded yet. */
 export const PLAY_LOG_METRIC_FALLBACK = /** @type {Record<string, { label: string, value_type: PlayLogValueType }>} */ ({
-  counter: { label: 'Counter', value_type: 'integer' },
+  counter: { label: 'Counter Start', value_type: 'integer' },
   bet_size: { label: 'Bet size', value_type: 'money' },
   denom: { label: 'Denom', value_type: 'money' },
   spin_count: { label: 'Spins', value_type: 'integer' },
@@ -44,6 +46,98 @@ export function metricDefMap(defs) {
   return map
 }
 
+/** Labels for template builder value-type picker (matches DB check). */
+export const CUSTOM_METRIC_TYPE_OPTIONS = [
+  { value: 'integer', label: 'Whole number' },
+  { value: 'money', label: 'Money' },
+  { value: 'decimal', label: 'Decimal' },
+  { value: 'text', label: 'Short text' },
+]
+
+/** @param {unknown} raw */
+export function normalizeCustomMetricDefs(raw) {
+  if (!Array.isArray(raw)) return []
+  /** @type {PlayLogCustomMetricDef[]} */
+  const out = []
+  const seen = new Set()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const slug = String(item.slug ?? '').trim()
+    const label = String(item.label ?? '').trim()
+    const value_type = item.value_type
+    if (!slug || !label) continue
+    if (!['integer', 'money', 'decimal', 'text'].includes(value_type)) continue
+    if (seen.has(slug)) continue
+    seen.add(slug)
+    out.push({ slug, label, value_type })
+  }
+  return out
+}
+
+/** @param {PlayLogTemplate | null | undefined} template */
+export function templateCustomMetricDefs(template) {
+  return normalizeCustomMetricDefs(template?.custom_metric_defs)
+}
+
+/** @param {Record<string, PlayLogMetricDef>} baseDefsMap @param {PlayLogTemplate | null | undefined} template */
+export function defsMapForTemplate(baseDefsMap, template) {
+  const map = { ...baseDefsMap }
+  let order = 9000
+  for (const m of templateCustomMetricDefs(template)) {
+    map[m.slug] = {
+      slug: m.slug,
+      label: m.label,
+      value_type: m.value_type,
+      sort_order: order++,
+    }
+  }
+  return map
+}
+
+/** @param {string} label */
+export function slugifyCustomMetricLabel(label) {
+  const base = label
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+  const trimmed = base.slice(0, 36)
+  return trimmed || 'field'
+}
+
+/** @param {string} label @param {Set<string>} existingSlugs */
+export function uniqueCustomMetricSlug(label, existingSlugs) {
+  let base = `c_${slugifyCustomMetricLabel(label)}`
+  let slug = base
+  let n = 2
+  while (existingSlugs.has(slug)) {
+    slug = `${base}_${n++}`
+  }
+  return slug
+}
+
+/**
+ * @param {{ label: string, value_type: PlayLogValueType }[]} drafts
+ * @param {Iterable<string>} reservedSlugs
+ */
+export function buildCustomMetricDefsForTemplate(drafts, reservedSlugs) {
+  const existing = new Set(reservedSlugs)
+  /** @type {PlayLogCustomMetricDef[]} */
+  const out = []
+  const labelsSeen = new Set()
+  for (const d of drafts) {
+    const label = d.label.trim()
+    if (!label) continue
+    const key = label.toLowerCase()
+    if (labelsSeen.has(key)) continue
+    labelsSeen.add(key)
+    const slug = uniqueCustomMetricSlug(label, existing)
+    existing.add(slug)
+    out.push({ slug, label, value_type: d.value_type })
+  }
+  return out
+}
+
 /** @param {string[]} metricSlugs @param {Record<string, PlayLogMetricDef>} defsMap */
 export function sortMetricSlugs(metricSlugs, defsMap) {
   return [...metricSlugs].sort((a, b) => {
@@ -52,6 +146,49 @@ export function sortMetricSlugs(metricSlugs, defsMap) {
     if (oa !== ob) return oa - ob
     return a.localeCompare(b)
   })
+}
+
+/** Calculator snapshot values — useful on a log row, not for custom-template historical analysis. */
+export const PLAY_LOG_CALC_SNAPSHOT_FIELD_SLUGS = new Set([
+  'current_ev_rtp',
+  'average_case_mult',
+  'average_case_usd',
+  'expected_ev_usd',
+])
+
+/** Includes calc snapshots plus acquisition fee (session P&L adjustment, not a scout metric). */
+export const PLAY_LOG_SNAPSHOT_FIELD_SLUGS = new Set([
+  ...PLAY_LOG_CALC_SNAPSHOT_FIELD_SLUGS,
+  'acquisition_fee',
+])
+
+/** Always on user-created templates (not shown in the standard-field picker). */
+export const PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS = [
+  'bet_size',
+  'denom',
+  'money_in',
+  'money_out',
+]
+
+const PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUG_SET = new Set(PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS)
+
+/** Standard catalog slugs offered when building a user game template (excludes snapshot + required defaults). */
+export function standardTemplatePickerSlugs(defsMap) {
+  return sortMetricSlugs(
+    Object.keys(defsMap).filter(
+      slug =>
+        !PLAY_LOG_SNAPSHOT_FIELD_SLUGS.has(slug) && !PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUG_SET.has(slug),
+    ),
+    defsMap,
+  )
+}
+
+/** @param {Iterable<string>} optionalSlugs @param {Record<string, PlayLogMetricDef>} defsMap */
+export function metricSlugsForUserTemplate(optionalSlugs, defsMap) {
+  return sortMetricSlugs(
+    [...new Set([...PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS, ...optionalSlugs])],
+    defsMap,
+  )
 }
 
 /** @param {unknown} raw @param {PlayLogValueType} type */
@@ -499,17 +636,10 @@ export function recentEntryDisplayChips(entry, defsMap) {
   return chips
 }
 
-const PLAY_LOG_CALC_DISPLAY_SLUGS = new Set([
-  'current_ev_rtp',
-  'average_case_mult',
-  'average_case_usd',
-  'expected_ev_usd',
-])
-
 /** @param {string} slug @param {unknown} value @param {PlayLogValueType} valueType */
 export function formatPlayLogEntryFieldValue(slug, value, valueType) {
   if (slug === 'acquisition_fee') return formatAcquisitionFeeValue(value)
-  if (PLAY_LOG_CALC_DISPLAY_SLUGS.has(slug)) {
+  if (PLAY_LOG_CALC_SNAPSHOT_FIELD_SLUGS.has(slug)) {
     return formatPlayLogCalcMetricDisplay(slug, value, valueType)
   }
   return formatMetricValue(value, valueType)

@@ -72,3 +72,31 @@ export const PLAY_LOG_CALC_SNAPSHOT_SLUGS = [
   'expected_ev_usd',
   'acquisition_fee',
 ]
+
+/**
+ * Notes text when logging from a calculator (snapshot at log time).
+ * @param {Record<string, unknown> | null | undefined} values
+ * @returns {string}
+ */
+export function playLogCalcSnapshotNotes(values) {
+  if (!values || typeof values !== 'object') return ''
+  /** @type {string[]} */
+  const lines = []
+  const rtp = Number(values.current_ev_rtp)
+  if (Number.isFinite(rtp)) {
+    lines.push(`Current RTP: ${formatPlayLogCalcMetricDisplay('current_ev_rtp', rtp)}`)
+  }
+  const avgMult = Number(values.average_case_mult)
+  if (Number.isFinite(avgMult)) {
+    lines.push(`Average case (bets): ${formatPlayLogCalcMetricDisplay('average_case_mult', avgMult)}`)
+  }
+  const avgUsd = Number(values.average_case_usd)
+  if (Number.isFinite(avgUsd)) {
+    lines.push(`Average case ($): ${formatPlayLogCalcMetricDisplay('average_case_usd', avgUsd)}`)
+  }
+  const evUsd = Number(values.expected_ev_usd)
+  if (Number.isFinite(evUsd)) {
+    lines.push(`Expected EV ($): ${formatPlayLogCalcMetricDisplay('expected_ev_usd', evUsd)}`)
+  }
+  return lines.join('\n')
+}

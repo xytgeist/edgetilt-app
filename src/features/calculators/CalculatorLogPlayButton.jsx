@@ -1,4 +1,5 @@
 import { stashPlayLogPrefill } from '../../utils/playLogPrefill.js'
+import { playLogCalcSnapshotNotes } from '../../utils/playLogCalcSnapshot.js'
 
 /**
  * Opens Play Logbook with fields pre-filled from the active calculator session.
@@ -22,7 +23,11 @@ export default function CalculatorLogPlayButton({
       <button
         type="button"
         onClick={() => {
-          stashPlayLogPrefill({ calculatorSlug, values: prefillValues })
+          stashPlayLogPrefill({
+            calculatorSlug,
+            values: prefillValues,
+            notes: playLogCalcSnapshotNotes(prefillValues),
+          })
           onOpenLogbook()
         }}
         className={`w-full min-h-12 rounded-2xl px-4 text-sm font-bold text-white touch-manipulation active:opacity-90 ${accentBtnClass}`}

@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import PlayLogPartnerPickerModal from './PlayLogPartnerPickerModal.jsx'
 import {
   formatPlayLogPartnerOutcomeShare,
@@ -59,7 +61,7 @@ export default function PlayLogPartnersSection({
   const percentSum = useMemo(() => playLogPartnersPercentSum(partners), [partners])
   const sumOk = Math.abs(percentSum - 100) < 0.02
   const showPaidColumn =
-    canEditPaid || partners.some(p => !p.isManager && p.paid)
+    canEditPaid || partners.some(p => p.paid) || partners.some(p => p.isManager)
 
   const usedUserIds = useMemo(
     () => new Set(partners.filter(p => p.kind === 'user').map(p => String(p.userId))),
@@ -166,15 +168,28 @@ export default function PlayLogPartnersSection({
         playLogPartnerLabel({ display_name: row.displayName, handle: row.handle })
       )}
       {row.kind === 'user' && String(row.userId) === String(userId) ? (
-        <span className={row.isManager ? 'text-amber-300/70 font-normal' : 'text-zinc-500'}> (you)</span>
+        <span className="text-zinc-500"> (you)</span>
       ) : row.kind === 'user' && String(row.userId) === String(ownerUserId) ? (
-        <span className={row.isManager ? 'text-amber-300/70 font-normal' : 'text-zinc-500'}> (owner)</span>
+        <span
+          className={
+            row.isManager ? 'text-amber-300/70 font-normal' : 'text-cyan-300/90 font-normal'
+          }
+        >
+          {' '}(owner)
+        </span>
       ) : null}
     </>
   )
 
-  const partnerNameClass = row =>
-    row.isManager ? 'text-amber-300 font-semibold' : 'text-zinc-200'
+  const partnerIsOwner = row =>
+    row.kind === 'user' && String(row.userId) === String(ownerUserId)
+
+  /** Manager = amber; owner (when someone else manages) = cyan; else zinc. */
+  const partnerNameClass = row => {
+    if (row.isManager) return 'text-amber-300 font-semibold'
+    if (partnerIsOwner(row)) return 'text-cyan-300 font-semibold'
+    return 'text-zinc-200'
+  }
 
   const canRemoveRow = row => {
     if (row.kind === 'user' && String(row.userId) === String(ownerUserId)) {
@@ -187,7 +202,10 @@ export default function PlayLogPartnersSection({
 
   const partnersCardTitle = (
     <div className="flex items-center justify-between gap-2 mb-2">
-      <div className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Partners</div>
+      <div className="flex min-w-0 items-center gap-1">
+        <div className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Partners</div>
+        {!readOnly ? <PlayLogPartnersInfoButton hasExtraPartner={hasExtraPartner} /> : null}
+      </div>
       {hasExtraPartner ? (
         <span
           className={`text-xs font-semibold tabular-nums ${sumOk ? 'text-emerald-400' : 'text-amber-400'}`}
@@ -258,13 +276,11 @@ export default function PlayLogPartnersSection({
         </div>
         {showPaidColumn ? (
           <div className={`flex w-6 items-center justify-center ${readOnly ? 'h-4' : 'min-h-8'}`}>
-            {!row.isManager ? (
-              <PaidCheckbox
-                checked={Boolean(row.paid)}
-                disabled={!canEditPaid || paidSaving}
-                onChange={next => void togglePaid(row.key, next)}
-              />
-            ) : null}
+            <PaidCheckbox
+              checked={Boolean(row.paid)}
+              disabled={!canEditPaid || paidSaving}
+              onChange={next => void togglePaid(row.key, next)}
+            />
           </div>
         ) : null}
       </div>
@@ -341,20 +357,153 @@ export default function PlayLogPartnersSection({
         usedGuestLabels={usedGuestLabels}
         onConfirm={commitPartnersFromPicker}
       />
-
-      <p className="text-zinc-500 text-xs leading-snug mt-1">
-        {hasExtraPartner ? (
-          <>
-            The <span className="text-amber-300/90">owner</span> is the manager by default (tap another partner&apos;s
-            name if someone else tracks paid; manager is not marked paid). Registered partners get this play in their
-            logbook and a
-            Lounge alert. Guests are attribution only.
-          </>
-        ) : (
-          <>Tap Add partner to search your network or type a name to add a guest. Your row appears once you add someone.</>
-        )}
-      </p>
     </div>
+  )
+}
+
+const PARTNERS_INFO_POPOVER_MARGIN = 12
+const PARTNERS_INFO_POPOVER_GAP = 6
+
+/** @param {HTMLElement} anchorEl @param {HTMLElement} panelEl */
+function layoutPartnersInfoPopover(anchorEl, panelEl) {
+  const ar = anchorEl.getBoundingClientRect()
+  const pw = panelEl.offsetWidth
+  const ph = panelEl.offsetHeight
+  const margin = PARTNERS_INFO_POPOVER_MARGIN
+  const gap = PARTNERS_INFO_POPOVER_GAP
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  let left = ar.left
+  if (left + pw > vw - margin) left = vw - margin - pw
+  if (left < margin) left = margin
+
+  const belowTop = ar.bottom + gap
+  const aboveTop = ar.top - gap - ph
+  let top = belowTop
+  if (belowTop + ph > vh - margin && aboveTop >= margin) top = aboveTop
+  else if (belowTop + ph > vh - margin) top = Math.max(margin, vh - margin - ph)
+  top = Math.max(margin, Math.min(top, vh - margin - ph))
+
+  return { left, top }
+}
+
+/** @param {{ hasExtraPartner: boolean }} props */
+function PlayLogPartnersInfoButton({ hasExtraPartner }) {
+  const [open, setOpen] = useState(false)
+  const [popoverPos, setPopoverPos] = useState(/** @type {{ left: number, top: number } | null} */ (null))
+  const anchorRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
+  const popoverRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+
+  const repositionPopover = useCallback(() => {
+    const anchor = anchorRef.current
+    const panel = popoverRef.current
+    if (!anchor || !panel) return
+    setPopoverPos(layoutPartnersInfoPopover(anchor, panel))
+  }, [])
+
+  const closePopover = useCallback(() => setOpen(false), [])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPopoverPos(null)
+      return undefined
+    }
+    repositionPopover()
+    const onReflow = () => repositionPopover()
+    window.addEventListener('resize', onReflow)
+    window.addEventListener('scroll', onReflow, true)
+    return () => {
+      window.removeEventListener('resize', onReflow)
+      window.removeEventListener('scroll', onReflow, true)
+    }
+  }, [open, repositionPopover, hasExtraPartner])
+
+  const popoverLayer =
+    open && typeof document !== 'undefined'
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 cursor-default bg-black/40 touch-none"
+              style={{ zIndex: Z_APP_ALERT - 1 }}
+              aria-label="Close partners info"
+              onPointerDown={e => {
+                e.preventDefault()
+                e.stopPropagation()
+                closePopover()
+              }}
+              onClick={e => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            />
+            <div
+              ref={popoverRef}
+              role="dialog"
+              aria-label="Partners info"
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: 'fixed',
+                left: popoverPos?.left ?? -9999,
+                top: popoverPos?.top ?? -9999,
+                zIndex: Z_APP_ALERT,
+                visibility: popoverPos ? 'visible' : 'hidden',
+                maxHeight: `calc(100dvh - ${PARTNERS_INFO_POPOVER_MARGIN * 2}px)`,
+              }}
+              className="w-[min(18rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-zinc-600/80 bg-zinc-800 px-3 py-2.5 text-left text-xs leading-snug text-zinc-300 shadow-lg"
+            >
+              {hasExtraPartner ? (
+                <p>
+                  The <span className="text-cyan-300/90">owner</span> is the{' '}
+                  <span className="text-amber-300/90">manager</span> by default. Tap a partner&apos;s name to transfer
+                  management. <span className="text-amber-300/90">Managers</span> are considered &quot;paid&quot; by
+                  default. Edge registered partners receive this play in their logbook. Guests are attribution only.
+                </p>
+              ) : (
+                <p>
+                  Tap Add partner to search your network or type a name to add a guest. Your row appears once you add
+                  someone.
+                </p>
+              )}
+            </div>
+          </>,
+          document.body,
+        )
+      : null
+
+  return (
+    <>
+      <button
+        ref={anchorRef}
+        type="button"
+        aria-expanded={open}
+        aria-label="Partners info"
+        onClick={e => {
+          e.stopPropagation()
+          setOpen(prev => !prev)
+        }}
+        className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:bg-zinc-700/60 active:text-zinc-300"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      </button>
+      {popoverLayer}
+    </>
   )
 }
 

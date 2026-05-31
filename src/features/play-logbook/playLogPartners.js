@@ -78,7 +78,7 @@ export function playLogPartnersToRpcPayload(rows) {
         guest_label: String(row.guestLabel || '').trim(),
         share_percent,
         is_manager: Boolean(row.isManager),
-        paid: row.isManager ? false : Boolean(row.paid),
+        paid: Boolean(row.paid),
       }
     }
     return {
@@ -86,7 +86,7 @@ export function playLogPartnersToRpcPayload(rows) {
       user_id: row.userId,
       share_percent,
       is_manager: Boolean(row.isManager),
-      paid: row.isManager ? false : Boolean(row.paid),
+      paid: Boolean(row.paid),
     }
   })
 }
@@ -96,7 +96,7 @@ export function playLogPartnersWithManager(rows, managerKey) {
   return rows.map(row => ({
     ...row,
     isManager: row.key === managerKey,
-    paid: row.key === managerKey ? false : row.paid,
+    paid: row.key === managerKey ? true : row.paid,
   }))
 }
 
@@ -165,7 +165,7 @@ export function defaultCreatorPartnerRow(userId, profile) {
     avatarUrl: '',
     sharePercent: '100',
     isManager: true,
-    paid: false,
+    paid: true,
   }
 }
 
@@ -181,7 +181,7 @@ export function playLogPartnersEnsureCreatorRow(rows, ownerUserId, userId, profi
   if (!owner) return rows
   if (rows.some(r => r.kind === 'user' && String(r.userId) === owner)) return rows
   const creator = defaultCreatorPartnerRow(userId, profile)
-  return [{ ...creator, sharePercent: '', isManager: true }, ...rows]
+  return [{ ...creator, sharePercent: '', isManager: true, paid: true }, ...rows]
 }
 
 /**

@@ -49,6 +49,7 @@ import {
   deletePlayLogSharedSession,
   fetchPlayLogSessionPartners,
   fetchPlayLogSessionsMeta,
+  isPlayLogPartnersPaidRpcMissingError,
   savePlayLogSharedSession,
   updatePlayLogSessionPartnersPaid,
   updatePlayLogSharedSession,
@@ -301,6 +302,17 @@ export default function PlayLogbook({
     },
     [sessionMetaById, userId],
   )
+
+  const handlePaidPersistError = useCallback(err => {
+    if (isPlayLogPartnersPaidRpcMissingError(err)) {
+      setSchemaMissing(true)
+      setError(
+        'Paid status needs SQL migration 20260531190000_play_log_session_manager_paid.sql (and later paid-alert migrations) on this Supabase project.',
+      )
+      return
+    }
+    setError(err?.message || 'Could not update paid status')
+  }, [])
 
   const openEntryDetail = useCallback(
     async entry => {
@@ -977,7 +989,7 @@ export default function PlayLogbook({
                               }
                             : undefined
                         }
-                        onPaidPersistError={msg => setError(msg)}
+                        onPaidPersistError={handlePaidPersistError}
                       />
                     ) : null}
                   </div>
@@ -1085,11 +1097,16 @@ export default function PlayLogbook({
                                 }
                               : undefined
                           }
-                          onPaidPersistError={msg => setError(msg)}
+                          onPaidPersistError={handlePaidPersistError}
                         />
                       ) : null}
                     </div>
                     {error ? <p className="text-red-400 text-sm pb-3">{error}</p> : null}
+                    {schemaMissing ? (
+                      <p className="text-amber-300/90 text-xs pb-3">
+                        Apply the migrations listed on the Logbook tab, then refresh.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="shrink-0 flex gap-2 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
                     {canEdit ? (

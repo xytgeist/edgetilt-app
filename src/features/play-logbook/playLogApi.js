@@ -164,6 +164,20 @@ export async function updatePlayLogSharedSession(supabaseClient, args) {
   if (error) throw error
 }
 
+/** PostgREST 404 / PGRST202 when `play_log_update_session_partners_paid` is not deployed. */
+export function isPlayLogPartnersPaidRpcMissingError(error) {
+  if (!error) return false
+  const code = String(error.code || '')
+  const msg = String(error.message || '').toLowerCase()
+  const status = Number(error.status ?? error.statusCode ?? 0)
+  if (status === 404) return true
+  if (code === 'PGRST202' || code === '42883') return true
+  if (msg.includes('play_log_update_session_partners_paid')) return true
+  if (msg.includes('could not find the function')) return true
+  if (msg.includes('function') && msg.includes('does not exist')) return true
+  return false
+}
+
 /**
  * Creator or play manager — update paid flags only.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient

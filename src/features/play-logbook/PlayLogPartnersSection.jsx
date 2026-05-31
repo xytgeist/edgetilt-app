@@ -24,7 +24,7 @@ import {
  *   canEditPaid?: boolean,
  *   netOutcome?: number | null,
  *   onPaidPersist?: (rows: import('./playLogPartners.js').PlayLogPartnerRow[]) => void | Promise<void>,
- *   onPaidPersistError?: (message: string) => void,
+ *   onPaidPersistError?: (error: unknown) => void,
  * }} props
  */
 export default function PlayLogPartnersSection({
@@ -80,8 +80,7 @@ export default function PlayLogPartnersSection({
       await onPaidPersist(next)
     } catch (e) {
       onPartnersChange(prior)
-      const msg = e?.message || 'Could not update paid status'
-      onPaidPersistError?.(msg)
+      onPaidPersistError?.(e)
     } finally {
       setPaidSaving(false)
     }

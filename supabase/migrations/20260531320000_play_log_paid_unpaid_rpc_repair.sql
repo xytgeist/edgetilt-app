@@ -1,6 +1,6 @@
--- Repair: partner paid notifications (re-apply if 20260531200000 was skipped after 20260531190000).
--- Safe to run multiple times. If 20260531310000 was already applied, this file keeps unpaid notify too.
--- If you ran this *after* 31310000 and lost unpaid alerts, re-run 31310000 or 20260531320000.
+-- Repair: restore unpaid paid-toggle alerts if 20260531300000 ran after 20260531310000
+-- (31300000 replaced play_log_update_session_partners_paid without the unpaid branch).
+-- Safe to run multiple times.
 
 alter table public.activity_events
   drop constraint if exists activity_events_event_type_check;
@@ -24,7 +24,7 @@ alter table public.activity_events
     )
   );
 
-create or replace function public.play_log_notify_partner_marked_paid(
+create or replace function public.play_log_notify_partner_marked_unpaid(
   p_session_id uuid,
   p_recipient uuid,
   p_actor uuid
@@ -55,7 +55,7 @@ begin
   perform public.activity_events_insert_safe(
     p_recipient,
     p_actor,
-    'play_log_partner_paid',
+    'play_log_partner_unpaid',
     null,
     null,
     v_entry_id
@@ -147,5 +147,5 @@ begin
 end;
 $$;
 
-grant execute on function public.play_log_notify_partner_marked_paid(uuid, uuid, uuid) to authenticated;
+grant execute on function public.play_log_notify_partner_marked_unpaid(uuid, uuid, uuid) to authenticated;
 grant execute on function public.play_log_update_session_partners_paid(uuid, jsonb) to authenticated;

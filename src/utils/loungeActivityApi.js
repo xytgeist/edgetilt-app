@@ -12,6 +12,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   QUOTE_REPOST: 'quote_repost',
   LIKE: 'like',
   BOOKMARK: 'bookmark',
+  PLAY_LOG_SHARED: 'play_log_shared',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */
@@ -34,6 +35,8 @@ export function loungeActivityNotificationBadgeKind(eventType) {
       return 'quote_repost'
     case LOUNGE_ACTIVITY_EVENT_TYPES.BOOKMARK:
       return 'bookmark'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED:
+      return 'play_log'
     default:
       return null
   }
@@ -134,6 +137,13 @@ export function loungeActivityActionPhrase(event) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.LIKE:
       if (!event?.comment_id) return 'liked your post'
       return isReply ? 'liked your reply' : 'liked your comment'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED: {
+      const game = String(event?.play_log_game_name || '').trim() || 'a play log'
+      const pct = event?.play_log_share_percent
+      const pctStr =
+        pct != null && Number.isFinite(Number(pct)) ? ` (${Number(pct)}%)` : ''
+      return `added you to ${game}${pctStr}`
+    }
     default:
       return 'interacted with you'
   }

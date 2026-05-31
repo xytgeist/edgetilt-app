@@ -142,7 +142,12 @@ insert into public.play_log_metric_defs (slug, label, value_type, sort_order) va
   ('major',             'Major',                'integer', 110),
   ('minor',             'Minor',                'integer', 120),
   ('mini',              'Mini',                 'integer', 130),
-  ('target_bonus_paid', 'Target bonus paid',    'money',   140)
+  ('target_bonus_paid', 'Target bonus paid',    'money',   140),
+  ('current_ev_rtp',    'Current EV (RTP %)',     'decimal', 145),
+  ('average_case_mult', 'Average case (×)',     'decimal', 146),
+  ('average_case_usd',  'Average case ($)',     'money',   147),
+  ('expected_ev_usd',   'Expected EV ($)',      'money',   148),
+  ('acquisition_fee',   'Acquisition fee',      'money',   149)
 on conflict (slug) do update set
   label = excluded.label,
   value_type = excluded.value_type,
@@ -158,28 +163,28 @@ from (values
     'Phoenix Link',
     'phoenix-link',
     'phoenix',
-    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit']::text[]
+    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit','current_ev_rtp','average_case_mult','average_case_usd','acquisition_fee']::text[]
   ),
   (
     'buffalo-link',
     'Buffalo Link',
     'buffalo-ascension',
     'buffalo',
-    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit']::text[]
+    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit','current_ev_rtp','average_case_mult','average_case_usd','acquisition_fee']::text[]
   ),
   (
     'stack-up-pays',
     'Stack Up Pays',
     'stack-up-pays',
     'stackup',
-    array['bet_size','denom','mega','grand','major','minor','mini','spin_count','money_in','money_out','target_bonus_paid']::text[]
+    array['bet_size','denom','mega','grand','major','minor','mini','spin_count','money_in','money_out','target_bonus_paid','current_ev_rtp','average_case_mult','average_case_usd','acquisition_fee']::text[]
   ),
   (
     'must-hit-by',
     'Must Hit By (generic)',
     null::text,
     'mhb',
-    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit']::text[]
+    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit','expected_ev_usd']::text[]
   )
 ) as v(slug, display_name, machine_slug, calculator_slug, metric_slugs)
 where not exists (
@@ -201,28 +206,28 @@ from (values
     'Phoenix Link',
     'phoenix-link',
     'phoenix',
-    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit']::text[]
+    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit','current_ev_rtp','average_case_mult','average_case_usd','acquisition_fee']::text[]
   ),
   (
     'buffalo-link',
     'Buffalo Link',
     'buffalo-ascension',
     'buffalo',
-    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit']::text[]
+    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit','current_ev_rtp','average_case_mult','average_case_usd','acquisition_fee']::text[]
   ),
   (
     'stack-up-pays',
     'Stack Up Pays',
     'stack-up-pays',
     'stackup',
-    array['bet_size','denom','mega','grand','major','minor','mini','spin_count','money_in','money_out','target_bonus_paid']::text[]
+    array['bet_size','denom','mega','grand','major','minor','mini','spin_count','money_in','money_out','target_bonus_paid','current_ev_rtp','average_case_mult','average_case_usd','acquisition_fee']::text[]
   ),
   (
     'must-hit-by',
     'Must Hit By (generic)',
     null::text,
     'mhb',
-    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit']::text[]
+    array['counter','bet_size','denom','spin_count','bonus_count','money_in','money_out','counter_at_hit','expected_ev_usd']::text[]
   )
 ) as v(slug, display_name, machine_slug, calculator_slug, metric_slugs)
 where t.is_system = true and t.slug = v.slug;

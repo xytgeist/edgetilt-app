@@ -22,6 +22,11 @@ export const PLAY_LOG_METRIC_FALLBACK = /** @type {Record<string, { label: strin
   minor: { label: 'Minor', value_type: 'integer' },
   mini: { label: 'Mini', value_type: 'integer' },
   target_bonus_paid: { label: 'Target bonus paid', value_type: 'money' },
+  current_ev_rtp: { label: 'Current EV (RTP %)', value_type: 'decimal' },
+  average_case_mult: { label: 'Average case (×)', value_type: 'decimal' },
+  average_case_usd: { label: 'Average case ($)', value_type: 'money' },
+  expected_ev_usd: { label: 'Expected EV ($)', value_type: 'money' },
+  acquisition_fee: { label: 'Acquisition fee', value_type: 'money' },
 })
 
 /** @param {PlayLogMetricDef[] | null | undefined} defs */
@@ -73,6 +78,55 @@ export function formatMetricValue(v, type) {
   return n.toFixed(2)
 }
 
+export const LOG_PLAY_SAVE_REQUIRED_PREFIX = 'Required fields: '
+
+const LOG_PLAY_SAVE_REQUIRED = [
+  { slug: 'bet_size', label: 'Bet size' },
+  { slug: 'money_in', label: 'Money in' },
+  { slug: 'money_out', label: 'Money Out' },
+]
+
+/** @param {string[]} labels */
+function formatLogPlayMissingFieldList(labels) {
+  if (labels.length === 1) return labels[0]
+  if (labels.length === 2) return `${labels[0]} & ${labels[1]}`
+  return `${labels.slice(0, -1).join(', ')} & ${labels[labels.length - 1]}`
+}
+
+/**
+ * @param {{
+ *   selectedTemplateId?: string,
+ *   selectedTemplate?: PlayLogTemplate | null,
+ *   formFields: Record<string, string>,
+ *   metricSlugs?: string[],
+ *   defsMap: Record<string, PlayLogMetricDef>,
+ * }} args
+ * @returns {string | null} User-facing message when save is not allowed
+ */
+export function getLogPlaySaveValidationError({
+  selectedTemplateId,
+  selectedTemplate,
+  formFields,
+  metricSlugs,
+  defsMap,
+}) {
+  const slugs = metricSlugs || selectedTemplate?.metric_slugs || []
+  /** @type {string[]} */
+  const missing = []
+  if (!selectedTemplateId || !selectedTemplate) missing.push('Game')
+  for (const { slug, label } of LOG_PLAY_SAVE_REQUIRED) {
+    if (!slugs.includes(slug)) {
+      missing.push(label)
+      continue
+    }
+    const def = defsMap[slug]
+    const type = def?.value_type || PLAY_LOG_METRIC_FALLBACK[slug]?.value_type || 'money'
+    if (parseMetricInput(formFields[slug], type) == null) missing.push(label)
+  }
+  if (!missing.length) return null
+  return `${LOG_PLAY_SAVE_REQUIRED_PREFIX}${formatLogPlayMissingFieldList(missing)}`
+}
+
 /** @param {Record<string, unknown>} values @param {string[]} slugs @param {Record<string, PlayLogMetricDef>} defsMap */
 export function valuesForStorage(values, slugs, defsMap) {
   /** @type {Record<string, number | string>} */
@@ -81,7 +135,12 @@ export function valuesForStorage(values, slugs, defsMap) {
     const def = defsMap[slug]
     if (!def) continue
     const parsed = parseMetricInput(values[slug], def.value_type)
-    if (parsed != null) out[slug] = parsed
+    if (parsed == null) continue
+    if (slug === 'acquisition_fee' && typeof parsed === 'number') {
+      out[slug] = Math.abs(parsed)
+    } else {
+      out[slug] = parsed
+    }
   }
   return out
 }
@@ -148,6 +207,11 @@ export const LOG_PLAY_FORM_FIELDS = [
   { slug: 'money_out', label: 'Money Out' },
   { slug: 'spin_count', label: '# Spins' },
   { slug: 'bonus_count', label: '# Bonuses' },
+  { slug: 'current_ev_rtp', label: 'Current EV' },
+  { slug: 'average_case_mult', label: 'Avg case (×)' },
+  { slug: 'average_case_usd', label: 'Avg case ($)' },
+  { slug: 'expected_ev_usd', label: 'Expected EV ($)' },
+  { slug: 'acquisition_fee', label: 'Acquisition fee' },
 ]
 
 const LOG_PLAY_FORM_SLUGS = new Set(LOG_PLAY_FORM_FIELDS.map(f => f.slug))
@@ -179,12 +243,34 @@ export function orderedLogPlayFormFields(templateSlugs, defsMap) {
   return out
 }
 
-/** @param {string} inRaw @param {string} outRaw */
-export function playLogWinLoss(inRaw, outRaw) {
+/** @param {unknown} raw Acquisition fee (stored/displayed as a positive cost). */
+export function parseAcquisitionFee(raw) {
+  const n = Number(String(raw ?? '').replace(/[^0-9.\-]/g, ''))
+  if (!Number.isFinite(n) || n === 0) return null
+  return Math.abs(n)
+}
+
+/**
+ * Session P&L: money out − money in, minus acquisition fee when present.
+ * @param {string} inRaw
+ * @param {string} outRaw
+ * @param {unknown} [acquisitionFeeRaw]
+ */
+export function playLogWinLoss(inRaw, outRaw, acquisitionFeeRaw = null) {
   const inn = Number(String(inRaw ?? '').replace(/[^0-9.\-]/g, ''))
   const out = Number(String(outRaw ?? '').replace(/[^0-9.\-]/g, ''))
   if (!Number.isFinite(inn) || !Number.isFinite(out)) return null
-  return out - inn
+  let net = out - inn
+  const fee = parseAcquisitionFee(acquisitionFeeRaw)
+  if (fee != null) net -= fee
+  return net
+}
+
+/** @param {unknown} v */
+export function formatAcquisitionFeeValue(v) {
+  const n = parseAcquisitionFee(v)
+  if (n == null) return '—'
+  return formatMetricValue(n, 'money')
 }
 
 /** @param {{ slug?: string, label?: string }} field */
@@ -337,10 +423,12 @@ export function recentEntryDisplayChips(entry, defsMap) {
   const values = entry?.values || {}
   const betDef = defsMap.bet_size
   const denomDef = defsMap.denom
-  const pnl = playLogWinLoss(values.money_in, values.money_out)
+  const pnl = playLogWinLoss(values.money_in, values.money_out, values.acquisition_fee)
   const playRtpLabel = playRtpLabelForEntry(entry)
+  const hasAcquisitionFee = parseAcquisitionFee(values.acquisition_fee) != null
 
-  return [
+  /** @type {{ key: string, label: string, value: string, tone?: 'win' | 'loss' | 'neutral' }[]} */
+  const chips = [
     {
       key: 'bet_size',
       label: betDef?.label || 'Bet size',
@@ -355,7 +443,7 @@ export function recentEntryDisplayChips(entry, defsMap) {
     },
     {
       key: 'pnl',
-      label: 'Profit/loss',
+      label: hasAcquisitionFee ? 'Net profit/loss' : 'Profit/loss',
       value: pnl == null ? '—' : formatMetricValue(pnl, 'money'),
       tone: pnl == null ? 'neutral' : pnl >= 0 ? 'win' : 'loss',
     },
@@ -366,6 +454,47 @@ export function recentEntryDisplayChips(entry, defsMap) {
       tone: rtpToneFromPercentLabel(playRtpLabel),
     },
   ]
+
+  const currentEvRtp = Number(values.current_ev_rtp)
+  if (Number.isFinite(currentEvRtp)) {
+    const label = defsMap.current_ev_rtp?.label || 'Current EV'
+    const evLabel = `${currentEvRtp.toFixed(1)}%`
+    chips.push({
+      key: 'current_ev_rtp',
+      label,
+      value: evLabel,
+      tone: currentEvRtp >= 100 ? 'win' : 'loss',
+    })
+  }
+
+  const avgMult = Number(values.average_case_mult)
+  if (Number.isFinite(avgMult)) {
+    chips.push({
+      key: 'average_case_mult',
+      label: defsMap.average_case_mult?.label || 'Avg case',
+      value: `${avgMult.toFixed(1)}×`,
+      tone: avgMult >= 0 ? 'win' : 'loss',
+    })
+  } else if (Number.isFinite(Number(values.expected_ev_usd))) {
+    const evUsd = Number(values.expected_ev_usd)
+    chips.push({
+      key: 'expected_ev_usd',
+      label: defsMap.expected_ev_usd?.label || 'Expected EV',
+      value: formatMetricValue(evUsd, 'money'),
+      tone: evUsd >= 0 ? 'win' : 'loss',
+    })
+  }
+
+  if (parseAcquisitionFee(values.acquisition_fee) != null) {
+    chips.push({
+      key: 'acquisition_fee',
+      label: defsMap.acquisition_fee?.label || 'Acquisition fee',
+      value: formatAcquisitionFeeValue(values.acquisition_fee),
+      tone: 'neutral',
+    })
+  }
+
+  return chips
 }
 
 /** @param {string | null | undefined} label e.g. "94.32%" */

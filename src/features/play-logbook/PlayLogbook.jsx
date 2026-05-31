@@ -5,7 +5,7 @@ import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import LogPlayOptionPicker from '../../components/LogPlayOptionPicker.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS, Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { resolveDefaultCaptureCasino } from '../../utils/nearbyCasinos.js'
 import { consumePlayLogPrefill } from '../../utils/playLogPrefill.js'
 import {
@@ -17,6 +17,7 @@ import {
   formatTargetBonusPaidBetsLabel,
   isTargetBonusPaidField,
   orderedLogPlayFormFields,
+  parseAcquisitionFee,
   playLogWinLoss,
   PLAY_LOG_REAL_RTP_INFO_INTRO,
   formatPlayLogRealRtp,
@@ -27,9 +28,25 @@ import {
   targetBonusPaidInBets,
   templatesSorted,
   valuesForStorage,
+  getLogPlaySaveValidationError,
 } from './playLogMetrics.js'
 import { analyzePlayLogEntries } from './playLogAnalysis.js'
 import { buildPlayLogCsv, downloadPlayLogCsv } from './playLogExport.js'
+import PlayLogPartnersSection from './PlayLogPartnersSection.jsx'
+import {
+  defaultCreatorPartnerRow,
+  playLogPartnersFromSessionList,
+  playLogPartnersHasExtraPartner,
+  playLogPartnersToRpcPayload,
+  playLogPartnersValidationError,
+} from './playLogPartners.js'
+import {
+  deletePlayLogSharedSession,
+  fetchPlayLogSessionPartners,
+  fetchPlayLogSessionsMeta,
+  savePlayLogSharedSession,
+  updatePlayLogSharedSession,
+} from './playLogApi.js'
 
 function localYmd(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -96,17 +113,24 @@ export default function PlayLogbook({
   supabaseClient,
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
+  highlightEntryId = null,
+  onHighlightEntryConsumed = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [saveAlertMessage, setSaveAlertMessage] = useState('')
   const [schemaMissing, setSchemaMissing] = useState(false)
 
   const [activeTab, setActiveTab] = useState('log')
   const [metricDefs, setMetricDefs] = useState([])
   const [templates, setTemplates] = useState([])
   const [entries, setEntries] = useState([])
+  const [sessionMetaById, setSessionMetaById] = useState(() => new Map())
+  const [viewerProfile, setViewerProfile] = useState(null)
+  const [partners, setPartners] = useState([])
+  const [editingSessionId, setEditingSessionId] = useState(null)
 
   const [sheet, setSheet] = useState(null)
   const [editingEntryId, setEditingEntryId] = useState(null)
@@ -174,7 +198,7 @@ export default function PlayLogbook({
         return
       }
 
-      const [defsRes, tplRes, entRes] = await Promise.all([
+      const [defsRes, tplRes, entRes, profRes] = await Promise.all([
         supabaseClient.from('play_log_metric_defs').select('*').order('sort_order'),
         supabaseClient.from('play_log_game_templates').select('*').order('display_name'),
         supabaseClient
@@ -182,6 +206,11 @@ export default function PlayLogbook({
           .select('*')
           .order('captured_at', { ascending: false })
           .limit(200),
+        supabaseClient
+          .from('profiles')
+          .select('user_id, handle, display_name, avatar_url')
+          .eq('user_id', uid)
+          .maybeSingle(),
       ])
 
       if (defsRes.error?.code === '42P01' || tplRes.error?.code === '42P01' || entRes.error?.code === '42P01') {
@@ -192,9 +221,20 @@ export default function PlayLogbook({
       if (tplRes.error) throw tplRes.error
       if (entRes.error) throw entRes.error
 
+      const entList = entRes.data || []
+      const sessionIds = [...new Set(entList.map(e => e.session_id).filter(Boolean))]
+      let metaMap = new Map()
+      try {
+        metaMap = await fetchPlayLogSessionsMeta(supabaseClient, sessionIds)
+      } catch {
+        metaMap = new Map()
+      }
+
       setMetricDefs(defsRes.data || [])
       setTemplates(tplRes.data || [])
-      setEntries(entRes.data || [])
+      setEntries(entList)
+      setSessionMetaById(metaMap)
+      setViewerProfile(profRes.data || null)
     } catch (e) {
       setError(e?.message || 'Failed to load logbook')
     } finally {
@@ -215,7 +255,10 @@ export default function PlayLogbook({
   const closeSheet = () => {
     setSheet(null)
     setEditingEntryId(null)
+    setEditingSessionId(null)
+    setPartners([])
     setError('')
+    setSaveAlertMessage('')
     setNearbyCasinos([])
     setGpsLoading(false)
   }
@@ -232,6 +275,8 @@ export default function PlayLogbook({
   const openLogPlay = useCallback(
     (opts = {}) => {
       setEditingEntryId(null)
+      setEditingSessionId(null)
+      setPartners(userId ? [defaultCreatorPartnerRow(userId, viewerProfile)] : [])
       const templateId = opts.templateId || sortedTemplates[0]?.id || ''
       setSelectedTemplateId(templateId)
       const tpl = templateId ? templateById[templateId] : null
@@ -252,15 +297,26 @@ export default function PlayLogbook({
       setError('')
       if (!opts.casinoName && !opts.skipCasinoPopulate) populateCaptureCasino()
     },
-    [sortedTemplates, templateById, populateCaptureCasino],
+    [sortedTemplates, templateById, populateCaptureCasino, userId, viewerProfile],
+  )
+
+  const isSessionCreator = useCallback(
+    (entry) => {
+      if (!entry?.session_id) return true
+      const meta = sessionMetaById.get(String(entry.session_id))
+      return meta?.created_by_user_id === userId
+    },
+    [sessionMetaById, userId],
   )
 
   const openEditEntry = useCallback(
-    (entry) => {
+    async (entry) => {
       const tpl = templateById[entry.template_id]
       if (!tpl) return
+      if (entry.session_id && !isSessionCreator(entry)) return
       const { date, time } = captureDateTimeFromIso(entry.captured_at)
       setEditingEntryId(entry.id)
+      setEditingSessionId(entry.session_id || null)
       setSelectedTemplateId(entry.template_id)
       setFormFields(formFieldsFromPrefill(entry.values, tpl.metric_slugs || []))
       setCaptureCasino(String(entry.casino_name || '').trim())
@@ -271,9 +327,28 @@ export default function PlayLogbook({
       setGpsLoading(false)
       setSheet('logPlay')
       setError('')
+      if (entry.session_id) {
+        try {
+          const rows = await fetchPlayLogSessionPartners(supabaseClient, entry.session_id)
+          setPartners(playLogPartnersFromSessionList(rows))
+        } catch {
+          setPartners(userId ? [defaultCreatorPartnerRow(userId, viewerProfile)] : [])
+        }
+      } else {
+        setPartners(userId ? [defaultCreatorPartnerRow(userId, viewerProfile)] : [])
+      }
     },
-    [templateById],
+    [templateById, isSessionCreator, supabaseClient, userId, viewerProfile],
   )
+
+  useEffect(() => {
+    if (!highlightEntryId || loading) return
+    const el = document.querySelector(`[data-play-log-entry-id="${highlightEntryId}"]`)
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      onHighlightEntryConsumed?.()
+    }
+  }, [highlightEntryId, loading, entries, onHighlightEntryConsumed])
 
   useEffect(() => {
     if (loading || !templates.length) return
@@ -307,30 +382,80 @@ export default function PlayLogbook({
 
   const saveEntry = async () => {
     if (!userId || !selectedTemplate) return
-    setSaving(true)
     setError('')
+    const validationMsg = getLogPlaySaveValidationError({
+      selectedTemplateId,
+      selectedTemplate,
+      formFields,
+      metricSlugs: selectedTemplate.metric_slugs,
+      defsMap,
+    })
+    if (validationMsg) {
+      setSaveAlertMessage(validationMsg)
+      return
+    }
+
+    const useShared =
+      !editingEntryId &&
+      playLogPartnersHasExtraPartner(partners, userId)
+    const sharedOnEdit = Boolean(editingSessionId)
+
+    if (useShared || sharedOnEdit) {
+      const partnerErr = playLogPartnersValidationError(partners, userId)
+      if (partnerErr) {
+        setSaveAlertMessage(partnerErr)
+        return
+      }
+    }
+
+    setSaving(true)
     try {
       const slugs = selectedTemplate.metric_slugs || []
       const stored = valuesForStorage(formFields, slugs, defsMap)
-      if (!Object.keys(stored).length) {
-        setError('Enter at least one metric value.')
-        setSaving(false)
-        return
-      }
-      const row = {
-        template_id: selectedTemplate.id,
-        captured_at: localDateTimeToIso(captureDate, captureTime),
-        casino_name: captureCasino.trim() || null,
-        notes: captureNotes.trim() || null,
-        values: stored,
-      }
-      const { error: e } = editingEntryId
-        ? await supabaseClient.from('play_log_entries').update(row).eq('id', editingEntryId)
-        : await supabaseClient.from('play_log_entries').insert({
-            user_id: userId,
-            ...row,
+      const capturedAt = localDateTimeToIso(captureDate, captureTime)
+      const casino_name = captureCasino.trim() || null
+      const notes = captureNotes.trim() || null
+
+      if (sharedOnEdit && editingSessionId) {
+        await updatePlayLogSharedSession(supabaseClient, {
+          sessionId: editingSessionId,
+          capturedAt,
+          casinoName: casino_name,
+          notes,
+          values: stored,
+        })
+      } else if (useShared) {
+        await savePlayLogSharedSession(supabaseClient, {
+          templateId: selectedTemplate.id,
+          capturedAt,
+          casinoName: casino_name,
+          notes,
+          values: stored,
+          partners: playLogPartnersToRpcPayload(partners),
+        })
+      } else if (editingEntryId) {
+        const { error: e } = await supabaseClient
+          .from('play_log_entries')
+          .update({
+            template_id: selectedTemplate.id,
+            captured_at: capturedAt,
+            casino_name,
+            notes,
+            values: stored,
           })
-      if (e) throw e
+          .eq('id', editingEntryId)
+        if (e) throw e
+      } else {
+        const { error: e } = await supabaseClient.from('play_log_entries').insert({
+          user_id: userId,
+          template_id: selectedTemplate.id,
+          captured_at: capturedAt,
+          casino_name,
+          notes,
+          values: stored,
+        })
+        if (e) throw e
+      }
       closeSheet()
       await loadAll()
     } catch (e) {
@@ -376,12 +501,24 @@ export default function PlayLogbook({
     }
   }
 
-  const deleteEntry = async (entryId) => {
-    if (!window.confirm('Delete this log entry?')) return
+  const deleteEntry = async (entry) => {
+    const entryId = entry?.id || entry
+    const sessionId = entry?.session_id
+    const creator = isSessionCreator(entry)
+    const msg = sessionId
+      ? creator
+        ? 'Delete this shared play for everyone? All partners will lose their log entries.'
+        : 'Remove this play from your logbook only? Other partners keep their entries.'
+      : 'Delete this log entry?'
+    if (!window.confirm(msg)) return
     setError('')
     try {
-      const { error: e } = await supabaseClient.from('play_log_entries').delete().eq('id', entryId)
-      if (e) throw e
+      if (sessionId && creator) {
+        await deletePlayLogSharedSession(supabaseClient, sessionId)
+      } else {
+        const { error: e } = await supabaseClient.from('play_log_entries').delete().eq('id', entryId)
+        if (e) throw e
+      }
       await loadAll()
     } catch (e) {
       setError(e?.message || 'Failed to delete entry')
@@ -444,8 +581,9 @@ export default function PlayLogbook({
         {schemaMissing && (
           <div className="rounded-2xl border border-amber-500/40 bg-zinc-900 p-4 mb-4 text-sm text-zinc-300" data-play-logbook-card>
             <div className="font-semibold text-amber-300 mb-1">Database not ready</div>
-            Apply <code className="text-cyan-300">supabase/play_logbook.sql</code> (or migration{' '}
-            <code className="text-cyan-300">20260529120000_play_logbook.sql</code>) on your Supabase test project, then refresh.
+            Apply play logbook SQL on your Supabase test project, then refresh. Migrations:{' '}
+            <code className="text-cyan-300">20260529120000_play_logbook.sql</code>,{' '}
+            <code className="text-cyan-300">20260531140000_play_log_shared_sessions.sql</code> (shared partners).
           </div>
         )}
 
@@ -493,10 +631,17 @@ export default function PlayLogbook({
                   const realRtpSnap = realRtpSnapByEntryId[entry.id]
                   const runningRtpLabel = realRtpSnap?.label
                   const runningRtpTone = rtpToneFromPercentLabel(runningRtpLabel)
+                  const shared = Boolean(entry.session_id)
+                  const canEdit = !shared || isSessionCreator(entry)
+                  const highlight =
+                    highlightEntryId && String(highlightEntryId) === String(entry.id)
                   return (
                     <div
                       key={entry.id}
-                      className="rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4"
+                      data-play-log-entry-id={entry.id}
+                      className={`rounded-2xl bg-zinc-900 border p-4 ${
+                        highlight ? 'border-cyan-500/70 ring-1 ring-cyan-500/30' : 'border-zinc-800/60'
+                      }`}
                       data-play-logbook-card
                       data-play-logbook-entry
                     >
@@ -506,6 +651,11 @@ export default function PlayLogbook({
                             <span className="min-w-0 truncate text-white font-bold">
                               {tpl?.display_name || 'Unknown game'}
                             </span>
+                            {shared ? (
+                              <span className="shrink-0 rounded-md bg-cyan-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-300">
+                                Shared
+                              </span>
+                            ) : null}
                             {runningRtpLabel ? (
                               <RunningRtpLabelButton
                                 label={runningRtpLabel}
@@ -526,16 +676,18 @@ export default function PlayLogbook({
                           ) : null}
                         </div>
                         <div className="flex shrink-0 items-center gap-0.5">
+                          {canEdit ? (
+                            <button
+                              type="button"
+                              onClick={() => void openEditEntry(entry)}
+                              className="text-zinc-500 text-xs font-semibold touch-manipulation active:text-cyan-300 px-2 py-1"
+                            >
+                              Edit
+                            </button>
+                          ) : null}
                           <button
                             type="button"
-                            onClick={() => openEditEntry(entry)}
-                            className="text-zinc-500 text-xs font-semibold touch-manipulation active:text-cyan-300 px-2 py-1"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteEntry(entry.id)}
+                            onClick={() => deleteEntry(entry)}
                             className="text-red-400 text-xs font-semibold touch-manipulation active:text-red-300 px-2 py-1"
                           >
                             Delete
@@ -667,75 +819,95 @@ export default function PlayLogbook({
         >
           <div
             data-bankroll-sheet
-            className={APP_MODAL_SHEET_PANEL_CLASS}
+            className={
+              sheet === 'logPlay'
+                ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0`
+                : APP_MODAL_SHEET_PANEL_CLASS
+            }
             onClick={e => e.stopPropagation()}
           >
             {sheet === 'logPlay' && selectedTemplate && (
               <>
-                <SheetHeader title={editingEntryId ? 'Edit Play' : 'Log Play'} onClose={closeSheet} />
-                <div className="space-y-3 mb-5">
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Game</label>
-                    {editingEntryId ? (
-                      <div className="flex min-h-12 items-center rounded-2xl bg-zinc-800/90 px-4 text-sm font-semibold text-white">
-                        {selectedTemplate.display_name}
-                      </div>
-                    ) : (
-                      <LogPlayOptionPicker
-                        value={selectedTemplateId}
-                        onChange={onTemplateChange}
-                        options={sortedTemplates.map(t => ({ value: t.id, label: t.display_name }))}
-                        ariaLabel="Game"
-                        placeholder="Select game"
-                      />
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-zinc-400 text-xs mb-1.5">Date</label>
-                      <DateWheelPicker value={captureDate} onChange={setCaptureDate} showYear />
-                    </div>
-                    <div>
-                      <label className="block text-zinc-400 text-xs mb-1.5">Time</label>
-                      <TimeWheelPicker value={captureTime} onChange={setCaptureTime} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Casino</label>
-                    <CasinoAutocomplete
-                      value={captureCasino}
-                      onChange={setCaptureCasino}
-                      supabaseClient={supabaseClient}
-                      nearbyCasinos={nearbyCasinos}
-                      gpsLoading={gpsLoading}
-                      placeholder="Optional"
-                    />
-                  </div>
-                  <LogPlayMetricFieldsList
-                    fields={logPlayFormFields}
-                    formFields={formFields}
-                    setFormFields={setFormFields}
-                  />
-                  <div>
-                    <label className="block text-zinc-400 text-xs mb-1.5">Notes</label>
-                    <textarea
-                      value={captureNotes}
-                      onChange={e => setCaptureNotes(e.target.value)}
-                      rows={2}
-                      placeholder="Machine bank, observations…"
-                      className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
-                    />
-                  </div>
+                <div className="shrink-0">
+                  <SheetHeader title={editingEntryId ? 'Edit Play' : 'Log Play'} onClose={closeSheet} />
                 </div>
-                {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-                <button
-                  type="button"
-                  onClick={saveEntry}
-                  disabled={saving}
-                  className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
-                >
-                  {saving ? 'Saving…' : editingEntryId ? 'Save changes' : 'Save Entry'}
-                </button>
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                  <div className="space-y-3 pb-3">
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Game</label>
+                      {editingEntryId ? (
+                        <div className="flex min-h-12 items-center rounded-2xl bg-zinc-800/90 px-4 text-sm font-semibold text-white">
+                          {selectedTemplate.display_name}
+                        </div>
+                      ) : (
+                        <LogPlayOptionPicker
+                          value={selectedTemplateId}
+                          onChange={onTemplateChange}
+                          options={sortedTemplates.map(t => ({ value: t.id, label: t.display_name }))}
+                          ariaLabel="Game"
+                          placeholder="Select game"
+                        />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-zinc-400 text-xs mb-1.5">Date</label>
+                        <DateWheelPicker value={captureDate} onChange={setCaptureDate} showYear />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 text-xs mb-1.5">Time</label>
+                        <TimeWheelPicker value={captureTime} onChange={setCaptureTime} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Casino</label>
+                      <CasinoAutocomplete
+                        value={captureCasino}
+                        onChange={setCaptureCasino}
+                        supabaseClient={supabaseClient}
+                        nearbyCasinos={nearbyCasinos}
+                        gpsLoading={gpsLoading}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <LogPlayMetricFieldsList
+                      fields={logPlayFormFields}
+                      formFields={formFields}
+                      setFormFields={setFormFields}
+                    />
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Notes</label>
+                      <textarea
+                        value={captureNotes}
+                        onChange={e => setCaptureNotes(e.target.value)}
+                        rows={2}
+                        placeholder="Machine bank, observations…"
+                        className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
+                      />
+                    </div>
+                    {userId ? (
+                      <PlayLogPartnersSection
+                        supabaseClient={supabaseClient}
+                        userId={userId}
+                        viewerProfile={viewerProfile}
+                        partners={partners}
+                        onPartnersChange={setPartners}
+                        readOnly={Boolean(editingSessionId)}
+                      />
+                    ) : null}
+                  </div>
+                  {error ? <p className="text-red-400 text-sm pb-3">{error}</p> : null}
+                </div>
+                <div className="shrink-0 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+                  <button
+                    type="button"
+                    onClick={saveEntry}
+                    disabled={saving}
+                    className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : editingEntryId ? 'Save changes' : 'Save Entry'}
+                  </button>
+                </div>
               </>
             )}
 
@@ -799,15 +971,64 @@ export default function PlayLogbook({
           </div>
         </div>
       )}
+
+      {saveAlertMessage ? (
+        <div
+          className="fixed inset-0 flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm"
+          style={{ zIndex: Z_APP_ALERT }}
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="play-log-save-alert-title"
+          onClick={() => setSaveAlertMessage('')}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-zinc-600/80 bg-zinc-900 px-5 py-5 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div
+                className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/15"
+                aria-hidden
+              >
+                <svg
+                  className="h-7 w-7 text-red-400"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4" />
+                  <path d="M12 16h.01" />
+                </svg>
+              </div>
+              <h3 id="play-log-save-alert-title" className="text-lg font-bold text-white mb-2">
+                Cannot save play
+              </h3>
+              <p className="text-sm text-zinc-300 leading-relaxed">{saveAlertMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSaveAlertMessage('')}
+              className="mt-5 w-full min-h-11 rounded-xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }
 
 function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
   const winLoss = useMemo(
-    () => playLogWinLoss(formFields.money_in, formFields.money_out),
-    [formFields.money_in, formFields.money_out],
+    () => playLogWinLoss(formFields.money_in, formFields.money_out, formFields.acquisition_fee),
+    [formFields.money_in, formFields.money_out, formFields.acquisition_fee],
   )
+  const winLossLabel = parseAcquisitionFee(formFields.acquisition_fee) != null ? 'Net win / loss' : 'Win / loss'
 
   const nodes = []
   for (let i = 0; i < fields.length; i++) {
@@ -875,7 +1096,7 @@ function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
           setFormFields={setFormFields}
           footer={field && outField ? (
             <div className="mt-1.5 flex items-center justify-between gap-3 px-0.5">
-              <span className="text-zinc-500 text-xs font-medium">Win / loss</span>
+              <span className="text-zinc-500 text-xs font-medium">{winLossLabel}</span>
               <span
                 className={`text-sm font-bold tabular-nums ${
                   winLoss == null ? 'text-zinc-500' : winLoss >= 0 ? 'text-emerald-300' : 'text-red-300'
@@ -894,6 +1115,32 @@ function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
       nodes.push(
         <LogPlayMetricPairRow
           key="money-out-only"
+          left={null}
+          right={field}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      continue
+    }
+    if (field.slug === 'current_ev_rtp') {
+      const avgField = fields[i + 1]?.slug === 'average_case_mult' ? fields[i + 1] : null
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="calc-ev-avg"
+          left={field}
+          right={avgField}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      if (avgField) i += 1
+      continue
+    }
+    if (field.slug === 'average_case_mult') {
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="avg-mult-only"
           left={null}
           right={field}
           formFields={formFields}
@@ -958,6 +1205,16 @@ function LogPlayFormMetricControl({ field, value, onChange, trailingHint = null 
       <DenomSelect
         value={normalizeDenomFormValue(value)}
         onChange={onChange}
+      />
+    )
+  }
+  if (field.slug === 'acquisition_fee') {
+    return (
+      <MetricFieldInput
+        value={value}
+        onChange={v => onChange(v.replace(/[^0-9.]/g, ''))}
+        valueType={field.value_type}
+        trailingHint={trailingHint}
       />
     )
   }

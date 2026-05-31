@@ -3,6 +3,7 @@ import { DropdownSelect } from '../DropdownSelect'
 import { Line } from 'react-chartjs-2'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
+import { playLogCalcEvPrefill, recommendedAcquisitionFeeUsd } from '../../../utils/playLogCalcSnapshot.js'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -395,7 +396,21 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null }) {
 
         <CalculatorLogPlayButton
           calculatorSlug="phoenix"
-          prefillValues={{ counter: currentX, bet_size: betSize, denom }}
+          prefillValues={{
+            counter: currentX,
+            bet_size: betSize,
+            denom,
+            ...playLogCalcEvPrefill({
+              currentRtpPct: currentRTP,
+              averageCaseMult: evAvg,
+              betSize,
+              acquisitionFeeUsd: recommendedAcquisitionFeeUsd({
+                evMult: useFullRunForFee ? evFullRun : evAvg,
+                betSize,
+                scoutPercent: scoutPercentage,
+              }),
+            }),
+          }}
           onOpenLogbook={onOpenLogbook}
           accentBtnClass="bg-orange-600 hover:bg-orange-500"
         />

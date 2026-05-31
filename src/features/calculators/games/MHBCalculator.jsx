@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
+import { playLogCalcEvPrefill } from '../../../utils/playLogCalcSnapshot.js'
 
 function defaultCurrentForCap(cap) {
   return Math.round(cap * 0.95)
@@ -1076,7 +1077,12 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null }) 
 
         <CalculatorLogPlayButton
           calculatorSlug="mhb"
-          prefillValues={{ counter: current, bet_size: igtLineBet, denom: igtDenom }}
+          prefillValues={{
+            counter: current,
+            bet_size: igtLineBet,
+            denom: igtDenom,
+            ...playLogCalcEvPrefill({ expectedEvUsd: ev }),
+          }}
           onOpenLogbook={onOpenLogbook}
           accentBtnClass="bg-cyan-600 hover:bg-cyan-500"
         />

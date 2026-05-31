@@ -192,6 +192,7 @@ export default function AppShell({
 }) {
   const COMMUNITY_FEED_PAGE_SIZE = 28
   const [tab, setTab] = useState('home')
+  const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
@@ -735,6 +736,16 @@ export default function AppShell({
           setTab('offers')
         }
       }
+      if (targetTab === 'logbook') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('logbook')
+          setMenuOpen(false)
+          const playLogEntry = (params.get('playLogEntry') || '').trim()
+          if (playLogEntry) setPendingPlayLogEntryId(playLogEntry)
+        }
+      }
       if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
       if (targetEventIds.length > 0) {
         if (browseMode === 'anonymous') {
@@ -1231,6 +1242,8 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+          highlightEntryId={pendingPlayLogEntryId}
+          onHighlightEntryConsumed={() => setPendingPlayLogEntryId(null)}
         />
       )
     } else if (tab === 'intel') {

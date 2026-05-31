@@ -174,6 +174,22 @@ function IconBookmark({ slot }) {
   )
 }
 
+function IconPlayLog({ slot }) {
+  const cls = glyphClass(slot)
+  return (
+    <IconShell slot={slot}>
+      <svg className={`${cls} text-cyan-400`} viewBox="0 0 20 20" fill="none" aria-hidden>
+        <path
+          d="M5 4.5h10a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1z"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path d="M7 8h6M7 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </IconShell>
+  )
+}
+
 const ICON_BY_KIND = {
   comment: IconComment,
   reply: IconReply,
@@ -183,6 +199,7 @@ const ICON_BY_KIND = {
   repost: IconRepost,
   quote_repost: IconQuoteRepost,
   bookmark: IconBookmark,
+  play_log: IconPlayLog,
 }
 
 /**

@@ -19,6 +19,7 @@ type ActivityEventRow = {
   event_type: string
   post_id: string | null
   comment_id: string | null
+  play_log_entry_id: string | null
   created_at: string
 }
 
@@ -115,6 +116,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return commentId ? (isReply ? 'bookmarked your reply' : 'bookmarked your comment') : 'bookmarked your post'
     case 'like':
       return commentId ? (isReply ? 'liked your reply' : 'liked your comment') : 'liked your post'
+    case 'play_log_shared':
+      return 'added you to a play log'
     default:
       return 'interacted with you'
   }
@@ -134,14 +137,17 @@ type PushNotificationPayload = {
 }
 
 function buildTargetUrl(
-  event: Pick<ActivityEventRow, 'event_type' | 'post_id' | 'comment_id'>,
+  event: Pick<ActivityEventRow, 'event_type' | 'post_id' | 'comment_id' | 'play_log_entry_id'>,
   actor: ActorProfile | null | undefined,
   markRead?: PushMarkReadIds,
 ): string {
   const params = new URLSearchParams()
   params.set('tab', 'home')
 
-  if (event.event_type === 'follow') {
+  if (event.event_type === 'play_log_shared' && event.play_log_entry_id) {
+    params.set('tab', 'logbook')
+    params.set('playLogEntry', event.play_log_entry_id)
+  } else if (event.event_type === 'follow') {
     const handle = String(actor?.handle || '').trim().replace(/^@/, '').toLowerCase()
     if (handle) {
       params.set('u', handle)
@@ -283,7 +289,9 @@ async function handleImmediatePush(
 ) {
   const { data: eventRow, error: eventError } = await admin
     .from('activity_events')
-    .select('id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, created_at')
+    .select(
+      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, created_at',
+    )
     .eq('id', activityEventId)
     .maybeSingle()
 
@@ -323,11 +331,45 @@ async function handleImmediatePush(
     isReply = Boolean(commentRow?.parent_comment_id)
   }
 
-  const notification = buildSingleNotification(
+  let notification = buildSingleNotification(
     event,
     (actorProfile as ActorProfile | null) || null,
     isReply,
   )
+
+  if (event.event_type === 'play_log_shared' && event.play_log_entry_id) {
+    const who = actorLabel((actorProfile as ActorProfile | null) || null)
+    let gameName = 'a play log'
+    let sharePct: number | null = null
+    const { data: entryRow } = await admin
+      .from('play_log_entries')
+      .select('session_id, template_id, play_log_game_templates ( display_name )')
+      .eq('id', event.play_log_entry_id)
+      .maybeSingle()
+    const tpl = (entryRow as { play_log_game_templates?: { display_name?: string } | null })?.play_log_game_templates
+    if (tpl?.display_name) gameName = String(tpl.display_name).trim()
+    const sessionId = (entryRow as { session_id?: string | null })?.session_id
+    if (sessionId) {
+      const { data: partnerRow } = await admin
+        .from('play_log_session_partners')
+        .select('share_percent')
+        .eq('session_id', sessionId)
+        .eq('user_id', event.recipient_user_id)
+        .eq('participant_kind', 'user')
+        .maybeSingle()
+      if (partnerRow?.share_percent != null) sharePct = Number(partnerRow.share_percent)
+    }
+    const pctStr =
+      sharePct != null && Number.isFinite(sharePct) ? ` (${sharePct}%)` : ''
+    notification = {
+      title: 'Edge Lounge',
+      body: `${who} added you to ${gameName}${pctStr}`,
+      url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
+        activityEventId: event.id,
+      }),
+      activityEventId: event.id,
+    }
+  }
 
   const result = await sendPushToUser(
     admin,

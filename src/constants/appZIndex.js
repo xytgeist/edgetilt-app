@@ -11,6 +11,9 @@ export const Z_LOUNGE_DOCK_VIEWPORT = 48
 /** Default floor for full-screen app sheets/dialogs (bankroll, logbook, offers, lounge prompts). */
 export const Z_APP_MODAL = 120
 
+/** Centered alert above app sheets (e.g. logbook save validation). */
+export const Z_APP_ALERT = 130
+
 /** Bottom sheet overlay (above EDGE title bar z-50). */
 export const APP_MODAL_OVERLAY_CLASS = `fixed inset-0 z-[${Z_APP_MODAL}] bg-black/60 backdrop-blur-sm flex items-end justify-center`
 

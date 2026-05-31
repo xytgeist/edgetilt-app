@@ -378,6 +378,21 @@ export default function LoungeNotificationsPanel({
         return
       }
 
+      if (
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED &&
+        event.play_log_entry_id
+      ) {
+        const params = new URLSearchParams()
+        params.set('tab', 'logbook')
+        params.set('playLogEntry', String(event.play_log_entry_id))
+        const nextPath = `/?${params.toString()}`
+        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
+          window.history.pushState({}, '', nextPath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
+        }
+        return
+      }
+
       if (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.FOLLOW) {
         onOpenProfile?.({
           user_id: event.actor_user_id,

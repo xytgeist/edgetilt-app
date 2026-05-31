@@ -98,6 +98,34 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Built on `test` (2026-05-29)** — Ryan smoke pending. Apply SQL on test Supabase first.
 
+### Planned — shared plays / partners (not started)
+
+**Product intent:** Creator logs one play with **partners** (registered users + optional **guest** name). Each registered partner gets the same play in **their** LOG tab; guests are attribution-only (no account, no row).
+
+**Decisions (Ryan, 2026-05-29):**
+
+| Topic | Decision |
+| --- | --- |
+| **Percent semantics** | **Attribution only** — full session `values` on every partner row; `share_percent` is metadata (UI / future P&L attribution). Do **not** scale `money_in` / `money_out` in ANALYZE aggregates for v1. |
+| **Who can be picked** | Any user in creator’s **followers ∪ following** (`profile_follows`), plus **manual guest** label (non-user). |
+| **Add to partner log** | **Auto-add** on save (no invite/accept in v1). |
+| **Notifications** | **Lounge Alerts** — new `activity_events.event_type` (e.g. `play_log_shared`) + existing in-app panel + push pipeline (`lounge-send-activity-push`). Tap opens Logbook entry (deep link TBD). Not a separate play-log-only inbox. |
+| **Edit** | **Creator only** updates canonical session (RPC syncs mirrored fields on all partner `play_log_entries`). |
+| **Delete** | **Creator** can delete session (cascade all partners’ rows). **Partner** may delete **only their own** `play_log_entries` row (gone from their LOG tab only). **Do not** remove them from `play_log_session_partners` — creator and other partners still see them on the shared session / their entries. |
+
+**Data model (sketch):**
+
+- `play_log_sessions` — canonical play (`created_by_user_id`, `template_id`, `captured_at`, `casino_name`, `notes`, `values`).
+- `play_log_session_partners` — `participant_kind` (`user` \| `guest`), `user_id` / `guest_label`, `share_percent`; percents **sum to 100**.
+- `play_log_entries.session_id` — one row per **registered** partner (`user_id`); unique `(session_id, user_id)`.
+- **RPC** `play_log_save_shared_session` (security definer): validate metrics, follow graph, percents; insert session + partners; fan-out entries; `activity_events_insert_safe` per partner (not creator, not guests).
+
+**Client (sketch):** Log Play sheet — partner rows (you + %), add from Following/Followers picker (`loungeProfileFollowList.js` data), add guest + %; save → RPC only (RLS cannot insert for other users).
+
+**Smoke (when built):** User A follows B; A saves play with B at 40%; B sees entry in Logbook + unread Lounge Alert; A edits → B’s row updates; B deletes own row → gone from B’s LOG only, A (and any other partner) still shows B on session; guest name visible on A’s detail only.
+
+- [x] **Phase 4 — shared plays (code on branch; apply SQL on test):** migration **`20260531140000_play_log_shared_sessions.sql`** — sessions/partners, RPC fan-out, Lounge `play_log_shared` + Alerts/deep link (`/?tab=logbook&playLogEntry=`). Redeploy **`lounge-send-activity-push`** after SQL. Ryan smoke pending.
+
 ---
 
 ## Shipped (Quick links — title bar shortcuts — v1, 2026-05-29)
@@ -745,4 +773,9 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 - 2026-05-29: **Play Logbook Phase 3 (`test`):** Calculator **Log play in Logbook** pre-fill; capture casino = active bankroll session or GPS nearest; ANALYZE **Export CSV**. Ryan smoke pending.
 - 2026-05-29: **Play Logbook (test / branch `test`):** Schema **`supabase/play_logbook.sql`** + migration **`20260529120000`**; client **`src/features/play-logbook/`** (LOG + ANALYZE tabs, custom templates); Slots hub **Logbook** tile; Slots Edge gate; light-mode scoped CSS **`data-play-logbook*`** in **`index.css`**. **Apply SQL on test before smoke.**
 - 2026-05-29: **Planned (Play Logbook):** Ryan spec captured → shipped v1 (see row above).
+- 2026-05-29: **Planned (Play Logbook — shared plays):** Ryan locked product rules — attribution-only %; partners from followers∪following + guests; auto-add; notify via Lounge `activity_events`; creator edits; partner delete = own row only, partner row stays on session for others.
+- 2026-05-29: **Play Logbook Phase 4 — shared plays (client + SQL migration `20260531140000`):** partners UI, RPC save/update/delete session, Lounge Alerts `play_log_shared`, push/deep link to Logbook entry. Apply migration on test + redeploy Edge push; Ryan smoke pending.
+- 2026-05-29: **Play Logbook — calc EV snapshot:** migration **`20260531150000_play_log_calc_ev_metrics.sql`**; Log play from calcs pre-fills **Current EV (RTP %)** + **Average case (×/$)** (Phoenix/Buffalo/Stack Up) or **Expected EV ($)** (MHB). Apply on test with play logbook migrations.
+- 2026-05-29: **Play Logbook — acquisition fee:** migration **`20260531160000_play_log_acquisition_fee.sql`**; **Acquisition fee** field on Phoenix/Buffalo/Stack Up templates; pre-filled from calc recommended finder's fee (scout % × EV basis × bet). Apply on test.
+- 2026-05-29: **Play Logbook — partner picker fix:** client loads partners via same **`fetchProfileFollowListProfiles`** path as Lounge Following/Followers (not RPC-only); migration **`20260531170000_play_log_partner_candidates_fix.sql`** hardens RPC fallback.
 - 2026-05-26: **Fix: comment repost like counter optimistic update (`test`):** `toggleLoungeDetailCommentLike` was only patching `setLoungeDetailComments` (detail view), never `communityPosts`. Added `setCommunityPosts` patch that updates `p.reposted_comment.like_count` when a matching comment id is found. Ryan **PASSED** on `test` @ `e1d09a4`.

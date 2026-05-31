@@ -30,7 +30,7 @@ export default function CalculatorLogPlayButton({
         Log play in Logbook
       </button>
       <p className="mt-2 text-center text-xs text-zinc-500">
-        Pre-fills counter, bet, and meters from this calculator.
+        Pre-fills game fields, Current EV, Average Case, and acquisition fee from this calculator.
       </p>
     </div>
   )

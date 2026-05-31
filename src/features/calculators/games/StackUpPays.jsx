@@ -523,16 +523,16 @@ function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null }) {
                 </div>
               </div>
               {/* +EV tick aligned to slider min→max (same scale as the range input) */}
-              <div className="relative w-full h-2.5 -mb-0.5" aria-hidden>
+              <div className="relative w-full h-3 -mb-0.5" aria-hidden>
                 <div
-                  className="absolute top-0 -translate-x-1/2 text-[8px] italic text-emerald-400 whitespace-nowrap leading-none"
+                  className="absolute -top-[0.5px] -translate-x-1/2 text-[9px] italic text-emerald-400 whitespace-nowrap leading-none"
                   style={{ left: `${bePct}%` }}
                   title={`Approx. +EV break-even counter (${dynamicBe})`}
                 >
                   {dynamicBe}
                 </div>
                 <div
-                  className="absolute top-[6px] -translate-x-1/2 text-[7px] leading-none text-emerald-400"
+                  className="absolute top-[7px] -translate-x-1/2 text-[8px] leading-none text-emerald-400"
                   style={{ left: `${bePct}%` }}
                   title={`Break-even near counter ${dynamicBe}`}
                 >

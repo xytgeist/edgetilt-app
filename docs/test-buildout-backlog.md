@@ -37,6 +37,35 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ---
 
+## Chat
+
+### Schema (apply before client deploy)
+- [ ] **Apply migration `20260601120000_chat_phase2.sql` on test** — adds read receipts, reactions, soft-delete, reply columns, `chat_message_reactions` table + RLS, AFTER INSERT trigger on `chat_messages` keeping `chat_rooms.last_message_at` / `last_message_preview` fresh.
+- [ ] **Redeploy `lounge-chat` Edge function** — now handles `delete_message`, `add_reaction`/`remove_reaction`, `update_last_read`, `mute_room`/`unmute_room`, and `reply_to_message_id` on `send_message`.
+
+### Smoke (test)
+- [ ] **Conversation list** — Chat tab loads; DMs + topic channels sorted unread-first; unread dot appears for rooms with messages newer than `last_read_at`.
+- [ ] **Send/receive** — Send a message in a DM; confirm Realtime INSERT appends it; second device receives it.
+- [ ] **Reply** — Long-press a bubble, tap Reply; reply quote strip shows in composer; sent message has `reply_to_preview` rendered above bubble.
+- [ ] **Reactions** — Long-press bubble; tap emoji; reaction row appears; second device sees it via Realtime.
+- [ ] **Typing indicator** — Type in composer; other device shows "X is typing…" for ~3.5 s.
+- [ ] **Delete message** — Long-press own message, tap Delete; bubble shows "This message was deleted".
+- [ ] **Mute** — Bell icon in conversation header; pick duration; confirm `muted_until` persists.
+- [ ] **Read receipts** — Scroll to bottom of conversation; `update_last_read` fires; unread dot clears on list refresh.
+- [ ] **Image attach** — Tap image icon in composer; select a photo; uploads to R2; appears in bubble.
+- [ ] **Profile → Message** — Tap Message on a profile; confirm chat tab opens and DM conversation is active.
+- [ ] **Dock panel** — Dock chat panel shows list-only; tapping a room navigates to the full Chat tab.
+- [ ] **Deep link** — Navigate to `?tab=chat&room=<uuid>`; confirm conversation opens.
+- [ ] **Quick link** — Toggle Chat quick link on/off; verify it appears in the title bar shortcut strip.
+- [ ] **Anon gate** — Open chat while not signed in; confirm sign-in prompt renders.
+
+### Production replay
+- Replay migration `20260601120000_chat_phase2.sql` on production Supabase.
+- Redeploy `lounge-chat` Edge on production.
+- See `docs/production-rollout-checklist.md` §2 + §4.
+
+---
+
 ## Planned (Lounge media — not started)
 
 - [ ] **Multiple Stream clips per post (v1 cap: 2):** Move from a single **`stream_video_uid`** to an **ordered list** of Stream asset ids (max **two** for the first ship; can raise toward **4** later). Work: Supabase migration + backfill; `AppShell` / feed selects; **`loungeVideoUpload.js`** + composer + quote submit/cancel/draft; **`LoungePostFeedMedia.jsx`** / **`LoungePostStreamVideo.jsx`** (two tiles or horizontal strip); post delete / staff delete — call **`lounge-cf-stream-delete-video`** (or batch) **per** uid; orphan/purge alignment; **`LoungeFeedVideoAutoplayContext.jsx`** — **explicit rule** when one post row has two clips (e.g. only first clip eligible as inline winner, or neither). **Rough target:** ~1–2 weeks to test-ready slice once picked up.
@@ -817,6 +846,15 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 - 2026-05-29: **Play Logbook — custom template fields:** migration **`20260531350000_play_log_template_custom_metrics.sql`** (`custom_metric_defs` jsonb on `play_log_game_templates`); Create Game Template UI **Create field** (name + type: whole number / money / decimal / short text). Apply on test before creating templates with custom fields.
 - 2026-05-29: **Play Logbook — admin primary game templates:** migration **`20260531400000_play_log_admin_system_templates.sql`** (`play_log_viewer_is_admin()` + RLS insert/update/delete for `is_system` templates); Logbook **Primary game templates** sheet (`profiles.role = admin` or `isAdmin` prop). Apply on test before admin creates/edits primary dropdown games.
 - 2026-05-29: **Play Logbook — MHB template fields:** migration **`20260531500000_play_log_mhb_template_fields.sql`** — `mhb_manufacturer` (Ainsworth/AGS/IGT/Manual), `mhb_meter`, `must_hit_by` on **Must Hit By** system template; Log Play picker + prefill from MHB calculator. Apply on test.
+- 2026-06-01: **Chat scale hardening (session):** Three migration files applied on top of Phase 2:
+  - **`20260601140000_chat_rpcs.sql`** — `chat_rooms_for_user()` RPC (conversation list in 1 query vs 3); `chat_message_reactions_agg()` RPC (GROUP BY server-side vs raw row dump). Client: `ChatTab` + `LoungeChatPanel` use `chat_rooms_for_user`; `ChatConversation` uses `chat_message_reactions_agg`.
+  - **`20260601150000_chat_indexes_and_rpc_messages.sql`** — drops Phase 1 `(room_id, created_at desc)` index, replaces with `(room_id, created_at DESC, id DESC)` composite (required by new composite cursor); adds `chat_message_reactions(message_id)` index + unique index; adds `chat_messages_page()` security-definer RPC (membership check once, bypasses per-row RLS EXISTS overhead).
+  - **`20260601160000_chat_messages_page_catchup.sql`** — extends `chat_messages_page` with `p_after_*` cursor for reconnect catchup.
+  - **Client (`ChatConversation.jsx`):** DOM cap 150 messages + `hasNewer`/`newMsgCount` banner ("↓ N new messages / Jump to latest"); `useLayoutEffect` scroll-position restoration after prepend (no visual jump); Realtime reconnect gap recovery (fetch missed messages on `SUBSCRIBED` after initial); lazy batch sender-profile resolver (unknown channel/group senders fetched in 150ms windows instead of showing "Member"); composite cursor (`created_at, id`) on `loadMore`; `update_last_read` debounced 2s + flush on unmount.
+  - **Edge `lounge-chat`:** rate limiting on `send_message` — max 5 messages / 5 seconds per user (DB count, no Redis required).
+  - **Apply all three migrations on test. Redeploy `lounge-chat` Edge after for rate limiting.**
+
+- 2026-06-01: **Chat Phase 2 — full X.com-level feature build:** Migration **`20260601120000_chat_phase2.sql`** adds `last_message_at`/`last_message_preview`/`last_message_sender_id` on `chat_rooms`, read-receipt + mute + role columns on `chat_room_members`, `reply_to_message_id`/`reply_to_preview`/`deleted_at` on `chat_messages`, `chat_message_reactions` table (RLS: member-of-room select; own insert/delete), AFTER INSERT trigger keeping `chat_rooms` last-message columns current. Edge `lounge-chat` extended: `reply_to_message_id` on `send_message`, `delete_message` (soft), `add_reaction`/`remove_reaction`, `update_last_read`, `mute_room`/`unmute_room`. New feature module **`src/features/chat/`**: `ChatTab.jsx` (lazy top-level tab; conversation list sorted unread-first then `last_message_at`; anon gate), `ChatConversation.jsx` (full-screen message view; Realtime subscriptions; paginated load-more; read receipts; typing indicator display), `ChatBubble.jsx` (alignment, reply quote strip, image grid, reaction row, long-press action menu), `ChatComposer.jsx` (autogrow textarea; R2 image attach; reply strip; typing broadcast emit; Ctrl+Enter), `chatApi.js`, `chatTypingBroadcast.js`. **AppShell** wiring: lazy `ChatTab` chunk; `chat` in hamburger nav; `pendingChatPeerUserId`/`pendingChatRoomId` state; `?tab=chat&room=<uuid>` deep link; `onOpenChatWithUser` + `onOpenChatRoomFromDock` callbacks threaded to SocialFeed → LoungeDockSlidePanels. **LoungeChatPanel** simplified to list-only (dock shortcut). **Quick link** `chat` added to `quickLinkDestinations.js`. **Apply migration on test before client deploy; redeploy `lounge-chat` Edge after migration.**
 - 2026-05-29: **Play Logbook — spins/bonuses labels:** migration **`20260531510000_play_log_spin_bonus_optional_labels.sql`** + client `metricDefMap` — `# Spins (optional)` / `# Bonuses (optional)` on Log Play, entry detail, template builder, CSV.
 - 2026-05-29: **Play Logbook — EV ($) field:** migrations **`20260531520000`** / **`20260531530000`**; metric **`expected_ev_usd`** label **EV ($) (optional)**; calculator prefill no longer duplicates EV in notes (form field only).
 - 2026-05-29: **Buffalo Link calculator slug:** **`buffalo`** → **`buffalo-link`** (`calculatorAccess.js`, Guides resolve, play log + machines + `content_access_gates`); migration **`20260531540000_buffalo_calculator_slug_buffalo_link.sql`**. Apply on test.
@@ -826,3 +864,46 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 - 2026-05-29: **AP Guide ingest on Vercel:** **`supabaseEnv.mjs`** uses dashboard **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`** when gitignored target file absent @ **`24d0412`** — set on **tx18** (or preview) before ingest smoke.
 - 2026-05-29: **AP Guides light-mode search input:** **`GuidesScreen.jsx`** + **`index.css`** **`ap-guides-search-input`** contrast fix @ **`ea1d72e`**.
 - 2026-05-26: **Fix: comment repost like counter optimistic update (`test`):** `toggleLoungeDetailCommentLike` was only patching `setLoungeDetailComments` (detail view), never `communityPosts`. Added `setCommunityPosts` patch that updates `p.reposted_comment.like_count` when a matching comment id is found. Ryan **PASSED** on `test` @ `e1d09a4`.
+
+---
+
+## Chat — scale backlog
+
+Tracks architecture and correctness work for the chat feature at growth scale.
+Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (monitor before doing).
+
+### ✅ Completed this session (2026-06-01)
+
+| Item | What was done |
+|---|---|
+| Room list: 3 queries → 1 | `chat_rooms_for_user()` security-definer RPC — single JOIN returns room + member state + peer profile + sender name |
+| Reaction aggregation | `chat_message_reactions_agg()` RPC — GROUP BY server-side; 500 👍 = 1 row not 500 |
+| `update_last_read` debounce | 2s debounce + flush on conversation unmount; never fires for optimistic message IDs |
+| DOM cap + history window | Max 150 messages in DOM; trim tail when loading older pages; `hasNewer` flag + "↓ N new messages / Jump to latest" banner |
+| Scroll position restoration | `useLayoutEffect` measures pre-prepend `scrollHeight`, restores `scrollTop` after commit — no visual jump |
+| Composite cursor | `loadMore` uses `(created_at, id)` cursor — eliminates skipped messages at identical timestamps |
+| Missing indexes | `chat_messages(room_id, created_at DESC, id DESC)` — replaces Phase 1's 2-column index; `chat_message_reactions(message_id)` + unique constraint |
+| Per-row RLS bypass | `chat_messages_page()` security-definer RPC — membership check once per call, not 50× per page load |
+| Reconnect gap recovery | Realtime `SUBSCRIBED` callback (after first connect) fetches missed messages using `p_after_*` cursor; merges without duplicates |
+| Lazy sender profiles | Unknown `sender_id`s in channels/groups batch-fetched in 150ms windows; renders name/avatar instead of "Member" |
+| Rate limiting | `send_message`: max 5 messages / 5 seconds per user — DB count query, no Redis required |
+
+### ✅ Completed (2026-06-01 continued)
+
+| Item | What was done |
+|---|---|
+| **Push notifications for DMs** | Migration `20260601170000`: added `chat_dm` event type to `activity_events` CHECK constraint + `chat_room_id` column. `lounge-chat` `send_message`: after inserting a DM message, checks recipient mute status + recent `last_read_at` (skip if read <30s ago), inserts `activity_events` row, calls `lounge-send-activity-push` fire-and-forget. `lounge-send-activity-push`: handles `chat_dm` → `prefAllows` checks `push_messages` pref; body "X sent you a message"; URL `/?tab=chat&room=<roomId>`. Both Edge functions redeployed. |
+| **User blocking** | Migration `20260601170000`: `blocks` table (blocker_id, blocked_id, unique constraint, no-self check) + RLS (participant SELECT, blocker-only INSERT/DELETE). `lounge-chat` `open_dm`: checks blocks in both directions — returns 403 "You have blocked this member." or "This member is unavailable." `lounge-chat`: new `block_user` + `unblock_user` actions. `chatApi.js`: `chatBlockUser`, `chatUnblockUser`, `chatGetBlockStatus`. `LoungeProfileFullScreen`: loads block status in `refreshSocial`; block/unblock button (ban-circle icon) in action row; Message button disabled with appropriate title when either party blocks. |
+| **Chat bug fixes (2026-06-01)** | Migration `20260601180000`: (1) `chat_messages(sender_id, created_at DESC)` index — rate-limit query was doing a full table scan without it; (2) `GRANT SELECT, INSERT, DELETE ON blocks TO authenticated` — RLS policies were silently unreachable without table-level privilege; (3) `idempotency_key TEXT UNIQUE` column on `chat_messages` — Edge function returns existing `message_id` on duplicate key, preventing duplicates on automatic retries / rapid double-taps. `chatApi.js`: `chatSendMessage` now generates a `crypto.randomUUID()` per call. `AppShell`: service worker `app-navigate` message handler now handles `tab=chat` — backgrounded app correctly opens the specific room when a DM push notification is tapped. |
+
+### 🔜 Next priorities (chat)
+
+Nothing left in the near-term queue.
+
+### ⏳ Deferred (monitor, implement when triggered)
+
+| # | Item | Trigger to act |
+|---|---|---|
+| 3 | **`last_message_at` trigger hotspot** | Measure Postgres lock wait on `chat_rooms` in production at >500 msg/min per room. Fix: batch update with 1s delay, or move to Edge function write path. |
+| 4 | **Realtime `postgres_changes` → Broadcast** | Supabase dashboard shows WAL lag, OR concurrent Realtime connections approach plan limit. Fix: Edge `send_message` also publishes to a Supabase Broadcast channel; client subscribes to Broadcast instead of `postgres_changes`. ~3h work. |
+| 5 | **E2E encryption** | Schema already has `content_encoding`, `body_cipher`, `nonce`, `key_version` columns. Implement when product roadmap demands it. |

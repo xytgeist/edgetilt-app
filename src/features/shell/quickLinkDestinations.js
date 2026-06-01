@@ -1,4 +1,4 @@
-/** @typedef {'calculators' | 'offers' | 'bankroll' | 'logbook' | 'guides'} QuickLinkId */
+/** @typedef {'calculators' | 'offers' | 'bankroll' | 'logbook' | 'guides' | 'chat'} QuickLinkId */
 
 /** @typedef {QuickLinkId} QuickLinkDestinationId */
 
@@ -41,6 +41,11 @@ export const QUICK_LINK_DESTINATIONS = [
     label: 'Logbook',
     tab: 'logbook',
     requiresSlotsEdge: true,
+  },
+  {
+    id: 'chat',
+    label: 'Chat',
+    tab: 'chat',
   },
 ]
 

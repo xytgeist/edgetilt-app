@@ -158,6 +158,10 @@ import {
   getLoungeStreamLightboxOpen,
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
+import {
+  getLoungeDockSuppressed,
+  subscribeLoungeDockSuppressed,
+} from './loungeDockSuppressRegistry.js'
 import { pauseAllLoungeStreamInlineVideos } from '../../utils/loungeStreamInlineVideoControl.js'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
 import {
@@ -425,6 +429,10 @@ export default function SocialFeed({
   deleteAccountBusy = false,
   /** Called with a guide machine slug when user taps a guide embed card in the feed. */
   onOpenGuideCard,
+  /** Called with peerUserId when "Message" is tapped on a profile — navigates to Chat tab at app shell level. */
+  onOpenChatWithUser,
+  /** Called with roomId when a room is tapped in the dock chat panel — navigates to Chat tab. */
+  onOpenChatRoomFromDock,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -5971,11 +5979,16 @@ export default function SocialFeed({
         return
       }
       if (openProfileGateIfNeeded()) return
-      setChatDockInitialPeerUserId(peerUserId)
       closeProfileModalRef.current()
-      setLoungeDockPanel('chat')
+      // If AppShell provides a top-level chat tab handler, prefer it; otherwise fall back to dock panel.
+      if (typeof onOpenChatWithUser === 'function') {
+        onOpenChatWithUser(peerUserId)
+      } else {
+        setChatDockInitialPeerUserId(peerUserId)
+        setLoungeDockPanel('chat')
+      }
     },
-    [composerUserId, loungeReadOnly, openProfileGateIfNeeded, requireLoungeAuth]
+    [composerUserId, loungeReadOnly, openProfileGateIfNeeded, requireLoungeAuth, onOpenChatWithUser]
   )
 
   const onLoungeDockOpenPostFromSearch = useCallback(
@@ -10184,10 +10197,15 @@ export default function SocialFeed({
     getLoungeStreamLightboxOpen,
     () => false,
   )
+  const loungeDockSuppressed = useSyncExternalStore(
+    subscribeLoungeDockSuppressed,
+    getLoungeDockSuppressed,
+    () => false,
+  )
   const loungeDockFabBottomObstaclePx = loungePostUploadBar ? loungeUploadBarHeightPx + 10 : 0
   const toolScrollTitleReveal = useEdgeTitleBarReveal()
 
-  const showLoungeViewportDock = !loungePostDetail && !loungeStreamLightboxOpen
+  const showLoungeViewportDock = !loungePostDetail && !loungeStreamLightboxOpen && !loungeDockSuppressed
   const loungeDockPanelChrome =
     loungeDockPanel ?? (!isActivePage ? 'awayFromFeed' : null)
   const loungeDockReveal = !isActivePage
@@ -12915,6 +12933,7 @@ export default function SocialFeed({
           chatIsStaff={chatDockIsStaff}
           chatInitialPeerUserId={chatDockInitialPeerUserId}
           onChatInitialPeerCleared={clearChatDockInitialPeer}
+          chatOnOpenRoom={onOpenChatRoomFromDock}
           notificationsSupabaseClient={supabaseClient}
           notificationsViewerUserId={composerUserId || ''}
           onOpenPostFromNotifications={onLoungeOpenPostFromNotifications}

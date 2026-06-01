@@ -60,6 +60,7 @@ const LocalIntel = lazy(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazy(() => import('../calculators/CalculatorsTab.jsx'))
 const PlayLogbook = lazy(() => import('../play-logbook/PlayLogbook.jsx'))
 const SlotsScreen = lazy(() => import('../slots/SlotsScreen.jsx'))
+const ChatTab = lazy(() => import('../chat/ChatTab.jsx'))
 
 function TabLoadingFallback() {
   return (
@@ -194,6 +195,8 @@ export default function AppShell({
   const [tab, setTab] = useState('home')
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
+  const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
+  const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -746,6 +749,16 @@ export default function AppShell({
           if (playLogEntry) setPendingPlayLogEntryId(playLogEntry)
         }
       }
+      if (targetTab === 'chat') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('chat')
+          setMenuOpen(false)
+          const roomId = (params.get('room') || '').trim()
+          if (roomId) setPendingChatRoomId(roomId)
+        }
+      }
       if (targetEventId && !targetEventIds.includes(targetEventId)) targetEventIds.unshift(targetEventId)
       if (targetEventIds.length > 0) {
         if (browseMode === 'anonymous') {
@@ -790,6 +803,22 @@ export default function AppShell({
           return
         }
         setTab('offers')
+        return
+      }
+      if (targetTab === 'chat') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setTab('chat')
+        setMenuOpen(false)
+        try {
+          const msgUrl = new URL(event?.data?.url || '', window.location.origin)
+          const roomId = (msgUrl.searchParams.get('room') || '').trim()
+          if (roomId) setPendingChatRoomId(roomId)
+        } catch {
+          // ignore malformed url
+        }
         return
       }
       if (targetTab === 'home' || !targetTab) {
@@ -848,9 +877,10 @@ export default function AppShell({
   // `intel` — routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
 
-  /** Title bar ☰ menu — Slots hub only (Lounge via dock home; Team not in menu). */
+  /** Title bar ☰ menu — Slots hub + Chat (Lounge via dock home; Team not in menu). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
+    { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
   ]
 
   const showNavSubscriberLocks =
@@ -1056,6 +1086,18 @@ export default function AppShell({
               setGuideOpenCardSlug(slug)
               setTab('guides')
             }}
+            onOpenChatWithUser={(peerUserId) => {
+              if (!peerUserId) return
+              setPendingChatPeerUserId(peerUserId)
+              setTab('chat')
+              setMenuOpen(false)
+            }}
+            onOpenChatRoomFromDock={(roomId) => {
+              if (!roomId) return
+              setPendingChatRoomId(roomId)
+              setTab('chat')
+              setMenuOpen(false)
+            }}
           />
         </div>
       </Suspense>
@@ -1253,6 +1295,21 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+        />
+      )
+    } else if (tab === 'chat') {
+      visibleTab = (
+        <ChatTab
+          supabaseClient={supabaseClient}
+          hasActiveSubscription={hasActiveSubscription}
+          isStaff={isStaff}
+          browseMode={browseMode}
+          onRequireAuth={() => onRequireAuth?.()}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          initialPeerUserId={pendingChatPeerUserId}
+          onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
+          initialRoomId={pendingChatRoomId}
+          onInitialRoomConsumed={() => setPendingChatRoomId(null)}
         />
       )
     } else if (tab === 'team') {

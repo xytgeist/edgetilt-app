@@ -53,6 +53,7 @@ Track **everything else** already used on test that production must also have ap
 - [ ] **`supabase/migrations/20260520170000_lounge_search_bundled.sql`** — **`lounge_search()`** bundled RPC (posts + profiles + comments + pagination meta), **`lounge_search_text_matches`** (escaped LIKE + trgm), profile **`about_me`** search, **`lounge_search_analytics`**, rate limit **30 / 5 min** per call; revoke split RPC **`authenticated`** execute.
 - [ ] **`supabase/migrations/20260520180000_lounge_search_handle_keyword.sql`** — **`@handle keyword`** compound queries (e.g. **`@selena buffalo`**).
 - [ ] Any earlier schema you rely on: **`offers`** / **`offer_events`**, **`push_subscriptions`**, notification SQL, etc. — mirror **test** `supabase/` files that are not yet on prod
+- [ ] **Chat Phase 2** — apply **`supabase/migrations/20260601120000_chat_phase2.sql`** (adds read receipts, reactions, soft delete, reply columns, `chat_message_reactions` + trigger). Apply **after** `chat_phase1.sql` (base chat tables). Redeploy `lounge-chat` Edge (§4) after this migration.
 - [ ] **Play Logbook (if prod ships Logbook):** apply test-validated chain through **`20260531540000_buffalo_calculator_slug_buffalo_link.sql`** — base **`20260529120000_play_logbook.sql`**, shared sessions **`20260531140000`**, manager/paid **`20260531190000`**, paid/unpaid notify repair order (**`20260531300000`** → **`20260531310000`**, repair **`20260531320000`** if needed), custom metrics **`20260531350000`**, admin primary templates **`20260531400000`**, MHB fields **`20260531500000`**, label migrations **`20260531330000`**–**`20260531360000`**, **`20260531510000`**–**`20260531530000`**, **`20260531540000`**. Redeploy **`lounge-send-activity-push`** after activity-event migrations.
 
 **After deploy — quick smoke SQL (production):**
@@ -125,6 +126,8 @@ supabase functions deploy lounge-cf-r2-delete-orphan
 # Ops-only (service role bearer); deploy before one-off migrate/backfill, optional to leave deployed:
 supabase functions deploy lounge-cf-r2-migrate-lounge-feed
 supabase functions deploy lounge-cf-r2-backfill-cache-control
+# Chat Phase 2 — extended actions (delete_message, reactions, read receipts, mute):
+supabase functions deploy lounge-chat
 ```
 
 Deploy **`lounge-cf-stream-purge-pending-uploads`** from a repo copy that includes **`supabase/config.toml`** (`verify_jwt = false` for that function) so **`sb_*`** gateway keys work when used from Vault.

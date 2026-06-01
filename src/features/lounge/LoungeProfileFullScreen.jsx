@@ -65,6 +65,7 @@ import {
   normalizeLoungeProfileCategoryPills,
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
+import { chatBlockUser, chatGetBlockStatus, chatUnblockUser } from '../chat/chatApi.js'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
@@ -492,6 +493,9 @@ export default function LoungeProfileFullScreen({
   const [isFollowing, setIsFollowing] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [profileFollowsViewer, setProfileFollowsViewer] = useState(false)
+  const [iBlockingThem, setIBlockingThem] = useState(false)
+  const [theyBlockMe, setTheyBlockMe] = useState(false)
+  const [blockBusy, setBlockBusy] = useState(false)
   const [socialBusy, setSocialBusy] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
   const [locationDraft, setLocationDraft] = useState('')
@@ -1121,10 +1125,12 @@ export default function LoungeProfileFullScreen({
       setIsFollowing(false)
       setIsSubscribed(false)
       setProfileFollowsViewer(false)
+      setIBlockingThem(false)
+      setTheyBlockMe(false)
       return
     }
     try {
-      const [followersRes, followingRes, followRow, subRow, reverseFollow] = await Promise.all([
+      const [followersRes, followingRes, followRow, subRow, reverseFollow, blockStatus] = await Promise.all([
         supabaseClient
           .from('profile_follows')
           .select('follower_id', { count: 'exact', head: true })
@@ -1151,12 +1157,15 @@ export default function LoungeProfileFullScreen({
           .eq('follower_id', profileUserId)
           .eq('following_id', viewerUserId)
           .maybeSingle(),
+        chatGetBlockStatus(supabaseClient, viewerUserId, profileUserId),
       ])
       setFollowerCount(followersRes.count ?? 0)
       setFollowingCount(followingRes.count ?? 0)
       setIsFollowing(!!followRow.data)
       setIsSubscribed(!!subRow.data)
       setProfileFollowsViewer(!!reverseFollow.data)
+      setIBlockingThem(blockStatus.iBlockThem)
+      setTheyBlockMe(blockStatus.theyBlockMe)
     } catch {
       setFollowerCount(0)
       setFollowingCount(0)
@@ -1290,6 +1299,28 @@ export default function LoungeProfileFullScreen({
       setIsSubscribed((v) => !v)
     } finally {
       setSocialBusy(false)
+    }
+  }
+
+  const toggleBlock = async () => {
+    if (!viewerUserId || !profileUserId || isOwnProfile || blockBusy) return
+    const confirmed = iBlockingThem
+      ? window.confirm('Unblock this member? They will be able to message you again.')
+      : window.confirm('Block this member? They will not be able to send you messages.')
+    if (!confirmed) return
+    setBlockBusy(true)
+    try {
+      if (iBlockingThem) {
+        await chatUnblockUser(supabaseClient, profileUserId)
+        setIBlockingThem(false)
+      } else {
+        await chatBlockUser(supabaseClient, profileUserId)
+        setIBlockingThem(true)
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not update block status.')
+    } finally {
+      setBlockBusy(false)
     }
   }
 
@@ -1930,10 +1961,26 @@ export default function LoungeProfileFullScreen({
                   {onOpenChatWithUser && profileUserId ? (
                     <button
                       type="button"
-                      disabled={socialBusy || !viewerCanUseLoungeChat}
+                      disabled={socialBusy || !viewerCanUseLoungeChat || iBlockingThem || theyBlockMe}
                       onClick={() => onOpenChatWithUser(profileUserId)}
-                      title={viewerCanUseLoungeChat ? 'Message' : 'Complete your profile to message'}
-                      aria-label={viewerCanUseLoungeChat ? 'Message' : 'Complete your profile to message'}
+                      title={
+                        iBlockingThem
+                          ? 'Unblock to message'
+                          : theyBlockMe
+                            ? 'This member is unavailable'
+                            : viewerCanUseLoungeChat
+                              ? 'Message'
+                              : 'Complete your profile to message'
+                      }
+                      aria-label={
+                        iBlockingThem
+                          ? 'Unblock to message'
+                          : theyBlockMe
+                            ? 'This member is unavailable'
+                            : viewerCanUseLoungeChat
+                              ? 'Message'
+                              : 'Complete your profile to message'
+                      }
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 text-zinc-200 touch-manipulation hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -1966,6 +2013,25 @@ export default function LoungeProfileFullScreen({
                         strokeLinejoin="round"
                       />
                       <path d="M7.5 14.5h5a2 2 0 01-4 0z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  {/* Block / Unblock */}
+                  <button
+                    type="button"
+                    disabled={blockBusy}
+                    onClick={() => void toggleBlock()}
+                    title={iBlockingThem ? 'Unblock member' : 'Block member'}
+                    aria-label={iBlockingThem ? 'Unblock member' : 'Block member'}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border touch-manipulation disabled:opacity-50 ${
+                      iBlockingThem
+                        ? 'border-red-700/60 bg-red-950/40 text-red-300'
+                        : 'border-zinc-600 bg-zinc-900 text-zinc-400 hover:border-red-700/50 hover:text-red-400'
+                    }`}
+                  >
+                    {/* Ban / no-entry circle icon */}
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden>
+                      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.35" />
+                      <line x1="4.5" y1="15.5" x2="15.5" y2="4.5" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
                     </svg>
                   </button>
                 </div>

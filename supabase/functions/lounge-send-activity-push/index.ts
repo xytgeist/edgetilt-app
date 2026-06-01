@@ -20,6 +20,7 @@ type ActivityEventRow = {
   post_id: string | null
   comment_id: string | null
   play_log_entry_id: string | null
+  chat_room_id: string | null
   created_at: string
 }
 
@@ -82,6 +83,8 @@ function prefAllows(prefs: NotificationPrefs | null, eventType: string): boolean
       return prefs.push_likes
     case 'bookmark':
       return prefs.push_bookmarks
+    case 'chat_dm':
+      return prefs.push_messages
     default:
       return true
   }
@@ -122,6 +125,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'marked your play log share as paid'
     case 'play_log_partner_unpaid':
       return 'marked your play log share as unpaid'
+    case 'chat_dm':
+      return 'sent you a message'
     default:
       return 'interacted with you'
   }
@@ -148,7 +153,10 @@ function buildTargetUrl(
   const params = new URLSearchParams()
   params.set('tab', 'home')
 
-  if (
+  if (event.event_type === 'chat_dm' && event.chat_room_id) {
+    params.set('tab', 'chat')
+    params.set('room', event.chat_room_id)
+  } else if (
     (event.event_type === 'play_log_shared' ||
       event.event_type === 'play_log_partner_paid' ||
       event.event_type === 'play_log_partner_unpaid') &&
@@ -299,7 +307,7 @@ async function handleImmediatePush(
   const { data: eventRow, error: eventError } = await admin
     .from('activity_events')
     .select(
-      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, created_at',
+      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, created_at',
     )
     .eq('id', activityEventId)
     .maybeSingle()

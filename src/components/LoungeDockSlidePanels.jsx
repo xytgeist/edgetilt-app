@@ -120,6 +120,7 @@ export default function LoungeDockSlidePanels({
   chatIsStaff = false,
   chatInitialPeerUserId = null,
   onChatInitialPeerCleared,
+  chatOnOpenRoom,
   notificationsSupabaseClient = null,
   notificationsViewerUserId = '',
   onOpenPostFromNotifications,
@@ -1255,6 +1256,7 @@ export default function LoungeDockSlidePanels({
               isStaff={chatIsStaff}
               initialPeerUserId={chatInitialPeerUserId}
               onClearInitialPeer={onChatInitialPeerCleared}
+              onOpenChatRoom={chatOnOpenRoom}
             />
           </div>
         ) : openPanel === 'notifications' ? (

@@ -199,14 +199,18 @@ export default function ChatBubble({
       </div>
     ) : null}
 
-    {/* Long-press action menu — fixed so it escapes the relative container */}
+    {/* Long-press action menu — fixed so it escapes the relative container.
+        Padding-bottom respects the iOS home-indicator safe area so the Cancel
+        button is never clipped on notched / Dynamic Island devices. */}
     {menuOpen && (
       <div
-        className="fixed inset-0 z-[110] flex items-end justify-center pb-8"
+        className="fixed inset-0 z-[110] flex items-end justify-center"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
         onClick={() => setMenuOpen(false)}
       >
         <div
-          className="w-full max-w-sm rounded-2xl border border-zinc-700/50 bg-zinc-900 shadow-2xl mx-4"
+          className="w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-700/50 bg-zinc-900 shadow-2xl mx-4"
+          style={{ maxHeight: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 3rem)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Quick reaction strip — horizontally scrollable, 12 emojis + full-picker smiley */}

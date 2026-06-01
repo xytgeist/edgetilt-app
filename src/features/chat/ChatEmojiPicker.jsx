@@ -148,9 +148,14 @@ export default function ChatEmojiPicker({ onSelect, onClose }) {
       className="fixed inset-0 z-[115] flex flex-col justify-end bg-black/40"
       onClick={onClose}
     >
-      {/* Sheet */}
+      {/* Sheet — max height leaves room for the status bar; bottom padding
+          covers the iOS home indicator so the emoji grid isn't cut off. */}
       <div
-        className="flex h-[60dvh] flex-col rounded-t-2xl border-t border-zinc-700/60 bg-zinc-950 shadow-2xl"
+        className="flex flex-col rounded-t-2xl border-t border-zinc-700/60 bg-zinc-950 shadow-2xl"
+        style={{
+          height: 'min(60dvh, calc(100dvh - env(safe-area-inset-top) - 3rem))',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle */}

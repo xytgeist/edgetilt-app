@@ -15,8 +15,17 @@ import {
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 
+// Shared translucency for header buttons + name pill
 const GLASS = {
-  background: 'rgba(18, 18, 28, 0.82)',
+  background: 'rgba(20, 22, 40, 0.42)',
+  backdropFilter: 'blur(20px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+  border: '1px solid rgba(255,255,255,0.13)',
+}
+
+// More opaque style for floating menus (options dropdown, mute picker) — needs to be readable
+const GLASS_MENU = {
+  background: 'rgba(18, 18, 28, 0.88)',
   backdropFilter: 'blur(24px) saturate(180%)',
   WebkitBackdropFilter: 'blur(24px) saturate(180%)',
   border: '1px solid rgba(255,255,255,0.10)',
@@ -721,12 +730,7 @@ export default function ChatConversation({
                 onClick={() => peerUserId && onViewProfile?.(peerUserId)}
                 disabled={!peerUserId || !onViewProfile}
                 className="-mt-1 flex items-center gap-1 rounded-full px-4 py-1.5 touch-manipulation transition-opacity active:opacity-75"
-                style={{
-                  background: 'rgba(20, 22, 40, 0.42)',
-                  backdropFilter: 'blur(20px) saturate(160%)',
-                  WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-                  border: '1px solid rgba(255,255,255,0.13)',
-                }}
+              style={GLASS}
                 aria-label={peerUserId ? `View ${peerDisplayName}'s profile` : undefined}
               >
                 <span className="text-[16px] font-bold text-white">{peerDisplayName}</span>
@@ -763,7 +767,7 @@ export default function ChatConversation({
           <div
             className="fixed z-[119] w-[220px] overflow-hidden rounded-2xl"
             style={{
-              ...GLASS,
+              ...GLASS_MENU,
               top:   'calc(env(safe-area-inset-top, 0px) + 60px)',
               right: '16px',
             }}

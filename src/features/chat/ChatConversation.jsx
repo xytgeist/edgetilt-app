@@ -674,6 +674,10 @@ export default function ChatConversation({
   const listPaddingTop  = room.kind === 'dm'
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
+  // Gradient ends ~40px below the bottom of the name pill (~7.4rem past safe-area + 2.5rem)
+  const gradientHeight  = room.kind === 'dm'
+    ? 'calc(env(safe-area-inset-top, 0px) + 10rem)'
+    : 'calc(env(safe-area-inset-top, 0px) + 3.5rem)'
 
   return (
     <div className="relative overflow-hidden bg-zinc-950" style={{ height: '100dvh' }} data-chat-feature>
@@ -831,7 +835,7 @@ export default function ChatConversation({
         {/* Top gradient — fades/darkens messages toward the header so floating UI pops */}
         <div
           className="chat-top-gradient pointer-events-none absolute inset-x-0 top-0 z-10"
-          style={{ height: listPaddingTop }}
+          style={{ height: gradientHeight }}
         />
 
         <div

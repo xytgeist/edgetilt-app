@@ -17,7 +17,7 @@ import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.j
 
 // Shared translucency for header buttons + name pill
 const GLASS = {
-  background: 'rgba(20, 22, 40, 0.42)',
+  background: 'rgba(20, 22, 40, 0.33)',
   backdropFilter: 'blur(20px) saturate(160%)',
   WebkitBackdropFilter: 'blur(20px) saturate(160%)',
   border: '1px solid rgba(255,255,255,0.13)',

@@ -2287,6 +2287,19 @@ html.light [data-quick-link-bar] .text-cyan-300\/95 {
   color: #0891b2 !important;
 }
 
+/* ── Chat reaction pill ────────────────────────────────────────────────────
+ * Single combined pill: all emoji types + total count.
+ * Overlaps the bubble bottom; sharp 1px border pops it off the bubble.
+ * ─────────────────────────────────────────────────────────────────────── */
+.reaction-pill {
+  background: #27272a;
+  border: 1px solid #000;
+}
+html.light .reaction-pill {
+  background: #e4e4e7;
+  border: 1px solid #fff;
+}
+
 /* ── Chat conversation — theme-aware glass / gradient ──────────────────────
  * Dark (default): dark navy translucent glass + dark gradient fade.
  * Light: white/pale translucent glass + pale gradient fade.

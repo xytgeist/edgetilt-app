@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useRef, useState } from 'react'
 import ChatEmojiPicker, { saveRecentEmoji } from './ChatEmojiPicker'
+import LoungeFlameIcon from '../lounge/LoungeFlameIcon'
 
 const QUICK_REACTIONS = ['👍','❤️','😂','🔥','😮','😢','🎉','😍','👏','💯','🙏','🤣']
 
@@ -218,16 +219,24 @@ export default function ChatBubble({
             <div className="px-1 text-[11px] font-semibold text-zinc-500">{senderLabel}</div>
           )}
 
-          {/* Reply quote strip */}
+          {/* Reply quote — iOS style: mini card above + curved connector */}
           {!isDeleted && message.reply_to_message_id && message.reply_to_preview && (
-            <div
-              className={`flex items-start gap-1.5 rounded-xl px-2.5 py-1.5 text-[12px] leading-snug ${
-                isMine ? 'bg-cyan-900/40 text-cyan-300/80' : 'bg-zinc-800/80 text-zinc-400'
-              }`}
-            >
-              <span aria-hidden className="mt-0.5 shrink-0 text-[10px]">↩</span>
-              <span className="line-clamp-2">{message.reply_to_preview}</span>
-            </div>
+            <>
+              {/* Mini quoted card — always on the OPPOSITE side from the reply bubble */}
+              <div className={`max-w-[90%] rounded-2xl px-3 py-1.5 text-[12px] leading-snug opacity-60 ${
+                isMine
+                  ? 'self-start bg-zinc-800/90 text-zinc-100'
+                  : 'self-end bg-cyan-800/70 text-cyan-50'
+              }`}>
+                <p className="line-clamp-2">{message.reply_to_preview}</p>
+              </div>
+              {/* Curved thread connector — stays on the quote card's side */}
+              <div className={`h-4 w-5 ${
+                isMine
+                  ? 'self-start ml-1 border-l-2 border-b-2 border-zinc-500/50 rounded-bl-[10px]'
+                  : 'self-end mr-1 border-r-2 border-b-2 border-zinc-500/50 rounded-br-[10px]'
+              }`} />
+            </>
           )}
 
           {/* Bubble */}
@@ -271,26 +280,24 @@ export default function ChatBubble({
             )}
           </div>
 
-          {/* Reaction row */}
-          {Object.keys(reactionGroups).length > 0 && (
-            <div className="flex flex-wrap gap-1 px-1">
-              {Object.entries(reactionGroups).map(([emoji, { count, viewerReacted }]) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => toggleReaction(emoji)}
-                  className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] touch-manipulation transition-colors ${
-                    viewerReacted
-                      ? 'bg-cyan-800/60 text-cyan-200'
-                      : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'
-                  }`}
-                >
-                  <span>{emoji}</span>
-                  <span className="font-semibold">{count}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Reaction pill — combined, overlaps bubble bottom */}
+          {reactions.length > 0 && (() => {
+            const totalCount = reactions.reduce((sum, r) => sum + r.count, 0)
+            return (
+              <div className={`-mt-3 relative z-10 flex px-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                <div className="reaction-pill flex items-center gap-0.5 rounded-full px-1.5 py-0.5">
+                  {reactions.map((r) => (
+                    r.emoji === '❤️'
+                      ? <LoungeFlameIcon key={r.emoji} liked className="h-[15px] w-[15px]" />
+                      : <span key={r.emoji} className="text-[14px] leading-none">{r.emoji}</span>
+                  ))}
+                  {totalCount >= 2 && (
+                    <span className="ml-0.5 text-[11px] font-semibold leading-none text-zinc-400">{totalCount}</span>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 

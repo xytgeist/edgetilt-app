@@ -106,9 +106,7 @@ export async function runSlotGuideIngest({
   const slug = String(machine.slug);
 
   const heroBuf = decodeBase64Image(heroImage?.dataBase64);
-  if (!heroBuf?.length) {
-    return { ok: false, status: 400, errors: ["heroImage is required (base64)."] };
-  }
+  const hasHero = Boolean(heroBuf?.length);
 
   const diagramBuffers = [];
   for (const d of diagramImages) {
@@ -116,7 +114,7 @@ export async function runSlotGuideIngest({
     if (buf?.length) diagramBuffers.push({ filename: d.filename, buffer: buf });
   }
 
-  const heroWebp = await toWebpBuffer(heroBuf);
+  const heroWebp = hasHero ? await toWebpBuffer(heroBuf) : null;
   const diagramsWebp = [];
   for (const d of diagramBuffers) {
     diagramsWebp.push({ filename: d.filename, buffer: await toWebpBuffer(d.buffer) });
@@ -127,7 +125,7 @@ export async function runSlotGuideIngest({
   const cardMeta = buildCardMeta(p);
   cardMeta.machine = {
     .../** @type {Record<string, unknown>} */ (cardMeta.machine),
-    thumbnail_url: `/guides/${slug}/hero.webp`,
+    thumbnail_url: hasHero ? `/guides/${slug}/hero.webp` : null,
   };
 
   /** @type {Record<string, unknown>} */
@@ -158,15 +156,17 @@ export async function runSlotGuideIngest({
     const { url, key: serviceRoleKey } = readSupabaseCredentials();
     const supabaseUrl = url;
 
-    // Upload hero: try R2 first, fall back to Supabase Storage
-    let heroPublicUrl = await uploadGuideAssetToR2({
-      supabaseUrl, serviceRoleKey, slug,
-      filename: "hero.webp", buffer: heroWebp, contentType: "image/webp",
-    });
-    if (!heroPublicUrl) {
-      heroPublicUrl = await uploadGuideAsset(supabase, { slug, filename: "hero.webp", buffer: heroWebp });
+    let heroPublicUrl = null;
+    if (heroWebp) {
+      heroPublicUrl = await uploadGuideAssetToR2({
+        supabaseUrl, serviceRoleKey, slug,
+        filename: "hero.webp", buffer: heroWebp, contentType: "image/webp",
+      });
+      if (!heroPublicUrl) {
+        heroPublicUrl = await uploadGuideAsset(supabase, { slug, filename: "hero.webp", buffer: heroWebp });
+      }
+      result.storageUrls.hero = heroPublicUrl;
     }
-    result.storageUrls.hero = heroPublicUrl;
 
     for (const d of diagramsWebp) {
       let publicUrl = await uploadGuideAssetToR2({
@@ -180,7 +180,8 @@ export async function runSlotGuideIngest({
     }
 
     /** @type {Record<string, string>} */
-    const storageUrlByFile = { "hero.webp": heroPublicUrl, ...result.storageUrls };
+    const storageUrlByFile = { ...result.storageUrls };
+    if (heroPublicUrl) storageUrlByFile["hero.webp"] = heroPublicUrl;
     const supabaseGuideMarkdown = buildGuideMarkdown(p, {
       resolveImageUrl: (filename) => storageUrlByFile[filename],
     });
@@ -188,7 +189,7 @@ export async function runSlotGuideIngest({
     const supabaseMeta = buildCardMeta(p);
     supabaseMeta.machine = {
       .../** @type {Record<string, unknown>} */ (supabaseMeta.machine),
-      thumbnail_url: heroPublicUrl,
+      thumbnail_url: heroPublicUrl ?? null,
     };
 
     await upsertSlotGuideFromManifest(supabase, {

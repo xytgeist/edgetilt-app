@@ -7,6 +7,15 @@ export function slugify(raw) {
     .replace(/-{2,}/g, '-')
 }
 
+/** Live slug field: allow a trailing hyphen while typing (e.g. `buffalo-` before `link`). */
+export function slugifyInput(raw) {
+  return String(raw ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-{2,}/g, '-')
+}
+
 export function diagramFilename(name, slug) {
   const base = slugify(name.replace(/\.[^.]+$/, '')) || `${slug}-diagram`
   return base.endsWith('.webp') ? base : `${base}.webp`
@@ -96,4 +105,60 @@ export function buildGuideMarkdown({ title, guide }) {
   md += `---\n\n## 🎰 Gameplay Mechanics\n\n${g.gameplay_mechanics.trim()}\n`
 
   return md
+}
+
+export const SLOT_GUIDE_DRAFT_KEY = 'slotGuideFormDraft:v1'
+
+/** @typedef {{ version: number, savedAt: string, ingestId: string, machine: object, guide: object, diagrams: Array<{ id: string, alt: string, placement: string, filename: string }> }} SlotGuideDraft */
+
+/**
+ * @param {{ ingestId: string, machine: object, guide: object, diagrams: Array<{ id: string, alt: string, placement: string, filename: string, file?: File | null }> }} state
+ * @returns {SlotGuideDraft | null}
+ */
+export function buildSlotGuideDraft(state) {
+  const { ingestId, machine, guide, diagrams } = state
+  const hasText =
+    Object.values(machine).some((v) => (typeof v === 'string' ? v.trim() : v)) ||
+    Object.entries(guide).some(([k, v]) => !k.startsWith('_') && String(v ?? '').trim()) ||
+    diagrams.some((d) => d.alt?.trim() || d.filename?.trim())
+  if (!hasText) return null
+
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    ingestId: ingestId || 'test',
+    machine: { ...machine },
+    guide: { ...guide },
+    diagrams: diagrams.map(({ id, alt, placement, filename }) => ({
+      id: id || crypto.randomUUID(),
+      alt: alt || '',
+      placement: placement || 'when_to_play',
+      filename: filename || '',
+    })),
+  }
+}
+
+/** @param {unknown} raw */
+export function readSlotGuideDraft(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const d = /** @type {Record<string, unknown>} */ (raw)
+  if (d.version !== 1 || !d.machine || !d.guide) return null
+  return /** @type {SlotGuideDraft} */ (d)
+}
+
+export function loadSlotGuideDraftFromStorage() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(SLOT_GUIDE_DRAFT_KEY) || 'null')
+    return readSlotGuideDraft(raw)
+  } catch {
+    return null
+  }
+}
+
+/** @param {SlotGuideDraft | null} draft */
+export function writeSlotGuideDraftToStorage(draft) {
+  try {
+    if (!draft) window.localStorage.removeItem(SLOT_GUIDE_DRAFT_KEY)
+    else window.localStorage.setItem(SLOT_GUIDE_DRAFT_KEY, JSON.stringify(draft))
+  } catch { /* quota / private mode */ }
 }

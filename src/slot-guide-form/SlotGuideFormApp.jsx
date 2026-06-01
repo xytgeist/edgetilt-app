@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react'
 import { supabase } from './LoginGate.jsx'
-import { buildGuideMarkdown, diagramFilename, parseGuideMarkdown, slugify } from './formUtils.js'
+import {
+  buildGuideMarkdown,
+  buildSlotGuideDraft,
+  diagramFilename,
+  loadSlotGuideDraftFromStorage,
+  parseGuideMarkdown,
+  slugify,
+  slugifyInput,
+  writeSlotGuideDraftToStorage,
+} from './formUtils.js'
 import GuideCardPreview from './GuideCardPreview.jsx'
 
 const CF_R2_CACHE_CONTROL = 'public, max-age=31536000, immutable'
@@ -309,6 +318,71 @@ export default function SlotGuideFormApp() {
 
   // ── Dirty / unsaved-edits tracking
   const [isDirty, setIsDirty] = useState(false)
+  const [storedDraft, setStoredDraft] = useState(() => (typeof window !== 'undefined' ? loadSlotGuideDraftFromStorage() : null))
+  const [draftSavedAt, setDraftSavedAt] = useState(storedDraft?.savedAt ?? null)
+  const [draftNotice, setDraftNotice] = useState('')
+
+  const applyDraft = useCallback((draft) => {
+    if (!draft) return
+    if (draft.ingestId) setIngestId(draft.ingestId)
+    setMachine({ ...blankMachine, ...draft.machine })
+    setGuide({ ...blankGuide, ...draft.guide })
+    setDiagrams(
+      (draft.diagrams || []).map((d) => ({
+        id: d.id || crypto.randomUUID(),
+        alt: d.alt || '',
+        placement: d.placement || 'when_to_play',
+        filename: d.filename || '',
+        file: null,
+      })),
+    )
+    setHeroFile(null)
+    setCurrentThumbnail('')
+    setEditIds(null)
+    setSelectedId('')
+    setMode('new')
+    setIsDirty(true)
+    setDraftSavedAt(draft.savedAt)
+    setStoredDraft(null)
+    setDraftNotice('Draft restored. Re-select hero image or diagram files if you had chosen any.')
+  }, [])
+
+  const saveDraft = useCallback((quiet = false) => {
+    const draft = buildSlotGuideDraft({ ingestId, machine, guide, diagrams })
+    if (!draft) {
+      if (!quiet) setDraftNotice('Nothing to save yet — add at least one field.')
+      return false
+    }
+    writeSlotGuideDraftToStorage(draft)
+    setDraftSavedAt(draft.savedAt)
+    if (!quiet) setDraftNotice(`Draft saved ${new Date(draft.savedAt).toLocaleString()}. Images are not stored — re-attach hero/diagrams after restore.`)
+    return true
+  }, [ingestId, machine, guide, diagrams])
+
+  const clearDraft = useCallback(() => {
+    writeSlotGuideDraftToStorage(null)
+    setStoredDraft(null)
+    setDraftSavedAt(null)
+    setDraftNotice('')
+  }, [])
+
+  // Hide stale restore prompt once the user starts editing without restoring
+  useEffect(() => {
+    if (isDirty && storedDraft) setStoredDraft(null)
+  }, [isDirty, storedDraft])
+
+  // Auto-save new-guide drafts while typing (files are not persisted)
+  useEffect(() => {
+    if (mode !== 'new' || !isDirty) return undefined
+    const t = window.setTimeout(() => {
+      const draft = buildSlotGuideDraft({ ingestId, machine, guide, diagrams })
+      if (draft) {
+        writeSlotGuideDraftToStorage(draft)
+        setDraftSavedAt(draft.savedAt)
+      }
+    }, 2000)
+    return () => window.clearTimeout(t)
+  }, [mode, isDirty, ingestId, machine, guide, diagrams])
 
   // Warn before closing/navigating away with unsaved edits
   useEffect(() => {
@@ -330,10 +404,11 @@ export default function SlotGuideFormApp() {
     } catch { /* ignore */ }
   }, [ingestId])
 
-  // Auto-slug from machine name
+  // Auto-slug from machine name (only while slug is empty — do not rewrite manual slug edits)
   useEffect(() => {
     setMachine((m) => {
-      const slug = slugify(m.slug || m.name)
+      if (m.slug.trim()) return m
+      const slug = slugify(m.name)
       if (!slug || m.slug === slug) return m
       return { ...m, slug }
     })
@@ -341,9 +416,9 @@ export default function SlotGuideFormApp() {
       if (g.title || !machine.name) return g
       return { ...g, title: machine.name }
     })
-  }, [machine.name, machine.slug])
+  }, [machine.name])
 
-  const slug = machine.slug.trim()
+  const slug = slugify(machine.slug.trim())
 
   const setMachineField = useCallback((key, value) => {
     setMachine((m) => {
@@ -438,6 +513,7 @@ export default function SlotGuideFormApp() {
   }
 
   function startNew() {
+    if (isDirty && !window.confirm('Discard unsaved edits and start a blank new guide?')) return
     setMode('new')
     setMachine(blankMachine)
     setGuide(blankGuide)
@@ -449,6 +525,7 @@ export default function SlotGuideFormApp() {
     setSelectedId('')
     setError('')
     setResult(null)
+    clearDraft()
   }
 
   // ── Submit: new guide via ingest API (auth via Supabase session token)
@@ -456,7 +533,6 @@ export default function SlotGuideFormApp() {
     e.preventDefault()
     setError('')
     setResult(null)
-    if (!heroFile) { setError('Hero image is required for new guides.'); return }
     if (!slug) { setError('Slug is required.'); return }
 
     setBusy(true)
@@ -472,21 +548,23 @@ export default function SlotGuideFormApp() {
           filename: d.filename || diagramFilename(d.file.name, slug),
         })),
       }
-      const heroImage = { dataBase64: await fileToBase64(heroFile) }
       const diagramImages = []
       for (const d of diagrams) {
         if (!d.file || !d.alt.trim()) continue
         diagramImages.push({ filename: d.filename || diagramFilename(d.file.name, slug), dataBase64: await fileToBase64(d.file) })
       }
+      const body = { target, payload, diagramImages }
+      if (heroFile) body.heroImage = { dataBase64: await fileToBase64(heroFile) }
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ target, payload, heroImage, diagramImages }),
+        body: JSON.stringify(body),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || (Array.isArray(data.errors) ? data.errors.join(' ') : res.statusText) || 'Ingest failed.')
       setResult(data)
       setIsDirty(false)
+      clearDraft()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -573,16 +651,65 @@ export default function SlotGuideFormApp() {
       {/* ── LEFT: form ── */}
       <div className="flex-1 min-w-0 space-y-6">
 
+        {storedDraft && !isEdit && (
+          <div className="rounded-2xl border border-cyan-600/40 bg-cyan-950/50 px-4 py-3 space-y-2">
+            <p className="text-sm text-cyan-100">
+              Saved draft from {new Date(storedDraft.savedAt).toLocaleString()} — restore to continue where you left off.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => applyDraft(storedDraft)}
+                className="px-3 py-1.5 rounded-lg text-sm font-bold bg-cyan-600 hover:bg-cyan-500"
+              >
+                Restore draft
+              </button>
+              <button
+                type="button"
+                onClick={() => { clearDraft(); setStoredDraft(null) }}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-800 hover:bg-gray-700"
+              >
+                Discard draft
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Unsaved-edits banner */}
-        {isDirty && (
-          <div className="flex items-center gap-3 rounded-2xl border border-amber-500/50 bg-amber-500/10 px-4 py-3">
+        {(isDirty || draftSavedAt) && !isEdit && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/50 bg-amber-500/10 px-4 py-3">
             <svg className="h-4 w-4 shrink-0 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <p className="text-sm font-semibold text-amber-300 flex-1">Unsaved edits — don't forget to save before leaving.</p>
+            <p className="text-sm font-semibold text-amber-300 flex-1 min-w-[12rem]">
+              {isDirty ? 'Unsaved edits' : 'Draft on this device'}
+              {draftSavedAt ? ` — last saved ${new Date(draftSavedAt).toLocaleString()}` : ''}
+            </p>
+            <button
+              type="button"
+              onClick={() => saveDraft(false)}
+              className="px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-600 hover:bg-amber-500 text-white"
+            >
+              Save draft
+            </button>
+            {draftSavedAt && (
+              <button
+                type="button"
+                onClick={() => { if (window.confirm('Delete saved draft on this device?')) { clearDraft(); setStoredDraft(null) } }}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-amber-200/80 hover:text-white"
+              >
+                Clear draft
+              </button>
+            )}
           </div>
         )}
+        {isDirty && isEdit && (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-500/50 bg-amber-500/10 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-300 flex-1">Unsaved edits — save changes before leaving.</p>
+          </div>
+        )}
+        {draftNotice ? <p className="text-sm text-cyan-300/90">{draftNotice}</p> : null}
 
         <header className="flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -676,7 +803,16 @@ export default function SlotGuideFormApp() {
               </div>
               <div>
                 <label className={lc}>Slug</label>
-                <input className={ic} value={machine.slug} onChange={(e) => setMachineField('slug', slugify(e.target.value))} required />
+                <input
+                  className={ic}
+                  value={machine.slug}
+                  onChange={(e) => setMachineField('slug', slugifyInput(e.target.value))}
+                  onBlur={() => {
+                    const normalized = slugify(machine.slug)
+                    if (normalized !== machine.slug) setMachineField('slug', normalized)
+                  }}
+                  required
+                />
               </div>
               <div>
                 <label className={lc}>Manufacturer</label>
@@ -772,7 +908,7 @@ export default function SlotGuideFormApp() {
               </div>
               <div>
                 <label className={lc}>+EV threshold (collapsed card line)</label>
-                <input className={ic} value={guide.card_ev_threshold} onChange={(e) => setGuideField('card_ev_threshold', e.target.value)} placeholder="6+ lit letters on Reels 1–3" required={!isEdit} />
+                <input className={ic} value={guide.card_ev_threshold} onChange={(e) => setGuideField('card_ev_threshold', e.target.value)} placeholder="6+ lit letters on Reels 1–3" />
               </div>
               <div className="flex items-center gap-2">
                 <input id="published" type="checkbox" checked={guide.published} onChange={(e) => setGuideField('published', e.target.checked)} />
@@ -780,7 +916,7 @@ export default function SlotGuideFormApp() {
               </div>
               <div>
                 <label className={lc}>
-                  Hero image{!isEdit && <span className="text-red-400"> *</span>}
+                  Hero image <span className="text-gray-500 font-normal text-xs">(optional)</span>
                 </label>
                 {isEdit && currentThumbnail ? (
                   /* Edit mode: show current image with click-to-replace */
@@ -824,7 +960,7 @@ export default function SlotGuideFormApp() {
                   </div>
                 ) : (
                   /* New guide mode */
-                  <input type="file" accept="image/*" className={ic} onChange={(e) => { setHeroFile(e.target.files?.[0] || null); setIsDirty(true) }} required />
+                  <input type="file" accept="image/*" className={ic} onChange={(e) => { setHeroFile(e.target.files?.[0] || null); setIsDirty(true) }} />
                 )}
               </div>
             </div>
@@ -848,7 +984,6 @@ export default function SlotGuideFormApp() {
                     className={`${ic} min-h-28`}
                     value={guide[key]}
                     onChange={(val) => setGuideField(key, val)}
-                    required={!isEdit}
                     slug={machine.slug || guide._slug}
                     guideTitle={guide.title}
                   />
@@ -857,7 +992,6 @@ export default function SlotGuideFormApp() {
                     className={`${ic} min-h-28`}
                     value={guide[key]}
                     onChange={(e) => setGuideField(key, e.target.value)}
-                    required={!isEdit && key !== 'risk_bankroll'}
                   />
                 )}
               </div>

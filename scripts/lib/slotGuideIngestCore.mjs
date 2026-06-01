@@ -210,16 +210,7 @@ export function validateIngestPayload(payload) {
   if (guide && typeof guide === "object") {
     /** @type {Record<string, unknown>} */
     const g = /** @type {Record<string, unknown>} */ (guide);
-    for (const field of [
-      "when_to_play",
-      "when_to_stop",
-      "how_to_check",
-      "risk_summary",
-      "gameplay_mechanics",
-      "card_ev_threshold",
-    ]) {
-      if (!String(g[field] ?? "").trim()) errors.push(`guide.${field} is required.`);
-    }
+    // Guide body sections and card_ev_threshold may be empty at ingest (fill via draft / later edit).
   }
 
   const diagrams = Array.isArray(p.diagrams) ? p.diagrams : [];

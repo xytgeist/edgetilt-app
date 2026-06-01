@@ -330,8 +330,11 @@ export default function ChatBubble({
               left:  layout.pillLeft,
               width: layout.pillW,
               height: 56,
+              touchAction: 'pan-x',
+              overscrollBehaviorX: 'contain',
             }}
             onClick={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
           >
             {QUICK_REACTIONS.map((e) => (
               <button

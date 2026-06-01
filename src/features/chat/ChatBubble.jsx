@@ -133,6 +133,8 @@ export default function ChatBubble({
       if (cancelled) return
       const rect = bubbleRef.current?.getBoundingClientRect()
       if (rect) {
+        // Clear any text selection iOS may have started during the hold
+        window.getSelection()?.removeAllRanges()
         setBubbleRect(rect)
         setMenuOpen(true)
       }
@@ -189,7 +191,8 @@ export default function ChatBubble({
   const layout = bubbleRect ? computeLayout(bubbleRect, isMine) : null
 
   return (
-    <div className="relative">
+    // eslint-disable-next-line react/forbid-dom-props
+    <div className="relative select-none" style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}>
       <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
         {/* Avatar — only for others' messages; hidden in DMs (header already shows peer) */}
         {!isMine && !hideSenderInfo && (

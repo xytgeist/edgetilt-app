@@ -2309,16 +2309,16 @@ html.light .chat-header-glass {
 .chat-top-gradient {
   background: linear-gradient(
     to bottom,
-    rgba(3, 7, 18, 0.90)  0%,
-    rgba(3, 7, 18, 0.55) 60%,
+    rgba(3, 7, 18, 0.65)  0%,
+    rgba(3, 7, 18, 0.35) 60%,
     transparent          100%
   );
 }
 html.light .chat-top-gradient {
   background: linear-gradient(
     to bottom,
-    rgba(245, 246, 252, 0.90)  0%,
-    rgba(245, 246, 252, 0.55) 60%,
+    rgba(245, 246, 252, 0.65)  0%,
+    rgba(245, 246, 252, 0.35) 60%,
     transparent               100%
   );
 }

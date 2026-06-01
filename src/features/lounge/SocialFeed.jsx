@@ -762,6 +762,7 @@ export default function SocialFeed({
   /** When set, Chat panel opens a DM with this user (cleared after `open_dm` runs). */
   const [chatDockInitialPeerUserId, setChatDockInitialPeerUserId] = useState(null)
   const [loungeNotificationsUnread, setLoungeNotificationsUnread] = useState(0)
+  const [chatUnreadRoomCount, setChatUnreadRoomCount] = useState(0)
   const loungePushMarkDedupeRef = useRef(new Set())
   const loungePostDetailIdForNotifRefreshRef = useRef(null)
   const [notificationInteractionCountsRefreshKey, setNotificationInteractionCountsRefreshKey] = useState(0)
@@ -5801,6 +5802,26 @@ export default function SocialFeed({
     return () => window.removeEventListener('lounge-activity-arrived', onActivityArrived)
   }, [refreshLoungeNotificationsUnread])
 
+  const refreshChatUnreadRoomCount = useCallback(async () => {
+    if (!composerUserId || loungeFeedBrowseMode === 'anonymous') {
+      setChatUnreadRoomCount(0)
+      return
+    }
+    try {
+      const { data, error } = await supabaseClient.rpc('chat_unread_room_count')
+      if (!error) setChatUnreadRoomCount(data ?? 0)
+    } catch {
+      /* ignore transient errors */
+    }
+  }, [composerUserId, loungeFeedBrowseMode, supabaseClient])
+
+  useEffect(() => {
+    void refreshChatUnreadRoomCount()
+    if (typeof window === 'undefined' || !composerUserId || loungeFeedBrowseMode === 'anonymous') return undefined
+    const id = window.setInterval(() => void refreshChatUnreadRoomCount(), 60_000)
+    return () => window.clearInterval(id)
+  }, [composerUserId, loungeFeedBrowseMode, refreshChatUnreadRoomCount])
+
   const {
     pushPrefEnabled: loungePushPrefEnabled,
     pushBusy: loungePushBusy,
@@ -5866,6 +5887,11 @@ export default function SocialFeed({
     ],
   )
   const onLoungeDockChat = useCallback(() => {
+    // Optimistically clear badge when user navigates to chat
+    setChatUnreadRoomCount(0)
+    // Re-check after a delay so any unread rooms the user didn't visit remain
+    setTimeout(() => void refreshChatUnreadRoomCount(), 3000)
+
     if (typeof onOpenChatRoomFromDock === 'function') {
       // Navigate straight to the full Chat tab (no pre-selected room)
       onOpenChatRoomFromDock(null)
@@ -5880,7 +5906,7 @@ export default function SocialFeed({
         return 'chat'
       })
     }
-  }, [onOpenChatRoomFromDock, ensureLoungeFeedVisible])
+  }, [onOpenChatRoomFromDock, ensureLoungeFeedVisible, refreshChatUnreadRoomCount])
 
   const onLoungeDockSettings = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
@@ -10246,6 +10272,7 @@ export default function SocialFeed({
         onSettings: onLoungeDockSettings,
         activePanel: loungeDockPanel,
         notificationsUnreadCount: loungeNotificationsUnread,
+        chatUnreadCount: chatUnreadRoomCount,
         feedHomeActive: loungeFeedHomeActive,
       }),
     [
@@ -10262,6 +10289,7 @@ export default function SocialFeed({
       onLoungeDockSettings,
       loungeDockPanel,
       loungeNotificationsUnread,
+      chatUnreadRoomCount,
       loungeFeedHomeActive,
     ],
   )

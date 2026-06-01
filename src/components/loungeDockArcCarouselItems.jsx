@@ -146,6 +146,7 @@ export function buildLoungeDockArcCarouselItems({
   onSettings,
   activePanel,
   notificationsUnreadCount = 0,
+  chatUnreadCount = 0,
   /** True when Lounge feed is the visible tab with no dock panel open (home icon "lit" in full wheel). */
   feedHomeActive = true,
 }) {
@@ -194,6 +195,7 @@ export function buildLoungeDockArcCarouselItems({
     iconScale: 1.14,
     onSelect: onChat,
     active: activePanel === 'chat',
+    badgeCount: chatUnreadCount,
   }
   const notifications = {
     id: 'notifications',

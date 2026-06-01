@@ -737,28 +737,18 @@ export default function ChatConversation({
               </div>
             )}
 
-            {/* Name pill — pulls up -12px so avatar overlaps its top edge */}
+            {/* Name pill — avatar barely kisses the top edge (-4px overlap) */}
             <button
               type="button"
               onClick={() => peerUserId && onViewProfile?.(peerUserId)}
               disabled={!peerUserId || !onViewProfile}
-              className="-mt-3 flex items-center gap-1 rounded-full px-4 pb-2 pt-4 touch-manipulation transition-opacity active:opacity-75"
+              className="-mt-1 flex items-center gap-1 rounded-full px-4 pb-1.5 pt-2 touch-manipulation transition-opacity active:opacity-75"
               style={GLASS}
               aria-label={peerUserId ? `View ${peerDisplayName}'s profile` : undefined}
             >
               <span className="text-[16px] font-bold text-white">{peerDisplayName}</span>
               {peerUserId && <span className="text-[15px] font-normal text-zinc-300">›</span>}
             </button>
-
-            {/* Handle sub-pill */}
-            {peerHandle && (
-              <div
-                className="mt-1.5 rounded-full px-3 py-0.5"
-                style={{ background: 'rgba(18,18,28,0.62)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                <span className="text-[11px] text-zinc-400">{peerHandle}</span>
-              </div>
-            )}
           </div>
         )}
       </div>

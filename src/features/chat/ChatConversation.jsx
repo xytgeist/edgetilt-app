@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ChatBubble from './ChatBubble.jsx'
 import ChatComposer from './ChatComposer.jsx'
@@ -13,6 +14,13 @@ import {
 } from './chatApi.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
+
+const GLASS = {
+  background: 'rgba(18, 18, 28, 0.82)',
+  backdropFilter: 'blur(24px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+  border: '1px solid rgba(255,255,255,0.10)',
+}
 
 const PAGE_SIZE = 50
 
@@ -78,6 +86,7 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
  *   viewerProfile: { display_name?: string | null, handle?: string | null, avatar_url?: string | null } | null,
  *   profilesById: Record<string, { display_name?: string | null, handle?: string | null, avatar_url?: string | null }>,
  *   onBack: () => void,
+ *   onViewProfile?: ((userId: string) => void) | null,
  * }} props
  */
 export default function ChatConversation({
@@ -87,6 +96,7 @@ export default function ChatConversation({
   viewerProfile,
   profilesById,
   onBack,
+  onViewProfile = null,
 }) {
   const [messages, setMessages] = useState(/** @type {any[]} */ ([]))
   // Aggregated reactions per message: { [messageId]: { emoji, count, viewerReacted }[] }
@@ -104,6 +114,7 @@ export default function ChatConversation({
   const [typingUsers, setTypingUsers] = useState(/** @type {{ userId: string, displayName: string }[]} */ ([]))
   const [muted, setMuted] = useState(() => chatRoomIsMuted(room.muted_until))
   const [muteMenuOpen, setMuteMenuOpen] = useState(false)
+  const [optionsMenuOpen, setOptionsMenuOpen] = useState(false)
 
   // DOM refs
   const listRef = useRef(null)
@@ -656,46 +667,120 @@ export default function ChatConversation({
     }
   }, [])
 
+  // ── Peer info for DM header ───────────────────────────────────────────────
+  const peerUserId   = room.kind === 'dm' ? (room.peer_user_id ?? null) : null
+  const peerProfile  = peerUserId ? (profilesById[peerUserId] || localProfiles[peerUserId] || null) : null
+  const peerAvatar   = peerProfile?.avatar_url || room.peer_avatar_url || null
+  const peerInitial  = (roomTitle || '?').replace(/^@/, '')[0]?.toUpperCase() || '?'
+
   return (
-    <div className="flex flex-col bg-zinc-950" style={{ height: '100dvh' }} data-chat-feature>
-      {/* Title bar */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]">
+    <div className="relative overflow-hidden bg-zinc-950" style={{ height: '100dvh' }} data-chat-feature>
+
+      {/* ── Floating overlay header ─────────────────────────────────────────── */}
+      <div
+        className="absolute inset-x-0 top-0 z-20 flex items-center gap-2 px-3 pb-2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+      >
+        {/* Back button — frosted glass circle */}
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to conversations"
-          className="min-h-10 min-w-10 shrink-0 rounded-xl p-2 text-zinc-300 touch-manipulation hover:bg-zinc-800"
+          className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
+          style={GLASS}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
 
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[16px] font-bold text-zinc-100">{roomTitle}</div>
-          {room.kind === 'channel' && (
-            <div className="text-[11px] text-zinc-500">Topic channel · subscribers only</div>
-          )}
-        </div>
-
+        {/* Center: avatar + name */}
         <button
           type="button"
-          onClick={handleToggleMute}
-          aria-label={muted ? 'Unmute notifications' : 'Mute notifications'}
-          className="shrink-0 rounded-xl p-2 text-zinc-400 touch-manipulation hover:bg-zinc-800"
+          className="flex min-w-0 flex-1 flex-col items-center gap-0.5 touch-manipulation"
+          onClick={() => peerUserId && onViewProfile?.(peerUserId)}
+          disabled={!peerUserId || !onViewProfile}
+          aria-label={peerUserId ? `View ${roomTitle}'s profile` : undefined}
         >
-          {muted ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
+          {peerAvatar ? (
+            <img src={peerAvatar} alt={roomTitle} className="h-8 w-8 rounded-full object-cover ring-1 ring-white/15" />
           ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-zinc-700 text-[13px] font-bold text-zinc-300 ring-1 ring-white/10">
+              {peerInitial}
+            </div>
+          )}
+          <span className="max-w-[180px] truncate text-[13px] font-semibold text-zinc-100 leading-none">
+            {roomTitle}
+          </span>
+          {room.kind === 'channel' && (
+            <span className="text-[10px] text-zinc-500 leading-none">Topic channel</span>
           )}
         </button>
 
+        {/* Options button — frosted glass circle */}
+        <button
+          type="button"
+          onClick={() => setOptionsMenuOpen(true)}
+          aria-label="Chat options"
+          className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
+          style={GLASS}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5"  r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="19" r="1.5" />
+          </svg>
+        </button>
       </div>
+
+      {/* ── Options menu (portal so it escapes stacking context) ───────────── */}
+      {optionsMenuOpen && createPortal(
+        <>
+          <div className="fixed inset-0 z-[118]" onClick={() => setOptionsMenuOpen(false)} />
+          <div
+            className="fixed z-[119] w-[220px] overflow-hidden rounded-2xl"
+            style={{
+              ...GLASS,
+              top:   'calc(env(safe-area-inset-top, 0px) + 60px)',
+              right: '16px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* View profile — DMs only */}
+            {peerUserId && onViewProfile && (
+              <>
+                <OptionsRow
+                  label="View Profile"
+                  icon={<PersonIcon />}
+                  onClick={() => { setOptionsMenuOpen(false); onViewProfile(peerUserId) }}
+                />
+                <OptionsDivider />
+              </>
+            )}
+
+            {/* Mute / Unmute */}
+            <OptionsRow
+              label={muted ? 'Unmute' : 'Mute'}
+              icon={muted ? <UnmuteIcon /> : <MuteIcon />}
+              onClick={() => { setOptionsMenuOpen(false); handleToggleMute() }}
+            />
+
+            <OptionsDivider />
+
+            {/* Report (stub) */}
+            <OptionsRow
+              label="Report"
+              icon={<FlagOptionsIcon />}
+              dim
+              onClick={() => setOptionsMenuOpen(false)}
+            />
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* ── Main content: full-height flex column under the overlay header ── */}
+      <div className="absolute inset-0 flex flex-col">
 
       {/* Mute duration picker */}
       {muteMenuOpen && (
@@ -744,7 +829,10 @@ export default function ChatConversation({
           onTouchEnd={handleSwipeTouchEnd}
           onTouchCancel={handleSwipeTouchEnd}
           className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-3 py-3"
-          style={{ touchAction: 'pan-y' }}
+          style={{
+            touchAction: 'pan-y',
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)',
+          }}
         >
           {loadingMore && (
             <div className="py-2 text-center text-[12px] text-zinc-600">Loading older messages…</div>
@@ -810,6 +898,35 @@ export default function ChatConversation({
         onTyping={(name) => typingRef.current?.(name)}
         viewerDisplayName={viewerDisplayName}
       />
+      </div>{/* end inner flex-col */}
     </div>
   )
 }
+
+// ── Options menu helpers ────────────────────────────────────────────────────
+
+function OptionsRow({ label, icon, onClick, dim = false, danger = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold touch-manipulation transition-colors active:bg-white/10 ${
+        danger ? 'text-rose-400' : dim ? 'text-zinc-500' : 'text-zinc-100'
+      }`}
+    >
+      <span className="shrink-0 opacity-75">{icon}</span>
+      {label}
+    </button>
+  )
+}
+
+function OptionsDivider() {
+  return <div className="mx-4 h-px bg-white/10" />
+}
+
+const OS = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.8', strokeLinecap: 'round', strokeLinejoin: 'round' }
+
+function PersonIcon()    { return <svg {...OS}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> }
+function MuteIcon()      { return <svg {...OS}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> }
+function UnmuteIcon()    { return <svg {...OS}><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> }
+function FlagOptionsIcon() { return <svg {...OS}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> }

@@ -685,6 +685,9 @@ export default function SlotGuideFormApp() {
             <p className="text-sm font-semibold text-amber-300 flex-1 min-w-[12rem]">
               {isDirty ? 'Unsaved edits' : 'Draft on this device'}
               {draftSavedAt ? ` — last saved ${new Date(draftSavedAt).toLocaleString()}` : ''}
+              {' — use '}
+              <span className="text-amber-100">Save draft</span>
+              {' below or here.'}
             </p>
             <button
               type="button"
@@ -1051,15 +1054,39 @@ export default function SlotGuideFormApp() {
             </div>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={busy}
-            className={`w-full min-h-12 rounded-xl font-bold text-lg disabled:opacity-50 transition-colors ${
-              isEdit ? 'bg-amber-600 hover:bg-amber-500' : 'bg-cyan-600 hover:bg-cyan-500'
-            }`}
-          >
-            {busy ? (isEdit ? 'Saving…' : 'Ingesting…') : (isEdit ? 'Save changes' : 'Ingest guide')}
-          </button>
+          {!isEdit ? (
+            <div className="space-y-2">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => saveDraft(false)}
+                  className="flex-1 min-h-12 rounded-xl font-bold text-lg border-2 border-amber-500 bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50 transition-colors"
+                >
+                  Save draft
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="flex-1 min-h-12 rounded-xl font-bold text-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 transition-colors"
+                >
+                  {busy ? 'Ingesting…' : 'Ingest guide'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 text-center sm:text-left">
+                <strong className="text-gray-400">Save draft</strong> keeps your work in this browser only.
+                <strong className="text-gray-400"> Ingest guide</strong> creates the guide in the database.
+              </p>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full min-h-12 rounded-xl font-bold text-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 transition-colors"
+            >
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          )}
         </form>
 
       </div>{/* end form column */}

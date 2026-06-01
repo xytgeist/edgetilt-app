@@ -4,16 +4,16 @@
  * @param {Record<string, unknown>} payload Must include `action`.
  */
 export async function loungeChatInvoke(supabase, payload) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // Let the SDK manage the auth header — it auto-refreshes expired tokens
+  // before the request, avoiding stale-token 401s from the Edge Function.
+  // Fall back to explicit check only to surface a clean "sign in" message.
+  const { data: { session } } = await supabase.auth.getSession()
   if (!session?.access_token) {
     throw new Error('Sign in to use chat.')
   }
 
   const { data, error, response } = await supabase.functions.invoke('lounge-chat', {
     body: payload,
-    headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
   if (error) {

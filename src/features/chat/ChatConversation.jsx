@@ -888,6 +888,7 @@ export default function ChatConversation({
                   isMine={msg.sender_id === viewerUserId}
                   reactions={reactions[msg.id] || []}
                   viewerUserId={viewerUserId}
+                  hideSenderInfo={room.kind === 'dm'}
                   onReply={setReplyTarget}
                   onDeleteMessage={handleDelete}
                   onAddReaction={handleAddReaction}

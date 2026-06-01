@@ -92,6 +92,7 @@ function computeLayout(rect, isMine) {
  *   onDeleteMessage: (messageId: string) => void,
  *   onAddReaction: (messageId: string, emoji: string) => void,
  *   onRemoveReaction: (messageId: string, emoji: string) => void,
+ *   hideSenderInfo?: boolean,
  * }} props
  */
 export default function ChatBubble({
@@ -105,6 +106,7 @@ export default function ChatBubble({
   onDeleteMessage,
   onAddReaction,
   onRemoveReaction,
+  hideSenderInfo = false,
 }) {
   const [menuOpen, setMenuOpen]           = useState(false)
   const [fullPickerOpen, setFullPickerOpen] = useState(false)
@@ -193,8 +195,8 @@ export default function ChatBubble({
   return (
     <div className="relative">
       <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-        {/* Avatar — only for others' messages */}
-        {!isMine && (
+        {/* Avatar — only for others' messages; hidden in DMs (header already shows peer) */}
+        {!isMine && !hideSenderInfo && (
           <div className="shrink-0 self-end mb-1">
             {senderAvatarUrl ? (
               <img
@@ -211,8 +213,8 @@ export default function ChatBubble({
         )}
 
         <div className={`flex max-w-[78%] flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
-          {/* Sender name — others only */}
-          {!isMine && (
+          {/* Sender name — others only; hidden in DMs */}
+          {!isMine && !hideSenderInfo && (
             <div className="px-1 text-[11px] font-semibold text-zinc-500">{senderLabel}</div>
           )}
 

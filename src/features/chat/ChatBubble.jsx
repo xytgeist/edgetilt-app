@@ -10,12 +10,6 @@ const QUICK_REACTIONS = ['👍','❤️','😂','🔥','😮','😢','🎉','�
  * backdrop-filter picks up the colors of content behind the element,
  * approximating the iOS vibrancy / material effect.
  */
-const GLASS = {
-  background: 'rgba(18, 18, 28, 0.82)',
-  backdropFilter: 'blur(24px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.10)',
-}
 
 /**
  * Compute absolute positions for the floating emoji pill and action card,
@@ -327,9 +321,8 @@ export default function ChatBubble({
 
           {/* Floating emoji pill */}
           <div
-            className="fixed z-[109] flex items-center overflow-x-auto rounded-full px-2 py-1 scrollbar-none"
+            className="chat-menu-glass fixed z-[109] flex items-center overflow-x-auto rounded-full px-2 py-1 scrollbar-none"
             style={{
-              ...GLASS,
               top:   layout.pillTop,
               left:  layout.pillLeft,
               width: layout.pillW,
@@ -374,9 +367,8 @@ export default function ChatBubble({
 
           {/* Floating action card */}
           <div
-            className="fixed z-[109] overflow-hidden rounded-2xl"
+            className="chat-menu-glass fixed z-[109] overflow-hidden rounded-2xl"
             style={{
-              ...GLASS,
               top:   layout.menuTop,
               left:  layout.menuLeft,
               width: layout.menuW,

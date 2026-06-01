@@ -25,6 +25,19 @@ export async function loungeChatInvoke(supabase, payload) {
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
+  if (error || (data && typeof data === 'object' && 'error' in data && data.error)) {
+    const status = response?.status ?? null
+    const bodyText = await response?.clone()?.text().catch(() => '') ?? ''
+    console.error('[lounge-chat] invoke error', {
+      action: payload?.action,
+      status,
+      error,
+      bodyText,
+      tokenExpiresAt: session.expires_at,
+      nowSecs: Math.floor(Date.now() / 1000),
+    })
+  }
+
   if (error) {
     throw new Error(await formatLoungeChatInvokeError(error, response))
   }

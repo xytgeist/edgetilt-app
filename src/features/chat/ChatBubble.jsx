@@ -94,7 +94,7 @@ export default function ChatBubble({
             />
           ) : (
             <div className="grid h-7 w-7 place-items-center rounded-full bg-zinc-700 text-[11px] font-bold text-zinc-300">
-              {(senderLabel || '?')[0].toUpperCase()}
+              {(senderLabel?.replace(/^@/, '') || '?')[0].toUpperCase()}
             </div>
           )}
         </div>

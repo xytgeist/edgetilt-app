@@ -96,7 +96,9 @@ export default function ChatTab({
           }
         }
         if (r.last_message_sender_id && r.sender_handle) {
+          // Merge — don't clobber a richer peer entry that already has avatar_url
           profilesCacheRef.current[r.last_message_sender_id] = {
+            ...profilesCacheRef.current[r.last_message_sender_id],
             user_id: r.last_message_sender_id,
             handle: r.sender_handle,
             display_name: r.sender_display_name,

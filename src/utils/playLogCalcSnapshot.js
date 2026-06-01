@@ -94,9 +94,6 @@ export function playLogCalcSnapshotNotes(values) {
   if (Number.isFinite(avgUsd)) {
     lines.push(`Average case ($): ${formatPlayLogCalcMetricDisplay('average_case_usd', avgUsd)}`)
   }
-  const evUsd = Number(values.expected_ev_usd)
-  if (Number.isFinite(evUsd)) {
-    lines.push(`Expected EV ($): ${formatPlayLogCalcMetricDisplay('expected_ev_usd', evUsd)}`)
-  }
+  // expected_ev_usd is stored on the entry form — omit from notes (redundant with EV ($) field).
   return lines.join('\n')
 }

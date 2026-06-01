@@ -1078,7 +1078,13 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null }) 
         <CalculatorLogPlayButton
           calculatorSlug="mhb"
           prefillValues={{
-            counter: current,
+            mhb_manufacturer: manufacturer,
+            ...(Number.isFinite(Number(current))
+              ? { mhb_meter: roundToCents(Number(current)) }
+              : {}),
+            ...(Number.isFinite(effectiveCap(manufacturer, mustHitBy))
+              ? { must_hit_by: effectiveCap(manufacturer, mustHitBy) }
+              : {}),
             bet_size: igtLineBet,
             denom: igtDenom,
             ...playLogCalcEvPrefill({ expectedEvUsd: ev }),

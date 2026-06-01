@@ -37,10 +37,13 @@ import {
   defsMapForTemplate,
   buildCustomMetricDefsForTemplate,
   customTemplateFormStateFromTemplate,
+  isValidGameTemplateSlug,
+  slugifyGameTemplateSlug,
   CUSTOM_METRIC_TYPE_OPTIONS,
   standardTemplatePickerSlugs,
   metricSlugsForUserTemplate,
   PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS,
+  MHB_MANUFACTURER_OPTIONS,
 } from './playLogMetrics.js'
 import { analyzePlayLogEntries } from './playLogAnalysis.js'
 import { buildPlayLogCsv, downloadPlayLogCsv } from './playLogExport.js'
@@ -128,6 +131,7 @@ function formFieldsFromPrefill(values, metricSlugs) {
 
 export default function PlayLogbook({
   supabaseClient,
+  isAdmin = false,
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
   highlightEntryId = null,
@@ -165,7 +169,12 @@ export default function PlayLogbook({
 
   const [customName, setCustomName] = useState('')
   const [customMetrics, setCustomMetrics] = useState(() => new Set())
+  const [templateSheetMode, setTemplateSheetMode] = useState(/** @type {'custom' | 'system'} */ ('custom'))
   const [editingCustomTemplateId, setEditingCustomTemplateId] = useState(/** @type {string | null} */ (null))
+  const [editingSystemTemplateId, setEditingSystemTemplateId] = useState(/** @type {string | null} */ (null))
+  const [systemSlug, setSystemSlug] = useState('')
+  const [systemMachineSlug, setSystemMachineSlug] = useState('')
+  const [systemCalculatorSlug, setSystemCalculatorSlug] = useState('')
   /** @type {[Array<{ id: string, slug?: string, label: string, value_type: import('./playLogMetrics.js').PlayLogValueType }>, Function]} */
   const [customFieldDrafts, setCustomFieldDrafts] = useState([])
   const [newFieldLabel, setNewFieldLabel] = useState('')
@@ -230,6 +239,8 @@ export default function PlayLogbook({
   )
 
   const realRtpSnapByEntryId = useMemo(() => runningRealRtpByEntryId(entries), [entries])
+  const viewerIsAdmin = isAdmin || viewerProfile?.role === 'admin'
+  const isSystemTemplateSheet = templateSheetMode === 'system'
 
   const viewingEntry = useMemo(() => {
     if (!viewingEntryId) return null
@@ -261,7 +272,7 @@ export default function PlayLogbook({
           .limit(200),
         supabaseClient
           .from('profiles')
-          .select('user_id, handle, display_name, avatar_url')
+          .select('user_id, handle, display_name, avatar_url, role')
           .eq('user_id', uid)
           .maybeSingle(),
       ])
@@ -312,6 +323,11 @@ export default function PlayLogbook({
     setEditingEntryId(null)
     setEditingSessionId(null)
     setEditingCustomTemplateId(null)
+    setEditingSystemTemplateId(null)
+    setTemplateSheetMode('custom')
+    setSystemSlug('')
+    setSystemMachineSlug('')
+    setSystemCalculatorSlug('')
     setPartners([])
     setError('')
     setSaveAlertMessage('')
@@ -466,24 +482,71 @@ export default function PlayLogbook({
     })
   }, [loading, templates, openLogPlay])
 
-  const resetCustomTemplateForm = () => {
-    setEditingCustomTemplateId(null)
+  const resetTemplateFormFields = () => {
     setCustomName('')
     setCustomMetrics(new Set(['spin_count']))
     setCustomFieldDrafts([])
     setNewFieldLabel('')
     setNewFieldType('integer')
+    setSystemSlug('')
+    setSystemMachineSlug('')
+    setSystemCalculatorSlug('')
+  }
+
+  const resetCustomTemplateForm = () => {
+    setEditingCustomTemplateId(null)
+    resetTemplateFormFields()
+  }
+
+  const resetSystemTemplateForm = () => {
+    setEditingSystemTemplateId(null)
+    resetTemplateFormFields()
+  }
+
+  const cancelSystemTemplateEdit = () => {
+    resetSystemTemplateForm()
+    setError('')
   }
 
   const openCreateTemplate = () => {
+    setTemplateSheetMode('custom')
     resetCustomTemplateForm()
+    resetSystemTemplateForm()
+    setSheet('createTemplate')
+    setError('')
+  }
+
+  const openManageSystemTemplates = () => {
+    if (!viewerIsAdmin) return
+    setTemplateSheetMode('system')
+    resetCustomTemplateForm()
+    resetSystemTemplateForm()
     setSheet('createTemplate')
     setError('')
   }
 
   const openEditCustomTemplate = template => {
     const form = customTemplateFormStateFromTemplate(template, defsMap)
+    setTemplateSheetMode('custom')
     setEditingCustomTemplateId(template.id)
+    setEditingSystemTemplateId(null)
+    setCustomName(form.displayName)
+    setCustomMetrics(form.standardMetrics)
+    setCustomFieldDrafts(form.customFieldDrafts)
+    setNewFieldLabel('')
+    setNewFieldType('integer')
+    setSheet('createTemplate')
+    setError('')
+  }
+
+  const openEditSystemTemplate = template => {
+    const form = customTemplateFormStateFromTemplate(template, defsMap)
+    setTemplateSheetMode('system')
+    setEditingSystemTemplateId(template.id)
+    setEditingCustomTemplateId(null)
+    setSystemSlug(template.slug || '')
+    setSystemMachineSlug(template.machine_slug || '')
+    setSystemCalculatorSlug(template.calculator_slug || '')
     setCustomName(form.displayName)
     setCustomMetrics(form.standardMetrics)
     setCustomFieldDrafts(form.customFieldDrafts)
@@ -672,6 +735,66 @@ export default function PlayLogbook({
     }
   }
 
+  const saveSystemTemplate = async () => {
+    if (!viewerIsAdmin) return
+    const name = customName.trim()
+    if (!name) {
+      setError('Name the primary game.')
+      return
+    }
+    const slugRaw = (editingSystemTemplateId ? systemSlug : systemSlug || slugifyGameTemplateSlug(name))
+      .trim()
+      .toLowerCase()
+    if (!isValidGameTemplateSlug(slugRaw)) {
+      setError('Slug must be lowercase letters, numbers, and hyphens (e.g. phoenix-link).')
+      return
+    }
+    const customDefs = buildCustomMetricDefsForTemplate(customFieldDrafts, [
+      ...Object.keys(defsMap),
+      ...PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS,
+      ...customMetrics,
+    ])
+    setSaving(true)
+    setError('')
+    try {
+      const sortMap = defsMapForTemplate(defsMap, { custom_metric_defs: customDefs })
+      const metric_slugs = metricSlugsForUserTemplate(
+        [...customMetrics, ...customDefs.map(d => d.slug)],
+        sortMap,
+      )
+      const payload = {
+        slug: slugRaw,
+        display_name: name,
+        machine_slug: systemMachineSlug.trim() || null,
+        calculator_slug: systemCalculatorSlug.trim() || null,
+        metric_slugs,
+        custom_metric_defs: customDefs,
+        is_system: true,
+        user_id: null,
+      }
+      if (editingSystemTemplateId) {
+        const { error: e } = await supabaseClient
+          .from('play_log_game_templates')
+          .update(payload)
+          .eq('id', editingSystemTemplateId)
+          .eq('is_system', true)
+        if (e) throw e
+      } else {
+        const { error: e } = await supabaseClient.from('play_log_game_templates').insert(payload)
+        if (e) throw e
+      }
+      closeSheet()
+      await loadAll()
+    } catch (e) {
+      setError(
+        e?.message ||
+          (editingSystemTemplateId ? 'Failed to update primary game' : 'Failed to create primary game'),
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const deleteEntry = async (entry) => {
     const entryId = entry?.id || entry
     const sessionId = entry?.session_id
@@ -728,6 +851,25 @@ export default function PlayLogbook({
       await loadAll()
     } catch (e) {
       setError(e?.message || 'Failed to delete template')
+    }
+  }
+
+  const deleteSystemTemplate = async (templateId) => {
+    if (!viewerIsAdmin) return
+    if (!window.confirm('Delete this primary game template? Existing log entries will remain.')) return
+    try {
+      const { error: e } = await supabaseClient
+        .from('play_log_game_templates')
+        .delete()
+        .eq('id', templateId)
+        .eq('is_system', true)
+      if (e) throw e
+      if (analyzeTemplateId === templateId) setAnalyzeTemplateId('')
+      if (selectedTemplateId === templateId) setSelectedTemplateId('')
+      if (editingSystemTemplateId === templateId) resetSystemTemplateForm()
+      await loadAll()
+    } catch (e) {
+      setError(e?.message || 'Failed to delete primary game')
     }
   }
 
@@ -811,6 +953,16 @@ export default function PlayLogbook({
               >
                 Custom game templates
               </button>
+              {viewerIsAdmin ? (
+                <button
+                  type="button"
+                  onClick={openManageSystemTemplates}
+                  disabled={schemaMissing}
+                  className="w-full rounded-2xl py-3 text-amber-300/90 text-sm font-semibold touch-manipulation active:text-amber-200 disabled:opacity-40 border border-amber-500/30"
+                >
+                  Primary game templates
+                </button>
+              ) : null}
             </div>
 
             {entries.length === 0 ? (
@@ -1217,15 +1369,84 @@ export default function PlayLogbook({
             {sheet === 'createTemplate' && (
               <>
                 <SheetHeader
-                  title={editingCustomTemplateId ? 'Edit Game Template' : 'Create Game Template'}
+                  title={
+                    isSystemTemplateSheet
+                      ? editingSystemTemplateId
+                        ? 'Edit primary game'
+                        : 'Primary game templates'
+                      : editingCustomTemplateId
+                        ? 'Edit Game Template'
+                        : 'Create Game Template'
+                  }
                   onClose={closeSheet}
                 />
                 <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
-                  {editingCustomTemplateId
-                    ? 'Update fields for this game, or pick another template below to edit.'
-                    : 'Name your game and pick which fields to capture each time you log a play.'}
+                  {isSystemTemplateSheet
+                    ? editingSystemTemplateId
+                      ? 'Update the form fields shown in the primary games dropdown for everyone.'
+                      : 'Add or edit built-in games in the Log Play picker (admin only). Slug stays fixed after create.'
+                    : editingCustomTemplateId
+                      ? 'Update fields for this game, or pick another template below to edit.'
+                      : 'Name your game and pick which fields to capture each time you log a play.'}
                 </p>
-                {sortedTemplates.some(t => !t.is_system) ? (
+                {isSystemTemplateSheet && sortedTemplates.some(t => t.is_system) ? (
+                  <div className="mb-4">
+                    <div className="text-amber-400/80 text-xs font-semibold uppercase tracking-wide mb-2">
+                      Primary games
+                    </div>
+                    <ul className="space-y-1.5">
+                      {sortedTemplates
+                        .filter(t => t.is_system)
+                        .map(t => {
+                          const editing = editingSystemTemplateId === t.id
+                          return (
+                            <li
+                              key={t.id}
+                              className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${
+                                editing
+                                  ? 'bg-amber-600/15 border border-amber-500/40'
+                                  : 'bg-zinc-800/80 border border-transparent'
+                              }`}
+                            >
+                              <span className="min-w-0 truncate text-sm font-semibold text-zinc-200">
+                                {t.display_name}
+                                <span className="text-zinc-500 font-normal text-xs ml-1.5">{t.slug}</span>
+                              </span>
+                              <div className="flex shrink-0 items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditSystemTemplate(t)}
+                                  className="text-amber-300 text-xs font-bold px-2 py-1 touch-manipulation active:text-amber-200"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void deleteSystemTemplate(t.id)}
+                                  className="text-zinc-500 text-xs font-semibold px-2 py-1 touch-manipulation active:text-red-400"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </li>
+                          )
+                        })}
+                    </ul>
+                    {editingSystemTemplateId ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetSystemTemplateForm()
+                          setError('')
+                        }}
+                        className="mt-2 text-amber-300 text-xs font-semibold touch-manipulation active:text-amber-200"
+                      >
+                        + New primary game
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!isSystemTemplateSheet && sortedTemplates.some(t => !t.is_system) ? (
                   <div className="mb-4">
                     <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide mb-2">
                       Your custom games
@@ -1281,8 +1502,55 @@ export default function PlayLogbook({
                     ) : null}
                   </div>
                 ) : null}
+                {isSystemTemplateSheet ? (
+                  <>
+                    <div className="mb-4">
+                      <label className="block text-zinc-400 text-xs mb-1.5">Slug</label>
+                      {editingSystemTemplateId ? (
+                        <p className="min-h-12 flex items-center rounded-2xl bg-zinc-800/60 px-4 text-zinc-300 font-mono text-sm">
+                          {systemSlug}
+                        </p>
+                      ) : (
+                        <input
+                          type="text"
+                          value={systemSlug}
+                          onChange={e => setSystemSlug(e.target.value.toLowerCase())}
+                          placeholder={slugifyGameTemplateSlug(customName) || 'e.g. phoenix-link'}
+                          className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white font-mono text-sm outline-none focus:ring-2 focus:ring-amber-500/40"
+                        />
+                      )}
+                      <p className="text-zinc-600 text-xs mt-1.5">
+                        Used for calculator links; auto-filled from name if left blank on create.
+                      </p>
+                    </div>
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-zinc-400 text-xs mb-1.5">Machine slug (optional)</label>
+                        <input
+                          type="text"
+                          value={systemMachineSlug}
+                          onChange={e => setSystemMachineSlug(e.target.value)}
+                          placeholder="e.g. phoenix-link"
+                          className="w-full min-h-11 rounded-2xl bg-zinc-800 px-4 text-white text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500/40"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-400 text-xs mb-1.5">Calculator slug (optional)</label>
+                        <input
+                          type="text"
+                          value={systemCalculatorSlug}
+                          onChange={e => setSystemCalculatorSlug(e.target.value)}
+                          placeholder="e.g. phoenix-link"
+                          className="w-full min-h-11 rounded-2xl bg-zinc-800 px-4 text-white text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500/40"
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : null}
                 <div className="mb-4">
-                  <label className="block text-zinc-400 text-xs mb-1.5">Game name</label>
+                  <label className="block text-zinc-400 text-xs mb-1.5">
+                    {isSystemTemplateSheet ? 'Display name' : 'Game name'}
+                  </label>
                   <input
                     type="text"
                     value={customName}
@@ -1401,20 +1669,53 @@ export default function PlayLogbook({
                   )}
                 </div>
                 {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-                <button
-                  type="button"
-                  onClick={saveCustomTemplate}
-                  disabled={saving}
-                  className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
-                >
-                  {saving
-                    ? editingCustomTemplateId
-                      ? 'Saving…'
-                      : 'Creating…'
-                    : editingCustomTemplateId
-                      ? 'Save changes'
-                      : 'Create & Log Play'}
-                </button>
+                {isSystemTemplateSheet && editingSystemTemplateId ? (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={cancelSystemTemplateEdit}
+                      disabled={saving}
+                      className="min-h-12 flex-1 rounded-2xl bg-zinc-800 text-zinc-300 font-bold touch-manipulation active:bg-zinc-700 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveSystemTemplate}
+                      disabled={saving || !viewerIsAdmin}
+                      className="min-h-12 flex-[1.4] rounded-2xl bg-amber-600 text-white font-bold touch-manipulation active:bg-amber-700 disabled:opacity-50"
+                    >
+                      {saving ? 'Saving…' : 'Save primary game'}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={isSystemTemplateSheet ? saveSystemTemplate : saveCustomTemplate}
+                    disabled={saving || (isSystemTemplateSheet && !viewerIsAdmin)}
+                    className={`w-full min-h-12 rounded-2xl text-white font-bold touch-manipulation disabled:opacity-50 ${
+                      isSystemTemplateSheet
+                        ? 'bg-amber-600 active:bg-amber-700'
+                        : 'bg-cyan-600 active:bg-cyan-700'
+                    }`}
+                  >
+                    {saving
+                      ? isSystemTemplateSheet
+                        ? editingSystemTemplateId
+                          ? 'Saving…'
+                          : 'Creating…'
+                        : editingCustomTemplateId
+                          ? 'Saving…'
+                          : 'Creating…'
+                      : isSystemTemplateSheet
+                        ? editingSystemTemplateId
+                          ? 'Save primary game'
+                          : 'Create primary game'
+                        : editingCustomTemplateId
+                          ? 'Save changes'
+                          : 'Create & Log Play'}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -1482,6 +1783,32 @@ function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
   const nodes = []
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i]
+    if (field.slug === 'mhb_meter') {
+      const mhbField = fields[i + 1]?.slug === 'must_hit_by' ? fields[i + 1] : null
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="mhb-meter-cap"
+          left={field}
+          right={mhbField}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      if (mhbField) i += 1
+      continue
+    }
+    if (field.slug === 'must_hit_by') {
+      nodes.push(
+        <LogPlayMetricPairRow
+          key="must-hit-by-only"
+          left={null}
+          right={field}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />,
+      )
+      continue
+    }
     if (field.slug === 'counter') {
       const endField = fields[i + 1]?.slug === 'counter_at_hit' ? fields[i + 1] : null
       nodes.push(
@@ -1649,6 +1976,14 @@ function LogPlayMetricPairRow({ left, right, formFields, setFormFields, footer =
 }
 
 function LogPlayFormMetricControl({ field, value, onChange, trailingHint = null }) {
+  if (field.slug === 'mhb_manufacturer') {
+    return (
+      <MhbManufacturerSelect
+        value={String(value ?? '').trim().toLowerCase()}
+        onChange={onChange}
+      />
+    )
+  }
   if (field.slug === 'denom') {
     return (
       <DenomSelect
@@ -1684,6 +2019,17 @@ function DenomSelect({ value, onChange }) {
       onChange={onChange}
       options={LOG_PLAY_DENOM_OPTIONS}
       ariaLabel="Denom"
+    />
+  )
+}
+
+function MhbManufacturerSelect({ value, onChange }) {
+  return (
+    <LogPlayOptionPicker
+      value={value || MHB_MANUFACTURER_OPTIONS[0].value}
+      onChange={onChange}
+      options={MHB_MANUFACTURER_OPTIONS}
+      ariaLabel="Manufacturer"
     />
   )
 }

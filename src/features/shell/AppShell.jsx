@@ -1240,6 +1240,7 @@ export default function AppShell({
       visibleTab = (
         <PlayLogbook
           supabaseClient={supabaseClient}
+          isAdmin={isAdmin}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           highlightEntryId={pendingPlayLogEntryId}

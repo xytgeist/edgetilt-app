@@ -15,8 +15,8 @@ export const PLAY_LOG_METRIC_FALLBACK = /** @type {Record<string, { label: strin
   counter: { label: 'Counter Start', value_type: 'integer' },
   bet_size: { label: 'Bet size', value_type: 'money' },
   denom: { label: 'Denom', value_type: 'money' },
-  spin_count: { label: 'Spins', value_type: 'integer' },
-  bonus_count: { label: 'Bonuses', value_type: 'integer' },
+  spin_count: { label: '# Spins (optional)', value_type: 'integer' },
+  bonus_count: { label: '# Bonuses (optional)', value_type: 'integer' },
   money_in: { label: 'Cash in', value_type: 'money' },
   money_out: { label: 'Cash out', value_type: 'money' },
   counter_at_hit: { label: 'Counter Pop', value_type: 'integer' },
@@ -29,9 +29,35 @@ export const PLAY_LOG_METRIC_FALLBACK = /** @type {Record<string, { label: strin
   current_ev_rtp: { label: 'Current EV (RTP %)', value_type: 'decimal' },
   average_case_mult: { label: 'Average case (×)', value_type: 'decimal' },
   average_case_usd: { label: 'Average case ($)', value_type: 'money' },
-  expected_ev_usd: { label: 'Expected EV ($)', value_type: 'money' },
+  expected_ev_usd: { label: 'EV ($)', value_type: 'money' },
   acquisition_fee: { label: 'Acquisition fee', value_type: 'money' },
+  mhb_manufacturer: { label: 'Manufacturer', value_type: 'text' },
+  mhb_meter: { label: 'MHB meter', value_type: 'money' },
+  must_hit_by: { label: 'Must hit by', value_type: 'money' },
 })
+
+/** Must Hit By calculator / logbook manufacturer picker (stored slug values). */
+export const MHB_MANUFACTURER_OPTIONS = [
+  { value: 'ainsworth', label: 'Ainsworth' },
+  { value: 'ags', label: 'AGS' },
+  { value: 'igt', label: 'IGT' },
+  { value: 'manual', label: 'Manual' },
+]
+
+/** @param {unknown} raw */
+export function formatMhbManufacturerValue(raw) {
+  const s = String(raw ?? '').trim().toLowerCase()
+  if (!s) return '—'
+  return MHB_MANUFACTURER_OPTIONS.find(o => o.value === s)?.label ?? String(raw)
+}
+
+/** Log Play labels for optional session counters (always include “(optional)”). */
+export function logPlayMetricDisplayLabel(slug, label) {
+  if (slug === 'spin_count') return '# Spins (optional)'
+  if (slug === 'bonus_count') return '# Bonuses (optional)'
+  if (slug === 'expected_ev_usd') return 'EV ($)'
+  return label
+}
 
 /** @param {PlayLogMetricDef[] | null | undefined} defs */
 export function metricDefMap(defs) {
@@ -41,6 +67,11 @@ export function metricDefMap(defs) {
   for (const [slug, fb] of Object.entries(PLAY_LOG_METRIC_FALLBACK)) {
     if (!map[slug]) {
       map[slug] = { slug, label: fb.label, value_type: fb.value_type, sort_order: 0 }
+    }
+  }
+  for (const slug of ['spin_count', 'bonus_count', 'expected_ev_usd']) {
+    if (map[slug]) {
+      map[slug] = { ...map[slug], label: logPlayMetricDisplayLabel(slug, map[slug].label) }
     }
   }
   return map
@@ -92,6 +123,22 @@ export function defsMapForTemplate(baseDefsMap, template) {
     }
   }
   return map
+}
+
+/** URL-safe slug for primary (system) game templates. */
+export function slugifyGameTemplateSlug(label) {
+  const base = String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  const trimmed = base.slice(0, 48)
+  return trimmed || 'game'
+}
+
+/** @param {string} slug */
+export function isValidGameTemplateSlug(slug) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(slug || '').trim())
 }
 
 /** @param {string} label */
@@ -371,18 +418,21 @@ export function normalizeDenomFormValue(raw) {
 
 /** Log Play sheet field order + display labels (slugs unchanged in DB). */
 export const LOG_PLAY_FORM_FIELDS = [
+  { slug: 'mhb_manufacturer', label: 'Manufacturer' },
+  { slug: 'mhb_meter', label: 'MHB meter' },
+  { slug: 'must_hit_by', label: 'Must hit by' },
   { slug: 'bet_size', label: 'Bet Size' },
   { slug: 'denom', label: 'Denom' },
   { slug: 'counter', label: 'Counter Start' },
   { slug: 'counter_at_hit', label: 'Counter Pop' },
   { slug: 'money_in', label: 'Cash in' },
   { slug: 'money_out', label: 'Cash out' },
-  { slug: 'spin_count', label: '# Spins' },
-  { slug: 'bonus_count', label: '# Bonuses' },
+  { slug: 'spin_count', label: '# Spins (optional)' },
+  { slug: 'bonus_count', label: '# Bonuses (optional)' },
   { slug: 'current_ev_rtp', label: 'Current EV' },
   { slug: 'average_case_mult', label: 'Avg case (×)' },
   { slug: 'average_case_usd', label: 'Avg case ($)' },
-  { slug: 'expected_ev_usd', label: 'Expected EV ($)' },
+  { slug: 'expected_ev_usd', label: 'EV ($)' },
   { slug: 'acquisition_fee', label: 'Acquisition fee' },
 ]
 
@@ -707,7 +757,7 @@ export function recentEntryDisplayChips(entry, defsMap) {
     const evUsd = Number(values.expected_ev_usd)
     chips.push({
       key: 'expected_ev_usd',
-      label: defsMap.expected_ev_usd?.label || 'Expected EV',
+      label: defsMap.expected_ev_usd?.label || 'EV ($)',
       value: formatMetricValue(evUsd, 'money'),
       tone: evUsd >= 0 ? 'win' : 'loss',
     })
@@ -728,6 +778,7 @@ export function recentEntryDisplayChips(entry, defsMap) {
 /** @param {string} slug @param {unknown} value @param {PlayLogValueType} valueType */
 export function formatPlayLogEntryFieldValue(slug, value, valueType) {
   if (slug === 'acquisition_fee') return formatAcquisitionFeeValue(value)
+  if (slug === 'mhb_manufacturer') return formatMhbManufacturerValue(value)
   if (PLAY_LOG_CALC_SNAPSHOT_FIELD_SLUGS.has(slug)) {
     return formatPlayLogCalcMetricDisplay(slug, value, valueType)
   }

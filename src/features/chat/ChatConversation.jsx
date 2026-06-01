@@ -117,6 +117,8 @@ export default function ChatConversation({
   const atBottomRef = useRef(true)
   const typingRef = useRef(null)
   const lastReadDebounceRef = useRef(null)
+  const composerBarRef = useRef(null)
+  const [composerBarH, setComposerBarH] = useState(80)
 
   // Swipe-to-reveal timestamps
   const translateLayerRef = useRef(null)
@@ -672,6 +674,17 @@ export default function ChatConversation({
   const peerHandle      = peerProfile?.handle ? `@${peerProfile.handle}` : null
   const peerInitial     = (peerDisplayName || '?').replace(/^@/, '')[0]?.toUpperCase() || '?'
   // Extra top padding for DM header (tall: avatar + pill); channel is shorter
+  // Track composer bar height so the scroll list can pad its bottom
+  useEffect(() => {
+    const el = composerBarRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      setComposerBarH(entry.contentRect.height + 16)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   const listPaddingTop  = room.kind === 'dm'
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
@@ -786,8 +799,8 @@ export default function ChatConversation({
         document.body
       )}
 
-      {/* ── Main content: full-height flex column under the overlay header ── */}
-      <div className="absolute inset-0 flex flex-col">
+      {/* ── Main content: full-screen scroll area + floating composer overlay ── */}
+      <div className="absolute inset-0">
 
       {/* Mute duration picker */}
       {muteMenuOpen && (
@@ -826,8 +839,8 @@ export default function ChatConversation({
         </div>
       )}
 
-      {/* Message list — scrollable region */}
-      <div className="relative min-h-0 flex-1">
+      {/* Message list — fills the full screen; bottom padding tracks composer height */}
+      <div className="absolute inset-0">
         {/* Top gradient — fades/darkens messages toward the header so floating UI pops */}
         <div
           className="chat-top-gradient pointer-events-none absolute inset-x-0 top-0 z-10"
@@ -842,7 +855,7 @@ export default function ChatConversation({
           onTouchEnd={handleSwipeTouchEnd}
           onTouchCancel={handleSwipeTouchEnd}
           className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-3 py-3"
-          style={{ touchAction: 'pan-y', paddingTop: listPaddingTop }}
+          style={{ touchAction: 'pan-y', paddingTop: listPaddingTop, paddingBottom: composerBarH }}
         >
           {loadingMore && (
             <div className="py-2 text-center text-[12px] text-zinc-600">Loading older messages…</div>
@@ -890,26 +903,32 @@ export default function ChatConversation({
         )}
       </div>
 
-      {/* Typing indicator */}
-      {typingUsers.length > 0 && (
-        <div className="shrink-0 px-4 pb-1 text-[12px] text-zinc-500">
-          {typingUsers.length === 1
-            ? `${typingUsers[0].displayName} is typing…`
-            : `${typingUsers.map((u) => u.displayName).join(', ')} are typing…`}
-        </div>
-      )}
+      </div>{/* end main scroll area */}
 
-      {/* Composer */}
-      <ChatComposer
-        supabaseClient={supabaseClient}
-        viewerUserId={viewerUserId}
-        replyTarget={replyTarget}
-        onClearReply={() => setReplyTarget(null)}
-        onSend={handleSend}
-        onTyping={(name) => typingRef.current?.(name)}
-        viewerDisplayName={viewerDisplayName}
-      />
-      </div>{/* end inner flex-col */}
+      {/* ── Floating composer overlay — no background, sits above the message list ── */}
+      <div
+        ref={composerBarRef}
+        className="absolute inset-x-0 bottom-0 z-20 pointer-events-none"
+      >
+        <div className="pointer-events-auto">
+          {typingUsers.length > 0 && (
+            <div className="px-6 pb-1 text-[12px] text-zinc-500">
+              {typingUsers.length === 1
+                ? `${typingUsers[0].displayName} is typing…`
+                : `${typingUsers.map((u) => u.displayName).join(', ')} are typing…`}
+            </div>
+          )}
+          <ChatComposer
+            supabaseClient={supabaseClient}
+            viewerUserId={viewerUserId}
+            replyTarget={replyTarget}
+            onClearReply={() => setReplyTarget(null)}
+            onSend={handleSend}
+            onTyping={(name) => typingRef.current?.(name)}
+            viewerDisplayName={viewerDisplayName}
+          />
+        </div>
+      </div>
     </div>
   )
 }

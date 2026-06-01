@@ -2365,3 +2365,17 @@ html.light .chat-menu-glass {
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
+
+/* iOS-style vibrancy input field — dark */
+.chat-input-glass {
+  background: rgba(44, 44, 46, 0.55);
+  backdrop-filter: blur(28px) saturate(200%) brightness(1.1);
+  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+html.light .chat-input-glass {
+  background: rgba(242, 242, 247, 0.60);
+  backdrop-filter: blur(28px) saturate(200%) brightness(1.02);
+  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.02);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+}

@@ -15,21 +15,8 @@ import {
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 
-// Shared translucency for header buttons + name pill
-const GLASS = {
-  background: 'rgba(20, 22, 40, 0.33)',
-  backdropFilter: 'blur(20px) saturate(160%)',
-  WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-  border: '1px solid rgba(255,255,255,0.13)',
-}
-
-// More opaque style for floating menus (options dropdown, mute picker) — needs to be readable
-const GLASS_MENU = {
-  background: 'rgba(18, 18, 28, 0.88)',
-  backdropFilter: 'blur(24px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.10)',
-}
+// Glass styles are defined in index.css as .chat-header-glass / .chat-menu-glass
+// with html.light overrides — do not use inline styles for these.
 
 const PAGE_SIZE = 50
 
@@ -702,8 +689,7 @@ export default function ChatConversation({
           type="button"
           onClick={onBack}
           aria-label="Back to conversations"
-          className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
-          style={GLASS}
+          className="chat-header-glass shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
@@ -729,12 +715,11 @@ export default function ChatConversation({
                 type="button"
                 onClick={() => peerUserId && onViewProfile?.(peerUserId)}
                 disabled={!peerUserId || !onViewProfile}
-                className="-mt-1 flex items-center gap-1 rounded-full px-4 py-1.5 touch-manipulation transition-opacity active:opacity-75"
-              style={GLASS}
-                aria-label={peerUserId ? `View ${peerDisplayName}'s profile` : undefined}
-              >
-                <span className="text-[16px] font-bold text-white">{peerDisplayName}</span>
-                {peerUserId && <span className="text-[15px] font-normal text-zinc-300">›</span>}
+              className="chat-header-glass -mt-1 flex items-center gap-1 rounded-full px-4 py-1.5 touch-manipulation transition-opacity active:opacity-75"
+              aria-label={peerUserId ? `View ${peerDisplayName}'s profile` : undefined}
+            >
+              <span className="text-[16px] font-bold text-zinc-50">{peerDisplayName}</span>
+              {peerUserId && <span className="text-[15px] font-normal text-zinc-300">›</span>}
               </button>
             </>
           ) : (
@@ -749,8 +734,7 @@ export default function ChatConversation({
           type="button"
           onClick={() => setOptionsMenuOpen(true)}
           aria-label="Chat options"
-          className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
-          style={GLASS}
+          className="chat-header-glass shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5"  r="1.5" />
@@ -765,12 +749,8 @@ export default function ChatConversation({
         <>
           <div className="fixed inset-0 z-[118]" onClick={() => setOptionsMenuOpen(false)} />
           <div
-            className="fixed z-[119] w-[220px] overflow-hidden rounded-2xl"
-            style={{
-              ...GLASS_MENU,
-              top:   'calc(env(safe-area-inset-top, 0px) + 60px)',
-              right: '16px',
-            }}
+            className="chat-menu-glass fixed z-[119] w-[220px] overflow-hidden rounded-2xl"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', right: '16px' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* View profile — DMs only */}
@@ -850,11 +830,8 @@ export default function ChatConversation({
       <div className="relative min-h-0 flex-1">
         {/* Top gradient — fades/darkens messages toward the header so floating UI pops */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-10"
-          style={{
-            height: listPaddingTop,
-            background: 'linear-gradient(to bottom, rgba(3,7,18,0.90) 0%, rgba(3,7,18,0.55) 60%, transparent 100%)',
-          }}
+          className="chat-top-gradient pointer-events-none absolute inset-x-0 top-0 z-10"
+          style={{ height: listPaddingTop }}
         />
 
         <div

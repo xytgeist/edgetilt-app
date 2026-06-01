@@ -2286,3 +2286,52 @@ html.light [data-quick-link-modal] .bg-zinc-800\/80 {
 html.light [data-quick-link-bar] .text-cyan-300\/95 {
   color: #0891b2 !important;
 }
+
+/* ── Chat conversation — theme-aware glass / gradient ──────────────────────
+ * Dark (default): dark navy translucent glass + dark gradient fade.
+ * Light: white/pale translucent glass + pale gradient fade.
+ * Applied via className so that CSS cascade handles the theme switch;
+ * inline styles in the component only carry dynamic values (e.g. height).
+ * ─────────────────────────────────────────────────────────────────────── */
+.chat-header-glass {
+  background: rgba(20, 22, 40, 0.33);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+html.light .chat-header-glass {
+  background: rgba(235, 238, 255, 0.44);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.chat-top-gradient {
+  background: linear-gradient(
+    to bottom,
+    rgba(3, 7, 18, 0.90) 0%,
+    rgba(3, 7, 18, 0.55) 60%,
+    transparent 100%
+  );
+}
+html.light .chat-top-gradient {
+  background: linear-gradient(
+    to bottom,
+    rgba(245, 246, 252, 0.94) 0%,
+    rgba(245, 246, 252, 0.60) 60%,
+    transparent 100%
+  );
+}
+
+.chat-menu-glass {
+  background: rgba(18, 18, 28, 0.88);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+html.light .chat-menu-glass {
+  background: rgba(248, 249, 255, 0.93);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+}

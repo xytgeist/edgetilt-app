@@ -83,6 +83,7 @@ function computeLayout(rect, isMine) {
  *     deleted_at?: string | null,
  *     reply_to_message_id?: string | null,
  *     reply_to_preview?: string | null,
+ *     reply_to_sender_id?: string | null,
  *   },
  *   senderLabel: string,
  *   senderAvatarUrl?: string | null,
@@ -222,20 +223,30 @@ export default function ChatBubble({
           {/* Reply quote — iOS style: mini card above + curved connector */}
           {!isDeleted && message.reply_to_message_id && message.reply_to_preview && (
             <>
-              {/* Mini quoted card — always on the OPPOSITE side from the reply bubble */}
-              <div className={`max-w-[90%] rounded-2xl px-3 py-1.5 text-[12px] leading-snug opacity-60 ${
-                isMine
-                  ? 'self-start bg-zinc-800/90 text-zinc-100'
-                  : 'self-end bg-cyan-800/70 text-cyan-50'
-              }`}>
-                <p className="line-clamp-2">{message.reply_to_preview}</p>
-              </div>
-              {/* Curved thread connector — stays on the quote card's side */}
-              <div className={`h-4 w-5 ${
-                isMine
-                  ? 'self-start ml-1 border-l-2 border-b-2 border-zinc-500/50 rounded-bl-[10px]'
-                  : 'self-end mr-1 border-r-2 border-b-2 border-zinc-500/50 rounded-br-[10px]'
-              }`} />
+              {/* Mini quoted card — on the ORIGINAL SENDER'S side of the chat */}
+              {(() => {
+                // True if the quoted message was sent by the viewer; fall back to opposite-of-reply.
+                const isQuoteMine = message.reply_to_sender_id != null
+                  ? message.reply_to_sender_id === viewerUserId
+                  : !isMine
+                return (
+                  <>
+                    <div className={`max-w-[90%] rounded-2xl px-3 py-1.5 text-[12px] leading-snug opacity-60 ${
+                      isQuoteMine
+                        ? 'self-end bg-cyan-800/70 text-cyan-50'
+                        : 'self-start bg-zinc-800/90 text-zinc-100'
+                    }`}>
+                      <p className="line-clamp-2">{message.reply_to_preview}</p>
+                    </div>
+                    {/* Curved thread connector — stays on the quote card's side */}
+                    <div className={`h-4 w-5 ${
+                      isQuoteMine
+                        ? 'self-end mr-1 border-r-2 border-b-2 border-zinc-500/50 rounded-br-[10px]'
+                        : 'self-start ml-1 border-l-2 border-b-2 border-zinc-500/50 rounded-bl-[10px]'
+                    }`} />
+                  </>
+                )
+              })()}
             </>
           )}
 

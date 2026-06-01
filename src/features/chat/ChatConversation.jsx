@@ -54,7 +54,7 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
     return q
   }
   const { data: d2, error: e2 } = await buildDirect(
-    supabaseClient.from('chat_messages').select('id, body, image_urls, sender_id, created_at, deleted_at, reply_to_message_id, reply_to_preview')
+    supabaseClient.from('chat_messages').select('id, body, image_urls, sender_id, created_at, deleted_at, reply_to_message_id, reply_to_preview, reply_to_sender_id')
   )
   if (!e2) return d2 || []
   const { data: d3, error: e3 } = await buildDirect(
@@ -515,6 +515,7 @@ export default function ChatConversation({
       deleted_at: null,
       reply_to_message_id: replyToMessageId || null,
       reply_to_preview: replyPreview,
+      reply_to_sender_id: origMsg?.sender_id || null,
     }
     setMessages((prev) => [...prev, optimistic])
     requestAnimationFrame(() => scrollToBottom('smooth'))

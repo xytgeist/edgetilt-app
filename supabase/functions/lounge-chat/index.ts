@@ -292,15 +292,17 @@ Deno.serve(async (req) => {
       return json(403, { error: 'Subscriber required to post in this room.' })
     }
 
-    // Resolve reply preview if replying to a message in the same room.
+    // Resolve reply preview + sender if replying to a message in the same room.
     let replyToPreview: string | null = null
+    let replyToSenderId: string | null = null
     if (replyToId) {
       const { data: orig } = await admin
         .from('chat_messages')
-        .select('room_id, body, image_urls, deleted_at')
+        .select('room_id, body, image_urls, deleted_at, sender_id')
         .eq('id', replyToId)
         .maybeSingle()
       if (orig && orig.room_id === roomId && !orig.deleted_at) {
+        replyToSenderId = orig.sender_id || null
         const origBody = String(orig.body || '').trim()
         if (origBody.length > 0) {
           replyToPreview = origBody.slice(0, 80) + (origBody.length > 80 ? '…' : '')
@@ -317,6 +319,7 @@ Deno.serve(async (req) => {
       image_urls: imageUrls,
       reply_to_message_id: replyToId || null,
       reply_to_preview: replyToPreview,
+      reply_to_sender_id: replyToSenderId,
       idempotency_key: idempotencyKey,
     }).select('id').maybeSingle()
     if (sErr) {

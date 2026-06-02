@@ -143,6 +143,23 @@ export default function ChatTab({
     void loadRooms()
   }, [loadRooms])
 
+  // ── Realtime — refresh inbox when any new message arrives ────────────────
+  // postgres_changes is filtered by RLS, so only messages in rooms the viewer
+  // is a member of come through. On any INSERT we reload the room list so the
+  // unread dot / bold preview / timestamp update without the user going back.
+  useEffect(() => {
+    if (!supabaseClient || !viewerUserId) return
+    const channel = supabaseClient
+      .channel(`chat-inbox-${viewerUserId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => { void loadRooms() },
+      )
+      .subscribe()
+    return () => { void supabaseClient.removeChannel(channel) }
+  }, [supabaseClient, viewerUserId, loadRooms])
+
   // ── Handle initialPeerUserId (from profile Message tap) ──────────────────
   // Use a ref so we don't re-fire when loadRooms/supabaseClient identity changes.
   const handledPeerRef = useRef(/** @type {string|null} */ (null))

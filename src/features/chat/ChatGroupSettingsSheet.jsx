@@ -66,21 +66,33 @@ export default function ChatGroupSettingsSheet({
   onPinsChanged,
 }) {
   const isOwner = chatIsGroupOwner(room, viewerUserId)
+
   const [title, setTitle] = useState(String(room.title || ''))
   const [description, setDescription] = useState(String(room.description || ''))
+  const [editMode, setEditMode] = useState(false)
+
   const [members, setMembers] = useState(/** @type {any[]} */ ([]))
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState('')
+
   const [starred, setStarred] = useState(/** @type {any[]} */ ([]))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  const [addExpanded, setAddExpanded] = useState(false)
   const [addSearch, setAddSearch] = useState('')
   const [addResults, setAddResults] = useState(/** @type {any[]} */ ([]))
+
   const [muteUntilLocal, setMuteUntilLocal] = useState('')
+  const [muteSheetOpen, setMuteSheetOpen] = useState(false)
+  const [customMuteVisible, setCustomMuteVisible] = useState(false)
+
+  const [auxView, setAuxView] = useState(/** @type {null | 'search' | 'pinned' | 'media' | 'starred'} */ (null))
+  const [memberActionTarget, setMemberActionTarget] = useState(/** @type {null | { user_id: string, label: string, isMuted: boolean }} */ (null))
+  const [muteTarget, setMuteTarget] = useState(/** @type {null | { user_id: string, label: string }} */ (null))
+
   const avatarInputRef = useRef(null)
   const searchTimerRef = useRef(null)
-  const [auxView, setAuxView] = useState(/** @type {null | 'search' | 'pinned' | 'media'} */ (null))
-  const [muteTarget, setMuteTarget] = useState(/** @type {null | { user_id: string, label: string } } */ (null))
 
   const reload = useCallback(async () => {
     if (!room?.id) return
@@ -108,18 +120,18 @@ export default function ChatGroupSettingsSheet({
     setTitle(String(room.title || ''))
     setDescription(String(room.description || ''))
     setErr('')
+    setEditMode(false)
     setAuxView(null)
+    setAddExpanded(false)
+    setAddSearch('')
     void reload()
   }, [open, room.title, room.description, reload])
 
   useEffect(() => {
-    if (!open) return undefined
+    if (!open || !addExpanded) return undefined
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     const q = addSearch.trim()
-    if (q.length < 2) {
-      setAddResults([])
-      return undefined
-    }
+    if (q.length < 2) { setAddResults([]); return undefined }
     searchTimerRef.current = setTimeout(async () => {
       const exclude = new Set([viewerUserId, ...members.map((m) => m.user_id)])
       const { data } = await supabaseClient
@@ -129,10 +141,8 @@ export default function ChatGroupSettingsSheet({
         .limit(12)
       setAddResults((data || []).filter((p) => p.user_id && !exclude.has(p.user_id)))
     }, 200)
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    }
-  }, [addSearch, isOwner, members, open, supabaseClient, viewerUserId])
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [addSearch, addExpanded, members, open, supabaseClient, viewerUserId])
 
   const saveMeta = async () => {
     setBusy(true)
@@ -144,6 +154,7 @@ export default function ChatGroupSettingsSheet({
         description: description.trim(),
       })
       onRoomUpdated({ title: title.trim(), description: description.trim() })
+      setEditMode(false)
     } catch (e) {
       setErr(e?.message || 'Could not save.')
     } finally {
@@ -160,11 +171,7 @@ export default function ChatGroupSettingsSheet({
     try {
       const { data: { session } } = await supabaseClient.auth.getSession()
       if (!session?.user) throw new Error('Not signed in.')
-      const { data: url, error: upErr } = await uploadProfileAvatar({
-        supabaseClient,
-        user: session.user,
-        file,
-      })
+      const { data: url, error: upErr } = await uploadProfileAvatar({ supabaseClient, user: session.user, file })
       if (upErr) throw upErr
       await chatUpdateGroup(supabaseClient, { roomId: room.id, avatarUrl: url })
       onRoomUpdated({ avatar_url: url })
@@ -178,55 +185,120 @@ export default function ChatGroupSettingsSheet({
   if (typeof document === 'undefined') return null
 
   const jump = onJumpToMessage || (() => {})
+  const roomIsMuted = room.muted_until && new Date(room.muted_until) > new Date()
+  const mutedLabel = roomIsMuted
+    ? `Until ${new Date(room.muted_until).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+    : 'Off'
 
   const settingsPortal = open ? createPortal(
     <div className="fixed inset-0 z-[95] flex flex-col bg-zinc-950" data-chat-feature>
+
+      {/* ── Header ───────────────────────────────────────────────── */}
       <div
-        className="flex shrink-0 items-center gap-2 border-b border-zinc-800/80 px-3 pb-3"
+        className="flex shrink-0 items-center gap-3 border-b border-zinc-800/60 px-3 pb-3"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
       >
         <button
           type="button"
           onClick={onClose}
-          className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70"
-          aria-label="Close group settings"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 touch-manipulation active:bg-zinc-800"
+          aria-label="Close"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
-        <h1 className="min-w-0 flex-1 truncate text-[17px] font-bold text-zinc-50">Group settings</h1>
+        <h1 className="flex-1 text-[17px] font-semibold text-zinc-100">Group info</h1>
+        {isOwner && !editMode && (
+          <button
+            type="button"
+            onClick={() => setEditMode(true)}
+            className="text-[14px] font-semibold text-cyan-400 touch-manipulation active:opacity-70"
+          >
+            Edit
+          </button>
+        )}
+        {isOwner && editMode && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditMode(false)
+              setTitle(String(room.title || ''))
+              setDescription(String(room.description || ''))
+            }}
+            className="text-[14px] font-semibold text-zinc-400 touch-manipulation active:opacity-70"
+          >
+            Cancel
+          </button>
+        )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-8">
+      {/* ── Scroll body ──────────────────────────────────────────── */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+
         {err ? (
-          <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
+          <div className="mx-4 mt-3 rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2.5 text-[13px] text-rose-300">
             {err}
           </div>
         ) : null}
 
-        <div className="flex flex-col items-center gap-2 pb-6">
-          <ChatGroupHeaderStack
-            groupAvatarUrl={room.avatar_url}
-            members={headerMembers}
-            size={72}
-          />
-          {isOwner ? (
-            <>
-              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={onPickAvatar} />
+        {/* ── Hero ──────────────────────────────────────────────── */}
+        <div className="flex flex-col items-center px-4 pb-5 pt-6">
+          <div className="relative">
+            <ChatGroupHeaderStack
+              groupAvatarUrl={room.avatar_url}
+              members={headerMembers}
+              size={80}
+            />
+            {isOwner && (
+              <>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={onPickAvatar} />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-zinc-950 bg-zinc-700 text-zinc-200 shadow touch-manipulation active:bg-zinc-600 disabled:opacity-40"
+                  aria-label="Change group photo"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+
+          {editMode ? (
+            <div className="mt-5 w-full space-y-2">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={80}
+                placeholder="Group name"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-center text-[16px] font-semibold text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-500/60 focus:outline-none"
+              />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={500}
+                rows={2}
+                placeholder="Description (optional)"
+                className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-center text-[14px] text-zinc-300 placeholder:text-zinc-500 focus:border-cyan-500/60 focus:outline-none"
+              />
               <button
                 type="button"
-                disabled={busy}
-                onClick={() => avatarInputRef.current?.click()}
-                className="text-[13px] font-semibold text-cyan-400 touch-manipulation active:opacity-70"
+                disabled={busy || !title.trim()}
+                onClick={() => void saveMeta()}
+                className="w-full rounded-xl bg-cyan-600 py-2.5 text-[15px] font-semibold text-zinc-950 touch-manipulation active:opacity-80 disabled:opacity-50"
               >
-                Change group photo
+                {busy ? 'Saving…' : 'Save changes'}
               </button>
               {room.avatar_url ? (
                 <button
                   type="button"
                   disabled={busy}
-                  className="text-[12px] font-medium text-zinc-500 touch-manipulation active:text-zinc-300"
+                  className="w-full py-1 text-center text-[13px] text-zinc-500 touch-manipulation active:text-zinc-300 disabled:opacity-40"
                   onClick={async () => {
                     setBusy(true)
                     setErr('')
@@ -240,266 +312,227 @@ export default function ChatGroupSettingsSheet({
                     }
                   }}
                 >
-                  Use member avatars instead
+                  Remove group photo
                 </button>
               ) : null}
-            </>
-          ) : null}
+            </div>
+          ) : (
+            <div className="mt-4 text-center">
+              <p className="text-[20px] font-bold text-zinc-100 leading-tight">
+                {room.title || title || 'Group chat'}
+              </p>
+              {(room.description || description) ? (
+                <p className="mt-1.5 text-[14px] leading-snug text-zinc-400">
+                  {room.description || description}
+                </p>
+              ) : null}
+              {!membersLoading && members.length > 0 ? (
+                <p className="mt-2 text-[12px] text-zinc-600">
+                  {members.length} {members.length === 1 ? 'member' : 'members'}
+                </p>
+              ) : null}
+            </div>
+          )}
         </div>
 
-        {isOwner ? (
-          <Section title="Group info">
-            <label className="block text-[12px] font-medium text-zinc-500">Name</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={80}
-              className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[15px] text-zinc-100"
-            />
-            <label className="mt-3 block text-[12px] font-medium text-zinc-500">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={500}
-              rows={3}
-              className="mt-1 w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[15px] text-zinc-100"
-            />
+        {/* ── Quick actions ─────────────────────────────────────── */}
+        <SettingsGroup>
+          <SettingsRow
+            icon={<IconSearch />}
+            label="Search messages"
+            onPress={() => setAuxView('search')}
+          />
+          <SettingsRow
+            icon={<IconPin />}
+            label="Pinned messages"
+            onPress={() => setAuxView('pinned')}
+          />
+          <SettingsRow
+            icon={<IconMedia />}
+            label="Media, links & docs"
+            onPress={() => setAuxView('media')}
+          />
+          <SettingsRow
+            icon={<IconStar />}
+            label="Starred messages"
+            badge={starred.length > 0 ? String(starred.length) : null}
+            onPress={starred.length > 0 ? () => setAuxView('starred') : null}
+            dim={starred.length === 0}
+          />
+        </SettingsGroup>
+
+        {/* ── Members ───────────────────────────────────────────── */}
+        <SectionLabel>
+          {membersLoading ? 'Members' : members.length > 0 ? `${members.length} member${members.length === 1 ? '' : 's'}` : 'Members'}
+        </SectionLabel>
+        <div className="mx-4 overflow-hidden rounded-2xl bg-zinc-900/60">
+          {membersLoading ? (
+            <div className="px-4 py-3.5 text-[13px] text-zinc-500">Loading…</div>
+          ) : membersError ? (
+            <div className="px-4 py-3.5 text-[13px] leading-snug text-amber-400/90">{membersError}</div>
+          ) : members.length === 0 ? (
+            <div className="px-4 py-3.5 text-[13px] text-zinc-500">No members found.</div>
+          ) : members.map((m, i) => {
+            const memberIsMuted = m.moderation_muted_until && new Date(m.moderation_muted_until) > new Date()
+            const isMe = m.user_id === viewerUserId
+            return (
+              <div
+                key={m.user_id}
+                className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-zinc-800/50' : ''}`}
+              >
+                {m.avatar_url ? (
+                  <img src={m.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-700 text-[14px] font-bold text-zinc-300">
+                    {(m.display_name || m.handle || '?')[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="truncate text-[14px] font-semibold text-zinc-100">
+                      {m.display_name || m.handle || 'Member'}
+                    </span>
+                    {isMe && <span className="shrink-0 text-[11px] text-zinc-500">you</span>}
+                  </div>
+                  {m.handle && m.display_name ? (
+                    <div className="truncate text-[12px] text-zinc-500">@{m.handle}</div>
+                  ) : null}
+                  {memberIsMuted && !isMe ? (
+                    <div className="text-[11px] text-amber-400/80">Muted · cannot send</div>
+                  ) : null}
+                </div>
+                {isOwner && !isMe ? (
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:bg-zinc-800"
+                    onClick={() => setMemberActionTarget({
+                      user_id: m.user_id,
+                      label: m.display_name || m.handle || 'Member',
+                      isMuted: !!memberIsMuted,
+                    })}
+                    aria-label="Member options"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="5" r="2" />
+                      <circle cx="12" cy="12" r="2" />
+                      <circle cx="12" cy="19" r="2" />
+                    </svg>
+                  </button>
+                ) : null}
+              </div>
+            )
+          })}
+
+          {/* Add member row */}
+          {!addExpanded ? (
             <button
               type="button"
-              disabled={busy || !title.trim()}
-              onClick={() => void saveMeta()}
-              className="mt-3 w-full rounded-xl bg-cyan-600 py-2.5 text-[15px] font-semibold text-zinc-950 touch-manipulation active:opacity-80 disabled:opacity-50"
+              onClick={() => setAddExpanded(true)}
+              className={`flex w-full items-center gap-3 px-3 py-2.5 touch-manipulation active:bg-zinc-800 ${members.length > 0 ? 'border-t border-zinc-800/50' : ''}`}
             >
-              Save
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-cyan-500/10 text-cyan-400">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </div>
+              <span className="text-[14px] font-semibold text-cyan-400">Add member</span>
             </button>
-          </Section>
-        ) : (
-          <Section title="Group info">
-            <p className="text-[16px] font-bold text-zinc-100">{title || 'Group chat'}</p>
-            {description ? <p className="mt-2 text-[14px] text-zinc-400">{description}</p> : null}
-          </Section>
-        )}
-
-        <Section title={isOwner ? 'Members (you can mute or remove)' : 'Members'}>
-          {membersLoading ? (
-            <p className="text-[13px] text-zinc-500">Loading members…</p>
-          ) : membersError ? (
-            <p className="text-[13px] leading-snug text-amber-400/90">{membersError}</p>
-          ) : members.length === 0 ? (
-            <p className="text-[13px] text-zinc-500">No members found for this group.</p>
           ) : (
-          <ul className="space-y-2">
-            {members.map((m) => (
-              <li key={m.user_id} className="rounded-xl bg-zinc-900/80 px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  {m.avatar_url ? (
-                    <img src={m.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
-                  ) : (
-                    <div className="grid h-9 w-9 place-items-center rounded-full bg-zinc-700 text-[13px] font-bold text-zinc-300">
-                      {(m.display_name || m.handle || '?')[0]?.toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-semibold text-zinc-100">
-                      {m.display_name || m.handle || 'Member'}
-                      {m.user_id === viewerUserId ? (
-                        <span className="ml-1 text-[12px] font-normal text-zinc-500">(you)</span>
-                      ) : null}
-                    </div>
-                    {m.moderation_muted_until && new Date(m.moderation_muted_until) > new Date() ? (
-                      <div className="text-[11px] text-amber-400/90">Muted in group — cannot send</div>
-                    ) : null}
-                  </div>
-                </div>
-                {isOwner && m.user_id !== viewerUserId ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-lg border border-zinc-600 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
-                      onClick={() => setMuteTarget({
-                        user_id: m.user_id,
-                        label: m.display_name || m.handle || 'Member',
-                      })}
-                    >
-                      Mute…
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-zinc-600 px-3 py-1.5 text-[12px] font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800"
-                      onClick={async () => {
-                        try {
-                          await chatUnmuteGroupMember(supabaseClient, room.id, m.user_id)
-                          await reload()
-                        } catch (ex) {
-                          setErr(ex?.message || 'Unmute failed.')
-                        }
-                      }}
-                    >
-                      Unmute
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-rose-500/50 px-3 py-1.5 text-[12px] font-semibold text-rose-400 touch-manipulation active:bg-rose-950/40"
-                      onClick={async () => {
-                        if (!window.confirm(`Remove ${m.display_name || m.handle || 'this member'} from the group?`)) return
-                        try {
-                          await chatRemoveGroupMember(supabaseClient, room.id, m.user_id)
-                          await reload()
-                        } catch (ex) {
-                          setErr(ex?.message || 'Remove failed.')
-                        }
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          )}
-          <div className="mt-3">
-              <input
-                value={addSearch}
-                onChange={(e) => setAddSearch(e.target.value)}
-                placeholder="Search handle to add…"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[15px] text-zinc-100 placeholder:text-zinc-500"
-              />
+            <div className={`px-3 pb-3 pt-2.5 ${members.length > 0 ? 'border-t border-zinc-800/50' : ''}`}>
+              <div className="flex items-center gap-2">
+                <input
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
+                  value={addSearch}
+                  onChange={(e) => setAddSearch(e.target.value)}
+                  placeholder="Search name or handle…"
+                  className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-[14px] text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-500/60 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setAddExpanded(false); setAddSearch(''); setAddResults([]) }}
+                  className="shrink-0 text-[13px] font-medium text-zinc-400 touch-manipulation active:text-zinc-200"
+                >
+                  Cancel
+                </button>
+              </div>
               {addResults.length > 0 ? (
-                <ul className="mt-2 overflow-hidden rounded-xl border border-zinc-700/80">
+                <ul className="mt-2 space-y-0.5">
                   {addResults.map((p) => (
                     <li key={p.user_id}>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left touch-manipulation active:bg-zinc-800"
+                        className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 touch-manipulation active:bg-zinc-800"
                         onClick={async () => {
                           try {
                             await chatAddGroupMembers(supabaseClient, room.id, [p.user_id])
                             setAddSearch('')
+                            setAddExpanded(false)
+                            setAddResults([])
                             await reload()
                           } catch (ex) {
                             setErr(ex?.message || 'Could not add member.')
                           }
                         }}
                       >
-                        <span className="text-[14px] font-semibold text-zinc-100">
-                          {p.display_name || p.handle}
-                        </span>
+                        {p.avatar_url ? (
+                          <img src={p.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+                        ) : (
+                          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-zinc-700 text-[12px] font-bold text-zinc-300">
+                            {(p.display_name || p.handle || '?')[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1 text-left">
+                          <div className="truncate text-[14px] font-semibold text-zinc-100">
+                            {p.display_name || p.handle}
+                          </div>
+                          {p.handle && p.display_name ? (
+                            <div className="text-[12px] text-zinc-500">@{p.handle}</div>
+                          ) : null}
+                        </div>
+                        <span className="shrink-0 text-[13px] font-semibold text-cyan-400">Add</span>
                       </button>
                     </li>
                   ))}
                 </ul>
+              ) : addSearch.trim().length >= 2 ? (
+                <p className="mt-2 px-1 text-[13px] text-zinc-500">No results for "{addSearch.trim()}"</p>
               ) : null}
             </div>
-        </Section>
-
-        <Section title="Mute notifications">
-          <div className="flex flex-wrap gap-2">
-            {SELF_MUTE_OPTS.map((o) => (
-              <button
-                key={o.label}
-                type="button"
-                className="rounded-full border border-zinc-600 px-3 py-1.5 text-[13px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
-                onClick={async () => {
-                  try {
-                    await chatMuteRoom(supabaseClient, room.id, o.hours)
-                    onRoomUpdated({ muted_until: new Date(Date.now() + o.hours * 3600000).toISOString() })
-                  } catch (ex) {
-                    setErr(ex?.message || 'Mute failed.')
-                  }
-                }}
-              >
-                {o.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="rounded-full border border-zinc-600 px-3 py-1.5 text-[13px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
-              onClick={async () => {
-                try {
-                  await chatUnmuteRoom(supabaseClient, room.id)
-                  onRoomUpdated({ muted_until: null })
-                } catch (ex) {
-                  setErr(ex?.message || 'Unmute failed.')
-                }
-              }}
-            >
-              Unmute group
-            </button>
-          </div>
-          <label className="mt-3 block text-[12px] text-zinc-500">Mute until (local time)</label>
-          <div className="mt-1 flex gap-2">
-            <input
-              type="datetime-local"
-              value={muteUntilLocal}
-              onChange={(e) => setMuteUntilLocal(e.target.value)}
-              className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-2 py-2 text-[14px] text-zinc-100"
-            />
-            <button
-              type="button"
-              disabled={!muteUntilLocal}
-              className="shrink-0 rounded-xl bg-zinc-700 px-3 py-2 text-[13px] font-semibold text-zinc-100 touch-manipulation active:opacity-80 disabled:opacity-40"
-              onClick={async () => {
-                try {
-                  const iso = new Date(muteUntilLocal).toISOString()
-                  await chatMuteRoomUntil(supabaseClient, room.id, iso)
-                  onRoomUpdated({ muted_until: iso })
-                } catch (ex) {
-                  setErr(ex?.message || 'Mute failed.')
-                }
-              }}
-            >
-              Apply
-            </button>
-          </div>
-        </Section>
-
-        <Section title="Starred messages">
-          {starred.length === 0 ? (
-            <p className="text-[13px] text-zinc-500">Long-press a message and tap Star.</p>
-          ) : (
-            <ul className="space-y-2">
-              {starred.map((s) => (
-                <li key={s.message_id}>
-                  <button
-                    type="button"
-                    className="w-full rounded-xl bg-zinc-900/80 px-3 py-2 text-left text-[14px] text-zinc-200 touch-manipulation active:bg-zinc-800"
-                    onClick={() => {
-                      onJumpToMessage?.(s.message_id)
-                      onClose()
-                    }}
-                  >
-                    <div className="line-clamp-2">{s.body || '[media]'}</div>
-                    <div className="mt-1 text-[11px] text-zinc-500">
-                      {new Date(s.created_at).toLocaleString()}
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
           )}
-        </Section>
+        </div>
 
-        <Section title="More">
-          <MoreRow label="Search messages" onClick={() => setAuxView('search')} />
-          <MoreRow label="Pinned messages" onClick={() => setAuxView('pinned')} />
-          <MoreRow label="Media, links & docs" onClick={() => setAuxView('media')} />
-        </Section>
+        {/* ── Notifications ─────────────────────────────────────── */}
+        <SectionLabel>Notifications</SectionLabel>
+        <SettingsGroup>
+          <SettingsRow
+            icon={<IconBell />}
+            label="Mute notifications"
+            value={mutedLabel}
+            valueHighlight={!!roomIsMuted}
+            onPress={() => setMuteSheetOpen(true)}
+          />
+        </SettingsGroup>
 
-        <button
-          type="button"
-          className="mt-6 w-full rounded-xl border border-rose-500/50 py-3 text-[15px] font-semibold text-rose-300 touch-manipulation active:bg-rose-950/40"
-          onClick={async () => {
-            try {
-              await chatLeaveRoom(supabaseClient, room.id)
-              onLeftGroup()
-            } catch (ex) {
-              setErr(ex?.message || 'Could not leave group.')
-            }
-          }}
-        >
-          Leave group
-        </button>
+        {/* ── Leave group ───────────────────────────────────────── */}
+        <div className="mx-4 mt-5 pb-10">
+          <button
+            type="button"
+            className="w-full rounded-2xl border border-rose-500/30 bg-rose-950/20 py-3.5 text-[15px] font-semibold text-rose-400 touch-manipulation active:bg-rose-950/50"
+            onClick={async () => {
+              if (!window.confirm('Leave this group?')) return
+              try {
+                await chatLeaveRoom(supabaseClient, room.id)
+                onLeftGroup()
+              } catch (ex) {
+                setErr(ex?.message || 'Could not leave group.')
+              }
+            }}
+          >
+            Leave Group
+          </button>
+        </div>
       </div>
     </div>,
     document.body,
@@ -507,58 +540,132 @@ export default function ChatGroupSettingsSheet({
 
   return (
     <>
-      {muteTarget && createPortal(
-        <div
-          className="fixed inset-0 z-[97] flex items-end justify-center bg-black/50 pb-6"
-          onClick={() => setMuteTarget(null)}
-        >
-          <div
-            className="mx-4 w-full max-w-sm rounded-2xl border border-zinc-700/50 bg-zinc-900 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-b border-zinc-800 px-5 py-3 text-[14px] font-semibold text-zinc-200">
-              Mute {muteTarget.label} from sending
-            </div>
-            {OWNER_MEMBER_MUTE_OPTS.map((o) => (
+      {/* ── Mute notifications sheet ─────────────────────────── */}
+      {muteSheetOpen ? createPortal(
+        <BottomSheet onDismiss={() => { setMuteSheetOpen(false); setCustomMuteVisible(false) }}>
+          <SheetTitle>Mute notifications</SheetTitle>
+          {SELF_MUTE_OPTS.map((o) => (
+            <SheetRow key={o.label} onClick={async () => {
+              try {
+                await chatMuteRoom(supabaseClient, room.id, o.hours)
+                onRoomUpdated({ muted_until: new Date(Date.now() + o.hours * 3600000).toISOString() })
+              } catch (ex) { setErr(ex?.message || 'Mute failed.') }
+              setMuteSheetOpen(false)
+              setCustomMuteVisible(false)
+            }}>
+              {o.label}
+            </SheetRow>
+          ))}
+          <SheetRow onClick={() => setCustomMuteVisible((v) => !v)}>
+            Custom time…
+          </SheetRow>
+          {customMuteVisible ? (
+            <div className="flex gap-2 border-b border-zinc-800/60 px-4 pb-3 pt-2">
+              <input
+                type="datetime-local"
+                value={muteUntilLocal}
+                onChange={(e) => setMuteUntilLocal(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-2 py-2 text-[14px] text-zinc-100"
+              />
               <button
-                key={o.label}
                 type="button"
-                className="flex w-full px-5 py-3.5 text-left text-[15px] font-semibold text-zinc-100 touch-manipulation active:bg-zinc-800"
+                disabled={!muteUntilLocal}
+                className="shrink-0 rounded-xl bg-zinc-700 px-3 py-2 text-[13px] font-semibold text-zinc-100 disabled:opacity-40"
                 onClick={async () => {
                   try {
-                    await chatMuteGroupMember(supabaseClient, room.id, muteTarget.user_id, o.minutes)
-                    setMuteTarget(null)
-                    await reload()
-                  } catch (ex) {
-                    setErr(ex?.message || 'Mute failed.')
-                    setMuteTarget(null)
-                  }
+                    const iso = new Date(muteUntilLocal).toISOString()
+                    await chatMuteRoomUntil(supabaseClient, room.id, iso)
+                    onRoomUpdated({ muted_until: iso })
+                  } catch (ex) { setErr(ex?.message || 'Mute failed.') }
+                  setMuteSheetOpen(false)
+                  setCustomMuteVisible(false)
                 }}
               >
-                {o.label}
+                Apply
               </button>
-            ))}
-            <button
-              type="button"
-              className="flex w-full justify-center border-t border-zinc-800 px-5 py-3.5 text-[15px] text-zinc-400 touch-manipulation active:bg-zinc-800"
-              onClick={() => setMuteTarget(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>,
+            </div>
+          ) : null}
+          {roomIsMuted ? (
+            <SheetRow accent="amber" onClick={async () => {
+              try {
+                await chatUnmuteRoom(supabaseClient, room.id)
+                onRoomUpdated({ muted_until: null })
+              } catch (ex) { setErr(ex?.message || 'Unmute failed.') }
+              setMuteSheetOpen(false)
+            }}>
+              Unmute group
+            </SheetRow>
+          ) : null}
+          <SheetCancel onClick={() => { setMuteSheetOpen(false); setCustomMuteVisible(false) }} />
+        </BottomSheet>,
         document.body,
-      )}
+      ) : null}
+
+      {/* ── Owner: member action sheet ───────────────────────── */}
+      {memberActionTarget ? createPortal(
+        <BottomSheet onDismiss={() => setMemberActionTarget(null)}>
+          <SheetTitle>{memberActionTarget.label}</SheetTitle>
+          <SheetRow onClick={() => {
+            setMuteTarget({ user_id: memberActionTarget.user_id, label: memberActionTarget.label })
+            setMemberActionTarget(null)
+          }}>
+            Mute from sending…
+          </SheetRow>
+          {memberActionTarget.isMuted ? (
+            <SheetRow accent="amber" onClick={async () => {
+              try {
+                await chatUnmuteGroupMember(supabaseClient, room.id, memberActionTarget.user_id)
+                await reload()
+              } catch (ex) { setErr(ex?.message || 'Unmute failed.') }
+              setMemberActionTarget(null)
+            }}>
+              Remove mute
+            </SheetRow>
+          ) : null}
+          <SheetRow accent="rose" onClick={async () => {
+            if (!window.confirm(`Remove ${memberActionTarget.label} from the group?`)) return
+            try {
+              await chatRemoveGroupMember(supabaseClient, room.id, memberActionTarget.user_id)
+              await reload()
+            } catch (ex) { setErr(ex?.message || 'Remove failed.') }
+            setMemberActionTarget(null)
+          }}>
+            Remove from group
+          </SheetRow>
+          <SheetCancel onClick={() => setMemberActionTarget(null)} />
+        </BottomSheet>,
+        document.body,
+      ) : null}
+
+      {/* ── Owner: mute member duration picker ───────────────── */}
+      {muteTarget ? createPortal(
+        <BottomSheet zIndex={98} onDismiss={() => setMuteTarget(null)}>
+          <SheetTitle>Mute {muteTarget.label}</SheetTitle>
+          {OWNER_MEMBER_MUTE_OPTS.map((o) => (
+            <SheetRow key={o.label} onClick={async () => {
+              try {
+                await chatMuteGroupMember(supabaseClient, room.id, muteTarget.user_id, o.minutes)
+                await reload()
+              } catch (ex) { setErr(ex?.message || 'Mute failed.') }
+              setMuteTarget(null)
+            }}>
+              {o.label}
+            </SheetRow>
+          ))}
+          <SheetCancel onClick={() => setMuteTarget(null)} />
+        </BottomSheet>,
+        document.body,
+      ) : null}
+
       {settingsPortal}
+
+      {/* ── Aux sheets ───────────────────────────────────────── */}
       <ChatGroupSearchSheet
         open={open && auxView === 'search'}
         onBack={() => setAuxView(null)}
         supabaseClient={supabaseClient}
         roomId={String(room.id)}
-        onJumpToMessage={(id) => {
-          jump(id)
-          onClose()
-        }}
+        onJumpToMessage={(id) => { jump(id); onClose() }}
       />
       <ChatGroupPinnedSheet
         open={open && auxView === 'pinned'}
@@ -566,10 +673,7 @@ export default function ChatGroupSettingsSheet({
         supabaseClient={supabaseClient}
         room={room}
         viewerUserId={viewerUserId}
-        onJumpToMessage={(id) => {
-          jump(id)
-          onClose()
-        }}
+        onJumpToMessage={(id) => { jump(id); onClose() }}
         onPinsChanged={onPinsChanged}
       />
       <ChatGroupMediaSheet
@@ -577,33 +681,197 @@ export default function ChatGroupSettingsSheet({
         onBack={() => setAuxView(null)}
         supabaseClient={supabaseClient}
         roomId={String(room.id)}
-        onJumpToMessage={(id) => {
-          jump(id)
-          onClose()
-        }}
+        onJumpToMessage={(id) => { jump(id); onClose() }}
       />
+
+      {/* Starred messages sub-screen */}
+      {open && auxView === 'starred' ? createPortal(
+        <div className="fixed inset-0 z-[96] flex flex-col bg-zinc-950" data-chat-feature>
+          <div
+            className="flex shrink-0 items-center gap-3 border-b border-zinc-800/60 px-3 pb-3"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+          >
+            <button
+              type="button"
+              onClick={() => setAuxView(null)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 touch-manipulation active:bg-zinc-800"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <h1 className="flex-1 text-[17px] font-semibold text-zinc-100">Starred</h1>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-3">
+            {starred.length === 0 ? (
+              <p className="mt-4 text-center text-[14px] text-zinc-500">
+                Long-press any message and tap Star.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {starred.map((s) => (
+                  <li key={s.message_id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-xl bg-zinc-900/80 px-3 py-2.5 text-left touch-manipulation active:bg-zinc-800"
+                      onClick={() => { onJumpToMessage?.(s.message_id); onClose() }}
+                    >
+                      <div className="line-clamp-2 text-[14px] text-zinc-200">{s.body || '[media]'}</div>
+                      <div className="mt-1 text-[11px] text-zinc-500">
+                        {new Date(s.created_at).toLocaleString()}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </>
   )
 }
 
-function Section({ title, children }) {
+/* ── Primitives ───────────────────────────────────────────────────── */
+
+function SectionLabel({ children }) {
   return (
-    <section className="mb-6">
-      <h2 className="mb-2 text-[12px] font-bold uppercase tracking-wide text-zinc-500">{title}</h2>
+    <p className="mx-4 mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
       {children}
-    </section>
+    </p>
   )
 }
 
-function MoreRow({ label, onClick }) {
+function SettingsGroup({ children }) {
+  return (
+    <div className="mx-4 overflow-hidden rounded-2xl bg-zinc-900/60">
+      {children}
+    </div>
+  )
+}
+
+function SettingsRow({ icon, label, value, valueHighlight, badge, onPress, dim = false }) {
+  const Tag = onPress ? 'button' : 'div'
+  return (
+    <Tag
+      type={onPress ? 'button' : undefined}
+      onClick={onPress || undefined}
+      className={`flex w-full items-center gap-3 border-b border-zinc-800/50 px-4 py-3 last:border-b-0 ${onPress ? 'touch-manipulation active:bg-zinc-800' : ''}`}
+    >
+      <span className={`shrink-0 ${dim ? 'text-zinc-600' : 'text-zinc-400'}`}>{icon}</span>
+      <span className={`flex-1 text-left text-[14px] font-medium ${dim ? 'text-zinc-500' : 'text-zinc-100'}`}>{label}</span>
+      {badge ? (
+        <span className="shrink-0 min-w-[20px] rounded-full bg-zinc-700 px-1.5 py-0.5 text-center text-[11px] font-semibold text-zinc-300">
+          {badge}
+        </span>
+      ) : null}
+      {value != null ? (
+        <span className={`shrink-0 text-[13px] ${valueHighlight ? 'text-amber-400' : 'text-zinc-500'}`}>
+          {value}
+        </span>
+      ) : null}
+      {onPress ? (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-zinc-600">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      ) : null}
+    </Tag>
+  )
+}
+
+function BottomSheet({ children, onDismiss, zIndex = 97 }) {
+  return (
+    <div
+      className="fixed inset-0 flex items-end justify-center bg-black/60"
+      style={{ zIndex, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
+      onClick={onDismiss}
+    >
+      <div
+        className="mx-4 w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-700/40 bg-zinc-900 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function SheetTitle({ children }) {
+  return (
+    <div className="border-b border-zinc-800 px-5 py-3 text-center text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
+      {children}
+    </div>
+  )
+}
+
+function SheetRow({ children, onClick, accent }) {
+  const color = accent === 'rose' ? 'text-rose-400' : accent === 'amber' ? 'text-amber-400' : 'text-zinc-100'
   return (
     <button
       type="button"
       onClick={onClick}
-      className="mb-2 flex w-full items-center justify-between rounded-xl bg-zinc-900/80 px-3 py-3 touch-manipulation active:bg-zinc-800"
+      className={`flex w-full items-center border-b border-zinc-800/60 px-5 py-3.5 text-left text-[15px] last:border-b-0 touch-manipulation active:bg-zinc-800 ${color}`}
     >
-      <span className="text-[14px] font-medium text-zinc-200">{label}</span>
-      <span className="text-[15px] text-zinc-400">›</span>
+      {children}
     </button>
+  )
+}
+
+function SheetCancel({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full justify-center px-5 py-3.5 text-[15px] font-semibold text-zinc-400 touch-manipulation active:bg-zinc-800"
+    >
+      Cancel
+    </button>
+  )
+}
+
+/* ── Icons ────────────────────────────────────────────────────────── */
+
+function IconSearch() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  )
+}
+
+function IconPin() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  )
+}
+
+function IconMedia() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  )
+}
+
+function IconStar() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  )
+}
+
+function IconBell() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
   )
 }

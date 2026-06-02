@@ -686,17 +686,23 @@ export default function ChatConversation({
   }, [])
 
   // Swipe-down-to-dismiss keyboard — independent of the timestamp-swipe logic.
-  // Only fires when the user is near the bottom of the list (so normal upward
-  // scroll to read old messages still works without dismissing the keyboard).
+  // Captures keyboard-open state at touchstart so scroll position can't block dismiss.
   useEffect(() => {
     const el = listRef.current
     if (!el) return
     let startY = 0
-    const onStart = (e) => { startY = e.touches[0]?.clientY ?? 0 }
+    let keyboardWasOpen = false
+    const onStart = (e) => {
+      startY = e.touches[0]?.clientY ?? 0
+      const tag = document.activeElement?.tagName
+      keyboardWasOpen = tag === 'TEXTAREA' || tag === 'INPUT'
+    }
     const onEnd = (e) => {
       const dy = (e.changedTouches[0]?.clientY ?? 0) - startY
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
-      if (dy > 50 && nearBottom) document.activeElement?.blur?.()
+      if (dy > 50 && keyboardWasOpen) {
+        document.activeElement?.blur?.()
+        requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }))
+      }
     }
     el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchend', onEnd, { passive: true })

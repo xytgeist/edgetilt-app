@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /** Approximate iOS software-keyboard slide duration (ms). */
-const DEFAULT_SMOOTH_MS = 185
+const DEFAULT_SMOOTH_MS = 135
 
 /**
  * visualViewport keyboard overlap — same formula as Lounge post-detail reply composer.
@@ -67,8 +67,11 @@ export function useLoungeKeyboardOverlapPx(active = true, options = {}) {
         rafRef.current = 0
         return
       }
-      // Frame-chase toward live target — softens chunky visualViewport steps.
-      const alpha = Math.min(0.38, 24 / Math.max(36, smoothMs))
+      // Opening: chase a bit faster; closing: snap down quicker to avoid safe-area rebound.
+      const opening = target > cur
+      const alpha = opening
+        ? Math.min(0.52, 32 / Math.max(28, smoothMs))
+        : Math.min(0.58, 36 / Math.max(24, smoothMs * 0.85))
       const next = cur + diff * alpha
       displayRef.current = next
       setDisplayPx(next)

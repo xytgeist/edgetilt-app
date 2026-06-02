@@ -147,8 +147,11 @@ export default function ChatConversation({
   const iosKeyboardDismissVvHandlerRef = useRef(/** @type {(() => void) | null} */ (null))
   const tailPinFollowRafRef = useRef(0)
   const tailPinFollowUntilRef = useRef(0)
+  const kbOverlapPrevRef = useRef(0)
+  const kbClosingRef = useRef(false)
   const [composerFocused, setComposerFocused] = useState(false)
-  const kbOverlapPx = useLoungeKeyboardOverlapPx(true, { smooth: IS_IOS })
+  const [iosSafeBottomPx, setIosSafeBottomPx] = useState(10)
+  const kbOverlapPx = useLoungeKeyboardOverlapPx(true, { smooth: IS_IOS, smoothMs: 135 })
 
   // Swipe-to-reveal timestamps
   const translateLayerRef = useRef(null)
@@ -470,6 +473,19 @@ export default function ChatConversation({
 
   useEffect(() => () => {
     if (tailPinFollowRafRef.current) cancelAnimationFrame(tailPinFollowRafRef.current)
+  }, [])
+
+  // iOS: measure closed-state home-indicator padding once (px) — avoids env() snap on dismiss.
+  useEffect(() => {
+    if (!IS_IOS) return undefined
+    const probe = document.createElement('div')
+    probe.style.cssText =
+      'position:fixed;visibility:hidden;padding-bottom:max(0.625rem, env(safe-area-inset-bottom))'
+    document.body.appendChild(probe)
+    const px = parseFloat(getComputedStyle(probe).paddingBottom)
+    document.body.removeChild(probe)
+    if (Number.isFinite(px) && px > 0) setIosSafeBottomPx(px)
+    return undefined
   }, [])
 
   const measureScrolledUpCount = useCallback(() => {
@@ -896,10 +912,17 @@ export default function ChatConversation({
   }, [runTailPinFollow])
 
   useEffect(() => {
-    if (kbOverlapPx <= 0.5) return undefined
-    runTailPinFollow()
+    const prev = kbOverlapPrevRef.current
+    kbOverlapPrevRef.current = kbOverlapPx
+    kbClosingRef.current = kbOverlapPx < prev - 2
+    if (kbOverlapPx <= iosSafeBottomPx + 0.5) {
+      kbClosingRef.current = false
+      return undefined
+    }
+    // Tail-pin only while keyboard is opening — dismiss uses overlap lerp + safe-area floor.
+    if (kbOverlapPx > prev + 2) runTailPinFollow()
     return undefined
-  }, [kbOverlapPx, runTailPinFollow])
+  }, [iosSafeBottomPx, kbOverlapPx, runTailPinFollow])
 
   useEffect(() => {
     const composer = composerBarRef.current
@@ -930,10 +953,12 @@ export default function ChatConversation({
       if (growing && preservedGap != null) {
         container.scrollTop = container.scrollHeight - container.clientHeight - preservedGap
       } else if (shrinking && (atBottomRef.current || inputFocused)) {
-        if (IS_IOS) runTailPinFollow()
+        if (IS_IOS && kbClosingRef.current) { /* overlap lerp handles dismiss */ }
+        else if (IS_IOS) runTailPinFollow()
         else pinListToTail({ force: true })
       } else if (growing && (atBottomRef.current || inputFocused)) {
-        if (IS_IOS) runTailPinFollow()
+        if (IS_IOS && kbClosingRef.current) { /* avoid scroll overshoot on keyboard close */ }
+        else if (IS_IOS) runTailPinFollow()
         else pinListToTail({ force: true })
       } else if (IS_ANDROID && contentExtendsBelowComposer()) {
         if (growing || (shrinking && (atBottomRef.current || inputFocused))) {
@@ -1074,13 +1099,13 @@ export default function ChatConversation({
         finished = true
         clearIosKeyboardDismissScroll()
         if (listContentFitsInView()) {
-          listEl.scrollTo({ top: 0, behavior: 'smooth' })
+          listEl.scrollTo({ top: 0, behavior: 'instant' })
           return
         }
         if (!nearBottom()) return
         atBottomRef.current = true
         setIsAtBottom(true)
-        listEl.scrollTo({ top: listEl.scrollHeight, behavior: 'smooth' })
+        listEl.scrollTo({ top: listEl.scrollHeight, behavior: 'instant' })
       }
 
       const scheduleFinish = () => {
@@ -1169,8 +1194,9 @@ export default function ChatConversation({
   const listPaddingTop  = room.kind === 'dm'
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
-  const composerPadBottom =
-    kbOverlapPx > 0.5
+  const composerPadBottom = IS_IOS
+    ? `${Math.round(Math.max(kbOverlapPx, iosSafeBottomPx))}px`
+    : kbOverlapPx > 0.5
       ? `${Math.round(kbOverlapPx)}px`
       : 'max(0.625rem, env(safe-area-inset-bottom))'
 

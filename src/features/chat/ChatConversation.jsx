@@ -1190,10 +1190,10 @@ export default function ChatConversation({
                     ? 'Jump to latest messages'
                     : 'Scroll to bottom'
               }
-              className={`pointer-events-auto touch-manipulation shadow-lg backdrop-blur-sm transition-transform active:scale-95 ${
+              className={`chat-header-glass pointer-events-auto touch-manipulation transition-transform active:scale-95 active:opacity-70 ${
                 newMsgCount > 0 || hasNewer
-                  ? 'rounded-full border border-cyan-500/40 bg-zinc-900/95 px-4 py-2 text-[13px] font-semibold text-cyan-300 hover:bg-zinc-800'
-                  : 'flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600/50 bg-zinc-900/95 text-zinc-200 hover:bg-zinc-800'
+                  ? 'rounded-full px-4 py-2 text-[13px] font-semibold text-cyan-300'
+                  : 'flex h-10 w-10 items-center justify-center rounded-full text-zinc-100'
               }`}
             >
               {newMsgCount > 0 ? (

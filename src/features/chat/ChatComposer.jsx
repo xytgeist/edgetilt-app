@@ -261,7 +261,7 @@ export default function ChatComposer({
         {/* Textarea + inline send button */}
         <div
           ref={inputWrapRef}
-          className={`chat-input-glass relative flex flex-1 items-center overflow-hidden ${expanded ? '' : 'h-10'}`}
+          className={`chat-header-glass relative flex flex-1 items-center overflow-hidden ${expanded ? '' : 'h-10'}`}
           style={{ borderRadius: expanded ? COMPOSER_EXPANDED_RADIUS_PX : '9999px' }}
         >
           <textarea

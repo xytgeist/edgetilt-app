@@ -713,19 +713,20 @@ export default function ChatConversation({
   }, [])
 
   // Swipe-down-to-dismiss keyboard — independent of the timestamp-swipe logic.
-  // Android: lock scroll during dismiss + preserve reading position after blur.
-  // iOS: blur only, then smooth scroll to bottom (prior behavior — scroll lock breaks iOS).
+  // Android: lock scroll at thread tail during dismiss + preserve reading position.
+  // iOS: block list scroll on downward drag, blur early on touchmove (first swipe dismisses).
   useEffect(() => {
     const el = listRef.current
     if (!el) return
     const isAndroid = /Android/i.test(navigator.userAgent)
-    /** Touchend downward travel (px) before blur — iOS needs a shorter flick. */
-    const dismissDyPx = isAndroid ? 50 : 24
+    /** Touchend fallback when touchmove did not already blur (quick flick). */
+    const dismissDyPx = isAndroid ? 50 : 18
     let startY = 0
     let startX = 0
+    let startScrollTop = 0
     let keyboardWasOpen = false
     let dismissActive = false
-    let lockedScrollTop = 0
+    let dismissedThisGesture = false
 
     const bottomGap = () => el.scrollHeight - el.scrollTop - el.clientHeight
     const nearBottom = () => bottomGap() < 80
@@ -758,8 +759,27 @@ export default function ChatConversation({
       }
     }
 
+    /** iOS: instant snap after keyboard close — smooth scroll while keyboard is up causes jank. */
+    const snapBottomAfterKeyboardCloseIOS = () => {
+      atBottomRef.current = true
+      const vv = window.visualViewport
+      const snap = () => { el.scrollTop = el.scrollHeight }
+      if (vv) {
+        vv.addEventListener('resize', snap)
+        snap()
+        setTimeout(() => {
+          vv.removeEventListener('resize', snap)
+          snap()
+        }, 400)
+      } else {
+        requestAnimationFrame(snap)
+      }
+    }
+
     const onStart = (e) => {
       dismissActive = false
+      dismissedThisGesture = false
+      startScrollTop = el.scrollTop
       startY = e.touches[0]?.clientY ?? 0
       startX = e.touches[0]?.clientX ?? 0
       const tag = document.activeElement?.tagName
@@ -767,23 +787,33 @@ export default function ChatConversation({
     }
 
     const onMove = (e) => {
-      if (!isAndroid || !keyboardWasOpen) return
+      if (!keyboardWasOpen) return
       const t = e.touches[0]
       if (!t) return
       const dy = t.clientY - startY
       const dx = t.clientX - startX
 
-      if (!dismissActive) {
-        if (dy > 10 && dy > Math.abs(dx) && nearBottom()) {
-          dismissActive = true
-          lockedScrollTop = el.scrollTop
-        } else {
-          return
+      if (isAndroid) {
+        if (!dismissActive) {
+          if (dy > 10 && dy > Math.abs(dx) && nearBottom()) {
+            dismissActive = true
+          } else {
+            return
+          }
         }
+        e.preventDefault()
+        el.scrollTop = startScrollTop
+        return
       }
 
+      // iOS: downward drag while keyboard is open → dismiss, not list scroll
+      if (dy <= 8 || dy <= Math.abs(dx)) return
       e.preventDefault()
-      el.scrollTop = lockedScrollTop
+      el.scrollTop = startScrollTop
+      if (!dismissedThisGesture && dy > 10) {
+        dismissedThisGesture = true
+        document.activeElement?.blur?.()
+      }
     }
 
     const onEnd = (e) => {
@@ -792,29 +822,28 @@ export default function ChatConversation({
       const downwardDismiss = isAndroid
         ? dy > dismissDyPx
         : dy > dismissDyPx && dy > Math.abs(dx)
-      if (downwardDismiss && keyboardWasOpen) {
+
+      if (isAndroid && downwardDismiss && keyboardWasOpen) {
         document.activeElement?.blur?.()
-        if (isAndroid) {
-          keyboardDismissPreserveRef.current = bottomGap()
-          schedulePreserveRestore()
-        } else {
-          atBottomRef.current = true
-          requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }))
-        }
+        keyboardDismissPreserveRef.current = bottomGap()
+        schedulePreserveRestore()
+      } else if (!isAndroid && keyboardWasOpen && (dismissedThisGesture || downwardDismiss)) {
+        if (!dismissedThisGesture) document.activeElement?.blur?.()
+        snapBottomAfterKeyboardCloseIOS()
       }
+
       dismissActive = false
+      dismissedThisGesture = false
       keyboardWasOpen = false
     }
 
     el.addEventListener('touchstart', onStart, { passive: true })
-    if (isAndroid) {
-      el.addEventListener('touchmove', onMove, { passive: false })
-    }
+    el.addEventListener('touchmove', onMove, { passive: false })
     el.addEventListener('touchend', onEnd, { passive: true })
     el.addEventListener('touchcancel', onEnd, { passive: true })
     return () => {
       el.removeEventListener('touchstart', onStart)
-      if (isAndroid) el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchmove', onMove)
       el.removeEventListener('touchend', onEnd)
       el.removeEventListener('touchcancel', onEnd)
     }

@@ -306,8 +306,11 @@ export default function ChatBubble({
   const layout = bubbleRect ? computeLayout(bubbleRect, isMine, { isDeleted }) : null
 
   return (
-    // eslint-disable-next-line react/forbid-dom-props
-    <div className="relative select-none" style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}>
+    <div
+      data-chat-message-id={message.id}
+      className="relative select-none"
+      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+    >
       <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
         {/* Avatar — only for others' messages; hidden in DMs (header already shows peer) */}
         {!isMine && !hideSenderInfo && (

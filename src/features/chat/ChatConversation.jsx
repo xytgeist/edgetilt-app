@@ -22,6 +22,9 @@ const PAGE_SIZE = 50
 const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 /** Extra grab area above composer for iOS keyboard dismiss (px). */
 const IOS_COMPOSER_DISMISS_PAD_PX = 32
+/** Show scroll-to-bottom when this many newer messages are off-screen. */
+const SCROLL_UP_MSG_THRESHOLD = 20
+const JUMP_BTN_ABOVE_COMPOSER_PX = 8
 
 /**
  * Max messages kept in the DOM at any time.
@@ -108,6 +111,8 @@ export default function ChatConversation({
   const [hasNewer, setHasNewer] = useState(false)
   // newMsgCount: messages that arrived via Realtime while not at the live end
   const [newMsgCount, setNewMsgCount] = useState(0)
+  /** Newer messages below the viewport (for scroll-to-bottom affordance). */
+  const [scrolledUpCount, setScrolledUpCount] = useState(0)
   const [error, setError] = useState('')
   const [replyTarget, setReplyTarget] = useState(/** @type {any | null} */ (null))
   const [typingUsers, setTypingUsers] = useState(/** @type {{ userId: string, displayName: string }[]} */ ([]))
@@ -334,12 +339,31 @@ export default function ChatConversation({
   }, [supabaseClient, room.id, loadReactionsForMessages])
 
   // ── Jump to live end ──────────────────────────────────────────────────────
-  // Called from the "N new messages ↓" banner when hasNewer is true.
 
-  const jumpToLatest = useCallback(() => {
-    setNewMsgCount(0)
-    void loadMessages()
-  }, [loadMessages])
+  const scrollToBottom = (behavior = 'instant') => {
+    const el = listRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior })
+  }
+
+  const measureScrolledUpCount = useCallback(() => {
+    const list = listRef.current
+    if (!list) return 0
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80
+    if (atBottom) return 0
+
+    const listRect = list.getBoundingClientRect()
+    const viewBottom = listRect.bottom - 8
+    const nodes = list.querySelectorAll('[data-chat-message-id]')
+    let lastVisibleIdx = -1
+    nodes.forEach((node, idx) => {
+      const r = node.getBoundingClientRect()
+      if (r.top < viewBottom && r.bottom > listRect.top) lastVisibleIdx = idx
+    })
+
+    if (lastVisibleIdx === -1) return messagesRef.current.length
+    return Math.max(0, messagesRef.current.length - 1 - lastVisibleIdx)
+  }, [])
 
   // ── Realtime subscription + reconnect gap recovery ────────────────────────
 
@@ -474,13 +498,19 @@ export default function ChatConversation({
     }
   }, [supabaseClient, room.id, viewerUserId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Scroll helpers ────────────────────────────────────────────────────────
+  const goToLatest = useCallback(() => {
+    setNewMsgCount(0)
+    setScrolledUpCount(0)
+    if (hasNewerRef.current) {
+      void loadMessages()
+    } else {
+      atBottomRef.current = true
+      scrollToBottom('smooth')
+      scheduleMarkLastRead()
+    }
+  }, [loadMessages, scheduleMarkLastRead])
 
-  const scrollToBottom = (behavior = 'instant') => {
-    const el = listRef.current
-    if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior })
-  }
+  // ── Scroll helpers ────────────────────────────────────────────────────────
 
   const handleScroll = useCallback(() => {
     const el = listRef.current
@@ -490,9 +520,20 @@ export default function ChatConversation({
     if (el.scrollTop < 200) void loadMore()
     if (atBottomRef.current) {
       setNewMsgCount(0)
+      setScrolledUpCount(0)
       scheduleMarkLastRead()
+    } else {
+      setScrolledUpCount(measureScrolledUpCount())
     }
-  }, [loadMore, scheduleMarkLastRead])
+  }, [loadMore, scheduleMarkLastRead, measureScrolledUpCount])
+
+  useLayoutEffect(() => {
+    if (atBottomRef.current) {
+      setScrolledUpCount(0)
+      return
+    }
+    setScrolledUpCount(measureScrolledUpCount())
+  }, [messages, measureScrolledUpCount])
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -1118,18 +1159,7 @@ export default function ChatConversation({
           )}
         </div>
 
-        {/* "N new messages ↓" banner — shown when scrolled up or viewing trimmed history */}
-        {(newMsgCount > 0 || hasNewer) && (
-          <button
-            type="button"
-            onClick={jumpToLatest}
-            className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-cyan-500/40 bg-zinc-900/95 px-4 py-2 text-[13px] font-semibold text-cyan-300 shadow-lg backdrop-blur-sm touch-manipulation hover:bg-zinc-800 active:scale-95 transition-transform"
-          >
-            {newMsgCount > 0 ? `↓ ${newMsgCount} new message${newMsgCount === 1 ? '' : 's'}` : '↓ Jump to latest'}
-          </button>
-        )}
       </div>
-
       </div>{/* end main scroll area */}
 
       {/* ── Floating composer overlay — no background, sits above the message list ── */}
@@ -1137,6 +1167,39 @@ export default function ChatConversation({
         ref={composerBarRef}
         className="absolute inset-x-0 bottom-0 z-20 pointer-events-none"
       >
+        {(newMsgCount > 0 || hasNewer || scrolledUpCount >= SCROLL_UP_MSG_THRESHOLD) && (
+          <div
+            className="absolute inset-x-0 flex justify-center pointer-events-none"
+            style={{ bottom: '100%', paddingBottom: JUMP_BTN_ABOVE_COMPOSER_PX }}
+          >
+            <button
+              type="button"
+              onClick={goToLatest}
+              aria-label={
+                newMsgCount > 0
+                  ? `${newMsgCount} new message${newMsgCount === 1 ? '' : 's'}`
+                  : hasNewer
+                    ? 'Jump to latest messages'
+                    : 'Scroll to bottom'
+              }
+              className={`pointer-events-auto touch-manipulation shadow-lg backdrop-blur-sm transition-transform active:scale-95 ${
+                newMsgCount > 0 || hasNewer
+                  ? 'rounded-full border border-cyan-500/40 bg-zinc-900/95 px-4 py-2 text-[13px] font-semibold text-cyan-300 hover:bg-zinc-800'
+                  : 'flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600/50 bg-zinc-900/95 text-zinc-200 hover:bg-zinc-800'
+              }`}
+            >
+              {newMsgCount > 0 ? (
+                `↓ ${newMsgCount} new message${newMsgCount === 1 ? '' : 's'}`
+              ) : hasNewer ? (
+                '↓ Jump to latest'
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
         <div
           ref={composerTouchRef}
           className="pointer-events-auto"

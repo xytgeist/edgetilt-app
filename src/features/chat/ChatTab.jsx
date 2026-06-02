@@ -231,8 +231,16 @@ export default function ChatTab({
       if (!supabaseClient) return
       setSearchBusy(true)
       try {
-        const { data } = await supabaseClient.rpc('lounge_search_profiles', { p_query: q, p_limit: 8 })
-        setSearchResults((data || []).filter(p => p.user_id !== viewerUserId))
+        const term = q.replace(/^@/, '')
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('user_id, handle, display_name, avatar_url, role')
+          .is('banned_at', null)
+          .or(`handle.ilike.%${term}%,display_name.ilike.%${term}%`)
+          .neq('user_id', viewerUserId)
+          .limit(8)
+        if (error) throw error
+        setSearchResults(data || [])
       } catch { setSearchResults([]) }
       finally { setSearchBusy(false) }
     }, 200)

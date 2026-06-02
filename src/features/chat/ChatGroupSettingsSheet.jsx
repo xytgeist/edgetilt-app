@@ -78,6 +78,7 @@ export default function ChatGroupSettingsSheet({
   const avatarInputRef = useRef(null)
   const searchTimerRef = useRef(null)
   const [auxView, setAuxView] = useState(/** @type {null | 'search' | 'pinned' | 'media'} */ (null))
+  const [muteTarget, setMuteTarget] = useState(/** @type {null | { user_id: string, label: string } } */ (null))
 
   const reload = useCallback(async () => {
     if (!room?.id) return
@@ -208,6 +209,27 @@ export default function ChatGroupSettingsSheet({
               >
                 Change group photo
               </button>
+              {room.avatar_url ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="text-[12px] font-medium text-zinc-500 touch-manipulation active:text-zinc-300"
+                  onClick={async () => {
+                    setBusy(true)
+                    setErr('')
+                    try {
+                      await chatUpdateGroup(supabaseClient, { roomId: room.id, avatarUrl: '' })
+                      onRoomUpdated({ avatar_url: null })
+                    } catch (ex) {
+                      setErr(ex?.message || 'Could not remove photo.')
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  Use member avatars instead
+                </button>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -245,50 +267,50 @@ export default function ChatGroupSettingsSheet({
           </Section>
         )}
 
-        <Section title="Members">
+        <Section title={isOwner ? 'Members (you can mute or remove)' : 'Members'}>
+          {members.length === 0 ? (
+            <p className="text-[13px] text-zinc-500">
+              Could not load members. Apply chat migrations on Supabase test, then reload.
+            </p>
+          ) : (
           <ul className="space-y-2">
             {members.map((m) => (
-              <li key={m.user_id} className="flex items-center gap-2 rounded-xl bg-zinc-900/80 px-3 py-2">
-                {m.avatar_url ? (
-                  <img src={m.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
-                ) : (
-                  <div className="grid h-9 w-9 place-items-center rounded-full bg-zinc-700 text-[13px] font-bold text-zinc-300">
-                    {(m.display_name || m.handle || '?')[0]?.toUpperCase()}
+              <li key={m.user_id} className="rounded-xl bg-zinc-900/80 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  {m.avatar_url ? (
+                    <img src={m.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
+                  ) : (
+                    <div className="grid h-9 w-9 place-items-center rounded-full bg-zinc-700 text-[13px] font-bold text-zinc-300">
+                      {(m.display_name || m.handle || '?')[0]?.toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[14px] font-semibold text-zinc-100">
+                      {m.display_name || m.handle || 'Member'}
+                      {m.user_id === viewerUserId ? (
+                        <span className="ml-1 text-[12px] font-normal text-zinc-500">(you)</span>
+                      ) : null}
+                    </div>
+                    {m.moderation_muted_until && new Date(m.moderation_muted_until) > new Date() ? (
+                      <div className="text-[11px] text-amber-400/90">Muted in group — cannot send</div>
+                    ) : null}
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[14px] font-semibold text-zinc-100">
-                    {m.display_name || m.handle || 'Member'}
-                  </div>
-                  {m.moderation_muted_until && new Date(m.moderation_muted_until) > new Date() ? (
-                    <div className="text-[11px] text-amber-400/90">Muted by admin</div>
-                  ) : null}
                 </div>
                 {isOwner && m.user_id !== viewerUserId ? (
-                  <div className="flex shrink-0 gap-1">
-                    <select
-                      className="max-w-[5.5rem] rounded-lg border border-zinc-700 bg-zinc-800 px-1 py-1 text-[11px] text-zinc-200"
-                      defaultValue=""
-                      onChange={async (e) => {
-                        const opt = OWNER_MEMBER_MUTE_OPTS.find((o) => o.label === e.target.value)
-                        e.target.value = ''
-                        if (!opt) return
-                        try {
-                          await chatMuteGroupMember(supabaseClient, room.id, m.user_id, opt.minutes)
-                          await reload()
-                        } catch (ex) {
-                          setErr(ex?.message || 'Mute failed.')
-                        }
-                      }}
-                    >
-                      <option value="">Mute…</option>
-                      {OWNER_MEMBER_MUTE_OPTS.map((o) => (
-                        <option key={o.label} value={o.label}>{o.label}</option>
-                      ))}
-                    </select>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-400 touch-manipulation active:text-zinc-200"
+                      className="rounded-lg border border-zinc-600 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
+                      onClick={() => setMuteTarget({
+                        user_id: m.user_id,
+                        label: m.display_name || m.handle || 'Member',
+                      })}
+                    >
+                      Mute…
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-zinc-600 px-3 py-1.5 text-[12px] font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800"
                       onClick={async () => {
                         try {
                           await chatUnmuteGroupMember(supabaseClient, room.id, m.user_id)
@@ -302,8 +324,9 @@ export default function ChatGroupSettingsSheet({
                     </button>
                     <button
                       type="button"
-                      className="rounded-lg px-2 py-1 text-[11px] font-semibold text-rose-400 touch-manipulation active:opacity-70"
+                      className="rounded-lg border border-rose-500/50 px-3 py-1.5 text-[12px] font-semibold text-rose-400 touch-manipulation active:bg-rose-950/40"
                       onClick={async () => {
+                        if (!window.confirm(`Remove ${m.display_name || m.handle || 'this member'} from the group?`)) return
                         try {
                           await chatRemoveGroupMember(supabaseClient, room.id, m.user_id)
                           await reload()
@@ -319,6 +342,7 @@ export default function ChatGroupSettingsSheet({
               </li>
             ))}
           </ul>
+          )}
           <div className="mt-3">
               <input
                 value={addSearch}
@@ -468,6 +492,48 @@ export default function ChatGroupSettingsSheet({
 
   return (
     <>
+      {muteTarget && createPortal(
+        <div
+          className="fixed inset-0 z-[97] flex items-end justify-center bg-black/50 pb-6"
+          onClick={() => setMuteTarget(null)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm rounded-2xl border border-zinc-700/50 bg-zinc-900 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-zinc-800 px-5 py-3 text-[14px] font-semibold text-zinc-200">
+              Mute {muteTarget.label} from sending
+            </div>
+            {OWNER_MEMBER_MUTE_OPTS.map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                className="flex w-full px-5 py-3.5 text-left text-[15px] font-semibold text-zinc-100 touch-manipulation active:bg-zinc-800"
+                onClick={async () => {
+                  try {
+                    await chatMuteGroupMember(supabaseClient, room.id, muteTarget.user_id, o.minutes)
+                    setMuteTarget(null)
+                    await reload()
+                  } catch (ex) {
+                    setErr(ex?.message || 'Mute failed.')
+                    setMuteTarget(null)
+                  }
+                }}
+              >
+                {o.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="flex w-full justify-center border-t border-zinc-800 px-5 py-3.5 text-[15px] text-zinc-400 touch-manipulation active:bg-zinc-800"
+              onClick={() => setMuteTarget(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
       {settingsPortal}
       <ChatGroupSearchSheet
         open={open && auxView === 'search'}

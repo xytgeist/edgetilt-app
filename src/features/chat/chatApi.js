@@ -306,6 +306,40 @@ export async function chatGroupHeaderMembers(supabase, roomId) {
   return data || []
 }
 
+/** First 3 members for stacked avatar — falls back to full member list RPC if header RPC is missing. */
+export async function chatGroupHeaderMembersResolved(supabase, roomId) {
+  try {
+    const header = await chatGroupHeaderMembers(supabase, roomId)
+    if (header.length > 0) return header
+  } catch {
+    // header RPC not deployed yet
+  }
+  try {
+    const list = await chatGroupMembersList(supabase, roomId)
+    return list.slice(0, 3).map((m) => ({
+      user_id: m.user_id,
+      display_name: m.display_name,
+      handle: m.handle,
+      avatar_url: m.avatar_url,
+      joined_at: m.joined_at,
+    }))
+  } catch {
+    return []
+  }
+}
+
+/** @param {string[]} roomIds */
+export async function chatGroupHeaderMembersBatch(supabase, roomIds) {
+  const ids = [...new Set(roomIds.filter(Boolean))]
+  const out = /** @type {Record<string, any[]>} */ ({})
+  await Promise.all(
+    ids.map(async (id) => {
+      out[id] = await chatGroupHeaderMembersResolved(supabase, id)
+    }),
+  )
+  return out
+}
+
 export async function chatGroupMembersList(supabase, roomId) {
   const { data, error } = await supabase.rpc('chat_group_members_list', { p_room_id: roomId })
   if (error) throw new Error(error.message)

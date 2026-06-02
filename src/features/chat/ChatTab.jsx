@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ChatConversation from './ChatConversation.jsx'
+import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import {
   chatOpenDm,
   chatCreateGroup,
@@ -14,6 +15,7 @@ import {
   chatUnmuteRoom,
   chatRoomLabel,
   chatRoomIsMuted,
+  chatGroupHeaderMembersBatch,
 } from './chatApi.js'
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants.js'
 import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
@@ -73,6 +75,7 @@ export default function ChatTab({
   const [groupSearchResults, setGroupSearchResults] = useState(/** @type {any[]} */ ([]))
   const [groupSearchBusy, setGroupSearchBusy] = useState(false)
   const groupSearchTimerRef = useRef(null)
+  const [groupHeaderByRoomId, setGroupHeaderByRoomId] = useState(/** @type {Record<string, any[]>} */ ({}))
   /** @type {React.MutableRefObject<Record<string, any>>} */
   const profilesCacheRef = useRef({})
 
@@ -212,6 +215,14 @@ export default function ChatTab({
       })
 
       setRooms(enriched)
+      const groupIds = enriched.filter((r) => r.kind === 'group').map((r) => r.id)
+      if (groupIds.length > 0) {
+        void chatGroupHeaderMembersBatch(supabaseClient, groupIds)
+          .then(setGroupHeaderByRoomId)
+          .catch(() => setGroupHeaderByRoomId({}))
+      } else {
+        setGroupHeaderByRoomId({})
+      }
     } catch (e) {
       setRoomsErr(e?.message || 'Could not load conversations.')
       setRooms([])
@@ -730,6 +741,7 @@ export default function ChatTab({
               key={room.id}
               room={room}
               label={chatRoomLabel(room)}
+              groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
               onOpen={(roomId) => setActiveRoomId(roomId)}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y })}
             />
@@ -757,7 +769,7 @@ const ROOM_LONG_PRESS_MS = 380
 const ROOM_LONG_PRESS_MOVE_PX = 10
 
 /** Inbox row with touch + mouse long-press (pointer-only fails on iOS/Android in scroll lists). */
-function ChatRoomListRow({ room, label, onOpen, onLongPress }) {
+function ChatRoomListRow({ room, label, groupHeaderMembers = [], onOpen, onLongPress }) {
   const timerRef = useRef(null)
   const suppressClickRef = useRef(false)
   const touchRef = useRef({ startX: 0, startY: 0, cancelled: false })
@@ -853,18 +865,24 @@ function ChatRoomListRow({ room, label, onOpen, onLongPress }) {
         className="flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
         style={{ touchAction: 'pan-y', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
       >
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
           {room.kind === 'dm' && room.peerAvatarUrl ? (
             <img
               src={room.peerAvatarUrl}
               alt=""
               className="h-11 w-11 rounded-full object-cover"
             />
+          ) : room.kind === 'group' ? (
+            <ChatGroupHeaderStack
+              groupAvatarUrl={room.avatar_url}
+              members={groupHeaderMembers}
+              size={44}
+            />
           ) : (
             <div className={`grid h-11 w-11 place-items-center rounded-full text-[18px] ${
-              room.kind === 'channel' ? 'bg-violet-900/60' : room.kind === 'group' ? 'bg-amber-900/60' : 'bg-zinc-800'
+              room.kind === 'channel' ? 'bg-violet-900/60' : 'bg-zinc-800'
             }`}>
-              {room.kind === 'channel' ? '#' : room.kind === 'group' ? '👥' : (room.peer_display_name?.[0] || room.peer_handle?.[0] || '?').toUpperCase()}
+              {room.kind === 'channel' ? '#' : (room.peer_display_name?.[0] || room.peer_handle?.[0] || '?').toUpperCase()}
             </div>
           )}
           {room.hasUnread && (

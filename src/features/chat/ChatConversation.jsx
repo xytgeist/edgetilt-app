@@ -13,7 +13,7 @@ import {
   chatMuteRoom,
   chatUnmuteRoom,
   chatRoomIsMuted,
-  chatGroupHeaderMembers,
+  chatGroupHeaderMembersResolved,
   chatStarredMessageIds,
   chatStarMessage,
   chatUnstarMessage,
@@ -208,7 +208,13 @@ export default function ChatConversation({
   }, [messages])
 
   const viewerDisplayName = viewerProfile?.display_name || viewerProfile?.handle || 'You'
-  const activeRoom = { ...room, ...roomMeta }
+  const activeRoom = {
+    ...room,
+    ...roomMeta,
+    member_role: roomMeta.member_role ?? room.member_role ?? room.memberRole,
+    memberRole: roomMeta.memberRole ?? room.memberRole ?? room.member_role,
+    created_by: roomMeta.created_by ?? room.created_by,
+  }
   const isGroupRoom = activeRoom.kind === 'group'
   const isGroupOwner = chatIsGroupOwner(activeRoom, viewerUserId)
 
@@ -227,7 +233,7 @@ export default function ChatConversation({
     void (async () => {
       try {
         const [members, stars, pins] = await Promise.all([
-          chatGroupHeaderMembers(supabaseClient, room.id),
+          chatGroupHeaderMembersResolved(supabaseClient, room.id),
           chatStarredMessageIds(supabaseClient, room.id),
           chatPinnedMessageIds(supabaseClient, room.id),
         ])
@@ -1441,6 +1447,17 @@ export default function ChatConversation({
               </>
             )}
 
+            {isGroupRoom && (
+              <>
+                <OptionsRow
+                  label="Group settings"
+                  icon={<GroupSettingsIcon />}
+                  onClick={() => { setOptionsMenuOpen(false); setGroupSettingsOpen(true) }}
+                />
+                <OptionsDivider />
+              </>
+            )}
+
             {/* Mute / Unmute */}
             <OptionsRow
               label={muted ? 'Unmute' : 'Mute'}
@@ -1676,3 +1693,13 @@ function PersonIcon()    { return <svg {...OS}><path d="M20 21v-2a4 4 0 0 0-4-4H
 function MuteIcon()      { return <svg {...OS}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> }
 function UnmuteIcon()    { return <svg {...OS}><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> }
 function FlagOptionsIcon() { return <svg {...OS}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> }
+function GroupSettingsIcon() {
+  return (
+    <svg {...OS}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  )
+}

@@ -243,11 +243,15 @@ export default function ChatBubble({
         if (cancelled) return
         window.getSelection()?.removeAllRanges()
         openLongPressMenu()
-      }, 450)
+      }, 380)
     }
 
     const onTouchMove = (e) => {
-      if (cancelled || e.touches.length !== 1) return
+      if (e.touches.length !== 1) return
+      // Clear selection on every micro-movement — iOS triggers selection at ~300ms
+      // with even 1-2px of movement, before our long-press timer fires.
+      window.getSelection()?.removeAllRanges()
+      if (cancelled) return
       if (Math.abs(e.touches[0].clientX - startX) > 8 || Math.abs(e.touches[0].clientY - startY) > 8) {
         cancelled = true
         clearLongPressTimer()

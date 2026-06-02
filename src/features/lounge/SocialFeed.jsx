@@ -10304,6 +10304,7 @@ export default function SocialFeed({
       bottomObstacleInsetPx={loungeDockBottomObstaclePx}
       onPointerBlockChange={setLoungeFabPointerBlocked}
       notificationsUnreadCount={loungeNotificationsUnread}
+      enableFabCompactPip={!isActivePage}
     />
   ) : null
 

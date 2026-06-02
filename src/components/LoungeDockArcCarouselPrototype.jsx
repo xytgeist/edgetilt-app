@@ -15,6 +15,8 @@ import {
   loungeDockFabCollisionBottomInsetPx,
   loungeDockLayoutViewportSize,
   LOUNGE_FAB_OBSTACLE_SELECTOR,
+  loungeDockCompactPipFabVisualCenter,
+  loungeDockCompactPipHomeOffset,
   loungeDockCornerLCompactHomeOffset,
   loungeDockWheelCompactHomeOffset,
   loungeDockWheelLayout,
@@ -55,15 +57,23 @@ const FAB_REPOSITION_LONG_PRESS_MS = 450
 const BACKDROP_PAN_THRESHOLD_PX = 12
 /** Scroll-hide: below this `reveal` the FAB is treated as gone (no idle dim). */
 const FAB_REVEAL_VISIBLE = 0.12
+/** After this idle window the FAB shrinks to {@link FAB_COMPACT_VISUAL_PX} and snaps to the bottom corner on its side. */
+const FAB_COMPACT_PIP_MS = 5_000
+const FAB_COMPACT_VISUAL_PX = 20
 /** Visible FAB dims to half opacity after this long without interaction. */
-const FAB_IDLE_DIM_MS = 3000
+const FAB_IDLE_DIM_MS = 10_000
 const FAB_IDLE_DIM_OPACITY = 0.5
+const FAB_COMPACT_MIN_OPACITY = 0.55
 const FAB_LONG_PRESS_RING_COUNT = 4
 /** ms per phase: ring2 in → ring3 in → ring4 in → rings 2–4 out (loops; ring1 stays). */
 const FAB_LONG_PRESS_RING_SEGMENT_MS = 280
 /** Home chip: compact panel chrome ↔ wheel / L menu slot. */
 const LOUNGE_DOCK_HOME_MORPH_MS = 440
 const LOUNGE_DOCK_HOME_MORPH_EASING = 'cubic-bezier(0.33, 1, 0.45, 1)'
+/** FAB host left/top/transform when flying from compact pip (must match inline style on fab host). */
+const LOUNGE_DOCK_FAB_PIP_FLIGHT_MS = 300
+/** Reveal orbit items halfway through that fly-in so they overlap the second half. */
+const LOUNGE_DOCK_FAB_PIP_WHEEL_REVEAL_MS = LOUNGE_DOCK_FAB_PIP_FLIGHT_MS / 2
 /** Circle 1 → 4: heaviest stroke innermost, thinnest outermost (user example 4→1). */
 const FAB_LONG_PRESS_RING_STROKES_PX = [3.5, 2.65, 1.75, 1]
 /** Ring 1 sits just outside the FAB; each next ring is one fixed step further out. */
@@ -244,6 +254,11 @@ export default function LoungeDockArcCarouselPrototype({
   bottomObstacleInsetPx = 0,
   /** Unread in-app notifications — FAB badge clears on menu expand; Alerts item clears on panel visit. */
   notificationsUnreadCount = 0,
+  /**
+   * When false (Lounge home feed tab), FAB stays full-size with scroll-reveal + idle dim only.
+   * When true (other tabs / away from feed), idle compact pip (20px corner) may apply.
+   */
+  enableFabCompactPip = true,
 }) {
   const panelCompactChrome = panelChrome != null && PANEL_CHROME_PANELS.has(panelChrome)
   const isCornerL = menuLayout === 'cornerL'
@@ -303,9 +318,21 @@ export default function LoungeDockArcCarouselPrototype({
   )
   /** Half-opacity rest state when visible but idle (not scroll-hidden). */
   const [fabIdleDimmed, setFabIdleDimmed] = useState(false)
+  /** Shrunk pip at bottom corner (display only — {@link fabPos} prefs unchanged). */
+  const [fabCompactPip, setFabCompactPip] = useState(false)
+  /**
+   * Opening menu from compact pip: one frame at corner + home beside pip, then animate to full layout.
+   * @type {[{ cornerPos: { left: number, top: number }, anchor: { x: number, y: number }, alignLeft: boolean } | null]}
+   */
+  const [fabExpandFromPip, setFabExpandFromPip] = useState(null)
+  /** Opening from compact pip: hide orbit items until FAB reaches saved position. */
+  const [pipWheelItemsDeferred, setPipWheelItemsDeferred] = useState(false)
+  const pipWasCompactRef = useRef(false)
+  const fabCompactPipRef = useRef(false)
   /** Brief scale pop when waking from idle dim. */
   const [fabWakePop, setFabWakePop] = useState(false)
   const fabIdleTimerRef = useRef(0)
+  const fabCompactTimerRef = useRef(0)
   const fabWakePopTimerRef = useRef(0)
   const fabIdleDimmedRef = useRef(false)
   const openRef = useRef(false)
@@ -587,6 +614,45 @@ export default function LoungeDockArcCarouselPrototype({
 
   const fabCenterX = fabPos ? fabPos.left + LOUNGE_DOCK_FAB_SIZE_PX / 2 : null
   const fabCenterY = fabPos ? fabPos.top + LOUNGE_DOCK_FAB_SIZE_PX / 2 : null
+  const fabCompactAlignLeft = fabCenterX != null && fabCenterX < viewport.width / 2
+  const fabCompactActive = enableFabCompactPip && fabCompactPip
+
+  /** Visual position only — compact pip snaps to corner without mutating saved prefs. */
+  const fabRenderPos = useMemo(() => {
+    if (!fabPos) return null
+    if (!fabCompactActive || open || repositioning) return fabPos
+    return loungeDockFabCornerPosition(
+      viewport.width,
+      viewport.height,
+      LOUNGE_DOCK_FAB_SIZE_PX,
+      fabCompactAlignLeft,
+      totalBottomObstaclePx,
+    )
+  }, [
+    fabPos,
+    fabCompactActive,
+    open,
+    repositioning,
+    fabCompactAlignLeft,
+    viewport.width,
+    viewport.height,
+    totalBottomObstaclePx,
+  ])
+
+  const fabShowCompactScale = (fabCompactActive && !open) || Boolean(fabExpandFromPip)
+  const fabHostCompactScale = fabShowCompactScale
+    ? FAB_COMPACT_VISUAL_PX / LOUNGE_DOCK_FAB_SIZE_PX
+    : 1
+  const fabDisplayPos = fabExpandFromPip?.cornerPos ?? fabRenderPos
+
+  /** Dock item anchor — compact pip uses visual center (corner scale origin), not box center. */
+  const fabDockAnchor = useMemo(() => {
+    if (fabCompactActive && fabRenderPos) {
+      return loungeDockCompactPipFabVisualCenter(fabRenderPos, fabCompactAlignLeft)
+    }
+    if (fabCenterX == null || fabCenterY == null) return null
+    return { x: fabCenterX, y: fabCenterY }
+  }, [fabCompactActive, fabRenderPos, fabCompactAlignLeft, fabCenterX, fabCenterY])
 
   /** Ordered list for the active menu layout (wheel vs Edge L can differ). Home stays index 0 after normalization. */
   const dockItems = useMemo(() => {
@@ -737,6 +803,13 @@ export default function LoungeDockArcCarouselPrototype({
     }
   }, [])
 
+  const clearFabCompactTimer = useCallback(() => {
+    if (fabCompactTimerRef.current) {
+      window.clearTimeout(fabCompactTimerRef.current)
+      fabCompactTimerRef.current = 0
+    }
+  }, [])
+
   const armFabIdleTimer = useCallback(() => {
     clearFabIdleTimer()
     fabIdleTimerRef.current = window.setTimeout(() => {
@@ -745,7 +818,54 @@ export default function LoungeDockArcCarouselPrototype({
     }, FAB_IDLE_DIM_MS)
   }, [clearFabIdleTimer])
 
-  const wakeFabFromIdle = useCallback(() => {
+  const armFabCompactTimer = useCallback(() => {
+    if (!enableFabCompactPip) return
+    clearFabCompactTimer()
+    fabCompactTimerRef.current = window.setTimeout(() => {
+      fabCompactTimerRef.current = 0
+      setFabCompactPip(true)
+    }, FAB_COMPACT_PIP_MS)
+  }, [clearFabCompactTimer, enableFabCompactPip])
+
+  useEffect(() => {
+    fabCompactPipRef.current = fabCompactPip
+  }, [fabCompactPip])
+
+  useEffect(() => {
+    if (!open) {
+      setFabExpandFromPip(null)
+      setPipWheelItemsDeferred(false)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!pipWheelItemsDeferred || fabExpandFromPip) return undefined
+    const t = window.setTimeout(() => {
+      setPipWheelItemsDeferred(false)
+    }, LOUNGE_DOCK_FAB_PIP_WHEEL_REVEAL_MS)
+    return () => window.clearTimeout(t)
+  }, [fabExpandFromPip, pipWheelItemsDeferred])
+
+  useEffect(() => {
+    if (!fabExpandFromPip) return undefined
+    let cancelled = false
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setFabExpandFromPip(null)
+      })
+    })
+    const t = window.setTimeout(() => {
+      if (!cancelled) setFabExpandFromPip(null)
+    }, LOUNGE_DOCK_HOME_MORPH_MS + 40)
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id)
+      window.clearTimeout(t)
+    }
+  }, [fabExpandFromPip])
+
+  const wakeFabFromIdle = useCallback(({ clearCompactPip = true } = {}) => {
+    if (clearCompactPip) setFabCompactPip(false)
     if (fabIdleDimmedRef.current) {
       setFabWakePop(true)
       if (fabWakePopTimerRef.current) window.clearTimeout(fabWakePopTimerRef.current)
@@ -755,13 +875,21 @@ export default function LoungeDockArcCarouselPrototype({
       }, 320)
     }
     setFabIdleDimmed(false)
+    armFabCompactTimer()
     armFabIdleTimer()
-  }, [armFabIdleTimer])
+  }, [armFabCompactTimer, armFabIdleTimer])
 
   const fabVisible = reveal > FAB_REVEAL_VISIBLE
+  /** Compact pip stays on-screen even when scroll would hide the full FAB. */
+  const fabEffectivelyVisible = fabCompactActive || fabVisible
   const fabScrollOpacity = clamp(reveal, 0, 1)
+  const rawFabDisplayOpacity =
+    fabScrollOpacity *
+    (fabIdleDimmed && fabEffectivelyVisible && !open && !repositioning ? FAB_IDLE_DIM_OPACITY : 1)
   const fabDisplayOpacity =
-    fabScrollOpacity * (fabIdleDimmed && fabVisible && !open && !repositioning ? FAB_IDLE_DIM_OPACITY : 1)
+    fabCompactActive && !open
+      ? Math.max(rawFabDisplayOpacity, FAB_COMPACT_MIN_OPACITY)
+      : rawFabDisplayOpacity
 
   useEffect(() => {
     fabIdleDimmedRef.current = fabIdleDimmed
@@ -770,15 +898,38 @@ export default function LoungeDockArcCarouselPrototype({
   useEffect(() => {
     if (!fabVisible || open || repositioning) {
       clearFabIdleTimer()
+      clearFabCompactTimer()
       setFabIdleDimmed(false)
+      setFabCompactPip(false)
       setFabWakePop(false)
       return undefined
     }
-    /** Scroll / reveal changes count as activity — undim and restart the idle clock. */
+    /** Scroll / reveal changes count as activity — reset compact + dim and restart idle clocks. */
     setFabIdleDimmed(false)
+    setFabCompactPip(false)
+    if (enableFabCompactPip) armFabCompactTimer()
     armFabIdleTimer()
-    return clearFabIdleTimer
-  }, [fabVisible, open, repositioning, reveal, armFabIdleTimer, clearFabIdleTimer])
+    return () => {
+      clearFabIdleTimer()
+      clearFabCompactTimer()
+    }
+  }, [
+    fabVisible,
+    open,
+    repositioning,
+    reveal,
+    enableFabCompactPip,
+    armFabIdleTimer,
+    armFabCompactTimer,
+    clearFabIdleTimer,
+    clearFabCompactTimer,
+  ])
+
+  useEffect(() => {
+    if (enableFabCompactPip) return
+    clearFabCompactTimer()
+    setFabCompactPip(false)
+  }, [enableFabCompactPip, clearFabCompactTimer])
 
   useEffect(
     () => () => {
@@ -787,9 +938,16 @@ export default function LoungeDockArcCarouselPrototype({
       cancelFabLongPress()
       clearFabLongPressProgress()
       clearFabIdleTimer()
+      clearFabCompactTimer()
       if (fabWakePopTimerRef.current) window.clearTimeout(fabWakePopTimerRef.current)
     },
-    [cancelFabLongPress, clearFabLongPressProgress, clearFabIdleTimer, clearRepositionCapture],
+    [
+      cancelFabLongPress,
+      clearFabLongPressProgress,
+      clearFabIdleTimer,
+      clearFabCompactTimer,
+      clearRepositionCapture,
+    ],
   )
 
   const snapCarouselToPicker = useCallback(
@@ -888,7 +1046,8 @@ export default function LoungeDockArcCarouselPrototype({
   const onFabPointerDown = useCallback(
     (e) => {
       if (e.button !== 0) return
-      wakeFabFromIdle()
+      pipWasCompactRef.current = enableFabCompactPip && fabCompactPipRef.current
+      wakeFabFromIdle({ clearCompactPip: false })
       fabDragRef.current = {
         pointerId: e.pointerId,
         startX: e.clientX,
@@ -904,6 +1063,8 @@ export default function LoungeDockArcCarouselPrototype({
         longPressTimerRef.current = 0
         if (!longPressArmedRef.current) return
         clearDocumentTextSelection()
+        setFabExpandFromPip(null)
+        setFabCompactPip(false)
         repositioningRef.current = true
         setRepositioning(true)
       }, FAB_REPOSITION_LONG_PRESS_MS)
@@ -980,7 +1141,7 @@ export default function LoungeDockArcCarouselPrototype({
       }
       endFabReposition()
 
-      if (!fabVisible) return
+      if (!fabEffectivelyVisible) return
       if (openRef.current) {
         e.preventDefault()
         e.stopPropagation()
@@ -1006,11 +1167,31 @@ export default function LoungeDockArcCarouselPrototype({
         }
       }
       resetWheelToHomeAnchor()
+      if (pipWasCompactRef.current && fabPosRef.current) {
+        const cur = fabPosRef.current
+        const cx = cur.left + LOUNGE_DOCK_FAB_SIZE_PX / 2
+        const alignLeft = cx < viewport.width / 2
+        const cornerPos = loungeDockFabCornerPosition(
+          viewport.width,
+          viewport.height,
+          LOUNGE_DOCK_FAB_SIZE_PX,
+          alignLeft,
+          totalBottomObstaclePx,
+        )
+        setFabExpandFromPip({
+          cornerPos,
+          anchor: loungeDockCompactPipFabVisualCenter(cornerPos, alignLeft),
+          alignLeft,
+        })
+        setPipWheelItemsDeferred(true)
+      }
+      pipWasCompactRef.current = false
+      setFabCompactPip(false)
       expandMenu()
     },
     [
       persistFabPrefs,
-      fabVisible,
+      fabEffectivelyVisible,
       resetWheelToHomeAnchor,
       endFabReposition,
       armRepositionClickGuard,
@@ -1020,6 +1201,7 @@ export default function LoungeDockArcCarouselPrototype({
       snapFabToBottomCornerForDropSide,
       totalBottomObstaclePx,
       expandMenu,
+      enableFabCompactPip,
     ],
   )
 
@@ -1321,8 +1503,22 @@ export default function LoungeDockArcCarouselPrototype({
   } = {}) => {
     const wheelOpen = menuExpanded
     const compactChip = panelCompactChrome && !menuExpanded
+    const pipExpandHome = Boolean(fabExpandFromPip && item.id === HOME_ITEM_ID)
+    const compactPipChip = (compactChip && fabCompactActive) || pipExpandHome
+    const dockCenterX = pipExpandHome
+      ? fabExpandFromPip.anchor.x
+      : compactPipChip && fabCompactActive
+        ? fabDockAnchor.x
+        : fabCenterX
+    const dockCenterY = pipExpandHome
+      ? fabExpandFromPip.anchor.y
+      : compactPipChip && fabCompactActive
+        ? fabDockAnchor.y
+        : fabCenterY
     const wheelTapOnly = wheelOpen && !spinEnabled
     const wheelSpin = wheelOpen && spinEnabled
+    const wheelItemDeferred =
+      pipWheelItemsDeferred && wheelOpen && item.id !== HOME_ITEM_ID
     /** Panel chrome: home chip fades with scroll-linked `reveal` like the FAB. */
     const fadesWithReveal = compactChip
     const pageActive = Boolean(item.active)
@@ -1374,20 +1570,22 @@ export default function LoungeDockArcCarouselPrototype({
         !isCornerL && wheelOpen
           ? 'min-h-[56px] min-w-[56px]'
           : 'min-h-[50px] min-w-[50px]'
-      } -translate-x-1/2 -translate-y-1/2 items-center justify-center ${
+      } ${compactPipChip ? '' : '-translate-x-1/2 -translate-y-1/2'} items-center justify-center ${
         wheelSpin ? 'touch-none' : 'touch-manipulation'
       } ${
         wheelSpin
           ? offScreen
             ? 'cursor-grab opacity-30'
             : 'cursor-grab opacity-100'
-          : 'cursor-pointer opacity-100'
+          : wheelItemDeferred
+            ? 'cursor-pointer opacity-0'
+            : 'cursor-pointer opacity-100'
       } ${spinning ? 'cursor-grabbing' : ''} disabled:cursor-not-allowed ${glow.textIdle} ${
         spinning
           ? ''
-          : fadesWithReveal
-            ? 'transition-[left,top,opacity] duration-300 ease-out'
-            : panelChromeHomeAnim
+          : fadesWithReveal || wheelItemDeferred
+            ? 'transition-[left,top,opacity,transform] duration-300 ease-out'
+            : panelChromeHomeAnim || pipExpandHome
               ? ''
               : 'transition-[left,top,opacity] duration-200 ease-out'
       }`}
@@ -1395,12 +1593,17 @@ export default function LoungeDockArcCarouselPrototype({
         if (el) followingItemCenterRef.current = { x: fabCenterX + offset.x, y: fabCenterY + offset.y }
       } : undefined}
       style={{
-        left: fabCenterX + offset.x,
-        top: fabCenterY + offset.y,
+        left: dockCenterX + offset.x,
+        top: dockCenterY + offset.y,
+        transform: compactPipChip
+          ? `translate(-50%, -50%) scale(${fabHostCompactScale})`
+          : undefined,
         transition:
-          spinning || !panelChromeHomeAnim
-            ? undefined
-            : `left ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}, top ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}, opacity 280ms ease-out`,
+          spinning || (!panelChromeHomeAnim && !pipExpandHome)
+            ? compactPipChip && !pipExpandHome
+              ? 'left 300ms ease-out, top 300ms ease-out, opacity 280ms ease-out, transform 300ms ease-out'
+              : undefined
+            : `left ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}, top ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}, opacity 280ms ease-out, transform ${LOUNGE_DOCK_HOME_MORPH_MS}ms ${LOUNGE_DOCK_HOME_MORPH_EASING}`,
         zIndex: isCornerL
           ? isFocused
             ? 42
@@ -1410,8 +1613,9 @@ export default function LoungeDockArcCarouselPrototype({
             : isFocused
               ? 44
               : 34,
-        opacity: fadesWithReveal ? fabDisplayOpacity : 1,
-        pointerEvents: fadesWithReveal && !fabVisible ? 'none' : undefined,
+        opacity: wheelItemDeferred ? 0 : fadesWithReveal ? fabDisplayOpacity : 1,
+        pointerEvents:
+          wheelItemDeferred || (fadesWithReveal && !fabEffectivelyVisible) ? 'none' : undefined,
       }}
     >
       <span
@@ -1482,7 +1686,7 @@ export default function LoungeDockArcCarouselPrototype({
         />
       ) : null}
 
-      {menuExpanded && fabVisible && spinEnabled ? (
+      {menuExpanded && fabVisible && spinEnabled && !pipWheelItemsDeferred ? (
         <div
           role="presentation"
           aria-hidden
@@ -1532,15 +1736,28 @@ export default function LoungeDockArcCarouselPrototype({
             : menuExpanded
               ? 'z-20'
               : 'z-[25]'
-        } ${fabIdleDimmed && fabVisible && !menuExpanded ? 'scale-[0.97]' : ''} ${
-          fabWakePop ? 'scale-100' : ''
-        }`}
+        } ${
+          fabShowCompactScale
+            ? (fabExpandFromPip?.alignLeft ?? fabCompactAlignLeft)
+              ? 'origin-bottom-left'
+              : 'origin-bottom-right'
+            : ''
+        } ${
+          fabCompactActive && !open && !fabExpandFromPip
+            ? ''
+            : fabIdleDimmed && fabVisible && !open
+              ? 'scale-[0.97]'
+              : ''
+        } ${fabWakePop && !fabCompactActive && !fabExpandFromPip ? 'scale-100' : ''}`}
         style={{
-          left: fabPos.left,
-          top: fabPos.top,
+          left: fabDisplayPos?.left ?? 0,
+          top: fabDisplayPos?.top ?? 0,
           width: LOUNGE_DOCK_FAB_SIZE_PX,
           height: LOUNGE_DOCK_FAB_SIZE_PX,
           opacity: fabDisplayOpacity,
+          transform: fabHostCompactScale < 1 ? `scale(${fabHostCompactScale})` : undefined,
+          transition:
+            'left 300ms ease-out, top 300ms ease-out, opacity 300ms ease-out, transform 300ms ease-out',
         }}
       >
         {fabLongPressRingsActive && !open ? (
@@ -1576,17 +1793,19 @@ export default function LoungeDockArcCarouselPrototype({
               ? `${LOUNGE_DOCK_FAB_CENTER_GLOW.bgOpen} ${LOUNGE_DOCK_FAB_CENTER_GLOW.text}`
               : `${LOUNGE_DOCK_FAB_CENTER_GLOW.bg} ${LOUNGE_DOCK_FAB_CENTER_GLOW.text}`
           } ${
-            repositioning
-              ? 'scale-[1.06]'
-              : fabWakePop
-                ? 'scale-[1.05]'
-                : fabIdleDimmed && fabVisible && !open
+            fabCompactActive && !open
+              ? ''
+              : repositioning
+                ? 'scale-[1.06]'
+                : fabWakePop
+                  ? 'scale-[1.05]'
+                  : fabIdleDimmed && fabVisible && !open
                     ? 'scale-[0.97]'
                     : ''
           }`}
           style={{
             touchAction: 'none',
-            pointerEvents: fabVisible ? 'auto' : 'none',
+            pointerEvents: fabEffectivelyVisible ? 'auto' : 'none',
           }}
         >
           {repositioning ? (
@@ -1619,14 +1838,21 @@ export default function LoungeDockArcCarouselPrototype({
         let offset = wheelLayout.offsets[i] ?? { x: 0, y: 0, onScreen: true }
         const compactMenuClosed = panelCompactChrome && !menuExpanded
         if (compactMenuClosed && item.id === HOME_ITEM_ID) {
-          offset = isCornerL
-            ? loungeDockCornerLCompactHomeOffset()
-            : loungeDockWheelCompactHomeOffset(fabCenterX, viewport.width)
+          if (fabCompactActive) {
+            offset = loungeDockCompactPipHomeOffset(fabCompactAlignLeft)
+          } else if (isCornerL) {
+            offset = loungeDockCornerLCompactHomeOffset()
+          } else {
+            offset = loungeDockWheelCompactHomeOffset(fabCenterX, viewport.width)
+          }
+        } else if (fabExpandFromPip && item.id === HOME_ITEM_ID && menuExpanded) {
+          offset = loungeDockCompactPipHomeOffset(fabExpandFromPip.alignLeft)
         }
         const isFocused = menuExpanded && spinEnabled && i === wheelLayout.focusedIndex
         const offScreen = menuExpanded && spinEnabled && !offset.onScreen
         const panelChromeHomeAnim =
-          panelCompactChrome && item.id === HOME_ITEM_ID
+          (panelCompactChrome && item.id === HOME_ITEM_ID) ||
+          (fabExpandFromPip && item.id === HOME_ITEM_ID)
         return renderMenuItem(item, offset, { isFocused, offScreen, panelChromeHomeAnim })
       })}
 

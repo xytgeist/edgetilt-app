@@ -136,6 +136,42 @@ export function loungeDockCornerLCompactHomeOffset() {
   return { x: 0, y: -step, onScreen: true }
 }
 
+/** Compact idle pip diameter (matches `LoungeDockArcCarouselPrototype` FAB shrink). */
+export const LOUNGE_DOCK_FAB_COMPACT_VISUAL_PX = 20
+
+/**
+ * Visual center of the scaled FAB pip (host uses bottom-left / bottom-right transform origin).
+ * @param {{ left: number, top: number }} renderPos
+ * @param {boolean} alignLeft
+ */
+export function loungeDockCompactPipFabVisualCenter(
+  renderPos,
+  alignLeft,
+  fabSize = LOUNGE_DOCK_FAB_SIZE_PX,
+  visualPx = LOUNGE_DOCK_FAB_COMPACT_VISUAL_PX,
+) {
+  const halfScaled = visualPx / 2
+  if (alignLeft) {
+    return {
+      x: renderPos.left + halfScaled,
+      y: renderPos.top + fabSize - halfScaled,
+    }
+  }
+  return {
+    x: renderPos.left + fabSize - halfScaled,
+    y: renderPos.top + fabSize - halfScaled,
+  }
+}
+
+/** Home chip beside compact pip — horizontal, same gap as full-size wheel compact. */
+export function loungeDockCompactPipHomeOffset(
+  alignLeft,
+  visualPx = LOUNGE_DOCK_FAB_COMPACT_VISUAL_PX,
+) {
+  const centerDist = visualPx + LOUNGE_DOCK_L_GAP_PX
+  return { x: alignLeft ? centerDist : -centerDist, y: 0, onScreen: true }
+}
+
 /**
  * L-shaped offsets from FAB center. Item order must be:
  * vertical leg (up): home → compose → following;

@@ -17,6 +17,11 @@ import {
   chatStarredMessageIds,
   chatStarMessage,
   chatUnstarMessage,
+  chatPinnedMessageIds,
+  chatPinMessage,
+  chatUnpinMessage,
+  chatMessagesWindow,
+  chatIsGroupOwner,
 } from './chatApi.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
@@ -142,6 +147,8 @@ export default function ChatConversation({
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false)
   const [groupHeaderMembers, setGroupHeaderMembers] = useState(/** @type {any[]} */ ([]))
   const [starredIds, setStarredIds] = useState(() => new Set())
+  const [pinnedIds, setPinnedIds] = useState(() => new Set())
+  const [highlightMessageId, setHighlightMessageId] = useState(/** @type {string | null} */ (null))
 
   // DOM refs
   const listRef = useRef(null)
@@ -203,6 +210,7 @@ export default function ChatConversation({
   const viewerDisplayName = viewerProfile?.display_name || viewerProfile?.handle || 'You'
   const activeRoom = { ...room, ...roomMeta }
   const isGroupRoom = activeRoom.kind === 'group'
+  const isGroupOwner = chatIsGroupOwner(activeRoom, viewerUserId)
 
   useEffect(() => {
     setRoomMeta({ ...room })
@@ -212,27 +220,41 @@ export default function ChatConversation({
     if (!isGroupRoom || !room.id) {
       setGroupHeaderMembers([])
       setStarredIds(new Set())
+      setPinnedIds(new Set())
       return undefined
     }
     let cancelled = false
     void (async () => {
       try {
-        const [members, stars] = await Promise.all([
+        const [members, stars, pins] = await Promise.all([
           chatGroupHeaderMembers(supabaseClient, room.id),
           chatStarredMessageIds(supabaseClient, room.id),
+          chatPinnedMessageIds(supabaseClient, room.id),
         ])
         if (!cancelled) {
           setGroupHeaderMembers(members)
           setStarredIds(stars)
+          setPinnedIds(pins)
         }
       } catch {
         if (!cancelled) {
           setGroupHeaderMembers([])
           setStarredIds(new Set())
+          setPinnedIds(new Set())
         }
       }
     })()
     return () => { cancelled = true }
+  }, [isGroupRoom, room.id, supabaseClient])
+
+  const refreshPinnedIds = useCallback(async () => {
+    if (!isGroupRoom || !room.id) return
+    try {
+      const pins = await chatPinnedMessageIds(supabaseClient, room.id)
+      setPinnedIds(pins)
+    } catch {
+      setPinnedIds(new Set())
+    }
   }, [isGroupRoom, room.id, supabaseClient])
 
   const handleToggleStar = useCallback(async (messageId, starred) => {
@@ -249,6 +271,31 @@ export default function ChatConversation({
       // ignore
     }
   }, [supabaseClient])
+
+  const handleTogglePin = useCallback(async (messageId, pinned) => {
+    if (!isGroupOwner) return
+    try {
+      if (pinned) await chatPinMessage(supabaseClient, room.id, messageId)
+      else await chatUnpinMessage(supabaseClient, room.id, messageId)
+      setPinnedIds((prev) => {
+        const next = new Set(prev)
+        if (pinned) next.add(messageId)
+        else next.delete(messageId)
+        return next
+      })
+    } catch {
+      // ignore
+    }
+  }, [isGroupOwner, supabaseClient, room.id])
+
+  const scrollMessageIntoView = useCallback((messageId) => {
+    requestAnimationFrame(() => {
+      const el = listRef.current?.querySelector(`[data-chat-message-id="${messageId}"]`)
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      setHighlightMessageId(messageId)
+      window.setTimeout(() => setHighlightMessageId(null), 2000)
+    })
+  }, [])
 
   // ── Reaction loader ───────────────────────────────────────────────────────
 
@@ -273,6 +320,39 @@ export default function ChatConversation({
       return next
     })
   }, [supabaseClient, viewerUserId])
+
+  const jumpToMessage = useCallback(async (messageId) => {
+    if (!messageId) return
+    setGroupSettingsOpen(false)
+    const inDom = messagesRef.current.some((m) => m.id === messageId)
+    if (inDom) {
+      scrollMessageIntoView(messageId)
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const rows = await chatMessagesWindow(supabaseClient, room.id, messageId, 40)
+      const ordered = [...rows].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          || String(a.id).localeCompare(String(b.id)),
+      )
+      setMessages(ordered)
+      setHasMore(true)
+      hasMoreRef.current = true
+      setHasNewer(true)
+      hasNewerRef.current = true
+      setNewMsgCount(0)
+      if (ordered.length > 0) {
+        await loadReactionsForMessages(ordered.map((m) => m.id))
+      }
+      requestAnimationFrame(() => scrollMessageIntoView(messageId))
+    } catch (e) {
+      setError(e?.message || 'Could not open that message.')
+    } finally {
+      setLoading(false)
+    }
+  }, [supabaseClient, room.id, loadReactionsForMessages, scrollMessageIntoView])
 
   // ── Suppress the Lounge dock FAB while this conversation is on screen ────
   // The dock portals to document.body and would otherwise float over the chat.
@@ -1453,23 +1533,30 @@ export default function ChatConversation({
           ) : (
             <div ref={translateLayerRef} className="space-y-3 pb-2 will-change-transform select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
               {messages.map((msg) => (
-                <ChatBubble
+                <div
                   key={msg.id}
-                  message={msg}
-                  senderLabel={senderLabel(msg.sender_id)}
-                  senderAvatarUrl={senderAvatarUrl(msg.sender_id)}
-                  isMine={msg.sender_id === viewerUserId}
-                  reactions={reactions[msg.id] || []}
-                  viewerUserId={viewerUserId}
-                  hideSenderInfo={activeRoom.kind === 'dm'}
-                  enableStar={isGroupRoom}
-                  isStarred={starredIds.has(msg.id)}
-                  onToggleStar={handleToggleStar}
-                  onReply={setReplyTarget}
-                  onDeleteMessage={handleDelete}
-                  onAddReaction={handleAddReaction}
-                  onRemoveReaction={handleRemoveReaction}
-                />
+                  className={highlightMessageId === msg.id ? 'rounded-2xl ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-zinc-950' : undefined}
+                >
+                  <ChatBubble
+                    message={msg}
+                    senderLabel={senderLabel(msg.sender_id)}
+                    senderAvatarUrl={senderAvatarUrl(msg.sender_id)}
+                    isMine={msg.sender_id === viewerUserId}
+                    reactions={reactions[msg.id] || []}
+                    viewerUserId={viewerUserId}
+                    hideSenderInfo={activeRoom.kind === 'dm'}
+                    enableStar={isGroupRoom}
+                    isStarred={starredIds.has(msg.id)}
+                    onToggleStar={handleToggleStar}
+                    enablePin={isGroupRoom && isGroupOwner}
+                    isPinned={pinnedIds.has(msg.id)}
+                    onTogglePin={handleTogglePin}
+                    onReply={setReplyTarget}
+                    onDeleteMessage={handleDelete}
+                    onAddReaction={handleAddReaction}
+                    onRemoveReaction={handleRemoveReaction}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -1554,6 +1641,8 @@ export default function ChatConversation({
           headerMembers={groupHeaderMembers}
           onRoomUpdated={(patch) => setRoomMeta((prev) => ({ ...prev, ...patch }))}
           onLeftGroup={onBack}
+          onJumpToMessage={jumpToMessage}
+          onPinsChanged={refreshPinnedIds}
         />
       ) : null}
     </div>

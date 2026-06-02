@@ -24,11 +24,15 @@ const MENU_DIV_H = 1
 const LAYOUT_GAP = 12
 
 /** Match rendered action-card rows (Reply / Copy / … / Delete). */
-function estimateMenuHeight(isDeleted, isMine, enableStar = false) {
+function estimateMenuHeight(isDeleted, isMine, enableStar = false, enablePin = false) {
   if (isDeleted) return MENU_ROW_H + 8
   let rows = 4 // Reply, Copy, Forward, Report
   let divs = 2
   if (enableStar) {
+    rows += 1
+    divs += 1
+  }
+  if (enablePin) {
     rows += 1
     divs += 1
   }
@@ -45,12 +49,12 @@ function estimateMenuHeight(isDeleted, isMine, enableStar = false) {
  *
  * Preferred stack: emoji pill above bubble, action card below bubble.
  */
-function computeLayout(rect, isMine, { isDeleted = false, enableStar = false } = {}) {
+function computeLayout(rect, isMine, { isDeleted = false, enableStar = false, enablePin = false } = {}) {
   const vw  = window.innerWidth
   const vh  = window.innerHeight
   const SAFE_TOP    = 52
   const SAFE_BOTTOM = 120 // composer overlay + home indicator
-  const MENU_H      = estimateMenuHeight(isDeleted, isMine, enableStar)
+  const MENU_H      = estimateMenuHeight(isDeleted, isMine, enableStar, enablePin)
   const PILL_W      = Math.min(360, vw - 32)
   const MENU_W      = Math.min(252, vw - 32)
 
@@ -153,6 +157,9 @@ function computeLayout(rect, isMine, { isDeleted = false, enableStar = false } =
  *   enableStar?: boolean,
  *   isStarred?: boolean,
  *   onToggleStar?: (messageId: string, starred: boolean) => void,
+ *   enablePin?: boolean,
+ *   isPinned?: boolean,
+ *   onTogglePin?: (messageId: string, pinned: boolean) => void,
  * }} props
  */
 export default function ChatBubble({
@@ -170,6 +177,9 @@ export default function ChatBubble({
   enableStar = false,
   isStarred = false,
   onToggleStar,
+  enablePin = false,
+  isPinned = false,
+  onTogglePin,
 }) {
   const [menuOpen, setMenuOpen]           = useState(false)
   const [fullPickerOpen, setFullPickerOpen] = useState(false)
@@ -355,7 +365,7 @@ export default function ChatBubble({
   }, [message.body, imageUrls.length])
 
   // Floating menu layout — computed fresh each render so it tracks the latest rect
-  const layout = bubbleRect ? computeLayout(bubbleRect, isMine, { isDeleted, enableStar }) : null
+  const layout = bubbleRect ? computeLayout(bubbleRect, isMine, { isDeleted, enableStar, enablePin }) : null
 
   return (
     <div
@@ -584,6 +594,20 @@ export default function ChatBubble({
               </>
             )}
 
+            {!isDeleted && enablePin && onTogglePin && (
+              <>
+                <Divider />
+                <ActionRow
+                  icon={<PinIcon filled={isPinned} />}
+                  label={isPinned ? 'Unpin' : 'Pin'}
+                  onClick={() => {
+                    onTogglePin(message.id, !isPinned)
+                    closeMenu()
+                  }}
+                />
+              </>
+            )}
+
             {!isDeleted && (
               <>
                 <Divider />
@@ -671,6 +695,15 @@ function StarIcon({ filled = false }) {
   return (
     <svg {...S} fill={filled ? 'currentColor' : 'none'}>
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  )
+}
+function PinIcon({ filled = false }) {
+  return (
+    <svg {...S} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 17v5" />
+      <path d="M5 7h14v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V7z" />
+      <path d="M9 3h6v4H9z" />
     </svg>
   )
 }

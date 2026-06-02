@@ -16,6 +16,11 @@ import {
   chatUpdateGroup,
 } from './chatApi.js'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
+import {
+  ChatGroupMediaSheet,
+  ChatGroupPinnedSheet,
+  ChatGroupSearchSheet,
+} from './ChatGroupAuxSheets.jsx'
 
 const OWNER_MEMBER_MUTE_OPTS = [
   { label: '5 minutes', minutes: 5 },
@@ -44,6 +49,8 @@ const SELF_MUTE_OPTS = [
  *   headerMembers: Array<Record<string, unknown>>,
  *   onRoomUpdated: (patch: Record<string, unknown>) => void,
  *   onLeftGroup: () => void,
+ *   onJumpToMessage?: (messageId: string) => void,
+ *   onPinsChanged?: () => void,
  * }} props
  */
 export default function ChatGroupSettingsSheet({
@@ -55,6 +62,8 @@ export default function ChatGroupSettingsSheet({
   headerMembers,
   onRoomUpdated,
   onLeftGroup,
+  onJumpToMessage,
+  onPinsChanged,
 }) {
   const isOwner = chatIsGroupOwner(room, viewerUserId)
   const [title, setTitle] = useState(String(room.title || ''))
@@ -68,6 +77,7 @@ export default function ChatGroupSettingsSheet({
   const [muteUntilLocal, setMuteUntilLocal] = useState('')
   const avatarInputRef = useRef(null)
   const searchTimerRef = useRef(null)
+  const [auxView, setAuxView] = useState(/** @type {null | 'search' | 'pinned' | 'media'} */ (null))
 
   const reload = useCallback(async () => {
     if (!room?.id) return
@@ -84,6 +94,7 @@ export default function ChatGroupSettingsSheet({
     setTitle(String(room.title || ''))
     setDescription(String(room.description || ''))
     setErr('')
+    setAuxView(null)
     void reload()
   }, [open, room.title, room.description, reload])
 
@@ -150,9 +161,11 @@ export default function ChatGroupSettingsSheet({
     }
   }
 
-  if (!open || typeof document === 'undefined') return null
+  if (typeof document === 'undefined') return null
 
-  return createPortal(
+  const jump = onJumpToMessage || (() => {})
+
+  const settingsPortal = open ? createPortal(
     <div className="fixed inset-0 z-[95] flex flex-col bg-zinc-950" data-chat-feature>
       <div
         className="flex shrink-0 items-center gap-2 border-b border-zinc-800/80 px-3 pb-3"
@@ -408,11 +421,20 @@ export default function ChatGroupSettingsSheet({
           ) : (
             <ul className="space-y-2">
               {starred.map((s) => (
-                <li key={s.message_id} className="rounded-xl bg-zinc-900/80 px-3 py-2 text-[14px] text-zinc-200">
-                  <div className="line-clamp-2">{s.body || '[media]'}</div>
-                  <div className="mt-1 text-[11px] text-zinc-500">
-                    {new Date(s.created_at).toLocaleString()}
-                  </div>
+                <li key={s.message_id}>
+                  <button
+                    type="button"
+                    className="w-full rounded-xl bg-zinc-900/80 px-3 py-2 text-left text-[14px] text-zinc-200 touch-manipulation active:bg-zinc-800"
+                    onClick={() => {
+                      onJumpToMessage?.(s.message_id)
+                      onClose()
+                    }}
+                  >
+                    <div className="line-clamp-2">{s.body || '[media]'}</div>
+                    <div className="mt-1 text-[11px] text-zinc-500">
+                      {new Date(s.created_at).toLocaleString()}
+                    </div>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -420,9 +442,9 @@ export default function ChatGroupSettingsSheet({
         </Section>
 
         <Section title="More">
-          <StubRow label="Search messages" hint="Coming soon" />
-          <StubRow label="Pinned messages" hint={isOwner ? 'Owner can pin from message menu soon' : 'Coming soon'} />
-          <StubRow label="Media, links & docs" hint="Coming soon" />
+          <MoreRow label="Search messages" onClick={() => setAuxView('search')} />
+          <MoreRow label="Pinned messages" onClick={() => setAuxView('pinned')} />
+          <MoreRow label="Media, links & docs" onClick={() => setAuxView('media')} />
         </Section>
 
         <button
@@ -442,6 +464,44 @@ export default function ChatGroupSettingsSheet({
       </div>
     </div>,
     document.body,
+  ) : null
+
+  return (
+    <>
+      {settingsPortal}
+      <ChatGroupSearchSheet
+        open={open && auxView === 'search'}
+        onBack={() => setAuxView(null)}
+        supabaseClient={supabaseClient}
+        roomId={String(room.id)}
+        onJumpToMessage={(id) => {
+          jump(id)
+          onClose()
+        }}
+      />
+      <ChatGroupPinnedSheet
+        open={open && auxView === 'pinned'}
+        onBack={() => setAuxView(null)}
+        supabaseClient={supabaseClient}
+        room={room}
+        viewerUserId={viewerUserId}
+        onJumpToMessage={(id) => {
+          jump(id)
+          onClose()
+        }}
+        onPinsChanged={onPinsChanged}
+      />
+      <ChatGroupMediaSheet
+        open={open && auxView === 'media'}
+        onBack={() => setAuxView(null)}
+        supabaseClient={supabaseClient}
+        roomId={String(room.id)}
+        onJumpToMessage={(id) => {
+          jump(id)
+          onClose()
+        }}
+      />
+    </>
   )
 }
 
@@ -454,11 +514,15 @@ function Section({ title, children }) {
   )
 }
 
-function StubRow({ label, hint }) {
+function MoreRow({ label, onClick }) {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-zinc-900/50 px-3 py-3 opacity-70">
-      <span className="text-[14px] font-medium text-zinc-300">{label}</span>
-      <span className="text-[12px] text-zinc-500">{hint}</span>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-2 flex w-full items-center justify-between rounded-xl bg-zinc-900/80 px-3 py-3 touch-manipulation active:bg-zinc-800"
+    >
+      <span className="text-[14px] font-medium text-zinc-200">{label}</span>
+      <span className="text-[15px] text-zinc-400">›</span>
+    </button>
   )
 }

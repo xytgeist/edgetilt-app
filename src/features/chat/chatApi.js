@@ -333,6 +333,60 @@ export function chatIsGroupOwner(room, viewerUserId) {
   return room.memberRole === 'admin' || room.member_role === 'admin'
 }
 
+export async function chatSearchMessages(supabase, roomId, query, limit = 30) {
+  const { data, error } = await supabase.rpc('chat_search_messages', {
+    p_room_id: roomId,
+    p_query: query,
+    p_limit: limit,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+export async function chatPinnedMessagesPage(supabase, roomId, limit = 50) {
+  const { data, error } = await supabase.rpc('chat_pinned_messages_page', {
+    p_room_id: roomId,
+    p_limit: limit,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+export async function chatPinnedMessageIds(supabase, roomId) {
+  const { data, error } = await supabase.rpc('chat_pinned_message_ids', { p_room_id: roomId })
+  if (error) throw new Error(error.message)
+  return new Set((data || []).map((r) => r.message_id))
+}
+
+export async function chatRoomSharedMedia(supabase, roomId, limit = 80) {
+  const { data, error } = await supabase.rpc('chat_room_shared_media', {
+    p_room_id: roomId,
+    p_limit: limit,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+export async function chatRoomSharedLinks(supabase, roomId, { docsOnly = false, limit = 80 } = {}) {
+  const { data, error } = await supabase.rpc('chat_room_shared_links', {
+    p_room_id: roomId,
+    p_limit: limit,
+    p_docs_only: docsOnly,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+export async function chatMessagesWindow(supabase, roomId, messageId, limit = 40) {
+  const { data, error } = await supabase.rpc('chat_messages_window', {
+    p_room_id: roomId,
+    p_message_id: messageId,
+    p_limit: limit,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
 export async function chatGetBlockStatus(supabase, viewerUserId, otherUserId) {
   if (!viewerUserId || !otherUserId) return { iBlockThem: false, theyBlockMe: false }
   const { data } = await supabase

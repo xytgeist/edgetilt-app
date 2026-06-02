@@ -719,6 +719,8 @@ export default function ChatConversation({
     const el = listRef.current
     if (!el) return
     const isAndroid = /Android/i.test(navigator.userAgent)
+    /** Touchend downward travel (px) before blur — iOS needs a shorter flick. */
+    const dismissDyPx = isAndroid ? 50 : 24
     let startY = 0
     let startX = 0
     let keyboardWasOpen = false
@@ -786,7 +788,11 @@ export default function ChatConversation({
 
     const onEnd = (e) => {
       const dy = (e.changedTouches[0]?.clientY ?? 0) - startY
-      if (dy > 50 && keyboardWasOpen) {
+      const dx = (e.changedTouches[0]?.clientX ?? 0) - startX
+      const downwardDismiss = isAndroid
+        ? dy > dismissDyPx
+        : dy > dismissDyPx && dy > Math.abs(dx)
+      if (downwardDismiss && keyboardWasOpen) {
         document.activeElement?.blur?.()
         if (isAndroid) {
           keyboardDismissPreserveRef.current = bottomGap()

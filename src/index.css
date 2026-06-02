@@ -2380,34 +2380,34 @@ html.light .chat-input-glass {
   border: 1px solid rgba(0, 0, 0, 0.10);
 }
 
-/* Android: weak backdrop-filter — solid underlay + lighter glass tint (iOS unchanged at 25%). */
+/* Android: weak backdrop-filter — solid underlay + glass tint (mid between 32/92 and 24/84). */
 html.platform-android .chat-header-glass {
   background:
-    rgba(20, 22, 40, 0.24),
-    rgba(14, 16, 30, 0.84);
+    rgba(20, 22, 40, 0.28),
+    rgba(14, 16, 30, 0.88);
 }
 html.light.platform-android .chat-header-glass {
   background:
-    rgba(235, 238, 255, 0.28),
-    rgba(248, 249, 253, 0.88);
+    rgba(235, 238, 255, 0.33),
+    rgba(248, 249, 253, 0.91);
 }
 html.platform-android .chat-menu-glass {
   background:
-    rgba(20, 22, 40, 0.24),
-    rgba(14, 16, 30, 0.84);
+    rgba(20, 22, 40, 0.28),
+    rgba(14, 16, 30, 0.88);
 }
 html.light.platform-android .chat-menu-glass {
   background:
-    rgba(235, 238, 255, 0.28),
-    rgba(248, 249, 253, 0.88);
+    rgba(235, 238, 255, 0.33),
+    rgba(248, 249, 253, 0.91);
 }
 html.platform-android .chat-input-glass {
   background:
-    rgba(44, 44, 46, 0.30),
-    rgba(28, 28, 32, 0.86);
+    rgba(44, 44, 46, 0.36),
+    rgba(28, 28, 32, 0.90);
 }
 html.light.platform-android .chat-input-glass {
   background:
-    rgba(242, 242, 247, 0.32),
-    rgba(250, 250, 252, 0.90);
+    rgba(242, 242, 247, 0.39),
+    rgba(250, 250, 252, 0.93);
 }

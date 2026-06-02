@@ -425,7 +425,7 @@ export default function ChatBubble({
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => e.preventDefault()}
             onSelectStart={(e) => e.preventDefault()}
-            className={`chat-bubble-surface relative select-none px-3 py-2 text-[16px] leading-snug transition-opacity touch-manipulation ${
+            className={`chat-bubble-surface relative select-none px-3 py-2 text-[16px] leading-snug transition-opacity ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted
@@ -437,6 +437,7 @@ export default function ChatBubble({
             style={{
               WebkitUserSelect: 'none',
               userSelect: 'none',
+              touchAction: 'pan-y',
               borderRadius: compactBubble ? '9999px' : BUBBLE_EXPANDED_RADIUS_PX,
               backgroundColor: isMine && !isDeleted ? '#3b82f6' : undefined,
             }}

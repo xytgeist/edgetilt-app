@@ -5,9 +5,9 @@ import LoungeFlameIcon from '../lounge/LoungeFlameIcon'
 
 const QUICK_REACTIONS = ['👍','❤️','😂','🔥','😮','😢','🎉','😍','👏','💯','🙏','🤣']
 
-/** SVG chip art inset in 24×24 viewBox — render ~25% larger than adjacent emoji text. */
-const REACTION_CHIP_CLASS = 'h-5 w-5 shrink-0'
-const QUICK_CHIP_CLASS = 'h-6 w-6 shrink-0'
+/** SVG chip art inset in 24×24 viewBox (~75% fill) — oversize to match emoji em-square. */
+const REACTION_CHIP_CLASS = 'h-8 w-8 shrink-0'
+const QUICK_CHIP_CLASS = 'h-9 w-9 shrink-0'
 
 /**
  * Frosted-glass style shared by the floating menus.
@@ -124,13 +124,18 @@ export default function ChatBubble({
 
   const startSelectionSuppression = useCallback(() => {
     stopSelectionSuppression()
+    document.documentElement.classList.add('chat-bubble-touch-active')
     const suppress = () => {
       const sel = window.getSelection()
       if (sel && sel.type === 'Range') sel.removeAllRanges()
     }
+    suppress()
     document.addEventListener('selectionchange', suppress)
+    const interval = window.setInterval(suppress, 48)
     selectionSuppressCleanupRef.current = () => {
+      document.documentElement.classList.remove('chat-bubble-touch-active')
       document.removeEventListener('selectionchange', suppress)
+      window.clearInterval(interval)
       suppress()
     }
   }, [stopSelectionSuppression])
@@ -183,6 +188,15 @@ export default function ChatBubble({
   }, [stopSelectionSuppression])
 
   useEffect(() => () => stopSelectionSuppression(), [stopSelectionSuppression])
+
+  // iOS: native capture blocks selectstart before Safari paints the loupe/selection.
+  useEffect(() => {
+    const el = bubbleRef.current
+    if (!el) return
+    const blockSelect = (e) => e.preventDefault()
+    el.addEventListener('selectstart', blockSelect, { capture: true })
+    return () => el.removeEventListener('selectstart', blockSelect, { capture: true })
+  }, [])
 
   // ── Reaction helpers ────────────────────────────────────────────────────────
 

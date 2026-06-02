@@ -195,7 +195,16 @@ export default function ChatConversation({
   // The title-bar nav icon calls temporaryRevealLoungeDock() to briefly surface it.
   useEffect(() => {
     notifyLoungeDockSuppress(true)
-    return () => notifyLoungeDockSuppress(false)
+    const blockSelect = (e) => {
+      if (e.target instanceof Element && e.target.closest('[data-chat-feature] .chat-bubble-surface')) {
+        e.preventDefault()
+      }
+    }
+    document.addEventListener('selectstart', blockSelect, { capture: true })
+    return () => {
+      notifyLoungeDockSuppress(false)
+      document.removeEventListener('selectstart', blockSelect, { capture: true })
+    }
   }, [])
 
   // ── Lazy sender profile resolution ───────────────────────────────────────

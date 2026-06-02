@@ -2301,11 +2301,25 @@ html.light .reaction-pill {
 }
 
 /* Long-press menu target — iOS Safari ignores select-none on descendants without this. */
-[data-chat-feature] .chat-bubble-surface,
-[data-chat-feature] .chat-bubble-surface .chat-bubble-body {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+[data-chat-feature],
+[data-chat-feature] * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+[data-chat-feature] textarea,
+[data-chat-feature] input,
+[data-chat-feature] textarea *,
+[data-chat-feature] input * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+html.chat-bubble-touch-active,
+html.chat-bubble-touch-active * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
 }
 
 /* ── Chat conversation — theme-aware glass / gradient ──────────────────────

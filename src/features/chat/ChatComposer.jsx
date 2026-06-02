@@ -272,7 +272,9 @@ export default function ChatComposer({
             placeholder="Message…"
             disabled={disabled}
             rows={1}
-            className="box-border h-full w-full resize-none bg-transparent py-0 pl-4 text-[16px] leading-5 text-zinc-100 placeholder:text-zinc-500 outline-none disabled:opacity-50"
+            className={`box-border w-full resize-none bg-transparent py-0 pl-4 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none disabled:opacity-50 ${
+              expanded ? 'leading-5' : 'h-full'
+            }`}
             style={{
               maxHeight: COMPOSER_MAX_H,
               paddingRight: hasContent ? 46 : 12,
@@ -285,20 +287,20 @@ export default function ChatComposer({
             disabled={!canSend}
             onClick={() => void handleSend()}
             aria-label="Send"
-            className={`absolute right-[13px] z-10 grid h-7 w-7 place-items-center rounded-lg touch-manipulation transition-all ${
+            className={`absolute right-[5px] z-10 grid h-7 w-7 place-items-center rounded-full touch-manipulation transition-all ${
               expanded ? 'bottom-1.5' : 'top-1/2 -translate-y-1/2'
             } ${
               hasContent
-                ? 'text-cyan-700 opacity-100 active:opacity-60'
+                ? 'bg-cyan-500 text-white opacity-100 active:opacity-70'
                 : 'pointer-events-none opacity-0'
             }`}
           >
             {sending ? (
               <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
               </svg>
             )}
           </button>

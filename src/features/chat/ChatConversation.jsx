@@ -692,6 +692,31 @@ export default function ChatConversation({
     if (!el) return
     let startY = 0
     let keyboardWasOpen = false
+    const isAndroid = /Android/i.test(navigator.userAgent)
+
+    /** Android: keyboard close reshapes the list (paddingBottom) mid-animation;
+     *  smooth scroll fights that and causes jumpiness — snap once layout settles. */
+    const snapBottomAfterKeyboardClose = () => {
+      atBottomRef.current = true
+      const vv = window.visualViewport
+      let timer = null
+      const snap = () => {
+        clearTimeout(timer)
+        timer = setTimeout(() => { el.scrollTop = el.scrollHeight }, 100)
+      }
+      if (vv) {
+        vv.addEventListener('resize', snap)
+        snap()
+        setTimeout(() => {
+          vv.removeEventListener('resize', snap)
+          clearTimeout(timer)
+          el.scrollTop = el.scrollHeight
+        }, 350)
+      } else {
+        snap()
+      }
+    }
+
     const onStart = (e) => {
       startY = e.touches[0]?.clientY ?? 0
       const tag = document.activeElement?.tagName
@@ -701,7 +726,12 @@ export default function ChatConversation({
       const dy = (e.changedTouches[0]?.clientY ?? 0) - startY
       if (dy > 50 && keyboardWasOpen) {
         document.activeElement?.blur?.()
-        requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }))
+        if (isAndroid) {
+          snapBottomAfterKeyboardClose()
+        } else {
+          atBottomRef.current = true
+          requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' }))
+        }
       }
     }
     el.addEventListener('touchstart', onStart, { passive: true })

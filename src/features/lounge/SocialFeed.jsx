@@ -247,8 +247,10 @@ import { LOUNGE_FEED_SORT } from '../../utils/loungeFeedSortPref'
 import LoungeFeedSortSwitch from './LoungeFeedSortSwitch.jsx'
 import {
   isLoungeLayoutTestPostId,
+  LOUNGE_LAYOUT_TEST_PEER,
   LOUNGE_LAYOUT_TEST_POST,
 } from './loungeLayoutTestPost.js'
+import ChatDmHeaderChrome from '../chat/ChatDmHeaderChrome.jsx'
 import LoungeFeedCategoryFilter from './LoungeFeedCategoryFilter.jsx'
 import LoungePullRefreshZone from './LoungePullRefreshZone.jsx'
 import { useLoungePullToRefresh } from './useLoungePullToRefresh.js'
@@ -11225,12 +11227,33 @@ export default function SocialFeed({
           >
             <div
               ref={loungePostDetailTitleBarRef}
-              className="absolute inset-x-0 top-0 z-30 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 shadow-[0_1px_0_rgba(0,0,0,0.18)] will-change-transform"
-              style={{
-                transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
-                pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
-              }}
+              className={
+                loungeLayoutTestDetail
+                  ? 'absolute inset-x-0 top-0 z-30'
+                  : 'absolute inset-x-0 top-0 z-30 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 shadow-[0_1px_0_rgba(0,0,0,0.18)] will-change-transform'
+              }
+              style={
+                loungeLayoutTestDetail
+                  ? undefined
+                  : {
+                      transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
+                      pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
+                    }
+              }
             >
+              {loungeLayoutTestDetail ? (
+                <>
+                  <h2 id="lounge-post-detail-title" className="sr-only">
+                    {LOUNGE_LAYOUT_TEST_PEER.display_name}
+                  </h2>
+                  <ChatDmHeaderChrome
+                    onBack={handleLoungePostDetailBack}
+                    displayName={LOUNGE_LAYOUT_TEST_PEER.display_name}
+                    avatarUrl={LOUNGE_LAYOUT_TEST_PEER.avatar_url}
+                    menuZIndex={loungePostDetailAboveProfile ? 121 : 119}
+                  />
+                </>
+              ) : (
               <div className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
               <button
                 type="button"
@@ -11243,11 +11266,7 @@ export default function SocialFeed({
                 </span>
               </button>
               <h2 id="lounge-post-detail-title" className="min-w-0 flex-1 text-center text-[17px] font-bold text-white">
-                {loungeLayoutTestDetail
-                  ? 'Layout test'
-                  : loungeCommentDetailPathIds.length > 0
-                    ? 'Reply'
-                    : 'Post'}
+                {loungeCommentDetailPathIds.length > 0 ? 'Reply' : 'Post'}
               </h2>
               {loungeDetailShowPostMenu ? (
                 <div ref={loungePostDetailMenuWrapRef} className={`relative flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} justify-end`}>
@@ -11357,6 +11376,7 @@ export default function SocialFeed({
                 <div className={LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} aria-hidden />
               )}
               </div>
+              )}
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -11376,7 +11396,14 @@ export default function SocialFeed({
               <div
                 aria-hidden
                 className="shrink-0"
-                style={{ height: loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56 }}
+                style={{
+                  height:
+                    loungePostDetailTitleBarHeight > 0
+                      ? loungePostDetailTitleBarHeight
+                      : loungeLayoutTestDetail
+                        ? 176
+                        : 56,
+                }}
               />
               {loungeLayoutTestDetail ? (
                 <p className="px-4 py-8 text-center text-[14px] text-zinc-500">

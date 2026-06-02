@@ -1,5 +1,12 @@
 export const LOUNGE_LAYOUT_TEST_POST_ID = '__lounge_layout_test__'
 
+/** Fake DM peer shown in layout-test post-detail header (matches chat DM chrome). */
+export const LOUNGE_LAYOUT_TEST_PEER = Object.freeze({
+  display_name: 'Alex Chen',
+  avatar_url: null,
+  handle: 'alexchen',
+})
+
 /** Sentinel post row — opens real post-detail chrome without feed fetch or comments. */
 export const LOUNGE_LAYOUT_TEST_POST = Object.freeze({
   id: LOUNGE_LAYOUT_TEST_POST_ID,

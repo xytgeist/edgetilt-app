@@ -558,8 +558,8 @@ Deno.serve(async (req) => {
     return json(200, { ok: true })
   }
 
-  // ── leave_room ────────────────────────────────────────────────────────────
-  if (action === 'leave_room') {
+  // ── leave_room / delete_conversation (alias) ─────────────────────────────
+  if (action === 'leave_room' || action === 'delete_conversation') {
     const roomId = String(body?.room_id || '').trim()
     if (!roomId) return json(400, { error: 'room_id is required.' })
     const { error: dErr } = await admin

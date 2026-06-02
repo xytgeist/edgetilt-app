@@ -91,13 +91,18 @@ export function chatUpdateLastRead(supabase, roomId, messageId) {
   return loungeChatInvoke(supabase, { action: 'update_last_read', room_id: roomId, message_id: messageId })
 }
 
+async function chatInboxRpc(supabase, fn, params) {
+  const { error } = await supabase.rpc(fn, params)
+  if (error) throw new Error(error.message)
+}
+
 /**
  * Mark a room as unread (clears last_read_at).
  * @param {SupabaseClient} supabase
  * @param {string} roomId
  */
 export function chatMarkUnread(supabase, roomId) {
-  return loungeChatInvoke(supabase, { action: 'mark_unread', room_id: roomId })
+  return chatInboxRpc(supabase, 'chat_mark_room_unread', { p_room_id: roomId })
 }
 
 /**
@@ -106,7 +111,7 @@ export function chatMarkUnread(supabase, roomId) {
  * @param {string} roomId
  */
 export function chatPinRoom(supabase, roomId) {
-  return loungeChatInvoke(supabase, { action: 'pin_room', room_id: roomId })
+  return chatInboxRpc(supabase, 'chat_set_room_pinned', { p_room_id: roomId, p_pinned: true })
 }
 
 /**
@@ -115,7 +120,7 @@ export function chatPinRoom(supabase, roomId) {
  * @param {string} roomId
  */
 export function chatUnpinRoom(supabase, roomId) {
-  return loungeChatInvoke(supabase, { action: 'unpin_room', room_id: roomId })
+  return chatInboxRpc(supabase, 'chat_set_room_pinned', { p_room_id: roomId, p_pinned: false })
 }
 
 /**
@@ -124,7 +129,7 @@ export function chatUnpinRoom(supabase, roomId) {
  * @param {string} roomId
  */
 export function chatLeaveRoom(supabase, roomId) {
-  return loungeChatInvoke(supabase, { action: 'leave_room', room_id: roomId })
+  return chatInboxRpc(supabase, 'chat_leave_room', { p_room_id: roomId })
 }
 
 /**

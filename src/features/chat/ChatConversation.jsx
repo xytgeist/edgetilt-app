@@ -1146,7 +1146,7 @@ export default function ChatConversation({
               No messages yet. Say hi! 👋
             </div>
           ) : (
-            <div ref={translateLayerRef} className="space-y-3 pb-2 will-change-transform">
+            <div ref={translateLayerRef} className="space-y-3 pb-2 will-change-transform select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
               {messages.map((msg) => (
                 <ChatBubble
                   key={msg.id}

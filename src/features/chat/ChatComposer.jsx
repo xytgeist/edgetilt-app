@@ -4,6 +4,8 @@ import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost.js'
 
 const MAX_BODY   = 4000
 const MAX_IMAGES = 4
+/** Fixed radius — pill on one line (38px tall), rounded rect when expanded. */
+const COMPOSER_RADIUS_PX = 19
 
 /**
  * Chat message composer — floating glass bar matching the header style.
@@ -197,8 +199,8 @@ export default function ChatComposer({
         <div className="px-1 pb-1 text-[12px] text-rose-400">{uploadErr}</div>
       )}
 
-      {/* Main input row */}
-      <div className="flex items-center gap-2">
+      {/* Main input row — items-end keeps + pinned to bottom when textarea grows */}
+      <div className="flex items-end gap-2">
 
         {/* + button */}
         <button
@@ -220,7 +222,10 @@ export default function ChatComposer({
         <input ref={gifInputRef}  type="file" accept="image/gif" multiple className="hidden" onChange={handleGifPick} />
 
         {/* Textarea + inline send button */}
-        <div className="chat-input-glass relative flex-1 rounded-full">
+        <div
+          className="chat-input-glass relative flex-1 overflow-hidden"
+          style={{ borderRadius: COMPOSER_RADIUS_PX }}
+        >
           <textarea
             ref={textareaRef}
             value={body}
@@ -229,7 +234,7 @@ export default function ChatComposer({
             placeholder="Message…"
             disabled={disabled}
             rows={1}
-            className="w-full resize-none rounded-full bg-transparent pl-4 text-[16px] leading-5 text-zinc-100 placeholder:text-zinc-500 outline-none disabled:opacity-50"
+            className="w-full resize-none bg-transparent pl-4 text-[16px] leading-5 text-zinc-100 placeholder:text-zinc-500 outline-none disabled:opacity-50"
             style={{ minHeight: 38, maxHeight: 160, paddingTop: 9, paddingBottom: 9, paddingRight: hasContent ? 46 : 12 }}
           />
 

@@ -60,7 +60,6 @@ export default function ChatTab({
 
   // Long-press context menu on room rows
   const [roomMenu, setRoomMenu] = useState(/** @type {{ room: any, y: number, x: number } | null} */ (null))
-  const longPressTimerRef = useRef(null)
 
   // Group creation
   const [showGroupCreate, setShowGroupCreate] = useState(false)
@@ -659,90 +658,15 @@ export default function ChatTab({
         </div>
       ) : (
         <ul className="divide-y divide-zinc-800/50">
-          {rooms.map((room) => {
-            const label = chatRoomLabel(room)
-            return (
-              <li key={room.id} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setActiveRoomId(room.id)}
-                  onPointerDown={(e) => {
-                    const startX = e.clientX, startY = e.clientY
-                    longPressTimerRef.current = setTimeout(() => {
-                      setRoomMenu({ room, x: e.clientX, y: e.clientY })
-                    }, 420)
-                    const cancel = (ev) => {
-                      if (Math.abs(ev.clientX - startX) > 8 || Math.abs(ev.clientY - startY) > 8) {
-                        clearTimeout(longPressTimerRef.current)
-                      }
-                    }
-                    const done = () => {
-                      clearTimeout(longPressTimerRef.current)
-                      document.removeEventListener('pointermove', cancel)
-                      document.removeEventListener('pointerup', done)
-                    }
-                    document.addEventListener('pointermove', cancel, { passive: true })
-                    document.addEventListener('pointerup', done, { passive: true })
-                  }}
-                  onContextMenu={(e) => e.preventDefault()}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900"
-                >
-                  {/* Avatar / icon */}
-                  <div className="relative shrink-0">
-                    {room.kind === 'dm' && room.peerAvatarUrl ? (
-                      <img
-                        src={room.peerAvatarUrl}
-                        alt=""
-                        className="h-11 w-11 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className={`grid h-11 w-11 place-items-center rounded-full text-[18px] ${
-                        room.kind === 'channel' ? 'bg-violet-900/60' : room.kind === 'group' ? 'bg-amber-900/60' : 'bg-zinc-800'
-                      }`}>
-                        {room.kind === 'channel' ? '#' : room.kind === 'group' ? '👥' : (room.peerLabel?.[1] || '?').toUpperCase()}
-                      </div>
-                    )}
-                    {room.hasUnread && (
-                      <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-zinc-950 bg-cyan-500" />
-                    )}
-                  </div>
-
-                  {/* Labels */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      {room.pinned && (
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-cyan-500">
-                          <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
-                        </svg>
-                      )}
-                      <span className={`truncate text-[15px] font-semibold ${room.hasUnread ? 'text-zinc-100' : 'text-zinc-300'}`}>
-                        {label}
-                      </span>
-                      {room.isMuted && (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0 text-zinc-600">
-                          <line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
-                        </svg>
-                      )}
-                    </div>
-                    {room.previewText ? (
-                      <div className={`truncate text-[13px] ${room.hasUnread ? 'font-medium text-zinc-300' : 'text-zinc-500'}`}>
-                        {room.previewText}
-                      </div>
-                    ) : (
-                      <div className="text-[13px] text-zinc-600">No messages yet</div>
-                    )}
-                  </div>
-
-                  {/* Timestamp */}
-                  {room.last_message_at && (
-                    <div className="shrink-0 text-[11px] text-zinc-600">
-                      {formatChatTimestamp(room.last_message_at)}
-                    </div>
-                  )}
-                </button>
-              </li>
-            )
-          })}
+          {rooms.map((room) => (
+            <ChatRoomListRow
+              key={room.id}
+              room={room}
+              label={chatRoomLabel(room)}
+              onOpen={(roomId) => setActiveRoomId(roomId)}
+              onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y })}
+            />
+          ))}
         </ul>
       )}
     </ScrollLinkedEdgeTitleBarShell>
@@ -758,6 +682,157 @@ export default function ChatTab({
       document.body,
     )}
     </>
+  )
+}
+
+const ROOM_LONG_PRESS_MS = 400
+const ROOM_LONG_PRESS_MOVE_PX = 10
+
+/** Inbox row with touch + mouse long-press (pointer-only fails on iOS/Android in scroll lists). */
+function ChatRoomListRow({ room, label, onOpen, onLongPress }) {
+  const timerRef = useRef(null)
+  const suppressClickRef = useRef(false)
+  const touchRef = useRef({ startX: 0, startY: 0, cancelled: false })
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  const fireLongPress = useCallback((x, y) => {
+    clearTimer()
+    touchRef.current.cancelled = true
+    suppressClickRef.current = true
+    onLongPress(room, x, y)
+  }, [room, onLongPress, clearTimer])
+
+  const onTouchStart = useCallback((e) => {
+    if (e.touches.length !== 1) return
+    touchRef.current.cancelled = false
+    touchRef.current.startX = e.touches[0].clientX
+    touchRef.current.startY = e.touches[0].clientY
+    clearTimer()
+    timerRef.current = setTimeout(() => {
+      if (!touchRef.current.cancelled) {
+        fireLongPress(touchRef.current.startX, touchRef.current.startY)
+      }
+    }, ROOM_LONG_PRESS_MS)
+  }, [clearTimer, fireLongPress])
+
+  const onTouchMove = useCallback((e) => {
+    if (e.touches.length !== 1 || touchRef.current.cancelled) return
+    const dx = Math.abs(e.touches[0].clientX - touchRef.current.startX)
+    const dy = Math.abs(e.touches[0].clientY - touchRef.current.startY)
+    if (dx > ROOM_LONG_PRESS_MOVE_PX || dy > ROOM_LONG_PRESS_MOVE_PX) {
+      touchRef.current.cancelled = true
+      clearTimer()
+    }
+  }, [clearTimer])
+
+  const onTouchEnd = useCallback(() => {
+    clearTimer()
+  }, [clearTimer])
+
+  const onPointerDown = useCallback((e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return
+    let cancelled = false
+    const startX = e.clientX
+    const startY = e.clientY
+    clearTimer()
+    timerRef.current = setTimeout(() => {
+      if (!cancelled) fireLongPress(startX, startY)
+    }, ROOM_LONG_PRESS_MS)
+    const onMove = (ev) => {
+      if (Math.abs(ev.clientX - startX) > ROOM_LONG_PRESS_MOVE_PX || Math.abs(ev.clientY - startY) > ROOM_LONG_PRESS_MOVE_PX) {
+        cancelled = true
+        clearTimer()
+        document.removeEventListener('pointermove', onMove)
+      }
+    }
+    const onUp = () => {
+      clearTimer()
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+    }
+    document.addEventListener('pointermove', onMove, { passive: true })
+    document.addEventListener('pointerup', onUp, { passive: true })
+  }, [clearTimer, fireLongPress])
+
+  const handleClick = useCallback(() => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
+    onOpen(room.id)
+  }, [onOpen, room.id])
+
+  return (
+    <li className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+        onPointerDown={onPointerDown}
+        onContextMenu={(e) => e.preventDefault()}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
+        style={{ touchAction: 'pan-y' }}
+      >
+        <div className="relative shrink-0">
+          {room.kind === 'dm' && room.peerAvatarUrl ? (
+            <img
+              src={room.peerAvatarUrl}
+              alt=""
+              className="h-11 w-11 rounded-full object-cover"
+            />
+          ) : (
+            <div className={`grid h-11 w-11 place-items-center rounded-full text-[18px] ${
+              room.kind === 'channel' ? 'bg-violet-900/60' : room.kind === 'group' ? 'bg-amber-900/60' : 'bg-zinc-800'
+            }`}>
+              {room.kind === 'channel' ? '#' : room.kind === 'group' ? '👥' : (room.peerLabel?.[1] || '?').toUpperCase()}
+            </div>
+          )}
+          {room.hasUnread && (
+            <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-zinc-950 bg-cyan-500" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            {room.pinned && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-cyan-500">
+                <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+              </svg>
+            )}
+            <span className={`truncate text-[15px] font-semibold ${room.hasUnread ? 'text-zinc-100' : 'text-zinc-300'}`}>
+              {label}
+            </span>
+            {room.isMuted && (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0 text-zinc-600">
+                <line x1="1" y1="1" x2="23" y2="23" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+              </svg>
+            )}
+          </div>
+          {room.previewText ? (
+            <div className={`truncate text-[13px] ${room.hasUnread ? 'font-medium text-zinc-300' : 'text-zinc-500'}`}>
+              {room.previewText}
+            </div>
+          ) : (
+            <div className="text-[13px] text-zinc-600">No messages yet</div>
+          )}
+        </div>
+
+        {room.last_message_at && (
+          <div className="shrink-0 text-[11px] text-zinc-600">
+            {formatChatTimestamp(room.last_message_at)}
+          </div>
+        )}
+      </button>
+    </li>
   )
 }
 

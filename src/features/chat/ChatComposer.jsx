@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost.js'
 
 const MAX_BODY   = 4000
 const MAX_IMAGES = 4
-const COMPOSER_MIN_H = 38
+const COMPOSER_MIN_H = 40
 const COMPOSER_MAX_H = 160
-/** Corner radius once the field grows past a single line. */
+/** Corner radius once the field wraps past one line. */
 const COMPOSER_EXPANDED_RADIUS_PX = 20
+/** scrollHeight above empty single-line measurement ⇒ multi-line. */
+const COMPOSER_MULTI_LINE_SCROLL_SLACK = 6
 
 /**
  * Chat message composer — floating glass bar matching the header style.
@@ -43,6 +45,7 @@ export default function ChatComposer({
 
   const textareaRef  = useRef(null)
   const inputWrapRef = useRef(null)
+  const singleLineScrollHRef = useRef(/** @type {number | null} */ (null))
   const fileInputRef = useRef(null)
   const gifInputRef  = useRef(null)
   const plusBtnRef   = useRef(null)
@@ -50,18 +53,31 @@ export default function ChatComposer({
   const hasContent = body.trim().length > 0 || images.length > 0
   const canSend    = !disabled && !sending && !uploading && hasContent
 
-  // Auto-resize textarea; pill radius on one line, fixed radius when expanded
-  useEffect(() => {
+  // Auto-resize textarea; capsule (9999px) on one line, fixed radius when wrapped
+  useLayoutEffect(() => {
     const ta = textareaRef.current
     const wrap = inputWrapRef.current
     if (!ta) return
+
+    if (singleLineScrollHRef.current == null) {
+      const prev = ta.value
+      ta.value = ''
+      ta.style.height = 'auto'
+      singleLineScrollHRef.current = ta.scrollHeight
+      ta.value = prev
+    }
+
     ta.style.height = 'auto'
-    const h = Math.max(COMPOSER_MIN_H, Math.min(ta.scrollHeight, COMPOSER_MAX_H))
+    const scrollH = ta.scrollHeight
+    const h = Math.max(COMPOSER_MIN_H, Math.min(scrollH, COMPOSER_MAX_H))
     ta.style.height = `${h}px`
+
     if (wrap) {
-      wrap.style.borderRadius = h > COMPOSER_MIN_H + 2
+      const singleCap = (singleLineScrollHRef.current ?? COMPOSER_MIN_H) + COMPOSER_MULTI_LINE_SCROLL_SLACK
+      const isMultiLine = body.includes('\n') || scrollH > singleCap
+      wrap.style.borderRadius = isMultiLine
         ? `${COMPOSER_EXPANDED_RADIUS_PX}px`
-        : `${h / 2}px`
+        : '9999px'
     }
   }, [body])
 
@@ -235,7 +251,7 @@ export default function ChatComposer({
         <div
           ref={inputWrapRef}
           className="chat-input-glass relative flex-1 overflow-hidden"
-          style={{ borderRadius: COMPOSER_MIN_H / 2 }}
+          style={{ borderRadius: '9999px' }}
         >
           <textarea
             ref={textareaRef}
@@ -246,7 +262,7 @@ export default function ChatComposer({
             disabled={disabled}
             rows={1}
             className="w-full resize-none bg-transparent pl-4 text-[16px] leading-5 text-zinc-100 placeholder:text-zinc-500 outline-none disabled:opacity-50"
-            style={{ minHeight: COMPOSER_MIN_H, maxHeight: COMPOSER_MAX_H, paddingTop: 9, paddingBottom: 9, paddingRight: hasContent ? 46 : 12 }}
+            style={{ minHeight: COMPOSER_MIN_H, maxHeight: COMPOSER_MAX_H, paddingTop: 10, paddingBottom: 10, paddingRight: hasContent ? 46 : 12 }}
           />
 
           {/* Send button — appears inside textarea when content exists */}
@@ -255,7 +271,7 @@ export default function ChatComposer({
             disabled={!canSend}
             onClick={() => void handleSend()}
             aria-label="Send"
-            className={`absolute bottom-[9px] right-[13px] grid h-7 w-7 place-items-center rounded-lg touch-manipulation transition-all z-10 ${
+            className={`absolute bottom-[10px] right-[13px] grid h-7 w-7 place-items-center rounded-lg touch-manipulation transition-all z-10 ${
               hasContent
                 ? 'text-cyan-700 opacity-100 active:opacity-60'
                 : 'pointer-events-none opacity-0'

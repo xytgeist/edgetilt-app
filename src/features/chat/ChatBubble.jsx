@@ -5,9 +5,11 @@ import LoungeFlameIcon from '../lounge/LoungeFlameIcon'
 
 const QUICK_REACTIONS = ['👍','❤️','😂','🔥','😮','😢','🎉','😍','👏','💯','🙏','🤣']
 
-/** SVG chip art inset in 24×24 viewBox (~75% fill) — oversize to match emoji em-square. */
-const REACTION_CHIP_CLASS = 'h-8 w-8 shrink-0'
-const QUICK_CHIP_CLASS = 'h-9 w-9 shrink-0'
+const IS_IOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+/** SVG chip art inset in 24×24 viewBox (~75% fill) — slightly larger than emoji em-square. */
+const REACTION_CHIP_CLASS = 'h-6 w-6 shrink-0'
+const QUICK_CHIP_CLASS = 'h-7 w-7 shrink-0'
 
 /**
  * Frosted-glass style shared by the floating menus.
@@ -113,46 +115,36 @@ export default function ChatBubble({
   const [bubbleRect, setBubbleRect]       = useState(/** @type {DOMRect | null} */ (null))
 
   const longPressTimer = useRef(null)
-  const selectionSuppressCleanupRef = useRef(/** @type {(() => void) | null} */ (null))
   const bubbleRef      = useRef(null)
   const isDeleted      = Boolean(message.deleted_at)
 
-  const stopSelectionSuppression = useCallback(() => {
-    selectionSuppressCleanupRef.current?.()
-    selectionSuppressCleanupRef.current = null
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
   }, [])
 
-  const startSelectionSuppression = useCallback(() => {
-    stopSelectionSuppression()
-    document.documentElement.classList.add('chat-bubble-touch-active')
-    const suppress = () => {
-      const sel = window.getSelection()
-      if (sel && sel.type === 'Range') sel.removeAllRanges()
-    }
-    suppress()
-    document.addEventListener('selectionchange', suppress)
-    const interval = window.setInterval(suppress, 48)
-    selectionSuppressCleanupRef.current = () => {
-      document.documentElement.classList.remove('chat-bubble-touch-active')
-      document.removeEventListener('selectionchange', suppress)
-      window.clearInterval(interval)
-      suppress()
-    }
-  }, [stopSelectionSuppression])
+  const openLongPressMenu = useCallback(() => {
+    const rect = bubbleRef.current?.getBoundingClientRect()
+    if (!rect) return
+    window.getSelection()?.removeAllRanges()
+    setBubbleRect(rect)
+    setMenuOpen(true)
+  }, [])
 
   // ── Long-press detection ────────────────────────────────────────────────────
   // Cancel if the pointer moves > 8px (user is scrolling, not holding).
 
   const handlePointerDown = useCallback((e) => {
+    if (IS_IOS) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    startSelectionSuppression()
     let cancelled = false
 
     const onMove = (ev) => {
       if (Math.abs(ev.movementX) > 8 || Math.abs(ev.movementY) > 8) {
         cancelled = true
-        clearTimeout(longPressTimer.current)
-        stopSelectionSuppression()
+        clearLongPressTimer()
         document.removeEventListener('pointermove', onMove)
       }
     }
@@ -161,42 +153,71 @@ export default function ChatBubble({
 
     longPressTimer.current = setTimeout(() => {
       document.removeEventListener('pointermove', onMove)
-      stopSelectionSuppression()
       if (cancelled) return
-      const rect = bubbleRef.current?.getBoundingClientRect()
-      if (rect) {
-        window.getSelection()?.removeAllRanges()
-        setBubbleRect(rect)
-        setMenuOpen(true)
-      }
+      openLongPressMenu()
     }, 450)
-  }, [startSelectionSuppression, stopSelectionSuppression])
+  }, [clearLongPressTimer, openLongPressMenu])
 
   const cancelLongPress = useCallback(() => {
-    stopSelectionSuppression()
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }, [stopSelectionSuppression])
+    clearLongPressTimer()
+  }, [clearLongPressTimer])
 
   const closeMenu = useCallback(() => {
-    stopSelectionSuppression()
     setMenuOpen(false)
     setBubbleRect(null)
     setFullPickerOpen(false)
-  }, [stopSelectionSuppression])
+  }, [])
 
-  useEffect(() => () => stopSelectionSuppression(), [stopSelectionSuppression])
-
-  // iOS: native capture blocks selectstart before Safari paints the loupe/selection.
+  // iOS Safari: CSS/selectstart cannot stop the loupe — preventDefault on touchstart is required.
   useEffect(() => {
+    if (!IS_IOS) return
     const el = bubbleRef.current
     if (!el) return
-    const blockSelect = (e) => e.preventDefault()
-    el.addEventListener('selectstart', blockSelect, { capture: true })
-    return () => el.removeEventListener('selectstart', blockSelect, { capture: true })
-  }, [])
+
+    let startX = 0
+    let startY = 0
+    let cancelled = false
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return
+      e.preventDefault()
+      cancelled = false
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+      clearLongPressTimer()
+      longPressTimer.current = setTimeout(() => {
+        if (cancelled) return
+        openLongPressMenu()
+      }, 450)
+    }
+
+    const onTouchMove = (e) => {
+      if (cancelled || e.touches.length !== 1) return
+      const dx = e.touches[0].clientX - startX
+      const dy = e.touches[0].clientY - startY
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        cancelled = true
+        clearLongPressTimer()
+      }
+    }
+
+    const onTouchEnd = () => {
+      clearLongPressTimer()
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchEnd)
+
+    return () => {
+      clearLongPressTimer()
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [clearLongPressTimer, openLongPressMenu])
 
   // ── Reaction helpers ────────────────────────────────────────────────────────
 
@@ -292,7 +313,7 @@ export default function ChatBubble({
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => e.preventDefault()}
             onSelectStart={(e) => e.preventDefault()}
-            className={`chat-bubble-surface relative select-none rounded-2xl px-3 py-2 text-[15px] leading-snug touch-manipulation transition-opacity ${
+            className={`chat-bubble-surface relative select-none rounded-2xl px-3 py-2 text-[15px] leading-snug transition-opacity ${IS_IOS ? 'touch-none' : 'touch-manipulation'} ${
               isDeleted
                 ? 'border border-zinc-800 bg-transparent italic text-zinc-600'
                 : isMine

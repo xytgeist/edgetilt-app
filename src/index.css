@@ -2300,26 +2300,12 @@ html.light .reaction-pill {
   border: 1px solid #fff;
 }
 
-/* Long-press menu target — iOS Safari ignores select-none on descendants without this. */
-[data-chat-feature],
-[data-chat-feature] * {
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
-}
-[data-chat-feature] textarea,
-[data-chat-feature] input,
-[data-chat-feature] textarea *,
-[data-chat-feature] input * {
-  -webkit-user-select: text !important;
-  user-select: text !important;
-  -webkit-touch-callout: default !important;
-}
-html.chat-bubble-touch-active,
-html.chat-bubble-touch-active * {
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
+/* Message bubbles — copy via long-press menu, not native selection. */
+[data-chat-feature] .chat-bubble-surface,
+[data-chat-feature] .chat-bubble-surface * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* ── Chat conversation — theme-aware glass / gradient ──────────────────────

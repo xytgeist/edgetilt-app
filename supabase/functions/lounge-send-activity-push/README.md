@@ -27,7 +27,9 @@ Apply migrations in order:
 
 - **`20260523160000_lounge_activity_events_push.sql`** — immediate push trigger
 - **`20260523170000_lounge_activity_push_h3.sql`** — batched like/bookmark (10s debounce), `notification_preferences`, cron flush
-- **`20260602200000_chat_dm_push_debounce.sql`** — batched `chat_dm` per room (**60s** debounce, same cron flush)
+- **`20260602200000_chat_dm_push_debounce.sql`** — batched `chat_dm` per room (**60s** debounce)
+- **`20260602210000_chat_dm_push_invoke_edge.sql`** — after scheduling DM batch, invoke Edge immediately (Edge waits for debounce; pg_cron flush is backup)
+- **`20260602220000_chat_dm_first_message_immediate.sql`** — first DM after quiet period pushes immediately; follow-ups within 60s batch
 - **`20260523180000_lounge_activity_mark_push_opened.sql`** — RPC **`lounge_activity_mark_push_opened`** (tap marks single event or whole batch read)
 
 Then create Vault secrets (SQL Editor, once per project):
@@ -49,7 +51,7 @@ Lounge **Settings → Notifications**:
 - **Push notifications** — device master toggle (`push_subscriptions` + localStorage)
 - **Notify me about** — per-category prefs in `notification_preferences` (account-wide)
 
-Like/bookmark pushes are **debounced 10 seconds** and **grouped** (`@a and 4 others liked your post`). **DM messages** are debounced **60 seconds per conversation** (`@a sent you 3 messages`; timer resets on each new message). Replies, mentions, follows, and reposts stay **immediate**.
+Like/bookmark pushes are **debounced 10 seconds** and **grouped** (`@a and 4 others liked your post`). **DM messages:** the **first message** after a quiet period pushes **immediately**; **follow-ups within 60 seconds** collapse to one batched notification (`@a sent you 3 messages`) after 60s idle from the last message. Replies, mentions, follows, and reposts stay **immediate**.
 
 Tap targets (URL + push JSON fields):
 

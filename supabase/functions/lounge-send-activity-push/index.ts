@@ -47,7 +47,43 @@ type PushBatchRow = {
   post_id: string | null
   comment_id: string | null
   chat_room_id: string | null
+  scheduled_send_at: string | null
   sent_at: string | null
+}
+
+const CHAT_DM_DEBOUNCE_MAX_WAIT_MS = 90_000
+const CHAT_DM_DEBOUNCE_POLL_MS = 2_000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function waitForChatDmDebounce(
+  admin: ReturnType<typeof createClient>,
+  batchId: string,
+): Promise<'ready' | 'already_sent' | 'missing'> {
+  const deadline = Date.now() + CHAT_DM_DEBOUNCE_MAX_WAIT_MS
+  while (Date.now() < deadline) {
+    const { data: batch, error } = await admin
+      .from('activity_push_batches')
+      .select('scheduled_send_at, sent_at, event_type')
+      .eq('id', batchId)
+      .maybeSingle()
+
+    if (error) throw error
+    if (!batch) return 'missing'
+    if (batch.sent_at) return 'already_sent'
+    if (batch.event_type !== 'chat_dm') return 'ready'
+
+    const sendAtMs = batch.scheduled_send_at
+      ? new Date(batch.scheduled_send_at).getTime()
+      : Date.now()
+    if (sendAtMs <= Date.now()) return 'ready'
+
+    const waitMs = Math.min(sendAtMs - Date.now(), CHAT_DM_DEBOUNCE_POLL_MS)
+    await sleep(waitMs)
+  }
+  return 'ready'
 }
 
 function actorDisplayName(profile: ActorProfile | null | undefined): string {
@@ -438,26 +474,63 @@ async function handleBatchPush(
   vapidPrivateKey: string,
   vapidSubject: string,
 ) {
-  const { data: batchRow, error: batchError } = await admin
+  let batchRow: PushBatchRow | null = null
+  const { data: initialBatch, error: batchError } = await admin
     .from('activity_push_batches')
-    .select('id, recipient_user_id, event_type, post_id, comment_id, chat_room_id, sent_at')
+    .select('id, recipient_user_id, event_type, post_id, comment_id, chat_room_id, scheduled_send_at, sent_at')
     .eq('id', batchId)
     .maybeSingle()
 
   if (batchError) throw batchError
-  if (!batchRow) {
+  if (!initialBatch) {
     return new Response(JSON.stringify({ error: 'Push batch not found.' }), {
       status: 404,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  const batch = batchRow as PushBatchRow
-  if (batch.sent_at) {
+  batchRow = initialBatch as PushBatchRow
+  if (batchRow.sent_at) {
     return new Response(JSON.stringify({ sent: 0, failed: 0, removed: 0, skipped: true, reason: 'already_sent' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
+
+  if (batchRow.event_type === 'chat_dm') {
+    const waitResult = await waitForChatDmDebounce(admin, batchId)
+    if (waitResult === 'already_sent') {
+      return new Response(JSON.stringify({ sent: 0, failed: 0, removed: 0, skipped: true, reason: 'already_sent' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (waitResult === 'missing') {
+      return new Response(JSON.stringify({ error: 'Push batch not found.' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { data: reloaded, error: reloadError } = await admin
+      .from('activity_push_batches')
+      .select('id, recipient_user_id, event_type, post_id, comment_id, chat_room_id, scheduled_send_at, sent_at')
+      .eq('id', batchId)
+      .maybeSingle()
+    if (reloadError) throw reloadError
+    if (!reloaded) {
+      return new Response(JSON.stringify({ error: 'Push batch not found.' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    batchRow = reloaded as PushBatchRow
+    if (batchRow.sent_at) {
+      return new Response(JSON.stringify({ sent: 0, failed: 0, removed: 0, skipped: true, reason: 'already_sent' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+  }
+
+  const batch = batchRow
 
   const prefs = await loadPrefs(admin, batch.recipient_user_id)
   if (!prefAllows(prefs, batch.event_type)) {
@@ -554,6 +627,21 @@ async function handleBatchPush(
     }
   }
 
+  const { data: claimed, error: claimError } = await admin
+    .from('activity_push_batches')
+    .update({ sent_at: new Date().toISOString() })
+    .eq('id', batchId)
+    .is('sent_at', null)
+    .select('id')
+    .maybeSingle()
+
+  if (claimError) throw claimError
+  if (!claimed) {
+    return new Response(JSON.stringify({ sent: 0, failed: 0, removed: 0, skipped: true, reason: 'already_sent' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   const result = await sendPushToUser(
     admin,
     batch.recipient_user_id,
@@ -562,8 +650,6 @@ async function handleBatchPush(
     vapidPrivateKey,
     vapidSubject,
   )
-
-  await markBatchSent(admin, batchId)
 
   return new Response(JSON.stringify({ ...result, batched: true, actorCount: uniqueActors.length }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },

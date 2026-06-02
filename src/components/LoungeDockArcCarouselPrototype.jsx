@@ -58,7 +58,7 @@ const BACKDROP_PAN_THRESHOLD_PX = 12
 /** Scroll-hide: below this `reveal` the FAB is treated as gone (no idle dim). */
 const FAB_REVEAL_VISIBLE = 0.12
 /** After this idle window the FAB shrinks to {@link FAB_COMPACT_VISUAL_PX} and snaps to the bottom corner on its side. */
-const FAB_COMPACT_PIP_MS = 5_000
+const FAB_COMPACT_PIP_MS = 3_000
 const FAB_COMPACT_VISUAL_PX = 30
 /** Visible FAB dims to half opacity after this long without interaction. */
 const FAB_IDLE_DIM_MS = 10_000

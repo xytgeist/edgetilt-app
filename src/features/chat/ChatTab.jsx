@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ChatConversation from './ChatConversation.jsx'
-import ChatIosPrototype from './ChatIosPrototype.jsx'
-import { isIosDevice } from '../../utils/pwaNotificationPrompt.js'
 import {
   chatOpenDm,
   chatCreateGroup,
@@ -32,6 +30,7 @@ import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
  *   onInitialRoomConsumed?: () => void,
+ *   onOpenLoungeLayoutTest?: () => void,
  * }} props
  */
 export default function ChatTab({
@@ -45,6 +44,7 @@ export default function ChatTab({
   onInitialPeerConsumed,
   initialRoomId = null,
   onInitialRoomConsumed,
+  onOpenLoungeLayoutTest,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -75,9 +75,6 @@ export default function ChatTab({
   const groupSearchTimerRef = useRef(null)
   /** @type {React.MutableRefObject<Record<string, any>>} */
   const profilesCacheRef = useRef({})
-
-  const [iosPrototypeOpen, setIosPrototypeOpen] = useState(false)
-  const showIosPrototypeEntry = isIosDevice()
 
   const subscriberOk = Boolean(hasActiveSubscription || isStaff)
 
@@ -449,20 +446,6 @@ export default function ChatTab({
     )
   }
 
-  // ── iOS layout prototype (separate from production chat) ─────────────────
-
-  if (iosPrototypeOpen && showIosPrototypeEntry) {
-    return (
-      <ChatIosPrototype
-        onBack={() => setIosPrototypeOpen(false)}
-        titleBarNavSlot={titleBarNavSlot}
-        supabaseClient={supabaseClient}
-        viewerUserId={viewerUserId}
-        viewerDisplayName={String(viewerProfile?.display_name || viewerProfile?.handle || '').trim()}
-      />
-    )
-  }
-
   // ── Conversation view (full-screen within this tab) ───────────────────────
 
   if (activeRoomId && (activeRoom || !roomsLoading)) {
@@ -497,15 +480,13 @@ export default function ChatTab({
           <div className="text-sm text-zinc-500 mt-0.5">Messages &amp; topic rooms</div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {showIosPrototypeEntry ? (
-            <button
-              type="button"
-              onClick={() => setIosPrototypeOpen(true)}
-              className="rounded-full border border-cyan-700/50 bg-cyan-950/40 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-cyan-300 touch-manipulation active:opacity-80"
-            >
-              new IOS
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => onOpenLoungeLayoutTest?.()}
+            className="rounded-full border border-violet-700/50 bg-violet-950/40 px-3 py-1.5 text-[12px] font-semibold text-violet-300 touch-manipulation active:opacity-80"
+          >
+            Layout test
+          </button>
           <QuickLinkPageToggle destinationId="chat" />
         </div>
       </div>

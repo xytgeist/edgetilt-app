@@ -60,6 +60,8 @@ export default function ChatTab({
 
   // Long-press context menu on room rows
   const [roomMenu, setRoomMenu] = useState(/** @type {{ room: any, y: number, x: number } | null} */ (null))
+  const inboxRootRef = useRef(null)
+  const showInboxList = browseMode !== 'anonymous' && !activeRoomId
 
   // Group creation
   const [showGroupCreate, setShowGroupCreate] = useState(false)
@@ -73,6 +75,57 @@ export default function ChatTab({
   const profilesCacheRef = useRef({})
 
   const subscriberOk = Boolean(hasActiveSubscription || isStaff)
+
+  // Inbox: block native text selection during long-press (same approach as ChatConversation).
+  useEffect(() => {
+    if (!showInboxList) return
+    const { style } = document.body
+    style.webkitUserSelect = 'none'
+    style.userSelect = 'none'
+    style.webkitTouchCallout = 'none'
+    return () => {
+      style.webkitUserSelect = ''
+      style.userSelect = ''
+      style.webkitTouchCallout = ''
+    }
+  }, [showInboxList])
+
+  useEffect(() => {
+    if (!showInboxList) return
+    const chatRoot = inboxRootRef.current
+
+    const onSelChange = () => {
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed) return
+      const anchor = sel.anchorNode
+      if (chatRoot && anchor && chatRoot.contains(anchor)) {
+        sel.removeAllRanges()
+        return
+      }
+      // Portaled room menu is outside [data-chat-feature].
+      if (roomMenu && anchor && document.body.contains(anchor)) {
+        sel.removeAllRanges()
+      }
+    }
+
+    const onContextMenu = (e) => {
+      const t = e.target
+      if (chatRoot && t instanceof Node && chatRoot.contains(t)) {
+        e.preventDefault()
+      }
+    }
+
+    document.addEventListener('selectionchange', onSelChange)
+    document.addEventListener('contextmenu', onContextMenu, { passive: false })
+    return () => {
+      document.removeEventListener('selectionchange', onSelChange)
+      document.removeEventListener('contextmenu', onContextMenu)
+    }
+  }, [showInboxList, roomMenu])
+
+  useEffect(() => {
+    if (roomMenu) window.getSelection()?.removeAllRanges()
+  }, [roomMenu])
 
   // ── Resolve viewer session + profile ─────────────────────────────────────
 
@@ -414,6 +467,7 @@ export default function ChatTab({
 
   return (
     <>
+    <div ref={inboxRootRef} data-chat-feature className="select-none">
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       contentClassName="pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
@@ -670,6 +724,7 @@ export default function ChatTab({
         </ul>
       )}
     </ScrollLinkedEdgeTitleBarShell>
+    </div>
 
     {roomMenu && createPortal(
       <RoomContextMenu
@@ -685,7 +740,7 @@ export default function ChatTab({
   )
 }
 
-const ROOM_LONG_PRESS_MS = 400
+const ROOM_LONG_PRESS_MS = 380
 const ROOM_LONG_PRESS_MOVE_PX = 10
 
 /** Inbox row with touch + mouse long-press (pointer-only fails on iOS/Android in scroll lists). */
@@ -705,11 +760,13 @@ function ChatRoomListRow({ room, label, onOpen, onLongPress }) {
     clearTimer()
     touchRef.current.cancelled = true
     suppressClickRef.current = true
+    window.getSelection()?.removeAllRanges()
     onLongPress(room, x, y)
   }, [room, onLongPress, clearTimer])
 
   const onTouchStart = useCallback((e) => {
     if (e.touches.length !== 1) return
+    window.getSelection()?.removeAllRanges()
     touchRef.current.cancelled = false
     touchRef.current.startX = e.touches[0].clientX
     touchRef.current.startY = e.touches[0].clientY
@@ -723,6 +780,7 @@ function ChatRoomListRow({ room, label, onOpen, onLongPress }) {
 
   const onTouchMove = useCallback((e) => {
     if (e.touches.length !== 1 || touchRef.current.cancelled) return
+    window.getSelection()?.removeAllRanges()
     const dx = Math.abs(e.touches[0].clientX - touchRef.current.startX)
     const dy = Math.abs(e.touches[0].clientY - touchRef.current.startY)
     if (dx > ROOM_LONG_PRESS_MOVE_PX || dy > ROOM_LONG_PRESS_MOVE_PX) {
@@ -779,8 +837,8 @@ function ChatRoomListRow({ room, label, onOpen, onLongPress }) {
         onTouchCancel={onTouchEnd}
         onPointerDown={onPointerDown}
         onContextMenu={(e) => e.preventDefault()}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
-        style={{ touchAction: 'pan-y' }}
+        className="flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
+        style={{ touchAction: 'pan-y', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
       >
         <div className="relative shrink-0">
           {room.kind === 'dm' && room.peerAvatarUrl ? (
@@ -864,14 +922,18 @@ function RoomContextMenu({ room, anchorY, anchorX, onAction, onClose }) {
 
   return (
     <div
+      className="select-none"
       style={{
         position: 'fixed',
         top: Math.max(8, Math.min(top, window.innerHeight - MENU_H - 8)),
         left: Math.max(8, Math.min(anchorX, window.innerWidth - 228)),
         zIndex: 200,
         width: 220,
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
       ref={menuRef}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div className="chat-room-menu-glass overflow-hidden rounded-2xl shadow-2xl">
         <button

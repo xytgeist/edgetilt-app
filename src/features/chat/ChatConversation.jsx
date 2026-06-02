@@ -715,19 +715,17 @@ export default function ChatConversation({
 
   // Swipe-down-to-dismiss keyboard — independent of the timestamp-swipe logic.
   // Android: lock scroll at thread tail during dismiss + preserve reading position.
-  // iOS: block list scroll on downward drag, blur early on touchmove (first swipe dismisses).
+  // iOS messages: allow list scroll; dismiss on a deliberate downward flick at touchend only.
   useEffect(() => {
     const el = listRef.current
     if (!el) return
     const isAndroid = /Android/i.test(navigator.userAgent)
-    /** Touchend fallback when touchmove did not already blur (quick flick). */
-    const dismissDyPx = isAndroid ? 50 : 18
+    const dismissDyPx = isAndroid ? 50 : 40
     let startY = 0
     let startX = 0
     let startScrollTop = 0
     let keyboardWasOpen = false
     let dismissActive = false
-    let dismissedThisGesture = false
 
     const bottomGap = () => el.scrollHeight - el.scrollTop - el.clientHeight
     const nearBottom = () => bottomGap() < 80
@@ -779,7 +777,6 @@ export default function ChatConversation({
 
     const onStart = (e) => {
       dismissActive = false
-      dismissedThisGesture = false
       startScrollTop = el.scrollTop
       startY = e.touches[0]?.clientY ?? 0
       startX = e.touches[0]?.clientX ?? 0
@@ -788,33 +785,21 @@ export default function ChatConversation({
     }
 
     const onMove = (e) => {
-      if (!keyboardWasOpen) return
+      if (!keyboardWasOpen || !isAndroid) return
       const t = e.touches[0]
       if (!t) return
       const dy = t.clientY - startY
       const dx = t.clientX - startX
 
-      if (isAndroid) {
-        if (!dismissActive) {
-          if (dy > 10 && dy > Math.abs(dx) && nearBottom()) {
-            dismissActive = true
-          } else {
-            return
-          }
+      if (!dismissActive) {
+        if (dy > 10 && dy > Math.abs(dx) && nearBottom()) {
+          dismissActive = true
+        } else {
+          return
         }
-        e.preventDefault()
-        el.scrollTop = startScrollTop
-        return
       }
-
-      // iOS: downward drag while keyboard is open → dismiss, not list scroll
-      if (dy <= 8 || dy <= Math.abs(dx)) return
       e.preventDefault()
       el.scrollTop = startScrollTop
-      if (!dismissedThisGesture && dy > 10) {
-        dismissedThisGesture = true
-        document.activeElement?.blur?.()
-      }
     }
 
     const onEnd = (e) => {
@@ -828,23 +813,24 @@ export default function ChatConversation({
         document.activeElement?.blur?.()
         keyboardDismissPreserveRef.current = bottomGap()
         schedulePreserveRestore()
-      } else if (!isAndroid && keyboardWasOpen && (dismissedThisGesture || downwardDismiss)) {
-        if (!dismissedThisGesture) document.activeElement?.blur?.()
-        snapBottomAfterKeyboardCloseIOS()
+      } else if (!isAndroid && downwardDismiss && keyboardWasOpen) {
+        document.activeElement?.blur?.()
+        if (nearBottom()) snapBottomAfterKeyboardCloseIOS()
       }
 
       dismissActive = false
-      dismissedThisGesture = false
       keyboardWasOpen = false
     }
 
     el.addEventListener('touchstart', onStart, { passive: true })
-    el.addEventListener('touchmove', onMove, { passive: false })
+    if (isAndroid) {
+      el.addEventListener('touchmove', onMove, { passive: false })
+    }
     el.addEventListener('touchend', onEnd, { passive: true })
     el.addEventListener('touchcancel', onEnd, { passive: true })
     return () => {
       el.removeEventListener('touchstart', onStart)
-      el.removeEventListener('touchmove', onMove)
+      if (isAndroid) el.removeEventListener('touchmove', onMove)
       el.removeEventListener('touchend', onEnd)
       el.removeEventListener('touchcancel', onEnd)
     }

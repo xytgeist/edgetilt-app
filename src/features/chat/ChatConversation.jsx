@@ -204,6 +204,22 @@ export default function ChatConversation({
     return () => notifyLoungeDockSuppress(false)
   }, [])
 
+  // Kill any text selection iOS creates inside the chat. selectionchange fires
+  // after iOS starts a selection (loupe/handles appear) — we clear it immediately.
+  // This runs without touching scroll events at all.
+  useEffect(() => {
+    const onSelChange = () => {
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed) return
+      const chatRoot = document.querySelector('[data-chat-feature]')
+      if (chatRoot && sel.anchorNode && chatRoot.contains(sel.anchorNode)) {
+        sel.removeAllRanges()
+      }
+    }
+    document.addEventListener('selectionchange', onSelChange)
+    return () => document.removeEventListener('selectionchange', onSelChange)
+  }, [])
+
   // ── Lazy sender profile resolution ───────────────────────────────────────
   // When messages arrive with a sender_id not in profilesById (e.g. channel
   // members beyond the room list), queue a batched profiles fetch (150ms window).

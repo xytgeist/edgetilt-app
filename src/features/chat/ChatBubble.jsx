@@ -189,6 +189,7 @@ export default function ChatBubble({
   // Cancel if the pointer moves > 8px (user is scrolling, not holding).
 
   const handlePointerDown = useCallback((e) => {
+    if (IS_IOS) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     let cancelled = false
     const startX = e.clientX
@@ -221,8 +222,56 @@ export default function ChatBubble({
     setFullPickerOpen(false)
   }, [])
 
-  // iOS Safari: rapidly clear any selection Safari creates during a press, without
-  // blocking scroll (no preventDefault). Also drives the long-press menu timer.
+  // iOS Safari: passive touchstart (no preventDefault = scroll stays working).
+  // Long-press timer drives menu open. Selection is cleared by the selectionchange
+  // listener on the chat container — not here.
+  useEffect(() => {
+    if (!IS_IOS) return
+    const el = bubbleRef.current
+    if (!el) return
+
+    let startX = 0, startY = 0, cancelled = false
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return
+      cancelled = false
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+      window.getSelection()?.removeAllRanges()
+      clearLongPressTimer()
+      longPressTimer.current = setTimeout(() => {
+        if (cancelled) return
+        window.getSelection()?.removeAllRanges()
+        openLongPressMenu()
+      }, 450)
+    }
+
+    const onTouchMove = (e) => {
+      if (cancelled || e.touches.length !== 1) return
+      if (Math.abs(e.touches[0].clientX - startX) > 8 || Math.abs(e.touches[0].clientY - startY) > 8) {
+        cancelled = true
+        clearLongPressTimer()
+      }
+    }
+
+    const onTouchEnd = () => {
+      clearLongPressTimer()
+      window.getSelection()?.removeAllRanges()
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true })
+
+    return () => {
+      clearLongPressTimer()
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [clearLongPressTimer, openLongPressMenu])
 
   // ── Reaction helpers ────────────────────────────────────────────────────────
 

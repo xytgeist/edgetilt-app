@@ -232,7 +232,6 @@ export default function ChatBubble({
 
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) return
-      e.preventDefault()
       cancelled = false
       startX = e.touches[0].clientX
       startY = e.touches[0].clientY
@@ -257,7 +256,7 @@ export default function ChatBubble({
       clearLongPressTimer()
     }
 
-    el.addEventListener('touchstart', onTouchStart, { passive: false })
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
     el.addEventListener('touchmove', onTouchMove, { passive: true })
     el.addEventListener('touchend', onTouchEnd)
     el.addEventListener('touchcancel', onTouchEnd)
@@ -403,7 +402,7 @@ export default function ChatBubble({
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => e.preventDefault()}
             onSelectStart={(e) => e.preventDefault()}
-            className={`chat-bubble-surface relative select-none px-3 py-2 text-[15px] leading-snug transition-opacity ${IS_IOS ? 'touch-none' : 'touch-manipulation'} ${
+            className={`chat-bubble-surface relative select-none px-3 py-2 text-[15px] leading-snug transition-opacity touch-manipulation ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted

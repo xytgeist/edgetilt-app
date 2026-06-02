@@ -432,11 +432,16 @@ export default function ChatTab({
               showGroupCreate ? 'border-cyan-600 bg-cyan-900/40 text-cyan-400' : 'border-zinc-700/60 bg-zinc-900/80 text-zinc-400'
             }`}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <line x1="19" y1="8" x2="19" y2="14"/>
-              <line x1="22" y1="11" x2="16" y2="11"/>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+              {/* center person */}
+              <circle cx="12" cy="7" r="3"/>
+              <path d="M6 21v-1a6 6 0 0 1 12 0v1"/>
+              {/* left person */}
+              <circle cx="4" cy="9" r="2"/>
+              <path d="M1 21v-1a4 4 0 0 1 5.8-3.6"/>
+              {/* right person */}
+              <circle cx="20" cy="9" r="2"/>
+              <path d="M23 21v-1a4 4 0 0 0-5.8-3.6"/>
             </svg>
           </button>
         </div>

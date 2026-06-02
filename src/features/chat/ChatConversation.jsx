@@ -14,7 +14,7 @@ import {
 } from './chatApi.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
-import { useLoungeKeyboardOverlapPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
+import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
 // Glass styles are defined in index.css as .chat-header-glass / .chat-menu-glass
 // with html.light overrides — do not use inline styles for these.
@@ -150,8 +150,8 @@ export default function ChatConversation({
   const kbOverlapPrevRef = useRef(0)
   const kbClosingRef = useRef(false)
   const [composerFocused, setComposerFocused] = useState(false)
-  const [iosSafeBottomPx, setIosSafeBottomPx] = useState(10)
-  const kbOverlapPx = useLoungeKeyboardOverlapPx(true, { smooth: IS_IOS, smoothMs: 135 })
+  const iosSafeBottomPx = useLoungeIosSafeBottomPx(IS_IOS)
+  const kbOverlapPx = useLoungeKeyboardOverlapPx(true, { smooth: IS_IOS, smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS })
 
   // Swipe-to-reveal timestamps
   const translateLayerRef = useRef(null)
@@ -473,19 +473,6 @@ export default function ChatConversation({
 
   useEffect(() => () => {
     if (tailPinFollowRafRef.current) cancelAnimationFrame(tailPinFollowRafRef.current)
-  }, [])
-
-  // iOS: measure closed-state home-indicator padding once (px) — avoids env() snap on dismiss.
-  useEffect(() => {
-    if (!IS_IOS) return undefined
-    const probe = document.createElement('div')
-    probe.style.cssText =
-      'position:fixed;visibility:hidden;padding-bottom:max(0.625rem, env(safe-area-inset-bottom))'
-    document.body.appendChild(probe)
-    const px = parseFloat(getComputedStyle(probe).paddingBottom)
-    document.body.removeChild(probe)
-    if (Number.isFinite(px) && px > 0) setIosSafeBottomPx(px)
-    return undefined
   }, [])
 
   const measureScrolledUpCount = useCallback(() => {
@@ -1194,11 +1181,9 @@ export default function ChatConversation({
   const listPaddingTop  = room.kind === 'dm'
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
-  const composerPadBottom = IS_IOS
-    ? `${Math.round(Math.max(kbOverlapPx, iosSafeBottomPx))}px`
-    : kbOverlapPx > 0.5
-      ? `${Math.round(kbOverlapPx)}px`
-      : 'max(0.625rem, env(safe-area-inset-bottom))'
+  const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx, {
+    ios: IS_IOS,
+  })
 
   return (
     <div

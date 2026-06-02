@@ -252,6 +252,14 @@ import {
 } from './loungeLayoutTestPost.js'
 import ChatDmHeaderChrome from '../chat/ChatDmHeaderChrome.jsx'
 import ChatComposer from '../chat/ChatComposer.jsx'
+import {
+  LOUNGE_IOS,
+  LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  loungeComposerFooterPaddingBottom,
+  useLoungeIosSafeBottomPx,
+  useLoungeKeyboardOverlapPx,
+} from './useLoungeKeyboardOverlapPx.js'
+import { useLoungeKeyboardTailPin } from './useLoungeKeyboardTailPin.js'
 import LoungeFeedCategoryFilter from './LoungeFeedCategoryFilter.jsx'
 import LoungePullRefreshZone from './LoungePullRefreshZone.jsx'
 import { useLoungePullToRefresh } from './useLoungePullToRefresh.js'
@@ -608,6 +616,7 @@ export default function SocialFeed({
   const [loungeDetailRepostMenuOpen, setLoungeDetailRepostMenuOpen] = useState(false)
   const loungeDetailRepostMenuRef = useRef(null)
   const loungePostDetailScrollRef = useRef(null)
+  const loungePostDetailComposerHostRef = useRef(null)
   const loungePostDetailPostAvatarRef = useRef(null)
   const loungePostDetailCommentConnectorRef = useRef(null)
   const loungeDetailCommentFieldRef = useRef(null)
@@ -671,8 +680,6 @@ export default function SocialFeed({
   /** Mirrors feed composer: collapsed one-line affordance → expanded textarea + toolbar. */
   const [loungeDetailCommentComposerExpanded, setLoungeDetailCommentComposerExpanded] = useState(false)
   const [loungeDetailCommentDiscardPromptOpen, setLoungeDetailCommentDiscardPromptOpen] = useState(false)
-  /** iOS / visualViewport: lift footer above software keyboard. */
-  const [loungeDetailCommentKbOverlapPx, setLoungeDetailCommentKbOverlapPx] = useState(0)
   const [loungeDetailCommentImageItems, setLoungeDetailCommentImageItems] = useState([])
   const [loungeDetailCommentMediaUrl, setLoungeDetailCommentMediaUrl] = useState('')
   const [loungeDetailCommentVideoSlot, setLoungeDetailCommentVideoSlot] = useState(null)
@@ -957,6 +964,27 @@ export default function SocialFeed({
   const mentionComposer = useMentionState(postText, supabaseClient, !loungeReadOnly)
   const mentionDetailComment = useMentionState(loungeDetailCommentDraft, supabaseClient, !loungeReadOnly)
   const mentionQuoteRepost = useMentionState(quoteRepostDraft, supabaseClient, !loungeReadOnly)
+
+  const loungeDetailKbActive = Boolean(loungePostDetail && !loungeReadOnly)
+  const loungeDetailCommentKbOverlapPx = useLoungeKeyboardOverlapPx(loungeDetailKbActive, {
+    smooth: LOUNGE_IOS,
+    smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  })
+  const loungeDetailIosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS && loungeDetailKbActive)
+  const loungeDetailCommentFooterPad = useMemo(
+    () =>
+      loungeComposerFooterPaddingBottom(
+        loungeDetailCommentKbOverlapPx,
+        loungeDetailIosSafeBottomPx,
+        { ios: LOUNGE_IOS },
+      ),
+    [loungeDetailCommentKbOverlapPx, loungeDetailIosSafeBottomPx],
+  )
+  useLoungeKeyboardTailPin(loungePostDetailScrollRef, loungePostDetailComposerHostRef, {
+    kbOverlapPx: loungeDetailCommentKbOverlapPx,
+    iosSafeBottomPx: loungeDetailIosSafeBottomPx,
+    enabled: loungeDetailKbActive,
+  })
 
   const chatDockIsStaff = Boolean(isStaff || loungeViewerIsStaff)
 
@@ -1278,7 +1306,6 @@ export default function SocialFeed({
       return composerFieldRef.current
     }
     blurLoungeComposerCaption(getTextarea)
-    if (target === 'detailComment') setLoungeDetailCommentKbOverlapPx(0)
   }, [])
 
   const openKlipyPicker = useCallback(
@@ -1330,31 +1357,6 @@ export default function SocialFeed({
   useEffect(() => {
     loungeDetailCommentEditMediaUrlRef.current = String(loungeDetailCommentEditMediaUrl || '').trim()
   }, [loungeDetailCommentEditMediaUrl])
-
-  useEffect(() => {
-    if (!loungePostDetail || loungeReadOnly) {
-      setLoungeDetailCommentKbOverlapPx(0)
-      return undefined
-    }
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null
-    if (!vv) return undefined
-    const sync = () => {
-      try {
-        const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-        setLoungeDetailCommentKbOverlapPx(Number.isFinite(overlap) ? overlap : 0)
-      } catch {
-        setLoungeDetailCommentKbOverlapPx(0)
-      }
-    }
-    sync()
-    vv.addEventListener('resize', sync)
-    vv.addEventListener('scroll', sync)
-    return () => {
-      vv.removeEventListener('resize', sync)
-      vv.removeEventListener('scroll', sync)
-      setLoungeDetailCommentKbOverlapPx(0)
-    }
-  }, [loungePostDetail, loungeReadOnly])
 
   useLayoutEffect(() => {
     if (!loungeDetailEditing) return
@@ -5366,7 +5368,6 @@ export default function SocialFeed({
     setLoungeDetailCommentErr('')
     setLoungeDetailCommentComposerExpanded(false)
     setLoungeDetailCommentDiscardPromptOpen(false)
-    setLoungeDetailCommentKbOverlapPx(0)
     clearLoungeDetailCommentComposerMedia({ preserveBackgroundUpload: commentUploadInFlight })
     setLoungeCommentDetailPathIds([])
     setLoungeDetailCommentEditingId(null)
@@ -12567,18 +12568,11 @@ export default function SocialFeed({
             </div>
             {!loungeReadOnly ? (
               <div
+                ref={loungePostDetailComposerHostRef}
                 data-lounge-detail-comment-host
                 data-lounge-fab-obstacle
-                className="shrink-0 border-t border-zinc-800/90 bg-zinc-950/95 px-3 pt-2.5 pb-0 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
-                style={{
-                  // Keyboard open: `visualViewport` overlap already clears the keyboard — do not add
-                  // `env(safe-area-inset-bottom)` here; iOS often keeps ~34px inset while the keyboard is up,
-                  // which stacked under overlap and left a large dead band above the keys.
-                  paddingBottom:
-                    loungeDetailCommentKbOverlapPx > 0
-                      ? `${loungeDetailCommentKbOverlapPx}px`
-                      : `max(0.625rem, env(safe-area-inset-bottom))`,
-                }}
+                className="shrink-0 bg-zinc-950/95 px-3 pt-2.5 pb-0 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
+                style={{ paddingBottom: loungeDetailCommentFooterPad }}
               >
                 {loungeLayoutTestDetail ? (
                   <ChatComposer

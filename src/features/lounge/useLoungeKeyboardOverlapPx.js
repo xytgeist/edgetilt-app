@@ -1,7 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
 
 /** Approximate iOS software-keyboard slide duration (ms). */
-const DEFAULT_SMOOTH_MS = 135
+export const LOUNGE_IOS_KEYBOARD_SMOOTH_MS = 135
+
+export const LOUNGE_IOS =
+  typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+/** Read home-indicator padding for closed-state lounge footers (px). */
+export function readLoungeIosSafeBottomPx() {
+  if (typeof document === 'undefined') return 10
+  const probe = document.createElement('div')
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;padding-bottom:max(0.625rem, env(safe-area-inset-bottom))'
+  document.body.appendChild(probe)
+  const px = parseFloat(getComputedStyle(probe).paddingBottom)
+  document.body.removeChild(probe)
+  return Number.isFinite(px) && px > 0 ? px : 10
+}
+
+/** Footer host padding — iOS uses px + safe-area floor to avoid dismiss rebound. */
+export function loungeComposerFooterPaddingBottom(overlapPx, safeBottomPx, { ios = LOUNGE_IOS } = {}) {
+  if (ios) return `${Math.round(Math.max(overlapPx, safeBottomPx))}px`
+  if (overlapPx > 0.5) return `${Math.round(overlapPx)}px`
+  return 'max(0.625rem, env(safe-area-inset-bottom))'
+}
+
+export function useLoungeIosSafeBottomPx(active = LOUNGE_IOS) {
+  const [px, setPx] = useState(10)
+  useEffect(() => {
+    if (!active) return undefined
+    setPx(readLoungeIosSafeBottomPx())
+    return undefined
+  }, [active])
+  return px
+}
 
 /**
  * visualViewport keyboard overlap — same formula as Lounge post-detail reply composer.
@@ -11,7 +43,7 @@ const DEFAULT_SMOOTH_MS = 135
  *   smooth — ease displayed px toward the live target (iOS chat polish).
  */
 export function useLoungeKeyboardOverlapPx(active = true, options = {}) {
-  const { smooth = false, smoothMs = DEFAULT_SMOOTH_MS } = options
+  const { smooth = false, smoothMs = LOUNGE_IOS_KEYBOARD_SMOOTH_MS } = options
   const [targetPx, setTargetPx] = useState(0)
   const [displayPx, setDisplayPx] = useState(0)
   const displayRef = useRef(0)

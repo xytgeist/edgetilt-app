@@ -685,6 +685,27 @@ export default function ChatConversation({
     return () => ro.disconnect()
   }, [])
 
+  // Swipe-down-to-dismiss keyboard — independent of the timestamp-swipe logic.
+  // Only fires when the user is near the bottom of the list (so normal upward
+  // scroll to read old messages still works without dismissing the keyboard).
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    let startY = 0
+    const onStart = (e) => { startY = e.touches[0]?.clientY ?? 0 }
+    const onEnd = (e) => {
+      const dy = (e.changedTouches[0]?.clientY ?? 0) - startY
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+      if (dy > 50 && nearBottom) document.activeElement?.blur?.()
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchend', onEnd)
+    }
+  }, [])
+
   const listPaddingTop  = room.kind === 'dm'
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'

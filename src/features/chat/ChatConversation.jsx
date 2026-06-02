@@ -27,6 +27,9 @@ const SCROLL_UP_MSG_THRESHOLD = 20
 const JUMP_BTN_ABOVE_COMPOSER_PX = 8
 /** Last message must sit this far below the composer top before we auto-scroll. */
 const COMPOSER_SCROLL_GAP_PX = 8
+/** iOS keyboard dismiss: wait for viewport settle, then one smooth list scroll. */
+const IOS_KEYBOARD_DISMISS_SCROLL_SETTLE_MS = 100
+const IOS_KEYBOARD_DISMISS_SCROLL_MAX_WAIT_MS = 420
 
 /**
  * Max messages kept in the DOM at any time.
@@ -133,6 +136,8 @@ export default function ChatConversation({
   const composerTouchRef = useRef(null)
   /** Android: bottom gap (px) to restore after swipe keyboard dismiss — shared with RO. */
   const keyboardDismissPreserveRef = useRef(/** @type {number | null} */ (null))
+  const iosKeyboardDismissScrollTimerRef = useRef(0)
+  const iosKeyboardDismissVvHandlerRef = useRef(/** @type {(() => void) | null} */ (null))
   const [composerFocused, setComposerFocused] = useState(false)
   const [composerBarH, setComposerBarH] = useState(80)
 
@@ -977,27 +982,57 @@ export default function ChatConversation({
 
     const nearBottom = () => listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 80
 
+    const clearIosKeyboardDismissScroll = () => {
+      if (iosKeyboardDismissScrollTimerRef.current) {
+        clearTimeout(iosKeyboardDismissScrollTimerRef.current)
+        iosKeyboardDismissScrollTimerRef.current = 0
+      }
+      const vv = window.visualViewport
+      const handler = iosKeyboardDismissVvHandlerRef.current
+      if (vv && handler) {
+        vv.removeEventListener('resize', handler)
+        iosKeyboardDismissVvHandlerRef.current = null
+      }
+    }
+
     const snapBottomAfterKeyboardCloseIOS = () => {
       if (!nearBottom()) return
       atBottomRef.current = true
       setIsAtBottom(true)
-      const vv = window.visualViewport
-      const snap = () => {
-        if (!contentExtendsBelowComposer()) {
-          listEl.scrollTop = 0
-          return
-        }
-        listEl.scrollTop = listEl.scrollHeight
+      clearIosKeyboardDismissScroll()
+
+      let finished = false
+      const finishSmoothScroll = () => {
+        if (finished) return
+        finished = true
+        clearIosKeyboardDismissScroll()
+        const top = contentExtendsBelowComposer() ? listEl.scrollHeight : 0
+        listEl.scrollTo({ top, behavior: 'smooth' })
       }
+
+      const scheduleFinish = () => {
+        clearTimeout(iosKeyboardDismissScrollTimerRef.current)
+        iosKeyboardDismissScrollTimerRef.current = setTimeout(
+          finishSmoothScroll,
+          IOS_KEYBOARD_DISMISS_SCROLL_SETTLE_MS,
+        )
+      }
+
+      const vv = window.visualViewport
       if (vv) {
-        vv.addEventListener('resize', snap)
-        snap()
-        setTimeout(() => {
-          vv.removeEventListener('resize', snap)
-          snap()
-        }, 400)
+        const onResize = () => scheduleFinish()
+        iosKeyboardDismissVvHandlerRef.current = onResize
+        vv.addEventListener('resize', onResize, { passive: true })
+        iosKeyboardDismissScrollTimerRef.current = setTimeout(
+          finishSmoothScroll,
+          IOS_KEYBOARD_DISMISS_SCROLL_MAX_WAIT_MS,
+        )
+        scheduleFinish()
       } else {
-        requestAnimationFrame(snap)
+        iosKeyboardDismissScrollTimerRef.current = setTimeout(
+          finishSmoothScroll,
+          IOS_KEYBOARD_DISMISS_SCROLL_SETTLE_MS,
+        )
       }
     }
 
@@ -1050,6 +1085,7 @@ export default function ChatConversation({
     composer.addEventListener('touchend', onEnd, { passive: true })
     composer.addEventListener('touchcancel', onEnd, { passive: true })
     return () => {
+      clearIosKeyboardDismissScroll()
       composer.removeEventListener('touchstart', onStart)
       composer.removeEventListener('touchmove', onMove)
       composer.removeEventListener('touchend', onEnd)

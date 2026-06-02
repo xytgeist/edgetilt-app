@@ -36,7 +36,7 @@ const LIST_CONTENT_FITS_GAP_PX = 24
 const IOS_KEYBOARD_DISMISS_SCROLL_SETTLE_MS = 100
 const IOS_KEYBOARD_DISMISS_SCROLL_MAX_WAIT_MS = 420
 /** Tail-pin rAF follow while iOS keyboard animates open/closed. */
-const IOS_KEYBOARD_TAIL_PIN_MS = 320
+const IOS_KEYBOARD_TAIL_PIN_MS = 240
 
 /**
  * Max messages kept in the DOM at any time.

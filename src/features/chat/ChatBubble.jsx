@@ -243,11 +243,11 @@ export default function ChatBubble({
 
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) return
+      e.preventDefault()
       cancelled = false
       startX = e.touches[0].clientX
       startY = e.touches[0].clientY
 
-      // Rapidly nuke any selection Safari tries to create
       clearSel()
       stopSelInterval()
       selInterval = setInterval(clearSel, 30)
@@ -278,7 +278,7 @@ export default function ChatBubble({
       clearSel()
     }
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
     el.addEventListener('touchmove', onTouchMove, { passive: true })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
     el.addEventListener('touchcancel', onTouchEnd, { passive: true })

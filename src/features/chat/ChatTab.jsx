@@ -45,6 +45,10 @@ export default function ChatTab({
   const [tab, setTab] = useState(/** @type {'inbox' | 'topics'} */ ('inbox'))
   const [actionErr, setActionErr] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState(/** @type {any[]} */ ([]))
+  const [searchBusy, setSearchBusy] = useState(false)
+  const searchTimerRef = useRef(null)
   /** @type {React.MutableRefObject<Record<string, any>>} */
   const profilesCacheRef = useRef({})
 
@@ -217,6 +221,43 @@ export default function ChatTab({
     }
   }, [supabaseClient, loadRooms])
 
+  // ── User search (new DM) ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    const q = searchQuery.trim()
+    if (q.length < 2) { setSearchResults([]); return }
+    searchTimerRef.current = setTimeout(async () => {
+      if (!supabaseClient) return
+      setSearchBusy(true)
+      try {
+        const { data } = await supabaseClient.rpc('lounge_search_profiles', { p_query: q, p_limit: 8 })
+        setSearchResults((data || []).filter(p => p.user_id !== viewerUserId))
+      } catch { setSearchResults([]) }
+      finally { setSearchBusy(false) }
+    }, 200)
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [searchQuery, supabaseClient, viewerUserId])
+
+  const startDmFromSearch = useCallback(async (userId) => {
+    setSearchQuery('')
+    setSearchResults([])
+    setActionErr('')
+    setActionBusy(true)
+    try {
+      const res = await chatOpenDm(supabaseClient, userId)
+      if (res?.room_id) {
+        await loadRooms()
+        setActiveRoomId(res.room_id)
+        setTab('inbox')
+      }
+    } catch (e) {
+      setActionErr(e?.message || 'Could not open conversation.')
+    } finally {
+      setActionBusy(false)
+    }
+  }, [supabaseClient, loadRooms])
+
   // ── Active room data ──────────────────────────────────────────────────────
 
   const activeRoom = useMemo(
@@ -286,6 +327,57 @@ export default function ChatTab({
           <div className="text-sm text-zinc-500 mt-0.5">Messages &amp; topic rooms</div>
         </div>
         <QuickLinkPageToggle destinationId="chat" />
+      </div>
+
+      {/* New message search */}
+      <div className="relative px-3 pb-2">
+        <div className="flex items-center gap-2 rounded-full border border-zinc-700/60 bg-zinc-900/80 px-3 py-2">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-zinc-500">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="New message — search users…"
+            className="min-w-0 flex-1 bg-transparent text-[14px] text-zinc-100 placeholder-zinc-500 outline-none"
+          />
+          {searchQuery.length > 0 && (
+            <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]) }} className="shrink-0 text-zinc-500 touch-manipulation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Search results dropdown */}
+        {(searchResults.length > 0 || searchBusy) && (
+          <div className="absolute inset-x-3 top-full z-20 mt-1 overflow-hidden rounded-2xl border border-zinc-700/50 bg-zinc-900 shadow-2xl">
+            {searchBusy && searchResults.length === 0 ? (
+              <div className="px-4 py-3 text-[13px] text-zinc-500">Searching…</div>
+            ) : searchResults.map(p => (
+              <button
+                key={p.user_id}
+                type="button"
+                onClick={() => void startDmFromSearch(p.user_id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left touch-manipulation hover:bg-zinc-800/60 active:bg-zinc-800"
+              >
+                {p.avatar_url ? (
+                  <img src={p.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-700 text-[13px] font-bold text-zinc-300">
+                    {(p.handle?.[0] || p.display_name?.[0] || '?').toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  {p.display_name && <div className="truncate text-[14px] font-semibold text-zinc-100">{p.display_name}</div>}
+                  <div className="truncate text-[13px] text-zinc-400">@{p.handle}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Inbox / Topics tabs */}

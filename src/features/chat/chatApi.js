@@ -92,6 +92,42 @@ export function chatUpdateLastRead(supabase, roomId, messageId) {
 }
 
 /**
+ * Mark a room as unread (clears last_read_at).
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatMarkUnread(supabase, roomId) {
+  return loungeChatInvoke(supabase, { action: 'mark_unread', room_id: roomId })
+}
+
+/**
+ * Pin a room to the top of the inbox.
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatPinRoom(supabase, roomId) {
+  return loungeChatInvoke(supabase, { action: 'pin_room', room_id: roomId })
+}
+
+/**
+ * Unpin a room.
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatUnpinRoom(supabase, roomId) {
+  return loungeChatInvoke(supabase, { action: 'unpin_room', room_id: roomId })
+}
+
+/**
+ * Leave (delete from inbox) a room.
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatLeaveRoom(supabase, roomId) {
+  return loungeChatInvoke(supabase, { action: 'leave_room', room_id: roomId })
+}
+
+/**
  * Mute push notifications for a room.
  * @param {SupabaseClient} supabase
  * @param {string} roomId

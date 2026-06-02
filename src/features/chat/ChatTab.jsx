@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ChatConversation from './ChatConversation.jsx'
 import {
   chatOpenDm,
   chatCreateGroup,
+  chatMarkUnread,
+  chatPinRoom,
+  chatUnpinRoom,
+  chatLeaveRoom,
+  chatMuteRoom,
+  chatUnmuteRoom,
   chatRoomLabel,
   chatRoomIsMuted,
 } from './chatApi.js'
@@ -50,6 +57,10 @@ export default function ChatTab({
   const [searchResults, setSearchResults] = useState(/** @type {any[]} */ ([]))
   const [searchBusy, setSearchBusy] = useState(false)
   const searchTimerRef = useRef(null)
+
+  // Long-press context menu on room rows
+  const [roomMenu, setRoomMenu] = useState(/** @type {{ room: any, y: number, x: number } | null} */ (null))
+  const longPressTimerRef = useRef(null)
 
   // Group creation
   const [showGroupCreate, setShowGroupCreate] = useState(false)
@@ -276,6 +287,23 @@ export default function ChatTab({
     }
   }, [supabaseClient, loadRooms])
 
+  // ── Room long-press actions ───────────────────────────────────────────────
+
+  const handleRoomAction = useCallback(async (action, room) => {
+    setRoomMenu(null)
+    try {
+      if (action === 'mark_unread') await chatMarkUnread(supabaseClient, room.id)
+      else if (action === 'pin')    await chatPinRoom(supabaseClient, room.id)
+      else if (action === 'unpin')  await chatUnpinRoom(supabaseClient, room.id)
+      else if (action === 'mute')   await chatMuteRoom(supabaseClient, room.id)
+      else if (action === 'unmute') await chatUnmuteRoom(supabaseClient, room.id)
+      else if (action === 'delete') await chatLeaveRoom(supabaseClient, room.id)
+      void loadRooms()
+    } catch (e) {
+      setActionErr(e?.message || 'Action failed.')
+    }
+  }, [supabaseClient, loadRooms])
+
   // ── Group creation ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -386,6 +414,7 @@ export default function ChatTab({
   // ── Conversation list ─────────────────────────────────────────────────────
 
   return (
+    <>
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       contentClassName="pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
@@ -633,10 +662,29 @@ export default function ChatTab({
           {rooms.map((room) => {
             const label = chatRoomLabel(room)
             return (
-              <li key={room.id}>
+              <li key={room.id} className="relative">
                 <button
                   type="button"
                   onClick={() => setActiveRoomId(room.id)}
+                  onPointerDown={(e) => {
+                    const startX = e.clientX, startY = e.clientY
+                    longPressTimerRef.current = setTimeout(() => {
+                      setRoomMenu({ room, x: e.clientX, y: e.clientY })
+                    }, 420)
+                    const cancel = (ev) => {
+                      if (Math.abs(ev.clientX - startX) > 8 || Math.abs(ev.clientY - startY) > 8) {
+                        clearTimeout(longPressTimerRef.current)
+                      }
+                    }
+                    const done = () => {
+                      clearTimeout(longPressTimerRef.current)
+                      document.removeEventListener('pointermove', cancel)
+                      document.removeEventListener('pointerup', done)
+                    }
+                    document.addEventListener('pointermove', cancel, { passive: true })
+                    document.addEventListener('pointerup', done, { passive: true })
+                  }}
+                  onContextMenu={(e) => e.preventDefault()}
                   className="flex w-full items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900"
                 >
                   {/* Avatar / icon */}
@@ -662,6 +710,11 @@ export default function ChatTab({
                   {/* Labels */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
+                      {room.pinned && (
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-cyan-500">
+                          <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+                        </svg>
+                      )}
                       <span className={`truncate text-[15px] font-semibold ${room.hasUnread ? 'text-zinc-100' : 'text-zinc-300'}`}>
                         {label}
                       </span>
@@ -693,7 +746,121 @@ export default function ChatTab({
         </ul>
       )}
     </ScrollLinkedEdgeTitleBarShell>
+
+    {roomMenu && createPortal(
+      <RoomContextMenu
+        room={roomMenu.room}
+        anchorY={roomMenu.y}
+        anchorX={roomMenu.x}
+        onAction={handleRoomAction}
+        onClose={() => setRoomMenu(null)}
+      />,
+      document.body,
+    )}
+    </>
   )
+}
+
+// ── RoomContextMenu ────────────────────────────────────────────────────────
+
+function RoomContextMenu({ room, anchorY, anchorX, onAction, onClose }) {
+  const menuRef = useRef(null)
+
+  // Position: prefer showing below touch point; if near bottom, flip up.
+  const MENU_H = 200
+  const top = anchorY + MENU_H > window.innerHeight - 16
+    ? anchorY - MENU_H
+    : anchorY
+
+  // Dismiss on outside tap
+  useEffect(() => {
+    const onPointerDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) onClose()
+    }
+    document.addEventListener('pointerdown', onPointerDown, { capture: true })
+    return () => document.removeEventListener('pointerdown', onPointerDown, { capture: true })
+  }, [onClose])
+
+  const isMuted = chatRoomIsMuted(room)
+  const isPinned = !!room.pinned
+
+  const rowBase =
+    'flex w-full items-center justify-between gap-3 px-4 py-3.5 text-[15px] font-semibold touch-manipulation transition-colors active:bg-white/10'
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: Math.max(8, Math.min(top, window.innerHeight - MENU_H - 8)),
+        left: Math.max(8, Math.min(anchorX, window.innerWidth - 228)),
+        zIndex: 200,
+        width: 220,
+      }}
+      ref={menuRef}
+    >
+      <div className="chat-room-menu-glass overflow-hidden rounded-2xl shadow-2xl">
+        <button
+          type="button"
+          className={`${rowBase} text-zinc-100`}
+          onClick={() => onAction('mark_unread', room)}
+        >
+          <span>Mark as unread</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0 opacity-75">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="10" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+
+        <RoomMenuDivider />
+
+        <button
+          type="button"
+          className={`${rowBase} text-zinc-100`}
+          onClick={() => onAction(isPinned ? 'unpin' : 'pin', room)}
+        >
+          <span>{isPinned ? 'Unpin conversation' : 'Pin conversation'}</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke={isPinned ? 'none' : 'currentColor'} strokeWidth="1.75" className="shrink-0 opacity-75">
+            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+          </svg>
+        </button>
+
+        <RoomMenuDivider />
+
+        <button
+          type="button"
+          className={`${rowBase} text-zinc-100`}
+          onClick={() => onAction(isMuted ? 'unmute' : 'mute', room)}
+        >
+          <span>{isMuted ? 'Unmute conversation' : 'Mute conversation'}</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0 opacity-75">
+            {isMuted
+              ? <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></>
+              : <><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23M12 19v4M8 23h8"/></>
+            }
+          </svg>
+        </button>
+
+        <RoomMenuDivider />
+
+        <button
+          type="button"
+          className={`${rowBase} chat-room-menu-danger`}
+          onClick={() => onAction('delete', room)}
+        >
+          <span>Delete conversation</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function RoomMenuDivider() {
+  return <div className="chat-room-menu-divider mx-4 h-px" />
 }
 
 /** Short relative timestamp for conversation list rows. */

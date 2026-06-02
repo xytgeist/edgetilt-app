@@ -532,5 +532,44 @@ Deno.serve(async (req) => {
     return json(200, { ok: true })
   }
 
+  // ── mark_unread ───────────────────────────────────────────────────────────
+  if (action === 'mark_unread') {
+    const roomId = String(body?.room_id || '').trim()
+    if (!roomId) return json(400, { error: 'room_id is required.' })
+    const { error: uErr } = await admin
+      .from('chat_room_members')
+      .update({ last_read_at: null, last_read_message_id: null })
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+    if (uErr) return json(400, { error: uErr.message })
+    return json(200, { ok: true })
+  }
+
+  // ── pin_room / unpin_room ─────────────────────────────────────────────────
+  if (action === 'pin_room' || action === 'unpin_room') {
+    const roomId = String(body?.room_id || '').trim()
+    if (!roomId) return json(400, { error: 'room_id is required.' })
+    const { error: uErr } = await admin
+      .from('chat_room_members')
+      .update({ pinned: action === 'pin_room' })
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+    if (uErr) return json(400, { error: uErr.message })
+    return json(200, { ok: true })
+  }
+
+  // ── leave_room ────────────────────────────────────────────────────────────
+  if (action === 'leave_room') {
+    const roomId = String(body?.room_id || '').trim()
+    if (!roomId) return json(400, { error: 'room_id is required.' })
+    const { error: dErr } = await admin
+      .from('chat_room_members')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+    if (dErr) return json(400, { error: dErr.message })
+    return json(200, { ok: true })
+  }
+
   return json(400, { error: 'Unknown action.' })
 })

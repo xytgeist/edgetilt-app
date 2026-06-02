@@ -2376,6 +2376,40 @@ html.light .chat-menu-glass {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+/* Inbox long-press menu — extra translucency so the list shows through (portaled). */
+.chat-room-menu-glass {
+  background: rgba(20, 22, 40, 0.12);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+html.light .chat-room-menu-glass {
+  background: rgba(235, 238, 255, 0.16);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.chat-room-menu-divider {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+html.light .chat-room-menu-divider {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+html.light .chat-room-menu-glass button:active {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.chat-room-menu-danger {
+  color: #f87171;
+}
+.chat-room-menu-danger svg {
+  color: inherit;
+}
+html.light .chat-room-menu-danger {
+  color: #dc2626;
+}
+
 /* iOS-style vibrancy input field — dark */
 .chat-input-glass {
   background: rgba(44, 44, 46, 0.55);
@@ -2410,6 +2444,16 @@ html.light.platform-android .chat-menu-glass {
   background:
     rgba(235, 238, 255, 0.33),
     rgba(248, 249, 253, 0.91);
+}
+html.platform-android .chat-room-menu-glass {
+  background:
+    rgba(20, 22, 40, 0.16),
+    rgba(14, 16, 30, 0.58);
+}
+html.light.platform-android .chat-room-menu-glass {
+  background:
+    rgba(235, 238, 255, 0.22),
+    rgba(248, 249, 253, 0.68);
 }
 html.platform-android .chat-input-glass {
   background:

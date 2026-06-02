@@ -291,7 +291,7 @@ export default function ChatComposer({
               expanded ? 'bottom-1.5' : 'top-1/2 -translate-y-1/2'
             } ${
               hasContent
-                ? 'bg-cyan-800 text-white opacity-100 active:opacity-70'
+                ? 'bg-cyan-800/70 text-white opacity-100 active:opacity-50'
                 : 'pointer-events-none opacity-0'
             }`}
           >

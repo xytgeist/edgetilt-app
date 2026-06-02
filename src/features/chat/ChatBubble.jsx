@@ -402,7 +402,7 @@ export default function ChatBubble({
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => e.preventDefault()}
             onSelectStart={(e) => e.preventDefault()}
-            className={`chat-bubble-surface relative select-none px-3 py-2 text-[15px] leading-snug transition-opacity touch-manipulation ${
+            className={`chat-bubble-surface relative select-none px-3 py-2 text-[16px] leading-snug transition-opacity touch-manipulation ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted

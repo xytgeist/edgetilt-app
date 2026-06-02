@@ -59,7 +59,7 @@ const BACKDROP_PAN_THRESHOLD_PX = 12
 const FAB_REVEAL_VISIBLE = 0.12
 /** After this idle window the FAB shrinks to {@link FAB_COMPACT_VISUAL_PX} and snaps to the bottom corner on its side. */
 const FAB_COMPACT_PIP_MS = 5_000
-const FAB_COMPACT_VISUAL_PX = 20
+const FAB_COMPACT_VISUAL_PX = 30
 /** Visible FAB dims to half opacity after this long without interaction. */
 const FAB_IDLE_DIM_MS = 10_000
 const FAB_IDLE_DIM_OPACITY = 0.5
@@ -256,7 +256,7 @@ export default function LoungeDockArcCarouselPrototype({
   notificationsUnreadCount = 0,
   /**
    * When false (Lounge home feed tab), FAB stays full-size with scroll-reveal + idle dim only.
-   * When true (other tabs / away from feed), idle compact pip (20px corner) may apply.
+   * When true (other tabs / away from feed), idle compact pip (30px corner) may apply.
    */
   enableFabCompactPip = true,
 }) {

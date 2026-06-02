@@ -137,7 +137,7 @@ export function loungeDockCornerLCompactHomeOffset() {
 }
 
 /** Compact idle pip diameter (matches `LoungeDockArcCarouselPrototype` FAB shrink). */
-export const LOUNGE_DOCK_FAB_COMPACT_VISUAL_PX = 20
+export const LOUNGE_DOCK_FAB_COMPACT_VISUAL_PX = 30
 
 /**
  * Visual center of the scaled FAB pip (host uses bottom-left / bottom-right transform origin).

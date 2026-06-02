@@ -17,57 +17,107 @@ const QUICK_CHIP_CLASS = 'h-7 w-7 shrink-0'
  * approximating the iOS vibrancy / material effect.
  */
 
+const PILL_H = 64
+const MENU_ROW_H = 50
+const MENU_DIV_H = 1
+const LAYOUT_GAP = 12
+
+/** Match rendered action-card rows (Reply / Copy / … / Delete). */
+function estimateMenuHeight(isDeleted, isMine) {
+  if (isDeleted) return MENU_ROW_H + 8
+  let rows = 4 // Reply, Copy, Forward, Report
+  let divs = 2
+  if (isMine) {
+    rows += 1
+    divs += 1
+  }
+  return rows * MENU_ROW_H + divs * MENU_DIV_H + 8
+}
+
 /**
  * Compute absolute positions for the floating emoji pill and action card,
- * keeping both on screen regardless of where the bubble sits.
+ * keeping both on screen and never overlapping each other.
  *
- * iOS rule: emoji pill above the bubble, action card below — flip sides
- * when there isn't room.
+ * Preferred stack: emoji pill above bubble, action card below bubble.
  */
-function computeLayout(rect, isMine) {
+function computeLayout(rect, isMine, { isDeleted = false } = {}) {
   const vw  = window.innerWidth
   const vh  = window.innerHeight
-  const SAFE_TOP    = 52   // generous for notch / Dynamic Island
-  const SAFE_BOTTOM = 40   // home indicator
-  const PILL_H      = 68
-  const MENU_H      = 230  // estimated max action card height
-  const GAP         = 10
+  const SAFE_TOP    = 52
+  const SAFE_BOTTOM = 120 // composer overlay + home indicator
+  const MENU_H      = estimateMenuHeight(isDeleted, isMine)
   const PILL_W      = Math.min(360, vw - 32)
   const MENU_W      = Math.min(252, vw - 32)
 
-  // Horizontal: right-align with bubble for "mine", left-align for others
   const rawPillLeft = isMine ? rect.right - PILL_W : rect.left
   const pillLeft    = Math.max(16, Math.min(rawPillLeft, vw - PILL_W - 16))
 
   const rawMenuLeft = isMine ? rect.right - MENU_W : rect.left
   const menuLeft    = Math.max(16, Math.min(rawMenuLeft, vw - MENU_W - 16))
 
-  const spaceAbove = rect.top  - SAFE_TOP
-  const spaceBelow = vh - rect.bottom - SAFE_BOTTOM
+  let pillTop = rect.top - PILL_H - LAYOUT_GAP
+  let menuTop = rect.bottom + LAYOUT_GAP
 
-  let pillTop, menuTop
+  const pillAboveFits = pillTop >= SAFE_TOP
+  const menuBelowFits = menuTop + MENU_H <= vh - SAFE_BOTTOM
 
-  if (spaceAbove >= PILL_H + GAP * 2) {
-    // Room above → emoji pill above bubble
-    pillTop = rect.top - PILL_H - GAP
-    // Action card below if room, else stack above pill
-    menuTop = spaceBelow >= MENU_H + GAP
-      ? rect.bottom + GAP
-      : pillTop - MENU_H - GAP
+  if (pillAboveFits && menuBelowFits) {
+    // Default: pill above bubble, menu below — bubble separates them.
+  } else if (pillAboveFits && !menuBelowFits) {
+    // Not enough room below — stack menu above pill.
+    menuTop = pillTop - MENU_H - LAYOUT_GAP
+    if (menuTop < SAFE_TOP) {
+      // Still tight — stack both below bubble.
+      pillTop = rect.bottom + LAYOUT_GAP
+      menuTop = pillTop + PILL_H + LAYOUT_GAP
+    }
+  } else if (!pillAboveFits && menuBelowFits) {
+    // Not enough room above — pill below bubble, menu above bubble.
+    pillTop = rect.bottom + LAYOUT_GAP
+    menuTop = rect.top - MENU_H - LAYOUT_GAP
+    if (menuTop < SAFE_TOP) {
+      menuTop = pillTop + PILL_H + LAYOUT_GAP
+    }
   } else {
-    // Pill below bubble
-    pillTop = rect.bottom + GAP
-    // Card above bubble
-    menuTop = rect.top - MENU_H - GAP
-    // If card would be clipped at top, put it below the pill
-    if (menuTop < SAFE_TOP + 4) {
-      menuTop = pillTop + PILL_H + GAP
+    // Very tight — stack below bubble: bubble → pill → menu.
+    pillTop = rect.bottom + LAYOUT_GAP
+    menuTop = pillTop + PILL_H + LAYOUT_GAP
+    if (menuTop + MENU_H > vh - SAFE_BOTTOM) {
+      // Flip: menu → pill → bubble above.
+      pillTop = rect.top - PILL_H - LAYOUT_GAP
+      menuTop = pillTop - MENU_H - LAYOUT_GAP
     }
   }
 
-  // Clamp both to the safe viewport
-  pillTop = Math.max(SAFE_TOP + 4, Math.min(pillTop, vh - PILL_H      - SAFE_BOTTOM - 4))
-  menuTop = Math.max(SAFE_TOP + 4, Math.min(menuTop, vh - MENU_H      - SAFE_BOTTOM - 4))
+  // Guard: independent clamping must not re-introduce overlap.
+  const pillBottom = pillTop + PILL_H
+  const menusOverlapPill = menuTop < pillBottom + LAYOUT_GAP && menuTop + MENU_H > pillTop - LAYOUT_GAP
+  if (menusOverlapPill) {
+    if (menuTop >= rect.bottom - 4) {
+      menuTop = pillBottom + LAYOUT_GAP
+    } else {
+      menuTop = pillTop - MENU_H - LAYOUT_GAP
+    }
+  }
+
+  pillTop = Math.max(SAFE_TOP, Math.min(pillTop, vh - PILL_H - SAFE_BOTTOM))
+  menuTop = Math.max(SAFE_TOP, Math.min(menuTop, vh - MENU_H - SAFE_BOTTOM))
+
+  // Re-check after clamp — push menu away from pill if clamp caused collision.
+  if (menuTop < pillTop + PILL_H + LAYOUT_GAP && menuTop + MENU_H > pillTop - LAYOUT_GAP) {
+    const stackBelow = rect.top + rect.height / 2 > vh / 2
+    if (stackBelow) {
+      menuTop = Math.min(pillTop + PILL_H + LAYOUT_GAP, vh - SAFE_BOTTOM - MENU_H)
+      if (menuTop < pillTop + PILL_H + LAYOUT_GAP) {
+        pillTop = Math.max(SAFE_TOP, menuTop - PILL_H - LAYOUT_GAP)
+      }
+    } else {
+      menuTop = Math.max(SAFE_TOP, pillTop - MENU_H - LAYOUT_GAP)
+      if (menuTop + MENU_H > pillTop - LAYOUT_GAP) {
+        pillTop = menuTop + MENU_H + LAYOUT_GAP
+      }
+    }
+  }
 
   return { pillTop, pillLeft, pillW: PILL_W, menuTop, menuLeft, menuW: MENU_W }
 }
@@ -253,7 +303,7 @@ export default function ChatBubble({
   const imageUrls = Array.isArray(message.image_urls) ? message.image_urls.filter(Boolean) : []
 
   // Floating menu layout — computed fresh each render so it tracks the latest rect
-  const layout = bubbleRect ? computeLayout(bubbleRect, isMine) : null
+  const layout = bubbleRect ? computeLayout(bubbleRect, isMine, { isDeleted }) : null
 
   return (
     // eslint-disable-next-line react/forbid-dom-props
@@ -395,7 +445,7 @@ export default function ChatBubble({
               top:   layout.pillTop,
               left:  layout.pillLeft,
               width: layout.pillW,
-              height: 64,
+              height: PILL_H,
               touchAction: 'pan-x',
               overscrollBehaviorX: 'contain',
             }}

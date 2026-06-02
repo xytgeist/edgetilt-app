@@ -25,6 +25,8 @@ const IOS_COMPOSER_DISMISS_PAD_PX = 32
 /** Show scroll-to-bottom when this many newer messages are off-screen. */
 const SCROLL_UP_MSG_THRESHOLD = 20
 const JUMP_BTN_ABOVE_COMPOSER_PX = 8
+/** Last message must sit this far below the composer top before we auto-scroll. */
+const COMPOSER_SCROLL_GAP_PX = 8
 
 /**
  * Max messages kept in the DOM at any time.
@@ -389,11 +391,25 @@ export default function ChatConversation({
 
   // ── Jump to live end ──────────────────────────────────────────────────────
 
-  const scrollToBottom = (behavior = 'instant') => {
+  /** True when the tail message sits under (or would sit under) the floating composer. */
+  const contentExtendsBelowComposer = useCallback(() => {
+    const list = listRef.current
+    const composer = composerBarRef.current
+    if (!list || !composer) return false
+    const nodes = list.querySelectorAll('[data-chat-message-id]')
+    if (nodes.length === 0) return false
+    const last = nodes[nodes.length - 1]
+    const composerTop = composer.getBoundingClientRect().top
+    const lastBottom = last.getBoundingClientRect().bottom
+    return lastBottom > composerTop - COMPOSER_SCROLL_GAP_PX
+  }, [])
+
+  const scrollToBottom = useCallback((behavior = 'instant', { force = false } = {}) => {
     const el = listRef.current
     if (!el) return
+    if (!force && !contentExtendsBelowComposer()) return
     el.scrollTo({ top: el.scrollHeight, behavior })
-  }
+  }, [contentExtendsBelowComposer])
 
   const measureScrolledUpCount = useCallback(() => {
     const list = listRef.current
@@ -555,10 +571,10 @@ export default function ChatConversation({
     } else {
       atBottomRef.current = true
       setIsAtBottom(true)
-      scrollToBottom('smooth')
+      scrollToBottom('smooth', { force: true })
       scheduleMarkLastRead()
     }
-  }, [loadMessages, scheduleMarkLastRead])
+  }, [loadMessages, scheduleMarkLastRead, scrollToBottom])
 
   // ── Scroll helpers ────────────────────────────────────────────────────────
 
@@ -620,7 +636,9 @@ export default function ChatConversation({
       reply_to_sender_id: origMsg?.sender_id || null,
     }
     setMessages((prev) => [...prev, optimistic])
-    requestAnimationFrame(() => scrollToBottom('smooth'))
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollToBottom('smooth'))
+    })
 
     try {
       const res = await chatSendMessage(supabaseClient, { roomId: room.id, body, imageUrls, replyToMessageId })
@@ -635,7 +653,7 @@ export default function ChatConversation({
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
     }
-  }, [supabaseClient, room.id, viewerUserId, loadMessages])
+  }, [supabaseClient, room.id, viewerUserId, loadMessages, scrollToBottom])
 
   const handleDelete = useCallback(async (messageId) => {
     await chatDeleteMessage(supabaseClient, messageId)
@@ -777,18 +795,43 @@ export default function ChatConversation({
   // Track composer textarea focus — extends iOS dismiss grab strip above composer.
   useEffect(() => {
     const composer = composerBarRef.current
+    const list = listRef.current
     if (!composer) return
+    let scrollTopOnFocus = 0
+
     const sync = () => {
       setComposerFocused(Boolean(composer.querySelector('textarea:focus, input:focus')))
     }
-    const onFocusOut = () => requestAnimationFrame(sync)
-    composer.addEventListener('focusin', sync)
-    composer.addEventListener('focusout', onFocusOut)
-    return () => {
-      composer.removeEventListener('focusin', sync)
-      composer.removeEventListener('focusout', onFocusOut)
+
+    const onFocusIn = (e) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        scrollTopOnFocus = list?.scrollTop ?? 0
+      }
+      sync()
     }
-  }, [])
+
+    const clampScrollForShortThread = () => {
+      if (!list || !composer.querySelector('textarea:focus, input:focus')) return
+      if (!contentExtendsBelowComposer()) {
+        list.scrollTop = scrollTopOnFocus
+      }
+    }
+
+    const onFocusOut = () => requestAnimationFrame(sync)
+    composer.addEventListener('focusin', onFocusIn)
+    composer.addEventListener('focusout', onFocusOut)
+
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', clampScrollForShortThread)
+    vv?.addEventListener('scroll', clampScrollForShortThread)
+
+    return () => {
+      composer.removeEventListener('focusin', onFocusIn)
+      composer.removeEventListener('focusout', onFocusOut)
+      vv?.removeEventListener('resize', clampScrollForShortThread)
+      vv?.removeEventListener('scroll', clampScrollForShortThread)
+    }
+  }, [contentExtendsBelowComposer])
 
   // Track composer bar height so the scroll list can pad its bottom
   useEffect(() => {
@@ -812,19 +855,21 @@ export default function ChatConversation({
     const ro = new ResizeObserver(() => {
       const h = container.clientHeight
       const growing = h > prevH
-      const tag = document.activeElement?.tagName
-      const inputFocused = tag === 'TEXTAREA' || tag === 'INPUT'
       const preservedGap = keyboardDismissPreserveRef.current
       if (growing && preservedGap != null) {
         container.scrollTop = container.scrollHeight - container.clientHeight - preservedGap
-      } else if (growing || (h < prevH && (atBottomRef.current || inputFocused))) {
-        container.scrollTop = container.scrollHeight
+      } else if (contentExtendsBelowComposer()) {
+        const tag = document.activeElement?.tagName
+        const inputFocused = tag === 'TEXTAREA' || tag === 'INPUT'
+        if (growing || (h < prevH && (atBottomRef.current || inputFocused))) {
+          container.scrollTop = container.scrollHeight
+        }
       }
       prevH = h
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, [])
+  }, [contentExtendsBelowComposer])
 
   // Android: swipe-down dismiss on message list — lock scroll at tail + preserve position.
   // iOS: messages scroll freely; dismiss only from composer strip (see below).
@@ -937,7 +982,13 @@ export default function ChatConversation({
       atBottomRef.current = true
       setIsAtBottom(true)
       const vv = window.visualViewport
-      const snap = () => { listEl.scrollTop = listEl.scrollHeight }
+      const snap = () => {
+        if (!contentExtendsBelowComposer()) {
+          listEl.scrollTop = 0
+          return
+        }
+        listEl.scrollTop = listEl.scrollHeight
+      }
       if (vv) {
         vv.addEventListener('resize', snap)
         snap()
@@ -1004,7 +1055,7 @@ export default function ChatConversation({
       composer.removeEventListener('touchend', onEnd)
       composer.removeEventListener('touchcancel', onEnd)
     }
-  }, [])
+  }, [contentExtendsBelowComposer])
 
   const listPaddingTop  = room.kind === 'dm'
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'

@@ -29,7 +29,7 @@ import {
 import { findLastOwnMessageId, getMessageReceiptStatus } from './chatReceiptStatus.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
-import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
+import { useLoungeKeyboardOverlapPx, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
 // Glass styles are defined in index.css as .chat-header-glass / .chat-menu-glass
 // with html.light overrides — do not use inline styles for these.
@@ -190,7 +190,7 @@ export default function ChatConversation({
   const openScrollPendingRef = useRef(true)
   const [composerFocused, setComposerFocused] = useState(false)
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(IS_IOS)
-  const kbOverlapPx = useLoungeKeyboardOverlapPx(true, { smooth: IS_IOS, smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS })
+  const kbOverlapPx = useLoungeKeyboardOverlapPx(true)
   const kbOverlapRef = useRef(kbOverlapPx)
   kbOverlapRef.current = kbOverlapPx
   const iosSafeBottomRef = useRef(iosSafeBottomPx)
@@ -1241,6 +1241,7 @@ export default function ChatConversation({
 
     const vv = window.visualViewport
     const onVvResize = () => {
+      if (IS_IOS && kbClosingRef.current) return
       if (!composer.querySelector('textarea:focus, input:focus')) return
       runTailPinFollow()
     }
@@ -1274,6 +1275,7 @@ export default function ChatConversation({
     syncInset()
     const ro = new ResizeObserver(() => {
       syncInset()
+      if (IS_IOS && kbClosingRef.current) return
       if (!composer.querySelector('textarea:focus, input:focus')) return
       if (IS_IOS) runTailPinFollow()
       else pinListToTail({ force: true })
@@ -1282,13 +1284,15 @@ export default function ChatConversation({
     return () => ro.disconnect()
   }, [pinListToTail, runTailPinFollow])
 
-  // iOS: keep the latest bubble above the composer while the keyboard animates.
-  useEffect(() => {
-    if (!IS_IOS) return undefined
+  // iOS: pin before paint while keyboard opens — smoothed overlap was lagging composer
+  // padding so pinListToTail read a stale rect (no raise on open, jump on close).
+  useLayoutEffect(() => {
+    if (!IS_IOS) return
+    const prev = kbOverlapPrevRef.current
+    if (kbOverlapPx < prev - 2) return
     const keyboardOpen = kbOverlapPx > iosSafeBottomPx + 2
-    if (!composerFocused && !keyboardOpen) return undefined
+    if (!composerFocused && !keyboardOpen) return
     runTailPinFollow()
-    return undefined
   }, [composerFocused, kbOverlapPx, iosSafeBottomPx, composerInsetPx, runTailPinFollow])
 
   // resizes-content: when the keyboard opens/closes the list height changes — pin tail.
@@ -1308,11 +1312,11 @@ export default function ChatConversation({
       if (growing && preservedGap != null) {
         container.scrollTop = container.scrollHeight - container.clientHeight - preservedGap
       } else if (shrinking && (atBottomRef.current || inputFocused)) {
-        if (IS_IOS && kbClosingRef.current) { /* overlap lerp handles dismiss */ }
+        if (IS_IOS && kbClosingRef.current) { /* overlap + safe-area floor on dismiss */ }
         else if (IS_IOS) runTailPinFollow()
         else pinListToTail({ force: true })
       } else if (growing && (atBottomRef.current || inputFocused)) {
-        if (IS_IOS && kbClosingRef.current) { /* avoid scroll overshoot on keyboard close */ }
+        if (IS_IOS && kbClosingRef.current) { /* avoid overshoot while keyboard closes */ }
         else if (IS_IOS) runTailPinFollow()
         else pinListToTail({ force: true })
       } else if (IS_ANDROID && contentExtendsBelowComposer()) {
@@ -1549,9 +1553,11 @@ export default function ChatConversation({
   const listPaddingTop = useRichHeader
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
-  const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx, {
-    ios: IS_IOS,
-  })
+  const composerPadBottom = IS_IOS
+    ? kbOverlapPx > 0.5
+      ? `${Math.round(kbOverlapPx)}px`
+      : `${iosSafeBottomPx}px`
+    : loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx, { ios: false })
 
   return (
     <div

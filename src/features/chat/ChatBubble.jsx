@@ -529,8 +529,6 @@ export default function ChatBubble({
             onContextMenu={(e) => e.preventDefault()}
             onSelectStart={(e) => e.preventDefault()}
             className={`chat-bubble-surface relative select-none text-[16px] leading-snug transition-opacity ${
-              hasMedia && !isDeleted ? 'overflow-hidden' : ''
-            } ${
               hasMedia && !isDeleted ? 'p-[3px]' : 'px-3 py-2'
             } ${
               compactBubble ? '' : 'rounded-2xl'
@@ -554,6 +552,22 @@ export default function ChatBubble({
               transition: 'box-shadow 0.2s ease',
             }}
           >
+            {/* Tail — only on media bubbles, positioned outside the border */}
+            {hasMedia && !isDeleted && (
+              <svg
+                className="absolute bottom-0 pointer-events-none"
+                style={isMine ? { right: -8 } : { left: -8 }}
+                width="9" height="14" viewBox="0 0 9 14"
+                aria-hidden
+              >
+                {isMine ? (
+                  <path d="M0 0 C0 8 9 11 9 14 L0 14 Z" fill="#3b82f6" />
+                ) : (
+                  <path d="M9 0 C9 8 0 11 0 14 L9 14 Z" fill="rgba(39,39,42,0.9)" />
+                )}
+              </svg>
+            )}
+
             {isDeleted ? (
               <span className="px-3 py-2 block">This message was deleted</span>
             ) : (

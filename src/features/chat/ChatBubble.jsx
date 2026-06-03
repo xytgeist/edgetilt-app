@@ -371,7 +371,17 @@ export default function ChatBubble({
     <div
       data-chat-message-id={message.id}
       className="relative select-none"
-      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+      style={{
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        ...(isStarred && !isDeleted ? {
+          backgroundColor: 'rgba(251,191,36,0.045)',
+          borderRadius: '16px',
+          marginInline: '-6px',
+          paddingInline: '6px',
+        } : {}),
+      }}
     >
       <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
         {/* Avatar — only for others' messages; hidden in DMs (header already shows peer) */}
@@ -445,6 +455,10 @@ export default function ChatBubble({
               touchAction: 'pan-y',
               borderRadius: compactBubble ? '9999px' : BUBBLE_EXPANDED_RADIUS_PX,
               backgroundColor: isMine && !isDeleted ? '#3b82f6' : undefined,
+              boxShadow: isStarred && !isDeleted
+                ? '0 0 0 1.5px rgba(251,191,36,0.55)'
+                : undefined,
+              transition: 'box-shadow 0.2s ease',
             }}
           >
             {isDeleted ? (

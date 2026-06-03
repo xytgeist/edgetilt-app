@@ -610,7 +610,11 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
-- 2026-06-05: **Group delete lifecycle:** migration **`20260605120000_chat_group_delete.sql`** — `AFTER DELETE` trigger removes empty **`kind = 'group'`** rooms (leave, owner remove member, last person out); RPC **`chat_delete_group`** (creator or **`role = admin`**) deletes room for everyone. Client: **`ChatGroupSettingsSheet`** → **Delete Group for Everyone** (owner/admin) + **Leave Group**. **Apply migration on test before smoke.**
+- 2026-06-05: **Group delete lifecycle:** migration **`20260605120000_chat_group_delete.sql`** — `AFTER DELETE` trigger removes empty **`kind = 'group'`** rooms (leave, owner remove member, last person out); RPC **`chat_delete_group`** (creator or **`role = admin`**) deletes room for everyone. Client: **`ChatGroupSettingsSheet`** → **Delete Group for Everyone** (owner/admin) + **Leave Group**. Commit **`10f9a0e`**. **Apply migration on test before smoke.**
+- 2026-06-05: **Lounge layout-test removed:** deleted **`loungeLayoutTestPost.js`**; Chat tab **Layout test** button + **`AppShell`** / **`SocialFeed`** fake DM post-detail harness removed (keyboard debug only).
+- 2026-06-05: **Lounge caption bare-domain links:** **`loungeCaption.jsx`** uses **`splitTextWithLinks`** (`linkifyText.jsx`) so `x.com`-style URLs match chat link colors in feed/detail captions.
+- 2026-06-04: **Link preview polish (code on `test`):** commit **`3addcf3`** — brand-colored preview pills (`accent_color`, domain map, favicon sample; no canvas on Google favicon URLs); unified chat bubble (text + card); Lounge post detail **`link_preview`**; await attach on post/comment submit. Redeploy **`lounge-link-unfurl`** on test for server-side **`accent_color`**.
+- 2026-06-04: **Link preview cards v1 (code on `test`):** commit **`8ac92a1`** — migrations **`20260604180000`**, **`20260604180100`**; Edge **`lounge-link-unfurl`**; **`ChatLinkPreviewCard`**, **`LoungeLinkPreviewBlock`**. **Apply migrations + deploy Edge on test before smoke.**
 
 - 2026-06-03: **Group chat header + settings v1 (code on `test`):** migration **`20260603100000_chat_group_features.sql`** (`avatar_url`, `description`, `moderation_muted_until`, `chat_message_stars`, `chat_pinned_messages`, RPCs `chat_group_header_members`, `chat_group_members_list`, `chat_starred_*`, extended `chat_rooms_for_user`). Edge **`lounge-chat`**: `update_group`, `add_group_members`, `remove_group_member`, `mute_group_member`, `star_message`, `mute_room_until`, etc. Client: overlapping member avatars or single group photo; pill → **`ChatGroupSettingsSheet`**; long-press **Star** on group messages. **Apply migration + redeploy Edge on test before smoke.**
 - 2026-06-03: **Group settings members list:** fixed client bug where **`chat_starred_messages_page`** failure in **`Promise.all`** left members empty with a misleading “apply migrations” message; settings now loads members independently and shows the real RPC error.
@@ -916,11 +920,22 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 | Item | What was done |
 |---|---|
-| **Chat + Lounge link cards** | Migrations `20260604180000_link_previews_chat_and_lounge.sql`, `20260604180100_chat_messages_rpc_link_preview.sql`. Edge **`lounge-link-unfurl`** (`unfurl`, `attach`) + shared **`_shared/linkUnfurl.ts`** (OG scrape, SSRF guards, **`/lounge/p/:uuid`** + `?post=` permalink → post row). **`lounge-chat` `send_message`** attaches preview on send. Client: **`ChatLinkPreviewCard`**, **`LoungeLinkPreviewBlock`**, attach from **`loungePostSubmitJob`** / **`loungeCommentSubmitJob`**. Rich card when `og:image`; compact pill otherwise. **Deploy:** `supabase functions deploy lounge-link-unfurl` + redeploy **`lounge-chat`**; run both migrations on test. |
+| **Chat + Lounge link cards** | Migrations `20260604180000_link_previews_chat_and_lounge.sql`, `20260604180100_chat_messages_rpc_link_preview.sql`. Edge **`lounge-link-unfurl`** (`unfurl`, `attach`) + shared **`_shared/linkUnfurl.ts`** (OG scrape, SSRF guards, **`/lounge/p/:uuid`** + `?post=` permalink → post row). **`lounge-chat` `send_message`** attaches preview on send. Client: **`ChatLinkPreviewCard`**, **`LoungeLinkPreviewBlock`**, attach from **`loungePostSubmitJob`** / **`loungeCommentSubmitJob`**. Rich card when `og:image`; compact pill otherwise. **Deploy:** `supabase functions deploy lounge-link-unfurl` + redeploy **`lounge-chat`**; run both migrations on test. **Do not** re-run `20260601160000_chat_messages_page_catchup.sql` after `041801`. |
+| **Polish (`3addcf3`)** | Brand tint on preview pills (`accent_color` from OG `theme-color`, domain map, optional favicon canvas — skip `google.com/s2/favicons` CORS). Chat: caption + preview in **one** **`ChatBubble`**; URL-only sends card without duplicate text bubble. Lounge: post detail shows **`link_preview`**; submit jobs **await** attach before closing composer. |
+
+### ✅ Group delete lifecycle (2026-06-05, code `10f9a0e`)
+
+| Item | What was done |
+|---|---|
+| **Auto-delete empty groups** | Migration **`20260605120000_chat_group_delete.sql`**: `AFTER DELETE` trigger on **`chat_room_members`** deletes **`chat_rooms`** when `kind = 'group'` and zero members remain (covers leave, Edge **`remove_group_member`**, owner clearing roster). Messages/stars/pins cascade via existing FKs. DMs/channels unaffected. |
+| **Delete for everyone** | RPC **`chat_delete_group(p_room_id)`** — creator or **`chat_room_members.role = 'admin'`**. Client **`chatDeleteGroup`**; **`ChatGroupSettingsSheet`** destructive button + confirm. |
+| **Prior behavior (fixed)** | Leaving or removing all members left orphan **`chat_rooms`** rows; inbox hid them but data remained. |
+
+**Test smoke (Ryan):** owner deletes group with members present; non-owner leaves while others stay; last member leaves; owner removes everyone then leaves. **Apply `20260605120000` on test before smoke.**
 
 ### 🔜 Next priorities (chat)
 
-Nothing left in the near-term queue.
+- Ryan sign-off on link-preview + group-delete smoke after migrations/Edge deploy on test.
 
 ### ⏳ Deferred (monitor, implement when triggered)
 

@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-**Lounge link previews (Open Graph):** Share URLs use **`/lounge/p/<post_uuid>`**. On **Vercel**, `vercel.json` rewrites that path to **`api/lounge-post-og.js`**, which returns HTML with `og:*` / Twitter Card meta (Supabase anon REST + RLS) and redirects browsers to **`/?tab=home&post=…`**. Plain `npm run dev` does not run that route; use **`vercel dev`** from the repo root to exercise it locally, and ensure **`VITE_SUPABASE_URL`** + **`VITE_SUPABASE_ANON_KEY`** are set (same as the Vite app on Vercel).
+**Lounge link previews (Open Graph):** Share URLs use **`/lounge/p/<post_uuid>`**. On **Vercel**, `vercel.json` rewrites that path to **`api/lounge-post-og.js`**, which returns HTML with `og:*` / Twitter Card meta (Supabase anon REST + RLS) and redirects browsers to **`/?tab=home&post=…`**. Plain `npm run dev` does not run that route; use **`vercel dev`** from the repo root to exercise it locally, and ensure **`VITE_SUPABASE_URL`** + **`VITE_SUPABASE_ANON_KEY`** are set (same as the Vite app on Vercel). **In-app link cards (chat + feed):** Edge **`lounge-link-unfurl`** + migrations **`20260604180000`** / **`20260604180100`** — see **`docs/test-buildout-backlog.md`** Update log (2026-06-04). **Group delete:** **`20260605120000_chat_group_delete.sql`** + **`ChatGroupSettingsSheet`** (2026-06-05).
 
 Other scripts:
 

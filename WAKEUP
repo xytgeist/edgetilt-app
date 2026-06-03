@@ -75,7 +75,39 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-## Last session recap (May 29 2026, branch `test`) — PICK UP HERE
+## Last session recap (Jun 2–5 2026, branch `test`) — PICK UP HERE
+
+### Shipped on `test` (commits — code pushed; SQL/Edge may still need Ryan on test)
+
+| Commit | Area | Notes |
+|--------|------|-------|
+| **`8ac92a1`** | **Link preview cards** | Chat + Lounge OG unfurl; migrations **`20260604180000`**, **`20260604180100`**; Edge **`lounge-link-unfurl`**; **`link_preview`** jsonb on messages/posts/comments; **`ChatLinkPreviewCard`**, **`LoungeLinkPreviewBlock`**. |
+| **`3addcf3`** | **Link preview polish** | Brand tint (`accent_color` / theme-color / domain map / favicon sample — skip Google favicon CORS); **one chat bubble** (caption + card); post detail **`link_preview`**; await attach on post/comment submit. **Redeploy `lounge-link-unfurl`** on test for server **`accent_color`**. |
+| **`10f9a0e`** | **Group delete + cleanup** | Migration **`20260605120000_chat_group_delete.sql`** — empty group auto-delete trigger + **`chat_delete_group`** RPC; **`ChatGroupSettingsSheet`** **Delete Group for Everyone** (owner/admin). Removed Lounge **layout-test** harness (`loungeLayoutTestPost.js`, Chat **Layout test** button). **`loungeCaption.jsx`** — bare domains (`x.com`) link-colored via **`splitTextWithLinks`** (`linkifyText.jsx`). |
+
+### Apply on test Supabase (before smoke)
+
+1. **`20260604180000_link_previews_chat_and_lounge.sql`**
+2. **`20260604180100_chat_messages_rpc_link_preview.sql`** — do **not** re-run **`20260601160000`** after this (superseded body).
+3. **`20260605120000_chat_group_delete.sql`**
+4. Deploy: **`supabase functions deploy lounge-link-unfurl`** (+ redeploy **`lounge-chat`** if send-path previews missing).
+
+### Smoke (not signed off in backlog yet)
+
+- Chat: URL-only message → single bubble with card; link + text → one bubble; brand pill tint.
+- Lounge: post/comment with `kalshi.com` / `x.com` — caption links sky/orange/cyan; post detail preview card.
+- Group: owner **Delete Group for Everyone**; last member **Leave** → room gone; remove all members then leave → room gone.
+
+### Older open items (still valid)
+
+- **Bankroll Risk Advisor** — move card higher in Phoenix/Buffalo/MHB (see May 28 recap below).
+- **Play Logbook** — SQL chain on test if not already applied (May 29 recap).
+
+**Docs:** **`docs/test-buildout-backlog.md`** Update log + chat sections; **`AGENTS.md`** quick anchors (link previews, group delete).
+
+---
+
+## Last session recap (May 29 2026, branch `test`)
 
 ### Next big feature — Play Logbook (v1 built 2026-05-29)
 

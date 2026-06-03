@@ -42,6 +42,7 @@ const IS_IOS =
 const IOS_COMPOSER_DISMISS_PAD_PX = 32
 /** Show scroll-to-bottom when this many newer messages are off-screen. */
 const SCROLL_UP_MSG_THRESHOLD = 20
+const JUMP_BTN_ABOVE_COMPOSER_PX = 8
 /** Last message must sit this far below the composer top before we auto-scroll. */
 const COMPOSER_SCROLL_GAP_PX = 8
 /** Message stack shorter than this gap under the composer viewport → treat as "fits" (no push). */
@@ -1777,7 +1778,7 @@ export default function ChatConversation({
         </div>
       )}
 
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
           className="chat-top-gradient pointer-events-none absolute inset-x-0 top-0 z-10"
           style={{ height: listPaddingTop }}
@@ -1790,8 +1791,8 @@ export default function ChatConversation({
           onTouchMove={handleSwipeTouchMove}
           onTouchEnd={handleSwipeTouchEnd}
           onTouchCancel={handleSwipeTouchEnd}
-          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-3 py-3 pb-2"
-          style={{ touchAction: 'pan-y', paddingTop: listPaddingTop }}
+          className="h-full overflow-x-hidden overflow-y-auto overscroll-y-contain px-3 py-3"
+          style={{ touchAction: 'pan-y', paddingTop: listPaddingTop, paddingBottom: composerInsetPx }}
         >
           {loadingMore && (
             <div className="py-2 text-center text-[12px] text-zinc-600">Loading older messages…</div>
@@ -1858,8 +1859,17 @@ export default function ChatConversation({
           )}
         </div>
 
+      <div
+        ref={composerBarRef}
+        data-chat-composer-host
+        className="absolute inset-x-0 bottom-0 z-20 bg-transparent px-3 pt-2.5 pb-0"
+        style={{ paddingBottom: composerPadBottom }}
+      >
         {(newMsgCount > 0 || hasNewer || scrolledUpCount >= SCROLL_UP_MSG_THRESHOLD) && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center">
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-full flex justify-center"
+            style={{ paddingBottom: JUMP_BTN_ABOVE_COMPOSER_PX }}
+          >
             <button
               type="button"
               onClick={goToLatest}
@@ -1888,14 +1898,6 @@ export default function ChatConversation({
             </button>
           </div>
         )}
-      </div>
-
-      <div
-        ref={composerBarRef}
-        data-chat-composer-host
-        className="relative z-20 shrink-0 bg-transparent px-3 pt-2.5 pb-0"
-        style={{ paddingBottom: composerPadBottom }}
-      >
         <div
           ref={composerTouchRef}
           style={
@@ -1922,6 +1924,7 @@ export default function ChatConversation({
             footerHost
           />
         </div>
+      </div>
       </div>
       </div>
 

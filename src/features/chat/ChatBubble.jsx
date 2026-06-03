@@ -165,6 +165,7 @@ function computeLayout(rect, isMine, { isDeleted = false, enableStar = false, en
  *   reactionPillInteractive?: boolean,
  *   onOpenReactionsDetail?: () => void,
  *   hideSenderInfo?: boolean,
+ *   isGroupEnd?: boolean,
  *   enableStar?: boolean,
  *   isStarred?: boolean,
  *   onToggleStar?: (messageId: string, starred: boolean) => void,
@@ -189,6 +190,7 @@ export default function ChatBubble({
   onOpenReactionsDetail = null,
   hideSenderInfo = false,
   isGroupStart = true,
+  isGroupEnd = true,
   enableStar = false,
   isStarred = false,
   onToggleStar,
@@ -471,7 +473,7 @@ export default function ChatBubble({
         {/* Avatar — only for others' messages; hidden in DMs; spacer on continuations */}
         {!isMine && !hideSenderInfo && (
           <div className="shrink-0 self-end mb-1">
-            {isGroupStart ? (
+            {isGroupEnd ? (
               senderAvatarUrl ? (
                 <img
                   src={senderAvatarUrl}
@@ -544,7 +546,12 @@ export default function ChatBubble({
               userSelect: 'none',
               WebkitTouchCallout: 'none',
               touchAction: 'pan-y',
-              borderRadius: compactBubble ? '9999px' : BUBBLE_EXPANDED_RADIUS_PX,
+              borderRadius: (() => {
+                const r = compactBubble ? 9999 : BUBBLE_EXPANDED_RADIUS_PX
+                const rBR = isMine && isGroupEnd && !isDeleted ? 0 : r
+                const rBL = !isMine && isGroupEnd && !isDeleted ? 0 : r
+                return `${r}px ${r}px ${rBR}px ${rBL}px`
+              })(),
               backgroundColor: isMine && !isDeleted ? '#3b82f6' : undefined,
               boxShadow: isStarred && !isDeleted
                 ? '0 0 0 1.5px rgba(251,191,36,0.6), 0 0 12px 3px rgba(251,191,36,0.18)'
@@ -578,6 +585,25 @@ export default function ChatBubble({
                   </div>
                 ) : null}
               </>
+            )}
+
+            {!isMine && isGroupEnd && !isDeleted && (
+              <svg
+                className="absolute pointer-events-none"
+                style={{ bottom: 0, left: 0, overflow: 'visible', width: 12, height: 12 }}
+                aria-hidden
+              >
+                <path d="M0 12 L0 0 Q0 12 -12 12 Z" fill="rgba(39,39,42,0.9)" />
+              </svg>
+            )}
+            {isMine && isGroupEnd && !isDeleted && (
+              <svg
+                className="absolute pointer-events-none"
+                style={{ bottom: 0, right: 0, overflow: 'visible', width: 12, height: 12 }}
+                aria-hidden
+              >
+                <path d="M12 12 L12 0 Q12 12 24 12 Z" fill="#3b82f6" />
+              </svg>
             )}
           </div>
           ) : null}

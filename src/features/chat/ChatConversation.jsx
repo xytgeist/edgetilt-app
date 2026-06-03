@@ -1826,7 +1826,9 @@ export default function ChatConversation({
             <div ref={translateLayerRef} className="flex min-h-full flex-col justify-end pb-2 will-change-transform select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
               {messages.map((msg, idx) => {
                 const prev = idx > 0 ? messages[idx - 1] : null
+                const next = idx < messages.length - 1 ? messages[idx + 1] : null
                 const isGroupStart = !prev || prev.sender_id !== msg.sender_id
+                const isGroupEnd   = !next || next.sender_id !== msg.sender_id
                 const topMargin = idx === 0 ? 0 : isGroupStart ? 12 : 2
                 return (
                   <div
@@ -1843,6 +1845,7 @@ export default function ChatConversation({
                       viewerUserId={viewerUserId}
                       hideSenderInfo={activeRoom.kind === 'dm'}
                       isGroupStart={isGroupStart}
+                      isGroupEnd={isGroupEnd}
                       enableStar={isGroupRoom}
                       isStarred={starredIds.has(msg.id)}
                       onToggleStar={handleToggleStar}

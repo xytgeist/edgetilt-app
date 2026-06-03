@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-const DISMISS_THRESHOLD_PX = 80
-const DISMISS_VELOCITY_PX_MS = 0.4
+const PULL_DISMISS_THRESHOLD_PX = 80
+const PULL_DISMISS_VELOCITY     = 0.4 // px/ms
 
 /**
  * Full-screen media viewer for chat messages.
- * Swipe left/right to navigate images; swipe up/down to dismiss; video plays in an iframe.
+ * All items are stacked vertically with scroll-snap — scroll up/down to browse.
+ * Pull down past the top to dismiss, or tap ×.
  *
  * @param {{
  *   items: Array<{ type: 'image' | 'video', url?: string, videoUid?: string, posterUrl?: string }>,
@@ -15,104 +16,121 @@ const DISMISS_VELOCITY_PX_MS = 0.4
  * }} props
  */
 export default function ChatMediaViewer({ items, initialIndex = 0, onClose }) {
-  const [index, setIndex] = useState(Math.min(initialIndex, items.length - 1))
+  const scrollRef    = useRef(null)
+  const [activeIdx, setActiveIdx] = useState(Math.min(initialIndex, items.length - 1))
 
-  // Swipe-to-dismiss state
-  const [dragY, setDragY]         = useState(0)
+  // Pull-to-dismiss state
+  const [pullY, setPullY]         = useState(0)
   const [dismissing, setDismissing] = useState(false)
-
-  const touchStartX  = useRef(0)
   const touchStartY  = useRef(0)
   const touchStartMs = useRef(0)
-  const axis         = useRef(null) // 'h' | 'v' | null
+  const pulling      = useRef(false)   // true once we've committed to pull-to-dismiss gesture
 
-  const prev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), [])
-  const next = useCallback(() => setIndex((i) => Math.min(items.length - 1, i + 1)), [items.length])
+  // Scroll to initial item on mount (instant, no animation)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || initialIndex === 0) return
+    el.scrollTop = initialIndex * el.clientHeight
+  }, [initialIndex])
 
+  // Track which item is visible via IntersectionObserver
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const itemEls = Array.from(el.querySelectorAll('[data-media-item]'))
+    if (!itemEls.length) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const i = parseInt(entry.target.dataset.mediaItem, 10)
+            if (!isNaN(i)) setActiveIdx(i)
+          }
+        })
+      },
+      { root: el, threshold: 0.5 },
+    )
+    itemEls.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+
+  // Keyboard navigation
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'ArrowLeft') prev()
-      else if (e.key === 'ArrowRight') next()
-      else if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        const el = scrollRef.current
+        if (el) el.scrollBy({ top: el.clientHeight, behavior: 'smooth' })
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        const el = scrollRef.current
+        if (el) el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' })
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [prev, next, onClose])
+  }, [onClose])
 
+  // Pull-to-dismiss: only engages when scrolled to the very top
   const onTouchStart = (e) => {
-    touchStartX.current  = e.touches[0].clientX
     touchStartY.current  = e.touches[0].clientY
     touchStartMs.current = Date.now()
-    axis.current = null
-    setDragY(0)
+    pulling.current = false
   }
 
   const onTouchMove = (e) => {
-    const dx = e.touches[0].clientX - touchStartX.current
+    const el = scrollRef.current
+    if (!el) return
     const dy = e.touches[0].clientY - touchStartY.current
-    const adx = Math.abs(dx)
-    const ady = Math.abs(dy)
 
-    // Lock axis on first significant movement
-    if (axis.current === null && (adx > 6 || ady > 6)) {
-      axis.current = adx > ady ? 'h' : 'v'
-    }
-
-    if (axis.current === 'v') {
-      e.stopPropagation()
-      setDragY(dy)
+    // Only pull-to-dismiss when we're at scroll top and dragging down
+    if (el.scrollTop <= 0 && dy > 0) {
+      pulling.current = true
+      e.preventDefault()       // prevent rubber-band / scroll fighting
+      setPullY(dy)
     }
   }
 
   const onTouchEnd = (e) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    const dy = e.changedTouches[0].clientY - touchStartY.current
+    if (!pulling.current) { setPullY(0); return }
+    const dy      = e.changedTouches[0].clientY - touchStartY.current
     const elapsed = Math.max(1, Date.now() - touchStartMs.current)
-    const vy = Math.abs(dy) / elapsed
+    const vy      = dy / elapsed
 
-    if (axis.current === 'v') {
-      if (Math.abs(dy) > DISMISS_THRESHOLD_PX || vy > DISMISS_VELOCITY_PX_MS) {
-        setDismissing(true)
-        // Let the transition play then close
-        setTimeout(onClose, 220)
-      } else {
-        setDragY(0)
-      }
-    } else if (axis.current === 'h') {
-      if (dx < -40) next()
-      else if (dx > 40) prev()
+    if (dy > PULL_DISMISS_THRESHOLD_PX || vy > PULL_DISMISS_VELOCITY) {
+      setDismissing(true)
+      setTimeout(onClose, 220)
+    } else {
+      pulling.current = false
+      setPullY(0)
     }
   }
 
-  const item = items[index]
-
-  // Visual: translate content + fade backdrop as user drags vertically
-  const absDragY   = Math.abs(dragY)
-  const bgOpacity  = dismissing ? 0 : Math.max(0, 1 - absDragY / 220)
-  const translateY = dismissing ? (dragY >= 0 ? 300 : -300) : dragY
+  const bgOpacity  = dismissing ? 0 : Math.max(0, 1 - pullY / 260)
+  const translateY = dismissing ? 350 : pullY
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[130] flex flex-col"
+      className="fixed inset-0 z-[130]"
       style={{
         backgroundColor: `rgba(0,0,0,${bgOpacity})`,
         transition: dismissing ? 'background-color 0.22s ease' : undefined,
       }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
     >
-      {/* Content wrapper — translates with drag */}
+      {/* Translating shell (moves during pull) */}
       <div
-        className="flex flex-1 flex-col"
+        className="flex h-full flex-col"
         style={{
           transform: `translateY(${translateY}px)`,
-          transition: (dismissing || dragY === 0) ? 'transform 0.22s ease' : undefined,
+          transition: (dismissing || pullY === 0) ? 'transform 0.22s ease' : undefined,
           willChange: 'transform',
         }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
-        {/* Header bar */}
-        <div className="flex shrink-0 items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 pointer-events-auto">
           <button
             type="button"
             onClick={onClose}
@@ -125,53 +143,44 @@ export default function ChatMediaViewer({ items, initialIndex = 0, onClose }) {
             </svg>
           </button>
           {items.length > 1 && (
-            <span className="text-[13px] font-semibold text-white/70">{index + 1} / {items.length}</span>
+            <span className="text-[13px] font-semibold text-white/70">
+              {activeIdx + 1} / {items.length}
+            </span>
           )}
           <div className="w-9" aria-hidden />
         </div>
 
-        {/* Media area */}
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-          {item.type === 'video' && item.videoUid ? (
-            <iframe
-              key={item.videoUid}
-              src={`https://iframe.videodelivery.net/${item.videoUid}?autoplay=true&muted=false`}
-              className="h-full w-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              title="Video"
-            />
-          ) : (
-            <img
-              key={item.url}
-              src={item.url}
-              alt=""
-              className="max-h-full max-w-full object-contain"
-              draggable={false}
-            />
-          )}
-
-          {/* Prev / next tap zones (desktop) */}
-          {index > 0 && (
-            <button
-              type="button"
-              onClick={prev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white touch-manipulation active:bg-white/20 md:flex hidden"
-              aria-label="Previous"
+        {/* Vertical scroll area */}
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-y-auto"
+          style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}
+        >
+          {items.map((item, i) => (
+            <div
+              key={item.videoUid || item.url || i}
+              data-media-item={i}
+              className="flex h-full w-full items-center justify-center"
+              style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-          )}
-          {index < items.length - 1 && (
-            <button
-              type="button"
-              onClick={next}
-              className="absolute right-3 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white touch-manipulation active:bg-white/20 md:flex hidden"
-              aria-label="Next"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          )}
+              {item.type === 'video' && item.videoUid ? (
+                <iframe
+                  src={`https://iframe.videodelivery.net/${item.videoUid}?autoplay=${i === activeIdx ? 'true' : 'false'}&muted=false`}
+                  className="h-full w-full"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  title="Video"
+                />
+              ) : (
+                <img
+                  src={item.url}
+                  alt=""
+                  className="max-h-full max-w-full object-contain"
+                  draggable={false}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Dot indicators */}
@@ -181,9 +190,12 @@ export default function ChatMediaViewer({ items, initialIndex = 0, onClose }) {
               <button
                 key={i}
                 type="button"
-                onClick={() => setIndex(i)}
+                onClick={() => {
+                  const el = scrollRef.current
+                  if (el) el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
+                }}
                 className={`h-1.5 rounded-full transition-all touch-manipulation ${
-                  i === index ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
+                  i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
                 }`}
                 aria-label={`Go to item ${i + 1}`}
               />

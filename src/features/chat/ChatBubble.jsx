@@ -196,7 +196,17 @@ export default function ChatBubble({
   const bubbleRef      = useRef(null)
   const isDeleted      = Boolean(message.deleted_at)
   const linkPreview    = message.link_preview || null
+  const imageUrlsEarly = Array.isArray(message.image_urls) ? message.image_urls.filter(Boolean) : []
   const showBodyText   = message.body && !(linkPreview && textIsOnlyUrls(message.body))
+  /** URL-only message with a card — skip the empty text bubble (iMessage shows just the card). */
+  const isLinkPreviewOnly =
+    !isDeleted &&
+    linkPreview &&
+    imageUrlsEarly.length === 0 &&
+    textIsOnlyUrls(message.body || '')
+  const showTextBubble = !isLinkPreviewOnly || isDeleted
+  /** Caption + link card share one bubble (iMessage-style). */
+  const linkPreviewInBubble = Boolean(linkPreview && showTextBubble && !isDeleted)
 
   useEffect(() => {
     if (!supabaseClient || !message?.id || String(message.id).startsWith('opt-')) return
@@ -365,9 +375,13 @@ export default function ChatBubble({
   useLayoutEffect(() => {
     const el = bubbleRef.current
     if (!el) return
+    if (isLinkPreviewOnly) {
+      setCompactBubble(false)
+      return undefined
+    }
 
     const measure = () => {
-      if (imageUrls.length > 0) {
+      if (imageUrls.length > 0 || linkPreviewInBubble) {
         setCompactBubble(false)
         return
       }
@@ -393,7 +407,7 @@ export default function ChatBubble({
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [message.body, imageUrls.length])
+  }, [message.body, imageUrls.length, isLinkPreviewOnly, linkPreviewInBubble])
 
   // Floating menu layout — computed fresh each render so it tracks the latest rect
   const layout = bubbleRect ? computeLayout(bubbleRect, isMine, { isDeleted, enableStar, enablePin }) : null
@@ -459,9 +473,10 @@ export default function ChatBubble({
             )
           })()}
 
-          {/* Bubble */}
+          {/* Text/media bubble — omitted when the message is only a URL and we show a link card */}
+          {showTextBubble ? (
           <div
-            ref={bubbleRef}
+            ref={isLinkPreviewOnly ? undefined : bubbleRef}
             onPointerDown={handlePointerDown}
             onPointerUp={cancelLongPress}
             onPointerCancel={cancelLongPress}
@@ -520,12 +535,28 @@ export default function ChatBubble({
                     ))}
                   </div>
                 )}
+                {linkPreviewInBubble ? (
+                  <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} embedded />
+                ) : null}
               </>
             )}
           </div>
+          ) : null}
 
-          {linkPreview && !isDeleted ? (
-            <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} />
+          {linkPreview && !isDeleted && !linkPreviewInBubble ? (
+            <div
+              ref={isLinkPreviewOnly ? bubbleRef : undefined}
+              className={isLinkPreviewOnly ? 'chat-bubble-surface' : undefined}
+              onPointerDown={isLinkPreviewOnly ? handlePointerDown : undefined}
+              onPointerUp={isLinkPreviewOnly ? cancelLongPress : undefined}
+              onPointerCancel={isLinkPreviewOnly ? cancelLongPress : undefined}
+              onPointerLeave={isLinkPreviewOnly ? cancelLongPress : undefined}
+              onContextMenu={isLinkPreviewOnly ? (e) => e.preventDefault() : undefined}
+              onSelectStart={isLinkPreviewOnly ? (e) => e.preventDefault() : undefined}
+              style={isLinkPreviewOnly ? { WebkitTouchCallout: 'none', userSelect: 'none' } : undefined}
+            >
+              <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} />
+            </div>
           ) : null}
 
           {/* Starred indicator — small amber star under the trailing bubble corner */}

@@ -353,7 +353,7 @@ export async function executeLoungeCommunityPostSubmission({
     insertSucceeded = true
     pendingCfUploadUid = null
     if (insertedPost?.id && caption?.trim()) {
-      void attachLinkPreview(supabaseClient, {
+      await attachLinkPreview(supabaseClient, {
         entityType: 'feed_post',
         entityId: insertedPost.id,
         text: caption,
@@ -369,7 +369,7 @@ export async function executeLoungeCommunityPostSubmission({
 }
 
 const POST_UPDATE_SELECT =
-  'id,caption,edited_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
+  'id,caption,edited_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,link_preview'
 
 /**
  * Uploads new media and updates an existing `community_feed_posts` row (author edit).
@@ -662,8 +662,9 @@ export async function executeLoungeCommunityPostUpdate({
 
     updateSucceeded = true
     pendingCfUploadUid = null
+    let linkPreview = data?.link_preview ?? null
     if (caption?.trim()) {
-      void attachLinkPreview(supabaseClient, {
+      linkPreview = await attachLinkPreview(supabaseClient, {
         entityType: 'feed_post',
         entityId: postId,
         text: caption,
@@ -675,7 +676,7 @@ export async function executeLoungeCommunityPostUpdate({
       await deleteCfStreamOrphanAsset(supabaseClient, previousStreamUid)
     }
     report(1, 'Done', '')
-    return data
+    return linkPreview ? { ...data, link_preview: linkPreview } : data
   } catch (e) {
     if (pendingCfUploadUid && !updateSucceeded) {
       await deleteCfStreamOrphanAsset(supabaseClient, pendingCfUploadUid)

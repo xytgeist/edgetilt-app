@@ -427,7 +427,7 @@ export default function LoungePostArticle({
                 {renderRichCaption(rc.body, richCaptionOpts)}
               </div>
             ) : null}
-            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" />
+            <LoungeLinkPreviewBlock preview={rc?.link_preview} className="mt-2" />
             <LoungePostFeedImagesAndGif
               post={rc}
               variant="feed"

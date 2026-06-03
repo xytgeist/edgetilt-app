@@ -132,6 +132,9 @@ import LoungeMentionDropdown from './LoungeMentionDropdown'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
+import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
+import { textIsOnlyUrls } from '../../utils/linkifyText.jsx'
+import { COMMUNITY_FEED_SELECT } from '../../utils/loungeFeedScope.js'
 import LoungeFeedPendingStatusRow from './LoungeFeedPendingStatusRow.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import LoungePostCategoryPillRow from './LoungePostCategoryPillRow.jsx'
@@ -267,6 +270,14 @@ const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, nerd)"
 
 const FEED_COMMENT_SELECT_COLS =
   'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview'
+
+function loungeDetailShowsCaption(row) {
+  if (!row) return false
+  const c = feedPostDisplayCaption(row)
+  if (!c) return false
+  if (row.link_preview && textIsOnlyUrls(c)) return false
+  return true
+}
 
 /** Root → focused comment ids for post-detail drill / comment-repost deep link. */
 function buildFeedCommentDrillPath(commentId, comments) {
@@ -5603,9 +5614,7 @@ export default function SocialFeed({
       if (!parentPost.user_id && !parentPost.caption) {
         const { data } = await supabaseClient
           .from('community_feed_posts')
-          .select(
-            'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,is_ap_guide_post,guide_thumbnail_url',
-          )
+          .select(COMMUNITY_FEED_SELECT)
           .eq('id', post.id)
           .is('hidden_at', null)
         if (data?.length) {
@@ -5660,9 +5669,7 @@ export default function SocialFeed({
       if (!parentPost) {
         const { data } = await supabaseClient
           .from('community_feed_posts')
-          .select(
-            'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,is_ap_guide_post,guide_thumbnail_url',
-          )
+          .select(COMMUNITY_FEED_SELECT)
           .eq('id', repostedComment.post_id)
           .is('hidden_at', null)
         if (data?.length) {
@@ -11682,7 +11689,7 @@ export default function SocialFeed({
                 </div>
               ) : isQuoteRepostPost(loungePostDetail) ? (
                 <>
-                  {feedPostDisplayCaption(loungePostDetail) ? (
+                  {loungeDetailShowsCaption(loungePostDetail) ? (
                     <div
                       className={`text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-100 ${
                         loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'
@@ -11695,6 +11702,13 @@ export default function SocialFeed({
                       })}
                     </div>
                   ) : null}
+                  {loungePostDetail.link_preview ? (
+                    <div
+                      className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
+                    >
+                      <LoungeLinkPreviewBlock preview={loungePostDetail.link_preview} className="mt-2" />
+                    </div>
+                  ) : null}
                   <div
                     className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
                   >
@@ -11702,7 +11716,7 @@ export default function SocialFeed({
                       post={loungePostDetail}
                       variant="detail"
                       firstMarginTopClass={
-                        feedPostDisplayCaption(loungePostDetail)
+                        loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
                           ? 'mt-2'
                           : loungePostDetail.game_slug
                             ? 'mt-1.5'
@@ -11791,7 +11805,7 @@ export default function SocialFeed({
                 </>
               ) : (
                 <>
-                  {feedPostDisplayCaption(loungePostDetail) ? (
+                  {loungeDetailShowsCaption(loungePostDetail) ? (
                     <div
                       className={`text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-100 ${
                         loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'
@@ -11804,6 +11818,13 @@ export default function SocialFeed({
                       })}
                     </div>
                   ) : null}
+                  {loungePostDetail.link_preview ? (
+                    <div
+                      className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
+                    >
+                      <LoungeLinkPreviewBlock preview={loungePostDetail.link_preview} className="mt-2" />
+                    </div>
+                  ) : null}
                   <div
                     className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
                   >
@@ -11811,7 +11832,7 @@ export default function SocialFeed({
                       post={loungePostDetail}
                       variant="detail"
                       firstMarginTopClass={
-                        feedPostDisplayCaption(loungePostDetail)
+                        loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
                           ? 'mt-2'
                           : loungePostDetail.game_slug
                             ? 'mt-1.5'

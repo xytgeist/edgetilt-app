@@ -16,6 +16,23 @@ export type LinkPreviewPayload = {
   site_name: string | null
   layout: 'rich' | 'compact'
   lounge_post_id: string | null
+  /** Brand tint for compact link pills (theme-color, domain map, or client favicon sample). */
+  accent_color: string | null
+}
+
+const DOMAIN_ACCENT: Record<string, string> = {
+  'google.com': '#b2402e',
+  'facebook.com': '#1877f2',
+  'fb.com': '#1877f2',
+  'instagram.com': '#e4405f',
+  'x.com': '#000000',
+  'twitter.com': '#1d9bf0',
+  'youtube.com': '#ff0000',
+  'reddit.com': '#ff4500',
+  'linkedin.com': '#0a66c2',
+  'tiktok.com': '#010101',
+  'amazon.com': '#ff9900',
+  'kalshi.com': '#00c389',
 }
 
 function trimTrailingPunct(raw: string) {
@@ -76,6 +93,42 @@ function isPrivateOrBlockedHost(hostname: string): boolean {
     if (ip.startsWith('fc') || ip.startsWith('fd') || ip === '::1') return true
   }
   return false
+}
+
+function hostnameDomainKey(hostname: string): string {
+  const h = hostname.toLowerCase().replace(/^www\./, '')
+  const parts = h.split('.').filter(Boolean)
+  if (parts.length >= 2) return parts.slice(-2).join('.')
+  return h
+}
+
+function normalizeAccentHex(raw: string): string | null {
+  const s = String(raw || '').trim()
+  if (!s) return null
+  if (/^#[0-9a-f]{3}$/i.test(s)) {
+    const h = s.slice(1)
+    return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`.toLowerCase()
+  }
+  if (/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase()
+  if (/^#[0-9a-f]{8}$/i.test(s)) return s.slice(0, 7).toLowerCase()
+  const rgb = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i)
+  if (rgb) {
+    const clamp = (n: number) => Math.max(0, Math.min(255, n))
+    const hex = (n: number) => clamp(n).toString(16).padStart(2, '0')
+    return `#${hex(Number(rgb[1]))}${hex(Number(rgb[2]))}${hex(Number(rgb[3]))}`
+  }
+  return null
+}
+
+function themeColorFromHtml(html: string): string | null {
+  const raw =
+    metaContent(html, 'theme-color', 'name') ||
+    metaContent(html, 'msapplication-TileColor', 'name')
+  return normalizeAccentHex(raw)
+}
+
+function accentForHost(hostname: string, html: string): string | null {
+  return themeColorFromHtml(html) || DOMAIN_ACCENT[hostnameDomainKey(hostname)] || null
 }
 
 function metaContent(html: string, key: string, attr: 'property' | 'name' = 'property'): string {
@@ -182,6 +235,7 @@ async function fetchLoungePostPreview(
     site_name: hostname,
     layout: image ? 'rich' : 'compact',
     lounge_post_id: postId,
+    accent_color: '#06cefc',
   }
 }
 
@@ -287,6 +341,7 @@ export async function unfurlUrl(
     site_name,
     layout: image_url ? 'rich' : 'compact',
     lounge_post_id: null,
+    accent_color: accentForHost(parsed.hostname, html),
   }
 
   await admin.from('link_preview_cache').upsert({

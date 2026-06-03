@@ -250,15 +250,16 @@ export async function executeLoungeCommentSubmission({
 
     insertSucceeded = true
     pendingCfUploadUid = null
+    let linkPreview = data?.link_preview ?? null
     if (data?.id && body?.trim()) {
-      void attachLinkPreview(supabaseClient, {
+      linkPreview = await attachLinkPreview(supabaseClient, {
         entityType: 'feed_comment',
         entityId: data.id,
         text: body,
       })
     }
     report(1, 'Done', '')
-    return data
+    return linkPreview ? { ...data, link_preview: linkPreview } : data
   } catch (e) {
     if (pendingCfUploadUid && !insertSucceeded) {
       await deleteCfStreamOrphanAsset(supabaseClient, pendingCfUploadUid)
@@ -521,8 +522,9 @@ export async function executeLoungeCommentUpdate({
 
     updateSucceeded = true
     pendingCfUploadUid = null
+    let linkPreview = data?.link_preview ?? null
     if (body?.trim()) {
-      void attachLinkPreview(supabaseClient, {
+      linkPreview = await attachLinkPreview(supabaseClient, {
         entityType: 'feed_comment',
         entityId: commentId,
         text: body,
@@ -534,7 +536,7 @@ export async function executeLoungeCommentUpdate({
       await deleteCfStreamOrphanAsset(supabaseClient, previousStreamUid)
     }
     report(1, 'Done', '')
-    return data
+    return linkPreview ? { ...data, link_preview: linkPreview } : data
   } catch (e) {
     if (pendingCfUploadUid && !updateSucceeded) {
       await deleteCfStreamOrphanAsset(supabaseClient, pendingCfUploadUid)
@@ -542,3 +544,4 @@ export async function executeLoungeCommentUpdate({
     throw e
   }
 }
+

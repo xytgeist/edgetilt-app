@@ -481,13 +481,18 @@ export default function ChatComposer({
       )}
 
       {/* Image preview strip */}
-      {images.length > 0 && (
-        <div className="chat-header-glass mb-1 flex gap-2 overflow-x-auto rounded-2xl px-3 py-2">
+      {(images.length > 0 || uploading) && (
+        <div className="chat-header-glass mb-1 flex items-center gap-2 overflow-x-auto rounded-2xl px-3 py-2">
           {images.map((url) => (
             <SwipeAwayTile key={url} onDismiss={() => removeImage(url)}>
               <img src={url} alt="" className="h-16 w-16 rounded-xl object-cover" />
             </SwipeAwayTile>
           ))}
+          {uploading && (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-zinc-800">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            </div>
+          )}
         </div>
       )}
 

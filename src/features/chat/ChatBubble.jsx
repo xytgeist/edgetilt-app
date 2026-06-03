@@ -592,7 +592,7 @@ export default function ChatBubble({
           )}
 
           {isMine && receipt && !isDeleted ? (
-            <div className={`mt-0.5 flex select-none pointer-events-none ${isMine ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
+            <div className={`absolute -bottom-4 left-0 right-0 flex select-none pointer-events-none ${isMine ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
               <ChatReceiptLabel receipt={receipt} />
             </div>
           ) : null}

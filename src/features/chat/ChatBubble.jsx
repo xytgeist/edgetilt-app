@@ -531,7 +531,7 @@ export default function ChatBubble({
             className={`chat-bubble-surface relative select-none text-[16px] leading-snug transition-opacity ${
               hasMedia && !isDeleted ? 'overflow-hidden' : ''
             } ${
-              hasMedia && !isDeleted ? 'p-[3px]' : 'px-3 py-2'
+              hasMedia && !isDeleted ? 'p-[5px]' : 'px-3 py-2'
             } ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
@@ -559,7 +559,7 @@ export default function ChatBubble({
             ) : (
               <>
                 {showBodyText && (
-                  <div className={`chat-bubble-body whitespace-pre-wrap break-words ${hasMedia ? 'px-3 pt-2 pb-1' : ''}`}>
+                  <div className={`chat-bubble-body whitespace-pre-wrap break-words ${hasMedia ? 'px-[11px] pt-2 pb-1' : ''}`}>
                     <LinkifiedText
                       text={message.body}
                       linkClassName={
@@ -911,7 +911,7 @@ function ChatMediaGrid({ media, onOpen }) {
   const count = visible.length
 
   return (
-    <div className={`overflow-hidden rounded-[9px] ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}>
+    <div className={`overflow-hidden rounded-[11px] ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}>
       {visible.map((item, i) => {
         const isLastVisible = i === GRID_MAX_VISIBLE - 1
         const showOverlay = isLastVisible && overflow > 0

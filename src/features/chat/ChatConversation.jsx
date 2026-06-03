@@ -1305,6 +1305,21 @@ export default function ChatConversation({
     }
   }, [runTailPinFollow, pinIosKeyboardFrame])
 
+  // iOS can silently push document.scrollY > 0 while the keyboard is open and the
+  // app is backgrounded, which shoves the fixed header off-screen on resume.
+  // Reset the root scroll and re-pin when the tab becomes visible again.
+  useEffect(() => {
+    if (!IS_IOS) return
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      window.scrollTo({ left: 0, top: 0, behavior: 'instant' })
+      window.visualViewport?.scrollTo?.({ left: 0, top: 0, behavior: 'instant' })
+      requestAnimationFrame(() => pinListToTail({ force: true }))
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [pinListToTail])
+
   useEffect(() => {
     const prev = kbOverlapPrevRef.current
     kbOverlapPrevRef.current = kbOverlapPx

@@ -133,6 +133,15 @@ export function chatLeaveRoom(supabase, roomId) {
 }
 
 /**
+ * Delete a group chat for all members (owner or admin).
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatDeleteGroup(supabase, roomId) {
+  return chatInboxRpc(supabase, 'chat_delete_group', { p_room_id: roomId })
+}
+
+/**
  * Mute push notifications for a room.
  * @param {SupabaseClient} supabase
  * @param {string} roomId

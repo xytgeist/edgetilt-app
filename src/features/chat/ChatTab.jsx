@@ -34,7 +34,6 @@ import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
  *   onInitialRoomConsumed?: () => void,
- *   onOpenLoungeLayoutTest?: () => void,
  * }} props
  */
 export default function ChatTab({
@@ -48,7 +47,6 @@ export default function ChatTab({
   onInitialPeerConsumed,
   initialRoomId = null,
   onInitialRoomConsumed,
-  onOpenLoungeLayoutTest,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -542,16 +540,7 @@ export default function ChatTab({
             ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onOpenLoungeLayoutTest?.()}
-            className="rounded-full border border-violet-700/50 bg-violet-950/40 px-3 py-1.5 text-[12px] font-semibold text-violet-300 touch-manipulation active:opacity-80"
-          >
-            Layout test
-          </button>
-          <QuickLinkPageToggle destinationId="chat" />
-        </div>
+        <QuickLinkPageToggle destinationId="chat" />
       </div>
 
       {/* New message search + New group button */}

@@ -197,7 +197,6 @@ export default function AppShell({
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
-  const [loungeLayoutTestRequest, setLoungeLayoutTestRequest] = useState(0)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1098,7 +1097,6 @@ export default function AppShell({
               setTab('chat')
               setMenuOpen(false)
             }}
-            layoutTestOpenPostDetailRequest={loungeLayoutTestRequest}
           />
         </div>
       </Suspense>
@@ -1311,10 +1309,6 @@ export default function AppShell({
           onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
           initialRoomId={pendingChatRoomId}
           onInitialRoomConsumed={() => setPendingChatRoomId(null)}
-          onOpenLoungeLayoutTest={() => {
-            setTab('home')
-            setLoungeLayoutTestRequest((n) => n + 1)
-          }}
         />
       )
     } else if (tab === 'team') {

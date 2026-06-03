@@ -248,13 +248,6 @@ import {
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
 import { LOUNGE_FEED_SORT } from '../../utils/loungeFeedSortPref'
 import LoungeFeedSortSwitch from './LoungeFeedSortSwitch.jsx'
-import {
-  isLoungeLayoutTestPostId,
-  LOUNGE_LAYOUT_TEST_PEER,
-  LOUNGE_LAYOUT_TEST_POST,
-} from './loungeLayoutTestPost.js'
-import ChatDmHeaderChrome from '../chat/ChatDmHeaderChrome.jsx'
-import ChatComposer from '../chat/ChatComposer.jsx'
 import LoungeFeedCategoryFilter from './LoungeFeedCategoryFilter.jsx'
 import LoungePullRefreshZone from './LoungePullRefreshZone.jsx'
 import { useLoungePullToRefresh } from './useLoungePullToRefresh.js'
@@ -451,8 +444,6 @@ export default function SocialFeed({
   onOpenChatWithUser,
   /** Called with roomId when a room is tapped in the dock chat panel — navigates to Chat tab. */
   onOpenChatRoomFromDock,
-  /** Incremented from Chat tab to open post-detail shell for keyboard layout test. */
-  layoutTestOpenPostDetailRequest = 0,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -826,7 +817,6 @@ export default function SocialFeed({
   const loungePostDeleteInflightRef = useRef(false)
   const [loungeManageErr, setLoungeManageErr] = useState('')
   const [loungePostDetailVisible, setLoungePostDetailVisible] = useState(true)
-  const layoutTestHandledRequestRef = useRef(0)
   const [loungePostDetailMenuOpen, setLoungePostDetailMenuOpen] = useState(false)
   const loungePostDetailVisibleRef = useRef(true)
   /** False while the detail sheet slide-in is running; focus scroll waits for true. */
@@ -977,18 +967,8 @@ export default function SocialFeed({
   )
 
   const loungeDetailShowPostMenu = useMemo(
-    () =>
-      Boolean(
-        loungePostDetail?.id &&
-          !loungeDetailEditing &&
-          !isLoungeLayoutTestPostId(loungePostDetail.id),
-      ),
+    () => Boolean(loungePostDetail?.id && !loungeDetailEditing),
     [loungePostDetail?.id, loungeDetailEditing],
-  )
-
-  const loungeLayoutTestDetail = useMemo(
-    () => isLoungeLayoutTestPostId(loungePostDetail?.id),
-    [loungePostDetail?.id],
   )
 
   /** Starter row from `ensureDefaultProfileRow`: must confirm once (cannot dismiss until Save). */
@@ -5161,20 +5141,6 @@ export default function SocialFeed({
     }
 
     const postId = String(loungePostDetail.id)
-    if (isLoungeLayoutTestPostId(postId)) {
-      if (loungeDetailCommentsLoadedPostIdRef.current !== postId) {
-        loungeDetailCommentsEffectPostIdRef.current = postId
-        loungeDetailCommentsLoadedPostIdRef.current = postId
-        setLoungeDetailComments([])
-        setLoungeDetailViewerPinnedCommentIds([])
-        setLoungeDetailCommentSort(readLoungeDetailCommentSort())
-        setLoungeDetailFollowingUserIds([])
-        setLoungeCommentDetailPathIds([])
-        setLoungeDetailCommentErr('')
-      }
-      setLoungeDetailCommentsLoading(false)
-      return
-    }
 
     if (loungeDetailCommentsLoadedPostIdRef.current === postId) return
 
@@ -5540,7 +5506,7 @@ export default function SocialFeed({
       setLoungeDetailCommentDeleteBusyId(null)
       setLoungePostDetail(post)
       setLoungePostDetailAboveProfile(profileModalOpen || profileOverlayStack.length > 0)
-      if (composerUserId && !isLoungeLayoutTestPostId(post.id)) {
+      if (composerUserId) {
         void refreshLoungePostInteractions([post.id])
       }
       setLoungeDetailEditImageUrls([])
@@ -6141,16 +6107,6 @@ export default function SocialFeed({
       window.removeEventListener('popstate', onPop)
     }
   }, [communityPosts, hydrateCommunityPosts, openLoungePostDetail, setCommunityPosts, supabaseClient])
-
-  useEffect(() => {
-    if (!layoutTestOpenPostDetailRequest) return undefined
-    if (layoutTestHandledRequestRef.current === layoutTestOpenPostDetailRequest) return undefined
-    layoutTestHandledRequestRef.current = layoutTestOpenPostDetailRequest
-    openLoungePostDetail(LOUNGE_LAYOUT_TEST_POST, { layoutTestOnly: true })
-    return undefined
-  }, [layoutTestOpenPostDetailRequest, openLoungePostDetail])
-
-  const layoutTestChatSendNoop = useCallback(async () => {}, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -10410,8 +10366,8 @@ export default function SocialFeed({
           {loungeShareFlash}
         </div>
       ) : null}
-      {/* Fixed title bar: hidden while dock slide panel or layout test is open. */}
-      {!loungeDockPanel && !loungeLayoutTestDetail ? (
+      {/* Fixed title bar: hidden while dock slide panel is open. */}
+      {!loungeDockPanel ? (
         <div
           ref={loungeTitleBarRef}
           className="fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
@@ -11237,33 +11193,12 @@ export default function SocialFeed({
           >
             <div
               ref={loungePostDetailTitleBarRef}
-              className={
-                loungeLayoutTestDetail
-                  ? 'absolute inset-x-0 top-0 z-30'
-                  : 'absolute inset-x-0 top-0 z-30 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 shadow-[0_1px_0_rgba(0,0,0,0.18)] will-change-transform'
-              }
-              style={
-                loungeLayoutTestDetail
-                  ? undefined
-                  : {
-                      transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
-                      pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
-                    }
-              }
+              className="absolute inset-x-0 top-0 z-30 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 shadow-[0_1px_0_rgba(0,0,0,0.18)] will-change-transform"
+              style={{
+                transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
+                pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
+              }}
             >
-              {loungeLayoutTestDetail ? (
-                <>
-                  <h2 id="lounge-post-detail-title" className="sr-only">
-                    {LOUNGE_LAYOUT_TEST_PEER.display_name}
-                  </h2>
-                  <ChatDmHeaderChrome
-                    onBack={handleLoungePostDetailBack}
-                    displayName={LOUNGE_LAYOUT_TEST_PEER.display_name}
-                    avatarUrl={LOUNGE_LAYOUT_TEST_PEER.avatar_url}
-                    menuZIndex={loungePostDetailAboveProfile ? 121 : 119}
-                  />
-                </>
-              ) : (
               <div className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
               <button
                 type="button"
@@ -11386,7 +11321,6 @@ export default function SocialFeed({
                 <div className={LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} aria-hidden />
               )}
               </div>
-              )}
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -11407,19 +11341,9 @@ export default function SocialFeed({
                 aria-hidden
                 className="shrink-0"
                 style={{
-                  height:
-                    loungePostDetailTitleBarHeight > 0
-                      ? loungePostDetailTitleBarHeight
-                      : loungeLayoutTestDetail
-                        ? 176
-                        : 56,
+                  height: loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56,
                 }}
               />
-              {loungeLayoutTestDetail ? (
-                <p className="px-4 py-8 text-center text-[14px] text-zinc-500">
-                  Tap Message below to test keyboard layout.
-                </p>
-              ) : (
               <div className="px-4 py-4 pb-4">
               {loungeManageErr ? (
                 <div className="mb-4 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
@@ -12583,7 +12507,6 @@ export default function SocialFeed({
               </div>
               </>
               </div>
-              )}
               </LoungeFeedVideoAutoplayProvider>
             </div>
             {!loungeReadOnly ? (
@@ -12601,21 +12524,6 @@ export default function SocialFeed({
                       : `max(0.625rem, env(safe-area-inset-bottom))`,
                 }}
               >
-                {loungeLayoutTestDetail ? (
-                  <ChatComposer
-                    supabaseClient={supabaseClient}
-                    viewerUserId={composerUserId}
-                    replyTarget={null}
-                    onClearReply={() => {}}
-                    onSend={layoutTestChatSendNoop}
-                    onTyping={() => {}}
-                    viewerDisplayName={String(
-                      composerUserProfile?.display_name || composerUserProfile?.handle || '',
-                    ).trim()}
-                    footerHost
-                  />
-                ) : (
-                  <>
                 {loungeDetailCommentErr ? (
                   <div className="mb-1 rounded-xl border border-rose-500/45 bg-rose-950/25 px-2.5 py-1.5 text-[13px] leading-snug text-rose-200">
                     {loungeDetailCommentErr}
@@ -13002,8 +12910,6 @@ export default function SocialFeed({
                       )
                     })()}
                   </button>
-                )}
-                  </>
                 )}
               </div>
             ) : null}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { uploadProfileAvatar } from '../profiles/profileGate.js'
 import {
   chatAddGroupMembers,
+  chatDeleteGroup,
   chatGroupMembersList,
   chatIsGroupOwner,
   chatLeaveRoom,
@@ -527,8 +528,31 @@ export default function ChatGroupSettingsSheet({
           />
         </SettingsGroup>
 
-        {/* ── Leave group ───────────────────────────────────────── */}
-        <div className="mx-4 mt-5 pb-10">
+        {/* ── Delete / leave group ──────────────────────────────── */}
+        <div className="mx-4 mt-5 flex flex-col gap-3 pb-10">
+          {isOwner ? (
+            <button
+              type="button"
+              className="w-full rounded-2xl border border-rose-600/50 bg-rose-950/40 py-3.5 text-[15px] font-semibold text-rose-300 touch-manipulation active:bg-rose-950/70"
+              onClick={async () => {
+                if (
+                  !window.confirm(
+                    'Delete this group for all members? All messages will be removed. This cannot be undone.',
+                  )
+                ) {
+                  return
+                }
+                try {
+                  await chatDeleteGroup(supabaseClient, room.id)
+                  onLeftGroup()
+                } catch (ex) {
+                  setErr(ex?.message || 'Could not delete group.')
+                }
+              }}
+            >
+              Delete Group for Everyone
+            </button>
+          ) : null}
           <button
             type="button"
             className="w-full rounded-2xl border border-rose-500/30 bg-rose-950/20 py-3.5 text-[15px] font-semibold text-rose-400 touch-manipulation active:bg-rose-950/50"

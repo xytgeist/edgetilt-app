@@ -1,4 +1,5 @@
 import { appendHighlightedPlainText, loungeSearchHighlightTerms } from '../../utils/loungeSearchHighlight.jsx'
+import { splitTextWithLinks } from '../../utils/linkifyText.jsx'
 
 /** Strip trailing punctuation often pasted after URLs in prose. */
 export function trimUrlTrail(url) {
@@ -9,11 +10,13 @@ export function trimUrlTrail(url) {
   return u
 }
 
+/** @deprecated Prefer splitTextWithLinks — kept for any external imports. */
 export function hrefForUrlDisplay(display) {
   const d = String(display).trim()
   if (!d) return ''
   if (/^https?:\/\//iu.test(d)) return d
   if (/^www\./iu.test(d)) return `https://${d}`
+  if (/\./.test(d)) return `https://${d}`
   return ''
 }
 
@@ -113,33 +116,24 @@ export function renderRichCaption(
     if (last < fragment.length) pushMentionParsed(fragment.slice(last))
   }
 
-  let last = 0
-  const urlRe = /https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/gi
-  let um
-  while ((um = urlRe.exec(s)) !== null) {
-    const raw = um[0]
-    const display = trimUrlTrail(raw)
-    const href = hrefForUrlDisplay(display)
-    if (um.index > last) {
-      pushHashtagParsed(s.slice(last, um.index))
-    }
-    if (href) {
+  for (const seg of splitTextWithLinks(s)) {
+    if (seg.type === 'link' && seg.href) {
       out.push(
         <a
           key={`rk-u-${rkRef.current++}`}
-          href={href}
+          href={seg.href}
           target="_blank"
           rel="noopener noreferrer"
           className={linkClassName}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          {display}
+          {seg.value}
         </a>
       )
-    } else {
-      pushHashtagParsed(display || raw)
+    } else if (seg.value) {
+      pushHashtagParsed(seg.value)
     }
-    last = um.index + raw.length
   }
-  if (last < s.length) pushHashtagParsed(s.slice(last))
   return out.length ? out : null
 }

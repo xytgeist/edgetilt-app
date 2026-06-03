@@ -20,7 +20,7 @@ import {
 } from '../../utils/loungeVideoUpload.js'
 
 const MAX_BODY            = 4000
-const MAX_IMAGES          = 9
+const MAX_IMAGES          = 12
 const SWIPE_DISMISS_PX    = 40   // drag distance to trigger dismiss
 const SWIPE_THROW_SCALE   = 4    // how far the tile flies on dismiss
 /** Matches Tailwind `h-10` on the + button (40px border-box). */
@@ -334,6 +334,13 @@ export default function ChatComposer({
     setSending(true)
     try {
       await onSend(snapshot)
+    } catch (err) {
+      const msg = err?.message || ''
+      if (msg.includes('image_urls_len') || msg.includes('image')) {
+        setUploadErr(`Max ${MAX_IMAGES} images per message.`)
+      } else {
+        setUploadErr('Failed to send. Please try again.')
+      }
     } finally {
       setSending(false)
     }

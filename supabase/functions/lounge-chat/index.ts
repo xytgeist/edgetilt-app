@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
       ? body.image_urls
           .map((u) => String(u).trim())
           .filter(Boolean)
-          .slice(0, 9)
+          .slice(0, 12)
       : []
     const streamVideoUid   = body?.stream_video_uid   ? String(body.stream_video_uid).trim()   : null
     const streamPosterUrl  = body?.stream_poster_url  ? String(body.stream_poster_url).trim()  : null

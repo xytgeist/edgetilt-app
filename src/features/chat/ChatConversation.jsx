@@ -1084,8 +1084,9 @@ export default function ChatConversation({
         pinTailAfterMutation()
       }
       void refreshReadReceipts()
-    } catch {
+    } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      throw err
     }
   }, [supabaseClient, room.id, viewerUserId, loadMessages, pinTailAfterMutation, refreshReadReceipts])
 

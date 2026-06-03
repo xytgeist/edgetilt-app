@@ -121,7 +121,7 @@ export default function ChatComposer({
       if (textareaRef.current && ae === textareaRef.current) return
       setComposerActive(false)
     }, 220)
-  }, [body, footerHost, images.length, videoMeta, plusOpen, replyTarget])
+  }, [body, footerHost, imageSlots.length, videoMeta, plusOpen, replyTarget])
 
   // Single line: lock wrapper to h-10 (same as +). Grow only when text wraps.
   useLayoutEffect(() => {
@@ -226,14 +226,16 @@ export default function ChatComposer({
   const handleKlipyGifPick = ({ gifUrl }) => {
     const url = String(gifUrl || '').trim()
     if (!url) return
-    if (images.length >= MAX_IMAGES) {
+    if (imageSlots.length >= MAX_IMAGES) {
       setUploadErr(`Max ${MAX_IMAGES} images per message.`)
       return
     }
     setUploadErr('')
     setPlusOpen(false)
     setGifPickerOpen(false)
-    setImages((prev) => [...prev, url].slice(0, MAX_IMAGES))
+    // GIFs are remote URLs — add as a slot with remoteUrl already set (no upload needed)
+    const id = crypto.randomUUID()
+    setImageSlots((prev) => [...prev, { id, localUrl: url, remoteUrl: url }].slice(0, MAX_IMAGES))
     if (footerHost) setComposerActive(true)
   }
 

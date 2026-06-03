@@ -174,12 +174,16 @@ export default function ChatComposer({
     setUploading(true)
     setPlusOpen(false)
     try {
-      const uploaded = await Promise.all(
+      const results = await Promise.allSettled(
         files.map((f) => uploadLoungeFeedPostImage({ supabaseClient, user: { id: viewerUserId }, file: f }))
       )
-      const urls = uploaded.map((u) => u.data).filter(Boolean)
+      const urls = results
+        .filter((r) => r.status === 'fulfilled' && r.value?.data)
+        .map((r) => r.value.data)
+      const failCount = results.length - urls.length
       if (!urls.length) throw new Error('Image upload failed.')
       setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES))
+      if (failCount > 0) setUploadErr(`${failCount} image${failCount > 1 ? 's' : ''} failed to upload.`)
     } catch (err) {
       setUploadErr(err?.message || 'Image upload failed.')
     } finally {

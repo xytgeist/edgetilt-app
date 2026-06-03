@@ -574,6 +574,7 @@ export default function ChatComposer({
           <button
             type="button"
             disabled={!canSend}
+            onPointerDown={(e) => e.preventDefault()}
             onClick={() => void handleSend()}
             aria-label="Send"
             className={`absolute right-[5px] z-10 grid h-7 w-7 place-items-center rounded-full touch-manipulation transition-all ${

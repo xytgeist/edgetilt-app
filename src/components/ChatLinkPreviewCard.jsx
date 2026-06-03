@@ -62,14 +62,20 @@ export default function ChatLinkPreviewCard({ preview, className = '', isMine = 
   const branded = Boolean(accentBg)
   const cardStyle = accentBg ? { backgroundColor: accentBg } : undefined
 
-  // Use inline styles for branded text so the light-mode .text-white override
-  // (which flips text-white → near-black on elements without a bg- class) can't win.
+  // Use inline styles so the light-mode .text-white→dark-text override can't win:
+  //   - Branded card: pick white or dark text based on accent luminance
+  //   - isMine=true non-branded: fallback bg is bg-blue-600/90 (blue) → needs white text
+  //   - isMine=false non-branded: fallback bg is zinc-800/95 (light gray in light mode) → dark text is correct, no override needed
   const accentLum = accentBg ? accentLuminance(accentBg) : 0
   const textOnAccent = accentLum > 0.35 ? '#18181b' : '#ffffff'
-  const titleStyle = branded ? { color: textOnAccent } : undefined
-  const domainStyle = branded ? { color: textOnAccent, opacity: 0.75 } : undefined
-  const titleClass = branded ? '' : 'text-zinc-100'
-  const domainClass = branded ? '' : 'text-zinc-400'
+  const titleStyle = branded
+    ? { color: textOnAccent }
+    : isMine ? { color: '#ffffff' } : undefined
+  const domainStyle = branded
+    ? { color: textOnAccent, opacity: 0.75 }
+    : isMine ? { color: 'rgba(255,255,255,0.75)' } : undefined
+  const titleClass = branded || isMine ? '' : 'text-zinc-100'
+  const domainClass = branded || isMine ? '' : 'text-zinc-400'
 
   const open = () => {
     try {

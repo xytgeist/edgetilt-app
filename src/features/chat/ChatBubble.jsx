@@ -545,6 +545,11 @@ export default function ChatBubble({
               WebkitTouchCallout: 'none',
               touchAction: 'pan-y',
               borderRadius: compactBubble ? '9999px' : BUBBLE_EXPANDED_RADIUS_PX,
+              // Square the tail corner so the CSS triangle attaches flush
+              ...(hasMedia && !isDeleted && !compactBubble && {
+                borderBottomRightRadius: isMine ? 4 : undefined,
+                borderBottomLeftRadius:  isMine ? undefined : 4,
+              }),
               backgroundColor: isMine && !isDeleted ? '#3b82f6' : undefined,
               boxShadow: isStarred && !isDeleted
                 ? '0 0 0 1.5px rgba(251,191,36,0.6), 0 0 12px 3px rgba(251,191,36,0.18)'
@@ -552,22 +557,23 @@ export default function ChatBubble({
               transition: 'box-shadow 0.2s ease',
             }}
           >
-            {/* Tail — covers the corner arc + extends beyond the bubble edge */}
+            {/* Tail — CSS border triangle attached to the slightly-squared tail corner */}
             {hasMedia && !isDeleted && (
-              <svg
-                className="absolute bottom-0 pointer-events-none"
-                style={isMine ? { right: 0, overflow: 'visible' } : { left: 0, overflow: 'visible' }}
-                width="20" height="18"
+              <div
+                className="absolute pointer-events-none"
+                style={isMine ? {
+                  bottom: 0, right: -8,
+                  width: 0, height: 0,
+                  borderTop: '10px solid #3b82f6',
+                  borderRight: '8px solid transparent',
+                } : {
+                  bottom: 0, left: -8,
+                  width: 0, height: 0,
+                  borderTop: '10px solid rgba(39,39,42,0.9)',
+                  borderLeft: '8px solid transparent',
+                }}
                 aria-hidden
-              >
-                {isMine ? (
-                  /* Telegram-style tail: fills corner arc, smooth concave outer edge curves right then to tip */
-                  <path d="M20 2 C30 4 30 16 26 18 L4 18 A16 16 0 0 1 20 2 Z" fill="#3b82f6" />
-                ) : (
-                  /* Mirror for left side */
-                  <path d="M0 2 C-10 4 -10 16 -6 18 L16 18 A16 16 0 0 0 0 2 Z" fill="rgba(39,39,42,0.9)" />
-                )}
-              </svg>
+              />
             )}
 
             {isDeleted ? (

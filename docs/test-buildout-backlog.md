@@ -910,6 +910,12 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 | **User blocking** | Migration `20260601170000`: `blocks` table (blocker_id, blocked_id, unique constraint, no-self check) + RLS (participant SELECT, blocker-only INSERT/DELETE). `lounge-chat` `open_dm`: checks blocks in both directions — returns 403 "You have blocked this member." or "This member is unavailable." `lounge-chat`: new `block_user` + `unblock_user` actions. `chatApi.js`: `chatBlockUser`, `chatUnblockUser`, `chatGetBlockStatus`. `LoungeProfileFullScreen`: loads block status in `refreshSocial`; block/unblock button (ban-circle icon) in action row; Message button disabled with appropriate title when either party blocks. |
 | **Chat bug fixes (2026-06-01)** | Migration `20260601180000`: (1) `chat_messages(sender_id, created_at DESC)` index — rate-limit query was doing a full table scan without it; (2) `GRANT SELECT, INSERT, DELETE ON blocks TO authenticated` — RLS policies were silently unreachable without table-level privilege; (3) `idempotency_key TEXT UNIQUE` column on `chat_messages` — Edge function returns existing `message_id` on duplicate key, preventing duplicates on automatic retries / rapid double-taps. `chatApi.js`: `chatSendMessage` now generates a `crypto.randomUUID()` per call. `AppShell`: service worker `app-navigate` message handler now handles `tab=chat` — backgrounded app correctly opens the specific room when a DM push notification is tapped. |
 
+### ✅ Link preview cards (2026-06-04)
+
+| Item | What was done |
+|---|---|
+| **Chat + Lounge link cards** | Migrations `20260604180000_link_previews_chat_and_lounge.sql`, `20260604180100_chat_messages_rpc_link_preview.sql`. Edge **`lounge-link-unfurl`** (`unfurl`, `attach`) + shared **`_shared/linkUnfurl.ts`** (OG scrape, SSRF guards, **`/lounge/p/:uuid`** + `?post=` permalink → post row). **`lounge-chat` `send_message`** attaches preview on send. Client: **`ChatLinkPreviewCard`**, **`LoungeLinkPreviewBlock`**, attach from **`loungePostSubmitJob`** / **`loungeCommentSubmitJob`**. Rich card when `og:image`; compact pill otherwise. **Deploy:** `supabase functions deploy lounge-link-unfurl` + redeploy **`lounge-chat`**; run both migrations on test. |
+
 ### 🔜 Next priorities (chat)
 
 Nothing left in the near-term queue.

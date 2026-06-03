@@ -24,6 +24,8 @@ import {
 import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import { renderRichCaption } from './loungeCaption'
+import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
+import { textIsOnlyUrls } from '../../utils/linkifyText.jsx'
 import {
   LOUNGE_FEED_CAPTION_TEXT_CLASS,
   LOUNGE_FEED_CAPTION_TOP_CLASS,
@@ -225,13 +227,19 @@ export function LoungeCommentCard({
   ) : (
     (() => {
       const bodyText = String(comment.body || '').trim()
-      if (!bodyText) return null
+      const hideBody = bodyText && comment.link_preview && textIsOnlyUrls(bodyText)
+      if (!bodyText && !comment.link_preview) return null
       return (
-        <div
-          className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
-        >
-          {renderRichCaption(bodyText, { onMentionClick, onHashtagClick })}
-        </div>
+        <>
+          {bodyText && !hideBody ? (
+            <div
+              className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
+            >
+              {renderRichCaption(bodyText, { onMentionClick, onHashtagClick })}
+            </div>
+          ) : null}
+          <LoungeLinkPreviewBlock preview={comment.link_preview} className="mt-2" />
+        </>
       )
     })()
   )

@@ -1,5 +1,8 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import ChatLinkPreviewCard from '../../components/ChatLinkPreviewCard.jsx'
+import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
+import { extractFirstUrlFromText, LinkifiedText, textIsOnlyUrls } from '../../utils/linkifyText.jsx'
 import ChatEmojiPicker, { saveRecentEmoji } from './ChatEmojiPicker'
 import LoungeFlameIcon from '../lounge/LoungeFlameIcon'
 
@@ -181,6 +184,8 @@ export default function ChatBubble({
   enablePin = false,
   isPinned = false,
   onTogglePin,
+  supabaseClient = null,
+  onLinkPreviewReady = null,
 }) {
   const [menuOpen, setMenuOpen]           = useState(false)
   const [fullPickerOpen, setFullPickerOpen] = useState(false)
@@ -190,6 +195,31 @@ export default function ChatBubble({
   const longPressTimer = useRef(null)
   const bubbleRef      = useRef(null)
   const isDeleted      = Boolean(message.deleted_at)
+  const linkPreview    = message.link_preview || null
+  const showBodyText   = message.body && !(linkPreview && textIsOnlyUrls(message.body))
+
+  useEffect(() => {
+    if (!supabaseClient || !message?.id || String(message.id).startsWith('opt-')) return
+    if (isDeleted || linkPreview || !message.body || !extractFirstUrlFromText(message.body)) return
+    let cancelled = false
+    void attachLinkPreview(supabaseClient, {
+      entityType: 'chat_message',
+      entityId: message.id,
+      text: message.body,
+    }).then((preview) => {
+      if (!cancelled && preview && onLinkPreviewReady) {
+        onLinkPreviewReady(message.id, preview)
+      }
+    })
+    return () => { cancelled = true }
+  }, [
+    supabaseClient,
+    message.id,
+    message.body,
+    linkPreview,
+    isDeleted,
+    onLinkPreviewReady,
+  ])
 
   const clearLongPressTimer = useCallback(() => {
     if (longPressTimer.current) {
@@ -465,8 +495,17 @@ export default function ChatBubble({
             ) : (
               <>
 
-                {message.body && (
-                  <div className="chat-bubble-body whitespace-pre-wrap break-words">{message.body}</div>
+                {showBodyText && (
+                  <div className="chat-bubble-body whitespace-pre-wrap break-words">
+                    <LinkifiedText
+                      text={message.body}
+                      linkClassName={
+                        isMine && !isDeleted
+                          ? 'underline decoration-white/60 underline-offset-2 hover:decoration-white'
+                          : 'text-cyan-400 underline underline-offset-2 hover:text-cyan-300'
+                      }
+                    />
+                  </div>
                 )}
                 {imageUrls.length > 0 && (
                   <div className={`mt-1.5 grid gap-1 ${imageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
@@ -484,6 +523,10 @@ export default function ChatBubble({
               </>
             )}
           </div>
+
+          {linkPreview && !isDeleted ? (
+            <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} />
+          ) : null}
 
           {/* Starred indicator — small amber star under the trailing bubble corner */}
           {isStarred && !isDeleted && (

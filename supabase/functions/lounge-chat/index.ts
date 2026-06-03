@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { attachLinkPreviewToEntity } from '../_shared/linkUnfurl.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -333,6 +334,21 @@ Deno.serve(async (req) => {
       return json(400, { error: sErr.message })
     }
 
+    let linkPreview: Record<string, unknown> | null = null
+    if (inserted?.id && text) {
+      try {
+        linkPreview = (await attachLinkPreviewToEntity(
+          admin,
+          'chat_message',
+          inserted.id,
+          text,
+          user.id,
+        )) as Record<string, unknown> | null
+      } catch {
+        linkPreview = null
+      }
+    }
+
     // DM push: insert activity_events only — trg_activity_events_enqueue_push → lounge-send-activity-push (H2/H3).
     if (room.kind === 'dm' && room.dm_key && inserted?.id) {
       void (async () => {
@@ -376,7 +392,11 @@ Deno.serve(async (req) => {
       })()
     }
 
-    return json(200, { ok: true, message_id: inserted?.id })
+    return json(200, {
+      ok: true,
+      message_id: inserted?.id,
+      link_preview: linkPreview,
+    })
   }
 
   // ── delete_message ────────────────────────────────────────────────────────

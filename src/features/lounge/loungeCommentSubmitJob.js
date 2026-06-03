@@ -12,6 +12,7 @@ import {
   waitForCfStreamManifestReady,
 } from '../../utils/loungeVideoUpload'
 import { fetchLoungeStreamPosterFileFromSnapshot } from './loungeStreamSessionPoster.js'
+import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 
 /**
  * Uploads media and inserts `feed_comments`.
@@ -233,7 +234,7 @@ export async function executeLoungeCommentSubmission({
       .from('feed_comments')
       .insert(insertRow)
       .select(
-        'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at',
+        'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview',
       )
       .single()
 
@@ -249,6 +250,13 @@ export async function executeLoungeCommentSubmission({
 
     insertSucceeded = true
     pendingCfUploadUid = null
+    if (data?.id && body?.trim()) {
+      void attachLinkPreview(supabaseClient, {
+        entityType: 'feed_comment',
+        entityId: data.id,
+        text: body,
+      })
+    }
     report(1, 'Done', '')
     return data
   } catch (e) {
@@ -260,7 +268,7 @@ export async function executeLoungeCommentSubmission({
 }
 
 const COMMENT_UPDATE_SELECT =
-  'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
+  'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview'
 
 /**
  * Uploads new media and updates an existing `feed_comments` row (author edit).
@@ -513,6 +521,13 @@ export async function executeLoungeCommentUpdate({
 
     updateSucceeded = true
     pendingCfUploadUid = null
+    if (body?.trim()) {
+      void attachLinkPreview(supabaseClient, {
+        entityType: 'feed_comment',
+        entityId: commentId,
+        text: body,
+      })
+    }
     if (previousStreamUid && streamVideoUid && previousStreamUid !== streamVideoUid) {
       await deleteCfStreamOrphanAsset(supabaseClient, previousStreamUid)
     } else if (previousStreamUid && !streamVideoUid && clearStream) {

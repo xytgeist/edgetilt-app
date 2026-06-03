@@ -266,7 +266,7 @@ const LOUNGE_MAX_PINNED_ALERT =
 const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, nerd)"
 
 const FEED_COMMENT_SELECT_COLS =
-  'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at'
+  'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview'
 
 /** Root → focused comment ids for post-detail drill / comment-repost deep link. */
 function buildFeedCommentDrillPath(commentId, comments) {

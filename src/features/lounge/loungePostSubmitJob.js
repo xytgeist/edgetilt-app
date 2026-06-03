@@ -16,6 +16,7 @@ import {
 } from '../../utils/loungeVideoUpload'
 import { fetchLoungeStreamPosterFileFromSnapshot } from './loungeStreamSessionPoster.js'
 import { normalizeLoungePostCategoryPills } from '../../utils/loungePostCategoryPills.js'
+import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 
 /** Mirrors `SocialFeed` so insert failures surface the same copy. */
 const LOUNGE_MAX_PINNED_ALERT =
@@ -321,7 +322,11 @@ export async function executeLoungeCommunityPostSubmission({
       })
     }
 
-    const { error } = await supabaseClient.from('community_feed_posts').insert(insertPayload)
+    const { data: insertedPost, error } = await supabaseClient
+      .from('community_feed_posts')
+      .insert(insertPayload)
+      .select('id')
+      .single()
 
     if (error) {
       const msg = String(error.message || '')
@@ -347,6 +352,13 @@ export async function executeLoungeCommunityPostSubmission({
 
     insertSucceeded = true
     pendingCfUploadUid = null
+    if (insertedPost?.id && caption?.trim()) {
+      void attachLinkPreview(supabaseClient, {
+        entityType: 'feed_post',
+        entityId: insertedPost.id,
+        text: caption,
+      })
+    }
     report(1, 'Finishing', '')
   } catch (e) {
     if (pendingCfUploadUid && !insertSucceeded) {
@@ -650,6 +662,13 @@ export async function executeLoungeCommunityPostUpdate({
 
     updateSucceeded = true
     pendingCfUploadUid = null
+    if (caption?.trim()) {
+      void attachLinkPreview(supabaseClient, {
+        entityType: 'feed_post',
+        entityId: postId,
+        text: caption,
+      })
+    }
     if (previousStreamUid && streamVideoUid && previousStreamUid !== streamVideoUid) {
       await deleteCfStreamOrphanAsset(supabaseClient, previousStreamUid)
     } else if (previousStreamUid && !streamVideoUid && clearStream) {

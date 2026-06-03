@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { feedPostDisplayCaption, isQuoteRepostPost, quoteRepostOriginalUnavailable } from '../../utils/communityFeedPost'
 import { displayPostCategoryPills } from '../../utils/loungePostCategoryPills.js'
 import { renderRichCaption } from './loungeCaption'
+import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
+import { textIsOnlyUrls } from '../../utils/linkifyText.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
@@ -116,6 +118,14 @@ export default function LoungePostArticle({
   onOpenGuideCard,
 }) {
   const ro = loungeReadOnly
+
+  const showCaptionText = (row, captionText) => {
+    const c = captionText ?? (row ? feedPostDisplayCaption(row) : '')
+    if (!c) return false
+    if (row?.link_preview && textIsOnlyUrls(c)) return false
+    return true
+  }
+
   // ── Plain repost type detection ──────────────────────────────────────────
   const isPlainPostRepost = post?.is_plain_repost === true && post?.reposted_post != null
   const isCommentRepost = post?.is_plain_repost === true && post?.reposted_comment != null
@@ -407,7 +417,7 @@ export default function LoungePostArticle({
                 </button>
               </div>
             ) : null}
-            {rc?.body ? (
+            {rc?.body && showCaptionText(post, rc.body) ? (
               <div
                 data-lounge-post-caption
                 role="presentation"
@@ -417,6 +427,7 @@ export default function LoungePostArticle({
                 {renderRichCaption(rc.body, richCaptionOpts)}
               </div>
             ) : null}
+            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" />
             <LoungePostFeedImagesAndGif
               post={rc}
               variant="feed"
@@ -429,7 +440,7 @@ export default function LoungePostArticle({
         ) : isPlainPostRepost ? (
           // Plain post repost: show original post content directly (no embed box)
           <>
-            {feedPostDisplayCaption(displayPost) ? (
+            {showCaptionText(displayPost) ? (
               <div
                 data-lounge-post-caption
                 role="presentation"
@@ -439,12 +450,13 @@ export default function LoungePostArticle({
                 {renderRichCaption(feedPostDisplayCaption(displayPost), richCaptionOpts)}
               </div>
             ) : null}
+            <LoungeLinkPreviewBlock preview={displayPost.link_preview} className="mt-2" />
             <LoungePostFeedImagesAndGif
               post={displayPost}
               variant="feed"
               feedAutoplayRowId={post.id}
               firstMarginTopClass={
-                feedPostDisplayCaption(displayPost)
+                showCaptionText(displayPost) || displayPost.link_preview
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
@@ -454,7 +466,7 @@ export default function LoungePostArticle({
         ) : isQuoteRepost ? (
           // Quote repost: reposter's caption + embedded original (or unavailable placeholder)
           <>
-            {feedPostDisplayCaption(post) ? (
+            {showCaptionText(post) ? (
               <div
                 data-lounge-post-caption
                 role="presentation"
@@ -464,11 +476,12 @@ export default function LoungePostArticle({
                 {renderRichCaption(feedPostDisplayCaption(post), richCaptionOpts)}
               </div>
             ) : null}
+            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" />
             <LoungePostFeedImagesAndGif
               post={post}
               variant="feed"
               firstMarginTopClass={
-                feedPostDisplayCaption(post)
+                showCaptionText(post) || post.link_preview
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
@@ -538,7 +551,7 @@ export default function LoungePostArticle({
         ) : (
           // Regular post
           <>
-            {feedPostDisplayCaption(post) ? (
+            {showCaptionText(post) ? (
               <div
                 data-lounge-post-caption
                 role="presentation"
@@ -548,11 +561,12 @@ export default function LoungePostArticle({
                 {renderRichCaption(feedPostDisplayCaption(post), richCaptionOpts)}
               </div>
             ) : null}
+            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" />
             <LoungePostFeedImagesAndGif
               post={post}
               variant="feed"
               firstMarginTopClass={
-                feedPostDisplayCaption(post)
+                showCaptionText(post) || post.link_preview
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }

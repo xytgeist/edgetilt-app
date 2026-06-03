@@ -83,7 +83,7 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
     return q
   }
   const { data: d2, error: e2 } = await buildDirect(
-    supabaseClient.from('chat_messages').select('id, body, image_urls, sender_id, created_at, deleted_at, reply_to_message_id, reply_to_preview, reply_to_sender_id')
+    supabaseClient.from('chat_messages').select('id, body, image_urls, sender_id, created_at, deleted_at, reply_to_message_id, reply_to_preview, reply_to_sender_id, link_preview')
   )
   if (!e2) return d2 || []
   const { data: d3, error: e3 } = await buildDirect(
@@ -858,13 +858,23 @@ export default function ChatConversation({
           if (prev.some((m) => m.id === res.message_id)) {
             return prev.filter((m) => m.id !== tempId)
           }
-          return prev.map((m) => m.id === tempId ? { ...optimistic, id: res.message_id } : m)
+          return prev.map((m) =>
+            m.id === tempId
+              ? { ...optimistic, id: res.message_id, link_preview: res.link_preview || null }
+              : m,
+          )
         })
       }
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
     }
   }, [supabaseClient, room.id, viewerUserId, loadMessages, scrollToBottom])
+
+  const handleLinkPreviewReady = useCallback((messageId, preview) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, link_preview: preview } : m)),
+    )
+  }, [])
 
   const handleDelete = useCallback(async (messageId) => {
     await chatDeleteMessage(supabaseClient, messageId)
@@ -1586,6 +1596,8 @@ export default function ChatConversation({
                       onDeleteMessage={handleDelete}
                       onAddReaction={handleAddReaction}
                       onRemoveReaction={handleRemoveReaction}
+                      supabaseClient={supabaseClient}
+                      onLinkPreviewReady={handleLinkPreviewReady}
                     />
                   </div>
                 )

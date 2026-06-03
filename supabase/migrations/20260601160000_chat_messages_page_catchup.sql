@@ -2,9 +2,16 @@
 -- Add after-cursor support to chat_messages_page for reconnect catchup.
 -- After a WebSocket drop/reconnect, the client fetches any messages that
 -- arrived during the gap using (p_after_created_at, p_after_id).
+--
+-- SUPERSEDED for manual SQL runs: if you already applied
+-- 20260604180100_chat_messages_rpc_link_preview.sql, do NOT run this file —
+-- it will error (return type mismatch) or strip link_preview from the RPC.
 -- ============================================================
 
 begin;
+
+-- 011500 created the 4-arg overload; this migration adds the 6-arg function.
+drop function if exists public.chat_messages_page(uuid, int, timestamptz, uuid);
 
 create or replace function public.chat_messages_page(
   p_room_id            uuid,
@@ -97,8 +104,5 @@ $$;
 revoke all on function public.chat_messages_page(uuid, int, timestamptz, uuid, timestamptz, uuid) from public, anon;
 grant execute on function public.chat_messages_page(uuid, int, timestamptz, uuid, timestamptz, uuid) to authenticated;
 
--- Also revoke/regrant the old 4-arg signature if it exists
-revoke all on function public.chat_messages_page(uuid, int, timestamptz, uuid) from public, anon;
-grant execute on function public.chat_messages_page(uuid, int, timestamptz, uuid) to authenticated;
 
 commit;

@@ -545,11 +545,6 @@ export default function ChatBubble({
               WebkitTouchCallout: 'none',
               touchAction: 'pan-y',
               borderRadius: compactBubble ? '9999px' : BUBBLE_EXPANDED_RADIUS_PX,
-              // Zero the tail corner so the SVG tail attaches flush
-              ...(isGroupStart && !isDeleted && !compactBubble && {
-                borderBottomRightRadius: isMine ? 0 : undefined,
-                borderBottomLeftRadius:  isMine ? undefined : 0,
-              }),
               backgroundColor: isMine && !isDeleted ? '#3b82f6' : undefined,
               boxShadow: isStarred && !isDeleted
                 ? '0 0 0 1.5px rgba(251,191,36,0.6), 0 0 12px 3px rgba(251,191,36,0.18)'
@@ -557,21 +552,6 @@ export default function ChatBubble({
               transition: 'box-shadow 0.2s ease',
             }}
           >
-            {/* iMessage-style tail — first message in a sender run only */}
-            {isGroupStart && !isDeleted && (
-              <svg
-                className="absolute pointer-events-none"
-                style={isMine ? { bottom: 0, right: 0, overflow: 'visible' } : { bottom: 0, left: 0, overflow: 'visible' }}
-                width="12" height="16"
-                aria-hidden
-              >
-                {isMine ? (
-                  <path d="M12 16 L12 28 C20 28 22 20 12 16 Z" fill="#3b82f6" />
-                ) : (
-                  <path d="M0 16 L0 28 C-8 28 -10 20 0 16 Z" fill="rgba(39,39,42,0.9)" />
-                )}
-              </svg>
-            )}
 
             {isDeleted ? (
               <span className="px-3 py-2 block">This message was deleted</span>

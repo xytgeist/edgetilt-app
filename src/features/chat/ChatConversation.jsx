@@ -1909,13 +1909,17 @@ export default function ChatConversation({
         <div
           ref={composerTouchRef}
         >
-          {typingUsers.length > 0 && isAtBottom && (
-            <div className="pb-1 text-[12px] text-zinc-500">
-              {typingUsers.length === 1
+          <div
+            className={`pb-1 text-[12px] text-zinc-500 truncate select-none pointer-events-none${
+              typingUsers.length > 0 && isAtBottom ? '' : ' invisible'
+            }`}
+          >
+            {typingUsers.length > 0 && isAtBottom
+              ? typingUsers.length === 1
                 ? `${typingUsers[0].displayName} is typing…`
-                : `${typingUsers.map((u) => u.displayName).join(', ')} are typing…`}
-            </div>
-          )}
+                : `${typingUsers.map((u) => u.displayName).join(', ')} are typing…`
+              : '\u00A0'}
+          </div>
           <ChatComposer
             supabaseClient={supabaseClient}
             viewerUserId={viewerUserId}

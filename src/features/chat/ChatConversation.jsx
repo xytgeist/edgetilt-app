@@ -1314,15 +1314,8 @@ export default function ChatConversation({
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       const active = composerBarRef.current?.querySelector('textarea, input')
-      if (active && document.activeElement === active) {
-        active.blur()
-        setTimeout(() => {
-          active.focus({ preventScroll: true })
-          requestAnimationFrame(() => pinListToTail({ force: true }))
-        }, 50)
-      } else {
-        requestAnimationFrame(() => pinListToTail({ force: true }))
-      }
+      if (active && document.activeElement === active) active.blur()
+      requestAnimationFrame(() => pinListToTail({ force: true }))
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)

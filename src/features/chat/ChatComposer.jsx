@@ -359,12 +359,12 @@ export default function ChatComposer({
       replyToMessageId: replyTarget?.id ?? null,
     }
 
-    // Clear immediately
+    // Capture blob URLs to revoke AFTER send completes (optimistic message needs them until replaced)
+    const blobUrlsToRevoke = slotsSnapshot.map((s) => s.localUrl)
+
+    // Clear composer immediately
     setBody('')
-    setImageSlots((prev) => {
-      prev.forEach((s) => URL.revokeObjectURL(s.localUrl))
-      return []
-    })
+    setImageSlots([])
     uploadPromisesRef.current.clear()
     if (videoMeta?.localPoster) URL.revokeObjectURL(videoMeta.localPoster)
     setVideoMeta(null)
@@ -382,6 +382,8 @@ export default function ChatComposer({
       setUploadErr(msg.includes('image_urls_len') ? `Max ${MAX_IMAGES} images per message.` : 'Failed to send. Please try again.')
     } finally {
       setSending(false)
+      // Safe to revoke now — optimistic message has been replaced with real R2 URLs
+      blobUrlsToRevoke.forEach((u) => URL.revokeObjectURL(u))
     }
   }, [canSend, body, imageSlots, videoMeta, replyTarget, onSend, onClearReply])
 

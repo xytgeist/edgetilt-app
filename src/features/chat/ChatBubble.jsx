@@ -174,6 +174,7 @@ export default function ChatBubble({
   onAddReaction,
   onRemoveReaction,
   hideSenderInfo = false,
+  isGroupStart = true,
   enableStar = false,
   isStarred = false,
   onToggleStar,
@@ -378,27 +379,31 @@ export default function ChatBubble({
       }}
     >
       <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-        {/* Avatar — only for others' messages; hidden in DMs (header already shows peer) */}
+        {/* Avatar — only for others' messages; hidden in DMs; spacer on continuations */}
         {!isMine && !hideSenderInfo && (
           <div className="shrink-0 self-end mb-1">
-            {senderAvatarUrl ? (
-              <img
-                src={senderAvatarUrl}
-                alt={senderLabel}
-                className="h-7 w-7 rounded-full object-cover"
-              />
+            {isGroupStart ? (
+              senderAvatarUrl ? (
+                <img
+                  src={senderAvatarUrl}
+                  alt={senderLabel}
+                  className="h-7 w-7 rounded-full object-cover"
+                />
+              ) : (
+                <div className="grid h-7 w-7 place-items-center rounded-full bg-zinc-700 text-[11px] font-bold text-zinc-300">
+                  {(senderLabel?.replace(/^@/, '') || '?')[0].toUpperCase()}
+                </div>
+              )
             ) : (
-              <div className="grid h-7 w-7 place-items-center rounded-full bg-zinc-700 text-[11px] font-bold text-zinc-300">
-                {(senderLabel?.replace(/^@/, '') || '?')[0].toUpperCase()}
-              </div>
+              <div className="h-7 w-7" aria-hidden />
             )}
           </div>
         )}
 
         <div className={`flex max-w-[78%] flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
-          {/* Sender name — others only; hidden in DMs */}
-          {!isMine && !hideSenderInfo && (
-            <div className="px-1 text-[11px] font-semibold text-zinc-500">{senderLabel}</div>
+          {/* Sender name — others only; first in run only; hidden in DMs */}
+          {!isMine && !hideSenderInfo && isGroupStart && (
+            <div className="px-1 text-[11px] font-semibold text-zinc-400">{senderLabel}</div>
           )}
 
           {/* Twitter-style reply pill — compact quoted bubble above the reply */}

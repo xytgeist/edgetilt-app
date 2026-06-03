@@ -937,7 +937,7 @@ export default function ChatConversation({
   const senderLabel = useCallback((senderId) => {
     if (senderId === viewerUserId) return 'You'
     const p = profilesById[senderId] || localProfiles[senderId]
-    return p?.handle ? `@${p.handle}` : p?.display_name || 'Member'
+    return p?.display_name || (p?.handle ? `@${p.handle}` : 'Member')
   }, [profilesById, localProfiles, viewerUserId])
 
   const senderAvatarUrl = useCallback((senderId) => {
@@ -1556,33 +1556,40 @@ export default function ChatConversation({
               No messages yet. Say hi! 👋
             </div>
           ) : (
-            <div ref={translateLayerRef} className="space-y-3 pb-2 will-change-transform select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={highlightMessageId === msg.id ? 'rounded-2xl ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-zinc-950' : undefined}
-                >
-                  <ChatBubble
-                    message={msg}
-                    senderLabel={senderLabel(msg.sender_id)}
-                    senderAvatarUrl={senderAvatarUrl(msg.sender_id)}
-                    isMine={msg.sender_id === viewerUserId}
-                    reactions={reactions[msg.id] || []}
-                    viewerUserId={viewerUserId}
-                    hideSenderInfo={activeRoom.kind === 'dm'}
-                    enableStar={isGroupRoom}
-                    isStarred={starredIds.has(msg.id)}
-                    onToggleStar={handleToggleStar}
-                    enablePin={isGroupRoom && isGroupOwner}
-                    isPinned={pinnedIds.has(msg.id)}
-                    onTogglePin={handleTogglePin}
-                    onReply={setReplyTarget}
-                    onDeleteMessage={handleDelete}
-                    onAddReaction={handleAddReaction}
-                    onRemoveReaction={handleRemoveReaction}
-                  />
-                </div>
-              ))}
+            <div ref={translateLayerRef} className="pb-2 will-change-transform select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
+              {messages.map((msg, idx) => {
+                const prev = idx > 0 ? messages[idx - 1] : null
+                const isGroupStart = !prev || prev.sender_id !== msg.sender_id
+                const topMargin = idx === 0 ? 0 : isGroupStart ? 12 : 2
+                return (
+                  <div
+                    key={msg.id}
+                    style={{ marginTop: topMargin }}
+                    className={highlightMessageId === msg.id ? 'rounded-2xl ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-zinc-950' : undefined}
+                  >
+                    <ChatBubble
+                      message={msg}
+                      senderLabel={senderLabel(msg.sender_id)}
+                      senderAvatarUrl={senderAvatarUrl(msg.sender_id)}
+                      isMine={msg.sender_id === viewerUserId}
+                      reactions={reactions[msg.id] || []}
+                      viewerUserId={viewerUserId}
+                      hideSenderInfo={activeRoom.kind === 'dm'}
+                      isGroupStart={isGroupStart}
+                      enableStar={isGroupRoom}
+                      isStarred={starredIds.has(msg.id)}
+                      onToggleStar={handleToggleStar}
+                      enablePin={isGroupRoom && isGroupOwner}
+                      isPinned={pinnedIds.has(msg.id)}
+                      onTogglePin={handleTogglePin}
+                      onReply={setReplyTarget}
+                      onDeleteMessage={handleDelete}
+                      onAddReaction={handleAddReaction}
+                      onRemoveReaction={handleRemoveReaction}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

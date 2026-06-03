@@ -328,10 +328,6 @@ export default function ChatComposer({
   }
 
   const openPlus = () => {
-    if (footerHost && !composerActive) {
-      activateAndFocusComposer()
-      return
-    }
     const rect = plusBtnRef.current?.getBoundingClientRect()
     if (rect) setPlusRect(rect)
     setPlusOpen(true)
@@ -345,6 +341,61 @@ export default function ChatComposer({
     width: 180,
     zIndex: 115,
   } : {}
+
+  // Shared render for the + menu portal (used from both collapsed and active states).
+  const PlusMenu = () => (
+    <>
+      <div className="fixed inset-0 z-[114]" onClick={() => setPlusOpen(false)} />
+      <div className="chat-menu-glass overflow-hidden rounded-2xl" style={plusMenuStyle}>
+        <button
+          type="button"
+          disabled={disabled || uploading || images.length >= MAX_IMAGES || videoMeta !== null || videoUploadProgress !== null}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => { setPlusOpen(false); fileInputRef.current?.click() }}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+            <rect x="3" y="3" width="18" height="18" rx="3" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          Add Media
+        </button>
+
+        <div className="mx-4 h-px bg-white/10" />
+
+        <button
+          type="button"
+          disabled={disabled || uploading || videoMeta !== null || videoUploadProgress !== null || images.length > 0}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => { setPlusOpen(false); videoInputRef.current?.click() }}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
+            <polygon points="23 7 16 12 23 17 23 7" />
+            <rect x="1" y="5" width="15" height="14" rx="2" />
+          </svg>
+          Video
+        </button>
+
+        <div className="mx-4 h-px bg-white/10" />
+
+        <button
+          type="button"
+          disabled={disabled || uploading || images.length >= MAX_IMAGES}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => { setPlusOpen(false); setGifPickerOpen(true) }}
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+            <rect x="3" y="3" width="18" height="18" rx="3" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.75" />
+            <text x="12" y="15.2" textAnchor="middle" fill="currentColor" style={{ fontSize: '6.5px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>GIF</text>
+          </svg>
+          GIF
+        </button>
+      </div>
+    </>
+  )
 
   if (footerHost && !composerActive) {
     return (
@@ -373,6 +424,7 @@ export default function ChatComposer({
             Message…
           </button>
         </div>
+        {plusOpen && createPortal(<PlusMenu />, document.body)}
       </div>
     )
   }
@@ -542,81 +594,7 @@ export default function ChatComposer({
       </div>
 
       {/* Plus modal — portaled above button */}
-      {plusOpen && createPortal(
-        <>
-          <div className="fixed inset-0 z-[114]" onClick={() => setPlusOpen(false)} />
-          <div className="chat-menu-glass overflow-hidden rounded-2xl" style={plusMenuStyle}>
-            {/* Add Media */}
-            <button
-              type="button"
-              disabled={disabled || uploading || images.length >= MAX_IMAGES || videoMeta !== null || videoUploadProgress !== null}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
-                <rect x="3" y="3" width="18" height="18" rx="3" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              Add Media
-            </button>
-
-            <div className="mx-4 h-px bg-white/10" />
-
-            {/* Video */}
-            <button
-              type="button"
-              disabled={disabled || uploading || videoMeta !== null || videoUploadProgress !== null || images.length > 0}
-              onClick={() => videoInputRef.current?.click()}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" />
-              </svg>
-              Video
-            </button>
-
-            <div className="mx-4 h-px bg-white/10" />
-
-            {/* GIF */}
-            <button
-              type="button"
-              disabled={disabled || uploading || images.length >= MAX_IMAGES}
-              onClick={() => {
-                setPlusOpen(false)
-                setGifPickerOpen(true)
-              }}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-                <rect
-                  x="3"
-                  y="3"
-                  width="18"
-                  height="18"
-                  rx="3"
-                  fill="currentColor"
-                  fillOpacity="0.14"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                />
-                <text
-                  x="12"
-                  y="15.2"
-                  textAnchor="middle"
-                  fill="currentColor"
-                  style={{ fontSize: '6.5px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
-                >
-                  GIF
-                </text>
-              </svg>
-              GIF
-            </button>
-          </div>
-        </>,
-        document.body
-      )}
+      {plusOpen && createPortal(<PlusMenu />, document.body)}
 
       <KlipyGifPicker
         open={gifPickerOpen}

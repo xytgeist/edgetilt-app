@@ -528,7 +528,11 @@ export default function ChatBubble({
             onPointerLeave={cancelLongPress}
             onContextMenu={(e) => e.preventDefault()}
             onSelectStart={(e) => e.preventDefault()}
-            className={`chat-bubble-surface relative select-none px-3 py-2 text-[16px] leading-snug transition-opacity ${
+            className={`chat-bubble-surface relative select-none text-[16px] leading-snug transition-opacity ${
+              hasMedia && !isDeleted ? 'overflow-hidden' : ''
+            } ${
+              hasMedia && !isDeleted ? 'p-[3px]' : 'px-3 py-2'
+            } ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted
@@ -551,12 +555,11 @@ export default function ChatBubble({
             }}
           >
             {isDeleted ? (
-              <span>This message was deleted</span>
+              <span className="px-3 py-2 block">This message was deleted</span>
             ) : (
               <>
-
                 {showBodyText && (
-                  <div className="chat-bubble-body whitespace-pre-wrap break-words">
+                  <div className={`chat-bubble-body whitespace-pre-wrap break-words ${hasMedia ? 'px-3 pt-2 pb-1' : ''}`}>
                     <LinkifiedText
                       text={message.body}
                       linkClassName={
@@ -571,7 +574,9 @@ export default function ChatBubble({
                   <ChatMediaGrid media={allMedia} onOpen={openViewer} />
                 )}
                 {linkPreviewInBubble ? (
-                  <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} embedded />
+                  <div className={hasMedia ? 'px-3 pb-2' : ''}>
+                    <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} embedded />
+                  </div>
                 ) : null}
               </>
             )}
@@ -906,7 +911,7 @@ function ChatMediaGrid({ media, onOpen }) {
   const count = visible.length
 
   return (
-    <div className={`mt-1.5 overflow-hidden rounded-xl ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}>
+    <div className={`overflow-hidden rounded-[9px] ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}>
       {visible.map((item, i) => {
         const isLastVisible = i === GRID_MAX_VISIBLE - 1
         const showOverlay = isLastVisible && overflow > 0

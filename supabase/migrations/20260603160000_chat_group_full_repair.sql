@@ -360,6 +360,9 @@ END;
 $$;
 
 -- ── Extended inbox RPC (returns avatar_url + description for group rooms) ────
+-- Must DROP first because CREATE OR REPLACE cannot change OUT parameter types.
+
+DROP FUNCTION IF EXISTS public.chat_rooms_for_user(uuid);
 
 CREATE OR REPLACE FUNCTION public.chat_rooms_for_user(
   p_user_id uuid DEFAULT auth.uid()

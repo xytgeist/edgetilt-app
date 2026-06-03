@@ -46,9 +46,9 @@ const SCROLL_UP_MSG_THRESHOLD = 20
 const COMPOSER_SCROLL_GAP_PX = 8
 /** Message stack shorter than this gap under the composer viewport → treat as "fits" (no push). */
 const LIST_CONTENT_FITS_GAP_PX = 24
-/** iOS keyboard dismiss: wait for viewport settle, then one smooth list scroll. */
-const IOS_KEYBOARD_DISMISS_SCROLL_SETTLE_MS = 100
-const IOS_KEYBOARD_DISMISS_SCROLL_MAX_WAIT_MS = 420
+/** iOS keyboard dismiss: wait for viewport settle + lerp to finish, then one smooth list scroll. */
+const IOS_KEYBOARD_DISMISS_SCROLL_SETTLE_MS = 180
+const IOS_KEYBOARD_DISMISS_SCROLL_MAX_WAIT_MS = 520
 /** Tail-pin rAF follow while iOS keyboard animates open/closed. */
 const IOS_KEYBOARD_TAIL_PIN_MS = 380
 
@@ -721,7 +721,15 @@ export default function ChatConversation({
   /** iOS smooth overlap: one layout-synced pin per displayed keyboard px (open + close). */
   const pinIosKeyboardFrame = useCallback(() => {
     if (!IS_IOS) return
-    if (!isComposerKeyboardActive() && kbTargetRef.current <= iosSafeBottomRef.current + 0.5) return
+    // Keep pinning while either the display lerp OR the keyboard is logically open.
+    // Using kbTargetRef alone killed the pin immediately on dismiss even while
+    // kbOverlapPx (the smoothed display) was still animating.
+    const displayOverlap = kbOverlapRef.current
+    const targetOverlap = kbTargetRef.current
+    const safeBottom = iosSafeBottomRef.current
+    const stillAnimating = displayOverlap > safeBottom + 0.5
+    const keyboardLogicallyOpen = isComposerKeyboardActive() || targetOverlap > safeBottom + 2
+    if (!stillAnimating && !keyboardLogicallyOpen) return
     pinListToTail({ force: true })
   }, [pinListToTail, isComposerKeyboardActive])
 

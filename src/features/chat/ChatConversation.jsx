@@ -191,6 +191,12 @@ export default function ChatConversation({
   const [composerFocused, setComposerFocused] = useState(false)
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(IS_IOS)
   const kbOverlapPx = useLoungeKeyboardOverlapPx(true, { smooth: IS_IOS, smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS })
+  const kbOverlapRef = useRef(kbOverlapPx)
+  kbOverlapRef.current = kbOverlapPx
+  const iosSafeBottomRef = useRef(iosSafeBottomPx)
+  iosSafeBottomRef.current = iosSafeBottomPx
+  const composerFocusedRef = useRef(composerFocused)
+  composerFocusedRef.current = composerFocused
 
   // Swipe-to-reveal timestamps
   const translateLayerRef = useRef(null)
@@ -542,46 +548,6 @@ export default function ChatConversation({
     setReplyTarget(null)
   }, [room.id])
 
-  const pinOpenTail = useCallback(() => {
-    const list = listRef.current
-    if (!list) return
-    list.scrollTop = list.scrollHeight
-    atBottomRef.current = true
-    setIsAtBottom(true)
-    setScrolledUpCount(0)
-    setNewMsgCount(0)
-  }, [])
-
-  // Land on the latest message when a conversation opens (after load settles).
-  useLayoutEffect(() => {
-    if (loading || !openScrollPendingRef.current) return
-
-    let alive = true
-    const run = () => {
-      if (alive) pinOpenTail()
-    }
-
-    run()
-    const raf1 = requestAnimationFrame(() => {
-      run()
-      requestAnimationFrame(run)
-    })
-    const t0 = window.setTimeout(run, 0)
-    const t1 = window.setTimeout(run, 50)
-    const tDone = window.setTimeout(() => {
-      run()
-      if (alive) openScrollPendingRef.current = false
-    }, 150)
-
-    return () => {
-      alive = false
-      cancelAnimationFrame(raf1)
-      window.clearTimeout(t0)
-      window.clearTimeout(t1)
-      window.clearTimeout(tDone)
-    }
-  }, [loading, room.id, messages.length, pinOpenTail])
-
   // ── Load older messages (prepend) ─────────────────────────────────────────
 
   const loadMore = useCallback(async () => {
@@ -673,13 +639,6 @@ export default function ChatConversation({
     return lastBottom > composerTop - COMPOSER_SCROLL_GAP_PX
   }, [listContentFitsInView])
 
-  const scrollToBottom = useCallback((behavior = 'instant', { force = false } = {}) => {
-    const el = listRef.current
-    if (!el) return
-    if (!force && listContentFitsInView()) return
-    el.scrollTo({ top: el.scrollHeight, behavior })
-  }, [listContentFitsInView])
-
   /** Pin tail above the floating composer — scroll max, then nudge if last bubble overlaps composer top. */
   const pinListToTail = useCallback(({ force = false } = {}) => {
     const list = listRef.current
@@ -711,19 +670,17 @@ export default function ChatConversation({
     setNewMsgCount(0)
   }, [])
 
-  /** Force tail pin after send or layout shift (images, link preview, composer inset). */
-  const pinTailAfterMutation = useCallback(() => {
-    const run = () => pinListToTail({ force: true })
-    run()
-    requestAnimationFrame(() => {
-      run()
-      requestAnimationFrame(run)
-    })
-    window.setTimeout(run, 50)
-  }, [pinListToTail])
+  /** True while composer/keyboard owns tail position — open-scroll must not fight it. */
+  const isComposerKeyboardActive = useCallback(() => {
+    if (composerFocusedRef.current) return true
+    const tag = document.activeElement?.tagName
+    if (tag === 'TEXTAREA' || tag === 'INPUT') return true
+    return kbOverlapRef.current > iosSafeBottomRef.current + 2
+  }, [])
 
   /** iOS: pin each animation frame while keyboard slides; Android: one snap. */
   const runTailPinFollow = useCallback(() => {
+    openScrollPendingRef.current = false
     pinListToTail({ force: true })
     if (!IS_IOS) return
     tailPinFollowUntilRef.current = performance.now() + IOS_KEYBOARD_TAIL_PIN_MS
@@ -740,6 +697,53 @@ export default function ChatConversation({
     }
     tailPinFollowRafRef.current = requestAnimationFrame(tick)
   }, [pinListToTail])
+
+  /** Force tail pin after send or layout shift (images, link preview). Delegates to keyboard follow when focused. */
+  const pinTailAfterMutation = useCallback(() => {
+    if (isComposerKeyboardActive()) {
+      runTailPinFollow()
+      return
+    }
+    const run = () => pinListToTail({ force: true })
+    run()
+    requestAnimationFrame(() => {
+      run()
+      requestAnimationFrame(run)
+    })
+    window.setTimeout(run, 50)
+  }, [pinListToTail, isComposerKeyboardActive, runTailPinFollow])
+
+  // Land on the latest message once when a conversation finishes loading (not on every new row).
+  useLayoutEffect(() => {
+    if (loading || !openScrollPendingRef.current) return
+
+    let alive = true
+    const run = () => {
+      if (!alive || !openScrollPendingRef.current) return
+      if (isComposerKeyboardActive()) {
+        openScrollPendingRef.current = false
+        return
+      }
+      pinListToTail({ force: true })
+    }
+
+    run()
+    const raf1 = requestAnimationFrame(() => {
+      run()
+      requestAnimationFrame(run)
+    })
+    const t0 = window.setTimeout(run, 0)
+    const tDone = window.setTimeout(() => {
+      if (alive) openScrollPendingRef.current = false
+    }, 120)
+
+    return () => {
+      alive = false
+      cancelAnimationFrame(raf1)
+      window.clearTimeout(t0)
+      window.clearTimeout(tDone)
+    }
+  }, [loading, room.id, pinListToTail, isComposerKeyboardActive])
 
   useEffect(() => () => {
     if (tailPinFollowRafRef.current) cancelAnimationFrame(tailPinFollowRafRef.current)
@@ -820,7 +824,7 @@ export default function ChatConversation({
           })
 
           if (atBottomRef.current) {
-            requestAnimationFrame(() => scrollToBottom('smooth'))
+            requestAnimationFrame(() => pinListToTail({ force: true }))
           } else {
             setNewMsgCount((n) => n + 1)
           }
@@ -881,7 +885,7 @@ export default function ChatConversation({
           })
 
           if (atBottomRef.current) {
-            requestAnimationFrame(() => scrollToBottom('smooth'))
+            requestAnimationFrame(() => pinListToTail({ force: true }))
           } else {
             setNewMsgCount((n) => n + missed.length)
           }
@@ -952,10 +956,10 @@ export default function ChatConversation({
     } else {
       atBottomRef.current = true
       setIsAtBottom(true)
-      scrollToBottom('smooth', { force: true })
+      pinListToTail({ force: true })
       scheduleMarkLastRead()
     }
-  }, [loadMessages, scheduleMarkLastRead, scrollToBottom])
+  }, [loadMessages, scheduleMarkLastRead, pinListToTail])
 
   // ── Scroll helpers ────────────────────────────────────────────────────────
 
@@ -1228,6 +1232,7 @@ export default function ChatConversation({
 
     const onFocusIn = (e) => {
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        openScrollPendingRef.current = false
         runTailPinFollow()
       }
     }

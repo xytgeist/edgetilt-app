@@ -557,20 +557,20 @@ export default function ChatBubble({
               transition: 'box-shadow 0.2s ease',
             }}
           >
-            {/* Top-corner tail — first message in a sender run only */}
+            {/* Top-corner ear — first message in a sender run only */}
             {isGroupStart && !isDeleted && (
               <div
                 className="absolute pointer-events-none"
                 style={isMine ? {
-                  top: 0, right: -8,
-                  width: 0, height: 0,
-                  borderBottom: '10px solid #3b82f6',
-                  borderRight: '8px solid transparent',
+                  top: 0, right: -7,
+                  width: 8, height: 14,
+                  backgroundColor: '#3b82f6',
+                  borderRadius: '0 10px 10px 0',
                 } : {
-                  top: 0, left: -8,
-                  width: 0, height: 0,
-                  borderBottom: '10px solid rgba(39,39,42,0.9)',
-                  borderLeft: '8px solid transparent',
+                  top: 0, left: -7,
+                  width: 8, height: 14,
+                  backgroundColor: 'rgba(39,39,42,0.9)',
+                  borderRadius: '10px 0 0 10px',
                 }}
                 aria-hidden
               />

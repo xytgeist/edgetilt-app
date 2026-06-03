@@ -622,12 +622,6 @@ export default function ChatBubble({
             </div>
           )}
 
-          {isMine && receipt && !isDeleted ? (
-            <div className={`mt-0.5 flex select-none pointer-events-none ${isMine ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
-              <ChatReceiptLabel receipt={receipt} />
-            </div>
-          ) : null}
-
           {/* Reaction pill — combined, overlaps bubble bottom */}
           {reactions.length > 0 && (() => {
             const totalCount = reactions.reduce((sum, r) => sum + r.count, 0)
@@ -685,6 +679,12 @@ export default function ChatBubble({
               </div>
             )
           })()}
+
+          {isMine && receipt && !isDeleted ? (
+            <div className={`mt-0.5 flex select-none pointer-events-none ${isMine ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
+              <ChatReceiptLabel receipt={receipt} />
+            </div>
+          ) : null}
         </div>
       </div>
 

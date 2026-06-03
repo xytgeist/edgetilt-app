@@ -2317,6 +2317,13 @@ html.light .reaction-pill {
   user-select: none;
 }
 
+/* Floating composer host — no bar fill; messages scroll underneath. */
+[data-chat-composer-host] {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none;
+}
+
 /* ── Chat conversation — theme-aware glass / gradient ──────────────────────
  * Dark (default): dark navy translucent glass + dark gradient fade.
  * Light: white/pale translucent glass + pale gradient fade.

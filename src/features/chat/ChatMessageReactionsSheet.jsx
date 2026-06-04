@@ -33,6 +33,7 @@ export default function ChatMessageReactionsSheet({
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [filterEmoji, setFilterEmoji] = useState(/** @type {string | null} */ (null))
+  const [ready, setReady] = useState(false)
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
   const dragRef = useRef({ active: false, startY: 0, lastY: 0, lastT: 0, velocity: 0 })
@@ -47,10 +48,12 @@ export default function ChatMessageReactionsSheet({
     try {
       const data = await chatMessageReactionsPage(supabaseClient, messageId)
       setRows(data)
+      if (!silent) setReady(true)
     } catch (e) {
       if (!silent) {
         setRows([])
         setErr(e?.message || 'Could not load reactions.')
+        setReady(true)
       }
     } finally {
       if (!silent) setLoading(false)
@@ -58,7 +61,13 @@ export default function ChatMessageReactionsSheet({
   }, [messageId, supabaseClient])
 
   useEffect(() => {
-    if (!open) { setDragY(0); setDragging(false); dragRef.current.active = false; return }
+    if (!open) {
+      setReady(false)
+      setDragY(0)
+      setDragging(false)
+      dragRef.current.active = false
+      return
+    }
     if (!messageId) return
     setFilterEmoji(null)
     void load({ silent: false })
@@ -123,7 +132,7 @@ export default function ChatMessageReactionsSheet({
     }
   }, [onClose])
 
-  if (typeof document === 'undefined' || !open || !messageId) return null
+  if (typeof document === 'undefined' || !open || !messageId || !ready) return null
 
   return createPortal(
     <div

@@ -572,7 +572,7 @@ export default function ChatBubble({
               filter: isStarred && !isDeleted
                 ? 'drop-shadow(0 0 10px rgba(251,191,36,0.45))'
                 : undefined,
-              transition: 'filter 0.2s ease',
+              transition: 'filter 0.2s ease, box-shadow 0.2s ease',
             }}
           >
 

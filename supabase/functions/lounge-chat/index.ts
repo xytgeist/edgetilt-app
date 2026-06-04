@@ -227,6 +227,23 @@ Deno.serve(async (req) => {
       await admin.from('chat_rooms').delete().eq('id', room.id)
       return json(400, { error: mErr.message })
     }
+
+    // Notify each member except the creator that they were added.
+    const invitedIds = unique.filter((uid) => uid !== user.id)
+    if (invitedIds.length > 0) {
+      void (async () => {
+        try {
+          const eventRows = invitedIds.map((uid) => ({
+            recipient_user_id: uid,
+            actor_user_id: user.id,
+            event_type: 'chat_group_invite',
+            chat_room_id: room.id,
+          }))
+          await admin.from('activity_events').insert(eventRows)
+        } catch { /* push errors must not surface to the creator */ }
+      })()
+    }
+
     return json(200, { ok: true, room_id: room.id })
   }
 
@@ -672,6 +689,20 @@ Deno.serve(async (req) => {
     const rows = toAdd.map((uid) => ({ room_id: roomId, user_id: uid, role: 'member' }))
     const { error: insErr } = await admin.from('chat_room_members').insert(rows)
     if (insErr) return json(400, { error: insErr.message })
+
+    // Notify each newly added member.
+    void (async () => {
+      try {
+        const eventRows = toAdd.map((uid) => ({
+          recipient_user_id: uid,
+          actor_user_id: user.id,
+          event_type: 'chat_group_invite',
+          chat_room_id: roomId,
+        }))
+        await admin.from('activity_events').insert(eventRows)
+      } catch { /* push errors must not surface */ }
+    })()
+
     return json(200, { ok: true, added: toAdd.length })
   }
 

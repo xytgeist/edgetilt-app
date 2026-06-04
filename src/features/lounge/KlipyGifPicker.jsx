@@ -5,8 +5,6 @@ import { fetchKlipyGifs } from '../../utils/klipyGifs'
 const KLIPY_PICKER_MAX_PAGES = 15
 const SHEET_HEIGHT_CAP_PX = 640
 const SHEET_HEIGHT_RATIO = 0.78
-/** Keyboard must be at least this tall for keyboard-slot mode to activate. */
-const KB_SLOT_MIN_PX = 120
 
 function measureLayoutSheetHeightPx() {
   if (typeof window === 'undefined') return 480
@@ -20,11 +18,6 @@ function readVisualViewportFrame() {
     top: vv?.offsetTop ?? 0,
     height: vv?.height ?? window.innerHeight,
   }
-}
-
-function readKbHeight(vvFrame) {
-  if (typeof window === 'undefined') return 0
-  return Math.max(0, Math.round(window.innerHeight - vvFrame.height - vvFrame.top))
 }
 
 /**
@@ -189,14 +182,10 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
     return () => io.disconnect()
   }, [open, debounced, items.length, hasNext])
 
-  const kbHeight = readKbHeight(viewportFrame)
-  const kbSlotMode = kbHeight >= KB_SLOT_MIN_PX
-
   const resolvedSheetHeightPx = useMemo(() => {
-    if (kbHeight >= KB_SLOT_MIN_PX) return kbHeight
     const visibleCap = Math.max(240, Math.round(viewportFrame.height - 32))
     return Math.min(sheetHeightPx, visibleCap)
-  }, [sheetHeightPx, viewportFrame.height, kbHeight])
+  }, [sheetHeightPx, viewportFrame.height])
 
   const refreshing = loading && loadingMode === 'refresh'
   const loadingMore = loading && loadingMode === 'append'
@@ -204,38 +193,26 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
 
   if (!open) return null
 
-  // Keyboard-slot mode: sheet slides up to fill exactly the keyboard height area.
-  // No dark backdrop — chat + composer stay visible above. Keyboard remains active behind.
-  // Modal mode: full-screen backdrop with centered sheet (keyboard not open).
-  const overlayStyle = kbSlotMode
-    ? {
-        top: viewportFrame.top + viewportFrame.height - resolvedSheetHeightPx,
-        height: resolvedSheetHeightPx,
-      }
-    : {
-        top: viewportFrame.top,
-        height: viewportFrame.height,
-      }
-
   return (
     <div
-      className={`fixed left-0 right-0 z-[101] ${kbSlotMode ? '' : 'flex items-end justify-center bg-black/45 px-2 backdrop-blur-[3px]'}`}
+      className="fixed left-0 right-0 z-[101] flex items-end justify-center bg-black/45 px-2 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a GIF"
-      style={overlayStyle}
+      style={{
+        top: viewportFrame.top,
+        height: viewportFrame.height,
+      }}
     >
-      {!kbSlotMode && (
-        <button
-          type="button"
-          className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
-          aria-label="Close GIF picker"
-          onClick={onClose}
-        />
-      )}
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
+        aria-label="Close GIF picker"
+        onClick={onClose}
+      />
       <div
-        className={`klipy-gif-sheet ${kbSlotMode ? 'w-full' : 'relative z-10 mb-0 w-full max-w-lg'} flex shrink-0 flex-col overflow-hidden border-zinc-700/80 bg-[#14161c]/95 shadow-xl backdrop-blur-md ${kbSlotMode ? 'border-t' : 'rounded-t-2xl border'}`}
-        style={{ height: kbSlotMode ? '100%' : resolvedSheetHeightPx }}
+        className="klipy-gif-sheet relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
+        style={{ height: resolvedSheetHeightPx }}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <input

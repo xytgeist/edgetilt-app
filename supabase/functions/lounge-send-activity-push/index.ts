@@ -121,6 +121,7 @@ function prefAllows(prefs: NotificationPrefs | null, eventType: string): boolean
     case 'bookmark':
       return prefs.push_bookmarks
     case 'chat_dm':
+    case 'chat_group_invite':
       return prefs.push_messages
     default:
       return true
@@ -164,6 +165,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'marked your play log share as unpaid'
     case 'chat_dm':
       return 'sent you a message'
+    case 'chat_group_invite':
+      return 'added you to a group'
     default:
       return 'interacted with you'
   }
@@ -193,7 +196,7 @@ function buildTargetUrl(
   const params = new URLSearchParams()
   params.set('tab', 'home')
 
-  if (event.event_type === 'chat_dm' && event.chat_room_id) {
+  if ((event.event_type === 'chat_dm' || event.event_type === 'chat_group_invite') && event.chat_room_id) {
     params.set('tab', 'chat')
     params.set('room', event.chat_room_id)
   } else if (

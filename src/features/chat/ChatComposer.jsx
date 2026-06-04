@@ -169,19 +169,22 @@ export default function ChatComposer({
     onTyping(viewerDisplayName)
   }
 
-  const handleImagePick = (e) => {
-    let files = Array.from(e.target.files || [])
-    if (fileInputRef.current) fileInputRef.current.value = ''
+  // Shared core: takes an array of File objects, caps to remaining slots,
+  // creates blob preview slots, and starts background uploads.
+  const enqueueImageFiles = useCallback((rawFiles) => {
+    let files = Array.from(rawFiles).filter((f) => f.type.startsWith('image/'))
     if (!files.length) return
     const remaining = MAX_IMAGES - imageSlots.length
-    if (remaining <= 0) return
+    if (remaining <= 0) {
+      setUploadErr(`Max ${MAX_IMAGES} images per message.`)
+      return
+    }
     const truncated = files.length > remaining
     if (truncated) files = files.slice(0, remaining)
-    setUploadErr(truncated ? `Only the first ${remaining} image${remaining !== 1 ? 's' : ''} were added (max ${MAX_IMAGES}).` : '')
-    setPlusOpen(false)
+    if (truncated) setUploadErr(`Only the first ${remaining} image${remaining !== 1 ? 's' : ''} were added (max ${MAX_IMAGES}).`)
+    else setUploadErr('')
     if (footerHost) flushSync(() => setComposerActive(true))
 
-    // Create slots with local blob URLs immediately for instant preview
     const newSlots = files.map((file) => ({
       id: crypto.randomUUID(),
       localUrl: URL.createObjectURL(file),
@@ -249,7 +252,25 @@ export default function ChatComposer({
     }
 
     runNext()
+  }, [imageSlots.length, footerHost, supabaseClient, viewerUserId])
+
+  const handleImagePick = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setPlusOpen(false)
+    enqueueImageFiles(files)
   }
+
+  const handlePaste = useCallback((e) => {
+    const items = Array.from(e.clipboardData?.items || [])
+    const imageFiles = items
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter(Boolean)
+    if (!imageFiles.length) return
+    e.preventDefault()
+    enqueueImageFiles(imageFiles)
+  }, [enqueueImageFiles])
 
   const handleKlipyGifPick = ({ gifUrl }) => {
     const url = String(gifUrl || '').trim()
@@ -643,6 +664,7 @@ export default function ChatComposer({
             onChange={handleBodyChange}
             onKeyDown={handleKeyDown}
             onBlur={maybeCollapseComposer}
+            onPaste={handlePaste}
             onFocus={
               footerHost
                 ? (e) => {

@@ -107,7 +107,7 @@ export function saveRecentEmoji(emoji) {
 /**
  * @param {{ onSelect: (emoji: string) => void, onClose: () => void }} props
  */
-export default function ChatEmojiPicker({ onSelect, onClose }) {
+export default function ChatEmojiPicker({ onSelect, onClose, zIndex = 115 }) {
   const recent = loadRecent()
   const categories = recent.length
     ? [{ ...CATEGORIES[0], emojis: recent }, ...CATEGORIES.slice(1)]
@@ -145,13 +145,14 @@ export default function ChatEmojiPicker({ onSelect, onClose }) {
   return (
     /* Backdrop */
     <div
-      className="fixed inset-0 z-[115] flex flex-col justify-end bg-black/40"
+      className="fixed inset-0 flex flex-col justify-end bg-black/40"
+      style={{ zIndex }}
       onClick={onClose}
     >
       {/* Sheet — max height leaves room for the status bar; bottom padding
           covers the iOS home indicator so the emoji grid isn't cut off. */}
       <div
-        className="flex flex-col rounded-t-2xl border-t border-zinc-700/60 bg-zinc-950 shadow-2xl"
+        className="chat-sheet-glass flex flex-col rounded-t-2xl shadow-2xl"
         style={{
           height: 'min(60dvh, calc(100dvh - env(safe-area-inset-top) - 3rem))',
           paddingBottom: 'env(safe-area-inset-bottom)',

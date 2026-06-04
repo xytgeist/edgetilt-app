@@ -2068,6 +2068,7 @@ export default function ChatConversation({
         onClose={() => setReactionsDetailMessageId(null)}
         supabaseClient={supabaseClient}
         viewerUserId={viewerUserId}
+        viewerProfile={viewerProfile}
         reloadToken={reactionsDetailReload}
         onToggleReaction={(emoji) => {
           if (reactionsDetailMessageId) toggleMessageReaction(reactionsDetailMessageId, emoji)

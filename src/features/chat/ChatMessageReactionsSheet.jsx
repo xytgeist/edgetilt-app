@@ -17,6 +17,7 @@ const FILTER_EMOJI_CLASS = 'text-[18px] leading-none'
  *   messageId: string | null,
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   viewerUserId: string,
+ *   viewerProfile?: { display_name?: string | null, handle?: string | null, avatar_url?: string | null } | null,
  *   onToggleReaction: (emoji: string) => void,
  *   reloadToken?: number,
  * }} props
@@ -27,6 +28,7 @@ export default function ChatMessageReactionsSheet({
   messageId,
   supabaseClient,
   viewerUserId,
+  viewerProfile = null,
   onToggleReaction,
   reloadToken = 0,
 }) {
@@ -95,6 +97,28 @@ export default function ChatMessageReactionsSheet({
     [rows, viewerUserId],
   )
 
+  const handleToggleReaction = useCallback((emoji) => {
+    // Optimistic update so the modal reflects the change instantly
+    setRows((prev) => {
+      const alreadyReacted = prev.some((r) => r.user_id === viewerUserId && r.emoji === emoji)
+      if (alreadyReacted) {
+        return prev.filter((r) => !(r.user_id === viewerUserId && r.emoji === emoji))
+      }
+      return [
+        ...prev,
+        {
+          user_id: viewerUserId,
+          emoji,
+          display_name: viewerProfile?.display_name || null,
+          handle: viewerProfile?.handle || null,
+          avatar_url: viewerProfile?.avatar_url || null,
+          created_at: new Date().toISOString(),
+        },
+      ]
+    })
+    onToggleReaction(emoji)
+  }, [viewerUserId, viewerProfile, onToggleReaction])
+
   const totalCount = rows.length
   const title = totalCount === 1 ? '1 Reaction' : `${totalCount} Reactions`
 
@@ -144,7 +168,7 @@ export default function ChatMessageReactionsSheet({
           onClick={onClose}
         >
           <div
-            className="flex max-h-[min(70dvh,520px)] flex-col rounded-t-2xl border-t border-zinc-700/60 bg-zinc-950 shadow-2xl"
+            className="chat-sheet-glass flex max-h-[min(70dvh,520px)] flex-col rounded-t-2xl shadow-2xl"
             style={{
               paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
               transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
@@ -157,10 +181,10 @@ export default function ChatMessageReactionsSheet({
             onPointerCancel={onSheetPointerUp}
           >
             <div className="flex justify-center pt-2.5 pb-1">
-              <div className="h-1 w-10 rounded-full bg-zinc-700" />
+              <div className="h-1 w-10 rounded-full bg-white/20" />
             </div>
 
-            <div className="border-b border-zinc-800/80 px-4 pb-3 pt-1 text-center">
+            <div className="border-b border-white/10 px-4 pb-3 pt-1 text-center">
               <h2 className="text-[17px] font-semibold text-zinc-100">{title}</h2>
             </div>
 
@@ -169,10 +193,10 @@ export default function ChatMessageReactionsSheet({
               <button
                 type="button"
                 onClick={() => setEmojiPickerOpen(true)}
-                className="inline-flex shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-900/80 px-3 py-1.5 text-[18px] leading-none touch-manipulation active:bg-zinc-800"
+                className="inline-flex shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/8 px-3 py-1.5 touch-manipulation active:bg-white/15"
                 aria-label="Add reaction"
               >
-                +
+                <AddReactionIcon />
               </button>
               {emojiSummaries.map(({ emoji, count }) => {
                 const iReacted = viewerReactedEmojis.has(emoji)
@@ -180,16 +204,16 @@ export default function ChatMessageReactionsSheet({
                   <button
                     key={emoji}
                     type="button"
-                    onClick={() => onToggleReaction(emoji)}
+                onClick={() => handleToggleReaction(emoji)}
                     className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 touch-manipulation transition-colors ${
                       iReacted
                         ? 'border-cyan-500/50 bg-cyan-500/15'
-                        : 'border-zinc-700/80 bg-zinc-900/80 active:bg-zinc-800'
+                        : 'border-white/15 bg-white/8 active:bg-white/15'
                     }`}
                     aria-label={iReacted ? `Remove ${emoji} reaction` : `React with ${emoji}`}
                     aria-pressed={iReacted}
                   >
-                    <ReactionGlyph emoji={emoji} liked={iReacted} />
+                    <ReactionGlyph emoji={emoji} liked />
                     <span className="text-[13px] font-semibold text-zinc-300">{count}</span>
                   </button>
                 )
@@ -204,7 +228,7 @@ export default function ChatMessageReactionsSheet({
               ) : rows.length === 0 ? (
                 <div className="py-10 text-center text-[14px] text-zinc-500">No reactions yet.</div>
               ) : (
-                <ul className="divide-y divide-zinc-800/70">
+                <ul className="divide-y divide-white/8">
                   {rows.map((row) => {
                     const isViewer = row.user_id === viewerUserId
                     const label = isViewer
@@ -241,12 +265,37 @@ export default function ChatMessageReactionsSheet({
       )}
       {emojiPickerOpen && createPortal(
         <ChatEmojiPicker
-          onSelect={(emoji) => { onToggleReaction(emoji); setEmojiPickerOpen(false) }}
+          onSelect={(emoji) => { handleToggleReaction(emoji); setEmojiPickerOpen(false) }}
           onClose={() => setEmojiPickerOpen(false)}
+          zIndex={125}
         />,
         document.body,
       )}
     </>
+  )
+}
+
+function AddReactionIcon() {
+  return (
+    <svg
+      viewBox="0 0 26 22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-[26px] text-zinc-400"
+      aria-hidden="true"
+    >
+      {/* Smiley face */}
+      <circle cx="10" cy="11" r="8.5" />
+      <circle cx="7" cy="8.5" r="0.85" fill="currentColor" stroke="none" />
+      <circle cx="13" cy="8.5" r="0.85" fill="currentColor" stroke="none" />
+      <path d="M7 13.5 Q10 16.5 13 13.5" />
+      {/* Plus sign (top-right) */}
+      <line x1="21" y1="4" x2="21" y2="11" />
+      <line x1="17.5" y1="7.5" x2="24.5" y2="7.5" />
+    </svg>
   )
 }
 

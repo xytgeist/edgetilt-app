@@ -11,6 +11,7 @@ import {
   chatMuteGroupMember,
   chatMuteRoom,
   chatMuteRoomUntil,
+  chatPinnedMessagesPage,
   chatRemoveGroupMember,
   chatStarredMessagesPage,
   chatUnmuteGroupMember,
@@ -85,6 +86,7 @@ export default function ChatGroupSettingsSheet({
   const [membersError, setMembersError] = useState('')
 
   const [starred, setStarred] = useState(/** @type {any[]} */ ([]))
+  const [pinnedCount, setPinnedCount] = useState(0)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -122,6 +124,12 @@ export default function ChatGroupSettingsSheet({
       setStarred(stars)
     } catch {
       setStarred([])
+    }
+    try {
+      const pins = await chatPinnedMessagesPage(supabaseClient, room.id, 1)
+      setPinnedCount(pins.length > 0 ? pins[0]?._total ?? pins.length : 0)
+    } catch {
+      setPinnedCount(0)
     }
   }, [room?.id, supabaseClient])
 

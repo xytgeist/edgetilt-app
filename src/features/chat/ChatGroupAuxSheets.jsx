@@ -241,10 +241,12 @@ export function ChatGroupMediaSheet({ open, onBack, supabaseClient, roomId, onJu
   const [links, setLinks] = useState(/** @type {any[]} */ ([]))
   const [docs, setDocs] = useState(/** @type {any[]} */ ([]))
   const [loading, setLoading] = useState(false)
+  const [loadErr, setLoadErr] = useState('')
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
+    setLoadErr('')
     void (async () => {
       try {
         const [m, l, d] = await Promise.all([
@@ -255,10 +257,11 @@ export function ChatGroupMediaSheet({ open, onBack, supabaseClient, roomId, onJu
         setMedia(m)
         setLinks(l)
         setDocs(d)
-      } catch {
+      } catch (e) {
         setMedia([])
         setLinks([])
         setDocs([])
+        setLoadErr(e?.message || 'Failed to load.')
       } finally {
         setLoading(false)
       }
@@ -285,7 +288,9 @@ export function ChatGroupMediaSheet({ open, onBack, supabaseClient, roomId, onJu
           </button>
         ))}
       </div>
-      {loading ? (
+      {loadErr ? (
+        <p className="text-[13px] text-rose-400">{loadErr}</p>
+      ) : loading ? (
         <p className="text-[13px] text-zinc-500">Loading…</p>
       ) : tab === 'media' ? (
         media.length === 0 ? (

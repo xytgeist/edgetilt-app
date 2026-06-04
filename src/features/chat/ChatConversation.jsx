@@ -1129,7 +1129,7 @@ export default function ChatConversation({
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  const handleSend = useCallback(async ({ body, imageUrls, previewUrls, pendingUploads, streamVideoUid = null, streamPosterUrl = null, streamVideoWidth = null, streamVideoHeight = null, replyToMessageId }) => {
+  const handleSend = useCallback(async ({ body, imageUrls, previewUrls, pendingUploads, pendingVideoUpload = null, streamVideoUid = null, streamPosterUrl = null, streamVideoWidth = null, streamVideoHeight = null, replyToMessageId }) => {
     // If user is viewing history, jump to live end before sending
     if (hasNewerRef.current) {
       await new Promise((resolve) => {
@@ -1155,6 +1155,7 @@ export default function ChatConversation({
     const displayUrls = (previewUrls?.length ? previewUrls : imageUrls) || []
     const readyUrls   = imageUrls || []
     const hasImages   = displayUrls.length > 0
+    const hasPendingVideo = pendingVideoUpload != null
 
     // One optimistic placeholder for all message types.
     // _key is set to tempId and NEVER changes — React never unmounts the bubble.
@@ -1164,7 +1165,7 @@ export default function ChatConversation({
       _key: tempId,
       body,
       image_urls: displayUrls,
-      _finalizingMedia: hasImages,
+      _finalizingMedia: hasImages || hasPendingVideo,
       stream_video_uid:    streamVideoUid    || null,
       stream_poster_url:   streamPosterUrl   || null,
       stream_video_width:  streamVideoWidth  ?? null,
@@ -1199,7 +1200,7 @@ export default function ChatConversation({
       }
       void refreshReadReceipts()
 
-      // Background: finish pending uploads then patch image_urls on the server.
+      // Background: finish pending image uploads then patch image_urls on the server.
       // allSettled (not all) so a single failed upload doesn't discard the rest.
       if (hasImages && messageId) {
         Promise.allSettled(allPendingUploads).then(async (results) => {
@@ -1220,6 +1221,26 @@ export default function ChatConversation({
           } catch (e) {
             console.error('[Chat] image_urls patch failed', e?.message)
           }
+        })
+      }
+
+      // Background: await video upload completion — clears the _finalizingMedia spinner
+      // on the bubble once the tus upload finishes. No DB patch needed; uid is already stored.
+      if (hasPendingVideo && messageId && pendingVideoUpload) {
+        Promise.resolve(pendingVideoUpload).then(() => {
+          setMessages((prev) => prev.map((m) =>
+            (m.id === messageId || m.id === tempId) && m.stream_video_uid
+              ? { ...m, _finalizingMedia: false }
+              : m
+          ))
+        }).catch((e) => {
+          // Upload failed after send — surface a subtle error on the bubble
+          console.error('[Chat] video upload failed after send', e?.message)
+          setMessages((prev) => prev.map((m) =>
+            (m.id === messageId || m.id === tempId) && m.stream_video_uid
+              ? { ...m, _finalizingMedia: false, _videoUploadFailed: true }
+              : m
+          ))
         })
       }
     } catch (err) {

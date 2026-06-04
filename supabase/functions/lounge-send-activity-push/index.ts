@@ -103,14 +103,6 @@ function actorDisplayName(profile: ActorProfile | null | undefined): string {
   return 'Member'
 }
 
-function actorLabel(profile: ActorProfile | null | undefined): string {
-  const handle = String(profile?.handle || '').trim()
-  if (handle) return `@${handle.replace(/^@/, '')}`
-  const name = String(profile?.display_name || '').trim()
-  if (name) return name
-  return 'Someone'
-}
-
 function prefAllows(prefs: NotificationPrefs | null, eventType: string): boolean {
   if (!prefs) return true
   switch (eventType) {
@@ -277,7 +269,7 @@ function buildSingleNotification(
   actor: ActorProfile | null | undefined,
   isReply = false,
 ): PushNotificationPayload {
-  const who = actorLabel(actor)
+  const who = actorDisplayName(actor)
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
   return {
     title: pushTitleForEventType(event.event_type),
@@ -426,7 +418,7 @@ async function handleImmediatePush(
       event.event_type === 'play_log_partner_unpaid') &&
     event.play_log_entry_id
   ) {
-    const who = actorLabel((actorProfile as ActorProfile | null) || null)
+    const who = actorDisplayName((actorProfile as ActorProfile | null) || null)
     let gameName = 'a play log'
     let sharePct: number | null = null
     const { data: entryRow } = await admin

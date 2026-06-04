@@ -45,6 +45,8 @@ export default function useWebPushNotifications({ supabaseClient }) {
   const [isBusy, setIsBusy] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [isSubscribed, setIsSubscribed] = useState(false)
+  /** null = not checked yet; true/false = push_subscriptions row for this device endpoint. */
+  const [isServerRegistered, setIsServerRegistered] = useState(/** @type {boolean | null} */ (null))
   const [fetchedPublicKey, setFetchedPublicKey] = useState('')
 
   const envPublicKey = (import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || '').trim()
@@ -55,13 +57,81 @@ export default function useWebPushNotifications({ supabaseClient }) {
   )
   const canDisable = useMemo(() => isSupported && isSubscribed && !isBusy, [isSupported, isSubscribed, isBusy])
 
+  const upsertSubscriptionRow = useCallback(
+    async (subscription) => {
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabaseClient.auth.getUser()
+      if (userErr || !user) {
+        throw new Error('Sign in is required before enabling push notifications.')
+      }
+      const keys = readSubscriptionKeys(subscription)
+      const payload = {
+        user_id: user.id,
+        endpoint: subscription.endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        expiration_time: subscription.expirationTime,
+        user_agent: navigator.userAgent,
+      }
+      const { error } = await supabaseClient.from('push_subscriptions').upsert(payload, { onConflict: 'endpoint' })
+      if (error) throw error
+    },
+    [supabaseClient],
+  )
+
+  const verifyOrRepairServerRegistration = useCallback(
+    async (subscription) => {
+      if (!subscription || !supabaseClient) {
+        setIsServerRegistered(false)
+        return false
+      }
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabaseClient.auth.getUser()
+      if (userErr || !user) {
+        setIsServerRegistered(false)
+        return false
+      }
+      const { data, error } = await supabaseClient
+        .from('push_subscriptions')
+        .select('id')
+        .eq('endpoint', subscription.endpoint)
+        .maybeSingle()
+      if (error) {
+        setIsServerRegistered(false)
+        return false
+      }
+      if (data?.id) {
+        setIsServerRegistered(true)
+        return true
+      }
+      try {
+        await upsertSubscriptionRow(subscription)
+        setIsServerRegistered(true)
+        return true
+      } catch {
+        setIsServerRegistered(false)
+        return false
+      }
+    },
+    [supabaseClient, upsertSubscriptionRow],
+  )
+
   const syncLocalState = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     const registration = await getPushServiceWorkerRegistration()
     const subscription = registration ? await registration.pushManager.getSubscription() : null
     setIsSubscribed(Boolean(subscription))
     setPermission(Notification.permission)
-  }, [])
+    if (subscription) {
+      await verifyOrRepairServerRegistration(subscription)
+    } else {
+      setIsServerRegistered(false)
+    }
+  }, [verifyOrRepairServerRegistration])
 
   useEffect(() => {
     const supported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
@@ -111,30 +181,6 @@ export default function useWebPushNotifications({ supabaseClient }) {
       cancelled = true
     }
   }, [isSupported, envPublicKey, supabaseClient])
-
-  const upsertSubscriptionRow = useCallback(
-    async (subscription) => {
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabaseClient.auth.getUser()
-      if (userErr || !user) {
-        throw new Error('Sign in is required before enabling push notifications.')
-      }
-      const keys = readSubscriptionKeys(subscription)
-      const payload = {
-        user_id: user.id,
-        endpoint: subscription.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        expiration_time: subscription.expirationTime,
-        user_agent: navigator.userAgent,
-      }
-      const { error } = await supabaseClient.from('push_subscriptions').upsert(payload, { onConflict: 'endpoint' })
-      if (error) throw error
-    },
-    [supabaseClient]
-  )
 
   const removeSubscriptionRow = useCallback(
     async (endpoint) => {
@@ -191,6 +237,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
         }))
       await upsertSubscriptionRow(subscription)
       setIsSubscribed(true)
+      setIsServerRegistered(true)
       setStatusMessage('Push notifications enabled on this device.')
       return true
     } catch (error) {
@@ -209,12 +256,14 @@ export default function useWebPushNotifications({ supabaseClient }) {
       const registration = await getPushServiceWorkerRegistration()
       if (!registration) {
         setIsSubscribed(false)
+        setIsServerRegistered(false)
         setStatusMessage('Push was already disabled.')
         return
       }
       const subscription = await registration.pushManager.getSubscription()
       if (!subscription) {
         setIsSubscribed(false)
+        setIsServerRegistered(false)
         setStatusMessage('Push was already disabled.')
         return
       }
@@ -222,6 +271,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
       await subscription.unsubscribe()
       await removeSubscriptionRow(endpoint)
       setIsSubscribed(false)
+      setIsServerRegistered(false)
       setStatusMessage('Push notifications disabled on this device.')
     } catch (error) {
       setStatusMessage(error?.message || 'Could not disable push notifications.')
@@ -230,12 +280,17 @@ export default function useWebPushNotifications({ supabaseClient }) {
     }
   }, [isSupported, removeSubscriptionRow])
 
+  const isRegistered = isSubscribed && isServerRegistered === true
+
   return {
     isSupported,
     permission,
     isBusy,
     statusMessage,
     isSubscribed,
+    isServerRegistered,
+    isRegistered,
+    syncLocalState,
     canEnable,
     canDisable,
     enable,

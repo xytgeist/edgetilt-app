@@ -5834,7 +5834,7 @@ export default function SocialFeed({
   }, [composerUserId, loungeFeedBrowseMode, refreshChatUnreadRoomCount])
 
   const {
-    pushPrefEnabled: loungePushPrefEnabled,
+    pushActive: loungePushActive,
     pushBusy: loungePushBusy,
     pushStatusHint: loungePushStatusHint,
     pushStatusMessage: loungePushStatusMessage,
@@ -13029,7 +13029,7 @@ export default function SocialFeed({
           onBuildBadgeChange={onLoungeBuildBadgeChange}
           onTitleRevealChange={onLoungePanelTitleReveal}
           videoCoordinatorSuspended={Boolean(loungePostDetail?.id)}
-          pushNotificationsEnabled={loungePushPrefEnabled}
+          pushNotificationsEnabled={loungePushActive}
           onPushNotificationsChange={onLoungePushToggle}
           pushNotificationsStatusHint={loungePushStatusHint}
           pushNotificationsBusy={loungePushBusy}

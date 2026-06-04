@@ -24,9 +24,15 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     isBusy,
     statusMessage,
     isSubscribed,
+    isServerRegistered,
+    isRegistered,
+    syncLocalState,
     enable,
     disable,
   } = useWebPushNotifications({ supabaseClient })
+
+  /** Toggle + hint reflect pref + browser subscription + push_subscriptions row. */
+  const pushActive = pushPrefEnabled && isRegistered
 
   const pushStatusHint = useMemo(() => {
     if (!viewerUserId) return 'Sign in to enable push on this device.'
@@ -35,12 +41,24 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     }
     if (!isSupported) return 'This browser does not support web push here.'
     if (permission === 'denied') return 'Notifications are blocked in browser settings.'
-    if (pushPrefEnabled && isSubscribed) return 'Alerts enabled on this device.'
+    if (pushPrefEnabled && isSubscribed && isServerRegistered === null) {
+      return 'Checking alert registration on this device…'
+    }
+    if (pushPrefEnabled && isSubscribed && isServerRegistered === false) {
+      return 'Alerts not saved on this device — turn off, then on again.'
+    }
+    if (pushActive) return 'Alerts enabled on this device.'
     if (pushPrefEnabled && !isSubscribed) {
       return 'Allow browser notifications when you turn this on.'
     }
     return 'Push alerts are off on this device.'
-  }, [viewerUserId, isSupported, permission, pushPrefEnabled, isSubscribed])
+  }, [viewerUserId, isSupported, permission, pushPrefEnabled, isSubscribed, isServerRegistered, pushActive])
+
+  /** Re-check server row after sign-in (browser sub may predate auth). */
+  useEffect(() => {
+    if (!viewerUserId) return
+    void syncLocalState()
+  }, [viewerUserId, syncLocalState])
 
   /** Pref off but device still subscribed (e.g. stale state) — tear down subscription. */
   useEffect(() => {
@@ -69,11 +87,12 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
 
   return {
     pushPrefEnabled,
+    pushActive,
     pushSupported: isSupported,
     pushPermission: permission,
     pushBusy: isBusy,
     pushStatusMessage: statusMessage,
-    pushSubscribed: isSubscribed,
+    pushSubscribed: isRegistered,
     pushStatusHint,
     onPushToggle,
   }

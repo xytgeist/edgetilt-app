@@ -81,10 +81,10 @@ export function formatLoungeActivityWhen(iso) {
 }
 
 export function loungeActivityActorLabel(event) {
-  const handle = String(event?.actor_handle || '').trim()
-  if (handle) return `@${handle}`
   const name = String(event?.actor_display_name || '').trim()
   if (name) return name
+  const handle = String(event?.actor_handle || '').trim()
+  if (handle) return `@${handle}`
   return 'Someone'
 }
 

@@ -461,7 +461,7 @@ Deno.serve(async (req) => {
 
     const { data: msg, error: mErr } = await admin
       .from('chat_messages')
-      .select('id, room_id, sender_id, deleted_at')
+      .select('id, room_id, sender_id, deleted_at, stream_video_uid')
       .eq('id', messageId)
       .maybeSingle()
     if (mErr || !msg) return json(404, { error: 'Message not found.' })
@@ -475,6 +475,20 @@ Deno.serve(async (req) => {
       .update({ deleted_at: new Date().toISOString(), body: '' })
       .eq('id', messageId)
     if (dErr) return json(400, { error: dErr.message })
+
+    // Best-effort CF Stream asset cleanup — skipped silently when creds are absent.
+    const videoUid = String((msg as { stream_video_uid?: string | null }).stream_video_uid || '').trim()
+    if (videoUid) {
+      const cfAccountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
+      const cfToken = Deno.env.get('CLOUDFLARE_STREAM_API_TOKEN')?.trim()
+      if (cfAccountId && cfToken) {
+        void fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(cfAccountId)}/stream/${encodeURIComponent(videoUid)}`,
+          { method: 'DELETE', headers: { Authorization: `Bearer ${cfToken}` } },
+        ).catch(() => { /* best-effort — don't block the delete response */ })
+      }
+    }
+
     return json(200, { ok: true })
   }
 

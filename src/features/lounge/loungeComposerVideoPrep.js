@@ -74,7 +74,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
 }
 
 /**
- * Mint → resumable tus upload → manifest retries only (caller supplies the encoded `File`).
+ * Mint → resumable tus upload → (optional) manifest wait — with retries on failure.
  *
  * @param {object} opts
  * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
@@ -82,6 +82,11 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
  * @param {File} opts.uploadFile
  * @param {(info: { progress: number, status: string, detail?: string, attempt: number }) => void} [opts.onProgress]
  * @param {(detail: string) => void} [opts.onUploadDiagnostic] Last error line for the upload bar
+ * @param {(uid: string) => void} [opts.onStreamUidAvailable] Called as soon as the CF Stream uid is
+ *   captured from the tus first-chunk header — before the rest of the file is uploaded.
+ *   Fired on every attempt so callers should be idempotent (first call wins in most use-cases).
+ * @param {boolean} [opts.skipManifestWait] When true, resolve immediately after upload without
+ *   polling the HLS manifest. Use for chat where CF iframe handles the processing state gracefully.
  * @returns {Promise<{ streamVideoUid: string }>}
  */
 export async function uploadEncodedVideoToCfStreamWithRetries({
@@ -90,6 +95,8 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
   uploadFile,
   onProgress,
   onUploadDiagnostic,
+  onStreamUidAvailable,
+  skipManifestWait = false,
 }) {
   const report = (progress, status, detail, attempt) => {
     if (typeof onProgress !== 'function') return
@@ -123,12 +130,18 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingUid = id
+          onStreamUidAvailable?.(id)
         },
         onProgress: (r) =>
           report(0.44 + r * 0.46, 'Uploading to Ether', `${Math.round(r * 100)}%`, attempt),
       })
       pendingUid = uid
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
+
+      if (skipManifestWait) {
+        report(1, 'Ready', '', attempt)
+        return { streamVideoUid: uid }
+      }
 
       report(0.92, 'Finishing upload', 'Waiting for playback…', attempt)
       await waitForCfStreamManifestReady(uid, {

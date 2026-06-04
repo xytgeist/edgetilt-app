@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  chatIsGroupOwner,
+  chatCanPinMessages,
   chatPinnedMessagesPage,
   chatRoomSharedLinks,
   chatRoomSharedMedia,
   chatSearchMessages,
+  chatStarredMessagesPage,
   chatUnpinMessage,
 } from './chatApi.js'
 import ChatSharedLinkCard, {
@@ -20,12 +21,13 @@ import { textIsOnlyUrls } from '../../utils/linkifyText.jsx'
  *   title: string,
  *   onBack: () => void,
  *   children: import('react').ReactNode,
+ *   zIndex?: number,
  * }} props
  */
-function AuxSheetShell({ open, title, onBack, children }) {
+function AuxSheetShell({ open, title, onBack, children, zIndex = 96 }) {
   if (!open || typeof document === 'undefined') return null
   return createPortal(
-    <div className="fixed inset-0 z-[96] flex flex-col bg-zinc-950" data-chat-feature>
+    <div className="fixed inset-0 flex flex-col bg-zinc-950" style={{ zIndex }} data-chat-feature>
       <div
         className="flex shrink-0 items-center gap-2 border-b border-zinc-800/80 px-3 pb-3"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
@@ -152,7 +154,7 @@ export function ChatGroupPinnedSheet({
   onJumpToMessage,
   onPinsChanged,
 }) {
-  const isOwner = chatIsGroupOwner(room, viewerUserId)
+  const canManagePins = chatCanPinMessages(room, viewerUserId)
   const [pins, setPins] = useState(/** @type {any[]} */ ([]))
   const [err, setErr] = useState('')
 
@@ -177,8 +179,10 @@ export function ChatGroupPinnedSheet({
       ) : null}
       {pins.length === 0 ? (
         <p className="text-[13px] text-zinc-500">
-          {isOwner
-            ? 'Long-press a message and tap Pin to pin it for everyone.'
+          {canManagePins
+            ? (room.kind === 'dm'
+              ? 'Long-press a message and tap Pin to pin it.'
+              : 'Long-press a message and tap Pin to pin it for everyone.')
             : 'No pinned messages yet.'}
         </p>
       ) : (
@@ -200,7 +204,7 @@ export function ChatGroupPinnedSheet({
                   Pinned {new Date(p.pinned_at).toLocaleString()}
                 </div>
               </button>
-              {isOwner ? (
+              {canManagePins ? (
                 <button
                   type="button"
                   className="mt-2 text-[12px] font-semibold text-rose-400 touch-manipulation active:opacity-70"
@@ -291,9 +295,21 @@ function SharedLinksList({ items, query, onJumpToMessage, onBack, itemLabel = 'l
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   roomId: string,
  *   onJumpToMessage: (messageId: string) => void,
+ *   senderUserId?: string | null,
+ *   title?: string,
+ *   zIndex?: number,
  * }} props
  */
-export function ChatGroupMediaSheet({ open, onBack, supabaseClient, roomId, onJumpToMessage }) {
+export function ChatGroupMediaSheet({
+  open,
+  onBack,
+  supabaseClient,
+  roomId,
+  onJumpToMessage,
+  senderUserId = null,
+  title = 'Media, links & docs',
+  zIndex = 96,
+}) {
   const [tab, setTab] = useState('media')
   const [media, setMedia] = useState(/** @type {any[]} */ ([]))
   const [links, setLinks] = useState(/** @type {any[]} */ ([]))
@@ -312,25 +328,25 @@ export function ChatGroupMediaSheet({ open, onBack, supabaseClient, roomId, onJu
     setLoadErr('')
     setLinksErr('')
     void (async () => {
-      const mediaP = chatRoomSharedMedia(supabaseClient, roomId)
+      const mediaP = chatRoomSharedMedia(supabaseClient, roomId, 80, senderUserId)
         .then((m) => { setMedia(m); return m })
         .catch((e) => { setMedia([]); setLoadErr(e?.message || 'Failed to load media.'); return [] })
-      const linksP = chatRoomSharedLinks(supabaseClient, roomId, { docsOnly: false })
+      const linksP = chatRoomSharedLinks(supabaseClient, roomId, { docsOnly: false, senderUserId })
         .then((l) => { setLinks(l); return l })
         .catch((e) => { setLinks([]); setLinksErr(e?.message || 'Failed to load links.'); return [] })
-      const docsP = chatRoomSharedLinks(supabaseClient, roomId, { docsOnly: true })
+      const docsP = chatRoomSharedLinks(supabaseClient, roomId, { docsOnly: true, senderUserId })
         .then((d) => { setDocs(d); return d })
         .catch((e) => { setDocs([]); setLinksErr((prev) => prev || e?.message || 'Failed to load docs.'); return [] })
 
       await Promise.all([mediaP, linksP, docsP])
       setLoading(false)
     })()
-  }, [open, roomId, supabaseClient])
+  }, [open, roomId, supabaseClient, senderUserId])
 
   const showLinkSearch = tab === 'links' || tab === 'docs'
 
   return (
-    <AuxSheetShell open={open} title="Media, links & docs" onBack={onBack}>
+    <AuxSheetShell open={open} title={title} onBack={onBack} zIndex={zIndex}>
       <div className="mb-4 flex gap-2">
         {MEDIA_TABS.map((t) => (
           <button
@@ -407,19 +423,85 @@ export function ChatGroupMediaSheet({ open, onBack, supabaseClient, roomId, onJu
             onBack={onBack}
           />
         )
-      ) : tab === 'docs' ? (
-        docs.length === 0 ? (
-          <p className="text-[13px] text-zinc-500">No document links found.</p>
-        ) : (
-          <SharedLinksList
-            items={docs}
-            query={linkSearch}
-            itemLabel="documents"
-            onJumpToMessage={onJumpToMessage}
-            onBack={onBack}
-          />
-        )
       ) : null}
+    </AuxSheetShell>
+  )
+}
+
+/**
+ * @param {{
+ *   open: boolean,
+ *   onBack: () => void,
+ *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
+ *   roomId: string,
+ *   onJumpToMessage: (messageId: string) => void,
+ *   senderUserId?: string | null,
+ *   title?: string,
+ *   zIndex?: number,
+ * }} props
+ */
+export function ChatGroupStarredSheet({
+  open,
+  onBack,
+  supabaseClient,
+  roomId,
+  onJumpToMessage,
+  senderUserId = null,
+  title = 'Starred',
+  zIndex = 96,
+}) {
+  const [rows, setRows] = useState(/** @type {any[]} */ ([]))
+  const [loading, setLoading] = useState(false)
+  const [loadErr, setLoadErr] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    setLoadErr('')
+    void (async () => {
+      try {
+        const stars = await chatStarredMessagesPage(supabaseClient, roomId, 50, senderUserId)
+        setRows(stars)
+      } catch (e) {
+        setRows([])
+        setLoadErr(e?.message || 'Failed to load starred messages.')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [open, roomId, supabaseClient, senderUserId])
+
+  return (
+    <AuxSheetShell open={open} title={title} onBack={onBack} zIndex={zIndex}>
+      {loadErr ? (
+        <p className="text-[13px] text-rose-400">{loadErr}</p>
+      ) : loading ? (
+        <p className="text-[13px] text-zinc-500">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-center text-[14px] text-zinc-500">
+          {senderUserId ? 'No starred messages from this member.' : 'Long-press any message and tap Star.'}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((s) => (
+            <li key={s.message_id}>
+              <button
+                type="button"
+                className="w-full rounded-xl bg-zinc-900/80 px-3 py-2.5 text-left touch-manipulation active:bg-zinc-800"
+                onClick={() => {
+                  onJumpToMessage(s.message_id)
+                  onBack()
+                }}
+              >
+                <div className="line-clamp-2 text-[14px] text-zinc-200">{s.body || '[media]'}</div>
+                <div className="mt-1 text-[11px] text-zinc-500">
+                  {new Date(s.created_at).toLocaleString()}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </AuxSheetShell>
   )
 }

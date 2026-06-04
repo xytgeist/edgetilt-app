@@ -444,6 +444,9 @@ export default function SocialFeed({
   onOpenChatWithUser,
   /** Called with roomId when a room is tapped in the dock chat panel — navigates to Chat tab. */
   onOpenChatRoomFromDock,
+  /** When set, opens the lounge profile modal for this user (e.g. from Chat member profile). */
+  requestOpenProfileUserId = null,
+  onRequestOpenProfileConsumed,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -9673,6 +9676,13 @@ export default function SocialFeed({
       supabaseClient,
     ]
   )
+
+  useEffect(() => {
+    if (!requestOpenProfileUserId) return
+    const userId = requestOpenProfileUserId
+    onRequestOpenProfileConsumed?.()
+    void openProfileModal({ user_id: userId })
+  }, [requestOpenProfileUserId, openProfileModal, onRequestOpenProfileConsumed])
 
   const profileEntityStub = useCallback(
     (entity) => {

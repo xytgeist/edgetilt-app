@@ -35,6 +35,7 @@ import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
  *   onInitialRoomConsumed?: () => void,
+ *   onViewProfile?: ((userId: string) => void) | null,
  * }} props
  */
 export default function ChatTab({
@@ -48,6 +49,7 @@ export default function ChatTab({
   onInitialPeerConsumed,
   initialRoomId = null,
   onInitialRoomConsumed,
+  onViewProfile = null,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -377,6 +379,23 @@ export default function ChatTab({
     }
   }, [supabaseClient, loadRooms])
 
+  const openDmWithUser = useCallback(async (userId) => {
+    if (!userId) return
+    setActionErr('')
+    setActionBusy(true)
+    try {
+      const res = await chatOpenDm(supabaseClient, userId)
+      if (res?.room_id) {
+        await loadRooms()
+        setActiveRoomId(res.room_id)
+      }
+    } catch (e) {
+      setActionErr(e?.message || 'Could not open conversation.')
+    } finally {
+      setActionBusy(false)
+    }
+  }, [supabaseClient, loadRooms])
+
   // ── Room long-press actions ───────────────────────────────────────────────
 
   const handleRoomAction = useCallback(async (action, room) => {
@@ -546,6 +565,8 @@ export default function ChatTab({
         profilesById={profilesById}
         otherUnreadCount={otherUnreadCount}
         onBack={() => { setActiveRoomId(null); setHydratedOpenRoom(null); void loadRooms() }}
+        onViewProfile={onViewProfile}
+        onOpenDm={openDmWithUser}
         onRoomUpdated={(patch) => {
           setRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
           setHydratedOpenRoom((prev) => prev?.id === activeRoomId ? { ...prev, ...patch } : prev)

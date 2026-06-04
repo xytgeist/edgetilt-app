@@ -502,10 +502,11 @@ export async function chatPinnedMessageIds(supabase, roomId) {
   return new Set((data || []).map((r) => r.message_id))
 }
 
-export async function chatStarredMessagesPage(supabase, roomId, limit = 50) {
+export async function chatStarredMessagesPage(supabase, roomId, limit = 50, senderUserId = null) {
   const { data, error } = await supabase.rpc('chat_starred_messages_page', {
     p_room_id: roomId,
     p_limit: limit,
+    p_sender_id: senderUserId || null,
   })
   if (error) return []
   return data || []
@@ -515,6 +516,13 @@ export function chatIsGroupOwner(room, viewerUserId) {
   if (!room || room.kind !== 'group' || !viewerUserId) return false
   if (room.created_by === viewerUserId) return true
   return room.memberRole === 'admin' || room.member_role === 'admin'
+}
+
+/** Group owner/admin, or either participant in a DM. */
+export function chatCanPinMessages(room, viewerUserId) {
+  if (!room || !viewerUserId) return false
+  if (room.kind === 'dm') return true
+  return chatIsGroupOwner(room, viewerUserId)
 }
 
 export async function chatSearchMessages(supabase, roomId, query, limit = 30) {
@@ -536,20 +544,22 @@ export async function chatPinnedMessagesPage(supabase, roomId, limit = 50) {
   return data || []
 }
 
-export async function chatRoomSharedMedia(supabase, roomId, limit = 80) {
+export async function chatRoomSharedMedia(supabase, roomId, limit = 80, senderUserId = null) {
   const { data, error } = await supabase.rpc('chat_room_shared_media', {
     p_room_id: roomId,
     p_limit: limit,
+    p_sender_id: senderUserId || null,
   })
   if (error) throw new Error(error.message)
   return data || []
 }
 
-export async function chatRoomSharedLinks(supabase, roomId, { docsOnly = false, limit = 80 } = {}) {
+export async function chatRoomSharedLinks(supabase, roomId, { docsOnly = false, limit = 80, senderUserId = null } = {}) {
   const { data, error } = await supabase.rpc('chat_room_shared_links', {
     p_room_id: roomId,
     p_limit: limit,
     p_docs_only: docsOnly,
+    p_sender_id: senderUserId || null,
   })
   if (error) throw new Error(error.message)
   return data || []

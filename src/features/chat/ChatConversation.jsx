@@ -24,6 +24,7 @@ import {
   chatPinMessage,
   chatUnpinMessage,
   chatMessagesWindow,
+  chatCanPinMessages,
   chatIsGroupOwner,
   chatRoomReadReceipts,
 } from './chatApi.js'
@@ -115,6 +116,7 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
  *   profilesById: Record<string, { display_name?: string | null, handle?: string | null, avatar_url?: string | null }>,
  *   onBack: () => void,
  *   onViewProfile?: ((userId: string) => void) | null,
+ *   onOpenDm?: ((userId: string) => void | Promise<void>) | null,
  *   onRoomUpdated?: ((patch: Record<string, unknown>) => void) | null,
  *   viewerReadReceiptsEnabled?: boolean,
  *   onViewerReadReceiptsEnabledChange?: ((enabled: boolean) => void | Promise<void>) | null,
@@ -130,6 +132,7 @@ export default function ChatConversation({
   otherUnreadCount = 0,
   onBack,
   onViewProfile = null,
+  onOpenDm = null,
   onRoomUpdated = null,
   viewerReadReceiptsEnabled = true,
   onViewerReadReceiptsEnabledChange = null,
@@ -254,7 +257,10 @@ export default function ChatConversation({
     created_by: roomMeta.created_by ?? room.created_by,
   }
   const isGroupRoom = activeRoom.kind === 'group'
+  const isDmRoom = activeRoom.kind === 'dm'
   const isGroupOwner = chatIsGroupOwner(activeRoom, viewerUserId)
+  const canPinMessages = chatCanPinMessages(activeRoom, viewerUserId)
+  const showStarPinActions = isGroupRoom || isDmRoom
   const showReadReceipts = activeRoom.kind === 'dm' || isGroupRoom
   const lastOwnMessageId = useMemo(
     () => findLastOwnMessageId(messages, viewerUserId),
@@ -286,8 +292,6 @@ export default function ChatConversation({
     if (!isGroupRoom || !room.id) {
       setGroupHeaderMembers([])
       setGroupHeaderErr('')
-      setStarredIds(new Set())
-      setPinnedIds(new Set())
       return undefined
     }
     let cancelled = false
@@ -301,6 +305,18 @@ export default function ChatConversation({
           ? 'Could not load member avatars for this group.'
           : ''),
       )
+    })()
+    return () => { cancelled = true }
+  }, [isGroupRoom, room.id, room.avatar_url, roomMeta.avatar_url, supabaseClient])
+
+  useEffect(() => {
+    if (!showStarPinActions || !room.id) {
+      setStarredIds(new Set())
+      setPinnedIds(new Set())
+      return undefined
+    }
+    let cancelled = false
+    void (async () => {
       const [stars, pins] = await Promise.all([
         chatStarredMessageIds(supabaseClient, room.id),
         chatPinnedMessageIds(supabaseClient, room.id),
@@ -311,17 +327,17 @@ export default function ChatConversation({
       }
     })()
     return () => { cancelled = true }
-  }, [isGroupRoom, room.id, room.avatar_url, roomMeta.avatar_url, supabaseClient])
+  }, [showStarPinActions, room.id, supabaseClient])
 
   const refreshPinnedIds = useCallback(async () => {
-    if (!isGroupRoom || !room.id) return
+    if (!showStarPinActions || !room.id) return
     try {
       const pins = await chatPinnedMessageIds(supabaseClient, room.id)
       setPinnedIds(pins)
     } catch {
       setPinnedIds(new Set())
     }
-  }, [isGroupRoom, room.id, supabaseClient])
+  }, [showStarPinActions, room.id, supabaseClient])
 
   const handleToggleStar = useCallback(async (messageId, starred) => {
     try {
@@ -339,7 +355,7 @@ export default function ChatConversation({
   }, [supabaseClient])
 
   const handleTogglePin = useCallback(async (messageId, pinned) => {
-    if (!isGroupOwner) return
+    if (!canPinMessages) return
     try {
       if (pinned) await chatPinMessage(supabaseClient, room.id, messageId)
       else await chatUnpinMessage(supabaseClient, room.id, messageId)
@@ -352,7 +368,7 @@ export default function ChatConversation({
     } catch {
       // ignore
     }
-  }, [isGroupOwner, supabaseClient, room.id])
+  }, [canPinMessages, supabaseClient, room.id])
 
   const scrollMessageIntoView = useCallback((messageId) => {
     if (!messageId) return
@@ -1976,10 +1992,10 @@ export default function ChatConversation({
                       isGroupStart={isGroupStart}
                       isGroupEnd={isGroupEnd}
                       isFinalizingMedia={Boolean(msg._finalizingMedia)}
-                      enableStar={isGroupRoom}
+                      enableStar={showStarPinActions}
                       isStarred={starredIds.has(msg.id)}
                       onToggleStar={handleToggleStar}
-                      enablePin={isGroupRoom && isGroupOwner}
+                      enablePin={canPinMessages}
                       isPinned={pinnedIds.has(msg.id)}
                       onTogglePin={handleTogglePin}
                       onReply={setReplyTarget}
@@ -2088,6 +2104,9 @@ export default function ChatConversation({
           peerAvatarUrl={headerAvatar}
           peerHandle={peerProfile?.handle || activeRoom.peer_handle || null}
           peerUserId={peerUserId}
+          viewerUserId={viewerUserId}
+          onJumpToMessage={jumpToMessage}
+          onPinsChanged={refreshPinnedIds}
           onViewProfile={onViewProfile}
           onRoomUpdated={(patch) => {
             setRoomMeta((prev) => ({ ...prev, ...patch }))
@@ -2131,6 +2150,8 @@ export default function ChatConversation({
           onLeftGroup={onBack}
           onJumpToMessage={jumpToMessage}
           onPinsChanged={refreshPinnedIds}
+          onViewProfile={onViewProfile}
+          onOpenDm={onOpenDm}
           viewerReadReceiptsEnabled={viewerReadReceiptsEnabled}
           onViewerReadReceiptsEnabledChange={async (enabled) => {
             await onViewerReadReceiptsEnabledChange?.(enabled)

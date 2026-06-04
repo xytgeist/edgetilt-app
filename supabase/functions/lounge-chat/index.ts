@@ -819,9 +819,35 @@ Deno.serve(async (req) => {
     const roomId = String(body?.room_id || '').trim()
     const messageId = String(body?.message_id || '').trim()
     if (!roomId || !messageId) return json(400, { error: 'room_id and message_id are required.' })
-    if (!(await isGroupAdmin(roomId, user.id))) {
-      return json(403, { error: 'Only the group owner can pin messages.' })
+
+    const { data: pinRoom } = await admin
+      .from('chat_rooms')
+      .select('id, kind')
+      .eq('id', roomId)
+      .maybeSingle()
+    if (!pinRoom) return json(404, { error: 'Room not found.' })
+
+    if (pinRoom.kind === 'dm') {
+      if (!(await requireGroupMember(roomId))) {
+        return json(403, { error: 'Not a member of this conversation.' })
+      }
+    } else if (pinRoom.kind === 'group') {
+      if (!(await isGroupAdmin(roomId, user.id))) {
+        return json(403, { error: 'Only the group owner can pin messages.' })
+      }
+    } else {
+      return json(403, { error: 'Cannot pin messages in this room.' })
     }
+
+    const { data: pinMsg } = await admin
+      .from('chat_messages')
+      .select('room_id, deleted_at')
+      .eq('id', messageId)
+      .maybeSingle()
+    if (!pinMsg || pinMsg.deleted_at || pinMsg.room_id !== roomId) {
+      return json(404, { error: 'Message not found.' })
+    }
+
     if (action === 'pin_message') {
       const { error: pErr } = await admin
         .from('chat_pinned_messages')

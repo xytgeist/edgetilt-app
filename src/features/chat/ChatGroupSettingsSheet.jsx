@@ -23,7 +23,9 @@ import {
   ChatGroupMediaSheet,
   ChatGroupPinnedSheet,
   ChatGroupSearchSheet,
+  ChatGroupStarredSheet,
 } from './ChatGroupAuxSheets.jsx'
+import ChatGroupMemberProfileSheet from './ChatGroupMemberProfileSheet.jsx'
 import { SectionLabel, SettingsGroup, SettingsToggleRow } from './chatSettingsUi.jsx'
 
 const OWNER_MEMBER_MUTE_OPTS = [
@@ -55,6 +57,8 @@ const SELF_MUTE_OPTS = [
  *   onLeftGroup: () => void,
  *   onJumpToMessage?: (messageId: string) => void,
  *   onPinsChanged?: () => void,
+ *   onViewProfile?: ((userId: string) => void) | null,
+ *   onOpenDm?: ((userId: string) => void | Promise<void>) | null,
  *   viewerReadReceiptsEnabled?: boolean,
  *   onViewerReadReceiptsEnabledChange?: ((enabled: boolean) => void | Promise<void>) | null,
  *   readReceiptsBusy?: boolean,
@@ -71,6 +75,8 @@ export default function ChatGroupSettingsSheet({
   onLeftGroup,
   onJumpToMessage,
   onPinsChanged,
+  onViewProfile = null,
+  onOpenDm = null,
   viewerReadReceiptsEnabled = true,
   onViewerReadReceiptsEnabledChange = null,
   readReceiptsBusy = false,
@@ -99,6 +105,7 @@ export default function ChatGroupSettingsSheet({
   const [customMuteVisible, setCustomMuteVisible] = useState(false)
 
   const [auxView, setAuxView] = useState(/** @type {null | 'search' | 'pinned' | 'media' | 'starred'} */ (null))
+  const [memberProfile, setMemberProfile] = useState(/** @type {null | Record<string, unknown>} */ (null))
   const [memberActionTarget, setMemberActionTarget] = useState(/** @type {null | { user_id: string, label: string, isMuted: boolean }} */ (null))
   const [muteTarget, setMuteTarget] = useState(/** @type {null | { user_id: string, label: string }} */ (null))
 
@@ -398,27 +405,33 @@ export default function ChatGroupSettingsSheet({
                 key={m.user_id}
                 className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-zinc-800/50' : ''}`}
               >
-                {m.avatar_url ? (
-                  <img src={m.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-700 text-[14px] font-bold text-zinc-300">
-                    {(m.display_name || m.handle || '?')[0]?.toUpperCase()}
+                <button
+                  type="button"
+                  onClick={() => setMemberProfile(m)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left touch-manipulation active:opacity-80"
+                >
+                  {m.avatar_url ? (
+                    <img src={m.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-700 text-[14px] font-bold text-zinc-300">
+                      {(m.display_name || m.handle || '?')[0]?.toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="truncate text-[14px] font-semibold text-zinc-100">
+                        {m.display_name || m.handle || 'Member'}
+                      </span>
+                      {isMe && <span className="shrink-0 text-[11px] text-zinc-500">you</span>}
+                    </div>
+                    {m.handle && m.display_name ? (
+                      <div className="truncate text-[12px] text-zinc-500">@{m.handle}</div>
+                    ) : null}
+                    {memberIsMuted && !isMe ? (
+                      <div className="text-[11px] text-amber-400/80">Muted · cannot send</div>
+                    ) : null}
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="truncate text-[14px] font-semibold text-zinc-100">
-                      {m.display_name || m.handle || 'Member'}
-                    </span>
-                    {isMe && <span className="shrink-0 text-[11px] text-zinc-500">you</span>}
-                  </div>
-                  {m.handle && m.display_name ? (
-                    <div className="truncate text-[12px] text-zinc-500">@{m.handle}</div>
-                  ) : null}
-                  {memberIsMuted && !isMe ? (
-                    <div className="text-[11px] text-amber-400/80">Muted · cannot send</div>
-                  ) : null}
-                </div>
+                </button>
                 {isOwner && !isMe ? (
                   <button
                     type="button"
@@ -737,51 +750,26 @@ export default function ChatGroupSettingsSheet({
         onJumpToMessage={(id) => { jump(id); onClose() }}
       />
 
-      {/* Starred messages sub-screen */}
-      {open && auxView === 'starred' ? createPortal(
-        <div className="fixed inset-0 z-[96] flex flex-col bg-zinc-950" data-chat-feature>
-          <div
-            className="flex shrink-0 items-center gap-3 border-b border-zinc-800/60 px-3 pb-3"
-            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
-          >
-            <button
-              type="button"
-              onClick={() => setAuxView(null)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 touch-manipulation active:bg-zinc-800"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <h1 className="flex-1 text-[17px] font-semibold text-zinc-100">Starred</h1>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-3">
-            {starred.length === 0 ? (
-              <p className="mt-4 text-center text-[14px] text-zinc-500">
-                Long-press any message and tap Star.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {starred.map((s) => (
-                  <li key={s.message_id}>
-                    <button
-                      type="button"
-                      className="w-full rounded-xl bg-zinc-900/80 px-3 py-2.5 text-left touch-manipulation active:bg-zinc-800"
-                      onClick={() => { onJumpToMessage?.(s.message_id); onClose() }}
-                    >
-                      <div className="line-clamp-2 text-[14px] text-zinc-200">{s.body || '[media]'}</div>
-                      <div className="mt-1 text-[11px] text-zinc-500">
-                        {new Date(s.created_at).toLocaleString()}
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>,
-        document.body,
-      ) : null}
+      <ChatGroupStarredSheet
+        open={open && auxView === 'starred'}
+        onBack={() => setAuxView(null)}
+        supabaseClient={supabaseClient}
+        roomId={String(room.id)}
+        onJumpToMessage={(id) => { jump(id); onClose() }}
+      />
+
+      <ChatGroupMemberProfileSheet
+        open={open && Boolean(memberProfile)}
+        onBack={() => setMemberProfile(null)}
+        member={memberProfile}
+        roomId={String(room.id)}
+        supabaseClient={supabaseClient}
+        viewerUserId={viewerUserId}
+        onJumpToMessage={jump}
+        onOpenDm={onOpenDm}
+        onViewProfile={onViewProfile}
+        onCloseAll={() => { setMemberProfile(null); onClose() }}
+      />
 
       <ProfileAvatarCropModal
         open={Boolean(avatarCropFile)}

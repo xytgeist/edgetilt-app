@@ -942,6 +942,49 @@ function PinIcon({ filled = false }) {
 const GRID_MAX_VISIBLE = 4
 
 /**
+ * Displays an image while seamlessly transitioning from a blob preview URL to
+ * a permanent R2 URL.  The blob stays visible until the R2 image has fully
+ * loaded in a hidden Image(), then the src swaps — zero blank flash.
+ * The blob URL is revoked only after the swap.
+ */
+function ChatMediaImage({ src, className }) {
+  const [displaySrc, setDisplaySrc] = useState(src)
+  const displaySrcRef = useRef(src)
+
+  useEffect(() => {
+    if (src === displaySrcRef.current) return
+
+    // Blob→blob or empty: swap immediately (no preload needed)
+    if (!src || src.startsWith('blob:')) {
+      displaySrcRef.current = src
+      setDisplaySrc(src)
+      return
+    }
+
+    // Real URL arriving — preload off-screen, swap only when ready
+    const img = new window.Image()
+    img.onload = () => {
+      const old = displaySrcRef.current
+      displaySrcRef.current = src
+      setDisplaySrc(src)
+      if (old?.startsWith('blob:')) {
+        try { URL.revokeObjectURL(old) } catch { /* ignore */ }
+      }
+    }
+    img.onerror = () => {
+      // Load failed but swap anyway so we don't stay on revoked blob forever
+      displaySrcRef.current = src
+      setDisplaySrc(src)
+    }
+    img.src = src
+
+    return () => { img.onload = null; img.onerror = null }
+  }, [src])
+
+  return <img src={displaySrc} alt="" className={className} />
+}
+
+/**
  * @param {{ media: Array<{ type: string, url?: string, videoUid?: string, posterUrl?: string }>, onOpen: (index: number) => void }} props
  */
 function ChatMediaGrid({ media, onOpen }) {
@@ -961,8 +1004,9 @@ function ChatMediaGrid({ media, onOpen }) {
         const spanFull = count === 3 && i === 0
 
         return (
+          // Use index as key so React keeps the component alive when URL changes blob→R2
           <button
-            key={item.videoUid || item.url || i}
+            key={i}
             type="button"
             onClick={() => onOpen(i)}
             className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''}`}
@@ -986,7 +1030,7 @@ function ChatMediaGrid({ media, onOpen }) {
                 </div>
               </>
             ) : (
-              <img src={item.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <ChatMediaImage src={item.url} className="h-full w-full object-cover" />
             )}
 
             {/* +N overflow badge on the last visible tile */}

@@ -1135,8 +1135,8 @@ export default function ChatConversation({
               ? { ...m, image_urls: finalUrls.length ? finalUrls : m.image_urls, _finalizingMedia: false }
               : m
           ))
-          // Blob URLs are no longer needed in state — safe to revoke now
-          displayUrls.forEach((u) => { try { URL.revokeObjectURL(u) } catch { /* ignore */ } })
+          // Blob URLs are revoked by ChatMediaImage after each R2 image loads —
+          // no need to revoke here.
           if (!finalUrls.length) return
           try {
             await chatUpdateMessageImageUrls(supabaseClient, messageId, finalUrls)
@@ -1145,7 +1145,6 @@ export default function ChatConversation({
           }
         }).catch((e) => {
           console.error('[Chat] upload(s) failed after send', e?.message)
-          displayUrls.forEach((u) => { try { URL.revokeObjectURL(u) } catch { /* ignore */ } })
           setMessages((prev) => prev.map((m) =>
             (m.id === messageId || m.id === tempId) ? { ...m, _finalizingMedia: false } : m
           ))

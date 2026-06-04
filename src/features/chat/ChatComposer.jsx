@@ -665,6 +665,8 @@ export default function ChatComposer({
             style={{
               maxHeight: COMPOSER_MAX_H,
               paddingRight: hasContent ? 46 : 12,
+              WebkitUserSelect: 'text',
+              userSelect: 'text',
             }}
           />
 

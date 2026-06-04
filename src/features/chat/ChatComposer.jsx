@@ -616,7 +616,6 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || imageSlots.length >= MAX_IMAGES || videoMeta !== null || videoUploadProgress !== null}
-          onPointerDown={(e) => e.preventDefault()}
           onClick={() => { setPlusOpen(false); fileInputRef.current?.click() }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >
@@ -633,7 +632,6 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || videoMeta !== null || videoUploadProgress !== null || imageSlots.length > 0}
-          onPointerDown={(e) => e.preventDefault()}
           onClick={() => { setPlusOpen(false); videoInputRef.current?.click() }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >
@@ -649,7 +647,6 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || imageSlots.length >= MAX_IMAGES}
-          onPointerDown={(e) => e.preventDefault()}
           onClick={() => { setPlusOpen(false); setGifPickerOpen(true) }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >

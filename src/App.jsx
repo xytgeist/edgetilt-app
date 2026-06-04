@@ -208,7 +208,7 @@ function App() {
       if (wide.data) {
         const r = wide.data.role
         setIsStaffRole(r === 'moderator' || r === 'admin')
-        setIsAdminRole(r === 'admin')
+        setIsAdminRole(r === 'moderator' || r === 'admin')
         setHasActiveSubscriptionFromProfile(Boolean(wide.data.has_active_subscription))
         setStripeCustomerId(wide.data.stripe_customer_id ?? null)
         return
@@ -226,7 +226,7 @@ function App() {
         if (narrow.data) {
           const r = narrow.data.role
           setIsStaffRole(r === 'moderator' || r === 'admin')
-          setIsAdminRole(r === 'admin')
+          setIsAdminRole(r === 'moderator' || r === 'admin')
         } else {
           setIsStaffRole(false)
           setIsAdminRole(false)

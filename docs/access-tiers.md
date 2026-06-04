@@ -90,6 +90,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 - **Full access** to the entire app, including **any new calculators and guides** (no lockout from general or add-on content).
 - **Special badges** (distinct from verified / subscriber).
+- **Both moderator and admin receive `isAdmin = true`** in the client — content lock toggles (Calcs / Guides), PlayLogbook admin, OffersCalendar admin, and the Admin Utils section in Settings are all visible to both roles. (`App.jsx`: `isAdminRole = r === 'moderator' || r === 'admin'`.)
 - Implemented via existing / planned **`profiles.role`** (`moderator`, `admin`) plus RLS that mirrors these rules.
 
 ---

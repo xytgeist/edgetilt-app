@@ -86,6 +86,18 @@ export default function ChatComposer({
   const videoAbortRef = useRef(/** @type {AbortController|null} */ (null))
   /** Resolves when the background upload (post-send) is complete or has failed. */
   const videoUploadPromiseRef = useRef(/** @type {Promise<void>|null} */ (null))
+  /**
+   * Monotonically-increasing counter.  Each new encode/upload run captures the current
+   * value as `myGen`.  All state-setter calls inside that run are gated on
+   * `videoUploadGenRef.current === myGen`, so Send (which increments the counter) silences
+   * the old closure without aborting the upload promise itself.
+   */
+  const videoUploadGenRef = useRef(0)
+  /**
+   * Progress bus for the current upload.  Set in handleCropConfirm, read in handleSend.
+   * ChatConversation subscribes to it to relay progress into the chat bubble.
+   */
+  const videoCurrentBusRef = useRef(/** @type {{ subscribe: (fn: Function) => void }|null} */ (null))
 
   const textareaRef    = useRef(null)
   const inputWrapRef   = useRef(null)
@@ -447,14 +459,29 @@ export default function ChatComposer({
     setUploadErr('')
     setVideoMeta(null)
     videoUploadPromiseRef.current = null
-    setVideoUploadStatus({ progress: 0, status: 'Reading video…', detail: '', attempt: 1 })
+
+    // Each upload run gets its own generation number.  All composer state-setter
+    // calls below are gated on this value.  handleSend increments the counter to
+    // silence these callbacks without aborting the upload itself.
+    const myGen = ++videoUploadGenRef.current
+
+    // Helpers that only fire if this upload run is still the active one.
+    const guardStatus = (s) => { if (videoUploadGenRef.current === myGen) setVideoUploadStatus(s) }
+    const guardMeta   = (m) => { if (videoUploadGenRef.current === myGen) setVideoMeta(m) }
+
+    // Progress bus: ChatConversation subscribes after Send to relay % into the bubble.
+    const progressListeners = []
+    const progressBus = { subscribe: (fn) => progressListeners.push(fn) }
+    videoCurrentBusRef.current = progressBus
+
+    const notifyProgress = (s) => progressListeners.forEach((fn) => fn(s))
+
+    guardStatus({ progress: 0, status: 'Reading video…', detail: '', attempt: 1 })
 
     const abortCtrl = new AbortController()
     videoAbortRef.current = abortCtrl
 
     // Start poster capture + dimension probe in parallel with encode/upload.
-    // These may still be running when the uid arrives — that's fine; we update
-    // videoMeta again with the real poster once both are done.
     let dims = null
     let localPoster = null
     const posterCapturePromise = Promise.all([
@@ -467,56 +494,56 @@ export default function ChatComposer({
 
     const uploadPromise = (async () => {
       try {
-        // Validate + encode (pass-through for short clips that skip the trimmer).
         const encodedFile = await encodeComposerVideoFileFromSpec({
           signal: abortCtrl.signal,
           spec: { kind: 'direct', file: trimmedFile },
           onProgress: ({ progress, status, detail, attempt }) => {
-            setVideoUploadStatus({ progress, status, detail: detail || '', attempt })
+            const s = { progress, status, detail: detail || '', attempt }
+            guardStatus(s)
+            notifyProgress(s)
           },
         })
 
         if (abortCtrl.signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
-        // Tus upload with 5-attempt retry loop.
-        // skipManifestWait: chat doesn't need to block on CF encoding — the iframe
-        // player handles the "processing" state gracefully.
+        // skipManifestWait: chat doesn't need to block on CF encoding.
         const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({
           supabaseClient,
           signal: abortCtrl.signal,
           uploadFile: encodedFile,
           skipManifestWait: true,
           onProgress: ({ progress, status, detail, attempt }) => {
-            setVideoUploadStatus({ progress, status, detail: detail || '', attempt })
+            const s = { progress, status, detail: detail || '', attempt }
+            guardStatus(s)
+            notifyProgress(s)
           },
           onStreamUidAvailable: (id) => {
-            // Uid available from tus first-chunk header → unlock Send immediately.
-            setVideoMeta({
+            guardMeta({
               uid: id,
               posterUrl: cfStreamPosterUrl(id),
-              localPoster,   // may still be null — updated below when capture finishes
+              localPoster,
               width: dims?.width ?? null,
               height: dims?.height ?? null,
             })
           },
         })
 
-        // Wait for poster to finish, then write final state with all fields.
         await posterCapturePromise
-        setVideoMeta({
+        guardMeta({
           uid,
           posterUrl: cfStreamPosterUrl(uid),
           localPoster,
           width: dims?.width ?? null,
           height: dims?.height ?? null,
         })
-        setVideoUploadStatus(null)
+        guardStatus(null)
+        notifyProgress({ progress: 1, status: 'Done', detail: '', attempt: 1 })
       } catch (e) {
         if (e?.name === 'AbortError') return
-        setUploadErr(e?.message || 'Video upload failed.')
-        setVideoMeta(null)
-        setVideoUploadStatus(null)
+        guardStatus(null)
+        guardMeta(null)
         videoAbortRef.current = null
+        if (videoUploadGenRef.current === myGen) setUploadErr(e?.message || 'Video upload failed.')
       }
     })()
 
@@ -567,10 +594,12 @@ export default function ChatComposer({
       .map((s) => uploadPromisesRef.current.get(s.id))
       .filter(Boolean)
 
-    // Capture video upload promise before clearing state — if upload is still running
-    // (user sent while tus was uploading in background), ChatConversation will await it
-    // and clear _finalizingMedia when done.
+    // Snapshot everything before clearing.
+    // pendingVideoUpload is the raw Promise — it resolves/rejects regardless of the
+    // gen counter, so ChatConversation can still await it to clear _finalizingMedia.
     const pendingVideoUpload = videoUploadStatus !== null ? videoUploadPromiseRef.current : null
+    // videoProgressBus lets ChatConversation subscribe to live % updates after Send.
+    const videoProgressBus = pendingVideoUpload ? videoCurrentBusRef.current : null
 
     const snapshot = {
       body: body.trim(),
@@ -578,6 +607,7 @@ export default function ChatComposer({
       previewUrls,
       pendingUploads,
       pendingVideoUpload,
+      videoProgressBus,
       streamVideoUid:    videoMeta?.uid    ?? null,
       streamPosterUrl:   videoMeta?.posterUrl ?? null,
       localVideoPoster:  videoMeta?.localPoster ?? null,
@@ -586,20 +616,22 @@ export default function ChatComposer({
       replyToMessageId: replyTarget?.id ?? null,
     }
 
-    // Blob URLs are passed to ChatConversation as previewUrls and stay live in the
-    // chat bubble until real R2 URLs replace them. ChatConversation revokes them
-    // after upload completion so we do NOT revoke here.
-
     // Only refocus if already focused (keyboard already up)
     const wasTextareaFocused = document.activeElement === textareaRef.current
 
-    // Clear composer immediately. Keep videoUploadStatus alive in the background
-    // (it's detached from the sent message now — ChatConversation owns it via pendingVideoUpload).
+    // Increment generation — silences the running upload's guardStatus / guardMeta
+    // callbacks so they no longer write back into the composer UI.  The upload
+    // Promise itself is unaffected and keeps running; ChatConversation holds the ref.
+    videoUploadGenRef.current++
+    videoCurrentBusRef.current = null
+
+    // Clear composer immediately.
+    // NOTE: do NOT revoke localPoster here — it was passed as stream_poster_url on the
+    // optimistic message and ChatMediaImage needs it until the CF URL loads.
     setBody('')
     if (textareaRef.current) textareaRef.current.innerText = ''
     setImageSlots([])
     uploadPromisesRef.current.clear()
-    if (videoMeta?.localPoster) URL.revokeObjectURL(videoMeta.localPoster)
     setVideoMeta(null)
     setVideoUploadStatus(null)
     videoUploadPromiseRef.current = null

@@ -1129,7 +1129,7 @@ export default function ChatConversation({
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  const handleSend = useCallback(async ({ body, imageUrls, previewUrls, pendingUploads, pendingVideoUpload = null, streamVideoUid = null, streamPosterUrl = null, localVideoPoster = null, streamVideoWidth = null, streamVideoHeight = null, replyToMessageId }) => {
+  const handleSend = useCallback(async ({ body, imageUrls, previewUrls, pendingUploads, pendingVideoUpload = null, videoProgressBus = null, streamVideoUid = null, streamPosterUrl = null, localVideoPoster = null, streamVideoWidth = null, streamVideoHeight = null, replyToMessageId }) => {
     // If user is viewing history, jump to live end before sending
     if (hasNewerRef.current) {
       await new Promise((resolve) => {
@@ -1180,6 +1180,18 @@ export default function ChatConversation({
     }])
     pinTailAfterMutation()
 
+    // Subscribe to video upload progress immediately so the bubble shows live %.
+    // We use a mutable ref-like object so the subscription can target the real
+    // messageId once chatSendMessage resolves (before that, tempId is used).
+    const activeMsgId = { current: tempId }
+    if (hasPendingVideo && videoProgressBus) {
+      videoProgressBus.subscribe(({ progress }) => {
+        setMessages((prev) => prev.map((m) =>
+          m.id === activeMsgId.current ? { ...m, _videoUploadProgress: progress } : m
+        ))
+      })
+    }
+
     try {
       const res = await chatSendMessage(supabaseClient, {
         roomId: room.id, body,
@@ -1189,12 +1201,13 @@ export default function ChatConversation({
       })
       const messageId = res?.message_id
       if (messageId) {
+        activeMsgId.current = messageId
         setMessages((prev) => {
           if (prev.some((m) => m.id === messageId)) {
             // Realtime INSERT already swapped our optimistic in-place — nothing to do
             return prev
           }
-          // Swap tempId → real id; everything else (image_urls, _finalizingMedia, _key) preserved
+          // Swap tempId → real id; everything else (_finalizingMedia, _key, _videoUploadProgress) preserved
           return prev.map((m) => m.id === tempId ? { ...m, id: messageId } : m)
         })
         pinTailAfterMutation()
@@ -1225,23 +1238,20 @@ export default function ChatConversation({
         })
       }
 
-      // Background: await video upload completion — clears the _finalizingMedia spinner
-      // on the bubble once the tus upload finishes. No DB patch needed; uid is already stored.
+      // Background: await video upload completion — clears _finalizingMedia + progress on the bubble.
       if (hasPendingVideo && messageId && pendingVideoUpload) {
+        const clearVideoProgress = (extra = {}) => {
+          setMessages((prev) => prev.map((m) =>
+            (m.id === messageId || m.id === tempId) && m.stream_video_uid
+              ? { ...m, _finalizingMedia: false, _videoUploadProgress: undefined, ...extra }
+              : m
+          ))
+        }
         Promise.resolve(pendingVideoUpload).then(() => {
-          setMessages((prev) => prev.map((m) =>
-            (m.id === messageId || m.id === tempId) && m.stream_video_uid
-              ? { ...m, _finalizingMedia: false }
-              : m
-          ))
+          clearVideoProgress()
         }).catch((e) => {
-          // Upload failed after send — surface a subtle error on the bubble
           console.error('[Chat] video upload failed after send', e?.message)
-          setMessages((prev) => prev.map((m) =>
-            (m.id === messageId || m.id === tempId) && m.stream_video_uid
-              ? { ...m, _finalizingMedia: false, _videoUploadFailed: true }
-              : m
-          ))
+          clearVideoProgress({ _videoUploadFailed: true })
         })
       }
     } catch (err) {

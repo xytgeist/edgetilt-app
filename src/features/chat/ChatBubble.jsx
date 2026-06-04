@@ -596,9 +596,22 @@ export default function ChatBubble({
                   <div className="relative">
                     <ChatMediaGrid media={allMedia} onOpen={openViewer} />
                     {isFinalizingMedia && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-[13px] bg-black/30">
-                        <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      </div>
+                      typeof message._videoUploadProgress === 'number' ? (
+                        // Video upload in progress — show progress bar at bottom of tile
+                        <div className="pointer-events-none absolute inset-0 rounded-[13px] bg-black/25">
+                          <div className="absolute bottom-0 inset-x-0 h-1.5 overflow-hidden rounded-b-[13px] bg-white/20">
+                            <div
+                              className="h-full bg-cyan-400 transition-[width] duration-300"
+                              style={{ width: `${Math.round(message._videoUploadProgress * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        // Images still uploading — generic spinner
+                        <div className="absolute inset-0 flex items-center justify-center rounded-[13px] bg-black/30">
+                          <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        </div>
+                      )
                     )}
                   </div>
                 )}

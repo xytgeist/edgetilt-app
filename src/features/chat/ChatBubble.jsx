@@ -935,44 +935,61 @@ function PinIcon({ filled = false }) {
 
 // ── Circular upload-progress ring ─────────────────────────────────────────
 
-// SVG uses a 1:1 coordinate space (no viewBox scaling) for simplicity.
-// RING_R is tuned so the arc's inner edge sits ~1 px outside the wheel image edge.
-// Wheel: 65 px → radius 32.5 px. Inner edge = RING_R − strokeWidth/2 = 33.5 → RING_R = 36.
+// SVG uses a 1:1 coordinate space (no viewBox scaling).
+// Wheel: 65 px → radius 32.5 px. Arc inner edge = RING_R − strokeWidth/2 ≈ 33.5 → flush.
 const RING_R  = 36          // SVG circle radius (px)
 const RING_C  = 2 * Math.PI * RING_R  // circumference ≈ 226.2
 
 /**
- * Centered scrim + circular progress ring shown over a video tile while the
- * upload is in flight.  A spinning roulette wheel sits tightly inside the arc;
- * the upload % floats beneath.  Arc fills clockwise as `progress` goes 0→1.
+ * Centered scrim + thin green progress arc + rolling white ball at the leading
+ * edge.  A spinning roulette wheel sits inside.  Arc fills clockwise 0→1.
+ *
+ * Ball position is computed in SVG coords (before the -rotate-90 CSS transform)
+ * so it always sits exactly on the arc tip.  Both arc and ball use matching
+ * CSS transitions so they move together.
  */
 function VideoUploadRing({ progress }) {
   const pct    = Math.max(0, Math.min(1, progress))
   const offset = RING_C * (1 - pct)
+
+  // Leading-edge angle in SVG space (arc starts at 3 o'clock = 0 rad, goes CW).
+  // CSS -rotate-90 on the SVG makes 3 o'clock render as 12 o'clock visually.
+  const angle = pct * 2 * Math.PI
+  const ballX = 50 + RING_R * Math.cos(angle)
+  const ballY = 50 + RING_R * Math.sin(angle)
+
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-[13px] bg-black/45">
       {/* Ring + wheel share a 100×100 container */}
       <div className="relative flex items-center justify-center" style={{ width: 100, height: 100 }}>
         {/* Progress ring — 1:1 SVG, rotated so arc starts at 12 o'clock */}
         <svg width="100" height="100" viewBox="0 0 100 100" className="absolute inset-0 -rotate-90" aria-hidden>
-          {/* Track */}
-          <circle cx="50" cy="50" r={RING_R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="5" />
-          {/* Progress arc — white */}
+          {/* Faint green track */}
+          <circle cx="50" cy="50" r={RING_R} fill="none" stroke="rgba(34,197,94,0.22)" strokeWidth="2.5" />
+          {/* Green progress arc — 50% thinner stroke than before */}
           <circle
             cx="50" cy="50" r={RING_R}
             fill="none"
-            stroke="#ffffff"
-            strokeWidth="5"
+            stroke="#22c55e"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeDasharray={RING_C}
             strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 0.35s ease' }}
+          />
+          {/* White roulette ball at the leading tip of the arc */}
+          <circle
+            r={4}
+            fill="white"
             style={{
-              transition: 'stroke-dashoffset 0.35s ease',
-              filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.6))',
+              cx: ballX,
+              cy: ballY,
+              transition: 'cx 0.35s ease, cy 0.35s ease',
+              filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.95))',
             }}
           />
         </svg>
-        {/* Roulette wheel — CSS spin at 60 fps, tightly inside the arc */}
+        {/* Roulette wheel — CSS spin at 60 fps */}
         <img
           src="/roulette-spinner.png"
           alt=""

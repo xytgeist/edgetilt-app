@@ -43,15 +43,9 @@ begin
       perform public.activity_push_enqueue_chat_dm(new);
     else
       -- Immediate: comment, reply, mention, follow, repost, play_log_*, chat_group_invite, etc.
-      perform
-        net.http_post(
-          url := current_setting('app.supabase_url', true) || '/functions/v1/lounge-send-activity-push',
-          headers := jsonb_build_object(
-            'Content-Type', 'application/json',
-            'x-lounge-activity-push-secret', current_setting('app.lounge_activity_push_secret', true)
-          ),
-          body := jsonb_build_object('activityEventId', new.id::text)
-        );
+      perform public.activity_push_invoke_lounge_edge(
+        jsonb_build_object('activityEventId', new.id)
+      );
     end if;
   exception when others then
     raise warning 'activity_events_enqueue_push: %', sqlerrm;

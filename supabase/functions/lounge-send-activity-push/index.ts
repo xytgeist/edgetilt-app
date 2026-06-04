@@ -408,10 +408,10 @@ async function handleImmediatePush(
   if (event.comment_id) {
     const { data: commentRow } = await admin
       .from('feed_comments')
-      .select('parent_comment_id')
+      .select('parent_id')
       .eq('id', event.comment_id)
       .maybeSingle()
-    isReply = Boolean(commentRow?.parent_comment_id)
+    isReply = Boolean(commentRow?.parent_id)
   }
 
   let notification = buildSingleNotification(
@@ -624,10 +624,10 @@ async function handleBatchPush(
     if (batch.comment_id) {
       const { data: commentRow } = await admin
         .from('feed_comments')
-        .select('parent_comment_id')
+        .select('parent_id')
         .eq('id', batch.comment_id)
         .maybeSingle()
-      isReply = Boolean(commentRow?.parent_comment_id)
+      isReply = Boolean(commentRow?.parent_id)
     }
 
     const body = buildGroupedBody(batch.event_type, uniqueActors, batch.comment_id, isReply)

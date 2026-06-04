@@ -860,14 +860,21 @@ export default function ChatConversation({
 
           setMessages((prev) => {
             if (prev.some((m) => m.id === row.id)) return prev
-            // If this is our own message arriving via realtime, replace the
-            // optimistic placeholder in-place keeping _key stable so React
-            // never unmounts/remounts the bubble.
+            // Replace our optimistic placeholder in-place, keeping _key stable
+            // so React never unmounts/remounts the bubble.
             if (row.sender_id === viewerUserId) {
               const optIdx = prev.findLastIndex((m) => m.id.startsWith('opt-') && m.sender_id === viewerUserId)
               if (optIdx !== -1) {
+                const existing = prev[optIdx]
                 const next = [...prev]
-                next[optIdx] = { ...row, _key: prev[optIdx]._key, _finalizingMedia: false }
+                next[optIdx] = {
+                  ...row,
+                  _key: existing._key,
+                  // Server stores image_urls:[] until uploads finish — keep blob
+                  // preview URLs so the media grid never disappears mid-upload.
+                  image_urls: row.image_urls?.length > 0 ? row.image_urls : existing.image_urls,
+                  _finalizingMedia: existing._finalizingMedia,
+                }
                 return next
               }
             }
@@ -1076,9 +1083,12 @@ export default function ChatConversation({
     const readyUrls   = imageUrls || []
     const hasImages   = displayUrls.length > 0
 
-    const makeMsg = (id) => ({
-      id,
-      _key: id,
+    // One optimistic placeholder for all message types.
+    // _key is set to tempId and NEVER changes — React never unmounts the bubble.
+    const tempId = `opt-${Date.now()}`
+    setMessages((prev) => [...prev, {
+      id: tempId,
+      _key: tempId,
       body,
       image_urls: displayUrls,
       _finalizingMedia: hasImages,
@@ -1092,34 +1102,38 @@ export default function ChatConversation({
       reply_to_message_id: replyToMessageId || null,
       reply_to_preview: replyPreview,
       reply_to_sender_id: origMsg?.sender_id || null,
-    })
+    }])
+    pinTailAfterMutation()
 
-    if (hasImages) {
-      // IMAGE MESSAGE: await the server first so the bubble enters state with
-      // its real ID — it is never optimistic, never replaced, never destroyed.
-      try {
-        const res = await chatSendMessage(supabaseClient, {
-          roomId: room.id, body,
-          imageUrls: [],
-          hasPendingImages: true,
-          streamVideoUid, streamPosterUrl, streamVideoWidth, streamVideoHeight, replyToMessageId,
-        })
-        const messageId = res?.message_id
-        if (!messageId) throw new Error('No message_id returned')
-
+    try {
+      const res = await chatSendMessage(supabaseClient, {
+        roomId: room.id, body,
+        imageUrls: [],
+        hasPendingImages: hasImages,
+        streamVideoUid, streamPosterUrl, streamVideoWidth, streamVideoHeight, replyToMessageId,
+      })
+      const messageId = res?.message_id
+      if (messageId) {
         setMessages((prev) => {
-          // Realtime INSERT may have already added it — skip if so
-          if (prev.some((m) => m.id === messageId)) return prev
-          return [...prev, makeMsg(messageId)]
+          if (prev.some((m) => m.id === messageId)) {
+            // Realtime INSERT already swapped our optimistic in-place — nothing to do
+            return prev
+          }
+          // Swap tempId → real id; everything else (image_urls, _finalizingMedia, _key) preserved
+          return prev.map((m) => m.id === tempId ? { ...m, id: messageId } : m)
         })
         pinTailAfterMutation()
-        void refreshReadReceipts()
+      }
+      void refreshReadReceipts()
 
-        // Background: finish pending uploads then patch image_urls on the server
+      // Background: finish pending uploads then patch image_urls on the server
+      if (hasImages && messageId) {
         Promise.all(allPendingUploads).then(async (pendingResults) => {
           const finalUrls = [...readyUrls, ...pendingResults]
           setMessages((prev) => prev.map((m) =>
-            m.id === messageId ? { ...m, image_urls: finalUrls.length ? finalUrls : m.image_urls, _finalizingMedia: false } : m
+            (m.id === messageId || m.id === tempId)
+              ? { ...m, image_urls: finalUrls.length ? finalUrls : m.image_urls, _finalizingMedia: false }
+              : m
           ))
           if (!finalUrls.length) return
           try {
@@ -1130,37 +1144,13 @@ export default function ChatConversation({
         }).catch((e) => {
           console.error('[Chat] upload(s) failed after send', e?.message)
           setMessages((prev) => prev.map((m) =>
-            m.id === messageId ? { ...m, _finalizingMedia: false } : m
+            (m.id === messageId || m.id === tempId) ? { ...m, _finalizingMedia: false } : m
           ))
         })
-      } catch (err) {
-        // No optimistic bubble was added — nothing to clean up
-        throw err
       }
-    } else {
-      // TEXT / VIDEO: safe to be optimistic — bubble never changes size
-      const tempId = `opt-${Date.now()}`
-      setMessages((prev) => [...prev, makeMsg(tempId)])
-      pinTailAfterMutation()
-
-      try {
-        const res = await chatSendMessage(supabaseClient, {
-          roomId: room.id, body, imageUrls: [],
-          streamVideoUid, streamPosterUrl, streamVideoWidth, streamVideoHeight, replyToMessageId,
-        })
-        const messageId = res?.message_id
-        if (messageId) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === messageId)) return prev
-            return prev.map((m) => m.id === tempId ? { ...m, id: messageId } : m)
-          })
-          pinTailAfterMutation()
-        }
-        void refreshReadReceipts()
-      } catch (err) {
-        setMessages((prev) => prev.filter((m) => m.id !== tempId))
-        throw err
-      }
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      throw err
     }
   }, [supabaseClient, room.id, viewerUserId, loadMessages, pinTailAfterMutation, refreshReadReceipts])
 

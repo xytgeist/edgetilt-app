@@ -2169,74 +2169,93 @@ export default function ChatConversation({
             <div className="flex h-full items-center justify-center text-[14px] text-zinc-500">Loading…</div>
           ) : error ? (
             <div className="flex h-full items-center justify-center text-[14px] text-rose-400">{error}</div>
-          ) : (messages.length === 0 && videoPrepJobs.length === 0) ? (
+          ) : messages.length === 0 && videoPrepJobs.length === 0 ? (
             <div className="flex h-full items-center justify-center px-6 text-center text-[14px] text-zinc-500">
               No messages yet. Say hi! 👋
             </div>
           ) : (
             <div ref={translateLayerRef} className="flex min-h-full flex-col justify-end pb-2 will-change-transform select-none" style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
-              {messages.map((msg, idx) => {
-                const prev = idx > 0 ? messages[idx - 1] : null
-                const next = idx < messages.length - 1 ? messages[idx + 1] : null
-                const isGroupStart = !prev || prev.sender_id !== msg.sender_id
-                const isGroupEnd   = !next || next.sender_id !== msg.sender_id
-                const topMargin = idx === 0 ? 0 : isGroupStart ? 12 : 2
-                return (
-                  <div
-                    key={msg._key || msg.id}
-                    style={{ marginTop: topMargin }}
-                  >
-                    <ChatBubble
-                      message={msg}
-                      highlighted={highlightMessageId === msg.id}
-                      senderLabel={senderLabel(msg.sender_id)}
-                      senderAvatarUrl={senderAvatarUrl(msg.sender_id)}
-                      isMine={msg.sender_id === viewerUserId}
-                      reactions={reactions[msg.id] || []}
-                      viewerUserId={viewerUserId}
-                      hideSenderInfo={activeRoom.kind === 'dm'}
-                      isGroupStart={isGroupStart}
-                      isGroupEnd={isGroupEnd}
-                      isFinalizingMedia={Boolean(msg._finalizingMedia)}
-                      enableStar={showStarPinActions}
-                      isStarred={starredIds.has(msg.id)}
-                      onToggleStar={handleToggleStar}
-                      enablePin={canPinMessages}
-                      isPinned={pinnedIds.has(msg.id)}
-                      onTogglePin={handleTogglePin}
-                      onReply={setReplyTarget}
-                      onDeleteMessage={handleDelete}
-                      onAddReaction={handleAddReaction}
-                      onRemoveReaction={handleRemoveReaction}
-                      reactionPillInteractive={isGroupRoom}
-                      onOpenReactionsDetail={
-                        isGroupRoom ? () => setReactionsDetailMessageId(msg.id) : undefined
-                      }
-                      supabaseClient={supabaseClient}
-                      onLinkPreviewReady={handleLinkPreviewReady}
-                      receipt={getMessageReceiptStatus({
-                        message: msg,
-                        viewerUserId,
-                        roomKind: activeRoom.kind,
-                        viewerReceiptsEnabled: viewerReadReceiptsEnabled,
-                        peerReadStates,
-                        showOnThisMessage: msg.id === lastOwnMessageId,
-                      })}
-                    />
-                  </div>
-                )
-              })}
+              {(() => {
+                // Merge real messages and fake prep-job bubbles in chronological order
+                // so that messages sent after a video pick appear BELOW the fake bubble,
+                // not above it.  Fake jobs carry a createdAt set at the moment of pick.
+                const fakeItems = videoPrepJobs.map((job) => ({
+                  _isPrepJob: true,
+                  _job: job,
+                  id: job.jobId,
+                  _key: job.jobId,
+                  sender_id: viewerUserId,
+                  created_at: job.createdAt,
+                }))
+                const allItems = videoPrepJobs.length === 0
+                  ? messages
+                  : [...messages, ...fakeItems].sort(
+                      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+                    )
 
-              {/* Fake chat bubbles — visible only to sender while video processes */}
-              {videoPrepJobs.map((job, idx) => (
-                <div key={job.jobId} style={{ marginTop: idx === 0 && messages.length === 0 ? 0 : 12 }}>
-                  <ChatVideoPrepBubble
-                    job={job}
-                    onCancel={() => cancelVideoPrepJob(job.jobId)}
-                    onRetry={() => retryVideoPrepJob(job.jobId)}
-                  />
-                </div>
-              ))}
+                return allItems.map((item, idx) => {
+                  const prev = idx > 0 ? allItems[idx - 1] : null
+                  const next = idx < allItems.length - 1 ? allItems[idx + 1] : null
+                  const isGroupStart = !prev || prev.sender_id !== item.sender_id
+                  const isGroupEnd   = !next || next.sender_id !== item.sender_id
+                  const topMargin = idx === 0 ? 0 : isGroupStart ? 12 : 2
+
+                  if (item._isPrepJob) {
+                    return (
+                      <div key={item._key} style={{ marginTop: topMargin }}>
+                        <ChatVideoPrepBubble
+                          job={item._job}
+                          onCancel={() => cancelVideoPrepJob(item._job.jobId)}
+                          onRetry={() => retryVideoPrepJob(item._job.jobId)}
+                        />
+                      </div>
+                    )
+                  }
+
+                  const msg = item
+                  return (
+                    <div key={msg._key || msg.id} style={{ marginTop: topMargin }}>
+                      <ChatBubble
+                        message={msg}
+                        highlighted={highlightMessageId === msg.id}
+                        senderLabel={senderLabel(msg.sender_id)}
+                        senderAvatarUrl={senderAvatarUrl(msg.sender_id)}
+                        isMine={msg.sender_id === viewerUserId}
+                        reactions={reactions[msg.id] || []}
+                        viewerUserId={viewerUserId}
+                        hideSenderInfo={activeRoom.kind === 'dm'}
+                        isGroupStart={isGroupStart}
+                        isGroupEnd={isGroupEnd}
+                        isFinalizingMedia={Boolean(msg._finalizingMedia)}
+                        enableStar={showStarPinActions}
+                        isStarred={starredIds.has(msg.id)}
+                        onToggleStar={handleToggleStar}
+                        enablePin={canPinMessages}
+                        isPinned={pinnedIds.has(msg.id)}
+                        onTogglePin={handleTogglePin}
+                        onReply={setReplyTarget}
+                        onDeleteMessage={handleDelete}
+                        onAddReaction={handleAddReaction}
+                        onRemoveReaction={handleRemoveReaction}
+                        reactionPillInteractive={isGroupRoom}
+                        onOpenReactionsDetail={
+                          isGroupRoom ? () => setReactionsDetailMessageId(msg.id) : undefined
+                        }
+                        supabaseClient={supabaseClient}
+                        onLinkPreviewReady={handleLinkPreviewReady}
+                        receipt={getMessageReceiptStatus({
+                          message: msg,
+                          viewerUserId,
+                          roomKind: activeRoom.kind,
+                          viewerReceiptsEnabled: viewerReadReceiptsEnabled,
+                          peerReadStates,
+                          showOnThisMessage: msg.id === lastOwnMessageId,
+                        })}
+                      />
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
         </div>

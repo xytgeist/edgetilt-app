@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { uploadProfileAvatar } from '../profiles/profileGate.js'
+import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal.jsx'
 import {
   chatAddGroupMembers,
   chatDeleteGroup,
@@ -101,6 +102,7 @@ export default function ChatGroupSettingsSheet({
 
   const avatarInputRef = useRef(null)
   const searchTimerRef = useRef(null)
+  const [avatarCropFile, setAvatarCropFile] = useState(/** @type {File | null} */ (null))
 
   const reload = useCallback(async () => {
     if (!room?.id) return
@@ -170,16 +172,7 @@ export default function ChatGroupSettingsSheet({
     }
   }
 
-  const onPickAvatar = async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file || !isOwner) return
-    const isGif = file.type === 'image/gif'
-    const maxBytes = isGif ? 8 * 1024 * 1024 : 10 * 1024 * 1024
-    if (file.size > maxBytes) {
-      setErr(isGif ? 'GIF must be under 8 MB.' : 'Image must be under 10 MB.')
-      return
-    }
+  const doAvatarUpload = useCallback(async (file) => {
     setBusy(true)
     setErr('')
     try {
@@ -188,10 +181,7 @@ export default function ChatGroupSettingsSheet({
       const { data: url, error: upErr } = await uploadProfileAvatar({ supabaseClient, user: session.user, file })
       if (upErr) throw upErr
       if (!url) throw new Error('Upload succeeded but no URL returned.')
-      // Show the photo locally right away so the user sees the change immediately.
       onRoomUpdated({ avatar_url: url })
-      // Persist to DB — show a clear inline error if this step fails (photo will still
-      // display locally but won't survive a page reload until the Edge call succeeds).
       try {
         await chatUpdateGroup(supabaseClient, { roomId: room.id, avatarUrl: url })
       } catch (saveErr) {
@@ -201,6 +191,23 @@ export default function ChatGroupSettingsSheet({
       setErr(ex?.message || 'Could not update photo.')
     } finally {
       setBusy(false)
+    }
+  }, [supabaseClient, room.id, onRoomUpdated])
+
+  const onPickAvatar = (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !isOwner) return
+    const isGif = file.type === 'image/gif'
+    const maxBytes = isGif ? 8 * 1024 * 1024 : 10 * 1024 * 1024
+    if (file.size > maxBytes) {
+      setErr(isGif ? 'GIF must be under 8 MB.' : 'Image must be under 10 MB.')
+      return
+    }
+    if (isGif) {
+      void doAvatarUpload(file)
+    } else {
+      setAvatarCropFile(file)
     }
   }
 
@@ -790,6 +797,16 @@ export default function ChatGroupSettingsSheet({
         </div>,
         document.body,
       ) : null}
+
+      <ProfileAvatarCropModal
+        open={Boolean(avatarCropFile)}
+        file={avatarCropFile}
+        onCancel={() => setAvatarCropFile(null)}
+        onApply={async (croppedFile) => {
+          setAvatarCropFile(null)
+          await doAvatarUpload(croppedFile)
+        }}
+      />
     </>
   )
 }

@@ -123,40 +123,21 @@ export default function ChatComposer({
     }, 220)
   }, [body, footerHost, imageSlots.length, videoMeta, plusOpen, replyTarget])
 
-  // Single line: lock wrapper to h-10 (same as +). Grow only when text wraps.
+  // Auto-grow: contenteditable grows naturally; we just track single vs multi-line
+  // for the wrapper shape and send-button positioning.
   useLayoutEffect(() => {
     if (footerHost && !composerActive) return
-    const ta = textareaRef.current
+    const el = textareaRef.current
     const wrap = inputWrapRef.current
-    if (!ta) return
-
-    const prevHeight = ta.style.height
-    ta.style.height = 'auto'
-    const scrollH = ta.scrollHeight
-    ta.style.height = prevHeight
-
-    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20
-    const padY =
-      parseFloat(getComputedStyle(ta).paddingTop)
-      + parseFloat(getComputedStyle(ta).paddingBottom)
-    const lineCount = Math.max(1, Math.round((scrollH - padY) / lineHeight))
-    const isMultiLine = body.includes('\n') || lineCount > 1
-
+    if (!el) return
+    const isMultiLine = body.includes('\n') || el.scrollHeight > COMPOSER_ROW_H + 4
     setExpanded(isMultiLine)
-
-    if (isMultiLine) {
-      const h = Math.max(COMPOSER_ROW_H, Math.min(scrollH, COMPOSER_MAX_H))
-      ta.style.height = `${h}px`
-      ta.style.lineHeight = ''
-      if (wrap) {
+    if (wrap) {
+      if (isMultiLine) {
         wrap.style.height = ''
         wrap.style.minHeight = `${COMPOSER_ROW_H}px`
         wrap.style.borderRadius = `${COMPOSER_EXPANDED_RADIUS_PX}px`
-      }
-    } else {
-      ta.style.height = '100%'
-      ta.style.lineHeight = `${COMPOSER_ROW_H}px`
-      if (wrap) {
+      } else {
         wrap.style.height = `${COMPOSER_ROW_H}px`
         wrap.style.minHeight = ''
         wrap.style.borderRadius = '9999px'
@@ -164,8 +145,28 @@ export default function ChatComposer({
     }
   }, [body, composerActive, footerHost])
 
-  const handleBodyChange = (e) => {
-    setBody(e.target.value.slice(0, MAX_BODY))
+  const handleBodyInput = (e) => {
+    // Strip HTML — only keep plain text from the contenteditable div.
+    const raw = e.currentTarget.innerText ?? ''
+    const trimmed = raw.slice(0, MAX_BODY)
+    // If browser inserted HTML (e.g. from autocomplete), normalize back to text.
+    if (e.currentTarget.innerHTML !== trimmed && e.currentTarget.innerText !== trimmed) {
+      const sel = window.getSelection()
+      const offset = sel?.focusOffset ?? trimmed.length
+      e.currentTarget.innerText = trimmed
+      // Restore caret
+      try {
+        const range = document.createRange()
+        const textNode = e.currentTarget.firstChild
+        if (textNode) {
+          range.setStart(textNode, Math.min(offset, textNode.length))
+          range.collapse(true)
+          sel?.removeAllRanges()
+          sel?.addRange(range)
+        }
+      } catch { /* ignore caret restore errors */ }
+    }
+    setBody(trimmed)
     onTyping(viewerDisplayName)
   }
 
@@ -271,6 +272,18 @@ export default function ChatComposer({
     if (imageFiles.length) {
       e.preventDefault()
       enqueueImageFiles(imageFiles)
+      return
+    }
+
+    // Prevent rich HTML from being pasted into contenteditable — allow only plain text.
+    // The browser will handle inserting the plain text string at the caret position;
+    // we don't need to do it manually since we're preventing the default and
+    // re-inserting via execCommand which falls back naturally.
+    const hasHtml = items.some((i) => i.kind === 'string' && i.type === 'text/html')
+    if (hasHtml) {
+      e.preventDefault()
+      const text = e.clipboardData?.getData('text/plain') ?? ''
+      if (text) document.execCommand('insertText', false, text.slice(0, MAX_BODY))
       return
     }
 
@@ -432,11 +445,12 @@ export default function ChatComposer({
     // chat bubble until real R2 URLs replace them. ChatConversation revokes them
     // after upload completion so we do NOT revoke here.
 
-    // Only refocus the textarea if it was already focused (keyboard already up)
+    // Only refocus if already focused (keyboard already up)
     const wasTextareaFocused = document.activeElement === textareaRef.current
 
     // Clear composer immediately
     setBody('')
+    if (textareaRef.current) textareaRef.current.innerText = ''
     setImageSlots([])
     uploadPromisesRef.current.clear()
     if (videoMeta?.localPoster) URL.revokeObjectURL(videoMeta.localPoster)
@@ -464,6 +478,24 @@ export default function ChatComposer({
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       void handleSend()
+      return
+    }
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      // On desktop: plain Enter inserts a real \n into the contenteditable.
+      // We intercept to insert a text node so we never get <div> wrappers.
+      e.preventDefault()
+      const sel = window.getSelection()
+      if (!sel?.rangeCount) return
+      const range = sel.getRangeAt(0)
+      range.deleteContents()
+      const textNode = document.createTextNode('\n')
+      range.insertNode(textNode)
+      range.setStartAfter(textNode)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+      // Fire input event so handleBodyInput syncs state
+      e.currentTarget.dispatchEvent(new Event('input', { bubbles: true }))
     }
   }
 
@@ -679,40 +711,44 @@ export default function ChatComposer({
         {/* Textarea + inline send button */}
         <div
           ref={inputWrapRef}
-          onPaste={handlePaste}
           className={`chat-header-glass relative flex flex-1 items-center overflow-hidden ${expanded ? '' : 'h-10'}`}
           style={{ borderRadius: expanded ? COMPOSER_EXPANDED_RADIUS_PX : '9999px' }}
         >
-          <textarea
+          {/* contentEditable div — lets Android clipboard show images (textarea blocks them) */}
+          <div
             ref={textareaRef}
-            value={body}
-            onChange={handleBodyChange}
+            contentEditable={!disabled}
+            suppressContentEditableWarning
+            role="textbox"
+            aria-multiline="true"
+            aria-label="Message"
+            aria-placeholder="Message…"
+            data-placeholder="Message…"
+            onInput={handleBodyInput}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onBlur={maybeCollapseComposer}
             onFocus={
               footerHost
                 ? (e) => {
                     requestAnimationFrame(() => {
-                      try {
-                        e.currentTarget.focus({ preventScroll: true })
-                      } catch {
-                        // ignore
-                      }
+                      try { e.currentTarget.focus({ preventScroll: true }) } catch { /* ignore */ }
                     })
                   }
                 : undefined
             }
-            placeholder="Message…"
-            disabled={disabled}
-            rows={1}
-            className={`box-border w-full resize-none bg-transparent py-0 pl-4 text-[16px] text-zinc-100 placeholder:text-zinc-500 outline-none disabled:opacity-50 ${
-              expanded ? 'leading-5' : 'h-full overflow-hidden'
-            }`}
+            className={`chat-composer-ce box-border w-full bg-transparent py-0 pl-4 text-[16px] text-zinc-100 outline-none ${
+              disabled ? 'opacity-50 pointer-events-none' : ''
+            } ${expanded ? 'leading-5' : 'h-full'}`}
             style={{
               maxHeight: COMPOSER_MAX_H,
+              overflowY: expanded ? 'auto' : 'hidden',
               paddingRight: hasContent ? 46 : 12,
               WebkitUserSelect: 'text',
               userSelect: 'text',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              caretColor: 'white',
             }}
           />
 

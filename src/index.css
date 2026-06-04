@@ -2321,6 +2321,21 @@ html.light .reaction-pill {
   background: transparent !important;
 }
 
+/* contenteditable placeholder */
+.chat-composer-ce:empty::before {
+  content: attr(data-placeholder);
+  color: rgb(113 113 122); /* zinc-500 */
+  pointer-events: none;
+  user-select: none;
+}
+html.light .chat-composer-ce:empty::before {
+  color: rgb(161 161 170); /* zinc-400 — slightly lighter on white backgrounds */
+}
+/* Ensure line-height fills single-row wrapper so text is vertically centered */
+.chat-composer-ce:not(.leading-5) {
+  line-height: var(--composer-row-h, 40px);
+}
+
 /* ── Chat conversation — theme-aware glass / gradient ──────────────────────
  * Dark (default): dark navy translucent glass + dark gradient fade.
  * Light: white/pale translucent glass + pale gradient fade.

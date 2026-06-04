@@ -19,14 +19,23 @@ export default function ChatMediaViewer({ items, initialIndex = 0, onClose }) {
   const scrollRef    = useRef(null)
   const [activeIdx, setActiveIdx] = useState(Math.min(initialIndex, items.length - 1))
 
-  // Force a black theme-color while open so the iOS status bar doesn't show
-  // the light-mode page background (white) bleeding into the safe-area strip.
+  // In light mode, html/body background is #fafafa which iOS reads for the status bar
+  // tint — overriding whatever z-indexed overlay is on screen. Force the root element
+  // background to black while the viewer is open so the status bar goes dark, then
+  // restore everything on close.
   useEffect(() => {
+    const root = document.documentElement
     const meta = document.querySelector('meta[name="theme-color"]')
-    const prev = meta?.getAttribute('content') ?? null
+
+    const prevRootBg   = root.style.backgroundColor
+    const prevMetaColor = meta?.getAttribute('content') ?? null
+
+    root.style.backgroundColor = '#000000'
     meta?.setAttribute('content', '#000000')
+
     return () => {
-      if (prev !== null) meta?.setAttribute('content', prev)
+      root.style.backgroundColor = prevRootBg
+      if (prevMetaColor !== null) meta?.setAttribute('content', prevMetaColor)
     }
   }, [])
 

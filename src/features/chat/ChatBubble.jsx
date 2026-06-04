@@ -206,7 +206,13 @@ export default function ChatBubble({
   const [menuOpen, setMenuOpen]             = useState(false)
   const [fullPickerOpen, setFullPickerOpen] = useState(false)
   const [bubbleRect, setBubbleRect]         = useState(/** @type {DOMRect | null} */ (null))
-  const [compactBubble, setCompactBubble]   = useState(true)
+  // Start expanded immediately for media/link-preview/multi-line so the bubble
+  // never resizes on mount — only single-line plain-text starts as a pill.
+  const [compactBubble, setCompactBubble] = useState(() => {
+    if (message.image_urls?.length || message.stream_video_uid) return false
+    if (message.body?.includes('\n')) return false
+    return true
+  })
   const [mediaViewerIndex, setMediaViewerIndex] = useState(/** @type {number | null} */ (null))
 
   const longPressTimer = useRef(null)

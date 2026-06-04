@@ -244,13 +244,14 @@ Deno.serve(async (req) => {
     const streamVideoWidth  = Number.isFinite(Number(body?.stream_video_width))  ? Math.round(Number(body.stream_video_width))  : null
     const streamVideoHeight = Number.isFinite(Number(body?.stream_video_height)) ? Math.round(Number(body.stream_video_height)) : null
     const replyToId = body?.reply_to_message_id ? String(body.reply_to_message_id).trim() : null
+    const hasPendingImages = Boolean(body?.has_pending_images)
     const idempotencyKey = typeof body?.idempotency_key === 'string'
       ? body.idempotency_key.trim().slice(0, 64) || null
       : null
     if (!roomId) {
       return json(400, { error: 'room_id is required.' })
     }
-    if (!text && imageUrls.length === 0 && !streamVideoUid) {
+    if (!text && imageUrls.length === 0 && !streamVideoUid && !hasPendingImages) {
       return json(400, { error: 'Message cannot be empty.' })
     }
 
@@ -780,6 +781,28 @@ Deno.serve(async (req) => {
         .eq('message_id', messageId)
       if (dErr) return json(400, { error: dErr.message })
     }
+    return json(200, { ok: true })
+  }
+
+  if (action === 'update_image_urls') {
+    const messageId = String(body?.message_id || '').trim()
+    const imageUrls = Array.isArray(body?.image_urls)
+      ? body.image_urls.map((u: unknown) => String(u).trim()).filter(Boolean).slice(0, 12)
+      : []
+    if (!messageId) return json(400, { error: 'message_id is required.' })
+    // Only the original sender can patch their own message's image_urls.
+    const { data: msg } = await admin
+      .from('chat_messages')
+      .select('sender_id, deleted_at')
+      .eq('id', messageId)
+      .maybeSingle()
+    if (!msg || msg.deleted_at) return json(404, { error: 'Message not found.' })
+    if (msg.sender_id !== user.id) return json(403, { error: 'Not your message.' })
+    const { error: uErr } = await admin
+      .from('chat_messages')
+      .update({ image_urls: imageUrls })
+      .eq('id', messageId)
+    if (uErr) return json(400, { error: uErr.message })
     return json(200, { ok: true })
   }
 

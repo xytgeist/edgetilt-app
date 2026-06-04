@@ -45,6 +45,7 @@ export function chatSendMessage(supabase, {
   roomId,
   body,
   imageUrls = [],
+  hasPendingImages = false,
   streamVideoUid = null,
   streamPosterUrl = null,
   streamVideoWidth = null,
@@ -56,6 +57,7 @@ export function chatSendMessage(supabase, {
     room_id: roomId,
     body,
     image_urls: imageUrls,
+    has_pending_images: hasPendingImages || undefined,
     stream_video_uid:    streamVideoUid    || undefined,
     stream_poster_url:   streamPosterUrl   || undefined,
     stream_video_width:  streamVideoWidth  ?? undefined,
@@ -63,6 +65,16 @@ export function chatSendMessage(supabase, {
     reply_to_message_id: replyToMessageId  || undefined,
     idempotency_key: newIdempotencyKey(),
   })
+}
+
+/**
+ * Patch image_urls on a sent message (background upload completion).
+ * @param {SupabaseClient} supabase
+ * @param {string} messageId
+ * @param {string[]} imageUrls
+ */
+export function chatUpdateMessageImageUrls(supabase, messageId, imageUrls) {
+  return loungeChatInvoke(supabase, { action: 'update_image_urls', message_id: messageId, image_urls: imageUrls })
 }
 
 /**

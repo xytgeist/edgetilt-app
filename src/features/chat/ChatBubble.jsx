@@ -544,7 +544,7 @@ export default function ChatBubble({
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted
-                ? 'border border-zinc-800 bg-transparent italic text-zinc-600'
+                ? 'bg-transparent italic text-zinc-600'
                 : isMine
                 ? 'text-white'
                 : 'bg-zinc-800/90 text-zinc-100'

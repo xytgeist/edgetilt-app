@@ -8,6 +8,7 @@ import ChatDmInfoSheet from './ChatDmInfoSheet.jsx'
 import ChatMessageReactionsSheet from './ChatMessageReactionsSheet.jsx'
 import {
   chatSendMessage,
+  chatUpdateMessageImageUrls,
   chatDeleteMessage,
   chatAddReaction,
   chatRemoveReaction,
@@ -886,7 +887,15 @@ export default function ChatConversation({
         (payload) => {
           const row = payload.new
           if (!row?.id) return
-          setMessages((prev) => prev.map((m) => m.id === row.id ? { ...m, ...row } : m))
+          setMessages((prev) => prev.map((m) => {
+            if (m.id !== row.id) return m
+            const next = { ...m, ...row }
+            // Clear the uploading spinner once real image_urls land via realtime
+            if (Array.isArray(row.image_urls) && row.image_urls.length > 0) {
+              next._finalizingMedia = false
+            }
+            return next
+          }))
         }
       )
       .on(
@@ -1060,17 +1069,21 @@ export default function ChatConversation({
       : origMsg?.stream_video_uid ? '[video]'
       : origMsg?.image_urls?.length > 0 ? '[image]' : null
 
-    const hasPending = Array.isArray(pendingUploads) && pendingUploads.length > 0
-    // Use local blob preview URLs immediately; real URLs arrive once uploads finish
+    const allPendingUploads = Array.isArray(pendingUploads) && pendingUploads.length > 0
+      ? pendingUploads
+      : []
+    const hasPending = allPendingUploads.length > 0
+    // Use blob preview URLs so the bubble is correctly sized from the first frame
     const displayUrls = (previewUrls?.length ? previewUrls : imageUrls) || []
+    const readyUrls   = imageUrls || []
 
     const tempId = `opt-${Date.now()}`
     const optimistic = {
       id: tempId,
-      _key: tempId,   // stable React key — never changes even after server confirmation
+      _key: tempId,
       body,
       image_urls: displayUrls,
-      _finalizingMedia: hasPending,
+      _finalizingMedia: hasPending || readyUrls.length > 0,
       stream_video_uid:    streamVideoUid    || null,
       stream_poster_url:   streamPosterUrl   || null,
       stream_video_width:  streamVideoWidth  ?? null,
@@ -1086,34 +1099,51 @@ export default function ChatConversation({
     pinTailAfterMutation()
 
     try {
-      // Wait for any still-uploading images before making the server call
-      let finalImageUrls = imageUrls || []
-      if (hasPending) {
-        const pendingResults = await Promise.all(pendingUploads)
-        finalImageUrls = [...(imageUrls || []), ...pendingResults]
-        // Update optimistic with real URLs while we wait for server response
-        setMessages((prev) => prev.map((m) =>
-          m.id === tempId ? { ...m, image_urls: finalImageUrls, _finalizingMedia: false } : m   // _key preserved via spread
-        ))
-      }
+      // Send immediately with empty image_urls — bubble is already visible with blob previews
+      const res = await chatSendMessage(supabaseClient, {
+        roomId: room.id, body,
+        imageUrls: [],
+        hasPendingImages: displayUrls.length > 0,
+        streamVideoUid, streamPosterUrl, streamVideoWidth, streamVideoHeight, replyToMessageId,
+      })
 
-      const res = await chatSendMessage(supabaseClient, { roomId: room.id, body, imageUrls: finalImageUrls, streamVideoUid, streamPosterUrl, streamVideoWidth, streamVideoHeight, replyToMessageId })
-      if (res?.message_id) {
+      const messageId = res?.message_id
+      if (messageId) {
         setMessages((prev) => {
-          if (prev.some((m) => m.id === res.message_id)) {
-            // Realtime already swapped the optimistic in-place — nothing to do
-            return prev
-          }
-          // Update the optimistic in-place with the real id, keeping _key stable
+          if (prev.some((m) => m.id === messageId)) return prev
           return prev.map((m) =>
-            m.id === tempId
-              ? { ...m, id: res.message_id, image_urls: finalImageUrls, _finalizingMedia: false, link_preview: res.link_preview || null }
-              : m,
+            m.id === tempId ? { ...m, id: messageId } : m
           )
         })
         pinTailAfterMutation()
       }
       void refreshReadReceipts()
+
+      // Background: wait for all uploads then patch image_urls on the server
+      if (messageId && displayUrls.length > 0) {
+        Promise.all(allPendingUploads).then(async (pendingResults) => {
+          const finalUrls = [...readyUrls, ...pendingResults]
+          if (!finalUrls.length) return
+          // Update local state with real R2 URLs
+          setMessages((prev) => prev.map((m) =>
+            (m.id === messageId || m.id === tempId)
+              ? { ...m, image_urls: finalUrls, _finalizingMedia: false }
+              : m
+          ))
+          // Patch the server — realtime UPDATE will sync to other devices
+          try {
+            await chatUpdateMessageImageUrls(supabaseClient, messageId, finalUrls)
+          } catch (e) {
+            console.error('[Chat] image_urls patch failed', e?.message)
+          }
+        }).catch((e) => {
+          console.error('[Chat] upload(s) failed after send', e?.message)
+          // Remove spinner, leave whatever uploaded successfully
+          setMessages((prev) => prev.map((m) =>
+            (m.id === messageId || m.id === tempId) ? { ...m, _finalizingMedia: false } : m
+          ))
+        })
+      }
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       throw err

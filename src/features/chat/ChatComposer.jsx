@@ -9,12 +9,9 @@ import {
 import KlipyGifPicker from '../lounge/KlipyGifPicker.jsx'
 import LoungeVideoCropModal from '../lounge/LoungeVideoCropModal.jsx'
 import {
-  probeVideoFileDisplaySize,
   probeVideoFileDurationSeconds,
-  captureVideoFilePosterObjectUrl,
   LOUNGE_VIDEO_MAX_SECONDS,
 } from '../../utils/loungeVideoUpload.js'
-import { uploadChatVideoToR2, uploadChatPosterToR2 } from '../../utils/chatVideoR2Upload.js'
 
 const MAX_BODY            = 4000
 const MAX_IMAGES          = 12
@@ -34,7 +31,8 @@ const COMPOSER_EXPANDED_RADIUS_PX = 20
  *   viewerUserId: string,
  *   replyTarget: { id: string, body: string, reply_to_preview?: string | null, image_urls?: string[] } | null,
  *   onClearReply: () => void,
- *   onSend: (opts: { body: string, imageUrls: string[], videoUrl: string | null, streamPosterUrl: string | null, streamVideoWidth: number | null, streamVideoHeight: number | null, replyToMessageId: string | null }) => Promise<void>,
+ *   onSend: (opts: { body: string, imageUrls: string[], replyToMessageId: string | null }) => Promise<void>,
+ *   onVideoConfirmed?: ((spec: File | { type: 'composerTrimJob' }) => void) | null,
  *   onTyping: (displayName: string) => void,
  *   viewerDisplayName?: string,
  *   disabled?: boolean,
@@ -48,6 +46,7 @@ export default function ChatComposer({
   replyTarget,
   onClearReply,
   onSend,
+  onVideoConfirmed = null,
   onTyping,
   viewerDisplayName = '',
   disabled = false,
@@ -70,16 +69,9 @@ export default function ChatComposer({
   /** footerHost: no textarea in DOM until tap — matches lounge reply collapsed pill (iOS keyboard). */
   const [composerActive, setComposerActive] = useState(!footerHost)
 
-  // Video state — for the trim modal we store { file, knownDurationSec? } so the modal
-  // can skip re-probing duration and we can pass knownDurationSec to LoungeVideoCropModal.
+  // Video state — only the trim-modal gating lives here now.
+  // Processing (trim/encode/upload) is owned by ChatConversation via onVideoConfirmed.
   const [cropModalFile, setCropModalFile] = useState(/** @type {{ file: File, knownDurationSec?: number }|null} */ (null))
-  /**
-   * Rich upload status shown in the composer strip while a video is uploading.
-   * Null when no upload is in progress.
-   */
-  const [videoUploadStatus, setVideoUploadStatus] = useState(/** @type {{ progress: number, status: string, detail: string, attempt: number }|null} */ (null))
-  const [videoMeta, setVideoMeta] = useState(/** @type {{ videoUrl: string, posterUrl: string|null, localPoster: string|null, width: number|null, height: number|null }|null} */ (null))
-  const videoAbortRef = useRef(/** @type {AbortController|null} */ (null))
 
   const textareaRef    = useRef(null)
   const inputWrapRef   = useRef(null)
@@ -87,22 +79,21 @@ export default function ChatComposer({
   const videoInputRef  = useRef(null)
   const plusBtnRef     = useRef(null)
 
-  const hasContent = body.trim().length > 0 || imageSlots.length > 0 || videoMeta !== null
-  const videoUploading = videoUploadStatus !== null
-  const canSend = !disabled && !sending && hasContent && !videoUploading
+  const hasContent = body.trim().length > 0 || imageSlots.length > 0
+  const canSend = !disabled && !sending && hasContent
 
   useEffect(() => {
     if (!footerHost) setComposerActive(true)
   }, [footerHost])
 
   useEffect(() => {
-    if (!replyTarget && imageSlots.length === 0 && !videoMeta) return
+    if (!replyTarget && imageSlots.length === 0) return
     if (footerHost) {
       flushSync(() => setComposerActive(true))
     } else {
       setComposerActive(true)
     }
-  }, [replyTarget, imageSlots.length, videoMeta, footerHost])
+  }, [replyTarget, imageSlots.length, footerHost])
 
   const activateAndFocusComposer = useCallback(() => {
     if (disabled) return
@@ -119,12 +110,12 @@ export default function ChatComposer({
   const maybeCollapseComposer = useCallback(() => {
     if (!footerHost) return
     window.setTimeout(() => {
-      if (body.trim() || imageSlots.length > 0 || videoMeta || replyTarget || plusOpen) return
+      if (body.trim() || imageSlots.length > 0 || replyTarget || plusOpen) return
       const ae = document.activeElement
       if (textareaRef.current && ae === textareaRef.current) return
       setComposerActive(false)
     }, 220)
-  }, [body, footerHost, imageSlots.length, videoMeta, plusOpen, replyTarget])
+  }, [body, footerHost, imageSlots.length, plusOpen, replyTarget])
 
   // Auto-grow: measure the contenteditable's natural (unclipped) scroll height.
   // When expanded the element has py-2.5 (20px vertical padding), so 1 line = 40px —
@@ -430,138 +421,14 @@ export default function ChatComposer({
 
   const handleCropCancel = () => setCropModalFile(null)
 
-  const handleCropConfirm = useCallback(async (result) => {
-    // Modal closes immediately regardless of path.
+  // Modal confirms: hand the spec (File or composerTrimJob) off to the parent.
+  // All trim/encode/upload work happens in ChatConversation's queue, not here.
+  const handleCropConfirm = useCallback((result) => {
     setCropModalFile(null)
-
     const isTrimJob = result?.type === 'composerTrimJob'
     if (!isTrimJob && !(result instanceof File)) return
-
-    setUploadErr('')
-    // Abort any previous in-flight job before starting a new one.
-    videoAbortRef.current?.abort()
-    videoAbortRef.current = null
-    setVideoMeta(null)
-
-    const abortCtrl = new AbortController()
-    videoAbortRef.current = abortCtrl
-
-    // Trim jobs: the modal captured a poster frame before confirming — show it in the
-    // strip immediately so the UI is live the instant the modal closes.
-    const earlyPoster = isTrimJob ? (result.posterUrl ?? null) : null
-    if (earlyPoster) {
-      setVideoMeta({
-        videoUrl: null,
-        posterUrl: null,
-        localPoster: earlyPoster,
-        width: result.intrinsicWidth ?? null,
-        height: result.intrinsicHeight ?? null,
-      })
-    }
-
-    setVideoUploadStatus({
-      progress: 0.02,
-      status: isTrimJob ? 'Trimming video…' : 'Encoding video…',
-      detail: '',
-      attempt: 1,
-    })
-
-    // Direct files (≤60s): capture poster + dims in parallel with encoding.
-    let localPoster = earlyPoster
-    let dims = isTrimJob ? { width: result.intrinsicWidth, height: result.intrinsicHeight } : null
-    let posterCapture = null
-    if (!isTrimJob) {
-      posterCapture = Promise.all([
-        probeVideoFileDisplaySize(result).catch(() => null),
-        captureVideoFilePosterObjectUrl(result, { signal: abortCtrl.signal }).catch(() => null),
-      ]).then(([d, p]) => { dims = d; localPoster = p })
-    }
-
-    try {
-      const { trimVideoFileToMp4, encodeVideoForChat } = await import('../../utils/loungeVideoFfmpegTrim.js')
-
-      // STEP 1 (trim path only): trim — progress 2→40%.
-      let fileForEncode = isTrimJob ? null : result
-      if (isTrimJob) {
-        const trimmed = await trimVideoFileToMp4(
-          result.sourceFile,
-          result.startSec,
-          result.endSec,
-          {
-            cropIn: result.cropPx,
-            iw: result.intrinsicWidth,
-            ih: result.intrinsicHeight,
-            onProgress: (r) => {
-              setVideoUploadStatus({
-                progress: 0.02 + r * 0.38,
-                status: 'Trimming video…',
-                detail: `${Math.round(r * 100)}%`,
-                attempt: 1,
-              })
-            },
-            signal: abortCtrl.signal,
-          },
-        )
-        if (abortCtrl.signal.aborted) return
-        fileForEncode = trimmed
-      }
-
-      // STEP 2: encode — trim path: 40→78%, direct path: 2→55%.
-      const encStart = isTrimJob ? 0.40 : 0.02
-      const encRange = isTrimJob ? 0.38 : 0.53
-      setVideoUploadStatus({ progress: encStart, status: 'Encoding video…', detail: '', attempt: 1 })
-      const encodedFile = await encodeVideoForChat(fileForEncode, {
-        signal: abortCtrl.signal,
-        onProgress: (r) => {
-          setVideoUploadStatus({
-            progress: encStart + r * encRange,
-            status: 'Encoding video…',
-            detail: `${Math.round(r * 100)}%`,
-            attempt: 1,
-          })
-        },
-      })
-
-      if (abortCtrl.signal.aborted) return
-      if (posterCapture) await posterCapture
-
-      // STEP 3: upload video + poster to R2 in parallel — trim: 78→98%, direct: 56→98%.
-      const uploadStart = isTrimJob ? 0.78 : 0.56
-      setVideoUploadStatus({ progress: uploadStart, status: 'Uploading…', detail: '', attempt: 1 })
-      const [videoUrl, posterPublicUrl] = await Promise.all([
-        uploadChatVideoToR2(supabaseClient, encodedFile, { signal: abortCtrl.signal }),
-        localPoster
-          ? uploadChatPosterToR2(supabaseClient, localPoster).catch(() => null)
-          : Promise.resolve(null),
-      ])
-
-      setVideoMeta({
-        videoUrl,
-        posterUrl: posterPublicUrl || null,
-        localPoster,
-        width: dims?.width ?? null,
-        height: dims?.height ?? null,
-      })
-      setVideoUploadStatus(null)
-      videoAbortRef.current = null
-    } catch (e) {
-      if (e?.name === 'AbortError') return  // removeVideo already cleaned up state
-      setVideoUploadStatus(null)
-      // Revoke the early poster blob we set before processing started.
-      if (earlyPoster) { try { URL.revokeObjectURL(earlyPoster) } catch { /* ignore */ } }
-      setVideoMeta(null)
-      videoAbortRef.current = null
-      setUploadErr(e?.message || 'Video upload failed.')
-    }
-  }, [supabaseClient])
-
-  const removeVideo = useCallback(() => {
-    if (videoMeta?.localPoster) URL.revokeObjectURL(videoMeta.localPoster)
-    videoAbortRef.current?.abort()
-    videoAbortRef.current = null
-    setVideoMeta(null)
-    setVideoUploadStatus(null)
-  }, [videoMeta])
+    onVideoConfirmed?.(result)
+  }, [onVideoConfirmed])
 
   const handleVideoPick = useCallback(async (e) => {
     const file = e.target.files?.[0]
@@ -570,20 +437,21 @@ export default function ChatComposer({
     setPlusOpen(false)
     setUploadErr('')
 
-    // Only open the trimmer if the clip exceeds the limit — skip it for short videos.
+    // Only open the trimmer if the clip exceeds the limit.
     let duration = NaN
     try {
       duration = await probeVideoFileDurationSeconds(file)
     } catch {
-      // Probe failed — let the crop modal handle it so the user can still trim if needed.
+      // Probe failed — let the crop modal handle it.
     }
 
     if (Number.isFinite(duration) && duration <= LOUNGE_VIDEO_MAX_SECONDS) {
-      void handleCropConfirm(file)
+      // Short video: skip trim modal entirely.
+      onVideoConfirmed?.(file)
     } else {
       setCropModalFile({ file, knownDurationSec: Number.isFinite(duration) ? duration : undefined })
     }
-  }, [handleCropConfirm])
+  }, [onVideoConfirmed])
 
   const handleSend = useCallback(async () => {
     if (!canSend) return
@@ -602,28 +470,17 @@ export default function ChatComposer({
       imageUrls: readyUrls,
       previewUrls,
       pendingUploads,
-      videoUrl:          videoMeta?.videoUrl  ?? null,
-      streamPosterUrl:   videoMeta?.posterUrl ?? null,
-      streamVideoWidth:  videoMeta?.width  ?? null,
-      streamVideoHeight: videoMeta?.height ?? null,
       replyToMessageId: replyTarget?.id ?? null,
     }
 
     // Only refocus if already focused (keyboard already up)
     const wasTextareaFocused = document.activeElement === textareaRef.current
 
-    // Video is fully encoded before send — revoke the local poster blob.
-    if (videoMeta?.localPoster) {
-      try { URL.revokeObjectURL(videoMeta.localPoster) } catch { /* ignore */ }
-    }
-
     // Clear composer immediately.
     setBody('')
     if (textareaRef.current) textareaRef.current.innerText = ''
     setImageSlots([])
     uploadPromisesRef.current.clear()
-    setVideoMeta(null)
-    setVideoUploadStatus(null)
     onClearReply()
     if (wasTextareaFocused) {
       try {
@@ -641,7 +498,7 @@ export default function ChatComposer({
     } finally {
       setSending(false)
     }
-  }, [canSend, body, imageSlots, videoMeta, replyTarget, onSend, onClearReply])
+  }, [canSend, body, imageSlots, replyTarget, onSend, onClearReply])
 
   const handleKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -817,50 +674,6 @@ export default function ChatComposer({
               </div>
             </SwipeAwayTile>
           ))}
-        </div>
-      )}
-
-      {/* Video preview strip */}
-      {(videoMeta || videoUploadStatus !== null) && (
-        <div className="chat-header-glass mb-1 flex items-center gap-3 rounded-2xl px-3 py-2">
-          <SwipeAwayTile onDismiss={removeVideo}>
-            {videoMeta?.localPoster ? (
-              <img src={videoMeta.localPoster} alt="" className="h-16 w-16 rounded-xl object-cover" />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-zinc-800">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="text-zinc-500">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" />
-                </svg>
-              </div>
-            )}
-          </SwipeAwayTile>
-          <div className="min-w-0 flex-1">
-            {videoUploadStatus !== null ? (
-              <>
-                <div className="mb-1 flex items-baseline justify-between gap-2">
-                  <span className="min-w-0 truncate text-[12px] text-zinc-300">
-                    {videoUploadStatus.status || 'Uploading…'}
-                    {videoUploadStatus.attempt > 1 ? ` (attempt ${videoUploadStatus.attempt}/5)` : ''}
-                  </span>
-                  <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
-                    {Math.round(videoUploadStatus.progress * 100)}%
-                  </span>
-                </div>
-                {videoUploadStatus.detail ? (
-                  <div className="mb-1 truncate text-[11px] text-zinc-500">{videoUploadStatus.detail}</div>
-                ) : null}
-                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-700">
-                  <div
-                    className="h-full rounded-full bg-cyan-500 transition-all"
-                    style={{ width: `${Math.round(videoUploadStatus.progress * 100)}%` }}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="text-[12px] text-zinc-400">Video ready</div>
-            )}
-          </div>
         </div>
       )}
 

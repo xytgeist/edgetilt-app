@@ -38,8 +38,9 @@ function newIdempotencyKey() {
  * Send a message, optionally as a reply to another message.
  * Generates an idempotency key per call so automatic retries and rapid
  * double-taps don't produce duplicate messages.
+ * Pass `idempotencyKey` to supply a pre-generated key (e.g. from a video prep job).
  * @param {SupabaseClient} supabase
- * @param {{ roomId: string, body: string, imageUrls?: string[], videoUrl?: string | null, streamVideoUid?: string | null, streamPosterUrl?: string | null, streamVideoWidth?: number | null, streamVideoHeight?: number | null, replyToMessageId?: string | null }} opts
+ * @param {{ roomId: string, body: string, imageUrls?: string[], videoUrl?: string | null, streamVideoUid?: string | null, streamPosterUrl?: string | null, streamVideoWidth?: number | null, streamVideoHeight?: number | null, replyToMessageId?: string | null, idempotencyKey?: string | null }} opts
  */
 export function chatSendMessage(supabase, {
   roomId,
@@ -52,6 +53,7 @@ export function chatSendMessage(supabase, {
   streamVideoWidth = null,
   streamVideoHeight = null,
   replyToMessageId = null,
+  idempotencyKey = null,
 }) {
   return loungeChatInvoke(supabase, {
     action: 'send_message',
@@ -65,7 +67,7 @@ export function chatSendMessage(supabase, {
     stream_video_width:  streamVideoWidth  ?? undefined,
     stream_video_height: streamVideoHeight ?? undefined,
     reply_to_message_id: replyToMessageId  || undefined,
-    idempotency_key: newIdempotencyKey(),
+    idempotency_key: idempotencyKey || newIdempotencyKey(),
   })
 }
 

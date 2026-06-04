@@ -2327,6 +2327,12 @@ html.light .reaction-pill {
   background: transparent !important;
 }
 
+/* Roulette wheel spin for ChatVideoPrepBubble */
+@keyframes chat-roulette-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* Long-press paste pill pop-in */
 @keyframes chat-paste-menu-in {
   from { opacity: 0; transform: translateX(-50%) scale(0.85); }

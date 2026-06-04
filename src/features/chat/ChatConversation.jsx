@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ChatBubble from './ChatBubble.jsx'
 import ChatComposer from './ChatComposer.jsx'
+import ChatVideoPrepBubble from './ChatVideoPrepBubble.jsx'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import ChatGroupSettingsSheet from './ChatGroupSettingsSheet.jsx'
 import ChatDmInfoSheet from './ChatDmInfoSheet.jsx'
@@ -29,6 +30,11 @@ import {
   chatRoomReadReceipts,
 } from './chatApi.js'
 import { findLastOwnMessageId, getMessageReceiptStatus } from './chatReceiptStatus.js'
+import {
+  probeVideoFileDisplaySize,
+  captureVideoFilePosterObjectUrl,
+} from '../../utils/loungeVideoUpload.js'
+import { uploadChatVideoToR2, uploadChatPosterToR2 } from '../../utils/chatVideoR2Upload.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
@@ -170,6 +176,39 @@ export default function ChatConversation({
   const [reactionsDetailReload, setReactionsDetailReload] = useState(0)
   const reactionsDetailMessageIdRef = useRef(reactionsDetailMessageId)
   reactionsDetailMessageIdRef.current = reactionsDetailMessageId
+
+  // ── Video prep jobs (fake chat bubbles) ──────────────────────────────────
+  /**
+   * Local-only video upload jobs. Each represents a "fake" chat bubble visible
+   * only to the sender while trim → encode → upload completes. The real message
+   * is sent to the server only after the upload finishes, then this entry is
+   * removed as the real bubble arrives via Realtime.
+   *
+   * @type {React.MutableRefObject<Array<{
+   *   jobId: string,
+   *   createdAt: string,
+   *   status: 'pending'|'trimming'|'encoding'|'uploading'|'sending'|'error',
+   *   progress: number,
+   *   posterUrl: string|null,
+   *   width: number|null,
+   *   height: number|null,
+   *   errorMessage: string|null,
+   *   spec: File|object,
+   *   abortCtrl: AbortController,
+   * }>>}
+   */
+  const videoPrepJobsRef = useRef(/** @type {any[]} */ ([]))
+  const [videoPrepJobs, _setVideoPrepJobs] = useState(/** @type {any[]} */ ([]))
+  /** Keeps ref in sync so async job callbacks can read current state. */
+  const setVideoPrepJobs = useCallback((updater) => {
+    _setVideoPrepJobs((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      videoPrepJobsRef.current = next
+      return next
+    })
+  }, [])
+  /** Serial encode lock — promise chain that ensures only one ffmpeg exec runs at a time. */
+  const encodeQueueRef = useRef(Promise.resolve())
 
   // DOM refs
   const listRef = useRef(null)
@@ -1230,6 +1269,171 @@ export default function ChatConversation({
     }
   }, [supabaseClient, room.id, viewerUserId, loadMessages, pinTailAfterMutation, refreshReadReceipts])
 
+  // ── Video prep job queue ──────────────────────────────────────────────────
+
+  const updateVideoPrepJob = useCallback((jobId, patch) => {
+    setVideoPrepJobs((prev) => prev.map((j) => j.jobId === jobId ? { ...j, ...patch } : j))
+  }, [setVideoPrepJobs])
+
+  const removeVideoPrepJob = useCallback((jobId) => {
+    setVideoPrepJobs((prev) => {
+      const job = prev.find((j) => j.jobId === jobId)
+      // Revoke local poster blob URL so we don't leak memory.
+      if (job?.posterUrl?.startsWith('blob:')) {
+        try { URL.revokeObjectURL(job.posterUrl) } catch { /* ignore */ }
+      }
+      return prev.filter((j) => j.jobId !== jobId)
+    })
+  }, [setVideoPrepJobs])
+
+  /** Detached from encode queue — runs upload + send after encoding is done. */
+  const uploadAndSendVideoPrepJob = useCallback(async (jobId, encodedFile) => {
+    if (videoPrepJobsRef.current.find((j) => j.jobId === jobId)?.abortCtrl?.signal?.aborted) {
+      removeVideoPrepJob(jobId)
+      return
+    }
+    updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.78 })
+    try {
+      const job = videoPrepJobsRef.current.find((j) => j.jobId === jobId)
+      const abortSignal = job?.abortCtrl?.signal
+      const localPoster = job?.posterUrl ?? null
+
+      const [videoUrl, posterPublicUrl] = await Promise.all([
+        uploadChatVideoToR2(supabaseClient, encodedFile, { signal: abortSignal }),
+        localPoster
+          ? uploadChatPosterToR2(supabaseClient, localPoster).catch(() => null)
+          : Promise.resolve(null),
+      ])
+
+      if (abortSignal?.aborted) { removeVideoPrepJob(jobId); return }
+
+      updateVideoPrepJob(jobId, { status: 'sending', progress: 0.98 })
+
+      const currentJob = videoPrepJobsRef.current.find((j) => j.jobId === jobId)
+      await chatSendMessage(supabaseClient, {
+        roomId: room.id,
+        body: '',
+        videoUrl,
+        streamPosterUrl: posterPublicUrl || null,
+        streamVideoWidth: currentJob?.width ?? null,
+        streamVideoHeight: currentJob?.height ?? null,
+        idempotencyKey: jobId,
+      })
+
+      // Remove the fake bubble — the real message is on its way via Realtime.
+      removeVideoPrepJob(jobId)
+      if (atBottomRef.current) pinTailAfterMutation()
+    } catch (e) {
+      if (e?.name === 'AbortError') { removeVideoPrepJob(jobId); return }
+      updateVideoPrepJob(jobId, { status: 'error', errorMessage: e?.message || 'Upload failed.' })
+    }
+  }, [supabaseClient, room.id, updateVideoPrepJob, removeVideoPrepJob, pinTailAfterMutation])
+
+  /**
+   * Called when the composer hands off a confirmed video spec (File or composerTrimJob).
+   * Creates a fake bubble immediately and queues the trim→encode pipeline serially.
+   * Upload + send are detached from the queue so they can run in parallel with the
+   * next job's encoding.
+   */
+  const handleVideoConfirmed = useCallback((spec) => {
+    const jobId = (() => { try { return crypto.randomUUID() } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}` } })()
+    const abortCtrl = new AbortController()
+    const isTrimJob = spec?.type === 'composerTrimJob'
+
+    setVideoPrepJobs((prev) => [...prev, {
+      jobId,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      progress: 0,
+      // Trim jobs come with a pre-captured poster from the modal; direct files capture async.
+      posterUrl: isTrimJob ? (spec.posterUrl ?? null) : null,
+      width: isTrimJob ? (spec.intrinsicWidth ?? null) : null,
+      height: isTrimJob ? (spec.intrinsicHeight ?? null) : null,
+      errorMessage: null,
+      spec,
+      abortCtrl,
+    }])
+    if (atBottomRef.current) pinTailAfterMutation()
+
+    // Chain ONLY the encode phase serially. Upload+send are launched detached.
+    encodeQueueRef.current = encodeQueueRef.current
+      .then(async () => {
+        if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+        try {
+          const { trimVideoFileToMp4, encodeVideoForChat } = await import('../../utils/loungeVideoFfmpegTrim.js')
+
+          let fileForEncode
+          if (isTrimJob) {
+            updateVideoPrepJob(jobId, { status: 'trimming', progress: 0.02 })
+            fileForEncode = await trimVideoFileToMp4(
+              spec.sourceFile, spec.startSec, spec.endSec,
+              {
+                cropIn: spec.cropPx,
+                iw: spec.intrinsicWidth,
+                ih: spec.intrinsicHeight,
+                onProgress: (r) => updateVideoPrepJob(jobId, { progress: 0.02 + r * 0.38 }),
+                signal: abortCtrl.signal,
+              },
+            )
+          } else {
+            // Direct file: capture poster + dims in parallel while encoding starts.
+            fileForEncode = spec
+            Promise.all([
+              probeVideoFileDisplaySize(spec).catch(() => null),
+              captureVideoFilePosterObjectUrl(spec, { signal: abortCtrl.signal }).catch(() => null),
+            ]).then(([dims, poster]) => {
+              if (abortCtrl.signal.aborted) return
+              updateVideoPrepJob(jobId, {
+                posterUrl: poster ?? null,
+                width: dims?.width ?? null,
+                height: dims?.height ?? null,
+              })
+            })
+          }
+
+          if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+
+          const encStart = isTrimJob ? 0.40 : 0.02
+          const encRange = isTrimJob ? 0.38 : 0.53
+          updateVideoPrepJob(jobId, { status: 'encoding', progress: encStart })
+
+          const encodedFile = await encodeVideoForChat(fileForEncode, {
+            signal: abortCtrl.signal,
+            onProgress: (r) => updateVideoPrepJob(jobId, { progress: encStart + r * encRange }),
+          })
+
+          if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+
+          // Encoding done — launch upload+send detached so the queue is free for the next job.
+          void uploadAndSendVideoPrepJob(jobId, encodedFile)
+        } catch (e) {
+          if (e?.name === 'AbortError') { removeVideoPrepJob(jobId); return }
+          updateVideoPrepJob(jobId, { status: 'error', errorMessage: e?.message || 'Encoding failed.' })
+        }
+      })
+      .catch(() => {
+        // Prevent a broken promise chain from blocking subsequent jobs.
+      })
+  }, [setVideoPrepJobs, updateVideoPrepJob, removeVideoPrepJob, uploadAndSendVideoPrepJob, pinTailAfterMutation])
+
+  const cancelVideoPrepJob = useCallback((jobId) => {
+    const job = videoPrepJobsRef.current.find((j) => j.jobId === jobId)
+    job?.abortCtrl?.abort()
+    removeVideoPrepJob(jobId)
+  }, [removeVideoPrepJob])
+
+  const retryVideoPrepJob = useCallback((jobId) => {
+    const job = videoPrepJobsRef.current.find((j) => j.jobId === jobId)
+    if (!job) return
+    // Abort the old controller if still alive, remove the job, then re-queue.
+    job.abortCtrl?.abort()
+    removeVideoPrepJob(jobId)
+    // Re-confirm the same spec — goes through the full pipeline again.
+    handleVideoConfirmed(job.spec)
+  }, [removeVideoPrepJob, handleVideoConfirmed])
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleLinkPreviewReady = useCallback((messageId, preview) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, link_preview: preview } : m)),
@@ -1965,7 +2169,7 @@ export default function ChatConversation({
             <div className="flex h-full items-center justify-center text-[14px] text-zinc-500">Loading…</div>
           ) : error ? (
             <div className="flex h-full items-center justify-center text-[14px] text-rose-400">{error}</div>
-          ) : messages.length === 0 ? (
+          ) : (messages.length === 0 && videoPrepJobs.length === 0) ? (
             <div className="flex h-full items-center justify-center px-6 text-center text-[14px] text-zinc-500">
               No messages yet. Say hi! 👋
             </div>
@@ -2022,6 +2226,17 @@ export default function ChatConversation({
                   </div>
                 )
               })}
+
+              {/* Fake chat bubbles — visible only to sender while video processes */}
+              {videoPrepJobs.map((job, idx) => (
+                <div key={job.jobId} style={{ marginTop: idx === 0 && messages.length === 0 ? 0 : 12 }}>
+                  <ChatVideoPrepBubble
+                    job={job}
+                    onCancel={() => cancelVideoPrepJob(job.jobId)}
+                    onRetry={() => retryVideoPrepJob(job.jobId)}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -2088,6 +2303,7 @@ export default function ChatConversation({
             replyTarget={replyTarget}
             onClearReply={() => setReplyTarget(null)}
             onSend={handleSend}
+            onVideoConfirmed={handleVideoConfirmed}
             onTyping={(name) => typingRef.current?.(name)}
             viewerDisplayName={viewerDisplayName}
             footerHost

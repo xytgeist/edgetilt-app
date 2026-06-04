@@ -964,8 +964,7 @@ function VideoUploadRing({ progress }) {
           style={{ transition: 'stroke-dashoffset 0.35s ease' }}
         />
       </svg>
-      {/* Percentage label — rotated back upright since the SVG parent is −90° */}
-      <span className="absolute text-[12px] font-semibold tabular-nums text-white rotate-90" style={{ lineHeight: 1 }}>
+      <span className="absolute text-[12px] font-semibold tabular-nums text-white" style={{ lineHeight: 1 }}>
         {Math.round(pct * 100)}
       </span>
     </div>

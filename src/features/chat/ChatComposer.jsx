@@ -189,42 +189,66 @@ export default function ChatComposer({
     }))
     setImageSlots((prev) => [...prev, ...newSlots])
 
-    // Upload each file in parallel in the background (with up to 3 retries for network hiccups)
-    files.forEach((file, i) => {
-      const slot = newSlots[i]
-      const promise = (async () => {
-        const { file: ready, error: prepErr } = await prepareLoungeFeedImageForUpload(file)
-        if (prepErr || !ready) {
-          console.error('[ChatComposer] image prep failed', file.name, file.type, file.size, prepErr?.message || String(prepErr))
-          throw prepErr || new Error('Prep failed')
-        }
-        const MAX_ATTEMPTS = 3
-        let lastErr
-        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-          if (attempt > 0) await new Promise((r) => setTimeout(r, 800 * attempt))
-          const { data: url, error: upErr } = await uploadLoungeFeedPostImage({
-            supabaseClient,
-            user: { id: viewerUserId },
-            file: ready,
-          })
-          if (url) return url
-          lastErr = upErr
-          console.error(`[ChatComposer] image upload attempt ${attempt + 1} failed`, ready.name, upErr?.message || String(upErr))
-        }
-        throw lastErr || new Error('Upload failed')
-      })()
+    // Upload files with bounded concurrency (max 4 at a time) and up to 5 retries.
+    // Concurrency cap prevents hammering the edge-function presign endpoint when
+    // many images are selected at once, which caused spurious failures not seen
+    // on lounge posts (where users rarely pick more than a few images).
+    const UPLOAD_CONCURRENCY = 4
+    const MAX_ATTEMPTS = 5
+    let activeUploads = 0
+    let queueIdx = 0
 
-      uploadPromisesRef.current.set(slot.id, promise)
+    const runNext = () => {
+      while (activeUploads < UPLOAD_CONCURRENCY && queueIdx < files.length) {
+        const i = queueIdx++
+        const file = files[i]
+        const slot = newSlots[i]
+        activeUploads++
 
-      promise.then((remoteUrl) => {
-        setImageSlots((prev) => prev.map((s) => s.id === slot.id ? { ...s, remoteUrl } : s))
-      }).catch(() => {
-        setImageSlots((prev) => prev.filter((s) => s.id !== slot.id))
-        URL.revokeObjectURL(slot.localUrl)
-        uploadPromisesRef.current.delete(slot.id)
-        setUploadErr('One or more images failed to upload.')
-      })
-    })
+        const promise = (async () => {
+          const { file: ready, error: prepErr } = await prepareLoungeFeedImageForUpload(file)
+          if (prepErr || !ready) {
+            console.error('[ChatComposer] image prep failed', file.name, prepErr?.message ?? prepErr)
+            throw prepErr || new Error('Prep failed')
+          }
+          let lastErr
+          for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt))
+            try {
+              const { data: url, error: upErr } = await uploadLoungeFeedPostImage({
+                supabaseClient,
+                user: { id: viewerUserId },
+                file: ready,
+              })
+              if (url) return url
+              lastErr = upErr
+              console.error(`[ChatComposer] upload attempt ${attempt + 1}/${MAX_ATTEMPTS} failed`, ready.name, upErr?.message ?? upErr)
+            } catch (e) {
+              // Catches throws (e.g. presign edge-fn errors) so all retries are exhausted
+              lastErr = e
+              console.error(`[ChatComposer] upload attempt ${attempt + 1}/${MAX_ATTEMPTS} threw`, ready.name, e?.message ?? e)
+            }
+          }
+          throw lastErr || new Error('Upload failed after max retries')
+        })()
+
+        uploadPromisesRef.current.set(slot.id, promise)
+
+        promise.then((remoteUrl) => {
+          setImageSlots((prev) => prev.map((s) => s.id === slot.id ? { ...s, remoteUrl } : s))
+        }).catch(() => {
+          setImageSlots((prev) => prev.filter((s) => s.id !== slot.id))
+          URL.revokeObjectURL(slot.localUrl)
+          uploadPromisesRef.current.delete(slot.id)
+          setUploadErr('One or more images failed to upload.')
+        }).finally(() => {
+          activeUploads--
+          runNext()
+        })
+      }
+    }
+
+    runNext()
   }
 
   const handleKlipyGifPick = ({ gifUrl }) => {

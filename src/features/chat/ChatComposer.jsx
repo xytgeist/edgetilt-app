@@ -341,12 +341,15 @@ export default function ChatComposer({
     if (dx * dx + dy * dy > 64) cancelLongPress()
   }, [cancelLongPress])
 
-  // Dismiss paste menu on any tap outside it
+  // Dismiss paste menu on any tap outside it.
+  // Uses bubbling phase (not capture) so the menu container's stopPropagation
+  // keeps taps ON the button from reaching window and closing the menu before
+  // the click event fires.
   useEffect(() => {
     if (!pasteMenuPos) return
     const dismiss = () => setPasteMenuPos(null)
-    window.addEventListener('pointerdown', dismiss, { capture: true })
-    return () => window.removeEventListener('pointerdown', dismiss, { capture: true })
+    window.addEventListener('pointerdown', dismiss)
+    return () => window.removeEventListener('pointerdown', dismiss)
   }, [pasteMenuPos])
 
   const handlePasteButton = useCallback(async () => {

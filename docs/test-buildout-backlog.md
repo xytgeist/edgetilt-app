@@ -937,6 +937,18 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 **Test smoke (Ryan):** owner deletes group with members present; non-owner leaves while others stay; last member leaves; owner removes everyone then leaves. **Apply `20260605120000` on test before smoke.**
 
+### ✅ Chat image delivery overhaul (2026-06-03, code `868cc0e`)
+
+| Item | What was done |
+|---|---|
+| **Stable bubble — no destroy/replace** | Optimistic bubble for image messages now has a stable `_key` (tempId) that never changes through the temp→real ID swap. Realtime INSERT handler preserves the existing `image_urls` (blob previews) when the server row arrives with an empty array (uploads still in-flight) — media grid never collapses mid-upload. `compactBubble` is locked to `false` while `isFinalizingMedia` is true so the `useLayoutEffect` can't shrink the bubble during the upload window. |
+| **Send-then-patch flow** | `chatSendMessage` fires with `imageUrls: []` + `hasPendingImages: true` immediately. The message gets a real server ID before any uploads finish. Background: all upload promises resolve → `chatUpdateMessageImageUrls` patches `image_urls` on the server. Realtime UPDATE delivers real R2 URLs to other devices. New `update_image_urls` action added to `lounge-chat` Edge (redeployed). |
+| **Zero-flash blob→R2 transition** | `ChatMediaImage` component keeps showing the blob URL until the R2 URL has fully preloaded in a hidden `new window.Image()`. Only after `onload` fires does it swap `src` and revoke the blob. Grid tile `key` is array index (stable through URL change) so React never unmounts the component. Composer no longer revokes blob URLs — `ChatMediaImage` owns revocation timing. |
+| **Upload reliability** | Retry loop now wraps `uploadLoungeFeedPostImage` in `try/catch` so edge-function throws (not just returned errors) are retried. Concurrency capped at 4 simultaneous uploads (was uncapped, causing spurious failures at 12 parallel presign calls). Attempts raised to 5 with 1s/2s/3s/4s backoff. |
+| **DB constraint + Edge** | `chat_messages_image_urls_len` raised to 12. `lounge-chat` `send_message` slice updated to 12. New `update_image_urls` action validates sender ownership before patching. |
+
+**Test smoke (Ryan):** send 1 image, 4 images, 12 images; verify bubble never shrinks during upload; verify delivered images match sent; verify other device sees images after patch. **Redeploy `lounge-chat` on prod when promoting.**
+
 ### 🔜 Next priorities (chat)
 
 - Ryan sign-off on link-preview + group-delete smoke after migrations/Edge deploy on test.

@@ -11,7 +11,8 @@ function isLoungeActivityPushPayload(payload) {
   return Boolean(
     payload.activityEventId ||
       payload.activityBatchId ||
-      payload.title === 'Edge Lounge',
+      payload.title === 'Edge Lounge' ||
+      payload.title === 'Edge Chat',
   )
 }
 

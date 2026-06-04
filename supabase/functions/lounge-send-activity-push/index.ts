@@ -53,6 +53,15 @@ type PushBatchRow = {
 
 const CHAT_DM_DEBOUNCE_MAX_WAIT_MS = 90_000
 const CHAT_DM_DEBOUNCE_POLL_MS = 2_000
+const PUSH_TITLE_LOUNGE = 'Edge Lounge'
+const PUSH_TITLE_CHAT = 'Edge Chat'
+
+function pushTitleForEventType(eventType: string): string {
+  if (eventType === 'chat_dm' || eventType === 'chat_group_invite') {
+    return PUSH_TITLE_CHAT
+  }
+  return PUSH_TITLE_LOUNGE
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -271,7 +280,7 @@ function buildSingleNotification(
   const who = actorLabel(actor)
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
   return {
-    title: 'Edge Lounge',
+    title: pushTitleForEventType(event.event_type),
     body: `${who} ${phrase}`,
     url: buildTargetUrl(event, actor, { activityEventId: event.id }),
     activityEventId: event.id,
@@ -447,7 +456,7 @@ async function handleImmediatePush(
           ? `marked your share as unpaid on ${gameName}`
           : `added you to ${gameName}`
     notification = {
-      title: 'Edge Lounge',
+      title: pushTitleForEventType(event.event_type),
       body: `${who} ${playLogVerb}${event.event_type === 'play_log_shared' ? pctStr : ''}`,
       url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
         activityEventId: event.id,
@@ -605,7 +614,7 @@ async function handleBatchPush(
       chat_room_id: roomId,
     }
     notification = {
-      title: 'Edge Lounge',
+      title: PUSH_TITLE_CHAT,
       body,
       url: buildTargetUrl(urlEvent, uniqueActors[0] || null, { activityBatchId: batchId }),
       activityBatchId: batchId,

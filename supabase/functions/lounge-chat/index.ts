@@ -28,6 +28,63 @@ function dmKey(a: string, b: string) {
   return a < b ? `${a}::${b}` : `${b}::${a}`
 }
 
+type ChatPushAdmin = ReturnType<typeof createClient>
+
+/** Must complete before send_message returns — fire-and-forget is dropped when the isolate exits. */
+async function enqueueChatDmPush(
+  admin: ChatPushAdmin,
+  roomId: string,
+  dmKeyValue: string,
+  senderId: string,
+) {
+  const parts = String(dmKeyValue).split('::')
+  const peerId = parts[0] === senderId ? parts[1] : parts[0]
+  if (!peerId) return
+
+  const { data: blockRow } = await admin
+    .from('blocks')
+    .select('id')
+    .eq('blocker_id', peerId)
+    .eq('blocked_id', senderId)
+    .maybeSingle()
+  if (blockRow?.id) return
+
+  const { data: peerMem } = await admin
+    .from('chat_room_members')
+    .select('muted_until, last_read_at')
+    .eq('room_id', roomId)
+    .eq('user_id', peerId)
+    .maybeSingle()
+  const muteUntil = peerMem?.muted_until ? new Date(peerMem.muted_until) : null
+  if (muteUntil && muteUntil > new Date()) return
+
+  const lastReadAt = peerMem?.last_read_at ? new Date(peerMem.last_read_at) : null
+  if (lastReadAt && Date.now() - lastReadAt.getTime() < 30_000) return
+
+  await admin.from('activity_events').insert({
+    recipient_user_id: peerId,
+    actor_user_id: senderId,
+    event_type: 'chat_dm',
+    chat_room_id: roomId,
+  })
+}
+
+async function enqueueChatGroupInvitePush(
+  admin: ChatPushAdmin,
+  roomId: string,
+  actorId: string,
+  recipientIds: string[],
+) {
+  if (recipientIds.length === 0) return
+  const eventRows = recipientIds.map((uid) => ({
+    recipient_user_id: uid,
+    actor_user_id: actorId,
+    event_type: 'chat_group_invite',
+    chat_room_id: roomId,
+  }))
+  await admin.from('activity_events').insert(eventRows)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -231,17 +288,11 @@ Deno.serve(async (req) => {
     // Notify each member except the creator that they were added.
     const invitedIds = unique.filter((uid) => uid !== user.id)
     if (invitedIds.length > 0) {
-      void (async () => {
-        try {
-          const eventRows = invitedIds.map((uid) => ({
-            recipient_user_id: uid,
-            actor_user_id: user.id,
-            event_type: 'chat_group_invite',
-            chat_room_id: room.id,
-          }))
-          await admin.from('activity_events').insert(eventRows)
-        } catch { /* push errors must not surface to the creator */ }
-      })()
+      try {
+        await enqueueChatGroupInvitePush(admin, room.id, user.id, invitedIds)
+      } catch {
+        /* push errors must not surface to the creator */
+      }
     }
 
     return json(200, { ok: true, room_id: room.id })
@@ -387,47 +438,13 @@ Deno.serve(async (req) => {
         .eq('user_id', user.id)
     }
 
-    // DM push: insert activity_events only — trg_activity_events_enqueue_push → lounge-send-activity-push (H2/H3).
+    // DM push: insert activity_events — trg_activity_events_enqueue_push → lounge-send-activity-push.
     if (room.kind === 'dm' && room.dm_key && inserted?.id) {
-      void (async () => {
-        try {
-          const parts = String(room.dm_key).split('::')
-          const peerId = parts[0] === user.id ? parts[1] : parts[0]
-          if (!peerId) return
-
-          // Skip push if recipient has blocked the sender.
-          const { data: blockRow } = await admin
-            .from('blocks')
-            .select('id')
-            .eq('blocker_id', peerId)
-            .eq('blocked_id', user.id)
-            .maybeSingle()
-          if (blockRow?.id) return
-
-          // Skip push if recipient has muted this room.
-          const { data: peerMem } = await admin
-            .from('chat_room_members')
-            .select('muted_until, last_read_at')
-            .eq('room_id', roomId)
-            .eq('user_id', peerId)
-            .maybeSingle()
-          const muteUntil = peerMem?.muted_until ? new Date(peerMem.muted_until) : null
-          if (muteUntil && muteUntil > new Date()) return
-
-          // Skip push if recipient read the room very recently (likely active in conversation).
-          const lastReadAt = peerMem?.last_read_at ? new Date(peerMem.last_read_at) : null
-          if (lastReadAt && Date.now() - lastReadAt.getTime() < 30_000) return
-
-          await admin.from('activity_events').insert({
-            recipient_user_id: peerId,
-            actor_user_id: user.id,
-            event_type: 'chat_dm',
-            chat_room_id: roomId,
-          })
-        } catch {
-          // Push errors must never surface to the sender.
-        }
-      })()
+      try {
+        await enqueueChatDmPush(admin, roomId, room.dm_key, user.id)
+      } catch {
+        // Push errors must never surface to the sender.
+      }
     }
 
     return json(200, {
@@ -703,18 +720,11 @@ Deno.serve(async (req) => {
     const { error: insErr } = await admin.from('chat_room_members').insert(rows)
     if (insErr) return json(400, { error: insErr.message })
 
-    // Notify each newly added member.
-    void (async () => {
-      try {
-        const eventRows = toAdd.map((uid) => ({
-          recipient_user_id: uid,
-          actor_user_id: user.id,
-          event_type: 'chat_group_invite',
-          chat_room_id: roomId,
-        }))
-        await admin.from('activity_events').insert(eventRows)
-      } catch { /* push errors must not surface */ }
-    })()
+    try {
+      await enqueueChatGroupInvitePush(admin, roomId, user.id, toAdd)
+    } catch {
+      /* push errors must not surface */
+    }
 
     return json(200, { ok: true, added: toAdd.length })
   }

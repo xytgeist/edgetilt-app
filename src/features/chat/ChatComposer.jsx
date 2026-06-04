@@ -671,7 +671,7 @@ export default function ChatComposer({
       <div className="chat-menu-glass overflow-hidden rounded-2xl" style={plusMenuStyle}>
         <button
           type="button"
-          disabled={disabled || imageSlots.length >= MAX_IMAGES || videoMeta !== null || videoUploadProgress !== null}
+          disabled={disabled || imageSlots.length >= MAX_IMAGES || videoMeta !== null || videoUploadStatus !== null}
           onClick={() => { setPlusOpen(false); fileInputRef.current?.click() }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >

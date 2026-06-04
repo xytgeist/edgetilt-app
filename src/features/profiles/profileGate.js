@@ -1,4 +1,8 @@
 import { pickDefaultProfileBannerUrl } from './defaultProfileBanners'
+import {
+  requestCfR2DirectUpload,
+  uploadFileToCfR2PresignedUrl,
+} from '../../utils/loungeCfImageMedia.js'
 
 /** Strip invisible chars that often sneak in from mobile paste/autocorrect. */
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g
@@ -338,6 +342,24 @@ export async function uploadProfileAvatar({ supabaseClient, user, file }) {
     return { data: null, error: new Error('Please choose an image file.') }
   }
 
+  try {
+    const mint = await requestCfR2DirectUpload(supabaseClient, {
+      contentType: file.type || 'image/jpeg',
+      fileName: file.name || '',
+    })
+    if (mint.configured) {
+      await uploadFileToCfR2PresignedUrl(mint.data.uploadURL, file)
+      return { data: mint.data.publicUrl, error: null }
+    }
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e)
+    if (/load failed|failed to fetch|networkerror|network request failed/i.test(raw)) {
+      return { data: null, error: new Error('Could not upload your photo. Check your connection and try again.') }
+    }
+    return { data: null, error: e instanceof Error ? e : new Error(raw || 'Could not upload avatar image.') }
+  }
+
+  // R2 not configured — fall back to Supabase Storage
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const bucket = 'profile-avatars'
@@ -367,13 +389,31 @@ export async function uploadProfileAvatar({ supabaseClient, user, file }) {
   return { data: data?.publicUrl || null, error: null }
 }
 
-/** Wide banner for full-screen profile. Create bucket `profile-banners` (public) in Supabase if missing. */
+/** Wide banner for full-screen profile. Falls back to Supabase `profile-banners` bucket if R2 is not configured. */
 export async function uploadProfileBanner({ supabaseClient, user, file }) {
   const mime = String(file?.type || '').toLowerCase()
   if (!mime.startsWith('image/')) {
     return { data: null, error: new Error('Please choose an image file.') }
   }
 
+  try {
+    const mint = await requestCfR2DirectUpload(supabaseClient, {
+      contentType: file.type || 'image/jpeg',
+      fileName: file.name || '',
+    })
+    if (mint.configured) {
+      await uploadFileToCfR2PresignedUrl(mint.data.uploadURL, file)
+      return { data: mint.data.publicUrl, error: null }
+    }
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e)
+    if (/load failed|failed to fetch|networkerror|network request failed/i.test(raw)) {
+      return { data: null, error: new Error('Could not upload your banner. Check your connection and try again.') }
+    }
+    return { data: null, error: e instanceof Error ? e : new Error(raw || 'Could not upload banner image.') }
+  }
+
+  // R2 not configured — fall back to Supabase Storage
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const bucket = 'profile-banners'

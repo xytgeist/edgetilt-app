@@ -790,10 +790,17 @@ export default function ChatConversation({
   }, [])
 
   // Scroll to bottom whenever messages finish loading (initial open + reload-to-latest).
+  // Retry at multiple intervals to catch image/layout settling on mobile.
   useEffect(() => {
     if (loading) return
-    const t = window.setTimeout(() => pinListToTail({ force: true }), 80)
-    return () => window.clearTimeout(t)
+    const t1 = window.setTimeout(() => pinListToTail({ force: true }), 80)
+    const t2 = window.setTimeout(() => pinListToTail({ force: true }), 250)
+    const t3 = window.setTimeout(() => pinListToTail({ force: true }), 500)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.clearTimeout(t3)
+    }
   }, [loading, pinListToTail])
 
   // Scroll to bottom when the user returns to the app with this chat open.

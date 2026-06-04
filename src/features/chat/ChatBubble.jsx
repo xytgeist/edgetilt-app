@@ -594,7 +594,7 @@ export default function ChatBubble({
                 )}
                 {hasMedia && !isDeleted && (
                   <div className="relative">
-                    <ChatMediaGrid media={allMedia} onOpen={openViewer} />
+                    <ChatMediaGrid media={allMedia} onOpen={isFinalizingMedia ? null : openViewer} />
                     {isFinalizingMedia && (
                       typeof message._videoUploadProgress === 'number' ? (
                         // Video upload — circular progress ring centered on the tile
@@ -959,7 +959,7 @@ function VideoUploadRing({ progress }) {
   const ballY = 50 + RING_R * Math.sin(angle)
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-[13px] bg-black/45">
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-[13px] bg-black/45">
       {/* Ring + wheel share a 100×100 container */}
       <div className="relative flex items-center justify-center" style={{ width: 100, height: 100 }}>
         {/* Progress ring — 1:1 SVG, rotated so arc starts at 12 o'clock */}
@@ -1033,16 +1033,18 @@ function ChatMediaImage({ src, className }) {
   const displaySrcRef = useRef(src)
 
   useEffect(() => {
-    if (src === displaySrcRef.current) return
-
     // Blob→blob or empty: swap immediately (no preload needed)
     if (!src || src.startsWith('blob:')) {
+      if (src === displaySrcRef.current) return
       displaySrcRef.current = src
       setDisplaySrc(src)
       return
     }
 
-    // Remote URL arriving — preload off-screen; retry on failure.
+    // Remote URL — always preload off-screen; retry on failure.
+    // We deliberately skip the `src === displaySrcRef.current` early-exit for remote
+    // URLs so that the initial CF poster URL also gets the retry treatment (the video
+    // may still be encoding when the bubble is first mounted from a fresh server load).
     let cancelled = false
     let retryTimer = null
     let attempt = 0
@@ -1105,12 +1107,12 @@ function ChatMediaGrid({ media, onOpen }) {
 
         return (
           // Use index as key so React keeps the component alive when URL changes blob→R2
-          <button
+            <button
             key={i}
             type="button"
-            onClick={() => onOpen(i)}
+            onClick={() => onOpen?.(i)}
             className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''}`}
-            style={{ aspectRatio: spanFull ? '2/1' : '1/1' }}
+            style={{ aspectRatio: spanFull ? '2/1' : '1/1', minWidth: 160 }}
             aria-label={item.type === 'video' ? 'Play video' : `View image ${i + 1}`}
           >
             {item.type === 'video' ? (

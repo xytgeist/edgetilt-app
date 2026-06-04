@@ -1243,7 +1243,8 @@ export default function ChatConversation({
         })
       }
 
-      // Background: await video upload completion — clears _finalizingMedia + progress on the bubble.
+      // Background: await video upload completion — then poll for CF encoding readiness
+      // before clearing _finalizingMedia so the user can't tap into an unready video.
       if (hasPendingVideo && messageId && pendingVideoUpload) {
         const clearVideoProgress = (extra = {}) => {
           setMessages((prev) => prev.map((m) =>
@@ -1252,7 +1253,30 @@ export default function ChatConversation({
               : m
           ))
         }
-        Promise.resolve(pendingVideoUpload).then(() => {
+        Promise.resolve(pendingVideoUpload).then(async () => {
+          // TUS upload done — drop the progress ring (% goes away) but keep the
+          // _finalizingMedia overlay (generic spinner) while Cloudflare encodes.
+          setMessages((prev) => prev.map((m) =>
+            (m.id === messageId || m.id === tempId)
+              ? { ...m, _videoUploadProgress: undefined }
+              : m
+          ))
+
+          // Poll the CF poster thumbnail URL — it 404s until encoding is done.
+          if (streamVideoUid) {
+            const posterUrl = `https://videodelivery.net/${streamVideoUid}/thumbnails/thumbnail.jpg?height=200&fit=crop`
+            const MAX_POLL = 40  // ≤ ~5 min total
+            for (let i = 0; i < MAX_POLL; i++) {
+              try {
+                const res = await fetch(posterUrl, { method: 'HEAD', cache: 'no-cache' })
+                if (res.ok) break
+              } catch { /* network hiccup — keep polling */ }
+              if (i < MAX_POLL - 1) {
+                await new Promise((r) => setTimeout(r, Math.min(10_000, 3000 + i * 1500)))
+              }
+            }
+          }
+
           clearVideoProgress()
         }).catch((e) => {
           console.error('[Chat] video upload failed after send', e?.message)

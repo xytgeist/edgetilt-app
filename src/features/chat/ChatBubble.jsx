@@ -669,28 +669,12 @@ export default function ChatBubble({
                   aria-label={reactionPillInteractive ? `See all ${totalCount} reactions` : undefined}
                 >
                   {sorted.map((r) => (
-                    reactionPillInteractive ? (
-                      <button
-                        key={r.emoji}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleReaction(r.emoji)
-                        }}
-                        aria-label={r.viewerReacted ? `Remove ${r.emoji} reaction` : `React with ${r.emoji}`}
-                        aria-pressed={r.viewerReacted}
-                        className="inline-flex items-center gap-0.5 rounded-full bg-transparent px-1.5 py-0.5 touch-manipulation transition-opacity active:opacity-70"
-                      >
-                        {renderReactionGlyph(r.emoji, { chip: true })}
-                        {r.count > 1 ? (
-                          <span className="text-[11px] font-semibold leading-none text-zinc-400">{r.count}</span>
-                        ) : null}
-                      </button>
-                    ) : (
-                      <span key={r.emoji} className="inline-flex items-center gap-0.5 px-0.5">
-                        {renderReactionGlyph(r.emoji, { chip: true })}
-                      </span>
-                    )
+                    <span key={r.emoji} className="inline-flex items-center gap-0.5 px-1.5 py-0.5">
+                      {renderReactionGlyph(r.emoji, { chip: true })}
+                      {r.count > 1 ? (
+                        <span className="text-[11px] font-semibold leading-none text-zinc-400">{r.count}</span>
+                      ) : null}
+                    </span>
                   ))}
                   {!reactionPillInteractive && totalCount >= 2 ? (
                     <span className="ml-0.5 text-[12px] font-semibold leading-none text-zinc-400">{totalCount}</span>

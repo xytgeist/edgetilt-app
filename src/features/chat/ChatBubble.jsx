@@ -935,55 +935,58 @@ function PinIcon({ filled = false }) {
 
 // ── Circular upload-progress ring ─────────────────────────────────────────
 
-const RING_R  = 30          // SVG circle radius
-const RING_C  = 2 * Math.PI * RING_R  // circumference ≈ 188.5
+// SVG uses a 1:1 coordinate space (no viewBox scaling) for simplicity.
+const RING_R  = 39          // SVG circle radius (px)
+const RING_C  = 2 * Math.PI * RING_R  // circumference ≈ 245.0
 
 /**
- * Centered scrim + glowing circular progress ring shown over a video tile while
- * the upload is in flight.  A spinning roulette wheel sits inside the arc; the
- * upload % floats beneath it.  The arc fills clockwise as `progress` goes 0→1.
+ * Centered scrim + circular progress ring shown over a video tile while the
+ * upload is in flight.  A spinning roulette wheel sits tightly inside the arc;
+ * the upload % floats beneath.  Arc fills clockwise as `progress` goes 0→1.
  */
 function VideoUploadRing({ progress }) {
   const pct    = Math.max(0, Math.min(1, progress))
   const offset = RING_C * (1 - pct)
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-[13px] bg-black/45">
-      {/* Ring + wheel stacked in a relative container */}
-      <div className="relative flex items-center justify-center" style={{ width: 86, height: 86 }}>
-        {/* Progress ring — rotated so arc starts at 12 o'clock */}
-        <svg width="86" height="86" viewBox="0 0 76 76" className="absolute inset-0 -rotate-90" aria-hidden>
-          <circle cx="38" cy="38" r={RING_R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
+      {/* Ring + wheel share a 100×100 container */}
+      <div className="relative flex items-center justify-center" style={{ width: 100, height: 100 }}>
+        {/* Progress ring — 1:1 SVG, rotated so arc starts at 12 o'clock */}
+        <svg width="100" height="100" viewBox="0 0 100 100" className="absolute inset-0 -rotate-90" aria-hidden>
+          {/* Track */}
+          <circle cx="50" cy="50" r={RING_R} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5.5" />
+          {/* Progress arc — black with a white glow so it reads on the dark scrim */}
           <circle
-            cx="38" cy="38" r={RING_R}
+            cx="50" cy="50" r={RING_R}
             fill="none"
-            stroke="#22d3ee"
-            strokeWidth="5"
+            stroke="#000000"
+            strokeWidth="5.5"
             strokeLinecap="round"
             strokeDasharray={RING_C}
             strokeDashoffset={offset}
             style={{
               transition: 'stroke-dashoffset 0.35s ease',
-              filter: 'drop-shadow(0 0 7px rgba(34,211,238,0.95))',
+              filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.85)) drop-shadow(0 0 2px rgba(255,255,255,1))',
             }}
           />
         </svg>
-        {/* Roulette wheel — CSS spin at 60 fps (smoother than the source GIF) */}
+        {/* Roulette wheel — CSS spin at 60 fps, tightly inside the arc */}
         <img
           src="/roulette-spinner.png"
           alt=""
           className="rounded-full"
           style={{
-            width: 56,
-            height: 56,
+            width: 65,
+            height: 65,
             objectFit: 'cover',
-            animation: 'spin 2.8s linear infinite',
+            animation: 'spin 4.5s linear infinite',
           }}
         />
       </div>
       {/* Percentage below the ring */}
       <span
         className="font-bold tabular-nums text-white"
-        style={{ fontSize: 13, lineHeight: 1, textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}
+        style={{ fontSize: 13, lineHeight: 1, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
       >
         {Math.round(pct * 100)}%
       </span>

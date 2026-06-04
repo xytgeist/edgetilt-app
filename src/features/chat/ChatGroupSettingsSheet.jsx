@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { uploadProfileAvatar } from '../profiles/profileGate.js'
 import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal.jsx'
@@ -111,7 +111,12 @@ export default function ChatGroupSettingsSheet({
 
   const avatarInputRef = useRef(null)
   const searchTimerRef = useRef(null)
+  const scrollBodyRef = useRef(null)
+  const heroTitleRef = useRef(null)
+  const topChromeRef = useRef(null)
+  const titleRevealRafRef = useRef(0)
   const [avatarCropFile, setAvatarCropFile] = useState(/** @type {File | null} */ (null))
+  const [titleBarReveal, setTitleBarReveal] = useState(0)
 
   const reload = useCallback(async () => {
     if (!room?.id) return
@@ -209,6 +214,56 @@ export default function ChatGroupSettingsSheet({
     }
   }, [supabaseClient, room.id, onRoomUpdated])
 
+  const groupDisplayName = String(room.title || title || 'Group chat').trim() || 'Group chat'
+
+  const updateTitleBarReveal = useCallback(() => {
+    if (editMode) {
+      setTitleBarReveal(0)
+      return
+    }
+    const hero = heroTitleRef.current
+    const chrome = topChromeRef.current
+    if (!hero || !chrome) {
+      setTitleBarReveal(0)
+      return
+    }
+    const chromeBottom = chrome.getBoundingClientRect().bottom
+    const heroRect = hero.getBoundingClientRect()
+    const overlap = chromeBottom - heroRect.top
+    const heroH = Math.max(heroRect.height, 1)
+    setTitleBarReveal(Math.max(0, Math.min(1, overlap / heroH)))
+  }, [editMode])
+
+  useEffect(() => {
+    if (!open) return undefined
+    setTitleBarReveal(0)
+    if (scrollBodyRef.current) scrollBodyRef.current.scrollTop = 0
+
+    const queueReveal = () => {
+      if (titleRevealRafRef.current) return
+      titleRevealRafRef.current = window.requestAnimationFrame(() => {
+        titleRevealRafRef.current = 0
+        updateTitleBarReveal()
+      })
+    }
+
+    queueReveal()
+    const el = scrollBodyRef.current
+    if (!el) return undefined
+    el.addEventListener('scroll', queueReveal, { passive: true })
+    window.addEventListener('resize', queueReveal)
+    return () => {
+      el.removeEventListener('scroll', queueReveal)
+      window.removeEventListener('resize', queueReveal)
+      if (titleRevealRafRef.current) window.cancelAnimationFrame(titleRevealRafRef.current)
+    }
+  }, [open, editMode, updateTitleBarReveal, groupDisplayName])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    updateTitleBarReveal()
+  }, [open, editMode, groupDisplayName, updateTitleBarReveal])
+
   const onPickAvatar = (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -237,48 +292,70 @@ export default function ChatGroupSettingsSheet({
   const settingsPortal = open ? createPortal(
     <div className="fixed inset-0 z-[95] flex flex-col bg-zinc-950" data-chat-feature>
 
-      {/* ── Header ───────────────────────────────────────────────── */}
+      {/* Fixed glass chrome — back + scroll-reveal title + edit */}
       <div
-        className="flex shrink-0 items-center gap-3 border-b border-zinc-800/60 px-3 pb-3"
+        ref={topChromeRef}
+        className="pointer-events-none absolute inset-x-0 top-0 z-20"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-400 touch-manipulation active:bg-zinc-800"
-          aria-label="Close"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-        <h1 className="flex-1 text-[17px] font-semibold text-zinc-100">Group info</h1>
-        {isOwner && !editMode && (
+        <div className="relative flex items-center justify-between gap-2 px-3 pb-3">
           <button
             type="button"
-            onClick={() => setEditMode(true)}
-            className="text-[14px] font-semibold text-cyan-400 touch-manipulation active:opacity-70"
+            onClick={onClose}
+            aria-label="Back"
+            className="chat-header-glass pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70"
           >
-            Edit
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
           </button>
-        )}
-        {isOwner && editMode && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditMode(false)
-              setTitle(String(room.title || ''))
-              setDescription(String(room.description || ''))
+
+          <p
+            className="pointer-events-none absolute inset-x-14 truncate text-center text-[17px] font-semibold text-zinc-100"
+            style={{
+              top: '50%',
+              transform: 'translateY(-50%)',
+              opacity: titleBarReveal,
             }}
-            className="text-[14px] font-semibold text-zinc-400 touch-manipulation active:opacity-70"
+            aria-hidden={titleBarReveal < 0.08}
           >
-            Cancel
-          </button>
-        )}
+            {groupDisplayName}
+          </p>
+
+          <div className="pointer-events-auto flex shrink-0 justify-end">
+            {isOwner && !editMode ? (
+              <button
+                type="button"
+                onClick={() => setEditMode(true)}
+                className="chat-header-glass rounded-full px-4 py-2 text-[14px] font-semibold text-zinc-100 touch-manipulation active:opacity-75"
+              >
+                Edit
+              </button>
+            ) : isOwner && editMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMode(false)
+                  setTitle(String(room.title || ''))
+                  setDescription(String(room.description || ''))
+                }}
+                className="chat-header-glass rounded-full px-4 py-2 text-[14px] font-semibold text-zinc-100 touch-manipulation active:opacity-75"
+              >
+                Cancel
+              </button>
+            ) : (
+              <div className="h-10 w-10 shrink-0" aria-hidden />
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── Scroll body ──────────────────────────────────────────── */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+      {/* Scroll body — content slides under fixed chrome */}
+      <div
+        ref={scrollBodyRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-10"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 3.75rem)' }}
+      >
 
         {err ? (
           <div className="mx-4 mt-3 rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2.5 text-[13px] text-rose-300">
@@ -342,8 +419,11 @@ export default function ChatGroupSettingsSheet({
             </div>
           ) : (
             <div className="mt-3 text-center">
-              <p className="text-[20px] font-bold leading-tight text-zinc-100">
-                {room.title || title || 'Group chat'}
+              <p
+                ref={heroTitleRef}
+                className="text-[20px] font-bold leading-tight text-zinc-100"
+              >
+                {groupDisplayName}
               </p>
               {(room.description || description) ? (
                 <p className="mt-1.5 text-[14px] leading-snug text-zinc-400">

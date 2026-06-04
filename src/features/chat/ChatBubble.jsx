@@ -597,15 +597,8 @@ export default function ChatBubble({
                     <ChatMediaGrid media={allMedia} onOpen={openViewer} />
                     {isFinalizingMedia && (
                       typeof message._videoUploadProgress === 'number' ? (
-                        // Video upload in progress — show progress bar at bottom of tile
-                        <div className="pointer-events-none absolute inset-0 rounded-[13px] bg-black/25">
-                          <div className="absolute bottom-0 inset-x-0 h-1.5 overflow-hidden rounded-b-[13px] bg-white/20">
-                            <div
-                              className="h-full bg-cyan-400 transition-[width] duration-300"
-                              style={{ width: `${Math.round(message._videoUploadProgress * 100)}%` }}
-                            />
-                          </div>
-                        </div>
+                        // Video upload — circular progress ring centered on the tile
+                        <VideoUploadRing progress={message._videoUploadProgress} />
                       ) : (
                         // Images still uploading — generic spinner
                         <div className="absolute inset-0 flex items-center justify-center rounded-[13px] bg-black/30">
@@ -937,6 +930,45 @@ function PinIcon({ filled = false }) {
       <path d="M5 7h14v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V7z" />
       <path d="M9 3h6v4H9z" />
     </svg>
+  )
+}
+
+// ── Circular upload-progress ring ─────────────────────────────────────────
+
+const RING_R  = 20          // SVG circle radius
+const RING_C  = 2 * Math.PI * RING_R  // circumference ≈ 125.7
+
+/**
+ * Centered scrim + circular progress ring shown over a video tile while the
+ * upload is in flight.  Mimics the iOS download-progress indicator: the ring
+ * fills clockwise as `progress` goes 0→1, with a small percentage label inside.
+ */
+function VideoUploadRing({ progress }) {
+  const pct    = Math.max(0, Math.min(1, progress))
+  const offset = RING_C * (1 - pct)
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[13px] bg-black/35">
+      {/* -rotate-90 so the fill starts at 12 o'clock */}
+      <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90" aria-hidden>
+        {/* Track */}
+        <circle cx="28" cy="28" r={RING_R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="3.5" />
+        {/* Progress arc */}
+        <circle
+          cx="28" cy="28" r={RING_R}
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray={RING_C}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.35s ease' }}
+        />
+      </svg>
+      {/* Percentage label — rotated back upright since the SVG parent is −90° */}
+      <span className="absolute text-[12px] font-semibold tabular-nums text-white rotate-90" style={{ lineHeight: 1 }}>
+        {Math.round(pct * 100)}
+      </span>
+    </div>
   )
 }
 

@@ -360,6 +360,16 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Stamp sender's last_read_at so their own send never shows as unread
+    // and future incoming messages correctly flip has_unread back to true.
+    if (inserted?.id) {
+      void admin
+        .from('chat_room_members')
+        .update({ last_read_at: new Date().toISOString(), last_read_message_id: inserted.id })
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+    }
+
     // DM push: insert activity_events only — trg_activity_events_enqueue_push → lounge-send-activity-push (H2/H3).
     if (room.kind === 'dm' && room.dm_key && inserted?.id) {
       void (async () => {

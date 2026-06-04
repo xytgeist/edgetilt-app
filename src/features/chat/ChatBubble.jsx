@@ -654,8 +654,8 @@ export default function ChatBubble({
             return (
               <div className={`-mt-3 relative z-10 flex px-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`reaction-pill flex items-center gap-0.5 rounded-full py-1 ${
-                    reactionPillInteractive ? 'cursor-pointer pl-2 pr-1.5' : 'gap-1 px-2.5'
+                  className={`reaction-pill flex items-center gap-0 rounded-full py-1 px-2 ${
+                    reactionPillInteractive ? 'cursor-pointer' : ''
                   }`}
                   onClick={reactionPillInteractive ? openReactionsDetail : undefined}
                   onKeyDown={reactionPillInteractive ? (e) => {
@@ -669,7 +669,7 @@ export default function ChatBubble({
                   aria-label={reactionPillInteractive ? `See all ${totalCount} reactions` : undefined}
                 >
                   {sorted.map((r) => (
-                    <span key={r.emoji} className="inline-flex items-center gap-0.5 px-1.5 py-0.5">
+                    <span key={r.emoji} className="inline-flex items-center gap-0.5 px-0.5 py-0.5">
                       {renderReactionGlyph(r.emoji, { chip: true })}
                       {r.count > 1 ? (
                         <span className="text-[11px] font-semibold leading-none text-zinc-400">{r.count}</span>

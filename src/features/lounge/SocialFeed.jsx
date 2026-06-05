@@ -10699,6 +10699,8 @@ export default function SocialFeed({
       composerFieldRef.current && typeof composerFieldRef.current.value === 'string'
         ? composerFieldRef.current.value
         : postText
+    const hasSeedCaption = Boolean(normalizeFeedCaption(seed))
+    const initialFocusPartIndex = hasSeedCaption ? 1 : 0
     setThreadComposeCaptions([seed, ''])
     setThreadComposePartMedia([
       {
@@ -10714,7 +10716,7 @@ export default function SocialFeed({
     }
     setComposerImageItems([])
     setComposerMediaUrl('')
-    setThreadComposeActivePartIndex(1)
+    setThreadComposeActivePartIndex(initialFocusPartIndex)
     setPostText('')
     composerFoldedFromFeedScrollRef.current = false
     composerFoldRevealRef.current = 0
@@ -10722,7 +10724,7 @@ export default function SocialFeed({
     composerExpandedRef.current = false
     setComposerExpanded(false)
     setThreadComposeOpen(true)
-    focusThreadComposePart(1)
+    focusThreadComposePart(initialFocusPartIndex)
   }, [
     appendThreadComposePart,
     focusThreadComposePart,

@@ -749,7 +749,6 @@ export default function ChatComposer({
               userSelect: 'text',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
-              caretColor: 'white',
             }}
           />
 

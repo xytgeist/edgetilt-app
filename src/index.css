@@ -2339,6 +2339,14 @@ html.light .reaction-pill {
   to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
+/* Chat composer caret — dark default; light mode needs dark caret on pale glass */
+.chat-composer-ce {
+  caret-color: #ffffff;
+}
+html.light [data-chat-feature] .chat-composer-ce {
+  caret-color: #3b82f6;
+}
+
 /* contenteditable placeholder */
 .chat-composer-ce:empty::before {
   content: attr(data-placeholder);

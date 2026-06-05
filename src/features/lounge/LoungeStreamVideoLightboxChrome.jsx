@@ -23,7 +23,7 @@ export const LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
   'chat-header-glass media-lightbox-nav-btn flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full px-3.5 text-[13px] font-bold text-zinc-100 transition-opacity active:opacity-70 [-webkit-tap-highlight-color:transparent]'
 
 export const LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS =
-  'chat-header-glass media-lightbox-nav-btn relative z-[1] flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-zinc-100 transition-opacity active:opacity-70 sm:h-12 sm:w-12 [-webkit-tap-highlight-color:transparent]'
+  'chat-header-glass media-lightbox-nav-btn flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-zinc-100 transition-opacity active:opacity-70 sm:h-12 sm:w-12 [-webkit-tap-highlight-color:transparent]'
 
 /** Horizontal inset for hero / image lightbox chrome (10% side margins in landscape). */
 export const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'

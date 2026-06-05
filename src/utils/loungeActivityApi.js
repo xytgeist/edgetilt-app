@@ -97,12 +97,24 @@ export function loungeActivityPlainPostRepostEvent(event) {
   )
 }
 
+/** Comment repost: `post_id` is the reposter's shell; `comment_id` is the source comment. */
+export function loungeActivityCommentRepostEvent(event) {
+  return (
+    event?.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.REPOST &&
+    Boolean(event?.comment_id) &&
+    Boolean(event?.post_id)
+  )
+}
+
 /** Post detail deep link from a notification row (`postId` always set when returned). */
 export function loungeActivityOpenPostTarget(event) {
   if (loungeActivityPlainPostRepostEvent(event)) {
     const originalId = String(event?.repost_group_target_id || '').trim()
     if (!originalId) return null
     return { postId: originalId, commentId: null }
+  }
+  if (loungeActivityCommentRepostEvent(event)) {
+    return null
   }
   if (!event?.post_id) return null
   const type = event.event_type
@@ -116,6 +128,44 @@ export function loungeActivityOpenPostTarget(event) {
     postId: event.post_id,
     commentId: drillComment && event.comment_id ? event.comment_id : null,
   }
+}
+
+/**
+ * Resolve notification tap target — repost shells need a lookup for the original post/comment parent.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {object} event
+ */
+export async function resolveLoungeActivityOpenPostTarget(supabaseClient, event) {
+  const synced = loungeActivityOpenPostTarget(event)
+  if (!event || !supabaseClient) return synced
+
+  if (loungeActivityPlainPostRepostEvent(event)) {
+    if (synced?.postId) return synced
+    const shellId = String(event.post_id || '').trim()
+    if (!shellId) return null
+    const { data, error } = await supabaseClient
+      .from('community_feed_posts')
+      .select('repost_of_post_id')
+      .eq('id', shellId)
+      .maybeSingle()
+    if (error || data?.repost_of_post_id == null) return null
+    return { postId: String(data.repost_of_post_id), commentId: null }
+  }
+
+  if (loungeActivityCommentRepostEvent(event)) {
+    const commentId = String(event.comment_id || '').trim()
+    if (!commentId) return null
+    const { data, error } = await supabaseClient
+      .from('feed_comments')
+      .select('post_id')
+      .eq('id', commentId)
+      .is('hidden_at', null)
+      .maybeSingle()
+    if (error || !data?.post_id) return null
+    return { postId: String(data.post_id), commentId }
+  }
+
+  return synced
 }
 
 export function loungeActivityActionPhrase(event) {

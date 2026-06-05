@@ -27,7 +27,8 @@ import {
   loungeActivityEventsPage,
   loungeActivityMarkAllRead,
   loungeActivityMarkPushOpened,
-  loungeActivityOpenPostTarget,
+  loungeActivityPlainPostRepostEvent,
+  resolveLoungeActivityOpenPostTarget,
   loungeActivitySummary,
   loungeActivityUnreadCount,
   LOUNGE_ACTIVITY_EVENT_TYPES,
@@ -409,12 +410,14 @@ export default function LoungeNotificationsPanel({
         })
         return
       }
-      if (event.post_id) {
-        const target = loungeActivityOpenPostTarget(event)
-        if (target) onOpenPost?.(target)
+      if (event.post_id || loungeActivityPlainPostRepostEvent(event)) {
+        void (async () => {
+          const target = await resolveLoungeActivityOpenPostTarget(supabaseClient, event)
+          if (target) onOpenPost?.(target)
+        })()
       }
     },
-    [markNotificationEventsRead, markSessionNewSeen, onOpenOwnProfileFollowers, onOpenPost, onOpenProfile],
+    [markNotificationEventsRead, markSessionNewSeen, onOpenOwnProfileFollowers, onOpenPost, onOpenProfile, supabaseClient],
   )
 
   const patchNotificationInteractionEntity = useCallback((kind, entityId, patch) => {

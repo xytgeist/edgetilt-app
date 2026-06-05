@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import MediaLightboxAmbientBackdrop from '../../components/MediaLightboxAmbientBackdrop.jsx'
 
 const PULL_DISMISS_THRESHOLD_PX = 80
 const PULL_DISMISS_VELOCITY     = 0.4 // px/ms
@@ -126,7 +125,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
       }}
     >
       <div
-        className="relative flex h-full flex-col"
+        className="relative h-full"
         style={{
           transform: `translateY(${translateY}px)`,
           transition: dismissing || pullY === 0 ? 'transform 0.22s ease' : undefined,
@@ -136,29 +135,9 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        <div className="media-lightbox-status-bar-blend" aria-hidden />
-        <div className="pointer-events-auto flex shrink-0 items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Back"
-            className="chat-header-glass media-lightbox-nav-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation transition-opacity active:opacity-70"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          {items.length > 1 && (
-            <span className={`text-[13px] font-semibold ${isLight ? 'text-zinc-900/70' : 'text-white/70'}`}>
-              {activeIdx + 1} / {items.length}
-            </span>
-          )}
-          <div className="w-10" aria-hidden />
-        </div>
-
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="absolute inset-0 overflow-y-auto"
           style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}
         >
           {items.map((url, i) => (
@@ -168,7 +147,6 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
               className="relative flex h-full w-full items-center justify-center overflow-hidden"
               style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
             >
-              <MediaLightboxAmbientBackdrop src={url} />
               <img
                 src={url}
                 alt=""
@@ -179,24 +157,48 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
           ))}
         </div>
 
+        <div className="media-lightbox-status-bar-blend pointer-events-none absolute inset-x-0 top-0 z-[9]" aria-hidden />
+        <div
+          data-chat-image-lightbox-header
+          className="pointer-events-none absolute inset-x-0 top-0 z-10"
+        >
+          <div className="pointer-events-auto flex items-center px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Back"
+              className="chat-header-glass media-lightbox-nav-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation transition-opacity active:opacity-70"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         {items.length > 1 && (
-          <div className="flex shrink-0 justify-center gap-1.5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {items.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  const el = scrollRef.current
-                  if (el) el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
-                }}
-                className={`h-1.5 rounded-full transition-all touch-manipulation ${
-                  isLight
-                    ? i === activeIdx ? 'w-4 bg-zinc-900' : 'w-1.5 bg-zinc-900/40'
-                    : i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
-                }`}
-                aria-label={`Go to image ${i + 1}`}
-              />
-            ))}
+          <div
+            data-chat-image-lightbox-footer
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
+          >
+            <div className="pointer-events-auto flex justify-center gap-1.5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {items.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    const el = scrollRef.current
+                    if (el) el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
+                  }}
+                  className={`h-1.5 rounded-full transition-all touch-manipulation ${
+                    isLight
+                      ? i === activeIdx ? 'w-4 bg-zinc-600' : 'w-1.5 bg-zinc-800'
+                      : i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
+                  }`}
+                  aria-label={`Go to image ${i + 1}`}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

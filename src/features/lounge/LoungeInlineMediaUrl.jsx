@@ -231,6 +231,14 @@ export function LoungeImageLightbox({
             <div className="[&_[data-lounge-post-interaction-bar]]:landscape:w-auto [&_[data-lounge-post-interaction-bar]]:landscape:justify-end [&_[data-lounge-post-interaction-bar]]:landscape:gap-1.5">
               {lightboxInteractionBarContent}
             </div>
+            {multi ? (
+              <div
+                data-lounge-lightbox-image-pager
+                className="pointer-events-none mt-2 text-center text-[12px] font-medium tabular-nums text-zinc-200"
+              >
+                {idx + 1} / {list.length}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -259,7 +267,7 @@ export function LoungeImageLightbox({
                   e.stopPropagation()
                   goPrev()
                 }}
-                className={`pointer-events-auto absolute left-1 top-1/2 -translate-y-1/2 sm:left-2 ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
+                className={`pointer-events-auto absolute left-1 top-1/2 z-[1] -translate-y-1/2 sm:left-2 ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
                 data-lounge-lightbox-no-swipe
               >
                 <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
@@ -273,16 +281,21 @@ export function LoungeImageLightbox({
                   e.stopPropagation()
                   goNext()
                 }}
-                className={`pointer-events-auto absolute right-1 top-1/2 -translate-y-1/2 sm:right-2 ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
+                className={`pointer-events-auto absolute right-1 top-1/2 z-[1] -translate-y-1/2 sm:right-2 ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
                 data-lounge-lightbox-no-swipe
               >
                 <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                   <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <div className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]">
-                {idx + 1} / {list.length}
-              </div>
+              {!lightboxInteractionBarContent ? (
+                <div
+                  data-lounge-lightbox-image-pager
+                  className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
+                >
+                  {idx + 1} / {list.length}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div className="relative z-[1] inline-flex max-h-full max-w-full origin-center" style={mediaTransformStyle}>

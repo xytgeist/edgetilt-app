@@ -815,9 +815,8 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-
 html.light [data-lounge-image-lightbox] {
   background-color: #fafafa !important;
 }
-/* Back, menu, Follow, carousel — idle interaction gray + stronger glass over busy media */
-html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn,
-html.light [data-chat-image-lightbox] .media-lightbox-nav-btn {
+/* Lounge image lightbox nav — idle interaction gray + stronger glass over busy media */
+html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
   color: #3f3f46 !important;
   background: rgba(235, 238, 255, 0.72) !important;
   backdrop-filter: blur(20px) saturate(140%) !important;
@@ -825,7 +824,52 @@ html.light [data-chat-image-lightbox] .media-lightbox-nav-btn {
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   isolation: isolate;
 }
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200 {
+/* Chat image lightbox back — frosted glass over full-bleed media */
+[data-chat-image-lightbox] .media-lightbox-nav-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  isolation: isolate;
+}
+html.light [data-chat-image-lightbox] .media-lightbox-nav-btn {
+  color: #3f3f46 !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(28px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(165%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.38) !important;
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+/* Chat image lightbox — frosted semi-transparent header + footer over full-bleed media */
+[data-chat-image-lightbox] [data-chat-image-lightbox-header] {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.28) 55%, transparent 100%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+[data-chat-image-lightbox] [data-chat-image-lightbox-footer] {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.28) 55%, transparent 100%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+html.light [data-chat-image-lightbox] [data-chat-image-lightbox-header] {
+  background: linear-gradient(to bottom, rgba(250, 250, 250, 0.82) 0%, rgba(250, 250, 250, 0.45) 55%, transparent 100%);
+}
+html.light [data-chat-image-lightbox] [data-chat-image-lightbox-footer] {
+  background: linear-gradient(to top, rgba(250, 250, 250, 0.82) 0%, rgba(250, 250, 250, 0.45) 55%, transparent 100%);
+}
+/* ⋯ menu glyph — match back-arrow visual weight in lightbox chrome (default 14px in feed) */
+[data-lounge-image-lightbox] [data-lounge-post-menu] button svg,
+[data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-menu] button svg {
+  width: 1.375rem !important;
+  height: 1.375rem !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200,
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-image-pager] {
   color: #3f3f46 !important;
   background: transparent !important;
   backdrop-filter: none !important;
@@ -896,18 +940,16 @@ html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text
 }
 
 /*
- * Light-mode image lightboxes — ambient blur fill behind sharp foreground image.
- * Hidden in dark mode; scoped to chat + lounge image/GIF viewers only.
+ * Light-mode lounge image lightboxes — ambient blur fill behind sharp foreground image.
+ * Hidden in dark mode; chat image viewer uses solid backdrop only.
  */
 .media-lightbox-ambient-bg {
   display: none;
 }
-html.light [data-chat-image-lightbox] .media-lightbox-ambient-bg,
 html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg {
   display: block;
   z-index: 0;
 }
-html.light [data-chat-image-lightbox] .media-lightbox-ambient-bg__img,
 html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg__img {
   position: absolute;
   left: 50%;
@@ -922,7 +964,6 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg__img {
   filter: blur(56px) saturate(1.2) brightness(1.06);
   opacity: 0.9;
 }
-html.light [data-chat-image-lightbox] .media-lightbox-ambient-bg::after,
 html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
   content: '';
   position: absolute;

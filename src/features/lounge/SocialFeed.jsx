@@ -5878,6 +5878,29 @@ export default function SocialFeed({
           setCommunityPosts((prev) => (prev.some((p) => p.id === postRow.id) ? prev : [postRow, ...prev]))
         }
       }
+      if (postRow?.is_plain_repost) {
+        const originalId = String(postRow.reposted_post?.id ?? postRow.repost_of_post_id ?? '').trim()
+        if (!originalId) return
+        if (String(originalId) !== String(postRow.id)) {
+          let originalPost = communityPosts.find((p) => p.id === originalId)
+          if (!originalPost) {
+            const { data, error } = await supabaseClient
+              .from('community_feed_posts')
+              .select(LOUNGE_SINGLE_POST_SELECT)
+              .eq('id', originalId)
+              .is('hidden_at', null)
+              .maybeSingle()
+            if (error || !data) return
+            const hydrated = await hydrateCommunityPosts([data])
+            originalPost = hydrated?.[0] || null
+            if (originalPost) {
+              setCommunityPosts((prev) => (prev.some((p) => p.id === originalPost.id) ? prev : [originalPost, ...prev]))
+            }
+          }
+          if (!originalPost) return
+          postRow = originalPost
+        }
+      }
       if (!postRow) return
       if (commentId) {
         await openDirectCommentPostDetail(postRow, commentId, { focusComposer })

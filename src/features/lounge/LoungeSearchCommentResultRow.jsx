@@ -79,11 +79,12 @@ export default function LoungeSearchCommentResultRow({
     const base = {
       onMentionClick: pp.onMentionClick,
       onHashtagClick: pp.onHashtagClick,
+      onLinkClick: pp.onLinkClick,
     }
     const hq = String(searchHighlightQuery || '').trim()
     if (hq.length >= 2) return { ...base, highlightQuery: hq }
     return base
-  }, [pp.onHashtagClick, pp.onMentionClick, searchHighlightQuery])
+  }, [pp.onHashtagClick, pp.onLinkClick, pp.onMentionClick, searchHighlightQuery])
 
   if (!comment?.id || !post?.id) return null
 

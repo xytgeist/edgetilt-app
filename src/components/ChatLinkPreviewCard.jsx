@@ -23,9 +23,10 @@ import {
  *   className?: string,
  *   isMine?: boolean,
  *   embedded?: boolean,
+ *   onPreviewOpen?: (preview: object, e: MouseEvent) => void,
  * }} props
  */
-export default function ChatLinkPreviewCard({ preview, className = '', isMine = false, embedded = false }) {
+export default function ChatLinkPreviewCard({ preview, className = '', isMine = false, embedded = false, onPreviewOpen }) {
   const [sampledAccent, setSampledAccent] = useState(null)
 
   const resolvedAccent = useMemo(() => (preview?.url ? resolvePreviewAccent(preview) : null), [preview])
@@ -77,7 +78,11 @@ export default function ChatLinkPreviewCard({ preview, className = '', isMine = 
   const titleClass = branded || isMine ? '' : 'text-zinc-100'
   const domainClass = branded || isMine ? '' : 'text-zinc-400'
 
-  const open = () => {
+  const open = (e) => {
+    if (typeof onPreviewOpen === 'function') {
+      onPreviewOpen(preview, e)
+      return
+    }
     try {
       window.open(preview.url, '_blank', 'noopener,noreferrer')
     } catch {

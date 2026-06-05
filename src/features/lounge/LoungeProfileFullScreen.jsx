@@ -290,6 +290,10 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     lightboxPortalClass: pp.mediaLightboxPortalClass || 'z-[103]',
     repostMenuPortalClass: pp.repostMenuPortalClass || 'z-[104]',
     resolveMediaFeedVariant: (c) => (String(c?.id) === focusCommentId ? 'detail' : 'commentInline'),
+    onMentionClick: pp.onMentionClick,
+    onHashtagClick: pp.onHashtagClick,
+    onLinkClick: pp.onLinkClick,
+    onLinkPreviewOpen: pp.onLinkPreviewOpen,
   }
 
   if (!post?.id || !comment?.id) return null
@@ -369,6 +373,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                   {renderRichCaption(postCaption, {
                     onMentionClick: pp.onMentionClick,
                     onHashtagClick: pp.onHashtagClick,
+                    onLinkClick: pp.onLinkClick,
                   })}
                 </div>
               ) : null}

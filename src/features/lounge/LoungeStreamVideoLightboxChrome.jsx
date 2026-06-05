@@ -94,6 +94,7 @@ export default function LoungeStreamVideoLightboxChrome({
   interactionBar,
   onMentionClick,
   onHashtagClick,
+  onLinkClick,
   onCaptionClick,
 }) {
   const author = displayEntity || post
@@ -180,11 +181,11 @@ export default function LoungeStreamVideoLightboxChrome({
                 }}
                 className={`mt-1 line-clamp-2 w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS} touch-manipulation cursor-pointer hover:opacity-90 [-webkit-tap-highlight-color:transparent]`}
               >
-                {renderRichCaption(caption, { onMentionClick, onHashtagClick })}
+                {renderRichCaption(caption, { onMentionClick, onHashtagClick, onLinkClick })}
               </div>
             ) : (
               <div className={`mt-1 line-clamp-2 text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}>
-                {renderRichCaption(caption, { onMentionClick, onHashtagClick })}
+                {renderRichCaption(caption, { onMentionClick, onHashtagClick, onLinkClick })}
               </div>
             )
           ) : null}

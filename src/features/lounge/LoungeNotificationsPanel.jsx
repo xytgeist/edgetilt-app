@@ -132,6 +132,15 @@ export default function LoungeNotificationsPanel({
     setSessionNewIds((prev) => (prev.size === 0 ? prev : new Set()))
   }, [])
 
+  const richCaptionOpts = useMemo(
+    () => ({
+      onMentionClick: notificationPostCardProps?.onMentionClick,
+      onHashtagClick: notificationPostCardProps?.onHashtagClick,
+      onLinkClick: notificationPostCardProps?.onLinkClick,
+    }),
+    [notificationPostCardProps],
+  )
+
   const sessionNewSeenRef = useRef(false)
   const markSessionNewSeen = useCallback(() => {
     if (sessionNewSeenRef.current) return
@@ -573,7 +582,7 @@ export default function LoungeNotificationsPanel({
                     }
                   }}
                 >
-                  {renderRichCaption(previewText)}
+                  {renderRichCaption(previewText, richCaptionOpts)}
                 </p>
               ) : null}
             </div>
@@ -703,7 +712,7 @@ export default function LoungeNotificationsPanel({
                       }
                     }}
                   >
-                    {renderRichCaption(previewText)}
+                    {renderRichCaption(previewText, richCaptionOpts)}
                   </p>
                 ) : null}
               </div>

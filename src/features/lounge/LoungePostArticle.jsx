@@ -116,6 +116,10 @@ export default function LoungePostArticle({
   loungeSearchHighlightQuery = '',
   /** Called with `game_slug` when the viewer taps the guide embed card (navigates to AP Guides). */
   onOpenGuideCard,
+  /** In-app navigation for bare URLs in captions (Lounge permalinks, profiles, guides, external). */
+  onLinkClick,
+  /** Tap link preview card (prefers `lounge_post_id` when present). */
+  onLinkPreviewOpen,
 }) {
   const ro = loungeReadOnly
 
@@ -227,11 +231,11 @@ export default function LoungePostArticle({
     viewerUserId && post.user_id === viewerUserId ? 'You reposted' : `${displayNameFor(post)} reposted`
 
   const richCaptionOpts = useMemo(() => {
-    const base = { onMentionClick, onHashtagClick }
+    const base = { onMentionClick, onHashtagClick, onLinkClick }
     const hq = String(loungeSearchHighlightQuery || '').trim()
     if (hq.length >= 2) return { ...base, highlightQuery: hq }
     return base
-  }, [onMentionClick, onHashtagClick, loungeSearchHighlightQuery])
+  }, [onMentionClick, onHashtagClick, onLinkClick, loungeSearchHighlightQuery])
 
   const captionOpensDetail = Boolean(onPostBodyClick || onOpenCommentDetail)
   const captionBlockClass = `${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200${
@@ -427,7 +431,7 @@ export default function LoungePostArticle({
                 {renderRichCaption(rc.body, richCaptionOpts)}
               </div>
             ) : null}
-            <LoungeLinkPreviewBlock preview={rc?.link_preview} className="mt-2" />
+            <LoungeLinkPreviewBlock preview={rc?.link_preview} className="mt-2" onPreviewOpen={onLinkPreviewOpen} />
             <LoungePostFeedImagesAndGif
               post={rc}
               variant="feed"
@@ -450,7 +454,7 @@ export default function LoungePostArticle({
                 {renderRichCaption(feedPostDisplayCaption(displayPost), richCaptionOpts)}
               </div>
             ) : null}
-            <LoungeLinkPreviewBlock preview={displayPost.link_preview} className="mt-2" />
+            <LoungeLinkPreviewBlock preview={displayPost.link_preview} className="mt-2" onPreviewOpen={onLinkPreviewOpen} />
             <LoungePostFeedImagesAndGif
               post={displayPost}
               variant="feed"
@@ -476,7 +480,7 @@ export default function LoungePostArticle({
                 {renderRichCaption(feedPostDisplayCaption(post), richCaptionOpts)}
               </div>
             ) : null}
-            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" />
+            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" onPreviewOpen={onLinkPreviewOpen} />
             <LoungePostFeedImagesAndGif
               post={post}
               variant="feed"
@@ -561,7 +565,7 @@ export default function LoungePostArticle({
                 {renderRichCaption(feedPostDisplayCaption(post), richCaptionOpts)}
               </div>
             ) : null}
-            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" />
+            <LoungeLinkPreviewBlock preview={post.link_preview} className="mt-2" onPreviewOpen={onLinkPreviewOpen} />
             <LoungePostFeedImagesAndGif
               post={post}
               variant="feed"

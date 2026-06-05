@@ -127,6 +127,12 @@ import {
 import { composerStableInitialsFromUid, formatLoungePostDetailWhen } from './loungeFormat'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import { renderRichCaption } from './loungeCaption'
+import {
+  hrefForExternalOpen,
+  parseGuideSlugFromUrl,
+  parseLoungePostIdFromUrl,
+  parseLoungeProfileHandleFromUrl,
+} from './loungeCaptionLink.js'
 import { useMentionState } from './loungeMentionAutocomplete'
 import LoungeMentionDropdown from './LoungeMentionDropdown'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
@@ -9987,6 +9993,76 @@ export default function SocialFeed({
     [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
   )
 
+  const openLoungePostById = useCallback(
+    async (postId, opts = {}) => {
+      const raw = String(postId || '').trim()
+      if (!isLoungePostShareId(raw)) return
+      let postRow = communityPosts.find((p) => p.id === raw)
+      if (!postRow) {
+        const { data, error } = await supabaseClient
+          .from('community_feed_posts')
+          .select(LOUNGE_SINGLE_POST_SELECT)
+          .eq('id', raw)
+          .is('hidden_at', null)
+          .maybeSingle()
+        if (error || !data) return
+        const hydrated = await hydrateCommunityPosts([data])
+        postRow = hydrated?.[0] || null
+        if (postRow) {
+          setCommunityPosts((prev) => (prev.some((p) => p.id === postRow.id) ? prev : [postRow, ...prev]))
+        }
+      }
+      if (postRow) openLoungePostDetail(postRow, { fromPublicLink: opts.fromPublicLink === true })
+    },
+    [communityPosts, hydrateCommunityPosts, openLoungePostDetail, setCommunityPosts, supabaseClient],
+  )
+
+  const openCaptionLink = useCallback(
+    (href, e) => {
+      e?.stopPropagation?.()
+      e?.preventDefault?.()
+      const url = String(href || '').trim()
+      if (!url) return
+      const postId = parseLoungePostIdFromUrl(url)
+      if (postId) {
+        void openLoungePostById(postId, { fromPublicLink: true })
+        return
+      }
+      const handle = parseLoungeProfileHandleFromUrl(url)
+      if (handle) {
+        void openProfileByHandle(handle, e)
+        return
+      }
+      const guideSlug = parseGuideSlugFromUrl(url)
+      if (guideSlug) {
+        onOpenGuideCard?.(guideSlug)
+        return
+      }
+      const openHref = hrefForExternalOpen(url)
+      if (!openHref) return
+      try {
+        window.open(openHref, '_blank', 'noopener,noreferrer')
+      } catch {
+        /* */
+      }
+    },
+    [openLoungePostById, openProfileByHandle, onOpenGuideCard],
+  )
+
+  const openLinkPreview = useCallback(
+    (preview, e) => {
+      e?.stopPropagation?.()
+      e?.preventDefault?.()
+      const postId = preview?.lounge_post_id
+      if (postId && isLoungePostShareId(String(postId))) {
+        void openLoungePostById(String(postId), { fromPublicLink: true })
+        return
+      }
+      openCaptionLink(preview?.url, e)
+    },
+    [openCaptionLink, openLoungePostById],
+  )
+
   const loungePostDetailRichCaptionOpts = useMemo(
     () => ({
       hashtagClassName: 'font-semibold text-cyan-300',
@@ -9994,8 +10070,9 @@ export default function SocialFeed({
         'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
       onMentionClick: openProfileByHandle,
       onHashtagClick: openSearchByHashtag,
+      onLinkClick: openCaptionLink,
     }),
-    [openProfileByHandle, openSearchByHashtag],
+    [openCaptionLink, openProfileByHandle, openSearchByHashtag],
   )
 
   const onProfileScreenUpdated = useCallback((next) => {
@@ -10146,6 +10223,8 @@ export default function SocialFeed({
       busyDeletingPostId: loungeFeedDeleteBusyPostId,
       onMentionClick: openProfileByHandle,
       onHashtagClick: openSearchByHashtag,
+      onLinkClick: openCaptionLink,
+      onLinkPreviewOpen: openLinkPreview,
       viewerFollowingUserIds: loungeReadOnly ? null : loungeFollowingUserIds,
       onFollowUser: loungeReadOnly ? undefined : handleLoungeFollowUser,
       feedVideoAutoplayEnabled: loungeFeedVideoAutoplayEnabled,
@@ -10202,6 +10281,8 @@ export default function SocialFeed({
       loungeDetailCommentDeleteBusyId,
       openProfileByHandle,
       openSearchByHashtag,
+      openCaptionLink,
+      openLinkPreview,
       loungeFollowingUserIds,
       handleLoungeFollowUser,
       loungeFeedVideoAutoplayEnabled,
@@ -10247,6 +10328,11 @@ export default function SocialFeed({
       repostActionBusy: repostManageBusy,
       refreshPostInteractions: refreshLoungePostInteractions,
       hydrateCommentInteractionsForIds: hydrateCommentInteractionsForIds,
+      onMentionClick: openProfileByHandle,
+      onHashtagClick: openSearchByHashtag,
+      onLinkClick: openCaptionLink,
+      onLinkPreviewOpen: openLinkPreview,
+      onOpenGuideCard,
     }),
     [
       loungeReadOnly,
@@ -10271,6 +10357,11 @@ export default function SocialFeed({
       repostManageBusy,
       refreshLoungePostInteractions,
       hydrateCommentInteractionsForIds,
+      openProfileByHandle,
+      openSearchByHashtag,
+      openCaptionLink,
+      openLinkPreview,
+      onOpenGuideCard,
     ],
   )
 
@@ -11193,6 +11284,8 @@ export default function SocialFeed({
                   onStreamLightboxOpenDetail={openLoungeStreamLightboxDetail}
                   onMentionClick={openProfileByHandle}
                   onHashtagClick={openSearchByHashtag}
+                  onLinkClick={openCaptionLink}
+                  onLinkPreviewOpen={openLinkPreview}
                   viewerFollowingUserIds={loungeReadOnly ? null : loungeFollowingUserIds}
                   onFollowUser={loungeReadOnly ? undefined : handleLoungeFollowUser}
                   feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
@@ -11677,7 +11770,11 @@ export default function SocialFeed({
                     <div
                       className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
                     >
-                      <LoungeLinkPreviewBlock preview={loungePostDetail.link_preview} className="mt-2" />
+                      <LoungeLinkPreviewBlock
+                        preview={loungePostDetail.link_preview}
+                        className="mt-2"
+                        onPreviewOpen={openLinkPreview}
+                      />
                     </div>
                   ) : null}
                   <div
@@ -11788,7 +11885,11 @@ export default function SocialFeed({
                     <div
                       className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
                     >
-                      <LoungeLinkPreviewBlock preview={loungePostDetail.link_preview} className="mt-2" />
+                      <LoungeLinkPreviewBlock
+                        preview={loungePostDetail.link_preview}
+                        className="mt-2"
+                        onPreviewOpen={openLinkPreview}
+                      />
                     </div>
                   ) : null}
                   <div
@@ -12428,6 +12529,8 @@ export default function SocialFeed({
                       c?.id === loungeDetailCommentHierarchyFocusId ? 'detail' : 'commentInline',
                     onMentionClick: openProfileByHandle,
                     onHashtagClick: openSearchByHashtag,
+                    onLinkClick: openCaptionLink,
+                    onLinkPreviewOpen: openLinkPreview,
                     lightboxPortalClass: loungeDetailMediaLightboxPortalClass,
                     avatarText,
                     avatarToneClass,
@@ -12532,6 +12635,8 @@ export default function SocialFeed({
                           repostActionBusy={repostManageBusy}
                           onMentionClick={openProfileByHandle}
                           onHashtagClick={openSearchByHashtag}
+                          onLinkClick={openCaptionLink}
+                          onLinkPreviewOpen={openLinkPreview}
                           lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                           avatarText={avatarText}
                           avatarToneClass={avatarToneClass}

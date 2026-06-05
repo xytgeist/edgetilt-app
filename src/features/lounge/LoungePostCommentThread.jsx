@@ -110,6 +110,8 @@ export function LoungeCommentCard({
   repostMenuPortalClass = 'z-[48]',
   onMentionClick,
   onHashtagClick,
+  onLinkClick,
+  onLinkPreviewOpen,
   avatarText,
   avatarToneClass,
   viewerFollowingUserIds,
@@ -235,10 +237,10 @@ export function LoungeCommentCard({
             <div
               className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
             >
-              {renderRichCaption(bodyText, { onMentionClick, onHashtagClick })}
+              {renderRichCaption(bodyText, { onMentionClick, onHashtagClick, onLinkClick })}
             </div>
           ) : null}
-          <LoungeLinkPreviewBlock preview={comment.link_preview} className="mt-2" />
+          <LoungeLinkPreviewBlock preview={comment.link_preview} className="mt-2" onPreviewOpen={onLinkPreviewOpen} />
         </>
       )
     })()
@@ -471,6 +473,8 @@ export default function LoungePostCommentThread({
   followingUserIds = [],
   onMentionClick,
   onHashtagClick,
+  onLinkClick,
+  onLinkPreviewOpen,
   avatarText,
   avatarToneClass,
   viewerFollowingUserIds,
@@ -594,6 +598,8 @@ export default function LoungePostCommentThread({
     onCommentReplyInteraction,
     onMentionClick,
     onHashtagClick,
+    onLinkClick,
+    onLinkPreviewOpen,
     interactionStateFor,
     toggleInteraction,
     onPlainRepost,

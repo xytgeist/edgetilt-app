@@ -231,6 +231,7 @@ export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLi
       interactionBar={interactionBar}
       onMentionClick={ctx.onMentionClick}
       onHashtagClick={ctx.onHashtagClick}
+      onLinkClick={ctx.onLinkClick}
       onCaptionClick={
         typeof ctx.onLightboxOpenDetail === 'function' && captionText
           ? () => {

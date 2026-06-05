@@ -22,7 +22,7 @@ export function hrefForUrlDisplay(display) {
 
 /**
  * Lounge caption: `http(s)://…` and `www.…` links (opens new tab), Unicode `#tags`, and `@handles`.
- * @param {{ hashtagClassName?: string, linkClassName?: string, mentionClassName?: string, highlightQuery?: string, highlightClassName?: string, onMentionClick?: (handle: string, e: MouseEvent) => void, onHashtagClick?: (tag: string, e: MouseEvent) => void }} [opts]
+ * @param {{ hashtagClassName?: string, linkClassName?: string, mentionClassName?: string, highlightQuery?: string, highlightClassName?: string, onMentionClick?: (handle: string, e: MouseEvent) => void, onHashtagClick?: (tag: string, e: MouseEvent) => void, onLinkClick?: (href: string, e: MouseEvent) => void }} [opts]
  */
 export function renderRichCaption(
   text,
@@ -34,6 +34,7 @@ export function renderRichCaption(
     highlightClassName,
     onMentionClick = null,
     onHashtagClick = null,
+    onLinkClick = null,
   } = {}
 ) {
   const s = String(text ?? '')
@@ -126,19 +127,36 @@ export function renderRichCaption(
 
   for (const seg of splitTextWithLinks(s)) {
     if (seg.type === 'link' && seg.href) {
-      out.push(
-        <a
-          key={`rk-u-${rkRef.current++}`}
-          href={seg.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={linkClassName}
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {seg.value}
-        </a>
-      )
+      if (onLinkClick) {
+        out.push(
+          <button
+            key={`rk-u-${rkRef.current++}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onLinkClick(seg.href, e)
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`${linkClassName} touch-manipulation text-left [-webkit-tap-highlight-color:transparent]`}
+          >
+            {seg.value}
+          </button>
+        )
+      } else {
+        out.push(
+          <a
+            key={`rk-u-${rkRef.current++}`}
+            href={seg.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkClassName}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {seg.value}
+          </a>
+        )
+      }
     } else if (seg.value) {
       pushHashtagParsed(seg.value)
     }

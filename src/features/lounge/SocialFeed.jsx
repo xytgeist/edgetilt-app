@@ -117,6 +117,7 @@ import {
   executeLoungeCommunityPostUpdate,
   loungeSubmissionSnapshotIncludesVideo,
   loungeSubmissionSnapshotThreadPartCount,
+  sliceThreadSubmissionSnapshotForResume,
 } from './loungePostSubmitJob'
 import {
   executeLoungeCommentSubmission,
@@ -291,12 +292,15 @@ import {
   threadComposePartHasContent,
   threadComposePartHasMedia,
   threadComposePartHasVideo,
+  threadPartImageItemsFromSnapshot,
+  threadPartImagePreviewBlobUrlsFromMedia,
 } from '../../utils/loungeThreadComposeMedia.js'
 import {
   createThreadComposeVideoPrepController,
   LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE,
   threadComposePartVideoSnapshotFields,
   threadComposeVideoSlotBlocksPost,
+  threadPartVideoSlotFromSnapshot,
 } from './loungeThreadComposeVideoPrep.js'
 /** DB raises exception 'MAX_PINNED_POSTS' when a third visible pin is attempted. */
 const LOUNGE_MAX_PINNED_ALERT =
@@ -2125,7 +2129,7 @@ export default function SocialFeed({
           if (j !== partIdx) return row
           revokeThreadComposePartVideoSlot(row.videoSlot)
           disposeComposerVideoMedia(row.videoSlot)
-          return { ...row, imageItems: [], gifUrl: '', videoSlot: null, videoPrepHud: null }
+          return { ...row, videoSlot: null, videoPrepHud: null }
         }),
       )
       threadComposeVideoPrepControllerRef.current?.enqueue(partIdx, spec, {
@@ -8198,144 +8202,242 @@ export default function SocialFeed({
     }
   }, [])
 
-  const restoreComposerFromSnapshot = useCallback((snap) => {
-    if (!snap) return
-    const snapThread =
-      Array.isArray(snap.threadParts) && snap.threadParts.length > 1
-        ? snap.threadParts.map((p) => String(p?.body ?? ''))
-        : Array.isArray(snap.threadCaptions)
-          ? snap.threadCaptions
-          : []
-    if (snapThread.length > 1) {
-      setThreadComposeCaptions(snapThread)
-      if (Array.isArray(snap.threadParts) && snap.threadParts.length > 1) {
-        setThreadComposePartMedia(
-          snap.threadParts.map((p) => ({
-            gifUrl: String(p?.gifUrl ?? '').trim(),
-            videoSlot: null,
-            videoPrepHud: null,
-            imageItems: [
-              ...(Array.isArray(p?.existingImageUrls)
-                ? p.existingImageUrls.map((url) => ({
-                    id: newComposerImageId(),
-                    remoteUrl: url,
-                    preview: url,
-                  }))
-                : []),
-              ...(Array.isArray(p?.imageFiles)
-                ? p.imageFiles
-                    .filter((f) => f instanceof File)
-                    .map((file) => ({
-                      id: newComposerImageId(),
-                      file,
-                      preview: URL.createObjectURL(file),
-                    }))
-                : []),
-            ],
-          })),
-        )
-      } else {
-        const rootFiles = Array.isArray(snap.imageFiles) ? snap.imageFiles : []
-        setThreadComposePartMedia([
-          {
-            gifUrl: String(snap.gifOnlyUrl || '').trim(),
-            videoSlot: null,
-            videoPrepHud: null,
-            imageItems: rootFiles.map((file) => ({
-              id: newComposerImageId(),
-              file,
-              preview: URL.createObjectURL(file),
-            })),
-          },
-          ...snapThread.slice(1).map(() => emptyThreadComposePartMedia()),
-        ])
-      }
-      setComposerImageItems([])
-      setComposerMediaUrl('')
-      setThreadComposeOpen(true)
-      setThreadComposeErr('')
-      setPostText('')
-      setThreadComposeActivePartIndex(0)
-      window.setTimeout(() => setThreadComposeFocusPartIndex(1), 120)
-    } else {
-      setPostText(snap.caption)
-      setComposerMediaUrl(snap.gifOnlyUrl)
-      const files = Array.isArray(snap.imageFiles) ? snap.imageFiles : []
-      setComposerImageItems(
-        files.map((file) => ({
+  const restoreComposerFromSnapshot = useCallback(
+    (snap, opts = {}) => {
+      if (!snap) return
+      const fromPartIndex = Math.max(0, Number(opts.fromPartIndex) || 0)
+      const snapThread =
+        Array.isArray(snap.threadParts) && snap.threadParts.length > 0
+          ? snap.threadParts.slice(fromPartIndex).map((p) => String(p?.body ?? ''))
+          : Array.isArray(snap.threadCaptions)
+            ? snap.threadCaptions.slice(fromPartIndex)
+            : []
+      const snapThreadParts =
+        Array.isArray(snap.threadParts) && snap.threadParts.length > 0
+          ? snap.threadParts.slice(fromPartIndex)
+          : null
+      const partsNeedingPrep = /** @type {Array<{ partIdx: number, spec: object, slot: object }>} */ ([])
+
+      if (snapThread.length > 1) {
+        setThreadComposeCaptions(snapThread)
+        if (snapThreadParts && snapThreadParts.length > 1) {
+          setThreadComposePartMedia(
+            snapThreadParts.map((p, i) => {
+              const videoSlot = threadPartVideoSlotFromSnapshot(p)
+              if (videoSlot && p?.videoPrepSpec && !String(p?.streamVideoUid ?? '').trim()) {
+                partsNeedingPrep.push({ partIdx: i, spec: p.videoPrepSpec, slot: videoSlot })
+              }
+              return {
+                gifUrl: String(p?.gifUrl ?? '').trim(),
+                videoSlot,
+                videoPrepHud: null,
+                imageItems: threadPartImageItemsFromSnapshot(p),
+              }
+            }),
+          )
+        } else {
+          const rootPart = snapThreadParts?.[0]
+          const rootVideoSlot = rootPart ? threadPartVideoSlotFromSnapshot(rootPart) : null
+          if (rootVideoSlot && rootPart?.videoPrepSpec && !String(rootPart?.streamVideoUid ?? '').trim()) {
+            partsNeedingPrep.push({ partIdx: 0, spec: rootPart.videoPrepSpec, slot: rootVideoSlot })
+          }
+          setThreadComposePartMedia([
+            {
+              gifUrl: rootPart
+                ? String(rootPart.gifUrl ?? '').trim()
+                : String(snap.gifOnlyUrl || '').trim(),
+              videoSlot: rootVideoSlot,
+              videoPrepHud: null,
+              imageItems: rootPart
+                ? threadPartImageItemsFromSnapshot(rootPart)
+                : threadPartImageItemsFromSnapshot({
+                    gifUrl: snap.gifOnlyUrl,
+                    existingImageUrls: snap.existingImageUrls,
+                    imageFiles: snap.imageFiles,
+                  }),
+            },
+            ...snapThread.slice(1).map((_, i) => {
+              const p = snapThreadParts?.[i + 1]
+              if (!p) return emptyThreadComposePartMedia()
+              const videoSlot = threadPartVideoSlotFromSnapshot(p)
+              if (videoSlot && p?.videoPrepSpec && !String(p?.streamVideoUid ?? '').trim()) {
+                partsNeedingPrep.push({ partIdx: i + 1, spec: p.videoPrepSpec, slot: videoSlot })
+              }
+              return {
+                gifUrl: String(p?.gifUrl ?? '').trim(),
+                videoSlot,
+                videoPrepHud: null,
+                imageItems: threadPartImageItemsFromSnapshot(p),
+              }
+            }),
+          ])
+        }
+        setComposerImageItems([])
+        setComposerMediaUrl('')
+        setThreadComposeOpen(true)
+        setThreadComposeErr('')
+        setPostText('')
+        setThreadComposeActivePartIndex(0)
+        window.setTimeout(() => setThreadComposeFocusPartIndex(fromPartIndex > 0 ? 0 : 1), 120)
+        if (snapThreadParts) {
+          for (const p of snapThreadParts) {
+            const partUid = String(p?.streamVideoUid ?? '').trim()
+            const partPoster =
+              typeof p?.sessionStreamPosterBlobUrl === 'string'
+                ? p.sessionStreamPosterBlobUrl.trim()
+                : ''
+            if (partUid && partPoster.startsWith('blob:')) {
+              pinLoungeStreamSessionPoster(partUid, partPoster)
+            }
+          }
+        }
+        if (partsNeedingPrep.length > 0) {
+          window.setTimeout(() => {
+            for (const { partIdx, spec, slot } of partsNeedingPrep) {
+              startThreadComposePartVideoPrepFromSpec(partIdx, spec, slot)
+            }
+          }, 0)
+        }
+      } else if (fromPartIndex > 0 && snapThreadParts?.[0]) {
+        const only = snapThreadParts[0]
+        setPostText(String(only.body ?? ''))
+        setComposerMediaUrl(String(only.gifUrl ?? '').trim())
+        setComposerImageItems(threadPartImageItemsFromSnapshot(only).map((it) => ({
+          ...it,
           id: newComposerImageId(),
-          file,
-          preview: URL.createObjectURL(file),
-        })),
-      )
-    }
-    setComposerPinOnPost(Boolean(snap.wantsPin && snap.isStaffPoster))
-    if (String(snap.streamVideoUid || '').trim()) {
-      const vf = snap.videoFile
-      const uid = String(snap.streamVideoUid || '').trim() || null
-      if (vf) {
-        setComposerVideoSlot({
-          prepJobId: 0,
-          file: vf,
-          posterUrl: null,
-          preview: URL.createObjectURL(vf),
-          streamVideoUid: uid,
-          prepStatus: 'ready',
-          prepError: '',
-        })
+        })))
+        const uid = String(only.streamVideoUid ?? '').trim() || null
+        if (uid && only.videoFile instanceof File) {
+          setComposerVideoSlot({
+            prepJobId: 0,
+            file: only.videoFile,
+            posterUrl: null,
+            preview: URL.createObjectURL(only.videoFile),
+            streamVideoUid: uid,
+            prepStatus: 'ready',
+            prepError: '',
+          })
+        } else if (only.videoPrepSpec) {
+          if (only.videoPrepSpec.kind === 'direct') {
+            const f = only.videoPrepSpec.file
+            startComposerVideoPrepFromSpec(only.videoPrepSpec, {
+              file: f,
+              posterUrl: null,
+              preview: URL.createObjectURL(f),
+              streamVideoUid: null,
+            })
+          } else if (only.videoPrepSlotRestore) {
+            startComposerVideoPrepFromSpec(only.videoPrepSpec, {
+              file: null,
+              posterUrl: only.videoPrepSlotRestore.posterUrl,
+              preview: only.videoPrepSlotRestore.preview,
+              streamVideoUid: null,
+            })
+          }
+        } else if (only.videoFile instanceof File) {
+          setComposerVideoSlot({
+            prepJobId: 0,
+            file: only.videoFile,
+            posterUrl: null,
+            preview: URL.createObjectURL(only.videoFile),
+            streamVideoUid: null,
+            prepStatus: 'ready',
+            prepError: '',
+          })
+        }
       } else {
-        setComposerVideoSlot(null)
+        setPostText(snap.caption)
+        setComposerMediaUrl(String(snap.gifOnlyUrl || '').trim())
+        setComposerImageItems(
+          threadPartImageItemsFromSnapshot({
+            existingImageUrls: snap.existingImageUrls,
+            imageFiles: snap.imageFiles,
+          }).map((it) => ({ ...it, id: newComposerImageId() })),
+        )
       }
-    } else if (snap.videoPrepSpec) {
-      if (snap.videoPrepSpec.kind === 'direct') {
-        const f = snap.videoPrepSpec.file
-        const previewUrl = URL.createObjectURL(f)
-        startComposerVideoPrepFromSpec(snap.videoPrepSpec, {
-          file: f,
-          posterUrl: null,
-          preview: previewUrl,
-          streamVideoUid: null,
-        })
-      } else if (snap.videoPrepSlotRestore) {
-        startComposerVideoPrepFromSpec(snap.videoPrepSpec, {
-          file: null,
-          posterUrl: snap.videoPrepSlotRestore.posterUrl,
-          preview: snap.videoPrepSlotRestore.preview,
-          streamVideoUid: null,
-        })
-      } else {
-        setComposerVideoSlot(null)
+      setComposerPinOnPost(Boolean(snap.wantsPin && snap.isStaffPoster))
+      if (snapThread.length <= 1 && !(fromPartIndex > 0 && snapThreadParts?.[0])) {
+        if (String(snap.streamVideoUid || '').trim()) {
+          const vf = snap.videoFile
+          const uid = String(snap.streamVideoUid || '').trim() || null
+          if (vf) {
+            setComposerVideoSlot({
+              prepJobId: 0,
+              file: vf,
+              posterUrl: null,
+              preview: URL.createObjectURL(vf),
+              streamVideoUid: uid,
+              prepStatus: 'ready',
+              prepError: '',
+            })
+          } else {
+            setComposerVideoSlot(null)
+          }
+        } else if (snap.videoPrepSpec) {
+          if (snap.videoPrepSpec.kind === 'direct') {
+            const f = snap.videoPrepSpec.file
+            const previewUrl = URL.createObjectURL(f)
+            startComposerVideoPrepFromSpec(snap.videoPrepSpec, {
+              file: f,
+              posterUrl: null,
+              preview: previewUrl,
+              streamVideoUid: null,
+            })
+          } else if (snap.videoPrepSlotRestore) {
+            startComposerVideoPrepFromSpec(snap.videoPrepSpec, {
+              file: null,
+              posterUrl: snap.videoPrepSlotRestore.posterUrl,
+              preview: snap.videoPrepSlotRestore.preview,
+              streamVideoUid: null,
+            })
+          } else {
+            setComposerVideoSlot(null)
+          }
+        } else if (snap.videoFile) {
+          const vf = snap.videoFile
+          setComposerVideoSlot({
+            prepJobId: 0,
+            file: vf,
+            posterUrl: null,
+            preview: URL.createObjectURL(vf),
+            streamVideoUid: null,
+            prepStatus: 'ready',
+            prepError: '',
+          })
+        } else {
+          setComposerVideoSlot(null)
+        }
       }
-    } else if (snap.videoFile) {
-      const vf = snap.videoFile
-      setComposerVideoSlot({
-        prepJobId: 0,
-        file: vf,
-        posterUrl: null,
-        preview: URL.createObjectURL(vf),
-        streamVideoUid: null,
-        prepStatus: 'ready',
-        prepError: '',
-      })
-    } else {
-      setComposerVideoSlot(null)
-    }
-    if (Array.isArray(snap.categoryPills)) {
-      setComposerCategoryPills(snap.categoryPills)
-    }
-    if (snapThread.length > 1) {
-      composerExpandedRef.current = false
-      composerFoldRevealRef.current = 0
-      setComposerFoldReveal(0)
-      setComposerExpanded(false)
-    } else {
-      setComposerExpanded(true)
-      composerExpandedRef.current = true
-      composerFoldRevealRef.current = 1
-      setComposerFoldReveal(1)
-      composerFoldedFromFeedScrollRef.current = false
-    }
-  }, [startComposerVideoPrepFromSpec])
+      if (Array.isArray(snap.categoryPills)) {
+        setComposerCategoryPills(snap.categoryPills)
+      }
+      if (snapThread.length > 1 || (fromPartIndex > 0 && snapThreadParts?.length)) {
+        composerExpandedRef.current = false
+        composerFoldRevealRef.current = 0
+        setComposerFoldReveal(0)
+        setComposerExpanded(false)
+      } else if (!(fromPartIndex > 0 && snapThreadParts?.[0])) {
+        setComposerExpanded(true)
+        composerExpandedRef.current = true
+        composerFoldRevealRef.current = 1
+        setComposerFoldReveal(1)
+        composerFoldedFromFeedScrollRef.current = false
+      }
+    },
+    [startComposerVideoPrepFromSpec, startThreadComposePartVideoPrepFromSpec],
+  )
+
+  const restoreThreadAfterUploadFailure = useCallback(
+    (snap, publishedParts = 0, resumePostId = null) => {
+      if (!snap) return null
+      const fromIdx = publishedParts > 0 ? publishedParts : 0
+      restoreComposerFromSnapshot(snap, { fromPartIndex: fromIdx })
+      const retrySnap = sliceThreadSubmissionSnapshotForResume(snap, publishedParts, resumePostId)
+      loungePostSnapshotRef.current = retrySnap
+      return retrySnap
+    },
+    [restoreComposerFromSnapshot],
+  )
 
   const restoreQuoteFromSnapshot = useCallback(
     (snap, opts = {}) => {
@@ -8851,38 +8953,28 @@ export default function SocialFeed({
         }
       } catch (e) {
         if (e?.name === 'AbortError') return
-        const failUid = String(snap.streamVideoUid || '').trim()
-        const hadSessionPoster =
-          typeof snap.sessionStreamPosterBlobUrl === 'string' &&
-          snap.sessionStreamPosterBlobUrl.startsWith('blob:')
-        if (failUid && hadSessionPoster) {
-          releaseLoungeStreamSessionPoster(failUid)
-        }
         const publishedParts = typeof e?.threadPublishedParts === 'number' ? e.threadPublishedParts : 0
+        const resumePostId = e?.threadPublishedPostId ? String(e.threadPublishedPostId) : null
         if (threadTotal > 1) {
-          const { data: draftRow, error: draftErr } = await persistThreadSubmissionSnapshotAsDraft(snap, {
+          restoreThreadAfterUploadFailure(snap, publishedParts, resumePostId)
+          setThreadComposeErr(
+            publishedParts > 0
+              ? `Parts 1–${publishedParts} were published. Remaining parts restored with media — tap Retry or edit below.`
+              : 'Upload failed — your thread is restored with media. Tap Retry or edit before posting again.',
+          )
+          void persistThreadSubmissionSnapshotAsDraft(snap, {
             fromPartIndex: publishedParts > 0 ? publishedParts : 0,
+          }).then(({ data }) => {
+            if (data) void refreshLoungeDraftCount()
           })
-          if (draftRow) {
-            loadServerDraftIntoThreadCompose(draftRow)
-            setThreadComposeErr(
-              publishedParts > 0
-                ? `Parts 1–${publishedParts} were published. Remaining text saved to drafts — re-add videos.`
-                : 'Thread saved to drafts — re-add videos before posting again.',
-            )
-            await refreshLoungeDraftCount()
-          } else if (draftErr) {
-            restoreComposerFromSnapshot(snap)
-            setPostErr(draftErr.message)
-          } else {
-            restoreComposerFromSnapshot(snap)
+        } else {
+          const failUid = String(snap.streamVideoUid || '').trim()
+          const hadSessionPoster =
+            typeof snap.sessionStreamPosterBlobUrl === 'string' &&
+            snap.sessionStreamPosterBlobUrl.startsWith('blob:')
+          if (failUid && hadSessionPoster) {
+            releaseLoungeStreamSessionPoster(failUid)
           }
-        }
-        const curSnap = loungePostSnapshotRef.current
-        if (curSnap?.awaitingComposerVideoPrepJobId != null) {
-          loungePostSnapshotRef.current = { ...curSnap, awaitingComposerVideoPrepJobId: null }
-        }
-        if (String(snap.streamVideoUid || '').trim()) {
           loungePostSnapshotRef.current = snap
         }
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Unknown error'
@@ -8899,7 +8991,7 @@ export default function SocialFeed({
         bumpLoungeSubmitInFlight(-1)
       }
     },
-    [bumpNotificationInteractionRefreshIfOpen, loadCommunityFeed, rateLimitMessage, refreshLoungeDraftCount, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight, applyLoungePostSubmitUploadProgress, loadServerDraftIntoThreadCompose, persistThreadSubmissionSnapshotAsDraft, restoreComposerFromSnapshot],
+    [bumpNotificationInteractionRefreshIfOpen, loadCommunityFeed, rateLimitMessage, refreshLoungeDraftCount, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight, applyLoungePostSubmitUploadProgress, persistThreadSubmissionSnapshotAsDraft, restoreThreadAfterUploadFailure],
   )
   runBackgroundLoungePostSubmissionRef.current = runBackgroundLoungePostSubmission
 
@@ -9829,21 +9921,18 @@ export default function SocialFeed({
           const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
           if (threadTotal > 1) {
             const publishedParts = typeof e?.threadPublishedParts === 'number' ? e.threadPublishedParts : 0
-            const { data: draftRow, error: draftErr } = await persistThreadSubmissionSnapshotAsDraft(snapshot, {
+            const resumePostId = e?.threadPublishedPostId ? String(e.threadPublishedPostId) : null
+            restoreThreadAfterUploadFailure(snapshot, publishedParts, resumePostId)
+            setThreadComposeErr(
+              publishedParts > 0
+                ? `Parts 1–${publishedParts} were published. Remaining parts restored with media — tap Retry or edit below.`
+                : 'Upload failed — your thread is restored with media. Tap Retry or edit before posting again.',
+            )
+            void persistThreadSubmissionSnapshotAsDraft(snapshot, {
               fromPartIndex: publishedParts > 0 ? publishedParts : 0,
+            }).then(({ data }) => {
+              if (data) void refreshLoungeDraftCount()
             })
-            if (draftRow) {
-              loadServerDraftIntoThreadCompose(draftRow)
-              setThreadComposeErr(
-                publishedParts > 0
-                  ? `Parts 1–${publishedParts} were published. Remaining text saved to drafts — re-add videos.`
-                  : 'Thread saved to drafts — re-add videos before posting again.',
-              )
-              await refreshLoungeDraftCount()
-            } else if (draftErr) {
-              setPostErr(draftErr.message)
-            }
-            loungePostSnapshotRef.current = snapshot
             loungePostJobRunningRef.current = false
           }
         }
@@ -9871,7 +9960,6 @@ export default function SocialFeed({
       deferOrShowFastLaneFailure,
       dismissLoungePostUploadBarIfIdle,
       loadCommunityFeed,
-      loadServerDraftIntoThreadCompose,
       patchLoungeCommentEditResult,
       patchLoungePostEditResult,
       patchPostAggregate,
@@ -9879,6 +9967,7 @@ export default function SocialFeed({
       rateLimitMessage,
       refreshLoungeDraftCount,
       refreshLoungePostInteractions,
+      restoreThreadAfterUploadFailure,
       scheduleLoungePostDetailTitleAfterReply,
       scrollLoungePostDetailToFocusedComment,
       supabaseClient,
@@ -9952,6 +10041,9 @@ export default function SocialFeed({
     const snap = loungePostSnapshotRef.current
     setLoungePostUploadFailureDetails(null)
     if (!snap) return
+    if (loungeSubmissionSnapshotThreadPartCount(snap) > 1 || snap.threadResumePostId) {
+      setThreadComposeOpen(true)
+    }
     void runBackgroundLoungePostSubmission(snap)
   }, [runBackgroundLoungePostSubmission, startComposerVideoPrepFromSpec, startQuoteRepostVideoPrepFromSpec])
 
@@ -10207,16 +10299,21 @@ export default function SocialFeed({
       if (String(snap.quoteRepostOfPostId || '').trim()) {
         restoreQuoteFromSnapshot(snap, { skipVideo: true })
         setQuoteRepostErr('Draft saved. Re-add photos or video if you had any.')
-      } else if (loungeSubmissionSnapshotThreadPartCount(snap) > 1) {
-        const { data, error } = await persistThreadSubmissionSnapshotAsDraft(snap)
-        if (error) {
-          setThreadComposeErr(error.message)
-        } else if (data) {
-          loadServerDraftIntoThreadCompose(data)
-          setThreadComposeErr('Thread saved to drafts — re-add videos before posting again.')
-          await refreshLoungeDraftCount()
-        }
+      } else if (loungeSubmissionSnapshotThreadPartCount(snap) > 1 || snap.threadResumePostId) {
+        const fromIdx =
+          typeof snap.threadResumePartOffset === 'number' && snap.threadResumePartOffset > 0
+            ? snap.threadResumePartOffset
+            : 0
+        restoreComposerFromSnapshot(snap, { fromPartIndex: fromIdx })
+        void persistThreadSubmissionSnapshotAsDraft(snap, { fromPartIndex: fromIdx }).then(({ data }) => {
+          if (data) {
+            setLoungeComposerActiveDraftId(data.id)
+            void refreshLoungeDraftCount()
+          }
+        })
+        setThreadComposeErr('Thread saved to drafts — photos, GIFs, and videos kept in compose.')
       } else {
+        restoreComposerFromSnapshot(snap)
         const { data, error } = await upsertLoungePostDraft(supabaseClient, {
           id: snap.savedDraftId || loungeComposerActiveDraftIdRef.current,
           caption: String(snap.caption || ''),
@@ -10231,16 +10328,9 @@ export default function SocialFeed({
         if (error) {
           setPostErr(error.message)
         } else if (data) {
-          loadServerDraftIntoComposer(data)
+          setLoungeComposerActiveDraftId(data.id)
+          await refreshLoungeDraftCount()
         }
-      }
-      const cUid = String(snap.streamVideoUid || '').trim()
-      if (
-        cUid &&
-        typeof snap.sessionStreamPosterBlobUrl === 'string' &&
-        snap.sessionStreamPosterBlobUrl.startsWith('blob:')
-      ) {
-        releaseLoungeStreamSessionPoster(cUid)
       }
     }
     loungePostSnapshotRef.current = null
@@ -10252,11 +10342,11 @@ export default function SocialFeed({
     composerMediaUrl,
     disposeComposerVideoMedia,
     loadServerDraftIntoComposer,
-    loadServerDraftIntoThreadCompose,
     loungePostDetail?.id,
     persistThreadSubmissionSnapshotAsDraft,
     postText,
     refreshLoungeDraftCount,
+    restoreComposerFromSnapshot,
     restoreQuoteFromSnapshot,
     saveComposerAsServerDraft,
     supabaseClient,
@@ -10478,6 +10568,7 @@ export default function SocialFeed({
           gifUrl: part.gifUrl,
           imageFiles: part.imageFiles,
           existingImageUrls: part.existingImageUrls,
+          imagePreviewBlobUrls: threadPartImagePreviewBlobUrlsFromMedia(media),
           ...videoSnap,
         }
       })
@@ -10552,6 +10643,9 @@ export default function SocialFeed({
         gifOnlyUrl,
         imageFiles: rootPart.imageFiles,
         existingImageUrls: rootPart.existingImageUrls,
+        imagePreviewBlobUrls: threadPartImagePreviewBlobUrlsFromMedia(
+          threadComposePartMedia[0] || emptyThreadComposePartMedia(),
+        ),
         videoFile: rootVideoSnap.videoFile,
         streamVideoUid: uid,
         awaitingComposerVideoPrepJobId: awaiting ?? rootVideoSnap.awaitingThreadPartVideoPrepJobId,
@@ -10761,6 +10855,9 @@ export default function SocialFeed({
         existingImageUrls: composerImageItems
           .map((it) => String(it.remoteUrl || '').trim())
           .filter(Boolean),
+        imagePreviewBlobUrls: composerImageItems
+          .map((it) => String(it.preview || '').trim())
+          .filter((p) => p.startsWith('blob:')),
         videoFile: hasVideo && slot?.file ? slot.file : null,
         streamVideoUid: uid,
         awaitingComposerVideoPrepJobId: awaiting,

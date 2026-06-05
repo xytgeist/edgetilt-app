@@ -89,6 +89,31 @@ export function threadComposePartHasContent(caption, part) {
  * @param {string[]} captions
  * @param {ThreadComposePartMedia[]} partMedia
  */
+/** Blob previews to pin on submit snapshot so closeThreadCompose does not revoke them mid-job. */
+export function threadPartImagePreviewBlobUrlsFromMedia(part) {
+  return (part?.imageItems || [])
+    .map((it) => String(it.preview || '').trim())
+    .filter((p) => p.startsWith('blob:'))
+}
+
+/** Restore compose image tiles from a captured thread-part snapshot. */
+export function threadPartImageItemsFromSnapshot(part) {
+  /** @type {ThreadComposeImageItem[]} */
+  const items = []
+  let seq = 0
+  const nextId = () => `thread-snap-img-${Date.now()}-${seq++}`
+  for (const url of Array.isArray(part?.existingImageUrls) ? part.existingImageUrls : []) {
+    const u = String(url ?? '').trim()
+    if (!u) continue
+    items.push({ id: nextId(), remoteUrl: u, preview: u })
+  }
+  for (const file of Array.isArray(part?.imageFiles) ? part.imageFiles : []) {
+    if (!(file instanceof File)) continue
+    items.push({ id: nextId(), file, preview: URL.createObjectURL(file) })
+  }
+  return items
+}
+
 export function normalizeThreadComposePartsForSubmit(captions, partMedia) {
   const cap = Array.isArray(captions) ? captions : ['']
   const media = Array.isArray(partMedia) ? partMedia : [emptyThreadComposePartMedia()]

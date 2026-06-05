@@ -56,6 +56,12 @@ function collectSubmitSnapshotBlobUrlsFromPart(part, urls) {
     if (po.startsWith('blob:')) urls.add(po)
     if (pr.startsWith('blob:')) urls.add(pr)
   }
+  if (Array.isArray(part.imagePreviewBlobUrls)) {
+    for (const raw of part.imagePreviewBlobUrls) {
+      const p = String(raw || '').trim()
+      if (p.startsWith('blob:')) urls.add(p)
+    }
+  }
 }
 
 /** Blob URLs on a submit snapshot that must stay alive until the background job finishes. */
@@ -64,6 +70,12 @@ export function loungeSubmitSnapshotBlobUrls(snapshot) {
   const urls = new Set()
   if (!snapshot) return urls
   collectSubmitSnapshotBlobUrlsFromPart(snapshot, urls)
+  if (Array.isArray(snapshot.imagePreviewBlobUrls)) {
+    for (const raw of snapshot.imagePreviewBlobUrls) {
+      const p = String(raw || '').trim()
+      if (p.startsWith('blob:')) urls.add(p)
+    }
+  }
   if (Array.isArray(snapshot.threadParts)) {
     for (const part of snapshot.threadParts) collectSubmitSnapshotBlobUrlsFromPart(part, urls)
   }

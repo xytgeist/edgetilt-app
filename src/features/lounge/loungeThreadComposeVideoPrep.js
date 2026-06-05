@@ -47,6 +47,85 @@ export function threadComposeVideoSlotBlocksPost(slot) {
  * @param {ThreadComposeVideoSlot | null | undefined} slot
  * @param {ThreadComposePartVideoPrepMeta | null | undefined} prepMeta
  */
+/**
+ * Build a compose video slot from a captured thread-part snapshot (failure / cancel restore).
+ * Does not start prep — caller should enqueue when `videoPrepSpec` is set and no `streamVideoUid`.
+ *
+ * @param {object | null | undefined} part
+ * @returns {ThreadComposeVideoSlot | null}
+ */
+export function threadPartVideoSlotFromSnapshot(part) {
+  if (!part || typeof part !== 'object') return null
+  const uid = String(part.streamVideoUid ?? '').trim() || null
+  const vf = part.videoFile instanceof File ? part.videoFile : null
+  const blobPoster =
+    typeof part.sessionStreamPosterBlobUrl === 'string' &&
+    part.sessionStreamPosterBlobUrl.startsWith('blob:')
+      ? part.sessionStreamPosterBlobUrl
+      : null
+
+  if (uid) {
+    let preview = blobPoster
+    if (vf) {
+      try {
+        preview = URL.createObjectURL(vf)
+      } catch {
+        preview = blobPoster
+      }
+    }
+    return {
+      prepJobId: 0,
+      file: vf,
+      posterUrl: blobPoster,
+      preview,
+      streamVideoUid: uid,
+      prepStatus: 'ready',
+      prepError: '',
+    }
+  }
+
+  if (part.videoPrepSpec) {
+    const restore = part.videoPrepSlotRestore
+    if (part.videoPrepSpec.kind === 'direct' && part.videoPrepSpec.file instanceof File) {
+      const f = part.videoPrepSpec.file
+      return {
+        prepJobId: null,
+        file: f,
+        posterUrl: null,
+        preview: URL.createObjectURL(f),
+        streamVideoUid: null,
+        prepStatus: 'queued',
+        prepError: '',
+      }
+    }
+    if (restore && part.videoPrepSpec.kind === 'trim') {
+      return {
+        prepJobId: null,
+        file: null,
+        posterUrl: restore.posterUrl ?? null,
+        preview: restore.preview ?? restore.posterUrl ?? null,
+        streamVideoUid: null,
+        prepStatus: 'queued',
+        prepError: '',
+      }
+    }
+  }
+
+  if (vf) {
+    return {
+      prepJobId: 0,
+      file: vf,
+      posterUrl: blobPoster,
+      preview: URL.createObjectURL(vf),
+      streamVideoUid: null,
+      prepStatus: 'ready',
+      prepError: '',
+    }
+  }
+
+  return null
+}
+
 export function threadComposePartVideoSnapshotFields(slot, prepMeta) {
   if (!slot) {
     return {

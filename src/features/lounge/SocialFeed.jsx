@@ -7253,147 +7253,6 @@ export default function SocialFeed({
     ],
   )
 
-  const loungeDetailCommentEditMediaSlot = useMemo(() => {
-    if (!loungeDetailCommentEditingId) return null
-    const editingRow = loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId)
-    const gifUrl = String(loungeDetailCommentEditMediaUrl || '').trim()
-    const localPreviews = loungeDetailCommentEditImageItems.map((x) => x.preview)
-    const remoteUrls = loungeDetailCommentEditImageUrls
-    const carouselUrls = gifUrl ? [...remoteUrls, ...localPreviews, gifUrl] : [...remoteUrls, ...localPreviews]
-    const nRemote = remoteUrls.length
-    const nLocal = localPreviews.length
-    return (
-      <>
-        <input
-          id={LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID}
-          ref={loungeDetailCommentEditImageInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          {...loungeFileInputMediaPickerHandlers('detailCommentEdit')}
-          onChange={(e) => handleDetailCommentEditMediaInputChange(e, 'image')}
-        />
-        <input
-          id={LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID}
-          ref={loungeDetailCommentEditVideoInputRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          {...loungeFileInputMediaPickerHandlers('detailCommentEdit')}
-          onChange={(e) => handleDetailCommentEditMediaInputChange(e, 'video')}
-        />
-        {carouselUrls.length > 0 ? (
-          <LoungeImageCarousel
-            urls={carouselUrls}
-            variant="composer"
-            firstMarginTopClass="mt-1.5"
-            regionAriaLabel={gifUrl ? 'Reply images and GIF' : 'Reply images'}
-            removeLabelForIndex={(i) => {
-              if (i < nRemote) return 'Remove image'
-              if (i < nRemote + nLocal) return 'Remove image'
-              return 'Remove GIF'
-            }}
-            onRemoveIndex={(i) => {
-              if (i < nRemote) {
-                setLoungeDetailCommentEditImageUrls((prev) => prev.filter((_, j) => j !== i))
-              } else if (i < nRemote + nLocal) {
-                setLoungeDetailCommentEditImageItems((prev) => {
-                  const row = prev[i - nRemote]
-                  if (row?.preview) {
-                    try {
-                      URL.revokeObjectURL(row.preview)
-                    } catch {
-                      // ignore
-                    }
-                  }
-                  return prev.filter((_, j) => j !== i - nRemote)
-                })
-              } else {
-                setLoungeDetailCommentEditMediaUrl('')
-              }
-            }}
-          />
-        ) : null}
-        {loungeDetailCommentEditKeepStreamUid && !loungeDetailCommentEditVideoSlot ? (
-          <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-            {editingRow?.stream_poster_url ? (
-              <img
-                src={editingRow.stream_poster_url}
-                alt=""
-                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
-              />
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setLoungeDetailCommentEditKeepStreamUid(null)}
-              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55"
-              aria-label="Remove video"
-              title="Remove video"
-            >
-              ×
-            </button>
-          </div>
-        ) : null}
-        {loungeDetailCommentEditVideoSlot ? (
-          <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-            {!loungeDetailCommentEditVideoSlot.file && loungeDetailCommentEditVideoSlot.preview ? (
-              <img
-                src={loungeDetailCommentEditVideoSlot.preview}
-                alt=""
-                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
-              />
-            ) : loungeDetailCommentEditVideoSlot.preview ? (
-              <video
-                src={loungeDetailCommentEditVideoSlot.preview}
-                poster={loungeDetailCommentEditVideoSlot.posterUrl || undefined}
-                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
-                controls
-                playsInline
-                preload="metadata"
-                aria-label="Video preview"
-              />
-            ) : null}
-            <button
-              type="button"
-              onClick={() => cancelLoungeDetailCommentEditMediaPrep()}
-              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55"
-              aria-label="Remove video"
-              title="Remove video"
-            >
-              ×
-            </button>
-          </div>
-        ) : null}
-        <div className="lounge-media-toolbar mt-1 flex w-full items-center gap-1.5">
-          <LoungeComposerMediaToolbar
-            variant="compact"
-            imageInputId={LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID}
-            videoInputId={LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID}
-            onImagePointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
-            onVideoPointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
-            onOpenGifPicker={() => openKlipyPicker('detailCommentEdit')}
-          />
-        </div>
-      </>
-    )
-  }, [
-    beginLoungeComposerMediaPicker,
-    cancelLoungeDetailCommentEditMediaPrep,
-    handleDetailCommentEditMediaInputChange,
-    loungeDetailCommentEditImageItems,
-    loungeDetailCommentEditImageUrls,
-    loungeDetailCommentEditKeepStreamUid,
-    loungeDetailCommentEditMediaUrl,
-    loungeDetailCommentEditVideoSlot,
-    loungeDetailCommentEditingId,
-    loungeDetailComments,
-    loungeFileInputMediaPickerHandlers,
-    openKlipyPicker,
-    queueLoungeVideoOrCrop,
-    restoreLoungeComposerCaptionAfterMediaPick,
-  ])
-
   const saveLoungeDetailCaption = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId) return
     const cap = normalizeFeedCaption(loungeDetailDraftCaption)
@@ -8150,6 +8009,145 @@ export default function SocialFeed({
       setLoungeImageLimitDialog,
     ],
   )
+
+  const loungeDetailCommentEditMediaSlot = useMemo(() => {
+    if (!loungeDetailCommentEditingId) return null
+    const editingRow = loungeDetailComments.find((r) => r.id === loungeDetailCommentEditingId)
+    const gifUrl = String(loungeDetailCommentEditMediaUrl || '').trim()
+    const localPreviews = loungeDetailCommentEditImageItems.map((x) => x.preview)
+    const remoteUrls = loungeDetailCommentEditImageUrls
+    const carouselUrls = gifUrl ? [...remoteUrls, ...localPreviews, gifUrl] : [...remoteUrls, ...localPreviews]
+    const nRemote = remoteUrls.length
+    const nLocal = localPreviews.length
+    return (
+      <>
+        <input
+          id={LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID}
+          ref={loungeDetailCommentEditImageInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          {...loungeFileInputMediaPickerHandlers('detailCommentEdit')}
+          onChange={(e) => handleDetailCommentEditMediaInputChange(e, 'image')}
+        />
+        <input
+          id={LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID}
+          ref={loungeDetailCommentEditVideoInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          {...loungeFileInputMediaPickerHandlers('detailCommentEdit')}
+          onChange={(e) => handleDetailCommentEditMediaInputChange(e, 'video')}
+        />
+        {carouselUrls.length > 0 ? (
+          <LoungeImageCarousel
+            urls={carouselUrls}
+            variant="composer"
+            firstMarginTopClass="mt-1.5"
+            regionAriaLabel={gifUrl ? 'Reply images and GIF' : 'Reply images'}
+            removeLabelForIndex={(i) => {
+              if (i < nRemote) return 'Remove image'
+              if (i < nRemote + nLocal) return 'Remove image'
+              return 'Remove GIF'
+            }}
+            onRemoveIndex={(i) => {
+              if (i < nRemote) {
+                setLoungeDetailCommentEditImageUrls((prev) => prev.filter((_, j) => j !== i))
+              } else if (i < nRemote + nLocal) {
+                setLoungeDetailCommentEditImageItems((prev) => {
+                  const row = prev[i - nRemote]
+                  if (row?.preview) {
+                    try {
+                      URL.revokeObjectURL(row.preview)
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  return prev.filter((_, j) => j !== i - nRemote)
+                })
+              } else {
+                setLoungeDetailCommentEditMediaUrl('')
+              }
+            }}
+          />
+        ) : null}
+        {loungeDetailCommentEditKeepStreamUid && !loungeDetailCommentEditVideoSlot ? (
+          <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+            {editingRow?.stream_poster_url ? (
+              <img
+                src={editingRow.stream_poster_url}
+                alt=""
+                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setLoungeDetailCommentEditKeepStreamUid(null)}
+              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55"
+              aria-label="Remove video"
+              title="Remove video"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+        {loungeDetailCommentEditVideoSlot ? (
+          <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+            {!loungeDetailCommentEditVideoSlot.file && loungeDetailCommentEditVideoSlot.preview ? (
+              <img
+                src={loungeDetailCommentEditVideoSlot.preview}
+                alt=""
+                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
+              />
+            ) : loungeDetailCommentEditVideoSlot.preview ? (
+              <video
+                src={loungeDetailCommentEditVideoSlot.preview}
+                poster={loungeDetailCommentEditVideoSlot.posterUrl || undefined}
+                className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
+                controls
+                playsInline
+                preload="metadata"
+                aria-label="Video preview"
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={() => cancelLoungeDetailCommentEditMediaPrep()}
+              className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55"
+              aria-label="Remove video"
+              title="Remove video"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+        <div className="lounge-media-toolbar mt-1 flex w-full items-center gap-1.5">
+          <LoungeComposerMediaToolbar
+            variant="compact"
+            imageInputId={LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID}
+            videoInputId={LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID}
+            onImagePointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
+            onVideoPointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
+            onOpenGifPicker={() => openKlipyPicker('detailCommentEdit')}
+          />
+        </div>
+      </>
+    )
+  }, [
+    beginLoungeComposerMediaPicker,
+    cancelLoungeDetailCommentEditMediaPrep,
+    handleDetailCommentEditMediaInputChange,
+    loungeDetailCommentEditImageItems,
+    loungeDetailCommentEditImageUrls,
+    loungeDetailCommentEditKeepStreamUid,
+    loungeDetailCommentEditMediaUrl,
+    loungeDetailCommentEditVideoSlot,
+    loungeDetailCommentEditingId,
+    loungeDetailComments,
+    loungeFileInputMediaPickerHandlers,
+    openKlipyPicker,
+  ])
 
   const handleDetailEditMediaInputChange = useCallback(
     (e, pickKind) => {

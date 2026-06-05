@@ -815,18 +815,18 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-
 html.light [data-lounge-image-lightbox] {
   background-color: #fafafa !important;
 }
-/* Top bar — white on menu / Follow glass pills */
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .chat-header-glass {
-  color: #ffffff !important;
-}
-/* Back + carousel — same idle gray as interaction bar icons */
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .media-lightbox-nav-btn,
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .chat-header-glass,
+/* Back, menu, Follow, carousel — idle interaction gray + stronger glass over busy media */
+html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn,
 html.light [data-chat-image-lightbox] .media-lightbox-nav-btn {
-  color: #52525b !important;
+  color: #3f3f46 !important;
+  background: rgba(235, 238, 255, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  isolation: isolate;
 }
 html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200 {
-  color: #52525b !important;
+  color: #3f3f46 !important;
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -876,13 +876,13 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-footer] {
 }
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-200,
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-500 {
-  color: #52525b !important;
+  color: #3f3f46 !important;
 }
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-white {
-  color: #52525b !important;
+  color: #3f3f46 !important;
 }
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-100 {
-  color: #52525b !important;
+  color: #3f3f46 !important;
 }
 /* Hydrated interaction colors — keep feed semantics */
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-emerald-400 {

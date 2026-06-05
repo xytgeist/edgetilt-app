@@ -99,6 +99,7 @@ import {
 } from './loungeStorage'
 import LoungePostDraftsSheet from './LoungePostDraftsSheet.jsx'
 import LoungeThreadComposeSheet from './LoungeThreadComposeSheet.jsx'
+import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import {
   countLoungePostDrafts,
   deleteLoungePostDraft,
@@ -384,12 +385,18 @@ function isLoungePostWithinAuthorEditWindow(createdAt) {
 
 const LOUNGE_COMPOSER_MAX_IMAGES = 6
 
-const LOUNGE_COMPOSER_MEDIA_INPUT_ID = 'lounge-composer-media-input'
-const LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID = 'lounge-detail-comment-media-input'
-const LOUNGE_DETAIL_EDIT_MEDIA_INPUT_ID = 'lounge-detail-edit-media-input'
-const LOUNGE_COMMENT_EDIT_MEDIA_INPUT_ID = 'lounge-comment-edit-media-input'
-const LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID = 'lounge-quote-repost-media-input'
-const LOUNGE_THREAD_COMPOSE_MEDIA_INPUT_ID = 'lounge-thread-compose-media-input'
+const LOUNGE_COMPOSER_IMAGE_INPUT_ID = 'lounge-composer-image-input'
+const LOUNGE_COMPOSER_VIDEO_INPUT_ID = 'lounge-composer-video-input'
+const LOUNGE_DETAIL_COMMENT_IMAGE_INPUT_ID = 'lounge-detail-comment-image-input'
+const LOUNGE_DETAIL_COMMENT_VIDEO_INPUT_ID = 'lounge-detail-comment-video-input'
+const LOUNGE_DETAIL_EDIT_IMAGE_INPUT_ID = 'lounge-detail-edit-image-input'
+const LOUNGE_DETAIL_EDIT_VIDEO_INPUT_ID = 'lounge-detail-edit-video-input'
+const LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID = 'lounge-comment-edit-image-input'
+const LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID = 'lounge-comment-edit-video-input'
+const LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID = 'lounge-quote-repost-image-input'
+const LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID = 'lounge-quote-repost-video-input'
+const LOUNGE_THREAD_COMPOSE_IMAGE_INPUT_ID = 'lounge-thread-compose-image-input'
+const LOUNGE_THREAD_COMPOSE_VIDEO_INPUT_ID = 'lounge-thread-compose-video-input'
 
 function newComposerImageId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -418,6 +425,28 @@ function mergeLoungePickedImageItems(prevItems, fileList, newIdFn) {
     limitDialog = `You can attach up to ${cap} images. Extra files were not added.`
   }
   return { next, limitDialog }
+}
+
+function loungeFilteredMediaFiles(pickKind, fileList) {
+  const files = Array.from(fileList || [])
+  if (pickKind === 'video') return files.filter(isProbablyVideoFile).slice(0, 1)
+  return files.filter(isProbablyImageFile)
+}
+
+function loungeMediaPickErrorMessage(pickKind) {
+  return pickKind === 'video'
+    ? 'Unsupported media type. Please choose a video file.'
+    : 'Unsupported media type. Please choose an image file.'
+}
+
+function clearHiddenFileInputs(...elements) {
+  for (const el of elements) {
+    try {
+      if (el) el.value = ''
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /** Caption length → counter color (yellow near max, orange closer, red at max). */
@@ -521,7 +550,8 @@ export default function SocialFeed({
   const threadComposeFieldRef = useRef(null)
   const threadComposePartRefMap = useRef({})
   const threadComposeMentionAnchorRef = useRef(null)
-  const threadComposeMediaInputRef = useRef(null)
+  const threadComposeImageInputRef = useRef(null)
+  const threadComposeVideoInputRef = useRef(null)
   const threadComposeOpenRef = useRef(false)
   const threadComposeActivePartIndexRef = useRef(0)
   const threadComposePartMediaRef = useRef(threadComposePartMedia)
@@ -743,7 +773,8 @@ export default function SocialFeed({
   const quoteRepostVideoPrepHandoffRef = useRef(null)
   const quoteRepostFieldRef = useRef(null)
   const quoteRepostScrollRef = useRef(null)
-  const quoteRepostMediaInputRef = useRef(null)
+  const quoteRepostImageInputRef = useRef(null)
+  const quoteRepostVideoInputRef = useRef(null)
   const [loungeDetailComments, setLoungeDetailComments] = useState([])
   const [loungeDetailCommentsLoading, setLoungeDetailCommentsLoading] = useState(false)
   const loungeDetailCommentIdsKey = useMemo(
@@ -780,7 +811,8 @@ export default function SocialFeed({
     /** @type {null | 'composer' | 'detailComment' | 'detailEdit' | 'detailCommentEdit' | 'quote'} */ (null),
   )
   const loungeDetailCommentVideoSlotRef = useRef(null)
-  const loungeDetailCommentMediaInputRef = useRef(null)
+  const loungeDetailCommentImageInputRef = useRef(null)
+  const loungeDetailCommentVideoInputRef = useRef(null)
   const loungeDetailCommentVideoPrepJobIdRef = useRef(0)
   const loungeDetailCommentVideoPrepAbortRef = useRef(null)
   const loungeDetailCommentVideoPrepSpecRef = useRef(null)
@@ -817,7 +849,8 @@ export default function SocialFeed({
   const loungeDetailCommentEditMediaUrlRef = useRef('')
   const loungeDetailCommentEditVideoSlotRef = useRef(null)
   const loungeDetailCommentEditFieldRef = useRef(null)
-  const loungeDetailCommentEditMediaInputRef = useRef(null)
+  const loungeDetailCommentEditImageInputRef = useRef(null)
+  const loungeDetailCommentEditVideoInputRef = useRef(null)
   const loungeDetailCommentEditVideoPrepJobIdRef = useRef(0)
   const loungeDetailCommentEditVideoPrepAbortRef = useRef(null)
   const loungeDetailCommentEditVideoPrepSpecRef = useRef(null)
@@ -929,13 +962,15 @@ export default function SocialFeed({
   const pullArrowRef = useRef(null)
   const pullSpinnerRef = useRef(null)
   const pullAriaRef = useRef(null)
-  const composerMediaInputRef = useRef(null)
+  const composerImageInputRef = useRef(null)
+  const composerVideoInputRef = useRef(null)
   const composerFieldRef = useRef(null)
   const mentionComposerAnchorRef = useRef(null)
   const mentionDetailCommentAnchorRef = useRef(null)
   const mentionQuoteRepostAnchorRef = useRef(null)
   const loungeDetailEditFieldRef = useRef(null)
-  const loungeDetailEditMediaInputRef = useRef(null)
+  const loungeDetailEditImageInputRef = useRef(null)
+  const loungeDetailEditVideoInputRef = useRef(null)
   const loungeFeedScrollRef = useRef(null)
   /** Bound inside feed `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
   const resetFeedInlineSoundRef = useRef(() => {})
@@ -1401,19 +1436,6 @@ export default function SocialFeed({
     [loungeComposerCaptionTargetConfig],
   )
 
-  const loungeFileInputMediaPickerHandlers = useCallback(
-    (target) => ({
-      onClick: () => {
-        beginLoungeComposerMediaPicker(target)
-        nudgeLoungeComposerCaptionDuringMediaSheet(target)
-      },
-      onCancel: () => {
-        endLoungeComposerMediaPicker(target)
-      },
-    }),
-    [beginLoungeComposerMediaPicker, endLoungeComposerMediaPicker, nudgeLoungeComposerCaptionDuringMediaSheet],
-  )
-
   const blurLoungeComposerCaptionForTarget = useCallback((target) => {
     const getTextarea = () => {
       if (target === 'detailComment') return loungeDetailCommentFieldRef.current
@@ -1428,6 +1450,19 @@ export default function SocialFeed({
     blurLoungeComposerCaption(getTextarea)
     if (target === 'detailComment') setLoungeDetailCommentKbOverlapPx(0)
   }, [])
+
+  const loungeFileInputMediaPickerHandlers = useCallback(
+    (target) => ({
+      onClick: () => {
+        beginLoungeComposerMediaPicker(target)
+        blurLoungeComposerCaptionForTarget(target)
+      },
+      onCancel: () => {
+        endLoungeComposerMediaPicker(target)
+      },
+    }),
+    [beginLoungeComposerMediaPicker, blurLoungeComposerCaptionForTarget, endLoungeComposerMediaPicker],
+  )
 
   const openKlipyPicker = useCallback(
     (target) => {
@@ -1451,6 +1486,10 @@ export default function SocialFeed({
   const restoreLoungeComposerCaptionAfterMediaPick = useCallback(
     (target, applyDomUpdates) => {
       if (applyDomUpdates) flushSync(applyDomUpdates)
+      if (target === 'composer' && threadComposeOpenRef.current) {
+        blurLoungeComposerCaptionForTarget(target)
+        return
+      }
       const { getTextarea, scrollFeedToTop, isBlocked } = loungeComposerCaptionTargetConfig(target)
       invokeLoungeComposerCaptionKeyboard(getTextarea, { scrollFeedToTop })
       scheduleLoungeComposerTextareaFocus({
@@ -1460,7 +1499,7 @@ export default function SocialFeed({
         extraDelaysMs: LOUNGE_COMPOSER_FOCUS_AFTER_MEDIA_DELAYS_MS,
       })
     },
-    [loungeComposerCaptionTargetConfig],
+    [blurLoungeComposerCaptionForTarget, loungeComposerCaptionTargetConfig],
   )
 
   useEffect(() => {
@@ -3015,8 +3054,10 @@ export default function SocialFeed({
     setLoungeDetailCommentMediaUrl('')
     endLoungeDetailCommentMediaSession()
     try {
-      const el = loungeDetailCommentMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(
+        loungeDetailCommentImageInputRef.current,
+        loungeDetailCommentVideoInputRef.current,
+      )
     } catch {
       // ignore
     }
@@ -3107,8 +3148,10 @@ export default function SocialFeed({
     endLoungeDetailCommentMediaSession()
     setLoungeDetailCommentComposerExpanded(false)
     try {
-      const el = loungeDetailCommentMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(
+        loungeDetailCommentImageInputRef.current,
+        loungeDetailCommentVideoInputRef.current,
+      )
     } catch {
       // ignore
     }
@@ -3191,8 +3234,7 @@ export default function SocialFeed({
     })
     setLoungeDetailEditKeepStreamUid(null)
     try {
-      const el = loungeDetailEditMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(loungeDetailEditImageInputRef.current, loungeDetailEditVideoInputRef.current)
     } catch {
       // ignore
     }
@@ -3269,8 +3311,10 @@ export default function SocialFeed({
     })
     setLoungeDetailCommentEditKeepStreamUid(null)
     try {
-      const el = loungeDetailCommentEditMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(
+        loungeDetailCommentEditImageInputRef.current,
+        loungeDetailCommentEditVideoInputRef.current,
+      )
     } catch {
       // ignore
     }
@@ -4468,8 +4512,7 @@ export default function SocialFeed({
       return []
     })
     try {
-      const el = quoteRepostMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(quoteRepostImageInputRef.current, quoteRepostVideoInputRef.current)
     } catch {
       // ignore
     }
@@ -4533,8 +4576,7 @@ export default function SocialFeed({
           setComposerVideoSlot(null)
           dismissLoungePostUploadBarIfIdle()
           try {
-            const el = composerMediaInputRef.current
-            if (el) el.value = ''
+          clearComposerMediaInputs()
           } catch {
             // ignore
           }
@@ -5521,8 +5563,10 @@ export default function SocialFeed({
       setLoungeDetailCommentEditImageItems([])
       setLoungeDetailCommentEditVideoSlot(null)
       try {
-        const el = loungeDetailCommentEditMediaInputRef.current
-        if (el) el.value = ''
+        clearHiddenFileInputs(
+          loungeDetailCommentEditImageInputRef.current,
+          loungeDetailCommentEditVideoInputRef.current,
+        )
       } catch {
         // ignore
       }
@@ -5560,8 +5604,10 @@ export default function SocialFeed({
       setLoungeDetailCommentEditMediaUrl('')
       setLoungeDetailCommentEditKeepStreamUid(null)
       try {
-        const el = loungeDetailCommentEditMediaInputRef.current
-        if (el) el.value = ''
+        clearHiddenFileInputs(
+          loungeDetailCommentEditImageInputRef.current,
+          loungeDetailCommentEditVideoInputRef.current,
+        )
       } catch {
         // ignore
       }
@@ -6214,8 +6260,7 @@ export default function SocialFeed({
         setLoungeDetailEditImageItems([])
         setLoungeDetailEditVideoSlot(null)
         try {
-          const el = loungeDetailEditMediaInputRef.current
-          if (el) el.value = ''
+          clearHiddenFileInputs(loungeDetailEditImageInputRef.current, loungeDetailEditVideoInputRef.current)
         } catch {
           // ignore
         }
@@ -6940,8 +6985,7 @@ export default function SocialFeed({
     setLoungeDetailEditCategoryPills([])
     if (!preserveMedia) {
       try {
-        const el = loungeDetailEditMediaInputRef.current
-        if (el) el.value = ''
+        clearHiddenFileInputs(loungeDetailEditImageInputRef.current, loungeDetailEditVideoInputRef.current)
       } catch {
         // ignore
       }
@@ -7221,85 +7265,23 @@ export default function SocialFeed({
     return (
       <>
         <input
-          id={LOUNGE_COMMENT_EDIT_MEDIA_INPUT_ID}
-          ref={loungeDetailCommentEditMediaInputRef}
+          id={LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID}
+          ref={loungeDetailCommentEditImageInputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/*"
           multiple
           className="hidden"
           {...loungeFileInputMediaPickerHandlers('detailCommentEdit')}
-          onChange={(e) => {
-            const input = e.target
-            const files = Array.from(input.files || [])
-            if (!files.length) {
-              endLoungeComposerMediaPicker('detailCommentEdit')
-              restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit')
-              return
-            }
-            setLoungeDetailCommentErr('')
-            const hasVideo = files.some((f) => isProbablyVideoFile(f))
-            if (hasVideo) {
-              const vf = files.find((f) => isProbablyVideoFile(f))
-              if (!vf) {
-                endLoungeComposerMediaPicker('detailCommentEdit')
-                try {
-                  input.value = ''
-                } catch {
-                  // ignore
-                }
-                return
-              }
-              setLoungeDetailCommentEditImageItems((prev) => {
-                for (const it of prev) {
-                  try {
-                    URL.revokeObjectURL(it.preview)
-                  } catch {
-                    // ignore
-                  }
-                }
-                return []
-              })
-              cancelLoungeDetailCommentEditMediaPrep()
-              setLoungeDetailCommentEditKeepStreamUid(null)
-              setLoungeDetailCommentEditMediaUrl('')
-              try {
-                input.value = ''
-              } catch {
-                // ignore
-              }
-              endLoungeComposerMediaPicker('detailCommentEdit')
-              restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit')
-              void queueLoungeVideoOrCrop(vf, 'detailCommentEdit')
-              return
-            }
-            const bad = files.some((f) => !isProbablyImageFile(f))
-            if (bad) {
-              setLoungeDetailCommentErr('Unsupported media type. Please choose an image or video file.')
-              endLoungeComposerMediaPicker('detailCommentEdit')
-              try {
-                input.value = ''
-              } catch {
-                // ignore
-              }
-              restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit')
-              return
-            }
-            cancelLoungeDetailCommentEditMediaPrep()
-            setLoungeDetailCommentEditKeepStreamUid(null)
-            const prevImgs = loungeDetailCommentEditImageItemsRef.current
-            const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
-            loungeDetailCommentEditImageItemsRef.current = next
-            try {
-              input.value = ''
-            } catch {
-              // ignore
-            }
-            endLoungeComposerMediaPicker('detailCommentEdit')
-            restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit', () => {
-              setLoungeDetailCommentEditImageItems(next)
-              if (limitDialog) setLoungeImageLimitDialog(limitDialog)
-            })
-          }}
+          onChange={(e) => handleDetailCommentEditMediaInputChange(e, 'image')}
+        />
+        <input
+          id={LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID}
+          ref={loungeDetailCommentEditVideoInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          {...loungeFileInputMediaPickerHandlers('detailCommentEdit')}
+          onChange={(e) => handleDetailCommentEditMediaInputChange(e, 'video')}
         />
         {carouselUrls.length > 0 ? (
           <LoungeImageCarousel
@@ -7384,41 +7366,21 @@ export default function SocialFeed({
           </div>
         ) : null}
         <div className="lounge-media-toolbar mt-1 flex w-full items-center gap-1.5">
-          <label
-            htmlFor={LOUNGE_COMMENT_EDIT_MEDIA_INPUT_ID}
-            onPointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
-            onMouseDown={(e) => e.preventDefault()}
-            className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-            title="Add media"
-            aria-label="Add media"
-          >
-            <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <rect x="3.75" y="3.75" width="12.5" height="12.5" rx="2" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.35" />
-              <path d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="8" cy="8" r="1" fill="currentColor" />
-            </svg>
-          </label>
-          <button
-            type="button"
-            onClick={() => openKlipyPicker('detailCommentEdit')}
-            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-            title="Add GIF"
-            aria-label="Add GIF"
-          >
-            <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <rect x="3.75" y="3.75" width="12.5" height="12.5" rx="2" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.35" />
-              <text x="10" y="12.85" textAnchor="middle" fill="currentColor" style={{ fontSize: '5.35px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
-                GIF
-              </text>
-            </svg>
-          </button>
+          <LoungeComposerMediaToolbar
+            variant="compact"
+            imageInputId={LOUNGE_COMMENT_EDIT_IMAGE_INPUT_ID}
+            videoInputId={LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID}
+            onImagePointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
+            onVideoPointerDown={() => beginLoungeComposerMediaPicker('detailCommentEdit')}
+            onOpenGifPicker={() => openKlipyPicker('detailCommentEdit')}
+          />
         </div>
       </>
     )
   }, [
     beginLoungeComposerMediaPicker,
     cancelLoungeDetailCommentEditMediaPrep,
-    endLoungeComposerMediaPicker,
+    handleDetailCommentEditMediaInputChange,
     loungeDetailCommentEditImageItems,
     loungeDetailCommentEditImageUrls,
     loungeDetailCommentEditKeepStreamUid,
@@ -7980,9 +7942,9 @@ export default function SocialFeed({
   }, [focusThreadComposePart])
 
   const handleComposerMediaInputChange = useCallback(
-    (e) => {
+    (e, pickKind) => {
       const input = e.target
-      const files = Array.from(input.files || [])
+      let files = Array.from(input.files || [])
       if (!files.length) {
         endLoungeComposerMediaPicker('composer')
         restoreLoungeComposerCaptionAfterMediaPick('composer')
@@ -7990,19 +7952,44 @@ export default function SocialFeed({
       }
       setPostErr('')
       setThreadComposeErr('')
-      const hasVideo = files.some((f) => isProbablyVideoFile(f))
+
+      if (pickKind === 'video') {
+        files = files.filter(isProbablyVideoFile).slice(0, 1)
+        if (!files.length) {
+          const msg = 'Unsupported media type. Please choose a video file.'
+          setPostErr(msg)
+          setThreadComposeErr(msg)
+          endLoungeComposerMediaPicker('composer')
+          try {
+            input.value = ''
+          } catch {
+            // ignore
+          }
+          restoreLoungeComposerCaptionAfterMediaPick('composer')
+          return
+        }
+      } else {
+        files = files.filter(isProbablyImageFile)
+        if (!files.length) {
+          const msg = 'Unsupported media type. Please choose an image file.'
+          setPostErr(msg)
+          setThreadComposeErr(msg)
+          endLoungeComposerMediaPicker('composer')
+          try {
+            input.value = ''
+          } catch {
+            // ignore
+          }
+          restoreLoungeComposerCaptionAfterMediaPick('composer')
+          return
+        }
+      }
+
+      const isVideoPick = pickKind === 'video'
       if (threadComposeOpenRef.current) {
         const activeIdx = threadComposeActivePartIndexRef.current
-        if (hasVideo) {
-          const vf = files.find((f) => isProbablyVideoFile(f))
-          if (!vf) {
-            try {
-              input.value = ''
-            } catch {
-              // ignore
-            }
-            return
-          }
+        if (isVideoPick) {
+          const vf = files[0]
           cancelThreadComposePartVideo(activeIdx)
           try {
             input.value = ''
@@ -8012,19 +7999,6 @@ export default function SocialFeed({
           endLoungeComposerMediaPicker('composer')
           restoreLoungeComposerCaptionAfterMediaPick('composer')
           void queueLoungeVideoOrCrop(vf, 'composer')
-          return
-        }
-        const bad = files.some((f) => !isProbablyImageFile(f))
-        if (bad) {
-          const msg = 'Unsupported media type. Please choose an image or video file.'
-          setThreadComposeErr(msg)
-          endLoungeComposerMediaPicker('composer')
-          try {
-            input.value = ''
-          } catch {
-            // ignore
-          }
-          restoreLoungeComposerCaptionAfterMediaPick('composer')
           return
         }
         cancelComposerMediaPrep()
@@ -8047,16 +8021,8 @@ export default function SocialFeed({
         })
         return
       }
-      if (hasVideo) {
-        const vf = files.find((f) => isProbablyVideoFile(f))
-        if (!vf) {
-          try {
-            input.value = ''
-          } catch {
-            // ignore
-          }
-          return
-        }
+      if (isVideoPick) {
+        const vf = files[0]
         setComposerImageItems((prev) => {
           for (const it of prev) {
             try {
@@ -8077,20 +8043,6 @@ export default function SocialFeed({
         endLoungeComposerMediaPicker('composer')
         restoreLoungeComposerCaptionAfterMediaPick('composer')
         void queueLoungeVideoOrCrop(vf, 'composer')
-        return
-      }
-      const bad = files.some((f) => !isProbablyImageFile(f))
-      if (bad) {
-        const msg = 'Unsupported media type. Please choose an image or video file.'
-        setPostErr(msg)
-        setThreadComposeErr(msg)
-        endLoungeComposerMediaPicker('composer')
-        try {
-          input.value = ''
-        } catch {
-          // ignore
-        }
-        restoreLoungeComposerCaptionAfterMediaPick('composer')
         return
       }
       cancelComposerMediaPrep()
@@ -8117,6 +8069,307 @@ export default function SocialFeed({
       setLoungeImageLimitDialog,
     ],
   )
+
+  const handleComposerImageInputChange = useCallback(
+    (e) => handleComposerMediaInputChange(e, 'image'),
+    [handleComposerMediaInputChange],
+  )
+
+  const handleComposerVideoInputChange = useCallback(
+    (e) => handleComposerMediaInputChange(e, 'video'),
+    [handleComposerMediaInputChange],
+  )
+
+  const handleDetailCommentEditMediaInputChange = useCallback(
+    (e, pickKind) => {
+      const input = e.target
+      const files = loungeFilteredMediaFiles(pickKind, input.files)
+      if (!Array.from(input.files || []).length) {
+        endLoungeComposerMediaPicker('detailCommentEdit')
+        restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit')
+        return
+      }
+      setLoungeDetailCommentErr('')
+      if (!files.length) {
+        setLoungeDetailCommentErr(loungeMediaPickErrorMessage(pickKind))
+        endLoungeComposerMediaPicker('detailCommentEdit')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit')
+        return
+      }
+      if (pickKind === 'video') {
+        const vf = files[0]
+        setLoungeDetailCommentEditImageItems((prev) => {
+          for (const it of prev) {
+            try {
+              URL.revokeObjectURL(it.preview)
+            } catch {
+              // ignore
+            }
+          }
+          return []
+        })
+        cancelLoungeDetailCommentEditMediaPrep()
+        setLoungeDetailCommentEditKeepStreamUid(null)
+        setLoungeDetailCommentEditMediaUrl('')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        endLoungeComposerMediaPicker('detailCommentEdit')
+        restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit')
+        void queueLoungeVideoOrCrop(vf, 'detailCommentEdit')
+        return
+      }
+      cancelLoungeDetailCommentEditMediaPrep()
+      setLoungeDetailCommentEditKeepStreamUid(null)
+      const prevImgs = loungeDetailCommentEditImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      loungeDetailCommentEditImageItemsRef.current = next
+      try {
+        input.value = ''
+      } catch {
+        // ignore
+      }
+      endLoungeComposerMediaPicker('detailCommentEdit')
+      restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit', () => {
+        setLoungeDetailCommentEditImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelLoungeDetailCommentEditMediaPrep,
+      endLoungeComposerMediaPicker,
+      queueLoungeVideoOrCrop,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const handleDetailEditMediaInputChange = useCallback(
+    (e, pickKind) => {
+      const input = e.target
+      const files = loungeFilteredMediaFiles(pickKind, input.files)
+      if (!Array.from(input.files || []).length) {
+        endLoungeComposerMediaPicker('detailEdit')
+        restoreLoungeComposerCaptionAfterMediaPick('detailEdit')
+        return
+      }
+      setLoungeDetailEditErr('')
+      if (!files.length) {
+        setLoungeDetailEditErr(loungeMediaPickErrorMessage(pickKind))
+        endLoungeComposerMediaPicker('detailEdit')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        restoreLoungeComposerCaptionAfterMediaPick('detailEdit')
+        return
+      }
+      if (pickKind === 'video') {
+        const vf = files[0]
+        setLoungeDetailEditImageItems((prev) => {
+          for (const it of prev) {
+            try {
+              URL.revokeObjectURL(it.preview)
+            } catch {
+              // ignore
+            }
+          }
+          return []
+        })
+        cancelLoungeDetailEditMediaPrep()
+        setLoungeDetailEditKeepStreamUid(null)
+        setLoungeDetailEditMediaUrl('')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        endLoungeComposerMediaPicker('detailEdit')
+        restoreLoungeComposerCaptionAfterMediaPick('detailEdit')
+        void queueLoungeVideoOrCrop(vf, 'detailEdit')
+        return
+      }
+      cancelLoungeDetailEditMediaPrep()
+      setLoungeDetailEditKeepStreamUid(null)
+      const prevImgs = loungeDetailEditImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      loungeDetailEditImageItemsRef.current = next
+      try {
+        input.value = ''
+      } catch {
+        // ignore
+      }
+      endLoungeComposerMediaPicker('detailEdit')
+      restoreLoungeComposerCaptionAfterMediaPick('detailEdit', () => {
+        setLoungeDetailEditImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelLoungeDetailEditMediaPrep,
+      endLoungeComposerMediaPicker,
+      queueLoungeVideoOrCrop,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const handleDetailCommentMediaInputChange = useCallback(
+    (e, pickKind) => {
+      const input = e.target
+      const files = loungeFilteredMediaFiles(pickKind, input.files)
+      if (!Array.from(input.files || []).length) {
+        endLoungeComposerMediaPicker('detailComment')
+        restoreLoungeComposerCaptionAfterMediaPick('detailComment')
+        return
+      }
+      setLoungeDetailCommentErr('')
+      if (!files.length) {
+        setLoungeDetailCommentErr(loungeMediaPickErrorMessage(pickKind))
+        endLoungeComposerMediaPicker('detailComment')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        restoreLoungeComposerCaptionAfterMediaPick('detailComment')
+        return
+      }
+      if (pickKind === 'video') {
+        const vf = files[0]
+        setLoungeDetailCommentImageItems((prev) => {
+          for (const it of prev) {
+            try {
+              URL.revokeObjectURL(it.preview)
+            } catch {
+              // ignore
+            }
+          }
+          return []
+        })
+        cancelLoungeDetailCommentMediaPrep()
+        setLoungeDetailCommentMediaUrl('')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        endLoungeComposerMediaPicker('detailComment')
+        restoreLoungeComposerCaptionAfterMediaPick('detailComment')
+        void queueLoungeVideoOrCrop(vf, 'detailComment')
+        return
+      }
+      cancelLoungeDetailCommentMediaPrep()
+      const prevImgs = loungeDetailCommentImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      loungeDetailCommentImageItemsRef.current = next
+      try {
+        input.value = ''
+      } catch {
+        // ignore
+      }
+      endLoungeComposerMediaPicker('detailComment')
+      restoreLoungeComposerCaptionAfterMediaPick('detailComment', () => {
+        setLoungeDetailCommentImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelLoungeDetailCommentMediaPrep,
+      endLoungeComposerMediaPicker,
+      queueLoungeVideoOrCrop,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const handleQuoteRepostMediaInputChange = useCallback(
+    (e, pickKind) => {
+      const input = e.target
+      const files = loungeFilteredMediaFiles(pickKind, input.files)
+      if (!Array.from(input.files || []).length) {
+        endLoungeComposerMediaPicker('quote')
+        restoreLoungeComposerCaptionAfterMediaPick('quote')
+        return
+      }
+      setQuoteRepostErr('')
+      if (!files.length) {
+        setQuoteRepostErr(loungeMediaPickErrorMessage(pickKind))
+        endLoungeComposerMediaPicker('quote')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        restoreLoungeComposerCaptionAfterMediaPick('quote')
+        return
+      }
+      if (pickKind === 'video') {
+        const vf = files[0]
+        setQuoteRepostImageItems((prev) => {
+          for (const it of prev) {
+            try {
+              URL.revokeObjectURL(it.preview)
+            } catch {
+              // ignore
+            }
+          }
+          return []
+        })
+        cancelQuoteRepostMediaPrep()
+        setQuoteRepostMediaUrl('')
+        try {
+          input.value = ''
+        } catch {
+          // ignore
+        }
+        endLoungeComposerMediaPicker('quote')
+        restoreLoungeComposerCaptionAfterMediaPick('quote')
+        void queueLoungeVideoOrCrop(vf, 'quote')
+        return
+      }
+      cancelQuoteRepostMediaPrep()
+      setQuoteRepostMediaUrl('')
+      const prevImgs = quoteRepostImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      quoteRepostImageItemsRef.current = next
+      try {
+        input.value = ''
+      } catch {
+        // ignore
+      }
+      endLoungeComposerMediaPicker('quote')
+      restoreLoungeComposerCaptionAfterMediaPick('quote', () => {
+        setQuoteRepostImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelQuoteRepostMediaPrep,
+      endLoungeComposerMediaPicker,
+      queueLoungeVideoOrCrop,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const clearComposerMediaInputs = useCallback(() => {
+    for (const el of [composerImageInputRef.current, composerVideoInputRef.current]) {
+      try {
+        if (el) el.value = ''
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
 
   const clearComposerForPostAttempt = useCallback((opts = {}) => {
     const preserve = Boolean(opts.preserveComposerVideoPrep)
@@ -8190,8 +8443,7 @@ export default function SocialFeed({
     setComposerExpanded(false)
     clearLoungeComposerDraft()
     try {
-      const el = composerMediaInputRef.current
-      if (el) el.value = ''
+      clearComposerMediaInputs()
     } catch {
       // ignore
     }
@@ -8600,8 +8852,7 @@ export default function SocialFeed({
       return null
     })
     try {
-      const el = quoteRepostMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(quoteRepostImageInputRef.current, quoteRepostVideoInputRef.current)
     } catch {
       // ignore
     }
@@ -10428,8 +10679,7 @@ export default function SocialFeed({
     setThreadComposeErr('')
     setThreadComposeDiscardOpen(false)
     try {
-      const el = threadComposeMediaInputRef.current
-      if (el) el.value = ''
+      clearHiddenFileInputs(threadComposeImageInputRef.current, threadComposeVideoInputRef.current)
     } catch {
       // ignore
     }
@@ -12435,8 +12685,7 @@ export default function SocialFeed({
                 setComposerExpanded(false)
                 clearLoungeComposerDraft()
                 try {
-                  const el = composerMediaInputRef.current
-                  if (el) el.value = ''
+                  clearComposerMediaInputs()
                 } catch {
                   // ignore
                 }
@@ -12667,79 +12916,36 @@ export default function SocialFeed({
               aria-hidden
             />
             <input
-              id={LOUNGE_COMPOSER_MEDIA_INPUT_ID}
-              ref={composerMediaInputRef}
+              id={LOUNGE_COMPOSER_IMAGE_INPUT_ID}
+              ref={composerImageInputRef}
               type="file"
-              accept="image/*,video/*"
+              accept="image/*"
               multiple
               className="hidden"
               {...loungeFileInputMediaPickerHandlers('composer')}
-              onChange={handleComposerMediaInputChange}
+              onChange={handleComposerImageInputChange}
+            />
+            <input
+              id={LOUNGE_COMPOSER_VIDEO_INPUT_ID}
+              ref={composerVideoInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              {...loungeFileInputMediaPickerHandlers('composer')}
+              onChange={handleComposerVideoInputChange}
             />
             <div
               data-lounge-fab-obstacle
               className="lounge-media-toolbar mt-1 flex w-full items-center gap-2 pr-2 pt-1.5 pb-1"
             >
-              <label
-                htmlFor={LOUNGE_COMPOSER_MEDIA_INPUT_ID}
-                onPointerDown={() => beginLoungeComposerMediaPicker('composer')}
-                onMouseDown={(e) => e.preventDefault()}
-                className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                title="Add media"
-                aria-label="Add media"
-              >
-                <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                  <rect
-                    x="3.75"
-                    y="3.75"
-                    width="12.5"
-                    height="12.5"
-                    rx="2"
-                    fill="currentColor"
-                    fillOpacity="0.14"
-                    stroke="currentColor"
-                    strokeWidth="1.35"
-                  />
-                  <path
-                    d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
-                    stroke="currentColor"
-                    strokeWidth="1.25"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="8" cy="8" r="1" fill="currentColor" />
-                </svg>
-              </label>
-              <button
-                type="button"
-                onClick={() => openKlipyPicker('composer')}
-                className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                title="Add GIF (Klipy)"
-                aria-label="Add GIF"
-              >
-                <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                  <rect
-                    x="3.75"
-                    y="3.75"
-                    width="12.5"
-                    height="12.5"
-                    rx="2"
-                    fill="currentColor"
-                    fillOpacity="0.14"
-                    stroke="currentColor"
-                    strokeWidth="1.35"
-                  />
-                  <text
-                    x="10"
-                    y="12.85"
-                    textAnchor="middle"
-                    fill="currentColor"
-                    style={{ fontSize: '5.35px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
-                  >
-                    GIF
-                  </text>
-                </svg>
-              </button>
+              <LoungeComposerMediaToolbar
+                variant="feed"
+                imageInputId={LOUNGE_COMPOSER_IMAGE_INPUT_ID}
+                videoInputId={LOUNGE_COMPOSER_VIDEO_INPUT_ID}
+                onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
+                onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
+                onOpenGifPicker={() => openKlipyPicker('composer')}
+              />
               <button
                 type="button"
                 onClick={() => openThreadComposeSheet()}
@@ -12871,8 +13077,7 @@ export default function SocialFeed({
                     setComposerExpanded(false)
                     clearLoungeComposerDraft()
                     try {
-                      const el = composerMediaInputRef.current
-                      if (el) el.value = ''
+                      clearComposerMediaInputs()
                     } catch {
                       // ignore
                     }
@@ -13179,8 +13384,10 @@ export default function SocialFeed({
                             setLoungeDetailEditImageItems([])
                             setLoungeDetailEditVideoSlot(null)
                             try {
-                              const el = loungeDetailEditMediaInputRef.current
-                              if (el) el.value = ''
+                              clearHiddenFileInputs(
+                                loungeDetailEditImageInputRef.current,
+                                loungeDetailEditVideoInputRef.current,
+                              )
                             } catch {
                               // ignore
                             }
@@ -13786,155 +13993,33 @@ export default function SocialFeed({
                     {loungeDetailEditing ? (
                       <>
                         <input
-                          id={LOUNGE_DETAIL_EDIT_MEDIA_INPUT_ID}
-                          ref={loungeDetailEditMediaInputRef}
+                          id={LOUNGE_DETAIL_EDIT_IMAGE_INPUT_ID}
+                          ref={loungeDetailEditImageInputRef}
                           type="file"
-                          accept="image/*,video/*"
+                          accept="image/*"
                           multiple
                           className="hidden"
                           {...loungeFileInputMediaPickerHandlers('detailEdit')}
-                          onChange={(e) => {
-                            const input = e.target
-                            const files = Array.from(input.files || [])
-                            if (!files.length) {
-                              endLoungeComposerMediaPicker('detailEdit')
-                              restoreLoungeComposerCaptionAfterMediaPick('detailEdit')
-                              return
-                            }
-                            setLoungeDetailEditErr('')
-                            const hasVideo = files.some((f) => isProbablyVideoFile(f))
-                            if (hasVideo) {
-                              const vf = files.find((f) => isProbablyVideoFile(f))
-                              if (!vf) {
-                                endLoungeComposerMediaPicker('detailEdit')
-                                try {
-                                  input.value = ''
-                                } catch {
-                                  // ignore
-                                }
-                                return
-                              }
-                              setLoungeDetailEditImageItems((prev) => {
-                                for (const it of prev) {
-                                  try {
-                                    URL.revokeObjectURL(it.preview)
-                                  } catch {
-                                    // ignore
-                                  }
-                                }
-                                return []
-                              })
-                              cancelLoungeDetailEditMediaPrep()
-                              setLoungeDetailEditKeepStreamUid(null)
-                              setLoungeDetailEditMediaUrl('')
-                              try {
-                                input.value = ''
-                              } catch {
-                                // ignore
-                              }
-                              endLoungeComposerMediaPicker('detailEdit')
-                              restoreLoungeComposerCaptionAfterMediaPick('detailEdit')
-                              void queueLoungeVideoOrCrop(vf, 'detailEdit')
-                              return
-                            }
-                            const bad = files.some((f) => !isProbablyImageFile(f))
-                            if (bad) {
-                              setLoungeDetailEditErr('Unsupported media type. Please choose an image or video file.')
-                              endLoungeComposerMediaPicker('detailEdit')
-                              try {
-                                input.value = ''
-                              } catch {
-                                // ignore
-                              }
-                              restoreLoungeComposerCaptionAfterMediaPick('detailEdit')
-                              return
-                            }
-                            cancelLoungeDetailEditMediaPrep()
-                            setLoungeDetailEditKeepStreamUid(null)
-                            const prevImgs = loungeDetailEditImageItemsRef.current
-                            const { next, limitDialog } = mergeLoungePickedImageItems(
-                              prevImgs,
-                              files,
-                              newComposerImageId,
-                            )
-                            loungeDetailEditImageItemsRef.current = next
-                            try {
-                              input.value = ''
-                            } catch {
-                              // ignore
-                            }
-                            endLoungeComposerMediaPicker('detailEdit')
-                            restoreLoungeComposerCaptionAfterMediaPick('detailEdit', () => {
-                              setLoungeDetailEditImageItems(next)
-                              if (limitDialog) setLoungeImageLimitDialog(limitDialog)
-                            })
-                          }}
+                          onChange={(e) => handleDetailEditMediaInputChange(e, 'image')}
+                        />
+                        <input
+                          id={LOUNGE_DETAIL_EDIT_VIDEO_INPUT_ID}
+                          ref={loungeDetailEditVideoInputRef}
+                          type="file"
+                          accept="video/*"
+                          className="hidden"
+                          {...loungeFileInputMediaPickerHandlers('detailEdit')}
+                          onChange={(e) => handleDetailEditMediaInputChange(e, 'video')}
                         />
                         <div className="lounge-media-toolbar mb-1 flex w-full items-center gap-1.5 pr-2 pb-1 pt-1.5">
-                          <label
-                            htmlFor={LOUNGE_DETAIL_EDIT_MEDIA_INPUT_ID}
-                            onPointerDown={() => beginLoungeComposerMediaPicker('detailEdit')}
-                            onMouseDown={(e) => e.preventDefault()}
-                            className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                            title="Add media"
-                            aria-label="Add media"
-                          >
-                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                              <rect
-                                x="3.75"
-                                y="3.75"
-                                width="12.5"
-                                height="12.5"
-                                rx="2"
-                                fill="currentColor"
-                                fillOpacity="0.14"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                              />
-                              <path
-                                d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
-                                stroke="currentColor"
-                                strokeWidth="1.25"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <circle cx="8" cy="8" r="1" fill="currentColor" />
-                            </svg>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => openKlipyPicker('detailEdit')}
-                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                            title="Add GIF"
-                            aria-label="Add GIF"
-                          >
-                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                              <rect
-                                x="3.75"
-                                y="3.75"
-                                width="12.5"
-                                height="12.5"
-                                rx="2"
-                                fill="currentColor"
-                                fillOpacity="0.14"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                              />
-                              <text
-                                x="10"
-                                y="12.85"
-                                textAnchor="middle"
-                                fill="currentColor"
-                                style={{
-                                  fontSize: '5.35px',
-                                  fontWeight: 800,
-                                  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-                                }}
-                              >
-                                GIF
-                              </text>
-                            </svg>
-                          </button>
+                          <LoungeComposerMediaToolbar
+                            variant="feed"
+                            imageInputId={LOUNGE_DETAIL_EDIT_IMAGE_INPUT_ID}
+                            videoInputId={LOUNGE_DETAIL_EDIT_VIDEO_INPUT_ID}
+                            onImagePointerDown={() => beginLoungeComposerMediaPicker('detailEdit')}
+                            onVideoPointerDown={() => beginLoungeComposerMediaPicker('detailEdit')}
+                            onOpenGifPicker={() => openKlipyPicker('detailEdit')}
+                          />
                           <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                             <span
                               className={`shrink-0 text-[12px] tabular-nums ${loungeCharCounterClass(loungeDetailDraftCaption.length)}`}
@@ -14599,83 +14684,23 @@ export default function SocialFeed({
                         />
                         </div>
                         <input
-                          id={LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID}
-                          ref={loungeDetailCommentMediaInputRef}
+                          id={LOUNGE_DETAIL_COMMENT_IMAGE_INPUT_ID}
+                          ref={loungeDetailCommentImageInputRef}
                           type="file"
-                          accept="image/*,video/*"
+                          accept="image/*"
                           multiple
                           className="hidden"
                           {...loungeFileInputMediaPickerHandlers('detailComment')}
-                          onChange={(e) => {
-                            const input = e.target
-                            const files = Array.from(input.files || [])
-                            if (!files.length) {
-                              endLoungeComposerMediaPicker('detailComment')
-                              restoreLoungeComposerCaptionAfterMediaPick('detailComment')
-                              return
-                            }
-                            setLoungeDetailCommentErr('')
-                            const hasVideo = files.some((f) => isProbablyVideoFile(f))
-                            if (hasVideo) {
-                              const vf = files.find((f) => isProbablyVideoFile(f))
-                              if (!vf) {
-                                endLoungeComposerMediaPicker('detailComment')
-                                try {
-                                  input.value = ''
-                                } catch {
-                                  // ignore
-                                }
-                                return
-                              }
-                              setLoungeDetailCommentImageItems((prev) => {
-                                for (const it of prev) {
-                                  try {
-                                    URL.revokeObjectURL(it.preview)
-                                  } catch {
-                                    // ignore
-                                  }
-                                }
-                                return []
-                              })
-                              cancelLoungeDetailCommentMediaPrep()
-                              setLoungeDetailCommentMediaUrl('')
-                              try {
-                                input.value = ''
-                              } catch {
-                                // ignore
-                              }
-                              endLoungeComposerMediaPicker('detailComment')
-                              restoreLoungeComposerCaptionAfterMediaPick('detailComment')
-                              void queueLoungeVideoOrCrop(vf, 'detailComment')
-                              return
-                            }
-                            const bad = files.some((f) => !isProbablyImageFile(f))
-                            if (bad) {
-                              setLoungeDetailCommentErr('Unsupported media type. Please choose an image or video file.')
-                              endLoungeComposerMediaPicker('detailComment')
-                              try {
-                                input.value = ''
-                              } catch {
-                                // ignore
-                              }
-                              restoreLoungeComposerCaptionAfterMediaPick('detailComment')
-                              return
-                            }
-                            cancelLoungeDetailCommentMediaPrep()
-                            const prevImgs = loungeDetailCommentImageItemsRef.current
-                            const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
-                            loungeDetailCommentImageItemsRef.current = next
-                            try {
-                              input.value = ''
-                            } catch {
-                              // ignore
-                            }
-                            endLoungeComposerMediaPicker('detailComment')
-                            restoreLoungeComposerCaptionAfterMediaPick('detailComment', () => {
-                              setLoungeDetailCommentImageItems(next)
-                              if (limitDialog) setLoungeImageLimitDialog(limitDialog)
-                            })
-                          }}
+                          onChange={(e) => handleDetailCommentMediaInputChange(e, 'image')}
+                        />
+                        <input
+                          id={LOUNGE_DETAIL_COMMENT_VIDEO_INPUT_ID}
+                          ref={loungeDetailCommentVideoInputRef}
+                          type="file"
+                          accept="video/*"
+                          className="hidden"
+                          {...loungeFileInputMediaPickerHandlers('detailComment')}
+                          onChange={(e) => handleDetailCommentMediaInputChange(e, 'video')}
                         />
                         {(() => {
                           const gifUrl = String(loungeDetailCommentMediaUrl || '').trim()
@@ -14742,70 +14767,14 @@ export default function SocialFeed({
                         ) : null}
                         <div className="mx-auto mt-0.5 h-px w-[92%] bg-zinc-700/85" role="presentation" aria-hidden />
                         <div className="lounge-media-toolbar mt-0.5 flex w-full items-center gap-1.5 pb-0 pt-1">
-                          <label
-                            htmlFor={LOUNGE_DETAIL_COMMENT_MEDIA_INPUT_ID}
-                            onPointerDown={() => beginLoungeComposerMediaPicker('detailComment')}
-                            onMouseDown={(e) => e.preventDefault()}
-                            className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                            title="Add media"
-                            aria-label="Add media"
-                          >
-                            <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
-                              <rect
-                                x="3.75"
-                                y="3.75"
-                                width="12.5"
-                                height="12.5"
-                                rx="2"
-                                fill="currentColor"
-                                fillOpacity="0.14"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                              />
-                              <path
-                                d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
-                                stroke="currentColor"
-                                strokeWidth="1.25"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <circle cx="8" cy="8" r="1" fill="currentColor" />
-                            </svg>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => openKlipyPicker('detailComment')}
-                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                            title="Add GIF"
-                            aria-label="Add GIF"
-                          >
-                            <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
-                              <rect
-                                x="3.75"
-                                y="3.75"
-                                width="12.5"
-                                height="12.5"
-                                rx="2"
-                                fill="currentColor"
-                                fillOpacity="0.14"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                              />
-                              <text
-                                x="10"
-                                y="12.85"
-                                textAnchor="middle"
-                                fill="currentColor"
-                                style={{
-                                  fontSize: '5.35px',
-                                  fontWeight: 800,
-                                  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-                                }}
-                              >
-                                GIF
-                              </text>
-                            </svg>
-                          </button>
+                          <LoungeComposerMediaToolbar
+                            variant="compact"
+                            imageInputId={LOUNGE_DETAIL_COMMENT_IMAGE_INPUT_ID}
+                            videoInputId={LOUNGE_DETAIL_COMMENT_VIDEO_INPUT_ID}
+                            onImagePointerDown={() => beginLoungeComposerMediaPicker('detailComment')}
+                            onVideoPointerDown={() => beginLoungeComposerMediaPicker('detailComment')}
+                            onOpenGifPicker={() => openKlipyPicker('detailComment')}
+                          />
                           <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                             <span
                               className={`shrink-0 text-[12px] tabular-nums ${loungeCharCounterClass(loungeDetailCommentDraft.length)}`}
@@ -15282,83 +15251,23 @@ export default function SocialFeed({
                               hint=""
                             />
                             <input
-                              id={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
-                              ref={quoteRepostMediaInputRef}
+                              id={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
+                              ref={quoteRepostImageInputRef}
                               type="file"
-                              accept="image/*,video/*"
+                              accept="image/*"
                               multiple
                               className="hidden"
                               {...loungeFileInputMediaPickerHandlers('quote')}
-                              onChange={(e) => {
-                                const input = e.target
-                                const files = Array.from(input.files || [])
-                                if (!files.length) {
-                                  endLoungeComposerMediaPicker('quote')
-                                  restoreLoungeComposerCaptionAfterMediaPick('quote')
-                                  return
-                                }
-                                setQuoteRepostErr('')
-                                const hasVideo = files.some((f) => isProbablyVideoFile(f))
-                                if (hasVideo) {
-                                  const vf = files.find((f) => isProbablyVideoFile(f))
-                                  if (!vf) {
-                                    try {
-                                      input.value = ''
-                                    } catch {
-                                      // ignore
-                                    }
-                                    return
-                                  }
-                                  setQuoteRepostImageItems((prev) => {
-                                    for (const it of prev) {
-                                      try {
-                                        URL.revokeObjectURL(it.preview)
-                                      } catch {
-                                        // ignore
-                                      }
-                                    }
-                                    return []
-                                  })
-                                  cancelQuoteRepostMediaPrep()
-                                  setQuoteRepostMediaUrl('')
-                                  try {
-                                    input.value = ''
-                                  } catch {
-                                    // ignore
-                                  }
-                                  endLoungeComposerMediaPicker('quote')
-                                  restoreLoungeComposerCaptionAfterMediaPick('quote')
-                                  void queueLoungeVideoOrCrop(vf, 'quote')
-                                  return
-                                }
-                                const bad = files.some((f) => !isProbablyImageFile(f))
-                                if (bad) {
-                                  setQuoteRepostErr('Unsupported media type. Please choose an image or video file.')
-                                  endLoungeComposerMediaPicker('quote')
-                                  try {
-                                    input.value = ''
-                                  } catch {
-                                    // ignore
-                                  }
-                                  restoreLoungeComposerCaptionAfterMediaPick('quote')
-                                  return
-                                }
-                                cancelQuoteRepostMediaPrep()
-                                setQuoteRepostMediaUrl('')
-                                const prevImgs = quoteRepostImageItemsRef.current
-                                const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
-                                quoteRepostImageItemsRef.current = next
-                                try {
-                                  input.value = ''
-                                } catch {
-                                  // ignore
-                                }
-                                endLoungeComposerMediaPicker('quote')
-                                restoreLoungeComposerCaptionAfterMediaPick('quote', () => {
-                                  setQuoteRepostImageItems(next)
-                                  if (limitDialog) setLoungeImageLimitDialog(limitDialog)
-                                })
-                              }}
+                              onChange={(e) => handleQuoteRepostMediaInputChange(e, 'image')}
+                            />
+                            <input
+                              id={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
+                              ref={quoteRepostVideoInputRef}
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              {...loungeFileInputMediaPickerHandlers('quote')}
+                              onChange={(e) => handleQuoteRepostMediaInputChange(e, 'video')}
                             />
                             {(() => {
                               const gifUrl = String(quoteRepostMediaUrl || '').trim()
@@ -15432,78 +15341,23 @@ export default function SocialFeed({
                       </div>
                         <div className="lounge-media-toolbar mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-zinc-700/70 pt-1.5 pb-1">
                           <div className="flex h-10 shrink-0 items-center justify-center gap-1.5">
-                            <label
-                              htmlFor={LOUNGE_QUOTE_REPOST_MEDIA_INPUT_ID}
-                            onPointerDown={() => {
-                              if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
-                            }}
-                            onMouseDown={(e) => {
-                              if (!quoteRepostBusy) e.preventDefault()
-                            }}
-                            className={`flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent] ${
-                              quoteRepostBusy ? 'pointer-events-none opacity-45' : ''
-                            }`}
-                            title="Add media"
-                            aria-label="Add media"
-                            aria-disabled={quoteRepostBusy || undefined}
-                          >
-                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                              <rect
-                                x="3.75"
-                                y="3.75"
-                                width="12.5"
-                                height="12.5"
-                                rx="2"
-                                fill="currentColor"
-                                fillOpacity="0.14"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                              />
-                              <path
-                                d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
-                                stroke="currentColor"
-                                strokeWidth="1.25"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <circle cx="8" cy="8" r="1" fill="currentColor" />
-                            </svg>
-                          </label>
-                          <button
-                            type="button"
-                            disabled={quoteRepostBusy}
-                            onClick={() => {
-                              if (quoteRepostBusy) return
-                              openKlipyPicker('quote')
-                            }}
-                            className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
-                            title="Add GIF (Klipy)"
-                            aria-label="Add GIF"
-                          >
-                            <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                              <rect
-                                x="3.75"
-                                y="3.75"
-                                width="12.5"
-                                height="12.5"
-                                rx="2"
-                                fill="currentColor"
-                                fillOpacity="0.14"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                              />
-                              <text
-                                x="10"
-                                y="12.85"
-                                textAnchor="middle"
-                                fill="currentColor"
-                                style={{ fontSize: '5.35px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
-                              >
-                                GIF
-                              </text>
-                            </svg>
-                          </button>
-                        </div>
+                            <LoungeComposerMediaToolbar
+                              variant="feed"
+                              imageInputId={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
+                              videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
+                              disabled={quoteRepostBusy}
+                              gifDisabled={quoteRepostBusy}
+                              onImagePointerDown={() => {
+                                if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
+                              }}
+                              onVideoPointerDown={() => {
+                                if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
+                              }}
+                              onOpenGifPicker={() => {
+                                if (!quoteRepostBusy) openKlipyPicker('quote')
+                              }}
+                            />
+                          </div>
                         <div className="flex min-w-0 grow basis-[min(100%,14rem)] flex-wrap items-center justify-end gap-2">
                           <span
                             className={`shrink-0 text-[12px] tabular-nums ${loungeCharCounterClass(quoteRepostDraft.length)}`}
@@ -16092,12 +15946,16 @@ export default function SocialFeed({
         pinOnPost={composerPinOnPost}
         onPinOnPostChange={setComposerPinOnPost}
         showPinToggle={loungeViewerIsStaff}
-        mediaInputId={LOUNGE_THREAD_COMPOSE_MEDIA_INPUT_ID}
-        mediaInputRef={threadComposeMediaInputRef}
+        imageInputId={LOUNGE_THREAD_COMPOSE_IMAGE_INPUT_ID}
+        videoInputId={LOUNGE_THREAD_COMPOSE_VIDEO_INPUT_ID}
+        imageInputRef={threadComposeImageInputRef}
+        videoInputRef={threadComposeVideoInputRef}
         mediaInputHandlers={loungeFileInputMediaPickerHandlers('composer')}
-        onMediaLabelPointerDown={() => beginLoungeComposerMediaPicker('composer')}
+        onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
+        onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
         onOpenGifPicker={() => openKlipyPicker('composer')}
-        onMediaInputChange={handleComposerMediaInputChange}
+        onImageInputChange={handleComposerImageInputChange}
+        onVideoInputChange={handleComposerVideoInputChange}
         onRemovePartImageIndex={(partIdx, imageIdx) => {
           setThreadComposePartMedia((prev) =>
             prev.map((row, j) => {

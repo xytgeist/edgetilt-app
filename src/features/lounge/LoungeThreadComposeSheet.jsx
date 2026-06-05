@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
+import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungeMentionDropdown from './LoungeMentionDropdown.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
@@ -11,10 +12,14 @@ import {
 } from '../../utils/loungeThreadComposeMedia.js'
 import {
   LOUNGE_IOS,
+  LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
   loungeComposerFooterPaddingBottom,
   useLoungeIosSafeBottomPx,
   useLoungeKeyboardOverlapPx,
 } from './useLoungeKeyboardOverlapPx.js'
+
+/** Gap between the active part row and the top of the docked toolbar strip. */
+const THREAD_COMPOSE_SCROLL_GAP_PX = 10
 
 const AVATAR_RAIL_W = 'w-12 sm:w-[3.3rem]'
 
@@ -153,12 +158,16 @@ export default function LoungeThreadComposeSheet({
   pinOnPost,
   onPinOnPostChange,
   showPinToggle = false,
-  mediaInputId,
-  mediaInputRef,
+  imageInputId,
+  videoInputId,
+  imageInputRef,
+  videoInputRef,
   mediaInputHandlers,
-  onMediaLabelPointerDown,
+  onImagePointerDown,
+  onVideoPointerDown,
   onOpenGifPicker,
-  onMediaInputChange,
+  onImageInputChange,
+  onVideoInputChange,
   onRemovePartImageIndex,
   onRemovePartGif,
   onRemovePartVideo,
@@ -166,22 +175,68 @@ export default function LoungeThreadComposeSheet({
   const scrollRef = useRef(null)
   const toolbarRef = useRef(null)
   const partRowRefs = useRef({})
+  const scrollMetricsRef = useRef({ toolbarHeightPx: 52, kbOverlapPx: 0 })
   const [toolbarHeightPx, setToolbarHeightPx] = useState(52)
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
   const { overlapPx: kbOverlapPx } = useLoungeKeyboardOverlapPx(open, { smooth: LOUNGE_IOS })
   const footerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
 
+  scrollMetricsRef.current = { toolbarHeightPx, kbOverlapPx }
+
+  /** Keep part row above the fixed toolbar + keyboard overlap (chat-style tail pin). */
+  const scrollPartAboveToolbar = useCallback((partIdx, { pinTail = false } = {}) => {
+    const scrollEl = scrollRef.current
+    const row = partRowRefs.current[partIdx]
+    if (!scrollEl || !row) return
+
+    const { toolbarHeightPx: toolbarH, kbOverlapPx: kbPx } = scrollMetricsRef.current
+    const scrollRect = scrollEl.getBoundingClientRect()
+    const rowRect = row.getBoundingClientRect()
+    const bottomInset = toolbarH + Math.round(kbPx) + THREAD_COMPOSE_SCROLL_GAP_PX
+    const visibleBottom = scrollRect.bottom - bottomInset
+    const minTop = scrollRect.top + THREAD_COMPOSE_SCROLL_GAP_PX
+
+    let nextScrollTop = scrollEl.scrollTop
+    if (pinTail || partIdx >= captions.length - 1) {
+      nextScrollTop += rowRect.bottom - visibleBottom
+    } else {
+      if (rowRect.bottom > visibleBottom) {
+        nextScrollTop += rowRect.bottom - visibleBottom
+      }
+      if (rowRect.top < minTop) {
+        nextScrollTop += rowRect.top - minTop
+      }
+    }
+
+    if (Math.abs(nextScrollTop - scrollEl.scrollTop) < 1) return
+    scrollEl.scrollTop = nextScrollTop
+  }, [captions.length])
+
+  const chaseScrollPartAboveToolbar = useCallback(
+    (partIdx, opts = {}) => {
+      const run = () => scrollPartAboveToolbar(partIdx, opts)
+      run()
+      requestAnimationFrame(run)
+      requestAnimationFrame(() => requestAnimationFrame(run))
+      if (LOUNGE_IOS) {
+        window.setTimeout(run, LOUNGE_IOS_KEYBOARD_SMOOTH_MS)
+      }
+    },
+    [scrollPartAboveToolbar],
+  )
+
   useEffect(() => {
     if (!open || focusPartIndex == null || focusPartIndex < 0) return undefined
     const id = window.setTimeout(() => {
+      chaseScrollPartAboveToolbar(focusPartIndex, { pinTail: true })
       try {
         getPartRef?.(focusPartIndex)?.focus?.()
       } catch {
         // ignore
       }
-    }, 60)
+    }, 40)
     return () => window.clearTimeout(id)
-  }, [focusPartIndex, getPartRef, open, captions.length])
+  }, [chaseScrollPartAboveToolbar, focusPartIndex, getPartRef, open, captions.length])
 
   useEffect(() => {
     const el = toolbarRef.current
@@ -193,24 +248,27 @@ export default function LoungeThreadComposeSheet({
     return () => ro.disconnect()
   }, [open, captions.length, showPinToggle])
 
+  useLayoutEffect(() => {
+    if (!open || activePartIndex < 0) return
+    chaseScrollPartAboveToolbar(activePartIndex, { pinTail: true })
+  }, [activePartIndex, captions.length, chaseScrollPartAboveToolbar, kbOverlapPx, open, toolbarHeightPx])
+
   useEffect(() => {
-    if (!open) return undefined
+    if (!open || activePartIndex < 0 || typeof ResizeObserver === 'undefined') return undefined
     const row = partRowRefs.current[activePartIndex]
-    if (!row || typeof row.scrollIntoView !== 'function') return undefined
-    const id = window.requestAnimationFrame(() => {
-      try {
-        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-      } catch {
-        // ignore
-      }
+    if (!row) return undefined
+    const ro = new ResizeObserver(() => {
+      chaseScrollPartAboveToolbar(activePartIndex, { pinTail: true })
     })
-    return () => window.cancelAnimationFrame(id)
-  }, [activePartIndex, open])
+    ro.observe(row)
+    return () => ro.disconnect()
+  }, [activePartIndex, chaseScrollPartAboveToolbar, open, captions.length])
 
   const focusPart = useCallback(
     (partIdx) => {
       onFocusPart?.(partIdx)
       window.requestAnimationFrame(() => {
+        chaseScrollPartAboveToolbar(partIdx, { pinTail: true })
         try {
           getPartRef?.(partIdx)?.focus?.()
         } catch {
@@ -218,7 +276,7 @@ export default function LoungeThreadComposeSheet({
         }
       })
     },
-    [getPartRef, onFocusPart],
+    [chaseScrollPartAboveToolbar, getPartRef, onFocusPart],
   )
 
   if (!open) return null
@@ -233,12 +291,12 @@ export default function LoungeThreadComposeSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[96] flex flex-col bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]"
+      className="fixed inset-0 z-[96] flex flex-col bg-zinc-950"
       role="dialog"
       aria-modal="true"
       aria-labelledby="lounge-thread-compose-title"
     >
-      <header className="flex shrink-0 items-center gap-2 px-3 py-2.5">
+      <header className="lounge-thread-compose-header-glass relative z-[1] flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
         <button
           type="button"
           disabled={submitting}
@@ -377,7 +435,7 @@ export default function LoungeThreadComposeSheet({
                         autoGrow
                         value={partText}
                         onChange={(next) => onChangePart(partIdx, next)}
-                        onFocus={() => onFocusPart?.(partIdx)}
+                        onFocus={() => focusPart(partIdx)}
                         maxLength={LOUNGE_CAPTION_MAX}
                         placeholder={isActive ? 'Start your thread…' : ''}
                         ariaLabel="Thread post 1"
@@ -417,7 +475,7 @@ export default function LoungeThreadComposeSheet({
                       autoGrow
                       value={partText}
                       onChange={(next) => onChangePart(partIdx, next)}
-                      onFocus={() => onFocusPart?.(partIdx)}
+                      onFocus={() => focusPart(partIdx)}
                       maxLength={LOUNGE_CAPTION_MAX}
                       placeholder={isActive ? 'Say more…' : ''}
                       ariaLabel={`Thread post ${partIdx + 1}`}
@@ -510,77 +568,40 @@ export default function LoungeThreadComposeSheet({
         style={{ paddingBottom: footerPadBottom }}
       >
         <input
-          id={mediaInputId}
-          ref={mediaInputRef}
+          id={imageInputId}
+          ref={imageInputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/*"
           multiple
           className="hidden"
           {...mediaInputHandlers}
-          onChange={onMediaInputChange}
+          onChange={onImageInputChange}
+        />
+        <input
+          id={videoInputId}
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          {...mediaInputHandlers}
+          onChange={onVideoInputChange}
         />
         <div className="lounge-thread-compose-toolbar-glass flex items-center gap-0.5 rounded-2xl px-2 py-1.5">
-          <label
-            htmlFor={mediaInputId}
-            onPointerDown={onMediaLabelPointerDown}
-            onMouseDown={(e) => e.preventDefault()}
-            className="flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-full p-2 text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
-            title="Add media"
-            aria-label="Add media"
-          >
-            <svg className="h-[26px] w-[26px]" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <rect
-                x="3.75"
-                y="3.75"
-                width="12.5"
-                height="12.5"
-                rx="2"
-                stroke="currentColor"
-                strokeWidth="1.35"
-              />
-              <path
-                d="M6.25 13.25 8.25 10.25l1.75 2 2.25-3 3.5 4"
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="8" cy="8" r="1" fill="currentColor" />
-            </svg>
-          </label>
-          <button
-            type="button"
+          <LoungeComposerMediaToolbar
+            variant="thread"
+            imageInputId={imageInputId}
+            videoInputId={videoInputId}
             disabled={submitting}
-            onClick={onOpenGifPicker}
-            className="flex shrink-0 touch-manipulation items-center justify-center rounded-full p-2 text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
-            title="Add GIF"
-            aria-label="Add GIF"
-          >
-            <svg className="h-[26px] w-[26px]" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <rect
-                x="3.75"
-                y="3.75"
-                width="12.5"
-                height="12.5"
-                rx="2"
-                stroke="currentColor"
-                strokeWidth="1.35"
-              />
-              <text
-                x="10"
-                y="12.85"
-                textAnchor="middle"
-                fill="currentColor"
-                style={{ fontSize: '5.35px', fontWeight: 800, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}
-              >
-                GIF
-              </text>
-            </svg>
-          </button>
+            gifDisabled={submitting}
+            onImagePointerDown={onImagePointerDown}
+            onVideoPointerDown={onVideoPointerDown}
+            onOpenGifPicker={onOpenGifPicker}
+          />
           {captions.length < LOUNGE_POST_THREAD_MAX_PARTS ? (
             <button
               type="button"
               disabled={submitting}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={onAddPart}
               className="flex shrink-0 touch-manipulation items-center justify-center rounded-full p-2 text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45"
               title="Add post to thread"

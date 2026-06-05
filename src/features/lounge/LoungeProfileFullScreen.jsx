@@ -2041,7 +2041,7 @@ export default function LoungeProfileFullScreen({
 
             <div className="mt-3 space-y-1">
               {showOwnEditControls ? (
-                <div className="space-y-3">
+                <div className="space-y-3" data-lounge-profile-edit>
                   <label className="block">
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                       <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -2055,7 +2055,8 @@ export default function LoungeProfileFullScreen({
                       onChange={(e) => setDisplayNameDraft(e.target.value.slice(0, 24))}
                       maxLength={24}
                       autoComplete="name"
-                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] font-semibold text-white outline-none focus:border-cyan-600/60 touch-manipulation sm:text-[17px]"
+                      data-profile-edit-display-name
+                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] font-semibold text-zinc-100 outline-none focus:border-cyan-600/60 touch-manipulation sm:text-[17px]"
                       placeholder="Your name"
                     />
                   </label>
@@ -2068,6 +2069,7 @@ export default function LoungeProfileFullScreen({
                       autoCapitalize="none"
                       autoCorrect="off"
                       spellCheck={false}
+                      data-profile-edit-handle
                       className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] text-cyan-200 outline-none focus:border-cyan-600/60 touch-manipulation"
                       placeholder="@your_handle"
                     />
@@ -2157,16 +2159,23 @@ export default function LoungeProfileFullScreen({
             <div className="mt-4">
               {showOwnEditControls ? (
                 <div className="space-y-2">
-                  <textarea
-                    value={aboutDraft}
-                    onChange={(e) => setAboutDraft(e.target.value.slice(0, 140))}
-                    rows={3}
-                    maxLength={140}
-                    placeholder="Tell people about you (max 140 characters)"
-                    className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-600/60"
-                  />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] text-zinc-500 tabular-nums">{aboutDraft.length}/140</span>
+                  <div className="relative">
+                    <textarea
+                      value={aboutDraft}
+                      onChange={(e) => setAboutDraft(e.target.value.slice(0, 140))}
+                      rows={3}
+                      maxLength={140}
+                      placeholder="Tell people about you (max 140 characters)"
+                      className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 pb-8 pr-14 text-[16px] leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-600/60"
+                    />
+                    <span
+                      className="pointer-events-none absolute bottom-2 right-3 text-[12px] tabular-nums text-zinc-500"
+                      aria-hidden
+                    >
+                      {aboutDraft.length}/140
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
                     <button
                       type="button"
                       disabled={aboutBusy}

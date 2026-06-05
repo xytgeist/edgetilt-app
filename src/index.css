@@ -1223,6 +1223,16 @@ html:not(.light) .lounge-category-pill.border {
 }
 
 /*
+ * Lounge profile edit — light mode field text.
+ */
+html.light [data-lounge-profile-edit] [data-profile-edit-display-name] {
+  color: var(--color-zinc-100) !important;
+}
+html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
+  color: var(--color-cyan-600) !important;
+}
+
+/*
  * Compose / edit / profile picker — selected = tribe fill; deselected = neutral chip.
  */
 html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled),

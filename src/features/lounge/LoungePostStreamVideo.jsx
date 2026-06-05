@@ -821,7 +821,7 @@ export default function LoungePostStreamVideo({
     return () => window.clearTimeout(tid)
   }, [inRing, coordinatorActive, lazyStream])
   const attachStream =
-    heroExpanded || (lazyStream && !feedAutoplayEnabled && lightboxOpen)
+    heroExpanded || lightboxOpen
       ? Boolean(id)
       : lazyStream
         ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
@@ -845,10 +845,11 @@ export default function LoungePostStreamVideo({
       (variant === 'commentInline' || variant === 'detail' ? !inRing : true),
   )
   /** iOS: limit concurrent HLS — active/hero/lightbox + handoff hold; never cold-load prefetch slots. */
+  const heroOrLightbox = heroExpanded || lightboxOpen
   const hlsAttachEnabled =
     attachStream &&
-    !(ringWarmPrefetch && !hasDecodedStreamMetadata) &&
-    (heroExpanded || lightboxOpen || isActive || ringHlsCacheHeld)
+    (heroOrLightbox || isActive || ringHlsCacheHeld) &&
+    !(ringWarmPrefetch && !hasDecodedStreamMetadata && !heroOrLightbox)
 
   /** Handoff away: non-coordinated tiles reset local mute when they lose active. */
   useEffect(() => {
@@ -2238,7 +2239,11 @@ export default function LoungePostStreamVideo({
     flushSync(() => {
       setLightboxOpen(true)
       setHeroPhase('opening')
-      if (!feedAutoplayEnabled) {
+      if (
+        !feedAutoplayEnabled ||
+        !vBeforeOpen ||
+        vBeforeOpen.readyState < HTMLMediaElement.HAVE_METADATA
+      ) {
         setStreamAttachKey((k) => k + 1)
       }
     })

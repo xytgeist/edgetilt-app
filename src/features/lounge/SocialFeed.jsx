@@ -10135,6 +10135,7 @@ export default function SocialFeed({
       onFollowUser: loungeReadOnly ? undefined : handleLoungeFollowUser,
       feedVideoAutoplayEnabled: loungeFeedVideoAutoplayEnabled,
       onFeedVideoAutoplayChange: onLoungeFeedVideoAutoplayChange,
+      onOpenGuideCard,
     }),
     [
       loungeReadOnly,
@@ -10190,6 +10191,7 @@ export default function SocialFeed({
       handleLoungeFollowUser,
       loungeFeedVideoAutoplayEnabled,
       onLoungeFeedVideoAutoplayChange,
+      onOpenGuideCard,
     ]
   )
 

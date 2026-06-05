@@ -3159,10 +3159,10 @@ export default function LoungePostStreamVideo({
                 openLightbox()
               }}
             >
-              <span className="pointer-events-none flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-black/55 shadow-[0_0_24px_rgba(0,0,0,0.55)] backdrop-blur-[2px] sm:h-16 sm:w-16">
+              <span className="pointer-events-none flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-black/55 shadow-[0_0_24px_rgba(0,0,0,0.55)] backdrop-blur-[2px] sm:h-12 sm:w-12">
                 <svg
                   viewBox="0 0 24 24"
-                  className="ml-0.5 h-7 w-7 text-white drop-shadow-sm sm:h-8 sm:w-8"
+                  className="ml-0.5 h-6 w-6 text-[#fff] opacity-70 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] drop-shadow-[0_4px_14px_rgba(0,0,0,0.65)] sm:h-7 sm:w-7"
                   fill="currentColor"
                   aria-hidden
                 >

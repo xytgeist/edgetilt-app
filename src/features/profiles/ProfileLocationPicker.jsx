@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   PROFILE_LOCATION_MAX_LEN,
   ensureGlobalCityLocationIndex,
@@ -9,6 +10,8 @@ import {
 const inputClass =
   'mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 text-[16px] text-zinc-100 outline-none focus:border-cyan-600/60 touch-manipulation placeholder:text-zinc-600'
 
+const LIST_Z_INDEX = 200
+
 /**
  * Searchable city picker: worldwide city database + quick picks; any text can be saved as custom.
  */
@@ -16,10 +19,13 @@ export default function ProfileLocationPicker({ value, onChange, disabled = fals
   const listId = useId()
   const wrapRef = useRef(null)
   const inputRef = useRef(null)
+  const listPanelRef = useRef(null)
+  const touchStartYRef = useRef(null)
   const [open, setOpen] = useState(false)
   const [highlight, setHighlight] = useState(-1)
   const [cityIndex, setCityIndex] = useState(null)
   const [indexErr, setIndexErr] = useState('')
+  const [listPos, setListPos] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -60,11 +66,41 @@ export default function ProfileLocationPicker({ value, onChange, disabled = fals
     [onChange],
   )
 
+  const updateListPos = useCallback(() => {
+    const input = inputRef.current
+    if (!input) return
+    const r = input.getBoundingClientRect()
+    const margin = 8
+    const maxHeight = Math.min(224, Math.max(120, window.innerHeight - r.bottom - margin))
+    setListPos({
+      top: r.bottom + 4,
+      left: r.left,
+      width: r.width,
+      maxHeight,
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showList) {
+      setListPos(null)
+      return
+    }
+    updateListPos()
+    window.addEventListener('resize', updateListPos)
+    window.addEventListener('scroll', updateListPos, true)
+    return () => {
+      window.removeEventListener('resize', updateListPos)
+      window.removeEventListener('scroll', updateListPos, true)
+    }
+  }, [showList, updateListPos, options.length])
+
   useEffect(() => {
     if (!open) return
     const onDown = (e) => {
-      const wrap = wrapRef.current
-      if (wrap && e.target instanceof Node && wrap.contains(e.target)) return
+      const t = e.target
+      if (!(t instanceof Node)) return
+      if (wrapRef.current?.contains(t)) return
+      if (listPanelRef.current?.contains(t)) return
       setOpen(false)
       setHighlight(-1)
     }
@@ -75,6 +111,13 @@ export default function ProfileLocationPicker({ value, onChange, disabled = fals
       document.removeEventListener('touchstart', onDown)
     }
   }, [open])
+
+  const onOptionActivate = useCallback(
+    (label) => {
+      pick(label)
+    },
+    [pick],
+  )
 
   const onKeyDown = (e) => {
     if (e.key === 'Escape') {
@@ -94,6 +137,68 @@ export default function ProfileLocationPicker({ value, onChange, disabled = fals
       pick(options[highlight].label)
     }
   }
+
+  const listPanel =
+    showList && listPos
+      ? createPortal(
+          <ul
+            ref={listPanelRef}
+            id={listId}
+            role="listbox"
+            className="overflow-y-auto overscroll-contain rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
+            style={{
+              position: 'fixed',
+              zIndex: LIST_Z_INDEX,
+              top: listPos.top,
+              left: listPos.left,
+              width: listPos.width,
+              maxHeight: listPos.maxHeight,
+            }}
+          >
+            {options.map((row, index) => (
+              <li key={`${row.kind}-${row.label}`} role="presentation">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={highlight === index}
+                  className={`block w-full px-3 py-2.5 text-left text-[15px] touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                    row.kind === 'typed'
+                      ? 'font-semibold text-cyan-200'
+                      : row.kind === 'quick'
+                        ? 'font-medium text-zinc-100'
+                        : 'text-zinc-200'
+                  } ${highlight === index ? 'bg-zinc-800/95' : 'hover:bg-zinc-800/90'}`}
+                  onMouseEnter={() => setHighlight(index)}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    onOptionActivate(row.label)
+                  }}
+                  onTouchStart={(e) => {
+                    touchStartYRef.current = e.touches[0]?.clientY ?? null
+                  }}
+                  onTouchEnd={(e) => {
+                    const startY = touchStartYRef.current
+                    const endY = e.changedTouches[0]?.clientY
+                    if (startY == null || endY == null) return
+                    if (Math.abs(endY - startY) < 8) {
+                      e.preventDefault()
+                      onOptionActivate(row.label)
+                    }
+                  }}
+                >
+                  {row.kind === 'typed' ? `Use “${row.label}”` : row.label}
+                  {row.kind === 'quick' ? (
+                    <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Popular
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>,
+          document.body,
+        )
+      : null
 
   return (
     <div ref={wrapRef} className={`relative ${className}`}>
@@ -128,39 +233,7 @@ export default function ProfileLocationPicker({ value, onChange, disabled = fals
         </span>
       </span>
       {indexErr ? <p className="mt-1 text-[12px] text-amber-300/90">{indexErr}</p> : null}
-      {showList ? (
-        <ul
-          id={listId}
-          role="listbox"
-          className="absolute left-0 right-0 top-full z-30 mt-1 max-h-56 overflow-y-auto overscroll-contain rounded-xl border border-zinc-600/90 bg-zinc-900/98 py-1 shadow-xl backdrop-blur-sm"
-        >
-          {options.map((row, index) => (
-            <li key={`${row.kind}-${row.label}`} role="presentation">
-              <button
-                type="button"
-                role="option"
-                aria-selected={highlight === index}
-                className={`block w-full px-3 py-2.5 text-left text-[15px] touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                  row.kind === 'typed'
-                    ? 'font-semibold text-cyan-200'
-                    : row.kind === 'quick'
-                      ? 'font-medium text-zinc-100'
-                      : 'text-zinc-200'
-                } ${highlight === index ? 'bg-zinc-800/95' : 'hover:bg-zinc-800/90'}`}
-                onMouseEnter={() => setHighlight(index)}
-                onClick={() => pick(row.label)}
-              >
-                {row.kind === 'typed' ? `Use “${row.label}”` : row.label}
-                {row.kind === 'quick' ? (
-                  <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Popular
-                  </span>
-                ) : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {listPanel}
     </div>
   )
 }

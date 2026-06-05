@@ -1728,13 +1728,21 @@ export default function LoungeProfileFullScreen({
           <div className="flex items-start justify-between gap-2 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1 sm:px-3">
             <button
               type="button"
-              onClick={onClose}
-              className={`${PROFILE_BANNER_CHROME_BTN_CLASS} pointer-events-auto`}
-              aria-label="Back"
+              onClick={showOwnEditControls ? () => exitOwnProfileEditing() : onClose}
+              className={
+                showOwnEditControls
+                  ? 'pointer-events-auto rounded-full bg-black/32 px-3.5 py-1.5 text-[14px] font-semibold text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+                  : `${PROFILE_BANNER_CHROME_BTN_CLASS} pointer-events-auto`
+              }
+              aria-label={showOwnEditControls ? 'Cancel editing' : 'Back'}
             >
-              <span aria-hidden className={PROFILE_BANNER_CHROME_BACK_CLASS}>
-                ←
-              </span>
+              {showOwnEditControls ? (
+                'Cancel'
+              ) : (
+                <span aria-hidden className={PROFILE_BANNER_CHROME_BACK_CLASS}>
+                  ←
+                </span>
+              )}
             </button>
             {isOwnProfile ? (
               <div ref={ownProfileBannerMenuRef} className="pointer-events-auto shrink-0">
@@ -1864,20 +1872,12 @@ export default function LoungeProfileFullScreen({
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
         <div
           ref={profileBodyScrollRef}
-          className={
-            showOwnEditControls
-              ? 'min-h-0 flex-1 overflow-hidden overscroll-y-none pb-[max(0.5rem,env(safe-area-inset-bottom))]'
-              : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain'
-          }
-          style={
-            showOwnEditControls
-              ? undefined
-              : {
-                  paddingBottom: `max(${
-                    profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
-                  }, env(safe-area-inset-bottom))`,
-                }
-          }
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+          style={{
+            paddingBottom: `max(${
+              !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
+            }, env(safe-area-inset-bottom))`,
+          }}
         >
           <div className="relative z-10 w-full shrink-0">
             <div className="relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36">
@@ -1937,10 +1937,10 @@ export default function LoungeProfileFullScreen({
                       type="button"
                       disabled={avatarBusy}
                       onClick={() => avatarInputRef.current?.click()}
-                      aria-label={avatarBusy ? 'Uploading profile photo' : 'Change profile photo'}
+                      aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
                       className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
                     >
-                      {avatarBusy ? '…' : 'Photo'}
+                      {avatarBusy ? '…' : 'Avatar'}
                     </button>
                   </>
                 ) : null}
@@ -2073,10 +2073,6 @@ export default function LoungeProfileFullScreen({
                       className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] text-cyan-200 outline-none focus:border-cyan-600/60 touch-manipulation"
                       placeholder="@your_handle"
                     />
-                    <span className="mt-1 block text-[12px] text-zinc-500">
-                      Lowercase letters, numbers, underscore. Shown as @
-                      {handleSlugDraft || 'your_handle'} in Lounge.
-                    </span>
                   </label>
                   <label className="block">
                     <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Location</span>
@@ -2133,28 +2129,30 @@ export default function LoungeProfileFullScreen({
               )}
             </div>
 
-            <div className="mt-4 flex gap-6 text-[15px]">
-              <button
-                type="button"
-                onClick={() => setFollowListTab('following')}
-                className="touch-manipulation text-left [-webkit-tap-highlight-color:transparent] hover:opacity-90 active:opacity-80"
-              >
-                <span className="font-bold text-white" title={fullStatCountTitle(followingCount)}>
-                  {formatCompactStatCount(followingCount)}
-                </span>{' '}
-                <span className="text-zinc-500">Following</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFollowListTab('followers')}
-                className="touch-manipulation text-left [-webkit-tap-highlight-color:transparent] hover:opacity-90 active:opacity-80"
-              >
-                <span className="font-bold text-white" title={fullStatCountTitle(followerCount)}>
-                  {formatCompactStatCount(followerCount)}
-                </span>{' '}
-                <span className="text-zinc-500">Followers</span>
-              </button>
-            </div>
+            {!showOwnEditControls ? (
+              <div className="mt-4 flex gap-6 text-[15px]">
+                <button
+                  type="button"
+                  onClick={() => setFollowListTab('following')}
+                  className="touch-manipulation text-left [-webkit-tap-highlight-color:transparent] hover:opacity-90 active:opacity-80"
+                >
+                  <span className="font-bold text-white" title={fullStatCountTitle(followingCount)}>
+                    {formatCompactStatCount(followingCount)}
+                  </span>{' '}
+                  <span className="text-zinc-500">Following</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFollowListTab('followers')}
+                  className="touch-manipulation text-left [-webkit-tap-highlight-color:transparent] hover:opacity-90 active:opacity-80"
+                >
+                  <span className="font-bold text-white" title={fullStatCountTitle(followerCount)}>
+                    {formatCompactStatCount(followerCount)}
+                  </span>{' '}
+                  <span className="text-zinc-500">Followers</span>
+                </button>
+              </div>
+            ) : null}
 
             <div className="mt-4">
               {showOwnEditControls ? (
@@ -2195,6 +2193,7 @@ export default function LoungeProfileFullScreen({
             </div>
           </div>
 
+          {!showOwnEditControls ? (
           <div className="w-full min-w-0">
             <div className="mt-6 border-b border-zinc-800">
               <div className="flex gap-0">
@@ -2361,6 +2360,7 @@ export default function LoungeProfileFullScreen({
               </LoungeFeedVideoAutoplayProvider>
             </div>
           </div>
+          ) : null}
         </div>
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED — see import above
         {shellDock && !showOwnEditControls ? (

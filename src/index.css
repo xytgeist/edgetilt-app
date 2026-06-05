@@ -744,11 +744,12 @@ html.light .text-lv-yellow {
 }
 
 /*
- * Lounge image/GIF/Stream hero lightboxes — black cinema shell in both themes.
- * Light mode inverts the zinc scale globally; restore dark palette inside lightbox only.
+ * Lounge Stream video hero lightboxes — black cinema shell in both themes.
+ * Light mode inverts the zinc scale globally; restore dark palette inside video lightbox only.
+ * Image/GIF lightboxes use [data-lounge-image-lightbox] — separate light shell (below).
  * Dark mode: no data attr / rules — unchanged.
  */
-html.light [data-lounge-media-lightbox] {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) {
   --color-zinc-950: #09090b;
   --color-zinc-900: #18181b;
   --color-zinc-800: #27272a;
@@ -761,51 +762,116 @@ html.light [data-lounge-media-lightbox] {
   --color-zinc-100: #f4f4f5;
   --color-zinc-50: #fafafa;
 }
-html.light [data-lounge-media-lightbox] .text-white:not([class*="bg-"]) {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-white:not([class*="bg-"]) {
   color: #ffffff;
 }
-html.light [data-lounge-media-lightbox] .text-white\/90:not([class*="bg-"]) {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-white\/90:not([class*="bg-"]) {
   color: rgb(255 255 255 / 0.9);
 }
-html.light [data-lounge-media-lightbox] .text-white\/80:not([class*="bg-"]) {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-white\/80:not([class*="bg-"]) {
   color: rgb(255 255 255 / 0.8);
 }
-html.light [data-lounge-media-lightbox] .text-white\/70:not([class*="bg-"]) {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-white\/70:not([class*="bg-"]) {
   color: rgb(255 255 255 / 0.7);
 }
-html.light [data-lounge-media-lightbox] .text-white\/60:not([class*="bg-"]) {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-white\/60:not([class*="bg-"]) {
   color: rgb(255 255 255 / 0.6);
 }
-/* Image/GIF carousel arrows + pager (not the interaction bar). */
-html.light [data-lounge-media-lightbox] [data-lounge-lightbox-carousel] .text-zinc-100,
-html.light [data-lounge-media-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200 {
+/* Video hero carousel arrows + pager (not the interaction bar). */
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-carousel] .text-zinc-100,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-carousel] .text-zinc-200 {
   color: #f4f4f5 !important;
 }
-/* Pill interaction row — undo global feed light-mode bar tweaks on black chrome. */
-html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-zinc-200 {
+/* Stream video pill row — white idle glyphs on black chrome. */
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .text-zinc-200 {
   color: #e4e4e7 !important;
 }
-html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-zinc-500 {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .text-zinc-500 {
   color: #e4e4e7 !important;
 }
-html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-zinc-100 {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .text-zinc-100 {
   color: #f4f4f5 !important;
 }
 /* Stream video author row only (image lightbox has no stream chrome). */
-html.light [data-lounge-media-lightbox] [data-lounge-stream-lightbox-chrome] .text-\[\#fff\] {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] .text-\[\#fff\] {
   color: #ffffff !important;
 }
-html.light [data-lounge-media-lightbox] [data-lounge-stream-lightbox-chrome] .text-\[\#d4d4d8\] {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] .text-\[\#d4d4d8\] {
   color: #d4d4d8 !important;
 }
-/* Stream video pill row — white glyphs (image lightbox keeps #e4e4e7 above). */
-html.light [data-lounge-media-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-200,
-html.light [data-lounge-media-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-500,
-html.light [data-lounge-media-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-100 {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-200,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-500,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-100 {
   color: #ffffff !important;
 }
-html.light [data-lounge-media-lightbox] .text-lv-yellow {
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-lv-yellow {
   color: #ffea00;
+}
+
+/*
+ * Lounge image/GIF lightbox — light mode only: white shell so iOS status bar blends;
+ * grey idle chrome + interaction glyphs; hydrated colors unchanged.
+ */
+html.light [data-lounge-image-lightbox] {
+  background-color: #fafafa !important;
+}
+/* Top bar: back, Follow, ⋯ — chat-style glass + grey icons */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] button {
+  background: rgba(235, 238, 255, 0.25);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #52525b;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] button:hover {
+  background: rgba(235, 238, 255, 0.4);
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] button:active {
+  background: rgba(235, 238, 255, 0.5);
+}
+/* Carousel prev/next + pager */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] button {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  color: #52525b;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] button:hover {
+  background: rgba(255, 255, 255, 0.88);
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200 {
+  color: #52525b !important;
+  background: rgba(255, 255, 255, 0.85);
+}
+/* Footer gradient + idle interaction glyphs (pill overlay) */
+html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-footer] {
+  background: linear-gradient(
+    to top,
+    rgba(250, 250, 250, 0.96) 0%,
+    rgba(250, 250, 250, 0.72) 40%,
+    transparent 100%
+  ) !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-200,
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-white {
+  color: #52525b !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-100 {
+  color: #52525b !important;
+}
+/* Hydrated interaction colors — keep feed semantics */
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-emerald-400 {
+  color: #34d399 !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-lv-red {
+  color: #fd262d !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-lv-yellow {
+  color: #2563eb !important;
 }
 
 /*

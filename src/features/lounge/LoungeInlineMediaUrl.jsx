@@ -187,6 +187,7 @@ export function LoungeImageLightbox({
   return createPortal(
     <div
       data-lounge-media-lightbox
+      data-lounge-image-lightbox
       className={`fixed inset-0 ${lightboxPortalClass} flex flex-col bg-black`}
       role="dialog"
       aria-modal="true"
@@ -195,6 +196,7 @@ export function LoungeImageLightbox({
       <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between">
         <div
           className={`pointer-events-auto flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+          data-lounge-lightbox-top-chrome
           data-lounge-lightbox-no-swipe
         >
           <button
@@ -218,6 +220,7 @@ export function LoungeImageLightbox({
         {lightboxInteractionBarContent ? (
           <div
             className={`pointer-events-auto w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
+            data-lounge-image-lightbox-footer
             data-lounge-lightbox-no-swipe
             onClick={(e) => e.stopPropagation()}
           >

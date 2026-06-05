@@ -815,11 +815,15 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-
 html.light [data-lounge-image-lightbox] {
   background-color: #fafafa !important;
 }
-/* Top bar + carousel — white icons on glass pills (light shell + status-bar fade) */
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .chat-header-glass,
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .chat-header-glass,
-html.light [data-chat-image-lightbox] .chat-header-glass {
+/* Top bar — white on menu / Follow glass pills */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .chat-header-glass {
   color: #ffffff !important;
+}
+/* Back + carousel — same idle gray as interaction bar icons */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .media-lightbox-nav-btn,
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .chat-header-glass,
+html.light [data-chat-image-lightbox] .media-lightbox-nav-btn {
+  color: #52525b !important;
 }
 html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200 {
   color: #52525b !important;

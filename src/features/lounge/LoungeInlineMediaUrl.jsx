@@ -210,7 +210,7 @@ export function LoungeImageLightbox({
               onClose()
             }}
             aria-label="Back"
-            className={LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS}
+            className={`${LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS} media-lightbox-nav-btn`}
           >
             <span className="text-[22px] leading-none" aria-hidden>
               ←

@@ -142,7 +142,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
             type="button"
             onClick={onClose}
             aria-label="Back"
-            className="chat-header-glass relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation transition-opacity active:opacity-70"
+            className="chat-header-glass media-lightbox-nav-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation transition-opacity active:opacity-70"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
               <polyline points="15 18 9 12 15 6" />

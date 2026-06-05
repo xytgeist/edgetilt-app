@@ -31,6 +31,7 @@ import {
   loungeSearch,
 } from '../features/lounge/loungeSearchApi.js'
 import LoungeSearchCommentResultRow from '../features/lounge/LoungeSearchCommentResultRow.jsx'
+import LoungeSearchSortSwitch from '../features/lounge/LoungeSearchSortSwitch.jsx'
 import {
   LoungeFeedCoordinatorSuspendBinder,
   LoungeFeedVideoAutoplayProvider,
@@ -55,7 +56,6 @@ import {
 } from '../utils/loungeSearchRecentPref.js'
 import {
   readLoungeSearchSort,
-  writeLoungeSearchSort,
 } from '../utils/loungeSearchSortPref.js'
 import { LOUNGE_NOTIFICATION_PREF_ROWS } from '../utils/loungeNotificationPreferencesApi.js'
 import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
@@ -530,42 +530,7 @@ export default function LoungeDockSlidePanels({
     return items
   }, [searchFetchActive, localTrendingPosts, searchPosts, searchComments, searchSort, searchCategorySlug])
 
-  const searchSortToggle = (
-    <div className="relative z-[1] -mb-px shrink-0">
-      <div
-        role="group"
-        aria-label="Search sort"
-        className="flex items-stretch overflow-hidden rounded-t-md border border-b-0 border-zinc-700/90 bg-zinc-950/35"
-      >
-        {[
-          { value: LOUNGE_SEARCH_SORT.ENGAGEMENT, label: 'Top' },
-          { value: LOUNGE_SEARCH_SORT.RECENT, label: 'Latest' },
-        ].map((opt, idx) => {
-          const active = searchSort === opt.value
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => {
-                writeLoungeSearchSort(opt.value)
-                setSearchSort(opt.value)
-              }}
-              className={`px-2 py-0.5 text-[12px] font-medium leading-tight touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                idx === 0 ? '' : 'border-l border-zinc-700/90'
-              } ${
-                active
-                  ? 'bg-cyan-500/15 text-cyan-100'
-                  : 'bg-transparent text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {opt.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
+  const showSearchSortOnPosts = searchFetchActive && displaySearchFeedItems.length > 0
 
   /** Search-only lightbox ctx — media fullscreen stays on search; no caption/comment chrome → post detail. */
   const searchPostCardProps = useMemo(() => {
@@ -1132,12 +1097,9 @@ export default function LoungeDockSlidePanels({
                 ) : null}
                 {queryReady && searchProfiles.length > 0 ? (
                   <section className="mb-3">
-                    <div className="flex items-end justify-between gap-2 px-0.5">
-                      <h3 className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
-                        Profiles
-                      </h3>
-                      {searchSortToggle}
-                    </div>
+                    <h3 className="mb-1.5 px-0.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Profiles
+                    </h3>
                     <ul className="list-none p-0">
                       {searchProfiles.map((profile) => {
                         const displayName = String(profile.display_name || profile.handle || 'Member').trim()
@@ -1196,9 +1158,15 @@ export default function LoungeDockSlidePanels({
                   </h3>
                 ) : null}
                 {searchFetchActive && displaySearchFeedItems.length > 0 ? (
-                  <div className="flex items-end justify-between gap-2 px-0.5">
-                    <h3 className="mb-1.5 text-[13px] font-semibold uppercase tracking-wide text-zinc-500">Posts</h3>
-                    {searchProfiles.length === 0 ? searchSortToggle : null}
+                  <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+                    <h3 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-500">Posts</h3>
+                    {showSearchSortOnPosts ? (
+                      <LoungeSearchSortSwitch
+                        value={searchSort}
+                        onChange={setSearchSort}
+                        disabled={searchLoading && !searchHasResults}
+                      />
+                    ) : null}
                   </div>
                 ) : null}
                 {displaySearchFeedItems.map((item) =>

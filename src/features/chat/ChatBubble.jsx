@@ -1009,11 +1009,37 @@ function ChatMediaImage({ src, className }) {
 }
 
 /**
- * @param {{ media: Array<{ type: string, url?: string, videoUid?: string, posterUrl?: string }>, onOpen: (index: number) => void }} props
+ * Enter true OS fullscreen for an R2 MP4 `<video>` — bypasses the iOS PWA white
+ * status bar entirely. Must run inside the tap gesture with metadata preloaded;
+ * returns false (→ fall back to the in-app lightbox) when not possible.
+ */
+function openNativeVideoFullscreen(video) {
+  if (!video || video.readyState < 1) return false
+  try {
+    video.muted = false
+    const p = video.play?.()
+    if (p && typeof p.catch === 'function') p.catch(() => {})
+  } catch { /* ignore */ }
+  try {
+    if (typeof video.webkitEnterFullscreen === 'function') {
+      video.webkitEnterFullscreen()
+      return true
+    }
+    if (typeof video.requestFullscreen === 'function') {
+      video.requestFullscreen().catch(() => {})
+      return true
+    }
+  } catch { /* ignore */ }
+  return false
+}
+
+/**
+ * @param {{ media: Array<{ type: string, url?: string, videoUid?: string, videoUrl?: string, posterUrl?: string }>, onOpen: (index: number) => void }} props
  */
 function ChatMediaGrid({ media, onOpen }) {
   const visible = media.slice(0, GRID_MAX_VISIBLE)
   const overflow = media.length - GRID_MAX_VISIBLE
+  const videoRefs = useRef({})
 
   // Layout classes based on count
   const count = visible.length
@@ -1027,22 +1053,42 @@ function ChatMediaGrid({ media, onOpen }) {
         // 3-item layout: first image spans full width
         const spanFull = count === 3 && i === 0
 
+        // R2 MP4s can open in true OS fullscreen (no white status bar); legacy
+        // CF Stream (videoUid) and fullscreen failures fall back to the lightbox.
+        const isR2Video = item.type === 'video' && item.videoUrl
+
+        const handleTileTap = () => {
+          if (isR2Video && openNativeVideoFullscreen(videoRefs.current[i])) return
+          onOpen?.(i)
+        }
+
         return (
           // Use index as key so React keeps the component alive when URL changes blob→R2
             <button
             key={i}
             type="button"
-            onClick={() => onOpen?.(i)}
+            onClick={handleTileTap}
             className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''}`}
             style={{ aspectRatio: spanFull ? '2/1' : '1/1', minWidth: 160 }}
             aria-label={item.type === 'video' ? 'Play video' : `View image ${i + 1}`}
           >
             {item.type === 'video' ? (
               <>
+                {isR2Video && (
+                  <video
+                    ref={(el) => { videoRefs.current[i] = el }}
+                    src={item.videoUrl}
+                    preload="metadata"
+                    playsInline
+                    muted
+                    className="absolute inset-0 h-full w-full object-cover"
+                    aria-hidden
+                  />
+                )}
                 {item.posterUrl ? (
-                  <ChatMediaImage src={item.posterUrl} className="h-full w-full object-cover" />
+                  <ChatMediaImage src={item.posterUrl} className="relative h-full w-full object-cover" />
                 ) : (
-                  <div className="h-full w-full bg-zinc-800" />
+                  <div className="relative h-full w-full bg-zinc-800" />
                 )}
                 {/* Play button overlay */}
                 <div className="absolute inset-0 flex items-center justify-center">

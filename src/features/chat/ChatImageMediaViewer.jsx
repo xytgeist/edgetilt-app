@@ -19,21 +19,12 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
   const scrollRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(Math.min(initialIndex, Math.max(0, items.length - 1)))
 
-  useEffect(() => {
-    const root = document.documentElement
-    const meta = document.querySelector('meta[name="theme-color"]')
-
-    const prevRootBg = root.style.backgroundColor
-    const prevMetaColor = meta?.getAttribute('content') ?? null
-
-    root.style.backgroundColor = '#000000'
-    meta?.setAttribute('content', '#000000')
-
-    return () => {
-      root.style.backgroundColor = prevRootBg
-      if (prevMetaColor !== null) meta?.setAttribute('content', prevMetaColor)
-    }
-  }, [])
+  // Light mode: the iOS PWA status bar is white and unreachable, so paint the
+  // viewer backdrop light too — the white bar blends in instead of clashing with
+  // black. Dark mode keeps the black cinematic backdrop.
+  const isLight =
+    typeof document !== 'undefined' && document.documentElement.classList.contains('light')
+  const backdrop = isLight ? '250, 250, 250' : '0, 0, 0'
 
   const [pullY, setPullY] = useState(0)
   const [dismissing, setDismissing] = useState(false)
@@ -128,7 +119,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
     <div
       className="fixed inset-0 z-[130]"
       style={{
-        backgroundColor: `rgba(0,0,0,${bgOpacity})`,
+        backgroundColor: `rgba(${backdrop},${bgOpacity})`,
         transition: dismissing ? 'background-color 0.22s ease' : undefined,
       }}
     >
@@ -147,7 +138,11 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
           <button
             type="button"
             onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white touch-manipulation active:bg-white/20"
+            className={`grid h-9 w-9 place-items-center rounded-full touch-manipulation ${
+              isLight
+                ? 'bg-black/10 text-zinc-900 active:bg-black/20'
+                : 'bg-white/10 text-white active:bg-white/20'
+            }`}
             aria-label="Close"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -156,7 +151,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
             </svg>
           </button>
           {items.length > 1 && (
-            <span className="text-[13px] font-semibold text-white/70">
+            <span className={`text-[13px] font-semibold ${isLight ? 'text-zinc-900/70' : 'text-white/70'}`}>
               {activeIdx + 1} / {items.length}
             </span>
           )}
@@ -196,7 +191,9 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
                   if (el) el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
                 }}
                 className={`h-1.5 rounded-full transition-all touch-manipulation ${
-                  i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
+                  isLight
+                    ? i === activeIdx ? 'w-4 bg-zinc-900' : 'w-1.5 bg-zinc-900/40'
+                    : i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
                 }`}
                 aria-label={`Go to image ${i + 1}`}
               />

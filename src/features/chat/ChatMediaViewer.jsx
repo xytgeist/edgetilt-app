@@ -1,8 +1,9 @@
-import { LoungeImageLightbox } from '../lounge/LoungeInlineMediaUrl.jsx'
+import ChatImageMediaViewer from './ChatImageMediaViewer.jsx'
 import ChatVideoLightbox from './ChatVideoLightbox.jsx'
 
 /**
- * Full-screen media viewer for chat messages — delegates to lounge lightboxes.
+ * Full-screen media viewer for chat messages.
+ * Images: vertical scroll-snap viewer. Videos: lounge-style lightbox.
  *
  * @param {{
  *   items: Array<{ type: 'image' | 'video', url?: string, videoUid?: string | null, videoUrl?: string | null, posterUrl?: string }>,
@@ -37,11 +38,10 @@ export default function ChatMediaViewer({ items, initialIndex = 0, onClose }) {
   }
 
   return (
-    <LoungeImageLightbox
+    <ChatImageMediaViewer
       urls={imageUrls}
       initialIndex={imageInitialIndex}
       onClose={onClose}
-      lightboxPortalClass="z-[130]"
     />
   )
 }

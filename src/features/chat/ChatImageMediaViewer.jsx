@@ -117,6 +117,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
 
   return createPortal(
     <div
+      data-chat-image-lightbox
       className="fixed inset-0 z-[130]"
       style={{
         backgroundColor: `rgba(${backdrop},${bgOpacity})`,
@@ -138,16 +139,13 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
           <button
             type="button"
             onClick={onClose}
-            className={`grid h-9 w-9 place-items-center rounded-full touch-manipulation ${
-              isLight
-                ? 'bg-black/10 text-zinc-900 active:bg-black/20'
-                : 'bg-white/10 text-white active:bg-white/20'
+            aria-label="Back"
+            className={`chat-header-glass relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full touch-manipulation transition-opacity active:opacity-70 ${
+              isLight ? 'text-zinc-900' : 'text-zinc-100'
             }`}
-            aria-label="Close"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+              <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
           {items.length > 1 && (
@@ -155,7 +153,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
               {activeIdx + 1} / {items.length}
             </span>
           )}
-          <div className="w-9" aria-hidden />
+          <div className="w-10" aria-hidden />
         </div>
 
         <div

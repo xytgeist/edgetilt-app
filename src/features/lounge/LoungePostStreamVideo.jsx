@@ -803,7 +803,11 @@ export default function LoungePostStreamVideo({
   const inlineSoundScopeLabel =
     variant === 'feed' || variant === 'embed' ? 'the feed' : 'this screen'
   const feedStyleAbr =
-    variant === 'feed' || variant === 'embed' || variant === 'composer' || variant === 'commentInline'
+    variant === 'feed' ||
+    variant === 'embed' ||
+    variant === 'composer' ||
+    variant === 'commentInline' ||
+    variant === 'detail'
   const {
     scrim: heroScrimZIndex,
     flyout: heroFlyoutZIndex,

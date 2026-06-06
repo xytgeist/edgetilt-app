@@ -14366,7 +14366,6 @@ export default function SocialFeed({
               loungeDetailThreadPartsSorted.length > 0 ? (
                 <LoungePostThreadPartsHierarchy
                   threadParts={loungeDetailThreadPartsSorted}
-                  connectorRootRef={loungePostDetailCommentConnectorRef}
                   descendantCountByCommentId={loungeDetailDescendantCountByCommentId}
                   onOpenCommentThread={openLoungeCommentDrillFromRoots}
                   cardProps={{

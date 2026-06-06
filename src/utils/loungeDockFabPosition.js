@@ -298,7 +298,10 @@ export function loungeDockLayoutViewportSize() {
   }
 }
 
-/** Mark any on-screen UI (fixed or in-scroll) that should push the draggable menu up when it overlaps the FAB horizontally. */
+/**
+ * Mark on-screen UI (fixed or in-scroll) that should push the draggable menu up when it overlaps
+ * the FAB horizontally. Not used on post/comment detail — FAB stacks above the reply composer there.
+ */
 export const LOUNGE_FAB_OBSTACLE_SELECTOR = '[data-lounge-fab-obstacle]'
 
 function loungeFabRectsOverlapHorizontally(a, b) {

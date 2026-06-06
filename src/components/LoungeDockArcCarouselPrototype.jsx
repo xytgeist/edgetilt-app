@@ -355,9 +355,12 @@ export default function LoungeDockArcCarouselPrototype({
   const suppressFabClickRef = useRef(false)
   const repositionCaptureCleanupRef = useRef(null)
   const backdropGestureRef = useRef(null)
+  const fabDetailShellCompactPrevRef = useRef(false)
 
   const bottomObstaclePx = Math.max(0, Math.round(Number(bottomObstacleInsetPx) || 0))
-  const totalBottomObstaclePx = bottomObstaclePx + collisionInsetPx
+  /** Post/comment detail: FAB stays at saved position and stacks over the keyboard — no obstacle push. */
+  const fabObstacleCollisionEnabled = !fabDetailShellCompact
+  const totalBottomObstaclePx = bottomObstaclePx + (fabObstacleCollisionEnabled ? collisionInsetPx : 0)
 
   const fabMoveBounds = useMemo(
     () =>
@@ -390,6 +393,10 @@ export default function LoungeDockArcCarouselPrototype({
     const pos = saved
       ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
       : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
+    if (!fabObstacleCollisionEnabled) {
+      setFabPos(pos)
+      return
+    }
     // If the pref-restored position overlaps a visible obstacle (e.g. upload bar still on screen
     // from a prior session or during remount), pre-adjust to the obstacle-aware position so the
     // FAB never flickers down-then-up while the collision effect catches up.
@@ -411,12 +418,13 @@ export default function LoungeDockArcCarouselPrototype({
     } else {
       setFabPos(pos)
     }
-  }, [viewport.width, viewport.height, bottomObstaclePx])
+  }, [viewport.width, viewport.height, bottomObstaclePx, fabObstacleCollisionEnabled])
 
   const measureCollisionRef = useRef(() => {})
 
   /** Nudge FAB up when a bottom obstacle (upload bar) appears under it — keeps Cancel tappable. */
   useEffect(() => {
+    if (!fabObstacleCollisionEnabled) return
     const cur = fabPosRef.current
     if (!cur) return
     const next = loungeDockFabClampToBounds(cur.left, cur.top, fabMoveBounds)
@@ -424,10 +432,35 @@ export default function LoungeDockArcCarouselPrototype({
     fabPosRef.current = next
     setFabPos(next)
     measureCollisionRef.current()
-  }, [fabMoveBounds, totalBottomObstaclePx])
+  }, [fabMoveBounds, totalBottomObstaclePx, fabObstacleCollisionEnabled])
 
-  /** Push FAB up only when it overlaps marked UI (fixed bars or in-scroll controls) — not when the keyboard opens alone. */
+  /**
+   * Post/comment detail: restore saved FAB prefs when the shell opens so a prior keyboard
+   * collision nudge cannot leave a permanently raised position.
+   */
   useEffect(() => {
+    const entered = fabDetailShellCompact && !fabDetailShellCompactPrevRef.current
+    fabDetailShellCompactPrevRef.current = fabDetailShellCompact
+    if (!entered) return
+    setCollisionInsetPx(0)
+    const { width, height } = viewport
+    const bounds = loungeDockFabMoveBounds(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
+    const saved = readLoungeDockFabPrefs()
+    const pos = saved
+      ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
+      : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
+    fabPosRef.current = pos
+    setFabPos(pos)
+  }, [fabDetailShellCompact, viewport.width, viewport.height, bottomObstaclePx])
+
+  /** Push FAB up only when it overlaps marked UI (fixed bars or in-scroll controls) — not on post/comment detail. */
+  useEffect(() => {
+    if (!fabObstacleCollisionEnabled) {
+      setCollisionInsetPx(0)
+      measureCollisionRef.current = () => {}
+      return undefined
+    }
+
     const measureCollision = () => {
       const cur = fabPosRef.current
       if (!cur) {
@@ -488,7 +521,7 @@ export default function LoungeDockArcCarouselPrototype({
       vv?.removeEventListener('resize', measureCollision)
       vv?.removeEventListener('scroll', measureCollisionOnScroll)
     }
-  }, [bottomObstaclePx])
+  }, [bottomObstaclePx, fabObstacleCollisionEnabled])
 
   useEffect(() => {
     fabPosRef.current = fabPos

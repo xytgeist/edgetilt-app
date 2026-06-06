@@ -14898,7 +14898,6 @@ export default function SocialFeed({
             {!loungeReadOnly ? (
               <div
                 data-lounge-detail-comment-host
-                data-lounge-fab-obstacle
                 className="shrink-0 border-t border-zinc-800/90 bg-zinc-950/95 px-3 pt-2.5 pb-0 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
                 style={{
                   // Keyboard open: `visualViewport` overlap already clears the keyboard — do not add

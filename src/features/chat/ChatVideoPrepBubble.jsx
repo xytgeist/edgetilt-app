@@ -1,11 +1,16 @@
+import {
+  CHAT_MESSAGE_COLUMN_WIDTH_CLASS,
+  chatVideoTileStyle,
+} from './chatVideoTileLayout.js'
+
 /**
  * ChatVideoPrepBubble — looks exactly like a sent video chat bubble while a
  * video is being trimmed / encoded / uploaded locally.
  *
- * Shell mirrors ChatBubble's "isMine + isGroupEnd + hasMedia" path:
- *   row flex-row-reverse → column max-w-[78%] items-end →
+ * Shell mirrors ChatBubble's "isMine + isGroupEnd + single video" path:
+ *   row flex-row-reverse → column w-[78%] items-end →
  *   bubble chat-bubble-surface p-[3px] rounded-2xl blue →
- *   media tile rounded-[13px] aspectRatio 1/1 minWidth 160 →
+ *   media tile rounded-[13px] w-full + encoded aspect →
  *   blue tail SVG bottom-right
  */
 
@@ -110,8 +115,9 @@ function RouletteProgressRing({ progress, status }) {
  * }} props
  */
 export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
-  const { status, progress, posterUrl, errorMessage } = job
+  const { status, progress, posterUrl, width, height, errorMessage } = job
   const isError = status === 'error'
+  const tileStyle = chatVideoTileStyle({ width, height })
 
   // borderRadius matches ChatBubble "isMine + isGroupEnd": 16 16 0 16
   const r = BUBBLE_EXPANDED_RADIUS_PX
@@ -119,23 +125,23 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
 
   return (
     /* Row — mirrors ChatBubble's outer row for a sent (isMine) message */
-    <div className="flex items-end gap-2 flex-row-reverse px-3">
+    <div className="flex items-end gap-2 flex-row-reverse">
 
-      {/* Column — same max-w-[78%] + items-end as ChatBubble */}
-      <div className="flex max-w-[78%] flex-col gap-1 items-end">
+      {/* Column — same 78% width cap as a delivered single-video bubble */}
+      <div className={`flex flex-col gap-1 items-end ${CHAT_MESSAGE_COLUMN_WIDTH_CLASS}`}>
 
         {/* Bubble surface — exactly mirrors the blue p-[3px] media bubble */}
         <div
-          className="chat-bubble-surface relative select-none text-[16px] leading-snug p-[3px] text-white"
+          className="chat-bubble-surface relative w-full select-none text-[16px] leading-snug p-[3px] text-white"
           style={{
             backgroundColor: '#3b82f6',
             borderRadius: bubbleRadius,
           }}
         >
-          {/* Media tile — same rounded-[13px] aspect-square minWidth as ChatMediaGrid */}
+          {/* Media tile — same rounded-[13px] size as delivered ChatMediaGrid video */}
           <div
             className="relative overflow-hidden bg-zinc-900 rounded-[13px]"
-            style={{ aspectRatio: '1 / 1', minWidth: 160 }}
+            style={tileStyle}
           >
             {/* Poster (or dark placeholder) */}
             {posterUrl ? (

@@ -12,6 +12,10 @@ import {
 import ChatEmojiPicker, { saveRecentEmoji } from './ChatEmojiPicker'
 import ChatReceiptLabel from './ChatReceiptLabel.jsx'
 import LoungeFlameIcon from '../lounge/LoungeFlameIcon'
+import {
+  CHAT_MESSAGE_COLUMN_WIDTH_CLASS,
+  chatVideoTileStyle,
+} from './chatVideoTileLayout.js'
 
 const QUICK_REACTIONS = ['👍','❤️','😂','🔥','😮','😢','🎉','😍','👏','💯','🙏','🤣']
 
@@ -440,10 +444,19 @@ export default function ChatBubble({
           videoUrl: videoUrl || null,
           url: message.stream_poster_url || '',
           posterUrl: message.stream_poster_url || '',
+          displayWidth: message.stream_video_width ?? null,
+          displayHeight: message.stream_video_height ?? null,
         }]
       : []),
   ]
   const hasMedia = allMedia.length > 0
+  const isSingleVideoOnly =
+    hasMedia &&
+    !isDeleted &&
+    allMedia.length === 1 &&
+    allMedia[0].type === 'video' &&
+    !showBodyText &&
+    !linkPreviewInBubble
 
   // Pill ends on one visual line of text; fixed radius when wrapped or media attached.
   useLayoutEffect(() => {
@@ -521,7 +534,11 @@ export default function ChatBubble({
           </div>
         )}
 
-        <div className={`flex max-w-[78%] flex-col gap-1 ${isMine ? 'items-end' : 'items-start'}`}>
+        <div
+          className={`flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'} ${
+            isSingleVideoOnly ? CHAT_MESSAGE_COLUMN_WIDTH_CLASS : 'max-w-[78%]'
+          }`}
+        >
           {/* Sender name — others only; first in run only; hidden in DMs */}
           {!isMine && !hideSenderInfo && isGroupStart && (
             <div className="px-1 text-[11px] font-semibold text-zinc-400">{senderLabel}</div>
@@ -561,7 +578,7 @@ export default function ChatBubble({
             onContextMenu={(e) => e.preventDefault()}
             className={`chat-bubble-surface relative select-none text-[16px] leading-snug transition-opacity ${
               hasMedia && !isDeleted ? 'p-[3px]' : 'px-3 py-2'
-            } ${
+            } ${isSingleVideoOnly ? 'w-full' : ''} ${
               compactBubble ? '' : 'rounded-2xl'
             } ${
               isDeleted
@@ -607,7 +624,7 @@ export default function ChatBubble({
                   </div>
                 )}
                 {hasMedia && !isDeleted && (
-                  <div className="relative">
+                  <div className={`relative ${isSingleVideoOnly ? 'w-full' : ''}`}>
                     <ChatMediaGrid media={allMedia} onOpen={isFinalizingMedia ? null : openViewer} />
                     {isFinalizingMedia && (
                       <div className="absolute inset-0 flex items-center justify-center rounded-[13px] bg-black/30">
@@ -1050,8 +1067,12 @@ function ChatMediaGrid({ media, onOpen }) {
   // Layout classes based on count
   const count = visible.length
 
+  const singleVideo = count === 1 && visible[0]?.type === 'video'
+
   return (
-    <div className={`overflow-hidden rounded-[13px] ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}>
+    <div
+      className={`overflow-hidden rounded-[13px] ${singleVideo ? 'w-full' : ''} ${count === 1 ? '' : 'grid gap-0.5'} ${count === 2 ? 'grid-cols-2' : count >= 3 ? 'grid-cols-2' : ''}`}
+    >
       {visible.map((item, i) => {
         const isLastVisible = i === GRID_MAX_VISIBLE - 1
         const showOverlay = isLastVisible && overflow > 0
@@ -1074,8 +1095,12 @@ function ChatMediaGrid({ media, onOpen }) {
             key={i}
             type="button"
             onClick={handleTileTap}
-            className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''}`}
-            style={{ aspectRatio: spanFull ? '2/1' : '1/1', minWidth: 160 }}
+            className={`relative block overflow-hidden bg-zinc-900 touch-manipulation active:opacity-80 ${spanFull ? 'col-span-2' : ''} ${singleVideo ? 'w-full' : ''}`}
+            style={
+              singleVideo
+                ? chatVideoTileStyle({ width: item.displayWidth, height: item.displayHeight })
+                : { aspectRatio: spanFull ? '2/1' : '1/1', minWidth: 160 }
+            }
             aria-label={item.type === 'video' ? 'Play video' : `View image ${i + 1}`}
           >
             {item.type === 'video' ? (

@@ -76,6 +76,7 @@ export default function LoungeMarketChartMini({ embed, rollingLive = null, onOpe
         onOpen?.()
       }}
       className={`relative flex w-[148px] shrink-0 snap-start flex-col overflow-hidden rounded-xl border ${theme.cardBorder} ${theme.cardBg} p-2 text-left touch-manipulation active:opacity-90 ${className}`}
+      data-lounge-market-chart-mini
       aria-label={`Open ${embed.display_symbol} chart`}
     >
       <div className="flex items-start justify-between gap-1">

@@ -13,6 +13,13 @@ export type CoingeckoSearchRow = {
   type: string
   asset_class: 'crypto'
   logo_url: string
+  coin_id: string
+}
+
+export type CoingeckoPickerQuote = {
+  price: number | null
+  market_cap: number | null
+  change_pct: number | null
 }
 
 type LogoCacheEntry = {
@@ -80,6 +87,38 @@ function pickBestCoin(
     const rb = b.market_cap_rank ?? 999_999
     return ra - rb
   })[0]
+}
+
+/** Batch USD price, mcap, and 24h change for picker/search rows. */
+export async function coingeckoBatchPickerQuotes(
+  coinIds: string[],
+): Promise<Map<string, CoingeckoPickerQuote>> {
+  const ids = [...new Set(coinIds.map((id) => String(id || '').trim()).filter(Boolean))]
+  const out = new Map<string, CoingeckoPickerQuote>()
+  if (!ids.length) return out
+
+  try {
+    const data = await coingeckoFetch('/simple/price', {
+      ids: ids.join(','),
+      vs_currencies: 'usd',
+      include_market_cap: 'true',
+      include_24hr_change: 'true',
+    })
+    for (const id of ids) {
+      const row = data?.[id] as { usd?: number; usd_market_cap?: number; usd_24h_change?: number } | undefined
+      const price = Number(row?.usd)
+      const cap = Number(row?.usd_market_cap)
+      const changePct = Number(row?.usd_24h_change)
+      out.set(id, {
+        price: Number.isFinite(price) && price > 0 ? price : null,
+        market_cap: Number.isFinite(cap) && cap > 0 ? cap : null,
+        change_pct: Number.isFinite(changePct) ? changePct : null,
+      })
+    }
+  } catch {
+    // leave map empty — caller keeps identity fields
+  }
+  return out
 }
 
 async function coingeckoMarketCapUsd(coinId: string): Promise<number | null> {
@@ -230,6 +269,7 @@ export async function coingeckoMarketSearch(query: string): Promise<CoingeckoSea
         type: 'Crypto',
         asset_class: 'crypto',
         logo_url: String(coin?.large || coin?.thumb || ''),
+        coin_id: String(coin?.id || ''),
       })
       if (out.length >= 8) break
     }

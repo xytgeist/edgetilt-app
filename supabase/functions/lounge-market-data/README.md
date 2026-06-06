@@ -19,7 +19,7 @@ supabase functions deploy lounge-market-data --project-ref jtjgtucumuoswnbauxry
 
 | action | body | response |
 | --- | --- | --- |
-| `search` | `{ query }` | `{ results[] }` — Finnhub stocks + CoinGecko crypto, logos enriched |
+| `search` | `{ query }` | `{ results[] }` — Finnhub stocks + CoinGecko crypto; **picker enrichment** via Yahoo (price/mcap/exchange) + CoinGecko batch (crypto), 45s Edge cache |
 | `preview` | `{ symbol, asset_class }` | `{ preview }` picker info row |
 | `attach` | `{ post_id, caption, symbols[]? }` | `{ embeds[], warnings?[] }` — merges caption `$` cashtags (auto) with picker rows; picker wins per ticker; **skips failed tickers** instead of failing the whole post |
 | `batch_rolling` | `{ symbols[] }` | `{ quotes }` keyed by cache key |

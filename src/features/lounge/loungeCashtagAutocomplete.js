@@ -31,11 +31,13 @@ export function marketSymbolFromSearchRow(row) {
     symbol: String(row?.symbol || '').trim(),
     asset_class: String(row?.asset_class || '').trim() === 'crypto' ? 'crypto' : 'stock',
     display_symbol: String(row?.display_symbol || row?.symbol || '').trim(),
-    name: String(row?.description || row?.display_symbol || row?.symbol || '').trim(),
-    exchange: String(row?.type || '').trim(),
+    name: String(row?.name || row?.description || row?.display_symbol || row?.symbol || '').trim(),
+    exchange: String(row?.exchange || row?.type || '').trim(),
     logo_url: String(row?.logo_url || row?.logo || '').trim(),
-    market_cap: null,
-    currency: 'USD',
+    market_cap: row?.market_cap != null ? Number(row.market_cap) : null,
+    price: row?.price != null ? Number(row.price) : null,
+    change_pct: row?.change_pct != null ? Number(row.change_pct) : null,
+    currency: String(row?.currency || 'USD').trim() || 'USD',
   }
 }
 

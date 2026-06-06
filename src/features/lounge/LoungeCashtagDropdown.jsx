@@ -1,32 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getComposerCaretClientRect, isRichComposerElement } from './loungeRichComposerDom.js'
+import LoungeMarketSearchResultRow from './LoungeMarketSearchResultRow.jsx'
 
 const GAP_PX = 6
 const VIEWPORT_PAD_PX = 10
-const MAX_DROPDOWN_PX = 320
+const MAX_DROPDOWN_PX = 360
 const MIN_DROPDOWN_PX = 120
-
-function MarketSymbolAvatar({ row }) {
-  const [imgOk, setImgOk] = useState(Boolean(row?.logo_url))
-  const initials = (row?.display_symbol || row?.symbol || '?').slice(0, 3)
-  return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-800">
-      {row?.logo_url && imgOk ? (
-        <img
-          src={row.logo_url}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-          onError={() => setImgOk(false)}
-        />
-      ) : (
-        <span className="text-[11px] font-bold text-cyan-300">{initials}</span>
-      )}
-    </span>
-  )
-}
+const MIN_DROPDOWN_WIDTH_PX = 300
 
 /** Keep dropdown fully on-screen: cap height to viewport band + scroll list body. */
 function measureCashtagDropdownPos(anchorEl, caretFieldEl) {
@@ -56,7 +37,7 @@ function measureCashtagDropdownPos(anchorEl, caretFieldEl) {
   if (top < vTop) top = vTop
   if (top + maxHeight > vBottom) top = Math.max(vTop, vBottom - maxHeight)
 
-  const width = Math.min(anchor.width, vWidth - VIEWPORT_PAD_PX * 2)
+  const width = Math.max(MIN_DROPDOWN_WIDTH_PX, Math.min(Math.max(anchor.width, MIN_DROPDOWN_WIDTH_PX), vWidth - VIEWPORT_PAD_PX * 2))
   let left = Math.max(anchor.left, Math.min(anchorLeft, anchor.right - 120))
   left = Math.max(VIEWPORT_PAD_PX, Math.min(left, vWidth - VIEWPORT_PAD_PX - width))
 
@@ -160,19 +141,11 @@ export default function LoungeCashtagDropdown({
                   e.preventDefault()
                   onSelect?.(row)
                 }}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                className={`w-full px-3 py-2 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
                   isActive ? 'bg-zinc-800' : 'hover:bg-zinc-800/60'
                 }`}
               >
-                <MarketSymbolAvatar row={row} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold leading-tight text-zinc-100">
-                    ${row.display_symbol || row.symbol}
-                  </span>
-                  <span className="block truncate text-[12px] leading-tight text-zinc-500">
-                    {row.description || row.type || row.asset_class}
-                  </span>
-                </span>
+                <LoungeMarketSearchResultRow row={row} variant="compact" />
               </button>
             )
           })}

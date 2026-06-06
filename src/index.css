@@ -1723,6 +1723,34 @@ html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted p
   color: #3f3f46 !important;
 }
 
+/*
+ * Lounge market chart mini cards + modal sheet — use inverted zinc tokens in JSX;
+ * these light-only tweaks keep accent cyan readable on pale surfaces.
+ * AGENT_RULE_THEME_MODE_ONLY — data-lounge-market-chart-*
+ */
+html.light [data-lounge-market-chart-modal] .text-cyan-300,
+html.light [data-lounge-market-chart-mini] .text-cyan-300 {
+  color: var(--color-cyan-600);
+}
+
+html.light [data-lounge-market-chart-modal] .border-cyan-400 {
+  border-color: var(--color-cyan-600);
+}
+
+html.light [data-lounge-market-chart-modal] .bg-cyan-500\/20 {
+  background-color: rgb(6 206 252 / 0.14);
+}
+
+html.light [data-lounge-market-chart-modal] .text-lv-green,
+html.light [data-lounge-market-chart-mini] .text-lv-green {
+  color: #16a34a;
+}
+
+html.light [data-lounge-market-chart-modal] .text-lv-red,
+html.light [data-lounge-market-chart-mini] .text-lv-red {
+  color: #dc2626;
+}
+
 html.light [data-lounge-quote-repost-sheet] .bg-rose-950\/20 {
   background-color: rgba(254, 226, 226, 0.85) !important;
 }

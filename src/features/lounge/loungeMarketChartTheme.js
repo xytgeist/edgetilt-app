@@ -6,35 +6,19 @@ export function loungeMarketChartIsLight() {
 
 /** @param {boolean} [isLight] */
 export function loungeMarketChartTheme(isLight = loungeMarketChartIsLight()) {
-  if (isLight) {
-    return {
-      layout: {
-        background: { color: '#fafafa' },
-        textColor: '#52525b',
-      },
-      grid: {
-        vertLines: { color: 'rgba(0,0,0,0.04)' },
-        horzLines: { color: 'rgba(0,0,0,0.04)' },
-      },
-      upColor: '#16a34a',
-      downColor: '#dc2626',
-      cardBg: 'bg-zinc-100/90',
-      cardBorder: 'border-zinc-200/80',
-      mutedText: 'text-zinc-500',
-      priceText: 'text-zinc-900',
-    }
-  }
+  // Tailwind zinc-* is remapped under html.light (see index.css). Use the same
+  // surface/text class tokens as dark mode — they invert to readable light UI.
   return {
     layout: {
-      background: { color: '#18181b' },
-      textColor: '#a1a1aa',
+      background: { color: 'transparent' },
+      textColor: isLight ? '#71717a' : '#a1a1aa',
     },
     grid: {
-      vertLines: { color: 'rgba(255,255,255,0.04)' },
-      horzLines: { color: 'rgba(255,255,255,0.04)' },
+      vertLines: { visible: false },
+      horzLines: { visible: false },
     },
-    upColor: '#22c55e',
-    downColor: '#ef4444',
+    upColor: isLight ? '#16a34a' : '#22c55e',
+    downColor: isLight ? '#dc2626' : '#ef4444',
     cardBg: 'bg-zinc-900/80',
     cardBorder: 'border-zinc-700/60',
     mutedText: 'text-zinc-400',

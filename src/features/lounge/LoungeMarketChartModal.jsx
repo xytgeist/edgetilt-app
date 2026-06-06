@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AreaSeries, createChart } from 'lightweight-charts'
+import { AreaSeries, createChart, createSeriesMarkers } from 'lightweight-charts'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
 import {
   formatMarketCap,
@@ -15,6 +15,117 @@ import { loungeMarketBarsToSeries, loungeMarketChartIsLight, loungeMarketChartTh
 
 const SHEET_DISMISS_PX = 88
 const SHEET_DISMISS_VEL = 0.45
+/** Chart canvas stops above this band — timeframe pills sit in the gap. */
+const MARKET_CHART_TIMEFRAME_BAND_PX = 24
+const CHART_LABEL_EDGE_PAD_X = 8
+const CHART_LABEL_EST_HALF_WIDTH = 44
+const CHART_LABEL_HIGH_MIN_Y = 18
+const CHART_LABEL_ABOVE_MAX_Y_INSET = 20
+const CHART_LABEL_BELOW_MAX_Y_INSET = 26
+
+/** Keep high/low tags inside the plot — clamp X/Y without flipping anchor mode. */
+function clampChartLabelPosition(x, y, width, height, placement) {
+  const w = Math.max(0, Number(width) || 0)
+  const h = Math.max(0, Number(height) || 0)
+  if (!w || !h) return { x: 0, y: 0 }
+
+  const minX = CHART_LABEL_EDGE_PAD_X + CHART_LABEL_EST_HALF_WIDTH
+  const maxX = w - CHART_LABEL_EDGE_PAD_X - CHART_LABEL_EST_HALF_WIDTH
+  const cx = minX <= maxX ? Math.max(minX, Math.min(maxX, x)) : w / 2
+
+  let cy = y
+  if (placement === 'above') {
+    cy = Math.max(CHART_LABEL_HIGH_MIN_Y, Math.min(h - CHART_LABEL_ABOVE_MAX_Y_INSET, y))
+  } else {
+    cy = Math.max(CHART_LABEL_HIGH_MIN_Y, Math.min(h - CHART_LABEL_BELOW_MAX_Y_INSET, y))
+  }
+
+  return { x: Math.round(cx), y: Math.round(cy) }
+}
+function setChartLineMarkers(series, barPoints, lineColor, upColor, downColor) {
+  const markers = []
+  const { high, low } = barSeriesHighLow(barPoints)
+  const last = barPoints[barPoints.length - 1]
+
+  if (high) {
+    markers.push({
+      time: high.time,
+      position: 'inBar',
+      shape: 'circle',
+      color: upColor,
+      size: 0.5,
+    })
+  }
+  if (low && !(high && low.time === high.time && low.value === high.value)) {
+    markers.push({
+      time: low.time,
+      position: 'inBar',
+      shape: 'circle',
+      color: downColor,
+      size: 0.5,
+    })
+  }
+  if (last) {
+    const atHigh = high && last.time === high.time
+    const atLow = low && last.time === low.time && low.value !== high?.value
+    if (!atHigh && !atLow) {
+      markers.push({
+        time: last.time,
+        position: 'inBar',
+        shape: 'circle',
+        color: lineColor,
+        size: 0.75,
+      })
+    }
+  }
+
+  if (!markers.length) return null
+  return createSeriesMarkers(series, markers)
+}
+
+/** High / low bar in the active timeframe series. */
+function barSeriesHighLow(barPoints) {
+  let high = null
+  let low = null
+  for (const point of barPoints || []) {
+    const value = Number(point?.value)
+    if (!Number.isFinite(value)) continue
+    if (!high || value > high.value) high = { time: point.time, value }
+    if (!low || value < low.value) low = { time: point.time, value }
+  }
+  return { high, low }
+}
+
+/** Pixel positions for high/low price labels on the chart canvas. */
+function syncExtremaLabels(chart, area, barPoints, width, height) {
+  const { high, low } = barSeriesHighLow(barPoints)
+  if (!high || !low) return null
+  const xH = chart.timeScale().timeToCoordinate(high.time)
+  const yH = area.priceToCoordinate(high.value)
+  const xL = chart.timeScale().timeToCoordinate(low.time)
+  const yL = area.priceToCoordinate(low.value)
+  if (xH == null || yH == null || xL == null || yL == null) return null
+  const same = high.time === low.time && high.value === low.value
+  const highPos = clampChartLabelPosition(xH, yH, width, height, 'above')
+  const lowPos = same ? null : clampChartLabelPosition(xL, yL, width, height, 'below')
+  return {
+    high: { ...highPos, price: high.value },
+    low: lowPos ? { ...lowPos, price: low.value } : null,
+  }
+}
+
+function extremaLabelsEqual(a, b) {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    a.high?.x === b.high?.x &&
+    a.high?.y === b.high?.y &&
+    a.high?.price === b.high?.price &&
+    a.low?.x === b.low?.x &&
+    a.low?.y === b.low?.y &&
+    a.low?.price === b.low?.price
+  )
+}
 
 function shouldIgnoreSheetDragTarget(target) {
   if (!(target instanceof Element)) return true
@@ -69,6 +180,8 @@ export default function LoungeMarketChartModal({
 }) {
   const chartHostRef = useRef(null)
   const chartRef = useRef(null)
+  const areaRef = useRef(null)
+  const extremaLabelsRef = useRef(null)
   const postsScrollRef = useRef(null)
   const sheetDragRef = useRef(null)
   const [sheetDragY, setSheetDragY] = useState(0)
@@ -85,6 +198,11 @@ export default function LoungeMarketChartModal({
   const [postsLoading, setPostsLoading] = useState(false)
   /** Crosshair scrub overrides header quote until pointer leaves the chart. */
   const [scrubQuote, setScrubQuote] = useState(/** @type {{ price: number, change?: number, change_pct?: number } | null} */ (null))
+  const [extremaLabels, setExtremaLabels] = useState(
+    /** @type {{ high: { x: number, y: number, price: number }, low: { x: number, y: number, price: number } | null } | null} */ (
+      null
+    ),
+  )
 
   const isLight = loungeMarketChartIsLight()
   const list = useMemo(() => (Array.isArray(embeds) ? embeds.filter(Boolean) : []), [embeds])
@@ -294,7 +412,7 @@ export default function LoungeMarketChartModal({
   const displayUp = Number.isFinite(displayChangePct) ? displayChangePct >= 0 : true
   const chartChangePct = Number(quote?.change_pct)
   const chartUp = Number.isFinite(chartChangePct) ? chartChangePct >= 0 : true
-  const theme = loungeMarketChartTheme(isLight)
+  const theme = useMemo(() => loungeMarketChartTheme(isLight), [isLight])
 
   useEffect(() => {
     if (!open) return undefined
@@ -319,10 +437,12 @@ export default function LoungeMarketChartModal({
       height: el.clientHeight,
       layout: theme.layout,
       grid: theme.grid,
-      rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.22 } },
+      rightPriceScale: { visible: false },
+      leftPriceScale: { visible: false },
       timeScale: { visible: false, borderVisible: false },
       crosshair: { vertLine: { labelVisible: false }, horzLine: { labelVisible: false } },
     })
+    const barPoints = loungeMarketBarsToSeries(series?.bars || active?.bars || [])
     const area = chart.addSeries(AreaSeries, {
       lineColor,
       topColor: chartUp ? 'rgba(34, 197, 94, 0.28)' : 'rgba(239, 68, 68, 0.28)',
@@ -337,9 +457,24 @@ export default function LoungeMarketChartModal({
         bottomColor: chartUp ? 'rgba(22, 163, 74, 0)' : 'rgba(220, 38, 38, 0)',
       })
     }
-    const barPoints = loungeMarketBarsToSeries(series?.bars || active?.bars || [])
     area.setData(barPoints)
+    areaRef.current = area
+    setChartLineMarkers(area, barPoints, lineColor, theme.upColor, theme.downColor)
     chart.timeScale().fitContent()
+
+    const publishExtremaLabels = (next) => {
+      if (extremaLabelsEqual(extremaLabelsRef.current, next)) return
+      extremaLabelsRef.current = next
+      setExtremaLabels(next)
+    }
+
+    const refreshExtremaLabels = () => {
+      publishExtremaLabels(
+        syncExtremaLabels(chart, area, barPoints, el.clientWidth, el.clientHeight),
+      )
+    }
+    refreshExtremaLabels()
+    requestAnimationFrame(refreshExtremaLabels)
 
     const firstPrice = barPoints[0]?.value
 
@@ -367,41 +502,49 @@ export default function LoungeMarketChartModal({
     })
 
     chartRef.current = chart
+    let resizeRaf = 0
     const ro = new ResizeObserver(() => {
-      if (!chartHostRef.current || !chartRef.current) return
-      chartRef.current.applyOptions({
-        width: chartHostRef.current.clientWidth,
-        height: chartHostRef.current.clientHeight,
+      if (!chartHostRef.current || !chartRef.current || !areaRef.current) return
+      cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(() => {
+        if (!chartHostRef.current || !chartRef.current || !areaRef.current) return
+        chartRef.current.applyOptions({
+          width: chartHostRef.current.clientWidth,
+          height: chartHostRef.current.clientHeight,
+        })
+        chartRef.current.timeScale().fitContent()
+        publishExtremaLabels(
+          syncExtremaLabels(
+            chartRef.current,
+            areaRef.current,
+            barPoints,
+            chartHostRef.current.clientWidth,
+            chartHostRef.current.clientHeight,
+          ),
+        )
       })
-      chartRef.current.timeScale().fitContent()
     })
     ro.observe(el)
     return () => {
+      cancelAnimationFrame(resizeRaf)
       ro.disconnect()
       chart.remove()
       chartRef.current = null
+      areaRef.current = null
+      extremaLabelsRef.current = null
+      setExtremaLabels(null)
     }
-  }, [open, active, series, chartUp, theme, isLight])
+  }, [open, series, chartUp, isLight, active?.symbol])
 
   if (!open || !list.length) return null
 
-  const shellClass = isLight
-    ? 'border-zinc-200/90 bg-white text-zinc-900'
-    : 'border-zinc-700/80 bg-zinc-950 text-zinc-50'
-  const mutedClass = isLight ? 'text-zinc-500' : 'text-zinc-400'
-  const borderClass = isLight ? 'border-zinc-200' : 'border-zinc-800'
-  const pillIdleClass = isLight
-    ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-    : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'
-  const pillActiveClass = isLight ? 'bg-zinc-200 text-zinc-900' : 'bg-zinc-700 text-zinc-50'
-  const chartPillIdleClass = isLight
-    ? 'bg-white/80 text-zinc-600 backdrop-blur-[2px] hover:bg-white/95'
-    : 'bg-zinc-900/70 text-zinc-300 backdrop-blur-[2px] hover:bg-zinc-800/80'
-  const chartPillActiveClass = isLight
-    ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/80'
-    : 'bg-zinc-700/95 text-zinc-50 shadow-sm'
-  const tabActiveClass = isLight ? 'border-zinc-900 text-zinc-900' : 'border-cyan-400 text-zinc-50'
-  const tabIdleClass = isLight ? 'border-transparent text-zinc-500' : 'border-transparent text-zinc-500'
+  const shellClass = 'border-zinc-700/80 bg-zinc-950 text-zinc-50'
+  const mutedClass = 'text-zinc-400'
+  const borderClass = 'border-zinc-800'
+  const pillIdleClass = 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'
+  const pillActiveClass = 'bg-zinc-700 text-zinc-50'
+  const tabActiveClass = 'border-cyan-400 text-zinc-50'
+  const tabIdleClass = 'border-transparent text-zinc-500'
   const backdropOpacity = sheetClosing ? 0 : Math.max(0, 0.55 - sheetDragY / 700)
   const sheetTransform = sheetClosing || sheetDragY > 0 ? `translate3d(0, ${sheetDragY}px, 0)` : undefined
   const sheetTransition =
@@ -420,6 +563,7 @@ export default function LoungeMarketChartModal({
         className={`relative z-10 flex h-[85dvh] max-h-[85dvh] shrink-0 flex-col rounded-t-3xl border border-b-0 shadow-2xl will-change-transform motion-reduce:transition-none ${shellClass} ${
           sheetDragging ? 'touch-none' : ''
         }`}
+        data-lounge-market-chart-modal
         style={{ transform: sheetTransform, transition: sheetTransition }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={onSheetPointerDown}
@@ -440,9 +584,7 @@ export default function LoungeMarketChartModal({
               <img src={active.logo_url} alt="" className="mt-0.5 h-10 w-10 shrink-0 rounded-full object-cover" />
             ) : (
               <div
-                className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                  isLight ? 'bg-zinc-200 text-zinc-700' : 'bg-zinc-800 text-zinc-300'
-                }`}
+                className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300"
               >
                 {(active?.display_symbol || '?').slice(0, 1)}
               </div>
@@ -484,12 +626,39 @@ export default function LoungeMarketChartModal({
           </div>
         ) : null}
 
-        <div className="relative mx-4 h-[220px] shrink-0 overflow-hidden rounded-xl" data-market-sheet-no-drag>
+        <div
+          className="relative h-[240px] w-full shrink-0 overflow-hidden"
+          data-market-sheet-no-drag
+        >
           {loading ? (
             <div className={`absolute inset-0 z-[1] grid place-items-center text-sm ${mutedClass}`}>Loading…</div>
           ) : null}
-          <div ref={chartHostRef} className="absolute inset-0" />
-          <div className="absolute inset-x-2 bottom-2 z-10 grid grid-cols-6 gap-1" data-market-sheet-no-drag>
+          <div
+            className="absolute inset-x-0 top-0"
+            style={{ bottom: MARKET_CHART_TIMEFRAME_BAND_PX }}
+          >
+            <div ref={chartHostRef} className="absolute inset-0" />
+            {extremaLabels?.high ? (
+              <div
+                className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap pb-1 text-[10px] font-semibold tabular-nums text-lv-green"
+                style={{ left: extremaLabels.high.x, top: extremaLabels.high.y }}
+              >
+                {formatMarketPrice(extremaLabels.high.price)}
+              </div>
+            ) : null}
+            {extremaLabels?.low ? (
+              <div
+                className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap pt-1 text-[10px] font-semibold tabular-nums text-lv-red"
+                style={{ left: extremaLabels.low.x, top: extremaLabels.low.y }}
+              >
+                {formatMarketPrice(extremaLabels.low.price)}
+              </div>
+            ) : null}
+          </div>
+          <div
+            className="absolute inset-x-3 bottom-0.5 z-10 flex justify-between gap-0.5"
+            data-market-sheet-no-drag
+          >
             {MARKET_MODAL_TIMEFRAMES.map((tf, i) => (
               <button
                 key={tf.label}
@@ -498,8 +667,10 @@ export default function LoungeMarketChartModal({
                   e.stopPropagation()
                   setTimeframeIdx(i)
                 }}
-                className={`min-w-0 rounded-full py-1.5 text-center text-[11px] font-semibold leading-none touch-manipulation ${
-                  i === timeframeIdx ? chartPillActiveClass : chartPillIdleClass
+                className={`min-w-0 flex-1 rounded-sm bg-transparent px-0.5 py-0.5 text-center text-[10px] leading-none touch-manipulation border-b ${
+                  i === timeframeIdx
+                    ? 'border-zinc-50 font-bold text-zinc-50'
+                    : 'border-transparent font-medium text-zinc-400 hover:text-zinc-300'
                 }`}
               >
                 {tf.label}
@@ -517,7 +688,7 @@ export default function LoungeMarketChartModal({
                 href={news.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group block touch-manipulation ${isLight ? 'hover:text-zinc-700' : 'hover:text-zinc-200'}`}
+                className="group block touch-manipulation hover:text-zinc-200"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className={`text-[11px] font-semibold uppercase tracking-wide ${mutedClass}`}>Latest</div>
@@ -576,9 +747,7 @@ export default function LoungeMarketChartModal({
                   <li key={post.id}>
                     <button
                       type="button"
-                      className={`flex w-full gap-3 py-3 text-left touch-manipulation active:opacity-90 ${
-                        isLight ? 'hover:bg-zinc-50' : 'hover:bg-zinc-900/60'
-                      }`}
+                      className="flex w-full gap-3 py-3 text-left touch-manipulation hover:bg-zinc-900/60 active:opacity-90"
                       onClick={() => {
                         onOpenPost?.(post)
                         dismissSheet()
@@ -587,11 +756,7 @@ export default function LoungeMarketChartModal({
                       {profile?.avatar_url ? (
                         <img src={profile.avatar_url} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
                       ) : (
-                        <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                            isLight ? 'bg-zinc-200 text-zinc-700' : 'bg-zinc-800 text-zinc-300'
-                          }`}
-                        >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
                           {(profile?.display_name || profile?.handle || '?').slice(0, 1).toUpperCase()}
                         </div>
                       )}

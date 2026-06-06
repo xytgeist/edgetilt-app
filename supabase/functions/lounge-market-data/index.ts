@@ -5,7 +5,7 @@ import {
   buildMarketEmbed,
   buildRollingBatchPayload,
   embedQuoteCurrency,
-  enrichSearchResultsWithLogos,
+  enrichSearchResultsForPicker,
   finnhubLatestNews,
   finnhubProfile,
   finnhubQuote,
@@ -17,6 +17,7 @@ import {
   normalizeMarketSeriesToUsd,
   resolveMarketBars,
   resolveMarketSymbolsForAttach,
+  sortMarketSearchResults,
   type MarketAssetClass,
   type MarketEmbed,
   type MarketWindowKey,
@@ -173,8 +174,8 @@ Deno.serve(async (req) => {
     if (q.length < 1) return json(400, { error: 'query is required.' })
     try {
       const results = await marketSearch(q)
-      const enriched = await enrichSearchResultsWithLogos(results.slice(0, 8))
-      return json(200, { ok: true, results: enriched })
+      const enriched = await enrichSearchResultsForPicker(results.slice(0, 8))
+      return json(200, { ok: true, results: sortMarketSearchResults(q, enriched) })
     } catch (e) {
       return json(502, { error: e instanceof Error ? e.message : 'Search failed.' })
     }

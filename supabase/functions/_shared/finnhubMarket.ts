@@ -3,8 +3,8 @@
  * Crypto logos: CoinGecko via coingeckoMarket.ts (optional COINGECKO_API_KEY).
  */
 
-import { coingeckoCryptoCandles, coingeckoCryptoLogo, coingeckoCryptoProfile, coingeckoMarketSearch } from './coingeckoMarket.ts'
-import { yahooFxRateToUsd, yahooIntervalForWindow, yahooLatestNews, yahooStockCandles, yahooStockProfile, yahooStockQuote } from './yahooMarket.ts'
+import { coingeckoBatchPickerQuotes, coingeckoCryptoCandles, coingeckoCryptoProfile, coingeckoMarketSearch } from './coingeckoMarket.ts'
+import { yahooFxRateToUsd, yahooIntervalForWindow, yahooLatestNews, yahooStockCandles, yahooStockPickerRow, yahooStockProfile, yahooStockQuote } from './yahooMarket.ts'
 
 export type MarketAssetClass = 'stock' | 'crypto'
 export type MarketEmbedKind = 'rolling' | 'historical'
@@ -38,6 +38,7 @@ const FINNHUB_BASE = 'https://finnhub.io/api/v1'
 
 export const MARKET_EMBED_MAX = 12
 export const MARKET_CACHE_TTL_MS = 90_000
+const PICKER_ENRICH_CACHE_TTL_MS = 45_000
 
 export function finnhubToken(): string {
   return String(Deno.env.get('FINNHUB_API_KEY') || '').trim()
@@ -468,6 +469,110 @@ export async function finnhubSearch(query: string) {
 }
 
 /** Finnhub search is stock-heavy; merge CoinGecko crypto rows for `$BTC`-style queries. */
+const MARKET_SEARCH_TOKENIZED_RE =
+  /ondo|tokenized|xstock|wrapped|dinari|mirrored|\s+on\b|\s+x\b|\.d\b|xstock/i
+
+function marketSearchQueryNorm(query: string): string {
+  return String(query || '').trim().toUpperCase().replace(/^\$/, '')
+}
+
+function marketSearchRowDisplay(row: {
+  symbol: string
+  display_symbol?: string
+  asset_class: MarketAssetClass
+}): string {
+  return String(
+    row.display_symbol ||
+      normalizeDisplaySymbol(finnhubSymbolForAsset(row.symbol, row.asset_class), row.asset_class),
+  ).toUpperCase()
+}
+
+/** Lower score = higher in picker. Exact US stock ticker first; tokenized crypto last. */
+export function marketSearchRelevanceScore(
+  query: string,
+  row: {
+    symbol: string
+    display_symbol?: string
+    description?: string
+    asset_class: MarketAssetClass
+    type?: string
+  },
+): number {
+  const q = marketSearchQueryNorm(query)
+  if (!q) return 9999
+
+  const display = marketSearchRowDisplay(row)
+  const root = display.includes('.') ? display.split('.')[0] : display
+  const desc = String(row.description || '').toLowerCase()
+  const hay = `${display} ${desc} ${row.symbol}`.toLowerCase()
+
+  let score = 500
+
+  if (display === q) {
+    score = row.asset_class === 'stock' ? 0 : 25
+  } else if (root === q && row.asset_class === 'stock') {
+    score = 35
+  } else if (display.startsWith(`${q} `) || display.startsWith(`${q}.`)) {
+    score = row.asset_class === 'stock' ? 120 : 280
+  } else if (root.startsWith(q)) {
+    score = row.asset_class === 'stock' ? 200 : 320
+  } else if (display.startsWith(q)) {
+    score = row.asset_class === 'stock' ? 250 : 340
+  }
+
+  if (MARKET_SEARCH_TOKENIZED_RE.test(hay) || (row.asset_class === 'crypto' && /stock|equity|etf/i.test(desc))) {
+    score += 650
+  }
+
+  if (row.asset_class === 'stock' && display.includes('.') && root === q) {
+    score += 25
+  }
+
+  return score
+}
+
+export function sortMarketSearchResults<
+  T extends {
+    symbol: string
+    display_symbol?: string
+    description?: string
+    asset_class: MarketAssetClass
+    type?: string
+    market_cap?: number | null
+  },
+>(query: string, results: T[]): T[] {
+  return [...results].sort((a, b) => {
+    const sa = marketSearchRelevanceScore(query, a)
+    const sb = marketSearchRelevanceScore(query, b)
+    if (sa !== sb) return sa - sb
+    const ca = Number(a.market_cap)
+    const cb = Number(b.market_cap)
+    if (Number.isFinite(ca) && Number.isFinite(cb) && ca !== cb) return cb - ca
+    return marketSearchRowDisplay(a).length - marketSearchRowDisplay(b).length
+  })
+}
+
+/** Cap foreign listing spam (AAPL.TO, AAPL.NE, …) — keep US exact + one alternate. */
+export function dedupeMarketSearchRoots<
+  T extends { symbol: string; display_symbol?: string; asset_class: MarketAssetClass },
+>(results: T[]): T[] {
+  const rootCounts = new Map<string, number>()
+  const out: T[] = []
+  for (const row of results) {
+    if (row.asset_class === 'crypto') {
+      out.push(row)
+      continue
+    }
+    const display = marketSearchRowDisplay(row)
+    const root = display.includes('.') ? display.split('.')[0] : display
+    const count = rootCounts.get(root) || 0
+    if (count >= 2) continue
+    rootCounts.set(root, count + 1)
+    out.push(row)
+  }
+  return out
+}
+
 export async function marketSearch(query: string) {
   const q = String(query || '').trim()
   if (q.length < 1) return []
@@ -479,18 +584,13 @@ export async function marketSearch(query: string) {
 
   const seen = new Set<string>()
   const out: Array<(typeof stocks)[number] | (typeof cryptos)[number]> = []
-  const cryptoFirst = /^[A-Za-z]{1,6}$/.test(q)
-  const lists = cryptoFirst ? [cryptos, stocks] : [stocks, cryptos]
-
-  for (const list of lists) {
-    for (const row of list) {
-      const key = `${row.asset_class}:${row.symbol}`.toLowerCase()
-      if (seen.has(key)) continue
-      seen.add(key)
-      out.push(row)
-    }
+  for (const row of [...stocks, ...cryptos]) {
+    const key = `${row.asset_class}:${row.symbol}`.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(row)
   }
-  return out.slice(0, 20)
+  return dedupeMarketSearchRoots(sortMarketSearchResults(q, out)).slice(0, 20)
 }
 
 /** Prefer US root ticker for logo lookup (AAPL.TO → AAPL). */
@@ -502,38 +602,217 @@ export function logoProfileSymbol(symbol: string, assetClass: MarketAssetClass):
   return finnhubSymbolForAsset(symbol, assetClass)
 }
 
-/** Finnhub `/search` has no logos — batch profile2 lookups (deduped per root symbol). */
+/** Finnhub `/search` has no logos — enrich picker rows via Yahoo (stocks) + CoinGecko batch (crypto). */
+type PickerEnrichFields = {
+  logo_url: string
+  name: string
+  exchange: string
+  market_cap: number | null
+  price: number | null
+  change_pct: number | null
+  currency: string
+}
+
+const pickerEnrichCache = new Map<string, PickerEnrichFields & { expires: number }>()
+const stockLogoCache = new Map<string, { logo: string; expires: number }>()
+
+function pickerEnrichCacheKey(assetClass: MarketAssetClass, symbol: string): string {
+  return `${assetClass}:${symbol}`.toLowerCase()
+}
+
+/** Finnhub profile2 logo — deduped per US root (AAPL.TO → AAPL). Yahoo chart often omits logos. */
+async function resolveStockLogoUrl(symbol: string): Promise<string> {
+  const lookup = logoProfileSymbol(symbol, 'stock')
+  const cacheKey = lookup.toLowerCase()
+  const cached = stockLogoCache.get(cacheKey)
+  if (cached && cached.expires > Date.now()) return cached.logo
+
+  let logo = ''
+  try {
+    const profile = await finnhubProfile(lookup, 'stock')
+    logo = String(profile.logo || '')
+  } catch {
+    logo = ''
+  }
+
+  stockLogoCache.set(cacheKey, { logo, expires: Date.now() + PICKER_ENRICH_CACHE_TTL_MS })
+  return logo
+}
+
+async function enrichStockPickerFields(symbol: string): Promise<PickerEnrichFields | null> {
+  const cacheKey = pickerEnrichCacheKey('stock', symbol)
+  const cached = pickerEnrichCache.get(cacheKey)
+  if (cached && cached.expires > Date.now()) {
+    const { expires: _e, ...fields } = cached
+    return fields
+  }
+
+  const row = await yahooStockPickerRow(symbol)
+  if (!row) return null
+
+  const rate = (await yahooFxRateToUsd(row.currency).catch(() => null)) ?? 1
+  const toUsd = (n: number | null) => {
+    if (n == null || !Number.isFinite(n)) return null
+    if (row.currency === 'USD' || rate === 1) return n
+    return n * rate
+  }
+
+  let logo_url = row.logo
+  if (!logo_url) logo_url = await resolveStockLogoUrl(symbol)
+
+  let market_cap = toUsd(row.market_cap)
+  if (market_cap == null) {
+    try {
+      const profile = await finnhubProfile(logoProfileSymbol(symbol, 'stock'), 'stock')
+      market_cap = await normalizeMarketCapToUsd(profile.marketCapitalization, profile.currency)
+      if (!logo_url) logo_url = String(profile.logo || '')
+    } catch {
+      // keep null
+    }
+  }
+
+  const fields: PickerEnrichFields = {
+    logo_url,
+    name: row.name,
+    exchange: row.exchange,
+    market_cap,
+    price: toUsd(row.price),
+    change_pct: row.change_pct,
+    currency: 'USD',
+  }
+  pickerEnrichCache.set(cacheKey, { ...fields, expires: Date.now() + PICKER_ENRICH_CACHE_TTL_MS })
+  return fields
+}
+
+export async function enrichSearchResultsForPicker<
+  T extends {
+    symbol: string
+    asset_class: MarketAssetClass
+    display_symbol?: string
+    description?: string
+    type?: string
+    logo_url?: string
+    coin_id?: string
+  },
+>(
+  results: T[],
+): Promise<
+  Array<
+    T & {
+      logo_url: string
+      name: string
+      exchange: string
+      market_cap: number | null
+      price: number | null
+      change_pct: number | null
+      currency: string
+    }
+  >
+> {
+  const cryptoRows = results.filter((r) => r.asset_class === 'crypto')
+  const stockRows = results.filter((r) => r.asset_class !== 'crypto')
+
+  const cryptoCoinIds: string[] = []
+  const cryptoIdByKey = new Map<string, string>()
+  for (const row of cryptoRows) {
+    const key = pickerEnrichCacheKey(row.asset_class, row.symbol)
+    const cached = pickerEnrichCache.get(key)
+    if (cached && cached.expires > Date.now()) continue
+
+    let coinId = String(row.coin_id || '').trim()
+    if (!coinId) {
+      try {
+        coinId = (await coingeckoCryptoProfile(row.symbol)).coinId
+      } catch {
+        coinId = ''
+      }
+    }
+    if (coinId) {
+      cryptoCoinIds.push(coinId)
+      cryptoIdByKey.set(key, coinId)
+    }
+  }
+
+  const batchQuotes = await coingeckoBatchPickerQuotes(cryptoCoinIds)
+
+  const stockFieldsByKey = new Map<string, PickerEnrichFields | null>()
+  await Promise.all(
+    stockRows.map(async (row) => {
+      const key = pickerEnrichCacheKey(row.asset_class, row.symbol)
+      const cached = pickerEnrichCache.get(key)
+      if (cached && cached.expires > Date.now()) {
+        const { expires: _e, ...fields } = cached
+        stockFieldsByKey.set(key, fields)
+        return
+      }
+      stockFieldsByKey.set(key, await enrichStockPickerFields(row.symbol))
+    }),
+  )
+
+  return results.map((row) => {
+    const key = pickerEnrichCacheKey(row.asset_class, row.symbol)
+    const baseLogo = String(row.logo_url || '').trim()
+    const fallbackName = String(row.description || row.display_symbol || row.symbol)
+    const fallbackExchange = String(row.type || row.asset_class || '')
+
+    const cached = pickerEnrichCache.get(key)
+    if (cached && cached.expires > Date.now()) {
+      const { expires: _e, ...fields } = cached
+      return {
+        ...row,
+        ...fields,
+        logo_url: fields.logo_url || baseLogo,
+        name: fields.name || fallbackName,
+        exchange: fields.exchange || fallbackExchange,
+      }
+    }
+
+    if (row.asset_class === 'crypto') {
+      const coinId = cryptoIdByKey.get(key) || String(row.coin_id || '').trim()
+      const quote = coinId ? batchQuotes.get(coinId) : undefined
+      const fields: PickerEnrichFields = {
+        logo_url: baseLogo,
+        name: fallbackName,
+        exchange: 'Crypto',
+        market_cap: quote?.market_cap ?? null,
+        price: quote?.price ?? null,
+        change_pct: quote?.change_pct ?? null,
+        currency: 'USD',
+      }
+      pickerEnrichCache.set(key, { ...fields, expires: Date.now() + PICKER_ENRICH_CACHE_TTL_MS })
+      return { ...row, ...fields }
+    }
+
+    const stockFields = stockFieldsByKey.get(key)
+    if (stockFields) {
+      return {
+        ...row,
+        ...stockFields,
+        logo_url: stockFields.logo_url || baseLogo,
+        name: stockFields.name || fallbackName,
+        exchange: stockFields.exchange || fallbackExchange,
+      }
+    }
+
+    return {
+      ...row,
+      logo_url: baseLogo,
+      name: fallbackName,
+      exchange: fallbackExchange,
+      market_cap: null,
+      price: null,
+      change_pct: null,
+      currency: 'USD',
+    }
+  })
+}
+
+/** @deprecated Prefer enrichSearchResultsForPicker. */
 export async function enrichSearchResultsWithLogos<
   T extends { symbol: string; asset_class: MarketAssetClass; logo_url?: string },
 >(results: T[]): Promise<Array<T & { logo_url: string }>> {
-  const logoCache = new Map<string, string>()
-  const out: Array<T & { logo_url: string }> = []
-  for (const row of results) {
-    const prefill = String(row.logo_url || '').trim()
-    if (prefill) {
-      out.push({ ...row, logo_url: prefill })
-      continue
-    }
-
-    const cacheKey = `${row.asset_class}:${logoProfileSymbol(row.symbol, row.asset_class)}`
-    let logo_url = logoCache.get(cacheKey)
-    if (logo_url === undefined) {
-      try {
-        const lookup = logoProfileSymbol(row.symbol, row.asset_class)
-        if (row.asset_class === 'crypto') {
-          logo_url = await coingeckoCryptoLogo(lookup)
-        } else {
-          const profile = await finnhubProfile(lookup, row.asset_class)
-          logo_url = String(profile.logo || '')
-        }
-      } catch {
-        logo_url = ''
-      }
-      logoCache.set(cacheKey, logo_url)
-    }
-    out.push({ ...row, logo_url })
-  }
-  return out
+  const enriched = await enrichSearchResultsForPicker(results)
+  return enriched
 }
 
 export async function finnhubProfile(symbol: string, assetClass: MarketAssetClass) {

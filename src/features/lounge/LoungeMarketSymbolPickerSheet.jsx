@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  LOUNGE_MARKET_EMBED_MAX,
-  formatMarketCap,
-  formatMarketChangePct,
-  formatMarketPrice,
-  parseCaptionMarketWindowClient,
-} from '../../utils/loungeMarketCaptionParse.js'
+import { LOUNGE_MARKET_EMBED_MAX, parseCaptionMarketWindowClient } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketPreview, loungeMarketSearch } from '../../utils/loungeMarketApi.js'
+import LoungeMarketSearchResultRow from './LoungeMarketSearchResultRow.jsx'
 
 /**
  * @param {{
@@ -110,7 +105,19 @@ export default function LoungeMarketSymbolPickerSheet({
         return
       }
       setErr('')
-      const preview = await loadPreview(row)
+      const hasSearchQuote = row?.price != null && Number.isFinite(Number(row.price))
+      const preview = hasSearchQuote
+        ? {
+            display_symbol: row.display_symbol || row.symbol,
+            name: row.name || row.description || row.symbol,
+            exchange: row.exchange || row.type || '',
+            logo_url: row.logo_url || row.logo || '',
+            market_cap: row.market_cap ?? null,
+            currency: row.currency || 'USD',
+            price: row.price,
+            change_pct: row.change_pct,
+          }
+        : await loadPreview(row)
       onChange([
         ...selected,
         {
@@ -209,47 +216,16 @@ export default function LoungeMarketSymbolPickerSheet({
             {results.map((row) => {
               const key = `${row.asset_class}:${row.symbol}`.toLowerCase()
               const picked = selectedKeys.has(key)
-              const preview = previewByKey[key] || row
-              const changePct = Number(preview?.change_pct ?? preview?.quote?.change_pct)
-              const up = Number.isFinite(changePct) ? changePct >= 0 : true
               return (
                 <li key={key}>
                   <button
                     type="button"
                     onClick={() => void toggleRow(row)}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left touch-manipulation ${
+                    className={`flex w-full items-center rounded-xl px-3 py-2.5 text-left touch-manipulation ${
                       picked ? 'bg-cyan-500/10 ring-1 ring-cyan-500/40' : 'hover:bg-zinc-900'
                     }`}
                   >
-                    {(preview?.logo_url || row.logo_url || row.logo) ? (
-                      <img
-                        src={preview?.logo_url || row.logo_url || row.logo}
-                        alt=""
-                        className="h-9 w-9 shrink-0 rounded-full object-cover bg-zinc-800"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
-                        {(preview?.display_symbol || row.symbol || '?').slice(0, 2)}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold text-zinc-100">
-                        ${preview?.display_symbol || row.display_symbol || row.symbol}
-                        <span className="ml-2 text-xs font-medium text-zinc-500">
-                          {preview?.exchange || row.exchange || row.asset_class}
-                        </span>
-                      </div>
-                      <div className="truncate text-xs text-zinc-500">{preview?.name || row.description}</div>
-                      <div className="text-[11px] text-zinc-600">Mkt cap {formatMarketCap(preview?.market_cap)}</div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-sm font-semibold tabular-nums text-zinc-100">
-                        {formatMarketPrice(preview?.price ?? preview?.quote?.price)}
-                      </div>
-                      <div className={`text-xs font-semibold tabular-nums ${up ? 'text-lv-green' : 'text-lv-red'}`}>
-                        {formatMarketChangePct(changePct)}
-                      </div>
-                    </div>
+                    <LoungeMarketSearchResultRow row={row} />
                   </button>
                 </li>
               )

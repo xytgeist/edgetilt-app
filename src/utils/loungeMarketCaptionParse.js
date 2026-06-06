@@ -284,19 +284,19 @@ export function formatMarketCap(n) {
   return `$${Math.round(v).toLocaleString()}`
 }
 
-/** Lounge market prices always display in USD. @param {number} price */
+/** Lounge market prices always display in USD to the cent. @param {number} price */
 export function formatMarketPrice(price) {
   const v = Number(price)
   if (!Number.isFinite(v)) return '—'
-  const maxFrac = v >= 100 ? 2 : v >= 1 ? 4 : 6
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      maximumFractionDigits: maxFrac,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(v)
   } catch {
-    return `$${v.toFixed(maxFrac)}`
+    return `$${v.toFixed(2)}`
   }
 }
 

@@ -24,6 +24,16 @@ export type YahooStockQuote = {
   as_of: string
 }
 
+export type YahooPickerRow = {
+  name: string
+  exchange: string
+  logo: string
+  price: number | null
+  change_pct: number | null
+  market_cap: number | null
+  currency: string
+}
+
 function yahooTicker(symbol: string): string {
   const bare = String(symbol || '').trim().toUpperCase()
   const dot = bare.indexOf('.')
@@ -36,11 +46,11 @@ const YAHOO_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (compatible; LVSlotPro/1.0; +https://lvslotpro.com)',
 }
 
-async function yahooChartMeta(symbol: string): Promise<Record<string, unknown> | null> {
-  const ticker = yahooTicker(symbol)
-  if (!ticker) return null
+async function yahooChartMetaRaw(ticker: string): Promise<Record<string, unknown> | null> {
+  const sym = String(ticker || '').trim()
+  if (!sym) return null
 
-  const url = new URL(`${YAHOO_CHART}/${encodeURIComponent(ticker)}`)
+  const url = new URL(`${YAHOO_CHART}/${encodeURIComponent(sym)}`)
   url.searchParams.set('range', '1d')
   url.searchParams.set('interval', '1d')
   url.searchParams.set('includePrePost', 'false')
@@ -56,6 +66,23 @@ async function yahooChartMeta(symbol: string): Promise<Record<string, unknown> |
   }
 }
 
+async function yahooChartMeta(symbol: string): Promise<Record<string, unknown> | null> {
+  const ticker = yahooTicker(symbol)
+  if (!ticker) return null
+  return yahooChartMetaRaw(ticker)
+}
+
+/** Full symbol first (e.g. SFTB.NE), then US-root fallback — for picker rows. */
+async function yahooChartMetaPicker(symbol: string): Promise<Record<string, unknown> | null> {
+  const bare = String(symbol || '').trim().toUpperCase()
+  if (!bare) return null
+  let meta = await yahooChartMetaRaw(bare)
+  if (meta) return meta
+  const stripped = yahooTicker(bare)
+  if (stripped !== bare) meta = await yahooChartMetaRaw(stripped)
+  return meta
+}
+
 function yahooExchangeLabel(meta: Record<string, unknown>): string {
   const full = String(meta.fullExchangeName || '').trim()
   if (full) return full
@@ -63,6 +90,22 @@ function yahooExchangeLabel(meta: Record<string, unknown>): string {
   if (short === 'NYQ') return 'NYSE'
   if (short === 'NMS' || short === 'NGM' || short === 'NCM') return 'NASDAQ'
   return short || 'US'
+}
+
+function yahooPickerChangePct(meta: Record<string, unknown>, price: number): number | null {
+  let changePct = Number(meta.regularMarketChangePercent)
+  if (Number.isFinite(changePct)) {
+    // Some responses use a ratio (0.012) instead of percent (1.2).
+    if (price > 0 && Math.abs(changePct) > 0 && Math.abs(changePct) < 0.5) {
+      changePct *= 100
+    }
+    return changePct
+  }
+  const prev = Number(meta.chartPreviousClose ?? meta.previousClose)
+  if (Number.isFinite(price) && Number.isFinite(prev) && prev > 0) {
+    return ((price - prev) / prev) * 100
+  }
+  return null
 }
 
 /** Headline quote when Finnhub `/quote` returns 403 or empty. */
@@ -78,6 +121,38 @@ export async function yahooStockQuote(symbol: string): Promise<YahooStockQuote |
     change: Number.isFinite(change) ? change : 0,
     change_pct: Number.isFinite(changePct) ? changePct : 0,
     as_of: new Date().toISOString(),
+  }
+}
+
+/** Picker/search row — one chart call for name, exchange, logo, price, change, mcap. */
+export async function yahooStockPickerRow(symbol: string): Promise<YahooPickerRow | null> {
+  const bare = String(symbol || '').trim().toUpperCase()
+  const meta = await yahooChartMetaPicker(symbol)
+  if (!meta) return null
+  const name =
+    String(meta.longName || meta.shortName || yahooTicker(symbol)).trim() || yahooTicker(symbol)
+  const currency = String(meta.currency || 'USD').trim().toUpperCase() || 'USD'
+  const price = Number(meta.regularMarketPrice)
+  const changePct = yahooPickerChangePct(meta, price)
+  const cap = Number(meta.marketCap)
+  let logo = String(meta.logoUrl || meta.companyLogoUrl || '').trim()
+  if (!logo) {
+    const root = yahooTicker(bare)
+    if (root && root !== bare) {
+      const rootMeta = await yahooChartMetaRaw(root)
+      if (rootMeta) {
+        logo = String(rootMeta.logoUrl || rootMeta.companyLogoUrl || '').trim()
+      }
+    }
+  }
+  return {
+    name,
+    exchange: yahooExchangeLabel(meta),
+    logo,
+    price: Number.isFinite(price) && price > 0 ? price : null,
+    change_pct: changePct,
+    market_cap: Number.isFinite(cap) && cap > 0 ? cap : null,
+    currency,
   }
 }
 

@@ -25,19 +25,6 @@ export function loungeComposerFooterPaddingBottom(overlapPx, safeBottomPx, { ios
   return 'max(0.625rem, env(safe-area-inset-bottom))'
 }
 
-/** Synchronous visualViewport keyboard overlap read (for layout effects / scroll handlers). */
-export function readLoungeKeyboardOverlapPx() {
-  if (typeof window === 'undefined') return 0
-  const vv = window.visualViewport
-  if (!vv) return 0
-  try {
-    const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-    return Number.isFinite(overlap) ? overlap : 0
-  } catch {
-    return 0
-  }
-}
-
 export function useLoungeIosSafeBottomPx(active = LOUNGE_IOS) {
   const [px, setPx] = useState(10)
   useEffect(() => {
@@ -73,7 +60,12 @@ export function useLoungeKeyboardOverlapPx(active = true, options = {}) {
     const vv = window.visualViewport
     if (!vv) return undefined
     const sync = () => {
-      setTargetPx(readLoungeKeyboardOverlapPx())
+      try {
+        const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        setTargetPx(Number.isFinite(overlap) ? overlap : 0)
+      } catch {
+        setTargetPx(0)
+      }
     }
     sync()
     vv.addEventListener('resize', sync)

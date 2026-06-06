@@ -2,66 +2,28 @@
 
 **Ryan** — use this **after a restart or any new Cursor chat** so the session starts pointed the right way. Theo does not remember yesterday; **the repo and `AGENTS.md` are the source of truth.**
 
+**Do not trim for size:** **`docs/test-buildout-backlog.md`** (test SQL, smoke, Update log) and **`docs/production-rollout-checklist.md`** (prod replay) hold everything that must survive across sessions — including the **~95% of the app built on test but not yet on production**. This file is **ephemeral** session context only.
+
 ## What you do (quick)
 
-1. **Skim** the bracketed lines in both paste sections below and fill in anything that changed (branch, Supabase target, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — on `test`, want to finish the upload bar.*).
-3. **Copy from *Copy-only* at the bottom:** start at the line **“The agent should treat…”** and drag through the last line you need, then **paste into chat** (or right after your hello). Same payload as *Paste this block* above — no instructions mixed in.
+1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — on `test`, want to finish thread compose smoke.*).
+3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
 
 ---
 
-## Paste this block into Cursor
-
-_(Same payload as **Copy-only** at the bottom — kept here so you can edit one place and sync the duplicate.)_
+## Copy into chat
 
 The agent should treat the following as **standing instructions for this session** (full wording and examples live at the top of **`AGENTS.md`**):
 
-- **Names:** You are **Theo** (human-style assistant name). The maintainer is **Ryan** — address him by name; do **not** call him “the user” or “user.”
-- **Voice:** Confident bestie energy; playful roasts / trash talk OK when it’s clearly affectionate — **get serious** for security, correctness, or risky merges. Full wording: **`AGENTS.md`** → *People & naming* (`AGENT_RULE_RYAN_VOICE`).
+- **Names:** You are **Theo** (human-style assistant name). The maintainer is **Ryan** — address him by name; do **not** call him “the user” or “user.” You are Ryan's teammate and friend. Ryan is the CEO and you are the CTO of a company building **Edge**, a social platform for risk takers (AP slots, poker, table games, day traders, investors, crypto, sports bettors, etc.). Banter and sarcastic trash talk are fine — especially when one of you does something stupid.
+- **Voice:** Confident bestie energy; playful roasts OK when clearly affectionate — **always get serious** for security, correctness, risky merges, and keeping good notes/comments. Full wording: **`AGENTS.md`** → *People & naming* (`AGENT_RULE_RYAN_VOICE`).
 - **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
+- **Blast radius:** Before landing a change, tell Ryan **every other surface** it will affect (shared CSS classes, reused components, cross-feature imports) — not only the file or feature he named.
 - **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
-- **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning* (includes the **Lounge unmount vs Cloudflare Stream uploads** example).
-- **Light / dark UI:** If Ryan says **light mode only** or **dark mode only**, scope the change to that mode only — do not leak into the other unless he asked or you confirm first. See **`AGENTS.md`** → *LIGHT MODE vs DARK MODE* (`AGENT_RULE_THEME_MODE_ONLY`).
-
----
-
-**Branch:** `test` _(or `main`, etc.)_
-
-**Supabase:** **test** project _(or "local only" / "prod read-only" — say what you mean)_
-
-**Goal:** _[one line: what you want done this session]_
-
-**Start by reading:** `AGENTS.md` and _[pick one: `docs/social-feed-roadmap.md` | `docs/test-buildout-backlog.md` | `docs/frontend-architecture.md`]_ — if unsure, use **`AGENTS.md`** + **`docs/frontend-architecture.md`**, then propose a plan.
-
----
-
-**Optional add-ons** (delete if not needed)
-
-- **Lounge images (Cloudflare R2):** **`lvslotpro.com`** zone on Cloudflare; bucket **`lounge-media`** + test subdomain **`media-test.lvslotpro.com`**; Edge secrets **`LOUNGE_CF_R2_*`** on test; deploy **`lounge-cf-r2-direct-upload`**, **`lounge-cf-r2-delete-object`**, **`lounge-cf-r2-delete-orphan`**; Vercel **`VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL`** + **`VITE_LOUNGE_CF_IMAGE_RESIZE=false`** (Free zone). Legacy migrate: **`scripts/migrate-lounge-feed-to-r2.mjs`**. Cache backfill: **`scripts/backfill-r2-cache-control.mjs`**. See **`docs/test-buildout-backlog.md`** Edge row + **`supabase/functions/lounge-cf-r2-direct-upload/README.md`**.
-- **Lounge video (Cloudflare Stream):** run **`supabase/lounge_feed_post_stream_video.sql`** on the Supabase project; set Edge secrets **`CLOUDFLARE_ACCOUNT_ID`** and **`CLOUDFLARE_STREAM_API_TOKEN`**; deploy to **test** (`--project-ref jtjgtucumuoswnbauxry`) with  
-  `supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucumuoswnbauxry`,  
-  `supabase functions deploy lounge-cf-stream-delete-video --project-ref jtjgtucumuoswnbauxry`,  
-  `supabase functions deploy lounge-cf-stream-delete-orphan --project-ref jtjgtucumuoswnbauxry`, and  
-  `supabase functions deploy lounge-cf-stream-purge-pending-uploads --project-ref jtjgtucumuoswnbauxry`
-- **Lounge Stream (feed):** autoplay coordinator + **prefetch-band staging** + **hero expand** in **`LoungePostStreamVideo.jsx`** + **`LoungeFeedVideoAutoplayContext.jsx`** / **`loungeFeedVideoAutoplayStore.js`**; feed **40** posts/page in **`AppShell.jsx`**; quote repost **`z-[100]`** vs post detail **`z-[98]`** (profile sheet **`z-[97]`**) — see **`AGENTS.md`** quick anchors and **`docs/test-buildout-backlog.md`** smoke 11 / 14.
-- **Lounge post threads:** **`LoungeThreadComposeSheet.jsx`** + SQL **`20260608140000`**–**`190000`**; **`LoungeComposerMediaToolbar.jsx`** split image/video; smoke checklist **Lounge thread compose sheet UX** in backlog — see **Last session recap (Jun 8–9 2026)** below.
-- **Lounge FAB wheel (nav):** primary nav = **`LoungeDockArcCarouselPrototype`**; **`LoungeDockFooterBar`** disabled; long-press reposition + **1s** click-through guard; chip-heart likes + share in **⋯** menu — **`AGENTS.md`** anchors, roadmap Phase B FAB table, backlog smoke **§14** (test through commit **`2231883`**).
-- No prod writes / no commits / PR only: _[say which]_
-- Context: _[link, path, or "decision already in backlog heading …"]_
-
----
-
-## Copy-only
-
-The agent should treat the following as **standing instructions for this session** (full wording and examples live at the top of **`AGENTS.md`**):
-
-- **Names:** You are **Theo** (human-style assistant name). The maintainer is **Ryan** — address him by name; do **not** call him “the user” or “user.” Also, you are not an assistant, you are Ryan's teammate and friend. Ryan is the CEO and you are the CTO of a company that is building Edge, a social platform for a community of risk takers in all aspects of life (advantage play slots, poker players, advantage play table games, stock day traders, stock investors, crypto traders, shitcoiners, bitcoiners, sports bettors, etc). You banter a lot and talk shit to eachother sarcastically. Especially when one of you do something stupid. 
-- **Voice:** Confident bestie energy; playful roasts / trash talk OK when it’s clearly affectionate — ALWAYS **get serious** for security, correctness, risky merges, and keeping good notes/comments. Full wording: **`AGENTS.md`** → *People & naming* (`AGENT_RULE_RYAN_VOICE`).
-- **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
-- **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
-- **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning* (includes the **Lounge unmount vs Cloudflare Stream uploads** example).
+- **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning*.
 - **Light / dark UI:** If Ryan says **light mode only** or **dark mode only**, scope the change to that mode only — do not leak into the other unless he asked or you confirm first. See **`AGENTS.md`** → *LIGHT MODE vs DARK MODE* (`AGENT_RULE_THEME_MODE_ONLY`).
 
 ---
@@ -72,195 +34,34 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal:** _[one line: what you want done this session]_
 
-**Start by reading:** `AGENTS.md`, `docs/test-buildout-backlog.md`, `docs/production-rollout-checklist.md` (§3.5 R2), then propose a plan.
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (Update log tail + open smoke). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — most migrations/Edge/env steps are **test-validated only** until replayed on prod (`wedrhwtsxifbnnbgxdkm`).
+
+**Optional add-ons** (delete lines you do not need)
+
+- Session focus: _[e.g. thread compose smoke, apply `20260608210000`, chat spinner assets]_
+- No prod writes / no commits / PR only: _[say which]_
+- Context: _[link, path, or "see backlog Update log YYYY-MM-DD"]_
 
 ---
 
-## Last session recap (Jun 8–9 2026, branch `test`) — PICK UP HERE
+## Pick up here (Jun 2026, branch `test`)
 
-### Shipped on `test` (commits — code pushed; SQL may still need Ryan on test)
+**Canonical detail:** **`docs/test-buildout-backlog.md`** Update log (2026-06-05 through 2026-06-09) + open checkboxes. **Prod mirror:** **`docs/production-rollout-checklist.md`** §2–§5 — do not rely on this section for migration order.
 
-| Commit | Area | Notes |
-|--------|------|-------|
-| **`8b7d1d2`** | **X-style thread compose** | Full-screen **`LoungeThreadComposeSheet`** — category pills, avatar connectors, part numbers, gray past parts. |
-| **`24dedcb`** | **Thread failure recovery** | Failed publish restores all part media; partial publish resume via submit-job snapshot. |
-| **`e31d72c`** | **Thread compose polish** | Glass header + keyboard toolbar; scroll pin active part; **`LoungeComposerMediaToolbar`** split image/video on all composers; media/GIF without keyboard in thread. |
-| **`ad8b0ca`** | **Load crash fix** | **`handleDetailCommentEditMediaInputChange`** TDZ — comment-edit media slot init order in **`SocialFeed.jsx`**. |
-| **`8b32619`** | **Empty feed → thread focus** | No caption → 2 parts, focus **part 1**; seeded caption → focus **part 2**. |
+### Active (likely next)
 
-**Earlier same sprint (Jun 8):** thread SQL **`20260608140000`**–**`190000`** — 320 cap, parts as **`feed_comments`**, drafts, feed timeline repair, per-part media, quote repost on parts; GIF dedupe, part edit menu, **`mediaPrep`** upload bar. See backlog Update log **2026-06-08** rows.
+- **Lounge thread compose** — code on `test`; Ryan smoke **pending** (keyboard toolbar, split image/video, retry restores all part media, no load crash).
+- **Thread SQL on test** — if not applied, run in order through **`20260608210000_lounge_post_drafts_thread_part_media.sql`** (after **`20260608140000`** … **`20260608190000`**); see backlog Update log for each step.
+- **Thread compose iOS** — after media pick, options bar can sit **behind keyboard** (parked).
 
-### Apply on test Supabase (if not already)
+### Recent chat (Jun 5, on `test`)
 
-Run in order: **`20260608140000`** → **`20260608150000`** → **`20260608160000`** → **`20260608170000`** (then **refresh feed**) → **`20260608180000`** → **`20260608190000`**.
+- Video prep bubble + chasing-arc spinner (`ChatVideoPrepBubble`, `chatRouletteChasingArc.js`); YouTube embed; dark chat glass → zinc (side effect: lounge image lightbox nav uses same glass class).
+- **Local only (not committed):** `public/variable-speed-chasing-spinner*.gif`; modified `roulette-spinner-wheel.png`; untrimmed matte PNG.
+- Redeploy **`lounge-chat`** on test if peers still see wrong video prep timeline order (`clientCreatedAt` on `send_message`).
 
-### Smoke (pending Ryan sign-off)
+### Still open (see backlog — not repeated here)
 
-- Empty feed caption → **Start thread** → part 1 focused, part 2 visible; typed caption → focus part 2.
-- Keyboard up → add part / type / attach media → active part stays above toolbar.
-- Image / video / GIF in thread compose → picker opens, **keyboard stays down**.
-- Split image/video on feed, detail comment, quote, edit composers.
-- Fail mid-upload → **Retry** restores all part media.
-- Load Lounge — no white screen (comment-edit regression).
+- Link preview + group-delete smoke sign-offs; Play Logbook SQL on test if needed; **Bankroll Risk Advisor** — move card higher in Phoenix/Buffalo/MHB (+ any layout tweaks Ryan still wants).
 
-**Key files:** `LoungeThreadComposeSheet.jsx`, `LoungeComposerMediaToolbar.jsx`, `SocialFeed.jsx`, `loungePostSubmitJob.js`, `loungeThreadComposeMedia.js`, `loungeThreadComposeVideoPrep.js`, `index.css`.
-
-**Docs:** **`docs/test-buildout-backlog.md`** (checkbox + Update log **2026-06-09**), **`docs/social-feed-roadmap.md`** (Phase D4), **`docs/frontend-architecture.md`**, **`AGENTS.md`**.
-
----
-
-## Last session recap (Jun 2–5 2026, branch `test`)
-
-### Shipped on `test` (commits — code pushed; SQL/Edge may still need Ryan on test)
-
-| Commit | Area | Notes |
-|--------|------|-------|
-| **`8ac92a1`** | **Link preview cards** | Chat + Lounge OG unfurl; migrations **`20260604180000`**, **`20260604180100`**; Edge **`lounge-link-unfurl`**; **`link_preview`** jsonb on messages/posts/comments; **`ChatLinkPreviewCard`**, **`LoungeLinkPreviewBlock`**. |
-| **`3addcf3`** | **Link preview polish** | Brand tint (`accent_color` / theme-color / domain map / favicon sample — skip Google favicon CORS); **one chat bubble** (caption + card); post detail **`link_preview`**; await attach on post/comment submit. **Redeploy `lounge-link-unfurl`** on test for server **`accent_color`**. |
-| **`10f9a0e`** | **Group delete + cleanup** | Migration **`20260605120000_chat_group_delete.sql`** — empty group auto-delete trigger + **`chat_delete_group`** RPC; **`ChatGroupSettingsSheet`** **Delete Group for Everyone** (owner/admin). Removed Lounge **layout-test** harness (`loungeLayoutTestPost.js`, Chat **Layout test** button). **`loungeCaption.jsx`** — bare domains (`x.com`) link-colored via **`splitTextWithLinks`** (`linkifyText.jsx`). |
-
-### Apply on test Supabase (before smoke)
-
-1. **`20260604180000_link_previews_chat_and_lounge.sql`**
-2. **`20260604180100_chat_messages_rpc_link_preview.sql`** — do **not** re-run **`20260601160000`** after this (superseded body).
-3. **`20260605120000_chat_group_delete.sql`**
-4. Deploy: **`supabase functions deploy lounge-link-unfurl`** (+ redeploy **`lounge-chat`** if send-path previews missing).
-
-### Smoke (not signed off in backlog yet)
-
-- Chat: URL-only message → single bubble with card; link + text → one bubble; brand pill tint.
-- Lounge: post/comment with `kalshi.com` / `x.com` — caption links sky/orange/cyan; post detail preview card.
-- Group: owner **Delete Group for Everyone**; last member **Leave** → room gone; remove all members then leave → room gone.
-
-### Older open items (still valid)
-
-- **Bankroll Risk Advisor** — move card higher in Phoenix/Buffalo/MHB (see May 28 recap below).
-- **Play Logbook** — SQL chain on test if not already applied (May 29 recap).
-
-**Docs:** **`docs/test-buildout-backlog.md`** Update log + chat sections; **`AGENTS.md`** quick anchors (link previews, group delete).
-
----
-
-## Last session recap (May 29 2026, branch `test`)
-
-### Next big feature — Play Logbook (v1 built 2026-05-29)
-
-Shipped on **`test`** (code only until SQL applied):
-
-- **Slots → Logbook** — LOG tab (capture + custom templates) + ANALYZE tab (derived stats)
-- **SQL:** run **`supabase/play_logbook.sql`** or migration **`20260529120000_play_logbook.sql`** on test Supabase
-- **Phase 3 shipped (code):** calculator pre-fill, capture casino (active bankroll session casino or GPS nearest — not a DB link to session), CSV export
-
-See **`docs/test-buildout-backlog.md`** → *Planned (Play Logbook)*.
-
-### Shipped — Quick links (v1, 2026-05-29)
-
-Title-bar shortcuts (max **2**, empty by default). Per-page **Quick link** toggle on Calcs home, Calendar, Bankroll, Logbook, AP Guides. Lounge dock panels reserve extra logo width for **×** close. See backlog *Shipped (Quick links)*.
-
-### Also open from May 28
-
-- **Bankroll Risk Advisor** — move card **higher** in Phoenix/Buffalo/MHB layouts (still at bottom after disclaimer)
-- **"A few adjustments"** Ryan had in mind for Risk Advisor — ask if still relevant
-
----
-
-## Last session recap (May 28 2026, branch `test`)
-
-### What we were in the middle of
-
-We built the **Bankroll Risk Advisor** section for the calculators and Ryan had "a few adjustments" in mind when he had to switch computers.
-
-### What shipped today (all on `test`, all pushed)
-
-| Commit | Area | Notes |
-|--------|------|-------|
-| `c055a47` | **Trend chart — tappable HTML tooltips** | Canvas tooltip replaced with real DOM card. Single tap on historical point → session P/L + cumulative P/L + "View details" opens `SessionDetailModal`. Tap fan area → projected percentile callout (p10–p90 + RoR at that horizon step). Full-screen fixed backdrop dismisses on any outside tap. Light/dark mode aware via `isDark` (`matchMedia`). |
-| `7794697` | **Advanced Metrics — collapsible** | Card starts collapsed (chevron toggle). No behavior change to the 15 metrics themselves. |
-| `1554c69` | **Monte Carlo off by default** | Toggle still works; just starts off. |
-| `d5aa6bb` | **BankrollRiskAdvisor + calculator wiring** | New `src/features/calculators/BankrollRiskAdvisor.jsx`; wired into Phoenix Link, Buffalo Link, MHB. `supabaseClient` threaded: AppShell → CalculatorsTab → calculators. Stack Up Pays skipped (no max exposure metric yet). |
-
-### BankrollRiskAdvisor — how it works
-
-- Reads `bankroll_profiles.overall_bankroll` for the logged-in user
-- Risk % stepper (1–5%, default 2%, persisted in `localStorage` key `lvsp:bankrollRiskPct`)
-- Shows: Bankroll / Risk Budget / Play Cost stat tiles + a coverage progress bar
-- Fully funded → "✓ You're fully funded for this play" in green
-- Underfunded → "Consider selling **$X** of action" + **Need Help?** button
-- **Need Help modal**: pre-fills game, counter, bet size (or meter/MHB fields), max cost, your coverage %, looking to sell %. Free-text comment field. On Send: looks up admin by `role='admin'`, calls `lounge-chat` Edge `open_dm` → `send_message`. Success state shows ✓.
-
-### Known TODO from this session
-
-- **Move `BankrollRiskAdvisor` higher** in each calculator layout. Currently it renders at the very bottom (after `CalculatorDisclaimer`), which requires scrolling to reach. Ryan noticed this. Needs to move up to right below the main EV / Max Exposure output cards. Do this for Phoenix Link, Buffalo Link, and MHB.
-- **"A few adjustments"** Ryan had in mind for the Bankroll Risk section — ask him at the start of next session.
-
----
-
-## Last session recap (May 23 2026, branch `test`)
-
-### Lounge notifications + push (latest on `test`)
-
-| Commit | Area | Deploy / smoke |
-|--------|------|----------------|
-| **`309673a`** | Notification cards — interaction rows (comment/reply/mention/quote) via **`LoungeNotificationInteractionBar.jsx`** | Client only |
-| **`25adae1`** | **Push tap clears badges** — RPC **`lounge_activity_mark_push_opened`**, Edge payload IDs, **`push-sw.js`**, **`lounge-push-opened`** in **`SocialFeed`** | Ryan **PASSED** smoke **§21b** badge-on-tap (test) |
-| **`79288cb`** | Settings **Account** section (edit profile, email, password, membership stub) | Client only |
-| **`a8b1508`** | Klipy GIF picker — locked sheet height during search | Client only |
-| **`5471388`** | Pull-to-refresh below composer | Client only |
-
-**Phase H open on test:** H1 in-app notifications smoke **§21** pending; H2 push **§21b** **PASSED** (incl. badge-on-tap @ **`25adae1`**); H3 batching **§21c** pending Ryan sign-off (**`20260523170000`**).
-
-**Before prod:** `docs/production-rollout-checklist.md` §4 Edge Functions + activity migrations in order.
-
----
-
-## Last session recap (May 18–19 2026, branch `test`)
-
-### Lounge media lightbox (May 18–19)
-
-| Area | Status |
-|------|--------|
-| **Unified chrome** | **`LoungeStreamLightboxContext.jsx`** + **`loungeStreamLightboxRenderers.jsx`** — Stream + image/GIF lightboxes share one provider path (feed, detail, comments, profile) @ **`4cba554`** |
-| **Stream polish** | Pill controls, mute, landscape insets, Follow placement by orientation, author row spacing + **2-line caption** @ **`7591f8d`** |
-| **Image pinch-zoom** | **`loungeLightboxImageZoom.js`** — pinch + pan on still/GIF lightbox; swipe dismiss preserved at 1× @ **`9b0f9b5`** |
-| **Comment repost fix** | Plain repost from comment detail + thread navigation + feed hydration @ **`b782e69`** |
-
-Ryan sign-off **PASSED** smoke **§17** + comment-repost (2026-05-19).
-
-### Cloudflare R2 feed images (May 19 — test fully wired)
-
-| Area | Status |
-|------|--------|
-| **Cloudflare** | **`lvslotpro.com`** zone; bucket **`lounge-media`**; **`media-test.lvslotpro.com`**; CORS includes **`Cache-Control`** |
-| **Supabase Edge** | **`lounge-cf-r2-direct-upload`**, **delete-object**, **delete-orphan**, **migrate-lounge-feed**, **backfill-cache-control** on **`jtjgtucumuoswnbauxry`** |
-| **Migration** | **68** legacy **`lounge-feed`** objects → R2; **0** remaining Supabase URLs |
-| **Cache headers** | **`public, max-age=31536000, immutable`** on upload + backfill (**69** objects) |
-| **Smoke** | Ryan **PASSED** upload, delete, post-migration feed, CORS upload |
-
-### Phase G search + DB (May 18)
-
-- **`20260518160000_lounge_search_phase_g.sql`** — auth-gated **`lounge_search_posts`** / **`lounge_search_profiles`**; client **`loungeSearchApi.js`** + dock search panel.
-- Ryan sign-off **PASSED** smoke **§16** (2026-05-19).
-
-### Stream poster WebP on R2 (May 19)
-
-- **`93dcc3f`** — new video posters → **WebP** on **`media-test.lvslotpro.com`**. Ryan **PASSED** (2026-05-19).
-
-### Lounge UX polish (May 19 — latest on `test`)
-
-| Commit | Area | Ryan |
-|--------|------|------|
-| **`f6a975e`** | FAB hides during image/GIF lightbox (not only Stream hero) | **PASSED** |
-| **`59a26bd`** | Direct comment entry: prefetch + panel enter + smooth scroll; title bar locked | **PASSED** |
-| **`dd02294`** | Profile unfollow syncs feed follow pills + Following filter same session | **PASSED** |
-
-### Other May 18 (already on `test`)
-
-- **Phase C:** **`/u/:handle`** permalink + OG — Ryan **PASSED** @ **`7ce7b44`**
-- **Handle cooldown restored:** **`20260518150000_restore_profile_handle_change_cooldown.sql`**
-- **Rate limit fix:** **`20260518103000_fix_rate_limit_profiles_user_id.sql`**
-
-**Commits through **`dd02294`**. Prod replay: **`docs/production-rollout-checklist.md`** §2 + §3.5 + §4 + §5.
-
-**Still open (non-blocking):** Cloudflare **Pro** for **`/cdn-cgi/image/`**; **`media.lvslotpro.com`** when prod R2 ships; per-tile sound sign-off; final pre-prod gate.
-
-
+**Key files this sprint:** `LoungeThreadComposeSheet.jsx`, `LoungeComposerMediaToolbar.jsx`, `SocialFeed.jsx`, `loungePostSubmitJob.js`, `ChatVideoPrepBubble.jsx`, `src/index.css`.

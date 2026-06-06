@@ -112,7 +112,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
 
   if (!items.length) return null
 
-  const bgOpacity = dismissing ? 0 : Math.max(0, 1 - pullY / 260)
+  const bgOpacity = dismissing ? 0 : 1
   const translateY = dismissing ? 350 : pullY
 
   return createPortal(
@@ -124,8 +124,54 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
         transition: dismissing ? 'background-color 0.22s ease' : undefined,
       }}
     >
+      {/* Chrome stays fixed — only media layer translates on pull-to-dismiss (see ChatVideoLightbox). */}
+      <div className="media-lightbox-status-bar-blend pointer-events-none absolute inset-x-0 top-0 z-[11]" aria-hidden />
       <div
-        className="relative h-full"
+        data-chat-image-lightbox-header
+        className="pointer-events-none absolute inset-x-0 top-0 z-[12]"
+      >
+        <div className="pointer-events-auto flex items-center px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back"
+            className="chat-header-glass media-lightbox-nav-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation transition-opacity active:opacity-70"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {items.length > 1 && (
+        <div
+          data-chat-image-lightbox-footer
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[12]"
+        >
+          <div className="pointer-events-auto flex justify-center gap-1.5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  const el = scrollRef.current
+                  if (el) el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
+                }}
+                className={`h-1.5 rounded-full transition-all touch-manipulation ${
+                  isLight
+                    ? i === activeIdx ? 'w-4 bg-zinc-600' : 'w-1.5 bg-zinc-800'
+                    : i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
+                }`}
+                aria-label={`Go to image ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div
+        className="absolute inset-0 z-0"
         style={{
           transform: `translateY(${translateY}px)`,
           transition: dismissing || pullY === 0 ? 'transform 0.22s ease' : undefined,
@@ -156,51 +202,6 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
             </div>
           ))}
         </div>
-
-        <div className="media-lightbox-status-bar-blend pointer-events-none absolute inset-x-0 top-0 z-[9]" aria-hidden />
-        <div
-          data-chat-image-lightbox-header
-          className="pointer-events-none absolute inset-x-0 top-0 z-10"
-        >
-          <div className="pointer-events-auto flex items-center px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))]">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Back"
-              className="chat-header-glass media-lightbox-nav-btn relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-100 touch-manipulation transition-opacity active:opacity-70"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {items.length > 1 && (
-          <div
-            data-chat-image-lightbox-footer
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
-          >
-            <div className="pointer-events-auto flex justify-center gap-1.5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              {items.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    const el = scrollRef.current
-                    if (el) el.scrollTo({ top: i * el.clientHeight, behavior: 'smooth' })
-                  }}
-                  className={`h-1.5 rounded-full transition-all touch-manipulation ${
-                    isLight
-                      ? i === activeIdx ? 'w-4 bg-zinc-600' : 'w-1.5 bg-zinc-800'
-                      : i === activeIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
-                  }`}
-                  aria-label={`Go to image ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>,
     document.body,

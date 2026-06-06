@@ -2578,13 +2578,13 @@ html.light .chat-composer-ce:empty::before {
 }
 
 /* ── Chat conversation — theme-aware glass / gradient ──────────────────────
- * Dark (default): dark navy translucent glass + dark gradient fade.
+ * Dark (default): zinc-neutral translucent glass + zinc-950 gradient fade.
  * Light: white/pale translucent glass + pale gradient fade.
  * Applied via className so that CSS cascade handles the theme switch;
  * inline styles in the component only carry dynamic values (e.g. height).
  * ─────────────────────────────────────────────────────────────────────── */
 .chat-header-glass {
-  background: rgba(20, 22, 40, 0.25);
+  background: rgba(24, 24, 27, 0.25);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -2600,16 +2600,16 @@ html.light .chat-header-glass {
   /* Feathered throughout — no abrupt band anywhere */
   background: linear-gradient(
     to bottom,
-    rgba(3, 7, 18, 0.78)   0%,
-    rgba(3, 7, 18, 0.70)  12%,
-    rgba(3, 7, 18, 0.60)  24%,
-    rgba(3, 7, 18, 0.48)  36%,
-    rgba(3, 7, 18, 0.36)  47%,
-    rgba(3, 7, 18, 0.24)  57%,
-    rgba(3, 7, 18, 0.14)  67%,
-    rgba(3, 7, 18, 0.06)  76%,
-    rgba(3, 7, 18, 0.02)  86%,
-    rgba(3, 7, 18, 0.005) 94%,
+    rgba(9, 9, 11, 0.78)   0%,
+    rgba(9, 9, 11, 0.70)  12%,
+    rgba(9, 9, 11, 0.60)  24%,
+    rgba(9, 9, 11, 0.48)  36%,
+    rgba(9, 9, 11, 0.36)  47%,
+    rgba(9, 9, 11, 0.24)  57%,
+    rgba(9, 9, 11, 0.14)  67%,
+    rgba(9, 9, 11, 0.06)  76%,
+    rgba(9, 9, 11, 0.02)  86%,
+    rgba(9, 9, 11, 0.005) 94%,
     transparent           100%
   );
 }
@@ -2636,16 +2636,16 @@ html.light .chat-top-gradient {
   -webkit-backdrop-filter: blur(2px) saturate(120%);
   background: linear-gradient(
     to bottom,
-    rgba(3, 7, 18, 0.52)   0%,
-    rgba(3, 7, 18, 0.46)  12%,
-    rgba(3, 7, 18, 0.38)  24%,
-    rgba(3, 7, 18, 0.30)  36%,
-    rgba(3, 7, 18, 0.22)  47%,
-    rgba(3, 7, 18, 0.14)  57%,
-    rgba(3, 7, 18, 0.08)  67%,
-    rgba(3, 7, 18, 0.04)  76%,
-    rgba(3, 7, 18, 0.015) 86%,
-    rgba(3, 7, 18, 0.004) 94%,
+    rgba(9, 9, 11, 0.52)   0%,
+    rgba(9, 9, 11, 0.46)  12%,
+    rgba(9, 9, 11, 0.38)  24%,
+    rgba(9, 9, 11, 0.30)  36%,
+    rgba(9, 9, 11, 0.22)  47%,
+    rgba(9, 9, 11, 0.14)  57%,
+    rgba(9, 9, 11, 0.08)  67%,
+    rgba(9, 9, 11, 0.04)  76%,
+    rgba(9, 9, 11, 0.015) 86%,
+    rgba(9, 9, 11, 0.004) 94%,
     transparent           100%
   );
 }
@@ -2669,7 +2669,7 @@ html.light .chat-info-top-fade {
 }
 
 .chat-menu-glass {
-  background: rgba(20, 22, 40, 0.25);
+  background: rgba(24, 24, 27, 0.25);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -2681,7 +2681,7 @@ html.light .chat-menu-glass {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Thread compose — zinc-neutral glass (sheet is zinc-950; not chat navy). */
+/* Thread compose — zinc-neutral glass (sheet is zinc-950). */
 .lounge-thread-compose-header-glass {
   background: rgba(9, 9, 11, 0.58);
   backdrop-filter: blur(24px) saturate(140%);
@@ -2732,7 +2732,7 @@ html.light.platform-android .lounge-thread-compose-toolbar-glass {
     rgba(250, 250, 250, 0.94);
 }
 
-/* Post / comment detail — zinc-neutral glass (panel is zinc-950; not chat navy). */
+/* Post / comment detail — zinc-neutral glass (panel is zinc-950). */
 .lounge-detail-comment-footer-glass {
   background: rgba(9, 9, 11, 0.58);
   backdrop-filter: blur(24px) saturate(140%);
@@ -2807,7 +2807,7 @@ html.light .lounge-detail-comment-footer-gradient {
 
 /* Inbox long-press menu — extra translucency so the list shows through (portaled). */
 .chat-room-menu-glass {
-  background: rgba(20, 22, 40, 0.12);
+  background: rgba(24, 24, 27, 0.12);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2856,8 +2856,8 @@ html.light .chat-input-glass {
 /* Android: weak backdrop-filter — solid underlay + glass tint (mid between 32/92 and 24/84). */
 html.platform-android .chat-header-glass {
   background:
-    rgba(20, 22, 40, 0.28),
-    rgba(14, 16, 30, 0.88);
+    rgba(24, 24, 27, 0.28),
+    rgba(24, 24, 27, 0.88);
 }
 html.light.platform-android .chat-header-glass {
   background:
@@ -2866,8 +2866,8 @@ html.light.platform-android .chat-header-glass {
 }
 html.platform-android .chat-menu-glass {
   background:
-    rgba(20, 22, 40, 0.28),
-    rgba(14, 16, 30, 0.88);
+    rgba(24, 24, 27, 0.28),
+    rgba(24, 24, 27, 0.88);
 }
 html.light.platform-android .chat-menu-glass {
   background:
@@ -2876,8 +2876,8 @@ html.light.platform-android .chat-menu-glass {
 }
 html.platform-android .chat-room-menu-glass {
   background:
-    rgba(20, 22, 40, 0.16),
-    rgba(14, 16, 30, 0.58);
+    rgba(24, 24, 27, 0.16),
+    rgba(24, 24, 27, 0.58);
 }
 html.light.platform-android .chat-room-menu-glass {
   background:
@@ -2897,7 +2897,7 @@ html.light.platform-android .chat-input-glass {
 
 /* Bottom-sheet glass — used by reactions modal, emoji picker, etc. */
 .chat-sheet-glass {
-  background: rgba(18, 18, 30, 0.72);
+  background: rgba(9, 9, 11, 0.72);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
   border-top: 1px solid rgba(255, 255, 255, 0.10);
@@ -2909,7 +2909,7 @@ html.light .chat-sheet-glass {
   border-top: 1px solid rgba(0, 0, 0, 0.07);
 }
 html.platform-android .chat-sheet-glass {
-  background: rgba(18, 18, 30, 0.88);
+  background: rgba(9, 9, 11, 0.88);
 }
 html.light.platform-android .chat-sheet-glass {
   background: rgba(232, 235, 252, 0.92);

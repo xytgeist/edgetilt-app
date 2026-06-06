@@ -14898,7 +14898,7 @@ export default function SocialFeed({
             {!loungeReadOnly ? (
               <div
                 data-lounge-detail-comment-host
-                className="shrink-0 border-t border-zinc-800/90 bg-zinc-950/95 px-3 pt-2.5 pb-0 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
+                className="lounge-detail-comment-footer-glass relative z-20 shrink-0 px-3 pt-2.5 pb-0"
                 style={{
                   // Keyboard open: `visualViewport` overlap already clears the keyboard — do not add
                   // `env(safe-area-inset-bottom)` here; iOS often keeps ~34px inset while the keyboard is up,
@@ -14915,7 +14915,7 @@ export default function SocialFeed({
                   </div>
                 ) : null}
                 {loungeDetailCommentComposerExpanded ? (
-                  <div className="relative shrink-0 rounded-xl border border-zinc-600/65 bg-zinc-700/55 px-2.5 pt-2 pb-1">
+                  <div className="chat-header-glass relative shrink-0 rounded-2xl px-2.5 pt-2 pb-1">
                     <button
                       type="button"
                       onClick={requestDismissLoungeDetailCommentComposer}
@@ -15156,7 +15156,7 @@ export default function SocialFeed({
                       if (openProfileGateIfNeeded()) return
                       expandAndFocusLoungeDetailCommentComposer()
                     }}
-                    className="flex min-h-10 w-full touch-manipulation items-center rounded-full border border-zinc-600/80 bg-zinc-900/90 px-3 py-2 text-left text-[15px] leading-tight text-zinc-500 [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900 active:bg-zinc-800/90"
+                    className="chat-header-glass flex min-h-10 w-full touch-manipulation items-center rounded-full px-3 py-2 text-left text-[15px] leading-tight text-zinc-500 [-webkit-tap-highlight-color:transparent] active:opacity-80"
                   >
                     {(() => {
                       const firstLine = String(loungeDetailCommentDraft || '')

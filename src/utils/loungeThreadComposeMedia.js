@@ -114,6 +114,24 @@ export function threadPartImageItemsFromSnapshot(part) {
   return items
 }
 
+/** Blob URLs to keep alive while a background draft-save job runs. */
+export function collectThreadComposePartMediaBlobUrls(partMedia) {
+  /** @type {Set<string>} */
+  const urls = new Set()
+  for (const part of Array.isArray(partMedia) ? partMedia : []) {
+    for (const it of part?.imageItems || []) {
+      const p = String(it?.preview || '').trim()
+      if (p.startsWith('blob:')) urls.add(p)
+    }
+    const slot = part?.videoSlot
+    for (const raw of [slot?.preview, slot?.posterUrl]) {
+      const u = String(raw || '').trim()
+      if (u.startsWith('blob:')) urls.add(u)
+    }
+  }
+  return urls
+}
+
 /** Restore a compose video slot from persisted draft Stream fields. */
 export function threadPartVideoSlotFromDraft(streamFields) {
   const uid =

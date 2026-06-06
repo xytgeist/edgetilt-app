@@ -113,6 +113,7 @@ import {
   loungePostDraftThreadParts,
   loungePostDraftValidateComposePartsForSave,
   loungePostDraftValidateComposerVideoSlotForSave,
+  prepareLoungePostDraftPayloadForUpsert,
   upsertLoungePostDraft,
 } from '../../utils/loungePostDraftApi.js'
 import { markLoungeColdBootFeedMounted } from '../../utils/loungeColdBootFeedMounted.js'
@@ -294,6 +295,7 @@ import {
   LOUNGE_POST_THREAD_MAX_PARTS,
 } from '../../utils/loungeCommentLimits.js'
 import {
+  collectThreadComposePartMediaBlobUrls,
   emptyThreadComposePartMedia,
   normalizeThreadComposePartsForSubmit,
   revokeThreadComposePartMediaFull,
@@ -638,6 +640,7 @@ export default function SocialFeed({
   /** Patched after definitions so early `submitQuoteRepost` can call `clearQuoteRepostForPostAttempt` / `runBackgroundLoungePostSubmission` without reordering hooks. */
   const clearQuoteRepostForPostAttemptRef = useRef(/** @type {(opts?: { preserveQuoteVideoPrep?: boolean }) => void} */ (() => {}))
   const runBackgroundLoungePostSubmissionRef = useRef(/** @type {(jobOrSnapshot: unknown) => void} */ (() => {}))
+  const closeThreadComposeImmediateRef = useRef(/** @type {(opts?: object) => void} */ ((opts = {}) => { void opts }))
   const runBackgroundLoungeDetailCommentSubmissionRef = useRef(
     /** @type {(jobOrSnapshot: unknown) => void} */ (() => {}),
   )
@@ -1188,6 +1191,35 @@ export default function SocialFeed({
       preview: String(url),
       remoteUrl: String(url),
     }))
+  }, [])
+
+  const collectComposerDraftBlobUrls = useCallback((imageItems, videoSlot) => {
+    /** @type {Set<string>} */
+    const urls = new Set()
+    for (const it of imageItems || []) {
+      const p = String(it?.preview || '').trim()
+      if (p.startsWith('blob:')) urls.add(p)
+    }
+    for (const raw of [videoSlot?.preview, videoSlot?.posterUrl]) {
+      const u = String(raw || '').trim()
+      if (u.startsWith('blob:')) urls.add(u)
+    }
+    return urls
+  }, [])
+
+  const loungeDraftSaveBlobUrlsRef = useRef(/** @type {Set<string> | null} */ (null))
+
+  const revokeLoungeDraftSaveBlobUrls = useCallback(() => {
+    const urls = loungeDraftSaveBlobUrlsRef.current
+    loungeDraftSaveBlobUrlsRef.current = null
+    if (!urls) return
+    for (const u of urls) {
+      try {
+        URL.revokeObjectURL(u)
+      } catch {
+        // ignore
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -2742,6 +2774,107 @@ export default function SocialFeed({
     ],
   )
 
+  const runBackgroundLoungeDraftSave = useCallback(
+    async (job, opts = {}) => {
+      const payload = job?.payload && typeof job.payload === 'object' ? job.payload : job
+      const videoPrepByPart =
+        job?.videoPrepByPart && typeof job.videoPrepByPart === 'object' ? job.videoPrepByPart : {}
+      const composerVideoPrep = job?.composerVideoPrep ?? null
+      const skipRevokeUrls = opts.skipRevokeUrls instanceof Set ? opts.skipRevokeUrls : null
+      loungeDraftSaveBlobUrlsRef.current = skipRevokeUrls
+
+      const ac = new AbortController()
+      loungePostAbortRef.current = ac
+      loungePostJobRunningRef.current = true
+      bumpLoungeSubmitInFlight(1)
+
+      const threadTotal =
+        Array.isArray(payload.threadCaptions) && payload.threadCaptions.length > 1
+          ? payload.threadCaptions.length
+          : 0
+
+      const syncDraftBar = (info) => {
+        if (ac.signal.aborted) return
+        setLoungePostUploadBar((prev) =>
+          prev
+            ? {
+                ...prev,
+                draftSave: true,
+                progress: typeof info.progress === 'number' ? info.progress : prev.progress,
+                status: String(info.status || prev.status || ''),
+                detail: info.detail != null ? String(info.detail) : prev.detail,
+              }
+            : prev,
+        )
+      }
+
+      setLoungePostUploadBar({
+        mode: 'mediaPrep',
+        draftSave: true,
+        postSubmission: true,
+        progress: 0.04,
+        status: 'Saving draft…',
+        detail: '',
+        threadPartTotal: threadTotal,
+        threadPartPublished: 0,
+      })
+
+      try {
+        const prepared = await prepareLoungePostDraftPayloadForUpsert(supabaseClient, payload, {
+          videoPrepByPart,
+          composerVideoPrep,
+          signal: ac.signal,
+          onProgress: syncDraftBar,
+        })
+        const { data, error } = await upsertLoungePostDraft(supabaseClient, {
+          ...prepared,
+          id: prepared.id || loungeComposerActiveDraftIdRef.current,
+          signal: ac.signal,
+          onProgress: syncDraftBar,
+        })
+        if (error) throw error
+        if (!data) throw new Error('Could not save draft.')
+        setLoungeComposerActiveDraftId(data.id)
+        persistLoungeComposerDraft(
+          data.caption,
+          false,
+          (Array.isArray(data.image_urls) && data.image_urls.length > 0) ||
+            Boolean(data.stream_video_uid),
+          data.gif_url,
+        )
+        await refreshLoungeDraftCount()
+        setLoungePostUploadBar((prev) =>
+          prev ? { ...prev, progress: 1, status: 'Draft saved', detail: '' } : prev,
+        )
+        window.setTimeout(() => {
+          revokeLoungeDraftSaveBlobUrls()
+          dismissLoungePostUploadBarIfIdle()
+        }, 450)
+      } catch (e) {
+        revokeLoungeDraftSaveBlobUrls()
+        if (e?.name === 'AbortError') {
+          setLoungePostUploadBar(null)
+          if (!opts.silent) setPostErr('Draft save canceled.')
+          return
+        }
+        const msg = e instanceof Error ? e.message : 'Could not save draft.'
+        setPostErr(msg)
+        setLoungePostUploadBar(null)
+      } finally {
+        loungePostJobRunningRef.current = false
+        loungePostAbortRef.current = null
+        bumpLoungeSubmitInFlight(-1)
+      }
+    },
+    [
+      bumpLoungeSubmitInFlight,
+      dismissLoungePostUploadBarIfIdle,
+      refreshLoungeDraftCount,
+      revokeLoungeDraftSaveBlobUrls,
+      supabaseClient,
+    ],
+  )
+
   const saveThreadComposeAsServerDraft = useCallback(
     async () => {
       if (loungeReadOnly) {
@@ -2769,6 +2902,7 @@ export default function SocialFeed({
           imageUrls: existingImageUrls,
           imageFiles,
           streamVideoUid: String(rootPart.videoSlot?.streamVideoUid || '').trim(),
+          rootVideoSlot: rootPart.videoSlot ?? null,
           threadPartMedia: loungePostDraftThreadPartMediaInputFromCompose(threadComposePartMedia),
         })
       ) {
@@ -2776,41 +2910,34 @@ export default function SocialFeed({
         return null
       }
       setThreadComposeErr('')
-      try {
-        const { data, error } = await upsertLoungePostDraft(supabaseClient, {
-          id: loungeComposerActiveDraftIdRef.current,
-          threadCaptions,
-          categoryPills: composerCategoryPills,
-          gifUrl,
-          existingImageUrls,
-          imageFiles,
-          videoSlot: rootPart.videoSlot,
-          threadPartMediaInput: loungePostDraftThreadPartMediaInputFromCompose(threadComposePartMedia),
-        })
-        if (error) throw error
-        if (!data) throw new Error('Could not save draft.')
-        setLoungeComposerActiveDraftId(data.id)
-        if (loungePostDraftIsThread(data)) {
-          const parts = loungePostDraftThreadParts(data)
-          setThreadComposeCaptions(parts)
-          setThreadComposePartMedia(loungePostDraftThreadComposePartMedia(data, parts.length))
-        }
-        await refreshLoungeDraftCount()
-        return data
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not save draft.'
-        setThreadComposeErr(msg)
-        return null
+      const skipRevokeUrls = collectThreadComposePartMediaBlobUrls(threadComposePartMedia)
+      const videoPrepByPart = { ...threadComposeVideoPrepByPartRef.current }
+      const payload = {
+        id: loungeComposerActiveDraftIdRef.current,
+        threadCaptions,
+        categoryPills: composerCategoryPills,
+        gifUrl,
+        existingImageUrls,
+        imageFiles,
+        videoSlot: rootPart.videoSlot,
+        threadPartMediaInput: loungePostDraftThreadPartMediaInputFromCompose(threadComposePartMedia),
       }
+      setThreadComposeDiscardOpen(false)
+      closeThreadComposeImmediateRef.current({
+        skipRestoreFeedText: true,
+        skipRevokeUrls,
+        preserveThreadVideoPrep: true,
+      })
+      void runBackgroundLoungeDraftSave({ payload, videoPrepByPart }, { skipRevokeUrls })
+      return { started: true }
     },
     [
       composerCategoryPills,
+      runBackgroundLoungeDraftSave,
       threadComposePartMedia,
       loungeReadOnly,
       openProfileGateIfNeeded,
-      refreshLoungeDraftCount,
       requireLoungeAuth,
-      supabaseClient,
       threadComposeCaptions,
     ],
   )
@@ -2876,6 +3003,34 @@ export default function SocialFeed({
     })
   }, [])
 
+  const clearComposerAfterDraftSaveQueued = useCallback(
+    (skipRevokeUrls) => {
+      setPostText('')
+      setComposerImageItems((prev) => {
+        for (const it of prev) {
+          const p = String(it?.preview || '').trim()
+          if (skipRevokeUrls instanceof Set && skipRevokeUrls.has(p)) continue
+          try {
+            URL.revokeObjectURL(it.preview)
+          } catch {
+            // ignore
+          }
+        }
+        return []
+      })
+      setComposerVideoSlot(null)
+      setComposerMediaUrl('')
+      setComposerPinOnPost(false)
+      composerExpandedRef.current = false
+      composerFoldRevealRef.current = 0
+      setComposerFoldReveal(0)
+      composerFoldedFromFeedScrollRef.current = false
+      setComposerExpanded(false)
+      persistLoungeComposerDraft('', false, false, '')
+    },
+    [],
+  )
+
   const saveComposerAsServerDraft = useCallback(
     async (opts = {}) => {
       if (loungeReadOnly) {
@@ -2901,22 +3056,41 @@ export default function SocialFeed({
           imageUrls: existingImageUrls,
           imageFiles,
           streamVideoUid: String(composerVideoSlot?.streamVideoUid || '').trim(),
+          rootVideoSlot: composerVideoSlot ?? null,
         })
       ) {
         setPostErr('Add caption text, a GIF, or at least one image before saving a draft.')
         return null
       }
       setPostErr('')
+      const skipRevokeUrls = collectComposerDraftBlobUrls(composerImageItems, composerVideoSlot)
+      const composerVideoPrep =
+        composerVideoPrepHandoffRef.current != null
+          ? {
+              handoff: composerVideoPrepHandoffRef.current,
+              spec: composerVideoPrepSpecRef.current,
+            }
+          : null
+      const payload = {
+        id: loungeComposerActiveDraftIdRef.current,
+        caption,
+        categoryPills: composerCategoryPills,
+        gifUrl,
+        existingImageUrls,
+        imageFiles,
+        videoSlot: composerVideoSlot,
+      }
+      if (opts.background !== false) {
+        setComposerDiscardPromptOpen(false)
+        clearComposerAfterDraftSaveQueued(skipRevokeUrls)
+        void runBackgroundLoungeDraftSave(
+          { payload, composerVideoPrep },
+          { skipRevokeUrls, silent: opts.silent === true },
+        )
+        return { started: true }
+      }
       try {
-        const { data, error } = await upsertLoungePostDraft(supabaseClient, {
-          id: loungeComposerActiveDraftIdRef.current,
-          caption,
-          categoryPills: composerCategoryPills,
-          gifUrl,
-          existingImageUrls,
-          imageFiles,
-          videoSlot: composerVideoSlot,
-        })
+        const { data, error } = await upsertLoungePostDraft(supabaseClient, payload)
         if (error) throw error
         if (!data) throw new Error('Could not save draft.')
         setLoungeComposerActiveDraftId(data.id)
@@ -2934,11 +3108,13 @@ export default function SocialFeed({
         return data
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Could not save draft.'
-        setPostErr(msg)
+        if (!opts.silent) setPostErr(msg)
         return null
       }
     },
     [
+      clearComposerAfterDraftSaveQueued,
+      collectComposerDraftBlobUrls,
       composerCategoryPills,
       composerImageItems,
       composerImageItemsFromDraftUrls,
@@ -2949,6 +3125,7 @@ export default function SocialFeed({
       postText,
       refreshLoungeDraftCount,
       requireLoungeAuth,
+      runBackgroundLoungeDraftSave,
       supabaseClient,
     ],
   )
@@ -9267,7 +9444,7 @@ export default function SocialFeed({
           snapshot.savedDraftId || loungeComposerActiveDraftIdRef.current || '',
         ).trim()
         if (publishedDraftId) {
-          await deleteLoungePostDraft(supabaseClient, publishedDraftId)
+          await deleteLoungePostDraft(supabaseClient, publishedDraftId, { retainStreamAssets: true })
           setLoungeComposerActiveDraftId(null)
           await refreshLoungeDraftCount()
         }
@@ -10215,7 +10392,7 @@ export default function SocialFeed({
             snapshot.savedDraftId || loungeComposerActiveDraftIdRef.current || '',
           ).trim()
           if (publishedDraftId) {
-            await deleteLoungePostDraft(supabaseClient, publishedDraftId)
+            await deleteLoungePostDraft(supabaseClient, publishedDraftId, { retainStreamAssets: true })
             setLoungeComposerActiveDraftId(null)
             await refreshLoungeDraftCount()
           }
@@ -10621,7 +10798,7 @@ export default function SocialFeed({
       composerFoldedFromFeedScrollRef.current = false
       setComposerExpanded(true)
       setComposerFocusToken((t) => t + 1)
-      await saveComposerAsServerDraft({ silent: true })
+      void saveComposerAsServerDraft({ silent: true, background: true })
       setPostErr('')
       setLoungePostUploadFailedOpen(false)
       setLoungePostUploadFailureDetails(null)
@@ -10740,12 +10917,18 @@ export default function SocialFeed({
     setThreadComposeOpen(false)
     setThreadComposeFocusPartIndex(null)
     setThreadComposeActivePartIndex(0)
-    const skipRevoke = opts.pendingSnapshot ? loungeSubmitSnapshotBlobUrls(opts.pendingSnapshot) : null
+    const skipRevoke = opts.pendingSnapshot
+      ? loungeSubmitSnapshotBlobUrls(opts.pendingSnapshot)
+      : opts.skipRevokeUrls instanceof Set
+        ? opts.skipRevokeUrls
+        : null
     if (!opts.pendingSnapshot) {
       loungePostSnapshotRef.current = null
-      setLoungePostUploadBar(null)
-      threadComposeVideoPrepControllerRef.current?.reset()
-      threadComposeVideoPrepByPartRef.current = {}
+      if (!opts.preserveThreadVideoPrep) {
+        setLoungePostUploadBar(null)
+        threadComposeVideoPrepControllerRef.current?.reset()
+        threadComposeVideoPrepByPartRef.current = {}
+      }
     }
     setThreadComposePartMedia((prev) => {
       for (const part of prev) revokeThreadComposePartMediaFull(part, skipRevoke)
@@ -10769,6 +10952,7 @@ export default function SocialFeed({
       // ignore
     }
   }, [])
+  closeThreadComposeImmediateRef.current = closeThreadComposeImmediate
 
   const openThreadComposeSheet = useCallback(() => {
     if (loungeReadOnly) {
@@ -15841,11 +16025,13 @@ export default function SocialFeed({
               <div className="text-[13px] font-medium text-zinc-200">
                 {loungeSubmitQueueDisplay.total > 1
                   ? `Post ${loungeSubmitQueueDisplay.index} of ${loungeSubmitQueueDisplay.total}`
-                  : loungePostUploadBar.editSave
-                    ? 'Saving edit…'
-                    : loungePostUploadBar.mode === 'mediaPrep'
-                      ? 'Uploading media…'
-                      : 'Uploading post…'}
+                  : loungePostUploadBar.draftSave
+                    ? 'Saving draft…'
+                    : loungePostUploadBar.editSave
+                      ? 'Saving edit…'
+                      : loungePostUploadBar.mode === 'mediaPrep'
+                        ? 'Uploading media…'
+                        : 'Uploading post…'}
               </div>
               <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
                 <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
@@ -16174,9 +16360,7 @@ export default function SocialFeed({
                   className="order-3 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-1"
                   onClick={() => {
                     setThreadComposeDiscardOpen(false)
-                    void saveThreadComposeAsServerDraft().then((data) => {
-                      if (data) closeThreadComposeImmediate({ skipRestoreFeedText: true })
-                    })
+                    void saveThreadComposeAsServerDraft()
                   }}
                 >
                   Save draft

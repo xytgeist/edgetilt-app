@@ -4,6 +4,8 @@ import { LOUNGE_CAPTION_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from './loungeCommen
 import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
 import { buildThreadDraftCaptionsWithSnapshotMediaMarkers } from './loungeThreadComposeDraftMediaMarkers.js'
 import { emptyThreadComposePartMedia, threadPartVideoSlotFromDraft } from './loungeThreadComposeMedia.js'
+import { threadComposePartVideoSnapshotFields } from '../features/lounge/loungeThreadComposeVideoPrep.js'
+import { resolveLoungeSubmissionVideoPrep } from '../features/lounge/loungeQueuedVideoPrep.js'
 import {
   captureVideoFilePosterObjectUrl,
   deleteCfStreamOrphanAsset,
@@ -231,22 +233,16 @@ export function loungePostDraftComposerVideoSlot(draft) {
 }
 
 /**
+ * Block draft save only on failed video prep — in-flight prep continues in the background bar.
+ *
  * @param {import('./loungeThreadComposeMedia.js').ThreadComposePartMedia[]} partMedia
- * @returns {string | null} Error message when not ready to save.
+ * @returns {string | null}
  */
 export function loungePostDraftValidateComposePartsForSave(partMedia) {
   const media = Array.isArray(partMedia) ? partMedia : []
-  for (const part of media) {
-    const slot = part?.videoSlot
-    if (!slot) continue
-    if (slot.prepStatus === 'failed') {
-      return 'Fix or remove failed videos before saving a draft.'
-    }
-    if (!String(slot.streamVideoUid || '').trim()) {
-      if (slot.prepStatus === 'preparing' || slot.prepStatus === 'queued') {
-        return 'Wait for videos to finish uploading before saving a draft.'
-      }
-      return 'Fix or remove videos before saving a draft.'
+  for (let i = 0; i < media.length; i += 1) {
+    if (media[i]?.videoSlot?.prepStatus === 'failed') {
+      return `Post ${i + 1}: video upload failed — remove the video or pick a new one before saving.`
     }
   }
   return null
@@ -254,17 +250,129 @@ export function loungePostDraftValidateComposePartsForSave(partMedia) {
 
 /** @param {object | null | undefined} slot */
 export function loungePostDraftValidateComposerVideoSlotForSave(slot) {
-  if (!slot) return null
-  if (slot.prepStatus === 'failed') {
-    return 'Fix or remove the failed video before saving a draft.'
-  }
-  if (!String(slot.streamVideoUid || '').trim()) {
-    if (slot.prepStatus === 'preparing' || slot.prepStatus === 'queued') {
-      return 'Wait for the video to finish uploading before saving a draft.'
-    }
-    return 'Fix or remove the video before saving a draft.'
+  if (slot?.prepStatus === 'failed') {
+    return 'Video upload failed — remove the video or pick a new one before saving.'
   }
   return null
+}
+
+async function resolveDraftVideoSlotForUpsert({
+  supabaseClient,
+  slot,
+  prepMeta,
+  signal,
+  onProgress,
+  label,
+}) {
+  const uid0 = String(slot?.streamVideoUid || '').trim()
+  if (uid0) {
+    return { ...slot, streamVideoUid: uid0, prepStatus: 'ready', prepError: '' }
+  }
+  if (!slot) return null
+
+  const snap = threadComposePartVideoSnapshotFields(slot, prepMeta ?? null)
+  const prepSnap = {
+    streamVideoUid: null,
+    videoFile: snap.videoFile,
+    videoPrepSpec: snap.videoPrepSpec,
+    awaitingComposerVideoPrepJobId: snap.awaitingThreadPartVideoPrepJobId,
+    _capturedPrepHandoff: prepMeta?.handoff ?? snap._capturedPrepHandoff ?? null,
+    sessionStreamPosterBlobUrl: snap.sessionStreamPosterBlobUrl,
+    videoPrepSlotRestore: snap.videoPrepSlotRestore,
+  }
+
+  const report = (info) => {
+    if (typeof onProgress !== 'function') return
+    const st = label ? `${label} · ${String(info.status || 'Preparing video')}` : String(info.status || '')
+    onProgress({
+      progress: typeof info.progress === 'number' ? info.progress * 0.45 : 0.1,
+      status: st,
+      detail: String(info.detail || ''),
+    })
+  }
+
+  const out = await resolveLoungeSubmissionVideoPrep({
+    snapshot: prepSnap,
+    supabaseClient,
+    signal,
+    onProgress: (info) => report(info),
+  })
+  const uid = String(out.streamVideoUid || '').trim()
+  if (!uid) throw new Error('Could not upload draft video.')
+
+  let preview = slot.preview
+  if (out.encodedFile instanceof File) {
+    try {
+      preview = URL.createObjectURL(out.encodedFile)
+    } catch {
+      preview = slot.preview
+    }
+  }
+
+  return {
+    ...slot,
+    file: out.encodedFile instanceof File ? out.encodedFile : slot.file,
+    streamVideoUid: uid,
+    preview,
+    prepStatus: 'ready',
+    prepError: '',
+  }
+}
+
+/**
+ * Finish in-flight Stream prep for draft parts, then return a payload ready for upsert.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {object} payload
+ * @param {{ videoPrepByPart?: Record<number, object>, composerVideoPrep?: object | null, signal?: AbortSignal, onProgress?: (info: { progress: number, status: string, detail?: string }) => void }} opts
+ */
+export async function prepareLoungePostDraftPayloadForUpsert(supabaseClient, payload, opts = {}) {
+  const signal = opts.signal
+  const onProgress = opts.onProgress
+  const videoPrepByPart = opts.videoPrepByPart && typeof opts.videoPrepByPart === 'object'
+    ? opts.videoPrepByPart
+    : {}
+
+  let next = { ...payload }
+
+  if (next.videoSlot) {
+    onProgress?.({ progress: 0.08, status: 'Preparing video', detail: 'Part 1' })
+    next = {
+      ...next,
+      videoSlot: await resolveDraftVideoSlotForUpsert({
+        supabaseClient,
+        slot: next.videoSlot,
+        prepMeta: opts.composerVideoPrep ?? videoPrepByPart[0] ?? null,
+        signal,
+        onProgress,
+        label: 'Part 1',
+      }),
+    }
+  }
+
+  const partInputs = Array.isArray(next.threadPartMediaInput) ? [...next.threadPartMediaInput] : []
+  if (partInputs.length > 0) {
+    for (let i = 0; i < partInputs.length; i += 1) {
+      const input = partInputs[i]
+      if (!input?.videoSlot) continue
+      const partNum = i + 2
+      onProgress?.({ progress: 0.1 + (i / Math.max(1, partInputs.length)) * 0.35, status: 'Preparing video', detail: `Part ${partNum}` })
+      partInputs[i] = {
+        ...input,
+        videoSlot: await resolveDraftVideoSlotForUpsert({
+          supabaseClient,
+          slot: input.videoSlot,
+          prepMeta: videoPrepByPart[i + 1] ?? null,
+          signal,
+          onProgress,
+          label: `Part ${partNum}`,
+        }),
+      }
+    }
+    next = { ...next, threadPartMediaInput: partInputs }
+  }
+
+  return next
 }
 
 async function uploadPosterFileForDraft(supabaseClient, user, posterFile, signal) {
@@ -476,11 +584,13 @@ export function loungePostDraftHasContent({
   imageFiles = [],
   threadCaptions = [],
   streamVideoUid = '',
+  rootVideoSlot = null,
   threadPartMedia = [],
 } = {}) {
   const parts = Array.isArray(threadCaptions) ? threadCaptions : []
   if (parts.some((t) => String(t || '').trim().length > 0)) return true
   if (String(streamVideoUid || '').trim()) return true
+  if (rootVideoSlot) return true
   if (Array.isArray(threadPartMedia) && threadPartMedia.some((p) => draftPartMediaHasContent(p))) {
     return true
   }
@@ -545,16 +655,23 @@ async function deleteOrphanStreamUids(supabaseClient, uids) {
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} draftId
+ * @param {{ retainStreamAssets?: boolean }} [opts] When true (after successful publish), only delete the draft row — Stream uids now live on feed rows.
  */
-export async function deleteLoungePostDraft(supabaseClient, draftId) {
+export async function deleteLoungePostDraft(supabaseClient, draftId, opts = {}) {
   const id = String(draftId || '').trim()
   if (!id) return { error: new Error('Missing draft id.') }
 
-  const { data: existing } = await supabaseClient
-    .from('lounge_post_drafts')
-    .select('stream_video_uid, thread_part_media')
-    .eq('id', id)
-    .maybeSingle()
+  const retainStreamAssets = Boolean(opts.retainStreamAssets)
+
+  let existing = null
+  if (!retainStreamAssets) {
+    const { data } = await supabaseClient
+      .from('lounge_post_drafts')
+      .select('stream_video_uid, thread_part_media')
+      .eq('id', id)
+      .maybeSingle()
+    existing = data
+  }
 
   const { error } = await supabaseClient.from('lounge_post_drafts').delete().eq('id', id)
   if (error) return { error: new Error(error.message || 'Could not delete draft.') }
@@ -568,7 +685,7 @@ export async function deleteLoungePostDraft(supabaseClient, draftId) {
   return { error: null }
 }
 
-async function uploadDraftImageFiles(supabaseClient, user, imageFiles, signal) {
+async function uploadDraftImageFiles(supabaseClient, user, imageFiles, signal, onFileDone) {
   const files = Array.isArray(imageFiles) ? imageFiles.filter((f) => f instanceof File) : []
   const urls = []
   for (let i = 0; i < files.length; i += 1) {
@@ -584,8 +701,24 @@ async function uploadDraftImageFiles(supabaseClient, user, imageFiles, signal) {
     if (upErr) throw new Error(upErr.message || 'Could not upload draft image.')
     if (!upUrl) throw new Error('Could not upload draft image.')
     urls.push(upUrl)
+    if (typeof onFileDone === 'function') onFileDone(i + 1, files.length)
   }
   return urls
+}
+
+function createDraftSaveProgress(onProgress) {
+  if (typeof onProgress !== 'function') {
+    return () => {}
+  }
+  let progress = 0.04
+  return (status, detail, delta = 0.08) => {
+    progress = Math.min(0.97, progress + delta)
+    onProgress({
+      progress,
+      status: String(status || ''),
+      detail: detail ? String(detail) : '',
+    })
+  }
 }
 
 /**
@@ -611,6 +744,7 @@ async function uploadDraftImageFiles(supabaseClient, user, imageFiles, signal) {
  *   streamVideoUid?: string,
  *   quoteRepostOfPostId?: string | null,
  *   signal?: AbortSignal,
+ *   onProgress?: (info: { progress: number, status: string, detail?: string }) => void,
  * }} payload
  * @returns {Promise<{ data: LoungePostDraftRow | null, error: Error | null }>}
  */
@@ -652,13 +786,23 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
     return { data: null, error: new Error('You must be signed in to save drafts.') }
   }
 
+  const report = createDraftSaveProgress(payload.onProgress)
+  report('Saving draft…', '', 0)
+
   let uploadedRootUrls = []
   try {
+    const rootFiles = Array.isArray(payload.imageFiles)
+      ? payload.imageFiles.filter((f) => f instanceof File)
+      : []
+    if (rootFiles.length > 0) report('Uploading images', 'Part 1', 0)
     uploadedRootUrls = await uploadDraftImageFiles(
       supabaseClient,
       session.user,
       payload.imageFiles,
       payload.signal,
+      (n, total) => {
+        if (total > 1) report('Uploading images', `Part 1 · ${n}/${total}`, 0.04)
+      },
     )
   } catch (e) {
     if (e?.name === 'AbortError') throw e
@@ -677,6 +821,7 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
   const rootUidFromPayload = String(payload.streamVideoUid || rootSlot?.streamVideoUid || '').trim()
   if (rootUidFromPayload && rootSlot) {
     try {
+      report('Uploading video preview', 'Part 1', 0)
       rootStream = await resolveDraftVideoPersistFields(
         supabaseClient,
         session.user,
@@ -702,12 +847,20 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
     let partImageUrls = Array.isArray(input.existingImageUrls)
       ? input.existingImageUrls.map((u) => String(u ?? '').trim()).filter(Boolean)
       : []
+    const partNum = i + 2
     try {
+      const partFiles = Array.isArray(input.imageFiles)
+        ? input.imageFiles.filter((f) => f instanceof File)
+        : []
+      if (partFiles.length > 0) report('Uploading images', `Part ${partNum}`, 0)
       const uploaded = await uploadDraftImageFiles(
         supabaseClient,
         session.user,
         input.imageFiles,
         payload.signal,
+        (n, total) => {
+          if (total > 1) report('Uploading images', `Part ${partNum} · ${n}/${total}`, 0.04)
+        },
       )
       partImageUrls = [...partImageUrls, ...uploaded].slice(0, LOUNGE_POST_DRAFTS_MAX_IMAGES)
     } catch (e) {
@@ -724,6 +877,7 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
     const uid = String(input.streamVideoUid || slot?.streamVideoUid || '').trim()
     if (uid && slot) {
       try {
+        report('Uploading video preview', `Part ${partNum}`, 0)
         partStream = await resolveDraftVideoPersistFields(
           supabaseClient,
           session.user,
@@ -811,6 +965,8 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
     return supabaseClient.from('lounge_post_drafts').insert(writeRow).select(selectCols).single()
   }
 
+  report('Saving draft…', '', 0.05)
+
   let includeThread = threadCaptions.length > 1
   let includeMedia = true
   let { data, error } = await writeDraft(includeThread, includeMedia)
@@ -851,6 +1007,9 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
   if (!data && draftId) return { data: null, error: new Error('Draft not found.') }
 
   const normalized = normalizeDraftRow(data)
+  if (typeof payload.onProgress === 'function') {
+    payload.onProgress({ progress: 1, status: 'Draft saved', detail: '' })
+  }
   if (previousDraft && normalized) {
     const prevUids = collectLoungePostDraftStreamUids(previousDraft)
     const nextUids = new Set(collectLoungePostDraftStreamUids(normalized))

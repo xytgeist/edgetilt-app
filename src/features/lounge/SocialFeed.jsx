@@ -104,10 +104,15 @@ import {
   countLoungePostDrafts,
   deleteLoungePostDraft,
   listLoungePostDrafts,
+  loungePostDraftComposerVideoSlot,
   loungePostDraftHasContent,
   loungePostDraftIsThread,
   loungePostDraftPayloadFromSubmissionSnapshot,
+  loungePostDraftThreadComposePartMedia,
+  loungePostDraftThreadPartMediaInputFromCompose,
   loungePostDraftThreadParts,
+  loungePostDraftValidateComposePartsForSave,
+  loungePostDraftValidateComposerVideoSlotForSave,
   upsertLoungePostDraft,
 } from '../../utils/loungePostDraftApi.js'
 import { markLoungeColdBootFeedMounted } from '../../utils/loungeColdBootFeedMounted.js'
@@ -300,7 +305,6 @@ import {
   threadPartImagePreviewBlobUrlsFromMedia,
 } from '../../utils/loungeThreadComposeMedia.js'
 import {
-  buildThreadDraftCaptionsWithMediaMarkers,
   stripDraftMediaMarkersFromCaption,
   threadDraftGifDisplayName,
 } from '../../utils/loungeThreadComposeDraftMediaMarkers.js'
@@ -547,8 +551,6 @@ export default function SocialFeed({
   const [threadComposeActivePartIndex, setThreadComposeActivePartIndex] = useState(0)
   const [threadComposeErr, setThreadComposeErr] = useState('')
   const [threadComposeDiscardOpen, setThreadComposeDiscardOpen] = useState(false)
-  /** @type {'discard' | 'draftVideoWarn'} */
-  const [threadComposeDiscardStep, setThreadComposeDiscardStep] = useState('discard')
   const [threadComposeFocusPartIndex, setThreadComposeFocusPartIndex] = useState(null)
   const threadComposeFieldRef = useRef(null)
   const threadComposePartRefMap = useRef({})
@@ -2679,18 +2681,11 @@ export default function SocialFeed({
         setComposerPinOnPost(false)
         const parts = loungePostDraftThreadParts(draft)
         setThreadComposeCaptions(parts)
-        setThreadComposePartMedia([
-          {
-            imageItems: composerImageItemsFromDraftUrls(draft.image_urls),
-            gifUrl: String(draft.gif_url || '').trim(),
-          },
-          ...parts.slice(1).map(() => emptyThreadComposePartMedia()),
-        ])
+        setThreadComposePartMedia(loungePostDraftThreadComposePartMedia(draft, parts.length))
         setComposerImageItems([])
         setComposerMediaUrl('')
         setThreadComposeActivePartIndex(0)
         setThreadComposeDiscardOpen(false)
-        setThreadComposeDiscardStep('discard')
         setThreadComposeFocusPartIndex(null)
         composerExpandedRef.current = false
         composerFoldRevealRef.current = 0
@@ -2702,7 +2697,7 @@ export default function SocialFeed({
       })
       setThreadComposeOpen(true)
     },
-    [blurAllThreadComposeFields, cancelComposerMediaPrep, composerImageItemsFromDraftUrls],
+    [blurAllThreadComposeFields, cancelComposerMediaPrep],
   )
 
   const loadServerDraftIntoComposer = useCallback(
@@ -2713,7 +2708,7 @@ export default function SocialFeed({
         return
       }
       cancelComposerMediaPrep()
-      setComposerVideoSlot(null)
+      setComposerVideoSlot(loungePostDraftComposerVideoSlot(draft))
       setPostText(String(draft.caption || ''))
       setComposerMediaUrl(String(draft.gif_url || '').trim())
       setComposerCategoryPills(Array.isArray(draft.category_pills) ? draft.category_pills : [])
@@ -2748,45 +2743,33 @@ export default function SocialFeed({
   )
 
   const saveThreadComposeAsServerDraft = useCallback(
-    async (opts = {}) => {
+    async () => {
       if (loungeReadOnly) {
         requireLoungeAuth()
         return null
       }
       if (openProfileGateIfNeeded()) return null
-      const stripVideos = opts.stripVideos === true
-      const mediaBeforeSave = threadComposePartMedia
-      let mediaForSave = threadComposePartMedia
-      if (threadComposePartMedia.some((part) => threadComposePartHasVideo(part))) {
-        if (!stripVideos) return null
-        for (let i = 0; i < threadComposePartMedia.length; i += 1) {
-          threadComposeVideoPrepControllerRef.current?.cancel(i)
-          disposeComposerVideoMedia(threadComposePartMedia[i]?.videoSlot ?? null)
-        }
-        threadComposeVideoPrepControllerRef.current?.reset()
-        mediaForSave = threadComposePartMedia.map((part) => ({
-          ...part,
-          videoSlot: null,
-          videoPrepHud: null,
-        }))
-        setThreadComposePartMedia(mediaForSave)
+      const videoErr = loungePostDraftValidateComposePartsForSave(threadComposePartMedia)
+      if (videoErr) {
+        setThreadComposeErr(videoErr)
+        return null
       }
-      const gifUrl = String((mediaForSave[0] || emptyThreadComposePartMedia()).gifUrl || '').trim()
-      const part0Items = (mediaForSave[0] || emptyThreadComposePartMedia()).imageItems || []
+      const rootPart = threadComposePartMedia[0] || emptyThreadComposePartMedia()
+      const gifUrl = String(rootPart.gifUrl || '').trim()
+      const part0Items = rootPart.imageItems || []
       const existingImageUrls = part0Items
         .map((it) => String(it.remoteUrl || '').trim())
         .filter(Boolean)
       const imageFiles = part0Items.map((it) => it.file).filter((f) => f instanceof File)
-      const threadCaptions = buildThreadDraftCaptionsWithMediaMarkers(
-        threadComposeCaptions.map((t) => String(t ?? '')),
-        mediaBeforeSave,
-      )
+      const threadCaptions = threadComposeCaptions.map((t) => String(t ?? ''))
       if (
         !loungePostDraftHasContent({
           threadCaptions,
           gifUrl,
           imageUrls: existingImageUrls,
           imageFiles,
+          streamVideoUid: String(rootPart.videoSlot?.streamVideoUid || '').trim(),
+          threadPartMedia: loungePostDraftThreadPartMediaInputFromCompose(threadComposePartMedia),
         })
       ) {
         setThreadComposeErr('Add thread text, a GIF, or at least one image before saving a draft.')
@@ -2801,33 +2784,16 @@ export default function SocialFeed({
           gifUrl,
           existingImageUrls,
           imageFiles,
+          videoSlot: rootPart.videoSlot,
+          threadPartMediaInput: loungePostDraftThreadPartMediaInputFromCompose(threadComposePartMedia),
         })
         if (error) throw error
         if (!data) throw new Error('Could not save draft.')
         setLoungeComposerActiveDraftId(data.id)
-        if (Array.isArray(data.image_urls) && data.image_urls.length > 0) {
-          setThreadComposePartMedia((prev) => {
-            const next = [...prev]
-            next[0] = {
-              ...(next[0] || emptyThreadComposePartMedia()),
-              imageItems: composerImageItemsFromDraftUrls(data.image_urls),
-            }
-            return next
-          })
-        }
         if (loungePostDraftIsThread(data)) {
-          setThreadComposeCaptions(loungePostDraftThreadParts(data))
-          setThreadComposePartMedia((prev) => {
-            const parts = loungePostDraftThreadParts(data)
-            const rootMedia = {
-              imageItems: composerImageItemsFromDraftUrls(data.image_urls),
-              gifUrl: String(data.gif_url || '').trim(),
-            }
-            return [
-              rootMedia,
-              ...parts.slice(1).map(() => emptyThreadComposePartMedia()),
-            ]
-          })
+          const parts = loungePostDraftThreadParts(data)
+          setThreadComposeCaptions(parts)
+          setThreadComposePartMedia(loungePostDraftThreadComposePartMedia(data, parts.length))
         }
         await refreshLoungeDraftCount()
         return data
@@ -2839,8 +2805,6 @@ export default function SocialFeed({
     },
     [
       composerCategoryPills,
-      composerImageItemsFromDraftUrls,
-      disposeComposerVideoMedia,
       threadComposePartMedia,
       loungeReadOnly,
       openProfileGateIfNeeded,
@@ -2868,6 +2832,8 @@ export default function SocialFeed({
           gifUrl: payload.gifUrl,
           imageUrls: payload.existingImageUrls,
           imageFiles: payload.imageFiles,
+          streamVideoUid: payload.streamVideoUid,
+          threadPartMedia: payload.threadPartMediaInput,
         })
       ) {
         return { data: null, error: null }
@@ -2917,8 +2883,9 @@ export default function SocialFeed({
         return null
       }
       if (openProfileGateIfNeeded()) return null
-      if (composerVideoSlot != null) {
-        setPostErr('Remove video before saving a draft — video must be re-added after restore.')
+      const videoErr = loungePostDraftValidateComposerVideoSlotForSave(composerVideoSlot)
+      if (videoErr) {
+        setPostErr(videoErr)
         return null
       }
       const caption = String(postText || '')
@@ -2928,7 +2895,13 @@ export default function SocialFeed({
         .filter(Boolean)
       const imageFiles = composerImageItems.map((it) => it.file).filter((f) => f instanceof File)
       if (
-        !loungePostDraftHasContent({ caption, gifUrl, imageUrls: existingImageUrls, imageFiles })
+        !loungePostDraftHasContent({
+          caption,
+          gifUrl,
+          imageUrls: existingImageUrls,
+          imageFiles,
+          streamVideoUid: String(composerVideoSlot?.streamVideoUid || '').trim(),
+        })
       ) {
         setPostErr('Add caption text, a GIF, or at least one image before saving a draft.')
         return null
@@ -2942,6 +2915,7 @@ export default function SocialFeed({
           gifUrl,
           existingImageUrls,
           imageFiles,
+          videoSlot: composerVideoSlot,
         })
         if (error) throw error
         if (!data) throw new Error('Could not save draft.')
@@ -2949,7 +2923,13 @@ export default function SocialFeed({
         if (Array.isArray(data.image_urls) && data.image_urls.length > 0) {
           setComposerImageItems(composerImageItemsFromDraftUrls(data.image_urls))
         }
-        persistLoungeComposerDraft(data.caption, true, data.image_urls?.length > 0, data.gif_url)
+        setComposerVideoSlot(loungePostDraftComposerVideoSlot(data))
+        persistLoungeComposerDraft(
+          data.caption,
+          true,
+          data.image_urls?.length > 0 || Boolean(data.stream_video_uid),
+          data.gif_url,
+        )
         await refreshLoungeDraftCount()
         return data
       } catch (e) {
@@ -10663,16 +10643,19 @@ export default function SocialFeed({
         setThreadComposeErr('Thread saved to drafts — photos, GIFs, and videos kept in compose.')
       } else {
         restoreComposerFromSnapshot(snap)
+        const draftPayload = loungePostDraftPayloadFromSubmissionSnapshot(snap)
         const { data, error } = await upsertLoungePostDraft(supabaseClient, {
+          ...(draftPayload || {
+            caption: String(snap.caption || ''),
+            gifUrl: String(snap.gifOnlyUrl || '').trim(),
+            existingImageUrls: Array.isArray(snap.existingImageUrls) ? snap.existingImageUrls : [],
+            imageFiles: Array.isArray(snap.imageFiles)
+              ? snap.imageFiles.filter((f) => f instanceof File)
+              : [],
+          }),
           id: snap.savedDraftId || loungeComposerActiveDraftIdRef.current,
-          caption: String(snap.caption || ''),
-          threadCaptions: Array.isArray(snap.threadCaptions) ? snap.threadCaptions : undefined,
           categoryPills: snap.categoryPills,
-          gifUrl: String(snap.gifOnlyUrl || '').trim(),
-          existingImageUrls: Array.isArray(snap.existingImageUrls) ? snap.existingImageUrls : [],
-          imageFiles: Array.isArray(snap.imageFiles)
-            ? snap.imageFiles.filter((f) => f instanceof File)
-            : [],
+          threadCaptions: Array.isArray(snap.threadCaptions) ? snap.threadCaptions : undefined,
         })
         if (error) {
           setPostErr(error.message)
@@ -10780,7 +10763,6 @@ export default function SocialFeed({
     threadComposePartRefMap.current = {}
     setThreadComposeErr('')
     setThreadComposeDiscardOpen(false)
-    setThreadComposeDiscardStep('discard')
     try {
       clearHiddenFileInputs(threadComposeImageInputRef.current, threadComposeVideoInputRef.current)
     } catch {
@@ -10850,7 +10832,6 @@ export default function SocialFeed({
         (part) => threadComposePartHasMedia(part) || threadComposePartHasVideo(part),
       )
     if (hasText || hasMedia) {
-      setThreadComposeDiscardStep('discard')
       setThreadComposeDiscardOpen(true)
       return
     }
@@ -16169,91 +16150,42 @@ export default function SocialFeed({
           className="fixed inset-0 z-[99] flex items-center justify-center bg-black/45 px-4 p-6 backdrop-blur-[3px]"
           role="dialog"
           aria-modal="true"
-          aria-labelledby={
-            threadComposeDiscardStep === 'draftVideoWarn'
-              ? 'thread-compose-draft-video-title'
-              : 'thread-compose-discard-title'
-          }
+          aria-labelledby="thread-compose-discard-title"
         >
           <button
             type="button"
             className="absolute inset-0 cursor-default touch-manipulation bg-transparent"
             aria-label="Close"
             onClick={() => {
-              if (threadComposeDiscardStep === 'draftVideoWarn') {
-                setThreadComposeDiscardStep('discard')
-                return
-              }
               setThreadComposeDiscardOpen(false)
-              setThreadComposeDiscardStep('discard')
             }}
           />
           <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/90 p-4 shadow-2xl backdrop-blur-md">
-            {threadComposeDiscardStep === 'draftVideoWarn' ? (
-              <>
-                <h2 id="thread-compose-draft-video-title" className="text-[17px] font-bold text-white">
-                  Save draft without videos?
-                </h2>
-                <p className="mt-2 text-[14px] leading-snug text-zinc-400">
-                  Videos will be removed when saving this draft. You&apos;ll have to re-add them after you restore it.
-                </p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    className="min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation"
-                    onClick={() => setThreadComposeDiscardStep('discard')}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation"
-                    onClick={() => {
-                      setThreadComposeDiscardOpen(false)
-                      setThreadComposeDiscardStep('discard')
-                      setThreadComposeErr('')
-                      void saveThreadComposeAsServerDraft({ stripVideos: true }).then((data) => {
-                        if (data) closeThreadComposeImmediate({ skipRestoreFeedText: true })
-                      })
-                    }}
-                  >
-                    Continue
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 id="thread-compose-discard-title" className="text-[17px] font-bold text-white">
-                  Discard thread?
-                </h2>
-                <p className="mt-2 text-[14px] leading-snug text-zinc-400">
-                  Your thread text and any attached media will be cleared.
-                </p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                  <button
-                    type="button"
-                    className="order-3 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-1"
-                    onClick={() => {
-                      if (threadComposePartMedia.some((part) => threadComposePartHasVideo(part))) {
-                        setThreadComposeErr('')
-                        setThreadComposeDiscardStep('draftVideoWarn')
-                        return
-                      }
-                      setThreadComposeDiscardOpen(false)
-                      setThreadComposeDiscardStep('discard')
-                      void saveThreadComposeAsServerDraft().then((data) => {
-                        if (data) closeThreadComposeImmediate({ skipRestoreFeedText: true })
-                      })
-                    }}
-                  >
-                    Save draft
-                  </button>
+            <>
+              <h2 id="thread-compose-discard-title" className="text-[17px] font-bold text-white">
+                Discard thread?
+              </h2>
+              <p className="mt-2 text-[14px] leading-snug text-zinc-400">
+                Your thread text and any attached media will be cleared.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                <button
+                  type="button"
+                  className="order-3 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-1"
+                  onClick={() => {
+                    setThreadComposeDiscardOpen(false)
+                    void saveThreadComposeAsServerDraft().then((data) => {
+                      if (data) closeThreadComposeImmediate({ skipRestoreFeedText: true })
+                    })
+                  }}
+                >
+                  Save draft
+                </button>
                   <button
                     type="button"
                     className="order-2 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-2"
                     onClick={() => {
                       setThreadComposeDiscardOpen(false)
-                      setThreadComposeDiscardStep('discard')
                       closeThreadComposeImmediate()
                     }}
                   >
@@ -16264,14 +16196,12 @@ export default function SocialFeed({
                     className="order-1 min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-3"
                     onClick={() => {
                       setThreadComposeDiscardOpen(false)
-                      setThreadComposeDiscardStep('discard')
                     }}
                   >
                     Keep writing
                   </button>
                 </div>
-              </>
-            )}
+            </>
           </div>
         </div>
       ) : null}

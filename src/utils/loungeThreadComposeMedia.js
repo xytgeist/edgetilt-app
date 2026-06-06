@@ -114,6 +114,24 @@ export function threadPartImageItemsFromSnapshot(part) {
   return items
 }
 
+/** Restore a compose video slot from persisted draft Stream fields. */
+export function threadPartVideoSlotFromDraft(streamFields) {
+  const uid =
+    String(streamFields?.stream_video_uid ?? streamFields?.streamVideoUid ?? '').trim() || null
+  if (!uid) return null
+  const poster =
+    String(streamFields?.stream_poster_url ?? streamFields?.streamPosterUrl ?? '').trim() || null
+  return {
+    prepJobId: 0,
+    file: null,
+    posterUrl: poster,
+    preview: poster,
+    streamVideoUid: uid,
+    prepStatus: 'ready',
+    prepError: '',
+  }
+}
+
 export function normalizeThreadComposePartsForSubmit(captions, partMedia) {
   const cap = Array.isArray(captions) ? captions : ['']
   const media = Array.isArray(partMedia) ? partMedia : [emptyThreadComposePartMedia()]

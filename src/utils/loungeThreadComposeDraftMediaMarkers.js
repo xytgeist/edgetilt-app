@@ -65,22 +65,21 @@ export function listUnpersistedMediaNamesFromSnapshotPart(part, partIndex) {
   if (!part) return []
   /** @type {string[]} */
   const names = []
-  if (part.videoFile instanceof File && part.videoFile.name) {
-    names.push(part.videoFile.name)
-  } else if (part.videoPrepSpec?.file instanceof File && part.videoPrepSpec.file.name) {
-    names.push(part.videoPrepSpec.file.name)
-  } else if (part.videoPrepSpec?.sourceFile instanceof File && part.videoPrepSpec.sourceFile.name) {
-    names.push(part.videoPrepSpec.sourceFile.name)
-  } else if (String(part.streamVideoUid || '').trim() || part.videoPrepSpec) {
-    names.push('video')
+  const persistedUid = String(part.streamVideoUid || '').trim()
+  if (!persistedUid) {
+    if (part.videoFile instanceof File && part.videoFile.name) {
+      names.push(part.videoFile.name)
+    } else if (part.videoPrepSpec?.file instanceof File && part.videoPrepSpec.file.name) {
+      names.push(part.videoPrepSpec.file.name)
+    } else if (part.videoPrepSpec?.sourceFile instanceof File && part.videoPrepSpec.sourceFile.name) {
+      names.push(part.videoPrepSpec.sourceFile.name)
+    } else if (part.videoPrepSpec) {
+      names.push('video')
+    }
   }
   if (partIndex === 0) return names
   for (const f of Array.isArray(part.imageFiles) ? part.imageFiles : []) {
     if (f instanceof File && f.name) names.push(f.name)
-  }
-  for (const url of Array.isArray(part.existingImageUrls) ? part.existingImageUrls : []) {
-    const base = basenameFromUrl(url)
-    if (base) names.push(base)
   }
   const gif = String(part.gifUrl ?? '').trim()
   if (gif) names.push(threadDraftGifDisplayName(gif))

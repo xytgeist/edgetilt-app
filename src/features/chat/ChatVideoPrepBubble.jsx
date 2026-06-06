@@ -17,8 +17,10 @@ import {
 const BUBBLE_EXPANDED_RADIUS_PX = 16
 
 // Matches the tuned constants from the original VideoUploadRing.
-// Wheel image is 65 px → radius 32.5. Arc inner edge = RING_R − strokeWidth/2 ≈ 33.5 → flush.
+// Wheel PNG is square with the full disc centered — 68 px + object-fit contain
+// keeps the spin axis aligned. Arc inner edge ≈ RING_R − strokeWidth/2 → flush.
 const RING_R = 36
+const WHEEL_IMG_PX = 68
 const RING_C = 2 * Math.PI * RING_R
 
 /**
@@ -76,15 +78,15 @@ function RouletteProgressRing({ progress, status }) {
           />
         </svg>
 
-        {/* Spinning roulette wheel image */}
+        {/* Spinning roulette wheel — square asset, full disc in frame (public/roulette-spinner-wheel.png) */}
         <img
-          src="/roulette-spinner-matte.png"
+          src="/roulette-spinner-wheel.png"
           alt=""
           className="rounded-full"
           style={{
-            width: 65,
-            height: 65,
-            objectFit: 'cover',
+            width: WHEEL_IMG_PX,
+            height: WHEEL_IMG_PX,
+            objectFit: 'contain',
             animation: 'chat-roulette-spin 4.5s linear infinite',
           }}
         />

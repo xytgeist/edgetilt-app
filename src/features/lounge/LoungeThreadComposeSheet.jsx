@@ -124,10 +124,12 @@ export default function LoungeThreadComposeSheet({
 }) {
   const scrollRef = useRef(null)
   const toolbarRef = useRef(null)
+  const partsStackRef = useRef(null)
   const partRowRefs = useRef({})
   const didUserActivatePartRef = useRef(false)
   const scrollMetricsRef = useRef({ toolbarHeightPx: 52, kbOverlapPx: 0 })
   const [toolbarHeightPx, setToolbarHeightPx] = useState(52)
+  const [leadingSpacerPx, setLeadingSpacerPx] = useState(0)
   /** Only track keyboard overlap while a caption field is focused — avoids footer/scroll fights on open. */
   const [keyboardDockActive, setKeyboardDockActive] = useState(false)
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
@@ -144,11 +146,13 @@ export default function LoungeThreadComposeSheet({
     const row = partRowRefs.current[partIdx]
     if (!scrollEl || !row) return
 
-    const { toolbarHeightPx: toolbarH, kbOverlapPx: kbPx } = scrollMetricsRef.current
     const scrollRect = scrollEl.getBoundingClientRect()
     const rowRect = row.getBoundingClientRect()
-    const bottomInset = toolbarH + Math.round(kbPx) + THREAD_COMPOSE_SCROLL_GAP_PX
-    const visibleBottom = scrollRect.bottom - bottomInset
+    const toolbarTop = toolbarRef.current?.getBoundingClientRect?.()?.top
+    const visibleBottom =
+      typeof toolbarTop === 'number' && Number.isFinite(toolbarTop)
+        ? toolbarTop - THREAD_COMPOSE_SCROLL_GAP_PX
+        : scrollRect.bottom - THREAD_COMPOSE_SCROLL_GAP_PX
     const minTop = scrollRect.top + THREAD_COMPOSE_SCROLL_GAP_PX
 
     let nextScrollTop = scrollEl.scrollTop
@@ -223,17 +227,26 @@ export default function LoungeThreadComposeSheet({
   }, [focusPartIndex, getPartRef, onFocusPartIndexConsumed, open, scheduleScrollPin])
 
   useEffect(() => {
-    if (!open || !keyboardDockActive || activePartIndex < 0) return undefined
-    scheduleScrollPin(activePartIndex, { chase: true })
-    return undefined
-  }, [
-    activePartIndex,
-    keyboardDockActive,
-    kbOverlapPx,
-    open,
-    scheduleScrollPin,
-    toolbarHeightPx,
-  ])
+    const scrollEl = scrollRef.current
+    const stackEl = partsStackRef.current
+    if (!scrollEl || !stackEl || !open) {
+      setLeadingSpacerPx(0)
+      return undefined
+    }
+    const sync = () => {
+      const available = scrollEl.clientHeight
+      const contentH = stackEl.offsetHeight
+      setLeadingSpacerPx(Math.max(0, available - contentH))
+    }
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(scrollEl)
+    ro.observe(stackEl)
+    return () => {
+      ro.disconnect()
+      setLeadingSpacerPx(0)
+    }
+  }, [open, captions.length, kbOverlapPx, toolbarHeightPx])
 
   useEffect(() => {
     const el = toolbarRef.current
@@ -340,8 +353,8 @@ export default function LoungeThreadComposeSheet({
           paddingBottom: `calc(${toolbarHeightPx}px + ${Math.round(kbOverlapPx)}px + 0.75rem)`,
         }}
       >
-        <div className="flex min-h-full flex-col justify-end pb-2">
-          <div className="space-y-0">
+        <div aria-hidden className="shrink-0" style={{ height: leadingSpacerPx }} />
+        <div ref={partsStackRef} className="space-y-0 pb-2">
           {captions.map((partText, partIdx) => {
             const partMedia = partsMedia[partIdx]
             const carouselUrls = threadComposePartCarouselUrls(partMedia)
@@ -566,7 +579,6 @@ export default function LoungeThreadComposeSheet({
               </div>
             )
           })}
-          </div>
         </div>
       </div>
 

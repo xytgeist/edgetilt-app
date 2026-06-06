@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungeMentionDropdown from './LoungeMentionDropdown.jsx'
@@ -21,6 +21,10 @@ import {
 
 /** Gap between the active part row and the top of the docked toolbar strip. */
 const THREAD_COMPOSE_SCROLL_GAP_PX = 10
+/** After media pick the keyboard dismisses; re-open pins need to ride the iOS keyboard slide. */
+const THREAD_KB_REOPEN_PIN_MS = LOUNGE_IOS
+  ? [135, 220, 320, 450, 600, 750]
+  : [80, 160, 280]
 
 const AVATAR_RAIL_W = 'w-12 sm:w-[3.3rem]'
 
@@ -127,40 +131,61 @@ export default function LoungeThreadComposeSheet({
   const partRowRefs = useRef({})
   const activePartIndexRef = useRef(activePartIndex)
   const didUserActivatePartRef = useRef(false)
+  const kbOverlapPrevRef = useRef(0)
   activePartIndexRef.current = activePartIndex
   const [toolbarHeightPx, setToolbarHeightPx] = useState(52)
-  /** Only track keyboard overlap while a caption field is focused — avoids footer/scroll fights on open. */
+  /** Caption focus — drives tail-follow while typing; keyboard lift uses visualViewport whenever open. */
   const [keyboardDockActive, setKeyboardDockActive] = useState(false)
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
-  const { overlapPx: kbOverlapPx } = useLoungeKeyboardOverlapPx(open && keyboardDockActive, {
-    smooth: false,
+  const { overlapPx: kbOverlapPx } = useLoungeKeyboardOverlapPx(open, {
+    smooth: LOUNGE_IOS,
+    smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
   })
-  const footerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
+  const keyboardUp = kbOverlapPx > iosSafeBottomPx + 0.5
+  const activePartMediaTailKey = useMemo(() => {
+    const m = partsMedia[activePartIndex]
+    if (!m) return 'none'
+    const urls = threadComposePartCarouselUrls(m)
+    return `${activePartIndex}:${urls.length}:${urls.join('\0')}:${m.videoSlot ? 'v' : ''}`
+  }, [activePartIndex, partsMedia])
+  const footerPadBottom =
+    keyboardUp
+      ? `${Math.round(kbOverlapPx)}px`
+      : loungeComposerFooterPaddingBottom(0, iosSafeBottomPx)
 
-  /** Scroll up only when a part row would sit under the options bar (above the keyboard). */
-  const scrollPartClearToolbarOverlap = useCallback((partIdx) => {
+  /** Nudge scroll until the part row tail clears the options bar, or no more overlap remains. */
+  const pinThreadPartTail = useCallback((partIdx, { maxPasses = 8 } = {}) => {
     const scrollEl = scrollRef.current
     const row = partRowRefs.current[partIdx]
     const toolbar = toolbarRef.current
     if (!scrollEl || !row || !toolbar) return
 
-    const rowRect = row.getBoundingClientRect()
-    const toolbarTop = toolbar.getBoundingClientRect().top
-    const visibleBottom = toolbarTop - THREAD_COMPOSE_SCROLL_GAP_PX
-    if (rowRect.bottom <= visibleBottom) return
-
-    scrollEl.scrollTop += rowRect.bottom - visibleBottom
+    let passes = 0
+    const run = () => {
+      const rowRect = row.getBoundingClientRect()
+      const toolbarTop = toolbar.getBoundingClientRect().top
+      const visibleBottom = toolbarTop - THREAD_COMPOSE_SCROLL_GAP_PX
+      if (rowRect.bottom <= visibleBottom) return
+      scrollEl.scrollTop += rowRect.bottom - visibleBottom
+      passes += 1
+      if (passes < maxPasses) requestAnimationFrame(run)
+    }
+    run()
   }, [])
 
-  const scheduleScrollClearOverlap = useCallback(
-    (partIdx) => {
-      const run = () => scrollPartClearToolbarOverlap(partIdx)
+  const schedulePinThreadPartTail = useCallback(
+    (partIdx, { extended = false, maxPasses = 8 } = {}) => {
+      const run = () => pinThreadPartTail(partIdx, { maxPasses })
+      run()
       requestAnimationFrame(run)
-      if (LOUNGE_IOS) {
-        window.setTimeout(run, LOUNGE_IOS_KEYBOARD_SMOOTH_MS)
+      window.setTimeout(run, LOUNGE_IOS_KEYBOARD_SMOOTH_MS)
+      if (extended) {
+        for (const ms of THREAD_KB_REOPEN_PIN_MS) {
+          window.setTimeout(run, ms)
+        }
       }
     },
-    [scrollPartClearToolbarOverlap],
+    [pinThreadPartTail],
   )
 
   const syncFocusLeftSheet = useCallback(() => {
@@ -201,20 +226,45 @@ export default function LoungeThreadComposeSheet({
         }
       }
       onFocusPartIndexConsumed?.()
+      schedulePinThreadPartTail(focusPartIndex, { extended: true })
     }, 40)
     return () => window.clearTimeout(id)
-  }, [focusPartIndex, getPartRef, onFocusPartIndexConsumed, open])
+  }, [focusPartIndex, getPartRef, onFocusPartIndexConsumed, open, schedulePinThreadPartTail])
 
   useEffect(() => {
-    if (!open || !keyboardDockActive || activePartIndex < 0) return undefined
-    scheduleScrollClearOverlap(activePartIndex)
+    if (!open) {
+      kbOverlapPrevRef.current = 0
+      return undefined
+    }
+    if (activePartIndex < 0) return undefined
+    const prev = kbOverlapPrevRef.current
+    kbOverlapPrevRef.current = kbOverlapPx
+    if (kbOverlapPx > prev + 2) {
+      schedulePinThreadPartTail(activePartIndex, { extended: true })
+    } else if (kbOverlapPx > iosSafeBottomPx + 0.5) {
+      schedulePinThreadPartTail(activePartIndex)
+    }
     return undefined
   }, [
     activePartIndex,
-    keyboardDockActive,
+    iosSafeBottomPx,
     kbOverlapPx,
     open,
-    scheduleScrollClearOverlap,
+    schedulePinThreadPartTail,
+    toolbarHeightPx,
+  ])
+
+  useLayoutEffect(() => {
+    if (!open || activePartIndex < 0 || !keyboardUp) return undefined
+    pinThreadPartTail(activePartIndex, { maxPasses: 6 })
+    return undefined
+  }, [
+    activePartIndex,
+    activePartMediaTailKey,
+    kbOverlapPx,
+    keyboardUp,
+    open,
+    pinThreadPartTail,
     toolbarHeightPx,
   ])
 
@@ -230,11 +280,11 @@ export default function LoungeThreadComposeSheet({
 
   /** Keep the active part tail above the options bar while the caption grows or media is added. */
   useEffect(() => {
-    if (!open || !keyboardDockActive || activePartIndex < 0) return undefined
+    if (!open || activePartIndex < 0 || (!keyboardDockActive && !keyboardUp)) return undefined
     const row = partRowRefs.current[activePartIndex]
     if (!row) return undefined
 
-    const followTail = () => scrollPartClearToolbarOverlap(activePartIndexRef.current)
+    const followTail = () => pinThreadPartTail(activePartIndexRef.current, { maxPasses: 6 })
     followTail()
 
     const ro = new ResizeObserver(() => {
@@ -242,26 +292,57 @@ export default function LoungeThreadComposeSheet({
     })
     ro.observe(row)
     return () => ro.disconnect()
-  }, [activePartIndex, keyboardDockActive, open, scrollPartClearToolbarOverlap])
+  }, [activePartIndex, keyboardDockActive, keyboardUp, open, pinThreadPartTail])
+
+  useEffect(() => {
+    if (!open || activePartIndex < 0) return undefined
+    schedulePinThreadPartTail(activePartIndex, { extended: keyboardUp })
+    const delays = LOUNGE_IOS ? [100, 350, 700, 1000] : [80, 240, 400]
+    const ids = delays.map((ms) =>
+      window.setTimeout(
+        () => pinThreadPartTail(activePartIndex, { maxPasses: 8 }),
+        ms,
+      ),
+    )
+    return () => ids.forEach((id) => window.clearTimeout(id))
+  }, [activePartIndex, activePartMediaTailKey, keyboardUp, open, pinThreadPartTail, schedulePinThreadPartTail])
+
+  useEffect(() => {
+    if (!open) return undefined
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return undefined
+    let prevH = scrollEl.clientHeight
+    const ro = new ResizeObserver(() => {
+      const h = scrollEl.clientHeight
+      if (h !== prevH && (keyboardDockActive || keyboardUp)) {
+        pinThreadPartTail(activePartIndexRef.current, { maxPasses: 8 })
+      }
+      prevH = h
+    })
+    ro.observe(scrollEl)
+    return () => ro.disconnect()
+  }, [keyboardDockActive, keyboardUp, open, pinThreadPartTail])
+
+  const shouldTailFollowPart = useCallback(
+    (partIdx) =>
+      partIdx === activePartIndexRef.current && (keyboardDockActive || keyboardUp),
+    [keyboardDockActive, keyboardUp],
+  )
 
   const notifyPartChange = useCallback(
     (partIdx, next) => {
       onChangePart?.(partIdx, next)
-      if (keyboardDockActive && partIdx === activePartIndexRef.current) {
-        scheduleScrollClearOverlap(partIdx)
-      }
+      if (shouldTailFollowPart(partIdx)) pinThreadPartTail(partIdx, { maxPasses: 4 })
     },
-    [keyboardDockActive, onChangePart, scheduleScrollClearOverlap],
+    [onChangePart, pinThreadPartTail, shouldTailFollowPart],
   )
 
   const tailFollowOnComposerInput = useCallback(
     (partIdx, mentionPayload) => {
       mentionComposer?.onCursorMove?.(mentionPayload)
-      if (keyboardDockActive && partIdx === activePartIndexRef.current) {
-        scheduleScrollClearOverlap(partIdx)
-      }
+      if (shouldTailFollowPart(partIdx)) pinThreadPartTail(partIdx, { maxPasses: 4 })
     },
-    [keyboardDockActive, mentionComposer, scheduleScrollClearOverlap],
+    [mentionComposer, pinThreadPartTail, shouldTailFollowPart],
   )
 
   const handlePartFocus = useCallback(
@@ -269,9 +350,9 @@ export default function LoungeThreadComposeSheet({
       didUserActivatePartRef.current = true
       setKeyboardDockActive(true)
       onFocusPart?.(partIdx)
-      scheduleScrollClearOverlap(partIdx)
+      schedulePinThreadPartTail(partIdx, { extended: true })
     },
-    [onFocusPart, scheduleScrollClearOverlap],
+    [onFocusPart, schedulePinThreadPartTail],
   )
 
   const focusPart = useCallback(
@@ -289,10 +370,10 @@ export default function LoungeThreadComposeSheet({
             // ignore
           }
         }
-        scheduleScrollClearOverlap(partIdx)
+        schedulePinThreadPartTail(partIdx, { extended: true })
       })
     },
-    [getPartRef, onFocusPart, scheduleScrollClearOverlap],
+    [getPartRef, onFocusPart, schedulePinThreadPartTail],
   )
 
   if (!open) return null
@@ -306,7 +387,7 @@ export default function LoungeThreadComposeSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[98] flex flex-col bg-zinc-950"
+      className="fixed inset-0 z-[98] flex h-dvh max-h-dvh flex-col overflow-hidden bg-zinc-950"
       role="dialog"
       aria-modal="true"
       aria-labelledby="lounge-thread-compose-title"
@@ -356,7 +437,7 @@ export default function LoungeThreadComposeSheet({
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
         style={{
-          paddingBottom: `calc(${toolbarHeightPx}px + ${Math.round(kbOverlapPx)}px + 0.75rem)`,
+          paddingBottom: `calc(${toolbarHeightPx}px + 0.75rem)`,
         }}
       >
         <div className="space-y-0 pb-2">
@@ -500,9 +581,7 @@ export default function LoungeThreadComposeSheet({
                       onFocus={() => handlePartFocus(partIdx)}
                       onBlur={syncFocusLeftSheet}
                       onInput={() => {
-                        if (keyboardDockActive && partIdx === activePartIndexRef.current) {
-                          scheduleScrollClearOverlap(partIdx)
-                        }
+                        if (shouldTailFollowPart(partIdx)) pinThreadPartTail(partIdx, { maxPasses: 4 })
                       }}
                       maxLength={LOUNGE_CAPTION_MAX}
                       placeholder={
@@ -520,6 +599,9 @@ export default function LoungeThreadComposeSheet({
                         urls={carouselUrls}
                         variant="composer"
                         firstMarginTopClass="mt-2"
+                        onSlideMediaLayout={() => {
+                          schedulePinThreadPartTail(partIdx, { extended: keyboardUp })
+                        }}
                         regionAriaLabel={partGif ? 'Post images and GIF' : 'Post images'}
                         removeLabelForIndex={(i) => (i < imageCount ? 'Remove image' : 'Remove GIF')}
                         onRemoveIndex={(i) => {
@@ -593,7 +675,7 @@ export default function LoungeThreadComposeSheet({
       </div>
 
       <footer
-        className="fixed inset-x-0 bottom-0 z-[97] px-2 pt-1"
+        className="relative z-[1] shrink-0 px-2 pt-1"
         style={{ paddingBottom: footerPadBottom }}
       >
         <input

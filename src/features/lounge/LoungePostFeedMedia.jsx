@@ -40,6 +40,8 @@ export function LoungeImageCarousel({
    * re-enters that scrollport after leaving — fixes nested scroll + `content-visibility` with `root: null`.
    */
   visibilityResetRootRef,
+  /** Composer: parent scroll tail-follow when a slide image finishes layout. */
+  onSlideMediaLayout,
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
@@ -174,6 +176,10 @@ export function LoungeImageCarousel({
     }
   }
 
+  const notifySlideMediaLayout = () => {
+    if (typeof onSlideMediaLayout === 'function') onSlideMediaLayout()
+  }
+
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
@@ -217,7 +223,10 @@ export function LoungeImageCarousel({
                     loading={i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
-                    onLoad={i === 0 ? nudgeScrollStart : undefined}
+                    onLoad={() => {
+                      if (i === 0) nudgeScrollStart()
+                      notifySlideMediaLayout()
+                    }}
                   />
                 </div>
               </div>
@@ -230,7 +239,10 @@ export function LoungeImageCarousel({
                   loading={i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}
-                  onLoad={i === 0 ? nudgeScrollStart : undefined}
+                  onLoad={() => {
+                    if (i === 0) nudgeScrollStart()
+                    notifySlideMediaLayout()
+                  }}
                 />
               </div>
             )}

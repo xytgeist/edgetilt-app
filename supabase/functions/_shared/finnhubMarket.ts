@@ -621,6 +621,37 @@ export async function resolveMarketBars(
   return normalizeMarketBars(synthesizeBarsFromQuote(quote, windowKey))
 }
 
+/** Prior regular session(s) before `beforeSec` — stocks 1H/1D modal pan-back. */
+async function resolveStockIntradayBarsBefore(
+  symbol: string,
+  windowKey: MarketWindowKey,
+  beforeSec: number,
+): Promise<{ bars: MarketBar[]; hasMore: boolean }> {
+  const anchor = Math.floor(beforeSec)
+  if (!Number.isFinite(anchor) || anchor <= 0) return { bars: [], hasMore: false }
+
+  const minFrom = Math.floor(Date.now() / 1000) - MARKET_HISTORY_MAX_LOOKBACK_SEC
+  const intervals = windowKey === '1h' ? ['1m', '5m'] : ['5m', '1m']
+
+  for (const session of regularSessionDaysBack()) {
+    if (session.toSec >= anchor) continue
+    for (const step of intervals) {
+      const sessionBars = await yahooStockCandles(
+        symbol,
+        session.fromSec,
+        session.toSec + 60,
+        step,
+      )
+      const bars = normalizeMarketBars(sessionBars).filter((b) => barUnixSec(b.t) < anchor)
+      if (bars.length >= 2 && isUsableStockIntradayBars(bars)) {
+        return { bars, hasMore: session.fromSec > minFrom }
+      }
+    }
+  }
+
+  return { bars: [], hasMore: false }
+}
+
 /** Older bars ending strictly before `beforeSec` — used when panning back on modal charts. */
 export async function resolveMarketBarsBefore(
   symbol: string,
@@ -630,6 +661,10 @@ export async function resolveMarketBarsBefore(
 ): Promise<{ bars: MarketBar[]; hasMore: boolean }> {
   const anchor = Math.floor(beforeSec)
   if (!Number.isFinite(anchor) || anchor <= 0) return { bars: [], hasMore: false }
+
+  if (assetClass === 'stock' && (windowKey === '24h' || windowKey === '1h')) {
+    return resolveStockIntradayBarsBefore(symbol, windowKey, anchor)
+  }
 
   const endSec = anchor - 1
   const { fromSec, toSec, resolution } = windowRangeAtEnd(windowKey, endSec)

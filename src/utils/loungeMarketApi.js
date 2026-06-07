@@ -152,6 +152,13 @@ export function mergeMarketBarsOlder(existing = [], older = []) {
     .map(([, row]) => row)
 }
 
+/** Keep only bars strictly older than `beforeSec` (unix seconds). */
+export function filterMarketBarsStrictlyBefore(bars = [], beforeSec) {
+  const anchor = Math.floor(Number(beforeSec))
+  if (!Number.isFinite(anchor) || anchor <= 0) return []
+  return bars.filter((bar) => marketBarRowFields(bar).t < anchor)
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{ symbol: string, asset_class: string }} opts

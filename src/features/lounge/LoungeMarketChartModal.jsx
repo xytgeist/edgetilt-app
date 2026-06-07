@@ -12,7 +12,8 @@ import {
   MARKET_MODAL_DEFAULT_TIMEFRAME_IDX,
   MARKET_MODAL_TIMEFRAMES,
 } from '../../utils/loungeMarketCaptionParse.js'
-import { loungeMarketModalNews, loungeMarketModalSeries, loungeMarketModalSeriesBefore, mergeMarketBarsOlder } from '../../utils/loungeMarketApi.js'
+import { loungeMarketModalNews, loungeMarketModalSeries, loungeMarketModalSeriesBefore, filterMarketBarsStrictlyBefore, mergeMarketBarsOlder } from '../../utils/loungeMarketApi.js'
+import { marketBarRowFields } from '../../utils/marketBarOhlc.js'
 import { isUsableStockIntradayBars, isUsEquityRegularSessionOpen } from '../../utils/usEquityMarketSession.js'
 import { formatLoungeSearchError, loungeSearchCashtagPosts, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
@@ -55,6 +56,7 @@ import {
   bindMarketChartHistoryLoader,
   bindMarketChartPanPointer,
   marketChartBarsSignature,
+  marketChartPanDebug,
   scrollMarketChartByPixels,
   shiftMarketChartLogicalRange,
 } from './loungeMarketChartPan.js'
@@ -503,6 +505,8 @@ export default function LoungeMarketChartModal({
   const historyFlushPendingRef = useRef(/** @type {(() => void) | null} */ (null))
   const historyAckBarsRef = useRef(/** @type {(() => void) | null} */ (null))
   const historyResetAnchorRef = useRef(/** @type {(() => void) | null} */ (null))
+  const historyCheckEdgeAfterPanRef = useRef(/** @type {(() => void) | null} */ (null))
+  const advancedUserPannedRef = useRef(false)
   const chartPanningRef = useRef(false)
   const pendingHistoryApplyRef = useRef(/** @type {(() => void) | null} */ (null))
   const advancedBarsSignatureRef = useRef('')
@@ -649,6 +653,7 @@ export default function LoungeMarketChartModal({
     advancedBarsSignatureRef.current = ''
     chartPanningRef.current = false
     pendingHistoryApplyRef.current = null
+    advancedUserPannedRef.current = false
     historyResetAnchorRef.current?.()
     writeStoredMarketChartViewMode('quick')
   }, [])
@@ -754,6 +759,7 @@ export default function LoungeMarketChartModal({
     setHistoryHasMore(true)
     historyLoadingRef.current = false
     advancedBarsSignatureRef.current = ''
+    advancedUserPannedRef.current = false
     historyResetAnchorRef.current?.()
   }, [active?.asset_class, active?.symbol, activeIdx, timeframeIdx])
 
@@ -902,7 +908,11 @@ export default function LoungeMarketChartModal({
     (nextAll, added) => {
       const chart = chartRef.current
       const mainSeries = mainSeriesRef.current
-      if (!chart || !mainSeries || added <= 0) return
+      if (!chart || !mainSeries || added <= 0) {
+        marketChartPanDebug('history apply skipped', { added })
+        historyAckBarsRef.current?.()
+        return
+      }
 
       const run = () => {
         if (!chartRef.current || !mainSeriesRef.current) return
@@ -956,6 +966,7 @@ export default function LoungeMarketChartModal({
         return
       }
       historyLoadingRef.current = true
+      marketChartPanDebug('history fetch start', { beforeSec })
       try {
         const tf = MARKET_MODAL_TIMEFRAMES[timeframeIdx] || MARKET_MODAL_TIMEFRAMES[0]
         const data = await loungeMarketModalSeriesBefore(supabaseClient, {
@@ -965,24 +976,39 @@ export default function LoungeMarketChartModal({
           window_key: tf.windowKey,
           before_sec: beforeSec,
         })
-        if (!data) return
-        if (!data.bars?.length) {
-          setHistoryHasMore(false)
+        if (!data) {
+          marketChartPanDebug('history empty response')
+          historyAckBarsRef.current?.()
           return
         }
-        let nextAll = /** @type {object[]} */ ([])
-        let added = 0
-        setHistoryBars((prev) => {
-          const nextHistory = mergeMarketBarsOlder(prev, data.bars)
-          const base = chartSeriesRef.current?.bars || []
-          const prevAll = mergeMarketBarsOlder(base, prev)
-          nextAll = mergeMarketBarsOlder(base, nextHistory)
-          added = nextAll.length - prevAll.length
-          return nextHistory
-        })
+        if (!data.bars?.length) {
+          marketChartPanDebug('history no bars')
+          setHistoryHasMore(false)
+          historyAckBarsRef.current?.()
+          return
+        }
+        const prevAll = allBarsRef.current || []
+        const oldestT = prevAll.length
+          ? marketBarRowFields(prevAll[0]).t
+          : Math.floor(beforeSec)
+        const incoming = filterMarketBarsStrictlyBefore(data.bars, oldestT)
+        if (!incoming.length) {
+          marketChartPanDebug('history overlap exhausted', {
+            beforeSec,
+            oldestT,
+            raw: data.bars.length,
+          })
+          setHistoryHasMore(false)
+          historyAckBarsRef.current?.()
+          return
+        }
+        const nextAll = mergeMarketBarsOlder(prevAll, incoming)
+        const added = nextAll.length - prevAll.length
+        setHistoryBars((prev) => mergeMarketBarsOlder(prev, incoming))
         allBarsRef.current = nextAll
+        marketChartPanDebug('history got bars', { incoming: incoming.length, added, oldestT })
         applyAdvancedHistoryBars(nextAll, added)
-        if (data.has_more === false) setHistoryHasMore(false)
+        if (data.has_more === false || added <= 0) setHistoryHasMore(false)
       } finally {
         historyLoadingRef.current = false
       }
@@ -1201,9 +1227,13 @@ export default function LoungeMarketChartModal({
           priceAxisHit,
           onPanActiveChange: (active) => {
             chartPanningRef.current = active
-            if (active) return
+            if (active) {
+              advancedUserPannedRef.current = true
+              return
+            }
             requestAnimationFrame(() => {
               if (chartPanningRef.current) return
+              historyCheckEdgeAfterPanRef.current?.()
               historyFlushPendingRef.current?.()
               const pending = pendingHistoryApplyRef.current
               pendingHistoryApplyRef.current = null
@@ -1221,7 +1251,10 @@ export default function LoungeMarketChartModal({
             void loadMoreHistoryRef.current(beforeSec)
           },
           {
-            canLoad: () => historyHasMoreRef.current && !historyLoadingRef.current,
+            canLoad: () =>
+              historyHasMoreRef.current &&
+              !historyLoadingRef.current &&
+              advancedUserPannedRef.current,
             isPanning: () => chartPanningRef.current,
           },
         )
@@ -1229,6 +1262,7 @@ export default function LoungeMarketChartModal({
     historyFlushPendingRef.current = historyLoader?.flushPending ?? null
     historyAckBarsRef.current = historyLoader?.acknowledgeBars ?? null
     historyResetAnchorRef.current = historyLoader?.resetAnchor ?? null
+    historyCheckEdgeAfterPanRef.current = historyLoader?.checkEdgeAfterPan ?? null
     const unbindHistory = historyLoader?.unbind ?? (() => {})
 
     const unbindScrub = isAdvancedView
@@ -1286,6 +1320,8 @@ export default function LoungeMarketChartModal({
       historyFlushPendingRef.current = null
       historyAckBarsRef.current = null
       historyResetAnchorRef.current = null
+      historyCheckEdgeAfterPanRef.current = null
+      advancedUserPannedRef.current = false
       chartPanningRef.current = false
       pendingHistoryApplyRef.current = null
       unbindPriceAxisZoom()

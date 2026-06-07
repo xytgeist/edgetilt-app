@@ -19,13 +19,38 @@ export function scrollMarketChartByPixels(chart, deltaPx) {
   if (!chart || !Number.isFinite(deltaPx) || deltaPx === 0) return
   const ts = chart.timeScale()
   const range = ts.getVisibleLogicalRange()
-  if (!range) return
-  const coord0 = ts.logicalToCoordinate(range.from)
-  const coord1 = ts.logicalToCoordinate(range.from + 1)
-  if (coord0 == null || coord1 == null) return
-  const barWidthPx = coord1 - coord0
-  if (!Number.isFinite(barWidthPx) || barWidthPx === 0) return
-  const barShift = deltaPx / barWidthPx
+  if (!range) {
+    marketChartPanDebug('scroll skip no range')
+    return
+  }
+
+  const span = range.to - range.from
+  if (!Number.isFinite(span) || span === 0) {
+    marketChartPanDebug('scroll skip zero span')
+    return
+  }
+
+  // logicalToCoordinate(undefined) when range.from is negative (panned past bar 0).
+  const anchorLogical = Math.max(0, Math.floor(range.from))
+  const coord0 = ts.logicalToCoordinate(anchorLogical)
+  const coord1 = ts.logicalToCoordinate(anchorLogical + 1)
+  let barShift = null
+  if (coord0 != null && coord1 != null) {
+    const barWidthPx = coord1 - coord0
+    if (Number.isFinite(barWidthPx) && barWidthPx !== 0) {
+      barShift = deltaPx / barWidthPx
+    }
+  }
+
+  if (barShift == null) {
+    const width = ts.width()
+    if (!width) {
+      marketChartPanDebug('scroll skip no width', { from: range.from, to: range.to })
+      return
+    }
+    barShift = (deltaPx / width) * span
+  }
+
   ts.setVisibleLogicalRange({
     from: range.from - barShift,
     to: range.to - barShift,
@@ -35,27 +60,9 @@ export function scrollMarketChartByPixels(chart, deltaPx) {
 const PAN_GESTURE_SLOP_PX = 6
 const HISTORY_LOAD_DEBOUNCE_MS = 220
 
-export const MARKET_CHART_PAN_DEBUG_STORAGE_KEY = 'loungeMarketChartPanDebug:v1'
-
-/** Opt-in via `localStorage` — logs appear in Admin utils debug panel and DevTools. */
+/** Pan/history traces — captured in Settings → Admin utils → Console log. */
 export function marketChartPanDebug(...args) {
-  if (typeof window === 'undefined') return
-  try {
-    if (window.localStorage.getItem(MARKET_CHART_PAN_DEBUG_STORAGE_KEY) !== '1') return
-  } catch {
-    return
-  }
   console.log('[marketChartPan]', ...args)
-}
-
-/** @returns {boolean} */
-export function isMarketChartPanDebugEnabled() {
-  if (typeof window === 'undefined') return false
-  try {
-    return window.localStorage.getItem(MARKET_CHART_PAN_DEBUG_STORAGE_KEY) === '1'
-  } catch {
-    return false
-  }
 }
 
 /** Stable fingerprint for bar arrays — skip redundant Advanced chart refreshes. */
@@ -165,6 +172,7 @@ export function bindMarketChartPanPointer(el, chart, opts = {}) {
       const ldy = local.y - startLocalY
       if (Math.hypot(ldx, ldy) < PAN_GESTURE_SLOP_PX) return
       startPan(e, local.x)
+      queuePanDelta(ldx)
       return
     }
 
@@ -242,23 +250,33 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
     debounceTimer = setTimeout(flushPending, debounceMs)
   }
 
-  const handler = (range) => {
+  const tryScheduleFromRange = (range) => {
     if (isPanning()) return
 
     if (!range || range.from > edgeBars) {
       clearPending()
       return
     }
-    if (!canLoad()) return
+    if (!canLoad()) {
+      marketChartPanDebug('history skip canLoad', { from: range?.from })
+      return
+    }
     const bars = getBars()
     if (!bars?.length) return
     const oldest = bars[0]
     const beforeSec = Math.floor(oldest.t > 1e12 ? oldest.t / 1000 : oldest.t)
     if (!Number.isFinite(beforeSec) || beforeSec <= 0) return
-    if (lastBeforeSec === beforeSec) return
+    if (lastBeforeSec === beforeSec) {
+      marketChartPanDebug('history skip same anchor', { beforeSec })
+      return
+    }
     lastBeforeSec = beforeSec
     pendingBeforeSec = beforeSec
     schedulePending()
+  }
+
+  const handler = (range) => {
+    tryScheduleFromRange(range)
   }
 
   const ts = chart.timeScale()
@@ -272,6 +290,10 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
       if (pendingBeforeSec == null || isPanning() || !canLoad()) return
       if (debounceTimer) clearTimeout(debounceTimer)
       flushPending()
+    },
+    /** After pan release — range updates while dragging are ignored. */
+    checkEdgeAfterPan: () => {
+      tryScheduleFromRange(ts.getVisibleLogicalRange())
     },
     /** After prepending bars — prevent immediate re-fetch on the new oldest anchor. */
     acknowledgeBars: () => {

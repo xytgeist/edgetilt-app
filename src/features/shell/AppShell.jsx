@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense, useSyncExternalStore } from 'react'
 import * as Sentry from '@sentry/react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
@@ -31,6 +31,11 @@ import {
   setPwaNotifEnablePending,
 } from '../../utils/pwaNotificationPrompt'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
+import AppConsoleLogDebugHud from '../../components/AppConsoleLogDebugHud.jsx'
+import {
+  readAppConsoleLogHudEnabled,
+  subscribeAppConsoleLogHudEnabled,
+} from '../../utils/appConsoleLogHudPref.js'
 import LoungeAppSplash from '../../components/LoungeAppSplash.jsx'
 import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
@@ -193,6 +198,11 @@ export default function AppShell({
   onSetContentAccessGate,
   onRequireSubscribe,
 }) {
+  const consoleLogHudEnabled = useSyncExternalStore(
+    subscribeAppConsoleLogHudEnabled,
+    readAppConsoleLogHudEnabled,
+    () => false,
+  )
   const COMMUNITY_FEED_PAGE_SIZE = 28
   const [tab, setTab] = useState('home')
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
@@ -1460,6 +1470,8 @@ export default function AppShell({
           className="fixed inset-0 z-40 bg-black/35"
         />
       )}
+
+      {isStaff && consoleLogHudEnabled ? <AppConsoleLogDebugHud /> : null}
 
     </div>
   )

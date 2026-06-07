@@ -286,6 +286,11 @@ import {
   writeLoungeFeedVideoDebugEnabled,
 } from '../../utils/loungeFeedVideoDebugPref.js'
 import {
+  readAppConsoleLogHudEnabled,
+  subscribeAppConsoleLogHudEnabled,
+  writeAppConsoleLogHudEnabled,
+} from '../../utils/appConsoleLogHudPref.js'
+import {
   readLoungeBuildBadgeEnabled,
   subscribeLoungeBuildBadgeEnabled,
   writeLoungeBuildBadgeEnabled,
@@ -1073,6 +1078,15 @@ export default function SocialFeed({
   )
   const onLoungeFeedVideoDebugChange = useCallback((enabled) => {
     writeLoungeFeedVideoDebugEnabled(enabled)
+  }, [])
+
+  const loungeConsoleLogHudEnabled = useSyncExternalStore(
+    subscribeAppConsoleLogHudEnabled,
+    readAppConsoleLogHudEnabled,
+    () => false,
+  )
+  const onLoungeConsoleLogHudChange = useCallback((enabled) => {
+    writeAppConsoleLogHudEnabled(enabled)
   }, [])
 
   const loungeBuildBadgeEnabled = useSyncExternalStore(
@@ -15561,6 +15575,8 @@ export default function SocialFeed({
           onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
           feedVideoDebugEnabled={loungeFeedVideoDebugEnabled}
           onFeedVideoDebugChange={onLoungeFeedVideoDebugChange}
+          consoleLogHudEnabled={loungeConsoleLogHudEnabled}
+          onConsoleLogHudChange={onLoungeConsoleLogHudChange}
           settingsViewerIsStaff={loungeStaffToolsEnabled}
           buildBadgeEnabled={loungeBuildBadgeEnabled}
           onBuildBadgeChange={onLoungeBuildBadgeChange}

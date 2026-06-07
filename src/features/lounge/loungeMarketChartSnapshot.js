@@ -145,18 +145,64 @@ export async function captureMarketChartPngFile(
 }
 
 /**
+ * Trigger a browser download for a captured chart PNG.
+ * @param {File} file
+ */
+export function downloadMarketChartPngFile(file) {
+  if (typeof document === 'undefined') throw new Error('Download not available')
+  const url = URL.createObjectURL(file)
+  try {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.name
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+}
+
+/**
+ * Mobile-friendly label for the snapshot save menu item.
+ * @returns {string}
+ */
+export function marketChartSnapshotSaveMenuLabel() {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  if (/iPhone|iPad|iPod/i.test(ua) || /Android/i.test(ua)) return 'Save to Photos'
+  return 'Save image'
+}
+
+/**
+ * Save chart PNG via native share sheet (mobile → Save to Photos) or file download.
  * @param {import('lightweight-charts').IChartApi | null | undefined} chart
  * @param {MarketChartSnapshotBranding} [branding]
  * @param {MarketChartAnnotationItems} [annotationItems]
+ * @param {string} [filename]
+ * @returns {Promise<'share' | 'download'>}
  */
-export async function copyMarketChartScreenshotToClipboard(chart, branding, annotationItems) {
-  const file = await captureMarketChartPngFile(chart, 'chart-snapshot.png', branding, annotationItems)
+export async function saveMarketChartScreenshot(chart, branding, annotationItems, filename) {
+  const file = await captureMarketChartPngFile(
+    chart,
+    filename || 'chart-snapshot.png',
+    branding,
+    annotationItems,
+  )
   const nav = typeof navigator !== 'undefined' ? navigator : null
-  if (nav?.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-    await nav.clipboard.write([new ClipboardItem({ [file.type]: file })])
-    return
+
+  if (nav?.share) {
+    const shareData = { files: [file] }
+    const canShareFiles =
+      typeof nav.canShare !== 'function' ? true : nav.canShare(shareData)
+    if (canShareFiles) {
+      await nav.share(shareData)
+      return 'share'
+    }
   }
-  throw new Error('Copy not supported in this browser')
+
+  downloadMarketChartPngFile(file)
+  return 'download'
 }
 
 /** @param {string | null | undefined} symbol */

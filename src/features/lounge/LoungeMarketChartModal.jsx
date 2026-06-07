@@ -81,9 +81,10 @@ import {
 import { refreshAdvancedMarketChartData } from './loungeMarketChartDataSync.js'
 import {
   captureMarketChartPngFile,
-  copyMarketChartScreenshotToClipboard,
   marketChartSnapshotBrandingFromEmbed,
   marketChartSnapshotFilename,
+  marketChartSnapshotSaveMenuLabel,
+  saveMarketChartScreenshot,
 } from './loungeMarketChartSnapshot.js'
 import LoungeMarketChartAnnotationOverlay from './LoungeMarketChartAnnotationOverlay.jsx'
 import {
@@ -466,7 +467,7 @@ function MarketChartSnapshotButton({
   busy = false,
   status = '',
   canInsert = false,
-  onCopy,
+  onSave,
   onInsert,
   mutedClass,
 }) {
@@ -518,11 +519,11 @@ function MarketChartSnapshotButton({
             role="menuitem"
             onClick={(e) => {
               e.stopPropagation()
-              onCopy()
+              onSave()
             }}
             className="flex w-full px-3 py-2 text-left text-[12px] text-zinc-200 touch-manipulation hover:bg-zinc-800 active:bg-zinc-800/90"
           >
-            Capture image
+            {marketChartSnapshotSaveMenuLabel()}
           </button>
           {canInsert ? (
             <button
@@ -1012,9 +1013,14 @@ export default function LoungeMarketChartModal({
       try {
         const filename = marketChartSnapshotFilename(active?.display_symbol || active?.symbol)
         const branding = marketChartSnapshotBrandingFromEmbed(active, isLight)
-        if (mode === 'copy') {
-          await copyMarketChartScreenshotToClipboard(chart, branding, chartAnnotationsRef.current)
-          setSnapshotFlash('Copied to clipboard')
+        if (mode === 'save') {
+          const result = await saveMarketChartScreenshot(
+            chart,
+            branding,
+            chartAnnotationsRef.current,
+            filename,
+          )
+          setSnapshotFlash(result === 'download' ? 'Image downloaded' : 'Image saved')
         } else if (mode === 'insert') {
           if (typeof onInsertSnapshot !== 'function') {
             setSnapshotFlash('Add to post unavailable')
@@ -1033,6 +1039,7 @@ export default function LoungeMarketChartModal({
           }
         }
       } catch (err) {
+        if (err && typeof err === 'object' && err.name === 'AbortError') return
         setSnapshotFlash(err instanceof Error ? err.message : 'Snapshot failed')
       } finally {
         setSnapshotBusy(false)
@@ -2367,7 +2374,7 @@ export default function LoungeMarketChartModal({
                         busy={snapshotBusy}
                         status={snapshotFlash}
                         canInsert={typeof onInsertSnapshot === 'function'}
-                        onCopy={() => void runMarketChartSnapshot('copy')}
+                        onSave={() => void runMarketChartSnapshot('save')}
                         onInsert={() => void runMarketChartSnapshot('insert')}
                         mutedClass={mutedClass}
                       />

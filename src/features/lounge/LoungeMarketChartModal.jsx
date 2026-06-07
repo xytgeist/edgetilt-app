@@ -783,6 +783,30 @@ function formatPostAge(createdAt) {
   return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+/** Company logo for market embed headers — no crossOrigin (breaks most Finnhub/Yahoo hosts in UI). */
+function MarketEmbedLogo({ embed, imgClass, fallbackClass }) {
+  const logo = String(embed?.logo_url || embed?.logo || '').trim()
+  const initial = (embed?.display_symbol || embed?.symbol || '?').slice(0, 1)
+  const [imgOk, setImgOk] = useState(Boolean(logo))
+
+  useEffect(() => {
+    setImgOk(Boolean(logo))
+  }, [logo, embed?.display_symbol, embed?.symbol])
+
+  if (logo && imgOk) {
+    return (
+      <img
+        src={logo}
+        alt=""
+        className={imgClass}
+        onError={() => setImgOk(false)}
+      />
+    )
+  }
+
+  return <div className={fallbackClass}>{initial}</div>
+}
+
 /**
  * @param {{
  *   open: boolean,
@@ -2181,18 +2205,11 @@ export default function LoungeMarketChartModal({
                   paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
                 }}
               >
-                {active?.logo_url ? (
-                  <img
-                    src={active.logo_url}
-                    alt=""
-                    crossOrigin="anonymous"
-                    className="h-8 w-8 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
-                    {(active?.display_symbol || '?').slice(0, 1)}
-                  </div>
-                )}
+                <MarketEmbedLogo
+                  embed={active}
+                  imgClass="h-8 w-8 shrink-0 rounded-full object-cover"
+                  fallbackClass="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-bold leading-tight">
                     {active?.name || active?.display_symbol}
@@ -2604,20 +2621,11 @@ export default function LoungeMarketChartModal({
 
         <div className="shrink-0 px-4 pb-1 pt-0" data-market-sheet-drag>
           <div className="flex items-start gap-3">
-            {active?.logo_url ? (
-              <img
-                src={active.logo_url}
-                alt=""
-                crossOrigin="anonymous"
-                className="h-10 w-10 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300"
-              >
-                {(active?.display_symbol || '?').slice(0, 1)}
-              </div>
-            )}
+            <MarketEmbedLogo
+              embed={active}
+              imgClass="h-10 w-10 shrink-0 rounded-full object-cover"
+              fallbackClass="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300"
+            />
             <div className="min-w-0 flex-1">
               <div className="truncate text-[17px] font-bold leading-tight">
                 {active?.name || active?.display_symbol}

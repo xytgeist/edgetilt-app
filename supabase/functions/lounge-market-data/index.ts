@@ -178,15 +178,14 @@ function isAllowedMarketLogoUrl(url: string): boolean {
     const parsed = new URL(url)
     if (parsed.protocol !== 'https:') return false
     const host = parsed.hostname.toLowerCase()
-    const allowed = [
-      'static2.finnhub.io',
+    const allowedSuffixes = [
       'finnhub.io',
-      'coin-images.coingecko.com',
-      'assets.coingecko.com',
-      's.yimg.com',
-      'logo.clearbit.com',
+      'coingecko.com',
+      'yimg.com',
+      'clearbit.com',
+      'googleusercontent.com',
     ]
-    return allowed.some((entry) => host === entry || host.endsWith(`.${entry}`))
+    return allowedSuffixes.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))
   } catch {
     return false
   }

@@ -80,21 +80,6 @@ function blobToSnapshotLogoImage(blob) {
 
 /**
  * @param {string} url
- * @returns {Promise<HTMLImageElement | null>}
- */
-function loadSnapshotLogoViaCrossOrigin(url) {
-  if (typeof Image === 'undefined') return Promise.resolve(null)
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = () => resolve(null)
-    img.src = url
-  })
-}
-
-/**
- * @param {string} url
  * @param {{ supabase?: import('@supabase/supabase-js').SupabaseClient | null, symbol?: string | null, asset_class?: string | null }} [opts]
  * @returns {Promise<HTMLImageElement | null>}
  */
@@ -111,11 +96,8 @@ async function loadSnapshotLogoImage(url, opts = {}) {
         if (img) return img
       }
     } catch {
-      // Logo hosts without CORS — try crossOrigin img, then Edge proxy.
+      // Most logo CDNs block browser CORS — use Edge proxy for snapshots.
     }
-
-    const crossOriginImg = await loadSnapshotLogoViaCrossOrigin(logoUrl)
-    if (crossOriginImg) return crossOriginImg
   }
 
   if (opts.supabase) {
@@ -134,167 +116,198 @@ async function loadSnapshotLogoImage(url, opts = {}) {
 }
 
 /**
+ * @param {MarketChartSnapshotLegendRow[]} rows
+ * @param {number} chartW
+ * @returns {{
+ *   margin: number,
+ *   padX: number,
+ *   padY: number,
+ *   titleSize: number,
+ *   titleGap: number,
+ *   rowSize: number,
+ *   rowGap: number,
+ *   swatchW: number,
+ *   swatchH: number,
+ *   swatchGap: number,
+ *   cardW: number,
+ *   cardH: number,
+ *   rows: Array<MarketChartSnapshotLegendRow & { label: string, labelW: number }>,
+ * }}
+ */
+function planMarketChartSnapshotFloatingLegend(rows, chartW) {
+  const margin = Math.max(12, Math.round(chartW * 0.008))
+  const padX = Math.max(10, Math.round(chartW * 0.012))
+  const padY = Math.max(8, Math.round(chartW * 0.01))
+  const titleSize = Math.max(16, Math.round(chartW * 0.011))
+  const titleGap = Math.max(6, Math.round(chartW * 0.004))
+  const rowSize = Math.max(18, Math.round(chartW * 0.013))
+  const rowGap = Math.max(8, Math.round(chartW * 0.005))
+  const swatchW = Math.max(18, Math.round(chartW * 0.015))
+  const swatchH = Math.max(3, Math.round(chartW * 0.0012))
+  const swatchGap = Math.max(8, Math.round(chartW * 0.006))
+  const maxCardW = Math.max(200, Math.round(chartW * 0.22))
+
+  /** @type {Array<MarketChartSnapshotLegendRow & { label: string, labelW: number }>} */
+  const validRows = []
+  let maxRowW = 0
+
+  if (typeof document !== 'undefined') {
+    const measureCtx = document.createElement('canvas').getContext('2d')
+    if (measureCtx) {
+      measureCtx.font = `600 ${rowSize}px system-ui, -apple-system, "Segoe UI", sans-serif`
+      for (const row of rows) {
+        const label = String(row.label || '').trim()
+        if (!label) continue
+        const labelW = Math.min(measureCtx.measureText(label).width, maxCardW - padX * 2 - swatchW - swatchGap)
+        maxRowW = Math.max(maxRowW, swatchW + swatchGap + labelW)
+        validRows.push({ ...row, label, labelW })
+      }
+    }
+  }
+
+  if (!validRows.length) {
+    for (const row of rows) {
+      const label = String(row.label || '').trim()
+      if (!label) continue
+      validRows.push({ ...row, label, labelW: label.length * rowSize * 0.55 })
+      maxRowW = Math.max(maxRowW, swatchW + swatchGap + label.length * rowSize * 0.55)
+    }
+  }
+
+  const cardW = Math.min(maxCardW, Math.max(padX * 2 + maxRowW, Math.round(chartW * 0.12)))
+  const cardH =
+    validRows.length > 0
+      ? padY * 2 + titleSize + titleGap + validRows.length * rowSize + (validRows.length - 1) * rowGap
+      : 0
+
+  return {
+    margin,
+    padX,
+    padY,
+    titleSize,
+    titleGap,
+    rowSize,
+    rowGap,
+    swatchW,
+    swatchH,
+    swatchGap,
+    cardW,
+    cardH,
+    rows: validRows,
+  }
+}
+
+/**
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} x
  * @param {number} y
  * @param {number} w
  * @param {number} h
- * @param {string} color
- * @param {boolean} [dashed]
+ * @param {number} r
  */
-function drawSnapshotLegendSwatch(ctx, x, y, w, h, color, dashed = false) {
-  if (dashed) {
-    ctx.save()
-    ctx.strokeStyle = color
-    ctx.lineWidth = Math.max(2, h)
-    ctx.setLineDash([Math.max(3, w * 0.18), Math.max(2, w * 0.12)])
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x + w, y)
-    ctx.stroke()
-    ctx.restore()
-    return
-  }
-  ctx.fillStyle = color
-  ctx.fillRect(x, y - h / 2, w, h)
-}
-
-/**
- * @param {MarketChartSnapshotLegendRow[]} rows
- * @param {number} chartW
- * @returns {{
- *   bandH: number,
- *   padX: number,
- *   padY: number,
- *   fontSize: number,
- *   swatchW: number,
- *   swatchH: number,
- *   itemGap: number,
- *   lineGap: number,
- *   lineH: number,
- *   lines: Array<Array<MarketChartSnapshotLegendRow & { label: string }>>,
- * }}
- */
-function planMarketChartSnapshotLegendBand(rows, chartW) {
-  const padX = Math.max(20, Math.round(chartW * 0.018))
-  const padY = Math.max(12, Math.round(chartW * 0.01))
-  const fontSize = Math.max(18, Math.round(chartW * 0.016))
-  const swatchW = Math.max(20, Math.round(chartW * 0.015))
-  const swatchH = Math.max(3, Math.round(chartW * 0.0028))
-  const itemGap = Math.max(18, Math.round(chartW * 0.014))
-  const lineGap = Math.max(10, Math.round(chartW * 0.007))
-
-  if (typeof document === 'undefined') {
-    return {
-      bandH: Math.max(40, Math.round(chartW * 0.034)),
-      padX,
-      padY,
-      fontSize,
-      swatchW,
-      swatchH,
-      itemGap,
-      lineGap,
-      lineH: fontSize + padY,
-      lines: [],
-    }
-  }
-
-  const measureCtx = document.createElement('canvas').getContext('2d')
-  if (!measureCtx) {
-    return {
-      bandH: Math.max(40, Math.round(chartW * 0.034)),
-      padX,
-      padY,
-      fontSize,
-      swatchW,
-      swatchH,
-      itemGap,
-      lineGap,
-      lineH: fontSize + padY,
-      lines: [],
-    }
-  }
-
-  measureCtx.font = `600 ${fontSize}px system-ui, -apple-system, "Segoe UI", sans-serif`
-
-  /** @type {Array<Array<MarketChartSnapshotLegendRow & { label: string }>>} */
-  const lines = [[]]
-  let lineW = 0
-  const maxLineW = chartW - padX * 2
-
-  for (const row of rows) {
-    const label = String(row.label || '').trim()
-    if (!label) continue
-    const labelW = measureCtx.measureText(label).width
-    const itemW = swatchW + Math.max(8, Math.round(fontSize * 0.45)) + labelW
-    if (lineW > 0 && lineW + itemGap + itemW > maxLineW) {
-      lines.push([])
-      lineW = 0
-    }
-    if (lineW > 0) lineW += itemGap
-    lineW += itemW
-    lines[lines.length - 1].push({ ...row, label })
-  }
-
-  const activeLines = lines.filter((line) => line.length)
-  const lineH = fontSize + padY
-  const bandH =
-    activeLines.length > 0
-      ? padY * 2 + activeLines.length * lineH + Math.max(0, activeLines.length - 1) * lineGap
-      : 0
-
-  return {
-    bandH,
-    padX,
-    padY,
-    fontSize,
-    swatchW,
-    swatchH,
-    itemGap,
-    lineGap,
-    lineH,
-    lines: activeLines,
-  }
+function pathRoundedRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.lineTo(x + w - radius, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius)
+  ctx.lineTo(x + w, y + h - radius)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h)
+  ctx.lineTo(x + radius, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius)
+  ctx.lineTo(x, y + radius)
+  ctx.quadraticCurveTo(x, y, x + radius, y)
+  ctx.closePath()
 }
 
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {ReturnType<typeof planMarketChartSnapshotLegendBand>} plan
- * @param {number} chartW
- * @param {number} y0
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ * @param {number} r
+ */
+function fillRoundedRect(ctx, x, y, w, h, r) {
+  pathRoundedRect(ctx, x, y, w, h, r)
+  ctx.fill()
+}
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x
+ * @param {number} midY
+ * @param {number} w
+ * @param {number} h
+ * @param {string} color
+ * @param {boolean} [dashed]
+ */
+function drawSnapshotFloatingLegendSwatch(ctx, x, midY, w, h, color, dashed = false) {
+  if (dashed) {
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.lineWidth = Math.max(2, h * 2)
+    ctx.setLineDash([Math.max(3, w * 0.2), Math.max(2, w * 0.15)])
+    ctx.beginPath()
+    ctx.moveTo(x, midY)
+    ctx.lineTo(x + w, midY)
+    ctx.stroke()
+    ctx.restore()
+    return
+  }
+  const top = midY - h / 2
+  const r = h / 2
+  ctx.fillStyle = color
+  fillRoundedRect(ctx, x, top, w, h, r)
+}
+
+/**
+ * Floating on-chart legend — matches Advanced `MarketChartFloatingIndicatorLegend`.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {ReturnType<typeof planMarketChartSnapshotFloatingLegend>} plan
+ * @param {number} chartX
+ * @param {number} chartY
  * @param {boolean} isLight
  */
-function drawMarketChartSnapshotLegendBand(ctx, plan, chartW, y0, isLight) {
-  const { bandH, lines, padX, padY, fontSize, swatchW, swatchH, itemGap, lineGap, lineH } = plan
-  if (!bandH || !lines.length) return 0
+function drawMarketChartSnapshotFloatingLegend(ctx, plan, chartX, chartY, isLight) {
+  if (!plan?.rows?.length || !plan.cardH) return
 
-  const textColor = isLight ? '#3f3f46' : '#e4e4e7'
-  const bg = isLight ? '#f4f4f5' : '#18181b'
-  const divider = isLight ? '#e4e4e7' : '#27272a'
+  const x = chartX + plan.margin
+  const y = chartY + plan.margin
+  const { cardW, cardH, padX, padY, titleSize, titleGap, rowSize, rowGap, swatchW, swatchH, swatchGap } = plan
+  const fontFamily = 'system-ui, -apple-system, "Segoe UI", sans-serif'
+  const borderColor = isLight ? 'rgba(228, 228, 231, 0.85)' : 'rgba(63, 63, 70, 0.85)'
+  const bg = isLight ? 'rgba(250, 250, 250, 0.92)' : 'rgba(9, 9, 11, 0.88)'
+  const titleColor = isLight ? '#71717a' : '#a1a1aa'
+  const rowColor = isLight ? '#27272a' : '#e4e4e7'
+  const radius = Math.max(6, Math.round(cardW * 0.018))
 
+  ctx.save()
   ctx.fillStyle = bg
-  ctx.fillRect(0, y0, chartW, bandH)
-  ctx.fillStyle = divider
-  ctx.fillRect(0, y0 + bandH - 1, chartW, 1)
+  fillRoundedRect(ctx, x, y, cardW, cardH, radius)
+  pathRoundedRect(ctx, x, y, cardW, cardH, radius)
+  ctx.strokeStyle = borderColor
+  ctx.lineWidth = Math.max(1, Math.round(cardW * 0.0015))
+  ctx.stroke()
 
-  ctx.font = `600 ${fontSize}px system-ui, -apple-system, "Segoe UI", sans-serif`
+  let cursorY = y + padY
+  ctx.fillStyle = titleColor
+  ctx.font = `600 ${titleSize}px ${fontFamily}`
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'left'
+  ctx.fillText('LEGEND', x + padX, cursorY)
+  cursorY += titleSize + titleGap
 
-  let y = y0 + padY
-  for (const line of lines) {
-    let x = padX
-    const midY = y + fontSize / 2
-    for (const item of line) {
-      drawSnapshotLegendSwatch(ctx, x, midY, swatchW, swatchH, item.color, item.dashed)
-      x += swatchW + Math.max(8, Math.round(fontSize * 0.45))
-      ctx.fillStyle = textColor
-      ctx.textBaseline = 'middle'
-      ctx.fillText(item.label, x, midY)
-      x += ctx.measureText(item.label).width + itemGap
-    }
-    y += lineH + lineGap
+  ctx.font = `600 ${rowSize}px ${fontFamily}`
+  for (const row of plan.rows) {
+    const rowMidY = cursorY + rowSize / 2
+    drawSnapshotFloatingLegendSwatch(ctx, x + padX, rowMidY, swatchW, swatchH, row.color, row.dashed)
+    ctx.fillStyle = rowColor
+    ctx.textBaseline = 'middle'
+    ctx.fillText(truncateCanvasText(ctx, row.label, row.labelW), x + padX + swatchW + swatchGap, rowMidY)
+    cursorY += rowSize + rowGap
   }
-
-  return bandH
+  ctx.restore()
 }
 
 /**
@@ -393,32 +406,29 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
     }
   }
 
-  const leftBlockW = padX + (showLogo ? logoSize + logoGap : 0) + leftTextW
   const rightBlockTotalW = rightBlockW > 0 ? padX + rightBlockW : 0
-  const sideGutter = Math.max(leftBlockW, rightBlockTotalW, Math.round(chartW * 0.17))
-  const leftTextMaxW = Math.max(48, sideGutter - padX - (showLogo ? logoSize + logoGap : 0) - padX)
-
   const leftTextBlockH = (name ? titleSize + textGap : 0) + (ticker ? tickerSize : 0)
   const rightTextBlockH =
     (priceLabel ? priceSize : 0) + (priceLabel && changeLabel ? textGap : 0) + (changeLabel ? changeSize : 0)
   const headerContentH = Math.max(showLogo ? logoSize : 0, leftTextBlockH, rightTextBlockH)
   const headerH = hasHeader ? padY * 2 + headerContentH : 0
-  const legendPlan = hasLegend ? planMarketChartSnapshotLegendBand(legendRows, chartW) : null
-  const legendH = legendPlan?.bandH || 0
+  const floatingLegendPlan = hasLegend ? planMarketChartSnapshotFloatingLegend(legendRows, chartW) : null
 
   const out = document.createElement('canvas')
   out.width = chartW
-  out.height = chartH + headerH + legendH
+  out.height = chartH + headerH
   const ctx = out.getContext('2d')
   if (!ctx) return chartCanvas
 
   ctx.fillStyle = bg
-  ctx.fillRect(0, 0, chartW, headerH + legendH + chartH)
+  ctx.fillRect(0, 0, chartW, headerH + chartH)
 
   if (hasHeader) {
     const contentTop = padY
     const logoY = contentTop + Math.round((headerContentH - logoSize) / 2)
     const textX = padX + (showLogo ? logoSize + logoGap : 0)
+    const rightReserve = rightBlockTotalW > 0 ? rightBlockTotalW + padX : padX
+    const leftTextMaxW = Math.max(80, chartW - textX - rightReserve - padX)
 
     if (showLogo && logo) {
       drawSnapshotLogo(ctx, logo, padX, logoY, logoSize, isLight)
@@ -461,16 +471,12 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
     ctx.fillRect(0, headerH - 1, chartW, 1)
   }
 
-  if (hasLegend && legendPlan) {
-    drawMarketChartSnapshotLegendBand(ctx, legendPlan, chartW, headerH, isLight)
-  }
-
-  const chartY = headerH + legendH
-  if (legendH > 0) {
-    ctx.fillStyle = divider
-    ctx.fillRect(0, chartY - 1, chartW, 1)
-  }
+  const chartY = headerH
   ctx.drawImage(chartCanvas, 0, chartY)
+
+  if (floatingLegendPlan?.rows?.length) {
+    drawMarketChartSnapshotFloatingLegend(ctx, floatingLegendPlan, 0, chartY, isLight)
+  }
 
   return out
 }

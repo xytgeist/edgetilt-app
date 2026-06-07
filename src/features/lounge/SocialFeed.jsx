@@ -1616,9 +1616,17 @@ export default function SocialFeed({
         return false
       }
       composerImageItemsRef.current = next
-      setComposerImageItems(next)
-      setComposerExpanded(true)
+      composerFoldedFromFeedScrollRef.current = false
+      composerFoldRevealRef.current = 1
+      flushSync(() => {
+        setComposerImageItems(next)
+        setComposerFoldReveal(1)
+        composerExpandedRef.current = true
+        setComposerExpanded(true)
+        setComposerFocusToken((t) => t + 1)
+      })
       closeMarketChartModal()
+      scrollLoungeFeedToTopInstant()
       setLoungeShareFlash('Chart image added to post.')
       return true
     },
@@ -1627,6 +1635,7 @@ export default function SocialFeed({
       composerUserId,
       loungeReadOnly,
       openProfileGateIfNeeded,
+      scrollLoungeFeedToTopInstant,
     ],
   )
 

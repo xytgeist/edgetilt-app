@@ -6,7 +6,6 @@ import {
   ChartArea,
   ChartLine,
   Check,
-  ChevronDown,
   Eraser,
   Loader2,
   PenLine,
@@ -280,34 +279,16 @@ const ADVANCED_CHART_TOOLBAR_MENU_ANCHOR = 'absolute bottom-full left-0 mb-1'
 const ADVANCED_CHART_TOOLBAR_MENU_ANCHOR_RIGHT = 'absolute bottom-full right-0 mb-1'
 
 const ADVANCED_CHART_TOOLBAR_BTN =
-  'inline-flex h-6 shrink-0 items-center justify-center rounded px-1 text-[0px] leading-none touch-manipulation'
+  'inline-flex h-9 shrink-0 items-center justify-center rounded-md px-1.5 text-[0px] leading-none touch-manipulation'
 
-const ADVANCED_CHART_TOOLBAR_DROPDOWN_ROW = 'inline-flex h-4 items-center gap-0.5'
-
-const ADVANCED_CHART_TOOLBAR_ICON = 'h-4 w-4 shrink-0'
+const ADVANCED_CHART_TOOLBAR_ICON = 'h-5 w-5 shrink-0'
 
 const ADVANCED_CHART_TOOLBAR_LEADING_SLOT =
-  'relative inline-flex h-4 w-4 shrink-0 items-center justify-center'
+  'relative inline-flex h-5 w-5 shrink-0 items-center justify-center'
 
-/** Same 16px row as icons; text-base matches Lucide/SVG visual weight. */
+/** Resolution text in the same 20px row as toolbar icons. */
 const ADVANCED_CHART_TOOLBAR_RESOLUTION_LABEL =
-  'inline-flex h-4 min-w-[1.25rem] shrink-0 items-center justify-center text-base font-semibold leading-none tabular-nums'
-
-/** Chevron sits in the same h-4 slot as icons so every ▾ aligns across toolbar buttons. */
-const ADVANCED_CHART_TOOLBAR_CHEVRON_SLOT = 'inline-flex h-4 w-3 shrink-0 items-center justify-center'
-
-const ADVANCED_CHART_TOOLBAR_CHEVRON = 'h-3 w-3 shrink-0 transition-transform duration-150'
-
-/** @param {{ open?: boolean, className?: string }} props */
-function MarketChartToolbarChevron({ open = false, className = '' }) {
-  return (
-    <span className={ADVANCED_CHART_TOOLBAR_CHEVRON_SLOT} aria-hidden>
-      <ChevronDown
-        className={`${ADVANCED_CHART_TOOLBAR_CHEVRON} ${open ? 'rotate-180' : ''} ${className}`}
-      />
-    </span>
-  )
-}
+  'inline-flex h-5 min-w-[1.5rem] shrink-0 items-center justify-center px-0.5 text-sm font-semibold leading-none tabular-nums'
 
 /** Filled candlesticks — no axis “L”. */
 function MarketChartFilledCandlestickToolbarIcon({ className }) {
@@ -399,17 +380,14 @@ function MarketChartIndicatorsControl({
           mutedClass,
         )}`}
       >
-        <span className={ADVANCED_CHART_TOOLBAR_DROPDOWN_ROW}>
-          <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
-            <Activity className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
-            {activeIndicatorCount ? (
-              <span
-                className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-cyan-400"
-                aria-hidden
-              />
-            ) : null}
-          </span>
-          <MarketChartToolbarChevron open={menuOpen} />
+        <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+          <Activity className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+          {activeIndicatorCount ? (
+            <span
+              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-cyan-400"
+              aria-hidden
+            />
+          ) : null}
         </span>
       </button>
       {menuOpen ? (
@@ -493,15 +471,12 @@ function MarketChartSnapshotButton({
           mutedClass,
         )}`}
       >
-        <span className={ADVANCED_CHART_TOOLBAR_DROPDOWN_ROW}>
-          <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
-            {busy ? (
-              <Loader2 className={`${ADVANCED_CHART_TOOLBAR_ICON} animate-spin`} aria-hidden />
-            ) : (
-              <Camera className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
-            )}
-          </span>
-          <MarketChartToolbarChevron open={menuOpen} />
+        <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+          {busy ? (
+            <Loader2 className={`${ADVANCED_CHART_TOOLBAR_ICON} animate-spin`} aria-hidden />
+          ) : (
+            <Camera className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+          )}
         </span>
       </button>
       {status ? (
@@ -2166,16 +2141,16 @@ export default function LoungeMarketChartModal({
                 </div>
                 <div className="relative z-30 shrink-0 overflow-visible">
                   <div
-                    className={`relative flex w-full shrink-0 items-center gap-1 border-t ${borderClass} bg-zinc-950/90 px-2 py-1.5 backdrop-blur-[2px]`}
+                    className={`relative flex w-full shrink-0 items-center gap-2.5 border-t ${borderClass} bg-zinc-950/90 px-3 py-2 backdrop-blur-[2px]`}
                     style={{
-                      paddingLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))',
-                      paddingRight: 'max(0.5rem, env(safe-area-inset-right, 0px))',
-                      paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom, 0px))',
+                      paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+                      paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+                      paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
                     }}
                   >
                       {annotateMode ? (
                         <>
-                          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+                          <div className="flex min-w-0 flex-1 items-center gap-2.5">
                           <button
                             type="button"
                             aria-pressed={annotationTool === 'pen'}
@@ -2184,12 +2159,14 @@ export default function LoungeMarketChartModal({
                               e.stopPropagation()
                               setAnnotationTool('pen')
                             }}
-                            className={`${ADVANCED_CHART_TOOLBAR_BTN} px-1 py-1 ${advancedChartToolbarBtnTone(
+                            className={`${ADVANCED_CHART_TOOLBAR_BTN} ${advancedChartToolbarBtnTone(
                               annotationTool === 'pen',
                               mutedClass,
                             )}`}
                           >
-                            <PenLine className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                              <PenLine className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            </span>
                           </button>
                           <button
                             type="button"
@@ -2199,12 +2176,14 @@ export default function LoungeMarketChartModal({
                               e.stopPropagation()
                               setAnnotationTool('text')
                             }}
-                            className={`${ADVANCED_CHART_TOOLBAR_BTN} px-1 py-1 ${advancedChartToolbarBtnTone(
+                            className={`${ADVANCED_CHART_TOOLBAR_BTN} ${advancedChartToolbarBtnTone(
                               annotationTool === 'text',
                               mutedClass,
                             )}`}
                           >
-                            <Type className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                              <Type className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            </span>
                           </button>
                           <button
                             type="button"
@@ -2214,9 +2193,11 @@ export default function LoungeMarketChartModal({
                               e.stopPropagation()
                               undoChartAnnotation()
                             }}
-                            className={`${ADVANCED_CHART_TOOLBAR_BTN} px-1 py-1 disabled:opacity-40 ${advancedChartToolbarBtnTone(false, mutedClass)}`}
+                            className={`${ADVANCED_CHART_TOOLBAR_BTN} disabled:opacity-40 ${advancedChartToolbarBtnTone(false, mutedClass)}`}
                           >
-                            <Undo2 className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                              <Undo2 className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            </span>
                           </button>
                           <button
                             type="button"
@@ -2226,12 +2207,14 @@ export default function LoungeMarketChartModal({
                               e.stopPropagation()
                               clearChartAnnotations()
                             }}
-                            className={`${ADVANCED_CHART_TOOLBAR_BTN} px-1 py-1 disabled:opacity-40 ${advancedChartToolbarBtnTone(false, mutedClass)}`}
+                            className={`${ADVANCED_CHART_TOOLBAR_BTN} disabled:opacity-40 ${advancedChartToolbarBtnTone(false, mutedClass)}`}
                           >
-                            <Eraser className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                              <Eraser className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            </span>
                           </button>
                           </div>
-                          <div className="ml-auto flex shrink-0 items-center gap-1">
+                          <div className="ml-auto flex shrink-0 items-center gap-2.5">
                           <button
                             type="button"
                             aria-label="Done annotating"
@@ -2239,34 +2222,17 @@ export default function LoungeMarketChartModal({
                               e.stopPropagation()
                               exitAnnotateMode()
                             }}
-                            className={`${ADVANCED_CHART_TOOLBAR_BTN} px-1 py-1 text-cyan-300 hover:text-cyan-200`}
+                            className={`${ADVANCED_CHART_TOOLBAR_BTN} text-cyan-300 hover:text-cyan-200`}
                           >
-                            <Check className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                              <Check className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                            </span>
                           </button>
                           </div>
                         </>
                       ) : (
                         <>
-                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-                      <MarketChartIndicatorsControl
-                        menuRef={indicatorMenuRef}
-                        menuOpen={indicatorMenuOpen}
-                        onToggleMenu={() => {
-                          setIndicatorMenuOpen((openNow) => {
-                            if (!openNow) {
-                              setChartTypeMenuOpen(false)
-                              setResolutionMenuOpen(false)
-                              setTimeframeMenuOpen(false)
-                            }
-                            return !openNow
-                          })
-                        }}
-                        activeIndicatorCount={activeIndicatorCount}
-                        mutedClass={mutedClass}
-                        isLight={isLight}
-                        activeIndicators={activeIndicators}
-                        toggleIndicator={toggleIndicator}
-                      />
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5">
                       <div className="relative shrink-0" ref={chartTypeMenuRef}>
                         <button
                           type="button"
@@ -2289,11 +2255,8 @@ export default function LoungeMarketChartModal({
                             mutedClass,
                           )}`}
                         >
-                          <span className={ADVANCED_CHART_TOOLBAR_DROPDOWN_ROW}>
-                            <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
-                              <MarketChartTypeToolbarIcon chartType={chartType} />
-                            </span>
-                            <MarketChartToolbarChevron open={chartTypeMenuOpen} />
+                          <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                            <MarketChartTypeToolbarIcon chartType={chartType} />
                           </span>
                         </button>
                         {chartTypeMenuOpen ? (
@@ -2334,6 +2297,25 @@ export default function LoungeMarketChartModal({
                           </div>
                         ) : null}
                       </div>
+                      <MarketChartIndicatorsControl
+                        menuRef={indicatorMenuRef}
+                        menuOpen={indicatorMenuOpen}
+                        onToggleMenu={() => {
+                          setIndicatorMenuOpen((openNow) => {
+                            if (!openNow) {
+                              setChartTypeMenuOpen(false)
+                              setResolutionMenuOpen(false)
+                              setTimeframeMenuOpen(false)
+                            }
+                            return !openNow
+                          })
+                        }}
+                        activeIndicatorCount={activeIndicatorCount}
+                        mutedClass={mutedClass}
+                        isLight={isLight}
+                        activeIndicators={activeIndicators}
+                        toggleIndicator={toggleIndicator}
+                      />
                       <div className="relative shrink-0" ref={resolutionMenuRef}>
                         <button
                           type="button"
@@ -2355,11 +2337,8 @@ export default function LoungeMarketChartModal({
                             mutedClass,
                           )}`}
                         >
-                          <span className={ADVANCED_CHART_TOOLBAR_DROPDOWN_ROW}>
-                            <span className={ADVANCED_CHART_TOOLBAR_RESOLUTION_LABEL}>
-                              {advancedResolution.label}
-                            </span>
-                            <MarketChartToolbarChevron open={resolutionMenuOpen} />
+                          <span className={ADVANCED_CHART_TOOLBAR_RESOLUTION_LABEL}>
+                            {advancedResolution.label}
                           </span>
                         </button>
                         {resolutionMenuOpen ? (
@@ -2401,7 +2380,7 @@ export default function LoungeMarketChartModal({
                         ) : null}
                       </div>
                       </div>
-                      <div className="ml-auto flex shrink-0 items-center gap-1">
+                      <div className="ml-auto flex shrink-0 items-center gap-2.5">
                       <button
                         type="button"
                         aria-label="Annotate chart"
@@ -2409,9 +2388,11 @@ export default function LoungeMarketChartModal({
                           e.stopPropagation()
                           enterAnnotateMode()
                         }}
-                        className={`${ADVANCED_CHART_TOOLBAR_BTN} px-1 py-1 ${advancedChartToolbarBtnTone(false, mutedClass)} hover:text-cyan-300`}
+                        className={`${ADVANCED_CHART_TOOLBAR_BTN} ${advancedChartToolbarBtnTone(false, mutedClass)} hover:text-cyan-300`}
                       >
-                        <PencilLine className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                        <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+                          <PencilLine className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+                        </span>
                       </button>
                       <MarketChartSnapshotButton
                         menuRef={snapshotMenuRef}

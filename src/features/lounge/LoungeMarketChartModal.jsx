@@ -807,17 +807,6 @@ function MarketEmbedLogo({ embed, imgClass, fallbackClass }) {
   return <div className={fallbackClass}>{initial}</div>
 }
 
-function MarketChartHeaderEdgeLogo({ isLight, className = 'h-4 w-auto shrink-0' }) {
-  return (
-    <img
-      src={isLight ? '/edge-lounge-logo-light.png' : '/edge-lounge-logo-transparent.png'}
-      alt="EDGE"
-      className={className}
-      draggable={false}
-    />
-  )
-}
-
 /**
  * @param {{
  *   open: boolean,
@@ -2209,27 +2198,24 @@ export default function LoungeMarketChartModal({
               data-lounge-market-chart-advanced-fullscreen
             >
               <div
-                className={`grid w-full shrink-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 border-b px-3 py-2 ${borderClass}`}
+                className={`flex shrink-0 items-center gap-3 border-b px-3 py-2 ${borderClass}`}
                 style={{
                   paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
                   paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
                   paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
                 }}
               >
-                <MarketChartHeaderEdgeLogo isLight={isLight} />
-                <div className="flex min-w-0 items-center justify-center gap-2 px-1">
-                  <MarketEmbedLogo
-                    embed={active}
-                    imgClass="h-8 w-8 shrink-0 rounded-full object-cover"
-                    fallbackClass="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300"
-                  />
-                  <div className="min-w-0 text-center">
-                    <div className="truncate text-[15px] font-bold leading-tight">
-                      {active?.name || active?.display_symbol}
-                    </div>
-                    <div className={`truncate text-[12px] leading-snug ${mutedClass}`}>
-                      ${active?.display_symbol}
-                    </div>
+                <MarketEmbedLogo
+                  embed={active}
+                  imgClass="h-8 w-8 shrink-0 rounded-full object-cover"
+                  fallbackClass="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15px] font-bold leading-tight">
+                    {active?.name || active?.display_symbol}
+                  </div>
+                  <div className={`truncate text-[12px] leading-snug ${mutedClass}`}>
+                    ${active?.display_symbol}
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
@@ -2634,22 +2620,19 @@ export default function LoungeMarketChartModal({
         </div>
 
         <div className="shrink-0 px-4 pb-1 pt-0" data-market-sheet-drag>
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
-            <MarketChartHeaderEdgeLogo isLight={isLight} className="mt-1 h-5 w-auto shrink-0" />
-            <div className="flex min-w-0 items-center justify-center gap-2.5 px-1">
-              <MarketEmbedLogo
-                embed={active}
-                imgClass="h-10 w-10 shrink-0 rounded-full object-cover"
-                fallbackClass="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300"
-              />
-              <div className="min-w-0 text-center">
-                <div className="truncate text-[17px] font-bold leading-tight">
-                  {active?.name || active?.display_symbol}
-                </div>
-                <div className={`truncate text-[13px] leading-snug ${mutedClass}`}>
-                  ${active?.display_symbol}
-                  {active?.market_cap != null ? ` · ${formatMarketCap(active.market_cap)} MC` : ''}
-                </div>
+          <div className="flex items-start gap-3">
+            <MarketEmbedLogo
+              embed={active}
+              imgClass="h-10 w-10 shrink-0 rounded-full object-cover"
+              fallbackClass="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[17px] font-bold leading-tight">
+                {active?.name || active?.display_symbol}
+              </div>
+              <div className={`truncate text-[13px] leading-snug ${mutedClass}`}>
+                ${active?.display_symbol}
+                {active?.market_cap != null ? ` · ${formatMarketCap(active.market_cap)} MC` : ''}
               </div>
             </div>
             <div className="shrink-0 text-right">

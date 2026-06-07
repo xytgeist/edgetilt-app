@@ -1012,7 +1012,7 @@ export default function LoungeMarketChartModal({
       setSnapshotMenuOpen(false)
       try {
         const filename = marketChartSnapshotFilename(active?.display_symbol || active?.symbol)
-        const branding = marketChartSnapshotBrandingFromEmbed(active, isLight)
+        const branding = marketChartSnapshotBrandingFromEmbed(active, isLight, activeIndicatorLegend)
         if (mode === 'save') {
           const result = await saveMarketChartScreenshot(
             chart,
@@ -1046,7 +1046,7 @@ export default function LoungeMarketChartModal({
         window.setTimeout(() => setSnapshotFlash(''), 2400)
       }
     },
-    [active, advancedLoading, isLight, onInsertSnapshot, snapshotBusy],
+    [active, activeIndicatorLegend, advancedLoading, isLight, onInsertSnapshot, snapshotBusy],
   )
 
   const undoChartAnnotation = useCallback(() => {

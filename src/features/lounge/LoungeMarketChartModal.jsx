@@ -55,6 +55,8 @@ const MARKET_CHART_TIMEFRAME_BAND_PX = 24
 const MARKET_CHART_MODAL_HEIGHT = '90dvh'
 const MARKET_CHART_HEIGHT_PX = 360
 const MARKET_CHART_PRICE_SCALE_FONT_SIZE = 10
+const MARKET_CHART_PRICE_AXIS_GUTTER_PX = 56
+const MARKET_CHART_PRICE_AXIS_LABEL_MIN_GAP_PX = 14
 const MARKET_CHART_PRICE_SCALE_MARGINS = { top: 0.06, bottom: 0.06 }
 /** Hold still this long, then drag pans the chart (scrub stays tap/slide). */
 const MARKET_CHART_LONG_PRESS_MS = 450
@@ -106,6 +108,55 @@ function applyMarketChartPriceRange(mainSeries, barPoints, overlayLines = [], op
     ...(keepMargins ? {} : { scaleMargins: MARKET_CHART_PRICE_SCALE_MARGINS }),
   })
   mainSeries.priceScale().setVisibleRange({ from, to })
+}
+
+/** High / low in the active timeframe series (close line or candle OHLC). */
+function barSeriesHighLow(barPoints, chartType = 'area', rawBars = []) {
+  return marketModalChartHighLow(chartType, barPoints, rawBars)
+}
+
+/** HOD / current / LOD on the right gutter (modal quick view). */
+function buildPriceAxisLabels(mainSeries, barPoints, chartType = 'area', rawBars = []) {
+  const { high, low } = barSeriesHighLow(barPoints, chartType, rawBars)
+  const last = barPoints?.[barPoints.length - 1]
+  const currentPrice = Number(last?.value)
+  if (!high || !low || !Number.isFinite(currentPrice)) {
+    return { high: null, current: null, low: null }
+  }
+
+  const lowPrice = Math.min(low.value, high.value)
+  const highPrice = Math.max(low.value, high.value)
+
+  const toRow = (id, price) => {
+    const y = mainSeries.priceToCoordinate(price)
+    if (y == null) return null
+    return { id, price, y: Math.round(y) }
+  }
+
+  const rows = [toRow('high', highPrice), toRow('current', currentPrice), toRow('low', lowPrice)].filter(Boolean)
+
+  rows.sort((a, b) => a.y - b.y)
+  for (let i = 1; i < rows.length; i += 1) {
+    if (rows[i].y - rows[i - 1].y < MARKET_CHART_PRICE_AXIS_LABEL_MIN_GAP_PX) {
+      rows[i].y = rows[i - 1].y + MARKET_CHART_PRICE_AXIS_LABEL_MIN_GAP_PX
+    }
+  }
+
+  const byId = Object.fromEntries(rows.map((row) => [row.id, row]))
+  return {
+    high: byId.high ? { price: highPrice, y: byId.high.y } : null,
+    current: byId.current ? { price: currentPrice, y: byId.current.y } : null,
+    low: byId.low ? { price: lowPrice, y: byId.low.y } : null,
+  }
+}
+
+function priceAxisLabelsEqual(a, b) {
+  if (a === b) return true
+  if (!a || !b) return false
+  const samePoint = (p, q) =>
+    (p == null && q == null) ||
+    (p != null && q != null && p.price === q.price && p.y === q.y)
+  return samePoint(a.high, b.high) && samePoint(a.current, b.current) && samePoint(a.low, b.low)
 }
 
 function MarketIndicatorLegendLine({ color, dashed = false, className = '' }) {
@@ -450,6 +501,21 @@ export default function LoungeMarketChartModal({
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false)
   /** Crosshair scrub overrides header quote until pointer leaves the chart. */
   const [scrubQuote, setScrubQuote] = useState(/** @type {{ price: number, change?: number, change_pct?: number } | null} */ (null))
+  const [scrubAxisCurrent, setScrubAxisCurrent] = useState(/** @type {{ price: number, y: number } | null} */ (null))
+  const [priceAxisLabels, setPriceAxisLabels] = useState(
+    /** @type {{ high: { price: number, y: number } | null, current: { price: number, y: number } | null, low: { price: number, y: number } | null }} */ ({
+      high: null,
+      current: null,
+      low: null,
+    }),
+  )
+  const priceAxisLabelsRef = useRef(
+    /** @type {{ high: { price: number, y: number } | null, current: { price: number, y: number } | null, low: { price: number, y: number } | null }} */ ({
+      high: null,
+      current: null,
+      low: null,
+    }),
+  )
 
   const isLight = loungeMarketChartIsLight()
   const { quotes: feedQuotes } = useLoungeMarketFeedQuotes()
@@ -556,7 +622,8 @@ export default function LoungeMarketChartModal({
   }, [])
 
   const isAdvancedView = advancedFullscreenOpen
-  const effectiveChartType = isAdvancedView ? chartType : 'line'
+  /** Modal sheet stays on gradient area; advanced fullscreen uses stored chart type. */
+  const effectiveChartType = isAdvancedView ? chartType : 'area'
 
   /** Same live rolling payload as feed mini charts (`LoungeMarketChartStrip`). */
   const rollingLive = useMemo(() => {
@@ -748,10 +815,14 @@ export default function LoungeMarketChartModal({
 
   useEffect(() => {
     setScrubQuote(null)
+    setScrubAxisCurrent(null)
   }, [activeIdx, timeframeIdx, series, rollingLive])
 
   useEffect(() => {
-    if (!open) setScrubQuote(null)
+    if (!open) {
+      setScrubQuote(null)
+      setScrubAxisCurrent(null)
+    }
   }, [open])
 
   /** Rolling 1D: same source priority as feed minis; never reuse another ticker's fetched series. */
@@ -885,9 +956,9 @@ export default function LoungeMarketChartModal({
         rawBars,
       })
     } else {
-      mainSeries.priceScale().applyOptions({
-        autoScale: true,
-        scaleMargins: MARKET_CHART_PRICE_SCALE_MARGINS,
+      applyMarketChartPriceRange(mainSeries, barPoints, [], {
+        chartType: effectiveChartType,
+        rawBars,
       })
     }
     if (effectiveChartType !== 'candle') {
@@ -895,18 +966,29 @@ export default function LoungeMarketChartModal({
     }
     fitMarketChartTimeScale(chart)
 
-    const refreshChartPriceRange = () => {
-      if (!isAdvancedView) return
-      applyMarketChartPriceRange(mainSeries, barPoints, overlayLines, {
-        keepMargins: hasOscillatorPane,
+    const publishPriceAxisLabels = (next) => {
+      if (priceAxisLabelsEqual(priceAxisLabelsRef.current, next)) return
+      priceAxisLabelsRef.current = next
+      setPriceAxisLabels(next)
+    }
+
+    const refreshChartOverlays = () => {
+      if (isAdvancedView) {
+        applyMarketChartPriceRange(mainSeries, barPoints, overlayLines, {
+          keepMargins: hasOscillatorPane,
+          chartType: effectiveChartType,
+          rawBars,
+        })
+        return
+      }
+      applyMarketChartPriceRange(mainSeries, barPoints, [], {
         chartType: effectiveChartType,
         rawBars,
       })
+      publishPriceAxisLabels(buildPriceAxisLabels(mainSeries, barPoints, effectiveChartType, rawBars))
     }
-    if (isAdvancedView) {
-      refreshChartPriceRange()
-      requestAnimationFrame(refreshChartPriceRange)
-    }
+    refreshChartOverlays()
+    requestAnimationFrame(refreshChartOverlays)
 
     const unbindScrub = bindMarketChartScrubPointer(
       el,
@@ -915,6 +997,15 @@ export default function LoungeMarketChartModal({
       barPoints,
       (quoteAtPoint) => {
         setScrubQuote(quoteAtPoint)
+        if (isAdvancedView) return
+        if (quoteAtPoint?.price != null) {
+          const axisY = mainSeries.priceToCoordinate(quoteAtPoint.price)
+          setScrubAxisCurrent(
+            axisY != null ? { price: quoteAtPoint.price, y: Math.round(axisY) } : null,
+          )
+        } else {
+          setScrubAxisCurrent(null)
+        }
       },
       { panEnabled: isAdvancedView },
     )
@@ -933,7 +1024,7 @@ export default function LoungeMarketChartModal({
           height: liveHost.clientHeight,
         })
         fitMarketChartTimeScale(chartRef.current)
-        refreshChartPriceRange()
+        refreshChartOverlays()
       })
     })
     ro.observe(el)
@@ -944,7 +1035,10 @@ export default function LoungeMarketChartModal({
       chart.remove()
       chartRef.current = null
       mainSeriesRef.current = null
+      priceAxisLabelsRef.current = { high: null, current: null, low: null }
+      setPriceAxisLabels({ high: null, current: null, low: null })
       setScrubQuote(null)
+      setScrubAxisCurrent(null)
     }
   }, [
     active?.symbol,
@@ -973,6 +1067,7 @@ export default function LoungeMarketChartModal({
   const sheetTransform = sheetClosing || sheetDragY > 0 ? `translate3d(0, ${sheetDragY}px, 0)` : undefined
   const sheetTransition =
     sheetClosing || (!sheetDragging && sheetDragY === 0) ? 'transform 0.22s ease' : 'none'
+  const axisCurrentLabel = !advancedFullscreenOpen ? (scrubAxisCurrent ?? priceAxisLabels.current) : null
 
   const advancedFullscreenShellStyle = marketChartAdvancedFullscreenShellStyle(advancedPortraitViewport)
 
@@ -1422,6 +1517,37 @@ export default function LoungeMarketChartModal({
             style={{ bottom: MARKET_CHART_TIMEFRAME_BAND_PX }}
           >
             <div ref={chartHostRef} className="absolute inset-0 touch-none select-none" />
+            {!advancedFullscreenOpen ? (
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 z-10"
+              style={{ width: MARKET_CHART_PRICE_AXIS_GUTTER_PX }}
+            >
+              {priceAxisLabels.high ? (
+                <div
+                  className={`absolute right-0 -translate-y-1/2 whitespace-nowrap pr-0.5 text-[10px] font-bold tabular-nums ${mutedClass}`}
+                  style={{ top: priceAxisLabels.high.y }}
+                >
+                  {formatMarketPrice(priceAxisLabels.high.price)}
+                </div>
+              ) : null}
+              {axisCurrentLabel ? (
+                <div
+                  className={`absolute right-0 -translate-y-1/2 whitespace-nowrap pr-0.5 text-[10px] font-semibold tabular-nums ${displayUp ? 'text-lv-green' : 'text-lv-red'}`}
+                  style={{ top: axisCurrentLabel.y }}
+                >
+                  {formatMarketPrice(axisCurrentLabel.price)}
+                </div>
+              ) : null}
+              {priceAxisLabels.low ? (
+                <div
+                  className={`absolute right-0 -translate-y-1/2 whitespace-nowrap pr-0.5 text-[10px] font-bold tabular-nums ${mutedClass}`}
+                  style={{ top: priceAxisLabels.low.y }}
+                >
+                  {formatMarketPrice(priceAxisLabels.low.price)}
+                </div>
+              ) : null}
+            </div>
+            ) : null}
           </div>
 
           <div

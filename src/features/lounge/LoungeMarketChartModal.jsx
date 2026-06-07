@@ -501,6 +501,8 @@ export default function LoungeMarketChartModal({
   const historyHasMoreRef = useRef(true)
   const loadMoreHistoryRef = useRef(/** @type {(beforeSec: number) => void} */ (() => {}))
   const historyFlushPendingRef = useRef(/** @type {(() => void) | null} */ (null))
+  const historyAckBarsRef = useRef(/** @type {(() => void) | null} */ (null))
+  const historyResetAnchorRef = useRef(/** @type {(() => void) | null} */ (null))
   const chartPanningRef = useRef(false)
   const pendingHistoryApplyRef = useRef(/** @type {(() => void) | null} */ (null))
   const advancedBarsSignatureRef = useRef('')
@@ -647,6 +649,7 @@ export default function LoungeMarketChartModal({
     advancedBarsSignatureRef.current = ''
     chartPanningRef.current = false
     pendingHistoryApplyRef.current = null
+    historyResetAnchorRef.current?.()
     writeStoredMarketChartViewMode('quick')
   }, [])
 
@@ -751,6 +754,7 @@ export default function LoungeMarketChartModal({
     setHistoryHasMore(true)
     historyLoadingRef.current = false
     advancedBarsSignatureRef.current = ''
+    historyResetAnchorRef.current?.()
   }, [active?.asset_class, active?.symbol, activeIdx, timeframeIdx])
 
   const loadSeries = useCallback(async () => {
@@ -928,6 +932,7 @@ export default function LoungeMarketChartModal({
         indicatorSeriesRef.current = refreshed.indicatorSeries
         shiftMarketChartLogicalRange(chartRef.current, added)
         advancedBarsSignatureRef.current = marketChartBarsSignature(nextAll)
+        historyAckBarsRef.current?.()
       }
 
       if (chartPanningRef.current) {
@@ -1197,9 +1202,13 @@ export default function LoungeMarketChartModal({
           onPanActiveChange: (active) => {
             chartPanningRef.current = active
             if (active) return
-            historyFlushPendingRef.current?.()
-            pendingHistoryApplyRef.current?.()
-            pendingHistoryApplyRef.current = null
+            requestAnimationFrame(() => {
+              if (chartPanningRef.current) return
+              historyFlushPendingRef.current?.()
+              const pending = pendingHistoryApplyRef.current
+              pendingHistoryApplyRef.current = null
+              if (pending) requestAnimationFrame(pending)
+            })
           },
         })
       : () => {}
@@ -1218,6 +1227,8 @@ export default function LoungeMarketChartModal({
         )
       : null
     historyFlushPendingRef.current = historyLoader?.flushPending ?? null
+    historyAckBarsRef.current = historyLoader?.acknowledgeBars ?? null
+    historyResetAnchorRef.current = historyLoader?.resetAnchor ?? null
     const unbindHistory = historyLoader?.unbind ?? (() => {})
 
     const unbindScrub = isAdvancedView
@@ -1273,6 +1284,8 @@ export default function LoungeMarketChartModal({
     return () => {
       cancelAnimationFrame(resizeRaf)
       historyFlushPendingRef.current = null
+      historyAckBarsRef.current = null
+      historyResetAnchorRef.current = null
       chartPanningRef.current = false
       pendingHistoryApplyRef.current = null
       unbindPriceAxisZoom()

@@ -35,6 +35,29 @@ export function scrollMarketChartByPixels(chart, deltaPx) {
 const PAN_GESTURE_SLOP_PX = 6
 const HISTORY_LOAD_DEBOUNCE_MS = 220
 
+export const MARKET_CHART_PAN_DEBUG_STORAGE_KEY = 'loungeMarketChartPanDebug:v1'
+
+/** Opt-in via `localStorage` — logs appear in Admin utils debug panel and DevTools. */
+export function marketChartPanDebug(...args) {
+  if (typeof window === 'undefined') return
+  try {
+    if (window.localStorage.getItem(MARKET_CHART_PAN_DEBUG_STORAGE_KEY) !== '1') return
+  } catch {
+    return
+  }
+  console.log('[marketChartPan]', ...args)
+}
+
+/** @returns {boolean} */
+export function isMarketChartPanDebugEnabled() {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(MARKET_CHART_PAN_DEBUG_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** Stable fingerprint for bar arrays — skip redundant Advanced chart refreshes. */
 export function marketChartBarsSignature(bars) {
   if (!bars?.length) return ''
@@ -81,12 +104,16 @@ export function bindMarketChartPanPointer(el, chart, opts = {}) {
     mode = null
     activePointerId = null
     lastLocalX = null
-    if (wasPanning) onPanActiveChange?.(false)
+    if (wasPanning) {
+      marketChartPanDebug('pan end')
+      onPanActiveChange?.(false)
+    }
   }
 
   const startPan = (e, localX) => {
     mode = 'pan'
     lastLocalX = localX
+    marketChartPanDebug('pan start', { pointerId: e.pointerId })
     onPanActiveChange?.(true)
     try {
       el.setPointerCapture(e.pointerId)
@@ -193,11 +220,20 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
   let pendingBeforeSec = null
   let debounceTimer = 0
 
+  const clearPending = () => {
+    pendingBeforeSec = null
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = 0
+    }
+  }
+
   const flushPending = () => {
     debounceTimer = 0
     if (pendingBeforeSec == null || isPanning() || !canLoad()) return
     const beforeSec = pendingBeforeSec
     pendingBeforeSec = null
+    marketChartPanDebug('history load', { beforeSec })
     onNeedHistory(beforeSec)
   }
 
@@ -207,7 +243,12 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
   }
 
   const handler = (range) => {
-    if (!range || range.from > edgeBars) return
+    if (isPanning()) return
+
+    if (!range || range.from > edgeBars) {
+      clearPending()
+      return
+    }
     if (!canLoad()) return
     const bars = getBars()
     if (!bars?.length) return
@@ -217,7 +258,6 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
     if (lastBeforeSec === beforeSec) return
     lastBeforeSec = beforeSec
     pendingBeforeSec = beforeSec
-    if (isPanning()) return
     schedulePending()
   }
 
@@ -225,13 +265,33 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
   ts.subscribeVisibleLogicalRangeChange(handler)
   return {
     unbind: () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
+      clearPending()
       ts.unsubscribeVisibleLogicalRangeChange(handler)
     },
     flushPending: () => {
       if (pendingBeforeSec == null || isPanning() || !canLoad()) return
       if (debounceTimer) clearTimeout(debounceTimer)
       flushPending()
+    },
+    /** After prepending bars — prevent immediate re-fetch on the new oldest anchor. */
+    acknowledgeBars: () => {
+      const bars = getBars()
+      if (!bars?.length) {
+        lastBeforeSec = null
+        clearPending()
+        return
+      }
+      const oldest = bars[0]
+      const beforeSec = Math.floor(oldest.t > 1e12 ? oldest.t / 1000 : oldest.t)
+      if (Number.isFinite(beforeSec) && beforeSec > 0) {
+        lastBeforeSec = beforeSec
+        marketChartPanDebug('history ack', { beforeSec, count: bars.length })
+      }
+      clearPending()
+    },
+    resetAnchor: () => {
+      lastBeforeSec = null
+      clearPending()
     },
   }
 }

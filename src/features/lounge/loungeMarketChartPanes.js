@@ -1,6 +1,6 @@
 /** TradingView-style multi-pane layout for Advanced market charts (LWC v5). */
 
-import { MARKET_CHART_INDICATORS } from './loungeMarketChartIndicators.js'
+import { INDICATOR_BY_ID, listActiveOscillatorIndicators } from './loungeMarketChartIndicatorCatalog.js'
 import { MARKET_CHART_VOLUME_PANE_FRACTION } from './loungeMarketChartVolume.js'
 
 /** Height fraction per oscillator pane (RSI, MACD, …). */
@@ -35,8 +35,7 @@ const MARKET_CHART_PANE_SEPARATOR_PX = 1
 
 /** @param {Set<string>|string[]} activeIds */
 export function computeMarketChartPanePlan(activeIds) {
-  const ids = new Set(activeIds)
-  const oscillators = MARKET_CHART_INDICATORS.filter((row) => row.kind === 'oscillator' && ids.has(row.id))
+  const oscillators = listActiveOscillatorIndicators(activeIds)
   let nextPane = 2
   /** @type {MarketChartPanePlan} */
   const plan = {
@@ -61,10 +60,15 @@ export function applyMarketChartPaneHeights(chart, totalHeightPx, plan) {
   /** @type {number[]} */
   const subHeights = []
   subHeights.push(Math.max(MIN_PANE_HEIGHT_PX, Math.round(totalHeightPx * MARKET_CHART_VOLUME_PANE_FRACTION)))
+  const oscFraction =
+    plan.oscillatorCount > 0
+      ? Math.min(
+          MARKET_CHART_OSCILLATOR_PANE_FRACTION,
+          0.42 / Math.max(1, plan.oscillatorCount),
+        )
+      : 0
   for (let i = 0; i < plan.oscillatorCount; i += 1) {
-    subHeights.push(
-      Math.max(MIN_PANE_HEIGHT_PX, Math.round(totalHeightPx * MARKET_CHART_OSCILLATOR_PANE_FRACTION)),
-    )
+    subHeights.push(Math.max(MIN_PANE_HEIGHT_PX, Math.round(totalHeightPx * oscFraction)))
   }
 
   const subTotal = subHeights.reduce((sum, h) => sum + h, 0)
@@ -137,7 +141,7 @@ export function measureMarketChartSubPaneAxisTitles(chart, plan) {
   ]
 
   for (const osc of plan.oscillatorPanes) {
-    const def = MARKET_CHART_INDICATORS.find((row) => row.id === osc.id)
+    const def = INDICATOR_BY_ID[osc.id]
     rows.push({
       id: osc.id,
       text: def?.label ?? osc.id,

@@ -1,36 +1,50 @@
 /**
- * Technical indicators for Lounge market modal charts (Lightweight Charts overlays / panes).
+ * Attach indicators to Advanced market charts; storage + legend.
  * @typedef {{ time: number, value: number }} ChartPoint
  */
 
-import { HistogramSeries, LineSeries, LineStyle } from 'lightweight-charts'
+import { HistogramSeries, LineSeries, LineStyle, createSeriesMarkers } from 'lightweight-charts'
 import { applyMarketChartSubPanePriceScale } from './loungeMarketChartViewMode.js'
+import {
+  INDICATOR_BY_ID,
+  MARKET_CHART_INDICATOR_CATEGORIES,
+  MARKET_CHART_INDICATORS,
+  listMarketChartIndicatorsByCategory,
+} from './loungeMarketChartIndicatorCatalog.js'
+import {
+  buildOhlcvPoints,
+  collectOverlayIndicatorLines,
+  computeAccumulationDistributionSeries,
+  computeAdxSeries,
+  computeAtrBandsSeries,
+  computeBollingerSeries,
+  computeCciSeries,
+  computeDonchianSeries,
+  computeEmaSeries,
+  computeHmaSeries,
+  computeIchimokuSeries,
+  computeKeltnerSeries,
+  computeMacdSeries,
+  computeObvSeries,
+  computePsarPoints,
+  computeRocSeries,
+  computeRsiSeries,
+  computeSmaSeries,
+  computeStochasticSeries,
+  computeSupertrendSeries,
+  computeVolumeProfilePocSeries,
+  computeVwmaSeries,
+  computeWmaSeries,
+} from './loungeMarketChartIndicatorMath.js'
 
-/** @typedef {'overlay' | 'oscillator'} MarketChartIndicatorKind */
-
-/**
- * @typedef {Object} MarketChartIndicatorDef
- * @property {string} id
- * @property {string} label
- * @property {MarketChartIndicatorKind} kind
- * @property {string} [color]
- */
+export {
+  INDICATOR_BY_ID,
+  MARKET_CHART_INDICATOR_CATEGORIES,
+  MARKET_CHART_INDICATORS,
+  listMarketChartIndicatorsByCategory,
+} from './loungeMarketChartIndicatorCatalog.js'
 
 export const LOUNGE_MARKET_CHART_INDICATORS_STORAGE_KEY = 'loungeMarketChartIndicators:v1'
-
-/** Most common modal indicators — overlay MAs/BB + RSI/MACD oscillators. */
-export const MARKET_CHART_INDICATORS = /** @type {MarketChartIndicatorDef[]} */ ([
-  { id: 'sma20', label: 'SMA 20', kind: 'overlay', color: '#f59e0b' },
-  { id: 'sma50', label: 'SMA 50', kind: 'overlay', color: '#3b82f6' },
-  { id: 'sma200', label: 'SMA 200', kind: 'overlay', color: '#a855f7' },
-  { id: 'ema9', label: 'EMA 9', kind: 'overlay', color: '#06b6d4' },
-  { id: 'ema21', label: 'EMA 21', kind: 'overlay', color: '#ec4899' },
-  { id: 'bb20', label: 'BB 20', kind: 'overlay', color: '#94a3b8' },
-  { id: 'rsi14', label: 'RSI 14', kind: 'oscillator', color: '#c084fc' },
-  { id: 'macd', label: 'MACD', kind: 'oscillator', color: '#38bdf8' },
-])
-
-const INDICATOR_BY_ID = Object.fromEntries(MARKET_CHART_INDICATORS.map((row) => [row.id, row]))
 
 /** @returns {Set<string>} */
 export function readStoredMarketChartIndicators() {
@@ -56,170 +70,50 @@ export function writeStoredMarketChartIndicators(active) {
   }
 }
 
-/** @param {ChartPoint[]} barPoints @param {number} period */
-function computeSmaSeries(barPoints, period) {
-  /** @type {ChartPoint[]} */
-  const out = []
-  if (!barPoints.length || period < 1) return out
-  for (let i = period - 1; i < barPoints.length; i += 1) {
-    let sum = 0
-    for (let j = i - period + 1; j <= i; j += 1) sum += barPoints[j].value
-    out.push({ time: barPoints[i].time, value: sum / period })
-  }
-  return out
-}
-
-/** @param {ChartPoint[]} barPoints @param {number} period */
-function computeEmaSeries(barPoints, period) {
-  /** @type {ChartPoint[]} */
-  const out = []
-  if (!barPoints.length || period < 1) return out
-  const k = 2 / (period + 1)
-  let ema = null
-  for (let i = 0; i < barPoints.length; i += 1) {
-    const v = barPoints[i].value
-    if (ema == null) {
-      if (i < period - 1) continue
-      let sum = 0
-      for (let j = i - period + 1; j <= i; j += 1) sum += barPoints[j].value
-      ema = sum / period
-    } else {
-      ema = v * k + ema * (1 - k)
-    }
-    out.push({ time: barPoints[i].time, value: ema })
-  }
-  return out
-}
-
 /**
  * @param {ChartPoint[]} barPoints
- * @param {number} period
- * @param {number} stdDev
- */
-function computeBollingerSeries(barPoints, period, stdDev) {
-  const middle = computeSmaSeries(barPoints, period)
-  /** @type {ChartPoint[]} */
-  const upper = []
-  /** @type {ChartPoint[]} */
-  const lower = []
-  if (!middle.length) return { middle, upper, lower }
-
-  for (let i = period - 1; i < barPoints.length; i += 1) {
-    const mid = middle[i - (period - 1)]
-    if (!mid) continue
-    let sumSq = 0
-    for (let j = i - period + 1; j <= i; j += 1) {
-      const d = barPoints[j].value - mid.value
-      sumSq += d * d
-    }
-    const sd = Math.sqrt(sumSq / period)
-    upper.push({ time: barPoints[i].time, value: mid.value + stdDev * sd })
-    lower.push({ time: barPoints[i].time, value: mid.value - stdDev * sd })
-  }
-  return { middle, upper, lower }
-}
-
-/** @param {ChartPoint[]} barPoints @param {number} period */
-function computeRsiSeries(barPoints, period) {
-  /** @type {ChartPoint[]} */
-  const out = []
-  if (barPoints.length <= period) return out
-
-  let avgGain = 0
-  let avgLoss = 0
-  for (let i = 1; i <= period; i += 1) {
-    const change = barPoints[i].value - barPoints[i - 1].value
-    if (change >= 0) avgGain += change
-    else avgLoss -= change
-  }
-  avgGain /= period
-  avgLoss /= period
-
-  const rsiAt = (gain, loss) => {
-    if (loss === 0) return gain === 0 ? 50 : 100
-    const rs = gain / loss
-    return 100 - 100 / (1 + rs)
-  }
-
-  out.push({ time: barPoints[period].time, value: rsiAt(avgGain, avgLoss) })
-
-  for (let i = period + 1; i < barPoints.length; i += 1) {
-    const change = barPoints[i].value - barPoints[i - 1].value
-    const gain = change > 0 ? change : 0
-    const loss = change < 0 ? -change : 0
-    avgGain = (avgGain * (period - 1) + gain) / period
-    avgLoss = (avgLoss * (period - 1) + loss) / period
-    out.push({ time: barPoints[i].time, value: rsiAt(avgGain, avgLoss) })
-  }
-  return out
-}
-
-/** @param {ChartPoint[]} barPoints */
-function computeMacdSeries(barPoints) {
-  const fast = computeEmaSeries(barPoints, 12)
-  const slow = computeEmaSeries(barPoints, 26)
-  /** @type {ChartPoint[]} */
-  const macdLine = []
-  const slowByTime = new Map(slow.map((p) => [p.time, p.value]))
-  for (const f of fast) {
-    const s = slowByTime.get(f.time)
-    if (s == null) continue
-    macdLine.push({ time: f.time, value: f.value - s })
-  }
-  const signalLine = computeEmaSeries(macdLine, 9)
-  const signalByTime = new Map(signalLine.map((p) => [p.time, p.value]))
-  /** @type {ChartPoint[]} */
-  const histogram = []
-  for (const m of macdLine) {
-    const sig = signalByTime.get(m.time)
-    if (sig == null) continue
-    histogram.push({ time: m.time, value: m.value - sig })
-  }
-  return { macdLine, signalLine, histogram }
-}
-
-/**
- * Precompute overlay line arrays for price-scale padding.
- * @param {ChartPoint[]} barPoints
+ * @param {Array<{ t: number, c: number, o?: number, h?: number, l?: number, v?: number }>} rawBars
  * @param {Set<string>|string[]} activeIds
  */
-export function computeMarketChartOverlayLines(barPoints, activeIds) {
-  const ids = new Set(activeIds)
-  /** @type {ChartPoint[][]} */
-  const lines = []
-  if (!barPoints.length) return lines
+export function computeMarketChartOverlayLines(barPoints, rawBars, activeIds) {
+  return collectOverlayIndicatorLines(barPoints, rawBars || [], activeIds)
+}
 
-  if (ids.has('sma20')) lines.push(computeSmaSeries(barPoints, 20))
-  if (ids.has('sma50')) lines.push(computeSmaSeries(barPoints, 50))
-  if (ids.has('sma200')) lines.push(computeSmaSeries(barPoints, 200))
-  if (ids.has('ema9')) lines.push(computeEmaSeries(barPoints, 9))
-  if (ids.has('ema21')) lines.push(computeEmaSeries(barPoints, 21))
-  if (ids.has('bb20')) {
-    const bb = computeBollingerSeries(barPoints, 20, 2)
-    lines.push(bb.upper, bb.middle, bb.lower)
+/** @param {import('lightweight-charts').ISeriesApi} series @param {number[]} levels @param {boolean} [isLight] */
+function addOscillatorRefLines(series, levels, isLight = false) {
+  const color = isLight ? 'rgba(113, 113, 122, 0.35)' : 'rgba(161, 161, 170, 0.35)'
+  for (const price of levels) {
+    series.createPriceLine({
+      price,
+      color,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      lineVisible: true,
+      axisLabelVisible: true,
+      title: '',
+    })
   }
-  return lines
 }
 
 /**
- * Attach indicator series to an existing chart. Caller owns chart lifecycle.
  * @param {import('lightweight-charts').IChartApi} chart
  * @param {import('lightweight-charts').ISeriesApi} mainSeries
  * @param {ChartPoint[]} barPoints
+ * @param {Array<{ t: number, c: number, o?: number, h?: number, l?: number, v?: number }>} rawBars
  * @param {Set<string>|string[]} activeIds
  * @param {{ isLight?: boolean, panePlan?: import('./loungeMarketChartPanes.js').MarketChartPanePlan }} [opts]
- * @returns {import('lightweight-charts').ISeriesApi[]}
  */
-export function attachMarketChartIndicators(chart, mainSeries, barPoints, activeIds, opts = {}) {
+export function attachMarketChartIndicators(chart, mainSeries, barPoints, rawBars, activeIds, opts = {}) {
   const ids = new Set(activeIds)
   /** @type {import('lightweight-charts').ISeriesApi[]} */
   const created = []
   if (!barPoints.length) return created
 
+  const ohlcv = buildOhlcvPoints(rawBars, barPoints)
   const oscPaneById = new Map((opts.panePlan?.oscillatorPanes ?? []).map((row) => [row.id, row.paneIndex]))
-  const oscillatorCount = opts.panePlan?.oscillatorCount ?? 0
+  const isLight = opts.isLight ?? false
 
-  const addOverlayLine = (data, color, lineWidth = 1, lineStyle = 0) => {
+  const addOverlayLine = (data, color, lineWidth = 1, lineStyle = LineStyle.Solid) => {
     if (!data.length) return
     const series = chart.addSeries(LineSeries, {
       color,
@@ -234,25 +128,102 @@ export function attachMarketChartIndicators(chart, mainSeries, barPoints, active
     created.push(series)
   }
 
+  const addOverlayBand = (band, midColor, edgeColor) => {
+    addOverlayLine(band.middle, midColor, 1)
+    addOverlayLine(band.upper, edgeColor, 1, LineStyle.Dashed)
+    addOverlayLine(band.lower, edgeColor, 1, LineStyle.Dashed)
+  }
+
+  const attachOscLine = (id, data, color, precision = 2, refLines = []) => {
+    const paneIndex = oscPaneById.get(id) ?? 2
+    const series = chart.addSeries(
+      LineSeries,
+      {
+        color,
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        crosshairMarkerVisible: false,
+        priceFormat: { type: 'price', precision, minMove: precision === 0 ? 1 : 0.01 },
+      },
+      paneIndex,
+    )
+    series.setData(data)
+    applyMarketChartSubPanePriceScale(chart, paneIndex, isLight)
+    if (refLines.length) addOscillatorRefLines(series, refLines, isLight)
+    created.push(series)
+    return series
+  }
+
+  // MAs
   if (ids.has('sma20')) addOverlayLine(computeSmaSeries(barPoints, 20), '#f59e0b', 1)
   if (ids.has('sma50')) addOverlayLine(computeSmaSeries(barPoints, 50), '#3b82f6', 1)
   if (ids.has('sma200')) addOverlayLine(computeSmaSeries(barPoints, 200), '#a855f7', 1)
   if (ids.has('ema9')) addOverlayLine(computeEmaSeries(barPoints, 9), '#06b6d4', 1)
   if (ids.has('ema21')) addOverlayLine(computeEmaSeries(barPoints, 21), '#ec4899', 1)
-  if (ids.has('bb20')) {
-    const bb = computeBollingerSeries(barPoints, 20, 2)
-    addOverlayLine(bb.middle, '#94a3b8', 1)
-    addOverlayLine(bb.upper, '#64748b', 1, 2)
-    addOverlayLine(bb.lower, '#64748b', 1, 2)
+  if (ids.has('wma20')) addOverlayLine(computeWmaSeries(barPoints, 20), '#eab308', 1)
+  if (ids.has('hma20')) addOverlayLine(computeHmaSeries(barPoints, 20), '#14b8a6', 1)
+  if (ids.has('vwma20')) addOverlayLine(computeVwmaSeries(ohlcv, 20), '#8b5cf6', 1)
+
+  // Volatility
+  if (ids.has('bb20')) addOverlayBand(computeBollingerSeries(barPoints, 20, 2), '#94a3b8', '#64748b')
+  if (ids.has('keltner20')) addOverlayBand(computeKeltnerSeries(ohlcv, 20, 2), '#64748b', '#475569')
+  if (ids.has('donchian20')) addOverlayBand(computeDonchianSeries(ohlcv, 20), '#78716c', '#57534e')
+  if (ids.has('atrBands20')) addOverlayBand(computeAtrBandsSeries(ohlcv, 20, 2), '#a8a29e', '#78716c')
+
+  // Volume overlay
+  if (ids.has('volProfile50')) {
+    addOverlayLine(computeVolumeProfilePocSeries(ohlcv, 50), '#ca8a04', 2)
   }
 
+  // Trend overlays
+  if (ids.has('ichimoku')) {
+    const ichi = computeIchimokuSeries(ohlcv)
+    addOverlayLine(ichi.tenkan, '#6366f1', 1)
+    addOverlayLine(ichi.kijun, '#818cf8', 1)
+    addOverlayLine(ichi.senkouA, '#a5b4fc', 1, LineStyle.Dashed)
+    addOverlayLine(ichi.senkouB, '#c7d2fe', 1, LineStyle.Dashed)
+  }
+  if (ids.has('psar')) {
+    const pts = computePsarPoints(ohlcv)
+    if (pts.length) {
+      const series = chart.addSeries(LineSeries, {
+        color: '#0ea5e9',
+        lineVisible: false,
+        pointMarkersVisible: false,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      })
+      series.setData(pts.map((p) => ({ time: p.time, value: p.value })))
+      createSeriesMarkers(
+        series,
+        pts.map((p) => ({
+          time: p.time,
+          position: p.position,
+          color: '#0ea5e9',
+          shape: 'circle',
+          size: 0.5,
+        })),
+      )
+      created.push(series)
+    }
+  }
+  if (ids.has('supertrend10')) {
+    addOverlayLine(computeSupertrendSeries(ohlcv, 10, 3), '#10b981', 2)
+  }
 
+  // Momentum oscillators
   if (ids.has('rsi14')) {
-    const paneIndex = oscPaneById.get('rsi14') ?? 2
-    const rsi = chart.addSeries(
+    attachOscLine('rsi14', computeRsiSeries(barPoints, 14), '#c084fc', 0, [70, 30])
+  }
+  if (ids.has('stoch14')) {
+    const paneIndex = oscPaneById.get('stoch14') ?? 2
+    const { kLine, dLine } = computeStochasticSeries(ohlcv, 14, 3, 3)
+    const k = chart.addSeries(
       LineSeries,
       {
-        color: '#c084fc',
+        color: '#f472b6',
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: true,
@@ -261,43 +232,31 @@ export function attachMarketChartIndicators(chart, mainSeries, barPoints, active
       },
       paneIndex,
     )
-    rsi.setData(computeRsiSeries(barPoints, 14))
-    created.push(rsi)
-    applyMarketChartSubPanePriceScale(chart, paneIndex, opts.isLight)
-    rsi.createPriceLine({
-      price: 70,
-      color: opts.isLight ? 'rgba(113, 113, 122, 0.35)' : 'rgba(161, 161, 170, 0.35)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      lineVisible: true,
-      axisLabelVisible: true,
-      title: '',
-    })
-    rsi.createPriceLine({
-      price: 30,
-      color: opts.isLight ? 'rgba(113, 113, 122, 0.35)' : 'rgba(161, 161, 170, 0.35)',
-      lineWidth: 1,
-      lineStyle: LineStyle.Dashed,
-      lineVisible: true,
-      axisLabelVisible: true,
-      title: '',
-    })
-  }
-
-  if (ids.has('macd')) {
-    const { macdLine, signalLine, histogram } = computeMacdSeries(barPoints)
-    const paneIndex = oscPaneById.get('macd') ?? (oscillatorCount > 1 ? 3 : 2)
-    const upColor = opts.isLight ? '#16a34a' : '#22c55e'
-    const downColor = opts.isLight ? '#dc2626' : '#ef4444'
-    const hist = chart.addSeries(
-      HistogramSeries,
+    k.setData(kLine)
+    created.push(k)
+    const d = chart.addSeries(
+      LineSeries,
       {
+        color: '#fb7185',
+        lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        base: 0,
+        crosshairMarkerVisible: false,
+        priceFormat: { type: 'price', precision: 0, minMove: 1 },
       },
       paneIndex,
     )
+    d.setData(dLine)
+    created.push(d)
+    applyMarketChartSubPanePriceScale(chart, paneIndex, isLight)
+    addOscillatorRefLines(k, [80, 20], isLight)
+  }
+  if (ids.has('macd')) {
+    const paneIndex = oscPaneById.get('macd') ?? 2
+    const { macdLine, signalLine, histogram } = computeMacdSeries(barPoints)
+    const upColor = isLight ? '#16a34a' : '#22c55e'
+    const downColor = isLight ? '#dc2626' : '#ef4444'
+    const hist = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false, base: 0 }, paneIndex)
     hist.setData(
       histogram.map((p) => ({
         time: p.time,
@@ -306,7 +265,7 @@ export function attachMarketChartIndicators(chart, mainSeries, barPoints, active
       })),
     )
     created.push(hist)
-    applyMarketChartSubPanePriceScale(chart, paneIndex, opts.isLight)
+    applyMarketChartSubPanePriceScale(chart, paneIndex, isLight)
     const macd = chart.addSeries(
       LineSeries,
       {
@@ -336,6 +295,15 @@ export function attachMarketChartIndicators(chart, mainSeries, barPoints, active
     signal.setData(signalLine)
     created.push(signal)
   }
+  if (ids.has('cci20')) attachOscLine('cci20', computeCciSeries(ohlcv, 20), '#fb7185', 0, [100, -100])
+  if (ids.has('roc12')) attachOscLine('roc12', computeRocSeries(barPoints, 12), '#2dd4bf', 2, [0])
+
+  // Volume oscillators
+  if (ids.has('obv')) attachOscLine('obv', computeObvSeries(ohlcv), '#84cc16', 0)
+  if (ids.has('ad')) attachOscLine('ad', computeAccumulationDistributionSeries(ohlcv), '#65a30d', 0)
+
+  // Trend oscillators
+  if (ids.has('adx14')) attachOscLine('adx14', computeAdxSeries(ohlcv, 14), '#f97316', 0, [25])
 
   return created
 }
@@ -348,9 +316,23 @@ export function marketIndicatorLegendItems(indId, isLight = false) {
   const downColor = isLight ? '#dc2626' : '#ef4444'
   switch (indId) {
     case 'bb20':
+    case 'keltner20':
+    case 'donchian20':
+    case 'atrBands20':
       return /** @type {MarketIndicatorLegendItem[]} */ ([
         { label: 'Mid', color: '#94a3b8' },
         { label: 'Bands', color: '#64748b', dashed: true },
+      ])
+    case 'ichimoku':
+      return /** @type {MarketIndicatorLegendItem[]} */ ([
+        { label: 'Tenkan', color: '#6366f1' },
+        { label: 'Kijun', color: '#818cf8' },
+        { label: 'Span A/B', color: '#a5b4fc', dashed: true },
+      ])
+    case 'stoch14':
+      return /** @type {MarketIndicatorLegendItem[]} */ ([
+        { label: '%K', color: '#f472b6' },
+        { label: '%D', color: '#fb7185' },
       ])
     case 'macd':
       return /** @type {MarketIndicatorLegendItem[]} */ ([

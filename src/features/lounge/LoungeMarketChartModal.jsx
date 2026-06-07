@@ -21,8 +21,9 @@ import { loungeMarketBarsToSeries, loungeMarketChartCrosshairOptions, loungeMark
 import {
   attachMarketChartIndicators,
   computeMarketChartOverlayLines,
-  MARKET_CHART_INDICATORS,
+  MARKET_CHART_INDICATOR_CATEGORIES,
   listActiveIndicatorLegend,
+  listMarketChartIndicatorsByCategory,
   marketIndicatorLegendItems,
   readStoredMarketChartIndicators,
   writeStoredMarketChartIndicators,
@@ -926,7 +927,7 @@ export default function LoungeMarketChartModal({
       const run = () => {
         if (!chartRef.current || !mainSeriesRef.current) return
         const barPoints = loungeMarketBarsToSeries(nextAll)
-        const overlayLines = computeMarketChartOverlayLines(barPoints, activeIndicators)
+        const overlayLines = computeMarketChartOverlayLines(barPoints, nextAll, activeIndicators)
         const panePlan = computeMarketChartPanePlan(activeIndicators)
         const refreshed = refreshAdvancedMarketChartData({
           chart: chartRef.current,
@@ -1125,7 +1126,7 @@ export default function LoungeMarketChartModal({
     const rawBars = allBarsRef.current?.length ? allBarsRef.current : chartSeries?.bars || []
     const barPoints = loungeMarketBarsToSeries(rawBars)
     const overlayLines = isAdvancedView
-      ? computeMarketChartOverlayLines(barPoints, activeIndicators)
+      ? computeMarketChartOverlayLines(barPoints, rawBars, activeIndicators)
       : []
     const mainSeries = attachModalMainChartSeries(chart, effectiveChartType, {
       barPoints,
@@ -1146,7 +1147,7 @@ export default function LoungeMarketChartModal({
         isLight,
         paneIndex: panePlan.volumePaneIndex,
       })
-      indicatorSeriesRef.current = attachMarketChartIndicators(chart, mainSeries, barPoints, activeIndicators, {
+      indicatorSeriesRef.current = attachMarketChartIndicators(chart, mainSeries, barPoints, rawBars, activeIndicators, {
         isLight,
         panePlan,
       })
@@ -1420,7 +1421,7 @@ export default function LoungeMarketChartModal({
     if (signature === advancedBarsSignatureRef.current) return
     advancedBarsSignatureRef.current = signature
     const barPoints = loungeMarketBarsToSeries(rawBars)
-    const overlayLines = computeMarketChartOverlayLines(barPoints, activeIndicators)
+    const overlayLines = computeMarketChartOverlayLines(barPoints, rawBars, activeIndicators)
     const lineColor = chartUp ? theme.upColor : theme.downColor
     const panePlan = computeMarketChartPanePlan(activeIndicators)
     const refreshed = refreshAdvancedMarketChartData({
@@ -1734,36 +1735,45 @@ export default function LoungeMarketChartModal({
                             Select indicators to show on chart
                           </div>
                         )}
-                        {MARKET_CHART_INDICATORS.map((ind) => {
-                          const on = activeIndicators.has(ind.id)
-                          const legendItems = marketIndicatorLegendItems(ind.id, isLight)
-                          return (
-                            <button
-                              key={ind.id}
-                              type="button"
-                              role="option"
-                              aria-selected={on}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleIndicator(ind.id)
-                              }}
-                              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] touch-manipulation hover:bg-zinc-800 active:bg-zinc-800/90 ${
-                                on ? 'text-cyan-200' : 'text-zinc-200'
-                              }`}
+                        {MARKET_CHART_INDICATOR_CATEGORIES.map((cat) => (
+                          <div key={cat.id}>
+                            <div
+                              className={`sticky top-0 z-[1] border-b border-zinc-800/80 bg-zinc-900 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide ${mutedClass}`}
                             >
-                              <span
-                                className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[11px] ${
-                                  on ? 'text-cyan-400' : 'text-transparent'
-                                }`}
-                                aria-hidden="true"
-                              >
-                                ✓
-                              </span>
-                              <span className="min-w-0 flex-1 truncate">{ind.label}</span>
-                              <MarketIndicatorLegendSwatches items={legendItems} />
-                            </button>
-                          )
-                        })}
+                              {cat.label}
+                            </div>
+                            {listMarketChartIndicatorsByCategory(cat.id).map((ind) => {
+                              const on = activeIndicators.has(ind.id)
+                              const legendItems = marketIndicatorLegendItems(ind.id, isLight)
+                              return (
+                                <button
+                                  key={ind.id}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={on}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleIndicator(ind.id)
+                                  }}
+                                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] touch-manipulation hover:bg-zinc-800 active:bg-zinc-800/90 ${
+                                    on ? 'text-cyan-200' : 'text-zinc-200'
+                                  }`}
+                                >
+                                  <span
+                                    className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[11px] ${
+                                      on ? 'text-cyan-400' : 'text-transparent'
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    ✓
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate">{ind.label}</span>
+                                  <MarketIndicatorLegendSwatches items={legendItems} />
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ))}
                       </div>
                     ) : null}
                   </div>

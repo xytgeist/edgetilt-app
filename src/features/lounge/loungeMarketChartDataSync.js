@@ -63,13 +63,13 @@ export function refreshAdvancedMarketChartData(ctx) {
       /* ignore */
     }
   }
-  const nextIndicators = attachMarketChartIndicators(chart, mainSeries, barPoints, activeIndicators, {
+  const nextIndicators = attachMarketChartIndicators(chart, mainSeries, barPoints, rawBars, activeIndicators, {
     isLight,
     panePlan,
   })
 
   if (typeof applyPriceRange === 'function') {
-    const overlayLines = computeMarketChartOverlayLines(barPoints, activeIndicators)
+    const overlayLines = computeMarketChartOverlayLines(barPoints, rawBars, activeIndicators)
     applyPriceRange(barPoints, overlayLines)
   }
 

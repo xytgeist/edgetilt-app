@@ -127,7 +127,7 @@ function formatMarketChartCrosshairTime(time, timeframeLabel) {
 }
 
 /** @param {number | import('lightweight-charts').UTCTimestamp | import('lightweight-charts').BusinessDay} time @param {import('./loungeMarketChartResolution.js').MarketChartResolutionId | string} resolutionId */
-function formatMarketChartCrosshairTimeForResolution(time, resolutionId) {
+export function formatMarketChartTimeLabelForResolution(time, resolutionId) {
   const d = marketChartTimeToDateQuick(time)
   if (!d || Number.isNaN(d.getTime())) return ''
   switch (resolutionId) {
@@ -270,6 +270,6 @@ export function marketChartAdvancedLocalization(timeframeLabel) {
 export function marketChartAdvancedLocalizationForResolution(resolutionId) {
   const id = String(resolutionId || '')
   return {
-    timeFormatter: (time) => formatMarketChartCrosshairTimeForResolution(time, id),
+    timeFormatter: (time) => formatMarketChartTimeLabelForResolution(time, id),
   }
 }

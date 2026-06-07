@@ -1,7 +1,13 @@
 /** Advanced main-pane Y scale — visible-window candle OHLC only (no overlays). */
 
+import { getMarketChartResolution } from './loungeMarketChartResolution.js'
 import { loungeMarketBarsToSeries } from './loungeMarketChartTheme.js'
-import { marketModalChartHighLow } from './loungeMarketChartTypes.js'
+import { formatMarketChartTimeLabelForResolution } from './loungeMarketChartViewMode.js'
+import { computeMarketChartVisibleWindowQuoteFromChart, marketModalChartHighLow } from './loungeMarketChartTypes.js'
+
+function barUnixSec(t) {
+  return Math.floor(t > 1e12 ? t / 1000 : t)
+}
 
 const ADVANCED_CANDLE_PRICE_SCALE_MARGINS = { top: 0.06, bottom: 0.04 }
 
@@ -75,6 +81,37 @@ export function applyVisibleCandlePriceRange(mainSeries, chart, rawBars, chartTy
 }
 
 /**
+ * Visible chart window as a snapshot header label (resolution + formatted start/end).
+ * @param {import('lightweight-charts').IChartApi | null | undefined} chart
+ * @param {Array<{ t: number, c: number }>} rawBars
+ * @param {string} resolutionId
+ * @returns {string}
+ */
+export function formatMarketChartVisibleTimeRangeLabel(chart, rawBars, resolutionId) {
+  if (!chart || !rawBars?.length) return ''
+
+  const visibleBars = sliceMarketBarsForLogicalRange(
+    rawBars,
+    chart.timeScale().getVisibleLogicalRange(),
+  )
+  if (!visibleBars.length) return ''
+
+  const startSec = barUnixSec(visibleBars[0].t)
+  const endSec = barUnixSec(visibleBars[visibleBars.length - 1].t)
+  const startLabel = formatMarketChartTimeLabelForResolution(startSec, resolutionId)
+  const endLabel = formatMarketChartTimeLabelForResolution(endSec, resolutionId)
+  if (!startLabel) return ''
+
+  const resolutionLabel = getMarketChartResolution(resolutionId).label
+  if (!endLabel || startLabel === endLabel) {
+    return resolutionLabel ? `${resolutionLabel} · ${startLabel}` : startLabel
+  }
+  return resolutionLabel
+    ? `${resolutionLabel} · ${startLabel} – ${endLabel}`
+    : `${startLabel} – ${endLabel}`
+}
+
+/**
  * Apply visible candle Y scale after chart layout (setData / fitContent).
  * @param {import('lightweight-charts').ISeriesApi} mainSeries
  * @param {import('lightweight-charts').IChartApi} chart
@@ -99,7 +136,7 @@ export function scheduleVisibleCandlePriceRange(mainSeries, chart, rawBars, char
  * Re-fit main-pane Y scale when the visible time window changes (horizontal pan/zoom).
  * @param {import('lightweight-charts').IChartApi} chart
  * @param {() => { mainSeries: import('lightweight-charts').ISeriesApi | null, rawBars: object[], chartType: string } | null} getContext
- * @param {{ isPinned?: () => boolean, isPanning?: () => boolean, keepMargins?: boolean }} [opts]
+ * @param {{ isPinned?: () => boolean, isPanning?: () => boolean, keepMargins?: boolean, onQuote?: (quote: { price: number, change: number, change_pct: number } | null) => void }} [opts]
  */
 export function bindVisibleCandlePriceRangeFit(chart, getContext, opts = {}) {
   const isPinned = () => opts.isPinned?.() === true
@@ -109,21 +146,31 @@ export function bindVisibleCandlePriceRangeFit(chart, getContext, opts = {}) {
   const run = () => {
     cancelAnimationFrame(raf)
     raf = requestAnimationFrame(() => {
-      if (isPinned() || isPanning()) return
       const ctx = getContext()
-      if (!ctx?.mainSeries || !ctx.rawBars?.length) return
-      applyVisibleCandlePriceRange(ctx.mainSeries, chart, ctx.rawBars, ctx.chartType, {
-        keepMargins: opts.keepMargins !== false,
-      })
+      if (!ctx?.rawBars?.length) return
+      if (!isPanning() && !isPinned() && ctx.mainSeries) {
+        applyVisibleCandlePriceRange(ctx.mainSeries, chart, ctx.rawBars, ctx.chartType, {
+          keepMargins: opts.keepMargins !== false,
+        })
+      }
+      if (typeof opts.onQuote === 'function') {
+        opts.onQuote(computeMarketChartVisibleWindowQuoteFromChart(chart, ctx.rawBars, ctx.chartType))
+      }
     })
   }
 
   const handler = () => run()
   const ts = chart.timeScale()
   ts.subscribeVisibleLogicalRangeChange(handler)
+  run()
 
-  return () => {
+  const unbind = () => {
     cancelAnimationFrame(raf)
     ts.unsubscribeVisibleLogicalRangeChange(handler)
   }
+
+  /** Recompute header quote (e.g. after pan release when the last range RAF ran while still dragging). */
+  const refreshQuote = () => run()
+
+  return { unbind, refreshQuote }
 }

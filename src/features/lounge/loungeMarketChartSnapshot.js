@@ -1,10 +1,13 @@
 /** Capture Lounge market chart screenshots (Lightweight Charts `takeScreenshot`). */
 
+import { formatMarketChangeLine, formatMarketPrice } from '../../utils/loungeMarketCaptionParse.js'
 import {
   exportMarketChartAnnotationCanvas,
   marketChartAnnotationHasInk,
   mergeAnnotationLayerOntoCanvas,
 } from './loungeMarketChartAnnotation.js'
+import { formatMarketChartVisibleTimeRangeLabel } from './loungeMarketChartPriceRange.js'
+import { computeMarketChartVisibleWindowQuoteFromChart } from './loungeMarketChartTypes.js'
 
 /**
  * @typedef {{
@@ -20,6 +23,10 @@ import {
  *   name?: string | null,
  *   logoUrl?: string | null,
  *   legendRows?: MarketChartSnapshotLegendRow[],
+ *   dateRangeLabel?: string | null,
+ *   priceLabel?: string | null,
+ *   changeLabel?: string | null,
+ *   changeUp?: boolean,
  *   isLight?: boolean,
  * }} MarketChartSnapshotBranding
  */
@@ -281,7 +288,11 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
   const name = String(branding.name || '').trim()
   const logoUrl = String(branding.logoUrl || '').trim()
   const legendRows = Array.isArray(branding.legendRows) ? branding.legendRows : []
-  const hasHeader = !!(tickerRaw || name || logoUrl)
+  const dateRangeLabel = String(branding.dateRangeLabel || '').trim()
+  const priceLabel = String(branding.priceLabel || '').trim()
+  const changeLabel = String(branding.changeLabel || '').trim()
+  const changeUp = branding.changeUp !== false
+  const hasHeader = !!(tickerRaw || name || logoUrl || dateRangeLabel || priceLabel || changeLabel)
   const hasLegend = legendRows.length > 0
   if (!hasHeader && !hasLegend) return chartCanvas
 
@@ -292,7 +303,10 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
   const bg = isLight ? '#fafafa' : '#09090b'
   const titleColor = isLight ? '#18181b' : '#fafafa'
   const tickerColor = isLight ? '#71717a' : '#a1a1aa'
+  const rangeColor = isLight ? '#52525b' : '#a1a1aa'
+  const changeColor = changeUp ? (isLight ? '#16a34a' : '#22c55e') : isLight ? '#dc2626' : '#ef4444'
   const divider = isLight ? '#e4e4e7' : '#27272a'
+  const fontFamily = 'system-ui, -apple-system, "Segoe UI", sans-serif'
 
   const padX = Math.max(20, Math.round(chartW * 0.018))
   const padY = Math.max(14, Math.round(chartW * 0.012))
@@ -300,13 +314,47 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
   const textGap = Math.max(6, Math.round(chartW * 0.005))
   const titleSize = Math.max(32, Math.round(chartW * 0.038))
   const tickerSize = Math.max(24, Math.round(chartW * 0.028))
+  const rangeSize = Math.max(20, Math.round(chartW * 0.017))
+  const priceSize = Math.max(28, Math.round(chartW * 0.032))
+  const changeSize = Math.max(18, Math.round(chartW * 0.014))
   const logoSize = Math.max(56, Math.round(chartW * 0.045))
 
   const logo = logoUrl ? await loadSnapshotLogoImage(logoUrl) : null
   const showLogo = Boolean(logo)
 
-  const textBlockH = (name ? titleSize + textGap : 0) + (ticker ? tickerSize : 0)
-  const headerContentH = Math.max(showLogo ? logoSize : 0, textBlockH)
+  const measureCtx =
+    typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null
+  let leftTextW = 0
+  let rightBlockW = 0
+  if (measureCtx) {
+    if (name) {
+      measureCtx.font = `700 ${titleSize}px ${fontFamily}`
+      leftTextW = Math.max(leftTextW, measureCtx.measureText(name).width)
+    }
+    if (ticker) {
+      measureCtx.font = `600 ${tickerSize}px ${fontFamily}`
+      leftTextW = Math.max(leftTextW, measureCtx.measureText(ticker).width)
+    }
+    if (priceLabel) {
+      measureCtx.font = `700 ${priceSize}px ${fontFamily}`
+      rightBlockW = Math.max(rightBlockW, measureCtx.measureText(priceLabel).width)
+    }
+    if (changeLabel) {
+      measureCtx.font = `600 ${changeSize}px ${fontFamily}`
+      rightBlockW = Math.max(rightBlockW, measureCtx.measureText(changeLabel).width)
+    }
+  }
+
+  const leftBlockW = padX + (showLogo ? logoSize + logoGap : 0) + leftTextW
+  const rightBlockTotalW = rightBlockW > 0 ? padX + rightBlockW : 0
+  const sideGutter = Math.max(leftBlockW, rightBlockTotalW, Math.round(chartW * 0.17))
+  const leftTextMaxW = Math.max(48, sideGutter - padX - (showLogo ? logoSize + logoGap : 0) - padX)
+  const centerMaxW = Math.max(80, chartW - sideGutter * 2)
+
+  const leftTextBlockH = (name ? titleSize + textGap : 0) + (ticker ? tickerSize : 0)
+  const rightTextBlockH =
+    (priceLabel ? priceSize : 0) + (priceLabel && changeLabel ? textGap : 0) + (changeLabel ? changeSize : 0)
+  const headerContentH = Math.max(showLogo ? logoSize : 0, leftTextBlockH, rightTextBlockH)
   const headerH = hasHeader ? padY * 2 + headerContentH : 0
   const legendPlan = hasLegend ? planMarketChartSnapshotLegendBand(legendRows, chartW) : null
   const legendH = legendPlan?.bandH || 0
@@ -324,24 +372,54 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
     const contentTop = padY
     const logoY = contentTop + Math.round((headerContentH - logoSize) / 2)
     const textX = padX + (showLogo ? logoSize + logoGap : 0)
-    const maxTextW = chartW - textX - padX
 
     if (showLogo && logo) {
       drawSnapshotLogo(ctx, logo, padX, logoY, logoSize, isLight)
     }
 
-    let textY = contentTop + Math.round((headerContentH - textBlockH) / 2)
+    let textY = contentTop + Math.round((headerContentH - leftTextBlockH) / 2)
+    ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     if (name) {
       ctx.fillStyle = titleColor
-      ctx.font = `700 ${titleSize}px system-ui, -apple-system, "Segoe UI", sans-serif`
-      ctx.fillText(truncateCanvasText(ctx, name, maxTextW), textX, textY)
+      ctx.font = `700 ${titleSize}px ${fontFamily}`
+      ctx.fillText(truncateCanvasText(ctx, name, leftTextMaxW), textX, textY)
       textY += titleSize + textGap
     }
     if (ticker) {
       ctx.fillStyle = tickerColor
-      ctx.font = `600 ${tickerSize}px system-ui, -apple-system, "Segoe UI", sans-serif`
-      ctx.fillText(ticker, textX, textY)
+      ctx.font = `600 ${tickerSize}px ${fontFamily}`
+      ctx.fillText(truncateCanvasText(ctx, ticker, leftTextMaxW), textX, textY)
+    }
+
+    if (dateRangeLabel) {
+      ctx.fillStyle = rangeColor
+      ctx.font = `600 ${rangeSize}px ${fontFamily}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(
+        truncateCanvasText(ctx, dateRangeLabel, centerMaxW),
+        chartW / 2,
+        contentTop + headerContentH / 2,
+      )
+    }
+
+    if (priceLabel || changeLabel) {
+      const rightX = chartW - padX
+      let quoteY = contentTop + Math.round((headerContentH - rightTextBlockH) / 2)
+      ctx.textAlign = 'right'
+      ctx.textBaseline = 'top'
+      if (priceLabel) {
+        ctx.fillStyle = titleColor
+        ctx.font = `700 ${priceSize}px ${fontFamily}`
+        ctx.fillText(priceLabel, rightX, quoteY)
+        quoteY += priceSize + (changeLabel ? textGap : 0)
+      }
+      if (changeLabel) {
+        ctx.fillStyle = changeColor
+        ctx.font = `600 ${changeSize}px ${fontFamily}`
+        ctx.fillText(changeLabel, rightX, quoteY)
+      }
     }
 
     ctx.fillStyle = divider
@@ -490,4 +568,41 @@ export function marketChartSnapshotBrandingFromEmbed(embed, isLight = false, leg
   const name = String(embed.name || embed.display_symbol || embed.symbol || '').trim()
   const logoUrl = String(embed.logo_url || embed.logo || '').trim()
   return { ticker, name, logoUrl, legendRows, isLight }
+}
+
+/**
+ * Branding for Advanced chart snapshots — embed identity, visible range, and live quote.
+ * @param {{
+ *   embed?: object | null,
+ *   isLight?: boolean,
+ *   legendRows?: MarketChartSnapshotLegendRow[],
+ *   chart?: import('lightweight-charts').IChartApi | null,
+ *   rawBars?: Array<{ t: number, c: number }>,
+ *   resolutionId?: string,
+ *   chartType?: string,
+ * }} opts
+ */
+export function marketChartSnapshotBrandingFromCapture(opts = {}) {
+  const {
+    embed = null,
+    isLight = false,
+    legendRows = [],
+    chart = null,
+    rawBars = [],
+    resolutionId = 'D',
+    chartType = 'candle',
+  } = opts
+  const base = marketChartSnapshotBrandingFromEmbed(embed, isLight, legendRows)
+  const quote = computeMarketChartVisibleWindowQuoteFromChart(chart, rawBars, chartType)
+  const changePct = Number(quote?.change_pct)
+  const change = Number(quote?.change)
+  const changeUp = Number.isFinite(changePct) ? changePct >= 0 : Number.isFinite(change) ? change >= 0 : true
+
+  return {
+    ...base,
+    dateRangeLabel: formatMarketChartVisibleTimeRangeLabel(chart, rawBars, resolutionId),
+    priceLabel: formatMarketPrice(quote?.price),
+    changeLabel: formatMarketChangeLine(quote?.change, changePct),
+    changeUp,
+  }
 }

@@ -160,6 +160,58 @@ function ohlcSeriesForChartType(chartType, rawBars) {
 }
 
 /**
+ * Header/snapshot quote from the visible chart window:
+ * price = close of the rightmost visible candle (at the price axis);
+ * change = vs open of the leftmost visible candle.
+ * @param {Array<{ t: number, c: number, o?: number }>} rawBars
+ * @param {{ from: number, to: number } | null | undefined} logicalRange
+ * @param {MarketModalChartTypeId | string} [chartType]
+ * @returns {{ price: number, change: number, change_pct: number } | null}
+ */
+export function computeMarketChartVisibleWindowQuote(rawBars, logicalRange, chartType = 'candle') {
+  if (!Array.isArray(rawBars) || !rawBars.length || !logicalRange) return null
+  if (!Number.isFinite(logicalRange.from) || !Number.isFinite(logicalRange.to)) return null
+
+  const fromIdx = Math.max(0, Math.floor(logicalRange.from))
+  const toIdx = Math.min(rawBars.length - 1, Math.ceil(logicalRange.to))
+  if (fromIdx > toIdx) return null
+
+  let openBaseline = NaN
+  let closePrice = NaN
+
+  if (marketModalChartTypeUsesOhlc(chartType)) {
+    const prefix = rawBars.slice(0, toIdx + 1)
+    const ohlc = ohlcSeriesForChartType(chartType, prefix)
+    if (!ohlc?.length) return null
+    const first = ohlc[fromIdx]
+    const last = ohlc[Math.min(toIdx, ohlc.length - 1)]
+    openBaseline = Number(first?.open)
+    closePrice = Number(last?.close)
+  } else {
+    const firstBar = rawBars[fromIdx]
+    const lastBar = rawBars[toIdx]
+    openBaseline = Number(firstBar?.o ?? firstBar?.c)
+    closePrice = Number(lastBar?.c)
+  }
+
+  if (!Number.isFinite(openBaseline) || !Number.isFinite(closePrice) || openBaseline <= 0) return null
+
+  const change = closePrice - openBaseline
+  const change_pct = (change / openBaseline) * 100
+  return { price: closePrice, change, change_pct }
+}
+
+/**
+ * @param {import('lightweight-charts').IChartApi | null | undefined} chart
+ * @param {Array<{ t: number, c: number, o?: number }>} rawBars
+ * @param {MarketModalChartTypeId | string} [chartType]
+ */
+export function computeMarketChartVisibleWindowQuoteFromChart(chart, rawBars, chartType = 'candle') {
+  if (!chart || !rawBars?.length) return null
+  return computeMarketChartVisibleWindowQuote(rawBars, chart.timeScale().getVisibleLogicalRange(), chartType)
+}
+
+/**
  * @param {MarketModalChartTypeId | string} chartType
  * @param {Array<{ t: number, c: number }>} rawBars
  * @param {Array<{ time: number, value: number }>} barPoints

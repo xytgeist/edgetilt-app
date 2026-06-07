@@ -84,6 +84,7 @@ import {
 } from './loungeMarketChartPriceRange.js'
 import {
   captureMarketChartPngFile,
+  marketChartSnapshotBrandingFromCapture,
   marketChartSnapshotBrandingFromEmbed,
   marketChartSnapshotFilename,
   marketChartSnapshotSaveMenuLabel,
@@ -879,6 +880,10 @@ export default function LoungeMarketChartModal({
   annotateModeRef.current = annotateMode
   /** Crosshair scrub overrides header quote until pointer leaves the chart. */
   const [scrubQuote, setScrubQuote] = useState(/** @type {{ price: number, change?: number, change_pct?: number } | null} */ (null))
+  const [visibleWindowQuote, setVisibleWindowQuote] = useState(
+    /** @type {{ price: number, change: number, change_pct: number } | null} */ (null),
+  )
+  const displayQuoteRef = useRef(/** @type {{ price?: number, change?: number, change_pct?: number } | null} */ (null))
   const [scrubAxisCurrent, setScrubAxisCurrent] = useState(/** @type {{ price: number, y: number } | null} */ (null))
   const [priceAxisLabels, setPriceAxisLabels] = useState(
     /** @type {{ high: { price: number, y: number } | null, current: { price: number, y: number } | null, low: { price: number, y: number } | null }} */ ({
@@ -1014,7 +1019,15 @@ export default function LoungeMarketChartModal({
       setSnapshotMenuOpen(false)
       try {
         const filename = marketChartSnapshotFilename(active?.display_symbol || active?.symbol)
-        const branding = marketChartSnapshotBrandingFromEmbed(active, isLight, activeIndicatorLegend)
+        const branding = marketChartSnapshotBrandingFromCapture({
+          embed: active,
+          isLight,
+          legendRows: activeIndicatorLegend,
+          chart,
+          rawBars: allBarsRef.current,
+          resolutionId: advancedResolutionId,
+          chartType: advancedFullscreenOpen ? chartType : 'candle',
+        })
         if (mode === 'save') {
           const result = await saveMarketChartScreenshot(
             chart,
@@ -1048,7 +1061,7 @@ export default function LoungeMarketChartModal({
         window.setTimeout(() => setSnapshotFlash(''), 2400)
       }
     },
-    [active, activeIndicatorLegend, advancedLoading, isLight, onInsertSnapshot, snapshotBusy],
+    [active, activeIndicatorLegend, advancedFullscreenOpen, advancedLoading, advancedResolutionId, chartType, isLight, onInsertSnapshot, snapshotBusy],
   )
 
   const undoChartAnnotation = useCallback(() => {
@@ -1127,6 +1140,7 @@ export default function LoungeMarketChartModal({
     setAnnotateMode(false)
     setChartAnnotations([])
     setScrubQuote(null)
+    setVisibleWindowQuote(null)
     setHistoryBars([])
     setHistoryHasMore(true)
     historyLoadingRef.current = false
@@ -1598,7 +1612,8 @@ export default function LoungeMarketChartModal({
   const quote = isAdvancedView
     ? advancedSeries?.quote || active?.quote
     : chartSeries?.quote || active?.quote
-  const displayQuote = scrubQuote ?? quote
+  const displayQuote = scrubQuote ?? (isAdvancedView ? visibleWindowQuote : null) ?? quote
+  displayQuoteRef.current = displayQuote
   const displayChangePct = Number(displayQuote?.change_pct)
   const displayUp = Number.isFinite(displayChangePct) ? displayChangePct >= 0 : true
   const chartChangePct = Number(quote?.change_pct)
@@ -1833,6 +1848,7 @@ export default function LoungeMarketChartModal({
               fitAdvancedPriceToVisibleCandles(mainSeriesRef.current, chartRef.current, {
                 fitTimeScale: false,
               })
+              unbindVisiblePriceFit?.refreshQuote?.()
             })
           },
         })
@@ -1848,8 +1864,9 @@ export default function LoungeMarketChartModal({
           isPinned: () => priceScaleUserPinnedRef.current,
           isPanning: () => chartPanningRef.current,
           keepMargins: true,
+          onQuote: (next) => setVisibleWindowQuote(next),
         })
-      : () => {}
+      : null
 
     const historyLoader = isAdvancedView
       ? bindMarketChartHistoryLoader(
@@ -1990,7 +2007,7 @@ export default function LoungeMarketChartModal({
       chartPanningRef.current = false
       pendingHistoryApplyRef.current = null
       unbindPriceAxisZoom()
-      unbindVisiblePriceFit()
+      unbindVisiblePriceFit?.unbind?.()
       unbindPan()
       unbindHistory()
       unbindScrub()

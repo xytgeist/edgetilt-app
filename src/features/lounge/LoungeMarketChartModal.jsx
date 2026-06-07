@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createChart, createSeriesMarkers } from 'lightweight-charts'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost.js'
@@ -475,6 +475,7 @@ export default function LoungeMarketChartModal({
 }) {
   const chartHostRef = useRef(null)
   const advancedChartHostRef = useRef(null)
+  const advancedFullscreenRootRef = useRef(null)
   const chartRef = useRef(null)
   const mainSeriesRef = useRef(null)
   const indicatorMenuRef = useRef(null)
@@ -580,7 +581,6 @@ export default function LoungeMarketChartModal({
 
   useEffect(() => {
     if (!advancedFullscreenOpen) return undefined
-    void lockMarketChartLandscapeOrientation()
     const syncPortrait = () => setAdvancedPortraitViewport(isMarketChartPortraitViewport())
     syncPortrait()
     window.addEventListener('resize', syncPortrait)
@@ -590,6 +590,12 @@ export default function LoungeMarketChartModal({
       window.removeEventListener('orientationchange', syncPortrait)
       unlockMarketChartLandscapeOrientation()
     }
+  }, [advancedFullscreenOpen])
+
+  useLayoutEffect(() => {
+    if (!advancedFullscreenOpen) return
+    if (!isMarketChartPortraitViewport()) return
+    void lockMarketChartLandscapeOrientation(advancedFullscreenRootRef.current)
   }, [advancedFullscreenOpen])
 
   useEffect(() => {
@@ -623,6 +629,7 @@ export default function LoungeMarketChartModal({
     setTimeframeMenuOpen(false)
     setChartType('candle')
     setAdvancedPortraitViewport(isMarketChartPortraitViewport())
+    void lockMarketChartLandscapeOrientation()
     setAdvancedFullscreenOpen(true)
   }, [])
 
@@ -1267,8 +1274,8 @@ export default function LoungeMarketChartModal({
     sheetClosing || (!sheetDragging && sheetDragY === 0) ? 'transform 0.22s ease' : 'none'
   const axisCurrentLabel = !advancedFullscreenOpen ? (scrubAxisCurrent ?? priceAxisLabels.current) : null
 
-  const advancedFullscreenShellStyle = marketChartAdvancedFullscreenShellStyle(advancedPortraitViewport)
-  const advancedPlotWrapStyle = marketChartAdvancedPlotWrapStyle(advancedPortraitViewport)
+  const advancedFullscreenShellStyle = marketChartAdvancedFullscreenShellStyle()
+  const advancedPlotWrapStyle = marketChartAdvancedPlotWrapStyle()
 
   const advancedFullscreenPortal =
     advancedFullscreenOpen && open
@@ -1280,6 +1287,7 @@ export default function LoungeMarketChartModal({
             aria-label={`${active?.display_symbol || 'Market'} advanced chart`}
           >
             <div
+              ref={advancedFullscreenRootRef}
               className={`flex flex-col ${shellClass}`}
               style={advancedFullscreenShellStyle}
               data-lounge-market-chart-advanced-fullscreen

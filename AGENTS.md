@@ -144,7 +144,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 | Surface | Where the details live |
 | --- | --- |
 | App entry, auth vs shell, feature folders, lazy chunks | **`docs/frontend-architecture.md`** (`App.jsx`, `AppShell`, `src/features/*`) |
-| Lounge (feed, Stream/R2, dock FAB, threads, profiles, smoke §11–§21) | **`docs/frontend-architecture.md`** → **`lounge/`** row |
+| Lounge (feed, Stream/R2, dock FAB, threads, profiles, **market charts**, smoke §11–§21) | **`docs/frontend-architecture.md`** → **`lounge/`** row; backlog **Lounge market** Update log lines |
 | Chat (DM, groups, video prep, link previews, glass CSS blast radius) | **`docs/frontend-architecture.md`** → **`chat/`** row; backlog **Chat** section |
 | Play Logbook, calculators, bankroll, offers, guides | Matching **`docs/frontend-architecture.md`** feature rows; backlog sections |
 | Freemium product rules | **`docs/access-tiers.md`** |
@@ -160,6 +160,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 - Lounge z-index: profile **`z-[97]`**, post detail **`z-[98]`**, quote/lightbox **`z-[100]`**+ — **`src/constants/appZIndex.js`**.
 - **Do not** re-run **`20260601160000_chat_messages_page_catchup.sql`** after **`20260604180100`**.
 - Lounge **thread** SQL chain through **`20260608210000`** — apply order in backlog Update log **2026-06-08** / **2026-06-09**.
+- Lounge **market charts:** Edge **`lounge-market-data`** — redeploy after **`finnhubMarket.ts`** / **`yahooMarket.ts`** changes; snapshot PNG branding (**EDGE** wordmark) is **`loungeMarketChartSnapshot.js` only** — live **`LoungeMarketChartModal`** headers stay company-left.
 - AP Guide admin editor: **`/slot-guide-form`**, ingest **`POST /api/slot-guide-ingest`**, draft **`slotGuideFormDraft:v1`** — see **`README.md`**.
 - UI test pinned post: tail of **`supabase/seed/lounge_fake_posts.sql`**.
 

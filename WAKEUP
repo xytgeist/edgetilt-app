@@ -50,9 +50,19 @@ The agent should treat the following as **standing instructions for this session
 
 ### Active (likely next)
 
+- **`lounge-market-data` redeploy on test** — required after recent Edge pulls (**`logo_image`**, **`yahooResolveUsEquityCashtag`**, auto cashtag attach). Secrets: **`FINNHUB_API_KEY`**, optional **`COINGECKO_API_KEY`**. Smoke: post `$AAPL` without picker → real Apple chart (not Ondo); Advanced snapshot PNG → EDGE wordmark left, company centered, floating legend.
 - **Lounge thread compose** — code on `test`; Ryan smoke **pending** (keyboard toolbar, split image/video, retry restores all part media, no load crash).
 - **Thread SQL on test** — if not applied, run in order through **`20260608210000_lounge_post_drafts_thread_part_media.sql`** (after **`20260608140000`** … **`20260608190000`**); see backlog Update log for each step.
 - **Thread compose iOS** — after media pick, options bar can sit **behind keyboard** (parked).
+
+### Shipped recently (Lounge market charts, on `test`)
+
+- **Advanced chart:** visible-window header price/% updates on pan/zoom; draggable text annotations; bottom toolbar; floating indicator legend on-chart.
+- **Snapshot PNG (`loungeMarketChartSnapshot.js`):** EDGE wordmark **left**, company logo + name + `$TICKER` **centered**, price/% **right**, floating legend — **live modal headers do not show EDGE** (snapshot-only branding).
+- **Logos:** **`MarketEmbedLogo`** in modal (no `crossOrigin` on `<img>`); snapshot company logos via Edge **`logo_image`** proxy.
+- **Auto cashtag attach:** **`resolveCashtagTicker`** → Yahoo US equity first, then search with tokenized (Ondo/xStock) deprioritized — picker row still wins per ticker.
+
+**Key files:** `LoungeMarketChartModal.jsx`, `loungeMarketChartSnapshot.js`, `LoungeMarketChartAnnotationOverlay.jsx`, `loungeMarketChartPriceRange.js`, `finnhubMarket.ts`, `yahooMarket.ts`, `lounge-market-data/index.ts`, `loungePostSubmitJob.js`.
 
 ### Recent chat (Jun 5, on `test`)
 

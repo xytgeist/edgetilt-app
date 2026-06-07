@@ -1,8 +1,22 @@
 /** Horizontal pan + history prefetch for Advanced market charts. */
 
+/** Map viewport pointer position into element-local coordinates (handles CSS rotation). */
+export function marketChartClientToLocal(el, clientX, clientY) {
+  const rect = el.getBoundingClientRect()
+  const width = el.offsetWidth
+  const height = el.offsetHeight
+  if (!rect.width || !rect.height || !width || !height) {
+    return { x: clientX - rect.left, y: clientY - rect.top }
+  }
+  return {
+    x: ((clientX - rect.left) / rect.width) * width,
+    y: ((clientY - rect.top) / rect.height) * height,
+  }
+}
+
 /** Shift visible range by horizontal drag delta (px). */
 export function scrollMarketChartByPixels(chart, deltaPx) {
-  if (!chart || !deltaPx) return
+  if (!chart || !Number.isFinite(deltaPx) || deltaPx === 0) return
   const ts = chart.timeScale()
   const range = ts.getVisibleLogicalRange()
   if (!range) return
@@ -18,10 +32,11 @@ export function scrollMarketChartByPixels(chart, deltaPx) {
   })
 }
 
-const PAN_GESTURE_SLOP_PX = 8
+const PAN_GESTURE_SLOP_PX = 6
 
 /**
  * Drag on the plot pans the time scale (Advanced view).
+ * Uses element-local X so pan works when the fullscreen shell is CSS-rotated.
  * @param {HTMLElement} el
  * @param {import('lightweight-charts').IChartApi} chart
  * @param {{ priceAxisHit?: (clientX: number, clientY?: number) => boolean }} [opts]
@@ -33,9 +48,9 @@ export function bindMarketChartPanPointer(el, chart, opts = {}) {
   /** @type {'pending' | 'pan' | null} */
   let mode = null
   let activePointerId = null
-  let startX = 0
-  let startY = 0
-  let lastPanX = null
+  let startLocalX = 0
+  let startLocalY = 0
+  let lastLocalX = null
 
   const releaseCapture = (pointerId) => {
     if (!el.hasPointerCapture(pointerId)) return
@@ -49,47 +64,46 @@ export function bindMarketChartPanPointer(el, chart, opts = {}) {
   const resetGesture = () => {
     mode = null
     activePointerId = null
-    lastPanX = null
+    lastLocalX = null
   }
 
   const onPointerDown = (e) => {
     if (priceAxisHit?.(e.clientX, e.clientY)) return
     if (e.button !== 0 && e.pointerType === 'mouse') return
-    e.stopPropagation()
     resetGesture()
     mode = 'pending'
     activePointerId = e.pointerId
-    startX = e.clientX
-    startY = e.clientY
+    const local = marketChartClientToLocal(el, e.clientX, e.clientY)
+    startLocalX = local.x
+    startLocalY = local.y
+    try {
+      el.setPointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
   }
 
   const onPointerMove = (e) => {
     if (activePointerId == null || e.pointerId !== activePointerId) return
+    const local = marketChartClientToLocal(el, e.clientX, e.clientY)
 
     if (mode === 'pending') {
-      const dx = e.clientX - startX
-      const dy = e.clientY - startY
-      if (Math.abs(dx) < PAN_GESTURE_SLOP_PX && Math.abs(dy) < PAN_GESTURE_SLOP_PX) return
-      if (Math.abs(dx) < Math.abs(dy)) {
-        resetGesture()
-        return
-      }
+      const ldx = local.x - startLocalX
+      const ldy = local.y - startLocalY
+      if (Math.hypot(ldx, ldy) < PAN_GESTURE_SLOP_PX) return
       mode = 'pan'
       chart.timeScale().applyOptions({ fixRightEdge: false })
-      el.setPointerCapture(e.pointerId)
-      lastPanX = e.clientX
+      lastLocalX = local.x
       e.preventDefault()
-      e.stopPropagation()
       return
     }
 
     if (mode === 'pan') {
       e.preventDefault()
-      e.stopPropagation()
-      if (lastPanX != null) {
-        scrollMarketChartByPixels(chart, e.clientX - lastPanX)
+      if (lastLocalX != null) {
+        scrollMarketChartByPixels(chart, local.x - lastLocalX)
       }
-      lastPanX = e.clientX
+      lastLocalX = local.x
     }
   }
 

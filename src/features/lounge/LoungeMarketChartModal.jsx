@@ -43,6 +43,7 @@ import {
   isMarketChartPortraitViewport,
   lockMarketChartLandscapeOrientation,
   marketChartAdvancedFullscreenShellStyle,
+  marketChartAdvancedPlotWrapStyle,
   unlockMarketChartLandscapeOrientation,
 } from './loungeMarketChartAdvancedFullscreen.js'
 import {
@@ -51,7 +52,6 @@ import {
 } from './loungeMarketChartPriceAxisZoom.js'
 import {
   bindMarketChartHistoryLoader,
-  bindMarketChartPanPointer,
   scrollMarketChartByPixels,
   shiftMarketChartLogicalRange,
 } from './loungeMarketChartPan.js'
@@ -1012,8 +1012,9 @@ export default function LoungeMarketChartModal({
     if (!open || !el) return undefined
     const lineColor = chartUp ? theme.upColor : theme.downColor
     const chart = createChart(el, {
-      width: el.clientWidth,
-      height: el.clientHeight,
+      ...(isAdvancedView
+        ? { autoSize: true }
+        : { width: el.clientWidth, height: el.clientHeight }),
       layout: {
         ...theme.layout,
         fontSize: MARKET_CHART_PRICE_SCALE_FONT_SIZE,
@@ -1024,7 +1025,14 @@ export default function LoungeMarketChartModal({
         ? marketChartAdvancedPriceScaleOptions(isLight)
         : { visible: false },
       leftPriceScale: { visible: false },
-      handleScroll: false,
+      handleScroll: isAdvancedView
+        ? {
+            mouseWheel: false,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: false,
+          }
+        : false,
       handleScale: false,
       timeScale: isAdvancedView
         ? marketChartAdvancedTimeScaleOptions(timeframe.label, isLight)
@@ -1148,10 +1156,6 @@ export default function LoungeMarketChartModal({
         })
       : () => {}
 
-    const unbindPan = isAdvancedView
-      ? bindMarketChartPanPointer(el, chart, { priceAxisHit })
-      : () => {}
-
     const unbindHistory = isAdvancedView
       ? bindMarketChartHistoryLoader(
           chart,
@@ -1195,21 +1199,28 @@ export default function LoungeMarketChartModal({
       resizeRaf = requestAnimationFrame(() => {
         const liveHost = advancedFullscreenOpen ? advancedChartHostRef.current : chartHostRef.current
         if (!liveHost || !chartRef.current || !mainSeriesRef.current) return
-        chartRef.current.applyOptions({
-          width: liveHost.clientWidth,
-          height: liveHost.clientHeight,
-        })
         if (!isAdvancedView) {
+          chartRef.current.applyOptions({
+            width: liveHost.clientWidth,
+            height: liveHost.clientHeight,
+          })
           fitMarketChartTimeScale(chartRef.current, { fixRightEdge: true })
           refreshChartOverlays()
         }
       })
     })
     ro.observe(el)
+    if (isAdvancedView) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!chartRef.current || !el.isConnected) return
+          chartRef.current.timeScale().fitContent()
+        })
+      })
+    }
     return () => {
       cancelAnimationFrame(resizeRaf)
       unbindPriceAxisZoom()
-      unbindPan()
       unbindHistory()
       unbindScrub()
       ro.disconnect()
@@ -1227,6 +1238,7 @@ export default function LoungeMarketChartModal({
     active?.symbol,
     activeIndicatorKey,
     advancedFullscreenOpen,
+    advancedPortraitViewport,
     chartSeries?.bars,
     effectiveChartType,
     chartUp,
@@ -1256,6 +1268,7 @@ export default function LoungeMarketChartModal({
   const axisCurrentLabel = !advancedFullscreenOpen ? (scrubAxisCurrent ?? priceAxisLabels.current) : null
 
   const advancedFullscreenShellStyle = marketChartAdvancedFullscreenShellStyle(advancedPortraitViewport)
+  const advancedPlotWrapStyle = marketChartAdvancedPlotWrapStyle(advancedPortraitViewport)
 
   const advancedFullscreenPortal =
     advancedFullscreenOpen && open
@@ -1340,9 +1353,10 @@ export default function LoungeMarketChartModal({
               ) : null}
 
               <div className="relative min-h-0 flex-1 overflow-hidden">
+                <div style={advancedPlotWrapStyle}>
+                  <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
-                  className="absolute inset-x-0 top-0"
-                  style={{ bottom: MARKET_CHART_TIMEFRAME_BAND_PX }}
+                  className="relative min-h-0 flex-1 overflow-hidden"
                 >
                   <div ref={advancedChartHostRef} className="absolute inset-0 touch-none select-none" />
                   {activeIndicatorLegend.length ? (
@@ -1369,7 +1383,7 @@ export default function LoungeMarketChartModal({
                 </div>
 
                 <div
-                  className="absolute inset-x-3 bottom-0.5 z-10 flex items-end gap-2"
+                  className="relative z-10 flex shrink-0 items-end gap-2 px-3 pb-0.5"
                   style={{
                     paddingBottom: 'max(0.125rem, env(safe-area-inset-bottom, 0px))',
                     paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
@@ -1597,6 +1611,8 @@ export default function LoungeMarketChartModal({
                     Loading…
                   </div>
                 ) : null}
+                  </div>
+                </div>
               </div>
             </div>
           </div>,

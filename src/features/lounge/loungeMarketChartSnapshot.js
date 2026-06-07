@@ -9,6 +9,12 @@ import {
 } from './loungeMarketChartAnnotation.js'
 import { computeMarketChartVisibleWindowQuoteFromChart } from './loungeMarketChartTypes.js'
 
+const MARKET_CHART_EDGE_LOGO = {
+  dark: '/edge-lounge-logo-transparent.png',
+  light: '/edge-lounge-logo-light.png',
+  aspect: 77 / 19,
+}
+
 /**
  * @typedef {{
  *   label: string,
@@ -113,6 +119,34 @@ async function loadSnapshotLogoImage(url, opts = {}) {
   }
 
   return null
+}
+
+/**
+ * @param {boolean} isLight
+ * @returns {Promise<HTMLImageElement | null>}
+ */
+async function loadSnapshotEdgeLogo(isLight) {
+  if (typeof document === 'undefined') return null
+  const path = isLight ? MARKET_CHART_EDGE_LOGO.light : MARKET_CHART_EDGE_LOGO.dark
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const url = `${origin}${path}`
+
+  try {
+    const res = await fetch(url, { cache: 'force-cache' })
+    if (res.ok) {
+      const img = await blobToSnapshotLogoImage(await res.blob())
+      if (img) return img
+    }
+  } catch {
+    /* fall through to Image() */
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = path
+  })
 }
 
 /**
@@ -381,20 +415,23 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
         asset_class: branding.asset_class,
       })
     : null
+  const edgeLogo = await loadSnapshotEdgeLogo(isLight)
   const showLogo = Boolean(logo)
+  const showEdgeLogo = Boolean(edgeLogo)
 
   const measureCtx =
     typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null
-  let leftTextW = 0
+  let centerNameW = 0
+  let centerTickerW = 0
   let rightBlockW = 0
   if (measureCtx) {
     if (name) {
       measureCtx.font = `700 ${titleSize}px ${fontFamily}`
-      leftTextW = Math.max(leftTextW, measureCtx.measureText(name).width)
+      centerNameW = measureCtx.measureText(name).width
     }
     if (ticker) {
       measureCtx.font = `600 ${tickerSize}px ${fontFamily}`
-      leftTextW = Math.max(leftTextW, measureCtx.measureText(ticker).width)
+      centerTickerW = measureCtx.measureText(ticker).width
     }
     if (priceLabel) {
       measureCtx.font = `700 ${priceSize}px ${fontFamily}`
@@ -406,11 +443,20 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
     }
   }
 
+  const centerTextW = Math.max(centerNameW, centerTickerW)
+  const centerBlockInnerW = (showLogo ? logoSize + logoGap : 0) + centerTextW
   const rightBlockTotalW = rightBlockW > 0 ? padX + rightBlockW : 0
   const leftTextBlockH = (name ? titleSize + textGap : 0) + (ticker ? tickerSize : 0)
   const rightTextBlockH =
     (priceLabel ? priceSize : 0) + (priceLabel && changeLabel ? textGap : 0) + (changeLabel ? changeSize : 0)
-  const headerContentH = Math.max(showLogo ? logoSize : 0, leftTextBlockH, rightTextBlockH)
+  const edgeLogoH = Math.max(24, Math.round(Math.min(chartW * 0.028, titleSize * 0.72)))
+  const edgeLogoW = Math.round(edgeLogoH * MARKET_CHART_EDGE_LOGO.aspect)
+  const headerContentH = Math.max(
+    showLogo ? logoSize : 0,
+    leftTextBlockH,
+    rightTextBlockH,
+    showEdgeLogo ? edgeLogoH : 0,
+  )
   const headerH = hasHeader ? padY * 2 + headerContentH : 0
   const floatingLegendPlan = hasLegend ? planMarketChartSnapshotFloatingLegend(legendRows, chartW) : null
 
@@ -426,12 +472,21 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
   if (hasHeader) {
     const contentTop = padY
     const logoY = contentTop + Math.round((headerContentH - logoSize) / 2)
-    const textX = padX + (showLogo ? logoSize + logoGap : 0)
+    const leftReserve = padX + (showEdgeLogo ? edgeLogoW + logoGap : 0)
     const rightReserve = rightBlockTotalW > 0 ? rightBlockTotalW + padX : padX
-    const leftTextMaxW = Math.max(80, chartW - textX - rightReserve - padX)
+    const centerMaxW = Math.max(80, chartW - leftReserve - rightReserve - padX)
+    const centerBlockW = Math.min(centerBlockInnerW, centerMaxW)
+    const centerX = (chartW - centerBlockW) / 2
+    const centerTextMaxW = Math.max(48, centerBlockW - (showLogo ? logoSize + logoGap : 0))
+    const textX = centerX + (showLogo ? logoSize + logoGap : 0)
+
+    if (showEdgeLogo && edgeLogo) {
+      const edgeY = contentTop + Math.round((headerContentH - edgeLogoH) / 2)
+      ctx.drawImage(edgeLogo, padX, edgeY, edgeLogoW, edgeLogoH)
+    }
 
     if (showLogo && logo) {
-      drawSnapshotLogo(ctx, logo, padX, logoY, logoSize, isLight)
+      drawSnapshotLogo(ctx, logo, centerX, logoY, logoSize, isLight)
     }
 
     let textY = contentTop + Math.round((headerContentH - leftTextBlockH) / 2)
@@ -440,13 +495,13 @@ export async function composeMarketChartSnapshotCanvas(chartCanvas, branding = {
     if (name) {
       ctx.fillStyle = titleColor
       ctx.font = `700 ${titleSize}px ${fontFamily}`
-      ctx.fillText(truncateCanvasText(ctx, name, leftTextMaxW), textX, textY)
+      ctx.fillText(truncateCanvasText(ctx, name, centerTextMaxW), textX, textY)
       textY += titleSize + textGap
     }
     if (ticker) {
       ctx.fillStyle = tickerColor
       ctx.font = `600 ${tickerSize}px ${fontFamily}`
-      ctx.fillText(truncateCanvasText(ctx, ticker, leftTextMaxW), textX, textY)
+      ctx.fillText(truncateCanvasText(ctx, ticker, centerTextMaxW), textX, textY)
     }
 
     if (priceLabel || changeLabel) {

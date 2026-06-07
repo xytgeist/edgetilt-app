@@ -246,33 +246,38 @@ function MarketIndicatorLegendSwatches({ items, className = '' }) {
   )
 }
 
-/** Full-width scrollable legend row under the Advanced toolbar (phone-safe). */
-function MarketChartActiveIndicatorLegendRow({ rows, borderClass }) {
+/** Floating on-chart legend (compact vertical list). */
+function MarketChartFloatingIndicatorLegend({ rows, mutedClass }) {
   if (!rows?.length) return null
   return (
     <div
-      className={`relative z-10 flex w-full items-center gap-x-3 gap-y-1 overflow-x-auto overscroll-x-contain border-b ${borderClass} bg-zinc-950/75 px-2 py-1 backdrop-blur-[2px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
-      style={{
-        paddingLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))',
-        paddingRight: 'max(0.5rem, env(safe-area-inset-right, 0px))',
-      }}
+      className="pointer-events-none absolute left-2 top-2 z-10 max-w-[min(calc(100%-1rem),14rem)] rounded-md border border-zinc-700/70 bg-zinc-950/85 px-2 py-1.5 backdrop-blur-[2px]"
+      style={{ marginLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))' }}
       aria-label="Indicator legend"
     >
-      {rows.map((row) => (
-        <span
-          key={row.key}
-          className="inline-flex shrink-0 items-center gap-1.5 text-[10px] leading-none text-zinc-200"
-        >
-          <MarketIndicatorLegendLine color={row.color} dashed={row.dashed} />
-          <span className="whitespace-nowrap">{row.label}</span>
-        </span>
-      ))}
+      <div className={`mb-1 text-[9px] font-semibold uppercase tracking-wide ${mutedClass}`}>Legend</div>
+      <ul className="flex flex-col gap-1">
+        {rows.map((row) => (
+          <li
+            key={row.key}
+            className="flex items-center gap-1.5 text-[10px] leading-none text-zinc-200"
+          >
+            <MarketIndicatorLegendLine color={row.color} dashed={row.dashed} />
+            <span className="truncate">{row.label}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
 
 const ADVANCED_CHART_TOOLBAR_MENU_PANEL =
-  'z-[60] mt-1 rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-2xl'
+  'z-[60] rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-2xl'
+
+/** Bottom toolbar: menus open upward. */
+const ADVANCED_CHART_TOOLBAR_MENU_ANCHOR = 'absolute bottom-full left-0 mb-1'
+
+const ADVANCED_CHART_TOOLBAR_MENU_ANCHOR_RIGHT = 'absolute bottom-full right-0 mb-1'
 
 const ADVANCED_CHART_TOOLBAR_BTN =
   'inline-flex h-6 shrink-0 items-center justify-center rounded px-1 text-[0px] leading-none touch-manipulation'
@@ -363,7 +368,7 @@ function advancedChartToolbarBtnTone(active, mutedClass) {
   return active ? 'text-cyan-300 hover:text-cyan-200' : `${mutedClass} hover:text-zinc-300`
 }
 
-/** Compact Indicators ▾ picker; active legend renders in the sub-row below the toolbar. */
+/** Compact Indicators ▾ picker; active legend floats on the chart. */
 function MarketChartIndicatorsControl({
   menuRef,
   menuOpen,
@@ -411,7 +416,7 @@ function MarketChartIndicatorsControl({
         <div
           role="listbox"
           aria-label="Chart indicators"
-          className={`absolute left-0 top-full ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} max-h-[min(20rem,45dvh)] min-w-[12rem] overflow-y-auto overscroll-contain`}
+          className={`${ADVANCED_CHART_TOOLBAR_MENU_ANCHOR} ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} max-h-[min(20rem,45dvh)] min-w-[12rem] overflow-y-auto overscroll-contain`}
           onClick={(e) => e.stopPropagation()}
         >
           {MARKET_CHART_INDICATOR_CATEGORIES.map((cat) => (
@@ -501,7 +506,7 @@ function MarketChartSnapshotButton({
       </button>
       {status ? (
         <span
-          className="pointer-events-none absolute left-0 top-full z-40 mt-9 whitespace-nowrap rounded border border-zinc-700/80 bg-zinc-950/95 px-2 py-1 text-[10px] font-medium text-cyan-200 shadow-lg"
+          className="pointer-events-none absolute bottom-full left-0 z-40 mb-2 whitespace-nowrap rounded border border-zinc-700/80 bg-zinc-950/95 px-2 py-1 text-[10px] font-medium text-cyan-200 shadow-lg"
           aria-live="polite"
         >
           {status}
@@ -511,7 +516,7 @@ function MarketChartSnapshotButton({
         <div
           role="menu"
           aria-label="Snapshot"
-          className={`absolute right-0 top-full ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} min-w-[10.5rem] overflow-hidden`}
+          className={`${ADVANCED_CHART_TOOLBAR_MENU_ANCHOR_RIGHT} ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} min-w-[10.5rem] overflow-hidden`}
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -2118,14 +2123,56 @@ export default function LoungeMarketChartModal({
               ) : null}
 
               <div className="relative flex min-h-0 flex-1 flex-col">
-                <div className="relative shrink-0 overflow-visible">
-                <div
-                  className={`relative z-30 flex w-full shrink-0 items-center gap-1 border-b ${borderClass} bg-zinc-950/90 px-2 py-1 backdrop-blur-[2px]`}
-                  style={{
-                    paddingLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))',
-                    paddingRight: 'max(0.5rem, env(safe-area-inset-right, 0px))',
-                  }}
-                >
+                <div className="relative min-h-0 flex-1 overflow-hidden">
+                  <div
+                    ref={advancedChartHostRef}
+                    className={`absolute inset-0 touch-none select-none ${annotateMode ? 'pointer-events-none' : ''}`}
+                  />
+                  <LoungeMarketChartAnnotationOverlay
+                    hostRef={advancedChartHostRef}
+                    active={annotateMode}
+                    visible={annotateMode || chartAnnotations.length > 0}
+                    tool={annotationTool}
+                    items={chartAnnotations}
+                    onItemsChange={setChartAnnotations}
+                  />
+                  {!annotateMode ? (
+                    <MarketChartFloatingIndicatorLegend
+                      rows={activeIndicatorLegend}
+                      mutedClass={mutedClass}
+                    />
+                  ) : null}
+                  {subPaneAxisTitles.rows.length ? (
+                    <div
+                      className="pointer-events-none absolute inset-y-0 right-0 z-10"
+                      style={{ width: subPaneAxisTitles.width }}
+                    >
+                      {subPaneAxisTitles.rows.map((row) => (
+                        <div
+                          key={row.id}
+                          className={`absolute right-0 max-w-full truncate pr-0.5 text-right text-[9px] font-semibold uppercase tracking-wide ${mutedClass}`}
+                          style={{ top: row.topPx }}
+                        >
+                          {row.text}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {advancedLoading ? (
+                    <div className={`absolute inset-0 z-[1] grid place-items-center text-sm ${mutedClass}`}>
+                      Loading…
+                    </div>
+                  ) : null}
+                </div>
+                <div className="relative z-30 shrink-0 overflow-visible">
+                  <div
+                    className={`relative flex w-full shrink-0 items-center gap-1 border-t ${borderClass} bg-zinc-950/90 px-2 py-1.5 backdrop-blur-[2px]`}
+                    style={{
+                      paddingLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))',
+                      paddingRight: 'max(0.5rem, env(safe-area-inset-right, 0px))',
+                      paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom, 0px))',
+                    }}
+                  >
                       {annotateMode ? (
                         <>
                           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
@@ -2253,7 +2300,7 @@ export default function LoungeMarketChartModal({
                           <div
                             role="listbox"
                             aria-label="Chart type"
-                            className={`absolute left-0 top-full ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} min-w-[10.5rem] overflow-hidden`}
+                            className={`${ADVANCED_CHART_TOOLBAR_MENU_ANCHOR} ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} min-w-[10.5rem] overflow-hidden`}
                             onClick={(e) => e.stopPropagation()}
                           >
                             {MARKET_MODAL_CHART_TYPES.map((row) => {
@@ -2319,7 +2366,7 @@ export default function LoungeMarketChartModal({
                           <div
                             role="listbox"
                             aria-label="Chart resolution"
-                            className={`absolute left-0 top-full ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} max-h-[min(16rem,50vh)] min-w-[5.5rem] overflow-y-auto`}
+                            className={`${ADVANCED_CHART_TOOLBAR_MENU_ANCHOR} ${ADVANCED_CHART_TOOLBAR_MENU_PANEL} max-h-[min(16rem,50vh)] min-w-[5.5rem] overflow-y-auto`}
                             onClick={(e) => e.stopPropagation()}
                           >
                             {MARKET_CHART_RESOLUTIONS.map((row) => {
@@ -2381,48 +2428,7 @@ export default function LoungeMarketChartModal({
                       </div>
                         </>
                       )}
-                </div>
-                {!annotateMode ? (
-                  <MarketChartActiveIndicatorLegendRow
-                    rows={activeIndicatorLegend}
-                    borderClass={borderClass}
-                  />
-                ) : null}
-                </div>
-                <div className="relative min-h-0 flex-1 overflow-hidden">
-                  <div
-                    ref={advancedChartHostRef}
-                    className={`absolute inset-0 touch-none select-none ${annotateMode ? 'pointer-events-none' : ''}`}
-                  />
-                  <LoungeMarketChartAnnotationOverlay
-                    hostRef={advancedChartHostRef}
-                    active={annotateMode}
-                    visible={annotateMode || chartAnnotations.length > 0}
-                    tool={annotationTool}
-                    items={chartAnnotations}
-                    onItemsChange={setChartAnnotations}
-                  />
-                    {subPaneAxisTitles.rows.length ? (
-                      <div
-                        className="pointer-events-none absolute inset-y-0 right-0 z-10"
-                        style={{ width: subPaneAxisTitles.width }}
-                      >
-                        {subPaneAxisTitles.rows.map((row) => (
-                          <div
-                            key={row.id}
-                            className={`absolute right-0 max-w-full truncate pr-0.5 text-right text-[9px] font-semibold uppercase tracking-wide ${mutedClass}`}
-                            style={{ top: row.topPx }}
-                          >
-                            {row.text}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    {advancedLoading ? (
-                      <div className={`absolute inset-0 z-[1] grid place-items-center text-sm ${mutedClass}`}>
-                        Loading…
-                      </div>
-                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>

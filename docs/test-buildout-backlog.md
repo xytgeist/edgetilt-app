@@ -623,6 +623,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-06-09: **Lounge market modal Advanced toolbar layout (code on `test`):** chart controls docked to **bottom** of Advanced fullscreen (menus open upward); indicator **Legend** reverts to floating on-chart card (replaces full-width legend sub-row). Client-only (`LoungeMarketChartModal.jsx`).
 - 2026-06-09: **Lounge market modal snapshot branding (code on `test`):** Snapshot PNG header scales up **logo + company name + ticker**; active **indicator legend** band composited above chart (matches Advanced legend row). Client-only (`loungeMarketChartSnapshot.js`).
 - 2026-06-09: **Lounge market modal snapshot save (code on `test`):** Advanced **Snapshot → Save to Photos** (iOS/Android native share sheet → **Save Image**) or **Save image** download on desktop; replaces clipboard PNG copy (unreliable on mobile). **Add to post** unchanged. Client-only (`loungeMarketChartSnapshot.js`).
 - 2026-06-09: **Lounge market modal Advanced chart annotation (code on `test`):** **Annotate** toolbar — **Pen** + **Text** pins, **Undo** / **Clear**, **Done** exits; chart pan/zoom frozen while annotating; ink merged into **Snapshot** PNG (save / Add to post). Client-only.

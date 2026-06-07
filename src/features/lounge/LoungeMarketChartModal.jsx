@@ -67,12 +67,20 @@ import { refreshAdvancedMarketChartData } from './loungeMarketChartDataSync.js'
 import {
   marketChartAdvancedHandleScaleOptions,
   marketChartAdvancedLayoutPanesOptions,
-  marketChartAdvancedLocalization,
+  marketChartAdvancedLocalizationForResolution,
   marketChartAdvancedPriceScaleOptions,
-  marketChartAdvancedTimeScaleOptions,
+  marketChartAdvancedTimeScaleOptionsForResolution,
   marketChartAnalysisGrid,
   writeStoredMarketChartViewMode,
 } from './loungeMarketChartViewMode.js'
+import {
+  advancedMarketSeriesScopeKey,
+  DEFAULT_MARKET_CHART_RESOLUTION_ID,
+  getMarketChartResolution,
+  MARKET_CHART_RESOLUTIONS,
+  readStoredMarketChartResolution,
+  writeStoredMarketChartResolution,
+} from './loungeMarketChartResolution.js'
 
 const SHEET_DISMISS_PX = 88
 const SHEET_DISMISS_VEL = 0.45
@@ -491,6 +499,7 @@ export default function LoungeMarketChartModal({
   const indicatorMenuRef = useRef(null)
   const chartTypeMenuRef = useRef(null)
   const timeframeMenuRef = useRef(null)
+  const resolutionMenuRef = useRef(null)
   const postsScrollRef = useRef(null)
   const sheetDragRef = useRef(null)
   const [sheetDragY, setSheetDragY] = useState(0)
@@ -501,6 +510,7 @@ export default function LoungeMarketChartModal({
   const [series, setSeries] = useState(/** @type {{ quote?: object, bars?: object[], window_label?: string } | null} */ (null))
   const [seriesScope, setSeriesScope] = useState('')
   const loadSeriesGenRef = useRef(0)
+  const loadAdvancedSeriesGenRef = useRef(0)
   const [historyBars, setHistoryBars] = useState(/** @type {object[]} */ ([]))
   const [historyHasMore, setHistoryHasMore] = useState(true)
   const historyLoadingRef = useRef(false)
@@ -520,6 +530,12 @@ export default function LoungeMarketChartModal({
   const allBarsRef = useRef(/** @type {object[]} */ ([]))
   const priceScaleUserPinnedRef = useRef(false)
   const [loading, setLoading] = useState(false)
+  const [advancedLoading, setAdvancedLoading] = useState(false)
+  const [advancedResolutionId, setAdvancedResolutionId] = useState(() => readStoredMarketChartResolution())
+  const [advancedSeries, setAdvancedSeries] = useState(
+    /** @type {{ quote?: object, bars?: object[], window_label?: string, has_more?: boolean } | null} */ (null),
+  )
+  const [advancedSeriesScope, setAdvancedSeriesScope] = useState('')
   const [news, setNews] = useState(/** @type {object | null} */ (null))
   const [newsLoading, setNewsLoading] = useState(false)
   const [postSort, setPostSort] = useState(LOUNGE_SEARCH_SORT.ENGAGEMENT)
@@ -532,6 +548,7 @@ export default function LoungeMarketChartModal({
   const [indicatorMenuOpen, setIndicatorMenuOpen] = useState(false)
   const [chartTypeMenuOpen, setChartTypeMenuOpen] = useState(false)
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false)
+  const [resolutionMenuOpen, setResolutionMenuOpen] = useState(false)
   /** Crosshair scrub overrides header quote until pointer leaves the chart. */
   const [scrubQuote, setScrubQuote] = useState(/** @type {{ price: number, change?: number, change_pct?: number } | null} */ (null))
   const [scrubAxisCurrent, setScrubAxisCurrent] = useState(/** @type {{ price: number, y: number } | null} */ (null))
@@ -560,6 +577,7 @@ export default function LoungeMarketChartModal({
   const { quotes: feedQuotes } = useLoungeMarketFeedQuotes()
   const list = useMemo(() => (Array.isArray(embeds) ? embeds.filter(Boolean) : []), [embeds])
   const timeframe = MARKET_MODAL_TIMEFRAMES[timeframeIdx] || MARKET_MODAL_TIMEFRAMES[0]
+  const advancedResolution = getMarketChartResolution(advancedResolutionId)
 
   useEffect(() => {
     if (!open || !list.length) return
@@ -618,18 +636,20 @@ export default function LoungeMarketChartModal({
   }, [advancedFullscreenOpen])
 
   useEffect(() => {
-    if (!indicatorMenuOpen && !chartTypeMenuOpen && !timeframeMenuOpen) return undefined
+    if (!indicatorMenuOpen && !chartTypeMenuOpen && !timeframeMenuOpen && !resolutionMenuOpen) return undefined
     const onPointerDown = (e) => {
       if (indicatorMenuRef.current?.contains(e.target)) return
       if (chartTypeMenuRef.current?.contains(e.target)) return
       if (timeframeMenuRef.current?.contains(e.target)) return
+      if (resolutionMenuRef.current?.contains(e.target)) return
       setIndicatorMenuOpen(false)
       setChartTypeMenuOpen(false)
       setTimeframeMenuOpen(false)
+      setResolutionMenuOpen(false)
     }
     document.addEventListener('pointerdown', onPointerDown, true)
     return () => document.removeEventListener('pointerdown', onPointerDown, true)
-  }, [chartTypeMenuOpen, indicatorMenuOpen, timeframeMenuOpen])
+  }, [chartTypeMenuOpen, indicatorMenuOpen, resolutionMenuOpen, timeframeMenuOpen])
 
   const selectChartType = useCallback((id) => {
     setChartType(id)
@@ -642,10 +662,17 @@ export default function LoungeMarketChartModal({
     setTimeframeMenuOpen(false)
   }, [])
 
+  const selectAdvancedResolutionId = useCallback((id) => {
+    setAdvancedResolutionId(id)
+    writeStoredMarketChartResolution(id)
+    setResolutionMenuOpen(false)
+  }, [])
+
   const openAdvancedFullscreen = useCallback(() => {
     setIndicatorMenuOpen(false)
     setChartTypeMenuOpen(false)
     setTimeframeMenuOpen(false)
+    setResolutionMenuOpen(false)
     setChartType('candle')
     void lockMarketChartLandscapeOrientation()
     setAdvancedFullscreenOpen(true)
@@ -656,6 +683,7 @@ export default function LoungeMarketChartModal({
     setIndicatorMenuOpen(false)
     setChartTypeMenuOpen(false)
     setTimeframeMenuOpen(false)
+    setResolutionMenuOpen(false)
     setScrubQuote(null)
     setHistoryBars([])
     setHistoryHasMore(true)
@@ -772,6 +800,56 @@ export default function LoungeMarketChartModal({
     advancedUserPannedRef.current = false
     historyResetAnchorRef.current?.()
   }, [active?.asset_class, active?.symbol, activeIdx, timeframeIdx])
+
+  useEffect(() => {
+    loadAdvancedSeriesGenRef.current += 1
+    setAdvancedSeries(null)
+    setAdvancedSeriesScope('')
+    setHistoryBars([])
+    setHistoryHasMore(true)
+    historyLoadingRef.current = false
+    advancedBarsSignatureRef.current = ''
+    advancedUserPannedRef.current = false
+    historyResetAnchorRef.current?.()
+  }, [active?.asset_class, active?.symbol, activeIdx, advancedResolutionId])
+
+  const loadAdvancedSeries = useCallback(async () => {
+    if (!advancedFullscreenOpen || !active || !supabaseClient) return
+    const scope = advancedMarketSeriesScopeKey({
+      symbol: active.symbol,
+      asset_class: active.asset_class,
+      resolutionId: advancedResolutionId,
+    })
+    const gen = loadAdvancedSeriesGenRef.current
+    const resolution = getMarketChartResolution(advancedResolutionId)
+    setAdvancedLoading(true)
+    try {
+      const data = await loungeMarketModalSeries(supabaseClient, {
+        symbol: active.symbol,
+        asset_class: active.asset_class,
+        resolution: advancedResolutionId,
+        bar_limit: resolution.initialBars,
+      })
+      if (gen !== loadAdvancedSeriesGenRef.current) return
+      if (data) {
+        setAdvancedSeries({
+          quote: data.quote,
+          bars: data.bars,
+          window_label: data.window_label,
+          has_more: data.has_more !== false,
+        })
+        setAdvancedSeriesScope(scope)
+        setHistoryHasMore(data.has_more !== false)
+      }
+    } finally {
+      if (gen === loadAdvancedSeriesGenRef.current) setAdvancedLoading(false)
+    }
+  }, [active, advancedFullscreenOpen, advancedResolutionId, supabaseClient])
+
+  useEffect(() => {
+    if (!advancedFullscreenOpen) return
+    void loadAdvancedSeries()
+  }, [advancedFullscreenOpen, loadAdvancedSeries])
 
   const loadSeries = useCallback(async () => {
     if (!open || !active || !supabaseClient) return
@@ -907,9 +985,12 @@ export default function LoungeMarketChartModal({
   }, [active, fetchedSeries, rollingLive, timeframe.kind])
 
   const allBars = useMemo(() => {
-    const base = chartSeries?.bars || []
-    return mergeMarketBarsOlder(base, historyBars)
-  }, [chartSeries?.bars, historyBars])
+    if (isAdvancedView) {
+      const base = advancedSeries?.bars || []
+      return mergeMarketBarsOlder(base, historyBars)
+    }
+    return chartSeries?.bars || []
+  }, [advancedSeries?.bars, chartSeries?.bars, historyBars, isAdvancedView])
 
   chartSeriesRef.current = chartSeries
   allBarsRef.current = allBars
@@ -979,12 +1060,12 @@ export default function LoungeMarketChartModal({
       historyLoadingRef.current = true
       marketChartPanDebug('history fetch start', { beforeSec })
       try {
-        const tf = MARKET_MODAL_TIMEFRAMES[timeframeIdx] || MARKET_MODAL_TIMEFRAMES[0]
+        const resolution = getMarketChartResolution(advancedResolutionId)
         const data = await loungeMarketModalSeriesBefore(supabaseClient, {
           symbol: active.symbol,
           asset_class: active.asset_class,
-          kind: tf.kind,
-          window_key: tf.windowKey,
+          resolution: advancedResolutionId,
+          bar_limit: resolution.chunkBars,
           before_sec: beforeSec,
         })
         if (!data) {
@@ -1027,17 +1108,19 @@ export default function LoungeMarketChartModal({
     [
       active,
       advancedFullscreenOpen,
+      advancedResolutionId,
       applyAdvancedHistoryBars,
       historyHasMore,
       supabaseClient,
-      timeframeIdx,
     ],
   )
 
   historyHasMoreRef.current = historyHasMore
   loadMoreHistoryRef.current = loadMoreHistory
 
-  const quote = chartSeries?.quote || active?.quote
+  const quote = isAdvancedView
+    ? advancedSeries?.quote || active?.quote
+    : chartSeries?.quote || active?.quote
   const displayQuote = scrubQuote ?? quote
   const displayChangePct = Number(displayQuote?.change_pct)
   const displayUp = Number.isFinite(displayChangePct) ? displayChangePct >= 0 : true
@@ -1052,11 +1135,6 @@ export default function LoungeMarketChartModal({
     if (!open) return undefined
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        if (advancedFullscreenOpen) {
-          e.stopPropagation()
-          closeAdvancedFullscreen()
-          return
-        }
         if (chartTypeMenuOpen) {
           e.stopPropagation()
           setChartTypeMenuOpen(false)
@@ -1067,9 +1145,19 @@ export default function LoungeMarketChartModal({
           setIndicatorMenuOpen(false)
           return
         }
+        if (resolutionMenuOpen) {
+          e.stopPropagation()
+          setResolutionMenuOpen(false)
+          return
+        }
         if (timeframeMenuOpen) {
           e.stopPropagation()
           setTimeframeMenuOpen(false)
+          return
+        }
+        if (advancedFullscreenOpen) {
+          e.stopPropagation()
+          closeAdvancedFullscreen()
           return
         }
         dismissSheet()
@@ -1082,7 +1170,7 @@ export default function LoungeMarketChartModal({
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
     }
-  }, [advancedFullscreenOpen, chartTypeMenuOpen, closeAdvancedFullscreen, dismissSheet, indicatorMenuOpen, open, timeframeMenuOpen])
+  }, [advancedFullscreenOpen, chartTypeMenuOpen, closeAdvancedFullscreen, dismissSheet, indicatorMenuOpen, open, resolutionMenuOpen, timeframeMenuOpen])
 
   useEffect(() => {
     const el = advancedFullscreenOpen ? advancedChartHostRef.current : chartHostRef.current
@@ -1097,7 +1185,9 @@ export default function LoungeMarketChartModal({
         fontSize: MARKET_CHART_PRICE_SCALE_FONT_SIZE,
         ...(isAdvancedView ? marketChartAdvancedLayoutPanesOptions(isLight) : {}),
       },
-      localization: isAdvancedView ? marketChartAdvancedLocalization(timeframe.label) : undefined,
+      localization: isAdvancedView
+        ? marketChartAdvancedLocalizationForResolution(advancedResolutionId)
+        : undefined,
       grid: isAdvancedView ? marketChartAnalysisGrid(isLight) : theme.grid,
       rightPriceScale: isAdvancedView
         ? marketChartAdvancedPriceScaleOptions(isLight)
@@ -1113,7 +1203,7 @@ export default function LoungeMarketChartModal({
         : false,
       handleScale: isAdvancedView ? marketChartAdvancedHandleScaleOptions() : false,
       timeScale: isAdvancedView
-        ? marketChartAdvancedTimeScaleOptions(timeframe.label, isLight)
+        ? marketChartAdvancedTimeScaleOptionsForResolution(advancedResolutionId, isLight)
         : {
             visible: false,
             borderVisible: false,
@@ -1365,11 +1455,12 @@ export default function LoungeMarketChartModal({
     active?.symbol,
     activeIndicatorKey,
     advancedFullscreenOpen,
+    advancedResolutionId,
+    advancedSeriesScope,
     effectiveChartType,
     isLight,
     open,
     seriesScope,
-    timeframe.label,
   ])
 
   /** Quick sheet: refresh bars in place when live series updates. */
@@ -1453,7 +1544,8 @@ export default function LoungeMarketChartModal({
     open,
     advancedFullscreenOpen,
     isAdvancedView,
-    chartSeries?.bars,
+    advancedSeries?.bars,
+    historyBars,
     effectiveChartType,
     activeIndicatorKey,
     isLight,
@@ -1777,15 +1869,15 @@ export default function LoungeMarketChartModal({
                       </div>
                     ) : null}
                   </div>
-                  <div className="relative shrink-0" ref={timeframeMenuRef}>
+                  <div className="relative shrink-0" ref={resolutionMenuRef}>
                     <button
                       type="button"
                       aria-haspopup="listbox"
-                      aria-expanded={timeframeMenuOpen}
-                      aria-label="Chart timeframe"
+                      aria-expanded={resolutionMenuOpen}
+                      aria-label="Chart resolution"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setTimeframeMenuOpen((openNow) => {
+                        setResolutionMenuOpen((openNow) => {
                           if (!openNow) {
                             setChartTypeMenuOpen(false)
                             setIndicatorMenuOpen(false)
@@ -1794,32 +1886,32 @@ export default function LoungeMarketChartModal({
                         })
                       }}
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none touch-manipulation ${
-                        timeframeIdx !== MARKET_MODAL_DEFAULT_TIMEFRAME_IDX
+                        advancedResolutionId !== DEFAULT_MARKET_CHART_RESOLUTION_ID
                           ? 'text-cyan-300 hover:text-cyan-200'
                           : `${mutedClass} hover:text-zinc-300`
                       }`}
                     >
-                      {timeframe.label}
-                      <span aria-hidden="true">{timeframeMenuOpen ? ' ▴' : ' ▾'}</span>
+                      {advancedResolution.label}
+                      <span aria-hidden="true">{resolutionMenuOpen ? ' ▴' : ' ▾'}</span>
                     </button>
-                    {timeframeMenuOpen ? (
+                    {resolutionMenuOpen ? (
                       <div
                         role="listbox"
-                        aria-label="Chart timeframe"
-                        className="absolute bottom-full left-0 z-20 mb-1 min-w-[5.5rem] overflow-hidden rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-2xl"
+                        aria-label="Chart resolution"
+                        className="absolute bottom-full left-0 z-20 mb-1 max-h-[min(16rem,50vh)] min-w-[5.5rem] overflow-y-auto rounded-lg border border-zinc-700/90 bg-zinc-900 py-1 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {MARKET_MODAL_TIMEFRAMES.map((tf, i) => {
-                          const on = i === timeframeIdx
+                        {MARKET_CHART_RESOLUTIONS.map((row) => {
+                          const on = row.id === advancedResolutionId
                           return (
                             <button
-                              key={tf.label}
+                              key={row.id}
                               type="button"
                               role="option"
                               aria-selected={on}
                               onClick={(e) => {
                                 e.stopPropagation()
-                                selectTimeframeIdx(i)
+                                selectAdvancedResolutionId(row.id)
                               }}
                               className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] touch-manipulation hover:bg-zinc-800 active:bg-zinc-800/90 ${
                                 on ? 'text-cyan-200' : 'text-zinc-200'
@@ -1833,7 +1925,7 @@ export default function LoungeMarketChartModal({
                               >
                                 ✓
                               </span>
-                              {tf.label}
+                              {row.label}
                             </button>
                           )
                         })}
@@ -1842,7 +1934,7 @@ export default function LoungeMarketChartModal({
                   </div>
                 </div>
 
-                {loading ? (
+                {advancedLoading ? (
                   <div className={`absolute inset-0 z-[1] grid place-items-center text-sm ${mutedClass}`}>
                     Loading…
                   </div>

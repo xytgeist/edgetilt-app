@@ -24,6 +24,10 @@ import {
   type MarketEmbed,
   type MarketWindowKey,
 } from '../_shared/finnhubMarket.ts'
+import {
+  resolveMarketBarsBeforeByResolution,
+  resolveMarketSeriesByResolution,
+} from '../_shared/marketChartResolution.ts'
 import { isUsEquityRegularSessionOpen, isUsableStockIntradayBars, STOCK_ROLLING_CLOSED_CACHE_TTL_MS } from '../_shared/usEquityMarketSession.ts'
 
 const corsHeaders = {
@@ -227,6 +231,12 @@ Deno.serve(async (req) => {
   if (action === 'modal_series') {
     const parsed = parseSymbolInput(body)
     if (!parsed) return json(400, { error: 'symbol is required.' })
+    const resolutionId = String(body?.resolution || '').trim()
+    const barLimitRaw = body?.bar_limit
+    const barLimit =
+      barLimitRaw != null && barLimitRaw !== ''
+        ? Math.min(500, Math.max(10, Math.floor(Number(barLimitRaw))))
+        : undefined
     const windowKey = (String(body?.window_key || '24h').trim() || '24h') as MarketWindowKey
     const kind = String(body?.kind || 'rolling')
     const beforeSecRaw = body?.before_sec
@@ -238,6 +248,17 @@ Deno.serve(async (req) => {
       try {
         const profile = await finnhubProfile(parsed.symbol, parsed.asset_class)
         const currency = embedQuoteCurrency(profile.exchange, profile.currency)
+        if (resolutionId) {
+          const { bars, hasMore } = await resolveMarketBarsBeforeByResolution(
+            parsed.symbol,
+            parsed.asset_class,
+            resolutionId,
+            beforeSec,
+            barLimit,
+          )
+          const normalizedBars = await normalizeMarketBarsToUsd(bars, currency)
+          return json(200, { ok: true, bars: normalizedBars, has_more: hasMore })
+        }
         const extendWindowKey = (kind === 'rolling' ? '24h' : windowKey) as MarketWindowKey
         const { bars, hasMore } = await resolveMarketBarsBefore(
           parsed.symbol,
@@ -249,6 +270,47 @@ Deno.serve(async (req) => {
         return json(200, { ok: true, bars: normalizedBars, has_more: hasMore })
       } catch (e) {
         return json(502, { error: e instanceof Error ? e.message : 'Series extend failed.' })
+      }
+    }
+    if (resolutionId) {
+      try {
+        const profile = await finnhubProfile(parsed.symbol, parsed.asset_class)
+        const currency = embedQuoteCurrency(profile.exchange, profile.currency)
+        const quote = await finnhubQuote(parsed.symbol, parsed.asset_class)
+        const { bars, hasMore, windowLabel } = await resolveMarketSeriesByResolution(
+          parsed.symbol,
+          parsed.asset_class,
+          resolutionId,
+          barLimit,
+        )
+        let quoteOut: typeof quote & { change_pct: number } = { ...quote }
+        let changePct = quote.change_pct
+        if (bars.length >= 2) {
+          const first = bars[0].c
+          const last = bars[bars.length - 1].c
+          if (first > 0) {
+            changePct = ((last - first) / first) * 100
+            quoteOut = {
+              ...quote,
+              price: last,
+              change_pct: changePct,
+              change: last - first,
+            }
+          } else {
+            quoteOut = { ...quote, change_pct: changePct }
+          }
+        }
+        const normalized = await normalizeMarketSeriesToUsd(quoteOut, bars, currency)
+        return json(200, {
+          ok: true,
+          quote: normalized.quote,
+          bars: normalized.bars,
+          has_more: hasMore,
+          window_label: windowLabel,
+          resolution: resolutionId,
+        })
+      } catch (e) {
+        return json(502, { error: e instanceof Error ? e.message : 'Resolution series failed.' })
       }
     }
     try {

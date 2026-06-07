@@ -106,7 +106,7 @@ export async function loungeMarketBatchRolling(supabase, symbols, opts = {}) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{ symbol: string, asset_class: string, kind?: string, window_key?: string }} opts
+ * @param {{ symbol: string, asset_class: string, kind?: string, window_key?: string, resolution?: string, bar_limit?: number }} opts
  */
 export async function loungeMarketModalSeries(supabase, opts) {
   const data = await loungeMarketInvoke(supabase, {
@@ -115,6 +115,8 @@ export async function loungeMarketModalSeries(supabase, opts) {
     asset_class: opts.asset_class,
     kind: opts.kind || 'rolling',
     window_key: opts.window_key || '24h',
+    ...(opts.resolution ? { resolution: opts.resolution } : {}),
+    ...(opts.bar_limit != null ? { bar_limit: opts.bar_limit } : {}),
   })
   if (!data || data.error) return null
   return data
@@ -123,7 +125,7 @@ export async function loungeMarketModalSeries(supabase, opts) {
 /**
  * Fetch older bars ending before `before_sec` (Advanced chart pan-back).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{ symbol: string, asset_class: string, kind?: string, window_key?: string, before_sec: number }} opts
+ * @param {{ symbol: string, asset_class: string, kind?: string, window_key?: string, resolution?: string, bar_limit?: number, before_sec: number }} opts
  */
 export async function loungeMarketModalSeriesBefore(supabase, opts) {
   const data = await loungeMarketInvoke(supabase, {
@@ -133,6 +135,8 @@ export async function loungeMarketModalSeriesBefore(supabase, opts) {
     kind: opts.kind || 'historical',
     window_key: opts.window_key || '24h',
     before_sec: opts.before_sec,
+    ...(opts.resolution ? { resolution: opts.resolution } : {}),
+    ...(opts.bar_limit != null ? { bar_limit: opts.bar_limit } : {}),
   })
   if (!data || data.error) return null
   return data

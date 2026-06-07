@@ -394,7 +394,7 @@ function parseFinnhubCandlePayload(data: unknown): MarketBar[] {
   return out
 }
 
-async function fetchFinnhubCandlesAtResolution(
+export async function fetchFinnhubCandlesAtResolution(
   finnhubSym: string,
   assetClass: MarketAssetClass,
   fromSec: number,

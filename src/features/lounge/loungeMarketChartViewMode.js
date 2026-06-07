@@ -86,6 +86,30 @@ function formatMarketChartAxisTime(time, timeframeLabel) {
   }
 }
 
+/** @param {number | import('lightweight-charts').UTCTimestamp | import('lightweight-charts').BusinessDay} time @param {import('./loungeMarketChartResolution.js').MarketChartResolutionId | string} resolutionId */
+function formatMarketChartAxisTimeForResolution(time, resolutionId) {
+  const d = marketChartTimeToDate(time)
+  if (!d || Number.isNaN(d.getTime())) return ''
+  switch (resolutionId) {
+    case '1':
+    case '5':
+      return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    case '15':
+    case '30':
+    case '60':
+      return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    case '120':
+    case '240':
+      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' })
+    case 'D':
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    case 'W':
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    default:
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+}
+
 /** @param {number | import('lightweight-charts').UTCTimestamp | import('lightweight-charts').BusinessDay} time @param {string} timeframeLabel */
 function formatMarketChartCrosshairTime(time, timeframeLabel) {
   const d = marketChartTimeToDate(time)
@@ -119,6 +143,47 @@ function formatMarketChartCrosshairTime(time, timeframeLabel) {
       return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
     case 'ALL':
       return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    default:
+      return d.toLocaleString(undefined)
+  }
+}
+
+/** @param {number | import('lightweight-charts').UTCTimestamp | import('lightweight-charts').BusinessDay} time @param {import('./loungeMarketChartResolution.js').MarketChartResolutionId | string} resolutionId */
+function formatMarketChartCrosshairTimeForResolution(time, resolutionId) {
+  const d = marketChartTimeToDate(time)
+  if (!d || Number.isNaN(d.getTime())) return ''
+  switch (resolutionId) {
+    case '1':
+      return d.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    case '5':
+    case '15':
+    case '30':
+    case '60':
+      return d.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    case '120':
+    case '240':
+      return d.toLocaleString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    case 'D':
+      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    case 'W':
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     default:
       return d.toLocaleString(undefined)
   }
@@ -203,9 +268,35 @@ export function marketChartAdvancedTimeScaleOptions(timeframeLabel, isLight = fa
   }
 }
 
+/** @param {import('./loungeMarketChartResolution.js').MarketChartResolutionId | string} resolutionId @param {boolean} [isLight] */
+export function marketChartAdvancedTimeScaleOptionsForResolution(resolutionId, isLight = false) {
+  const id = String(resolutionId || '')
+  const intraday = id === '1' || id === '5' || id === '15' || id === '30' || id === '60'
+  const hourlyPlus = id === '120' || id === '240'
+  return {
+    visible: true,
+    borderVisible: true,
+    borderColor: chartAxisBorderColor(isLight),
+    rightOffset: 0,
+    rightOffsetPixels: 0,
+    fixRightEdge: false,
+    timeVisible: intraday || hourlyPlus,
+    secondsVisible: id === '1',
+    tickMarkFormatter: (time) => formatMarketChartAxisTimeForResolution(time, id),
+  }
+}
+
 /** @param {string} timeframeLabel */
 export function marketChartAdvancedLocalization(timeframeLabel) {
   return {
     timeFormatter: (time) => formatMarketChartCrosshairTime(time, timeframeLabel),
+  }
+}
+
+/** @param {import('./loungeMarketChartResolution.js').MarketChartResolutionId | string} resolutionId */
+export function marketChartAdvancedLocalizationForResolution(resolutionId) {
+  const id = String(resolutionId || '')
+  return {
+    timeFormatter: (time) => formatMarketChartCrosshairTimeForResolution(time, id),
   }
 }

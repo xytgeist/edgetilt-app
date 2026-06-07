@@ -24,7 +24,7 @@ supabase functions deploy lounge-market-data --project-ref jtjgtucumuoswnbauxry
 | `preview` | `{ symbol, asset_class }` | `{ preview }` picker info row |
 | `attach` | `{ post_id, caption, symbols[]? }` | `{ embeds[], warnings?[] }` — merges caption `$` cashtags (auto) with picker rows; picker wins per ticker; **skips failed tickers** instead of failing the whole post |
 | `batch_rolling` | `{ symbols[] }` | `{ quotes }` keyed by cache key |
-| `modal_series` | `{ symbol, asset_class, kind?, window_key? }` or extend `{ …, before_sec }` | `{ quote, bars, window_label }` or extend `{ bars, has_more }` — **`before_sec`** fetches one older window ending before that unix second (Advanced chart pan-back) |
+| `modal_series` | `{ symbol, asset_class, kind?, window_key? }` or extend `{ …, before_sec }` or Advanced `{ …, resolution, bar_limit?, before_sec? }` | `{ quote, bars, window_label, has_more? }` or extend `{ bars, has_more }` — **`resolution`** (`1`, `5`, `15`, `30`, `60`, `120`, `240`, `D`, `W`) + **`bar_limit`** for Advanced bar-count windows; **`before_sec`** loads **`chunkBars`** (200) older bars capped by per-resolution max lookback |
 | `modal_news` | `{ symbol, asset_class }` | `{ news }` — Finnhub company-news (30d) or crypto feed; **Yahoo search news** when Finnhub empty/forbidden |
 
 Client: `src/utils/loungeMarketApi.js`.

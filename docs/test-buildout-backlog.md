@@ -623,6 +623,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-06-09: **Lounge market modal Advanced resolution loading (code on `test`):** Advanced drops timeframe pills — **resolution picker** only (`1m`…`Weekly`, default **Daily ~280 bars**); **`modal_series` + `resolution` + `bar_limit`** with **200-bar** pan-back chunks and per-resolution max lookback; Quick sheet keeps **1H/1D/1W/…** pills. **Redeploy `lounge-market-data`**. Client + Edge.
 - 2026-06-09: **Lounge market modal CoinGecko crypto OHLC (code on `test`):** crypto Finnhub miss → CoinGecko **`/coins/{id}/ohlc`** (hourly when **`COINGECKO_API_KEY`** set); close-only **`market_chart`** fallback if OHLC fails. **Redeploy `lounge-market-data`.**
 - 2026-06-09: **Lounge market modal real OHLC candles (code on `test`):** Yahoo + Finnhub parsers keep **o/h/l/c/v** on **`MarketBar`**; bucket aggregation preserves OHLC; client uses real wicks when present (synthetic fallback for quote-only / close-only bars). **Redeploy `lounge-market-data`.**
 - 2026-06-09: **Lounge Admin utils Console log HUD (code on `test`):** Settings toggle → floating bottom-right log window (like Video debug HUD). Client-only.

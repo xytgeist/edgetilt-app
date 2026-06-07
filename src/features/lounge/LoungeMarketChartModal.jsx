@@ -279,16 +279,22 @@ const ADVANCED_CHART_TOOLBAR_MENU_ANCHOR = 'absolute bottom-full left-0 mb-1'
 const ADVANCED_CHART_TOOLBAR_MENU_ANCHOR_RIGHT = 'absolute bottom-full right-0 mb-1'
 
 const ADVANCED_CHART_TOOLBAR_BTN =
-  'inline-flex h-9 shrink-0 items-center justify-center rounded-md px-1.5 text-[0px] leading-none touch-manipulation'
+  'inline-flex h-9 shrink-0 items-center justify-center rounded-md px-2 text-[0px] leading-none touch-manipulation'
 
 const ADVANCED_CHART_TOOLBAR_ICON = 'h-5 w-5 shrink-0'
 
 const ADVANCED_CHART_TOOLBAR_LEADING_SLOT =
   'relative inline-flex h-5 w-5 shrink-0 items-center justify-center'
 
-/** Resolution text in the same 20px row as toolbar icons. */
+/** Snapshot camera reads small at 20px — give it a slightly larger slot. */
+const ADVANCED_CHART_TOOLBAR_SNAPSHOT_SLOT =
+  'relative inline-flex h-6 w-6 shrink-0 items-center justify-center'
+
+const ADVANCED_CHART_TOOLBAR_SNAPSHOT_ICON = 'h-6 w-6 shrink-0'
+
+/** Resolution label (1D, 1H, …) — slightly taller than icon row for legibility. */
 const ADVANCED_CHART_TOOLBAR_RESOLUTION_LABEL =
-  'inline-flex h-5 min-w-[1.5rem] shrink-0 items-center justify-center px-0.5 text-sm font-semibold leading-none tabular-nums'
+  'inline-flex h-6 min-w-[1.75rem] shrink-0 items-center justify-center px-0.5 text-lg font-semibold leading-none tabular-nums -translate-y-0.5'
 
 /** Filled candlesticks — no axis “L”. */
 function MarketChartFilledCandlestickToolbarIcon({ className }) {
@@ -471,11 +477,11 @@ function MarketChartSnapshotButton({
           mutedClass,
         )}`}
       >
-        <span className={ADVANCED_CHART_TOOLBAR_LEADING_SLOT}>
+        <span className={ADVANCED_CHART_TOOLBAR_SNAPSHOT_SLOT}>
           {busy ? (
-            <Loader2 className={`${ADVANCED_CHART_TOOLBAR_ICON} animate-spin`} aria-hidden />
+            <Loader2 className={`${ADVANCED_CHART_TOOLBAR_SNAPSHOT_ICON} animate-spin`} aria-hidden />
           ) : (
-            <Camera className={ADVANCED_CHART_TOOLBAR_ICON} aria-hidden />
+            <Camera className={ADVANCED_CHART_TOOLBAR_SNAPSHOT_ICON} aria-hidden />
           )}
         </span>
       </button>
@@ -2141,16 +2147,16 @@ export default function LoungeMarketChartModal({
                 </div>
                 <div className="relative z-30 shrink-0 overflow-visible">
                   <div
-                    className={`relative flex w-full shrink-0 items-center gap-2.5 border-t ${borderClass} bg-zinc-950/90 px-3 py-2 backdrop-blur-[2px]`}
+                    className={`relative flex w-full shrink-0 items-center gap-4 border-t ${borderClass} bg-zinc-950/90 px-4 py-2 backdrop-blur-[2px]`}
                     style={{
-                      paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-                      paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+                      paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+                      paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
                       paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
                     }}
                   >
                       {annotateMode ? (
                         <>
-                          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                          <div className="flex min-w-0 flex-1 items-center gap-4">
                           <button
                             type="button"
                             aria-pressed={annotationTool === 'pen'}
@@ -2214,7 +2220,7 @@ export default function LoungeMarketChartModal({
                             </span>
                           </button>
                           </div>
-                          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+                          <div className="ml-auto flex shrink-0 items-center gap-4">
                           <button
                             type="button"
                             aria-label="Done annotating"
@@ -2232,7 +2238,7 @@ export default function LoungeMarketChartModal({
                         </>
                       ) : (
                         <>
-                      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                      <div className="flex min-w-0 flex-1 items-center gap-4">
                       <div className="relative shrink-0" ref={chartTypeMenuRef}>
                         <button
                           type="button"
@@ -2380,7 +2386,7 @@ export default function LoungeMarketChartModal({
                         ) : null}
                       </div>
                       </div>
-                      <div className="ml-auto flex shrink-0 items-center gap-2.5">
+                      <div className="ml-auto flex shrink-0 items-center gap-4">
                       <button
                         type="button"
                         aria-label="Annotate chart"

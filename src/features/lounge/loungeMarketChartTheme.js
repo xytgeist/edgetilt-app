@@ -2,6 +2,9 @@
 
 import { ColorType } from 'lightweight-charts'
 
+/** Required when `layout.attributionLogo` is false — see Lightweight Charts NOTICE / license. */
+export const TRADINGVIEW_CHART_ATTRIBUTION_URL = 'https://www.tradingview.com/'
+
 export function loungeMarketChartIsLight() {
   return typeof document !== 'undefined' && document.documentElement.classList.contains('light')
 }
@@ -14,6 +17,7 @@ export function loungeMarketChartTheme(isLight = loungeMarketChartIsLight()) {
     layout: {
       background: { type: ColorType.Solid, color: 'transparent' },
       textColor: isLight ? '#71717a' : '#a1a1aa',
+      attributionLogo: false,
     },
     grid: {
       vertLines: { visible: false },

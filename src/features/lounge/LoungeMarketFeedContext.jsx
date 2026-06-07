@@ -7,6 +7,7 @@ import {
   normalizeMarketEmbeds,
 } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketBatchRolling } from '../../utils/loungeMarketApi.js'
+import { isUsEquityRegularSessionOpen } from '../../utils/usEquityMarketSession.js'
 
 /** @type {React.Context<{ quotes: Record<string, object>, cashtagQuotesByTicker: Record<string, { change_pct: number }>, refresh: () => void } | null>} */
 const LoungeMarketFeedContext = createContext(null)
@@ -84,18 +85,24 @@ export function LoungeMarketFeedProvider({ supabaseClient, posts, children }) {
     setCashtagQuotesByTicker((prev) => ({ ...seededCashtagQuotes, ...prev }))
   }, [seededCashtagQuotes])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (/** @type {{ forceStocks?: boolean }} */ options = {}) => {
     if (!supabaseClient || !symbolItems.length || inflightRef.current) return
+    const sessionOpen = isUsEquityRegularSessionOpen()
+    const pollItems =
+      sessionOpen || options.forceStocks
+        ? symbolItems
+        : symbolItems.filter((item) => item.asset_class !== 'stock')
+    if (!pollItems.length) return
     inflightRef.current = true
     try {
       const batch = await loungeMarketBatchRolling(
         supabaseClient,
-        symbolItems.map(({ symbol, asset_class }) => ({ symbol, asset_class })),
+        pollItems.map(({ symbol, asset_class }) => ({ symbol, asset_class })),
       )
       if (!batch || typeof batch !== 'object') return
       const next = {}
       const byTicker = {}
-      for (const item of symbolItems) {
+      for (const item of pollItems) {
         const payload = batch[item.cacheKey]
         if (payload) next[item.cacheKey] = payload
         const pct = Number(payload?.quote?.change_pct)
@@ -111,7 +118,7 @@ export function LoungeMarketFeedProvider({ supabaseClient, posts, children }) {
   }, [seededCashtagQuotes, supabaseClient, symbolItems])
 
   useEffect(() => {
-    void refresh()
+    void refresh({ forceStocks: true })
     const id = window.setInterval(() => void refresh(), 90_000)
     return () => window.clearInterval(id)
   }, [refresh])

@@ -22,6 +22,7 @@ import {
   type MarketEmbed,
   type MarketWindowKey,
 } from '../_shared/finnhubMarket.ts'
+import { isUsEquityRegularSessionOpen, STOCK_ROLLING_CLOSED_CACHE_TTL_MS } from '../_shared/usEquityMarketSession.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,7 +40,11 @@ function cacheKey(symbol: string, assetClass: string) {
   return `${assetClass}:${symbol}`.toLowerCase()
 }
 
-async function readCache(admin: ReturnType<typeof createClient>, key: string) {
+async function readCache(
+  admin: ReturnType<typeof createClient>,
+  key: string,
+  assetClass: MarketAssetClass,
+) {
   const { data } = await admin
     .from('market_quote_cache')
     .select('payload,fetched_at')
@@ -47,7 +52,11 @@ async function readCache(admin: ReturnType<typeof createClient>, key: string) {
     .maybeSingle()
   if (!data?.payload || !data.fetched_at) return null
   const age = Date.now() - new Date(String(data.fetched_at)).getTime()
-  if (age > MARKET_CACHE_TTL_MS) return null
+  const ttl =
+    assetClass === 'stock' && !isUsEquityRegularSessionOpen()
+      ? STOCK_ROLLING_CLOSED_CACHE_TTL_MS
+      : MARKET_CACHE_TTL_MS
+  if (age > ttl) return null
   return data.payload
 }
 
@@ -258,7 +267,7 @@ Deno.serve(async (req) => {
     }
     const out: Record<string, unknown> = {}
     for (const [key, item] of unique.entries()) {
-      const cached = await readCache(admin, key)
+      const cached = await readCache(admin, key, item.asset_class)
       if (cached) {
         out[key] = cached
         continue

@@ -4,6 +4,11 @@
  */
 
 import { coingeckoBatchPickerQuotes, coingeckoCryptoCandles, coingeckoCryptoProfile, coingeckoMarketSearch } from './coingeckoMarket.ts'
+import {
+  isUsEquityRegularSessionOpen,
+  lastRegularSessionBounds,
+  lastRegularSessionLabel,
+} from './usEquityMarketSession.ts'
 import { yahooFxRateToUsd, yahooIntervalForWindow, yahooLatestNews, yahooStockCandles, yahooStockPickerRow, yahooStockProfile, yahooStockQuote } from './yahooMarket.ts'
 
 export type MarketAssetClass = 'stock' | 'crypto'
@@ -388,13 +393,42 @@ export function synthesizeBarsFromQuote(
   return out
 }
 
-/** Finnhub → Yahoo (stocks) / CoinGecko (crypto) → synthetic from quote change. */
+/** Finnhub → Yahoo (stocks) / CoinGecko (crypto). Stocks never use synthetic diagonal fallback. */
+async function resolveStockIntradayBars(
+  symbol: string,
+  windowKey: MarketWindowKey,
+): Promise<MarketBar[]> {
+  const interval = yahooIntervalForWindow(windowKey)
+
+  if (isUsEquityRegularSessionOpen()) {
+    const { fromSec, toSec } = windowRange(windowKey)
+    let bars = await finnhubCandles(symbol, 'stock', windowKey)
+    if (bars.length >= 2) return normalizeMarketBars(bars)
+    bars = await yahooStockCandles(symbol, fromSec, toSec, interval)
+    if (bars.length >= 2) return normalizeMarketBars(bars)
+  }
+
+  const session = lastRegularSessionBounds()
+  const sessionBars = await yahooStockCandles(
+    symbol,
+    session.fromSec,
+    session.toSec,
+    windowKey === '1h' ? '1m' : '5m',
+  )
+  if (sessionBars.length >= 2) return normalizeMarketBars(sessionBars)
+  return []
+}
+
 export async function resolveMarketBars(
   symbol: string,
   assetClass: MarketAssetClass,
   windowKey: MarketWindowKey,
   quote: { price: number; change_pct: number },
 ): Promise<MarketBar[]> {
+  if (assetClass === 'stock' && (windowKey === '24h' || windowKey === '1h')) {
+    return resolveStockIntradayBars(symbol, windowKey)
+  }
+
   let bars = await finnhubCandles(symbol, assetClass, windowKey)
   if (bars.length >= 2) return normalizeMarketBars(bars)
 
@@ -403,6 +437,7 @@ export async function resolveMarketBars(
   if (assetClass === 'stock') {
     bars = await yahooStockCandles(symbol, fromSec, toSec, yahooIntervalForWindow(windowKey))
     if (bars.length >= 2) return normalizeMarketBars(bars)
+    return []
   }
 
   if (assetClass === 'crypto') {
@@ -1153,8 +1188,14 @@ export async function buildRollingBatchPayload(
     }
   }
   const normalized = await normalizeMarketSeriesToUsd(quoteOut, bars, currency)
+  const windowLabel =
+    assetClass === 'stock'
+      ? isUsEquityRegularSessionOpen()
+        ? 'Today'
+        : lastRegularSessionLabel()
+      : '24h'
   return {
-    window_label: assetClass === 'stock' ? 'Today' : '24h',
+    window_label: windowLabel,
     quote: normalized.quote,
     bars: normalized.bars,
   }

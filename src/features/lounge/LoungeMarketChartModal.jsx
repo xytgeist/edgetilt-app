@@ -11,8 +11,9 @@ import {
   MARKET_MODAL_TIMEFRAMES,
 } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketModalNews, loungeMarketModalSeries } from '../../utils/loungeMarketApi.js'
+import { isUsEquityRegularSessionOpen } from '../../utils/usEquityMarketSession.js'
 import { formatLoungeSearchError, loungeSearchCashtagPosts, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
-import { loungeMarketBarsToSeries, loungeMarketChartIsLight, loungeMarketChartTheme } from './loungeMarketChartTheme.js'
+import { loungeMarketBarsToSeries, loungeMarketChartIsLight, loungeMarketChartTheme, TRADINGVIEW_CHART_ATTRIBUTION_URL } from './loungeMarketChartTheme.js'
 
 const SHEET_DISMISS_PX = 88
 const SHEET_DISMISS_VEL = 0.45
@@ -449,9 +450,10 @@ export default function LoungeMarketChartModal({
   useEffect(() => {
     void loadSeries()
     if (!open || timeframe.kind !== 'rolling') return undefined
+    if (active?.asset_class === 'stock' && !isUsEquityRegularSessionOpen()) return undefined
     const id = window.setInterval(() => void loadSeries(), 60_000)
     return () => window.clearInterval(id)
-  }, [loadSeries, open, timeframe.kind])
+  }, [active?.asset_class, loadSeries, open, timeframe.kind])
 
   useEffect(() => {
     if (!open || !active || !supabaseClient) {
@@ -794,26 +796,37 @@ export default function LoungeMarketChartModal({
           </div>
 
           <div
-            className="absolute inset-x-3 bottom-0.5 z-10 flex justify-between gap-0.5"
+            className="absolute inset-x-3 bottom-0.5 z-10 flex items-end gap-2"
             data-market-sheet-no-drag
           >
-            {MARKET_MODAL_TIMEFRAMES.map((tf, i) => (
-              <button
-                key={tf.label}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setTimeframeIdx(i)
-                }}
-                className={`min-w-0 flex-1 rounded-sm bg-transparent px-0.5 py-0.5 text-center text-[10px] leading-none touch-manipulation border-b ${
-                  i === timeframeIdx
-                    ? 'border-zinc-50 font-bold text-zinc-50'
-                    : 'border-transparent font-medium text-zinc-400 hover:text-zinc-300'
-                }`}
-              >
-                {tf.label}
-              </button>
-            ))}
+            <a
+              href={TRADINGVIEW_CHART_ATTRIBUTION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`shrink-0 pb-0.5 text-[9px] font-medium leading-none ${mutedClass} hover:text-zinc-300 touch-manipulation`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Charts by TradingView
+            </a>
+            <div className="flex min-w-0 flex-1 justify-between gap-0.5">
+              {MARKET_MODAL_TIMEFRAMES.map((tf, i) => (
+                <button
+                  key={tf.label}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setTimeframeIdx(i)
+                  }}
+                  className={`min-w-0 flex-1 rounded-sm bg-transparent px-0.5 py-0.5 text-center text-[10px] leading-none touch-manipulation border-b ${
+                    i === timeframeIdx
+                      ? 'border-zinc-50 font-bold text-zinc-50'
+                      : 'border-transparent font-medium text-zinc-400 hover:text-zinc-300'
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
           </div>
           {loading ? (
             <div className={`absolute inset-0 z-[1] grid place-items-center text-sm ${mutedClass}`}>

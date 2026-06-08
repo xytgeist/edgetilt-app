@@ -1,0 +1,31 @@
+---
+description: No em dashes; prefer ellipses over hyphens for breaks in Ryan-facing prose
+alwaysApply: true
+---
+
+# No em dashes ... prefer ellipses
+
+When **Ryan** (or anyone on this project) is the audience, **never use em dashes** (`—`, Unicode U+2014).
+
+Ryan's voice leans on **ellipses**. When a break could be either ` - ` or `...`, **default to `...`**.
+
+## Use instead
+
+| Situation | Use |
+| --- | --- |
+| Em dash / clause break (either `-` or `...` works) | **`...`** (preferred) |
+| Parenthetical aside | `...` or commas |
+| Numeric or label range | `-` without spaces (`$955-968`, `2024-2026`) |
+| Compound adjective or slug | hyphen, no spaces (`dual-MHB` only if grammatically needed) |
+
+## Examples
+
+- Bad: `Dual MHB — jackpots only in Mystery Match`
+- Good: `Dual MHB ... jackpots only in Mystery Match`
+- OK when not a prose break: `Major ~$955-968+ by RTP`
+
+## Scope
+
+Applies to **all assistant-written text**: chat replies, commit messages, PR bodies, docs you draft, guide copy, UI strings, and comments unless Ryan explicitly asks for em dashes.
+
+`AGENT_RULE_NO_EM_DASHES` — searchability token.

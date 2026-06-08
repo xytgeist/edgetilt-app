@@ -127,7 +127,6 @@ function machinePopularity(m) {
 
 function popularityLabel(m) {
   if (!m) return '—'
-  if (m.popularity_summary) return m.popularity_summary
   const pop = machinePopularity(m)
   return pop || '—'
 }
@@ -154,7 +153,7 @@ function volatilityCount(m) {
 
 function popularityCount(m) {
   if (!m) return 3
-  const h = `${m.popularity_summary || ''} ${machinePopularity(m)} ${popularityLabel(m)}`.toLowerCase()
+  const h = machinePopularity(m).toLowerCase()
   if (h.includes('extremely common')) return 5
   if (h.includes('abundant')) return 4
   if (h.includes('very common')) return 4

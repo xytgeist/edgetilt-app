@@ -683,7 +683,6 @@ function machinePopularity(m) {
 function popularityLabel(row) {
   const m = machineForGuide(row)
   if (!m) return '—'
-  if (m.popularity_summary) return m.popularity_summary
   const pop = machinePopularity(m)
   return pop || '—'
 }
@@ -718,11 +717,11 @@ function volatilityLightningCount(row) {
   return 3
 }
 
-/** 1–5 🔥 from popularity copy (`popularity_summary` / `popularity`). */
+/** 1–5 🔥 from `machines.popularity` tier. */
 function popularityFireCount(row) {
   const m = machineForGuide(row)
   if (!m) return 3
-  const haystack = `${m.popularity_summary || ''} ${machinePopularity(m)} ${popularityLabel(row)}`.toLowerCase()
+  const haystack = machinePopularity(m).toLowerCase()
 
   if (haystack.includes('extremely common')) return 5
   if (haystack.includes('abundant')) return 4

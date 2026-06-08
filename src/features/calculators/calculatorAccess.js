@@ -4,6 +4,14 @@ import { resolveRequiresSlotsEdge } from '../billing/contentAccessGates.js'
 
 export const CALCULATOR_KEYS = /** @type {CalculatorKey[]} */ (['phoenix', 'buffalo-link', 'stackup', 'mhb'])
 
+/** Static calculator chrome — served from `public/calculators/` (not guide R2 assets). */
+export const CALCULATOR_ICON_SRC = {
+  phoenix: '/calculators/phoenix-link.webp',
+  'buffalo-link': '/calculators/buffalo-link.webp',
+  stackup: '/calculators/stack-up-pays.webp',
+  mhb: '/calculators/mhb.webp',
+}
+
 /**
  * Calculators available to free (logged-in) users without Slots Edge.
  * Toggle access here: add a key to offer free, remove to require subscribe.
@@ -54,7 +62,7 @@ export const CALCULATOR_CATALOG = [
     key: 'phoenix',
     title: 'Phoenix Link EV Calc',
     subtitle: 'Must-hit counter bonus analyzer',
-    iconSrc: '/guides/phoenix-link/phoenix-link-calculator-icon.webp',
+    iconSrc: CALCULATOR_ICON_SRC.phoenix,
     iconAlt: 'Phoenix',
     iconWrapClassName: 'h-16 w-16 flex-shrink-0 rounded-xl',
     buttonClassName:
@@ -66,7 +74,7 @@ export const CALCULATOR_CATALOG = [
     key: 'buffalo-link',
     title: 'Buffalo Link EV Calc',
     subtitle: 'Midpoint-based counter analyzer',
-    iconSrc: '/guides/buffalo-link/buffalo-link-calculator-icon.webp',
+    iconSrc: CALCULATOR_ICON_SRC['buffalo-link'],
     iconAlt: 'Buffalo',
     iconWrapClassName:
       'relative flex h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-600/90 to-orange-800 shadow-inner ring-1 ring-orange-900/45',
@@ -81,7 +89,7 @@ export const CALCULATOR_CATALOG = [
     title: 'Stack Up Pays',
     subtitle: 'Ascending Fortunes • 5-meter analyzer',
     subtitleTitle: 'Ascending Fortunes • 5-meter analyzer',
-    iconSrc: '/guides/stack-up-pays/stack-up-pays-calculator-icon.webp',
+    iconSrc: CALCULATOR_ICON_SRC.stackup,
     iconAlt: 'Stack Up Pays',
     iconWrapClassName: 'h-16 w-16 flex-shrink-0 rounded-2xl object-cover shadow-lg',
     buttonClassName:
@@ -93,7 +101,7 @@ export const CALCULATOR_CATALOG = [
     key: 'mhb',
     title: 'Must Hit By Jackpot',
     subtitle: 'Progressive must-hit analyzer',
-    iconSrc: '/guides/mhb/mhb-calculator-icon.webp',
+    iconSrc: CALCULATOR_ICON_SRC.mhb,
     iconAlt: '',
     iconWrapClassName: 'h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg',
     buttonClassName:

@@ -69,8 +69,6 @@ import {
   showGuideLock,
 } from './guideAccess.js'
 
-/** Calculator / generic placeholder art for Buffalo Link — also used when a guide hero fails to load. */
-const BUFFALO_PLACEHOLDER_SRC = '/guides/buffalo-link/buffalo-link-calculator-icon.webp'
 const ACTIVE_SUPABASE_HOST = (() => {
   try {
     return new URL(import.meta.env.VITE_SUPABASE_URL || '').host || 'unknown-host'
@@ -498,7 +496,7 @@ function GuideSkinCard({ targetSlug, label, allGuides, onOpen }) {
   })
   const m = row ? machineForGuide(row) : null
   const name = m?.name || row?.title || label
-  const src  = row ? heroImage(row) : defaultHeroSrc(targetSlug)
+  const src = row ? heroImage(row) : null
   const gradient = heroGradientClass(m?.slug || targetSlug)
 
   return (
@@ -513,18 +511,16 @@ function GuideSkinCard({ targetSlug, label, allGuides, onOpen }) {
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60',
       ].join(' ')}
     >
-      {/* hero — natural image height, overlay pinned to bottom */}
+      {/* hero — gradient when no DB thumbnail; no repo fallback */}
       <div className={`relative bg-gradient-to-br ${gradient} min-h-[6rem]`}>
-        <img
-          src={src}
-          alt={name}
-          className="w-full h-auto block opacity-90 transition-opacity duration-150 group-hover:opacity-100"
-          onError={(e) => {
-            if (e.currentTarget.dataset.fallback === '1') return
-            e.currentTarget.dataset.fallback = '1'
-            e.currentTarget.src = BUFFALO_PLACEHOLDER_SRC
-          }}
-        />
+        {src ? (
+          <img
+            src={src}
+            alt={name}
+            className="w-full h-auto block opacity-90 transition-opacity duration-150 group-hover:opacity-100"
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+          />
+        ) : null}
         <div className="guide-skin-scrim pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
         <div className="guide-skin-footer absolute bottom-0 inset-x-0 px-3 pb-3 pt-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
           <p className="text-[#fff] font-bold text-sm leading-tight drop-shadow truncate">{name}</p>
@@ -868,28 +864,6 @@ function GuideEvThresholdPanel({ line, accent }) {
   )
 }
 
-function defaultHeroSrc(machineSlug) {
-  if (machineSlug === 'buffalo-link') return '/guides/buffalo-link/hero.webp'
-  if (machineSlug === 'buffalo-ascension') return '/guides/buffalo-ascension/hero.webp'
-  if (machineSlug === 'eagle-ascension') return '/guides/eagle-ascension/hero.webp'
-  if (machineSlug === 'lightning-buffalo-link') return '/guides/lightning-buffalo-link/hero.webp'
-  if (machineSlug === 'phoenix-link') return '/guides/phoenix-link/hero.webp'
-  if (machineSlug === 'lightning-10-year-storm') return '/guides/lightning-10-year-storm/hero.webp'
-  if (machineSlug === 'legend-of-the-phoenix')
-    return '/guides/legend-of-the-phoenix/hero.webp'
-  if (machineSlug === 'stack-up-pays') return '/guides/stack-up-pays/hero.webp'
-  if (machineSlug === 'aladdins-fortune') return '/guides/aladdins-fortune/hero.webp'
-  if (machineSlug === 'aztec-banner') return '/guides/aztec-banner/hero.webp'
-  if (machineSlug === 'pegasus-banner') return '/guides/pegasus-banner/hero.webp'
-  if (machineSlug === 'ainsworth-must-hit-by' || machineSlug === 'must-hit-by-aig')
-    return '/guides/ainsworth-must-hit-by/hero.webp'
-  if (machineSlug === 'ags-must-hit-by' || machineSlug === 'must-hit-by-ags')
-    return '/guides/ags-must-hit-by/hero.webp'
-  if (machineSlug === 'igt-must-hit-by' || machineSlug === 'must-hit-by-igt')
-    return '/guides/igt-must-hit-by/hero.webp'
-  return BUFFALO_PLACEHOLDER_SRC
-}
-
 /** Supabase may return `machines` as an object or an array depending on FK metadata — pick the embed that matches `guides.slug` or carries `volatility_index`. */
 function machineForGuide(row) {
   const m = row?.machines
@@ -909,17 +883,14 @@ function machineForGuide(row) {
 
 function heroImage(row) {
   const machine = machineForGuide(row)
-  const ms = machine?.slug
   let thumb = row.thumbnail_url || machine?.thumbnail_url
   if (typeof thumb === 'string' && /buffalo-icon\.png/i.test(thumb)) thumb = null
-  return thumb || defaultHeroSrc(ms)
+  const trimmed = typeof thumb === 'string' ? thumb.trim() : ''
+  return trimmed || null
 }
 
-function guideHeroImgOnError(e) {
-  const el = e.currentTarget
-  if (el.dataset.fallback === '1') return
-  el.dataset.fallback = '1'
-  el.src = BUFFALO_PLACEHOLDER_SRC
+function hideGuideHeroOnError(e) {
+  e.currentTarget.style.display = 'none'
 }
 
 function heroGradientClass(machineSlug) {
@@ -1960,6 +1931,7 @@ export default function GuidesScreen({
             const calcKey = resolveCalculatorKey(m)
             const evThresholdLine = cardEvThresholdForRow(row)
             const accent = cardAccent(slug)
+            const heroThumb = heroImage(row)
             const guideLocked = showGuideLock(slug, access)
             const adminGuideLocked = guideRequiresSlotsEdge(slug, gatesMap)
             const guideLockedCollapsed = guideLocked && !expanded
@@ -2049,16 +2021,18 @@ export default function GuidesScreen({
                             </div>
                           </div>
                         ) : null}
-                        <img
-                          src={heroImage(row)}
-                          alt=""
-                          className={
-                            expanded
-                              ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
-                              : 'h-full w-full object-cover opacity-95'
-                          }
-                          onError={guideHeroImgOnError}
-                        />
+                        {heroThumb ? (
+                          <img
+                            src={heroThumb}
+                            alt=""
+                            className={
+                              expanded
+                                ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+                                : 'h-full w-full object-cover opacity-95'
+                            }
+                            onError={hideGuideHeroOnError}
+                          />
+                        ) : null}
                         <div className="guide-hero-scrim pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                         <div className="guide-hero-footer pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent px-4 pb-3 pt-12">
                           <div className="flex items-end justify-between gap-3">

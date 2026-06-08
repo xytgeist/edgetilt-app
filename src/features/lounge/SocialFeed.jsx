@@ -14366,9 +14366,9 @@ export default function SocialFeed({
                         aria-label={`View AP Guide: ${loungePostDetail.reposted_post.game_title}`}
                       >
                         <div className="relative h-40 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
-                          {loungePostDetail.reposted_post.guide_thumbnail_url || loungePostDetail.reposted_post.game_slug ? (
+                          {loungePostDetail.reposted_post.guide_thumbnail_url ? (
                             <img
-                              src={loungePostDetail.reposted_post.guide_thumbnail_url || `/guides/${loungePostDetail.reposted_post.game_slug}/hero.webp`}
+                              src={loungePostDetail.reposted_post.guide_thumbnail_url}
                               alt=""
                               className="h-full w-full object-cover opacity-80"
                               loading="lazy"
@@ -14451,9 +14451,9 @@ export default function SocialFeed({
                         aria-label={`View AP Guide: ${loungePostDetail.game_title}`}
                       >
                         <div className="relative h-56 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
-                          {loungePostDetail.guide_thumbnail_url || loungePostDetail.game_slug ? (
+                          {loungePostDetail.guide_thumbnail_url ? (
                             <img
-                              src={loungePostDetail.guide_thumbnail_url || `/guides/${loungePostDetail.game_slug}/hero.webp`}
+                              src={loungePostDetail.guide_thumbnail_url}
                               alt=""
                               className="h-full w-full object-cover opacity-80"
                               loading="lazy"

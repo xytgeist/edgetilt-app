@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { CALCULATOR_ICON_SRC } from '../calculatorAccess.js'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
 import { playLogCalcEvPrefill } from '../../../utils/playLogCalcSnapshot.js'
@@ -726,7 +727,7 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null }) 
           <button onClick={onBack} className="text-[52px] leading-none text-cyan-400 hover:text-cyan-300 -mt-1 mr-4 font-light active:opacity-70">‹</button>
           <div className="flex items-center flex-1 justify-center gap-3">
             <img
-              src="/guides/mhb/mhb-calculator-icon.webp"
+              src={CALCULATOR_ICON_SRC.mhb}
               alt=""
               className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-lg shadow-black/40"
             />

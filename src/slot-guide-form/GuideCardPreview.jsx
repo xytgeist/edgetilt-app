@@ -15,9 +15,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useBlobObjectUrl } from './guideImageUtils.js'
 
-const BUFFALO_PLACEHOLDER =
-  'https://media-test.lvslotpro.com/guides/buffalo-link/hero.webp'
-
 // ─── accent theming ───────────────────────────────────────────────────────────
 function cardAccent(slug) {
   if (slug === 'phoenix-link')
@@ -192,7 +189,8 @@ function resolveGuideHero(row) {
   const m = Array.isArray(row.machines) ? row.machines[0] : row.machines
   let thumb = row.thumbnail_url || m?.thumbnail_url
   if (typeof thumb === 'string' && /buffalo-icon\.png/i.test(thumb)) thumb = null
-  return thumb || (m?.slug ? `/guides/${m.slug}/hero.webp` : null)
+  const trimmed = typeof thumb === 'string' ? thumb.trim() : ''
+  return trimmed || null
 }
 
 function PreviewSkinCard({ targetSlug, label, allGuides }) {
@@ -202,7 +200,7 @@ function PreviewSkinCard({ targetSlug, label, allGuides }) {
   })
   const m = row ? (Array.isArray(row.machines) ? row.machines[0] : row.machines) : null
   const name = m?.name || row?.title || label
-  const src  = resolveGuideHero(row) || `/guides/${targetSlug}/hero.webp`
+  const src = resolveGuideHero(row)
   const gradient = heroGradientClass(m?.slug || targetSlug)
 
   return (
@@ -211,16 +209,14 @@ function PreviewSkinCard({ targetSlug, label, allGuides }) {
       'bg-zinc-900 shadow-[0_6px_24px_-4px_rgba(0,0,0,0.55)]',
     ].join(' ')}>
       <div className={`relative h-24 bg-gradient-to-br ${gradient} overflow-hidden`}>
-        <img
-          src={src}
-          alt={name}
-          className="h-full w-full object-cover opacity-90"
-          onError={(e) => {
-            if (e.currentTarget.dataset.fallback === '1') return
-            e.currentTarget.dataset.fallback = '1'
-            e.currentTarget.src = BUFFALO_PLACEHOLDER
-          }}
-        />
+        {src ? (
+          <img
+            src={src}
+            alt={name}
+            className="h-full w-full object-cover opacity-90"
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+          />
+        ) : null}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/15 to-transparent" />
         <div className="absolute bottom-0 inset-x-0 px-3 pb-2 pt-6 bg-gradient-to-t from-zinc-950/90 via-zinc-950/60 to-transparent">
           <p className="text-white font-bold text-sm leading-tight drop-shadow truncate">{name}</p>
@@ -320,7 +316,7 @@ export default function GuideCardPreview({
   const mdComponents = useMemo(() => makeMarkdownComponents(accent, guideList), [accent, guideList])
 
   const heroBlobUrl = useBlobObjectUrl(heroFile)
-  const heroSrc = heroBlobUrl || heroUrl || (slug ? `/guides/${slug}/hero.webp` : BUFFALO_PLACEHOLDER)
+  const heroSrc = heroBlobUrl || heroUrl || null
 
   const evLine = guide.card_ev_threshold?.trim() || 'Verify +EV on the glass — open guide'
   const calcKey = machine.has_calculator
@@ -355,18 +351,16 @@ export default function GuideCardPreview({
             expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden',
           ].join(' ')}
         >
-          <img
-            src={heroSrc}
-            alt={machine.name || guide.title || 'Guide hero'}
-            className={expanded
-              ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
-              : 'h-full w-full object-cover opacity-95'}
-            onError={(e) => {
-              if (e.currentTarget.dataset.fallback === '1') return
-              e.currentTarget.dataset.fallback = '1'
-              e.currentTarget.src = BUFFALO_PLACEHOLDER
-            }}
-          />
+          {heroSrc ? (
+            <img
+              src={heroSrc}
+              alt={machine.name || guide.title || 'Guide hero'}
+              className={expanded
+                ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+                : 'h-full w-full object-cover opacity-95'}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+          ) : null}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent px-4 pb-3 pt-12">
             <div className="flex items-end justify-between gap-3">

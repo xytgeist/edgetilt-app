@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { CALCULATOR_ICON_SRC } from '../calculatorAccess.js'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
 import { playLogCalcEvPrefill, recommendedAcquisitionFeeUsd } from '../../../utils/playLogCalcSnapshot.js'
@@ -407,7 +408,7 @@ function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null }) {
 
           <div className="flex items-center flex-1 justify-center gap-3">
             <img 
-              src="/guides/stack-up-pays/stack-up-pays-calculator-icon.webp" 
+              src={CALCULATOR_ICON_SRC.stackup} 
               alt="Stack Up Volcano" 
               className="w-14 h-14 object-cover rounded-2xl shadow-lg" 
             />

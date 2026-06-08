@@ -591,7 +591,7 @@ export default function SlotGuideFormApp() {
       })
       setHeroFile(null)
       // Fall back to the static public path used by GuidesScreen when no DB thumbnail is set
-      setCurrentThumbnail(data.thumbnail_url || m?.thumbnail_url || `/guides/${data.slug}/hero.webp`)
+      setCurrentThumbnail(data.thumbnail_url || m?.thumbnail_url || '')
       setDiagrams([])
       setIsDirty(false)
       setMode('edit')

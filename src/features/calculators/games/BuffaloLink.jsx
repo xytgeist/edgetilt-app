@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DropdownSelect } from '../DropdownSelect'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { CALCULATOR_ICON_SRC } from '../calculatorAccess.js'
 import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 import { Line } from 'react-chartjs-2'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
@@ -253,7 +254,7 @@ function BuffaloLink({ onBack, supabaseClient = null, onOpenLogbook = null }) {
           <div className="flex items-center flex-1 justify-center gap-3">
             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 ring-1 ring-amber-950/35 shadow-md shadow-black/30">
               <img
-                src="/guides/buffalo-link/buffalo-link-calculator-icon.webp"
+                src={CALCULATOR_ICON_SRC['buffalo-link']}
                 alt="Buffalo"
                 className="h-full w-full object-cover object-center"
               />

@@ -15,6 +15,7 @@ import {
   Legend,
 } from 'chart.js'
 import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
+import { CALCULATOR_ICON_SRC } from '../calculatorAccess.js'
 import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
@@ -210,7 +211,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null }) {
 
           <div className="flex items-center flex-1 justify-center gap-3">
             <img 
-              src="/guides/phoenix-link/phoenix-link-calculator-icon.webp" 
+              src={CALCULATOR_ICON_SRC.phoenix} 
               alt="Phoenix Link" 
               className="w-14 h-14 rounded-xl object-contain" 
             />

@@ -559,9 +559,9 @@ export default function LoungePostArticle({
                   aria-label={`View AP Guide: ${post.reposted_post.game_title}`}
                 >
                   <div className="relative h-40 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
-                    {post.reposted_post.guide_thumbnail_url || post.reposted_post.game_slug ? (
+                    {post.reposted_post.guide_thumbnail_url ? (
                       <img
-                        src={post.reposted_post.guide_thumbnail_url || `/guides/${post.reposted_post.game_slug}/hero.webp`}
+                        src={post.reposted_post.guide_thumbnail_url}
                         alt=""
                         className="h-full w-full object-cover opacity-80"
                         loading="lazy"
@@ -664,9 +664,9 @@ export default function LoungePostArticle({
             aria-label={`View AP Guide: ${displayPost.game_title}`}
           >
             <div className="relative h-56 bg-gradient-to-br from-amber-950/60 to-zinc-900 overflow-hidden">
-              {displayPost.guide_thumbnail_url || displayPost.game_slug ? (
+              {displayPost.guide_thumbnail_url ? (
                 <img
-                  src={displayPost.guide_thumbnail_url || `/guides/${displayPost.game_slug}/hero.webp`}
+                  src={displayPost.guide_thumbnail_url}
                   alt=""
                   className="h-full w-full object-cover opacity-80"
                   loading="lazy"

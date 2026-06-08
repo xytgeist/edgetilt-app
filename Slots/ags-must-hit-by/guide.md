@@ -20,3 +20,30 @@ Folder slug is **`ags-must-hit-by`** (sync expects folder name ≡ `machine.slug
 ## Nerf / marketing
 
 Assume thresholds and branding can vary by jurisdiction — update this playbook when packaging changes.
+
+## 📍 Where to find
+
+### In Las Vegas / physical casinos
+
+- MGM Grand
+- New York-New York
+- Luxor
+- Excalibur
+- Several locals casinos
+
+Fire Wolf is not as widespread as River Dragons.
+
+### Top cities / regions (outside Las Vegas)
+
+| Rank | City / region | Popularity level | Notes |
+| --- | --- | --- | --- |
+| 1 | Atlantic City, NJ | High | Strong presence at Borgata, Resorts, and Golden Nugget |
+| 2 | Pennsylvania | High | Heavy at Parx, Rivers, and Wind Creek |
+| 3 | Florida | High | Very common at Seminole Hard Rock and Hollywood |
+| 4 | Oklahoma | Medium-High | Popular at Cherokee Nation casinos |
+| 5 | Mississippi Gulf Coast | Medium-High | Common at Biloxi casinos |
+| 6 | Indiana | Medium | Growing at Horseshoe and Ameristar |
+| 7 | New York metro | Medium | Available at Resorts World |
+
+**Summary:** River Dragons currently has stronger and wider distribution than Fire Wolf. Both games perform well on the East Coast (especially Atlantic City and Pennsylvania) and in Florida tribal casinos. AGS must-hit-by games like these are steadily expanding but still lag behind the top Ainsworth titles in overall availability.
+

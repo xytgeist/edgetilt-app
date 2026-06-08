@@ -20,6 +20,45 @@ The **current number of ways to win** is **large and prominently displayed** on 
 
 This is a **medium to high volatility** machine that can have extreme session swings, particularly chasing a **Super Stampede**. You can endure long dry spells even on good setups, but when the tall reels hit (especially Super Stampede or a big 3x5x Free Games bonus), the payouts can be massive. The game is very well-known to AP players, so good spots get taken quickly.
 
+## 📍 Where to find
+
+### In Las Vegas / physical casinos
+
+Buffalo Ascension was one of the most popular Aristocrat games on the floor.
+
+It is widely placed across both Strip and locals casinos.
+
+You can find it at:
+
+- Bellagio
+- Aria
+- MGM Grand
+- Caesars Palace
+- Wynn / Encore
+- Venetian / Palazzo
+- Red Rock Casino
+- Many other properties
+
+It is actively hunted by advantage players due to its strong combo potential and expanding reel mechanics.
+
+### Online / free play
+
+Demo versions are available on several slot review sites.
+
+### Top cities / regions (outside Las Vegas)
+
+| Rank | City / region | Popularity level | Notes |
+| --- | --- | --- | --- |
+| 1 | Atlantic City, NJ | Very High | Extremely common at Borgata, Resorts, and Golden Nugget |
+| 2 | Pennsylvania | Very High | Heavy placement at Parx, Rivers, and Wind Creek |
+| 3 | Florida | High | Strong at Seminole Hard Rock Tampa and Hollywood casinos |
+| 4 | Oklahoma | High | Very popular at Cherokee Nation casinos |
+| 5 | Mississippi Gulf Coast | High | Common at Biloxi and Gulfport properties |
+| 6 | Indiana / Chicago area | Medium-High | Growing at Horseshoe and Ameristar |
+| 7 | New York / Connecticut | Medium-High | Available at Resorts World and Mohegan Sun |
+
+**Summary:** Buffalo Ascension was one of the most widely distributed Aristocrat games in the country but it is being replaced slowly in major markets. East Coast markets (Atlantic City and Pennsylvania) and Florida have the strongest placement outside of Las Vegas.
+
 ## 🎭 Skins (same game different theme/art)
 
 [Eagle Ascension](guide:eagle-ascension)

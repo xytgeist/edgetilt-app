@@ -8,6 +8,8 @@ Folder slug is **`ags-must-hit-by`** (sync expects folder name ≡ `machine.slug
 
 **AGS mystery must-hit progressive** mechanics: increment rules, denomination effects, displayed seed vs inferred clock, and any title-specific quirks.
 
+![AGS must-hit-by titles and meter example — River Dragons, Fire Wolf II, Forest Dragons, Wolf Queen](/guides/ags-must-hit-by/ags-mhb-known-titles.webp)
+
 ## +EV checklist (fill in)
 
 - Photo **jackpot ladders** / meters and capture **eligible bet** wording.

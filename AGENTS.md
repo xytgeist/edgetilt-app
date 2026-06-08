@@ -162,7 +162,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 - **Do not** re-run **`20260601160000_chat_messages_page_catchup.sql`** after **`20260604180100`**.
 - Lounge **thread** SQL chain through **`20260608210000`** — apply order in backlog Update log **2026-06-08** / **2026-06-09**.
 - Lounge **market charts:** Edge **`lounge-market-data`** — redeploy after **`finnhubMarket.ts`** / **`yahooMarket.ts`** changes; snapshot PNG branding (**EDGE** wordmark) is **`loungeMarketChartSnapshot.js` only** — live **`LoungeMarketChartModal`** headers stay company-left.
-- AP Guide admin editor: **`/slot-guide-form`**, ingest **`POST /api/slot-guide-ingest`**, draft **`slotGuideFormDraft:v1`** — see **`README.md`**.
+- AP Guide updates: **`Slots/_ingest/`** docx (AP + Review) → **`Slots/<slug>/`** → **`npm run slots:sync:test -- --slug=<slug>`** (DB live on test); form **`/slot-guide-form`** for edits; **`README.md`** § AP guide updates + backlog **AP Guide editor**.
 - UI test pinned post: tail of **`supabase/seed/lounge_fake_posts.sql`**.
 
 ## Automation you can run anytime

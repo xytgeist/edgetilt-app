@@ -172,9 +172,62 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Surface:** separate Vite entry **`src/slot-guide-form/`** (`SlotGuideFormApp.jsx`, `LoginGate.jsx` admin session). Deployed at **`/slot-guide-form`** on app host (e.g. **`lvslotpro-calc-tx18.vercel.app`**). Not in main `AppShell` hamburger.
 
+### Docx → repo → test DB (Ryan + Theo pilot workflow, Jun 2026)
+
+**Drop sources (local, usually gitignored):** **`Slots/_ingest/`**
+
+| Prefix | Use |
+| --- | --- |
+| **`AP-*.docx`** | AP / ladder / when-to-play / bankroll / floor verification |
+| **`Review-*.docx`** | Gameplay mechanics, features, pay tables (no AP ladder essay) |
+
+**Output in repo:** **`Slots/<slug>/guide.md`**, **`card.meta.json`**, **`hero.png`**; hero WebP at **`public/guides/<slug>/hero.webp`**.
+
+**Publish to test Supabase (primary — no form required):**
+
+```bash
+npm run slots:sync:test -- --slug=<slug>
+```
+
+Reads manifest + **`guide.md`** → upserts **`machines`** + **`guides`** (including **`content_markdown`**). **App Guides tab reads DB** — sync alone updates live copy on test.
+
+**When to commit / deploy:**
+
+| Change | `slots:sync:test` | Git commit | Vercel deploy |
+| --- | --- | --- | --- |
+| Guide text only | ✓ enough for test app | recommended (repo = source of truth) | no |
+| Form / parse / card UI code | — | yes | yes |
+| New hero under **`public/guides/`** | optional (DB may point at URL) | yes | yes for hosted static file |
+
+**Optional editor:** **`/slot-guide-form`** — **Fetch guides** → **Load** → edit → **Save changes**. **Ingest guide** still available for greenfield. Requires client deploy + SQL **`20260610170000`** (`machines.popularity`).
+
+**`guide.md` section order (compiled markdown):**
+
+1. 🟢 When to play  
+2. 🛑 When to stop  
+3. 🔍 How to check  
+4. ⚠️ Risk & Warnings  
+5. 📍 **Where to find** (optional — floor / regions; after Risk)  
+6. 🎭 Skins (optional)  
+7. 🎰 Gameplay Mechanics  
+
+Built by **`formUtils.js`** / **`scripts/lib/slotGuideIngestCore.mjs`**; slot-guide-form field **`where_to_find`**.
+
+**Machine card fields (collapsed tile):**
+
+| Field | Role |
+| --- | --- |
+| **`machines.popularity`** | Tier label on card + 🔥 (`Common`, `Very Common`, …) — was **`vegas_availability`**; migration **`20260610170000`** |
+| **`machines.popularity_summary`** | Optional; **not** shown on card (legacy / future use) |
+
+**Copy:** no em dashes; prefer ellipses (`.cursor/rules/no-em-dashes.mdc`).
+
+**Pilot on test:** **`coin-kingdom-aztec`** @ **`132ec95`** / **`102cec1`** — dual MHB; Egyptian skin; **Where to find** with Vegas + regional table.
+
 | Mode | Action |
 | --- | --- |
-| **New guide** | **Ingest guide** → `POST /api/slot-guide-ingest` (target **test** / **production**); optional hero + sparse body sections OK |
+| **New guide (repo path)** | Theo/build → **`Slots/<slug>/`** → **`npm run slots:sync:test -- --slug=<slug>`** |
+| **New guide (form path)** | **Ingest guide** → `POST /api/slot-guide-ingest` (target **test** / **production**); optional hero + sparse body sections OK |
 | **WIP (same browser)** | **Save draft** → `localStorage` **`slotGuideFormDraft:v1`** (text only; re-attach hero/diagram files after restore) |
 | **Existing guide** | **Fetch guides** → **Load →** → **Save changes** (direct Supabase update, not ingest) |
 
@@ -184,11 +237,16 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### Status
 
+- [x] **Docx pilot workflow** documented; **`coin-kingdom-aztec`** on test via **`slots:sync`** @ **`132ec95`** / **`102cec1`**
+- [x] **`## 📍 Where to find`** section in markdown pipeline + form @ **`102cec1`**
+- [x] **`machines.popularity`** rename + card shows tier only @ **`132ec95`** / **`a3a20b7`** — SQL **`20260610170000`** (apply on test + prod)
+- [x] **Slot-guide-form scroll** (`LoginGate` viewport scroll shell) @ **`132ec95`**
 - [x] **Draft save + restore:** manual **Save draft** + auto-save (~2s); **Restore draft** banner; bottom **Save draft** beside **Ingest** @ **`d4d6c09`**
 - [x] **Optional fields (new ingest):** hero, skins, risk bullets, guide body sections, +EV threshold (client + **`slotGuideIngestCore.mjs`** @ **`25d81f1`**)
 - [x] **Slug typing:** **`slugifyInput`** allows trailing hyphen while typing (`buffalo-link`) @ **`25d81f1`**
 - [x] **Vercel env fallback:** ingest no longer requires **`.env.supabase.test`** file on server @ **`24d0412`**
 - [ ] **Ryan smoke — ingest on tx18:** Vercel env vars set + deploy **`test`** ≥ **`24d0412`**; ingest Buffalo Link (or other) → **Fetch guides** → **Load** → edit → **Save changes**
+- [ ] **Automated `_ingest` docx → guide.md** script (pilot was manual; deferred)
 - [x] **AP Guides light-mode search:** **`ap-guides-search-input`** + **`html.light`** rules in **`index.css`** (readable on light gray) @ **`ea1d72e`**
 
 ---
@@ -639,8 +697,14 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
-- 2026-06-08: **Guide Where to find section:** optional **`## 📍 Where to find`** markdown block after Risk & Warnings (before Skins) in **`buildGuideMarkdown`** / slot-guide-form; Coin Kingdom Aztec seeded. Client-only + **`slots:sync`** for DB markdown.
-- 2026-06-08: **Guide cards — `vegas_availability` → `popularity` (code on `test`):** migration **`20260610170000_machines_popularity_rename.sql`** renames **`machines.vegas_availability`** → **`popularity`**; all **`Slots/*/card.meta.json`**, sync/ingest, **`GuidesScreen`**, **`GuideCardPreview`**, **`slot-guide-form`** updated. Client falls back to legacy column until SQL applied. **Apply migration on test before client deploy.**
+- 2026-06-08: **AP guide docx pilot + sync workflow (on `test`):** drop **`AP-*.docx`** + **`Review-*.docx`** in **`Slots/_ingest/`** → synthesize **`Slots/<slug>/guide.md`** + **`card.meta.json`** → **`npm run slots:sync:test -- --slug=<slug>`** publishes **`guides.content_markdown`** (app reads DB; git commit for source of truth, not required for test copy). **`coin-kingdom-aztec`** first pilot @ **`132ec95`** / **`102cec1`**. See backlog **AP Guide editor** § docx workflow.
+- 2026-06-08: **Guide card popularity display (`test`, `a3a20b7`):** collapsed tile always shows **`machines.popularity`** tier; **`popularity_summary`** no longer overrides label.
+- 2026-06-08: **Voice rule — no em dashes (`a3a20b7`):** `.cursor/rules/no-em-dashes.mdc` + **`AGENTS.md`**; prefer **`...`** over spaced hyphens for breaks.
+- 2026-06-08: **Guide Where to find section (`102cec1`):** optional **`## 📍 Where to find`** markdown block after Risk & Warnings (before Skins) in **`buildGuideMarkdown`** / slot-guide-form; Coin Kingdom Aztec seeded with Vegas + regional table.
+- 2026-06-08: **Guide cards — `vegas_availability` → `popularity` (`132ec95`):** migration **`20260610170000_machines_popularity_rename.sql`** renames column; all **`Slots/*/card.meta.json`**, sync/ingest, **`GuidesScreen`**, **`GuideCardPreview`**, **`slot-guide-form`** updated. **Apply SQL on test/prod before client that selects `popularity`.**
+- 2026-06-08: **Slot-guide-form scroll fix (`132ec95`):** **`LoginGate`** **`h-dvh overflow-y-auto`** scroll shell — expanded live card preview no longer traps page scroll under global **`html/body overflow:hidden`**.
+- 2026-06-08: **Lounge market idle poll + cashtag cleanup (`132ec95`, client):** **`loungeMarketPollActivity.js`** gates feed/modal polls when idle; removed inline **`$`** cashtag autocomplete; stocks **`batch_rolling`** only during US regular session.
+- 2026-06-07: **Lounge market instrument registry (`e85bf97`, pending deploy/smoke):** migration **`20260610160000`** — **`market_instruments`**, **`coin_id`**, client embed batch + live modal mcap. **Apply SQL + redeploy `lounge-market-data` + client.**
 - 2026-06-07: **Lounge market idle poll gate (client, `test`):** feed **`batch_rolling`** (90s) and quick modal rolling **`modal_series`** (60s) skip while user idle (~90s no pointer/scroll/key), tab hidden, or Lounge tab inactive; one refresh on next interaction. **`loungeMarketPollActivity.js`**. Client-only.
 - 2026-06-07: **Lounge cashtag inline autocomplete removed (client, `test`):** dropped **`$` typeahead** (`loungeCashtagAutocomplete.js`, **`LoungeCashtagDropdown.jsx`**) — charts via caption **`$TICKER`** auto-attach on post/save or **composer toolbar chart sheet** + pills. Client-only.
 - 2026-06-07: **Lounge feed stock poll gated to regular session (client, `test`):** **`LoungeMarketFeedContext`** skips **`batch_rolling`** for stocks whenever US regular session is closed — mount + 90s interval (removed **`includeStocksWhenClosed`**). After-hours stock minis use attach embed snapshot only. Client-only deploy.

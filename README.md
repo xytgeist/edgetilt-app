@@ -150,6 +150,26 @@ node scripts/sync-slot-forms-to-supabase.mjs --target=test --slug=buffalo-link
 
 Run sync whenever you add games, change manifests, or update `guide.md` and want the database to reflect it.
 
+### AP guide updates (docx → repo → test DB)
+
+**Typical flow (Ryan + Theo, Jun 2026 pilot):**
+
+1. Drop **`AP-<name>.docx`** (advantage play) and **`Review-<name>.docx`** (gameplay mechanics) in **`Slots/_ingest/`** (local; usually not committed).
+2. Build **`Slots/<slug>/`**: **`guide.md`**, **`card.meta.json`**, **`hero.png`**; convert hero to **`public/guides/<slug>/hero.webp`**.
+3. Publish on **test**:
+
+   ```bash
+   npm run slots:sync:test -- --slug=<slug>
+   ```
+
+   The app **reads `guides.content_markdown` from Supabase** — sync is enough for guide text to go live on test. Commit to git for repo source of truth; deploy Vercel when **code** or **`public/guides/`** assets change.
+
+**`guide.md` sections (in order):** When to play → When to stop → How to check → Risk & Warnings → **📍 Where to find** (optional) → Skins → Gameplay Mechanics.
+
+**Card collapsed tile:** **Popularity** = **`machines.popularity`** tier (`Common`, etc.). Migration **`20260610170000`** renamed **`vegas_availability`** → **`popularity`**.
+
+**Pilot:** **`coin-kingdom-aztec`** on test. Details: **`docs/test-buildout-backlog.md`** → **AP Guide editor**.
+
 ### AP Guide ingest form + API
 
 Web form for complete guide cards (machine fields, emoji-section markdown, hero + diagrams):

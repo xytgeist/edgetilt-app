@@ -34,7 +34,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal:** _[one line: what you want done this session]_
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (Update log tail + open smoke). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — most migrations/Edge/env steps are **test-validated only** until replayed on prod (`wedrhwtsxifbnnbgxdkm`).
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (§ **AP Guide editor** + Update log tail). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — most migrations/Edge/env steps are **test-validated only** until replayed on prod (`wedrhwtsxifbnnbgxdkm`).
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -46,42 +46,54 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Jun 2026, branch `test`)
 
-**Canonical detail:** **`docs/test-buildout-backlog.md`** Update log (2026-06-05 through 2026-06-09) + open checkboxes. **Prod mirror:** **`docs/production-rollout-checklist.md`** §2–§5 — do not rely on this section for migration order.
+**Canonical detail:** **`docs/test-buildout-backlog.md`** → **AP Guide editor** section + Update log tail. **Prod mirror:** **`docs/production-rollout-checklist.md`** §2–§5.
 
-### Active (likely next)
+**Latest commits on `test`:** `102cec1` (Where to find + Coin Kingdom copy) · `a3a20b7` (card shows `popularity` tier only; no-em-dash rule) · `132ec95` (Coin Kingdom pilot, `popularity` rename, slot-guide-form scroll, Lounge poll UX) · `e85bf97` (market instrument registry).
 
-- **Link preview + group-delete smoke** — migrations/Edge on test; Ryan sign-off still open (see backlog **Chat** section).
-- **Play Logbook SQL** on test if not fully applied; Ryan smoke pending.
-- **Bankroll Risk Advisor** — move card higher in Phoenix/Buffalo/MHB (+ layout tweaks Ryan still wants).
-- **Chat** — local-only spinner assets not committed; redeploy **`lounge-chat`** if peers see wrong video prep timeline order.
+### AP guide updates (current workflow — Ryan + Theo)
 
-### Parked / deferred
+**Source drop (not committed by default):** `Slots/_ingest/`
 
-- **Thread compose iOS** — after media pick, options bar can sit **behind keyboard** (known; revisit later).
+| File prefix | Content |
+| --- | --- |
+| **`AP-*.docx`** | Advantage-play doc — when to play/stop, ladder math, bankroll, floor checks |
+| **`Review-*.docx`** | Gameplay / mechanics only — goes into **Gameplay Mechanics** (+ feature tables) |
 
-### Shipped + smoked (2026-06-07, Ryan on test)
+**Theo synthesizes →** `Slots/<slug>/` (`guide.md`, `card.meta.json`, `hero.png`) + **`public/guides/<slug>/hero.webp`**.
 
-- **`lounge-market-data`** redeploy + smoke **§22** **PASSED** (`$AAPL` auto-attach, snapshot branding).
-- **Thread SQL** **`20260608140000`**–**`20260608210000`** applied.
-- **Thread compose UX** smoke **§23** **PASSED** (keyboard toolbar, split image/video, retry, no load crash).
+**Publish on test (primary path — no form required):**
 
-### Shipped recently (Lounge market charts, on `test`)
+```bash
+npm run slots:sync:test -- --slug=<slug>
+```
 
-- **Advanced chart:** visible-window header price/% updates on pan/zoom; draggable text annotations; bottom toolbar; floating indicator legend on-chart.
-- **Snapshot PNG (`loungeMarketChartSnapshot.js`):** EDGE wordmark **left**, company logo + name + `$TICKER` **centered**, price/% **right**, floating legend — **live modal headers do not show EDGE** (snapshot-only branding).
-- **Logos:** **`MarketEmbedLogo`** in modal (no `crossOrigin` on `<img>`); snapshot company logos via Edge **`logo_image`** proxy.
-- **Auto cashtag attach:** **`resolveCashtagTicker`** → Yahoo US equity first, then search with tokenized (Ondo/xStock) deprioritized — picker row still wins per ticker.
+That upserts **`machines`** + **`guides.content_markdown`** on test Supabase. **Guides tab reads the DB** — sync is enough for copy to go live on test.
 
-**Key files:** `LoungeMarketChartModal.jsx`, `loungeMarketChartSnapshot.js`, `LoungeMarketChartAnnotationOverlay.jsx`, `loungeMarketChartPriceRange.js`, `finnhubMarket.ts`, `yahooMarket.ts`, `lounge-market-data/index.ts`, `loungePostSubmitJob.js`.
+**Repo vs DB vs deploy:**
 
-### Recent chat (Jun 5, on `test`)
+| What | After `slots:sync:test` | Git commit | Vercel deploy |
+| --- | --- | --- | --- |
+| Guide **body text** | ✓ live in app | source of truth; commit when ready | not required for text |
+| **Code** (form, new sections, card UI) | — | yes | yes |
+| **`public/guides/<slug>/hero.webp`** | URL in DB | yes | yes for hosted static asset |
 
-- Video prep bubble + chasing-arc spinner (`ChatVideoPrepBubble`, `chatRouletteChasingArc.js`); YouTube embed; dark chat glass → zinc (side effect: lounge image lightbox nav uses same glass class).
-- **Local only (not committed):** `public/variable-speed-chasing-spinner*.gif`; modified `roulette-spinner-wheel.png`; untrimmed matte PNG.
-- Redeploy **`lounge-chat`** on test if peers still see wrong video prep timeline order (`clientCreatedAt` on `send_message`).
+**Edit later:** `/slot-guide-form` → **Fetch guides** → **Load** → **Save changes** (needs client deploy ≥ `132ec95` for `machines.popularity` column — apply SQL **`20260610170000`** first).
 
-### Still open (see backlog — not repeated here)
+**Guide markdown section order:** When to play → When to stop → How to check → Risk & Warnings → **`## 📍 Where to find`** (optional) → Skins → Gameplay Mechanics.
 
-- Link preview + group-delete smoke sign-offs; Play Logbook SQL on test if needed; **Bankroll Risk Advisor** — move card higher in Phoenix/Buffalo/MHB (+ any layout tweaks Ryan still wants).
+**Card UI (collapsed):** **Popularity** tile = **`machines.popularity`** tier only (`Common`, `Very Common`, …). **`popularity_summary`** is not shown on the card (DB field may still exist).
 
-**Key files this sprint:** `LoungeThreadComposeSheet.jsx`, `LoungeComposerMediaToolbar.jsx`, `SocialFeed.jsx`, `loungePostSubmitJob.js`, `ChatVideoPrepBubble.jsx`, `src/index.css`.
+**Copy style:** No em dashes; prefer **`...`** over spaced hyphens for breaks (`.cursor/rules/no-em-dashes.mdc`).
+
+**Pilot shipped:** **`coin-kingdom-aztec`** — published on test; Egyptian skin same math; **Where to find** seeded (Vegas + regional table).
+
+### Still open (see backlog)
+
+- **Lounge market registry pack:** SQL **`20260610160000`** + redeploy **`lounge-market-data`** + client smoke (if not done).
+- **SQL **`20260610170000`** (`popularity` rename)** on prod when promoting guides tooling.
+- Link preview + group-delete smoke; Play Logbook SQL; Bankroll Risk Advisor card position.
+
+### Parked
+
+- Thread compose iOS keyboard / options bar overlap after media pick.
+- Formal automated `_ingest` docx script (pilot was manual synthesis).

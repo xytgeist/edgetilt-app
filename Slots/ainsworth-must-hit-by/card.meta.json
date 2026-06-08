@@ -7,13 +7,13 @@
     "manufacturer": "Ainsworth",
     "type": "Must Hit By",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
     "nerf_risk": "Medium",
     "has_calculator": true,
     "calculator_slug": "mhb",
     "volatility_index": "Medium",
     "popularity_summary": null,
-    "release_year": null
+    "release_year": null,
+    "popularity": "Common"
   },
   "guide_seed": {
     "slug": "ainsworth-must-hit-by",

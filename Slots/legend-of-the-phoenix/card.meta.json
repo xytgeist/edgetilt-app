@@ -7,13 +7,13 @@
     "manufacturer": "IGT",
     "type": "Persistent State",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
     "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": "Medium",
     "popularity_summary": null,
-    "release_year": 2022
+    "release_year": 2022,
+    "popularity": "Common"
   },
   "guide_seed": {
     "slug": "legend-of-the-phoenix",
@@ -50,7 +50,10 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": ["tripledoublediamond.webp", "legend-of-the-peacock.webp"],
+    "diagrams_relative": [
+      "tripledoublediamond.webp",
+      "legend-of-the-peacock.webp"
+    ],
     "legacy_slots_subfolder": null
   }
 }

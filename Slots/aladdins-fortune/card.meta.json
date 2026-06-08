@@ -7,13 +7,13 @@
     "manufacturer": "IGT",
     "type": "Persistent Wild Accumulator",
     "difficulty": "Beginner",
-    "vegas_availability": "Rare",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": "Low-Medium",
     "popularity_summary": "Rare",
-    "release_year": 2016
+    "release_year": 2016,
+    "popularity": "Rare"
   },
   "guide_seed": {
     "slug": "aladdins-fortune",
@@ -50,7 +50,9 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": ["aladdins-fortune-wilds.webp"],
+    "diagrams_relative": [
+      "aladdins-fortune-wilds.webp"
+    ],
     "legacy_slots_subfolder": null
   }
 }

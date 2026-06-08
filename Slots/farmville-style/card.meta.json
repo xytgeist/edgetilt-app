@@ -7,13 +7,13 @@
     "manufacturer": "Various",
     "type": "Accumulator",
     "difficulty": "Intermediate",
-    "vegas_availability": "Rare",
     "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": null,
+    "popularity": "Rare"
   },
   "guide_seed": {
     "slug": "farmville-style",

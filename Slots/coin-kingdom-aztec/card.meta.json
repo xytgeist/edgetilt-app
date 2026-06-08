@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "source": "LVSlotPro ingest synthesis — AP + review docs in Slots/_ingest",
+  "machine": {
+    "slug": "coin-kingdom-aztec",
+    "name": "Coin Kingdom Aztec",
+    "manufacturer": "Ainsworth",
+    "type": "Dual MHB",
+    "difficulty": "Intermediate",
+    "nerf_risk": "Medium",
+    "has_calculator": true,
+    "calculator_slug": "mhb",
+    "volatility_index": "Very High",
+    "popularity_summary": "Dual MHB Ainsworth; Aztec and Egyptian skins share identical ladder math.",
+    "release_year": null,
+    "popularity": "Common"
+  },
+  "guide_seed": {
+    "slug": "coin-kingdom-aztec",
+    "title": "Coin Kingdom Aztec",
+    "published": true,
+    "card_summary_bullets": [
+      "Dual MHB: Major ~$1,000 (ceiling ~$990) and Grand $10,000 — jackpots only in Mystery Match 3.",
+      "Subtract ~2% RTP (Grand) / ~4% (Major) in MHB calc vs paytable; verify $2.85 Major meter seed.",
+      "Min bet, higher denom when you can; base game is brutal until a stacked feature pops."
+    ],
+    "card_ev_threshold": "Major ~$955–968+ by RTP (94%→89%); Grand near ~$9,900+. Run MHB calc.",
+    "content_markdown_file": "guide.md",
+    "last_updated": "2026-06-08",
+    "thumbnail_url": "/guides/coin-kingdom-aztec/hero.webp"
+  },
+  "ap": {
+    "volatility_summary": "Very high base; ladder EV is predictable because Major/Grand tend to hit at ceiling — but bonus variance still swings sessions hard.",
+    "popularity_summary": "Common Ainsworth MHB pair on Vegas floors; Egyptian skin identical for AP.",
+    "edge_vectors": [
+      "Major and Grand must-hit ladders with ceiling-style hits (especially Major ~$990).",
+      "Major meter runs ~3.5× Grand speed — combo-entry math for advanced plays.",
+      "Mystery Match-only jackpot path; predetermined picks.",
+      "Fake reel discs — ignore for timing; features are random."
+    ],
+    "bankroll_angle": "300–500+ units at min qualifying bet; never max-bet a $1k MHB chase. Plan for dead base game and occasional 100×–200×+ features.",
+    "verification_checklist": [
+      "Photo both MHB meters, denom, bet, paytable/RTP sticker.",
+      "Confirm not Class II non-MHB clone.",
+      "Spin enough coin-in to validate Major meter increment ($0.01 vs $0.02 tick)."
+    ],
+    "common_pitfalls": [
+      "Trusting the $3.00 Major meter display without true-up spins.",
+      "Max betting between ladder points.",
+      "Chasing sliding disc animations as if they gate bonuses.",
+      "Forgetting tax drag on $10k Grand."
+    ],
+    "nerf_angle": "Nerf risk **Medium**: jurisdictional RTP bands and ladder packaging can differ; re-verify paytable and meter behavior same visit."
+  },
+  "assets": {
+    "hero_relative": "hero.png",
+    "thumbnails_relative": [],
+    "diagrams_relative": [],
+    "legacy_slots_subfolder": null
+  }
+}

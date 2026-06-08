@@ -7,13 +7,13 @@
     "manufacturer": "IGT",
     "type": "Accumulator",
     "difficulty": "Intermediate",
-    "vegas_availability": "Very Common",
     "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": 2016
+    "release_year": 2016,
+    "popularity": "Very Common"
   },
   "guide_seed": {
     "slug": "plants-vs-zombies-3d",

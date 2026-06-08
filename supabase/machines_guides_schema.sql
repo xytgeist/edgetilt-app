@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS machines (
   manufacturer text,
   type text,
   difficulty text CHECK (difficulty IN ('Beginner', 'Intermediate', 'Advanced')),
-  vegas_availability text,
+  popularity text,
   nerf_risk text CHECK (nerf_risk IN ('Low', 'Medium', 'High')),
   has_calculator boolean DEFAULT false,
   calculator_slug text,
@@ -62,7 +62,7 @@ CREATE POLICY "Public can read published guides" ON guides FOR SELECT USING (pub
 TRUNCATE TABLE guides CASCADE;
 TRUNCATE TABLE machines CASCADE;
 
-INSERT INTO machines (slug, name, manufacturer, type, difficulty, vegas_availability, nerf_risk, has_calculator, calculator_slug) VALUES
+INSERT INTO machines (slug, name, manufacturer, type, difficulty, popularity, nerf_risk, has_calculator, calculator_slug) VALUES
 ('stack-up-pays', 'Stack Up Pays', 'IGT', 'Persistent State', 'Intermediate', 'Very Common', 'Medium', true, 'stack-up-pays'),
 ('phoenix-link', 'Phoenix Link', 'Aristocrat', 'Must Hit By', 'Beginner', 'Very Common', 'Medium', false, null),
 ('wolf-run-eclipse', 'Wolf Run Eclipse', 'IGT', 'Persistent State', 'Advanced', 'Common', 'High', false, null),

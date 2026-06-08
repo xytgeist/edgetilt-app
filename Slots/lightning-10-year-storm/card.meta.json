@@ -7,13 +7,13 @@
     "manufacturer": "Aristocrat",
     "type": "Must Hit By Counter",
     "difficulty": "Beginner",
-    "vegas_availability": "Extremely Common",
     "nerf_risk": "High",
     "has_calculator": true,
     "calculator_slug": "phoenix",
     "volatility_index": "Very High",
     "popularity_summary": null,
-    "release_year": 2026
+    "release_year": 2026,
+    "popularity": "Extremely Common"
   },
   "guide_seed": {
     "slug": "lightning-10-year-storm",

@@ -31,6 +31,11 @@ import { marketBarRowFields } from '../../utils/marketBarOhlc.js'
 import { isUsableStockIntradayBars, isUsEquityRegularSessionOpen } from '../../utils/usEquityMarketSession.js'
 import { formatLoungeSearchError, loungeSearchCashtagPosts, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
+import {
+  isLoungeMarketPollAllowed,
+  markLoungeUserActivity,
+  useLoungeMarketPollOnResume,
+} from './loungeMarketPollActivity.js'
 import { loungeMarketBarsToSeries, loungeMarketChartCrosshairOptions, loungeMarketChartIsLight, loungeMarketChartTheme } from './loungeMarketChartTheme.js'
 import {
   attachMarketChartIndicators,
@@ -1435,13 +1440,24 @@ export default function LoungeMarketChartModal({
     }
   }, [active, open, supabaseClient, timeframeIdx])
 
-  useEffect(() => {
+  const pollModalSeriesIfAllowed = useCallback(() => {
+    if (!open || timeframe.kind !== 'rolling') return
+    if (active?.asset_class === 'stock' && !isUsEquityRegularSessionOpen()) return
+    if (!isLoungeMarketPollAllowed()) return
     void loadSeries()
-    if (!open || timeframe.kind !== 'rolling') return undefined
-    if (active?.asset_class === 'stock' && !isUsEquityRegularSessionOpen()) return undefined
-    const id = window.setInterval(() => void loadSeries(), 60_000)
-    return () => window.clearInterval(id)
   }, [active?.asset_class, loadSeries, open, timeframe.kind])
+
+  useLoungeMarketPollOnResume(() => pollModalSeriesIfAllowed(), { enabled: open && timeframe.kind === 'rolling' })
+
+  useEffect(() => {
+    if (!open) return undefined
+    markLoungeUserActivity()
+    void loadSeries()
+    if (timeframe.kind !== 'rolling') return undefined
+    if (active?.asset_class === 'stock' && !isUsEquityRegularSessionOpen()) return undefined
+    const id = window.setInterval(() => pollModalSeriesIfAllowed(), 60_000)
+    return () => window.clearInterval(id)
+  }, [active?.asset_class, loadSeries, open, pollModalSeriesIfAllowed, timeframe.kind])
 
   useEffect(() => {
     if (!open || !active || !supabaseClient) {

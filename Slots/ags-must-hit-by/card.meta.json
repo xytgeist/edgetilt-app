@@ -7,13 +7,13 @@
     "manufacturer": "AGS",
     "type": "Must Hit By",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
     "nerf_risk": "Low",
     "has_calculator": true,
     "calculator_slug": "mhb",
     "volatility_index": "Medium",
     "popularity_summary": null,
-    "release_year": 2019
+    "release_year": 2019,
+    "popularity": "Common"
   },
   "guide_seed": {
     "slug": "ags-must-hit-by",

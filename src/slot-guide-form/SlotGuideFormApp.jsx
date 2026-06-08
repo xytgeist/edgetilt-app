@@ -76,7 +76,7 @@ const ic = 'w-full min-h-11 text-base text-white bg-gray-900 rounded-xl border b
 const lc = 'block text-sm font-medium text-gray-300 mb-1'
 const sc = 'rounded-2xl border border-gray-800 bg-gray-900/60 p-4 space-y-4'
 
-const VEGAS_OPTIONS = [
+const POPULARITY_OPTIONS = [
   'Extremely Common', 'Very Common', 'Common', 'Uncommon', 'Rare', 'Rare (nostalgia)',
 ]
 const VOLATILITY_OPTIONS = [
@@ -277,7 +277,7 @@ function SkinsTextarea({ value, onChange, className, guideList = [] }) {
 
 const blankMachine = {
   slug: '', name: '', manufacturer: 'IGT', type: '', difficulty: 'Beginner',
-  vegas_availability: 'Common', nerf_risk: 'auto', volatility_index: '',
+  popularity: 'Common', nerf_risk: 'auto', volatility_index: '',
   popularity_summary: '', release_year: '', has_calculator: false, calculator_slug: '',
 }
 const blankGuide = {
@@ -465,7 +465,7 @@ export default function SlotGuideFormApp() {
         created_at, updated_at,
         machines (
           id, slug, name, manufacturer, type, difficulty,
-          vegas_availability, nerf_risk, volatility_index,
+          popularity, nerf_risk, volatility_index,
           popularity_summary, release_year, has_calculator, calculator_slug, thumbnail_url
         )
       `).eq('id', id).single()
@@ -479,7 +479,7 @@ export default function SlotGuideFormApp() {
           manufacturer: m.manufacturer || 'IGT',
           type: m.type || '',
           difficulty: m.difficulty || 'Beginner',
-          vegas_availability: m.vegas_availability || 'Common',
+          popularity: m.popularity || m.vegas_availability || 'Common',
           nerf_risk: m.nerf_risk || 'auto',
           volatility_index: m.volatility_index || '',
           popularity_summary: m.popularity_summary || '',
@@ -599,7 +599,7 @@ export default function SlotGuideFormApp() {
         manufacturer: machine.manufacturer,
         type: machine.type,
         difficulty: machine.difficulty,
-        vegas_availability: machine.vegas_availability === CUSTOM_SENTINEL ? null : (machine.vegas_availability || null),
+        popularity: machine.popularity === CUSTOM_SENTINEL ? null : (machine.popularity || null),
         nerf_risk: machine.nerf_risk,
         volatility_index: (machine.volatility_index === CUSTOM_SENTINEL ? null : machine.volatility_index) || null,
         popularity_summary: machine.popularity_summary || null,
@@ -832,24 +832,24 @@ export default function SlotGuideFormApp() {
                 </select>
               </div>
               <div>
-                <label className={lc}>Vegas availability <span className="text-gray-500 font-normal text-xs">(🔥 rating)</span></label>
+                <label className={lc}>Popularity <span className="text-gray-500 font-normal text-xs">(🔥 rating)</span></label>
                 <select
                   className={ic}
-                  value={isCustomVal(machine.vegas_availability, VEGAS_OPTIONS) ? CUSTOM_SENTINEL : (machine.vegas_availability || '')}
-                  onChange={(e) => setMachineField('vegas_availability', e.target.value)}
-                  required={!isCustomVal(machine.vegas_availability, VEGAS_OPTIONS) && machine.vegas_availability !== CUSTOM_SENTINEL}
+                  value={isCustomVal(machine.popularity, POPULARITY_OPTIONS) ? CUSTOM_SENTINEL : (machine.popularity || '')}
+                  onChange={(e) => setMachineField('popularity', e.target.value)}
+                  required={!isCustomVal(machine.popularity, POPULARITY_OPTIONS) && machine.popularity !== CUSTOM_SENTINEL}
                 >
                   <option value="">— select —</option>
-                  {VEGAS_OPTIONS.map(v => <option key={v}>{v}</option>)}
+                  {POPULARITY_OPTIONS.map(v => <option key={v}>{v}</option>)}
                   <option value={CUSTOM_SENTINEL}>{CUSTOM_SENTINEL}</option>
                 </select>
-                {(isCustomVal(machine.vegas_availability, VEGAS_OPTIONS) ||
-                  machine.vegas_availability === CUSTOM_SENTINEL) && (
+                {(isCustomVal(machine.popularity, POPULARITY_OPTIONS) ||
+                  machine.popularity === CUSTOM_SENTINEL) && (
                   <input
                     className={`${ic} mt-2 text-sm`}
                     placeholder="Type custom value…"
-                    value={machine.vegas_availability === CUSTOM_SENTINEL ? '' : machine.vegas_availability}
-                    onChange={(e) => setMachineField('vegas_availability', e.target.value || CUSTOM_SENTINEL)}
+                    value={machine.popularity === CUSTOM_SENTINEL ? '' : machine.popularity}
+                    onChange={(e) => setMachineField('popularity', e.target.value || CUSTOM_SENTINEL)}
                   />
                 )}
               </div>
@@ -1118,7 +1118,7 @@ export default function SlotGuideFormApp() {
                 />
               </div>
             </div>
-            <p className="text-[11px] text-zinc-600 text-center">Updates as you type · Collapsed view only</p>
+            <p className="text-[11px] text-zinc-600 text-center">Updates as you type · Tap hero to expand/collapse</p>
           </div>
         </div>
       )}

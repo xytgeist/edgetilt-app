@@ -311,7 +311,7 @@ async function main() {
       manufacturer: m.manufacturer,
       type: m.type,
       difficulty: m.difficulty,
-      vegas_availability: m.vegas_availability,
+      popularity: m.popularity ?? m.vegas_availability,
       nerf_risk: nerfResolved,
       has_calculator: m.has_calculator,
       calculator_slug: m.calculator_slug,

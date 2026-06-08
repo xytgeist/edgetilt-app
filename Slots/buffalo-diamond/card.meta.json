@@ -7,13 +7,13 @@
     "manufacturer": "Aristocrat",
     "type": "Persistent State",
     "difficulty": "Intermediate",
-    "vegas_availability": "Common",
     "nerf_risk": "High",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": null,
+    "popularity": "Common"
   },
   "guide_seed": {
     "slug": "buffalo-diamond",

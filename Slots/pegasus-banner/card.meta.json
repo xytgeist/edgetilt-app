@@ -7,13 +7,13 @@
     "manufacturer": "Everi",
     "type": "Persistent State",
     "difficulty": "Beginner",
-    "vegas_availability": "Uncommon",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": "Low",
     "popularity_summary": null,
-    "release_year": 2023
+    "release_year": 2023,
+    "popularity": "Uncommon"
   },
   "guide_seed": {
     "slug": "pegasus-banner",
@@ -51,7 +51,10 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": ["pegasus-banner-1.webp", "aztec-banner-skin.webp"],
+    "diagrams_relative": [
+      "pegasus-banner-1.webp",
+      "aztec-banner-skin.webp"
+    ],
     "legacy_slots_subfolder": null
   }
 }

@@ -7,13 +7,13 @@
     "manufacturer": "Aristocrat",
     "type": "Persistent State",
     "difficulty": "Intermediate",
-    "vegas_availability": "Very Common",
     "nerf_risk": "Medium",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": null,
+    "popularity": "Very Common"
   },
   "guide_seed": {
     "slug": "rich-little-piggies",

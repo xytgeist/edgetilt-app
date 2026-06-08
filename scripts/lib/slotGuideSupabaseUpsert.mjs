@@ -68,7 +68,7 @@ export async function upsertSlotGuideFromManifest(supabase, { json, content_mark
     manufacturer: machine.manufacturer,
     type: machine.type,
     difficulty: machine.difficulty,
-    vegas_availability: machine.vegas_availability,
+    popularity: machine.popularity ?? machine.vegas_availability,
     nerf_risk: nerfResolved,
     has_calculator: machine.has_calculator,
     calculator_slug: machine.calculator_slug,

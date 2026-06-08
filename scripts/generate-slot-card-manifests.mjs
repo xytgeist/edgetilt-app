@@ -63,7 +63,7 @@ function parseMachineInsert(sql) {
       manufacturer: unescapeSqlString(manufacturer),
       type: unescapeSqlString(type),
       difficulty: unescapeSqlString(difficulty),
-      vegas_availability: unescapeSqlString(vegas_availability),
+      popularity: unescapeSqlString(vegas_availability),
       nerf_risk: unescapeSqlString(nerf_risk),
       has_calculator: has_calculator === "true",
       calculator_slug:
@@ -121,10 +121,10 @@ function apBlock(m) {
   const type = m.type;
   const nerf = m.nerf_risk;
   const diff = m.difficulty;
-  const floor = m.vegas_availability;
+  const pop = m.popularity ?? m.vegas_availability;
 
   const volatility_summary = `${diff} play profile; nerf risk rated **${nerf}** for marketing/paytable drift.`;
-  const popularity_summary = `Floor presence (from seed): **${floor}**. Treat as marketing signal, not proof of edge.`;
+  const popularity_summary = pop ? `Popularity (from seed): **${pop}**. Treat as marketing signal, not proof of edge.` : null;
 
   const edge_vectors = [];
   const verification_checklist = [];
@@ -207,7 +207,7 @@ function cardSummaryBullets(m) {
   const ap = apBlock(m);
   return [
     `${m.type}: ${ap.edge_vectors[0]}`,
-    `Floor / rarity: ${m.vegas_availability} — re-verify same visit.`,
+    `Popularity: ${m.popularity ?? m.vegas_availability} — re-verify same visit.`,
     `Nerf: ${m.nerf_risk} — ${m.manufacturer} / jurisdictional packaging changes outcomes.`,
   ];
 }
@@ -259,7 +259,7 @@ function buildManifest(m) {
       manufacturer: m.manufacturer,
       type: m.type,
       difficulty: m.difficulty,
-      vegas_availability: m.vegas_availability,
+      popularity: m.popularity ?? m.vegas_availability,
       nerf_risk: m.nerf_risk,
       has_calculator: m.has_calculator,
       calculator_slug: m.calculator_slug,

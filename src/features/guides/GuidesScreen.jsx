@@ -274,7 +274,7 @@ function mergeLocalGuideDemos(rows) {
         manufacturer: 'Aristocrat',
         type: 'Must Hit By',
         difficulty: 'Beginner',
-        vegas_availability: 'Very Common',
+        popularity: 'Very Common',
         nerf_risk: 'Medium',
         has_calculator: false,
         calculator_slug: null,
@@ -303,7 +303,7 @@ function mergeLocalGuideDemos(rows) {
         manufacturer: 'Aristocrat',
         type: 'Persistent State',
         difficulty: 'Intermediate',
-        vegas_availability: 'Very Common',
+        popularity: 'Very Common',
         nerf_risk: 'High',
         has_calculator: false,
         calculator_slug: null,
@@ -332,7 +332,7 @@ function mergeLocalGuideDemos(rows) {
         manufacturer: 'IGT',
         type: 'Persistent State',
         difficulty: 'Intermediate',
-        vegas_availability: 'Very Common',
+        popularity: 'Very Common',
         nerf_risk: 'Medium',
         has_calculator: true,
         calculator_slug: 'stack-up-pays',
@@ -364,7 +364,7 @@ function mergeLocalGuideDemos(rows) {
         manufacturer: 'Ainsworth',
         type: 'Must Hit By Mystery Progressive',
         difficulty: 'Intermediate',
-        vegas_availability: 'Common',
+        popularity: 'Common',
         nerf_risk: 'Medium',
         has_calculator: true,
         calculator_slug: 'mhb',
@@ -395,7 +395,7 @@ function mergeLocalGuideDemos(rows) {
         manufacturer: 'AGS',
         type: 'Must Hit By Mystery Progressive',
         difficulty: 'Advanced',
-        vegas_availability: 'Common',
+        popularity: 'Common',
         nerf_risk: 'High',
         has_calculator: true,
         calculator_slug: 'mhb',
@@ -426,7 +426,7 @@ function mergeLocalGuideDemos(rows) {
         manufacturer: 'IGT',
         type: 'Must Hit By Mystery Progressive',
         difficulty: 'Intermediate',
-        vegas_availability: 'Very Common',
+        popularity: 'Very Common',
         nerf_risk: 'Medium',
         has_calculator: true,
         calculator_slug: 'mhb',
@@ -675,11 +675,17 @@ function volatilityLabel(row) {
   return m.difficulty || m.nerf_risk || '—'
 }
 
+function machinePopularity(m) {
+  if (!m) return ''
+  return m.popularity ?? m.vegas_availability ?? ''
+}
+
 function popularityLabel(row) {
   const m = machineForGuide(row)
   if (!m) return '—'
   if (m.popularity_summary) return m.popularity_summary
-  return m.vegas_availability || '—'
+  const pop = machinePopularity(m)
+  return pop || '—'
 }
 
 /** 1–5 ⚡ from volatility copy (custom index, label, or machine fields). */
@@ -712,11 +718,11 @@ function volatilityLightningCount(row) {
   return 3
 }
 
-/** 1–5 🔥 from floor-presence wording (`popularity_summary` / `vegas_availability`). */
+/** 1–5 🔥 from popularity copy (`popularity_summary` / `popularity`). */
 function popularityFireCount(row) {
   const m = machineForGuide(row)
   if (!m) return 3
-  const haystack = `${m.popularity_summary || ''} ${m.vegas_availability || ''} ${popularityLabel(row)}`.toLowerCase()
+  const haystack = `${m.popularity_summary || ''} ${machinePopularity(m)} ${popularityLabel(row)}`.toLowerCase()
 
   if (haystack.includes('extremely common')) return 5
   if (haystack.includes('abundant')) return 4
@@ -1710,7 +1716,7 @@ export default function GuidesScreen({
             manufacturer,
             type,
             difficulty,
-            vegas_availability,
+            popularity,
             nerf_risk,
             has_calculator,
             calculator_slug,
@@ -1726,6 +1732,45 @@ export default function GuidesScreen({
         .order('title')
 
       if (error) {
+        const missingPopularityCol =
+          error.message?.includes('popularity') &&
+          (error.message?.includes('machines') || error.message?.includes('column'))
+        if (missingPopularityCol) {
+          const { data: dPop, error: ePop } = await supabaseClient.from('guides').select(`
+              id,
+              slug,
+              title,
+              content_markdown,
+              card_ev_threshold,
+              last_updated,
+              created_at,
+              updated_at,
+              thumbnail_url,
+              published,
+              machines (
+                id,
+                slug,
+                name,
+                manufacturer,
+                type,
+                difficulty,
+                vegas_availability,
+                nerf_risk,
+                has_calculator,
+                calculator_slug,
+                thumbnail_url,
+                created_at,
+                updated_at,
+                release_year,
+                volatility_index,
+                popularity_summary
+              )
+            `)
+            .eq('published', true)
+            .order('title')
+          if (ePop) throw ePop
+          setRows(mergeLocalGuideDemos(dPop || []))
+        } else {
         const missingOptionalCols =
           error.message?.includes('volatility_index') ||
           error.message?.includes('popularity_summary') ||
@@ -1754,7 +1799,7 @@ export default function GuidesScreen({
                 manufacturer,
                 type,
                 difficulty,
-                vegas_availability,
+                popularity,
                 nerf_risk,
                 has_calculator,
                 calculator_slug,
@@ -1773,6 +1818,7 @@ export default function GuidesScreen({
           setRows(mergeLocalGuideDemos(d2 || []))
         } else {
           throw error
+        }
         }
       } else {
         setRows(mergeLocalGuideDemos(data || []))

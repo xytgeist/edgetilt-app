@@ -7,13 +7,13 @@
     "manufacturer": "Aristocrat",
     "type": "Persistent Reel Expansion",
     "difficulty": "Intermediate",
-    "vegas_availability": "Very Common",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": "Medium-High",
     "popularity_summary": null,
-    "release_year": 2022
+    "release_year": 2022,
+    "popularity": "Very Common"
   },
   "guide_seed": {
     "slug": "buffalo-ascension",

@@ -79,26 +79,31 @@ export default function LoginGate({ children }) {
 
   if (state === 'checking') {
     return (
-      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-400">Checking session…</p>
+      <div className="h-dvh overflow-y-auto overscroll-y-contain bg-gray-950">
+        <div className="min-h-dvh flex items-center justify-center">
+          <p className="text-gray-400">Checking session…</p>
+        </div>
       </div>
     )
   }
 
   if (state === 'not-admin') {
     return (
-      <div className="min-h-dvh bg-gray-950 flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-red-400 font-semibold">Your account does not have admin access.</p>
-        <button onClick={handleSignOut} className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-sm text-white">
-          Sign out
-        </button>
+      <div className="h-dvh overflow-y-auto overscroll-y-contain bg-gray-950">
+        <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-4">
+          <p className="text-red-400 font-semibold">Your account does not have admin access.</p>
+          <button onClick={handleSignOut} className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-sm text-white">
+            Sign out
+          </button>
+        </div>
       </div>
     )
   }
 
   if (state === 'login') {
     return (
-      <div className="min-h-dvh bg-gray-950 text-white flex items-center justify-center px-4">
+      <div className="h-dvh overflow-y-auto overscroll-y-contain bg-gray-950 text-white">
+        <div className="min-h-dvh flex items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-cyan-300">AP Guide editor</h1>
@@ -138,13 +143,14 @@ export default function LoginGate({ children }) {
             </button>
           </form>
         </div>
+        </div>
       </div>
     )
   }
 
   // state === 'ready'
   return (
-    <div>
+    <div className="h-dvh overflow-y-auto overscroll-y-contain bg-gray-950" data-slot-guide-form>
       <div className="flex justify-end px-4 pt-3">
         <button onClick={handleSignOut} className="text-xs text-gray-500 hover:text-gray-300">
           Sign out ({userRef.current?.email})

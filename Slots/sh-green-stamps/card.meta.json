@@ -7,13 +7,13 @@
     "manufacturer": "Classic",
     "type": "Accumulator",
     "difficulty": "Beginner",
-    "vegas_availability": "Rare (nostalgia)",
     "nerf_risk": "Low",
     "has_calculator": false,
     "calculator_slug": null,
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": null,
+    "popularity": "Rare (nostalgia)"
   },
   "guide_seed": {
     "slug": "sh-green-stamps",

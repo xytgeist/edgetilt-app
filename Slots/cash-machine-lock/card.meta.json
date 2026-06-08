@@ -7,13 +7,13 @@
     "manufacturer": "Light & Wonder",
     "type": "Lock Game",
     "difficulty": "Beginner",
-    "vegas_availability": "Common",
     "nerf_risk": "Low",
     "has_calculator": true,
     "calculator_slug": "cash-machine-lock",
     "volatility_index": null,
     "popularity_summary": null,
-    "release_year": null
+    "release_year": null,
+    "popularity": "Common"
   },
   "guide_seed": {
     "slug": "cash-machine-lock",

@@ -145,7 +145,7 @@ export function buildCardMeta(payload) {
       manufacturer: m.manufacturer,
       type: m.type,
       difficulty: m.difficulty,
-      vegas_availability: m.vegas_availability,
+      popularity: m.popularity ?? m.vegas_availability,
       nerf_risk: m.nerf_risk ?? "auto",
       has_calculator: Boolean(m.has_calculator),
       calculator_slug: m.has_calculator ? m.calculator_slug ?? slug : null,
@@ -194,8 +194,12 @@ export function validateIngestPayload(payload) {
     const m = /** @type {Record<string, unknown>} */ (machine);
     const slug = String(m.slug ?? "").trim();
     if (!SLUG_RE.test(slug)) errors.push("machine.slug must be lowercase kebab-case.");
-    for (const field of ["name", "manufacturer", "type", "vegas_availability"]) {
-      if (!String(m[field] ?? "").trim()) errors.push(`machine.${field} is required.`);
+    for (const field of ["name", "manufacturer", "type", "popularity"]) {
+      const val =
+        field === "popularity"
+          ? String(m.popularity ?? m.vegas_availability ?? "").trim()
+          : String(m[field] ?? "").trim();
+      if (!val) errors.push(`machine.${field} is required.`);
     }
     if (!DIFFICULTIES.has(String(m.difficulty))) {
       errors.push("machine.difficulty must be Beginner, Intermediate, or Advanced.");

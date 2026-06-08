@@ -7,13 +7,13 @@
     "manufacturer": "Aristocrat",
     "type": "MHB Counter",
     "difficulty": "Beginner",
-    "vegas_availability": "Extremely Common",
     "nerf_risk": "High",
     "has_calculator": true,
     "calculator_slug": "phoenix",
     "volatility_index": "Very High",
     "popularity_summary": null,
-    "release_year": 2024
+    "release_year": 2024,
+    "popularity": "Extremely Common"
   },
   "guide_seed": {
     "slug": "phoenix-link",
@@ -50,8 +50,9 @@
   "assets": {
     "hero_relative": "hero.webp",
     "thumbnails_relative": [],
-    "diagrams_relative": ["phoenix-link-skin.webp"],
+    "diagrams_relative": [
+      "phoenix-link-skin.webp"
+    ],
     "legacy_slots_subfolder": null
   }
 }
-

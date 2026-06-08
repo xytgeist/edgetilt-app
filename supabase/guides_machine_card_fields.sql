@@ -28,5 +28,5 @@ alter table public.machines drop constraint if exists machines_type_check;
 update public.machines
 set
   volatility_index = coalesce(nullif(trim(volatility_index), ''), 'High (extreme session swings)'),
-  popularity_summary = coalesce(nullif(trim(popularity_summary), ''), 'Strip & locals — very high floor presence')
+  popularity_summary = coalesce(nullif(trim(popularity_summary), ''), 'Strip & locals — very common')
 where slug = 'buffalo-link';

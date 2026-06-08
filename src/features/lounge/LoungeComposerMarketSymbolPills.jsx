@@ -1,5 +1,5 @@
 import { LOUNGE_MARKET_EMBED_MAX } from '../../utils/loungeMarketCaptionParse.js'
-import { marketSymbolDedupeKey } from './loungeCashtagAutocomplete.js'
+import { marketSymbolDedupeKey } from './loungeMarketSymbolUtils.js'
 
 /**
  * @param {{

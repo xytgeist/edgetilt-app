@@ -120,10 +120,16 @@ function volatilityLabel(m) {
   return m.difficulty || m.nerf_risk || '—'
 }
 
+function machinePopularity(m) {
+  if (!m) return ''
+  return m.popularity ?? m.vegas_availability ?? ''
+}
+
 function popularityLabel(m) {
   if (!m) return '—'
   if (m.popularity_summary) return m.popularity_summary
-  return m.vegas_availability || '—'
+  const pop = machinePopularity(m)
+  return pop || '—'
 }
 
 function volatilityCount(m) {
@@ -148,7 +154,7 @@ function volatilityCount(m) {
 
 function popularityCount(m) {
   if (!m) return 3
-  const h = `${m.popularity_summary || ''} ${m.vegas_availability || ''} ${popularityLabel(m)}`.toLowerCase()
+  const h = `${m.popularity_summary || ''} ${machinePopularity(m)} ${popularityLabel(m)}`.toLowerCase()
   if (h.includes('extremely common')) return 5
   if (h.includes('abundant')) return 4
   if (h.includes('very common')) return 4
@@ -399,7 +405,7 @@ export default function GuideCardPreview({
             </div>
 
             <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800">
-              <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Floor presence</div>
+              <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Popularity</div>
               <div className="mt-0.5">
                 <span className="inline-block origin-left scale-[0.65] text-sm leading-none" title={`${pCount} of 5`}>
                   {fireMeter(pCount)}

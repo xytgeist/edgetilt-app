@@ -34,6 +34,7 @@ export function parseGuideMarkdown(markdown) {
   const out = {
     when_to_play: '', when_to_stop: '', how_to_check: '',
     risk_bankroll: '', risk_summary: '', risk_bullets: '',
+    where_to_find: '',
     skins_markdown: '', gameplay_mechanics: '',
   }
   if (!markdown) return out
@@ -70,6 +71,8 @@ export function parseGuideMarkdown(markdown) {
       }
       out.risk_summary = summaryLines.join('\n').trim()
       out.risk_bullets = bullets.join('\n')
+    } else if (/Where to find/i.test(header)) {
+      out.where_to_find = stripImages(body)
     } else if (/Skins/i.test(header)) {
       out.skins_markdown = stripImages(body)
     } else if (/Gameplay/i.test(header)) {
@@ -98,6 +101,9 @@ export function buildGuideMarkdown({ title, guide }) {
   if (g.risk_summary.trim()) md += `${g.risk_summary.trim()}\n\n`
   const bullets = g.risk_bullets.split('\n').map(s => s.trim()).filter(Boolean)
   if (bullets.length) md += `${bullets.map(b => `- ${b}`).join('\n')}\n\n`
+
+  const whereToFind = g.where_to_find.trim()
+  if (whereToFind) md += `## 📍 Where to find\n\n${whereToFind}\n\n`
 
   const skins = g.skins_markdown.trim()
   if (skins) md += `## 🎭 Skins (same game different theme/art)\n\n${skins}\n\n`

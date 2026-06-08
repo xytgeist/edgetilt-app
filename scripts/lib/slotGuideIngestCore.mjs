@@ -1,4 +1,4 @@
-/** @typedef {"when_to_play" | "when_to_stop" | "how_to_check" | "risk" | "skins" | "gameplay"} DiagramPlacement */
+/** @typedef {"when_to_play" | "when_to_stop" | "how_to_check" | "risk" | "where_to_find" | "skins" | "gameplay"} DiagramPlacement */
 
 export const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -9,6 +9,7 @@ const PLACEMENTS = new Set([
   "when_to_stop",
   "how_to_check",
   "risk",
+  "where_to_find",
   "skins",
   "gameplay",
 ]);
@@ -109,6 +110,12 @@ export function buildGuideMarkdown(payload, opts = {}) {
     md += `${riskBullets.map((b) => `- ${b}`).join("\n")}\n\n`;
   }
   md += diagramsForPlacement(diagrams, "risk", slug, resolveUrl);
+
+  const whereToFind = String(guide.where_to_find ?? "").trim();
+  if (whereToFind) {
+    md += `## 📍 Where to find\n\n${whereToFind}\n\n`;
+    md += diagramsForPlacement(diagrams, "where_to_find", slug, resolveUrl);
+  }
 
   const skins = String(guide.skins_markdown ?? "").trim();
   if (skins) {

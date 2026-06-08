@@ -68,6 +68,7 @@ const PLACEMENTS = [
   { id: 'when_to_stop', label: 'After When to stop' },
   { id: 'how_to_check', label: 'After How to check' },
   { id: 'risk', label: 'After Risk & Warnings' },
+  { id: 'where_to_find', label: 'After Where to find' },
   { id: 'skins', label: 'After Skins' },
   { id: 'gameplay', label: 'After Gameplay' },
 ]
@@ -284,6 +285,7 @@ const blankGuide = {
   title: '', card_ev_threshold: '', published: true,
   when_to_play: '', when_to_stop: '', how_to_check: '',
   risk_bankroll: '', risk_summary: '', risk_bullets: '',
+  where_to_find: '',
   skins_markdown: '', gameplay_mechanics: '',
   // preview-only fields (not submitted to ingest/update)
   _slug: '', _created_at: '', _updated_at: '',
@@ -978,7 +980,6 @@ export default function SlotGuideFormApp() {
               ['how_to_check',      '🔍 How to check'],
               ['risk_bankroll',     '⚠️ Risk — bankroll line (e.g. 5–40 units)'],
               ['risk_summary',      '⚠️ Risk — summary paragraph'],
-              ['gameplay_mechanics','🎰 Gameplay mechanics'],
             ].map(([key, label]) => (
               <div key={key}>
                 <label className={lc}>{label}</label>
@@ -999,6 +1000,18 @@ export default function SlotGuideFormApp() {
                 )}
               </div>
             ))}
+            <div>
+              <label className={lc}>⚠️ Risk bullets (one per line, optional)</label>
+              <textarea className={`${ic} min-h-24`} value={guide.risk_bullets} onChange={(e) => setGuideField('risk_bullets', e.target.value)} />
+            </div>
+            <div>
+              <label className={lc}>📍 Where to find <span className="text-gray-500 font-normal text-xs">(optional)</span></label>
+              <textarea
+                className={`${ic} min-h-36`}
+                value={guide.where_to_find}
+                onChange={(e) => setGuideField('where_to_find', e.target.value)}
+              />
+            </div>
 
             {/* Skins — separate because it needs the slug-link picker */}
             <div>
@@ -1011,8 +1024,12 @@ export default function SlotGuideFormApp() {
               />
             </div>
             <div>
-              <label className={lc}>⚠️ Risk bullets (one per line, optional)</label>
-              <textarea className={`${ic} min-h-24`} value={guide.risk_bullets} onChange={(e) => setGuideField('risk_bullets', e.target.value)} />
+              <label className={lc}>🎰 Gameplay mechanics</label>
+              <textarea
+                className={`${ic} min-h-28`}
+                value={guide.gameplay_mechanics}
+                onChange={(e) => setGuideField('gameplay_mechanics', e.target.value)}
+              />
             </div>
           </section>
 

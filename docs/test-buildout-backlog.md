@@ -639,6 +639,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-06-08: **Guide Where to find section:** optional **`## 📍 Where to find`** markdown block after Risk & Warnings (before Skins) in **`buildGuideMarkdown`** / slot-guide-form; Coin Kingdom Aztec seeded. Client-only + **`slots:sync`** for DB markdown.
 - 2026-06-08: **Guide cards — `vegas_availability` → `popularity` (code on `test`):** migration **`20260610170000_machines_popularity_rename.sql`** renames **`machines.vegas_availability`** → **`popularity`**; all **`Slots/*/card.meta.json`**, sync/ingest, **`GuidesScreen`**, **`GuideCardPreview`**, **`slot-guide-form`** updated. Client falls back to legacy column until SQL applied. **Apply migration on test before client deploy.**
 - 2026-06-07: **Lounge market idle poll gate (client, `test`):** feed **`batch_rolling`** (90s) and quick modal rolling **`modal_series`** (60s) skip while user idle (~90s no pointer/scroll/key), tab hidden, or Lounge tab inactive; one refresh on next interaction. **`loungeMarketPollActivity.js`**. Client-only.
 - 2026-06-07: **Lounge cashtag inline autocomplete removed (client, `test`):** dropped **`$` typeahead** (`loungeCashtagAutocomplete.js`, **`LoungeCashtagDropdown.jsx`**) — charts via caption **`$TICKER`** auto-attach on post/save or **composer toolbar chart sheet** + pills. Client-only.

@@ -841,16 +841,50 @@ export default function SlotGuideFormApp() {
     })
   }, [pickFile])
 
+  const livePreviewPanel = showPreview ? (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-widest">
+        <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+        Live card preview
+      </div>
+      <div className="rounded-[2.5rem] border-2 border-zinc-700 bg-zinc-950 p-3 shadow-2xl shadow-black/60">
+        <div className="rounded-[2rem] overflow-hidden">
+          <GuideCardPreview
+            guide={{
+              slug: guide._slug || machine.slug,
+              title: guide.title,
+              card_ev_threshold: guide.card_ev_threshold,
+              created_at: guide._created_at,
+              updated_at: guide._updated_at,
+            }}
+            machine={machine}
+            heroFile={heroFile}
+            heroUrl={currentThumbnail}
+            contentMarkdown={previewMarkdown}
+            guideList={guideList}
+          />
+        </div>
+      </div>
+      <p className="text-[11px] text-zinc-600 text-center">Updates as you type · Tap hero to expand/collapse</p>
+    </div>
+  ) : null
+
   return (
     <>
     {filePickerPortal}
     <div className="bg-gray-950 text-white px-4 py-8 pb-[max(6rem,env(safe-area-inset-bottom,0px))]">
       {/* Two-column on large screens: form left, card preview right */}
       <div className="max-w-7xl mx-auto">
-      <div className={`flex gap-8 items-start ${showPreview ? 'xl:grid xl:grid-cols-[1fr_360px]' : ''}`}>
+      <div className={`flex gap-8 items-start ${showPreview ? 'lg:grid lg:grid-cols-[1fr_360px]' : ''}`}>
 
       {/* ── LEFT: form ── */}
       <div className="flex-1 min-w-0 space-y-6">
+
+        {livePreviewPanel && (
+          <div className="lg:hidden max-w-md mx-auto w-full">
+            {livePreviewPanel}
+          </div>
+        )}
 
         {storedDraft && !isEdit && (
           <div className="rounded-2xl border border-cyan-600/40 bg-cyan-950/50 px-4 py-3 space-y-2">
@@ -1380,34 +1414,11 @@ export default function SlotGuideFormApp() {
 
       </div>{/* end form column */}
 
-      {/* ── RIGHT: sticky live card preview ── */}
-      {showPreview && (
-        <div className="hidden xl:block w-[360px] shrink-0">
-          <div className="sticky top-8 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-widest">
-              <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              Live card preview
-            </div>
-            {/* Phone-frame chrome for context */}
-            <div className="rounded-[2.5rem] border-2 border-zinc-700 bg-zinc-950 p-3 shadow-2xl shadow-black/60">
-              <div className="rounded-[2rem] overflow-hidden">
-                <GuideCardPreview
-                  guide={{
-                    slug: guide._slug || machine.slug,
-                    title: guide.title,
-                    card_ev_threshold: guide.card_ev_threshold,
-                    created_at: guide._created_at,
-                    updated_at: guide._updated_at,
-                  }}
-                  machine={machine}
-                  heroFile={heroFile}
-                  heroUrl={currentThumbnail}
-                  contentMarkdown={previewMarkdown}
-                  guideList={guideList}
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-zinc-600 text-center">Updates as you type · Tap hero to expand/collapse</p>
+      {/* ── RIGHT: sticky live card preview (wide screens) ── */}
+      {livePreviewPanel && (
+        <div className="hidden lg:block w-[360px] shrink-0">
+          <div className="sticky top-8">
+            {livePreviewPanel}
           </div>
         </div>
       )}

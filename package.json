@@ -18,7 +18,27 @@
     "slots:sync:production:dry": "node scripts/sync-slot-forms-to-supabase.mjs --target=production --dry-run",
     "slots:sync:production:dry:quiet": "node scripts/sync-slot-forms-to-supabase.mjs --target=production --dry-run --dry-run-quiet",
     "slots:backfill-card-fields": "node scripts/backfill-slot-card-fields.mjs",
-    "slot-guide:serve": "node scripts/slot-guide-ingest-server.mjs"
+    "slot-guide:serve": "node scripts/slot-guide-ingest-server.mjs",
+    "machinepro:export": "node scripts/machinepro-export.mjs",
+    "machinepro:export:html": "node scripts/machinepro-export.mjs --html",
+    "machinepro:export:discover": "node scripts/machinepro-export.mjs --discover-only",
+    "machinepro:gap-report": "node scripts/machinepro-gap-report.mjs",
+    "machinepro:canonical-vs-export": "node scripts/machinepro-canonical-vs-export.mjs",
+    "machinepro:gap-export-list": "node scripts/machinepro-gap-export-list.mjs",
+    "machinepro:export:missing-html": "node scripts/machinepro-export.mjs --html --only-missing-from=machinepro-export-2026-06-08 --export-only",
+    "advantageslots:export": "node scripts/advantageslots-export.mjs",
+    "advantageslots:export:discover": "node scripts/advantageslots-export.mjs --discover-only",
+    "advantageplay:export": "node scripts/advantageplay-export.mjs",
+    "advantageplay:export:discover": "node scripts/advantageplay-export.mjs --discover-only",
+    "advantageplay:export:login": "node scripts/advantageplay-export.mjs --login-only",
+    "slotfarmers:export": "node scripts/slotfarmers-export.mjs",
+    "slotfarmers:export:discover": "node scripts/slotfarmers-export.mjs --discover-only",
+    "slotfarmers:export:login": "node scripts/slotfarmers-export.mjs --login-only",
+    "ap-guide:coverage": "node scripts/ap-guide-coverage.mjs",
+    "ap-guide:workspace:init": "node scripts/ap-guide-workspace-init.mjs",
+    "ap-guide:workspace:batch-init": "node scripts/ap-guide-workspace-batch-init.mjs",
+    "ap-guide:workspace:batch-mark": "node scripts/ap-guide-workspace-batch-mark.mjs",
+    "ap-guide:workspace:batch-run": "node scripts/ap-guide-workspace-batch-run.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.6",
@@ -53,6 +73,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "playwright": "^1.60.0",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"
   }

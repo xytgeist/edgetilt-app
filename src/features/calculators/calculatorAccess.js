@@ -1,13 +1,20 @@
 import { resolveRequiresSlotsEdge } from '../billing/contentAccessGates.js'
 
-/** @typedef {'phoenix'|'buffalo-link'|'stackup'|'mhb'} CalculatorKey */
+/** @typedef {'phoenix'|'buffalo-link'|'buffalo-diamond'|'stackup'|'mhb'} CalculatorKey */
 
-export const CALCULATOR_KEYS = /** @type {CalculatorKey[]} */ (['phoenix', 'buffalo-link', 'stackup', 'mhb'])
+export const CALCULATOR_KEYS = /** @type {CalculatorKey[]} */ ([
+  'phoenix',
+  'buffalo-link',
+  'buffalo-diamond',
+  'stackup',
+  'mhb',
+])
 
 /** Static calculator chrome — served from `public/calculators/` (not guide R2 assets). */
 export const CALCULATOR_ICON_SRC = {
   phoenix: '/calculators/phoenix-link.webp',
   'buffalo-link': '/calculators/buffalo-link.webp',
+  'buffalo-diamond': '/calculators/buffalo-link.webp',
   stackup: '/calculators/stack-up-pays.webp',
   mhb: '/calculators/mhb.webp',
 }
@@ -18,7 +25,7 @@ export const CALCULATOR_ICON_SRC = {
  * Admin UI overrides (when migration applied) take precedence.
  */
 export const FREE_CALCULATOR_KEYS = new Set(
-  /** @type {CalculatorKey[]} */ (['stackup', 'phoenix']),
+  /** @type {CalculatorKey[]} */ (['stackup', 'phoenix', 'buffalo-diamond']),
 )
 
 function codeDefaultCalculatorRequiresSlotsEdge(key) {
@@ -81,6 +88,20 @@ export const CALCULATOR_CATALOG = [
     iconImgClassName: 'h-full w-full object-cover object-center',
     buttonClassName:
       'mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-amber-700 via-orange-700 to-red-800 p-6 text-left ring-1 ring-orange-800/45 transition-all hover:from-amber-600 hover:via-orange-600 hover:to-red-700 hover:ring-orange-700/50 active:scale-[0.985] sm:gap-5 sm:p-8',
+    titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-[#fff]',
+    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-[rgba(255,255,255,0.82)] sm:line-clamp-2',
+  },
+  {
+    key: 'buffalo-diamond',
+    title: 'Buffalo Diamond EV Calc',
+    subtitle: '2× / 3× / 4× free-games meter analyzer',
+    iconSrc: CALCULATOR_ICON_SRC['buffalo-diamond'],
+    iconAlt: 'Buffalo Diamond',
+    iconWrapClassName:
+      'relative flex h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600/90 to-teal-800 shadow-inner ring-1 ring-emerald-900/45',
+    iconImgClassName: 'h-full w-full object-cover object-center',
+    buttonClassName:
+      'mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-emerald-800 via-teal-800 to-emerald-950 p-6 text-left ring-1 ring-emerald-800/45 transition-all hover:from-emerald-700 hover:via-teal-700 hover:to-emerald-900 hover:ring-emerald-700/50 active:scale-[0.985] sm:gap-5 sm:p-8',
     titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-[#fff]',
     subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-[rgba(255,255,255,0.82)] sm:line-clamp-2',
   },

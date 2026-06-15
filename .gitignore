@@ -16,6 +16,23 @@ dist-ssr
 .env.supabase.test
 .env.supabase.production
 
+# Machine Pro local export (member content — never commit)
+.machinepro-auth.json
+machinepro-export/
+
+# Advantage Slots local export (member content — never commit)
+.advantageslots-auth.json
+advantageslots-export/
+
+# AdvantagePlay.club local export (member content — never commit)
+.advantageplay-auth.json
+advantageplay-export/
+
+# SlotFarmers.club local export (member content — never commit)
+.slotfarmers-auth.json
+slotfarmers-export/
+ap-guide-workspace/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

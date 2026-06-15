@@ -12,6 +12,7 @@ import {
 
 const PhoenixLink = lazy(() => import('./games/PhoenixLink.jsx'))
 const BuffaloLink = lazy(() => import('./games/BuffaloLink.jsx'))
+const BuffaloDiamond = lazy(() => import('./games/BuffaloDiamond.jsx'))
 const StackUpPays = lazy(() => import('./games/StackUpPays.jsx'))
 const MHBCalculator = lazy(() => import('./games/MHBCalculator.jsx'))
 
@@ -192,6 +193,15 @@ export default function CalculatorsTab({
       {activeCalculator === 'buffalo-link' ? (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
           <BuffaloLink
+            onBack={() => setActiveCalculator(null)}
+            supabaseClient={supabaseClient}
+            onOpenLogbook={onOpenLogbook}
+          />
+        </ScrollLinkedEdgeTitleBarShell>
+      ) : null}
+      {activeCalculator === 'buffalo-diamond' ? (
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
+          <BuffaloDiamond
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
             onOpenLogbook={onOpenLogbook}

@@ -162,6 +162,9 @@ function resolveCalculatorKey(machine) {
   ) {
     return 'buffalo-link'
   }
+  if (slug === 'buffalo-diamond' || slug === 'buffalo-diamond-extreme' || calc === 'buffalo-diamond') {
+    return 'buffalo-diamond'
+  }
   if (slug === 'stack-up-pays' || calc === 'stack-up-pays') return 'stackup'
   if (slug === 'phoenix-link' || calc === 'phoenix-link') return 'phoenix'
   if (
@@ -177,7 +180,7 @@ function resolveCalculatorKey(machine) {
   }
   if (slug === 'cash-machine-lock' || calc === 'cash-machine-lock') return null
   if (has && calc === 'mhb') return 'mhb'
-  if (has && calc && ['buffalo-link', 'buffalo', 'stackup', 'phoenix', 'mhb'].includes(calc)) {
+  if (has && calc && ['buffalo-link', 'buffalo', 'buffalo-diamond', 'stackup', 'phoenix', 'mhb'].includes(calc)) {
     return calc === 'buffalo' ? 'buffalo-link' : calc
   }
   return null

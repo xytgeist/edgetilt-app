@@ -163,6 +163,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 - Lounge **thread** SQL chain through **`20260608210000`** — apply order in backlog Update log **2026-06-08** / **2026-06-09**.
 - Lounge **market charts:** Edge **`lounge-market-data`** — redeploy after **`finnhubMarket.ts`** / **`yahooMarket.ts`** changes; snapshot PNG branding (**EDGE** wordmark) is **`loungeMarketChartSnapshot.js` only** — live **`LoungeMarketChartModal`** headers stay company-left.
 - AP Guide updates: **`/slot-guide-form`** only (Supabase + R2/Storage source of truth). **`README.md`** § AP guide updates + backlog **AP Guide editor**. Legacy **`slots:sync`** scripts remain but repo **`Slots/`** / **`public/guides/`** were removed.
+- AP Guide **workspace synthesize + ingest:** sources in **`ap-guide-workspace/<slug>/`** (manual mirror copies) → synthesize card → ingest to test → Ryan edits in form. Include **`machines.release_year`** on ingest (form field + card UI); **web-research** launch/floor year when exports don't state it (e.g. **`88-fortunes-emperors-coins`** → **2021**).
 - UI test pinned post: tail of **`supabase/seed/lounge_fake_posts.sql`**.
 
 ## Automation you can run anytime

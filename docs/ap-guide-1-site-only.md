@@ -1,0 +1,379 @@
+# AP guides — 1 site only
+
+Auto-generated from local export mirrors. Re-run: `npm run ap-guide:coverage -- --one-site-only`
+
+Total: **354** slots appear on only one source (alias clustering).
+
+| Site | Count |
+| --- | ---: |
+| Machine Pro | 115 |
+| Advantage Slots | 21 |
+| AdvantagePlay | 204 |
+| SlotFarmers | 14 |
+
+## Machine Pro (115)
+
+- 5 Coin Frenzy Jackpots: Tiger Wealth / Wukong Wealth
+- Angel Blade Kingdom of Ice / Sword of Destiny Fire Warrior
+- Aztec Adventures / Wu Wu Coins
+- Aztec Banner / Pegasus Banner
+- Aztec Vault / Cleopatra's Vault
+- Bier Bier Bier / Mai Tai Money
+- Bigger Fu Cash Bats: Prosperous Panda / Prosperous Pig
+- Blazin' Diamond / Lightning Wilds
+- Block Bonanza: Hawaii / Rio
+- Bonus Builder: Emerald Spins
+- Cai Fu Long
+- Cash Burst: Orb of Atlantis / Force of Babylon
+- Cash Cano: Roman Riches / Tiki
+- Cash Falls: Huo Zhu / Pirate's Trove / Island Bounty / Outback Bounty
+- Classic Hits: Coyote Moon Deluxe / Money Storm Deluxe / Lucky Larry's Lobstermania Deluxe
+- Coin Catch
+- Coin Combo: Hurricane Horse / Perfect Peacock
+- Coin Kingdom: Aztec / Egyptian
+- Colossal Titans
+- Crackin' Cash: Grand Venezia / Rio Wonder
+- Dawn of Ra / Sun of Ra: Wild Pyramid Respins
+- Dice Seeker: Flappers & Dappers / Heroes & Villains / Viking Invasion
+- Double Dragon: Jin Long Jin Bao
+- Double Jackpot Blazing 7s With Quick Hit Feature: High Limit Edition
+- Dragon Lights: Fortune Skies / Mystical Falls / Secret Fortress
+- Dragon Rush: Fei Jin / Fei Nu
+- Dragon Spin CrossLink: Air / Earth / Fire / Water
+- Dragon Unleashed: Prosperity Packets / Red Fleet / Three Legends / Treasured Happiness
+- Epic Fortunes: Blast Chance / Power Peach
+- Extreme Wild: Lanterns / Stars
+- Fat Fortunes: Fat Cat / Puffy Penguin / Jelly Jams
+- Firecano Freeze / Firecano Glory
+- Fortune Garden / Fu Blossom
+- Fortune Rooster
+- Fuse Blast / Caifu Zhi Wu
+- Gift of the Nile / Dragon Flame
+- God of Winning: Great Hammer / Super Spear
+- Golden Beasts / Golden Elements: Brilliant Fortunes
+- Golden Egypt / Dancing Phoenix Soaring Dragon
+- Guardians of the Aztec / Guardians of Giza
+- Happy Blessings / Happy Blossoms
+- Hold N Gold: Acorn Falls / Hot Spell
+- Huff N' Puff: We've Had Enuff
+- Icy Wilds / Icy Wilds Deluxe / Fa Cai Long
+- Imperial Fortunes / Penguin Palace
+- Inferno Wheel: Aztec Awards / Polynesian Pays
+- Jackpot Catcher: Sun / Moon
+- Jewel Collection: Dragon / Vault
+- Jin Ji Bao Xi Grand: Phoenix / Tiger
+- Joe Blow Diamonds / Joe Blow Gold
+- Knock Knock Guardians: Queen / Raider
+- Kraken Unleashed: Lobster Bay / Wild Vikings / Dive for Five
+- Let's Spin / Let's Spin Vegas
+- Lucky Buddha / Lucky Wealth Cat
+- Lucky Coin Link: Asian Dreaming / Atlantica
+- Lucky Empress / Inca Empress
+- Lucky Haul / March of the Zombies
+- Lucky Larry's Lobstermania 4 Link / Super Sally's Shrimpmania 4 Link
+- Lucky Pick: Bumble Bee / Cash Tree / Leprechaun
+- Luckymon Evolutions: All That Glitters / On a Silver Platter
+- Madonna: Mighty Cash
+- Magic Treasures Gold: Emperor / Empress
+- Magic Treasures: Dragon / Tiger
+- Master Da Dang Jia: Fine Fortunes / Vivid Diamonds
+- Ocean Magic 4D / Ocean Magic Ultra
+- Olympus Awakening / Ra's Awakening
+- Panther's Throne / Tiger's Throne
+- Phoenix Link: Confucius Say / General Tso / Queen Chiu / Sensei Master
+- Piggy Blessings
+- Piggy Parade
+- Pillars of Cash: Celestial Fortune / Festive Fortune
+- Power Push: Jin Gou / Long De Xiyue
+- Prize Pool: Cactus Cash / Fierce Dragon
+- Pub Series: Anastasia's Tavern / Isabella's Tequileria / Kaleigh's Pub / Sofia's Cellar
+- Raise the Sails / San Xing Riches
+- Really Wicked Winnings
+- Reel Rainbows
+- Regal Link: Lion / Raven
+- Rich Little Piggies: Hog Wild / Meal Ticket
+- Rich Little Sheep: On the Lamb / Wool Street Riches
+- River Dragons / Fire Wolf 2 / Forest Dragons / Winter of the Dragons / Wolf Queen
+- Samurai Dynasty
+- Sea Story: Fluffy Treasure
+- Stack Up Pays: Island Riches / Sakura Riches, Ascending Fortunes: Jewel Oasis / Pagoda Rising
+- Super Bowl Jackpots
+- Super Colossal Reels: Spartacus / Li'l Red / The Red Riders / Mysteries of RA
+- Super Lit Vegas / Fortune Spin
+- Super Winning Streak: Lion Eyes / Wolf Eyes
+- Temple Falls: Jungle Adventure
+- Thor's Thunder
+- Tic Tac Go
+- Top Up Fortunes: Flame / Ocean
+- Treasure Blast: Balloon / Fleet
+- Treasure Box: Kingdom / Dynasty
+- Treasure Shot: Pirate Ship / Robin Hood
+- Ultimate Fire Link Cash Falls: China Street / Olvera Street
+- Voodoo Jackpots: Jack's Gold
+- What the Duck: Dusty / Snowy
+- Wheel Frenzy: Frights N' Delights / Genie Unleashed
+- Wheel of Fortune 4D Collector's Edition
+- Wheel of Fortune 4D More Money
+- Wheel of Fortune Wild Boost: Silver / Gold
+- Wheel of Fortune Wild Spin Live
+- Wheel of Fortune Wild Spin: Vacation / Night Life
+- Wild Explosion: Get'Cha Gold / Get'Cha Money / Get'Cha Reward / Get'Cha Treasure
+- Wild Force: Bison Sunrise / Midnight Wolf
+- Wild Pile-Up: Cutie Kitty / Tiger Lee
+- Wild Pirates / Guardians of Egypt
+- Winning Wings: Butterflies / Fairies
+- Wizard of Oz: Follow the Yellow Brick Road
+- Wizard Strike
+- Wolf Peak / Cat Peak / Fu Ren Wu
+- Wu Dragon / Star Goddess
+- Wu Jin Pen: Fuyu Phoenix / Panda
+- Zhao Cai Zhu: Gettin' Piggy With It / Yo Ho Hog
+
+## Advantage Slots (21)
+
+- “You've made it to the top!” How to advantage play Empire/Visitors From an Udder World
+- Advantage Playing Aristocrat's “5 Coin Frenzy Jackpots Wukong Wealth”
+- Advantage Playing Jurassic Park Trilogy
+- Advantage Playing Spielo's Cash Eruption
+- And Another Clone. Advantage Play IGT's Golden Jungle
+- Attack of the Clones. Fu Ru Dong Hai
+- Can you beat Dragon Link, Lightning Link, Dollar Storm or Lock It Link?
+- Dispelling Common Slot Machine Myths
+- Don't be in a rush. Valley of Gold Progressives Slot Machines
+- Going Back to the Past Again. How to Advantage Play Aruze's Rescue Spins
+- Have some fun but don't expect to make to make a fortune on Aruze's “Sinbad”
+- How to Advantage Play “DragonSphere” by IGT. Looks familiar doesn't it?
+- How to Advantage Play “Jackpot Explosion”
+- How To Advantage Play “New Year Festival”
+- How to Advantage Play “Winner's Wave”
+- How to Advantage Play Spielo/GTECH's “Legends of Fire and Water”
+- I Love Magic Lamps. How to Advantage Play & Beat Aladdin's Fortune 3D
+- More Treasure Tokens: Advantage Playing IGT's Throne of Zinon
+- Privacy Policy
+- SuperStreak By Colossal Gaming. A Not So Common Advantage Slot Machine of The Past?
+- Zombies Are Coming. How To Advantage Play “Plants Vs Zombies 3D”
+
+## AdvantagePlay (204)
+
+- Aztec Adventure
+- Aztec Banner
+- Aztec Vault
+- Azure Dragon
+- Bier Bier Bier
+- Big Ocean Jackpots
+- Bigger Fu Cash Bats
+- Blazing X
+- Block Bonanza Advantage Play Slot
+- Bonus Builder
+- Brave Firefighter
+- Brave Spirit
+- Bubble Blast
+- Bubble Mania
+- Buffalo Cash
+- Buffalo Diamond Extreme
+- Cai Fu Journey
+- Captain Riches
+- Captains Quest
+- Cash Burst
+- Cash Cano
+- Cash Quest
+- Cashman Double Bingo
+- Cat Peak
+- Cats Wild Serengeti
+- Chili Charge
+- Cleoptras Vault
+- Coin Combo
+- Colossal Titan
+- Congo Cash
+- Crackin Cash
+- Crush Conquest
+- Crush Dynasty
+- Cyber Dragon
+- Dancing Phoenix Soaring Dragon
+- Dawn of RA
+- Diamond Blast
+- Diamond Collector
+- Diamond Tide Jungle
+- Double Dragon
+- Dragon Flame
+- Dragon Lights Gold
+- Dragon Rush Advantage Pla
+- Dragon Sphere
+- Dragon Spin Crosslink
+- Dragon Unleshed
+- Dragons Orb Jackpots
+- Eagle Ascension
+- Egyptian Stars
+- Electro Max
+- Emerald Guardian
+- Extreme Wild Lanterns
+- Extreme Wild Stars
+- Farmville
+- Farmville Golden Harvest
+- Fat Fortunes
+- Firecano
+- Firelight Eruption
+- Forest Dragons
+- Fortune Disc
+- Fortune Link
+- Fortune Magnet
+- Frankenstein Returns
+- Freedom Luck
+- Fu Dai Lian Lian Boost
+- Fu Ren Wu
+- FU Stacks
+- Fuse Blast
+- Genie Unleashed
+- Gift of the Nile
+- Golden Beasts
+- Golden Dragon
+- Golden Elements
+- Golden Messenger
+- Grand Buddha Link
+- Grand Cat Link
+- Great Tiki
+- Guardians of Egypt
+- Guardians Of Giza
+- Guardians Of The Aztec
+- Happy 8s
+- Happy Blessings
+- Hold n Gold
+- Honey Bucks
+- Hong Hong Huo Huo
+- HooDoo Link
+- Huff n Puff we've had enough
+- Ice Kingdom Fire Warrior
+- Inca Empress
+- Jackpot Catcher
+- Jackpot Party
+- Jade Monkey
+- Ji Ji Fu
+- Jie Jie Gao Sheng
+- JiN Ji Bao Xi
+- Joe Blow
+- Jolly 8s
+- Jurassic Park
+- Kingdom of Ice
+- Knock Knock Guardians
+- Kraken Unleshed
+- Lets Spin
+- Life of Luxury
+- Lightning 10 Year Strom
+- Lightning and the Thunder
+- Lil Red
+- Lobster Mania Deluxe
+- Lucha Kitty
+- Lucky Buddha
+- Lucky Coin Link
+- Lucky Empress
+- Lucky Larrys Lobstermania 4 Link
+- Lucky Wealth Cat
+- Luckymon Evolutions
+- Lunar Disc
+- Magic Wishes
+- Master Da Dang Jia
+- Mighty Cash Spins
+- Mine Blast
+- Miss Kitty Wild Ride
+- Money Hits
+- Money Storm Deluxe
+- Multi Win 7
+- New Years Parade
+- NFL Super Bowl Jackpots
+- Nights Dream Wheel
+- Ocean Magic Reels
+- Ocean Magic Ultra
+- Palace of Wonders
+- Pandas Treasure
+- Panthers Throne
+- Payday
+- Pegasus Banner
+- Pharaoh Link
+- Piggy Parada
+- Pinwheel Prizes
+- Pirates Treasure
+- Pots O Luck
+- Prize Pool Block Bonanza
+- Pub Series
+- Quick Spin Mai Tai Money
+- Red Silk
+- Reel Climb
+- Rich Little Hens World Class
+- Rich Little Piggies World Class
+- Rich Little Sheep
+- Rising Diamonds
+- River Dragons
+- Rubies Instant Hit
+- Samurai Destiny
+- Scarab Link
+- Scared Deer
+- Sea Story
+- Show me the Piggy
+- Silver Dollar Shootout
+- Spartacus
+- Spells N Whistles
+- Star Goddess
+- Sumo Kitty
+- Sun of Ra
+- Super Sallys Shrimpmania 4 Link
+- Super Winning Streak
+- Sure Fire Jackpot Link
+- Sword of Destiny
+- Temple Falls
+- Thunder Cash
+- Tian Ci Jin Lu
+- Tigers Throne
+- Tiki Fortune
+- Timberwolf Diamond
+- Top Up Fortunes Flame
+- Top Up Fortunes Ocean
+- Treasure Blast Balloon
+- Treasure Shot
+- Trials of Atlantis
+- Triple Treasure Pot
+- Ultimate Fire Link Cash Falls
+- Ultimate Screaming Links
+- Upshot
+- Volcanic Sevens
+- Whales of Cash Ultimate Jackpots
+- What the Duck
+- Wheel of fortune Collectors Edition
+- Wheel of Fortune Wild Boost
+- White Wizard
+- Wild Force
+- Wild Pile Up
+- Wild Pirates
+- Winter of the Dragons
+- Wish Mistress
+- Wizard of Oz Follow the yellow Brick
+- Wo Shu Sky Spin
+- Wolf Peak
+- Wolf Ridge
+- Wu Da Jiang
+- Wu Dragon
+- Wu Jin Pen Parade
+- WuWu Coins
+- Ying Cai Shen
+- Zodiac Dragon
+- Zodiac Dragon Cash on Reels
+- Zodiac Lion
+- Zodiac Lion Cash on Reels
+- Zorros Wild Ride
+
+## SlotFarmers (14)
+
+- Dancing Drums
+- Huff N Puff
+- Jade Monkey/Diamond Devils
+- Jin Ji Bao Xi Grand
+- Lobstermania/Shrimpmania
+- Must-Hit-By
+- Power Push: Shiseijuu Fortunes
+- Quick Hit: Ultra Pays
+- Star Goddess/Wu Dragon
+- Sumo Kitty/Lucha Kitty
+- Sword of Destiny/Angel Blade
+- Temple Falls/Boost Blast
+- Treasure Blast
+- Wu Jin Pen
+

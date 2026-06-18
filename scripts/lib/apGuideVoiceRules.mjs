@@ -19,8 +19,10 @@ export const AP_GUIDE_VOICE_RULES = {
     'skins_markdown',
     'gameplay_mechanics',
   ],
-  /** Where to find: ### heading, Vegas bullets, numbered regions — no summary line; no travel-planning copy. */
+  /** Where to find: optional section — Ryan fills via slot-guide-form; batch synth must omit. */
   whereToFindFormat: 'lightning-numbered-regions-no-summary-no-travel',
+  /** Batch synth: never draft Where to find — Ryan adds install data in slot-guide-form after ingest. */
+  whereToFindBatchSynth: 'omit-ryan-fills-via-form',
   /** Ingest without hero; Ryan adds in form. */
   heroes: 'form-later-text-only',
   /** New cards default no calculator unless obvious from game family. */
@@ -36,60 +38,171 @@ export const AP_GUIDE_VOICE_RULES = {
   whenToPlayLead: 'primary-play-first',
   /** Sound like Ryan's edited cards on test — not generic AI guide copy. */
   soundHuman: 'match-ryan-edited-guides-on-test',
+  /** How to check: **checker ticket** when cycling bets needs balance — not "pay to check". */
+  howToCheckCheckerTicket: 'checker-ticket-not-pay-to-check',
+  /** Same-engine theme clones → one slug/card by default; split when glass/theme confuses new users (Fu Ren Wu). */
+  skinFamilyMerge: 'one-card-per-engine-unless-theme-split',
 }
 
 /**
  * Published guides Ryan has edited — read these on test before batch synth for voice.
- * (Not an exhaustive list; grows as cards ship.)
+ * Synced from test `guides.slug` (all current cards as of Ryan sign-off).
  */
 export const RYAN_VOICE_REFERENCE_SLUGS = [
   '5-coin-frenzy-jackpots',
   '88-fortunes-emperors-coins',
+  'ags-must-hit-by',
+  'ainsworth-must-hit-by',
+  'aladdins-fortune',
   'alien-heroes',
   'angel-blade-sword-of-destiny',
-  'blazin-diamond-lightning-wilds',
-  'buffalo-link',
-  'coin-kingdom-aztec',
+  'ascending-fortunes',
+  'aztec-adventures-wuwu-coins',
+  'aztec-banner',
+  'aztec-vault-cleopatras-vault',
+  'azure-dragon-emerald-guardian',
+  'bier-bier-bier-mai-tai-money',
   'big-ocean-jackpots',
+  'bigger-fu-cash-bats',
+  'blazin-diamond-lightning-wilds',
+  'blazing-x',
   'block-bonanza-hawaii-rio',
+  'blooming-penzai',
+  'bonus-builder-emerald-spins',
+  'brave-firefighter',
+  'brian-christophers-world-cruise',
+  'bubble-blast',
+  'bubble-mania',
+  'buffalo-ascension',
+  'buffalo-cash',
+  'buffalo-diamond',
+  'buffalo-diamond-extreme',
+  'buffalo-instant-hit',
+  'buffalo-link',
+  'buffalo-power-pay',
+  'bustin-money',
+  'cai-fu-long',
+  'captain-riches-tiki-fortune',
+  'cash-burst-orb-of-atlantis-force-of-babylon',
+  'cash-cano-roman-riches-tiki',
+  'cash-eruption',
+  'cash-falls-huo-zhu-pirate-s-trove-island-bounty-outback-bounty',
+  'cash-quest',
+  'cash-up-jackpots',
+  'cash-wizard-magic-trio',
+  'cashman-bingo',
+  'cashman-double-bingo',
+  'cats-wild-serengeti',
+  'cherry-chance',
+  'clover-link-xtreme',
+  'coin-catch',
+  'coin-combo-hurricane-horse-perfect-peacock',
+  'coin-kingdom-aztec',
+  'coin-kingdom-aztec-egyptian',
+  'fu-ren-wu',
+  'golden-egypt',
+  'eagle-ascension',
+  'igt-must-hit-by',
+  'legend-of-the-phoenix',
+  'lightning-10-year-storm',
+  'lightning-buffalo-link',
+  'luckymon-evolutions',
+  'pegasus-banner',
+  'phoenix-link',
+  'stack-up-pays',
+  'wolf-peak-cat-peak-fu-ren-wu',
+  'wolf-run-eclipse',
 ]
+
+/**
+ * Reference when **Ryan** (or a directed manual edit) fills **Where to find** in slot-guide-form.
+ * **Batch synth agents: do not run this — leave `where_to_find` empty / omit the field.**
+ *
+ * Published copy: property names + regions only. Do not cite YouTube, slot finders, or Grok in the guide.
+ *
+ * @type {string[]}
+ */
+export const WHERE_TO_FIND_RESEARCH_STEPS = [
+  '1. **Broad discovery:** `"<exact title>" slot casino`, `"<title>" Las Vegas`, `"<title>" <manufacturer> floor`.',
+  '2. **Casino slot finders (strongest signal):** search operator tools — e.g. Boyd `site:boydgaming.com "<title>"`, per-property `site:cannery.boydgaming.com`, tribal/commercial casino slot-search pages. A name match on the finder = list the property.',
+  '3. **Per-property site search:** `"<title>" site:<casino-domain>` for properties that publish slot lineups or "what\'s new" pages.',
+  '4. **Secondary floor proof:** recent player video / social (`"<title>" Aliante`, `"<title>" El Cortez`) — weaker than a slot finder; OK to list when multiple reports align. Never link or name YouTube in guide copy.',
+  '5. **Negative check:** query major properties you might assume (`"<title>" Bellagio`, MGM, Caesars, Wynn, etc.). If zero hits on a new title, write **Not widely reported yet.** as its own line ... no Strip laundry list after it.',
+  '6. **Rollout inference (soft only):** if several Boyd (or one operator chain) properties list it, you may note **likely siblings (unconfirmed)** — never present pattern-matching as confirmed.',
+  '7. **Write the section:** Vegas bullets = confirmed + clearly labeled likely/unconfirmed. Numbered regions = documented properties on the region line, else **hit-or-miss by property**. No scout closers, no **Summary:** line, no URLs.',
+  '8. **Common / widespread footprint:** if the title is on **nearly all Vegas casinos** (or clearly common Strip + locals), say that in one plain Vegas line ... short nationwide list only when you have named properties. Do not pad with tribal region stacks, rollout hedging, or repeated **hit-or-miss** when footprint is obviously broad.',
+]
+
+/**
+ * Confidence labels for Where to find bullets (use in prose, not as a table in the card).
+ * @type {Record<string, string>}
+ */
+export const WHERE_TO_FIND_CONFIDENCE = {
+  confirmed: 'Slot finder or official casino slot page lists the exact title.',
+  reported: 'Multiple recent floor reports / player video at that property (no finder hit).',
+  likely: 'Same operator rollout pattern — label **unconfirmed** or **likely**.',
+  absent: 'Title-specific search found no hits at that property or market — OK to say **not widely reported yet**.',
+}
 
 /**
  * Ryan voice traits (from his edited cards — not AI polish).
  * @type {string[]}
  */
 export const RYAN_VOICE_TRAITS = [
+  'Batch synth: **omit where_to_find** — leave empty or drop the field. Ryan fills **Where to find** in `/slot-guide-form` when he has real install data. No web search, no `wtf()`, no tribal/region filler during batch builds.',
   'When to play: **Primary play / threshold first** ... what the AP is hunting. Mechanics and context after.',
   'First-person "I" sparingly ... best when contrasting field behavior: "Many APs sit at 3 coins ... I treat 4 as the cleaner floor." Not casual "I want ≥3 trees."',
   'Direct and blunt is OK: "Don\'t be a degen", "pain in the ass", "feast or famine", "you\'ll never find one worth chasing".',
   'Short sections when the play is simple — When to stop can be one line ("You\'re done once Frenzy Mode completes").',
   'When to stop = game objective only (feature finished, meter hit). Never "when your bankroll is gone" ... Bankroll section sets the rules.',
+  'Once seated on +EV, play until the feature hits. Bankroll sizes the upfront commitment ... never "loss cap", "walk", or "call it a loss" mid-chase.',
   'Bankroll on hand: first line is always **N units** (or a range). Extra context comes after the number.',
   '"Some APs" / "field reports" — never "community consensus" or "it is important to note".',
   'Ellipses for breath ... not em dashes; same as Ryan chat voice.',
   'Skins: often just names, or one line if mechanics differ (see buffalo-link: link only).',
-  'Where to find: no **Summary:** line at the end.',
-  'Where to find: state **where the game is available** — property names and regions only.',
-  'Where to find: no scout filler, no "when stocked", no "on X banks", no "standard hunt category", no "Reported placements include".',
-  'Where to find: name **specific casinos** when documented. **Hit-or-miss by property** when nothing is known ... never invent placements.',
+  'Where to find (Ryan manual only): no **Summary:** line at the end.',
+  'Where to find (Ryan manual only): state **where the game is available** — property names and regions only.',
+  'Where to find (Ryan manual only): follow WHERE_TO_FIND_RESEARCH_STEPS when Ryan asks for help — never paste WTF_VEGAS_* / WTF_REGIONS_* without a title hit.',
+  'Where to find (Ryan manual only): **whenever possible, name specific casinos** with confirmed or reported installs. Label **unconfirmed** / **likely** when inferring from operator rollout.',
+  'Where to find (Ryan manual only): no scout filler, no "when stocked", no "on X banks", no "standard hunt category", no "Reported placements include".',
+  'Where to find (Ryan manual only): when no property is documented, use **hit-or-miss by property** or region-only ... never invent casino names.',
   'Gameplay Mechanics: how the slot **plays** only ... no AP hunt advice, no "**AP:**" / "**AP angle:**" lines.',
   'Avoid AI section headers: "Honest take:", "Field reality:", "AP reality:", "Key considerations:".',
   'Avoid AI words: leverage, utilize, ensure, delve, comprehensive, robust, navigate, landscape, "It\'s worth noting".',
+  'When to play: no meta framing ("pick one before you coin in", "two hunts") ... jump straight into thresholds.',
+  'How to check: scouting steps only (cycle bets, read board, count units, verify timers). No play tactics that belong in When to play / When to stop.',
+  'How to check: when cycling bets/denoms needs balance, **insert checker ticket** first (small balance, usually under $1) ... not "pay to check", "must insert coin", or "must put money in".',
+  'Risk summary: checker-ticket note belongs here when bet cycling needs a small balance ... not in How to check as a vague paywall.',
+  'Skin families: same engine / clone titles → **one card** by default (**Wolf Peak** + **Cat Peak** on `wolf-peak-cat-peak-fu-ren-wu`). Split a **separate identical card** when the skin theme is different enough to confuse new users (**Fu Ren Wu**).',
+  'Where to find (Ryan manual only): **common / widespread** titles ... one plain Vegas line (**nearly all Vegas casinos**) is enough; keep nationwide short. No tribal laundry lists when footprint is obviously broad.',
+  'Sticky timers: spins must remain to play; full vs partial timer does NOT change +EV ... never "prefer max timer" as an advantage filter.',
+  'Volatility index: size to the AP chase (few spins = low), not source metadata or cabinet marketing labels.',
+  'Bankroll: ignore lazy source "500 units" when the play is a short chase ... size to actual spin count (~10 units when ~10 spins).',
+  'Risk & Warnings: one line is fine when that is all the play needs ... do not pad with verbose caveats.',
+  'Where to find (Ryan manual only): never paste WTF_VEGAS_* templates for brand-new titles without field evidence; verify installs or say what is unconfirmed.',
+  'Skins: "No separate skins." alone is enough ... do not explain character/feature names unless they are true alternate cabinet themes.',
 ]
 
 /** Guidance strings for batch handoffs / synth prompts. */
 export const AP_GUIDE_STYLE_NOTES = [
+  'Batch synth: **omit where_to_find** — Ryan fills via `/slot-guide-form` after ingest. Do not web-search installs or call `wtf()` in payloads.',
   'Sound like Ryan — read RYAN_VOICE_REFERENCE_SLUGS on test before writing.',
-  ...RYAN_VOICE_TRAITS.slice(0, 4),
+  ...RYAN_VOICE_TRAITS.slice(1, 5),
   'No source site names or links (MP, AP, Slot Farmers, etc.).',
   'Concise: drop redundant closers ("not a trip-worthy hunt", "verify label on glass", travel-planning lines).',
   'Skins section: usually just skin names; no parenthetical field instructions.',
-  'Where to find: numbered regions only — no Summary line.',
-  'Where to find: availability only — list properties/regions; cut obvious or manufacturer-padding qualifiers.',
-  'Where to find (regions): add casinos inside the region line when evidence exists (e.g. **Seminole Hard Rock Tampa** / **Hollywood** for Florida tribal).',
   'Gameplay Mechanics: machine behavior only — hunt rules belong in When to play / How to check.',
   'Bankroll on hand: lead with **300 units** / **40–80 units** style — never "large bankroll" without a number.',
   'When to play: primary threshold first; "I want/I treat" only in AP-vs-Ryan contrast lines.',
+  'When to play: no preamble framing lines ... thresholds first.',
+  'How to check: numbered scout list only ... no "stop immediately" or execution steps.',
+  'How to check: **checker ticket** when bet cycling needs balance ... never "pay to check" / "must insert coin".',
+  'Skin families: merge same-engine clones by default; duplicate card + shared payload when theme confuses search (**fu-ren-wu** vs **wolf-peak-cat-peak-fu-ren-wu**).',
+  'Volatility = chase length/variance, not scraped star ratings.',
+  'Bankroll: reject source bankroll when play is ~N spins; lead with matching unit count.',
+  'Risk: keep minimal when one warning covers the play.',
+  'Risk: never tell APs to walk mid-chase or set a loss cap ... bankroll = how much you commit before you sit; play until the feature hits.',
+  'Skins: "No separate skins." needs no follow-up sentence.',
 ]
 
 /** Phrases that must not appear in published guide body copy. */
@@ -140,6 +253,11 @@ export const WTF_SCOUT_FILLER_PATTERNS = [
   /\bProperty-specific\b/i,
   /\bdense \w+ pods\b/i,
   /\bcommercial floors with \w+ depth\b/i,
+  /\bavailability moves fast\b/i,
+  /\bfloor walk\b/i,
+  /\bask an attendant\b/i,
+  /\bscout blind\b/i,
+  /\bbefore you scout\b/i,
 ]
 
 /** AP hunt copy belongs outside Gameplay Mechanics. */
@@ -180,6 +298,16 @@ export const WHEN_TO_STOP_BROKE_PATTERNS = [
   /if you dabble for fun, quit when[^.\n]*\.?/gi,
   /N\/A for AP\s*\.\.\.\s*if you dabble[^.\n]*\.?/gi,
   /when your session bankroll[^.\n]*is gone[^.\n]*\.?/gi,
+]
+
+/** Risk copy — no mid-chase walk-away advice (bankroll sizes upfront commitment). */
+export const RISK_WALK_AWAY_PATTERNS = [
+  /\bloss cap\b/i,
+  /\bcall it a loss\b/i,
+  /\bset a budget[^.\n]*move on\b/i,
+  /\bset a loss cap\b/i,
+  /\babandon the play\b/i,
+  /\bwalk away mid\b/i,
 ]
 
 /**
@@ -225,6 +353,25 @@ export function findWhenToStopBrokeTalk(text) {
   if (/\bbankroll.*\bgone\b/i.test(section)) hits.push('bankroll gone')
   if (/\bran out of money\b/i.test(section)) hits.push('ran out of money')
   return [...new Set(hits)]
+}
+
+/**
+ * @param {string} text full markdown or risk fields
+ * @returns {string[]}
+ */
+export function findRiskWalkAway(text) {
+  const header = '## ⚠️ Risk & Warnings'
+  const start = text.indexOf(header)
+  const body =
+    start >= 0
+      ? text.slice(start + header.length).split(/\n## /)[0]
+      : String(text ?? '')
+  const hits = []
+  for (const re of RISK_WALK_AWAY_PATTERNS) {
+    if (re.test(body)) hits.push(re.source)
+    re.lastIndex = 0
+  }
+  return hits
 }
 
 /** Bankroll body must open with a quantifiable unit count (Ryan card standard). */

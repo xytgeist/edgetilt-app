@@ -1,6 +1,11 @@
 /**
  * Ingest one batch of AP guides from prebuilt payloads.
  * Usage: node scripts/ap-guide-workspace-batch-run.mjs <batchNumber>
+ *
+ * DESTRUCTIVE on test: overwrites guides.content_markdown from repo payloads.
+ * Ryan must explicitly request a batch run. Backup first:
+ *   node scripts/ap-guide-backup-test-guides.mjs --all-batch
+ * See AGENTS.md AGENT_RULE_TEST_IS_PROD.
  */
 import { runSlotGuideIngest } from './lib/runSlotGuideIngest.mjs'
 import { buildGuideMarkdown } from './lib/slotGuideIngestCore.mjs'
@@ -10,6 +15,7 @@ import {
   findGameplayApCopy,
   findTravelLanguage,
   findWhenToStopBrokeTalk,
+  findRiskWalkAway,
   findWeakBankrollLead,
   findWtfScoutFiller,
   bankrollStartsWithUnits,
@@ -52,7 +58,14 @@ const failures = []
 /** @type {string[]} */
 const completed = []
 
+const skippedSlugs = new Set((batch.skipped ?? []).map((s) => s.slug))
+
 for (const folderSlug of batch.planned) {
+  if (skippedSlugs.has(folderSlug)) {
+    console.log(`– ${folderSlug} (skipped)`)
+    continue
+  }
+
   const payload = payloadBySlug[folderSlug]
   if (!payload) {
     failures.push(`${folderSlug}: no payload`)
@@ -67,6 +80,7 @@ for (const folderSlug of batch.planned) {
   const badGameplay = findGameplayApCopy(md)
   const badAi = findAiTells(md)
   const badStop = findWhenToStopBrokeTalk(md)
+  const badWalk = findRiskWalkAway(md)
   const badBankroll = findWeakBankrollLead(md)
   if (!bankrollStartsWithUnits(String(payload.guide?.risk_bankroll ?? ''))) {
     failures.push(`${folderSlug}: bankroll must lead with unit count`)
@@ -78,14 +92,14 @@ for (const folderSlug of batch.planned) {
     batch.failed.push({ slug: folderSlug, at: new Date().toISOString(), reason: 'wtf-summary' })
     continue
   }
-  if (badSrc.length || badTravel.length || badWtf.length || badGameplay.length || badAi.length || badStop.length || badBankroll.length) {
+  if (badSrc.length || badTravel.length || badWtf.length || badGameplay.length || badAi.length || badStop.length || badWalk.length || badBankroll.length) {
     failures.push(
-      `${folderSlug}: voice check failed (${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badBankroll].join(', ')})`,
+      `${folderSlug}: voice check failed (${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badWalk, ...badBankroll].join(', ')})`,
     )
     batch.failed.push({
       slug: folderSlug,
       at: new Date().toISOString(),
-      reason: `voice: ${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badBankroll].join(', ')}`,
+      reason: `voice: ${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badWalk, ...badBankroll].join(', ')}`,
     })
     continue
   }
@@ -113,7 +127,7 @@ for (const folderSlug of batch.planned) {
   }
 }
 
-const done = batch.completed.length + batch.failed.length
+const done = batch.completed.length + batch.failed.length + (batch.skipped?.length ?? 0)
 if (done >= batch.planned.length) {
   batch.status = batch.failed.length ? 'completed-with-failures' : 'completed'
 }

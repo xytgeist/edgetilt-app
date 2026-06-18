@@ -27,6 +27,26 @@ Good: `composerFocused && IS_IOS ? { paddingTop: X } : undefined`
 
 ---
 
+## CRITICAL — TEST SUPABASE IS PRODUCTION (for guides and Ryan's data)
+
+> **Treat the test Supabase project like production.** It is where Ryan validates the real app, edits AP guides in **`/slot-guide-form`**, and stores live **`guides.content_markdown`**, heroes (R2), and inline images. It is **not** a sandbox agents can overwrite to "try something."
+
+**Never without Ryan's explicit instruction (slug or batch named in chat):**
+
+- `runSlotGuideIngest` / `npm run slots:sync:*` / `ap-guide-workspace-batch-run.mjs` / `ap-guide-reingest-payloads.mjs`
+- Any script that upserts **`guides`** or **`machines`** on test
+- "Quick" one-liner `node -e` ingest to fix copy
+
+**Default agent workflow for guide text:** edit **`scripts/lib/apGuideBatch*Payloads.mjs`** (or answer in chat) only. Ryan pushes to test via the form or tells you exactly when to ingest.
+
+**Before any approved batch ingest:** offer or run **`node scripts/ap-guide-backup-test-guides.mjs --all-batch`** (or slug list) so test rows are snapshotted under **`ap-guide-workspace/_guide-backups/`**.
+
+**Ingest must not wipe form assets:** re-ingest without a new hero file **preserves** existing **`thumbnail_url`** on test (see **`runSlotGuideIngest.mjs`**). Re-ingest still replaces **`content_markdown`** when Ryan explicitly requests it ... that is destructive by design.
+
+`AGENT_RULE_TEST_IS_PROD` — searchability token.
+
+---
+
 ## CRITICAL — READ BEFORE EDITING ANY EXISTING CODE
 
 > **DO NOT UNDER ANY CIRCUMSTANCES EDIT (ALREADY WRITTEN) CODE BEFORE PROPERLY CHECKING THAT IT WILL NOT NEGATIVELY IMPACT OR BREAK ANY OTHER CODE IN THE PROJECT.**

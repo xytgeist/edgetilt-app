@@ -52,6 +52,8 @@ Treat other files in `supabase/` the same way: run them when the file’s purpos
 
 **Important:** AP guide **content** lives in Supabase (`guides.content_markdown`, `machines.*`, cloud image URLs). Do **not** paste upsert SQL by hand for day-to-day edits. Use **`/slot-guide-form`**.
 
+**Test Supabase = production for guide data.** Agents must not run ingest, batch sync, or patch scripts against test unless Ryan explicitly requests it. See **`AGENTS.md`** (`AGENT_RULE_TEST_IS_PROD`). Before any approved batch ingest, snapshot: **`node scripts/ap-guide-backup-test-guides.mjs`**.
+
 ## AP guide updates (form-first)
 
 **Source of truth:** Supabase + cloud storage (R2 preferred, or **`guide-assets`** bucket). The app reads **`guides.content_markdown`** at runtime — **not** repo markdown files.
@@ -67,6 +69,8 @@ Treat other files in `supabase/` the same way: run them when the file’s purpos
 | **Hero refresh after save** | Form cache-busts **`thumbnail_url`** on guides + machines after R2 upload |
 
 **Always Fetch → Load before editing an existing guide.** Save compiles the full markdown from form fields — an empty **Where to find** field will wipe that section in the DB.
+
+**Batch ingest (workspace payloads):** agents **omit Where to find** when drafting new cards ... Ryan adds install data in the form after ingest. See **`scripts/lib/apGuideVoiceRules.mjs`** (`whereToFindBatchSynth`).
 
 **Compiled markdown section order:** When to play → When to stop → How to check → **💰 Bankroll on hand** (optional) → Risk & Warnings → **📍 Where to find** (optional) → Skins → Gameplay Mechanics.
 

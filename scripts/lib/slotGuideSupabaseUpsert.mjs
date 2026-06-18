@@ -42,6 +42,27 @@ export async function fetchGuideCreatedAt(supabase, guideSlug) {
 }
 
 /**
+ * Existing hero URLs on test/prod — used so ingest without a new image does not null thumbnails.
+ * @param {import("@supabase/supabase-js").SupabaseClient} supabase
+ * @param {string} guideSlug
+ */
+export async function fetchExistingGuideThumbnailUrls(supabase, guideSlug) {
+  const { data, error } = await supabase
+    .from("guides")
+    .select("thumbnail_url, machines(thumbnail_url)")
+    .eq("slug", guideSlug)
+    .maybeSingle();
+  if (error) throw new Error(`guides thumbnail lookup (${guideSlug}): ${error.message}`);
+  const machineThumb = /** @type {{ thumbnail_url?: string | null } | null} */ (data?.machines)
+    ?.thumbnail_url;
+  return {
+    guide: data?.thumbnail_url ?? null,
+    machine: machineThumb ?? null,
+    resolved: data?.thumbnail_url ?? machineThumb ?? null,
+  };
+}
+
+/**
  * Upsert machines + guides from manifest-shaped data.
  * @param {import("@supabase/supabase-js").SupabaseClient} supabase
  * @param {{ json: Record<string, unknown>, content_markdown: string }} manifest

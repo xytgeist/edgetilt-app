@@ -83,6 +83,39 @@ export function parseGuideMarkdown(markdown) {
   return out
 }
 
+/** Optional sections hidden on the card when the compiled body is empty. */
+const OPTIONAL_EMPTY_SECTION_HEADERS = [/Where to find/i]
+
+/**
+ * Strip optional guide sections that have no body (legacy rows with a bare ## header).
+ * @param {string} markdown
+ */
+export function guideMarkdownForDisplay(markdown) {
+  if (!markdown) return ''
+  let out = markdown
+  for (const headerTest of OPTIONAL_EMPTY_SECTION_HEADERS) {
+    out = removeEmptySectionByHeader(out, headerTest)
+  }
+  return out
+}
+
+function removeEmptySectionByHeader(markdown, headerTest) {
+  const parts = markdown.split(/^## /m)
+  if (parts.length <= 1) return markdown
+
+  const kept = [parts[0]]
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i]
+    const nl = part.indexOf('\n')
+    const header = nl === -1 ? part.trim() : part.slice(0, nl).trim()
+    const body = nl === -1 ? '' : part.slice(nl + 1)
+
+    if (headerTest.test(header) && !trimBody(body)) continue
+    kept.push(`## ${part}`)
+  }
+  return kept.join('')
+}
+
 /**
  * @param {{
  *   machine: Record<string, unknown>,

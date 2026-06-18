@@ -1510,6 +1510,17 @@ html.light .lounge-media-toolbar svg rect {
 html.light .edge-logo--dark  { display: none; }
 html.light .edge-logo--light { display: inline; }
 
+/* Expanded guide hero — slight zoom so square image corners don't show at card border-radius */
+.guide-card-hero-img-expanded {
+  max-height: min(85vh, 900px);
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transform: scale(1.045);
+  transform-origin: center center;
+}
+
 /* Guide hero image scrims — lighter in light mode so less of the image is eaten */
 html.light .guide-hero-scrim {
   background: linear-gradient(to top, rgba(0,0,0,0.50), rgba(0,0,0,0.08), transparent) !important;

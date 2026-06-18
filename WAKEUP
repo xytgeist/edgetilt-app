@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Critical:** Always **Fetch → Load** before editing. Save recompiles full markdown — empty **Where to find** wipes that section in the DB.
 
+**Test = prod for agents:** Never ingest/sync/batch-run to test unless Ryan explicitly asks. Backup before any approved batch: **`node scripts/ap-guide-backup-test-guides.mjs`**. See **`AGENTS.md`** **`AGENT_RULE_TEST_IS_PROD`**.
+
+**Batch synth:** omit **Where to find** in payloads — Ryan fills in **`/slot-guide-form`** after ingest.
+
 **Guide markdown section order:** When to play → When to stop → How to check → Risk & Warnings → **`## 📍 Where to find`** (optional) → Skins → Gameplay Mechanics.
 
 **Card UI (collapsed):** **Popularity** tile = **`machines.popularity`** tier only (`Common`, `Very Common`, …).

@@ -13,6 +13,7 @@
 import { useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { guideMarkdownForDisplay } from './formUtils.js'
 import { useBlobObjectUrl } from './guideImageUtils.js'
 
 // ─── accent theming ───────────────────────────────────────────────────────────
@@ -348,7 +349,7 @@ export default function GuideCardPreview({
         <div
           className={[
             `relative w-full bg-gradient-to-br ${heroGradientClass(slug)}`,
-            expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden',
+            expanded ? 'flex justify-center overflow-hidden' : 'h-[10.5rem] overflow-hidden',
           ].join(' ')}
         >
           {heroSrc ? (
@@ -356,7 +357,7 @@ export default function GuideCardPreview({
               src={heroSrc}
               alt={machine.name || guide.title || 'Guide hero'}
               className={expanded
-                ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+                ? 'guide-card-hero-img-expanded opacity-95'
                 : 'h-full w-full object-cover opacity-95'}
               onError={(e) => { e.currentTarget.style.display = 'none' }}
             />
@@ -475,7 +476,7 @@ export default function GuideCardPreview({
         <div className="border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
           {contentMarkdown ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {contentMarkdown}
+              {guideMarkdownForDisplay(contentMarkdown)}
             </ReactMarkdown>
           ) : (
             <p className="text-zinc-500 italic text-sm text-center py-4">

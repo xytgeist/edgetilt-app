@@ -12,6 +12,7 @@ import {
   findAiTells,
   findForbiddenSourceRefs,
   findGameplayApCopy,
+  findRiskWalkAway,
   findTravelLanguage,
   findWeakBankrollLead,
   findWhenToStopBrokeTalk,
@@ -19,6 +20,9 @@ import {
 } from './lib/apGuideVoiceRules.mjs'
 import { BATCH1_PAYLOADS } from './lib/apGuideBatch1Payloads.mjs'
 import { BATCH2_PAYLOADS } from './lib/apGuideBatch2Payloads.mjs'
+import { BATCH3_PAYLOADS } from './lib/apGuideBatch3Payloads.mjs'
+
+const BATCH_PAYLOAD_IMPORTS = [1, 2, 3, 4, 5, 6]
 
 const argv = process.argv.slice(2)
 const force = argv.includes('--force')
@@ -40,7 +44,10 @@ if (batches.length) {
     payloads.push(...mod[`BATCH${n}_PAYLOADS`])
   }
 } else {
-  payloads = [...BATCH1_PAYLOADS, ...BATCH2_PAYLOADS]
+  for (const n of BATCH_PAYLOAD_IMPORTS) {
+    const mod = await import(`./lib/apGuideBatch${n}Payloads.mjs`)
+    payloads.push(...mod[`BATCH${n}_PAYLOADS`])
+  }
 }
 
 for (const payload of payloads) {
@@ -56,6 +63,7 @@ for (const payload of payloads) {
     ...findGameplayApCopy(md),
     ...findAiTells(md),
     ...findWhenToStopBrokeTalk(md),
+    ...findRiskWalkAway(md),
     ...findWeakBankrollLead(md),
   ]
   if (bad.length) throw new Error(`${slug}: voice check: ${bad.join(', ')}`)

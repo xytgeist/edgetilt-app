@@ -34,6 +34,7 @@ import {
   ainsworthMustHitByGuideMarkdown,
 } from './mustHitByGuideDemo'
 import { defaultCardEvThresholdForSlug } from '../../constants/slotCardEvThreshold'
+import { guideMarkdownForDisplay } from '../../slot-guide-form/formUtils.js'
 import { communityFeedPostInsertPayload } from '../../utils/communityFeedPost'
 import { prepareAvatarImageForUpload, isProbablyImageFile } from '../../utils/compressImageForUpload'
 import {
@@ -1987,7 +1988,7 @@ export default function GuidesScreen({
                     >
                       <div
                         className={`relative w-full bg-gradient-to-br ${heroGradientClass(slug)} ${
-                          expanded ? 'flex justify-center' : 'h-[10.5rem] overflow-hidden'
+                          expanded ? 'flex justify-center overflow-hidden' : 'h-[10.5rem] overflow-hidden'
                         }`}
                       >
                         {isAdmin ? (
@@ -2030,7 +2031,7 @@ export default function GuidesScreen({
                             alt=""
                             className={
                               expanded
-                                ? 'max-h-[min(85vh,900px)] max-w-full w-auto h-auto object-contain opacity-95'
+                                ? 'guide-card-hero-img-expanded opacity-95'
                                 : 'h-full w-full object-cover opacity-95'
                             }
                             onError={hideGuideHeroOnError}
@@ -2188,7 +2189,7 @@ export default function GuidesScreen({
                         remarkPlugins={[remarkGfm]}
                         components={makeGuideMarkdownComponents(slug, { onOpenGuideSlug: openGuideSlug, allGuides: rows })}
                       >
-                        {row.content_markdown || ''}
+                        {guideMarkdownForDisplay(row.content_markdown || '')}
                       </ReactMarkdown>
                     </div>
                   ) : null}

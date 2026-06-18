@@ -4,6 +4,8 @@
 import fs from 'fs'
 import fsp from 'fs/promises'
 import path from 'path'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import { createClient } from '@supabase/supabase-js'
 import { guideMatchKeys, pickTitle } from './apGuideMatchKeys.mjs'
 import { slugify } from './exportSlotSlug.mjs'
@@ -53,10 +55,35 @@ export function isActiveWorkspaceFolder(name) {
   return true
 }
 
+const execFileAsync = promisify(execFile)
+
+/**
+ * OneDrive on Windows often blocks fs.rename (EPERM). robocopy /MOVE works.
+ * @param {string} src
+ * @param {string} dest
+ */
+async function moveFolderRobocopy(src, dest) {
+  await execFileAsync(
+    'robocopy',
+    [src, dest, '/E', '/MOVE', '/NFL', '/NDL', '/NJH', '/NJS', '/nc', '/ns', '/np'],
+    { windowsHide: true },
+  ).catch((err) => {
+    const code = err.code
+    if (typeof code === 'number' && code <= 7) return
+    throw err
+  })
+  if (fs.existsSync(src)) {
+    await fsp.rm(src, { recursive: true, force: true })
+  }
+  if (!fs.existsSync(dest)) {
+    throw new Error(`robocopy finished but dest missing: ${dest}`)
+  }
+}
+
 /**
  * Move a completed workspace folder into ap-guide-workspace/___DONE/.
  * @param {string} folderSlug
- * @returns {Promise<{ moved: boolean, from?: string, to?: string, reason?: string }>}
+ * @returns {Promise<{ moved: boolean, from?: string, to?: string, reason?: string, method?: string }>}
  */
 export async function moveWorkspaceFolderToDone(folderSlug) {
   if (!folderSlug) return { moved: false, reason: 'empty-slug' }
@@ -74,8 +101,17 @@ export async function moveWorkspaceFolderToDone(folderSlug) {
     throw new Error(`Cannot move ${folderSlug} to ${DONE_DIR_NAME}: already exists at ${dest}`)
   }
 
-  await fsp.rename(src, dest)
-  return { moved: true, from: src, to: dest }
+  try {
+    await fsp.rename(src, dest)
+    return { moved: true, from: src, to: dest, method: 'rename' }
+  } catch (err) {
+    const code = /** @type {NodeJS.ErrnoException} */ (err).code
+    if (process.platform === 'win32' && (code === 'EPERM' || code === 'EXDEV')) {
+      await moveFolderRobocopy(src, dest)
+      return { moved: true, from: src, to: dest, method: 'robocopy' }
+    }
+    throw err
+  }
 }
 
 /** @param {string} folderSlug */
@@ -266,6 +302,8 @@ export function buildProgressDocument(queue) {
       voice: AP_GUIDE_VOICE_RULES.voice,
       noSourceAttribution:
         'Never name or link MP, AP, Slot Farmers, Advantage Play, or other scrape sources in guide copy',
+      whereToFindBatchSynth:
+        'Omit where_to_find in batch payloads — Ryan fills via slot-guide-form after ingest (see AP_GUIDE_VOICE_RULES)',
       concise:
         'Primary play first in When to play; Bankroll leads with **N units**; sparse "I want" (contrast-only)',
     },

@@ -13,6 +13,7 @@ import { canWriteRepo, toWebpBuffer, writeSlotGuideToRepo } from "./slotGuideRep
 import {
   uploadGuideAsset,
   upsertSlotGuideFromManifest,
+  fetchExistingGuideThumbnailUrls,
 } from "./slotGuideSupabaseUpsert.mjs";
 
 const CF_R2_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -156,6 +157,10 @@ export async function runSlotGuideIngest({
     const { url, key: serviceRoleKey } = readSupabaseCredentials();
     const supabaseUrl = url;
 
+    const existingThumbs = hasHero
+      ? { guide: null, machine: null, resolved: null }
+      : await fetchExistingGuideThumbnailUrls(supabase, slug);
+
     let heroPublicUrl = null;
     if (heroWebp) {
       heroPublicUrl = await uploadGuideAssetToR2({
@@ -187,10 +192,14 @@ export async function runSlotGuideIngest({
     });
 
     const supabaseMeta = buildCardMeta(p);
+    const preservedThumb = existingThumbs.resolved ?? null;
     supabaseMeta.machine = {
       .../** @type {Record<string, unknown>} */ (supabaseMeta.machine),
-      thumbnail_url: heroPublicUrl ?? null,
+      thumbnail_url: heroPublicUrl ?? preservedThumb,
     };
+    if (preservedThumb && !heroPublicUrl) {
+      /** @type {Record<string, unknown>} */ (supabaseMeta.guide_seed).thumbnail_url = preservedThumb;
+    }
 
     await upsertSlotGuideFromManifest(supabase, {
       json: supabaseMeta,

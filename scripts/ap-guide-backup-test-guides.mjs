@@ -1,23 +1,47 @@
 /**
  * Backup test Supabase guide rows to JSON (form edits live in DB only).
  * Usage: node scripts/ap-guide-backup-test-guides.mjs [slug...]
+ *        node scripts/ap-guide-backup-test-guides.mjs --all-published
  *        node scripts/ap-guide-backup-test-guides.mjs --all-batch
+ *
+ * Run before any Ryan-approved batch ingest. See AGENTS.md AGENT_RULE_TEST_IS_PROD.
  */
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 import { loadSupabaseEnv, readSupabaseCredentials, repoRoot } from './lib/supabaseEnv.mjs'
-import { BATCH1_PAYLOADS } from './lib/apGuideBatch1Payloads.mjs'
-import { BATCH2_PAYLOADS } from './lib/apGuideBatch2Payloads.mjs'
+
+const GUIDE_SELECT =
+  'slug, title, card_ev_threshold, content_markdown, published, thumbnail_url, updated_at, machines(slug, name, manufacturer, type, difficulty, popularity, nerf_risk, volatility_index, popularity_summary, release_year, has_calculator, calculator_slug, thumbnail_url)'
 
 const args = process.argv.slice(2)
+const allPublished = args.includes('--all-published')
 const allBatch = args.includes('--all-batch')
-const slugs = allBatch
-  ? [...BATCH1_PAYLOADS, ...BATCH2_PAYLOADS].map((p) => String(p.machine.slug))
-  : args.filter((a) => !a.startsWith('--'))
+const slugArgs = args.filter((a) => !a.startsWith('--'))
 
-if (!slugs.length) {
-  console.error('Usage: node scripts/ap-guide-backup-test-guides.mjs [--all-batch] [slug...]')
+/** @type {string[]} */
+let slugs = slugArgs
+
+if (allBatch) {
+  slugs = []
+  for (let n = 1; n <= 6; n++) {
+    try {
+      const mod = await import(`./lib/apGuideBatch${n}Payloads.mjs`)
+      const key = `BATCH${n}_PAYLOADS`
+      if (mod[key]?.length) {
+        slugs.push(...mod[key].map((p) => String(p.machine.slug)))
+      }
+    } catch {
+      /* batch file optional */
+    }
+  }
+  slugs = [...new Set(slugs)]
+}
+
+if (!slugs.length && !allPublished) {
+  console.error(
+    'Usage: node scripts/ap-guide-backup-test-guides.mjs [--all-published | --all-batch] [slug...]',
+  )
   process.exit(1)
 }
 
@@ -25,22 +49,31 @@ loadSupabaseEnv('test')
 const { url, key } = readSupabaseCredentials()
 const sb = createClient(url, key, { auth: { persistSession: false } })
 
-const { data, error } = await sb
-  .from('guides')
-  .select(
-    'slug, title, card_ev_threshold, content_markdown, published, updated_at, machines(name, manufacturer, type, difficulty, popularity, nerf_risk, volatility_index, popularity_summary, release_year, has_calculator, calculator_slug)',
-  )
-  .in('slug', slugs)
-  .order('slug')
+/** @type {import('@supabase/supabase-js').PostgrestSingleResponse<unknown>} */
+let data
+/** @type {import('@supabase/supabase-js').PostgrestError | null} */
+let error
+
+if (allPublished) {
+  ;({ data, error } = await sb.from('guides').select(GUIDE_SELECT).eq('published', true).order('slug'))
+} else {
+  ;({ data, error } = await sb.from('guides').select(GUIDE_SELECT).in('slug', slugs).order('slug'))
+}
 
 if (error) throw new Error(error.message)
 
-const missing = slugs.filter((s) => !data?.some((r) => r.slug === s))
-if (missing.length) console.warn('Missing on test:', missing.join(', '))
+if (!allPublished) {
+  const missing = slugs.filter((s) => !/** @type {Array<{ slug: string }>} */ (data)?.some((r) => r.slug === s))
+  if (missing.length) console.warn('Missing on test:', missing.join(', '))
+}
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-')
 const dir = path.join(repoRoot, 'ap-guide-workspace', '_guide-backups')
 fs.mkdirSync(dir, { recursive: true })
-const outPath = path.join(dir, `${stamp}.json`)
-fs.writeFileSync(outPath, JSON.stringify({ backedUpAt: new Date().toISOString(), guides: data }, null, 2))
-console.log(`Wrote ${data?.length ?? 0} guides → ${outPath}`)
+const label = allPublished ? 'all-published' : allBatch ? 'all-batch' : slugArgs.join('-') || 'backup'
+const outPath = path.join(dir, `${stamp}-${label}.json`)
+fs.writeFileSync(
+  outPath,
+  JSON.stringify({ backedUpAt: new Date().toISOString(), guides: data }, null, 2),
+)
+console.log(`Wrote ${/** @type {unknown[]} */ (data)?.length ?? 0} guides → ${outPath}`)

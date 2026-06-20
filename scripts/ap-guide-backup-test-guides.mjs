@@ -5,6 +5,10 @@
  *        node scripts/ap-guide-backup-test-guides.mjs --all-batch
  *
  * Run before any Ryan-approved batch ingest. See AGENTS.md AGENT_RULE_TEST_IS_PROD.
+ *
+ * Restore all cards from a backup (undo bad ingest / wiped edits):
+ *   node scripts/ap-guide-restore-test-guides.mjs --latest
+ * Or: node scripts/ap-guide-restore-test-guides.mjs ap-guide-workspace/_guide-backups/<file>.json
  */
 import fs from 'fs'
 import path from 'path'

@@ -1,3 +1,8 @@
+/**
+ * Shared guide markdown assembly (ingest + slot-guide-form).
+ */
+import { AP_GUIDE_VOICE_RULES, findMarkdownInEvThreshold, findBankrollExtraProse, findHowToCheckSuperfluity, findRiskSuperfluity } from './apGuideVoiceRules.mjs';
+
 /** @typedef {"when_to_play" | "when_to_stop" | "how_to_check" | "bankroll" | "risk" | "where_to_find" | "skins" | "gameplay"} DiagramPlacement */
 
 export const SLUG_RE = /^[a-z0-9-]+$/;
@@ -99,7 +104,7 @@ export function buildGuideMarkdown(payload, opts = {}) {
   md += diagramsForPlacement(diagrams, "when_to_play", slug, resolveUrl);
   md += `## 🛑 When to stop\n\n${mdBlock(guide.when_to_stop)}`;
   md += diagramsForPlacement(diagrams, "when_to_stop", slug, resolveUrl);
-  md += `## 🔍 How to check (quick/easy)\n\n${mdBlock(guide.how_to_check)}`;
+  md += `${AP_GUIDE_VOICE_RULES.howToCheckHeader}\n\n${mdBlock(guide.how_to_check)}`;
   md += diagramsForPlacement(diagrams, "how_to_check", slug, resolveUrl);
 
   const bankroll = String(guide.risk_bankroll ?? "").trim();
@@ -225,7 +230,24 @@ export function validateIngestPayload(payload) {
   if (guide && typeof guide === "object") {
     /** @type {Record<string, unknown>} */
     const g = /** @type {Record<string, unknown>} */ (guide);
-    // Guide body sections and card_ev_threshold may be empty at ingest (fill via draft / later edit).
+    const evLine = String(g.card_ev_threshold ?? '').trim()
+    if (evLine && findMarkdownInEvThreshold(evLine).length) {
+      errors.push(
+        'guide.card_ev_threshold must be plain text (no markdown — the card face does not render **bold** or links).',
+      )
+    }
+    const bankrollBad = findBankrollExtraProse(String(g.risk_bankroll ?? ''))
+    if (String(g.risk_bankroll ?? '').trim() && bankrollBad.length) {
+      errors.push('guide.risk_bankroll must be unit count only (e.g. 15–30 units) with no trailing prose.')
+    }
+    const htcBad = findHowToCheckSuperfluity(String(g.how_to_check ?? ''))
+    if (String(g.how_to_check ?? '').trim() && htcBad.length) {
+      errors.push(`guide.how_to_check voice: ${htcBad.join(', ')}`)
+    }
+    const riskBad = findRiskSuperfluity(String(g.risk_summary ?? ''))
+    if (String(g.risk_summary ?? '').trim() && riskBad.length) {
+      errors.push(`guide.risk_summary voice: ${riskBad.join(', ')}`)
+    }
   }
 
   const diagrams = Array.isArray(p.diagrams) ? p.diagrams : [];

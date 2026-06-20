@@ -5,8 +5,9 @@ import {
   buildGuideMarkdown,
   buildSlotGuideDraft,
   diagramFilename,
+  GUIDE_FORM_SELECT,
+  guideRowToFormFields,
   loadSlotGuideDraftFromStorage,
-  parseGuideMarkdown,
   slugify,
   slugifyInput,
   writeSlotGuideDraftToStorage,
@@ -599,6 +600,39 @@ export default function SlotGuideFormApp() {
     }
   }
 
+  async function fetchGuideRow(id) {
+    const { data, error: err } = await supabase.from('guides').select(GUIDE_FORM_SELECT).eq('id', id).single()
+    if (err) throw new Error(err.message)
+    return data
+  }
+
+  function confirmReplaceDirtyForm(actionLabel) {
+    if (!isDirty) return true
+    return window.confirm(`You have unsaved changes. ${actionLabel}?`)
+  }
+
+  function applyDuplicateForm({ machine: srcMachine, guide: srcGuide, sourceLabel }) {
+    setMode('new')
+    setEditIds(null)
+    setSelectedId('')
+    setMachine({ ...srcMachine, slug: '' })
+    setGuide({
+      ...srcGuide,
+      _slug: '',
+      _created_at: '',
+      _updated_at: '',
+    })
+    setHeroFile(null)
+    setCurrentThumbnail('')
+    setDiagrams([])
+    setIsDirty(true)
+    setResult(null)
+    setError('')
+    setDraftNotice(
+      `Duplicated from ${sourceLabel}. Set a new slug and title, then Ingest. Hero and diagram file picks are not copied ... re-upload if needed.`,
+    )
+  }
+
   // ── Load a selected guide into the form
   async function loadGuide(id, { preserveResult = false } = {}) {
     setListBusy(true)
@@ -606,56 +640,62 @@ export default function SlotGuideFormApp() {
     setError('')
     if (!preserveResult) setResult(null)
     try {
-      const { data, error: err } = await supabase.from('guides').select(`
-        id, slug, title, content_markdown, card_ev_threshold, published, thumbnail_url,
-        created_at, updated_at,
-        machines (
-          id, slug, name, manufacturer, type, difficulty,
-          popularity, nerf_risk, volatility_index,
-          popularity_summary, release_year, has_calculator, calculator_slug, thumbnail_url
-        )
-      `).eq('id', id).single()
-      if (err) throw new Error(err.message)
-
-      const m = Array.isArray(data.machines) ? data.machines[0] : data.machines
-      if (m) {
-        setMachine({
-          slug: m.slug || '',
-          name: m.name || '',
-          manufacturer: m.manufacturer || 'IGT',
-          type: m.type || '',
-          difficulty: m.difficulty || 'Beginner',
-          popularity: m.popularity || m.vegas_availability || 'Common',
-          nerf_risk: m.nerf_risk || 'auto',
-          volatility_index: m.volatility_index || '',
-          popularity_summary: m.popularity_summary || '',
-          release_year: m.release_year ? String(m.release_year) : '',
-          has_calculator: m.has_calculator || false,
-          calculator_slug: m.calculator_slug || '',
-        })
-        setEditIds({ guideId: data.id, machineId: m.id })
-      }
-      const parsed = parseGuideMarkdown(data.content_markdown || '')
-      setGuide({
-        ...parsed,
-        title: data.title || '',
-        card_ev_threshold: data.card_ev_threshold || '',
-        published: data.published ?? true,
-        _slug: data.slug || '',
-        _created_at: data.created_at || '',
-        _updated_at: data.updated_at || '',
-      })
+      const data = await fetchGuideRow(id)
+      const { machine: m, guide: g, thumbnailUrl, editIds: ids } = guideRowToFormFields(data)
+      setMachine(m)
+      setGuide(g)
+      setEditIds(ids)
       setHeroFile(null)
-      // Fall back to the static public path used by GuidesScreen when no DB thumbnail is set
-      setCurrentThumbnail(data.thumbnail_url || m?.thumbnail_url || '')
+      setCurrentThumbnail(thumbnailUrl)
       setDiagrams([])
       setIsDirty(false)
       setMode('edit')
+      setSelectedId(id)
     } catch (e) {
       setListErr(e.message)
     } finally {
       setListBusy(false)
     }
+  }
+
+  async function duplicateFromPicker() {
+    if (!selectedId) return
+    if (!confirmReplaceDirtyForm('Duplicate will replace the form with a copy of the selected guide')) return
+    setListBusy(true)
+    setListErr('')
+    setError('')
+    setResult(null)
+    try {
+      const data = await fetchGuideRow(selectedId)
+      const mapped = guideRowToFormFields(data)
+      applyDuplicateForm({
+        ...mapped,
+        sourceLabel: data.slug || data.title || 'guide',
+      })
+    } catch (e) {
+      setListErr(e.message)
+    } finally {
+      setListBusy(false)
+    }
+  }
+
+  function duplicateFromCurrentForm() {
+    const sourceLabel = guide._slug || machine.slug || guide.title || machine.name
+    if (!sourceLabel && !machine.name && !guide.title && !guide.when_to_play) {
+      setError('Load a guide first, or select one in the picker.')
+      return
+    }
+    if (
+      isDirty
+      && !window.confirm(
+        `Duplicate "${sourceLabel || 'current form'}" as a new guide? Current field values (including unsaved edits) will be copied.`,
+      )
+    ) return
+    applyDuplicateForm({
+      machine,
+      guide,
+      sourceLabel: sourceLabel || 'current form',
+    })
   }
 
   function resetToNewGuide() {
@@ -1019,6 +1059,14 @@ export default function SlotGuideFormApp() {
                 </span>
                 <button
                   type="button"
+                  disabled={deleteBusy || busy || listBusy}
+                  onClick={() => duplicateFromCurrentForm()}
+                  className="px-4 py-2 rounded-xl text-sm font-bold border border-cyan-500/70 bg-cyan-950/75 text-cyan-200 hover:bg-cyan-950 disabled:opacity-50 transition-colors"
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
                   disabled={deleteBusy || busy}
                   onClick={() =>
                     setDeleteConfirm({
@@ -1088,6 +1136,15 @@ export default function SlotGuideFormApp() {
                 className="px-4 py-2 rounded-xl text-sm font-bold bg-amber-600 hover:bg-amber-500 disabled:opacity-40 transition-colors whitespace-nowrap"
               >
                 {listBusy ? '…' : 'Load →'}
+              </button>
+              <button
+                type="button"
+                disabled={!selectedId || listBusy}
+                onClick={() => void duplicateFromPicker()}
+                title="Copy guide fields into a new ingest (clears slug; re-upload hero/diagrams)"
+                className="px-4 py-2 rounded-xl text-sm font-bold bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 transition-colors whitespace-nowrap"
+              >
+                {listBusy ? '…' : 'Duplicate'}
               </button>
             </div>
           )}
@@ -1300,7 +1357,7 @@ export default function SlotGuideFormApp() {
               />
             </GuideSectionPanel>
 
-            <GuideSectionPanel title="🔍 How to check (quick/easy)">
+            <GuideSectionPanel title="🔍 How to check">
               <GuideSectionBody
                 fieldKey="how_to_check"
                 value={guide.how_to_check}

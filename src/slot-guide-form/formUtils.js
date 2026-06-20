@@ -201,3 +201,58 @@ export function writeSlotGuideDraftToStorage(draft) {
     else window.localStorage.setItem(SLOT_GUIDE_DRAFT_KEY, JSON.stringify(draft))
   } catch { /* quota / private mode */ }
 }
+
+/** Supabase select for full guide editor load / duplicate fetch. */
+export const GUIDE_FORM_SELECT = `
+  id, slug, title, content_markdown, card_ev_threshold, published, thumbnail_url,
+  created_at, updated_at,
+  machines (
+    id, slug, name, manufacturer, type, difficulty,
+    popularity, nerf_risk, volatility_index,
+    popularity_summary, release_year, has_calculator, calculator_slug, thumbnail_url
+  )
+`.trim().replace(/\s+/g, ' ')
+
+/**
+ * Map a guides row (+ nested machines) into slot-guide-form machine/guide fields.
+ * @param {Record<string, unknown>} data
+ */
+export function guideRowToFormFields(data) {
+  const m = Array.isArray(data.machines) ? data.machines[0] : data.machines
+  const parsed = parseGuideMarkdown(String(data.content_markdown || ''))
+  const machine = m
+    ? {
+        slug: m.slug || '',
+        name: m.name || '',
+        manufacturer: m.manufacturer || 'IGT',
+        type: m.type || '',
+        difficulty: m.difficulty || 'Beginner',
+        popularity: m.popularity || m.vegas_availability || 'Common',
+        nerf_risk: m.nerf_risk || 'auto',
+        volatility_index: m.volatility_index || '',
+        popularity_summary: m.popularity_summary || '',
+        release_year: m.release_year ? String(m.release_year) : '',
+        has_calculator: m.has_calculator || false,
+        calculator_slug: m.calculator_slug || '',
+      }
+    : {
+        slug: '', name: '', manufacturer: 'IGT', type: '', difficulty: 'Beginner',
+        popularity: 'Common', nerf_risk: 'auto', volatility_index: '',
+        popularity_summary: '', release_year: '', has_calculator: false, calculator_slug: '',
+      }
+  const guide = {
+    ...parsed,
+    title: data.title || '',
+    card_ev_threshold: data.card_ev_threshold || '',
+    published: data.published ?? true,
+    _slug: data.slug || '',
+    _created_at: data.created_at || '',
+    _updated_at: data.updated_at || '',
+  }
+  return {
+    machine,
+    guide,
+    thumbnailUrl: data.thumbnail_url || m?.thumbnail_url || '',
+    editIds: m ? { guideId: data.id, machineId: m.id } : null,
+  }
+}

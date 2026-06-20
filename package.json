@@ -38,7 +38,11 @@
     "ap-guide:workspace:init": "node scripts/ap-guide-workspace-init.mjs",
     "ap-guide:workspace:batch-init": "node scripts/ap-guide-workspace-batch-init.mjs",
     "ap-guide:workspace:batch-mark": "node scripts/ap-guide-workspace-batch-mark.mjs",
-    "ap-guide:workspace:batch-run": "node scripts/ap-guide-workspace-batch-run.mjs"
+    "ap-guide:workspace:batch-run": "node scripts/ap-guide-workspace-batch-run.mjs",
+    "ap-guide:backup": "node scripts/ap-guide-backup-test-guides.mjs --all-published",
+    "ap-guide:restore": "node scripts/ap-guide-restore-test-guides.mjs --latest",
+    "ap-guide:voice-audit": "node scripts/ap-guide-voice-audit-payloads.mjs",
+    "ap-guide:voice-audit:strict": "node scripts/ap-guide-voice-audit-payloads.mjs --strict"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.6",

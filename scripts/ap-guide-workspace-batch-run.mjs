@@ -18,6 +18,10 @@ import {
   findRiskWalkAway,
   findWeakBankrollLead,
   findWtfScoutFiller,
+  findMarkdownInEvThreshold,
+  findBankrollExtraProse,
+  findHowToCheckSuperfluity,
+  findRiskSuperfluity,
   bankrollStartsWithUnits,
 } from './lib/apGuideVoiceRules.mjs'
 import {
@@ -82,9 +86,13 @@ for (const folderSlug of batch.planned) {
   const badStop = findWhenToStopBrokeTalk(md)
   const badWalk = findRiskWalkAway(md)
   const badBankroll = findWeakBankrollLead(md)
-  if (!bankrollStartsWithUnits(String(payload.guide?.risk_bankroll ?? ''))) {
-    failures.push(`${folderSlug}: bankroll must lead with unit count`)
-    batch.failed.push({ slug: folderSlug, at: new Date().toISOString(), reason: 'bankroll-units' })
+  const badEvThreshold = findMarkdownInEvThreshold(String(payload.guide?.card_ev_threshold ?? ''))
+  const badBankrollOnly = findBankrollExtraProse(String(payload.guide?.risk_bankroll ?? ''))
+  const badHtc = findHowToCheckSuperfluity(String(payload.guide?.how_to_check ?? ''))
+  const badRisk = findRiskSuperfluity(String(payload.guide?.risk_summary ?? ''))
+  if (badBankrollOnly.length) {
+    failures.push(`${folderSlug}: bankroll must be unit count only (${badBankrollOnly.join(', ')})`)
+    batch.failed.push({ slug: folderSlug, at: new Date().toISOString(), reason: badBankrollOnly.join(', ') })
     continue
   }
   if (/\*\*Summary:\*\*/i.test(md)) {
@@ -92,14 +100,26 @@ for (const folderSlug of batch.planned) {
     batch.failed.push({ slug: folderSlug, at: new Date().toISOString(), reason: 'wtf-summary' })
     continue
   }
-  if (badSrc.length || badTravel.length || badWtf.length || badGameplay.length || badAi.length || badStop.length || badWalk.length || badBankroll.length) {
+  if (
+    badSrc.length ||
+    badTravel.length ||
+    badWtf.length ||
+    badGameplay.length ||
+    badAi.length ||
+    badStop.length ||
+    badWalk.length ||
+    badBankroll.length ||
+    badEvThreshold.length ||
+    badHtc.length ||
+    badRisk.length
+  ) {
     failures.push(
-      `${folderSlug}: voice check failed (${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badWalk, ...badBankroll].join(', ')})`,
+      `${folderSlug}: voice check failed (${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badWalk, ...badBankroll, ...badEvThreshold, ...badHtc, ...badRisk].join(', ')})`,
     )
     batch.failed.push({
       slug: folderSlug,
       at: new Date().toISOString(),
-      reason: `voice: ${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badWalk, ...badBankroll].join(', ')}`,
+      reason: `voice: ${[...badSrc, ...badTravel, ...badWtf, ...badGameplay, ...badAi, ...badStop, ...badWalk, ...badBankroll, ...badEvThreshold, ...badHtc, ...badRisk].join(', ')}`,
     })
     continue
   }

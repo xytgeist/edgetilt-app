@@ -430,6 +430,16 @@ const blankGuide = {
   _slug: '', _created_at: '', _updated_at: '',
 }
 
+/** @param {Record<string, unknown>} data */
+function ingestResultHeadline(data) {
+  const ingestedSlug = String(data.slug || 'guide')
+  const ingestedTarget = String(data.target || 'test')
+  if (data.syncedSupabase) {
+    return `Ingest succeeded — ${ingestedSlug} is live on ${ingestedTarget}.`
+  }
+  return 'Ingest finished — see response below (syncedSupabase was false).'
+}
+
 export default function SlotGuideFormApp() {
   const { pickFile, portal: filePickerPortal } = useGuideFilePicker()
   const saved = useMemo(() => (typeof window !== 'undefined' ? readSettings() : null), [])
@@ -796,7 +806,7 @@ export default function SlotGuideFormApp() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || (Array.isArray(data.errors) ? data.errors.join(' ') : res.statusText) || 'Ingest failed.')
-      setResult(data)
+      setResult({ ok: true, headline: ingestResultHeadline(data), payload: data })
       setIsDirty(false)
       clearDraft()
     } catch (err) {
@@ -1491,9 +1501,13 @@ export default function SlotGuideFormApp() {
           {error  ? <p className="text-red-400 text-sm">{error}</p> : null}
           {result ? (
             <div className={`rounded-xl border p-4 text-sm ${result.ok ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300' : 'border-gray-700 bg-gray-900'}`}>
-              {result.message ? <p>{result.message}</p> : (
+              {result.headline ? <p className="font-semibold mb-3">{result.headline}</p> : null}
+              {result.message ? <p>{result.message}</p> : null}
+              {result.payload ? (
+                <pre className="overflow-x-auto whitespace-pre-wrap text-xs mt-2 text-gray-300">{JSON.stringify(result.payload, null, 2)}</pre>
+              ) : !result.message && !result.headline ? (
                 <pre className="overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(result, null, 2)}</pre>
-              )}
+              ) : null}
             </div>
           ) : null}
 

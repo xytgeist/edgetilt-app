@@ -81,6 +81,9 @@ async function getFreshGuideUploadAccessToken() {
 async function uploadGuideImageToR2OrStorage(file, { slug, filename }) {
   const safeSlug = slugify(String(slug || '').trim())
   if (!safeSlug) throw new Error('Set a slug before uploading images.')
+  if (safeSlug.length > 120) {
+    throw new Error(`Slug is too long for image upload (${safeSlug.length} chars, max 120). Shorten the slug or ask to redeploy guide-cf-r2-upload.`)
+  }
 
   const accessToken = await getFreshGuideUploadAccessToken()
   if (accessToken) {

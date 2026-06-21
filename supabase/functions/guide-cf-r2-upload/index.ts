@@ -25,8 +25,8 @@ import {
   readLoungeCfR2Config,
 } from '../_shared/loungeCfR2.ts'
 
-const SLUG_RE     = /^[a-z0-9][a-z0-9-]{0,79}$/
-const FILENAME_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/
+const SLUG_RE     = /^[a-z0-9][a-z0-9-]{0,119}$/
+const FILENAME_RE = /^[a-z0-9][a-z0-9._-]{0,119}$/
 
 async function requireAdminAccess(req: Request): Promise<void> {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() || ''

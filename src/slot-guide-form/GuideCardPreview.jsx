@@ -163,7 +163,9 @@ function makeMarkdownComponents(accent, allGuides) {
         <span className={`h-0.5 flex-1 min-w-[0.75rem] rounded-full bg-gradient-to-l from-zinc-800/20 ${titleBarTo}`} aria-hidden />
       </div>
     ),
-    h2: ({ children }) => <h2 className={`text-lg font-black ${h2Tone} mt-6 first:mt-0 mb-2`}>{children}</h2>,
+    h2: ({ children }) => (
+      <h2 className={`guide-section-heading text-lg font-black ${h2Tone} mt-6 first:mt-0 mb-2`}>{children}</h2>
+    ),
     h3: ({ children }) => <h3 className="text-base font-bold text-zinc-100 mt-4 mb-1.5">{children}</h3>,
     p:  ({ children }) => <p className="text-zinc-300 leading-relaxed mb-3 last:mb-0">{children}</p>,
     ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 text-zinc-300 mb-3">{children}</ul>,
@@ -273,9 +275,20 @@ export default function GuideCardPreview({
   return (
     <article
       style={accent.cssVars}
+      onClick={
+        expanded
+          ? (e) => {
+              const target = e.target
+              if (!(target instanceof Element)) return
+              if (target.closest('a, button, input, textarea, select')) return
+              setExpanded(false)
+            }
+          : undefined
+      }
       className={[
         'rounded-3xl border overflow-hidden bg-zinc-900',
         accent.mode === 'hex' ? 'guide-accent-themed' : '',
+        expanded ? 'guide-card-expanded-tap-collapse touch-manipulation' : '',
         expanded
           ? accent.mode === 'hex'
             ? `${accent.expandedBorder} guide-accent-expanded`
@@ -418,7 +431,7 @@ export default function GuideCardPreview({
 
       {/* ── EXPANDED MARKDOWN CONTENT ── */}
       {expanded && (
-        <div className="border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
+        <div className="guide-markdown-body border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
           {contentMarkdown ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
               {guideMarkdownForDisplay(contentMarkdown)}

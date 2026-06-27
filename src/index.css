@@ -1521,6 +1521,11 @@ html.light .edge-logo--light { display: inline; }
   transform-origin: center center;
 }
 
+/* Expanded guide card — tap anywhere (except links/buttons) to collapse */
+.guide-card-expanded-tap-collapse {
+  cursor: pointer;
+}
+
 /* Guide hero image scrims — lighter in light mode so less of the image is eaten */
 html.light .guide-hero-scrim {
   background: linear-gradient(to top, rgba(0,0,0,0.50), rgba(0,0,0,0.08), transparent) !important;
@@ -1604,6 +1609,13 @@ html.light .guide-accent-themed .guide-accent-expanded-border {
 }
 html.light .guide-accent-themed .guide-accent-subtitle {
   color: color-mix(in srgb, var(--gca-chevron) 72%, #fff) !important;
+}
+/* Expanded markdown h2: --gca-strong is a dark-mode tint (~88% toward white); use readable accent on pale body */
+html.light .guide-markdown-body .guide-section-heading {
+  color: #27272a !important;
+}
+html.light .guide-accent-themed .guide-markdown-body .guide-section-heading.guide-accent-strong {
+  color: var(--gca-light-accent, var(--gca-chevron)) !important;
 }
 
 html.light .guide-ev-threshold-panel:not(.guide-accent-ev-box) {

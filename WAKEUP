@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — on `test`, want to finish thread compose smoke.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — on `test`, bug hunt on guide cards in light mode.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -32,25 +32,39 @@ The agent should treat the following as **standing instructions for this session
 
 **Supabase:** **test** (project ref: `jtjgtucumuoswnbauxry`)
 
-**Goal:** _[one line: what you want done this session]_
+**Goal:** _Bug finding / fixing — guide cards and broader app polish (light + dark). Card content + accent ingest phase is ~done._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (§ **AP Guide editor** + Update log tail). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — most migrations/Edge/env steps are **test-validated only** until replayed on prod (`wedrhwtsxifbnnbgxdkm`).
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (§ **AP Guide editor** + Update log **2026-06-25**). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — most migrations/Edge/env steps are **test-validated only** until replayed on prod (`wedrhwtsxifbnnbgxdkm`).
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. thread compose smoke, apply `20260608210000`, chat spinner assets]_
+- Session focus: _[e.g. light-mode guide card bugs, Lounge smoke, apply pending SQL]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[link, path, or "see backlog Update log YYYY-MM-DD"]_
+- Context: _[link, path, or "see backlog Update log 2026-06-25"]_
 
 ---
 
 ## Pick up here (Jun 2026, branch `test`)
 
-**Canonical detail:** **`docs/test-buildout-backlog.md`** → **AP Guide editor** section + Update log tail. **Prod mirror:** **`docs/production-rollout-checklist.md`** §2–§5.
+**Canonical detail:** **`docs/test-buildout-backlog.md`** → **AP Guide editor** section + Update log **2026-06-25**. **Prod mirror:** **`docs/production-rollout-checklist.md`** §2–§5.
 
-**Latest commits on `test`:** `8bcbdb6` (remove **`Slots/`** + **`public/guides/`**; form-first docs) · `c953d23` (calc icons → **`public/calculators/`**) · `4b4d7a2` / `beb2395` (form picker + hero cache-bust).
+**Latest commits on `test`:** `75ea4f5` (Ask Community light-mode caption) · `e8861ae` (guide h2 light mode + tap-to-collapse) · `3e4eae2` (Ask Community caption crash) · `9c27cec` (dotlottie WASM) · `e88510c` (hero accent + release-year script + ingest catch-up)
 
-### AP guide updates (current workflow — Ryan + Theo)
+### AP guide cards — home stretch **done** (Jun 2026)
+
+**Test DB:** **310** published guides. All have **`machines.release_year`**. Hero accent backfill run (**`guides.card_accent_color`**).
+
+**Shipped UI (test branch):**
+- Hero-derived accent colors on cards (**`guideCardAccent.js`**, migration **`20260610240000`**)
+- Light mode fixes: +EV panel, expanded markdown h2, Ask Community modal (**`data-ask-community-*`**)
+- Expanded card tap-to-collapse (preserves links + action buttons)
+- Ask Community → Lounge post with guide card attached
+
+**Key files:** `src/features/guides/GuidesScreen.jsx`, `src/slot-guide-form/GuideCardPreview.jsx`, `src/utils/guideCardAccent.js`, `src/utils/guideAccentPalette.js`, `src/index.css` ( **`html.light .guide-accent-themed`** block)
+
+**Light mode trap:** zinc **`bg-zinc-950`** remaps to pale in light mode; **`text-white`** on inputs **does not** — always scope with **`data-*`** or feature classes under **`html.light`**.
+
+### AP guide updates (ongoing workflow)
 
 **Source of truth:** Supabase **`guides.content_markdown`** + R2/Storage image URLs. **Not** repo markdown.
 
@@ -64,25 +78,19 @@ The agent should treat the following as **standing instructions for this session
 
 **Critical:** Always **Fetch → Load** before editing. Save recompiles full markdown — empty **Where to find** wipes that section in the DB.
 
-**Test = prod for agents:** Never ingest/sync/batch-run to test unless Ryan explicitly asks. Backup before any approved batch: **`node scripts/ap-guide-backup-test-guides.mjs`**. See **`AGENTS.md`** **`AGENT_RULE_TEST_IS_PROD`**.
+**Test = prod for agents:** Never ingest/sync/batch-run to test unless Ryan explicitly asks. Backup before any approved batch: **`npm run ap-guide:backup`**. See **`AGENTS.md`** **`AGENT_RULE_TEST_IS_PROD`**.
 
-**Batch synth:** omit **Where to find** in payloads — Ryan fills in **`/slot-guide-form`** after ingest.
+**Accent backfill:** **`npm run ap-guide:backfill-accents:dry`** then **`npm run ap-guide:backfill-accents`**. Release years: **`node scripts/ap-guide-backfill-release-years.mjs --target=test`**.
 
-**Guide markdown section order:** When to play → When to stop → How to check → Risk & Warnings → **`## 📍 Where to find`** (optional) → Skins → Gameplay Mechanics.
+### **Now:** bug hunt phase
 
-**Card UI (collapsed):** **Popularity** tile = **`machines.popularity`** tier only (`Common`, `Very Common`, …).
-
-**Assets:** Guide heroes + inline images = R2 URLs in DB. Calculator tab icons = **`public/calculators/*.webp`**. Repo **`Slots/`** and **`public/guides/`** are **gone** from git.
-
-**Legacy:** **`npm run slots:sync:*`** scripts still exist if you recreate local **`Slots/<slug>/`** manifests — not the day-to-day path.
-
-**Copy style:** No em dashes; prefer **`...`** over spaced hyphens for breaks (`.cursor/rules/no-em-dashes.mdc`).
+Ryan is smoke-testing guide cards (light + dark) and the rest of the app. Fix bugs as found. Open checkbox in backlog: **Ryan smoke — guide cards (light + dark)**.
 
 ### Still open (see backlog)
 
 - **Mobile-friendly regional tables** in AP Guides (**Where to find** markdown tables on small screens).
 - **Ryan smoke — ingest on tx18:** Vercel env vars + **Fetch → Load → Save changes** on a live guide.
-- **SQL **`20260610170000`** (`popularity` rename)** on prod when promoting guides tooling.
+- **SQL **`20260610240000`** (`card_accent_color`)** + accent backfill on **prod** when promoting guides tooling.
 - Link preview + group-delete smoke; Play Logbook SQL; Bankroll Risk Advisor card position.
 
 ### Parked

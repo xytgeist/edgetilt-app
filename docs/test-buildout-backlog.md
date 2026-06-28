@@ -244,8 +244,17 @@ Built by **`formUtils.js`** / **`scripts/lib/slotGuideIngestCore.mjs`**; slot-gu
 - [ ] **Automated `_ingest` docx → guide.md** script (pilot was manual; deferred)
 - [x] **Admin Delete on AP Guide cards** — **`GuidesScreen`** red **Delete** (admin only) + confirm modal; SQL **`20260610180000_guide_admin_delete_rls.sql`** (apply on test before use)
 - [x] **AP Guides light-mode search:** **`ap-guides-search-input`** + **`html.light`** rules in **`index.css`** (readable on light gray) @ **`ea1d72e`**
+- [x] **Guide card hero accent (test):** **`guides.card_accent_color`** migration **`20260610240000_guides_card_accent_color.sql`**; UI **`src/utils/guideCardAccent.js`** + **`guideAccentPalette.js`**; hero upload / ingest extracts dominant color; backfill **`npm run ap-guide:backfill-accents`** (NULL-only; skips 13 legacy pilot slugs unless **`--include-legacy-pilots`**) @ **`e88510c`**
+- [x] **Release years on test:** all **310** published guides have **`machines.release_year`** (web-research backfill via **`scripts/ap-guide-backfill-release-years.mjs`**; Ryan manual fix **`payday`**)
+- [x] **Guide card light mode (test):** expanded markdown h2 uses **`--gca-light-accent`** (not dark-mode **`--gca-strong`** washout); +EV panel flat neutral bg; Ask Community / auth / profile-gate modals scoped **`data-ask-community-*`** @ **`75ea4f5`**
+- [x] **Expanded guide card tap-to-collapse:** tap anywhere on open card collapses (links, **Open calculator**, **Ask community**, admin controls still work) @ **`e8861ae`**
+- [x] **Ask Community modal caption crash:** restored missing **`caption`** **`useState`** @ **`3e4eae2`**
+- [ ] **Ryan smoke — guide cards (light + dark):** expand/collapse, accent colors, Ask Community post flow, embedded **`guide:`** skin cards; file bugs in bug-hunt phase
 
----
+### Guide card UI — light mode scoping (agents)
+
+Zinc **`bg-*`** remaps under **`html.light`**; **`text-white`** on inputs **does not**. When fixing guide surfaces in light mode only, prefer **`data-*`** roots + **`html.light [data-…]`** rules in **`index.css`** (same pattern as **`ap-guides-search-input`**, **`data-ask-community-modal`**, **`data-quick-link-modal`**). Hex-accent cards use class **`guide-accent-themed`** + CSS vars from **`guideCardAccent.js`**; light readable accent = **`--gca-light-accent`**.
+
 
 ## Shipped (Quick links — title bar shortcuts — v1, 2026-05-29)
 
@@ -693,6 +702,9 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-06-25: **Guide card polish shipped on test (`75ea4f5`):** light-mode expanded h2 (**`guide-section-heading`** + **`--gca-light-accent`**), expanded card tap-to-collapse (**`guide-card-expanded-tap-collapse`**), Ask Community modal inputs (**`data-ask-community-modal`** / auth / profile-gate), caption **`useState`** crash fix (**`3e4eae2`**), redundant dotlottie WASM prefetch removed (**`9c27cec`**). **Next phase:** Ryan bug hunt on guide cards + rest of app (light/dark).
+- 2026-06-25: **Release year backfill complete (test):** all **310** published guides have **`machines.release_year`** via **`scripts/ap-guide-backfill-release-years.mjs`** (+ Ryan manual **`payday`**). Script not wired to **`package.json`** yet ... invoke with **`node scripts/ap-guide-backfill-release-years.mjs --target=test`**.
+- 2026-06-25: **Guide card accent backfill run (test):** after migration **`20260610240000`**, **`npm run ap-guide:backfill-accents`** populated **`guides.card_accent_color`** from hero thumbnails (NULL-only; legacy pilot slugs skipped unless **`--include-legacy-pilots`**). Commits **`e88510c`** … **`75ea4f5`** on **`test`**.
 - 2026-06-24: **Guide card accent from hero (test):** additive `guides.card_accent_color` column (`supabase/migrations/20260610240000_guides_card_accent_color.sql`). UI resolves **stored hex → legacy slug map → amber default** (`src/utils/guideCardAccent.js`). Hero upload in form + ingest extracts saturated dominant color; **text-only saves and re-ingest without hero never touch accent**. Backfill: `npm run ap-guide:backfill-accents:dry` then `npm run ap-guide:backfill-accents` (NULL-only; skips 13 legacy pilot slugs unless `--include-legacy-pilots`). Apply migration on test before backfill.
 - 2026-06-24: **Desolator PDF v1.14 gaps ingested (test):** 10 guides from **All AP References 1.14** missing slugs — **`barnyard-poker`**, **`fortune-x-poker`**, **`moving-multipliers-poker`**, **`multipliers-rising-poker`**, **`multi-streak-poker`**, **`pay-upgrade`**, **`pick-a-multiplier-poker`**, **`quick-hit-platinum`** (separate from **`quick-hit-ultra-pays`**), **`super-hot-roll-poker`**, **`ultimate-x-bonus-streak-poker`**. Payloads **`scripts/lib/apGuideDesolatorGapPayloads.mjs`** · ingest **`scripts/ap-guide-ingest-desolator-gaps.mjs`**. Pre-ingest backup **`2026-06-24T12-50-27-604Z-all-published.json`** (300 → **310** published). Compare script **`scripts/ap-guide-compare-desolator-pdf.mjs`** → **MISSING: 0**. VP family cross-links in Skins (UX / Multi-Streak / Quick Hit Platinum). Ryan form pass pending (Where to find, heroes).
 - 2026-06-24: **Ultimate X Poker ingested (test):** slug **`ultimate-x-poker`** — batch 25 VP skip reversed (AP slot players treat UX as a slot). Payload **`scripts/lib/apGuideUltimateXPokerPayload.mjs`** · ingest **`scripts/ap-guide-ingest-ultimate-x-poker.mjs`**. Sources: workspace **`advantageslots-export`** HTML + Desolator **All AP References v1.14** entry (next-hand multiplier scavenger). Pre-ingest backup **`2026-06-24T11-59-38-480Z-all-published.json`** (298 → **299** published). Folder → **`___DONE/`**. Ryan form pass pending (Where to find, hero).

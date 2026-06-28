@@ -74,7 +74,9 @@ Treat other files in `supabase/` the same way: run them when the file’s purpos
 
 **Compiled markdown section order:** When to play → When to stop → How to check → **💰 Bankroll on hand** (optional) → Risk & Warnings → **📍 Where to find** (optional) → Skins → Gameplay Mechanics.
 
-**Card collapsed tile:** **Popularity** = **`machines.popularity`** tier (`Common`, etc.). Migration **`20260610170000`** renamed **`vegas_availability`** → **`popularity`**. **Release year** = **`machines.release_year`** (form **Release year** field; shows on guide card — often needs web research on new ingests).
+**Card collapsed tile:** **Popularity** = **`machines.popularity`** tier (`Common`, etc.). Migration **`20260610170000`** renamed **`vegas_availability`** → **`popularity`**. **Release year** = **`machines.release_year`** (form **Release year** field; shows on guide card — web-research backfill on test complete for all published guides).
+
+**Card hero accent:** **`guides.card_accent_color`** (hex from hero dominant color). Migration **`20260610240000_guides_card_accent_color.sql`**. Backfill existing heroes: **`npm run ap-guide:backfill-accents:dry`** then **`npm run ap-guide:backfill-accents`**. Release-year backfill script: **`node scripts/ap-guide-backfill-release-years.mjs --target=test`** (not in **`package.json`** yet).
 
 **+EV threshold defaults:** curated per slug / type fallbacks in **`src/constants/slotCardEvThreshold.js`** (used by form ingest and card UI when DB field is empty).
 

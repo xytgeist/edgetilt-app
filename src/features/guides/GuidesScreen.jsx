@@ -1454,7 +1454,15 @@ export default function GuidesScreen({
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const guideCardRefs = useRef(Object.create(null))
+  /** After collapse, scroll this slug's card header back into view (see useLayoutEffect). */
+  const collapseScrollSlugRef = useRef(null)
 
+  const collapseGuideCard = useCallback((rawSlug) => {
+    const slug = normalizeGuideAccessSlug(rawSlug)
+    if (!slug) return
+    collapseScrollSlugRef.current = slug
+    setExpandedSlug(null)
+  }, [])
   const access = useMemo(
     () => ({ isStaff, hasSlotsEdge, gatesMap, browseMode: 'member' }),
     [isStaff, hasSlotsEdge, gatesMap],
@@ -1481,7 +1489,7 @@ export default function GuidesScreen({
       const isExpanded =
         expandedSlug != null && String(expandedSlug).toLowerCase() === String(slug).toLowerCase()
       if (isExpanded) {
-        setExpandedSlug(null)
+        collapseGuideCard(slug)
         return
       }
       if (!canOpenGuide(slug, { isStaff, hasSlotsEdge, gatesMap })) {
@@ -1490,7 +1498,7 @@ export default function GuidesScreen({
       }
       setExpandedSlug(slug)
     },
-    [expandedSlug, gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe],
+    [expandedSlug, gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe, collapseGuideCard],
   )
 
   useEffect(() => {
@@ -1706,12 +1714,25 @@ export default function GuidesScreen({
   }, [load])
 
   useLayoutEffect(() => {
-    if (!expandedSlug) return
-    const el = guideCardRefs.current[expandedSlug]
-    if (!(el instanceof HTMLElement)) return
     const reduceMotion =
       typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    el.scrollIntoView({ block: 'start', inline: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
+    const scrollCardToStart = (slug) => {
+      if (!slug) return
+      const el =
+        guideCardRefs.current[slug] ?? document.getElementById(`guide-card-${slug}`)
+      if (!(el instanceof HTMLElement)) return
+      el.scrollIntoView({ block: 'start', inline: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' })
+    }
+
+    if (expandedSlug) {
+      scrollCardToStart(expandedSlug)
+      return
+    }
+
+    const collapseSlug = collapseScrollSlugRef.current
+    if (!collapseSlug) return
+    collapseScrollSlugRef.current = null
+    scrollCardToStart(collapseSlug)
   }, [expandedSlug])
 
   /** Title + Skins only (not hunt copy, manufacturer, slug, or MHB keyword blobs). */
@@ -1810,7 +1831,7 @@ export default function GuidesScreen({
                     expanded
                       ? (e) => {
                           if (shouldIgnoreGuideCardCollapseClick(e)) return
-                          setExpandedSlug(null)
+                          collapseGuideCard(cardSlug)
                         }
                       : undefined
                   }

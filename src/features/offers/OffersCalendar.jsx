@@ -3,8 +3,10 @@ import 'react-datepicker/dist/react-datepicker.css'
 import {
   OFFER_ALERT_DAY_9AM,
   OFFER_ALERT_NONE,
+  isOfferEventFromPeriodStart,
   localDateKeyFromIso,
   localDateKeyFromDate,
+  startOfWeekMonday,
   dateFromDatetimeLocalValue,
   normalizeLoadedEvent,
 } from './utils'
@@ -571,6 +573,7 @@ export default function OffersCalendar({
     editingId,
     selectedDays,
     setSelectedDays,
+    cursorMonth,
     setCursorMonth,
     draft,
     setDraft,
@@ -617,12 +620,6 @@ export default function OffersCalendar({
     normalizeLoadedEvent,
     newEventAlertPresetDefault
   })
-
-  const filteredEvents = useMemo(() => {
-    if (selectedDays.length === 0) return events
-    const selectedSet = new Set(selectedDays)
-    return events.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
-  }, [events, selectedDays])
 
   useEffect(() => {
     if (offersDefaultView === 'month' || offersDefaultView === 'week' || offersDefaultView === 'agenda') {
@@ -697,16 +694,6 @@ export default function OffersCalendar({
     media.addEventListener('change', sync)
     return () => media.removeEventListener('change', sync)
   }, [setIsLandscape])
-
-  useEffect(() => {
-    const next = {}
-    for (const ev of filteredEvents) {
-      const el = notesPreviewRefs.current[ev.id]
-      if (!el) continue
-      next[ev.id] = el.scrollWidth > el.clientWidth
-    }
-    setNotesOverflowById(next)
-  }, [events, selectedDays, expandedEventId, filteredEvents, notesPreviewRefs, setNotesOverflowById])
 
   const toggleExpandedEvent = (eventId) => {
     setExpandedEventId((id) => (id === eventId ? null : eventId))
@@ -845,15 +832,6 @@ export default function OffersCalendar({
     return () => { cancelled = true }
   }, [weekDetailEvent, supabaseClient])
 
-  const startOfWeekMonday = (d) => {
-    const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-    const day = dt.getDay()
-    const diff = day === 0 ? -6 : 1 - day
-    dt.setDate(dt.getDate() + diff)
-    dt.setHours(0, 0, 0, 0)
-    return dt
-  }
-
   const weekStart = useMemo(() => startOfWeekMonday(weekAnchor), [weekAnchor])
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, idx) => {
@@ -905,11 +883,33 @@ export default function OffersCalendar({
     return lanes
   }, [weekEvents])
 
-  const upcomingEvents = useMemo(() => {
+  const listPeriodStart = useMemo(() => {
+    if (activeCalendarView === 'week') return weekStart
+    if (activeCalendarView === 'month') {
+      return new Date(cursorMonth.getFullYear(), cursorMonth.getMonth(), 1)
+    }
     const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    return events.filter((ev) => new Date(ev.start_at).getTime() >= todayStart)
-  }, [events])
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  }, [activeCalendarView, weekStart, cursorMonth])
+
+  const listEvents = useMemo(() => {
+    let filtered = events.filter((ev) => isOfferEventFromPeriodStart(ev, listPeriodStart))
+    if (selectedDays.length > 0) {
+      const selectedSet = new Set(selectedDays)
+      filtered = filtered.filter((ev) => selectedSet.has(localDateKeyFromIso(ev.start_at)))
+    }
+    return filtered.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+  }, [events, listPeriodStart, selectedDays])
+
+  useEffect(() => {
+    const next = {}
+    for (const ev of listEvents) {
+      const el = notesPreviewRefs.current[ev.id]
+      if (!el) continue
+      next[ev.id] = el.scrollWidth > el.clientWidth
+    }
+    setNotesOverflowById(next)
+  }, [events, selectedDays, expandedEventId, listEvents, notesPreviewRefs, setNotesOverflowById])
 
   const casinoNameOptions = useMemo(() => {
     return Array.from(new Set(events.map((ev) => ev.casino_name?.trim()).filter(Boolean))).sort((a, b) =>
@@ -972,7 +972,6 @@ export default function OffersCalendar({
       ? new Date(0, 0, 0, 0, 0)
       : new Date(0, 0, 0, startSelected.getHours(), startSelected.getMinutes())
   const endMaxTime = new Date(0, 0, 0, 23, 45)
-  const listEvents = activeCalendarView === 'agenda' ? upcomingEvents : filteredEvents
   const listRows = useMemo(() => {
     if (activeCalendarView === 'agenda') return listEvents.map((e) => ({ type: 'event', event: e }))
     const today = new Date()
@@ -1591,9 +1590,7 @@ export default function OffersCalendar({
           {loading ? (
             <div className="text-zinc-400 text-sm">Loading…</div>
           ) : listEvents.length === 0 ? (
-            <div className="text-zinc-500 text-sm">
-              {activeCalendarView === 'agenda' ? 'No upcoming events.' : 'No events for the current filter.'}
-            </div>
+            <div className="text-zinc-500 text-sm">No events from this period onward.</div>
           ) : (
             <div className="space-y-2">
               {listRows.map((row, rowIdx) => {

@@ -12,6 +12,43 @@ export function localDateKeyFromDate(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
 
+/** @param {Date} d */
+export function startOfLocalDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+/** Monday-based week start, local midnight. */
+export function startOfWeekMonday(d) {
+  const dt = startOfLocalDay(d)
+  const day = dt.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  dt.setDate(dt.getDate() + diff)
+  return dt
+}
+
+/**
+ * Include in the list when the offer's last local day is on or after `periodStart`.
+ * Multi-day offers stay visible while still running; browsing a past month shows its events + future.
+ * @param {{ start_at?: string, end_at?: string | null }} ev
+ * @param {Date} periodStart
+ */
+export function isOfferEventFromPeriodStart(ev, periodStart) {
+  if (!ev?.start_at) return false
+  const start = new Date(ev.start_at)
+  if (Number.isNaN(start.getTime())) return false
+  const endParsed = ev.end_at ? new Date(ev.end_at) : start
+  const end = Number.isNaN(endParsed.getTime()) ? start : endParsed
+  const periodDay = startOfLocalDay(periodStart)
+  const lastDay = end.getTime() >= start.getTime() ? end : start
+  const lastDayStart = startOfLocalDay(lastDay)
+  return lastDayStart.getTime() >= periodDay.getTime()
+}
+
+/** @deprecated name — use isOfferEventFromPeriodStart(ev, startOfLocalDay(now)) */
+export function isOfferEventCurrentOrUpcoming(ev, now = new Date()) {
+  return isOfferEventFromPeriodStart(ev, startOfLocalDay(now))
+}
+
 export function toDatetimeLocalValue(iso) {
   if (!iso) return ''
   const d = new Date(iso)

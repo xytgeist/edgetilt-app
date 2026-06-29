@@ -14,6 +14,9 @@ export const WOF_CE_THEME = {
   accentDark: '#145a2f',
   accentDeep: '#0d3d20',
   accentMuted: '#1a7340',
+  /** Collector's Edition subtitle — blue tier parallel to accentSoft / accentMuted. */
+  editionBlueSoft: '#93c5fd',
+  editionBlueMuted: '#1d6fa3',
 }
 
 /** @typedef {'r1' | 'r2' | 'r3' | 'r4' | 'r5'} WofCeReelKey */

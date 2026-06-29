@@ -29,6 +29,8 @@ const THEME_STYLE = {
   '--wof-ce-accent-soft': WOF_CE_THEME.accentSoft,
   '--wof-ce-accent-dark': WOF_CE_THEME.accentDark,
   '--wof-ce-accent-muted': WOF_CE_THEME.accentMuted,
+  '--wof-ce-edition-blue-soft': WOF_CE_THEME.editionBlueSoft,
+  '--wof-ce-edition-blue-muted': WOF_CE_THEME.editionBlueMuted,
 }
 
 const DENOM_OPTIONS = [0.01, 0.02, 0.05, 0.1]
@@ -92,17 +94,19 @@ export default function WheelOfFortuneCollectorsEdition({
         >
           ‹
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex flex-1 items-center justify-center gap-3">
           <img
             src={CALCULATOR_ICON_SRC['wof-collectors-edition']}
             alt=""
             className="wof-ce-icon-ring h-14 w-14 shrink-0 rounded-2xl object-cover shadow-lg ring-1"
           />
-          <div className="min-w-0">
+          <div className="-mt-1 flex flex-col items-center -space-y-[2px] text-center leading-none">
             <h1 className="wof-ce-title text-2xl font-bold leading-tight">
-              Wheel of Fortune 4D CE
+              Wheel of Fortune 4D
             </h1>
-            <p className="wof-ce-subtitle text-sm">Column credit prize analyzer</p>
+            <p className="wof-ce-subtitle text-[19px] font-semibold tracking-[0.06em]">
+              Collector's Edition
+            </p>
           </div>
         </div>
         <button

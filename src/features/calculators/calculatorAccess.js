@@ -66,18 +66,18 @@ export function showCalculatorLock(
   return calculatorRequiresSlotsEdge(key, gatesMap)
 }
 
-export const CALCULATOR_CATALOG = [
+export const CALCULATOR_CATALOG_ENTRIES = [
   {
     key: 'phoenix',
     title: 'Phoenix Link',
     subtitle: 'Must-hit counter bonus analyzer',
     iconSrc: CALCULATOR_ICON_SRC.phoenix,
     iconAlt: 'Phoenix',
-    iconWrapClassName: 'h-16 w-16 flex-shrink-0 rounded-xl',
+    iconWrapClassName: 'h-16 w-16 flex-shrink-0 rounded-2xl object-cover object-center',
     buttonClassName:
-      'w-full bg-gray-900 hover:bg-gray-800 transition-colors p-6 sm:p-8 rounded-3xl text-left flex items-center gap-4 sm:gap-5 mb-4 min-h-[7rem] touch-manipulation active:scale-[0.99]',
-    titleClassName: 'line-clamp-2 font-semibold text-2xl leading-snug text-orange-400',
-    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-gray-400 sm:line-clamp-2',
+      'mb-4 flex min-h-[7rem] w-full touch-manipulation items-center gap-4 rounded-3xl bg-gradient-to-br from-black to-orange-950 p-6 text-left ring-1 ring-orange-950/40 transition-all hover:from-black hover:to-orange-900 hover:ring-orange-900/45 active:scale-[0.985] sm:gap-5 sm:p-8',
+    titleClassName: 'line-clamp-2 text-2xl font-semibold leading-snug text-orange-400',
+    subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-orange-200/70 sm:line-clamp-2',
   },
   {
     key: 'buffalo-link',
@@ -147,3 +147,8 @@ export const CALCULATOR_CATALOG = [
     subtitleClassName: 'mt-0.5 line-clamp-1 text-base leading-snug text-[rgba(255,255,255,0.82)] sm:line-clamp-2',
   },
 ]
+
+/** Calculators hub list — A–Z by display title. */
+export const CALCULATOR_CATALOG = CALCULATOR_CATALOG_ENTRIES.slice().sort((a, b) =>
+  a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }),
+)

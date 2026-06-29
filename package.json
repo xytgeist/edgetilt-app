@@ -47,7 +47,9 @@
     "ap-guide:voice-audit:strict": "node scripts/ap-guide-voice-audit-payloads.mjs --strict",
     "play-log:sync-templates": "node scripts/sync-play-log-guide-templates.mjs --target=test",
     "play-log:sync-templates:dry": "node scripts/sync-play-log-guide-templates.mjs --target=test --dry-run",
-    "play-log:sync-templates:production": "node scripts/sync-play-log-guide-templates.mjs --target=production"
+    "play-log:sync-templates:production": "node scripts/sync-play-log-guide-templates.mjs --target=production",
+    "play-log:seed-edgelord-demo": "node scripts/seed-play-log-edgelord-demo.mjs --target=test",
+    "play-log:seed-edgelord-demo:cleanup": "node scripts/seed-play-log-edgelord-demo.mjs --target=test --cleanup"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.6",

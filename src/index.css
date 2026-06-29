@@ -2953,6 +2953,56 @@ html.light [data-play-logbook-entry] .text-zinc-200 {
   color: #3f3f46 !important;
 }
 
+/* Play Logbook game picker — Analyze tab (Log Play sheet uses bankroll-sheet rules) */
+html.light [data-play-logbook] [data-play-log-game-picker] .text-white {
+  color: #18181b !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .bg-zinc-800\/95 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .bg-zinc-900 {
+  background-color: #ffffff !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .border-zinc-700,
+html.light [data-play-logbook] [data-play-log-game-picker] .border-zinc-700\/60,
+html.light [data-play-logbook] [data-play-log-game-picker] .border-zinc-700\/40 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] input {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] input::placeholder {
+  color: #a1a1aa !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .hover\:bg-zinc-700\/60:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .active\:bg-zinc-700:active {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+html.light [data-play-logbook] [data-play-log-game-picker] .bg-zinc-700\/40 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+html.light [data-play-logbook] [data-play-logbook-chart] .bg-zinc-800\/50 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-play-logbook] [data-play-logbook-analyze-period] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-play-logbook] [data-play-logbook-analyze-period] .text-zinc-400 {
+  color: #52525b !important;
+}
+
 /* Quick links — page toggle + at-cap modal (light mode) */
 html.light [data-quick-link-toggle] {
   background-color: #fafafa !important;

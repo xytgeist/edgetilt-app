@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   buildLogPlayGamePickerSections,
   normalizeGameSearchQuery,
+  PLAY_LOG_ANALYZE_ALL_PLAYS_ID,
+  PLAY_LOG_ANALYZE_ALL_PLAYS_LABEL,
 } from './playLogMetrics.js'
 
 const TRIGGER_CLASS =
@@ -22,6 +24,7 @@ const LIST_CLASS = 'max-h-52 overflow-y-auto overscroll-contain'
  * @param {import('./playLogMetrics.js').PlayLogEntry[]} props.entries
  * @param {string} [props.ariaLabel]
  * @param {string} [props.placeholder]
+ * @param {boolean} [props.includeAllPlaysOption]
  */
 export default function LogPlayGamePicker({
   value,
@@ -30,6 +33,7 @@ export default function LogPlayGamePicker({
   entries = [],
   ariaLabel = 'Game',
   placeholder = 'Select game',
+  includeAllPlaysOption = false,
 }) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -41,9 +45,16 @@ export default function LogPlayGamePicker({
     [templates, value],
   )
 
+  const triggerLabel = useMemo(() => {
+    if (includeAllPlaysOption && String(value) === PLAY_LOG_ANALYZE_ALL_PLAYS_ID) {
+      return PLAY_LOG_ANALYZE_ALL_PLAYS_LABEL
+    }
+    return selected?.display_name ?? placeholder
+  }, [includeAllPlaysOption, value, selected, placeholder])
+
   const { options, matchCount } = useMemo(
-    () => buildLogPlayGamePickerSections(templates, entries, searchQuery),
-    [templates, entries, searchQuery],
+    () => buildLogPlayGamePickerSections(templates, entries, searchQuery, { includeAllPlaysOption }),
+    [templates, entries, searchQuery, includeAllPlaysOption],
   )
 
   const selectableOptions = useMemo(() => options.filter(o => o?.type !== 'label'), [options])
@@ -73,16 +84,16 @@ export default function LogPlayGamePicker({
   }
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className="relative" data-play-log-game-picker>
       <button
         type="button"
         aria-label={ariaLabel}
         aria-expanded={open}
-        disabled={selectableOptions.length === 0 && !open}
+        disabled={!includeAllPlaysOption && selectableOptions.length === 0 && !open}
         onClick={() => setOpen(o => !o)}
         className={`${TRIGGER_CLASS} disabled:opacity-50`}
       >
-        <span className="block truncate pr-1">{selected?.display_name ?? placeholder}</span>
+        <span className="block truncate pr-1">{triggerLabel}</span>
         <span
           aria-hidden
           className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-xs transition-transform duration-200 ${

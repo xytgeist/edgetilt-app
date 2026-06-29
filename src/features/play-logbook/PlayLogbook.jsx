@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
@@ -45,9 +45,19 @@ import {
   metricSlugsForUserTemplate,
   PLAY_LOG_TEMPLATE_REQUIRED_FIELD_SLUGS,
   MHB_MANUFACTURER_OPTIONS,
+  PLAY_LOG_ANALYZE_ALL_PLAYS_ID,
+  PLAY_LOG_ANALYZE_ALL_PLAYS_METRIC_SLUGS,
+  isPlayLogAnalyzeAllPlays,
 } from './playLogMetrics.js'
 import { analyzePlayLogEntries } from './playLogAnalysis.js'
-import { buildPlayLogCsv, downloadPlayLogCsv } from './playLogExport.js'
+import { buildPlayLogAnalyzeTrendSeries } from './playLogAnalyzeChart.js'
+import {
+  filterPlayLogEntriesByPeriod,
+  PLAY_LOG_ANALYZE_PERIOD_ALL,
+  PLAY_LOG_ANALYZE_PERIODS,
+  playLogAnalyzePeriodEmptyLabel,
+} from './playLogAnalyzePeriod.js'
+import { buildPlayLogAllPlaysCsv, buildPlayLogCsv, downloadPlayLogCsv } from './playLogExport.js'
 import PlayLogPartnersSection from './PlayLogPartnersSection.jsx'
 import {
   playLogEntryIsSessionOwner,
@@ -68,6 +78,11 @@ import {
   updatePlayLogSessionPartnersPaid,
   updatePlayLogSharedSession,
 } from './playLogApi.js'
+
+const PlayLogAnalyzeTrendChart = lazy(() => import('./PlayLogAnalyzeTrendChart.jsx'))
+
+/** Max entries loaded for Log + Analyze (service returns newest first). */
+const PLAY_LOG_ENTRIES_FETCH_LIMIT = 500
 
 function localYmd(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -183,7 +198,8 @@ export default function PlayLogbook({
     /** @type {import('./playLogMetrics.js').PlayLogValueType} */ ('integer'),
   )
 
-  const [analyzeTemplateId, setAnalyzeTemplateId] = useState('')
+  const [analyzeTemplateId, setAnalyzeTemplateId] = useState(PLAY_LOG_ANALYZE_ALL_PLAYS_ID)
+  const [analyzePeriodId, setAnalyzePeriodId] = useState(PLAY_LOG_ANALYZE_PERIOD_ALL)
 
   const [nearbyCasinos, setNearbyCasinos] = useState([])
   const [gpsLoading, setGpsLoading] = useState(false)
@@ -200,7 +216,12 @@ export default function PlayLogbook({
   }, [templates])
 
   const selectedTemplate = selectedTemplateId ? templateById[selectedTemplateId] : null
-  const analyzeTemplate = analyzeTemplateId ? templateById[analyzeTemplateId] : sortedTemplates[0] || null
+  const isAnalyzeAllPlays = isPlayLogAnalyzeAllPlays(analyzeTemplateId)
+  const analyzeTemplate = isAnalyzeAllPlays
+    ? null
+    : analyzeTemplateId
+      ? templateById[analyzeTemplateId] || null
+      : null
 
   const selectedDefsMap = useMemo(
     () => defsMapForTemplate(defsMap, selectedTemplate),
@@ -211,15 +232,31 @@ export default function PlayLogbook({
     [defsMap, analyzeTemplate],
   )
 
+  const analyzePeriodEntries = useMemo(
+    () => filterPlayLogEntriesByPeriod(entries, analyzePeriodId),
+    [entries, analyzePeriodId],
+  )
+
   const filteredAnalyzeEntries = useMemo(() => {
+    if (isAnalyzeAllPlays) return analyzePeriodEntries
     if (!analyzeTemplate) return []
-    return entries.filter(e => e.template_id === analyzeTemplate.id)
-  }, [entries, analyzeTemplate])
+    return analyzePeriodEntries.filter(e => e.template_id === analyzeTemplate.id)
+  }, [analyzePeriodEntries, analyzeTemplate, isAnalyzeAllPlays])
 
   const analysisStats = useMemo(() => {
+    if (isAnalyzeAllPlays) {
+      return analyzePlayLogEntries(analyzePeriodEntries, PLAY_LOG_ANALYZE_ALL_PLAYS_METRIC_SLUGS, {
+        allPlays: true,
+      })
+    }
     if (!analyzeTemplate) return []
     return analyzePlayLogEntries(filteredAnalyzeEntries, analyzeTemplate.metric_slugs || [])
-  }, [filteredAnalyzeEntries, analyzeTemplate])
+  }, [analyzePeriodEntries, filteredAnalyzeEntries, analyzeTemplate, isAnalyzeAllPlays])
+
+  const analyzeTrendSeries = useMemo(
+    () => buildPlayLogAnalyzeTrendSeries(filteredAnalyzeEntries),
+    [filteredAnalyzeEntries],
+  )
 
   const logPlayFormFields = useMemo(() => {
     if (!selectedTemplate) return []
@@ -262,7 +299,7 @@ export default function PlayLogbook({
           .from('play_log_entries')
           .select('*, play_log_sessions ( created_by_user_id )')
           .order('captured_at', { ascending: false })
-          .limit(200),
+          .limit(PLAY_LOG_ENTRIES_FETCH_LIMIT),
         supabaseClient
           .from('profiles')
           .select('user_id, handle, display_name, avatar_url, role')
@@ -303,11 +340,11 @@ export default function PlayLogbook({
     loadAll()
   }, [loadAll])
 
-  useEffect(() => {
-    if (templates.length && !analyzeTemplateId) {
-      setAnalyzeTemplateId(templates.find(t => t.is_system)?.id || templates[0].id)
-    }
-  }, [templates, analyzeTemplateId])
+  const openAnalyzeTab = useCallback(() => {
+    setActiveTab('analyze')
+    setAnalyzeTemplateId(PLAY_LOG_ANALYZE_ALL_PLAYS_ID)
+    setAnalyzePeriodId(PLAY_LOG_ANALYZE_PERIOD_ALL)
+  }, [])
 
   const closeSheet = () => {
     setSheet(null)
@@ -837,7 +874,7 @@ export default function PlayLogbook({
         .eq('id', templateId)
         .eq('is_system', false)
       if (e) throw e
-      if (analyzeTemplateId === templateId) setAnalyzeTemplateId('')
+      if (analyzeTemplateId === templateId) setAnalyzeTemplateId(PLAY_LOG_ANALYZE_ALL_PLAYS_ID)
       if (editingCustomTemplateId === templateId) resetCustomTemplateForm()
       await loadAll()
     } catch (e) {
@@ -855,7 +892,7 @@ export default function PlayLogbook({
         .eq('id', templateId)
         .eq('is_system', true)
       if (e) throw e
-      if (analyzeTemplateId === templateId) setAnalyzeTemplateId('')
+      if (analyzeTemplateId === templateId) setAnalyzeTemplateId(PLAY_LOG_ANALYZE_ALL_PLAYS_ID)
       if (selectedTemplateId === templateId) setSelectedTemplateId('')
       if (editingSystemTemplateId === templateId) resetSystemTemplateForm()
       await loadAll()
@@ -893,7 +930,7 @@ export default function PlayLogbook({
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => (tab.id === 'analyze' ? openAnalyzeTab() : setActiveTab(tab.id))}
               className={`flex-1 py-2.5 rounded-xl text-sm font-bold touch-manipulation transition-colors ${
                 activeTab === tab.id ? 'bg-cyan-600 text-white' : 'text-zinc-400 active:bg-zinc-800'
               }`}
@@ -1058,23 +1095,80 @@ export default function PlayLogbook({
         ) : (
           <>
             <div className="mb-4">
-              <label className="block text-zinc-400 text-xs mb-1.5">Game</label>
+              <label className="block text-zinc-400 text-xs mb-1.5">Scope</label>
               <LogPlayGamePicker
-                value={analyzeTemplate?.id || ''}
+                value={analyzeTemplateId}
                 onChange={setAnalyzeTemplateId}
                 templates={templates}
                 entries={entries}
-                ariaLabel="Game"
-                placeholder="Select game"
+                ariaLabel="Analyze scope"
+                placeholder="Select scope"
+                includeAllPlaysOption
               />
+            </div>
+
+            <div className="mb-4" data-play-logbook-analyze-period>
+              <label className="block text-zinc-400 text-xs mb-1.5">Period</label>
+              <div className="flex flex-wrap gap-1.5">
+                {PLAY_LOG_ANALYZE_PERIODS.map(period => (
+                  <button
+                    key={period.id}
+                    type="button"
+                    onClick={() => setAnalyzePeriodId(period.id)}
+                    className={`rounded-xl px-3 py-2 text-xs font-bold touch-manipulation transition-colors ${
+                      analyzePeriodId === period.id
+                        ? 'bg-cyan-600 text-white'
+                        : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
+                    }`}
+                  >
+                    {period.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {filteredAnalyzeEntries.length === 0 ? (
               <div className="rounded-2xl bg-zinc-900 border border-zinc-800/60 p-6 text-center" data-play-logbook-card>
-                <div className="text-zinc-400 text-sm">No entries for this game yet.</div>
+                <div className="text-zinc-400 text-sm">
+                  {analyzePeriodEntries.length === 0
+                    ? playLogAnalyzePeriodEmptyLabel(analyzePeriodId)
+                    : isAnalyzeAllPlays
+                      ? 'No plays logged yet.'
+                      : 'No entries for this game in this period.'}
+                </div>
               </div>
             ) : (
               <>
+                <div
+                  className="rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 mb-4"
+                  data-play-logbook-card
+                  data-play-logbook-chart
+                >
+                  <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">
+                    RTP &amp; P/L trend
+                  </div>
+                  <p className="text-zinc-500 text-xs mt-1 leading-snug">
+                    Cumulative net profit/loss in dollars (left axis) and wager-weighted RTP % (right axis),
+                    oldest → newest. P/L includes acquisition fees when logged.
+                  </p>
+                  {analyzeTrendSeries.chartable ? (
+                    <div className="mt-3">
+                      <Suspense
+                        fallback={
+                          <div className="h-52 flex items-center justify-center text-zinc-500 text-sm">
+                            Loading chart…
+                          </div>
+                        }
+                      >
+                        <PlayLogAnalyzeTrendChart series={analyzeTrendSeries} />
+                      </Suspense>
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-2xl overflow-hidden bg-zinc-800/50 px-4 py-6 text-center text-zinc-500 text-sm">
+                      {analyzeTrendSeries.minPlaysHint || 'Not enough data for a trend yet.'}
+                    </div>
+                  )}
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {analysisStats.map(stat => (
                     <div
@@ -1093,8 +1187,10 @@ export default function PlayLogbook({
                   <button
                     type="button"
                     onClick={() => {
-                      const slug = analyzeTemplate?.slug || 'game'
-                      const csv = buildPlayLogCsv(filteredAnalyzeEntries, analyzeTemplate, analyzeDefsMap)
+                      const slug = isAnalyzeAllPlays ? 'all-plays' : analyzeTemplate?.slug || 'game'
+                      const csv = isAnalyzeAllPlays
+                        ? buildPlayLogAllPlaysCsv(filteredAnalyzeEntries, templates, defsMap)
+                        : buildPlayLogCsv(filteredAnalyzeEntries, analyzeTemplate, analyzeDefsMap)
                       downloadPlayLogCsv(csv, `play-logbook-${slug}-${localYmd()}.csv`)
                     }}
                     className="w-full min-h-12 rounded-2xl bg-zinc-800 text-sm font-semibold text-cyan-300 touch-manipulation active:bg-zinc-700"

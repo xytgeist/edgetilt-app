@@ -598,6 +598,29 @@ export function templatesSortedByPlayCount(templates, entries) {
 
 export const LOG_PLAY_RECENT_GAMES_LIMIT = 5
 
+/** Analyze tab — sentinel id for cross-game aggregate stats (not a DB template). */
+export const PLAY_LOG_ANALYZE_ALL_PLAYS_ID = '__all_plays__'
+
+export const PLAY_LOG_ANALYZE_ALL_PLAYS_LABEL = 'All plays'
+
+/** Cross-game metrics only (skip counters, meters, etc. in Analyze > All plays). */
+export const PLAY_LOG_ANALYZE_ALL_PLAYS_METRIC_SLUGS = [
+  'money_in',
+  'money_out',
+  'bet_size',
+  'denom',
+  'spin_count',
+  'bonus_count',
+  'acquisition_fee',
+  'current_ev_rtp',
+  'expected_ev_usd',
+]
+
+/** @param {string | null | undefined} analyzeTemplateId */
+export function isPlayLogAnalyzeAllPlays(analyzeTemplateId) {
+  return String(analyzeTemplateId || '') === PLAY_LOG_ANALYZE_ALL_PLAYS_ID
+}
+
 /**
  * Most recently logged templates (by latest entry `captured_at`).
  * @param {PlayLogTemplate[]} templates
@@ -676,8 +699,10 @@ export function resolvePlayLogPrefillTemplate(templates, pre) {
  * @param {PlayLogTemplate[]} templates
  * @param {PlayLogEntry[]} entries
  * @param {string} [searchQuery]
+ * @param {{ includeAllPlaysOption?: boolean }} [opts]
  */
-export function buildLogPlayGamePickerSections(templates, entries, searchQuery = '') {
+export function buildLogPlayGamePickerSections(templates, entries, searchQuery = '', opts = {}) {
+  const { includeAllPlaysOption = false } = opts
   const q = normalizeGameSearchQuery(searchQuery)
   const system = (templates || []).filter(t => t.is_system)
   const custom = (templates || []).filter(t => !t.is_system)
@@ -691,6 +716,11 @@ export function buildLogPlayGamePickerSections(templates, entries, searchQuery =
 
   /** @type {Array<{ value: string, label: string } | { type: 'label', label: string }>} */
   const options = []
+
+  if (includeAllPlaysOption && !q) {
+    options.push({ type: 'label', label: 'Scope' })
+    options.push({ value: PLAY_LOG_ANALYZE_ALL_PLAYS_ID, label: PLAY_LOG_ANALYZE_ALL_PLAYS_LABEL })
+  }
 
   if (recent.length > 0) {
     options.push({ type: 'label', label: 'Recent' })
@@ -745,6 +775,23 @@ export function playLogRealRtpPct(totalMoneyIn, totalMoneyOut) {
   const out = Number(totalMoneyOut)
   if (!Number.isFinite(inn) || !Number.isFinite(out) || inn <= 0) return null
   return (out / inn) * 100
+}
+
+/**
+ * Wager-weighted realized RTP % across a set of entries (e.g. Analyze tab for one game).
+ * @param {PlayLogEntry[]} entries
+ * @returns {number | null}
+ */
+export function aggregateRealizedRtpPct(entries) {
+  let sumIn = 0
+  let sumOut = 0
+  for (const entry of entries || []) {
+    const inn = Number(entry?.values?.money_in)
+    const outVal = Number(entry?.values?.money_out)
+    if (Number.isFinite(inn)) sumIn += inn
+    if (Number.isFinite(outVal)) sumOut += outVal
+  }
+  return playLogRealRtpPct(sumIn, sumOut)
 }
 
 /** @deprecated alias */

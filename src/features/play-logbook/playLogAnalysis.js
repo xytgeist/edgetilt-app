@@ -1,4 +1,10 @@
-import { avg, numericSamples, sum } from './playLogMetrics.js'
+import {
+  aggregateRealizedRtpPct,
+  avg,
+  formatPlayLogRealRtp,
+  numericSamples,
+  sum,
+} from './playLogMetrics.js'
 
 /** @typedef {import('./playLogMetrics.js').PlayLogEntry} PlayLogEntry */
 
@@ -7,12 +13,31 @@ import { avg, numericSamples, sum } from './playLogMetrics.js'
 /**
  * @param {PlayLogEntry[]} entries
  * @param {string[]} metricSlugs
+ * @param {{ allPlays?: boolean }} [opts]
  */
-export function analyzePlayLogEntries(entries, metricSlugs) {
+export function analyzePlayLogEntries(entries, metricSlugs, opts = {}) {
+  const { allPlays = false } = opts
   const n = entries.length
   /** @type {AnalysisStat[]} */
   const stats = [{ key: 'count', label: 'Logged plays', value: String(n) }]
   if (n === 0) return stats
+
+  if (allPlays) {
+    const gameCount = new Set(entries.map(e => e.template_id).filter(Boolean)).size
+    stats.push({ key: 'games_played', label: 'Games played', value: String(gameCount) })
+  }
+
+  const realizedRtp = aggregateRealizedRtpPct(entries)
+  if (realizedRtp != null) {
+    stats.push({
+      key: 'realized_rtp',
+      label: 'Realized RTP %',
+      value: formatPlayLogRealRtp(realizedRtp) ?? '—',
+      hint: allPlays
+        ? 'Wager-weighted across all logged plays (total out ÷ total in).'
+        : 'Wager-weighted across all logged plays for this game (total out ÷ total in).',
+    })
+  }
 
   const slugSet = new Set(metricSlugs)
 

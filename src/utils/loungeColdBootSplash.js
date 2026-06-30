@@ -1,4 +1,5 @@
 import { readLoungeComposerDraft } from '../features/lounge/loungeStorage.js'
+import { isStandalonePwa } from './pwaNotificationPrompt.js'
 
 /** Splash already shown for this tab boot cycle (cleared after long background). */
 export const LOUNGE_COLD_BOOT_SPLASH_CYCLE_KEY = 'loungeColdBootSplashCycle:v1'
@@ -7,13 +8,13 @@ export const LOUNGE_COLD_BOOT_BG_AT_KEY = 'loungeColdBootBgAt:v1'
 
 export const LOUNGE_COLD_BOOT_RESUME_AFTER_MS = 10 * 60 * 1000
 
-/** Member: min covers draw phase; dismiss when Lottie completes (fly-through is the transition). */
+/** Member + anonymous: min covers draw phase; dismiss when Lottie completes (fly-through is the transition). */
 export const LOUNGE_COLD_BOOT_MEMBER_MIN_MS = 3000
 export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 7000
 
-/** Anonymous browse: short brand flash only. */
+/** Anonymous uses the same play-gated max as members (full splash). Min kept lower for legacy callers. */
 export const LOUNGE_COLD_BOOT_ANON_MIN_MS = 380
-export const LOUNGE_COLD_BOOT_ANON_MAX_MS = 900
+export const LOUNGE_COLD_BOOT_ANON_MAX_MS = LOUNGE_COLD_BOOT_MEMBER_MAX_MS
 
 /** @returns {boolean} */
 export function readLoungeComposerDraftPendingWork() {
@@ -98,6 +99,7 @@ export function consumeLoungeColdBootLongBackgroundResume() {
  */
 export function shouldShowLoungeColdBootSplash({ tab, pendingWork = false }) {
   if (typeof window === 'undefined') return false
+  if (!isStandalonePwa()) return false
   if (tab !== 'home') return false
   if (!isLoungeColdBootHomeIntent()) return false
   if (pendingWork || readLoungeComposerDraftPendingWork()) return false
@@ -111,6 +113,7 @@ export function shouldShowLoungeColdBootSplash({ tab, pendingWork = false }) {
  */
 export function shouldShowLoungeColdBootResumeSplash({ tab, pendingWork = false }) {
   if (typeof window === 'undefined') return false
+  if (!isStandalonePwa()) return false
   if (tab !== 'home') return false
   if (!isLoungeColdBootHomeIntent()) return false
   if (pendingWork || readLoungeComposerDraftPendingWork()) return false

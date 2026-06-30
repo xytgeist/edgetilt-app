@@ -257,22 +257,22 @@ export const LEGAL_DOCUMENTS = {
     title: 'Community Guidelines',
     effectiveDate: LEGAL_EFFECTIVE_DATE,
     intro:
-      'These Community Guidelines explain how we expect members to behave on EDGE (LVSlotPro). They apply to the Lounge feed, comments, direct messages, group chats, profiles, and any other social or community features. They work together with our Terms & Conditions and Privacy Policy.',
+      'These Community Guidelines explain how we expect members to behave on EDGE (LVSlotPro). They apply to the Lounge feed, comments, direct messages, group chats, profiles, and any other social or community features ... whether you are here for slots, sports, trading, investing, or any other edge-hunting niche. They work together with our Terms & Conditions and Privacy Policy.',
     sections: [
       {
         id: 'purpose',
         heading: '1. What EDGE is for',
         paragraphs: [
-          'EDGE is a community for slot and advantage-play enthusiasts to share experiences, learn, and use tools like calculators, play logbooks, and AP guides.',
-          'Keep discussion constructive. Disagreement is fine. Personal attacks, harassment, and bad-faith pile-ons are not.',
+          'EDGE is a community for advantage play, gambling, and edge-hunting — slots and casino AP, sports betting, trading, investing, and similar pursuits. Share experiences, learn from each other, and use the tools in the app.',
+          'This is a free speech platform. Say whatever you want, but keep it constructive. Disagreement is fine; harassment is not. Bottom line: just don\'t be a dick.',
         ],
       },
       {
         id: 'respect',
         heading: '2. Be respectful',
         paragraphs: [
-          'Treat other members like people you would talk to at a casino meetup or in a trusted AP group chat.',
-          'Do not harass, bully, threaten, or demean others based on identity, skill level, bankroll, location, or opinions about games or strategy.',
+          'Treat other members like people you would talk to at a meetup or in a trusted group chat.',
+          'Do not harass, bully, threaten, or demean others based on identity, skill level, bankroll, location, or opinions about strategy or markets.',
           'Do not dox anyone. Do not share another person\'s private contact info, home address, employer, or real-time location without their clear permission.',
         ],
       },
@@ -280,17 +280,16 @@ export const LEGAL_DOCUMENTS = {
         id: 'honest',
         heading: '3. Be honest and on-topic',
         paragraphs: [
-          'Share what you actually saw or played when posting session results, machine states, or take-point advice. Do not knowingly mislead the community.',
+          'Share what you actually saw, played, or measured when posting results, setups, or take-point advice. Do not knowingly mislead the community.',
           'Label speculation and humor when it could be mistaken for fact. Satire is fine; scams and fake "guaranteed" systems are not.',
-          'Stay relevant to slots, AP, bankroll, casinos, and the tools in the app. Off-topic spam and repetitive self-promotion may be removed.',
+          'Stay relevant to gambling, edge play, bankroll, markets, sports, casinos, and related topics. Off-topic spam and repetitive self-promotion may be removed.',
         ],
       },
       {
         id: 'content',
         heading: '4. Content standards',
         paragraphs: [
-          'You may not post content that is illegal, promotes illegal activity, or violates casino property rules in a way that puts others at risk.',
-          'No hate speech, slurs, or content that attacks protected groups.',
+          'You may not post content that is illegal, promotes illegal activity, or violates venue, platform, or property rules in a way that puts others at risk.',
           'No sexually explicit content, gratuitous violence, or content that exploits minors (zero tolerance).',
           'No malware, phishing links, or attempts to steal accounts or payment information.',
           'Only post media you have the right to share. Respect copyright and casino photography policies where they apply.',

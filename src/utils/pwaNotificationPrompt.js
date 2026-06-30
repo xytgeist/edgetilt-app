@@ -8,6 +8,11 @@ export function isIosDevice() {
   return /iPhone|iPad|iPod/i.test(window.navigator.userAgent || '')
 }
 
+export function isAndroidDevice() {
+  if (typeof window === 'undefined') return false
+  return /Android/i.test(window.navigator.userAgent || '')
+}
+
 export function isSafariBrowser() {
   if (typeof window === 'undefined') return false
   const ua = window.navigator.userAgent || ''
@@ -133,7 +138,7 @@ export function dismissPwaInstallBanner() {
   }
 }
 
-/** Short inline steps for the top install banner (Safari vs other iOS browsers). */
+/** Short inline steps for the install chip modal (Safari vs other iOS browsers). */
 export function iosPwaInstallBannerSteps(isSafariBrowser) {
   if (isSafariBrowser) {
     return [
@@ -150,6 +155,41 @@ export function iosPwaInstallBannerSteps(isSafariBrowser) {
   ]
 }
 
+function androidPwaInstallBannerSteps() {
+  return [
+    { id: 'menu', lead: 'Tap the', emphasis: '⋮ menu', tail: 'in Chrome (top-right)', showShareIcon: false },
+    { id: 'install', lead: 'Tap', emphasis: 'Install app', tail: 'or Add to Home screen', showShareIcon: false },
+    { id: 'confirm', lead: 'Confirm', emphasis: 'Install', tail: null, showShareIcon: false },
+  ]
+}
+
+function desktopPwaInstallBannerSteps() {
+  return [
+    {
+      id: 'install',
+      lead: 'Use your browser',
+      emphasis: 'Install',
+      tail: 'control (address bar icon or browser menu)',
+      showShareIcon: false,
+    },
+    {
+      id: 'open',
+      lead: 'Launch Edge from your',
+      emphasis: 'installed app',
+      tail: 'or dock shortcut',
+      showShareIcon: false,
+    },
+  ]
+}
+
+/** Platform-aware install steps for the title-bar chip modal. */
+export function pwaInstallBannerSteps(isSafariBrowserFlag = isSafariBrowser()) {
+  if (isIosDevice()) return iosPwaInstallBannerSteps(isSafariBrowserFlag)
+  if (isAndroidDevice()) return androidPwaInstallBannerSteps()
+  return desktopPwaInstallBannerSteps()
+}
+
+/** Show install chip whenever the app is open in a browser tab, not the installed PWA. */
 export function shouldShowPwaInstallBanner() {
-  return iosPwaInstallRequired() && !isPwaInstallBannerDismissed()
+  return !isStandalonePwa()
 }

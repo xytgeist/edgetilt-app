@@ -6,6 +6,7 @@ import {
   matchLoungePostCategoryPillsForSearch,
 } from '../utils/loungePostCategoryPills.js'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
+import PwaInstallTitleBarRow from './PwaInstallBanner.jsx'
 import TitleBarStatusLine from './TitleBarStatusLine.jsx'
 import LoungePostArticle from '../features/lounge/LoungePostArticle.jsx'
 import LoungeOgBadge from '../features/lounge/LoungeOgBadge.jsx'
@@ -914,24 +915,27 @@ export default function LoungeDockSlidePanels({
           pointerEvents: panelTitleReveal > 0.12 ? 'auto' : 'none',
         }}
       >
-        <div className="flex items-center justify-between gap-2 px-3 py-2">
-          <EdgeLogoWithEasterEgg className={panelTitleLogoClassName} />
-          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-            <TitleBarStatusLine
-              loading={communityFeedLoading}
-              showBuildBadge={settingsViewerIsStaff && buildBadgeEnabled}
-            />
-            {titleBarNavSlot}
-            <button
-              type="button"
-              onClick={() => dismissWithAnimation('left')}
-              className="lounge-title-nav-btn pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
-              aria-label="Close panel"
-            >
-              <span className="text-xl leading-none">×</span>
-            </button>
-          </div>
-        </div>
+        <PwaInstallTitleBarRow
+          rowClassName="px-3 py-2"
+          logo={<EdgeLogoWithEasterEgg className={panelTitleLogoClassName} />}
+          navSlot={
+            <>
+              <TitleBarStatusLine
+                loading={communityFeedLoading}
+                showBuildBadge={settingsViewerIsStaff && buildBadgeEnabled}
+              />
+              {titleBarNavSlot}
+              <button
+                type="button"
+                onClick={() => dismissWithAnimation('left')}
+                className="lounge-title-nav-btn pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
+                aria-label="Close panel"
+              >
+                <span className="text-xl leading-none">×</span>
+              </button>
+            </>
+          }
+        />
       </div>
 
       <div

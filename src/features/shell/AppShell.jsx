@@ -41,7 +41,6 @@ import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
-import PwaInstallBanner from '../../components/PwaInstallBanner.jsx'
 import {
   loungeActivityInAppPayloadFromMessage,
   navigateFromLoungeActivityPayload,
@@ -1185,6 +1184,7 @@ export default function AppShell({
             onLoungeFeedCategoryFilterChange={onLoungeFeedCategoryFilterChange}
             loungeFeedBrowseMode={browseMode}
             authSessionReady={authSessionReady}
+            coldBootSplashVisible={splashVisible}
             isActivePage={tab === 'home'}
             onNavigateToLoungeFeed={() => {
               setTab('home')
@@ -1471,7 +1471,6 @@ export default function AppShell({
 
   return (
     <div className="min-h-dvh bg-zinc-950">
-      <PwaInstallBanner />
       {accessNotice ? (
         <div
           role="status"

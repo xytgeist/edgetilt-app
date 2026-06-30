@@ -1,6 +1,20 @@
+import { useEffect, useRef, useState } from 'react'
 import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthTabSwitcher from './AuthTabSwitcher'
+
+const LEGAL_NUDGE_MESSAGE = 'Please accept the Terms & Conditions and Privacy Policy.'
+
+function LegalAcceptanceNudge() {
+  return (
+    <div
+      role="alert"
+      className="mb-2 rounded-xl border border-amber-500/55 bg-amber-950/90 px-3 py-2.5 text-center text-[13px] font-medium leading-snug text-amber-100"
+    >
+      {LEGAL_NUDGE_MESSAGE}
+    </div>
+  )
+}
 
 export default function AuthModalPanel({
   authTab,
@@ -34,10 +48,38 @@ export default function AuthModalPanel({
   onForgotSubmit,
   isOAuthLoading,
   onGoogleSignIn,
-  onGoogleSignInBlocked,
   acceptedLegal = false,
   onAcceptedLegalChange,
 }) {
+  /** Which signup control triggered the legal nudge: `google` | `create`. */
+  const [legalNudgeSource, setLegalNudgeSource] = useState(null)
+  const legalCheckboxRef = useRef(null)
+
+  useEffect(() => {
+    if (!legalNudgeSource) return
+    legalCheckboxRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [legalNudgeSource])
+
+  useEffect(() => {
+    if (acceptedLegal) setLegalNudgeSource(null)
+  }, [acceptedLegal])
+
+  useEffect(() => {
+    if (authTab !== 'join') setLegalNudgeSource(null)
+  }, [authTab])
+
+  const requireLegalAcceptance = (source) => {
+    if (acceptedLegal) return false
+    setLegalNudgeSource(source)
+    return true
+  }
+
+  const onLegalCheckboxChange = (checked) => {
+    onAcceptedLegalChange?.(checked)
+    if (checked) setLegalNudgeSource(null)
+  }
+
+  const legalCheckboxHighlighted = authTab === 'join' && !acceptedLegal && legalNudgeSource != null
   const legalLinks = (
     <>
       <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-orange-400 underline underline-offset-2 hover:text-orange-300">
@@ -124,14 +166,12 @@ export default function AuthModalPanel({
         </div>
       ) : null}
       <AuthTabSwitcher value={authTab} onChange={onAuthTabChange} />
+      {authTab === 'join' && legalNudgeSource === 'google' ? <LegalAcceptanceNudge /> : null}
       <button
         type="button"
         disabled={isOAuthLoading}
         onClick={() => {
-          if (authTab === 'join' && !acceptedLegal) {
-            onGoogleSignInBlocked?.()
-            return
-          }
+          if (authTab === 'join' && requireLegalAcceptance('google')) return
           onGoogleSignIn({ setErrorTarget: authTab })
         }}
         className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
@@ -142,18 +182,49 @@ export default function AuthModalPanel({
       </button>
       <OAuthDivider />
       {authTab === 'join' ? (
-        <form onSubmit={onSignUpSubmit} className="space-y-4">
-          <label className="flex items-start gap-3 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 px-3.5 py-3 text-left cursor-pointer touch-manipulation">
+        <form
+          onSubmit={(e) => {
+            if (requireLegalAcceptance('create')) {
+              e.preventDefault()
+              return
+            }
+            onSignUpSubmit(e)
+          }}
+          className="space-y-4"
+        >
+          <label
+            ref={legalCheckboxRef}
+            data-auth-legal-checkbox
+            data-auth-legal-nudge={legalCheckboxHighlighted ? '1' : undefined}
+            className={`relative flex items-start gap-3 rounded-2xl border px-3.5 py-3 text-left cursor-pointer touch-manipulation transition-colors ${
+              legalCheckboxHighlighted
+                ? 'border-orange-400/70 bg-orange-950/25'
+                : 'border-zinc-700/80 bg-zinc-900/50'
+            }`}
+          >
+            {legalCheckboxHighlighted ? (
+              <span
+                className="pointer-events-none absolute -inset-0.5 rounded-[1.1rem] ring-2 ring-orange-400/85 auth-legal-checkbox-pulse"
+                aria-hidden
+              />
+            ) : null}
             <input
               type="checkbox"
               checked={acceptedLegal}
-              onChange={(e) => onAcceptedLegalChange?.(e.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 accent-orange-500"
+              onChange={(e) => onLegalCheckboxChange(e.target.checked)}
+              className="relative z-[1] mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 accent-orange-500"
+              aria-invalid={legalCheckboxHighlighted || undefined}
+              aria-describedby={legalCheckboxHighlighted ? 'auth-legal-nudge-msg' : undefined}
             />
-            <span className="text-[13px] leading-relaxed text-zinc-300">
+            <span className="relative z-[1] text-[13px] leading-relaxed text-zinc-300">
               I agree to the {legalLinks}.
             </span>
           </label>
+          {legalCheckboxHighlighted ? (
+            <span id="auth-legal-nudge-msg" className="sr-only">
+              {LEGAL_NUDGE_MESSAGE}
+            </span>
+          ) : null}
           <input
             type="email"
             placeholder="Email"
@@ -200,6 +271,7 @@ export default function AuthModalPanel({
               {signupMessage}
             </div>
           ) : null}
+          {legalNudgeSource === 'create' ? <LegalAcceptanceNudge /> : null}
           <button
             type="submit"
             disabled={isSigningUp}

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import EdgeLogoWithEasterEgg from './EdgeLogoWithEasterEgg.jsx'
 import TitleBarStatusLine from './TitleBarStatusLine.jsx'
+import PwaInstallTitleBarRow from './PwaInstallBanner.jsx'
 import { LOUNGE_FEED_TITLE_BAR_ROW_CLASS } from '../features/lounge/loungeFeedAvatar.js'
 import { useQuickLinkIds } from '../features/shell/quickLinksStore.js'
 import { edgeLogoTitleBarClassName } from '../features/shell/titleBarLayout.js'
@@ -141,13 +142,16 @@ export default function ScrollLinkedEdgeTitleBarShell({
           pointerEvents: titleReveal > 0.12 ? 'auto' : 'none',
         }}
       >
-        <div className={`flex items-center justify-between gap-3 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
-          <EdgeLogoWithEasterEgg className={logoClassName} />
-          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-            <TitleBarStatusLine />
-            {titleBarNavSlot}
-          </div>
-        </div>
+        <PwaInstallTitleBarRow
+          rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
+          logo={<EdgeLogoWithEasterEgg className={logoClassName} />}
+          navSlot={
+            <>
+              <TitleBarStatusLine />
+              {titleBarNavSlot}
+            </>
+          }
+        />
       </div>
 
       <div

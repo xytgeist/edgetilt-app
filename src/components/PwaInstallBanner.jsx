@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  dismissPwaInstallBanner,
-  iosPwaInstallBannerSteps,
-  isPwaInstallBannerDismissed,
+  isIosDevice,
   isSafariBrowser,
   isStandalonePwa,
+  pwaInstallBannerSteps,
   shouldShowPwaInstallBanner,
 } from '../utils/pwaNotificationPrompt.js'
+
+const PWA_IOS_SETUP_IMAGE = '/onboarding/ios-setup.png'
 
 function IosShareIcon({ className = 'h-[1.1em] w-[1.1em] inline-block align-[-0.15em] mx-0.5' }) {
   return (
@@ -34,35 +35,107 @@ function IosShareIcon({ className = 'h-[1.1em] w-[1.1em] inline-block align-[-0.
   )
 }
 
-function syncPwaInstallBannerLayout(heightPx) {
-  if (typeof document === 'undefined') return
-  const root = document.documentElement
-  if (heightPx > 0) {
-    root.dataset.pwaInstallBanner = '1'
-    root.style.setProperty('--lv-pwa-install-banner-height', `${heightPx}px`)
-  } else {
-    delete root.dataset.pwaInstallBanner
-    root.style.removeProperty('--lv-pwa-install-banner-height')
-  }
+function PwaInstallHelpDropPanel({
+  open,
+  onClose,
+  steps,
+  showIosSetupImage,
+  onNativeInstall,
+  nativeInstallReady,
+}) {
+  if (!open) return null
+
+  return (
+    <div
+      id="pwa-install-drop-panel"
+      data-pwa-install-drop-panel
+      className="pwa-install-drop-panel w-full border-t border-zinc-800/90 bg-zinc-950/98 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
+      role="region"
+      aria-labelledby="pwa-install-drop-title"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="pwa-install-drop-title" className="text-[15px] font-bold text-white">
+            Install Edge
+          </h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-zinc-400">
+            Add to your home screen or install the app for quick access and push alerts.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 touch-manipulation hover:bg-zinc-800 hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
+          aria-label="Close install instructions"
+        >
+          <span aria-hidden className="text-xl leading-none">
+            ×
+          </span>
+        </button>
+      </div>
+
+      {nativeInstallReady ? (
+        <button
+          type="button"
+          onClick={() => void onNativeInstall?.()}
+          className="mt-3 min-h-10 w-full rounded-xl border border-cyan-400/45 bg-cyan-600 px-3 text-[13px] font-semibold text-white touch-manipulation hover:bg-cyan-500 [-webkit-tap-highlight-color:transparent]"
+        >
+          Install app
+        </button>
+      ) : null}
+
+      <ol className="mt-3 space-y-2 text-[13px] leading-relaxed text-zinc-200">
+        {steps.map((step, index) => (
+          <li key={step.id} className="flex gap-2">
+            <span className="w-4 shrink-0 tabular-nums text-zinc-500">{index + 1}.</span>
+            <span>
+              {step.lead ? `${step.lead} ` : null}
+              {step.showShareIcon ? <IosShareIcon /> : null}
+              <span className="font-semibold text-zinc-50">{step.emphasis}</span>
+              {step.tail ? ` ${step.tail}` : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      {showIosSetupImage ? (
+        <div className="mt-3 rounded-2xl border border-zinc-700/70 bg-zinc-900/60 p-2">
+          <img
+            src={PWA_IOS_SETUP_IMAGE}
+            alt="iPhone Share menu and Add to Home Screen steps"
+            className="w-full rounded-xl object-cover"
+            loading="lazy"
+          />
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-3 min-h-10 w-full rounded-xl bg-orange-600 text-[14px] font-semibold text-white touch-manipulation hover:bg-orange-500 active:bg-orange-700 [-webkit-tap-highlight-color:transparent]"
+      >
+        Got it
+      </button>
+    </div>
+  )
 }
 
-/** PokerNews-style iOS Home Screen install strip — fixed top, expandable steps. */
-export default function PwaInstallBanner() {
-  const rootRef = useRef(null)
+/**
+ * Title bar row: logo | install chip | nav — plus full-width install help panel below the row.
+ */
+export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'px-3 py-2' }) {
+  const deferredPromptRef = useRef(null)
   const [visible, setVisible] = useState(() => shouldShowPwaInstallBanner())
-  const [expanded, setExpanded] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [nativeInstallReady, setNativeInstallReady] = useState(false)
   const safari = isSafariBrowser()
-  const steps = iosPwaInstallBannerSteps(safari)
+  const steps = pwaInstallBannerSteps(safari)
+  const showIosSetupImage = isIosDevice()
 
   useEffect(() => {
     const syncVisible = () => {
-      if (isStandalonePwa() || isPwaInstallBannerDismissed()) {
-        setVisible(false)
-        setExpanded(false)
-        syncPwaInstallBannerLayout(0)
-        return
-      }
       setVisible(shouldShowPwaInstallBanner())
+      if (isStandalonePwa()) setPanelOpen(false)
     }
     syncVisible()
     const mq = window.matchMedia?.('(display-mode: standalone)')
@@ -70,103 +143,93 @@ export default function PwaInstallBanner() {
     return () => mq?.removeEventListener?.('change', syncVisible)
   }, [])
 
-  const applyLayoutHeight = useCallback(() => {
-    const el = rootRef.current
-    if (!visible || !el) {
-      syncPwaInstallBannerLayout(0)
-      return
+  useEffect(() => {
+    const onBeforeInstallPrompt = (event) => {
+      event.preventDefault()
+      deferredPromptRef.current = event
+      setNativeInstallReady(true)
     }
-    syncPwaInstallBannerLayout(Math.ceil(el.getBoundingClientRect().height))
-  }, [visible])
-
-  useLayoutEffect(() => {
-    if (!visible) {
-      syncPwaInstallBannerLayout(0)
-      return undefined
+    const onAppInstalled = () => {
+      deferredPromptRef.current = null
+      setNativeInstallReady(false)
+      setVisible(false)
+      setPanelOpen(false)
     }
-    applyLayoutHeight()
-    const el = rootRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return undefined
-    const ro = new ResizeObserver(() => applyLayoutHeight())
-    ro.observe(el)
-    window.addEventListener('resize', applyLayoutHeight)
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    window.addEventListener('appinstalled', onAppInstalled)
     return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', applyLayoutHeight)
-      syncPwaInstallBannerLayout(0)
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', onAppInstalled)
     }
-  }, [visible, expanded, applyLayoutHeight])
-
-  const onDismiss = useCallback(() => {
-    dismissPwaInstallBanner()
-    setVisible(false)
-    setExpanded(false)
-    syncPwaInstallBannerLayout(0)
   }, [])
 
-  if (!visible) return null
+  const onNativeInstall = useCallback(async () => {
+    const deferred = deferredPromptRef.current
+    if (!deferred) return
+    try {
+      await deferred.prompt()
+      const { outcome } = await deferred.userChoice
+      if (outcome === 'accepted') {
+        deferredPromptRef.current = null
+        setNativeInstallReady(false)
+        setPanelOpen(false)
+      }
+    } catch {
+      /* keep panel open */
+    }
+  }, [])
+
+  const chipLabel = 'Install for better experience'
+
+  if (!visible) {
+    return (
+      <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>
+        {logo}
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">{navSlot}</div>
+      </div>
+    )
+  }
 
   return (
-    <div
-      ref={rootRef}
-      data-pwa-install-banner
-      className="fixed inset-x-0 top-0 z-[94] border-b border-zinc-300/80 bg-zinc-100 text-zinc-900 shadow-sm"
-    >
-      <div className="mx-auto flex w-full max-w-2xl items-center gap-2.5 px-2.5 pb-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation hover:bg-zinc-200/80 [-webkit-tap-highlight-color:transparent]"
-          aria-label="Dismiss install banner"
-        >
-          <span aria-hidden className="text-[22px] leading-none">
-            ×
-          </span>
-        </button>
-
-        <img
-          src="/apple-touch-icon.png"
-          alt=""
-          width={40}
-          height={40}
-          className="h-10 w-10 shrink-0 rounded-[10px] shadow-sm"
-          loading="lazy"
-        />
-
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-bold leading-tight text-zinc-900">Install Edge</div>
-          <div className="truncate text-[12px] leading-snug text-zinc-600">
-            Add to Home Screen for quick access and push alerts
-          </div>
+    <>
+      <div className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 ${rowClassName}`}>
+        {logo}
+        <div className="flex min-w-0 items-center justify-center px-0.5">
+          <button
+            type="button"
+            onClick={() => setPanelOpen((open) => !open)}
+            data-pwa-install-title-chip
+            aria-expanded={panelOpen}
+            aria-controls="pwa-install-drop-panel"
+            className={`flex max-w-full min-w-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+              panelOpen
+                ? 'border-cyan-400/70 bg-cyan-900/80 text-cyan-50'
+                : 'border-cyan-500/45 bg-cyan-950/70 text-cyan-100 hover:border-cyan-400/55 hover:bg-cyan-900/70 active:bg-cyan-900/90'
+            }`}
+            aria-label={`${chipLabel}. ${panelOpen ? 'Close' : 'Open'} install instructions.`}
+          >
+            <img
+              src="/apple-touch-icon.png"
+              alt=""
+              width={18}
+              height={18}
+              className="h-[18px] w-[18px] shrink-0 rounded-[5px]"
+              loading="lazy"
+            />
+            <span className="min-w-0 whitespace-normal text-left">{chipLabel}</span>
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setExpanded((open) => !open)}
-          className="shrink-0 rounded-lg bg-[#007aff] px-3.5 py-2 text-[13px] font-semibold text-white touch-manipulation hover:bg-[#0066d6] [-webkit-tap-highlight-color:transparent]"
-          aria-expanded={expanded}
-        >
-          {expanded ? 'Hide steps' : 'How to add'}
-        </button>
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">{navSlot}</div>
       </div>
 
-      {expanded ? (
-        <div className="mx-auto w-full max-w-2xl border-t border-zinc-300/70 px-4 py-3 pb-3.5 text-[14px] leading-relaxed text-zinc-800">
-          <ol className="space-y-2">
-            {steps.map((step, index) => (
-              <li key={step.id} className="flex gap-2">
-                <span className="w-4 shrink-0 tabular-nums text-zinc-500">{index + 1}.</span>
-                <span>
-                  {step.lead ? `${step.lead} ` : null}
-                  {step.showShareIcon ? <IosShareIcon /> : null}
-                  <span className="font-semibold text-zinc-950">{step.emphasis}</span>
-                  {step.tail ? ` ${step.tail}` : null}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
-    </div>
+      <PwaInstallHelpDropPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        steps={steps}
+        showIosSetupImage={showIosSetupImage}
+        onNativeInstall={onNativeInstall}
+        nativeInstallReady={nativeInstallReady}
+      />
+    </>
   )
 }

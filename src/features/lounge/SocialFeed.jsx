@@ -96,7 +96,10 @@ import {
   LOUNGE_PROFILE_CACHE_KEY,
   loungeProfileNeedsGate,
   writeProfileGateAck,
+  readLoungeWelcomeAck,
+  writeLoungeWelcomeAck,
 } from './loungeStorage'
+import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungePostDraftsSheet from './LoungePostDraftsSheet.jsx'
 import LoungeThreadComposeSheet from './LoungeThreadComposeSheet.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
@@ -226,6 +229,7 @@ import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { useLoungeMarketPollActivityTracker } from './loungeMarketPollActivity.js'
 import LoungeMarketSymbolPickerSheet from './LoungeMarketSymbolPickerSheet.jsx'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
+import PwaInstallTitleBarRow from '../../components/PwaInstallBanner.jsx'
 import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED — classic dock icon row (FAB wheel is primary nav). Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
@@ -529,6 +533,8 @@ export default function SocialFeed({
   loungeFeedBrowseMode = 'member',
   /** False while Supabase session is still restoring (push / cold start). */
   authSessionReady = true,
+  /** True while the Lounge cold-boot splash covers the feed (defer first-run modals). */
+  coldBootSplashVisible = false,
   /** True only when the Lounge tab is the active/visible screen; gates the portaled dock FAB. */
   isActivePage = true,
   /** Called when the user should return to the Lounge feed tab (e.g. dock home from another shell tab). */
@@ -695,6 +701,8 @@ export default function SocialFeed({
   const [loungeImageLimitDialog, setLoungeImageLimitDialog] = useState('')
   const [loungePinBusy, setLoungePinBusy] = useState(false)
   const [profileGateOpen, setProfileGateOpen] = useState(false)
+  const [loungeWelcomeOpen, setLoungeWelcomeOpen] = useState(false)
+  const loungeWelcomeScheduleRef = useRef(false)
   const [profileGateBusy, setProfileGateBusy] = useState(false)
   const [profileGateErr, setProfileGateErr] = useState('')
   const [profileGateHandle, setProfileGateHandle] = useState('')
@@ -8114,6 +8122,36 @@ export default function SocialFeed({
   }, [composerAuthResolved, composerUserId, composerAuthUser, composerUserProfile])
 
   useEffect(() => {
+    if (loungeWelcomeScheduleRef.current || loungeWelcomeOpen) return
+    if (!isActivePage) return
+    if (loungeFeedBrowseMode !== 'member' || !composerUserId) return
+    if (!authSessionReady || !composerAuthResolved) return
+    if (coldBootSplashVisible) return
+    if (readLoungeWelcomeAck(composerUserId)) return
+
+    const timer = window.setTimeout(() => {
+      if (readLoungeWelcomeAck(composerUserId)) return
+      loungeWelcomeScheduleRef.current = true
+      setLoungeWelcomeOpen(true)
+    }, 500)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    isActivePage,
+    loungeFeedBrowseMode,
+    composerUserId,
+    authSessionReady,
+    composerAuthResolved,
+    coldBootSplashVisible,
+    loungeWelcomeOpen,
+  ])
+
+  const onLoungeWelcomeAcknowledge = useCallback(() => {
+    if (composerUserId) writeLoungeWelcomeAck(composerUserId)
+    setLoungeWelcomeOpen(false)
+  }, [composerUserId])
+
+  useEffect(() => {
     if (!composerUserId) {
       setLoungeFollowingUserIds(new Set())
       return
@@ -13052,16 +13090,19 @@ export default function SocialFeed({
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}
         >
-          <div className={`flex items-center justify-between gap-3 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
-            <EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />
-            <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-              <TitleBarStatusLine
-                loading={communityFeedLoading}
-                showBuildBadge={loungeTitleBarShowBuildBadge}
-              />
-              {titleBarNavSlot}
-            </div>
-          </div>
+          <PwaInstallTitleBarRow
+            rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
+            logo={<EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />}
+            navSlot={
+              <>
+                <TitleBarStatusLine
+                  loading={communityFeedLoading}
+                  showBuildBadge={loungeTitleBarShowBuildBadge}
+                />
+                {titleBarNavSlot}
+              </>
+            }
+          />
         </div>
       ) : null}
 
@@ -16116,6 +16157,10 @@ export default function SocialFeed({
             document.body,
           )
         : null}
+
+      {loungeWelcomeOpen ? (
+        <LoungeWelcomeModal open={loungeWelcomeOpen} onAcknowledge={onLoungeWelcomeAcknowledge} />
+      ) : null}
 
       {profileGateOpen && typeof document !== 'undefined'
         ? createPortal(

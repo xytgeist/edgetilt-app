@@ -442,7 +442,7 @@ function App() {
     setSignupError('')
     setSignupMessage('')
     if (!signupEmail || !signupPassword || !signupConfirmPassword) return setSignupError("Please fill in all fields")
-    if (!acceptedLegal) return setSignupError("Please accept the Terms & Conditions and Privacy Policy.")
+    if (!acceptedLegal) return
     if (signupPassword !== signupConfirmPassword) return setSignupError("Passwords do not match")
     if (signupPassword.length < 6) return setSignupError("Password must be at least 6 characters")
     markPendingLegalAcceptance()
@@ -816,9 +816,6 @@ function App() {
                 isOAuthLoading={isOAuthLoading}
                 acceptedLegal={acceptedLegal}
                 onAcceptedLegalChange={setAcceptedLegal}
-                onGoogleSignInBlocked={() =>
-                  setSignupError('Please accept the Terms & Conditions and Privacy Policy.')
-                }
                 onGoogleSignIn={({ setErrorTarget }) => {
                   const setError =
                     setErrorTarget === 'forgot'

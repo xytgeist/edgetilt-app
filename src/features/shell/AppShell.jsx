@@ -1148,7 +1148,8 @@ export default function AppShell({
       })
   }, [])
 
-  const { splashVisible, splashDismissing, onSplashAnimationComplete } = useLoungeColdBootSplash({
+  const { splashVisible, splashDismissing, onSplashAnimationStart, onSplashAnimationComplete } =
+    useLoungeColdBootSplash({
     tab,
     browseMode,
   })
@@ -1585,7 +1586,11 @@ export default function AppShell({
       ) : null}
 
       {splashVisible && tab === 'home' ? (
-        <LoungeAppSplash dismissing={splashDismissing} onAnimationComplete={onSplashAnimationComplete} />
+        <LoungeAppSplash
+          dismissing={splashDismissing}
+          onAnimationStart={onSplashAnimationStart}
+          onAnimationComplete={onSplashAnimationComplete}
+        />
       ) : null}
 
       {globalConfirmState.open ? (

@@ -123,7 +123,7 @@ function measureSplashCanvas(canvas) {
  * splash. The bar transitions to the app theme color naturally when the splash fades
  * out and the app's own background becomes the topmost content.
  */
-export default function LoungeAppSplash({ dismissing = false, onAnimationComplete }) {
+export default function LoungeAppSplash({ dismissing = false, onAnimationStart, onAnimationComplete }) {
   // applyTheme() in main.jsx runs before React renders, so classList is correct here.
   const isDark = document.documentElement.classList.contains('dark')
   const splashBg = isDark ? '#000' : '#fff'
@@ -135,6 +135,8 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
   const statusBarRef = useRef(null)
   const onCompleteRef = useRef(onAnimationComplete)
   onCompleteRef.current = onAnimationComplete
+  const onStartRef = useRef(onAnimationStart)
+  onStartRef.current = onAnimationStart
 
   useEffect(() => {
     const isDarkEffect = document.documentElement.classList.contains('dark')
@@ -145,6 +147,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     let player = null
     let fallback = 0
     let cancelViewportWait = null
+    let animationStartReported = false
 
     const startPlayer = () => {
       if (cancelled) return
@@ -180,6 +183,11 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       }
 
       player.addEventListener('frame', ({ currentFrame }) => {
+        if (!animationStartReported) {
+          animationStartReported = true
+          onStartRef.current?.()
+        }
+
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(offscreen, 0, 0)
 

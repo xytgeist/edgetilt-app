@@ -15,6 +15,8 @@ import {
 } from '../../utils/loungeColdBootPendingWork.js'
 
 const SPLASH_FADE_MS = 320
+/** Member splash visible this long without a Lottie frame → force dismiss (WASM wedged). */
+const SPLASH_MEMBER_ABSOLUTE_MAX_MS = 12000
 
 /** Sync eligibility on first paint - avoids one frame of feed "Loading…" before splash. */
 function readInitialColdBootSplashVisible(tab) {
@@ -42,6 +44,9 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   const cycleDoneRef = useRef(false)
   /** Set to true when the Lottie animation fires complete. Members wait for this before dismissing. */
   const animationDoneRef = useRef(false)
+  /** First Lottie frame — min/max timers for members run from here, not overlay mount. */
+  const animationStartedAtRef = useRef(0)
+  const [animationStarted, setAnimationStarted] = useState(false)
 
   const isMember = browseMode === 'member'
 
@@ -49,6 +54,8 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
     if (visible) return
     shownAtRef.current = Date.now()
     animationDoneRef.current = false
+    animationStartedAtRef.current = 0
+    setAnimationStarted(false)
     setDismiss(false)
     setVisible(true)
   }, [visible])
@@ -70,14 +77,29 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   const canFinishSplash = useCallback(() => {
     const minMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MIN_MS : LOUNGE_COLD_BOOT_ANON_MIN_MS
     const maxMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MAX_MS : LOUNGE_COLD_BOOT_ANON_MAX_MS
-    const elapsed = Date.now() - shownAtRef.current
+    const shownElapsed = Date.now() - shownAtRef.current
     // Lottie can hit fly-through end (frame 190) before minMs on fast devices - don't hold the splash.
     if (animationDoneRef.current) return true
-    if (elapsed >= maxMs) return true
-    if (elapsed < minMs) return false
-    if (!isMember) return true
-    return false
+    if (shownElapsed >= SPLASH_MEMBER_ABSOLUTE_MAX_MS) return true
+
+    if (isMember) {
+      if (!animationStartedAtRef.current) return false
+      const playElapsed = Date.now() - animationStartedAtRef.current
+      if (playElapsed >= maxMs) return true
+      if (playElapsed < minMs) return false
+      return false
+    }
+
+    if (shownElapsed >= maxMs) return true
+    if (shownElapsed < minMs) return false
+    return true
   }, [isMember])
+
+  const onSplashAnimationStart = useCallback(() => {
+    if (animationStartedAtRef.current) return
+    animationStartedAtRef.current = Date.now()
+    setAnimationStarted(true)
+  }, [])
 
   const attemptFinishSplash = useCallback(() => {
     if (canFinishSplash()) finishSplash()
@@ -143,9 +165,16 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
       if (tryFinish()) finishSplash()
     }, 48)
 
-    const maxTimer = window.setTimeout(() => {
-      finishSplash()
-    }, maxMs + 48)
+    let maxTimer = 0
+    if (isMember) {
+      if (animationStartedAtRef.current) {
+        maxTimer = window.setTimeout(() => finishSplash(), maxMs + 48)
+      } else {
+        maxTimer = window.setTimeout(() => finishSplash(), SPLASH_MEMBER_ABSOLUTE_MAX_MS)
+      }
+    } else {
+      maxTimer = window.setTimeout(() => finishSplash(), maxMs + 48)
+    }
 
     return () => {
       window.clearInterval(tick)
@@ -154,6 +183,8 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   }, [
     visible,
     dismissing,
+    animationStarted,
+    isMember,
     canFinishSplash,
     finishSplash,
   ])
@@ -190,5 +221,10 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
     return () => window.removeEventListener('touchstart', handler, true)
   }, [visible])
 
-  return { splashVisible: visible, splashDismissing: dismissing, onSplashAnimationComplete }
+  return {
+    splashVisible: visible,
+    splashDismissing: dismissing,
+    onSplashAnimationStart,
+    onSplashAnimationComplete,
+  }
 }

@@ -8,8 +8,8 @@ function formatTelemetryBarLine(row) {
   const outcome = String(row.outcome || '')
   if (phase === 'cf_stream_mint_supabase') {
     const st = row.httpStatus != null && row.httpStatus !== '' ? `HTTP ${row.httpStatus}` : 'unknown status'
-    if (outcome === 'incomplete_payload') return `Mint failed — incomplete response (${st})`
-    if (outcome === 'invalid_response_body') return `Mint failed — bad response (${st})`
+    if (outcome === 'incomplete_payload') return `Mint failed - incomplete response (${st})`
+    if (outcome === 'invalid_response_body') return `Mint failed - bad response (${st})`
     const msg = row.message ? String(row.message).replace(/\s+/g, ' ').trim().slice(0, 120) : ''
     return msg ? `Mint (${st}): ${msg}` : `Mint failed (${st})`
   }
@@ -89,7 +89,7 @@ export function logLoungeVideoUploadTelemetry(payload, onUploadDiagnostic) {
   }
 }
 
-/** Origin + pathname only (no query — may contain short-lived tokens). */
+/** Origin + pathname only (no query - may contain short-lived tokens). */
 function telemetryUploadUrlShape(uploadURL) {
   const s = String(uploadURL || '').trim()
   if (!s) return ''
@@ -279,7 +279,7 @@ async function primePosterFrameForFileProbeVideo(video) {
       const p = video.play()
       if (p && typeof p.then === 'function') await p
     } catch {
-      // ignore — still try canvas
+      // ignore - still try canvas
     }
     if (typeof video.requestVideoFrameCallback === 'function') {
       await new Promise((resolve) => {
@@ -614,7 +614,7 @@ async function messageFromEdgeFunctionResponseBody(res) {
         }
       }
     } catch {
-      // non-JSON despite leading brace — show snippet
+      // non-JSON despite leading brace - show snippet
     }
   }
   return raw.slice(0, 400)
@@ -633,7 +633,7 @@ export function mapGenericNetworkErrorMessage(raw, fallback) {
 
 /**
  * When `functions.invoke` fails with HTTP 4xx/5xx, Supabase sets `error` to `FunctionsHttpError`
- * with message "Edge Function returned a non-2xx status code" — the JSON body from our Edge
+ * with message "Edge Function returned a non-2xx status code" - the JSON body from our Edge
  * Function (e.g. `{ "error": "..." }`) is on `error.context` (a `Response`). Some gateways send
  * JSON with a non-JSON Content-Type; use `clone().text()` + parse so we still surface the message.
  * @param {unknown} error
@@ -1214,7 +1214,7 @@ export async function deleteCfStreamOrphanAsset(supabaseClient, uid) {
     const errMsg = data.error != null ? String(data.error).trim() : ''
     if (errMsg) return
   } catch {
-    // ignore — cleanup must not block UX
+    // ignore - cleanup must not block UX
   }
 }
 
@@ -1280,7 +1280,7 @@ function sleepWithAbort(ms, signal) {
 }
 
 /**
- * Probe Cloudflare Stream readiness via thumbnail load (no CORS — safe on localhost dev).
+ * Probe Cloudflare Stream readiness via thumbnail load (no CORS - safe on localhost dev).
  * @param {string} uid
  * @param {AbortSignal} [signal]
  * @returns {Promise<boolean>}
@@ -1316,7 +1316,7 @@ function probeCfStreamThumbnailReady(uid, signal) {
 
 /**
  * Poll until Stream playback assets are ready (encoding finished).
- * Uses thumbnail `Image` load — not HLS `fetch` — so localhost dev is not blocked by videodelivery.net CORS.
+ * Uses thumbnail `Image` load - not HLS `fetch` - so localhost dev is not blocked by videodelivery.net CORS.
  * @param {string} uid
  * @param {{ timeoutMs?: number, intervalMs?: number, signal?: AbortSignal, onPoll?: (args: { elapsed: number }) => void, onUploadDiagnostic?: (detail: string) => void }} [options]
  */

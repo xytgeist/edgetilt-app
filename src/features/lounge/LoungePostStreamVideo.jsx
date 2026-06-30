@@ -90,14 +90,14 @@ const posterFallbackFrameClassByVariant = {
   composer: 'relative flex max-h-40 w-fit max-w-[min(78vw,18rem)] items-center justify-center bg-black',
 }
 
-/** CF `thumbnail.jpg` is often 404 until processing finishes — retry with cache-bust before giving up. */
+/** CF `thumbnail.jpg` is often 404 until processing finishes - retry with cache-bust before giving up. */
 const CF_POSTER_RETRY_MAX = 32
 
 /** Hold HLS attach briefly after ring exit so flinger ring flicker does not reload media. */
 const RING_HLS_DETACH_HOLD_MS = 700
 /** Post detail / comment: keep HLS after a brief active demotion so slow encodes reach metadata. */
 const ACTIVE_HLS_GRACE_MS = 3200
-/** Feed/embed: attach HLS when a small fraction is visible (was 0.32 — felt slow). */
+/** Feed/embed: attach HLS when a small fraction is visible (was 0.32 - felt slow). */
 const LAZY_ATTACH_IO_THRESHOLD = 0.04
 /** Prefetch into the scroll root so the winner can start loading before fully on screen. */
 const LAZY_ATTACH_ROOT_MARGIN = '180px 0px 240px 0px'
@@ -112,7 +112,7 @@ const STREAM_FADE_LAST_RESORT_MS = 6500
 /** Feed tile ↔ hero full-screen FLIP (same `<video>`, no second HLS attach). */
 const HERO_EXPAND_MS = 500
 const HERO_SHRINK_MS = 500
-/** GPU transform FLIP — gentler start than width/top tweens on mobile. */
+/** GPU transform FLIP - gentler start than width/top tweens on mobile. */
 const HERO_MOTION_CURVE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const HERO_MOTION_TRANSITION = `${HERO_EXPAND_MS}ms ${HERO_MOTION_CURVE}`
 const HERO_SHRINK_TRANSITION = `${HERO_SHRINK_MS}ms ${HERO_MOTION_CURVE}`
@@ -148,7 +148,7 @@ function readElementViewportRect(el) {
 }
 
 /**
- * Visible media bounds for hero FLIP — not the full poster shell when portrait letterboxes.
+ * Visible media bounds for hero FLIP - not the full poster shell when portrait letterboxes.
  * Prefer decoded in-flow poster pixels; else object-contain fit from stream display dims.
  */
 function readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH) {
@@ -242,7 +242,7 @@ function computeHeroShrinkTransform(fromRect, toRect) {
   return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
 }
 
-/** Imperative hero shrink — avoids useLayoutEffect cleanup / React style races on iOS. */
+/** Imperative hero shrink - avoids useLayoutEffect cleanup / React style races on iOS. */
 function runHeroShrinkAnimation(
   flyout,
   heroFrame,
@@ -314,7 +314,7 @@ function runHeroShrinkAnimation(
   finishTimerRef.current = window.setTimeout(() => finish('timeout'), HERO_SHRINK_MS + 150)
 }
 
-/** Imperative snap before React paint — flyout on body at feed tile size (transform identity). */
+/** Imperative snap before React paint - flyout on body at feed tile size (transform identity). */
 function snapFlyoutToHeroTile(flyout, host, fromRect, flyoutZIndex = HERO_STACK_BASE_Z_INDEX) {
   if (!flyout || !host || !fromRect) return
   if (flyout.parentElement !== host) host.appendChild(flyout)
@@ -366,7 +366,7 @@ function revealInlinePosterForHero(slot) {
   img.style.opacity = '1'
 }
 
-/** Keep poster under flyout (z-0) on hero tap — load-time z-[2] must not sit above the growing video. */
+/** Keep poster under flyout (z-0) on hero tap - load-time z-[2] must not sit above the growing video. */
 function pinInlinePosterBehindFlyout(slot) {
   if (!slot) return
   const img = slot.querySelector('img')
@@ -401,7 +401,7 @@ function drawVideoContainOnCanvas(ctx, video, canvasW, canvasH) {
   ctx.drawImage(video, dx, dy, dw, dh)
 }
 
-/** Frame 0 shield after reparent — removed once `<video>` paints post-move (rVFC). */
+/** Frame 0 shield after reparent - removed once `<video>` paints post-move (rVFC). */
 function mountHeroFrameShield(flyout, video, width, height) {
   if (!flyout || !video) return null
   clearHeroFrameShield(flyout)
@@ -485,14 +485,14 @@ function SoundOnGlyph({ className = 'h-4 w-4' }) {
  * Feed-style (when `enableLightbox` and not composer): muted autoplay while scrolled into view; no inline
  * controls. Tap the video for full screen; bottom-left icon toggles feed-wide sound when in the autoplay coordinator (falls back to full screen if blocked).
  *
- * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] — Optional scroll root for in-view
+ * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] - Optional scroll root for in-view
  *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
- * @param {string} [feedAutoplayClientId] — When inside `LoungeFeedVideoAutoplayProvider`, ring/active coordinator id.
- * @param {string} [sessionPosterUrl] — Optional `blob:` JPEG from composer; shown until CF `thumbnail.jpg` loads (same-tab session pin).
- * @param {string} [persistedStreamPosterUrl] — Public `lounge-feed` poster URL from DB (cross-device stable tile).
- * @param {number} [streamVideoDisplayWidth] — Display width from DB for CSS `aspect-ratio` when set with height.
- * @param {number} [streamVideoDisplayHeight] — Display height from DB for CSS `aspect-ratio` when set with width.
- * @param {import('react').ReactNode} [mediaLightboxFooter] — Deprecated: image lightbox footer only.
+ * @param {string} [feedAutoplayClientId] - When inside `LoungeFeedVideoAutoplayProvider`, ring/active coordinator id.
+ * @param {string} [sessionPosterUrl] - Optional `blob:` JPEG from composer; shown until CF `thumbnail.jpg` loads (same-tab session pin).
+ * @param {string} [persistedStreamPosterUrl] - Public `lounge-feed` poster URL from DB (cross-device stable tile).
+ * @param {number} [streamVideoDisplayWidth] - Display width from DB for CSS `aspect-ratio` when set with height.
+ * @param {number} [streamVideoDisplayHeight] - Display height from DB for CSS `aspect-ratio` when set with width.
+ * @param {import('react').ReactNode} [mediaLightboxFooter] - Deprecated: image lightbox footer only.
  * @param {(dismissLightbox: () => void) => import('react').ReactNode} [renderMediaLightboxChrome]
  * @param {() => import('react').ReactNode} [renderMediaLightboxTopBarExtra]
  */
@@ -531,39 +531,39 @@ export default function LoungePostStreamVideo({
   const containerRef = useRef(null)
   const videoRef = useRef(null)
   const videoFlyoutRef = useRef(null)
-  /** In-flow poster shell — idle flyout lives here; hero expand reparents flyout to `heroBodyHostRef`. */
+  /** In-flow poster shell - idle flyout lives here; hero expand reparents flyout to `heroBodyHostRef`. */
   const heroInlineSlotRef = useRef(null)
   const heroBodyHostRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   /** Snapshot tile rect at open (before layout / portal updates). */
   const heroFromRectRef = useRef(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
-  /** Hero target rect at open — FLIP “from” when shrinking back to the card. */
+  /** Hero target rect at open - FLIP “from” when shrinking back to the card. */
   const heroTargetRectRef = useRef(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const heroPhaseRef = useRef('idle')
-  /** Tile rect captured at dismiss — stable for shrink (avoid effect re-run on heroLayout state). */
+  /** Tile rect captured at dismiss - stable for shrink (avoid effect re-run on heroLayout state). */
   const heroShrinkTileRectRef = useRef(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const heroShrinkAnimRef = useRef(/** @type {Animation | null} */ (null))
   const heroShrinkFinishTimerRef = useRef(0)
   const heroShrinkInFlightRef = useRef(false)
-  /** Frozen layout style during shrink — React never owned transform on this object. */
+  /** Frozen layout style during shrink - React never owned transform on this object. */
   const heroShrinkFlyoutStyleRef = useRef(/** @type {Record<string, string | number> | null} */ (null))
   const inViewRef = useRef(false)
   const lightboxOpenRef = useRef(false)
   const isActiveRef = useRef(false)
   /** Hysteresis for feed-wide sound mode visibility bands (60% on / 40% off). */
   const feedSoundAudibleRef = useRef(false)
-  /** Throttle DOM unmute retries (no play()) — safe on iOS when ratio crosses ON band. */
+  /** Throttle DOM unmute retries (no play()) - safe on iOS when ratio crosses ON band. */
   const lastCoordinatedDomUnmuteMsRef = useRef(0)
   /** Apple: one DOM unmute attempt per active handoff (avoids MSE restart / play storms). */
   const iosFeedSoundHandoffDomUnmuteUsedRef = useRef(false)
-  /** iOS gesture play-then-unmute in flight — never stack on scroll ticks. */
+  /** iOS gesture play-then-unmute in flight - never stack on scroll ticks. */
   const iosGestureUnmuteInFlightRef = useRef(false)
-  /** iOS: tile was gesture-unmuted — do not re-mute on OFF band / playing sync until handoff away. */
+  /** iOS: tile was gesture-unmuted - do not re-mute on OFF band / playing sync until handoff away. */
   const iosFeedSoundGestureUnlockedRef = useRef(false)
   const prevCoordinatedTileRatioRef = useRef(0)
   /** Hero session wants audible playback (restored from inline snapshot on open). */
@@ -580,7 +580,7 @@ export default function LoungePostStreamVideo({
   const inlineFeedSoundSnapshotRef = useRef(
     /** @type {{ unmuted: boolean, explicitlyMuted: boolean, coordinated?: boolean } | null} */ (null),
   )
-  /** Tile media state at hero tap — freeze poster/video fade for the expand. */
+  /** Tile media state at hero tap - freeze poster/video fade for the expand. */
   const heroTapSnapshotRef = useRef(
     /** @type {{ showVideo: boolean, readyState: number, fromRect: { top: number, left: number, width: number, height: number } } | null} */ (
       null
@@ -589,7 +589,7 @@ export default function LoungePostStreamVideo({
   const heroFrameShieldRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
   /** Hero opened before inline `<video>` existed (detail/comment tiles off DOM budget). */
   const heroColdMountRef = useRef(false)
-  /** Hero opened with `<video>` present but HLS not decoded yet — kick attach after open. */
+  /** Hero opened with `<video>` present but HLS not decoded yet - kick attach after open. */
   const heroHlsKickRef = useRef(false)
   const appleWebKitInlineStreamRef = useRef(detectAppleWebKitInlineStream())
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -610,7 +610,7 @@ export default function LoungePostStreamVideo({
   /** While true, shrink-back close runs on the flyout DOM node (React must not clear transform). */
   const [heroShrinkDomActive, setHeroShrinkDomActive] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
-  /** Detect HLS reattach bumps — must reset poster-over-video fade (avoid black layer at opacity-100). */
+  /** Detect HLS reattach bumps - must reset poster-over-video fade (avoid black layer at opacity-100). */
   const prevFadeAttachKeyRef = useRef(0)
   /** Survives brief ring exit / HLS detach so scroll handoffs pause instead of restart. */
   const savedStreamTimeRef = useRef(0)
@@ -620,7 +620,7 @@ export default function LoungePostStreamVideo({
   const [streamFadeShowVideo, setStreamFadeShowVideo] = useState(false)
   /** In-flow poster can collapse to a broken-icon size when CF thumbnail 404s or is not ready yet. */
   const [posterLayoutFailed, setPosterLayoutFailed] = useState(false)
-  /** True after CF poster `<img>` fires `onLoad` — drop min-height floor so the frame hugs decoded pixels. */
+  /** True after CF poster `<img>` fires `onLoad` - drop min-height floor so the frame hugs decoded pixels. */
   const [posterDecodeOk, setPosterDecodeOk] = useState(false)
   /** Bumped to bust CDN cache while CF thumbnail is still generating. */
   const [posterBust, setPosterBust] = useState(0)
@@ -897,7 +897,7 @@ export default function LoungePostStreamVideo({
       hasDecodedStreamMetadata &&
       (variant === 'commentInline' || variant === 'detail' ? !inRing : true),
   )
-  /** iOS: limit concurrent HLS — active/hero/lightbox + handoff hold; never cold-load prefetch slots. */
+  /** iOS: limit concurrent HLS - active/hero/lightbox + handoff hold; never cold-load prefetch slots. */
   const heroOrLightbox = heroExpanded || lightboxOpen
   const hlsAttachEnabled =
     attachStream &&
@@ -911,7 +911,7 @@ export default function LoungePostStreamVideo({
     setLocalStripSoundExplicitlyMuted(false)
   }, [coordinatorActive, coordinatedInlineSound, isActive])
 
-  /** Post/profile/search coordinator frozen under detail overlay — stop inline audio immediately. */
+  /** Post/profile/search coordinator frozen under detail overlay - stop inline audio immediately. */
   useLayoutEffect(() => {
     if (!coordinatorSuspended || lightboxOpenRef.current) return
     if (!coordinatedInlineSound) {
@@ -977,7 +977,7 @@ export default function LoungePostStreamVideo({
       ? { defaultMuted: true }
       : { muted: inlineVideoMuted }
 
-  /** Feed-wide sound: DOM unmute only — never play() (iOS crash if play/unmute loops). */
+  /** Feed-wide sound: DOM unmute only - never play() (iOS crash if play/unmute loops). */
   const tryCoordinatedDomUnmute = useCallback(
     (video, { fromUserGesture = false } = {}) => {
       if (!video || video.paused || !coordinatedInlineSound || !isActiveRef.current) return
@@ -1217,7 +1217,7 @@ export default function LoungePostStreamVideo({
     tileRatio,
   ])
 
-  /** Feed-wide sound: iOS playing fires often — mute-only sync + one DOM unmute when playback starts in ON band. */
+  /** Feed-wide sound: iOS playing fires often - mute-only sync + one DOM unmute when playback starts in ON band. */
   useEffect(() => {
     if (!coordinatedInlineSound || !isActive || lightboxOpen || !mountStreamVideo) return undefined
     const v = videoRef.current
@@ -1245,7 +1245,7 @@ export default function LoungePostStreamVideo({
     tryCoordinatedDomUnmute,
   ])
 
-  /** Apple: one DOM unmute when tile crosses 60% ON band — not on every ratio tick or early handoff. */
+  /** Apple: one DOM unmute when tile crosses 60% ON band - not on every ratio tick or early handoff. */
   useEffect(() => {
     if (!coordinatedInlineSound || !isActive || lightboxOpen) return
     const prev = prevCoordinatedTileRatioRef.current
@@ -1284,7 +1284,7 @@ export default function LoungePostStreamVideo({
     heroPhaseRef.current = heroPhase
   }, [heroPhase])
 
-  /** Body mount for hero expand only — created lazily on open, removed on close (not one per feed tile). */
+  /** Body mount for hero expand only - created lazily on open, removed on close (not one per feed tile). */
   const ensureHeroBodyHost = useCallback(() => {
     if (heroBodyHostRef.current) return heroBodyHostRef.current
     const host = document.createElement('div')
@@ -1301,7 +1301,7 @@ export default function LoungePostStreamVideo({
     heroBodyHostRef.current = null
   }, [])
 
-  /** Reparent the same flyout DOM node — inline while idle, body while hero expanded (no remount). */
+  /** Reparent the same flyout DOM node - inline while idle, body while hero expanded (no remount). */
   useLayoutEffect(() => {
     const flyout = videoFlyoutRef.current
     const slot = heroInlineSlotRef.current
@@ -1627,7 +1627,7 @@ export default function LoungePostStreamVideo({
     tryCoordinatedInlinePlay,
   ])
 
-  /** Active tile visible but paused — gentle retry (no releaseStalledActive cascade). */
+  /** Active tile visible but paused - gentle retry (no releaseStalledActive cascade). */
   useEffect(() => {
     if (!coordinatorActive || !feedAutoplayEnabled || !lazyStream || !isActive || !attachStream) {
       return undefined
@@ -1714,7 +1714,7 @@ export default function LoungePostStreamVideo({
     return undefined
   }, [bumpStreamAttach, coordinatorActive, feedAutoplayEnabled, isActive, lazyStream])
 
-  /** Active tile stuck at rs=0 — retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
+  /** Active tile stuck at rs=0 - retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
   useEffect(() => {
     if (
       !coordinatorActive ||
@@ -1859,7 +1859,7 @@ export default function LoungePostStreamVideo({
     if (prevIsActiveDebugRef.current === isActive) return
     prevIsActiveDebugRef.current = isActive
     const v = videoRef.current
-    const rs = v?.readyState ?? '—'
+    const rs = v?.readyState ?? '-'
     reportLoungeVideoDebugEvent(
       feedAutoplayClientId,
       'active',
@@ -1873,8 +1873,8 @@ export default function LoungePostStreamVideo({
     if (prevFadeDebugRef.current === streamFadeShowVideo) return
     prevFadeDebugRef.current = streamFadeShowVideo
     const v = videoRef.current
-    const rs = v?.readyState ?? '—'
-    const ct = v && Number.isFinite(v.currentTime) ? v.currentTime.toFixed(1) : '—'
+    const rs = v?.readyState ?? '-'
+    const ct = v && Number.isFinite(v.currentTime) ? v.currentTime.toFixed(1) : '-'
     reportLoungeVideoDebugEvent(
       feedAutoplayClientId,
       'fade',
@@ -2021,7 +2021,7 @@ export default function LoungePostStreamVideo({
     }
   }, [attachStream, poster, id, streamAttachKey])
 
-  /** Handoff pause: keep last decoded frame visible — do not flash poster over a warm ring tile. */
+  /** Handoff pause: keep last decoded frame visible - do not flash poster over a warm ring tile. */
   useLayoutEffect(() => {
     if (isActive || !attachStream || !inRing || lightboxOpenRef.current) return
     const v = videoRef.current
@@ -2127,7 +2127,7 @@ export default function LoungePostStreamVideo({
           displayH,
         )
       : null
-    /** Scroll is locked while hero is open — open-time tile rect is the reliable shrink target. */
+    /** Scroll is locked while hero is open - open-time tile rect is the reliable shrink target. */
     const back =
       heroFromRectRef.current && heroRectUsableForShrinkBack(heroFromRectRef.current)
         ? heroFromRectRef.current
@@ -2355,7 +2355,7 @@ export default function LoungePostStreamVideo({
     if (tapShowVideo) setStreamFadeShowVideo(true)
 
     pinInlinePosterBehindFlyout(slot)
-    /** Card-hole poster only when inline was still on poster — flyout grows immediately like X. */
+    /** Card-hole poster only when inline was still on poster - flyout grows immediately like X. */
     if (!tapShowVideo) revealInlinePosterForHero(slot)
 
     const host = ensureHeroBodyHost()
@@ -2663,7 +2663,7 @@ export default function LoungePostStreamVideo({
     }
   }, [lightboxOpen, heroPhase])
 
-  /** iOS sometimes skips `transitionend` on transform — ensure chrome still appears after land. */
+  /** iOS sometimes skips `transitionend` on transform - ensure chrome still appears after land. */
   useEffect(() => {
     if (heroPhase !== 'opening' || heroChromeVisible) return undefined
     const tid = window.setTimeout(() => {
@@ -2776,7 +2776,7 @@ export default function LoungePostStreamVideo({
     feedAutoplayEnabled,
   ])
 
-  /** After lazy HLS attach, start playback once media is ready — active tile only (never prefetch ring). */
+  /** After lazy HLS attach, start playback once media is ready - active tile only (never prefetch ring). */
   useEffect(() => {
     if (!lazyStream || !hlsAttachEnabled) return undefined
     if (!showOpen) return undefined
@@ -2869,7 +2869,7 @@ export default function LoungePostStreamVideo({
     return () => v.removeEventListener('canplay', tryPlay)
   }, [lightboxOpen, hlsAttachEnabled, streamAttachKey])
 
-  /** Detail/comment tiles often mount `<video>` only on lightbox open — force HLS attach once the node exists. */
+  /** Detail/comment tiles often mount `<video>` only on lightbox open - force HLS attach once the node exists. */
   useEffect(() => {
     if (!lightboxOpen || (!heroColdMountRef.current && !heroHlsKickRef.current)) return undefined
     if (!mountStreamVideo || !hlsAttachEnabled) return undefined
@@ -2979,7 +2979,7 @@ export default function LoungePostStreamVideo({
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
   const border = borderByVariant[variant] || borderByVariant.feed
-  /** iOS: in-flow poster `<img>` sizes the frame; `<video>` stays absolute until fade. Use whenever we have a CF thumbnail URL (feed, embed, and detail — not only lazy feed). */
+  /** iOS: in-flow poster `<img>` sizes the frame; `<video>` stays absolute until fade. Use whenever we have a CF thumbnail URL (feed, embed, and detail - not only lazy feed). */
   const usePosterFrame = Boolean(id && poster)
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
   const posterFallbackFrameClass =

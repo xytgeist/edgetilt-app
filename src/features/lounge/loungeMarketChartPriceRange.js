@@ -1,4 +1,4 @@
-/** Advanced main-pane Y scale — visible-window candle OHLC only (no overlays). */
+/** Advanced main-pane Y scale - visible-window candle OHLC only (no overlays). */
 
 import { getMarketChartResolution } from './loungeMarketChartResolution.js'
 import { loungeMarketBarsToSeries } from './loungeMarketChartTheme.js'

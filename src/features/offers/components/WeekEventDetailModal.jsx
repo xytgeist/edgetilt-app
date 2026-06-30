@@ -74,7 +74,7 @@ export default function WeekEventDetailModal({
           </div>
           <div className="mt-1 text-[1.375rem] font-semibold leading-snug text-zinc-100">{e.title}</div>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-            <span className="font-bold text-zinc-100">{e.casino_name || '—'}</span>
+            <span className="font-bold text-zinc-100">{e.casino_name || '-'}</span>
             {e.value_amount !== null && (
               <span className="font-semibold tabular-nums text-emerald-400">
                 {e.value_amount !== null ? `$${Number(e.value_amount).toFixed(0)}` : ''}

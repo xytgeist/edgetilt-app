@@ -8,7 +8,7 @@ export const supabase = createClient(SB_URL, SB_ANON)
 
 const ic = 'w-full min-h-11 text-base text-white bg-gray-900 rounded-xl border border-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/40'
 
-/** Inline + CSS — survives file-picker viewport quirks on Chrome/Windows. */
+/** Inline + CSS - survives file-picker viewport quirks on Chrome/Windows. */
 const SHELL_STYLE = {
   position: 'fixed',
   top: 0,

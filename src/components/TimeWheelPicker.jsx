@@ -4,8 +4,8 @@
  * Minute carry rolls the hour; hour crossing 11↔12 flips AM/PM.
  *
  * Props:
- *   value    — "HH:MM" 24-hour string or ''
- *   onChange — fn(string) called with "HH:MM" 24-hour
+ *   value    - "HH:MM" 24-hour string or ''
+ *   onChange - fn(string) called with "HH:MM" 24-hour
  */
 import { useRef, useState, useEffect } from 'react'
 import Picker from 'react-mobile-picker'

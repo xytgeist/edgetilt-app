@@ -2,17 +2,17 @@ import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import { LOUNGE_FEED_AVATAR_CLASS, LOUNGE_FEED_META_ROW_CLASS } from './loungeFeedAvatar.js'
 import LoungeExpandableRichCaption from './LoungeExpandableRichCaption.jsx'
 
-/** Stream video hero overlay only — hardcoded light text (survives html.light zinc + text-white flips). */
+/** Stream video hero overlay only - hardcoded light text (survives html.light zinc + text-white flips). */
 const LOUNGE_LIGHTBOX_DISPLAY_NAME_CLASS =
   'min-w-0 truncate font-semibold text-[17px] leading-none text-[#fff]'
 const LOUNGE_LIGHTBOX_HANDLE_CLASS = 'text-[#d4d4d8]'
 const LOUNGE_LIGHTBOX_CAPTION_CLASS = 'text-[#fff]'
 
-/** Top-bar icon buttons — matches lightbox interaction pill overlay. */
+/** Top-bar icon buttons - matches lightbox interaction pill overlay. */
 export const LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS =
   'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 [-webkit-tap-highlight-color:transparent]'
 
-/** Image/GIF lightbox top chrome — same glass as chat header (`chat-header-glass`). */
+/** Image/GIF lightbox top chrome - same glass as chat header (`chat-header-glass`). */
 export const LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS =
   'chat-header-glass flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full text-zinc-100 transition-opacity active:opacity-70 [-webkit-tap-highlight-color:transparent]'
 
@@ -28,11 +28,11 @@ export const LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS =
 /** Horizontal inset for hero / image lightbox chrome (10% side margins in landscape). */
 export const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'
 
-/** Top-bar Follow pill — same height as mute / ⋯ controls. */
+/** Top-bar Follow pill - same height as mute / ⋯ controls. */
 export const LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
   'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-zinc-500/80 bg-black/40 px-3.5 text-[13px] font-bold text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 [-webkit-tap-highlight-color:transparent]'
 
-/** Portrait author-row Follow — aligned with display name / handle. */
+/** Portrait author-row Follow - aligned with display name / handle. */
 export const LOUNGE_HERO_LIGHTBOX_AUTHOR_FOLLOW_BTN_CLASS =
   'shrink-0 rounded-full border border-zinc-500/80 bg-black/40 px-3.5 py-1.5 text-[13px] font-bold text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 touch-manipulation [-webkit-tap-highlight-color:transparent]'
 

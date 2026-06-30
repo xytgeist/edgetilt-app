@@ -9,7 +9,7 @@ import { notifyLoungeStreamLightboxOpen } from '../lounge/loungeStreamLightboxRe
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 
 /**
- * Full-screen chat video viewer — lounge-style chrome (back + swipe dismiss).
+ * Full-screen chat video viewer - lounge-style chrome (back + swipe dismiss).
  * R2 MP4 via native `<video>`; legacy CF Stream via iframe.
  */
 export default function ChatVideoLightbox({

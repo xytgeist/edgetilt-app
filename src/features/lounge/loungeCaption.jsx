@@ -44,7 +44,7 @@ export function trimUrlTrail(url) {
   return u
 }
 
-/** @deprecated Prefer splitTextWithLinks — kept for any external imports. */
+/** @deprecated Prefer splitTextWithLinks - kept for any external imports. */
 export function hrefForUrlDisplay(display) {
   const d = String(display).trim()
   if (!d) return ''

@@ -9,7 +9,7 @@ import LoungeFeedStatSlot from './LoungeFeedStatSlot.jsx'
  * One flex child for **`justify-content: space-between`** on four primary glyphs: **track width =
  * icon slot only**. Counts render `absolute left-full` so they do not affect inter-icon gap math
  * ((L − Σwᵢ) / (n − 1) for n icons).
- * @param {'center' | 'start'} [props.railAlign='center'] — `start`: left-align the glyph box in the rail; use on the **post detail header** interaction row (`SocialFeed.jsx`) so the comment count clears the caption edge. Feed cards and `LoungePostInteractionBar` stay **`center`**.
+ * @param {'center' | 'start'} [props.railAlign='center'] - `start`: left-align the glyph box in the rail; use on the **post detail header** interaction row (`SocialFeed.jsx`) so the comment count clears the caption edge. Feed cards and `LoungePostInteractionBar` stay **`center`**.
  */
 export function LoungeInteractionGlyphRail({
   railRef,

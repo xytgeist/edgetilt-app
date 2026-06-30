@@ -12,7 +12,7 @@ export const LOUNGE_SEARCH_SORT = {
   RECENT: 'recent',
 }
 
-/** Default page sizes — must stay aligned with `lounge_search` RPC defaults. */
+/** Default page sizes - must stay aligned with `lounge_search` RPC defaults. */
 export const LOUNGE_SEARCH_PAGE = {
   POSTS: 20,
   PROFILES: 20,
@@ -92,7 +92,7 @@ export function formatLoungeSearchError(err) {
  * Attach hydrated parent posts + comment author / reply-to profiles for search RPC rows.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {(rows: object[]) => Promise<object[]>} hydratePosts — same as `hydrateCommunityPosts`
+ * @param {(rows: object[]) => Promise<object[]>} hydratePosts - same as `hydrateCommunityPosts`
  * @param {object[]} commentRows
  */
 export async function hydrateLoungeSearchCommentResults(supabaseClient, hydratePosts, commentRows) {

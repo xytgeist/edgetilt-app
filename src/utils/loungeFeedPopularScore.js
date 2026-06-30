@@ -13,7 +13,7 @@ export function loungeFeedEngagementWeight(post) {
 
 /**
  * @param {object} post
- * @param {number | string | Date} [asOfMs] — freeze decay for pagination (matches RPC `p_as_of`).
+ * @param {number | string | Date} [asOfMs] - freeze decay for pagination (matches RPC `p_as_of`).
  */
 export function loungeFeedPopularScore(post, asOfMs = Date.now()) {
   const engagement = loungeFeedEngagementWeight(post)

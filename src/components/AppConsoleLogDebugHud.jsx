@@ -31,7 +31,7 @@ async function copyText(text) {
   document.body.removeChild(ta)
 }
 
-/** Floating console capture — Settings → Admin utils → Console log HUD. */
+/** Floating console capture - Settings → Admin utils → Console log HUD. */
 export default function AppConsoleLogDebugHud() {
   const [collapsed, setCollapsed] = useState(false)
   const [copyStatus, setCopyStatus] = useState('')
@@ -114,7 +114,7 @@ export default function AppConsoleLogDebugHud() {
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 space-y-0.5">
         {lines.length === 0 ? (
-          <p className="py-4 text-center text-[11px] text-zinc-600">No logs yet — reproduce the issue while this HUD is open.</p>
+          <p className="py-4 text-center text-[11px] text-zinc-600">No logs yet - reproduce the issue while this HUD is open.</p>
         ) : (
           [...lines].reverse().map((line, i) => (
             <button

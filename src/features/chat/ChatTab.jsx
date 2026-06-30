@@ -199,7 +199,7 @@ export default function ChatTab({
     setRoomsErr('')
     setRoomsLoading(true)
     try {
-      // Single RPC — replaces 3 sequential client-side queries
+      // Single RPC - replaces 3 sequential client-side queries
       const { data, error } = await supabaseClient.rpc('chat_rooms_for_user', {
         p_user_id: viewerUserId,
       })
@@ -246,13 +246,13 @@ export default function ChatTab({
     void loadRooms()
   }, [loadRooms])
 
-  // ── Realtime — refresh inbox on new messages + group room updates ───────────
+  // ── Realtime - refresh inbox on new messages + group room updates ───────────
   // postgres_changes is filtered by RLS, so only rows the viewer can SELECT
   // come through.
   // • chat_messages INSERT  → refresh unread badge, preview, timestamp
   // • chat_rooms UPDATE     → refresh group photo / name / description for all
   //   members immediately (requires chat_rooms in supabase_realtime publication
-  //   — migration 20260603160000_chat_group_full_repair.sql adds it)
+  //   - migration 20260603160000_chat_group_full_repair.sql adds it)
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return
     const channel = supabaseClient

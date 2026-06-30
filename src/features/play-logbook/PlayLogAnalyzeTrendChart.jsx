@@ -68,7 +68,7 @@ function fmtTrendTooltipDate(iso) {
  * @param {number | null | undefined} pct
  */
 function fmtRtpPct(pct) {
-  if (pct == null || !Number.isFinite(pct)) return '—'
+  if (pct == null || !Number.isFinite(pct)) return '-'
   return `${pct.toFixed(2)}%`
 }
 
@@ -76,7 +76,7 @@ function fmtRtpPct(pct) {
  * @param {number | null | undefined} n
  */
 function fmtMoneyShort(n) {
-  if (n == null || !Number.isFinite(n)) return '—'
+  if (n == null || !Number.isFinite(n)) return '-'
   const sign = n < 0 ? '-' : ''
   const abs = Math.abs(n)
   if (abs >= 1000) return `${sign}$${Math.round(abs).toLocaleString()}`

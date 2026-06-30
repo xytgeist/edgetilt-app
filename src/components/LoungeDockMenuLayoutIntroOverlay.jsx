@@ -1,6 +1,6 @@
 import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
 
-/** One-time first menu open — pick Wheel or Edge to dismiss (no backdrop / Got it escape hatch). */
+/** One-time first menu open - pick Wheel or Edge to dismiss (no backdrop / Got it escape hatch). */
 export default function LoungeDockMenuLayoutIntroOverlay({ dockMenuLayout, onChooseLayout }) {
   return (
     <div

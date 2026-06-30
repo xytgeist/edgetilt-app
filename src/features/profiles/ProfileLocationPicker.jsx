@@ -34,7 +34,7 @@ export default function ProfileLocationPicker({ value, onChange, disabled = fals
         if (!cancelled) setCityIndex(index)
       })
       .catch(() => {
-        if (!cancelled) setIndexErr('City search unavailable — you can still type any location.')
+        if (!cancelled) setIndexErr('City search unavailable - you can still type any location.')
       })
     return () => {
       cancelled = true

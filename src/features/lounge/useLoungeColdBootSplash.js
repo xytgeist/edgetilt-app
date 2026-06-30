@@ -16,7 +16,7 @@ import {
 
 const SPLASH_FADE_MS = 320
 
-/** Sync eligibility on first paint — avoids one frame of feed "Loading…" before splash. */
+/** Sync eligibility on first paint - avoids one frame of feed "Loading…" before splash. */
 function readInitialColdBootSplashVisible(tab) {
   if (typeof window === 'undefined') return false
   const pendingWork = readLoungeColdBootPendingWork()
@@ -71,7 +71,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
     const minMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MIN_MS : LOUNGE_COLD_BOOT_ANON_MIN_MS
     const maxMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MAX_MS : LOUNGE_COLD_BOOT_ANON_MAX_MS
     const elapsed = Date.now() - shownAtRef.current
-    // Lottie can hit fly-through end (frame 190) before minMs on fast devices — don't hold the splash.
+    // Lottie can hit fly-through end (frame 190) before minMs on fast devices - don't hold the splash.
     if (animationDoneRef.current) return true
     if (elapsed >= maxMs) return true
     if (elapsed < minMs) return false
@@ -85,7 +85,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
 
   const onSplashAnimationComplete = useCallback(() => {
     animationDoneRef.current = true
-    // Don't wait for the 48ms poll — dismiss on the animation event itself.
+    // Don't wait for the 48ms poll - dismiss on the animation event itself.
     if (canFinishSplash()) finishSplash()
     else attemptFinishSplash()
   }, [attemptFinishSplash, canFinishSplash, finishSplash])
@@ -167,7 +167,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
 
   // After the splash fully fades out, the iOS status bar is still dark (it was forced
   // black by the splash's preFrameCover and statusBar strip). iOS only resamples the
-  // translucent status bar on native history mutations — the same signal that fires when
+  // translucent status bar on native history mutations - the same signal that fires when
   // React Router navigates (e.g. menu → slots). We can't fire that during the animation,
   // so we wait for the first user touchstart after the splash exits, then fire a
   // replaceState (same URL, no back-button side effects) to trigger the resample.

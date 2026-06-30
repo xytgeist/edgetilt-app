@@ -19,7 +19,7 @@ const SEARCH_COMMENT_SKIP_CLICK =
   'button, a, textarea, input, select, [data-lounge-image-zoom], [data-lounge-video-zoom]'
 
 /**
- * Search hit for a comment — same body chrome as a plain comment repost (no repost header / parent post).
+ * Search hit for a comment - same body chrome as a plain comment repost (no repost header / parent post).
  */
 export default function LoungeSearchCommentResultRow({
   comment,

@@ -25,7 +25,7 @@ function subscribe(listener) {
   return () => listeners.delete(listener)
 }
 
-/** Portaled lounge dock on slot tool screens — mirrors active `ScrollLinkedEdgeTitleBarShell`. */
+/** Portaled lounge dock on slot tool screens - mirrors active `ScrollLinkedEdgeTitleBarShell`. */
 export function useEdgeTitleBarReveal() {
   return useSyncExternalStore(subscribe, getEdgeTitleBarReveal, () => 1)
 }

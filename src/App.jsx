@@ -203,7 +203,7 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  /** Seeds `profiles` when missing (avoids Lounge composer UUID hex initials like “65”) — OAuth and session restore, not only password login. */
+  /** Seeds `profiles` when missing (avoids Lounge composer UUID hex initials like “65”) - OAuth and session restore, not only password login. */
   useEffect(() => {
     if (!user?.id) return
     void ensureDefaultProfileRow(supabase, user)
@@ -353,7 +353,7 @@ function App() {
       void pollEntitlements()
       setAccessNotice(
         billing.billing === 'success'
-          ? 'Subscription updated — thanks for supporting Edge.'
+          ? 'Subscription updated - thanks for supporting Edge.'
           : 'Billing settings saved.',
       )
     }

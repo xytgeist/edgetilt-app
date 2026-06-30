@@ -255,7 +255,7 @@ export default function LoungeDockArcCarouselPrototype({
   menuLayout = 'wheel',
   /** Reserve bottom viewport space (e.g. Lounge upload bar) so the FAB does not cover controls. */
   bottomObstacleInsetPx = 0,
-  /** Unread in-app notifications — FAB badge clears on menu expand; Alerts item clears on panel visit. */
+  /** Unread in-app notifications - FAB badge clears on menu expand; Alerts item clears on panel visit. */
   notificationsUnreadCount = 0,
   /**
    * When false (Lounge home feed tab only), FAB stays full-size with scroll-reveal + idle dim only.
@@ -330,7 +330,7 @@ export default function LoungeDockArcCarouselPrototype({
   )
   /** Half-opacity rest state when visible but idle (not scroll-hidden). */
   const [fabIdleDimmed, setFabIdleDimmed] = useState(false)
-  /** Shrunk pip at bottom corner (display only — {@link fabPos} prefs unchanged). */
+  /** Shrunk pip at bottom corner (display only - {@link fabPos} prefs unchanged). */
   const [fabCompactPip, setFabCompactPip] = useState(false)
   /**
    * Opening menu from compact pip: one frame at corner + home beside pip, then animate to full layout.
@@ -358,7 +358,7 @@ export default function LoungeDockArcCarouselPrototype({
   const fabDetailShellCompactPrevRef = useRef(false)
 
   const bottomObstaclePx = Math.max(0, Math.round(Number(bottomObstacleInsetPx) || 0))
-  /** Post/comment detail: FAB stays at saved position and stacks over the keyboard — no obstacle push. */
+  /** Post/comment detail: FAB stays at saved position and stacks over the keyboard - no obstacle push. */
   const fabObstacleCollisionEnabled = !fabDetailShellCompact
   const totalBottomObstaclePx = bottomObstaclePx + (fabObstacleCollisionEnabled ? collisionInsetPx : 0)
 
@@ -422,7 +422,7 @@ export default function LoungeDockArcCarouselPrototype({
 
   const measureCollisionRef = useRef(() => {})
 
-  /** Nudge FAB up when a bottom obstacle (upload bar) appears under it — keeps Cancel tappable. */
+  /** Nudge FAB up when a bottom obstacle (upload bar) appears under it - keeps Cancel tappable. */
   useEffect(() => {
     if (!fabObstacleCollisionEnabled) return
     const cur = fabPosRef.current
@@ -453,7 +453,7 @@ export default function LoungeDockArcCarouselPrototype({
     setFabPos(pos)
   }, [fabDetailShellCompact, viewport.width, viewport.height, bottomObstaclePx])
 
-  /** Push FAB up only when it overlaps marked UI (fixed bars or in-scroll controls) — not on post/comment detail. */
+  /** Push FAB up only when it overlaps marked UI (fixed bars or in-scroll controls) - not on post/comment detail. */
   useEffect(() => {
     if (!fabObstacleCollisionEnabled) {
       setCollisionInsetPx(0)
@@ -662,7 +662,7 @@ export default function LoungeDockArcCarouselPrototype({
   const fabCompactAlignLeft = fabCenterX != null && fabCenterX < viewport.width / 2
   const fabCompactActive = enableFabCompactPip && fabCompactPip
 
-  /** Visual position only — compact pip snaps to corner without mutating saved prefs. */
+  /** Visual position only - compact pip snaps to corner without mutating saved prefs. */
   const fabRenderPos = useMemo(() => {
     if (!fabPos) return null
     if (!fabCompactActive || open || repositioning) return fabPos
@@ -695,7 +695,7 @@ export default function LoungeDockArcCarouselPrototype({
     : 1
   const fabDisplayPos = fabExpandFromPip?.cornerPos ?? fabRenderPos
 
-  /** Dock item anchor — compact pip uses visual center (corner scale origin), not box center. */
+  /** Dock item anchor - compact pip uses visual center (corner scale origin), not box center. */
   const fabDockAnchor = useMemo(() => {
     if (fabCompactActive && fabRenderPos) {
       return loungeDockCompactPipFabVisualCenter(fabRenderPos, fabCompactAlignLeft)
@@ -977,7 +977,7 @@ export default function LoungeDockArcCarouselPrototype({
       }
       return undefined
     }
-    /** Scroll / reveal changes count as activity — reset dim and restart idle clocks. */
+    /** Scroll / reveal changes count as activity - reset dim and restart idle clocks. */
     setFabIdleDimmed(false)
     if (!fabCompactPipRef.current) {
       setFabCompactPip(false)
@@ -1557,7 +1557,7 @@ export default function LoungeDockArcCarouselPrototype({
     })
   }, [])
 
-  /** Panel screens: home chip beside FAB (menu collapsed) — tap only, no spin. */
+  /** Panel screens: home chip beside FAB (menu collapsed) - tap only, no spin. */
   const onCompactItemTap = useCallback(
     (item, e) => {
       blockPointerDefault(e)
@@ -1950,7 +1950,7 @@ export default function LoungeDockArcCarouselPrototype({
         return renderMenuItem(item, offset, { isFocused, offScreen, panelChromeHomeAnim })
       })}
 
-      {/* Following-filter toggle flash — rendered here so it survives the menu closing before the flash fires */}
+      {/* Following-filter toggle flash - rendered here so it survives the menu closing before the flash fires */}
       {followingFlash && followingItemCenterRef.current ? (
         <span
           className="pointer-events-none fixed -translate-x-1/2 whitespace-nowrap"

@@ -45,7 +45,7 @@ const FIELD_SYNONYMS = {
     'note', 'notes', 'comment', 'comments', 'sessionnote', 'session note',
     'memo', 'description', 'session notes',
   ],
-  // Detected but not written to DB — used for filter logic only
+  // Detected but not written to DB - used for filter logic only
   game_col: [
     'game', 'variant', 'game type', 'gametype', 'type', 'game variant',
   ],
@@ -126,7 +126,7 @@ function parseCsvText(text) {
 
   // Collect data rows that follow the header.
   // Stop when we hit a blank line (after at least one data row) or a line
-  // with fewer than 3 fields — both signal the start of a new section
+  // with fewer than 3 fields - both signal the start of a new section
   // (e.g. "Tourneys" or "Players" in the Poker Income export).
   const rows = []
   for (let i = headerLineIdx + 1; i < allLines.length; i++) {

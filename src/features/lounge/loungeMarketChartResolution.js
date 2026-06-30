@@ -1,4 +1,4 @@
-/** Advanced chart candle resolution — bar count + pan-back depth (Quick chart keeps timeframe pills). */
+/** Advanced chart candle resolution - bar count + pan-back depth (Quick chart keeps timeframe pills). */
 
 export const LOUNGE_MARKET_CHART_RESOLUTION_STORAGE_KEY = 'loungeMarketChartResolution:v1'
 

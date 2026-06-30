@@ -6,7 +6,7 @@ const PULL_DISMISS_VELOCITY     = 0.4 // px/ms
 
 /**
  * Full-screen scroll-snap image viewer for chat messages.
- * Images stack vertically — scroll up/down to browse. Pull down at top to dismiss.
+ * Images stack vertically - scroll up/down to browse. Pull down at top to dismiss.
  *
  * @param {{
  *   urls: string[],
@@ -20,7 +20,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
   const [activeIdx, setActiveIdx] = useState(Math.min(initialIndex, Math.max(0, items.length - 1)))
 
   // Light mode: the iOS PWA status bar is white and unreachable, so paint the
-  // viewer backdrop light too — the white bar blends in instead of clashing with
+  // viewer backdrop light too - the white bar blends in instead of clashing with
   // black. Dark mode keeps the black cinematic backdrop.
   const isLight =
     typeof document !== 'undefined' && document.documentElement.classList.contains('light')
@@ -124,7 +124,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
         transition: dismissing ? 'background-color 0.22s ease' : undefined,
       }}
     >
-      {/* Chrome stays fixed — only media layer translates on pull-to-dismiss (see ChatVideoLightbox). */}
+      {/* Chrome stays fixed - only media layer translates on pull-to-dismiss (see ChatVideoLightbox). */}
       <div className="media-lightbox-status-bar-blend pointer-events-none absolute inset-x-0 top-0 z-[11]" aria-hidden />
       <div
         data-chat-image-lightbox-header

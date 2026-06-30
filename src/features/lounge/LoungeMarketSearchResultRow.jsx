@@ -9,7 +9,7 @@ function marketSearchMetaLine(row) {
   const ticker = row?.display_symbol || row?.symbol || ''
   const exchange = String(row?.exchange || row?.type || '').trim()
   const cap = formatMarketCap(row?.market_cap)
-  const parts = [ticker, exchange, cap !== '—' ? cap : ''].filter(Boolean)
+  const parts = [ticker, exchange, cap !== '-' ? cap : ''].filter(Boolean)
   return parts.join(' · ')
 }
 
@@ -42,7 +42,7 @@ function MarketSearchAvatar({ row, size = 'md' }) {
 }
 
 /**
- * Shared cashtag/picker search row — name, ticker · exchange · mcap, price + % change.
+ * Shared cashtag/picker search row - name, ticker · exchange · mcap, price + % change.
  */
 export default function LoungeMarketSearchResultRow({ row, variant = 'default', className = '' }) {
   const compact = variant === 'compact'

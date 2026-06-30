@@ -209,7 +209,7 @@ export async function encodeVideoForChat(file, opts = {}) {
  * @param {number} startSec
  * @param {number} endSec
  * @param {{ onProgress?: (ratio01: number) => void, signal?: AbortSignal, crop?: { x: number, y: number, w: number, h: number } | null, intrinsicWidth?: number, intrinsicHeight?: number }} [opts]
- * `crop` — pixel rect on decoded source frames; requires `intrinsicWidth` / `intrinsicHeight` (element `videoWidth` / `videoHeight`).
+ * `crop` - pixel rect on decoded source frames; requires `intrinsicWidth` / `intrinsicHeight` (element `videoWidth` / `videoHeight`).
  * @returns {Promise<File>}
  */
 export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {

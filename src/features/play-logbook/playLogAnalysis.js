@@ -32,7 +32,7 @@ export function analyzePlayLogEntries(entries, metricSlugs, opts = {}) {
     stats.push({
       key: 'realized_rtp',
       label: 'Realized RTP %',
-      value: formatPlayLogRealRtp(realizedRtp) ?? '—',
+      value: formatPlayLogRealRtp(realizedRtp) ?? '-',
       hint: allPlays
         ? 'Wager-weighted across all logged plays (total out ÷ total in).'
         : 'Wager-weighted across all logged plays for this game (total out ÷ total in).',
@@ -140,7 +140,7 @@ export function analyzePlayLogEntries(entries, metricSlugs, opts = {}) {
 
 /** @param {number | null} n */
 function fmtMoney(n) {
-  if (n == null || !Number.isFinite(n)) return '—'
+  if (n == null || !Number.isFinite(n)) return '-'
   const abs = Math.abs(n)
   const str = abs >= 1000 ? `$${Math.round(abs).toLocaleString()}` : `$${abs.toFixed(abs >= 100 ? 0 : 2)}`
   return n < 0 ? `-${str}` : str

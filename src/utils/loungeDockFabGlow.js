@@ -1,5 +1,5 @@
 /**
- * Lounge dock FAB — electric blue accent (brand `#06cefc` family).
+ * Lounge dock FAB - electric blue accent (brand `#06cefc` family).
  */
 
 /** `false` = flat (active state uses thicker border instead). */
@@ -19,7 +19,7 @@ export function loungeDockFabCenterShadowClass(menuOpen) {
   return menuOpen ? LOUNGE_DOCK_FAB_CENTER_GLOW.shadowOpen : LOUNGE_DOCK_FAB_CENTER_GLOW.shadow
 }
 
-/** Following filter ON — between idle (1px) and page-active (3px). */
+/** Following filter ON - between idle (1px) and page-active (3px). */
 export const LOUNGE_DOCK_BORDER_FILTER_ON =
   'border-2 border-solid border-[#06cefc]/88'
 
@@ -64,7 +64,7 @@ export function loungeDockItemGlow(itemId) {
   return LOUNGE_DOCK_ITEM_GLOW_BY_ID[itemId] ?? NEON_BLUE_ITEM_GLOW_IDLE
 }
 
-/** Center menu (+) button — solid electric blue fill, black icon. */
+/** Center menu (+) button - solid electric blue fill, black icon. */
 export const LOUNGE_DOCK_FAB_CENTER_GLOW = {
   bg: 'bg-[#06cefc]',
   bgOpen: 'bg-[#51dff9]',

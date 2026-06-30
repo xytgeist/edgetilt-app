@@ -399,7 +399,7 @@ export function isTierAboveBreakeven(tierKey, meters, profile) {
 
 /**
  * Auto play target: highest tier (gold → blue → green) that is above coupled BE.
- * Lower tiers may also be +EV but are incidental on a higher-tier chase — we do not stop at green when gold is still a play.
+ * Lower tiers may also be +EV but are incidental on a higher-tier chase - we do not stop at green when gold is still a play.
  * If none are above BE, pick the tier with the best standalone focused RTP.
  * @param {Record<TierKey, number>} meters
  * @param {{ baseGamePct: number, decimals: Record<TierKey, number>, resets: Record<TierKey, number> }} profile
@@ -778,7 +778,7 @@ export function projectedMaxExposureDollars(meters, profile, evAvgBets, betSize)
   return Math.max(0, stressedLoss - targetEvDollars)
 }
 
-/** @deprecated Use {@link projectedMaxExposureDollars} — kept for bet-unit callers. */
+/** @deprecated Use {@link projectedMaxExposureDollars} - kept for bet-unit callers. */
 export function projectedMaxExposureBets(meters, profile, evAvgBets = 0, betSize = 1) {
   const bet = Number(betSize)
   if (!Number.isFinite(bet) || bet <= 0) return 0

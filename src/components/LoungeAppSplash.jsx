@@ -8,7 +8,7 @@ DotLottie.setWasmUrl(wasmUrl)
 
 // Pre-stringify both at module load (expensive JSON.stringify done once, not per-render).
 // The CORRECT one is selected inside useLayoutEffect/render where applyTheme() has
-// already run — module-level code executes before main.jsx's own statements fire.
+// already run - module-level code executes before main.jsx's own statements fire.
 const EDGE_SPLASH_DATA_DARK = JSON.stringify(edgeSplashDark)
 const EDGE_SPLASH_DATA_LIGHT = JSON.stringify(edgeSplashLight)
 
@@ -16,7 +16,7 @@ const EDGE_SPLASH_DATA_LIGHT = JSON.stringify(edgeSplashLight)
 // Overlay fully transparent at frame 190 (~1 s before animation ends at 251).
 const FLY_THROUGH_START = 157
 const FLY_THROUGH_END = 190
-// Bottom cover lags overlay fade — was dismissing ~10 frames early when locked together.
+// Bottom cover lags overlay fade - was dismissing ~10 frames early when locked together.
 const BOTTOM_COVER_FADE_LAG_FRAMES = 10
 const BOTTOM_COVER_FADE_START = FLY_THROUGH_START + BOTTOM_COVER_FADE_LAG_FRAMES
 const BOTTOM_COVER_FADE_END = FLY_THROUGH_END + BOTTOM_COVER_FADE_LAG_FRAMES
@@ -31,18 +31,18 @@ const SPLASH_MAX_MS = 7000
  * Cold-boot Lottie splash.
  *
  * Layer stack (bottom → top inside the fixed container):
- *   1. overlay div    — bg-black, opacity driven by direct DOM ref (not React state).
+ *   1. overlay div    - bg-black, opacity driven by direct DOM ref (not React state).
  *                       Shows through the transparent D-hole pixels in the canvas.
  *                       Fades 1→0 during frames 157–190 to reveal the feed behind.
- *   2. canvas         — DotLottie renders here via OffscreenCanvas so the WASM path
+ *   2. canvas         - DotLottie renders here via OffscreenCanvas so the WASM path
  *                       calls set_background(0,0,0,0) → true transparent D-hole pixels.
- *   3. preFrameCover  — always bg-black. Hides the blank canvas while WASM boots.
+ *   3. preFrameCover  - always bg-black. Hides the blank canvas while WASM boots.
  *                       Removed one rAF after the first Lottie frame to avoid a
  *                       transparent-canvas white flash.
- *   4. statusBar strip — height env(safe-area-inset-top), always bg-black. Sits in
+ *   4. statusBar strip - height env(safe-area-inset-top), always bg-black. Sits in
  *                       the exact pixels iOS samples for its translucent status bar tint,
  *                       keeping the status bar dark for the full duration of the splash.
- *   5. bottomCover strip — masks the viewport band below the shifted canvas so the feed
+ *   5. bottomCover strip - masks the viewport band below the shifted canvas so the feed
  *                       cannot leak through transparent canvas pixels during fly-through.
  *                       Fades out frames 167–200 (10f after overlay), then removed.
  *
@@ -70,7 +70,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // getBoundingClientRect() measures the actual rendered CSS size after layout —
+    // getBoundingClientRect() measures the actual rendered CSS size after layout -
     // correct on iOS PWA with viewport-fit:cover where window.innerHeight ≠ full screen.
     const dpr = window.devicePixelRatio || 1
     const rect = canvas.getBoundingClientRect()
@@ -108,14 +108,14 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       ctx.drawImage(offscreen, 0, 0)
 
       // Delay hiding the preFrameCover by one rAF so the canvas drawImage has been
-      // composited to screen first — prevents a transparent-canvas white flash.
+      // composited to screen first - prevents a transparent-canvas white flash.
       if (preFrameCoverRef.current) {
         const cover = preFrameCoverRef.current
         preFrameCoverRef.current = null
         requestAnimationFrame(() => { cover.style.display = 'none' })
       }
 
-      // Fade overlay + bottom cover via direct DOM mutation — not setState — so it works
+      // Fade overlay + bottom cover via direct DOM mutation - not setState - so it works
       // reliably inside DotLottie's native event listener on iOS PWA.
       if (currentFrame >= FLY_THROUGH_START && overlayRef.current) {
         overlayRef.current.style.opacity = String(fadeOpacity(currentFrame, FLY_THROUGH_START, FLY_THROUGH_END))
@@ -156,7 +156,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
       aria-live="polite"
       aria-label="Loading Lounge"
     >
-      {/* 1. Overlay — behind canvas, shows through transparent D-hole.
+      {/* 1. Overlay - behind canvas, shows through transparent D-hole.
                Dark mode: black overlay fades out during fly-through to reveal feed.
                Light mode: white overlay (matches light Lottie background). */}
       <div
@@ -166,11 +166,11 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         aria-hidden
       />
 
-      {/* 2. Canvas — Lottie renders here via OffscreenCanvas.
+      {/* 2. Canvas - Lottie renders here via OffscreenCanvas.
                Shifted up slightly to visually center under the status bar (light + dark). */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ top: `${CANVAS_OFFSET_Y}px` }} aria-hidden />
 
-      {/* 3. Pre-frame cover — on top, hides blank canvas until WASM boots.
+      {/* 3. Pre-frame cover - on top, hides blank canvas until WASM boots.
                Matches the Lottie opener: black in dark mode, white in light mode. */}
       <div
         ref={preFrameCoverRef}
@@ -179,7 +179,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         aria-hidden
       />
 
-      {/* 4. Bottom cover — opaque band below shifted canvas; blocks feed leak outside D-hole.
+      {/* 4. Bottom cover - opaque band below shifted canvas; blocks feed leak outside D-hole.
                Fades 167–200 (10f after overlay); removed at frame 200. */}
       <div
         ref={bottomCoverRef}
@@ -191,7 +191,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationComplet
         aria-hidden
       />
 
-      {/* 5. Status bar strip — covers only env(safe-area-inset-top).
+      {/* 5. Status bar strip - covers only env(safe-area-inset-top).
                Matches the Lottie opener color so the iOS translucent status bar
                tint is consistent with the animation background. */}
       <div

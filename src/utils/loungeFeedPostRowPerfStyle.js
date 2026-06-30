@@ -1,4 +1,4 @@
-/** Scroll perf for feed/profile post rows — skip on coarse pointers (Android touch hit-test bugs with content-visibility). */
+/** Scroll perf for feed/profile post rows - skip on coarse pointers (Android touch hit-test bugs with content-visibility). */
 export function loungeFeedPostRowPerfStyle() {
   if (typeof window === 'undefined') return undefined
   try {

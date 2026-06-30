@@ -49,79 +49,83 @@ function PwaInstallHelpDropPanel({
     <div
       id="pwa-install-drop-panel"
       data-pwa-install-drop-panel
-      className="pwa-install-drop-panel absolute left-0 right-0 top-full z-[60] max-h-[min(72dvh,calc(100dvh-env(safe-area-inset-top)-3.5rem))] w-full overflow-y-auto overscroll-contain border-t border-b border-zinc-800/90 bg-zinc-950/98 px-3 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
+      className="pwa-install-drop-panel absolute left-0 right-0 top-full z-[60] flex max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-2.5rem))] w-full flex-col overflow-hidden border-t border-b border-zinc-800/90 bg-zinc-950/98 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
       role="region"
       aria-labelledby="pwa-install-drop-title"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id="pwa-install-drop-title" className="text-[15px] font-bold text-white">
-            Install Edge
-          </h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-zinc-400">
-            Install to your home screen for quick access and push notifications.
-          </p>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="pwa-install-drop-title" className="text-[15px] font-bold text-white">
+              Install Edge
+            </h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-zinc-400">
+              Install to your home screen for quick access and push notifications.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 touch-manipulation hover:bg-zinc-800 hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
+            aria-label="Close install instructions"
+          >
+            <span aria-hidden className="text-xl leading-none">
+              ×
+            </span>
+          </button>
         </div>
+
+        {nativeInstallReady ? (
+          <button
+            type="button"
+            onClick={() => void onNativeInstall?.()}
+            className="mt-3 min-h-10 w-full rounded-xl border border-cyan-400/45 bg-cyan-600 px-3 text-[13px] font-semibold text-white touch-manipulation hover:bg-cyan-500 [-webkit-tap-highlight-color:transparent]"
+          >
+            Install app
+          </button>
+        ) : null}
+
+        <ol className="mt-3 space-y-2 text-[13px] leading-relaxed text-zinc-200">
+          {steps.map((step, index) => (
+            <li key={step.id} className="flex gap-2">
+              <span className="w-4 shrink-0 tabular-nums text-zinc-500">{index + 1}.</span>
+              <span>
+                {step.lead ? `${step.lead} ` : null}
+                {step.showShareIcon ? <IosShareIcon /> : null}
+                <span className="font-semibold text-zinc-50">{step.emphasis}</span>
+                {step.tail ? ` ${step.tail}` : null}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        {showIosSetupImage ? (
+          <div className="mt-3 flex justify-center rounded-2xl border border-zinc-700/70 bg-zinc-900/60 p-2">
+            <img
+              src={PWA_IOS_SETUP_IMAGE}
+              alt="iPhone Share menu and Add to Home Screen steps"
+              className="max-h-[min(28dvh,168px)] w-full max-w-[240px] rounded-xl object-contain"
+              loading="lazy"
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="shrink-0 border-t border-zinc-800/90 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 touch-manipulation hover:bg-zinc-800 hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
-          aria-label="Close install instructions"
+          className="min-h-10 w-full rounded-xl bg-orange-600 text-[14px] font-semibold text-white touch-manipulation hover:bg-orange-500 active:bg-orange-700 [-webkit-tap-highlight-color:transparent]"
         >
-          <span aria-hidden className="text-xl leading-none">
-            ×
-          </span>
+          Got it
         </button>
       </div>
-
-      {nativeInstallReady ? (
-        <button
-          type="button"
-          onClick={() => void onNativeInstall?.()}
-          className="mt-3 min-h-10 w-full rounded-xl border border-cyan-400/45 bg-cyan-600 px-3 text-[13px] font-semibold text-white touch-manipulation hover:bg-cyan-500 [-webkit-tap-highlight-color:transparent]"
-        >
-          Install app
-        </button>
-      ) : null}
-
-      <ol className="mt-3 space-y-2 text-[13px] leading-relaxed text-zinc-200">
-        {steps.map((step, index) => (
-          <li key={step.id} className="flex gap-2">
-            <span className="w-4 shrink-0 tabular-nums text-zinc-500">{index + 1}.</span>
-            <span>
-              {step.lead ? `${step.lead} ` : null}
-              {step.showShareIcon ? <IosShareIcon /> : null}
-              <span className="font-semibold text-zinc-50">{step.emphasis}</span>
-              {step.tail ? ` ${step.tail}` : null}
-            </span>
-          </li>
-        ))}
-      </ol>
-
-      {showIosSetupImage ? (
-        <div className="mt-3 rounded-2xl border border-zinc-700/70 bg-zinc-900/60 p-2">
-          <img
-            src={PWA_IOS_SETUP_IMAGE}
-            alt="iPhone Share menu and Add to Home Screen steps"
-            className="w-full rounded-xl object-cover"
-            loading="lazy"
-          />
-        </div>
-      ) : null}
-
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-3 min-h-10 w-full rounded-xl bg-orange-600 text-[14px] font-semibold text-white touch-manipulation hover:bg-orange-500 active:bg-orange-700 [-webkit-tap-highlight-color:transparent]"
-      >
-        Got it
-      </button>
     </div>
   )
 }
 
 /**
- * Title bar row: logo | install chip | nav — install help panel overlays feed below the row.
+ * Title bar row: logo | install chip | nav - install help panel overlays feed below the row.
  */
 export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'px-3 py-2' }) {
   const deferredPromptRef = useRef(null)

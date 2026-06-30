@@ -5,7 +5,7 @@ let uiSyncBack = false
 
 /**
  * Bind browser / hardware back to `onClose` for Stream video hero lightbox only.
- * Image/GIF lightboxes do not use this — UI dismiss must not call `history.back()`.
+ * Image/GIF lightboxes do not use this - UI dismiss must not call `history.back()`.
  *
  * @param {() => void} onClose
  * @returns {() => void}

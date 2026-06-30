@@ -9,7 +9,7 @@ import {
 } from './chatVideoTileLayout.js'
 
 /**
- * ChatVideoPrepBubble — looks exactly like a sent video chat bubble while a
+ * ChatVideoPrepBubble - looks exactly like a sent video chat bubble while a
  * video is being trimmed / encoded / uploaded locally.
  *
  * Shell mirrors ChatBubble's "isMine + isGroupEnd + single video" path:
@@ -60,7 +60,7 @@ function RouletteProgressRing({ progress, status }) {
           <circle cx="50" cy="50" r={RING_R} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="2.5" />
         </svg>
 
-        {/* Spinning roulette wheel — pre-cropped square asset */}
+        {/* Spinning roulette wheel - pre-cropped square asset */}
         <img
           src="/roulette-spinner.png"
           alt=""
@@ -143,13 +143,13 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
   const bubbleRadius = `${r}px ${r}px 0px ${r}px`
 
   return (
-    /* Row — mirrors ChatBubble's outer row for a sent (isMine) message */
+    /* Row - mirrors ChatBubble's outer row for a sent (isMine) message */
     <div className="flex items-end gap-2 flex-row-reverse">
 
-      {/* Column — same 78% width cap as a delivered single-video bubble */}
+      {/* Column - same 78% width cap as a delivered single-video bubble */}
       <div className={`flex flex-col gap-1 items-end ${CHAT_MESSAGE_COLUMN_WIDTH_CLASS}`}>
 
-        {/* Bubble surface — exactly mirrors the blue p-[3px] media bubble */}
+        {/* Bubble surface - exactly mirrors the blue p-[3px] media bubble */}
         <div
           className="chat-bubble-surface relative w-full select-none text-[16px] leading-snug p-[3px] text-white"
           style={{
@@ -157,7 +157,7 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
             borderRadius: bubbleRadius,
           }}
         >
-          {/* Media tile — same rounded-[13px] size as delivered ChatMediaGrid video */}
+          {/* Media tile - same rounded-[13px] size as delivered ChatMediaGrid video */}
           <div
             className="relative overflow-hidden bg-zinc-900 rounded-[13px]"
             style={tileStyle}
@@ -209,7 +209,7 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
               </div>
             )}
 
-            {/* X cancel button — top-right, always visible while active */}
+            {/* X cancel button - top-right, always visible while active */}
             {!isError && (
               <button
                 type="button"
@@ -225,7 +225,7 @@ export default function ChatVideoPrepBubble({ job, onCancel, onRetry }) {
             )}
           </div>
 
-          {/* Blue send-tail — bottom-right, same as ChatBubble isMine isGroupEnd */}
+          {/* Blue send-tail - bottom-right, same as ChatBubble isMine isGroupEnd */}
           <svg
             className="absolute pointer-events-none"
             style={{ bottom: 0, right: 0, overflow: 'visible', width: 12, height: 12 }}

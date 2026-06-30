@@ -106,7 +106,7 @@ export async function hydrateLoungeActivityEventPreviews(supabaseClient, events)
     }
   }
 
-  /** Plain repost `post_id` is the shell row — resolve original post for preview + grouping. */
+  /** Plain repost `post_id` is the shell row - resolve original post for preview + grouping. */
   const repostOriginalPostIds = new Set()
   for (const event of events) {
     if (event?.event_type !== LOUNGE_ACTIVITY_EVENT_TYPES.REPOST || event?.comment_id) continue

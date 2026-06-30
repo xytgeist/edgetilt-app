@@ -515,7 +515,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null }) {
 
         {/* EV Table */}
         <div className="bg-gray-900 p-6 rounded-3xl">
-          <h2 className="text-xl font-semibold mb-5 text-orange-400">EV Table — 1150 to 1875</h2>
+          <h2 className="text-xl font-semibold mb-5 text-orange-400">EV Table - 1150 to 1875</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[540px]">
               <thead>

@@ -131,7 +131,7 @@ export function loungeActivityOpenPostTarget(event) {
 }
 
 /**
- * Resolve notification tap target — repost shells need a lookup for the original post/comment parent.
+ * Resolve notification tap target - repost shells need a lookup for the original post/comment parent.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {object} event
  */

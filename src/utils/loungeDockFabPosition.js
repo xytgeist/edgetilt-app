@@ -3,7 +3,7 @@
 /** `'wheel'` = ring carousel (O); `'cornerL'` = bottom-corner L / Г. */
 export const LOUNGE_DOCK_MENU_LAYOUT_KEY = 'loungeDockMenuLayout:v1'
 
-/** One-time first menu open — user picked Wheel or Edge in the intro overlay. */
+/** One-time first menu open - user picked Wheel or Edge in the intro overlay. */
 export const LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY = 'loungeDockMenuLayoutIntro:v1'
 
 export const LOUNGE_DOCK_FAB_STORAGE_KEY = 'loungeDockFab:v1'
@@ -21,7 +21,7 @@ export const LOUNGE_DOCK_HOME_FROM_FAB_CENTER_PX =
   LOUNGE_DOCK_CAROUSEL_RADIUS_PX + LOUNGE_DOCK_FAB_SIZE_PX / 2 + 20
 /** Fixed angle between adjacent items (wide spacing; ring may extend off-screen). */
 export const LOUNGE_DOCK_CAROUSEL_ITEM_STEP_RAD = (52 * Math.PI) / 180
-/** Wheel / compact home chip — same diameter as the FAB menu button. */
+/** Wheel / compact home chip - same diameter as the FAB menu button. */
 export const LOUNGE_DOCK_FAB_ITEM_CIRCLE_PX = LOUNGE_DOCK_FAB_SIZE_PX
 export function loungeDockFabScrollBottomInsetPx() {
   return (
@@ -98,8 +98,8 @@ export function loungeDockLShapeStepPx() {
 
 /**
  * Snap FAB to bottom-left or bottom-right corner (vertex of the L).
- * @param {boolean} alignLeft — `true` → bottom-left, `false` → bottom-right
- * @param {{ raised?: boolean }} [options] — `raised: true` moves FAB up one L step (avoids iOS edge long-press).
+ * @param {boolean} alignLeft - `true` → bottom-left, `false` → bottom-right
+ * @param {{ raised?: boolean }} [options] - `raised: true` moves FAB up one L step (avoids iOS edge long-press).
  */
 export function loungeDockFabCornerPosition(
   viewportW,
@@ -122,7 +122,7 @@ export function loungeDockFabCornerPosition(
 export const LOUNGE_DOCK_L_VERTICAL_ITEM_COUNT = 3
 
 /**
- * Horizontal offset for home beside the FAB (one L step) — Wheel (O) panel chrome when menu is collapsed.
+ * Horizontal offset for home beside the FAB (one L step) - Wheel (O) panel chrome when menu is collapsed.
  */
 export function loungeDockWheelCompactHomeOffset(fabCenterX, viewportW) {
   const alignLeft = fabCenterX < viewportW / 2
@@ -163,7 +163,7 @@ export function loungeDockCompactPipFabVisualCenter(
   }
 }
 
-/** Home chip beside compact pip — horizontal, same gap as full-size wheel compact. */
+/** Home chip beside compact pip - horizontal, same gap as full-size wheel compact. */
 export function loungeDockCompactPipHomeOffset(
   alignLeft,
   visualPx = LOUNGE_DOCK_FAB_COMPACT_VISUAL_PX,
@@ -300,7 +300,7 @@ export function loungeDockLayoutViewportSize() {
 
 /**
  * Mark on-screen UI (fixed or in-scroll) that should push the draggable menu up when it overlaps
- * the FAB horizontally. Not used on post/comment detail — FAB stacks above the reply composer there.
+ * the FAB horizontally. Not used on post/comment detail - FAB stacks above the reply composer there.
  */
 export const LOUNGE_FAB_OBSTACLE_SELECTOR = '[data-lounge-fab-obstacle]'
 
@@ -394,7 +394,7 @@ function fanSectorFromClosestEdges(fabCenterX, fabCenterY, bounds) {
   let lo = Math.min(alongHorizontal, alongVertical)
   let hi = Math.max(alongHorizontal, alongVertical)
 
-  /** If the corner lies outside [lo, hi], the wedge wraps through ±π — use the arc that contains it. */
+  /** If the corner lies outside [lo, hi], the wedge wraps through ±π - use the arc that contains it. */
   if (towardCorner < lo || towardCorner > hi) {
     const altLo = lo
     const altHi = hi + 2 * Math.PI
@@ -459,7 +459,7 @@ function buildOffsetsAtRadius(fabCenterX, fabCenterY, itemCount, centerAngle, sw
  * @param {number} fabCenterY
  * @param {number} itemCount
  * @param {{ width: number, height: number }} viewport
- * @param {number} itemRadius — half of menu bubble diameter (px)
+ * @param {number} itemRadius - half of menu bubble diameter (px)
  */
 export function loungeDockFanOffsets(fabCenterX, fabCenterY, itemCount, viewport, itemRadius) {
   if (itemCount <= 0) return []
@@ -507,7 +507,7 @@ export function loungeDockHomeAnchorAngle(fabCenterX, viewportW) {
   return loungeDockFabOnLeftHalf(fabCenterX, viewportW) ? -Math.PI / 2 : Math.PI / 2
 }
 
-/** Picker notch direction (interior of screen from FAB) — spin aligns nearest item here on release. */
+/** Picker notch direction (interior of screen from FAB) - spin aligns nearest item here on release. */
 export function loungeDockCarouselPickerAngle(fabCenterX, fabCenterY, bounds) {
   return fanSectorFromClosestEdges(fabCenterX, fabCenterY, bounds).centerAngle
 }
@@ -548,7 +548,7 @@ function offsetOnScreen(fabCenterX, fabCenterY, offset, bounds) {
 /**
  * Full ring: item 0 (home) starts at `loungeDockHomeAnchorAngle`, siblings follow by index with step `step`
  * (positive when FAB is on the left half, negative on the right half so compose→…→notifications reads the
- * same screen-relative direction as on the left — ring radius is constant).
+ * same screen-relative direction as on the left - ring radius is constant).
  * Pass items with home first. `rotationRad` spins the whole wheel.
  */
 export function loungeDockWheelLayout(

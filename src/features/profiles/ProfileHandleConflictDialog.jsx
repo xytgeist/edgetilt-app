@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 
 /**
- * Handle taken / reserved — offer a suggested alternative before save.
+ * Handle taken / reserved - offer a suggested alternative before save.
  */
 export default function ProfileHandleConflictDialog({
   open,

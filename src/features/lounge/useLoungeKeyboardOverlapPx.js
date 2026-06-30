@@ -18,7 +18,7 @@ export function readLoungeIosSafeBottomPx() {
   return Number.isFinite(px) && px > 0 ? px : 10
 }
 
-/** Footer host padding — iOS uses px + safe-area floor to avoid dismiss rebound. */
+/** Footer host padding - iOS uses px + safe-area floor to avoid dismiss rebound. */
 export function loungeComposerFooterPaddingBottom(overlapPx, safeBottomPx, { ios = LOUNGE_IOS } = {}) {
   if (ios) return `${Math.round(Math.max(overlapPx, safeBottomPx))}px`
   if (overlapPx > 0.5) return `${Math.round(overlapPx)}px`
@@ -36,13 +36,13 @@ export function useLoungeIosSafeBottomPx(active = LOUNGE_IOS) {
 }
 
 /**
- * visualViewport keyboard overlap — same formula as Lounge post-detail reply composer.
+ * visualViewport keyboard overlap - same formula as Lounge post-detail reply composer.
  *
  * @param {boolean} active
  * @returns {{ overlapPx: number, targetPx: number, displayPx: number }}
- *   overlapPx — use for footer padding (smoothed on iOS when smooth is on).
+ *   overlapPx - use for footer padding (smoothed on iOS when smooth is on).
  * @param {{ smooth?: boolean, smoothMs?: number }} [options]
- *   smooth — ease displayed px toward the live target (iOS chat polish).
+ *   smooth - ease displayed px toward the live target (iOS chat polish).
  */
 export function useLoungeKeyboardOverlapPx(active = true, options = {}) {
   const { smooth = false, smoothMs = LOUNGE_IOS_KEYBOARD_SMOOTH_MS } = options

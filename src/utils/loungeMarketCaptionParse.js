@@ -29,7 +29,7 @@ import { isUsableStockIntradayBars } from './usEquityMarketSession.js'
  * @property {{ price: number, change_pct: number, change: number, as_of: string }} quote
  * @property {MarketBar[]} bars
  * @property {string} [og_image_url]
- * @property {string} [coin_id] CoinGecko id (crypto) — skips search on rolling/modal candles
+ * @property {string} [coin_id] CoinGecko id (crypto) - skips search on rolling/modal candles
  * @property {string} [metadata_as_of] ISO timestamp when name/logo/mcap were resolved
  */
 
@@ -173,7 +173,7 @@ export function guessCashtagAssetClass(ticker, embedClassByTicker) {
   return 'stock'
 }
 
-/** Cashtag color from 1D % change — neutral cyan when quote unknown. */
+/** Cashtag color from 1D % change - neutral cyan when quote unknown. */
 export function marketCashtagColorClass(changePct) {
   const v = Number(changePct)
   if (!Number.isFinite(v)) return 'font-semibold text-cyan-400'
@@ -399,7 +399,7 @@ export function marketEmbedCacheKey(embed) {
 /** @param {number|null|undefined} n */
 export function formatMarketCap(n) {
   const v = Number(n)
-  if (!Number.isFinite(v) || v <= 0) return '—'
+  if (!Number.isFinite(v) || v <= 0) return '-'
   if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`
   if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`
   if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`
@@ -409,7 +409,7 @@ export function formatMarketCap(n) {
 /** Lounge market prices always display in USD to the cent. @param {number} price */
 export function formatMarketPrice(price) {
   const v = Number(price)
-  if (!Number.isFinite(v)) return '—'
+  if (!Number.isFinite(v)) return '-'
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -425,7 +425,7 @@ export function formatMarketPrice(price) {
 /** Whole-dollar USD for compact chart axis ticks. @param {number} price */
 export function formatMarketPriceWhole(price) {
   const v = Number(price)
-  if (!Number.isFinite(v)) return '—'
+  if (!Number.isFinite(v)) return '-'
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -441,7 +441,7 @@ export function formatMarketPriceWhole(price) {
 /** @param {number} pct */
 export function formatMarketChangePct(pct) {
   const v = Number(pct)
-  if (!Number.isFinite(v)) return '—'
+  if (!Number.isFinite(v)) return '-'
   const sign = v > 0 ? '+' : ''
   return `${sign}${v.toFixed(2)}%`
 }
@@ -464,7 +464,7 @@ export function formatMarketChangeLine(change, changePct) {
 }
 
 /**
- * Pick rolling quote/bars for feed minis — reject synthetic calendar-24h diagonals on stocks.
+ * Pick rolling quote/bars for feed minis - reject synthetic calendar-24h diagonals on stocks.
  * @param {MarketEmbed | object | null | undefined} embed
  * @param {object | null | undefined} rollingLive
  */
@@ -518,7 +518,7 @@ export const MARKET_MODAL_TIMEFRAMES = [
   { label: 'ALL', windowKey: '1y', kind: 'historical' },
 ]
 
-/** Default modal tab on open — `1D`. */
+/** Default modal tab on open - `1D`. */
 export const MARKET_MODAL_DEFAULT_TIMEFRAME_IDX = MARKET_MODAL_TIMEFRAMES.findIndex((tf) => tf.label === '1D')
 
 /** @param {MarketEmbed[]} embeds */

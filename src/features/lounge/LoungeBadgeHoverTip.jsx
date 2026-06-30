@@ -37,7 +37,7 @@ const TONE = {
  * Outside **pointerdown** (capture) and **Escape** dismiss the tip so it does not stick when `mouseleave` does not fire.
  *
  * Enter on iOS WebKit: same keyframes as Android but paused until positioned, then unpaused once.
- * Layout listeners must not depend on anim state — that re-ran the effect and turbo-compressed the rise.
+ * Layout listeners must not depend on anim state - that re-ran the effect and turbo-compressed the rise.
  *
  * @param {{ tip: string, tone?: 'amber' | 'crown' | 'violet' | 'sky', children: import('react').ReactNode, className?: string }} props
  */
@@ -423,7 +423,7 @@ export default function LoungeBadgeHoverTip({ tip, tone = 'amber', children, cla
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Tone + drop-shadow on a static wrapper — iOS Safari stutters when filter + transform animate on one node. */}
+            {/* Tone + drop-shadow on a static wrapper - iOS Safari stutters when filter + transform animate on one node. */}
             <span className={`inline-block ${toneCls}`}>
               <span
                 ref={tipTextRef}

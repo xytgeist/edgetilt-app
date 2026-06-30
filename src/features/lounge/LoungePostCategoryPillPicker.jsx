@@ -18,7 +18,7 @@ export default function LoungePostCategoryPillPicker({
   onChange,
   disabled = false,
   maxPills = DEFAULT_MAX_PILLS,
-  hint = 'Optional — helps interested members find your post.',
+  hint = 'Optional - helps interested members find your post.',
   /** When true, show one row (most-used first) with a caret to expand the rest. */
   collapsibleSingleRow = true,
   /** When true, list all pills A–Z by label (e.g. complete-your-profile gate). */

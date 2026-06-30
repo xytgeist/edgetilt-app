@@ -1,5 +1,5 @@
 /**
- * Foreground Lounge activity alert — shown instead of an OS push when the app tab is focused.
+ * Foreground Lounge activity alert - shown instead of an OS push when the app tab is focused.
  */
 export default function LoungeActivityInAppToast({ toast, onDismiss, onOpen }) {
   if (!toast?.body) return null

@@ -9,7 +9,7 @@ import { ChatGroupMediaSheet, ChatGroupStarredSheet } from './ChatGroupAuxSheets
 import { SectionLabel, SettingsGroup } from './chatSettingsUi.jsx'
 
 /**
- * Group member contact info — iMessage-style profile from group settings.
+ * Group member contact info - iMessage-style profile from group settings.
  *
  * @param {{
  *   open: boolean,

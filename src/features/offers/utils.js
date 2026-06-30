@@ -44,7 +44,7 @@ export function isOfferEventFromPeriodStart(ev, periodStart) {
   return lastDayStart.getTime() >= periodDay.getTime()
 }
 
-/** @deprecated name — use isOfferEventFromPeriodStart(ev, startOfLocalDay(now)) */
+/** @deprecated name - use isOfferEventFromPeriodStart(ev, startOfLocalDay(now)) */
 export function isOfferEventCurrentOrUpcoming(ev, now = new Date()) {
   return isOfferEventFromPeriodStart(ev, startOfLocalDay(now))
 }

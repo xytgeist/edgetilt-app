@@ -86,7 +86,7 @@ export function applyMarketChartPaneHeights(chart, totalHeightPx, plan) {
 }
 
 /**
- * Bottom Y (element-local) of the main price pane plot — for main-axis hit tests and vertical pan.
+ * Bottom Y (element-local) of the main price pane plot - for main-axis hit tests and vertical pan.
  * @param {import('lightweight-charts').ISeriesApi | null | undefined} mainSeries
  * @param {HTMLElement | null | undefined} el
  */

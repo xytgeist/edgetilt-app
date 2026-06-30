@@ -85,7 +85,7 @@ export default function LoungeMarketChartMini({ embed, rollingLive = null, onOpe
     const dy = e.clientY - start.y
     const distSq = dx * dx + dy * dy
     if (distSq > MINI_CHART_TAP_MOVE_PX * MINI_CHART_TAP_MOVE_PX) return
-    // Horizontal swipe on the strip — scroll, don't open modal.
+    // Horizontal swipe on the strip - scroll, don't open modal.
     if (Math.abs(dx) > Math.abs(dy)) return
     e.stopPropagation()
     onOpen?.()

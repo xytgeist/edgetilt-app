@@ -92,7 +92,7 @@ export async function resolveDefaultCaptureCasino(supabaseClient, { cacheRef, on
   try {
     active = await fetchActiveBankrollSession(supabaseClient)
   } catch {
-    // Bankroll table unavailable — fall through to GPS
+    // Bankroll table unavailable - fall through to GPS
   }
 
   const sessionCasino = (active?.casino_name || '').trim()

@@ -13,13 +13,13 @@
  *   - Selecting a Places result saves it to casinos table with lat/lng
  *
  * Props:
- *   value          — controlled string value
- *   onChange       — fn(name: string)
- *   supabaseClient — authenticated Supabase client
- *   nearbyCasinos  — [{ id, name, city, state, country, distanceMi }]
- *   gpsLoading     — bool: true while GPS + casino fetch is in progress
- *   placeholder    — optional
- *   className      — extra classes on the wrapper
+ *   value          - controlled string value
+ *   onChange       - fn(name: string)
+ *   supabaseClient - authenticated Supabase client
+ *   nearbyCasinos  - [{ id, name, city, state, country, distanceMi }]
+ *   gpsLoading     - bool: true while GPS + casino fetch is in progress
+ *   placeholder    - optional
+ *   className      - extra classes on the wrapper
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'

@@ -2,7 +2,7 @@
  * Registry for suppressing the Lounge dock FAB from outside the Lounge tree
  * (e.g. while a full-screen chat conversation is visible).
  *
- * Mirrors loungeStreamLightboxRegistry.js — ref-counted so multiple callers
+ * Mirrors loungeStreamLightboxRegistry.js - ref-counted so multiple callers
  * can independently suppress without clobbering each other.
  *
  * The `temporaryRevealLoungeDock` escape hatch lets a title-bar icon briefly

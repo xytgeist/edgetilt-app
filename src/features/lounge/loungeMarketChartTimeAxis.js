@@ -54,7 +54,7 @@ function formatDailyWeeklyTick(d, tickMarkType, resolutionId) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-/** 1H / 2H / 4H — dates only: month on the 1st, day number otherwise. */
+/** 1H / 2H / 4H - dates only: month on the 1st, day number otherwise. */
 /** @param {Date} d @param {number} tickMarkType */
 function formatHourlyBarTick(d, tickMarkType) {
   if (tickMarkType === TICK.Time || tickMarkType === TICK.TimeWithSeconds) return ''
@@ -63,7 +63,7 @@ function formatHourlyBarTick(d, tickMarkType) {
   return dayOfMonthLabel(d)
 }
 
-/** 15m — every 3 hours on the hour, plus day labels at day boundaries. */
+/** 15m - every 3 hours on the hour, plus day labels at day boundaries. */
 /** @param {Date} d @param {number} tickMarkType */
 function format15mTick(d, tickMarkType) {
   if (tickMarkType === TICK.Year) return String(d.getFullYear())
@@ -77,7 +77,7 @@ function format15mTick(d, tickMarkType) {
   return ''
 }
 
-/** 5m — :00 and :30, plus day labels at day boundaries. */
+/** 5m - :00 and :30, plus day labels at day boundaries. */
 /** @param {Date} d @param {number} tickMarkType */
 function format5mTick(d, tickMarkType) {
   if (tickMarkType === TICK.Year) return String(d.getFullYear())
@@ -91,7 +91,7 @@ function format5mTick(d, tickMarkType) {
   return ''
 }
 
-/** 1m — 5-minute steps, plus day labels at day boundaries. */
+/** 1m - 5-minute steps, plus day labels at day boundaries. */
 /** @param {Date} d @param {number} tickMarkType */
 function format1mTick(d, tickMarkType) {
   if (tickMarkType === TICK.Year) return String(d.getFullYear())

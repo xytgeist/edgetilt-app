@@ -1,4 +1,4 @@
-/** Modal chart density — Quick (sparkline) vs Advanced (grid, axes, indicators). */
+/** Modal chart density - Quick (sparkline) vs Advanced (grid, axes, indicators). */
 
 import {
   formatMarketChartAxisTickForResolution,

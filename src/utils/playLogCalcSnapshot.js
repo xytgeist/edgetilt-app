@@ -53,7 +53,7 @@ export function playLogCalcEvPrefill({
 /** @param {string} slug @param {unknown} v @param {import('../features/play-logbook/playLogMetrics.js').PlayLogValueType} [type] */
 export function formatPlayLogCalcMetricDisplay(slug, v, type = 'decimal') {
   const n = Number(v)
-  if (!Number.isFinite(n)) return '—'
+  if (!Number.isFinite(n)) return '-'
   if (slug === 'current_ev_rtp') return `${n.toFixed(1)}%`
   if (slug === 'average_case_mult') return `${n.toFixed(1)}×`
   if (slug === 'average_case_usd' || slug === 'expected_ev_usd') {
@@ -94,6 +94,6 @@ export function playLogCalcSnapshotNotes(values) {
   if (Number.isFinite(avgUsd)) {
     lines.push(`Average case ($): ${formatPlayLogCalcMetricDisplay('average_case_usd', avgUsd)}`)
   }
-  // expected_ev_usd is stored on the entry form — omit from notes (redundant with EV ($) field).
+  // expected_ev_usd is stored on the entry form - omit from notes (redundant with EV ($) field).
   return lines.join('\n')
 }

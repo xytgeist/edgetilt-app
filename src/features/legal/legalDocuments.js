@@ -263,7 +263,7 @@ export const LEGAL_DOCUMENTS = {
         id: 'purpose',
         heading: '1. What EDGE is for',
         paragraphs: [
-          'EDGE is a community for advantage play, gambling, and edge-hunting — slots and casino AP, sports betting, trading, investing, and similar pursuits. Share experiences, learn from each other, and use the tools in the app.',
+          'EDGE is a community for advantage play, gambling, and edge-hunting - slots and casino AP, sports betting, trading, investing, and similar pursuits. Share experiences, learn from each other, and use the tools in the app.',
           'This is a free speech platform. Say whatever you want, but keep it constructive. Disagreement is fine; harassment is not. Bottom line: just don\'t be a dick.',
         ],
       },

@@ -49,7 +49,7 @@ export function threadComposeVideoSlotBlocksPost(slot) {
  */
 /**
  * Build a compose video slot from a captured thread-part snapshot (failure / cancel restore).
- * Does not start prep — caller should enqueue when `videoPrepSpec` is set and no `streamVideoUid`.
+ * Does not start prep - caller should enqueue when `videoPrepSpec` is set and no `streamVideoUid`.
  *
  * @param {object | null | undefined} part
  * @returns {ThreadComposeVideoSlot | null}
@@ -315,7 +315,7 @@ export function createThreadComposeVideoPrepController({
         return
       }
 
-      // Always settle the handoff when prep succeeded — compose may have closed and cleared
+      // Always settle the handoff when prep succeeded - compose may have closed and cleared
       // prepMeta while a background submit still awaits this promise.
       handoff.resolve(result)
       meta.lastEncodedFile = null

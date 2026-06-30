@@ -44,7 +44,7 @@ function flashFollowListRow(userId) {
  * @param {() => void} props.onClose
  * @param {(entity: { user_id: string, author_profile?: object }) => void} [props.onOpenProfile]
  * @param {(userId: string, isFollowing: boolean) => void} [props.onViewerFollowChange]
- * @param {string[]} [props.highlightUserIds] — scroll + flash rows (e.g. grouped follow notification).
+ * @param {string[]} [props.highlightUserIds] - scroll + flash rows (e.g. grouped follow notification).
  */
 export default function LoungeProfileFollowList({
   tab,

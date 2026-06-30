@@ -528,7 +528,7 @@ function PartnerShareAmount({ netOutcome, sharePercent }) {
   const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercent)
   const label = formatPlayLogPartnerOutcomeShare(netOutcome, sharePercent)
   if (!label) {
-    return <span className="text-zinc-600 text-xs font-semibold tabular-nums">—</span>
+    return <span className="text-zinc-600 text-xs font-semibold tabular-nums">-</span>
   }
   return (
     <span

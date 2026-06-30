@@ -31,7 +31,7 @@ select {
   font-size: max(16px, 1em) !important;
 }
 
-/* Calculator primary fields — match DropdownSelect size=lg (text-2xl / 1.5rem) */
+/* Calculator primary fields - match DropdownSelect size=lg (text-2xl / 1.5rem) */
 input.calc-field-lg {
   font-size: 1.5rem !important;
   line-height: 2rem !important;
@@ -41,7 +41,7 @@ input.calc-field-lg {
  * ── Light mode ────────────────────────────────────────────────────────────────
  * Tailwind v4 exposes every zinc-* color as a CSS custom property.
  * Remapping the full scale here flips the entire UI without touching components.
- * Accent colors (cyan, amber, lv-*) are intentionally unchanged — brand stays.
+ * Accent colors (cyan, amber, lv-*) are intentionally unchanged - brand stays.
  */
 html.light {
   /* Inverted zinc scale: darkest dark → near-white, lightest dark → near-black */
@@ -131,7 +131,7 @@ html.light body {
   background-color: #030712;
 }
 
-/* slot-guide-form entry: fixed full-viewport shell — no dvh/JS height (file picker breaks both on Chrome/Windows) */
+/* slot-guide-form entry: fixed full-viewport shell - no dvh/JS height (file picker breaks both on Chrome/Windows) */
 html:has([data-slot-guide-form]),
 html:has([data-slot-guide-form]) body {
   height: 100vh;
@@ -398,7 +398,7 @@ input[list]::-webkit-list-button {
   display: none !important;
 }
 
-/* EDGE logo tap easter egg (“Giggity”) — 1s total, fizzles out */
+/* EDGE logo tap easter egg (“Giggity”) - 1s total, fizzles out */
 @keyframes edgeGiggityFizzle {
   0% {
     opacity: 1;
@@ -422,7 +422,7 @@ input[list]::-webkit-list-button {
   animation: edgeGiggityFizzle 1s ease-out forwards;
 }
 
-/* Lounge cold-boot splash — logo breathe + soft cyan glow */
+/* Lounge cold-boot splash - logo breathe + soft cyan glow */
 @keyframes loungeColdBootLogoIn {
   0% {
     opacity: 0;
@@ -475,7 +475,7 @@ input[list]::-webkit-list-button {
 }
 
 .lounge-cold-boot-splash {
-  /* No entrance animation — container is immediately opaque from mount */
+  /* No entrance animation - container is immediately opaque from mount */
 }
 
 .lounge-cold-boot-splash--out {
@@ -511,7 +511,7 @@ input[list]::-webkit-list-button {
   }
 }
 
-/* Lounge dock following-filter toggle flash — "Following" / "Everyone" fizzle label */
+/* Lounge dock following-filter toggle flash - "Following" / "Everyone" fizzle label */
 @keyframes loungeFilterFlashFizzle {
   0% {
     opacity: 1;
@@ -546,7 +546,7 @@ input[list]::-webkit-list-button {
     0 0 42px rgba(6, 206, 252, 0.3);
 }
 
-/* Lounge badge tips — short rise-in / gentle fade-up out (no blur / letter-spacing jitter) */
+/* Lounge badge tips - short rise-in / gentle fade-up out (no blur / letter-spacing jitter) */
 @keyframes loungeBadgeTipIn {
   from {
     opacity: 0;
@@ -636,7 +636,7 @@ input[list]::-webkit-list-button {
   }
 }
 
-/* ── Locked AP guide paywall — transparent TV snow overlay ───────────────── */
+/* ── Locked AP guide paywall - transparent TV snow overlay ───────────────── */
 .guide-lock-glitch {
   isolation: isolate;
 }
@@ -675,7 +675,7 @@ html.light {
  * Elements that MUST stay white (text over dark hero images) should use
  * text-[#fff] (a hardcoded arbitrary value) instead of text-white.
  */
-/* Flip white text dark — but skip elements with their own colored bg
+/* Flip white text dark - but skip elements with their own colored bg
    (action buttons, badges) which need white text on their background. */
 html.light .text-white:not([class*="bg-"]) {
   color: #18181b;
@@ -710,7 +710,7 @@ html.light .text-amber-200\/90,
 html.light .text-amber-200\/88 { color: var(--color-amber-700); }
 html.light .text-amber-300 { color: var(--color-amber-700); }
 
-/* Play Logbook — manager partner name: warmer orange in light mode only */
+/* Play Logbook - manager partner name: warmer orange in light mode only */
 html.light .play-log-manager-name.text-amber-300 {
   color: var(--color-orange-600);
 }
@@ -782,10 +782,10 @@ html.light .text-lv-yellow {
 }
 
 /*
- * Lounge Stream video hero lightboxes — black cinema shell in both themes.
+ * Lounge Stream video hero lightboxes - black cinema shell in both themes.
  * Light mode inverts the zinc scale globally; restore dark palette inside video lightbox only.
- * Image/GIF lightboxes use [data-lounge-image-lightbox] — separate light shell (below).
- * Dark mode: no data attr / rules — unchanged.
+ * Image/GIF lightboxes use [data-lounge-image-lightbox] - separate light shell (below).
+ * Dark mode: no data attr / rules - unchanged.
  */
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) {
   --color-zinc-950: #09090b;
@@ -820,7 +820,7 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-carousel] .text-zinc-200 {
   color: #f4f4f5 !important;
 }
-/* Stream video pill row — white idle glyphs on black chrome. */
+/* Stream video pill row - white idle glyphs on black chrome. */
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .text-zinc-200 {
   color: #e4e4e7 !important;
 }
@@ -847,13 +847,13 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-
 }
 
 /*
- * Lounge image/GIF lightbox — light mode only: white shell so iOS status bar blends;
+ * Lounge image/GIF lightbox - light mode only: white shell so iOS status bar blends;
  * grey idle chrome + interaction glyphs; hydrated colors unchanged.
  */
 html.light [data-lounge-image-lightbox] {
   background-color: #fafafa !important;
 }
-/* Lounge image lightbox nav — idle interaction gray + stronger glass over busy media */
+/* Lounge image lightbox nav - idle interaction gray + stronger glass over busy media */
 html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
   color: #3f3f46 !important;
   background: rgba(235, 238, 255, 0.72) !important;
@@ -862,7 +862,7 @@ html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   isolation: isolate;
 }
-/* Chat image lightbox back — frosted glass over full-bleed media */
+/* Chat image lightbox back - frosted glass over full-bleed media */
 [data-chat-image-lightbox] .media-lightbox-nav-btn {
   background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(28px) saturate(180%) !important;
@@ -883,7 +883,7 @@ html.light [data-chat-image-lightbox] .media-lightbox-nav-btn {
     0 2px 12px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
 }
-/* Chat image lightbox — frosted semi-transparent header + footer over full-bleed media */
+/* Chat image lightbox - frosted semi-transparent header + footer over full-bleed media */
 [data-chat-image-lightbox] [data-chat-image-lightbox-header] {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.28) 55%, transparent 100%);
   -webkit-backdrop-filter: blur(10px) saturate(120%);
@@ -900,7 +900,7 @@ html.light [data-chat-image-lightbox] [data-chat-image-lightbox-header] {
 html.light [data-chat-image-lightbox] [data-chat-image-lightbox-footer] {
   background: linear-gradient(to top, rgba(250, 250, 250, 0.82) 0%, rgba(250, 250, 250, 0.45) 55%, transparent 100%);
 }
-/* ⋯ menu glyph — match back-arrow visual weight in lightbox chrome (default 14px in feed) */
+/* ⋯ menu glyph - match back-arrow visual weight in lightbox chrome (default 14px in feed) */
 [data-lounge-image-lightbox] [data-lounge-post-menu] button svg,
 [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-menu] button svg {
   width: 1.375rem !important;
@@ -914,7 +914,7 @@ html.light [data-lounge-image-lightbox] [data-lounge-lightbox-image-pager] {
   -webkit-backdrop-filter: none !important;
 }
 /*
- * Light-mode image lightboxes — fade #fff into #fafafa under the iOS status bar.
+ * Light-mode image lightboxes - fade #fff into #fafafa under the iOS status bar.
  * Solid white for one safe-area band, then linear fade over the next (2× inset tall).
  */
 .media-lightbox-status-bar-blend {
@@ -937,7 +937,7 @@ html.light [data-lounge-image-lightbox] .media-lightbox-status-bar-blend {
     rgba(255, 255, 255, 0) 100%
   );
 }
-/* Interaction row — transparent pill shells (glyph colors unchanged below) */
+/* Interaction row - transparent pill shells (glyph colors unchanged below) */
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black'] {
   background-color: transparent !important;
   backdrop-filter: none !important;
@@ -966,7 +966,7 @@ html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-100 {
   color: #3f3f46 !important;
 }
-/* Hydrated interaction colors — keep feed semantics */
+/* Hydrated interaction colors - keep feed semantics */
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-emerald-400 {
   color: #34d399 !important;
 }
@@ -978,7 +978,7 @@ html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text
 }
 
 /*
- * Light-mode lounge image lightboxes — ambient blur fill behind sharp foreground image.
+ * Light-mode lounge image lightboxes - ambient blur fill behind sharp foreground image.
  * Hidden in dark mode; chat image viewer uses solid backdrop only.
  */
 .media-lightbox-ambient-bg {
@@ -1011,7 +1011,7 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
 }
 
 /*
- * GIF picker sheet — hardcoded dark bg won't flip with the zinc scale,
+ * GIF picker sheet - hardcoded dark bg won't flip with the zinc scale,
  * so override it explicitly in light mode.
  */
 html.light .klipy-gif-sheet {
@@ -1020,7 +1020,7 @@ html.light .klipy-gif-sheet {
 }
 
 /*
- * Tribe/category pills — solid fills via CSS variables (dark :root, light html.light).
+ * Tribe/category pills - solid fills via CSS variables (dark :root, light html.light).
  * Tailwind chip class names are legacy tokens; see loungePostCategoryPills.js slug map.
  * Scoped to .lounge-pill-row and .lounge-category-pill (search chrome).
  */
@@ -1069,7 +1069,7 @@ html:not(.light) .lounge-category-pill.border {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
-/* Lounge YouTube embed — light-mode attribution footer only (video stays dark). */
+/* Lounge YouTube embed - light-mode attribution footer only (video stays dark). */
 html.light [data-lounge-youtube-embed] [data-lounge-youtube-embed-footer] {
   background-color: #f4f4f5;
   border-top-color: rgba(228, 228, 231, 0.95);
@@ -1270,7 +1270,7 @@ html.light [data-lounge-youtube-embed] [data-lounge-youtube-embed-footer] .text-
 }
 
 /*
- * Lounge profile edit — light mode field text.
+ * Lounge profile edit - light mode field text.
  */
 html.light [data-lounge-profile-edit] [data-profile-edit-display-name] {
   color: var(--color-zinc-100) !important;
@@ -1280,7 +1280,7 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 }
 
 /*
- * Compose / edit / profile picker — selected = tribe fill; deselected = neutral chip.
+ * Compose / edit / profile picker - selected = tribe fill; deselected = neutral chip.
  */
 html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled),
 html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled):hover {
@@ -1403,11 +1403,11 @@ html.light .has-\[\:focus-visible\]\:ring-cyan-500\/40:has(:focus-visible) { --t
 /* Progress bar fill */
 html.light .bg-cyan-500 { background-color: #3b82f6 !important; }
 
-/* Dock "Following active" icon — swap cyan fill/stroke to match FAB blue */
+/* Dock "Following active" icon - swap cyan fill/stroke to match FAB blue */
 html.light .lounge-dock-item-circle svg [fill="#06cefc"] { fill: #3b82f6 !important; }
 html.light .lounge-dock-item-circle svg [stroke="#06cefc"] { stroke: #3b82f6 !important; }
 
-/* Menu layout help — selected card: lighten dark navy bg, remap shadow + SVG fills */
+/* Menu layout help - selected card: lighten dark navy bg, remap shadow + SVG fills */
 html.light .bg-\[\#001828\]\/95 { background-color: rgba(239,246,255,0.95) !important; }
 html.light .shadow-\[0_0_14px_rgba\(6\,206\,252\,0\.35\)\] {
   box-shadow: 0 0 14px rgba(59,130,246,0.30) !important;
@@ -1415,16 +1415,16 @@ html.light .shadow-\[0_0_14px_rgba\(6\,206\,252\,0\.35\)\] {
 html.light svg [fill="#057698"] { fill: #2563eb !important; }
 html.light svg [stroke="#06cefc"] { stroke: #3b82f6 !important; }
 
-/* Dock FAB center (+) button — match item border blue in light mode */
+/* Dock FAB center (+) button - match item border blue in light mode */
 html.light .lounge-dock-fab-center {
   background-color: #3b82f6 !important;
   color: #ffffff !important;
   outline: none !important;
 }
 
-/* OG badge — light mode color shift (placeholder, remove if unused) */
+/* OG badge - light mode color shift (placeholder, remove if unused) */
 
-/* Title bar nav button (hamburger/close) — white, hairline black border, red shadow in light mode */
+/* Title bar nav button (hamburger/close) - white, hairline black border, red shadow in light mode */
 html.light .lounge-title-nav-btn {
   background-color: #ffffff !important;
   border: none !important;
@@ -1435,7 +1435,7 @@ html.light .lounge-title-nav-btn {
   color: #27272a !important;
 }
 
-/* Title bar nav dropdown — selected item readable on light gray highlight */
+/* Title bar nav dropdown - selected item readable on light gray highlight */
 html.light .lounge-title-nav-menu {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
@@ -1448,14 +1448,14 @@ html.light .lounge-title-nav-menu-item--active {
   color: #18181b !important;
 }
 
-/* Dock menu backdrop — minimal blur with subtle dark tint in light mode */
+/* Dock menu backdrop - minimal blur with subtle dark tint in light mode */
 html.light .lounge-dock-backdrop {
   background-color: transparent !important;
   backdrop-filter: blur(1.5px) !important;
   -webkit-backdrop-filter: blur(1.5px) !important;
 }
 
-/* Dock FAB menu item circles — solid white, hairline inset border in light mode */
+/* Dock FAB menu item circles - solid white, hairline inset border in light mode */
 html.light .lounge-dock-item-circle {
   background-color: #ffffff !important;
   backdrop-filter: none !important;
@@ -1468,7 +1468,7 @@ html.light .lounge-dock-item-circle {
   color: #27272a;
 }
 
-/* Feed composer Post — dark mode matches dock menu FAB (#06cefc); light mode unchanged below */
+/* Feed composer Post - dark mode matches dock menu FAB (#06cefc); light mode unchanged below */
 .lounge-composer-post-btn {
   background-color: #06cefc;
   color: #ffffff;
@@ -1497,7 +1497,7 @@ html.light .lounge-composer-post-text:hover:not(:disabled) {
   color: #3b82f6 !important;
 }
 
-/* Composer media/GIF icon buttons — match Post button blue in light mode */
+/* Composer media/GIF icon buttons - match Post button blue in light mode */
 html.light .lounge-media-toolbar .text-sky-400 {
   color: #2563eb !important;
 }
@@ -1510,7 +1510,7 @@ html.light .lounge-media-toolbar svg rect {
 html.light .edge-logo--dark  { display: none; }
 html.light .edge-logo--light { display: inline; }
 
-/* Expanded guide hero — slight zoom so square image corners don't show at card border-radius */
+/* Expanded guide hero - slight zoom so square image corners don't show at card border-radius */
 .guide-card-hero-img-expanded {
   max-height: min(85vh, 900px);
   max-width: 100%;
@@ -1521,12 +1521,12 @@ html.light .edge-logo--light { display: inline; }
   transform-origin: center center;
 }
 
-/* Expanded guide card — tap anywhere (except links/buttons) to collapse */
+/* Expanded guide card - tap anywhere (except links/buttons) to collapse */
 .guide-card-expanded-tap-collapse {
   cursor: pointer;
 }
 
-/* Guide hero image scrims — lighter in light mode so less of the image is eaten */
+/* Guide hero image scrims - lighter in light mode so less of the image is eaten */
 html.light .guide-hero-scrim {
   background: linear-gradient(to top, rgba(0,0,0,0.50), rgba(0,0,0,0.08), transparent) !important;
 }
@@ -1654,7 +1654,7 @@ html.light .guide-ev-threshold-text {
   );
 }
 
-/* AP Guides search — light bg from zinc-900 remap; text-white is not flipped when bg-* is present */
+/* AP Guides search - light bg from zinc-900 remap; text-white is not flipped when bg-* is present */
 html.light .ap-guides-search-input {
   color: #18181b !important;
 }
@@ -1662,7 +1662,7 @@ html.light .ap-guides-search-input::placeholder {
   color: #71717a !important;
 }
 
-/* Ask Community modal (Guides) — zinc bg remaps in light mode; text-white on inputs does not */
+/* Ask Community modal (Guides) - zinc bg remaps in light mode; text-white on inputs does not */
 html.light [data-ask-community-modal],
 html.light [data-ask-community-auth-prompt],
 html.light [data-ask-community-profile-gate] {
@@ -1948,9 +1948,9 @@ html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted p
 }
 
 /*
- * Lounge market chart mini cards + modal sheet — use inverted zinc tokens in JSX;
+ * Lounge market chart mini cards + modal sheet - use inverted zinc tokens in JSX;
  * these light-only tweaks keep accent cyan readable on pale surfaces.
- * AGENT_RULE_THEME_MODE_ONLY — data-lounge-market-chart-*
+ * AGENT_RULE_THEME_MODE_ONLY - data-lounge-market-chart-*
  */
 html.light [data-lounge-market-chart-modal] .text-cyan-300,
 html.light [data-lounge-market-chart-mini] .text-cyan-300 {
@@ -2128,13 +2128,13 @@ html.light [data-review-queue] .bg-cyan-500\/15 { background-color: rgba(6,182,2
 html.light [data-review-queue] .border-cyan-400\/30 { border-color: rgba(6,182,212,0.35) !important; }
 html.light [data-review-queue] .text-cyan-300   { color: #0e7490 !important; }
 
-/* TV snow uses screen blend which looks bad on light bg — switch to multiply */
+/* TV snow uses screen blend which looks bad on light bg - switch to multiply */
 html.light .guide-lock-glitch__tv-snow-canvas {
   mix-blend-mode: multiply;
   opacity: 0.55;
 }
 
-/* Composer media/GIF icon buttons — Post button blue in light mode */
+/* Composer media/GIF icon buttons - Post button blue in light mode */
 html.light .lounge-media-toolbar .text-sky-400 {
   color: #2563eb !important;
 }
@@ -2147,7 +2147,7 @@ html.light .lounge-media-toolbar .active\:text-sky-200:active {
 
 /*
  * ─── CALCULATOR LIGHT MODE ────────────────────────────────────────────────────
- * ALL rules scoped to html.light [data-calc] — dark mode is 100% untouched.
+ * ALL rules scoped to html.light [data-calc] - dark mode is 100% untouched.
  *
  * Calculators use Tailwind gray-* classes which do NOT auto-invert with the
  * zinc-* scale. Every shade must be overridden here explicitly.
@@ -2155,7 +2155,7 @@ html.light .lounge-media-toolbar .active\:text-sky-200:active {
  * data-calc="phoenix" | "buffalo-link" | "mhb" | "stackup" | "buffalo-diamond" | "wof-collectors-edition" on each calculator root div.
  */
 
-/* Calculator list buttons — uniform shadow in light mode matching MHB's shadow-lg shadow-black/30 */
+/* Calculator list buttons - uniform shadow in light mode matching MHB's shadow-lg shadow-black/30 */
 html.light .calc-list-btn {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.30), 0 4px 6px -4px rgba(0, 0, 0, 0.30);
 }
@@ -2163,7 +2163,7 @@ html.light .calc-list-btn {
 /*
  * Page background + base text.
  * Match the Shell's zinc-950 light value (#fafafa) so the calculator root
- * blends seamlessly with the page — no mysterious white rectangle.
+ * blends seamlessly with the page - no mysterious white rectangle.
  * Cards (bg-gray-900) are set to #f4f4f5 so they sit BELOW the background
  * shade, just like the snapshot; heavy shadows do the lifting.
  */
@@ -2199,7 +2199,7 @@ html.light [data-calc] .bg-gray-800 {
   background-color: #e4e4e7;
   box-shadow: none;
 }
-/* Range slider wrappers — transparent so they don't create a visible box */
+/* Range slider wrappers - transparent so they don't create a visible box */
 html.light [data-calc] .bg-gray-800:has(input[type="range"]) {
   background-color: transparent;
   box-shadow: none;
@@ -2236,13 +2236,13 @@ html.light [data-calc] .border-gray-800 {
   border-color: #e4e4e7;
 }
 
-/* Inputs — transparent so they inherit the wrapper bg */
+/* Inputs - transparent so they inherit the wrapper bg */
 html.light [data-calc] input,
 html.light [data-calc] select {
   background: transparent;
   color: #18181b;
 }
-/* Native <option> text (best-effort — browser controls this) */
+/* Native <option> text (best-effort - browser controls this) */
 html.light [data-calc] option {
   background: #ffffff;
   color: #18181b;
@@ -2267,12 +2267,12 @@ html.light [data-calc] .text-gray-500 {
   color: #a1a1aa;
 }
 
-/* Bankroll Risk — Need Help? keeps white label on cyan button in light mode */
+/* Bankroll Risk - Need Help? keeps white label on cyan button in light mode */
 html.light [data-calc] [data-bankroll-need-help-btn] {
   color: #ffffff !important;
 }
 
-/* Bankroll Risk — high-risk warning cancel button (light bg-gray-800, dark label) */
+/* Bankroll Risk - high-risk warning cancel button (light bg-gray-800, dark label) */
 html.light [data-calc] [data-bankroll-high-risk-cancel-btn] {
   color: #18181b !important;
 }
@@ -2319,7 +2319,7 @@ html.light [data-calc="phoenix"] .text-green-400 {
 html.light [data-calc="phoenix"] .bg-green-900 {
   background-color: #16A34A;
 }
-/* text-green-300 is on the same element as bg-green-900 — combined selector */
+/* text-green-300 is on the same element as bg-green-900 - combined selector */
 html.light [data-calc="phoenix"] .bg-green-900.text-green-300,
 html.light [data-calc="phoenix"] .bg-green-900 .text-green-300 {
   color: #ffffff;
@@ -2339,7 +2339,7 @@ html.light [data-calc="phoenix"] .text-red-400 {
 html.light [data-calc="phoenix"] .bg-red-900 {
   background-color: #DC2626;
 }
-/* text-red-300 is on the same element as bg-red-900 — combined selector */
+/* text-red-300 is on the same element as bg-red-900 - combined selector */
 html.light [data-calc="phoenix"] .bg-red-900.text-red-300,
 html.light [data-calc="phoenix"] .bg-red-900 .text-red-300 {
   color: #18181b;
@@ -2412,7 +2412,7 @@ html.light [data-calc="buffalo-link"] .bg-green-600.text-white {
 }
 
 /* ── MHBCalculator (cyan → blue in light) ────────────────────────────────── */
-/* Titles — remove dark mode purple/cyan outline shadow */
+/* Titles - remove dark mode purple/cyan outline shadow */
 html.light [data-calc="mhb"] h2 {
   color: #18181b !important;
   text-shadow: 0 0 10px rgba(59, 130, 246, 0.30), 0 1px 2px rgba(0, 0, 0, 0.10) !important;
@@ -2456,7 +2456,7 @@ html.light .mhb-info-scroll::-webkit-scrollbar-thumb:hover {
   background-color: rgba(59, 130, 246, 0.55) !important;
 }
 
-/* Info modal — cards and text */
+/* Info modal - cards and text */
 html.light [data-calc="mhb"] .bg-gray-800\/60 {
   background-color: #ebebed;
 }
@@ -2471,7 +2471,7 @@ html.light [data-calc="mhb"] .border-cyan-500\/30 {
   border-color: rgba(37, 99, 235, 0.20);
 }
 
-/* Breakeven entry value — orange */
+/* Breakeven entry value - orange */
 html.light [data-calc="mhb"] .text-amber-300 {
   color: #f97316;
 }
@@ -2495,7 +2495,7 @@ html.light [data-calc="mhb"] .text-emerald-400\/70 {
   color: rgba(22, 163, 74, 0.70);
 }
 
-/* JP checkbox rows — bg-gray-900/70 has no opacity variant override so it stays dark */
+/* JP checkbox rows - bg-gray-900/70 has no opacity variant override so it stays dark */
 html.light [data-calc="mhb"] .bg-gray-900\/70 {
   background-color: rgba(0, 0, 0, 0.06);
 }
@@ -2512,7 +2512,7 @@ html.light [data-calc="mhb"] .bg-cyan-600.text-white,
 html.light [data-calc="mhb"] .bg-cyan-600 {
   color: #ffffff !important;
 }
-/* Toggle switch — no border, no focus ring in light mode */
+/* Toggle switch - no border, no focus ring in light mode */
 html.light [data-calc="mhb"] [role="switch"] {
   border-color: transparent !important;
 }
@@ -2520,7 +2520,7 @@ html.light [data-calc="mhb"] [role="switch"]:focus {
   box-shadow: none !important;
 }
 
-/* Active pill and toggle switch — remap cyan to proper blue in light mode */
+/* Active pill and toggle switch - remap cyan to proper blue in light mode */
 html.light [data-calc="mhb"] .bg-cyan-600 {
   background-color: #3b82f6;
 }
@@ -2531,7 +2531,7 @@ html.light [data-calc="mhb"] .border-cyan-300\/70 {
   border-color: transparent;
 }
 
-/* Meter input ring — the global bg-gray-800 box-shadow:none wipes Tailwind rings,
+/* Meter input ring - the global bg-gray-800 box-shadow:none wipes Tailwind rings,
    so we restore it explicitly as a blue outline matching dark mode's cyan ring. */
 html.light [data-calc="mhb"] .mhb-meter-input {
   box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.75) !important;
@@ -2706,7 +2706,7 @@ html.light [data-calc="buffalo-diamond"] .bg-red-900 .text-red-300 {
   color: #18181b;
 }
 
-/* WoF 4D CE calculator — icon green theme (#228e4e) */
+/* WoF 4D CE calculator - icon green theme (#228e4e) */
 [data-calc="wof-collectors-edition"] h1.wof-ce-title {
   color: var(--wof-ce-accent-light, #3ecf7a);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
@@ -2820,7 +2820,7 @@ html.light [data-calc="wof-collectors-edition"] .wof-ce-btn:hover {
   background-color: var(--wof-ce-accent-muted, #1a7340);
 }
 
-/* WoF 4D CE — light mode surfaces + reel accents */
+/* WoF 4D CE - light mode surfaces + reel accents */
 html.light [data-calc="wof-collectors-edition"] .text-gray-400,
 html.light [data-calc="wof-collectors-edition"] .text-gray-300 {
   color: #52525b !important;
@@ -2864,7 +2864,7 @@ html.light [data-calc="wof-collectors-edition"] .bg-gray-800:has(.wof-ce-reel-pr
   background-color: #d4d4d8 !important;
 }
 
-/* ── Bankroll sheet — light mode ─────────────────────────── */
+/* ── Bankroll sheet - light mode ─────────────────────────── */
 html.light [data-bankroll-sheet] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
@@ -2898,7 +2898,7 @@ html.light [data-bankroll-sheet] .bg-cyan-600 {
   background-color: #0891b2 !important;
 }
 
-/* End session W/L preview pill — light mode */
+/* End session W/L preview pill - light mode */
 html.light [data-wl-preview="win"] {
   background-color: #ecfdf5 !important;
   border-color: #6ee7b7 !important;
@@ -2917,7 +2917,7 @@ html.light [data-wl-preview] .text-zinc-400 {
   color: #6b7280 !important;
 }
 
-/* Active session card — light mode */
+/* Active session card - light mode */
 html.light [data-session-card] {
   background-color: #ecfdf5 !important;
   border-color: #6ee7b7 !important;
@@ -2935,9 +2935,9 @@ html.light [data-session-card] .text-emerald-200 {
   color: #047857 !important;
 }
 
-/* MoneyKeypad uses inline styles — no Tailwind overrides needed */
+/* MoneyKeypad uses inline styles - no Tailwind overrides needed */
 
-/* Bankroll cards + button — shadows in light mode only */
+/* Bankroll cards + button - shadows in light mode only */
 html.light [data-bankroll-card] {
   box-shadow: 0 10px 20px -4px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.1);
 }
@@ -2951,7 +2951,7 @@ html.light [data-session-row] {
   box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);
 }
 
-/* Play Logbook page — light mode (Log Play sheet uses data-bankroll-sheet rules above) */
+/* Play Logbook page - light mode (Log Play sheet uses data-bankroll-sheet rules above) */
 html.light [data-play-logbook-card] {
   box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);
 }
@@ -2968,7 +2968,7 @@ html.light [data-play-logbook-entry] .text-zinc-200 {
   color: #3f3f46 !important;
 }
 
-/* Play Logbook game picker — Analyze tab (Log Play sheet uses bankroll-sheet rules) */
+/* Play Logbook game picker - Analyze tab (Log Play sheet uses bankroll-sheet rules) */
 html.light [data-play-logbook] [data-play-log-game-picker] .text-white {
   color: #18181b !important;
 }
@@ -3018,7 +3018,7 @@ html.light [data-play-logbook] [data-play-logbook-analyze-period] .text-zinc-400
   color: #52525b !important;
 }
 
-/* Quick links — page toggle + at-cap modal (light mode) */
+/* Quick links - page toggle + at-cap modal (light mode) */
 html.light [data-quick-link-toggle] {
   background-color: #fafafa !important;
   border-color: #e4e4e7 !important;
@@ -3075,7 +3075,7 @@ html.light .reaction-pill {
   color: inherit;
 }
 
-/* Entire chat surface — no text selection anywhere, no iOS magnifier/callout. */
+/* Entire chat surface - no text selection anywhere, no iOS magnifier/callout. */
 [data-chat-feature] {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -3098,7 +3098,7 @@ html.light .reaction-pill {
   to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
-/* Chat composer caret — dark default; light mode needs dark caret on pale glass */
+/* Chat composer caret - dark default; light mode needs dark caret on pale glass */
 .chat-composer-ce {
   caret-color: #ffffff;
 }
@@ -3114,14 +3114,14 @@ html.light [data-chat-feature] .chat-composer-ce {
   user-select: none;
 }
 html.light .chat-composer-ce:empty::before {
-  color: rgb(161 161 170); /* zinc-400 — slightly lighter on white backgrounds */
+  color: rgb(161 161 170); /* zinc-400 - slightly lighter on white backgrounds */
 }
 /* Ensure line-height fills single-row wrapper so text is vertically centered */
 .chat-composer-ce:not(.leading-5) {
   line-height: var(--composer-row-h, 40px);
 }
 
-/* ── Chat conversation — theme-aware glass / gradient ──────────────────────
+/* ── Chat conversation - theme-aware glass / gradient ──────────────────────
  * Dark (default): zinc-neutral translucent glass + zinc-950 gradient fade.
  * Light: white/pale translucent glass + pale gradient fade.
  * Applied via className so that CSS cascade handles the theme switch;
@@ -3141,7 +3141,7 @@ html.light .chat-header-glass {
 }
 
 .chat-top-gradient {
-  /* Feathered throughout — no abrupt band anywhere */
+  /* Feathered throughout - no abrupt band anywhere */
   background: linear-gradient(
     to bottom,
     rgba(9, 9, 11, 0.78)   0%,
@@ -3174,7 +3174,7 @@ html.light .chat-top-gradient {
   );
 }
 
-/* Group / DM info sheets — soft top fade with minimal blur */
+/* Group / DM info sheets - soft top fade with minimal blur */
 .chat-info-top-fade {
   backdrop-filter: blur(2px) saturate(120%);
   -webkit-backdrop-filter: blur(2px) saturate(120%);
@@ -3225,7 +3225,7 @@ html.light .chat-menu-glass {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Thread compose — zinc-neutral glass (sheet is zinc-950). */
+/* Thread compose - zinc-neutral glass (sheet is zinc-950). */
 .lounge-thread-compose-header-glass {
   background: rgba(9, 9, 11, 0.58);
   backdrop-filter: blur(24px) saturate(140%);
@@ -3276,7 +3276,7 @@ html.light.platform-android .lounge-thread-compose-toolbar-glass {
     rgba(250, 250, 250, 0.94);
 }
 
-/* Post / comment detail — zinc-neutral glass (panel is zinc-950). */
+/* Post / comment detail - zinc-neutral glass (panel is zinc-950). */
 .lounge-detail-comment-footer-glass {
   background: rgba(9, 9, 11, 0.58);
   backdrop-filter: blur(24px) saturate(140%);
@@ -3349,7 +3349,7 @@ html.light .lounge-detail-comment-footer-gradient {
   );
 }
 
-/* Inbox long-press menu — extra translucency so the list shows through (portaled). */
+/* Inbox long-press menu - extra translucency so the list shows through (portaled). */
 .chat-room-menu-glass {
   background: rgba(24, 24, 27, 0.12);
   backdrop-filter: blur(28px) saturate(180%);
@@ -3383,7 +3383,7 @@ html.light .chat-room-menu-danger {
   color: #dc2626;
 }
 
-/* iOS-style vibrancy input field — dark */
+/* iOS-style vibrancy input field - dark */
 .chat-input-glass {
   background: rgba(44, 44, 46, 0.55);
   backdrop-filter: blur(28px) saturate(200%) brightness(1.1);
@@ -3397,7 +3397,7 @@ html.light .chat-input-glass {
   border: 1px solid rgba(0, 0, 0, 0.10);
 }
 
-/* Android: weak backdrop-filter — solid underlay + glass tint (mid between 32/92 and 24/84). */
+/* Android: weak backdrop-filter - solid underlay + glass tint (mid between 32/92 and 24/84). */
 html.platform-android .chat-header-glass {
   background:
     rgba(24, 24, 27, 0.28),
@@ -3439,7 +3439,7 @@ html.light.platform-android .chat-input-glass {
     rgba(250, 250, 252, 0.93);
 }
 
-/* Bottom-sheet glass — used by reactions modal, emoji picker, etc. */
+/* Bottom-sheet glass - used by reactions modal, emoji picker, etc. */
 .chat-sheet-glass {
   background: rgba(9, 9, 11, 0.72);
   backdrop-filter: blur(32px) saturate(180%);
@@ -3569,6 +3569,10 @@ html.light [data-pwa-install-drop-panel] {
     0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+html.light [data-pwa-install-drop-panel] > div:last-child {
+  border-top-color: rgb(228 228 231);
+}
+
 html.light [data-pwa-install-drop-panel] h2 {
   color: rgb(24 24 27);
 }
@@ -3587,7 +3591,7 @@ html.light [data-auth-modal] [data-auth-legal-nudge] {
   color: rgb(21 94 117) !important;
 }
 
-/* Auth signup — legal acceptance nudge pulse on checkbox */
+/* Auth signup - legal acceptance nudge pulse on checkbox */
 @keyframes auth-legal-checkbox-pulse {
   0%,
   100% {

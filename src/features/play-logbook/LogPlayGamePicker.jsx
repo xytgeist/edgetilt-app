@@ -19,7 +19,7 @@ const LIST_CLASS = 'max-h-52 overflow-y-auto overscroll-contain'
  * Searchable game picker for Log Play / Analyze (Recent → Custom → A–Z + filter by name/slug).
  *
  * @param {object} props
- * @param {string} props.value — selected template id
+ * @param {string} props.value - selected template id
  * @param {(id: string) => void} props.onChange
  * @param {import('./playLogMetrics.js').PlayLogTemplate[]} props.templates
  * @param {import('./playLogMetrics.js').PlayLogEntry[]} props.entries

@@ -9,7 +9,7 @@ export function loungeMarketChartIsLight() {
 /** @param {boolean} [isLight] @param {{ attributionLogo?: boolean }} [opts] */
 export function loungeMarketChartTheme(isLight = loungeMarketChartIsLight(), { attributionLogo = false } = {}) {
   // Tailwind zinc-* is remapped under html.light (see index.css). Use the same
-  // surface/text class tokens as dark mode — they invert to readable light UI.
+  // surface/text class tokens as dark mode - they invert to readable light UI.
   return {
     layout: {
       background: { type: ColorType.Solid, color: 'transparent' },
@@ -53,7 +53,7 @@ export function loungeMarketBarsToSeries(bars) {
   return out
 }
 
-/** Crosshair — both axes; labels only in advanced modal. */
+/** Crosshair - both axes; labels only in advanced modal. */
 export function loungeMarketChartCrosshairOptions(isAdvancedView = false, isLight = loungeMarketChartIsLight()) {
   const color = isLight ? 'rgba(113, 113, 122, 0.55)' : 'rgba(161, 161, 170, 0.55)'
   const labelBackgroundColor = isLight ? '#fafafa' : '#18181b'

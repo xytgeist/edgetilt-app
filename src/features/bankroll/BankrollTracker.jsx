@@ -13,7 +13,7 @@ import BankrollImportSheet from './BankrollImportSheet.jsx'
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmt$(n) {
-  if (n == null || isNaN(n)) return '—'
+  if (n == null || isNaN(n)) return '-'
   const abs = Math.abs(n)
   const str = abs >= 10000
     ? '$' + Math.round(abs).toLocaleString()
@@ -70,7 +70,7 @@ function fmtMiles(mi) {
   return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`
 }
 
-/** YYYY-MM-DD in the device timezone (not UTC — avoid toISOString().slice(0,10)). */
+/** YYYY-MM-DD in the device timezone (not UTC - avoid toISOString().slice(0,10)). */
 function localYmd(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -600,7 +600,7 @@ export default function BankrollTracker({
       deleteConfirmTimerRef.current = setTimeout(() => setDeleteConfirm(false), 3500)
       return
     }
-    // Second tap — confirmed
+    // Second tap - confirmed
     clearTimeout(deleteConfirmTimerRef.current)
     setSaving(true)
     const ids = [...selectedIds]
@@ -666,7 +666,7 @@ export default function BankrollTracker({
           ))}
         </div>
 
-        {/* Game type filter — shown on analytics tabs */}
+        {/* Game type filter - shown on analytics tabs */}
         {activeTab !== 'overview' && completedSessions.length > 0 && (
           <div className="flex gap-1.5 mb-4">
             {[
@@ -922,7 +922,7 @@ export default function BankrollTracker({
 
                     {casinoPickerOpen && (
                       <div className="mt-2 max-h-44 overflow-y-auto rounded-xl bg-zinc-800/60 divide-y divide-zinc-700/40">
-                        {/* "Any" — clears all selections */}
+                        {/* "Any" - clears all selections */}
                         <button
                           onClick={() => setHistoryCasinoFilter([])}
                           className="flex items-center gap-2.5 w-full px-3 py-2.5 touch-manipulation active:bg-zinc-700/40"
@@ -1054,7 +1054,7 @@ export default function BankrollTracker({
         )}
 
         {!loading && completedSessions.length === 0 && !activeSession && overallBankroll != null && (
-          <div className="text-center text-zinc-600 text-sm mt-12">No sessions yet — start one above.</div>
+          <div className="text-center text-zinc-600 text-sm mt-12">No sessions yet - start one above.</div>
         )}
 
         </>}

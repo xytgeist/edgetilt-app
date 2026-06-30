@@ -20,7 +20,7 @@ export function normalizeGuideAccessSlug(rawSlug) {
 }
 
 /**
- * Machine slug for Lounge AP Guide embeds — matches `guide-card-${slug}` ids in GuidesScreen.
+ * Machine slug for Lounge AP Guide embeds - matches `guide-card-${slug}` ids in GuidesScreen.
  * @param {{ slug?: string | null, machines?: { slug?: string | null } | Array<{ slug?: string | null }> | null } | null | undefined} guideRow
  */
 export function resolveGuidePostSlug(guideRow) {

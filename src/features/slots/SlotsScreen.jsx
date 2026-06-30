@@ -45,7 +45,7 @@ const SLOTS_TOOLS = [
     description: 'Log AP plays and analyze your data',
     subscriberGated: () => true,
   },
-  // Local Intel (`intel` tab) remains routable from AppShell for future use — not listed in hub (Ryan, 2026-05-29).
+  // Local Intel (`intel` tab) remains routable from AppShell for future use - not listed in hub (Ryan, 2026-05-29).
 ]
 
 export default function SlotsScreen({

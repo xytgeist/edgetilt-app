@@ -47,7 +47,7 @@ function formatGlobalCityLabel(city, countryNameByCode) {
   return label.length > PROFILE_LOCATION_MAX_LEN ? label.slice(0, PROFILE_LOCATION_MAX_LEN) : label
 }
 
-/** ~148k cities worldwide — lazy-loaded (separate chunk, built once per session). */
+/** ~148k cities worldwide - lazy-loaded (separate chunk, built once per session). */
 export function ensureGlobalCityLocationIndex() {
   if (globalCityIndexCache) return Promise.resolve(globalCityIndexCache)
   if (!globalCityIndexLoadPromise) {

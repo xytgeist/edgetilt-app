@@ -1,4 +1,4 @@
-/** Advanced chart ink overlay (pen + text) — normalized coords, merged at snapshot time. */
+/** Advanced chart ink overlay (pen + text) - normalized coords, merged at snapshot time. */
 
 export const MARKET_CHART_ANNOTATION_PEN_COLOR = '#22d3ee'
 export const MARKET_CHART_ANNOTATION_PEN_WIDTH = 2.75

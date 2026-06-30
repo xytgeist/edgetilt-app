@@ -186,7 +186,7 @@ export function persistLoungeComposerDraft(text, expanded, hasLocalMedia, mediaU
       })
     )
   } catch {
-    // Quota or private mode — ignore.
+    // Quota or private mode - ignore.
   }
 }
 

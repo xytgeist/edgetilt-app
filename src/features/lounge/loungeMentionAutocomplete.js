@@ -249,7 +249,7 @@ export function applyMentionSuggestion(value, mention, handle) {
   return { value: newValue, cursorPos: newCursor }
 }
 
-/** @deprecated internal — kept for tests/import stability if referenced elsewhere */
+/** @deprecated internal - kept for tests/import stability if referenced elsewhere */
 export function useMentionAutocomplete({ value, cursorPos, supabaseClient, enabled }) {
   const [mention, setMention] = useState(null)
   const [suggestions, setSuggestions] = useState([])

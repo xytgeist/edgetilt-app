@@ -49,7 +49,7 @@ async function primePosterFrameForCanvas(video) {
       const p = video.play()
       if (p && typeof p.then === 'function') await p
     } catch {
-      // ignore — still try canvas
+      // ignore - still try canvas
     }
     if (typeof video.requestVideoFrameCallback === 'function') {
       await new Promise((resolve) => {
@@ -228,7 +228,7 @@ function cropOverlayPercents(layout, cropPx) {
  * Trim and optionally crop a video to at most 60s: draggable window on the full timeline (cannot widen past 60s).
  *
  * @param {{ file: File, knownDurationSec?: number, intent?: 'composer' | 'detail', onCancel: () => void, onConfirm: (result: File | { type: 'composerTrimJob', sourceFile: File, startSec: number, endSec: number, cropPx: { x: number, y: number, w: number, h: number } | null, intrinsicWidth: number, intrinsicHeight: number, posterUrl: string }) => void }} props
- * `intent` — `composer` returns a trim payload for background encode/upload; `detail` keeps synchronous encode and passes a `File`.
+ * `intent` - `composer` returns a trim payload for background encode/upload; `detail` keeps synchronous encode and passes a `File`.
  */
 export default function LoungeVideoCropModal({
   file,

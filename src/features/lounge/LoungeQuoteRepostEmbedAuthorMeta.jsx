@@ -6,7 +6,7 @@ import {
   LOUNGE_FEED_META_TEXT_COLUMN_CLASS,
 } from './loungeFeedAvatar.js'
 
-/** Quote-repost OP inset — same meta row layout as feed post cards. */
+/** Quote-repost OP inset - same meta row layout as feed post cards. */
 export default function LoungeQuoteRepostEmbedAuthorMeta({
   post,
   displayNameFor,

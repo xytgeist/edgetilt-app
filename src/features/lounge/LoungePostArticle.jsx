@@ -114,7 +114,7 @@ export default function LoungePostArticle({
   onStreamLightboxOpenDetail,
   /** Tap caption body → post detail (feed/profile cards). */
   onPostBodyClick,
-  /** Active Lounge search query — highlights matching terms in captions (search panel only). */
+  /** Active Lounge search query - highlights matching terms in captions (search panel only). */
   loungeSearchHighlightQuery = '',
   /** Called with `game_slug` when the viewer taps the guide embed card (navigates to AP Guides). */
   onOpenGuideCard,
@@ -148,7 +148,7 @@ export default function LoungePostArticle({
   // The "display" entity (what we show as the card's main content / author)
   const displayPost = isPlainPostRepost ? post.reposted_post : post
   const rc = isCommentRepost ? post.reposted_comment : null
-  // ── Row menu — always based on the repost row (`post`), not the display entity ──
+  // ── Row menu - always based on the repost row (`post`), not the display entity ──
   const menuIsOwn = Boolean(viewerUserId && post?.user_id === viewerUserId)
   const menuShowEdit = Boolean(
     menuIsOwn &&
@@ -285,7 +285,7 @@ export default function LoungePostArticle({
 
   return (
     <div className={`flex items-start gap-3 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
-      {/* Avatar — always the *display* entity's author (original author / comment author) */}
+      {/* Avatar - always the *display* entity's author (original author / comment author) */}
       <button
         type="button"
         title="View profile"
@@ -355,7 +355,7 @@ export default function LoungePostArticle({
                 </span>
               </span>
             </div>
-            {/* Pinned pill — only on non-repost cards */}
+            {/* Pinned pill - only on non-repost cards */}
             {!isPlainPostRepost && !isCommentRepost && post.pinned ? (
               <div className="mt-1">
                 <span className="inline-flex shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-semibold uppercase leading-none tracking-wide text-fuchsia-200">
@@ -685,7 +685,7 @@ export default function LoungePostArticle({
           </button>
         ) : null}
 
-        {/* Edited label — only for regular / quote-repost posts */}
+        {/* Edited label - only for regular / quote-repost posts */}
         {!isPlainPostRepost && !isCommentRepost && post.edited_at ? (
           <div className="mt-1.5 text-left text-[14px] leading-tight text-zinc-500">Edited</div>
         ) : null}

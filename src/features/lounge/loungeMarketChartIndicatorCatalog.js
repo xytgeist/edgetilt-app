@@ -1,4 +1,4 @@
-/** Indicator catalog — categories and definitions for Advanced market charts. */
+/** Indicator catalog - categories and definitions for Advanced market charts. */
 
 /** @typedef {'overlay' | 'oscillator'} MarketChartIndicatorKind */
 /** @typedef {'mas' | 'volatility' | 'momentum' | 'volume' | 'trend'} MarketChartIndicatorCategoryId */

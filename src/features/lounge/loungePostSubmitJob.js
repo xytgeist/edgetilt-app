@@ -207,7 +207,7 @@ async function resolveThreadPartStreamVideoForInsert({
     streamPosterPublicUrl,
     streamVideoWidthOut,
     streamVideoHeightOut,
-    /** Only newly minted uploads this call — not compose-time `preUid` (avoid orphan-deleting on later failure). */
+    /** Only newly minted uploads this call - not compose-time `preUid` (avoid orphan-deleting on later failure). */
     pendingUid: preUid ? null : pendingCfUploadUid,
   }
 }
@@ -1367,7 +1367,7 @@ export async function executeLoungeCommunityPostUpdate({
   }
 
   const postId = String(snapshot?.postId || '').trim()
-  if (!postId) throw new Error('Could not save — post id missing.')
+  if (!postId) throw new Error('Could not save - post id missing.')
 
   const {
     caption,

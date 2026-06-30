@@ -1,12 +1,12 @@
 /**
- * Rounded option picker — same chrome as CasinoAutocomplete (Start Session).
+ * Rounded option picker - same chrome as CasinoAutocomplete (Start Session).
  *
  * Props:
- *   value       — selected option value
- *   onChange    — fn(value: string)
- *   options     — [{ value: string, label: string }] or section labels { type: 'label', label: string }
- *   ariaLabel   — accessibility label for trigger
- *   placeholder — shown when value is empty / unknown
+ *   value       - selected option value
+ *   onChange    - fn(value: string)
+ *   options     - [{ value: string, label: string }] or section labels { type: 'label', label: string }
+ *   ariaLabel   - accessibility label for trigger
+ *   placeholder - shown when value is empty / unknown
  */
 import { useEffect, useRef, useState } from 'react'
 

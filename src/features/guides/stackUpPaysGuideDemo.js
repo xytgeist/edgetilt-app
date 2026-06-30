@@ -7,7 +7,7 @@ export const STACK_UP_PAYS_DEMO_SLUG = 'stack-up-pays'
 
 export const stackUpPaysCardBullets = [
   '**Five persistent meters** (mega → mini): edge is about **where each meter sits vs its must-hit band**, **SPI**, and **how much base RTP you are funding** while you ladder them.',
-  '**Ascending Fortunes** means you are often juggling **multiple incomplete ladders** — only play when the **combined state** clears your hurdle, not when one meter “looks close” in isolation.',
+  '**Ascending Fortunes** means you are often juggling **multiple incomplete ladders** - only play when the **combined state** clears your hurdle, not when one meter “looks close” in isolation.',
   'Run **Stack Up Pays** in-app to sync **overall RTP**, **meter readings**, and **calibrated state RTP** before you lock a session size.',
 ]
 
@@ -17,9 +17,9 @@ Stack Up Pays on **IGT’s Ascending Fortunes** chassis is a **multi-meter persi
 
 ## The +EV picture (meter-first)
 
-1. **Read every meter** — A “good” mega can be **cancelled** by four bad minors if you ignore cross-meter exposure. Build a **mental model of total dollars to clear** versus **expected payback** from the hit distribution you assume.
-2. **SPI and must-hit bands** — **Spins per increment** and **reset vs must-hit span** control how expensive it is to move a meter one unit. Small errors in SPI assumptions **move the +EV threshold** a lot at tight margins.
-3. **Calibration** — Use the calculator’s **cycle calibration** story: overall RTP splits into **base vs bonus share**, then meters scale with **position in band**. If your floor’s paytable or denom does not match your inputs, the tool is still **internally consistent** but not **floor-accurate**.
+1. **Read every meter** - A “good” mega can be **cancelled** by four bad minors if you ignore cross-meter exposure. Build a **mental model of total dollars to clear** versus **expected payback** from the hit distribution you assume.
+2. **SPI and must-hit bands** - **Spins per increment** and **reset vs must-hit span** control how expensive it is to move a meter one unit. Small errors in SPI assumptions **move the +EV threshold** a lot at tight margins.
+3. **Calibration** - Use the calculator’s **cycle calibration** story: overall RTP splits into **base vs bonus share**, then meters scale with **position in band**. If your floor’s paytable or denom does not match your inputs, the tool is still **internally consistent** but not **floor-accurate**.
 
 ## How the game plays (floor-facing)
 
@@ -33,7 +33,7 @@ Multi-meter games **correlate bad runs**: several meters can stall in expensive 
 
 ## Using the Edge calculator
 
-Open **Stack Up Pays** from the card. Enter **overall RTP**, **denom**, **per-meter counter / must-hit / reset / SPI** (defaults match common training setups—always verify on the glass), and read **+EV counter**, **calibrated RTP**, and **expected bets won** for the stopping rule you use.
+Open **Stack Up Pays** from the card. Enter **overall RTP**, **denom**, **per-meter counter / must-hit / reset / SPI** (defaults match common training setups-always verify on the glass), and read **+EV counter**, **calibrated RTP**, and **expected bets won** for the stopping rule you use.
 
 ---
 

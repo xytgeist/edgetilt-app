@@ -41,7 +41,7 @@ import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.j
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
 // Glass styles are defined in index.css as .chat-header-glass / .chat-menu-glass
-// with html.light overrides — do not use inline styles for these.
+// with html.light overrides - do not use inline styles for these.
 
 const PAGE_SIZE = 50
 const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
@@ -76,7 +76,7 @@ const MAX_DOM = 150
  * (migration not yet applied on this environment).
  */
 async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, beforeId = null, limit = PAGE_SIZE } = {}) {
-  // Prefer the RPC — membership check once, no per-row RLS overhead
+  // Prefer the RPC - membership check once, no per-row RLS overhead
   const { data, error } = await supabaseClient.rpc('chat_messages_page', {
     p_room_id: roomId,
     p_limit: limit,
@@ -85,7 +85,7 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
   })
   if (!error) return data || []
 
-  // RPC not yet available — fall back to direct table query (Phase 2 columns first)
+  // RPC not yet available - fall back to direct table query (Phase 2 columns first)
   const buildDirect = (q) => {
     q = q.eq('room_id', roomId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit)
     if (beforeCreatedAt) {
@@ -152,7 +152,7 @@ export default function ChatConversation({
   const [loadingMore, setLoadingMore] = useState(false)
   // hasMore: there are older messages to page back through
   const [hasMore, setHasMore] = useState(false)
-  // hasNewer: the DOM tail was trimmed — user is viewing history, not live end
+  // hasNewer: the DOM tail was trimmed - user is viewing history, not live end
   const [hasNewer, setHasNewer] = useState(false)
   // newMsgCount: messages that arrived via Realtime while not at the live end
   const [newMsgCount, setNewMsgCount] = useState(0)
@@ -208,7 +208,7 @@ export default function ChatConversation({
       return next
     })
   }, [])
-  /** Serial encode lock — promise chain that ensures only one ffmpeg exec runs at a time. */
+  /** Serial encode lock - promise chain that ensures only one ffmpeg exec runs at a time. */
   const encodeQueueRef = useRef(Promise.resolve())
 
   // DOM refs
@@ -219,7 +219,7 @@ export default function ChatConversation({
   const lastReadDebounceRef = useRef(null)
   const composerBarRef = useRef(null)
   const composerTouchRef = useRef(null)
-  /** Android: bottom gap (px) to restore after swipe keyboard dismiss — shared with RO. */
+  /** Android: bottom gap (px) to restore after swipe keyboard dismiss - shared with RO. */
   const keyboardDismissPreserveRef = useRef(/** @type {number | null} */ (null))
   const iosKeyboardDismissScrollTimerRef = useRef(0)
   const iosKeyboardDismissVvHandlerRef = useRef(/** @type {(() => void) | null} */ (null))
@@ -227,7 +227,7 @@ export default function ChatConversation({
   const tailPinFollowUntilRef = useRef(0)
   const kbOverlapPrevRef = useRef(0)
   const kbClosingRef = useRef(false)
-  /** Bottom inset for the scroll list — matches floating transparent composer height. */
+  /** Bottom inset for the scroll list - matches floating transparent composer height. */
   const [composerInsetPx, setComposerInsetPx] = useState(72)
   const openScrollPendingRef = useRef(true)
   /** When set, open/tail pin handlers must not scroll to the latest message. */
@@ -252,7 +252,7 @@ export default function ChatConversation({
   const translateLayerRef = useRef(null)
   const swipeGestureRef = useRef({ startX: 0, startY: 0, active: false, axis: /** @type {'x'|'y'|null} */ (null) })
 
-  // Sync-refs — keep current values accessible in Realtime callbacks and
+  // Sync-refs - keep current values accessible in Realtime callbacks and
   // scroll handlers without capturing stale closures.
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -266,7 +266,7 @@ export default function ChatConversation({
   const didPrependRef = useRef(false)
   const prependPrevScrollHeightRef = useRef(0)
 
-  // Lazy sender profile cache — batch-fetches unknown sender_ids that aren't
+  // Lazy sender profile cache - batch-fetches unknown sender_ids that aren't
   // in the profilesById prop (e.g. channel members beyond the room list load).
   const [localProfiles, setLocalProfiles] = useState(/** @type {Record<string, any>} */ ({}))
   const localProfilesRef = useRef(localProfiles)
@@ -274,7 +274,7 @@ export default function ChatConversation({
   const pendingProfileIdsRef = useRef(/** @type {Set<string>} */ (new Set()))
   const profileFetchTimerRef = useRef(null)
 
-  // Realtime first-subscribe flag — used to distinguish initial connect from reconnect.
+  // Realtime first-subscribe flag - used to distinguish initial connect from reconnect.
   const realtimeSubscribedOnceRef = useRef(false)
   const loadReactionsForMessagesRef = useRef(/** @type {(ids: string[]) => Promise<void>} */ (async () => {}))
   const reactionRealtimeTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
@@ -313,7 +313,7 @@ export default function ChatConversation({
       const res = await chatRoomReadReceipts(supabaseClient, room.id)
       setPeerReadStates(res.members)
     } catch {
-      // RPC missing until migration applied — ignore.
+      // RPC missing until migration applied - ignore.
     }
   }, [showReadReceipts, room.id, supabaseClient])
 
@@ -686,7 +686,7 @@ export default function ChatConversation({
       const combined = [...fresh, ...messagesRef.current]
 
       if (combined.length > MAX_DOM) {
-        // Cap the DOM — trim from the tail (newest end) since we just loaded older
+        // Cap the DOM - trim from the tail (newest end) since we just loaded older
         if (!hasNewerRef.current) {
           hasNewerRef.current = true
           setHasNewer(true)
@@ -731,7 +731,7 @@ export default function ChatConversation({
     return lastBottom > composerTop - COMPOSER_SCROLL_GAP_PX
   }, [listContentFitsInView])
 
-  /** Pin tail above the composer — scroll max, then nudge if the last bubble sits below the visible band. */
+  /** Pin tail above the composer - scroll max, then nudge if the last bubble sits below the visible band. */
   const pinListToTail = useCallback(({ force = false } = {}) => {
     if (pendingJumpMessageIdRef.current) return
     const list = listRef.current
@@ -758,7 +758,7 @@ export default function ChatConversation({
         }
       }
 
-      // iOS: fixed shells can outrun the keyboard — anchor to the visual viewport band.
+      // iOS: fixed shells can outrun the keyboard - anchor to the visual viewport band.
       if (IS_IOS && inputFocused && typeof window !== 'undefined') {
         const vv = window.visualViewport
         if (vv) {
@@ -779,7 +779,7 @@ export default function ChatConversation({
     setNewMsgCount(0)
   }, [])
 
-  /** True while composer/keyboard owns tail position — open-scroll must not fight it. */
+  /** True while composer/keyboard owns tail position - open-scroll must not fight it. */
   const isComposerKeyboardActive = useCallback(() => {
     if (composerFocusedRef.current) return true
     const tag = document.activeElement?.tagName
@@ -965,7 +965,7 @@ export default function ChatConversation({
           if (!row?.id) return
 
           if (hasNewerRef.current) {
-            // User is viewing old history — tail was trimmed. Don't append,
+            // User is viewing old history - tail was trimmed. Don't append,
             // just bump the "jump to latest" banner count.
             setNewMsgCount((n) => n + 1)
             return
@@ -980,7 +980,7 @@ export default function ChatConversation({
                 ...existing,
                 ...row,
                 _key: existing._key || row.id,
-                // Video prep inserts at pick time — keep that slot if server lags deploy.
+                // Video prep inserts at pick time - keep that slot if server lags deploy.
                 created_at: existing.created_at || row.created_at,
                 image_urls: row.image_urls?.length > 0 ? row.image_urls : existing.image_urls,
                 _finalizingMedia: existing._finalizingMedia,
@@ -998,7 +998,7 @@ export default function ChatConversation({
                 next[optIdx] = {
                   ...row,
                   _key: existing._key,
-                  // Server stores image_urls:[] until uploads finish — keep blob
+                  // Server stores image_urls:[] until uploads finish - keep blob
                   // preview URLs so the media grid never disappears mid-upload.
                   image_urls: row.image_urls?.length > 0 ? row.image_urls : existing.image_urls,
                   _finalizingMedia: existing._finalizingMedia,
@@ -1066,13 +1066,13 @@ export default function ChatConversation({
         if (status !== 'SUBSCRIBED') return
 
         if (!realtimeSubscribedOnceRef.current) {
-          // First connect — initial loadMessages already covers this.
+          // First connect - initial loadMessages already covers this.
           realtimeSubscribedOnceRef.current = true
           return
         }
 
         // ── Reconnect: fetch messages we missed while the socket was down ──
-        // Skip if user is viewing trimmed history — the banner already handles it.
+        // Skip if user is viewing trimmed history - the banner already handles it.
         if (hasNewerRef.current) return
 
         const msgs = messagesRef.current
@@ -1103,7 +1103,7 @@ export default function ChatConversation({
             setNewMsgCount((n) => n + missed.length)
           }
         } catch {
-          // Reconnect catchup failure is non-fatal — user can manually refresh.
+          // Reconnect catchup failure is non-fatal - user can manually refresh.
         }
       })
     return () => {
@@ -1131,7 +1131,7 @@ export default function ChatConversation({
     return cleanup
   }, [supabaseClient, room.id, viewerUserId])
 
-  // ── Read receipt — debounced, never for optimistic ids ───────────────────
+  // ── Read receipt - debounced, never for optimistic ids ───────────────────
 
   const scheduleMarkLastRead = useCallback(() => {
     const msgs = messagesRef.current
@@ -1231,7 +1231,7 @@ export default function ChatConversation({
     const hasImages   = displayUrls.length > 0
 
     // One optimistic placeholder for all message types.
-    // _key is set to tempId and NEVER changes — React never unmounts the bubble.
+    // _key is set to tempId and NEVER changes - React never unmounts the bubble.
     const tempId = `opt-${Date.now()}`
     setMessages((prev) => [...prev, {
       id: tempId,
@@ -1264,7 +1264,7 @@ export default function ChatConversation({
       if (messageId) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === messageId)) {
-            // Realtime INSERT already swapped our optimistic in-place — nothing to do
+            // Realtime INSERT already swapped our optimistic in-place - nothing to do
             return prev
           }
           // Swap tempId → real id; everything else (_finalizingMedia, _key, _videoUploadProgress) preserved
@@ -1287,7 +1287,7 @@ export default function ChatConversation({
               ? { ...m, image_urls: finalUrls.length ? finalUrls : m.image_urls, _finalizingMedia: false }
               : m
           ))
-          // Blob URLs are revoked by ChatMediaImage after each R2 image loads —
+          // Blob URLs are revoked by ChatMediaImage after each R2 image loads -
           // no need to revoke here.
           if (!finalUrls.length) return
           try {
@@ -1321,7 +1321,7 @@ export default function ChatConversation({
     })
   }, [setVideoPrepJobs])
 
-  /** Detached from encode queue — runs upload + send after encoding is done. */
+  /** Detached from encode queue - runs upload + send after encoding is done. */
   const uploadAndSendVideoPrepJob = useCallback(async (jobId, encodedFile) => {
     if (videoPrepJobsRef.current.find((j) => j.jobId === jobId)?.abortCtrl?.signal?.aborted) {
       removeVideoPrepJob(jobId)
@@ -1430,7 +1430,7 @@ export default function ChatConversation({
 
           let readyFile
           if (isTrimJob) {
-            // trimVideoFileToMp4 already outputs CRF-27 H.264 + 128k AAC — no second encode needed.
+            // trimVideoFileToMp4 already outputs CRF-27 H.264 + 128k AAC - no second encode needed.
             updateVideoPrepJob(jobId, { status: 'trimming', progress: 0.02 })
             readyFile = await trimVideoFileToMp4(
               spec.sourceFile, spec.startSec, spec.endSec,
@@ -1464,7 +1464,7 @@ export default function ChatConversation({
 
           if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
 
-          // Trim/encode done — launch upload+send detached so the queue is free for the next job.
+          // Trim/encode done - launch upload+send detached so the queue is free for the next job.
           void uploadAndSendVideoPrepJob(jobId, readyFile)
         } catch (e) {
           if (e?.name === 'AbortError') { removeVideoPrepJob(jobId); return }
@@ -1488,7 +1488,7 @@ export default function ChatConversation({
     // Abort the old controller if still alive, remove the job, then re-queue.
     job.abortCtrl?.abort()
     removeVideoPrepJob(jobId)
-    // Re-confirm the same spec — goes through the full pipeline again.
+    // Re-confirm the same spec - goes through the full pipeline again.
     handleVideoConfirmed(job.spec)
   }, [removeVideoPrepJob, handleVideoConfirmed])
 
@@ -1604,7 +1604,7 @@ export default function ChatConversation({
   const roomTitle = activeRoom.peerLabel || activeRoom.title || (activeRoom.slug ? `#${activeRoom.slug}` : 'Chat')
 
   // ── Swipe-to-reveal timestamps ────────────────────────────────────────────
-  // Direct DOM manipulation — no React re-renders during the gesture.
+  // Direct DOM manipulation - no React re-renders during the gesture.
   // iOS-style: drag the message list left to slide timestamps in from the right.
   const MAX_SWIPE_PX = 76 // must match `right: -76px` in ChatBubble
 
@@ -1664,7 +1664,7 @@ export default function ChatConversation({
   const headerInitial = (peerDisplayName || '?').replace(/^@/, '')[0]?.toUpperCase() || '?'
   const headerAvatarClass =
     'relative z-10 grid h-16 w-16 place-items-center rounded-full bg-zinc-700 text-[22px] font-bold text-zinc-300 shadow-lg ring-2 ring-white/15'
-  // Track composer textarea focus — extends iOS dismiss grab strip above composer.
+  // Track composer textarea focus - extends iOS dismiss grab strip above composer.
   useEffect(() => {
     const composer = composerBarRef.current
     if (!composer) return
@@ -1727,7 +1727,7 @@ export default function ChatConversation({
     kbClosingRef.current = kbOverlapPx < prev - 2
     if (kbOverlapPx <= iosSafeBottomPx + 0.5) {
       kbClosingRef.current = false
-      // Lerp just landed — fire one tail pin to snap messages above settled composer.
+      // Lerp just landed - fire one tail pin to snap messages above settled composer.
       if (prev > iosSafeBottomPx + 0.5) pinListToTail({ force: true })
       return undefined
     }
@@ -1753,12 +1753,12 @@ export default function ChatConversation({
     return () => ro.disconnect()
   }, [pinListToTail, pinIosKeyboardFrame])
 
-  // iOS: tail rides the smoothed overlap lerp — one pin per displayed px (open + close).
+  // iOS: tail rides the smoothed overlap lerp - one pin per displayed px (open + close).
   useLayoutEffect(() => {
     pinIosKeyboardFrame()
   }, [kbOverlapPx, kbOverlapTargetPx, composerFocused, composerInsetPx, pinIosKeyboardFrame])
 
-  // resizes-content: when the keyboard opens/closes the list height changes — pin tail.
+  // resizes-content: when the keyboard opens/closes the list height changes - pin tail.
   useEffect(() => {
     const container = listRef.current
     if (!container) return undefined
@@ -1791,7 +1791,7 @@ export default function ChatConversation({
     return () => ro.disconnect()
   }, [contentExtendsBelowComposer, pinListToTail, pinIosKeyboardFrame])
 
-  // Android: swipe-down dismiss on message list — lock scroll at tail + preserve position.
+  // Android: swipe-down dismiss on message list - lock scroll at tail + preserve position.
   // iOS: messages scroll freely; dismiss only from composer strip (see below).
   useEffect(() => {
     if (!IS_ANDROID) return
@@ -2023,7 +2023,7 @@ export default function ChatConversation({
     >
 
       {/* ── Floating overlay header ─────────────────────────────────────────── */}
-      {/* Single flex row — items-start so button tops align with avatar top */}
+      {/* Single flex row - items-start so button tops align with avatar top */}
       <div
         className="absolute inset-x-0 top-0 z-20 flex items-start gap-2 px-3 pb-4 pt-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
@@ -2045,7 +2045,7 @@ export default function ChatConversation({
           )}
         </button>
 
-        {/* Center — avatar + pill (DM + group); compact title (channels) */}
+        {/* Center - avatar + pill (DM + group); compact title (channels) */}
         <div className="flex min-w-0 flex-1 flex-col items-center">
           {useRichHeader ? (
             <>
@@ -2121,7 +2121,7 @@ export default function ChatConversation({
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', right: '16px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* View profile — DMs only */}
+            {/* View profile - DMs only */}
             {peerUserId && onViewProfile && (
               <>
                 <OptionsRow
@@ -2165,7 +2165,7 @@ export default function ChatConversation({
         document.body
       )}
 
-      {/* ── Body + composer (post-detail flex column — footer host owns kb overlap) ── */}
+      {/* ── Body + composer (post-detail flex column - footer host owns kb overlap) ── */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 
       {/* Mute duration picker */}

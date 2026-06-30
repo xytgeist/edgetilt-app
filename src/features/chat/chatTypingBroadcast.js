@@ -1,6 +1,6 @@
 /**
  * Typing indicator via Supabase Realtime broadcast.
- * No DB writes — ephemeral.
+ * No DB writes - ephemeral.
  *
  * Channel name: `chat-typing-${roomId}`
  * Event: 'typing'
@@ -19,7 +19,7 @@ const TYPING_EMIT_DEBOUNCE_MS = 2000
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} roomId
- * @param {string} viewerUserId — own user id, excluded from displayed indicators
+ * @param {string} viewerUserId - own user id, excluded from displayed indicators
  * @param {(typingUsers: { userId: string, displayName: string }[]) => void} onTypingChanged
  * @returns {{ emit: () => void, cleanup: () => void }}
  */

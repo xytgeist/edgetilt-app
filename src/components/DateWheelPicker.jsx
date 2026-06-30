@@ -3,9 +3,9 @@
  * Renders as a tappable display → opens wheel on tap.
  *
  * Props:
- *   value    — "YYYY-MM-DD" string or ''
- *   onChange — fn(string) called with "YYYY-MM-DD"
- *   showYear — show year column (default false; month+day fits narrow grids)
+ *   value    - "YYYY-MM-DD" string or ''
+ *   onChange - fn(string) called with "YYYY-MM-DD"
+ *   showYear - show year column (default false; month+day fits narrow grids)
  */
 import { useState, useEffect, useMemo } from 'react'
 import Picker from 'react-mobile-picker'

@@ -1,4 +1,4 @@
-/** Sellable Edge vertical slugs — stable internal IDs (`{vertical}-edge`). */
+/** Sellable Edge vertical slugs - stable internal IDs (`{vertical}-edge`). */
 export const PRODUCT_SLOTS_EDGE = 'slots-edge'
 export const PRODUCT_SPORTS_EDGE = 'sports-edge'
 export const PRODUCT_CRYPTO_EDGE = 'crypto-edge'

@@ -5,7 +5,7 @@ import {
 } from '../../utils/loungePostCategoryPills.js'
 import { writeLoungeFeedCategoryFilter } from '../../utils/loungeFeedCategoryFilterPref.js'
 
-/** Home feed tribe visibility — all on by default; tap to dim/hide posts with that pill. */
+/** Home feed tribe visibility - all on by default; tap to dim/hide posts with that pill. */
 export default function LoungeFeedCategoryFilter({
   value = [],
   onChange,

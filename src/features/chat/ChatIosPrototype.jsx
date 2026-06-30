@@ -7,7 +7,7 @@ import { edgeLogoTitleBarClassName } from '../shell/titleBarLayout.js'
 import ChatComposer from './ChatComposer.jsx'
 
 /**
- * Bare iOS chat layout prototype — fixed Edge title bar + bottom composer only.
+ * Bare iOS chat layout prototype - fixed Edge title bar + bottom composer only.
  * Separate from ChatConversation so we can iterate on keyboard / viewport behavior.
  *
  * @param {{
@@ -48,7 +48,7 @@ export default function ChatIosPrototype({
       data-chat-ios-prototype
       className="fixed inset-0 z-[60] mx-auto flex w-full max-w-2xl flex-col overflow-hidden bg-zinc-950"
     >
-      {/* Fixed Edge title bar — outside any scroll container */}
+      {/* Fixed Edge title bar - outside any scroll container */}
       <header
         ref={titleBarRef}
         className="relative z-20 shrink-0 border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)]"
@@ -73,7 +73,7 @@ export default function ChatIosPrototype({
         </div>
       </header>
 
-      {/* Empty body — keyboard experiments land here later */}
+      {/* Empty body - keyboard experiments land here later */}
       <div
         className="min-h-0 flex-1 bg-zinc-950"
         style={{ paddingTop: titleBarHeight > 0 ? 0 : undefined }}

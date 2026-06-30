@@ -1,7 +1,7 @@
 /** Matches ChatBubble sent/received message column cap. */
 export const CHAT_MESSAGE_COLUMN_WIDTH_CLASS = 'w-[78%] max-w-[78%]'
 
-/** WhatsApp-style media grid floor — same as ChatMediaGrid. */
+/** WhatsApp-style media grid floor - same as ChatMediaGrid. */
 export const CHAT_MEDIA_TILE_MIN_WIDTH_PX = 160
 
 /** Phone portrait clips before metadata arrives (encode box is 1280×720 max). */

@@ -55,7 +55,7 @@ export const MHB_MANUFACTURER_OPTIONS = [
 /** @param {unknown} raw */
 export function formatMhbManufacturerValue(raw) {
   const s = String(raw ?? '').trim().toLowerCase()
-  if (!s) return '—'
+  if (!s) return '-'
   return MHB_MANUFACTURER_OPTIONS.find(o => o.value === s)?.label ?? String(raw)
 }
 
@@ -245,7 +245,7 @@ export function sortMetricSlugs(metricSlugs, defsMap) {
   return [...sortedBody, ...tail]
 }
 
-/** Calculator snapshot values — useful on a log row, not for custom-template historical analysis. */
+/** Calculator snapshot values - useful on a log row, not for custom-template historical analysis. */
 export const PLAY_LOG_CALC_SNAPSHOT_FIELD_SLUGS = new Set([
   'current_ev_rtp',
   'average_case_mult',
@@ -301,10 +301,10 @@ export function parseMetricInput(raw, type) {
 
 /** @param {unknown} v @param {PlayLogValueType} type */
 export function formatMetricValue(v, type) {
-  if (v == null || v === '') return '—'
+  if (v == null || v === '') return '-'
   if (type === 'text') return String(v)
   const n = Number(v)
-  if (!Number.isFinite(n)) return '—'
+  if (!Number.isFinite(n)) return '-'
   if (type === 'money') {
     const abs = Math.abs(n)
     const str = abs >= 1000 ? `$${Math.round(abs).toLocaleString()}` : `$${abs.toFixed(abs >= 100 ? 0 : 2)}`
@@ -525,7 +525,7 @@ export function playLogWinLoss(inRaw, outRaw, acquisitionFeeRaw = null) {
 /** @param {unknown} v */
 export function formatAcquisitionFeeValue(v) {
   const n = parseAcquisitionFee(v)
-  if (n == null) return '—'
+  if (n == null) return '-'
   return formatMetricValue(n, 'money')
 }
 
@@ -598,7 +598,7 @@ export function templatesSortedByPlayCount(templates, entries) {
 
 export const LOG_PLAY_RECENT_GAMES_LIMIT = 5
 
-/** Analyze tab — sentinel id for cross-game aggregate stats (not a DB template). */
+/** Analyze tab - sentinel id for cross-game aggregate stats (not a DB template). */
 export const PLAY_LOG_ANALYZE_ALL_PLAYS_ID = '__all_plays__'
 
 export const PLAY_LOG_ANALYZE_ALL_PLAYS_LABEL = 'All plays'
@@ -795,7 +795,7 @@ export function defaultLogPlayTemplateId(templates) {
 
 /**
  * Real (wager-weighted) RTP % = (Σ money out ÷ Σ money in) × 100.
- * Same as weighting each play's RTP by its wager—not averaging play RTP % in arithmetic mean.
+ * Same as weighting each play's RTP by its wager-not averaging play RTP % in arithmetic mean.
  */
 export function playLogRealRtpPct(totalMoneyIn, totalMoneyOut) {
   const inn = Number(totalMoneyIn)
@@ -890,7 +890,7 @@ export function runningRealRtpByEntryId(entries) {
   return out
 }
 
-/** @deprecated alias — use runningRealRtpByEntryId */
+/** @deprecated alias - use runningRealRtpByEntryId */
 export function runningRtpLabelByEntryId(entries) {
   const snaps = runningRealRtpByEntryId(entries)
   /** @type {Record<string, string | null>} */
@@ -917,7 +917,7 @@ export function rtpToneFromPercentLabel(label) {
 }
 
 /**
- * Chips for LOG tab recent-entry cards — bet size, denom, profit/loss, play RTP.
+ * Chips for LOG tab recent-entry cards - bet size, denom, profit/loss, play RTP.
  * @param {PlayLogEntry} entry
  * @param {Record<string, PlayLogMetricDef>} defsMap
  * @returns {{ key: string, label: string, value: string, tone?: 'win' | 'loss' | 'neutral' }[]}
@@ -947,13 +947,13 @@ export function recentEntryDisplayChips(entry, defsMap) {
     {
       key: 'pnl',
       label: hasAcquisitionFee ? 'Net profit/loss' : 'Profit/loss',
-      value: pnl == null ? '—' : formatMetricValue(pnl, 'money'),
+      value: pnl == null ? '-' : formatMetricValue(pnl, 'money'),
       tone: pnl == null ? 'neutral' : pnl >= 0 ? 'win' : 'loss',
     },
     {
       key: 'rtp',
       label: 'RTP',
-      value: playRtpLabel || '—',
+      value: playRtpLabel || '-',
       tone: rtpToneFromPercentLabel(playRtpLabel),
     },
   ]

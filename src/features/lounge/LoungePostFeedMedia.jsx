@@ -37,7 +37,7 @@ export function LoungeImageCarousel({
   renderMediaLightboxInteractionBar,
   /**
    * When set (feed/detail scroll container), carousel snaps back to slide 1 when this block
-   * re-enters that scrollport after leaving — fixes nested scroll + `content-visibility` with `root: null`.
+   * re-enters that scrollport after leaving - fixes nested scroll + `content-visibility` with `root: null`.
    */
   visibilityResetRootRef,
   /** Composer: parent scroll tail-follow when a slide image finishes layout. */
@@ -282,7 +282,7 @@ export function LoungeImageCarousel({
 }
 
 /**
- * Mid-scroll autoplay coordinator id — unique per feed/detail row surface, not canonical post id
+ * Mid-scroll autoplay coordinator id - unique per feed/detail row surface, not canonical post id
  * (reposts of the same clip must not share one DOM registration).
  */
 function loungeFeedAutoplayClientId({

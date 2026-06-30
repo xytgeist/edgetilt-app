@@ -102,12 +102,12 @@ export function scrollMarketChartPriceByPixels(mainSeries, lastLocalY, currentLo
 const PAN_GESTURE_SLOP_PX = 6
 const HISTORY_LOAD_DEBOUNCE_MS = 220
 
-/** Pan/history traces — captured in Settings → Admin utils → Console log. */
+/** Pan/history traces - captured in Settings → Admin utils → Console log. */
 export function marketChartPanDebug(...args) {
   console.log('[marketChartPan]', ...args)
 }
 
-/** Stable fingerprint for bar arrays — skip redundant Advanced chart refreshes. */
+/** Stable fingerprint for bar arrays - skip redundant Advanced chart refreshes. */
 export function marketChartBarsSignature(bars) {
   if (!bars?.length) return ''
   const first = bars[0]?.t
@@ -371,11 +371,11 @@ export function bindMarketChartHistoryLoader(chart, getBars, onNeedHistory, opts
       if (debounceTimer) clearTimeout(debounceTimer)
       flushPending()
     },
-    /** After pan release — range updates while dragging are ignored. */
+    /** After pan release - range updates while dragging are ignored. */
     checkEdgeAfterPan: () => {
       tryScheduleFromRange(ts.getVisibleLogicalRange())
     },
-    /** After prepending bars — prevent immediate re-fetch on the new oldest anchor. */
+    /** After prepending bars - prevent immediate re-fetch on the new oldest anchor. */
     acknowledgeBars: () => {
       const bars = getBars()
       if (!bars?.length) {

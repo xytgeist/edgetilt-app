@@ -841,7 +841,7 @@ export default function PlayLogbook({
           })
         }
       } catch {
-        /* fall through — partner-only delete */
+        /* fall through - partner-only delete */
       }
     }
     const msg = sessionId
@@ -1758,7 +1758,7 @@ export default function PlayLogbook({
                       })}
                     </ul>
                   ) : (
-                    <p className="text-zinc-600 text-xs mt-2">Optional — add fields unique to this game.</p>
+                    <p className="text-zinc-600 text-xs mt-2">Optional - add fields unique to this game.</p>
                   )}
                 </div>
                 {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
@@ -1971,7 +1971,7 @@ function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
                   winLoss == null ? 'text-zinc-500' : winLoss >= 0 ? 'text-emerald-300' : 'text-red-300'
                 }`}
               >
-                {winLoss == null ? '—' : formatMetricValue(winLoss, 'money')}
+                {winLoss == null ? '-' : formatMetricValue(winLoss, 'money')}
               </span>
             </div>
           ) : null}

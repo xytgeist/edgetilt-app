@@ -68,7 +68,7 @@ function hexToRgb(hex) {
   }
 }
 
-/** Relative luminance (sRGB) — for picking readable text on tinted bubbles. */
+/** Relative luminance (sRGB) - for picking readable text on tinted bubbles. */
 export function accentLuminance(hex) {
   const c = hexToRgb(hex)
   if (!c) return 0
@@ -98,7 +98,7 @@ export function resolvePreviewAccent(preview) {
   return domainAccentColor(preview?.url || preview?.site_name)
 }
 
-/** Google favicon proxy does not send CORS headers — display-only, no canvas sampling. */
+/** Google favicon proxy does not send CORS headers - display-only, no canvas sampling. */
 function canSampleImageUrl(url) {
   try {
     const u = new URL(url)

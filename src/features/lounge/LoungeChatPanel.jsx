@@ -8,7 +8,7 @@ import {
 } from '../chat/chatApi.js'
 
 /**
- * Dock slide panel — **conversation list only**.
+ * Dock slide panel - **conversation list only**.
  * Tapping a room calls `onOpenChatRoom(roomId)` which navigates to the full Chat tab.
  * The full message experience lives in `src/features/chat/ChatConversation.jsx`.
  */
@@ -19,7 +19,7 @@ export default function LoungeChatPanel({
   isStaff = false,
   initialPeerUserId = null,
   onClearInitialPeer,
-  /** Called with roomId when user taps a room — AppShell navigates to the full Chat tab. */
+  /** Called with roomId when user taps a room - AppShell navigates to the full Chat tab. */
   onOpenChatRoom,
 }) {
   const [tab, setTab] = useState('inbox')

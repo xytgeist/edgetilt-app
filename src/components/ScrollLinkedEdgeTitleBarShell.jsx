@@ -8,19 +8,19 @@ import { edgeLogoTitleBarClassName } from '../features/shell/titleBarLayout.js'
 import { setEdgeTitleBarReveal } from '../features/shell/edgeTitleBarRevealStore.js'
 
 /**
- * Fixed EDGE title bar + scroll-linked hide/show — same chrome and tuning as
+ * Fixed EDGE title bar + scroll-linked hide/show - same chrome and tuning as
  * `SocialFeed.jsx` / Guides (no composer coupling).
  *
- * @param {React.ReactNode} titleBarNavSlot — hamburger / shell menu (right).
- * @param {React.ReactNode} children — scrollable body (placed inside padded column).
- * @param {string} [contentClassName] — inner wrapper classes. Default adds horizontal padding + bottom inset for FAB / thumb clearance **including** `env(safe-area-inset-bottom)` inside the scroller (no dead strip under the scroll viewport).
- * @param {boolean} [fullWidth=false] — use full viewport width for column + fixed bar (e.g. Offers week landscape).
+ * @param {React.ReactNode} titleBarNavSlot - hamburger / shell menu (right).
+ * @param {React.ReactNode} children - scrollable body (placed inside padded column).
+ * @param {string} [contentClassName] - inner wrapper classes. Default adds horizontal padding + bottom inset for FAB / thumb clearance **including** `env(safe-area-inset-bottom)` inside the scroller (no dead strip under the scroll viewport).
+ * @param {boolean} [fullWidth=false] - use full viewport width for column + fixed bar (e.g. Offers week landscape).
  */
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
 
 export default function ScrollLinkedEdgeTitleBarShell({
   titleBarNavSlot = null,
-  /** Slot tool × in nav cluster — reserve logo width (matches `titleBarLayout.toolCloseVisible`). */
+  /** Slot tool × in nav cluster - reserve logo width (matches `titleBarLayout.toolCloseVisible`). */
   titleBarToolCloseVisible = false,
   /** Publish scroll-linked reveal for the portaled lounge dock on other tabs. */
   publishScrollReveal = true,

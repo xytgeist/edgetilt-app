@@ -1,4 +1,4 @@
-/** Seeded topic channels — must match `supabase/chat_phase1.sql` slugs. Subscriber-only in DB. */
+/** Seeded topic channels - must match `supabase/chat_phase1.sql` slugs. Subscriber-only in DB. */
 export const LOUNGE_CHAT_TOPIC_CHANNELS = [
   { slug: 'crypto', title: 'Crypto' },
   { slug: 'stonks', title: 'Stonks' },

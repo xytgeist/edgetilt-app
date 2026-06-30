@@ -16,7 +16,7 @@ import {
 import { SectionLabel, SettingsGroup, SettingsToggleRow } from './chatSettingsUi.jsx'
 
 /**
- * DM chat info — opened from the header avatar / name pill.
+ * DM chat info - opened from the header avatar / name pill.
  *
  * @param {{
  *   open: boolean,
@@ -168,7 +168,7 @@ export default function ChatDmInfoSheet({
     <>
       {createPortal(
         <div className="fixed inset-0 z-[95] flex flex-col bg-zinc-950" data-chat-feature>
-          {/* Fixed glass chrome — back + scroll-reveal title */}
+          {/* Fixed glass chrome - back + scroll-reveal title */}
           <div
             ref={topChromeRef}
             className="pointer-events-none absolute inset-x-0 top-0 z-20"
@@ -198,7 +198,7 @@ export default function ChatDmInfoSheet({
             </div>
           </div>
 
-          {/* Scroll body — content slides under fixed chrome + top fade */}
+          {/* Scroll body - content slides under fixed chrome + top fade */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <div
               className="chat-info-top-fade pointer-events-none absolute inset-x-0 top-0 z-10"

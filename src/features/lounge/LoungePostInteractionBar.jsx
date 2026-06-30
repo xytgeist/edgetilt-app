@@ -8,19 +8,19 @@ import {
 } from './loungeCommentGlyph.js'
 
 /**
- * Comment / repost / like / bookmark row — same behavior as the feed post row or post-detail sheet.
- * Layout: **equal gaps between the four primary glyphs** — `flex` + `justify-between` with each rail’s
+ * Comment / repost / like / bookmark row - same behavior as the feed post row or post-detail sheet.
+ * Layout: **equal gaps between the four primary glyphs** - `flex` + `justify-between` with each rail’s
  * **width fixed to its icon box**; counts hang at `left-full` and do not shift icons. Comment aligns
  * caption-left; bookmark aligns caption-right (full-width row matches the caption band).
  *
- * @param {'feed' | 'sheet' | 'comment'} [props.variant='feed'] — `feed`: portaled repost menus (feed card). `sheet`: post detail / lightbox row (larger glyphs). **`comment`**: under comment bodies — **smaller glyphs**, same repost behavior as `sheet` (inline menu).
- * @param {string} [props.repostMenuPortalClass='z-[48]'] — Tailwind z class for portaled repost menus (`feed` only). Use `z-[101]` above media lightboxes (`z-[100]`).
- * @param {() => void} [props.onCommentClick] — When set, runs instead of `onOpenComments` / `toggleInteraction('commented')` for the comment control.
- * @param {(id: string) => void | Promise<unknown>} [props.onToggleLike] — When set, like control calls this with `post.id` instead of `toggleInteraction(post.id, 'liked')` (e.g. feed comment likes).
- * @param {(id: string) => void | Promise<unknown>} [props.onToggleBookmark] — When set, bookmark control calls this with `post.id` instead of `toggleBookmark(post.id)`.
- * @param {(id: string) => boolean} [props.getBookmarked] — When set, used instead of `bookmarkedByPost[id]` to decide bookmark highlight.
- * @param {boolean} [props.repostActionBusy=false] — Disables repost menu actions (`sheet` only).
- * @param {() => void} [props.onShare] — When set, shows share control to the right of bookmark (e.g. Stream lightbox).
+ * @param {'feed' | 'sheet' | 'comment'} [props.variant='feed'] - `feed`: portaled repost menus (feed card). `sheet`: post detail / lightbox row (larger glyphs). **`comment`**: under comment bodies - **smaller glyphs**, same repost behavior as `sheet` (inline menu).
+ * @param {string} [props.repostMenuPortalClass='z-[48]'] - Tailwind z class for portaled repost menus (`feed` only). Use `z-[101]` above media lightboxes (`z-[100]`).
+ * @param {() => void} [props.onCommentClick] - When set, runs instead of `onOpenComments` / `toggleInteraction('commented')` for the comment control.
+ * @param {(id: string) => void | Promise<unknown>} [props.onToggleLike] - When set, like control calls this with `post.id` instead of `toggleInteraction(post.id, 'liked')` (e.g. feed comment likes).
+ * @param {(id: string) => void | Promise<unknown>} [props.onToggleBookmark] - When set, bookmark control calls this with `post.id` instead of `toggleBookmark(post.id)`.
+ * @param {(id: string) => boolean} [props.getBookmarked] - When set, used instead of `bookmarkedByPost[id]` to decide bookmark highlight.
+ * @param {boolean} [props.repostActionBusy=false] - Disables repost menu actions (`sheet` only).
+ * @param {() => void} [props.onShare] - When set, shows share control to the right of bookmark (e.g. Stream lightbox).
  */
 export default function LoungePostInteractionBar({
   post,
@@ -131,13 +131,13 @@ export default function LoungePostInteractionBar({
   const slotBookmark = isComment ? 22 : isFeed ? 24 : 26
   const railMinH = isComment ? 30 : isFeed ? 32 : 44
   const iconSz = isComment ? 'h-[20px] w-[20px]' : isFeed ? 'h-[22px] w-[22px]' : 'h-[24px] w-[24px]'
-  /** Bubble glyph sits low in the 20 viewBox — slight Y stretch so it matches the chip visually */
+  /** Bubble glyph sits low in the 20 viewBox - slight Y stretch so it matches the chip visually */
   const iconSzComment = isComment
     ? `h-[20px] w-[20px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
     : isFeed
       ? `h-[22px] w-[22px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
       : `h-[24px] w-[24px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
-  /** Bookmark path is inset in the 20 viewBox — slightly larger box than other stats for visual parity with the chip */
+  /** Bookmark path is inset in the 20 viewBox - slightly larger box than other stats for visual parity with the chip */
   const iconSzBookmark = isComment ? 'h-[22px] w-[22px]' : isFeed ? 'h-[24px] w-[24px]' : 'h-[26px] w-[26px]'
   /** Stat hit targets (padding); inner layout is glyph rail + absolutely positioned count. */
   const statFeedComment =

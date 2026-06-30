@@ -28,7 +28,7 @@ export const Z_APP_ALERT = 130
 export const APP_MODAL_OVERLAY_CLASS = `fixed inset-0 z-[${Z_APP_MODAL}] bg-black/60 backdrop-blur-sm flex items-end justify-center`
 
 /**
- * Scrollable sheet panel — max height clears EDGE title bar + safe-area top.
+ * Scrollable sheet panel - max height clears EDGE title bar + safe-area top.
  * Render outside ScrollLinkedEdgeTitleBarShell (sibling), not inside scroll content.
  */
 export const APP_MODAL_SHEET_PANEL_CLASS =

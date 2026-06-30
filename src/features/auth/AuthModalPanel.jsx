@@ -163,7 +163,7 @@ export default function AuthModalPanel({
     <div className="space-y-4">
       {verificationSuccess ? (
         <div className="p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm sm:text-base font-medium leading-relaxed">
-          ✅ Account verified — have fun!
+          ✅ Account verified - have fun!
         </div>
       ) : null}
       <AuthTabSwitcher value={authTab} onChange={onAuthTabChange} />

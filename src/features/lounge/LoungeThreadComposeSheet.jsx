@@ -75,7 +75,7 @@ function ThreadComposeAvatar({
 }
 
 /**
- * Full-screen thread composer — X-style per-part rows, keyboard-docked toolbar.
+ * Full-screen thread composer - X-style per-part rows, keyboard-docked toolbar.
  *
  * @param {object} props
  */
@@ -137,14 +137,14 @@ export default function LoungeThreadComposeSheet({
   const keyboardDockActiveRef = useRef(false)
   activePartIndexRef.current = activePartIndex
   const [toolbarHeightPx, setToolbarHeightPx] = useState(52)
-  /** Caption focus — drives tail-follow while typing; keyboard lift uses visualViewport whenever open. */
+  /** Caption focus - drives tail-follow while typing; keyboard lift uses visualViewport whenever open. */
   const [keyboardDockActive, setKeyboardDockActive] = useState(false)
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
   const { overlapPx: kbOverlapPx, targetPx: kbOverlapTargetPx } = useLoungeKeyboardOverlapPx(open, {
     smooth: LOUNGE_IOS,
     smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
   })
-  /** Footer snaps to live keyboard height — smoothed overlap lags and leaves the bar behind keys on reopen. */
+  /** Footer snaps to live keyboard height - smoothed overlap lags and leaves the bar behind keys on reopen. */
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
   keyboardDockActiveRef.current = keyboardDockActive

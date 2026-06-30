@@ -112,7 +112,7 @@ const followingDockTransform = loungeFollowingDockTransform()
 
 const followingArtStrokeWidth = loungeFollowingArtStrokeWidth(stroke.strokeWidth)
 
-/** From `src/assets/icons/lounge-following.svg` — off: grey person + cyan plus; on: all cyan fill. */
+/** From `src/assets/icons/lounge-following.svg` - off: grey person + cyan plus; on: all cyan fill. */
 function IconFollowing({ className, active = false }) {
   const personFill = active ? FOLLOWING_CYAN : 'currentColor'
   const plusFill = FOLLOWING_CYAN
@@ -149,9 +149,9 @@ const FALLBACK_SAFE_BOTTOM_PX = 40
  * `reveal` 1 = fully visible, 0 = slid off downward (paired with scroll-linked title hide).
  * Icon-only controls (no chrome around glyphs); active slot uses cyan icon color.
  *
- * @param {number} [matchTitleBarHeightPx=0] — When >0 (viewport dock), the icon band height comes from
+ * @param {number} [matchTitleBarHeightPx=0] - When >0 (viewport dock), the icon band height comes from
  *   `dockChromeHeightFromTitleBarPx` (see `src/utils/loungeDockChrome.js`); safe-area padding stays inside the same full-bleed frosted bar.
- * @param {'viewport' | 'sheet'} [layout='viewport'] — `sheet` pins to a full-screen sheet bottom (e.g. profile).
+ * @param {'viewport' | 'sheet'} [layout='viewport'] - `sheet` pins to a full-screen sheet bottom (e.g. profile).
  */
 export default function LoungeDockFooterBar({
   reveal = 1,
@@ -211,8 +211,8 @@ export default function LoungeDockFooterBar({
 
   const dockIconClass = 'h-8 w-8 shrink-0 translate-y-1 opacity-95'
   const followingLabel = followingFilterOn
-    ? 'Following feed on — show all posts'
-    : 'Following feed — show posts from people you follow'
+    ? 'Following feed on - show all posts'
+    : 'Following feed - show posts from people you follow'
   const dockIcons = (
     <>
       {dockBtn(false, onHome, 'Home', <IconHome className={dockIconClass} />)}

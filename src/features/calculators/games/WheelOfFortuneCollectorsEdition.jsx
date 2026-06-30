@@ -217,7 +217,7 @@ export default function WheelOfFortuneCollectorsEdition({
                   Solo {reel.shortLabel} weighted threshold ~{soloThreshold.toFixed(0)}× (
                   {soloThreshold * betCredits > 0
                     ? `${Math.round(soloThreshold * betCredits).toLocaleString()} cr`
-                    : '—'}{' '}
+                    : '-'}{' '}
                   at this bet)
                 </div>
               </div>
@@ -263,9 +263,9 @@ export default function WheelOfFortuneCollectorsEdition({
         <div className={`mt-5 rounded-2xl p-4 text-center font-bold ${verdictPillClass(weightedPlay)}`}>
           {verdictLabel(
             weightedPlay,
-            '✓ PLAY — weighted threshold met',
-            '~ Marginal — close to 45× weighted',
-            '✗ Wait — below 45× weighted threshold',
+            '✓ PLAY - weighted threshold met',
+            '~ Marginal - close to 45× weighted',
+            '✗ Wait - below 45× weighted threshold',
           )}
         </div>
       </div>

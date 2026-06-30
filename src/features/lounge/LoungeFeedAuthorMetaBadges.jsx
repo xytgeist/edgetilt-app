@@ -8,7 +8,7 @@ import {
 } from './loungeFeedAvatar.js'
 
 /**
- * Display name + staff/OG badges — same cluster, wrap nudges, and `feed` icon sizes as
+ * Display name + staff/OG badges - same cluster, wrap nudges, and `feed` icon sizes as
  * `LoungePostArticle` meta row (not `size="detail"` / embed sizing).
  */
 export default function LoungeFeedAuthorMetaBadges({

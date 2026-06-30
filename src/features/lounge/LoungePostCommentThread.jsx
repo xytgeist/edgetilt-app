@@ -47,7 +47,7 @@ import {
 /**
  * Meta row matches `LoungePostArticle`: name, badges, handle · time (left); ⋯ menu on the right.
  *
- * @param {boolean} navigable — Whole row opens the comment thread (not nested interactive targets except avatar / menu / interaction bar).
+ * @param {boolean} navigable - Whole row opens the comment thread (not nested interactive targets except avatar / menu / interaction bar).
  */
 export function LoungeCommentCard({
   comment,
@@ -420,24 +420,24 @@ export function LoungeCommentCard({
 }
 
 /**
- * Post detail comments — tap any comment to open its own comment-detail screen (OP + ancestry + replies).
+ * Post detail comments - tap any comment to open its own comment-detail screen (OP + ancestry + replies).
  *
  * **`variant === 'post'`:** Top-level roots only; all replies (including OP) open via comment detail.
  *
  * @param {'post' | 'commentDetailReplies'} variant
- * @param {string | null} focusCommentId — Required when `variant === 'commentDetailReplies'`.
- * @param {string | null} [postAuthorUserId] — Post author's `user_id`; used for sort + orphan OP root rows.
+ * @param {string | null} focusCommentId - Required when `variant === 'commentDetailReplies'`.
+ * @param {string | null} [postAuthorUserId] - Post author's `user_id`; used for sort + orphan OP root rows.
  */
 export default function LoungePostCommentThread({
   comments,
-  /** Post id — resets stable sort when the detail post changes. */
+  /** Post id - resets stable sort when the detail post changes. */
   postId = null,
   postAgeLabel,
   /** Same helpers as feed posts (`comment` has `author_profile` like a post). */
   displayNameFor,
   handleFor,
   variant = 'post',
-  /** Post owner's user id — used for ranked sort buckets and orphan OP root rows. */
+  /** Post owner's user id - used for ranked sort buckets and orphan OP root rows. */
   postAuthorUserId = null,
   focusCommentId = null,
   loungeReadOnly = false,
@@ -476,7 +476,7 @@ export default function LoungePostCommentThread({
   commentEditMediaSlot = null,
   commentEditFieldRef = null,
   commentEditVideoPostBlocked = false,
-  /** Comment ids the signed-in viewer just posted — shown at top of their list only (chronological for others). */
+  /** Comment ids the signed-in viewer just posted - shown at top of their list only (chronological for others). */
   viewerPinnedCommentIds = [],
   /** First-level sort on post detail (`ranked` | `popular` | `chronological` | `likes`). */
   rootCommentSortMode = LOUNGE_DETAIL_COMMENT_SORT.RANKED,
@@ -547,7 +547,7 @@ export default function LoungePostCommentThread({
 
   const rootIdSet = useMemo(() => new Set(rootsSorted.map((r) => r.id).filter(Boolean)), [rootsSorted])
 
-  /** OP replies to a non-root parent — show as extra root rows so nothing disappears. */
+  /** OP replies to a non-root parent - show as extra root rows so nothing disappears. */
   const orphanOpAuthorReplies = useMemo(() => {
     if (!postAuthorUserId) return []
     return [...(comments || [])]

@@ -1,5 +1,5 @@
 /**
- * Default one-line +EV threshold when `guides.card_ev_threshold` is null — and helpers for manifests.
+ * Default one-line +EV threshold when `guides.card_ev_threshold` is null - and helpers for manifests.
  * Tune per slug in Supabase after sync or in `Slots/<slug>/card.meta.json` → guide_seed.card_ev_threshold.
  */
 
@@ -9,10 +9,10 @@ export const TYPE_DEFAULT_CARD_EV_THRESHOLD = {
   'Lock Game': 'Lock package worth the buy-in',
   Accumulator: 'Progress far along vs price to finish',
   Hybrid: 'Best axis lines up cheap (meters / prizes)',
-  Other: 'Rules on glass favor you — verify live',
+  Other: 'Rules on glass favor you - verify live',
 }
 
-/** Curated overrides — short operator phrases. */
+/** Curated overrides - short operator phrases. */
 export const SLUG_CARD_EV_THRESHOLD = {
   'buffalo-link': 'Play any 1400+',
   'lightning-buffalo-link': 'Play any 1400+',
@@ -23,7 +23,7 @@ export const SLUG_CARD_EV_THRESHOLD = {
   'legend-of-the-phoenix': 'Red 12 / Green 13 / Blue 14',
 }
 
-/** Year-only when documented / widely cited — expand as you confirm. */
+/** Year-only when documented / widely cited - expand as you confirm. */
 export const SLUG_RELEASE_YEAR = {
   'plants-vs-zombies-3d': 2016,
   'legend-of-the-phoenix': 2022,

@@ -11,8 +11,8 @@ export const LOUNGE_TITLE_SCROLL_MIN_STEP_PX = 0.35
 /**
  * @param {object} opts
  * @param {number} opts.scrollTop
- * @param {number} opts.effectiveDelta — clamped scroll delta (signed)
- * @param {import('react').MutableRefObject<number>} opts.revealRef — current reveal in [0,1]
+ * @param {number} opts.effectiveDelta - clamped scroll delta (signed)
+ * @param {import('react').MutableRefObject<number>} opts.revealRef - current reveal in [0,1]
  * @returns {{ reveal: number, changed: boolean }}
  */
 export function loungeTitleRevealAfterScrollStep({ scrollTop, effectiveDelta, revealRef }) {

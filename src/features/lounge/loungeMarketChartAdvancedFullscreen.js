@@ -6,7 +6,7 @@ export function isMarketChartPortraitViewport() {
   return window.innerHeight > window.innerWidth
 }
 
-/** Fullscreen shell — always upright in viewport (no CSS rotate; keeps LWC canvas sharp). */
+/** Fullscreen shell - always upright in viewport (no CSS rotate; keeps LWC canvas sharp). */
 export function marketChartAdvancedFullscreenShellStyle() {
   return {
     width: '100%',
@@ -26,7 +26,7 @@ export function marketChartAdvancedPlotWrapStyle() {
 
 /**
  * Request landscape while the open-Advanced user gesture is still active.
- * Must be called synchronously from the Advanced button click — not from useEffect.
+ * Must be called synchronously from the Advanced button click - not from useEffect.
  * @param {HTMLElement | null | undefined} [hostEl] optional fullscreen root for requestFullscreen
  * @returns {Promise<boolean>} true when landscape lock likely succeeded
  */
@@ -37,7 +37,7 @@ export async function lockMarketChartLandscapeOrientation(hostEl) {
       await el.requestFullscreen()
     }
   } catch {
-    /* Fullscreen optional — required on some Android builds before orientation.lock */
+    /* Fullscreen optional - required on some Android builds before orientation.lock */
   }
 
   try {
@@ -47,7 +47,7 @@ export async function lockMarketChartLandscapeOrientation(hostEl) {
       return !isMarketChartPortraitViewport()
     }
   } catch {
-    /* iOS Safari tab — lock unsupported; user rotates device manually */
+    /* iOS Safari tab - lock unsupported; user rotates device manually */
   }
 
   return !isMarketChartPortraitViewport()

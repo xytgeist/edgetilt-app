@@ -1,6 +1,6 @@
 /**
  * Light-mode only (via CSS): scaled + blurred copy of the image fills letterbox
- * areas behind the sharp foreground image — "ambient background" / blur fill.
+ * areas behind the sharp foreground image - "ambient background" / blur fill.
  */
 export default function MediaLightboxAmbientBackdrop({ src }) {
   if (!src) return null

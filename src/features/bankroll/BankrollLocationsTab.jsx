@@ -14,7 +14,7 @@ import { Line, Doughnut } from 'react-chartjs-2'
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, ArcElement, Tooltip, Filler)
 
 function fmt$(n) {
-  if (n == null || isNaN(n)) return '—'
+  if (n == null || isNaN(n)) return '-'
   const abs = Math.abs(n)
   const str = abs >= 10000
     ? '$' + Math.round(abs).toLocaleString()
@@ -66,7 +66,7 @@ function LocationDetailModal({ location, onClose }) {
   const completed = location.sessions.filter(s => s.end_amount != null)
     .sort((a, b) => new Date(a.start_at) - new Date(b.start_at))
 
-  // Cumulative P&L line — per-session results for point + segment coloring
+  // Cumulative P&L line - per-session results for point + segment coloring
   const lineLabels = completed.map((_, i) => `#${i + 1}`)
   const sessionResults = []
   let running = 0
@@ -204,8 +204,8 @@ function LocationDetailModal({ location, onClose }) {
         {/* P&L summary */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <MiniStatCard label="Total P&L" value={`${totalPL >= 0 ? '+' : ''}${fmt$(totalPL)}`} positive={totalPL >= 0} />
-          <MiniStatCard label="Hourly" value={location.hourlyRate != null ? `${location.hourlyRate >= 0 ? '+' : ''}${fmt$(location.hourlyRate)}/hr` : '—'} positive={(location.hourlyRate ?? 0) >= 0} />
-          <MiniStatCard label="Win %" value={location.winPct != null ? `${location.winPct.toFixed(0)}%` : '—'} positive={(location.winPct ?? 0) >= 50} />
+          <MiniStatCard label="Hourly" value={location.hourlyRate != null ? `${location.hourlyRate >= 0 ? '+' : ''}${fmt$(location.hourlyRate)}/hr` : '-'} positive={(location.hourlyRate ?? 0) >= 0} />
+          <MiniStatCard label="Win %" value={location.winPct != null ? `${location.winPct.toFixed(0)}%` : '-'} positive={(location.winPct ?? 0) >= 50} />
         </div>
 
         {/* Line chart */}

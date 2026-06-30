@@ -98,7 +98,7 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
 
   /**
    * Feed-wide sound gesture chain (Android/desktop only).
-   * Apple WebKit uses per-tile unmute in LoungePostStreamVideo — handoff unmute is blocked there.
+   * Apple WebKit uses per-tile unmute in LoungePostStreamVideo - handoff unmute is blocked there.
    */
   useEffect(() => {
     const wanted = feedInlineSoundUnmuted && !feedInlineSoundExplicitlyMuted

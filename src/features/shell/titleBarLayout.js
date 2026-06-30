@@ -1,5 +1,5 @@
 /**
- * Logo max-width for EDGE title bars — reserve space for right-side chrome.
+ * Logo max-width for EDGE title bars - reserve space for right-side chrome.
  * @param {number} quickLinkCount 0–2
  * @param {{ panelCloseVisible?: boolean, toolCloseVisible?: boolean }} [opts]
  *   Lounge dock panels and slot tool screens add a × close button after the nav slot.

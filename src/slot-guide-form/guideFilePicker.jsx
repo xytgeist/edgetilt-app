@@ -31,7 +31,7 @@ function lockShellHeight() {
 }
 
 /**
- * One hidden file input on document.body — keeps native picker out of the form scroll tree.
+ * One hidden file input on document.body - keeps native picker out of the form scroll tree.
  */
 export function useGuideFilePicker() {
   const inputRef = useRef(null)

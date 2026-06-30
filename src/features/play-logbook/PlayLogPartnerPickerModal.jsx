@@ -352,7 +352,7 @@ export default function PlayLogPartnerPickerModal({
               <p className="text-zinc-500 text-sm text-center">
                 {searchTrimmed
                   ? 'No matches in your network.'
-                  : 'No followers or following yet — type a name to add a guest.'}
+                  : 'No followers or following yet - type a name to add a guest.'}
               </p>
             </div>
           ) : (

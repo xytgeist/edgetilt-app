@@ -39,8 +39,8 @@ export async function fetchLoungeFollowingAuthorIds(supabaseClient, viewerUserId
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {LoungeFeedScope} scope
- * @param {string[] | null} followingAuthorIds — set when `scope === 'following'`
- * @param {string[] | null | undefined} [excludedCategorySlugs] — unchecked pills; hide post only when every pill is excluded
+ * @param {string[] | null} followingAuthorIds - set when `scope === 'following'`
+ * @param {string[] | null | undefined} [excludedCategorySlugs] - unchecked pills; hide post only when every pill is excluded
  */
 export function loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds, excludedCategorySlugs) {
   let q = supabaseClient
@@ -92,7 +92,7 @@ export function loungeFeedPageRpcQuery(supabaseClient, opts = {}) {
   })
 }
 
-/** @deprecated Use loungeFeedPageRpcQuery — kept for callers migrating incrementally. */
+/** @deprecated Use loungeFeedPageRpcQuery - kept for callers migrating incrementally. */
 export function loungeFeedPageQuery(supabaseClient, scope, followingAuthorIds, limit) {
   return loungeFeedPageRpcQuery(supabaseClient, {
     sort: LOUNGE_FEED_SORT.LATEST,
@@ -103,7 +103,7 @@ export function loungeFeedPageQuery(supabaseClient, scope, followingAuthorIds, l
   })
 }
 
-/** @deprecated Use loungeFeedPageRpcQuery — kept for callers migrating incrementally. */
+/** @deprecated Use loungeFeedPageRpcQuery - kept for callers migrating incrementally. */
 export function loungeFeedPageQueryAfterCursor(supabaseClient, scope, followingAuthorIds, cursor, limit) {
   return loungeFeedPageRpcQuery(supabaseClient, {
     sort: LOUNGE_FEED_SORT.LATEST,

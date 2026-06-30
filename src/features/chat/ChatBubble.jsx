@@ -89,24 +89,24 @@ function computeLayout(rect, isMine, { isDeleted = false, enableStar = false, en
   const menuBelowFits = menuTop + MENU_H <= vh - SAFE_BOTTOM
 
   if (pillAboveFits && menuBelowFits) {
-    // Default: pill above bubble, menu below — bubble separates them.
+    // Default: pill above bubble, menu below - bubble separates them.
   } else if (pillAboveFits && !menuBelowFits) {
-    // Not enough room below — stack menu above pill.
+    // Not enough room below - stack menu above pill.
     menuTop = pillTop - MENU_H - LAYOUT_GAP
     if (menuTop < SAFE_TOP) {
-      // Still tight — stack both below bubble.
+      // Still tight - stack both below bubble.
       pillTop = rect.bottom + LAYOUT_GAP
       menuTop = pillTop + PILL_H + LAYOUT_GAP
     }
   } else if (!pillAboveFits && menuBelowFits) {
-    // Not enough room above — pill below bubble, menu above bubble.
+    // Not enough room above - pill below bubble, menu above bubble.
     pillTop = rect.bottom + LAYOUT_GAP
     menuTop = rect.top - MENU_H - LAYOUT_GAP
     if (menuTop < SAFE_TOP) {
       menuTop = pillTop + PILL_H + LAYOUT_GAP
     }
   } else {
-    // Very tight — stack below bubble: bubble → pill → menu.
+    // Very tight - stack below bubble: bubble → pill → menu.
     pillTop = rect.bottom + LAYOUT_GAP
     menuTop = pillTop + PILL_H + LAYOUT_GAP
     if (menuTop + MENU_H > vh - SAFE_BOTTOM) {
@@ -130,7 +130,7 @@ function computeLayout(rect, isMine, { isDeleted = false, enableStar = false, en
   pillTop = Math.max(SAFE_TOP, Math.min(pillTop, vh - PILL_H - SAFE_BOTTOM))
   menuTop = Math.max(SAFE_TOP, Math.min(menuTop, vh - MENU_H - SAFE_BOTTOM))
 
-  // Re-check after clamp — push menu away from pill if clamp caused collision.
+  // Re-check after clamp - push menu away from pill if clamp caused collision.
   if (menuTop < pillTop + PILL_H + LAYOUT_GAP && menuTop + MENU_H > pillTop - LAYOUT_GAP) {
     const stackBelow = rect.top + rect.height / 2 > vh / 2
     if (stackBelow) {
@@ -222,7 +222,7 @@ export default function ChatBubble({
   const [fullPickerOpen, setFullPickerOpen] = useState(false)
   const [bubbleRect, setBubbleRect]         = useState(/** @type {DOMRect | null} */ (null))
   // Start expanded immediately for media/link-preview/multi-line so the bubble
-  // never resizes on mount — only single-line plain-text starts as a pill.
+  // never resizes on mount - only single-line plain-text starts as a pill.
   // Also start expanded when _finalizingMedia so in-flight uploads never collapse the bubble.
   const [compactBubble, setCompactBubble] = useState(() => {
     if (message.image_urls?.length || message.stream_video_uid || message.video_url || message._finalizingMedia) return false
@@ -238,7 +238,7 @@ export default function ChatBubble({
   const imageUrlsEarly = Array.isArray(message.image_urls) ? message.image_urls.filter(Boolean) : []
   const displayBody    = bodyTextWithLinkPreview(message.body, linkPreview)
   const showBodyText   = Boolean(displayBody)
-  /** URL-only message with a card — skip the empty text bubble (iMessage shows just the card). */
+  /** URL-only message with a card - skip the empty text bubble (iMessage shows just the card). */
   const isLinkPreviewOnly =
     !isDeleted &&
     linkPreview &&
@@ -335,7 +335,7 @@ export default function ChatBubble({
 
   // iOS Safari: passive touchstart (no preventDefault = scroll stays working).
   // Long-press timer drives menu open. Selection is cleared by the selectionchange
-  // listener on the chat container — not here.
+  // listener on the chat container - not here.
   useEffect(() => {
     if (!IS_IOS) return
     const el = bubbleRef.current
@@ -359,7 +359,7 @@ export default function ChatBubble({
 
     const onTouchMove = (e) => {
       if (e.touches.length !== 1) return
-      // Clear selection on every micro-movement — iOS triggers selection at ~300ms
+      // Clear selection on every micro-movement - iOS triggers selection at ~300ms
       // with even 1-2px of movement, before our long-press timer fires.
       window.getSelection()?.removeAllRanges()
       if (cancelled) return
@@ -503,7 +503,7 @@ export default function ChatBubble({
     return () => ro.disconnect()
   }, [message.body, hasMedia, isLinkPreviewOnly, linkPreviewInBubble, isFinalizingMedia])
 
-  // Floating menu layout — computed fresh each render so it tracks the latest rect
+  // Floating menu layout - computed fresh each render so it tracks the latest rect
   const layout = bubbleRect ? computeLayout(bubbleRect, isMine, { isDeleted, enableStar, enablePin }) : null
 
   const openViewer = useCallback((idx) => setMediaViewerIndex(idx), [])
@@ -520,7 +520,7 @@ export default function ChatBubble({
       }}
     >
       <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-        {/* Avatar — only for others' messages; hidden in DMs; spacer on continuations */}
+        {/* Avatar - only for others' messages; hidden in DMs; spacer on continuations */}
         {!isMine && !hideSenderInfo && (
           <div className="shrink-0 self-end mb-1">
             {isGroupEnd ? (
@@ -546,12 +546,12 @@ export default function ChatBubble({
             isSingleVideoOnly || widenColumnForYoutube ? CHAT_MESSAGE_COLUMN_WIDTH_CLASS : 'max-w-[78%]'
           }`}
         >
-          {/* Sender name — others only; first in run only; hidden in DMs */}
+          {/* Sender name - others only; first in run only; hidden in DMs */}
           {!isMine && !hideSenderInfo && isGroupStart && (
             <div className="px-1 text-[11px] font-semibold text-zinc-400">{senderLabel}</div>
           )}
 
-          {/* Twitter-style reply pill — compact quoted bubble above the reply */}
+          {/* Twitter-style reply pill - compact quoted bubble above the reply */}
           {!isDeleted && message.reply_to_message_id && message.reply_to_preview && (() => {
             const isQuoteFromMe = message.reply_to_sender_id != null
               ? message.reply_to_sender_id === viewerUserId
@@ -574,7 +574,7 @@ export default function ChatBubble({
             )
           })()}
 
-          {/* Text/media bubble — omitted when the message is only a URL and we show a link card */}
+          {/* Text/media bubble - omitted when the message is only a URL and we show a link card */}
           {showTextBubble ? (
           <div
             ref={isLinkPreviewOnly ? undefined : bubbleRef}
@@ -684,14 +684,14 @@ export default function ChatBubble({
             </div>
           ) : null}
 
-          {/* Starred indicator — small amber star under the trailing bubble corner */}
+          {/* Starred indicator - small amber star under the trailing bubble corner */}
           {isStarred && !isDeleted && (
             <div className={`-mt-1 flex select-none pointer-events-none ${isMine ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
               <span className="text-[15px] leading-none text-amber-400" style={{ filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.7))' }} aria-label="Starred">★</span>
             </div>
           )}
 
-          {/* Reaction pill — combined, overlaps bubble bottom */}
+          {/* Reaction pill - combined, overlaps bubble bottom */}
           {reactions.length > 0 && (() => {
             const totalCount = reactions.reduce((sum, r) => sum + r.count, 0)
             const sorted = [...reactions].sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji))
@@ -741,7 +741,7 @@ export default function ChatBubble({
         </div>
       </div>
 
-      {/* Timestamp — hidden to the right, revealed when the user swipes the message list left */}
+      {/* Timestamp - hidden to the right, revealed when the user swipes the message list left */}
       {formattedTime ? (
         <div
           className="pointer-events-none absolute bottom-0 select-none text-right text-[10px] text-zinc-500"
@@ -755,7 +755,7 @@ export default function ChatBubble({
       {/* ── Floating long-press menus (via portal so they escape any transform containers) ── */}
       {menuOpen && layout && createPortal(
         <>
-          {/* Scrim — catches taps to dismiss */}
+          {/* Scrim - catches taps to dismiss */}
           <div
             className="fixed inset-0 z-[108] bg-black/30"
             onClick={closeMenu}
@@ -972,7 +972,7 @@ const GRID_MAX_VISIBLE = 4
 /**
  * Displays an image while seamlessly transitioning from a blob preview URL to
  * a permanent URL (R2, CF thumbnails, etc.).  The blob stays visible until the
- * remote image has fully loaded in a hidden Image(), then the src swaps — zero
+ * remote image has fully loaded in a hidden Image(), then the src swaps - zero
  * blank flash.  The blob URL is revoked only after a successful swap.
  *
  * On load error the swap does NOT happen; instead we retry with exponential
@@ -993,7 +993,7 @@ function ChatMediaImage({ src, className }) {
       return
     }
 
-    // Remote URL — always preload off-screen; retry on failure.
+    // Remote URL - always preload off-screen; retry on failure.
     // We deliberately skip the `src === displaySrcRef.current` early-exit for remote
     // URLs so that the initial CF poster URL also gets the retry treatment (the video
     // may still be encoding when the bubble is first mounted from a fresh server load).
@@ -1022,7 +1022,7 @@ function ChatMediaImage({ src, className }) {
           const delay = Math.min(2000 * Math.pow(2, attempt - 1), 30_000)
           retryTimer = setTimeout(tryLoad, delay)
         }
-        // On max retries keep current displaySrc — never show a broken image.
+        // On max retries keep current displaySrc - never show a broken image.
       }
       img.src = src
     }
@@ -1039,7 +1039,7 @@ function ChatMediaImage({ src, className }) {
 }
 
 /**
- * Enter true OS fullscreen for an R2 MP4 `<video>` — bypasses the iOS PWA white
+ * Enter true OS fullscreen for an R2 MP4 `<video>` - bypasses the iOS PWA white
  * status bar entirely. Must run inside the tap gesture with metadata preloaded;
  * returns false (→ fall back to the in-app lightbox) when not possible.
  */

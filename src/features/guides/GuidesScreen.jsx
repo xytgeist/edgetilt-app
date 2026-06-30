@@ -83,11 +83,11 @@ const ACTIVE_SUPABASE_HOST = (() => {
 })()
 
 function formatGuideDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   try {
     return format(typeof iso === 'string' ? parseISO(iso) : iso, 'MMM d, yyyy')
   } catch {
-    return '—'
+    return '-'
   }
 }
 
@@ -266,7 +266,7 @@ function dedupeMustHitByAliasRows(rows) {
 
 function mergeLocalGuideDemos(rows) {
   const base = dedupeMustHitByAliasRows([...(rows || [])])
-  /** Suppress a bundled demo if *either* the linked machine slug or this guide's `guides.slug` is present — avoids doubling when FK join fails or slug lives only on the guide row. */
+  /** Suppress a bundled demo if *either* the linked machine slug or this guide's `guides.slug` is present - avoids doubling when FK join fails or slug lives only on the guide row. */
   const slugs = new Set()
   for (const r of base) {
     const ms = machineForGuide(r)?.slug
@@ -466,7 +466,7 @@ function mergeLocalGuideDemos(rows) {
   return merged
 }
 
-/** One-line +EV threshold — DB `guides.card_ev_threshold` (legacy `card_gist`), else catalog default from slug/type. */
+/** One-line +EV threshold - DB `guides.card_ev_threshold` (legacy `card_gist`), else catalog default from slug/type. */
 function cardEvThresholdForRow(row) {
   const fromNew = typeof row.card_ev_threshold === 'string' ? row.card_ev_threshold.trim() : ''
   if (fromNew) return fromNew
@@ -477,9 +477,9 @@ function cardEvThresholdForRow(row) {
   return TYPE_LINE_FALLBACK_GUIDE_HINT
 }
 
-const TYPE_LINE_FALLBACK_GUIDE_HINT = 'Verify +EV on the glass — open guide'
+const TYPE_LINE_FALLBACK_GUIDE_HINT = 'Verify +EV on the glass - open guide'
 
-/** Keep `guide:` links — react-markdown’s default URL transform strips unknown schemes, leaving `href=""` (clicks jump to `/` / home). */
+/** Keep `guide:` links - react-markdown’s default URL transform strips unknown schemes, leaving `href=""` (clicks jump to `/` / home). */
 function guideMarkdownUrlTransform(url) {
   const u = String(url ?? '')
   if (/^guide:/i.test(u)) return u
@@ -542,7 +542,7 @@ function GuideSkinCard({ targetSlug, label, allGuides, onOpen }) {
       ].join(' ')}
       style={accent.cssVars}
     >
-      {/* hero — gradient when no DB thumbnail; no repo fallback */}
+      {/* hero - gradient when no DB thumbnail; no repo fallback */}
       <div className={`relative ${heroGrad} min-h-[6rem]`}>
         {src ? (
           <img
@@ -655,12 +655,12 @@ function makeGuideMarkdownComponents(accent, { onOpenGuideSlug, allGuides } = {}
 
 function volatilityLabel(row) {
   const m = machineForGuide(row)
-  if (!m) return '—'
+  if (!m) return '-'
   const viRaw = m.volatility_index
   const vi = typeof viRaw === 'string' ? viRaw.trim() : viRaw
   if (vi != null && vi !== '') return typeof viRaw === 'string' ? vi : String(vi)
   if (m.nerf_risk && m.difficulty) return `${m.difficulty} play / ${m.nerf_risk} nerf risk`
-  return m.difficulty || m.nerf_risk || '—'
+  return m.difficulty || m.nerf_risk || '-'
 }
 
 function machinePopularity(m) {
@@ -670,9 +670,9 @@ function machinePopularity(m) {
 
 function popularityLabel(row) {
   const m = machineForGuide(row)
-  if (!m) return '—'
+  if (!m) return '-'
   const pop = machinePopularity(m)
-  return pop || '—'
+  return pop || '-'
 }
 
 /** 1–5 ⚡ from volatility copy (custom index, label, or machine fields). */
@@ -856,7 +856,7 @@ function GuideEvThresholdPanel({ line, accent }) {
   )
 }
 
-/** Supabase may return `machines` as an object or an array depending on FK metadata — pick the embed that matches `guides.slug` or carries `volatility_index`. */
+/** Supabase may return `machines` as an object or an array depending on FK metadata - pick the embed that matches `guides.slug` or carries `volatility_index`. */
 function machineForGuide(row) {
   const m = row?.machines
   if (m == null) return null
@@ -1167,7 +1167,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
               Posts to the <span className="text-cyan-300 font-semibold">Lounge</span> feed with the guide card attached.
             </div>
             <div className="mt-3 rounded-2xl bg-zinc-800/80 px-3 py-2 text-sm text-zinc-100 font-semibold">{gameTitle}</div>
-            {/* Locked AP Slots pill — auto-applied, not removable */}
+            {/* Locked AP Slots pill - auto-applied, not removable */}
             <div className="mt-2 flex items-center gap-1.5">
               <span
                 className={`lounge-category-pill inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${loungePostCategoryPillChipClass('ap_slots', 'display')}`}
@@ -1926,7 +1926,7 @@ export default function GuidesScreen({
                                 {m?.name || row.title}
                               </h2>
                               <div className={`${accent.subtitle} text-[11px] font-semibold mt-0.5`}>
-                                {m?.manufacturer || '—'}
+                                {m?.manufacturer || '-'}
                               </div>
                             </div>
                             <div className="shrink-0 text-right leading-tight pb-px">
@@ -1934,7 +1934,7 @@ export default function GuidesScreen({
                                 Released
                               </div>
                               <div className="text-[11px] font-bold tabular-nums text-[#e4e4e7] drop-shadow-md">
-                                {m?.release_year != null ? m.release_year : '—'}
+                                {m?.release_year != null ? m.release_year : '-'}
                               </div>
                             </div>
                           </div>
@@ -1975,7 +1975,7 @@ export default function GuidesScreen({
                         </div>
                         <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
                           <div className="text-zinc-500 font-semibold uppercase tracking-wide">Type</div>
-                          <div className="text-zinc-200 font-semibold mt-0.5 leading-snug">{m?.type || '—'}</div>
+                          <div className="text-zinc-200 font-semibold mt-0.5 leading-snug">{m?.type || '-'}</div>
                         </div>
                         {row.known_titles_line ? (
                           <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">

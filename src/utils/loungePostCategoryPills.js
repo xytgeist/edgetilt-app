@@ -37,7 +37,7 @@ const LOUNGE_POST_CATEGORY_PILL_LEGACY_SLUG_MAP = Object.freeze({
 
 const ALLOWED = new Set(LOUNGE_POST_CATEGORY_PILL_SLUGS)
 
-/** Tailwind chip classes per slug — shared by feed/detail row + compose picker. */
+/** Tailwind chip classes per slug - shared by feed/detail row + compose picker. */
 const LOUNGE_POST_CATEGORY_PILL_CHIP_PALETTE = Object.freeze({
   ap_slots: {
     display: 'border-amber-500/35 bg-amber-500/10 text-amber-300',
@@ -164,7 +164,7 @@ export function normalizeLoungePostCategoryPills(value) {
   return out
 }
 
-/** Profile interests — same slug rules as posts, no cardinality cap. */
+/** Profile interests - same slug rules as posts, no cardinality cap. */
 export function normalizeLoungeProfileCategoryPills(value) {
   const raw = Array.isArray(value) ? value : []
   const out = []
@@ -188,7 +188,7 @@ export function feedPostCategoryPills(row) {
   return normalizeLoungePostCategoryPills(row?.category_pills)
 }
 
-/** Pills to render on feed/detail cards — includes plain-repost fallback to OP when row copy is empty. */
+/** Pills to render on feed/detail cards - includes plain-repost fallback to OP when row copy is empty. */
 export function displayPostCategoryPills(post) {
   if (!post) return []
   const own = feedPostCategoryPills(post)

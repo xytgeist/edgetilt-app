@@ -28,7 +28,7 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
   const [applyBusy, setApplyBusy] = useState(false)
   /** Last distance between two touches; incremental pinch zoom. */
   const pinchRef = useRef(null)
-  /** True while two fingers on surface — blocks pointer-drag pan so pinch does not fight pan. */
+  /** True while two fingers on surface - blocks pointer-drag pan so pinch does not fight pan. */
   const pinchLockRef = useRef(false)
   const paint = useCallback(() => {
     const canvas = canvasRef.current

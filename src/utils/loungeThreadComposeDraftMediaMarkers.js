@@ -1,6 +1,6 @@
 import { LOUNGE_CAPTION_MAX } from './loungeCommentLimits.js'
 
-/** Visible draft reminder line — stripped when matching media is re-attached. */
+/** Visible draft reminder line - stripped when matching media is re-attached. */
 export const THREAD_DRAFT_MEDIA_MARKER_PREFIX = '📎 '
 
 function basenameFromUrl(url) {

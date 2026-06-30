@@ -539,7 +539,7 @@ export default function OfferFormModal({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[16px] font-semibold text-cyan-100">
-                      {uploading ? 'Importing photos…' : hasSlotsEdge ? 'Import from photo(s)' : 'Import from photo(s) — Slots Edge'}
+                      {uploading ? 'Importing photos…' : hasSlotsEdge ? 'Import from photo(s)' : 'Import from photo(s) - Slots Edge'}
                     </span>
                     <span className="mt-0.5 block text-[13px] leading-snug text-cyan-200/75">
                       {hasSlotsEdge

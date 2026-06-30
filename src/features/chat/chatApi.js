@@ -235,7 +235,7 @@ export function chatDeleteGroup(supabase, roomId) {
  * Mute push notifications for a room.
  * @param {SupabaseClient} supabase
  * @param {string} roomId
- * @param {number} [muteHours=8] — 0 = indefinite
+ * @param {number} [muteHours=8] - 0 = indefinite
  */
 export function chatMuteRoom(supabase, roomId, muteHours = 8) {
   return loungeChatInvoke(supabase, { action: 'mute_room', room_id: roomId, mute_hours: muteHours })
@@ -396,7 +396,7 @@ export function chatRemoveGroupMember(supabase, roomId, targetUserId) {
   })
 }
 
-/** @param {number} muteMinutes — 0 = permanent */
+/** @param {number} muteMinutes - 0 = permanent */
 export function chatMuteGroupMember(supabase, roomId, targetUserId, muteMinutes) {
   return loungeChatInvoke(supabase, {
     action: 'mute_group_member',
@@ -445,7 +445,7 @@ export async function chatGroupHeaderMembers(supabase, roomId) {
 }
 
 /**
- * First 3 members for stacked avatar — falls back to full member list RPC if header RPC is missing.
+ * First 3 members for stacked avatar - falls back to full member list RPC if header RPC is missing.
  * @returns {Promise<{ members: any[], error: string | null }>}
  */
 export async function chatGroupHeaderMembersResolved(supabase, roomId) {

@@ -4,7 +4,7 @@ import { parseCsvImport } from '../../utils/bankrollCsvImport.js'
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function fmt$(n) {
-  if (n == null || isNaN(n)) return '—'
+  if (n == null || isNaN(n)) return '-'
   const abs = Math.abs(n)
   const str = abs >= 10000
     ? '$' + Math.round(abs).toLocaleString()
@@ -271,7 +271,7 @@ export default function BankrollImportSheet({ supabaseClient, userId, completedS
                 {duplicates.length > 0 && (
                   <SkipBadge
                     count={duplicates.length}
-                    label="already exist — will be skipped"
+                    label="already exist - will be skipped"
                   />
                 )}
               </div>
@@ -304,7 +304,7 @@ export default function BankrollImportSheet({ supabaseClient, userId, completedS
                     )}
                   </div>
                   <span className="text-zinc-300 text-sm">
-                    Slots sessions only — skip poker / table games
+                    Slots sessions only - skip poker / table games
                     {slotsOnly && parseResult.sessions.filter(s => s.detectedGameType === 'tables').length > 0 && (
                       <span className="text-zinc-500 ml-1.5">
                         ({parseResult.sessions.filter(s => s.detectedGameType === 'tables').length} skipped)

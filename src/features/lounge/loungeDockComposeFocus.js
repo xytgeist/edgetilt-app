@@ -39,7 +39,7 @@ export function focusLoungeComposerCaption(getTextarea, opts = {}) {
 }
 
 /**
- * Try to raise the software keyboard — must run synchronously inside a user-activation handler
+ * Try to raise the software keyboard - must run synchronously inside a user-activation handler
  * (e.g. file input `change` right after the user taps Add in Photos). Delayed `focus()` only moves
  * the caret; iOS will not show the keyboard without a fresh tap.
  *
@@ -127,7 +127,7 @@ export function loungeComposerToolbarKeepFocusHandlers(onActivate) {
 }
 
 /**
- * Focus the Lounge composer textarea after expand — retries cover panel close + lazy layout.
+ * Focus the Lounge composer textarea after expand - retries cover panel close + lazy layout.
  *
  * @param {{ extraDelaysMs?: number[] }} [opts]
  */

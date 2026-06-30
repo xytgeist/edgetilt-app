@@ -59,7 +59,7 @@ export function chatRouletteChaseAt(t01, C = CHAT_ROULETTE_RING_C, nowMs = 0) {
 }
 
 /**
- * Drives arc + ball on each rAF frame (no React state — avoids jitter).
+ * Drives arc + ball on each rAF frame (no React state - avoids jitter).
  *
  * @param {React.RefObject<SVGCircleElement | null>} arcRef
  * @param {React.RefObject<SVGGElement | null>} ballArmRef

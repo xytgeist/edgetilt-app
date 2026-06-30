@@ -53,7 +53,7 @@ export function textWithoutUrls(text) {
 }
 
 /**
- * Caption/body for display when a link preview card is attached — strips URL text
+ * Caption/body for display when a link preview card is attached - strips URL text
  * but keeps any other caption (e.g. "look at this" above a YouTube embed).
  */
 export function bodyTextWithLinkPreview(text, linkPreview) {

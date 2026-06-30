@@ -152,7 +152,7 @@ function IconQuoteRepost({ slot }) {
   )
 }
 
-/** Bookmark ribbon is inset in 20×20 — tighter crop so inline size matches other notification glyphs. */
+/** Bookmark ribbon is inset in 20×20 - tighter crop so inline size matches other notification glyphs. */
 const BOOKMARK_NOTIFICATION_VIEWBOX = '5.25 4.5 9.25 11.75'
 
 function IconBookmark({ slot }) {

@@ -1,4 +1,4 @@
-/** Title bar × — same chrome as Lounge dock panel close (`LoungeDockSlidePanels`). */
+/** Title bar × - same chrome as Lounge dock panel close (`LoungeDockSlidePanels`). */
 export default function TitleBarCloseButton({ onClick, ariaLabel = 'Close', className = '' }) {
   if (!onClick) return null
 

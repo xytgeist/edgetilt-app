@@ -149,7 +149,7 @@ export default function ChatEmojiPicker({ onSelect, onClose, zIndex = 115 }) {
       style={{ zIndex }}
       onClick={onClose}
     >
-      {/* Sheet — max height leaves room for the status bar; bottom padding
+      {/* Sheet - max height leaves room for the status bar; bottom padding
           covers the iOS home indicator so the emoji grid isn't cut off. */}
       <div
         className="chat-sheet-glass flex flex-col rounded-t-2xl shadow-2xl"

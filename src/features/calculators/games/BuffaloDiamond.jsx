@@ -459,10 +459,10 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
                 ? ` Re-check when a tier crosses ▼ or cascade escalates.`
                 : isCombinedPlay && comboCascade && comboLowestTier
                   ? comboCascade.escalated
-                    ? ` Combo +EV: ${comboLowestTier.shortLabel} hits first (~${comboCascade.spinsToLowestHit.toLocaleString()} spins); ${comboEffectiveTier.shortLabel} crosses ▼ before then (~${comboProjectedExcessFg.toFixed(1)} FG above ▼ × ~${AVG_PAY_PER_BANKED_SPIN[comboCascade.effectiveTargetKey].toFixed(1)} bets/FG ≈ ${evAvg?.toFixed(1) ?? '—'}×). Coin-in ≈ cold spins to hit ${comboEffectiveTier.shortLabel}.`
+                    ? ` Combo +EV: ${comboLowestTier.shortLabel} hits first (~${comboCascade.spinsToLowestHit.toLocaleString()} spins); ${comboEffectiveTier.shortLabel} crosses ▼ before then (~${comboProjectedExcessFg.toFixed(1)} FG above ▼ × ~${AVG_PAY_PER_BANKED_SPIN[comboCascade.effectiveTargetKey].toFixed(1)} bets/FG ≈ ${evAvg?.toFixed(1) ?? '-'}×). Coin-in ≈ cold spins to hit ${comboEffectiveTier.shortLabel}.`
                     : ` Combo +EV on snapshot.`
                   : pathRtpPct >= 100 && targetExcessFg > 0
-                    ? ` Avg case on ${playTargetTier.shortLabel}: ${targetExcessFg} FG above ▼ × ~${targetAvgPayPerFg.toFixed(1)} bets/FG ≈ ${evAvg?.toFixed(1) ?? '—'}×. Coin-in ≈ cold spins to hit.`
+                    ? ` Avg case on ${playTargetTier.shortLabel}: ${targetExcessFg} FG above ▼ × ~${targetAvgPayPerFg.toFixed(1)} bets/FG ≈ ${evAvg?.toFixed(1) ?? '-'}×. Coin-in ≈ cold spins to hit.`
                     : ` Path on ${playTargetTier.shortLabel} is ${pathRtpPct.toFixed(1)}% RTP (No Play).`}
             </p>
             <p className="mt-2 text-xs italic leading-relaxed text-gray-500">

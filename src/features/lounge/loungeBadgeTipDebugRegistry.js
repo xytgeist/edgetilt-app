@@ -35,7 +35,7 @@ export function reportLoungeBadgeTipDebug(tipLabel, kind, detail, extra = {}) {
   if (!readLoungeFeedVideoDebugEnabled()) return
   events.unshift({
     ts: Date.now(),
-    tip: tipLabel ? String(tipLabel) : '—',
+    tip: tipLabel ? String(tipLabel) : '-',
     kind: String(kind || 'event'),
     detail: String(detail || '').slice(0, 280),
     ...extra,

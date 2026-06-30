@@ -26,7 +26,7 @@ export function formatProfileSaveDebugError(err, stepLabel = '') {
   const hint = typeof err.hint === 'string' ? err.hint : ''
   const name = typeof err.name === 'string' && err.name !== 'Error' ? err.name : ''
 
-  const head = [stepLabel, name, msg.trim()].filter(Boolean).join(' — ')
+  const head = [stepLabel, name, msg.trim()].filter(Boolean).join(' - ')
   const metaParts = []
   if (code != null && code !== '') metaParts.push(`code=${code}`)
   if (details) metaParts.push(`details=${details}`)
@@ -233,7 +233,7 @@ export async function checkProfileHandleAvailability({ supabaseClient, requested
   return { ok: true, handle }
 }
 
-/** Postgres 23505 on `profiles_handle_lower_key` / lower(handle) — try next handle candidate. */
+/** Postgres 23505 on `profiles_handle_lower_key` / lower(handle) - try next handle candidate. */
 export function isProfileHandleUniqueViolation(error) {
   if (!error) return false
   const pgMsg = [error.message, error.details, error.hint, error.constraint]
@@ -360,7 +360,7 @@ export async function uploadProfileAvatar({ supabaseClient, user, file }) {
     return { data: null, error: e instanceof Error ? e : new Error(raw || 'Could not upload avatar image.') }
   }
 
-  // R2 not configured — fall back to Supabase Storage
+  // R2 not configured - fall back to Supabase Storage
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const bucket = 'profile-avatars'
@@ -414,7 +414,7 @@ export async function uploadProfileBanner({ supabaseClient, user, file }) {
     return { data: null, error: e instanceof Error ? e : new Error(raw || 'Could not upload banner image.') }
   }
 
-  // R2 not configured — fall back to Supabase Storage
+  // R2 not configured - fall back to Supabase Storage
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
   const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const bucket = 'profile-banners'

@@ -8,7 +8,7 @@ import {
 import YouTubeBrandMark from './YouTubeBrandMark.jsx'
 
 /**
- * YouTube preview for chat — iframe always mounted (one tap on YouTube controls to play).
+ * YouTube preview for chat - iframe always mounted (one tap on YouTube controls to play).
  * No duplicate URL row; caption text may still include the link when present.
  *
  * @param {{

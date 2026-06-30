@@ -11,9 +11,9 @@ export const LOUNGE_DETAIL_COMMENT_SORT = {
 
 const SORT_VALUES = new Set(Object.values(LOUNGE_DETAIL_COMMENT_SORT))
 
-/** Gravity exponent for Relevant time decay — higher = faster falloff for older comments. */
+/** Gravity exponent for Relevant time decay - higher = faster falloff for older comments. */
 const RELEVANCE_DECAY_GRAVITY = 1.5
-/** Hours added before decay division — keeps brand-new comments from dividing by ~0. */
+/** Hours added before decay division - keeps brand-new comments from dividing by ~0. */
 const RELEVANCE_DECAY_OFFSET_HOURS = 2
 
 /** @returns {LoungeDetailCommentSortMode} */
@@ -74,7 +74,7 @@ function feedCommentAgeHours(comment, nowMs) {
 }
 
 /**
- * Relevant ranking score — weighted engagement with gravity/time decay.
+ * Relevant ranking score - weighted engagement with gravity/time decay.
  * @param {object} comment
  * @param {{
  *   nowMs?: number,
@@ -151,7 +151,7 @@ function compareFeedCommentsByRelevanceDesc(a, b, opts) {
 }
 
 /**
- * First-level (root) comments on post detail — ranked buckets or flat sort mode.
+ * First-level (root) comments on post detail - ranked buckets or flat sort mode.
  * @param {{
  *   roots: object[],
  *   postAuthorUserId?: string | null,

@@ -24,7 +24,7 @@ const COMPOSER_MAX_H = 160
 const COMPOSER_EXPANDED_RADIUS_PX = 20
 
 /**
- * Chat message composer — floating glass bar matching the header style.
+ * Chat message composer - floating glass bar matching the header style.
  *
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
@@ -58,7 +58,7 @@ export default function ChatComposer({
    * localUrl is a blob: URL for immediate preview; remoteUrl is the R2 URL once uploaded.
    */
   const [imageSlots, setImageSlots] = useState(/** @type {Array<{id:string,localUrl:string,remoteUrl:string|null}>} */ ([]))
-  /** Map<slotId, Promise<string>> — resolves to remoteUrl when upload finishes. */
+  /** Map<slotId, Promise<string>> - resolves to remoteUrl when upload finishes. */
   const uploadPromisesRef = useRef(/** @type {Map<string,Promise<string>>} */ (new Map()))
   const [uploadErr, setUploadErr] = useState('')
   const [sending, setSending]     = useState(false)
@@ -66,10 +66,10 @@ export default function ChatComposer({
   const [gifPickerOpen, setGifPickerOpen] = useState(false)
   const [plusRect, setPlusRect]   = useState(/** @type {DOMRect|null} */ (null))
   const [expanded, setExpanded]     = useState(false)
-  /** footerHost: no textarea in DOM until tap — matches lounge reply collapsed pill (iOS keyboard). */
+  /** footerHost: no textarea in DOM until tap - matches lounge reply collapsed pill (iOS keyboard). */
   const [composerActive, setComposerActive] = useState(!footerHost)
 
-  // Video state — only the trim-modal gating lives here now.
+  // Video state - only the trim-modal gating lives here now.
   // Processing (trim/encode/upload) is owned by ChatConversation via onVideoConfirmed.
   const [cropModalFile, setCropModalFile] = useState(/** @type {{ file: File, knownDurationSec?: number }|null} */ (null))
 
@@ -118,7 +118,7 @@ export default function ChatComposer({
   }, [body, footerHost, imageSlots.length, plusOpen, replyTarget])
 
   // Auto-grow: measure the contenteditable's natural (unclipped) scroll height.
-  // When expanded the element has py-2.5 (20px vertical padding), so 1 line = 40px —
+  // When expanded the element has py-2.5 (20px vertical padding), so 1 line = 40px -
   // we use a threshold above that to detect genuine multi-line content.
   // When collapsed the element has h-full (40px) with line-height:40px, so 2 lines = 80px.
   useLayoutEffect(() => {
@@ -152,7 +152,7 @@ export default function ChatComposer({
   }, [body, composerActive, footerHost])
 
   const handleBodyInput = (e) => {
-    // Strip HTML — only keep plain text from the contenteditable div.
+    // Strip HTML - only keep plain text from the contenteditable div.
     const raw = e.currentTarget.innerText ?? ''
     const trimmed = raw.slice(0, MAX_BODY)
     // If browser inserted HTML (e.g. from autocomplete), normalize back to text.
@@ -199,8 +199,8 @@ export default function ChatComposer({
     }))
     setImageSlots((prev) => [...prev, ...newSlots])
 
-    // Create a deferred promise for EVERY slot immediately — before the concurrency
-    // queue starts uploading — so handleSend can capture ALL pending promises even
+    // Create a deferred promise for EVERY slot immediately - before the concurrency
+    // queue starts uploading - so handleSend can capture ALL pending promises even
     // if some uploads haven't started yet when the user taps Send.
     const resolvers = files.map((_, i) => {
       let resolve, reject
@@ -276,7 +276,7 @@ export default function ChatComposer({
   }
 
   const handlePaste = useCallback(async (e) => {
-    // Path 1: standard paste event — works on iOS and desktop Chrome
+    // Path 1: standard paste event - works on iOS and desktop Chrome
     const items = Array.from(e.clipboardData?.items || [])
     const imageFiles = items
       .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
@@ -288,7 +288,7 @@ export default function ChatComposer({
       return
     }
 
-    // Prevent rich HTML from being pasted into contenteditable — allow only plain text.
+    // Prevent rich HTML from being pasted into contenteditable - allow only plain text.
     // The browser will handle inserting the plain text string at the caret position;
     // we don't need to do it manually since we're preventing the default and
     // re-inserting via execCommand which falls back naturally.
@@ -300,7 +300,7 @@ export default function ChatComposer({
       return
     }
 
-    // Path 2: Clipboard API fallback — needed for Android Chrome where native-app
+    // Path 2: Clipboard API fallback - needed for Android Chrome where native-app
     // images aren't exposed through clipboardData.items.
     // Chrome will prompt for "clipboard-read" permission on first use.
     if (!navigator.clipboard?.read) return
@@ -318,7 +318,7 @@ export default function ChatComposer({
       }
       if (files.length) enqueueImageFiles(files)
     } catch {
-      // Permission denied or API not available — silently ignore
+      // Permission denied or API not available - silently ignore
     }
   }, [enqueueImageFiles])
 
@@ -390,7 +390,7 @@ export default function ChatComposer({
         document.execCommand('insertText', false, plainText.slice(0, MAX_BODY))
       }
     } catch {
-      // Permission denied or clipboard API unavailable — silently ignore
+      // Permission denied or clipboard API unavailable - silently ignore
     }
   }, [enqueueImageFiles])
 
@@ -404,7 +404,7 @@ export default function ChatComposer({
     setUploadErr('')
     setPlusOpen(false)
     setGifPickerOpen(false)
-    // GIFs are remote URLs — add as a slot with remoteUrl already set (no upload needed)
+    // GIFs are remote URLs - add as a slot with remoteUrl already set (no upload needed)
     const id = crypto.randomUUID()
     setImageSlots((prev) => [...prev, { id, localUrl: url, remoteUrl: url }].slice(0, MAX_IMAGES))
     if (footerHost) setComposerActive(true)
@@ -442,7 +442,7 @@ export default function ChatComposer({
     try {
       duration = await probeVideoFileDurationSeconds(file)
     } catch {
-      // Probe failed — let the crop modal handle it.
+      // Probe failed - let the crop modal handle it.
     }
 
     if (Number.isFinite(duration) && duration <= LOUNGE_VIDEO_MAX_SECONDS) {
@@ -529,7 +529,7 @@ export default function ChatComposer({
     const rect = plusBtnRef.current?.getBoundingClientRect()
     if (rect) setPlusRect(rect)
     // Activate the composer so the hidden file inputs are mounted in the DOM,
-    // but do NOT focus the textarea — we don't want the keyboard to appear.
+    // but do NOT focus the textarea - we don't want the keyboard to appear.
     if (footerHost) flushSync(() => setComposerActive(true))
     setPlusOpen(true)
   }
@@ -659,7 +659,7 @@ export default function ChatComposer({
         </div>
       )}
 
-      {/* Image preview strip — slots appear immediately with local blob URLs */}
+      {/* Image preview strip - slots appear immediately with local blob URLs */}
       {imageSlots.length > 0 && (
         <div className="chat-header-glass mb-1 flex items-center gap-2 overflow-x-auto rounded-2xl px-3 py-2">
           {imageSlots.map((slot) => (
@@ -710,7 +710,7 @@ export default function ChatComposer({
           className={`chat-header-glass relative flex flex-1 items-center overflow-hidden ${expanded ? '' : 'h-10'}`}
           style={{ borderRadius: expanded ? COMPOSER_EXPANDED_RADIUS_PX : '9999px' }}
         >
-          {/* contentEditable div — lets Android clipboard show images (textarea blocks them) */}
+          {/* contentEditable div - lets Android clipboard show images (textarea blocks them) */}
           <div
             ref={textareaRef}
             contentEditable={!disabled}
@@ -752,7 +752,7 @@ export default function ChatComposer({
             }}
           />
 
-          {/* Send button — appears inside textarea when content exists */}
+          {/* Send button - appears inside textarea when content exists */}
           <button
             type="button"
             disabled={!canSend}
@@ -780,7 +780,7 @@ export default function ChatComposer({
         </div>
       </div>
 
-      {/* Plus modal — portaled above button */}
+      {/* Plus modal - portaled above button */}
       {plusOpen && createPortal(PlusMenu(), document.body)}
 
       <KlipyGifPicker
@@ -800,7 +800,7 @@ export default function ChatComposer({
         />
       )}
 
-      {/* Long-press paste menu — touch only, Android clipboard image bypass */}
+      {/* Long-press paste menu - touch only, Android clipboard image bypass */}
       {pasteMenuPos && createPortal(
         <div
           className="fixed z-[200] flex items-center rounded-full overflow-hidden shadow-xl"

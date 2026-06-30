@@ -18,7 +18,7 @@ function sleep(ms) {
 }
 
 /**
- * On-device encode (trim) or pass-through file — once per logical clip.
+ * On-device encode (trim) or pass-through file - once per logical clip.
  *
  * @param {object} opts
  * @param {AbortSignal} opts.signal
@@ -74,7 +74,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
 }
 
 /**
- * Mint → resumable tus upload → (optional) manifest wait — with retries on failure.
+ * Mint → resumable tus upload → (optional) manifest wait - with retries on failure.
  *
  * @param {object} opts
  * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
@@ -83,7 +83,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
  * @param {(info: { progress: number, status: string, detail?: string, attempt: number }) => void} [opts.onProgress]
  * @param {(detail: string) => void} [opts.onUploadDiagnostic] Last error line for the upload bar
  * @param {(uid: string) => void} [opts.onStreamUidAvailable] Called as soon as the CF Stream uid is
- *   captured from the tus first-chunk header — before the rest of the file is uploaded.
+ *   captured from the tus first-chunk header - before the rest of the file is uploaded.
  *   Fired on every attempt so callers should be idempotent (first call wins in most use-cases).
  * @param {boolean} [opts.skipManifestWait] When true, resolve immediately after upload without
  *   polling the HLS manifest. Use for chat where CF iframe handles the processing state gracefully.
@@ -191,7 +191,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
 }
 
 /**
- * Encode (when trim), upload to Cloudflare Stream (tus), wait for manifest — with retries on failure.
+ * Encode (when trim), upload to Cloudflare Stream (tus), wait for manifest - with retries on failure.
  * On-device encode and duration checks run once; retries repeat only tus creation/upload → manifest.
  *
  * @param {object} opts

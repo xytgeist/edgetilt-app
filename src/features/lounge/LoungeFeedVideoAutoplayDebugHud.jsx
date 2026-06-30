@@ -72,7 +72,7 @@ function eventKindClass(kind) {
 }
 
 /**
- * On-device autoplay coordinator HUD — Settings → Video debug HUD, or `?loungeVideoDebug=1`.
+ * On-device autoplay coordinator HUD - Settings → Video debug HUD, or `?loungeVideoDebug=1`.
  * @param {{ store: import('./loungeFeedVideoAutoplayStore.js').createAutoplayStore extends () => infer S ? S : never, scrollRootRef: import('react').RefObject<HTMLElement | null> }} props
  */
 export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }) {
@@ -265,18 +265,18 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
             lightbox: <span className="text-white">{anyStreamLightboxOpen ? 'open' : 'closed'}</span>
           </div>
           <div>
-            active: <span className="text-emerald-300">{shortId(coordinatorSnapshot.activeId) || '—'}</span>
+            active: <span className="text-emerald-300">{shortId(coordinatorSnapshot.activeId) || '-'}</span>
             {' · '}
             ring [{coordinatorSnapshot.ringIds.length}]:{' '}
             {coordinatorSnapshot.ringIds.length
               ? coordinatorSnapshot.ringIds.map((id) => shortId(id)).join(', ')
-              : '—'}
+              : '-'}
           </div>
           <div>
             dom [{(coordinatorSnapshot.domBudgetIds ?? []).length}]:{' '}
             {(coordinatorSnapshot.domBudgetIds ?? []).length
               ? coordinatorSnapshot.domBudgetIds.map((id) => shortId(id)).join(', ')
-              : '—'}
+              : '-'}
             {' · '}
             softReset #{coordinatorSnapshot.softResetEpoch ?? 0}
           </div>
@@ -315,13 +315,13 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
                 <div key={row.id} className="rounded border border-zinc-700/80 bg-zinc-900/70 px-1.5 py-1">
                   <div className="truncate text-[9px] text-zinc-400">{shortId(row.id)}</div>
                   <div className="text-zinc-200">
-                    {flags.join(' · ') || '—'}
+                    {flags.join(' · ') || '-'}
                     {' · '}
                     ratio {(row.ratio * 100).toFixed(0)}%
                   </div>
                   {row.snap ? (
                     <div className="text-zinc-400">
-                      rs={v.readyState ?? '—'} ns={v.networkState ?? '—'} paused={String(v.paused)}
+                      rs={v.readyState ?? '-'} ns={v.networkState ?? '-'} paused={String(v.paused)}
                       {v.errorLabel ? ` · err=${v.errorLabel}` : ''}
                       {row.snap.lastPlayError ? ` · play=${row.snap.lastPlayError}` : ''}
                     </div>
@@ -337,9 +337,9 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
           {badgeTipSnapshot ? (
             <>
               <div>
-                live: <span className="text-white">{badgeTipSnapshot.tip || '—'}</span>
+                live: <span className="text-white">{badgeTipSnapshot.tip || '-'}</span>
                 {' · '}
-                gen <span className="text-white">{badgeTipSnapshot.gen ?? '—'}</span>
+                gen <span className="text-white">{badgeTipSnapshot.gen ?? '-'}</span>
                 {' · '}
                 mounted <span className="text-white">{String(badgeTipSnapshot.mounted)}</span>
                 {' · '}

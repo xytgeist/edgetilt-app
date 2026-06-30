@@ -11,7 +11,7 @@ function labelForValue(value) {
 }
 
 /**
- * Search results sort — compact dropdown (matches home feed scope/sort menus).
+ * Search results sort - compact dropdown (matches home feed scope/sort menus).
  */
 export default function LoungeSearchSortSwitch({
   value = LOUNGE_SEARCH_SORT.ENGAGEMENT,

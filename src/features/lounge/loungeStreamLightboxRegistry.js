@@ -1,4 +1,4 @@
-/** Ref-count of open Lounge media lightboxes (Stream hero + image/GIF) — hides viewport FAB when > 0. */
+/** Ref-count of open Lounge media lightboxes (Stream hero + image/GIF) - hides viewport FAB when > 0. */
 let openCount = 0
 /** @type {Set<(open: boolean) => void>} */
 const listeners = new Set()

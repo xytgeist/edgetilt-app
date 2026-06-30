@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-// LOUNGE_DOCK_FOOTER_BAR_DISABLED — classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
+// LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import {
   checkProfileHandleAvailability,
@@ -457,7 +457,7 @@ export default function LoungeProfileFullScreen({
   onProfileUpdated,
   /** Hydrate `community_feed_posts` rows (repost targets, author profiles); required for Likes/Bookmarks tabs. */
   hydratePosts,
-  /** Optional Lounge shell dock (Home / Search / Alerts / Chat) — same actions as main feed dock. */
+  /** Optional Lounge shell dock (Home / Search / Alerts / Chat) - same actions as main feed dock. */
   shellDock = null,
   /** Open DM with this profile user (Lounge dock Chat). */
   onOpenChatWithUser = null,
@@ -471,7 +471,7 @@ export default function LoungeProfileFullScreen({
   onNavigateToProfile = null,
   /** Stacked profile opened from a parent sheet (follow list); uses absolute overlay. */
   stackedOverlay = false,
-  /** Root profile opened while Stream video lightbox is up — paint above hero stack before close. */
+  /** Root profile opened while Stream video lightbox is up - paint above hero stack before close. */
   stackAboveStreamLightbox = false,
   /** Pause profile scroll-root autoplay when post detail (or other overlay) owns video budget. */
   suspendVideoCoordinator = false,
@@ -481,7 +481,7 @@ export default function LoungeProfileFullScreen({
   viewerIsAdmin = false,
   /** `(targetUserId, nextRole) => Promise<{ ok: boolean, error?: string }>` */
   onAdminSetProfileRole = null,
-  /** `(userId, isFollowing) => void` — sync feed session when follow toggles on profile / follow list. */
+  /** `(userId, isFollowing) => void` - sync feed session when follow toggles on profile / follow list. */
   onViewerFollowChange = null,
   /** Settings → Edit profile: open own sheet already in edit mode. */
   requestOwnProfileEditing = false,
@@ -2233,7 +2233,7 @@ export default function LoungeProfileFullScreen({
                 </div>
               ) : (
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-zinc-300">
-                  {aboutDisplay || '—'}
+                  {aboutDisplay || '-'}
                 </p>
               )}
             </div>
@@ -2408,7 +2408,7 @@ export default function LoungeProfileFullScreen({
           </div>
           ) : null}
         </div>
-        {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED — see import above
+        {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED - see import above
         {shellDock && !showOwnEditControls ? (
           <LoungeDockFooterBar
             layout="sheet"
@@ -2554,7 +2554,7 @@ export default function LoungeProfileFullScreen({
                         timeStyle: 'short',
                       })}
                     </span>
-                    . Continue saves your display name, photo, and About — your handle will stay{' '}
+                    . Continue saves your display name, photo, and About - your handle will stay{' '}
                     <span className="font-semibold text-cyan-200">@{String(profile?.handle || '').trim()}</span>.
                   </p>
                 )}

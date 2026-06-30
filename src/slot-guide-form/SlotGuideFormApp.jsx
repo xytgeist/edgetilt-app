@@ -49,7 +49,7 @@ async function messageFromGuideUploadInvokeError(error, invokeResponse, defaultM
   if (res) {
     const fromBody = await readEdgeFunctionErrorBody(res)
     if (fromBody) return fromBody
-    if (res.status === 401) return 'Session expired — sign out and sign in again, then retry.'
+    if (res.status === 401) return 'Session expired - sign out and sign in again, then retry.'
     if (res.status === 403) return 'Admin role required for guide image uploads.'
     if (res.status === 404) return 'Guide upload service is not deployed on this Supabase project.'
     if (res.status === 503) return 'R2_NOT_CONFIGURED'
@@ -67,7 +67,7 @@ async function getFreshGuideUploadAccessToken() {
   if (expiresAt > 0 && expiresAt - now < 120) {
     const { data: refreshed, error } = await supabase.auth.refreshSession()
     if (error || !refreshed.session?.access_token) {
-      throw new Error('Session expired — sign out and sign in again, then retry.')
+      throw new Error('Session expired - sign out and sign in again, then retry.')
     }
     return refreshed.session.access_token
   }
@@ -125,7 +125,7 @@ async function uploadGuideImageToR2OrStorage(file, { slug, filename }) {
 
 const STORAGE_KEY = 'slotGuideFormSettings:v4'
 
-// Ingest API targets — controls which Vercel function receives new guide ingests.
+// Ingest API targets - controls which Vercel function receives new guide ingests.
 // Reads and writes use the authenticated Supabase client from LoginGate (test env).
 const INGEST_TARGETS = [
   { id: 'test',       label: 'test',       apiUrl: '/api/slot-guide-ingest' },
@@ -319,7 +319,7 @@ function InlineImageTextarea({ value, onChange, className, required, slug, guide
 
   return (
     <div>
-      {/* toolbar — button (not label) so file picker does not steal layout/focus in the form */}
+      {/* toolbar - button (not label) so file picker does not steal layout/focus in the form */}
       <div className="flex items-center justify-end mb-1">
         <button
           type="button"
@@ -422,7 +422,7 @@ function SkinsTextarea({ value, onChange, className, guideList = [], pickFile, s
           value={pickerSlug}
           onChange={(e) => setPickerSlug(e.target.value)}
         >
-          <option value="">— pick a guide to link —</option>
+          <option value="">- pick a guide to link -</option>
           {guideList.map((g) => {
             const s = g.machines?.slug || g.slug
             const name = g.machines?.name || g.title || s
@@ -499,16 +499,16 @@ function ingestResultHeadline(data) {
   const ingestedSlug = String(data.slug || 'guide')
   const ingestedTarget = String(data.target || 'test')
   if (data.syncedSupabase) {
-    return `Ingest succeeded — ${ingestedSlug} is live on ${ingestedTarget}.`
+    return `Ingest succeeded - ${ingestedSlug} is live on ${ingestedTarget}.`
   }
-  return 'Ingest finished — see response below (syncedSupabase was false).'
+  return 'Ingest finished - see response below (syncedSupabase was false).'
 }
 
 export default function SlotGuideFormApp() {
   const { pickFile, portal: filePickerPortal } = useGuideFilePicker()
   const saved = useMemo(() => (typeof window !== 'undefined' ? readSettings() : null), [])
 
-  // ── Connection settings (ingest target only — auth uses LoginGate session token)
+  // ── Connection settings (ingest target only - auth uses LoginGate session token)
   const [ingestId, setIngestId] = useState(saved?.ingestId || 'test')
 
   const activeIngest = INGEST_TARGETS.find(t => t.id === ingestId) ?? INGEST_TARGETS[0]
@@ -567,12 +567,12 @@ export default function SlotGuideFormApp() {
   const saveDraft = useCallback((quiet = false) => {
     const draft = buildSlotGuideDraft({ ingestId, machine, guide, diagrams })
     if (!draft) {
-      if (!quiet) setDraftNotice('Nothing to save yet — add at least one field.')
+      if (!quiet) setDraftNotice('Nothing to save yet - add at least one field.')
       return false
     }
     writeSlotGuideDraftToStorage(draft)
     setDraftSavedAt(draft.savedAt)
-    if (!quiet) setDraftNotice(`Draft saved ${new Date(draft.savedAt).toLocaleString()}. Images are not stored — re-attach hero/diagrams after restore.`)
+    if (!quiet) setDraftNotice(`Draft saved ${new Date(draft.savedAt).toLocaleString()}. Images are not stored - re-attach hero/diagrams after restore.`)
     return true
   }, [ingestId, machine, guide, diagrams])
 
@@ -623,7 +623,7 @@ export default function SlotGuideFormApp() {
     } catch { /* ignore */ }
   }, [ingestId])
 
-  // Auto-slug from machine name (only while slug is empty — do not rewrite manual slug edits)
+  // Auto-slug from machine name (only while slug is empty - do not rewrite manual slug edits)
   useEffect(() => {
     setMachine((m) => {
       if (m.slug.trim()) return m
@@ -841,7 +841,7 @@ export default function SlotGuideFormApp() {
     setBusy(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) { setError('Session expired — please sign out and back in.'); setBusy(false); return }
+      if (!session?.access_token) { setError('Session expired - please sign out and back in.'); setBusy(false); return }
 
       const payload = {
         machine: { ...machine, slug, release_year: machine.release_year ? Number(machine.release_year) : null, calculator_slug: machine.has_calculator ? machine.calculator_slug || slug : null },
@@ -1055,7 +1055,7 @@ export default function SlotGuideFormApp() {
         {storedDraft && !isEdit && (
           <div className="rounded-2xl border border-cyan-600/40 bg-cyan-950/50 px-4 py-3 space-y-2">
             <p className="text-sm text-cyan-100">
-              Saved draft from {new Date(storedDraft.savedAt).toLocaleString()} — restore to continue where you left off.
+              Saved draft from {new Date(storedDraft.savedAt).toLocaleString()} - restore to continue where you left off.
             </p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -1085,8 +1085,8 @@ export default function SlotGuideFormApp() {
             </svg>
             <p className="text-sm font-semibold text-amber-300 flex-1 min-w-[12rem]">
               {isDirty ? 'Unsaved edits' : 'Draft on this device'}
-              {draftSavedAt ? ` — last saved ${new Date(draftSavedAt).toLocaleString()}` : ''}
-              {' — use '}
+              {draftSavedAt ? ` - last saved ${new Date(draftSavedAt).toLocaleString()}` : ''}
+              {' - use '}
               <span className="text-amber-100">Save draft</span>
               {' below or here.'}
             </p>
@@ -1110,7 +1110,7 @@ export default function SlotGuideFormApp() {
         )}
         {isDirty && isEdit && (
           <div className="flex items-center gap-3 rounded-2xl border border-amber-500/50 bg-amber-500/10 px-4 py-3">
-            <p className="text-sm font-semibold text-amber-300 flex-1">Unsaved edits — save changes before leaving.</p>
+            <p className="text-sm font-semibold text-amber-300 flex-1">Unsaved edits - save changes before leaving.</p>
           </div>
         )}
         {draftNotice ? <p className="text-sm text-cyan-300/90">{draftNotice}</p> : null}
@@ -1168,15 +1168,15 @@ export default function SlotGuideFormApp() {
         {/* ── New-guide ingest target (hidden in edit mode) */}
         {!isEdit && (
           <section className={sc}>
-            <h2 className="text-lg font-semibold">New guide — ingest target</h2>
+            <h2 className="text-lg font-semibold">New guide - ingest target</h2>
             <div>
               <label className={lc}>Target environment</label>
               <select className={ic} value={ingestId} onChange={(e) => setIngestId(e.target.value)}>
                 {INGEST_TARGETS.map(t => (
-                  <option key={t.id} value={t.id}>{t.label} — {t.apiUrl}</option>
+                  <option key={t.id} value={t.id}>{t.label} - {t.apiUrl}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-600 mt-1">Auth uses your logged-in admin session — no secret key needed.</p>
+              <p className="text-xs text-gray-600 mt-1">Auth uses your logged-in admin session - no secret key needed.</p>
             </div>
           </section>
         )}
@@ -1202,7 +1202,7 @@ export default function SlotGuideFormApp() {
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
               >
-                <option value="">— select a guide —</option>
+                <option value="">- select a guide -</option>
                 {guideList.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.title || g.slug}{g.published ? '' : ' (unpublished)'}
@@ -1276,7 +1276,7 @@ export default function SlotGuideFormApp() {
                   onChange={(e) => setMachineField('popularity', e.target.value)}
                   required={!isCustomVal(machine.popularity, POPULARITY_OPTIONS) && machine.popularity !== CUSTOM_SENTINEL}
                 >
-                  <option value="">— select —</option>
+                  <option value="">- select -</option>
                   {POPULARITY_OPTIONS.map(v => <option key={v}>{v}</option>)}
                   <option value={CUSTOM_SENTINEL}>{CUSTOM_SENTINEL}</option>
                 </select>
@@ -1303,7 +1303,7 @@ export default function SlotGuideFormApp() {
                   value={isCustomVal(machine.volatility_index, VOLATILITY_OPTIONS) ? CUSTOM_SENTINEL : (machine.volatility_index || '')}
                   onChange={(e) => setMachineField('volatility_index', e.target.value)}
                 >
-                  <option value="">— select —</option>
+                  <option value="">- select -</option>
                   {VOLATILITY_OPTIONS.map(v => <option key={v}>{v}</option>)}
                   <option value={CUSTOM_SENTINEL}>{CUSTOM_SENTINEL}</option>
                 </select>
@@ -1386,7 +1386,7 @@ export default function SlotGuideFormApp() {
                       </div>
                     </button>
                     {heroFile
-                      ? <p className="text-xs text-emerald-400 mt-1.5">Replacing with: {heroFile.name} — save to apply</p>
+                      ? <p className="text-xs text-emerald-400 mt-1.5">Replacing with: {heroFile.name} - save to apply</p>
                       : <p className="text-xs text-gray-600 mt-1.5">Click image to replace</p>
                     }
                   </div>
@@ -1406,7 +1406,7 @@ export default function SlotGuideFormApp() {
             </div>
           </section>
 
-          {/* Guide sections — same order & headers as expanded AP guide card */}
+          {/* Guide sections - same order & headers as expanded AP guide card */}
           <section className={sc}>
             <div>
               <h2 className="text-lg font-semibold">Guide card sections</h2>
@@ -1518,7 +1518,7 @@ export default function SlotGuideFormApp() {
             </GuideSectionPanel>
           </section>
 
-          {/* Diagrams — placement images (also use Insert image in section fields for inline) */}
+          {/* Diagrams - placement images (also use Insert image in section fields for inline) */}
           <section className={sc}>
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">Diagrams</h2>

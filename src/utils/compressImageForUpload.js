@@ -254,7 +254,7 @@ async function prepareRasterImageForUpload(file, opts) {
 
 /**
  * Decode, downscale if needed, encode as WebP (or JPEG when alpha is not needed).
- * PNG/WebP/GIF/AVIF: transparent canvas + WebP (alpha) or PNG fallback — never flatten to white or JPEG-only.
+ * PNG/WebP/GIF/AVIF: transparent canvas + WebP (alpha) or PNG fallback - never flatten to white or JPEG-only.
  * JPEG-like sources: white matte then WebP/JPEG as before. Used for lounge feed / quote repost uploads.
  *
  * @param {File} file

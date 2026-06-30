@@ -117,7 +117,7 @@ import {
 
 const SHEET_DISMISS_PX = 88
 const SHEET_DISMISS_VEL = 0.45
-/** Chart canvas stops above this band — timeframe pills sit in the gap. */
+/** Chart canvas stops above this band - timeframe pills sit in the gap. */
 const MARKET_CHART_TIMEFRAME_BAND_PX = 24
 const MARKET_CHART_MODAL_HEIGHT = '90dvh'
 const MARKET_CHART_HEIGHT_PX = 320
@@ -297,17 +297,17 @@ const ADVANCED_CHART_TOOLBAR_ICON = 'h-5 w-5 shrink-0'
 const ADVANCED_CHART_TOOLBAR_LEADING_SLOT =
   'relative inline-flex h-5 w-5 shrink-0 items-center justify-center'
 
-/** Snapshot camera reads small at 20px — give it a slightly larger slot. */
+/** Snapshot camera reads small at 20px - give it a slightly larger slot. */
 const ADVANCED_CHART_TOOLBAR_SNAPSHOT_SLOT =
   'relative inline-flex h-6 w-6 shrink-0 items-center justify-center'
 
 const ADVANCED_CHART_TOOLBAR_SNAPSHOT_ICON = 'h-6 w-6 shrink-0'
 
-/** Resolution label (1D, 1H, …) — slightly taller than icon row for legibility. */
+/** Resolution label (1D, 1H, …) - slightly taller than icon row for legibility. */
 const ADVANCED_CHART_TOOLBAR_RESOLUTION_LABEL =
   'inline-flex h-6 min-w-[1.75rem] shrink-0 items-center justify-center px-0.5 text-lg font-semibold leading-none tabular-nums -translate-y-0.5'
 
-/** Filled candlesticks — no axis “L”. */
+/** Filled candlesticks - no axis “L”. */
 function MarketChartFilledCandlestickToolbarIcon({ className }) {
   return (
     <svg
@@ -811,7 +811,7 @@ function formatPostAge(createdAt) {
   return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-/** Company logo for market embed headers — no crossOrigin (breaks most Finnhub/Yahoo hosts in UI). */
+/** Company logo for market embed headers - no crossOrigin (breaks most Finnhub/Yahoo hosts in UI). */
 function MarketEmbedLogo({ embed, imgClass, fallbackClass }) {
   const logo = String(embed?.logo_url || embed?.logo || '').trim()
   const initial = (embed?.display_symbol || embed?.symbol || '?').slice(0, 1)
@@ -892,7 +892,7 @@ export default function LoungeMarketChartModal({
   const chartPanningRef = useRef(false)
   const pendingHistoryApplyRef = useRef(/** @type {(() => void) | null} */ (null))
   const advancedBarsSignatureRef = useRef('')
-  /** True after user picks a resolution this Advanced session — keeps choice across ticker switches. */
+  /** True after user picks a resolution this Advanced session - keeps choice across ticker switches. */
   const advancedResolutionSessionPickedRef = useRef(false)
   const volumeSeriesRef = useRef(null)
   const indicatorSeriesRef = useRef(/** @type {import('lightweight-charts').ISeriesApi[]} */ ([]))
@@ -1598,7 +1598,7 @@ export default function LoungeMarketChartModal({
           activeIndicators,
           isLight,
           panePlan,
-          // Prepend only — never re-fit Y/time to the full merged series.
+          // Prepend only - never re-fit Y/time to the full merged series.
           applyPriceRange: undefined,
         })
         volumeSeriesRef.current = refreshed.volumeSeries
@@ -2171,7 +2171,7 @@ export default function LoungeMarketChartModal({
     theme.downColor,
   ])
 
-  /** Advanced: refresh series in place on live bar updates — avoid remounting the chart. */
+  /** Advanced: refresh series in place on live bar updates - avoid remounting the chart. */
   useEffect(() => {
     if (!open || !advancedFullscreenOpen || !isAdvancedView) return
     if (chartPanningRef.current || annotateModeRef.current) return

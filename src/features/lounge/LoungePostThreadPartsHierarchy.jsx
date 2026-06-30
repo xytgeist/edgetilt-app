@@ -108,7 +108,7 @@ function ThreadPartRow({
 }
 
 /**
- * Post detail — thread parts 2+ with the same flex avatar rail as `LoungeThreadComposeSheet`.
+ * Post detail - thread parts 2+ with the same flex avatar rail as `LoungeThreadComposeSheet`.
  * Connector lines live in the left rail (`flex-1`) so they stay aligned on mobile WebKit.
  */
 export default function LoungePostThreadPartsHierarchy({

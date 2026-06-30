@@ -233,7 +233,7 @@ export function loungePostDraftComposerVideoSlot(draft) {
 }
 
 /**
- * Block draft save only on failed video prep — in-flight prep continues in the background bar.
+ * Block draft save only on failed video prep - in-flight prep continues in the background bar.
  *
  * @param {import('./loungeThreadComposeMedia.js').ThreadComposePartMedia[]} partMedia
  * @returns {string | null}
@@ -242,7 +242,7 @@ export function loungePostDraftValidateComposePartsForSave(partMedia) {
   const media = Array.isArray(partMedia) ? partMedia : []
   for (let i = 0; i < media.length; i += 1) {
     if (media[i]?.videoSlot?.prepStatus === 'failed') {
-      return `Post ${i + 1}: video upload failed — remove the video or pick a new one before saving.`
+      return `Post ${i + 1}: video upload failed - remove the video or pick a new one before saving.`
     }
   }
   return null
@@ -251,7 +251,7 @@ export function loungePostDraftValidateComposePartsForSave(partMedia) {
 /** @param {object | null | undefined} slot */
 export function loungePostDraftValidateComposerVideoSlotForSave(slot) {
   if (slot?.prepStatus === 'failed') {
-    return 'Video upload failed — remove the video or pick a new one before saving.'
+    return 'Video upload failed - remove the video or pick a new one before saving.'
   }
   return null
 }
@@ -655,7 +655,7 @@ async function deleteOrphanStreamUids(supabaseClient, uids) {
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} draftId
- * @param {{ retainStreamAssets?: boolean }} [opts] When true (after successful publish), only delete the draft row — Stream uids now live on feed rows.
+ * @param {{ retainStreamAssets?: boolean }} [opts] When true (after successful publish), only delete the draft row - Stream uids now live on feed rows.
  */
 export async function deleteLoungePostDraft(supabaseClient, draftId, opts = {}) {
   const id = String(draftId || '').trim()

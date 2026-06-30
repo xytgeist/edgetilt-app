@@ -119,14 +119,14 @@ class TabErrorBoundary extends React.Component {
     Sentry.captureException(error, { extra: { componentStack: info?.componentStack } })
   }
 
-  // No componentDidMount clear — sessionStorage persists across reloads within the session.
+  // No componentDidMount clear - sessionStorage persists across reloads within the session.
   // It naturally clears when the browser tab is closed.
 
   handleReport() {
     const errText = this.state.error?.stack || this.state.error?.message || 'Unknown error'
     const subject = encodeURIComponent('LVSlotPro App Error Report')
     const body = encodeURIComponent(
-      `App tab crashed twice — please investigate.\n\nTimestamp: ${new Date().toISOString()}\n\nError:\n${errText}`,
+      `App tab crashed twice - please investigate.\n\nTimestamp: ${new Date().toISOString()}\n\nError:\n${errText}`,
     )
     // Open mail client
     window.location.href = `mailto:operations@lvslotpro.com?subject=${subject}&body=${body}`
@@ -204,7 +204,7 @@ export default function AppShell({
   supabaseClient,
   onRequireAuth,
   browseMode = 'member',
-  /** False until first `getSession()` completes — avoids push deep links firing auth gate while session restores. */
+  /** False until first `getSession()` completes - avoids push deep links firing auth gate while session restores. */
   authSessionReady = true,
   onOpenAuth,
   accessNotice = '',
@@ -786,7 +786,7 @@ export default function AppShell({
     return () => window.removeEventListener('popstate', applyFromUrl)
   }, [browseMode])
 
-  /** Only refire when entering Lounge — not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
+  /** Only refire when entering Lounge - not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {
     if (tab === 'home') void loadCommunityFeedRef.current()
   }, [tab])
@@ -887,10 +887,10 @@ export default function AppShell({
   }, [])
 
   const SLOTS_TOOL_TAB_IDS = new Set(['calculators', 'offers', 'bankroll', 'guides', 'intel', 'logbook'])
-  // `intel` — routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
+  // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
 
-  /** Title bar ☰ menu — Slots hub + Chat (Lounge via dock home; Team not in menu). */
+  /** Title bar ☰ menu - Slots hub + Chat (Lounge via dock home; Team not in menu). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
@@ -1086,7 +1086,7 @@ export default function AppShell({
     browseMode,
   })
 
-  /** Queue iOS Home Screen (PWA) notification opt-in on first auth — do not show until UI is stable. */
+  /** Queue iOS Home Screen (PWA) notification opt-in on first auth - do not show until UI is stable. */
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!isIosDevice() || !isStandalonePwa()) return

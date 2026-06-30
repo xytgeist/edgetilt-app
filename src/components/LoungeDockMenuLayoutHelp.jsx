@@ -1,4 +1,4 @@
-/** Inline Settings help + first-run intro — Wheel vs Edge schematics (selectable) + move FAB copy. */
+/** Inline Settings help + first-run intro - Wheel vs Edge schematics (selectable) + move FAB copy. */
 
 export default function LoungeDockMenuLayoutHelp({
 

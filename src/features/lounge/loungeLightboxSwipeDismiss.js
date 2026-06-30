@@ -13,7 +13,7 @@ function shouldIgnoreSwipeTarget(target, { allowSwipeOnVideo = false } = {}) {
 /**
  * Vertical swipe (or drag) to dismiss fullscreen Lounge media.
  * Optional horizontal swipe when `onSwipeHorizontal` is set (e.g. carousel in image lightbox).
- * @param {boolean} [allowSwipeOnVideo] — when true, swipes starting on `<video>` count (fullscreen video lightbox).
+ * @param {boolean} [allowSwipeOnVideo] - when true, swipes starting on `<video>` count (fullscreen video lightbox).
  */
 export function useLoungeLightboxSwipeDismiss({
   onClose,

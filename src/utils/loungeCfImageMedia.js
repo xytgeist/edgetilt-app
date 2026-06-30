@@ -3,7 +3,7 @@
  */
 import { mapGenericNetworkErrorMessage } from './loungeVideoUpload.js'
 
-/** Content-addressed R2 keys — match Edge `LOUNGE_CF_R2_OBJECT_CACHE_CONTROL`. */
+/** Content-addressed R2 keys - match Edge `LOUNGE_CF_R2_OBJECT_CACHE_CONTROL`. */
 export const LOUNGE_CF_R2_OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
 

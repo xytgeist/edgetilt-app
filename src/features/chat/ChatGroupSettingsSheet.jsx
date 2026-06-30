@@ -294,7 +294,7 @@ export default function ChatGroupSettingsSheet({
   const settingsPortal = open ? createPortal(
     <div className="fixed inset-0 z-[95] flex flex-col bg-zinc-950" data-chat-feature>
 
-      {/* Fixed glass chrome — back + scroll-reveal title + edit */}
+      {/* Fixed glass chrome - back + scroll-reveal title + edit */}
       <div
         ref={topChromeRef}
         className="pointer-events-none absolute inset-x-0 top-0 z-20"
@@ -348,7 +348,7 @@ export default function ChatGroupSettingsSheet({
         </div>
       </div>
 
-      {/* Scroll body — content slides under fixed chrome + top fade */}
+      {/* Scroll body - content slides under fixed chrome + top fade */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
           className="chat-info-top-fade pointer-events-none absolute inset-x-0 top-0 z-10"
@@ -380,7 +380,7 @@ export default function ChatGroupSettingsSheet({
             />
           </div>
 
-          {/* Photo action links — always visible to owner, no edit mode required */}
+          {/* Photo action links - always visible to owner, no edit mode required */}
           {isOwner ? (
             <div className="mt-2.5 flex items-center gap-3">
               <button

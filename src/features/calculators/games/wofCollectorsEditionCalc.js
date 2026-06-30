@@ -14,7 +14,7 @@ export const WOF_CE_THEME = {
   accentDark: '#145a2f',
   accentDeep: '#0d3d20',
   accentMuted: '#1a7340',
-  /** Collector's Edition subtitle — blue tier parallel to accentSoft / accentMuted. */
+  /** Collector's Edition subtitle - blue tier parallel to accentSoft / accentMuted. */
   editionBlueSoft: '#93c5fd',
   editionBlueMuted: '#1d6fa3',
 }
@@ -34,7 +34,7 @@ export const AP_TIER_20X = 20
 export const AP_TIER_30X = 30
 export const AP_TIER_70X = 70
 
-/** @type {WofCeReelDef[]} — panel colors match on-glass reel displays (R1→R5). */
+/** @type {WofCeReelDef[]} - panel colors match on-glass reel displays (R1→R5). */
 export const WOF_CE_REELS = [
   {
     key: 'r1',
@@ -97,7 +97,7 @@ export function prizesAsMultiples(prizeCredits, betCredits) {
 
 /**
  * Weighted column sum: Σ (prize× × reel multiplier).
- * @param {WofCePrizeMap} prizesX — multiples of bet per reel
+ * @param {WofCePrizeMap} prizesX - multiples of bet per reel
  */
 export function weightedSumX(prizesX) {
   return WOF_CE_REELS.reduce((sum, reel) => {

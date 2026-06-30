@@ -90,7 +90,7 @@ function LoungeNotificationNewRail() {
 }
 
 /**
- * Lounge dock **Notifications** panel — in-app activity feed (Phase H1).
+ * Lounge dock **Notifications** panel - in-app activity feed (Phase H1).
  */
 export default function LoungeNotificationsPanel({
   supabaseClient,
@@ -104,9 +104,9 @@ export default function LoungeNotificationsPanel({
   /** Same handlers as feed `LoungePostArticle` for inline like/repost/bookmark/comment. */
   notificationPostCardProps = null,
   repostMenuScrollRootRef = null,
-  /** Panel scroller — first scroll clears "new" highlights (inbox seen). */
+  /** Panel scroller - first scroll clears "new" highlights (inbox seen). */
   listScrollRootRef = null,
-  /** Bumped when post detail closes over this panel — refresh interaction counts. */
+  /** Bumped when post detail closes over this panel - refresh interaction counts. */
   interactionCountsRefreshKey = 0,
 }) {
   const [items, setItems] = useState([])
@@ -125,7 +125,7 @@ export default function LoungeNotificationsPanel({
   const pullArrowRef = useRef(null)
   const pullSpinnerRef = useRef(null)
   const pullAriaRef = useRef(null)
-  /** Unread at fetch time — cyan rail until inbox is seen (mark-all-read) or the row is opened. */
+  /** Unread at fetch time - cyan rail until inbox is seen (mark-all-read) or the row is opened. */
   const [sessionNewIds, setSessionNewIds] = useState(() => new Set())
 
   const clearAllSessionNewIds = useCallback(() => {
@@ -237,7 +237,7 @@ export default function LoungeNotificationsPanel({
     }
   }, [loadPage])
 
-  /** Stable id sets only — avoid re-hydrating when like_count patches replace `items`. */
+  /** Stable id sets only - avoid re-hydrating when like_count patches replace `items`. */
   const notificationInteractionIdsKey = useMemo(() => {
     const postIds = new Set()
     const commentIds = new Set()
@@ -349,7 +349,7 @@ export default function LoungeNotificationsPanel({
 
   const emptyCopy = useMemo(() => {
     if (schemaMissing) {
-      return 'Notification center is almost ready — apply the Phase H SQL migration on test, then refresh.'
+      return 'Notification center is almost ready - apply the Phase H SQL migration on test, then refresh.'
     }
     return 'No notifications yet. When someone follows you, comments, replies, or @mentions you, it shows up here.'
   }, [schemaMissing])
@@ -647,7 +647,7 @@ export default function LoungeNotificationsPanel({
                 onRowActivate(event)
               }
             }}
-            aria-label={isNew ? `${summary} — new notification` : summary}
+            aria-label={isNew ? `${summary} - new notification` : summary}
             className={`relative flex w-full cursor-pointer items-start gap-3 ${
               isNew ? 'active:bg-cyan-950/35' : ''
             }`}

@@ -5,8 +5,8 @@ import { playLogCalcSnapshotNotes } from '../../utils/playLogCalcSnapshot.js'
  * Opens Play Logbook with fields pre-filled from the active calculator session.
  *
  * @param {object} props
- * @param {string} props.calculatorSlug — matches `play_log_game_templates.calculator_slug`
- * @param {Record<string, number | string>} props.prefillValues — metric slug → value
+ * @param {string} props.calculatorSlug - matches `play_log_game_templates.calculator_slug`
+ * @param {Record<string, number | string>} props.prefillValues - metric slug → value
  * @param {() => void} props.onOpenLogbook
  * @param {string} [props.accentBtnClass]
  */

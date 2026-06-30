@@ -1,4 +1,4 @@
-/** Poker chip + heart like icon — simplified for ~22px (no rim micro-hearts). */
+/** Poker chip + heart like icon - simplified for ~22px (no rim micro-hearts). */
 import {
   formatCompactStatCount,
   fullStatCountTitle,
@@ -110,7 +110,7 @@ export default function LoungeFlameIcon({ className = 'h-[22px] w-[22px]', liked
   const idleStrokeOpacity = readOnly ? 0.35 : 1
   const faceOpacity = readOnly ? 0.2 : 0.95
 
-  /** Outer dashed rim stroke edge ≈ 9.25 + 0.8 — align red outline flush with that perimeter */
+  /** Outer dashed rim stroke edge ≈ 9.25 + 0.8 - align red outline flush with that perimeter */
   const outerRedR = 9.79
   const outerRedStroke = 0.52
 

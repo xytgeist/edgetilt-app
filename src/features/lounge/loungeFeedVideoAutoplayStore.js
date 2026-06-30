@@ -3,7 +3,7 @@ import { readLoungeFeedVideoDebugEnabled } from '../../utils/loungeFeedVideoDebu
 
 /** @param {string | null | undefined} id */
 function shortCoordId(id) {
-  if (!id) return '—'
+  if (!id) return '-'
   const s = String(id)
   return s.length <= 8 ? s : s.slice(0, 8)
 }
@@ -24,11 +24,11 @@ export const LOUNGE_VIDEO_STRONG_IN_MIN = 0.95
 export const LOUNGE_VIDEO_CONTEST_OUT_MAX = 0.5
 export const LOUNGE_VIDEO_CONTEST_IN_MIN = 0.5
 /** Primary handoff: challenger tile midpoint vs scroll-column centerline (see pickCenterCrossTakeover). */
-/** Incumbent mostly clipped — release active immediately (don't wait for ratio === 0). */
+/** Incumbent mostly clipped - release active immediately (don't wait for ratio === 0). */
 export const LOUNGE_VIDEO_ACTIVE_RELEASE_RATIO = 0.12
-/** Incumbent sliding off — promote center / scroll-leading visible tile at first pixel. */
+/** Incumbent sliding off - promote center / scroll-leading visible tile at first pixel. */
 export const LOUNGE_VIDEO_ACTIVE_SCROLL_CONTEST_MAX = 0.38
-/** #fuckflingers — shrink ring while scrolling; handoff + active play still run. */
+/** #fuckflingers - shrink ring while scrolling; handoff + active play still run. */
 export const LOUNGE_VIDEO_FLINGER_IDLE_MS = 120
 /** Only tiles near the scroll port participate in active/ring (mounted feed keeps every Stream row). */
 export const LOUNGE_VIDEO_COORDINATOR_VIEWPORT_MARGIN_RATIO = 1.5
@@ -36,7 +36,7 @@ export const LOUNGE_VIDEO_COORDINATOR_VIEWPORT_MARGIN_RATIO = 1.5
 export const LOUNGE_VIDEO_COORDINATOR_IDLE_WATCHDOG_MS = 1200
 /** Min center distance advantage before idle handoff (reduces active flip-flop). */
 export const LOUNGE_VIDEO_IDLE_HANDOFF_CENTER_GAP_PX = 24
-/** Ignore tiny ratio deltas on ring tiles — cuts scroll-time React churn. */
+/** Ignore tiny ratio deltas on ring tiles - cuts scroll-time React churn. */
 export const LOUNGE_VIDEO_RATIO_EMIT_EPSILON = 0.022
 /** Max inline `<video>` nodes: `{prev, active, next}` ring + two feed-order lookahead shells. */
 export const LOUNGE_VIDEO_DOM_BUDGET_MAX = 5
@@ -64,17 +64,17 @@ const INITIAL_SNAPSHOT = Object.freeze({
 
 /**
  * @typedef {Object} LoungeFeedAutoplaySnapshot
- * @property {string | null} activeId — sole inline `play()` target (when not hero/flinger/suspended).
- * @property {string | null} prefetchPrevId — feed-order predecessor in `{prev, active, next}` ring.
- * @property {string | null} prefetchNextId — feed-order successor in ring.
- * @property {readonly string[]} ringIds — up to three client ids allowed HLS attach (paused warm outside active).
- * @property {readonly string[]} domBudgetIds — up to five client ids that mount an inline `<video>` (ring + lookahead).
- * @property {number} softResetEpoch — bumps on periodic handoff reset (tiles reattach HLS).
- * @property {boolean} flingerMode — fast scroll: shrink prefetch ring; active still plays.
- * @property {boolean} heroLocked — hero flyout owns resources; ring collapses to hero tile only.
+ * @property {string | null} activeId - sole inline `play()` target (when not hero/flinger/suspended).
+ * @property {string | null} prefetchPrevId - feed-order predecessor in `{prev, active, next}` ring.
+ * @property {string | null} prefetchNextId - feed-order successor in ring.
+ * @property {readonly string[]} ringIds - up to three client ids allowed HLS attach (paused warm outside active).
+ * @property {readonly string[]} domBudgetIds - up to five client ids that mount an inline `<video>` (ring + lookahead).
+ * @property {number} softResetEpoch - bumps on periodic handoff reset (tiles reattach HLS).
+ * @property {boolean} flingerMode - fast scroll: shrink prefetch ring; active still plays.
+ * @property {boolean} heroLocked - hero flyout owns resources; ring collapses to hero tile only.
  * @property {string | null} heroClientId
- * @property {boolean} coordinatorSuspended — overlay/detail: freeze feed coordinator.
- * @property {Readonly<Record<string, number>>} tileRatios — clientId → Option A visible fraction.
+ * @property {boolean} coordinatorSuspended - overlay/detail: freeze feed coordinator.
+ * @property {Readonly<Record<string, number>>} tileRatios - clientId → Option A visible fraction.
  */
 
 function tileVisibleRatio(el, rootEl) {
@@ -488,7 +488,7 @@ export function createAutoplayStore() {
         if (idx >= 0) {
           prefetchPrevId = idx > 0 ? orderedIds[idx - 1] : null
           prefetchNextId = idx < orderedIds.length - 1 ? orderedIds[idx + 1] : null
-          /** Always {prev,active,next} ring (≤3 HLS) — flinger only affects handoff timing, not ring size. */
+          /** Always {prev,active,next} ring (≤3 HLS) - flinger only affects handoff timing, not ring size. */
           ringIds = buildRingIds(orderedIds, ratios, centerYs, midY, nextActive, 3)
         }
       }
@@ -514,8 +514,8 @@ export function createAutoplayStore() {
     const nextDomKey = domBudgetIds.join(',')
 
     if (prevActiveId !== nextActive) {
-      const prevR = prevActiveId ? (ratios[prevActiveId] ?? 0).toFixed(2) : '—'
-      const nextR = nextActive ? (ratios[nextActive] ?? 0).toFixed(2) : '—'
+      const prevR = prevActiveId ? (ratios[prevActiveId] ?? 0).toFixed(2) : '-'
+      const nextR = nextActive ? (ratios[nextActive] ?? 0).toFixed(2) : '-'
       reportCoordDebug(
         `active ${shortCoordId(prevActiveId)}→${shortCoordId(nextActive)} r=${prevR}→${nextR} fl=${flingerMode ? 1 : 0}`,
       )
@@ -758,7 +758,7 @@ export function createAutoplayStore() {
       activeId = id
       schedule()
     },
-    /** Hero flyout: collapse ring to hero tile only — max one decoder for flyout perf. */
+    /** Hero flyout: collapse ring to hero tile only - max one decoder for flyout perf. */
     enterHeroLock(id) {
       if (!id) return
       heroLocked = true
@@ -782,7 +782,7 @@ export function createAutoplayStore() {
       }
       schedule()
     },
-    /** Active tile has HLS but stayed paused — clear incumbent so handoff can pick a fresh winner. */
+    /** Active tile has HLS but stayed paused - clear incumbent so handoff can pick a fresh winner. */
     releaseStalledActive(id) {
       if (!id || activeId !== id) return
       activeId = null
@@ -810,13 +810,13 @@ export function createAutoplayStore() {
     isFeedSoundTouchActive() {
       return feedSoundTouchActive
     },
-    /** Feed-wide Tap for sound enabled — gate scroll/gesture unmute notifies. */
+    /** Feed-wide Tap for sound enabled - gate scroll/gesture unmute notifies. */
     setFeedSoundWanted(wanted) {
       feedSoundWanted = Boolean(wanted)
     },
-    /** Scroll-root touch — invoke active tile unmute inside user-gesture stack. */
+    /** Scroll-root touch - invoke active tile unmute inside user-gesture stack. */
     notifySoundGesture,
-    /** iOS shared inline player — Tap for sound targets one persistent `<video>`. */
+    /** iOS shared inline player - Tap for sound targets one persistent `<video>`. */
     registerIosSharedStreamController(controller) {
       iosSharedStreamController = controller
       return () => {

@@ -52,7 +52,7 @@ export function loungeActivityActorDisplayName(actor) {
   return 'Member'
 }
 
-/** post | comment | reply — for grouped like/bookmark copy. */
+/** post | comment | reply - for grouped like/bookmark copy. */
 export function loungeActivityGroupedTargetKind(event, previewMeta = {}) {
   if (event?.comment_id) {
     return previewMeta?.preview_is_reply ? 'reply' : 'comment'

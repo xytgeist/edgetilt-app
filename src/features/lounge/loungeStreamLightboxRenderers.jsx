@@ -100,7 +100,7 @@ export function isFeedCommentEntity(row) {
   return 'body' in row || Boolean(row?.post_id)
 }
 
-/** Caption/body for lightbox overlay — comments use `body`, posts use `caption`. */
+/** Caption/body for lightbox overlay - comments use `body`, posts use `caption`. */
 export function loungeStreamLightboxCaption(row) {
   if (!row) return ''
   if (isFeedCommentEntity(row)) return String(row.body ?? '').trim()
@@ -135,7 +135,7 @@ export function loungeStreamLightboxMediaSource(hostPost, mediaPost) {
   return { displayEntity: media, captionText: loungeStreamLightboxCaption(media) }
 }
 
-/** @deprecated Prefer {@link loungeStreamLightboxMediaSource} — kept for callers that only need author. */
+/** @deprecated Prefer {@link loungeStreamLightboxMediaSource} - kept for callers that only need author. */
 export function loungeStreamLightboxDisplayEntity(hostPost) {
   const isPlainPostRepost = hostPost?.is_plain_repost === true && hostPost?.reposted_post != null
   const isCommentRepost = hostPost?.is_plain_repost === true && hostPost?.reposted_comment != null
@@ -196,10 +196,10 @@ function loungeStreamLightboxMenuState(hostPost, ctx) {
 
 /**
  * Stream hero overlay chrome (author, caption, interactions).
- * @param {object} hostEntity — Feed row, comment row, or detail host for menu + author resolution.
- * @param {object} mediaPost — Tile that owns the Stream uid (may differ on quote/repost embed).
+ * @param {object} hostEntity - Feed row, comment row, or detail host for menu + author resolution.
+ * @param {object} mediaPost - Tile that owns the Stream uid (may differ on quote/repost embed).
  * @param {() => void} dismissLightbox
- * @param {object} ctx — Handlers from {@link LoungeStreamLightboxProvider}.
+ * @param {object} ctx - Handlers from {@link LoungeStreamLightboxProvider}.
  */
 export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLightbox, ctx) {
   const host = hostEntity ?? mediaPost
@@ -245,7 +245,7 @@ export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLi
 }
 
 /**
- * Top-bar Follow — `landscapeOnly` hides in portrait (Stream video uses author row there).
+ * Top-bar Follow - `landscapeOnly` hides in portrait (Stream video uses author row there).
  */
 function buildLoungeLightboxFollowTopBar(hostEntity, mediaPost, ctx, { landscapeOnly = false, topBarBtnClass } = {}) {
   const host = hostEntity ?? mediaPost
@@ -267,12 +267,12 @@ function buildLoungeLightboxFollowTopBar(hostEntity, mediaPost, ctx, { landscape
   return follow
 }
 
-/** Stream video top bar — landscape only (portrait uses author row). */
+/** Stream video top bar - landscape only (portrait uses author row). */
 export function buildLoungeStreamLightboxTopBarExtra(hostEntity, mediaPost, ctx) {
   return buildLoungeLightboxFollowTopBar(hostEntity, mediaPost, ctx, { landscapeOnly: true })
 }
 
-/** Image/GIF lightbox top bar — always beside ⋯. */
+/** Image/GIF lightbox top bar - always beside ⋯. */
 export function buildLoungeImageLightboxTopBarExtra(hostEntity, mediaPost, ctx) {
   return buildLoungeLightboxFollowTopBar(hostEntity, mediaPost, ctx, {
     landscapeOnly: false,
@@ -378,7 +378,7 @@ export function buildLoungeStreamLightboxMenu(hostEntity, ctx, options = {}) {
   )
 }
 
-/** Image/GIF lightbox ⋯ menu — same as Stream minus autoplay toggle. */
+/** Image/GIF lightbox ⋯ menu - same as Stream minus autoplay toggle. */
 export function buildLoungeImageLightboxMenu(hostEntity, ctx) {
   return buildLoungeStreamLightboxMenu(hostEntity, ctx, {
     showAutoplayToggle: false,

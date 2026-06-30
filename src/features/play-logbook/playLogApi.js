@@ -248,7 +248,7 @@ export function isPlayLogPartnersPaidRpcMissingError(error) {
 }
 
 /**
- * Creator or play manager — update paid flags only.
+ * Creator or play manager - update paid flags only.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ sessionId: string, partners: unknown[] }} args
  */

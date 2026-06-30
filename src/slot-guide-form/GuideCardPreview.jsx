@@ -1,14 +1,14 @@
 /**
- * GuideCardPreview — pixel-faithful replica of the AP guide card (both views).
+ * GuideCardPreview - pixel-faithful replica of the AP guide card (both views).
  * Mirrors the exact logic/classes from GuidesScreen so what you see here is
  * what renders in the app. Togglable collapsed ↔ expanded.
  *
  * Props:
- *   guide            — guide fields (slug, title, card_ev_threshold, created_at, updated_at)
- *   machine          — machine fields (name, manufacturer, type, volatility_index, …)
- *   heroFile         — optional File for a newly chosen hero image (local preview)
- *   heroUrl          — existing stored hero URL
- *   contentMarkdown  — assembled markdown string for the expanded view
+ *   guide            - guide fields (slug, title, card_ev_threshold, created_at, updated_at)
+ *   machine          - machine fields (name, manufacturer, type, volatility_index, …)
+ *   heroFile         - optional File for a newly chosen hero image (local preview)
+ *   heroUrl          - existing stored hero URL
+ *   contentMarkdown  - assembled markdown string for the expanded view
  */
 import { useMemo, useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -19,11 +19,11 @@ import { extractAccentFromImageFile, resolveGuideAccent } from '../utils/guideCa
 
 // ─── ratings helpers ──────────────────────────────────────────────────────────
 function volatilityLabel(m) {
-  if (!m) return '—'
+  if (!m) return '-'
   const vi = typeof m.volatility_index === 'string' ? m.volatility_index.trim() : m.volatility_index
   if (vi != null && vi !== '') return vi
   if (m.nerf_risk && m.difficulty) return `${m.difficulty} play / ${m.nerf_risk} nerf risk`
-  return m.difficulty || m.nerf_risk || '—'
+  return m.difficulty || m.nerf_risk || '-'
 }
 
 function machinePopularity(m) {
@@ -32,9 +32,9 @@ function machinePopularity(m) {
 }
 
 function popularityLabel(m) {
-  if (!m) return '—'
+  if (!m) return '-'
   const pop = machinePopularity(m)
-  return pop || '—'
+  return pop || '-'
 }
 
 function volatilityCount(m) {
@@ -215,9 +215,9 @@ function IconEvTrendingUp({ className }) {
 }
 
 function fmtDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
-  catch { return '—' }
+  catch { return '-' }
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
@@ -262,7 +262,7 @@ export default function GuideCardPreview({
       ? accent.heroGradientClass
       : `bg-gradient-to-br ${accent.heroGradientClass}`
 
-  const evLine = guide.card_ev_threshold?.trim() || 'Verify +EV on the glass — open guide'
+  const evLine = guide.card_ev_threshold?.trim() || 'Verify +EV on the glass - open guide'
   const calcKey = machine.has_calculator
     ? (machine.calculator_slug || machine.slug || slug)
     : null
@@ -334,7 +334,7 @@ export default function GuideCardPreview({
               <div className="shrink-0 text-right leading-tight pb-px">
                 <div className="text-[9px] font-semibold uppercase tracking-wider text-zinc-400/95">Released</div>
                 <div className="text-[11px] font-bold tabular-nums text-zinc-100 drop-shadow-md">
-                  {machine.release_year ?? '—'}
+                  {machine.release_year ?? '-'}
                 </div>
               </div>
             </div>
@@ -367,7 +367,7 @@ export default function GuideCardPreview({
             <div className="rounded-xl bg-zinc-950/80 px-3 py-2 border border-zinc-800 col-span-2">
               <div className="text-zinc-500 font-semibold uppercase tracking-wide text-[10px]">Type</div>
               <div className="text-zinc-200 font-semibold mt-0.5">
-                {machine.type || <span className="text-zinc-600 italic">—</span>}
+                {machine.type || <span className="text-zinc-600 italic">-</span>}
               </div>
             </div>
           </div>

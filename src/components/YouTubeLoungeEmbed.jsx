@@ -7,7 +7,7 @@ import {
 import YouTubeBrandMark from './YouTubeBrandMark.jsx'
 
 /**
- * Inline YouTube player for Lounge posts/comments — X-style embed with iframe always mounted.
+ * Inline YouTube player for Lounge posts/comments - X-style embed with iframe always mounted.
  * Playback starts from YouTube's own controls (no forced autoplay).
  *
  * @param {{

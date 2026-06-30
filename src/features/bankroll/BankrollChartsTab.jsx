@@ -13,7 +13,7 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip)
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt$(n) {
-  if (n == null || isNaN(n)) return '—'
+  if (n == null || isNaN(n)) return '-'
   const abs = Math.abs(n)
   const str = abs >= 10000
     ? '$' + Math.round(abs).toLocaleString()

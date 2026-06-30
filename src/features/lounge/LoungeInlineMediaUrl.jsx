@@ -17,7 +17,7 @@ function normalizeUrlList(urls) {
 }
 
 /**
- * Full-screen image/GIF viewer — Stream-style chrome: back + ⋯ top bar, pill interactions on bottom gradient.
+ * Full-screen image/GIF viewer - Stream-style chrome: back + ⋯ top bar, pill interactions on bottom gradient.
  * Pass `urls` + `initialIndex` for multi-image navigation; or legacy single `url`.
  */
 export function LoungeImageLightbox({
@@ -27,11 +27,11 @@ export function LoungeImageLightbox({
   onClose,
   /** Tailwind z-index on the portaled shell (default below profile sheet `z-[101]`). */
   lightboxPortalClass = 'z-[100]',
-  /** `() => ReactNode` — top-right ⋯ menu (no autoplay toggle for images). */
+  /** `() => ReactNode` - top-right ⋯ menu (no autoplay toggle for images). */
   renderMediaLightboxMenu,
-  /** `() => ReactNode` — Follow pill left of ⋯ in the top bar. */
+  /** `() => ReactNode` - Follow pill left of ⋯ in the top bar. */
   renderMediaLightboxTopBarExtra,
-  /** `(dismissLightbox) => ReactNode` — pill interaction row on bottom gradient. */
+  /** `(dismissLightbox) => ReactNode` - pill interaction row on bottom gradient. */
   renderMediaLightboxInteractionBar,
 }) {
   const list = useMemo(() => {
@@ -319,8 +319,8 @@ export function LoungeImageLightbox({
 
 /**
  * GIF/photo URL shown below the post caption (always under the final line of text).
- * @param {string} [marginTopClass] — Tailwind margin-top on the wrapper (default `mt-2` after caption).
- * @param {boolean} [enableLightbox] — Tap to open fullscreen (feed/detail); set false for non-interactive embeds if needed.
+ * @param {string} [marginTopClass] - Tailwind margin-top on the wrapper (default `mt-2` after caption).
+ * @param {boolean} [enableLightbox] - Tap to open fullscreen (feed/detail); set false for non-interactive embeds if needed.
  */
 export function LoungeInlineMediaUrl({
   url,

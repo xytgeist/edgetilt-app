@@ -13,7 +13,7 @@ function emit() {
   })
 }
 
-/** Staff Settings toggle (admin/moderator) — show git build SHA in Lounge title bars. */
+/** Staff Settings toggle (admin/moderator) - show git build SHA in Lounge title bars. */
 export function readLoungeBuildBadgeEnabled() {
   if (typeof window === 'undefined') return false
   try {

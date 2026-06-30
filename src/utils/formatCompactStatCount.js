@@ -31,8 +31,8 @@ export function fullStatCountTitle(n) {
 /**
  * Per-stat **inner** grid: fixed icon track + `6ch` count track so glyphs do not move when a count
  * appears (used where a compact icon+count cell is needed). The feed/post **interaction** row instead
- * uses **`justify-between`** on four fixed-width glyph rails — see **`LoungeInteractionGlyphRail.jsx`**
- * and **`LoungePostInteractionBar.jsx`** — with counts `absolute` so they do not affect inter-icon gaps.
+ * uses **`justify-between`** on four fixed-width glyph rails - see **`LoungeInteractionGlyphRail.jsx`**
+ * and **`LoungePostInteractionBar.jsx`** - with counts `absolute` so they do not affect inter-icon gaps.
  */
 export const loungeInteractionStatGridClass =
   'inline-grid shrink-0 items-center justify-items-start gap-x-1.5 self-center'

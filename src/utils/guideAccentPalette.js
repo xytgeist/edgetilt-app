@@ -71,7 +71,7 @@ export function snapGuideAccentToPalette(raw) {
   const b = parseInt(hex.slice(5, 7), 16)
   const { h, s } = rgbToHsl(r, g, b)
 
-  // Near-neutral samples have unreliable hue — caller should fall back to legacy default.
+  // Near-neutral samples have unreliable hue - caller should fall back to legacy default.
   if (s < 0.12) return null
 
   let best = GUIDE_ACCENT_PALETTE[0]
@@ -137,7 +137,7 @@ export function guideAccentForLightSurface(hex) {
   const b = parseInt(n.slice(5, 7), 16)
   const { h, s, l } = rgbToHsl(r, g, b)
 
-  // Yellow / gold / lime family — worst offenders on pale UI
+  // Yellow / gold / lime family - worst offenders on pale UI
   if (h >= 35 && h <= 100) {
     return hslToHex(h, Math.min(Math.max(s, 0.72), 0.95), 0.4)
   }

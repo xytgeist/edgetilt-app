@@ -11,7 +11,7 @@ import {
 } from '../../../utils/loungePushNotificationsPref.js'
 
 /**
- * Lounge Settings push toggle — local opt-in pref + shared device subscription (`push_subscriptions`).
+ * Lounge Settings push toggle - local opt-in pref + shared device subscription (`push_subscriptions`).
  */
 export default function useLoungePushNotifications({ supabaseClient, viewerUserId }) {
   const pushPrefEnabled = useSyncExternalStore(
@@ -48,7 +48,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
       return 'Checking alert registration on this device…'
     }
     if (pushPrefEnabled && isSubscribed && isServerRegistered === false) {
-      return 'Alerts not saved on this device — turn off, then on again.'
+      return 'Alerts not saved on this device - turn off, then on again.'
     }
     if (pushActive) return 'Alerts enabled on this device.'
     if (pushPrefEnabled && !isSubscribed) {
@@ -63,7 +63,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     void syncLocalState()
   }, [viewerUserId, syncLocalState])
 
-  /** iOS PWA first-run prompt grants OS permission — register Lounge push on this device. */
+  /** iOS PWA first-run prompt grants OS permission - register Lounge push on this device. */
   useEffect(() => {
     if (!viewerUserId || iosPwaInstallRequired() || isBusy) return
     if (!consumePwaNotifEnablePending(viewerUserId)) return
@@ -71,7 +71,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     void enable()
   }, [viewerUserId, enable, isBusy])
 
-  /** Pref off but device still subscribed (e.g. stale state) — tear down subscription. */
+  /** Pref off but device still subscribed (e.g. stale state) - tear down subscription. */
   useEffect(() => {
     if (!viewerUserId || !isSubscribed || pushPrefEnabled || isBusy || syncingPrefRef.current) return
     void disable()

@@ -231,7 +231,7 @@ import LoungeMarketSymbolPickerSheet from './LoungeMarketSymbolPickerSheet.jsx'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 import PwaInstallTitleBarRow from '../../components/PwaInstallBanner.jsx'
 import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
-// LOUNGE_DOCK_FOOTER_BAR_DISABLED — classic dock icon row (FAB wheel is primary nav). Re-enable import + JSX below to restore.
+// LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row (FAB wheel is primary nav). Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
 import {
@@ -337,7 +337,7 @@ import {
 const LOUNGE_MAX_PINNED_ALERT =
   'The maximum number of pinned posts is two. Unpin a post to pin this one.'
 
-/** Post detail reply composer — collapsed pill copy when empty + expanded textarea placeholder. */
+/** Post detail reply composer - collapsed pill copy when empty + expanded textarea placeholder. */
 const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, nerd)"
 
 const FEED_COMMENT_SELECT_COLS =
@@ -387,7 +387,7 @@ async function fetchHydratedFeedCommentsForPost(supabaseClient, postId) {
   return rows.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
 }
 
-/** Thread ancestor tap — same interactive exclusions as comment/post feed rows. */
+/** Thread ancestor tap - same interactive exclusions as comment/post feed rows. */
 function loungePostDetailThreadAncestorClick(e, onNavigate) {
   if (typeof onNavigate !== 'function') return
   const t = e.target
@@ -544,9 +544,9 @@ export default function SocialFeed({
   deleteAccountBusy = false,
   /** Called with a guide machine slug when user taps a guide embed card in the feed. */
   onOpenGuideCard,
-  /** Called with peerUserId when "Message" is tapped on a profile — navigates to Chat tab at app shell level. */
+  /** Called with peerUserId when "Message" is tapped on a profile - navigates to Chat tab at app shell level. */
   onOpenChatWithUser,
-  /** Called with roomId when a room is tapped in the dock chat panel — navigates to Chat tab. */
+  /** Called with roomId when a room is tapped in the dock chat panel - navigates to Chat tab. */
   onOpenChatRoomFromDock,
   /** When set, opens the lounge profile modal for this user (e.g. from Chat member profile). */
   requestOpenProfileUserId = null,
@@ -642,7 +642,7 @@ export default function SocialFeed({
   const loungePostAbortRef = useRef(null)
   /** True while a background lounge post job may be in flight (guards double submit). */
   const loungePostJobRunningRef = useRef(false)
-  /** Video-only submission queue — text/image/GIF use the fast lane (parallel). */
+  /** Video-only submission queue - text/image/GIF use the fast lane (parallel). */
   const loungeSubmitQueueRef = useRef(
     /** @type {Array<{id:string,type:string,snapshot:object,videoPrep?:import('./loungeQueuedVideoPrep.js').LoungeQueuedVideoPrepSlot}>} */ ([]),
   )
@@ -725,7 +725,7 @@ export default function SocialFeed({
   const finalizeProfileModalCloseRef = useRef(() => {})
   /** Clears post detail / profile stack before FAB dock navigation (defined later). */
   const dismissLoungeStackForDockNavRef = useRef(() => {})
-  /** When profile opens from dock search/notifications, back restores that panel. @deprecated — use loungeNavReturnStackRef */
+  /** When profile opens from dock search/notifications, back restores that panel. @deprecated - use loungeNavReturnStackRef */
   const profileReturnDockPanelRef = useRef(null)
   const loungeNavReturnStackRef = useRef(createLoungeNavReturnStack())
   const loungeNavRestoringRef = useRef(false)
@@ -824,11 +824,11 @@ export default function SocialFeed({
         .join('\0'),
     [loungeDetailComments],
   )
-  /** Own just-posted comment ids — prepended at top of post-detail list for this viewer only. */
+  /** Own just-posted comment ids - prepended at top of post-detail list for this viewer only. */
   const [loungeDetailViewerPinnedCommentIds, setLoungeDetailViewerPinnedCommentIds] = useState([])
   const [loungeDetailCommentSort, setLoungeDetailCommentSort] = useState(() => readLoungeDetailCommentSort())
   const [loungeDetailFollowingUserIds, setLoungeDetailFollowingUserIds] = useState([])
-  /** Set of user IDs the viewer follows — drives the follow pill on feed/profile cards. */
+  /** Set of user IDs the viewer follows - drives the follow pill on feed/profile cards. */
   const [loungeFollowingUserIds, setLoungeFollowingUserIds] = useState(() => new Set())
   const [loungeDetailCommentDraft, setLoungeDetailCommentDraft] = useState('')
   const [loungeDetailCommentErr, setLoungeDetailCommentErr] = useState('')
@@ -844,7 +844,7 @@ export default function SocialFeed({
   const [loungeDetailCommentVideoSlot, setLoungeDetailCommentVideoSlot] = useState(null)
   const loungeDetailCommentImageItemsRef = useRef(loungeDetailCommentImageItems)
   const loungeDetailCommentMediaUrlRef = useRef('')
-  /** True while native picker / probe / crop is in flight — blocks blur from collapsing the reply composer early. */
+  /** True while native picker / probe / crop is in flight - blocks blur from collapsing the reply composer early. */
   const loungeDetailCommentMediaSessionRef = useRef(false)
   /** Which composer has the iOS file/photo sheet or gallery open (`null` when idle). */
   const loungeComposerMediaPickerTargetRef = useRef(
@@ -878,7 +878,7 @@ export default function SocialFeed({
   const loungePostDetailFocusScrollTitleLockRef = useRef(false)
   /** Tracks which post the detail-comments effect last initialized (avoids clearing drill path on auth refresh). */
   const loungeDetailCommentsEffectPostIdRef = useRef(/** @type {null | string} */ (null))
-  /** Post id whose comments finished loading — Strict Mode retry when unset after cancel. */
+  /** Post id whose comments finished loading - Strict Mode retry when unset after cancel. */
   const loungeDetailCommentsLoadedPostIdRef = useRef(/** @type {null | string} */ (null))
   const [loungeDetailCommentEditImageUrls, setLoungeDetailCommentEditImageUrls] = useState([])
   const [loungeDetailCommentEditImageItems, setLoungeDetailCommentEditImageItems] = useState([])
@@ -909,7 +909,7 @@ export default function SocialFeed({
   /** Session user for email-based initials before `profiles` exists. */
   const [composerAuthUser, setComposerAuthUser] = useState(null)
   const [composerUserProfile, setComposerUserProfile] = useState(null)
-  /** False until first `getSession()` completes — avoids flashing guest "ME" while auth is unknown. */
+  /** False until first `getSession()` completes - avoids flashing guest "ME" while auth is unknown. */
   const [composerAuthResolved, setComposerAuthResolved] = useState(false)
   const [pullRefreshing, setPullRefreshing] = useState(false)
   const [loungeFeedDeleteBusyPostId, setLoungeFeedDeleteBusyPostId] = useState(null)
@@ -1013,9 +1013,9 @@ export default function SocialFeed({
   const loungeDetailEditVideoInputRef = useRef(null)
   const loungeFeedScrollRef = useRef(null)
   useLoungeMarketPollActivityTracker({ feedActive: isActivePage, scrollRootRef: loungeFeedScrollRef })
-  /** Bound inside feed `LoungeFeedVideoAutoplayProvider` — reset feed inline sound when opening post detail. */
+  /** Bound inside feed `LoungeFeedVideoAutoplayProvider` - reset feed inline sound when opening post detail. */
   const resetFeedInlineSoundRef = useRef(() => {})
-  /** Bound inside post-detail `LoungeFeedVideoAutoplayProvider` — reset comment-thread inline sound on close. */
+  /** Bound inside post-detail `LoungeFeedVideoAutoplayProvider` - reset comment-thread inline sound on close. */
   const resetPostDetailInlineSoundRef = useRef(() => {})
   const loungeTitleBarRef = useRef(null)
   const loungeScrollPrevTopRef = useRef(0)
@@ -1133,7 +1133,7 @@ export default function SocialFeed({
     !loungeDockPanel &&
     (profileModalOpen || profileOverlayStack.length > 0)
 
-  // ── @mention autocomplete — one instance per composer ──────────────────────
+  // ── @mention autocomplete - one instance per composer ──────────────────────
   const mentionComposer = useMentionState(postText, supabaseClient, !loungeReadOnly)
   const mentionDetailComment = useMentionState(loungeDetailCommentDraft, supabaseClient, !loungeReadOnly)
   const mentionQuoteRepost = useMentionState(quoteRepostDraft, supabaseClient, !loungeReadOnly)
@@ -1918,7 +1918,7 @@ export default function SocialFeed({
     return () => ro.disconnect()
   }, [loungePostDetail])
 
-  /** Only reset scroll when opening a different post — same-post updates (e.g. like) replace `loungePostDetail` by id and must not jump to top. */
+  /** Only reset scroll when opening a different post - same-post updates (e.g. like) replace `loungePostDetail` by id and must not jump to top. */
   useEffect(() => {
     if (!loungePostDetail?.id) return
     loungePostDetailTitleRevealRef.current = 1
@@ -2133,7 +2133,7 @@ export default function SocialFeed({
     setLoungePostSubmitInFlight(loungeSubmitInFlightCountRef.current > 0)
   }, [])
 
-  /** Feed / quote / reply background jobs share one upload bar — do not clear it from unrelated surface cleanup. */
+  /** Feed / quote / reply background jobs share one upload bar - do not clear it from unrelated surface cleanup. */
   const dismissLoungePostUploadBarIfIdle = useCallback(() => {
     if (
       loungePostJobRunningRef.current ||
@@ -2778,7 +2778,7 @@ export default function SocialFeed({
   const cancelComposerMediaPrep = useCallback(
     (opts = {}) => {
       const userInitiated = Boolean(opts.userInitiated)
-      // Background queue job may still own composer prep handoff / abort — never tear down from composer dismiss.
+      // Background queue job may still own composer prep handoff / abort - never tear down from composer dismiss.
       if (loungeBackgroundSubmitBusy()) {
         return
       }
@@ -4657,7 +4657,7 @@ export default function SocialFeed({
     return [...ids].sort().join(',')
   }, [communityPosts, profileModalPosts])
 
-  // Comment IDs that appear as plain comment-repost cards in the feed — need separate interaction hydration.
+  // Comment IDs that appear as plain comment-repost cards in the feed - need separate interaction hydration.
   const feedCommentRepostIdsKey = useMemo(() => {
     const ids = new Set()
     for (const p of [...communityPosts, ...profileModalPosts]) {
@@ -5774,7 +5774,7 @@ export default function SocialFeed({
           .eq('user_id', composerUserId)
           .eq('repost_of_comment_id', commentId)
           .eq('is_plain_repost', true),
-        // Legacy cleanup — no-op if row doesn't exist
+        // Legacy cleanup - no-op if row doesn't exist
         supabaseClient
           .from('feed_comment_reposts')
           .delete()
@@ -5824,7 +5824,7 @@ export default function SocialFeed({
   /** Post-detail reply: clear composer immediately and upload in the background (feed composer parity). */
   const submitLoungeDetailComment = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId || loungeReadOnly) return
-    // No job-running guard here — the queue serialises execution; the composer clears
+    // No job-running guard here - the queue serialises execution; the composer clears
     // synchronously on submit so a rapid second tap fails the content check below.
     const body = loungeDetailCommentDraft.trim()
     setLoungeDetailCommentErr('')
@@ -6227,11 +6227,11 @@ export default function SocialFeed({
   }, [])
 
   /**
-   * Load post-detail comments once per opened post — not on every auth/interaction dep change.
+   * Load post-detail comments once per opened post - not on every auth/interaction dep change.
    * Do NOT reset `loungeCommentDetailPathIds` here when `composerUserId` (or similar) updates:
    * comment-repost direct entry sets the drill path first; a re-run used to clear it and leave
    * the user stuck on post-only detail ("Post" title) instead of Reply + hierarchy.
-   * Never put `loungeDetailCommentsLoading` in this effect's deps — toggling it re-ran the
+   * Never put `loungeDetailCommentsLoading` in this effect's deps - toggling it re-ran the
    * effect, cancelled the in-flight fetch, then bailed on "already loading" → stuck forever.
    * Comment likes/reposts/bookmarks hydrate in the effect below.
    */
@@ -6361,7 +6361,7 @@ export default function SocialFeed({
     }
   }, [composerUserId, loungeDetailCommentsLoading, loungePostDetail?.id, loungeReadOnly, supabaseClient])
 
-  /** Hydrate comment likes/reposts/bookmarks when comment ids or viewer session changes — not on count-only updates. */
+  /** Hydrate comment likes/reposts/bookmarks when comment ids or viewer session changes - not on count-only updates. */
   useEffect(() => {
     if (!loungePostDetail?.id || loungeReadOnly || loungeDetailCommentsLoading) return
     const cids = loungeDetailCommentIdsKey ? loungeDetailCommentIdsKey.split('\0').filter(Boolean) : []
@@ -9156,7 +9156,7 @@ export default function SocialFeed({
         null
       if (!orig?.id) {
         setLoungeManageErr(
-          'Could not restore quote repost — the original post is not loaded. Return to the feed and try again.',
+          'Could not restore quote repost - the original post is not loaded. Return to the feed and try again.',
         )
         return
       }
@@ -9663,8 +9663,8 @@ export default function SocialFeed({
           const detail = msg !== 'Unknown error' ? msg : ''
           setThreadComposeErr(
             detail
-              ? `Could not post thread — ${detail} Your full thread is still here; fix or tap Post all again.`
-              : 'Could not post thread — all parts are still here with your media. Tap Post all again or edit below.',
+              ? `Could not post thread - ${detail} Your full thread is still here; fix or tap Post all again.`
+              : 'Could not post thread - all parts are still here with your media. Tap Post all again or edit below.',
           )
           void persistThreadSubmissionSnapshotAsDraft(retrySnap || snap, { fromPartIndex: 0 }).then(
             ({ data }) => {
@@ -10469,7 +10469,7 @@ export default function SocialFeed({
   )
   runBackgroundLoungeCommentEditSubmissionRef.current = runBackgroundLoungeCommentEditSubmission
 
-  /** Text/image/GIF-only submits — run in parallel without blocking the video queue. */
+  /** Text/image/GIF-only submits - run in parallel without blocking the video queue. */
   const runFastLaneLoungeSubmit = useCallback(
     async (type, snapshot) => {
       loungeFastLaneInFlightRef.current += 1
@@ -10634,8 +10634,8 @@ export default function SocialFeed({
             const detail = msg !== 'Could not post right now.' ? msg : ''
             setThreadComposeErr(
               detail
-                ? `Could not post thread — ${detail} Your full thread is still here; fix or tap Post all again.`
-                : 'Could not post thread — all parts are still here with your media. Tap Post all again or edit below.',
+                ? `Could not post thread - ${detail} Your full thread is still here; fix or tap Post all again.`
+                : 'Could not post thread - all parts are still here with your media. Tap Post all again or edit below.',
             )
             void persistThreadSubmissionSnapshotAsDraft(retrySnap || snapshot, { fromPartIndex: 0 }).then(
               ({ data }) => {
@@ -10827,7 +10827,7 @@ export default function SocialFeed({
   ])
 
   /**
-   * Drain the video submit queue — DB insert stays sequential; waiting jobs prep/upload in parallel.
+   * Drain the video submit queue - DB insert stays sequential; waiting jobs prep/upload in parallel.
    * Fast-lane posts (text/image/GIF) bypass this loop entirely.
    */
   const drainLoungeSubmitQueue = useCallback(async () => {
@@ -10987,7 +10987,7 @@ export default function SocialFeed({
     if (fail?.kind === 'mediaPrep') {
       if (fail?.target === 'quote') {
         cancelQuoteRepostMediaPrep()
-        setQuoteRepostErr('Video was cleared — add a video again when you are ready.')
+        setQuoteRepostErr('Video was cleared - add a video again when you are ready.')
         setLoungePostUploadFailedOpen(false)
         setLoungePostUploadFailureDetails(null)
         return
@@ -11020,7 +11020,7 @@ export default function SocialFeed({
             void refreshLoungeDraftCount()
           }
         })
-        setThreadComposeErr('Thread saved to drafts — photos, GIFs, and videos kept in compose.')
+        setThreadComposeErr('Thread saved to drafts - photos, GIFs, and videos kept in compose.')
       } else {
         restoreComposerFromSnapshot(snap)
         const draftPayload = loungePostDraftPayloadFromSubmissionSnapshot(snap)
@@ -11311,8 +11311,8 @@ export default function SocialFeed({
       )
       setThreadComposeErr(
         blockedPart >= 0
-          ? `Post ${blockedPart + 1}: video upload failed — remove the video or pick a new one before posting.`
-          : 'A video in this thread failed to upload — fix it before posting.',
+          ? `Post ${blockedPart + 1}: video upload failed - remove the video or pick a new one before posting.`
+          : 'A video in this thread failed to upload - fix it before posting.',
       )
       return
     }
@@ -11457,7 +11457,7 @@ export default function SocialFeed({
           }
         }
       } catch {
-        // Non-blocking — failure handler saves again if needed.
+        // Non-blocking - failure handler saves again if needed.
       }
     }
 
@@ -12411,7 +12411,7 @@ export default function SocialFeed({
     pushLoungeNavReturnContext,
   ])
 
-  /** Open a profile by handle string — used when a viewer taps an @mention in a caption or comment. */
+  /** Open a profile by handle string - used when a viewer taps an @mention in a caption or comment. */
   const openProfileByHandle = useCallback(
     async (handle, e) => {
       e?.stopPropagation?.()
@@ -13106,7 +13106,7 @@ export default function SocialFeed({
         </div>
       ) : null}
 
-      {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED — see import above
+      {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED - see import above
       {showLoungeViewportDock && !loungeDockPanel ? (
         <LoungeDockFooterBar
           reveal={loungeTitleReveal}
@@ -14483,7 +14483,7 @@ export default function SocialFeed({
                       streamLightboxHost={loungePostDetail}
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
                     />
-                    {/* AP Guide embed card — detail view */}
+                    {/* AP Guide embed card - detail view */}
                     {loungePostDetail.is_ap_guide_post && loungePostDetail.game_slug ? (
                       <button
                         type="button"
@@ -15195,7 +15195,7 @@ export default function SocialFeed({
                 <div
                   className="lounge-detail-comment-footer-glass pointer-events-auto px-3 pt-2.5 pb-0"
                   style={{
-                    // Keyboard open: `visualViewport` overlap already clears the keyboard — do not add
+                    // Keyboard open: `visualViewport` overlap already clears the keyboard - do not add
                     // `env(safe-area-inset-bottom)` here; iOS often keeps ~34px inset while the keyboard is up,
                     // which stacked under overlap and left a large dead band above the keys.
                     paddingBottom:
@@ -16188,7 +16188,7 @@ export default function SocialFeed({
             <div className="text-white text-xl font-bold mt-1">One-time setup before posting</div>
             <div className="text-zinc-400 text-[15px] mt-2 leading-relaxed">
               {profileGateProvisionalConfirmNeeded
-                ? 'We started your handle and display name from your email—confirm or edit them, then save.'
+                ? 'We started your handle and display name from your email - confirm or edit them, then save.'
                 : 'Pick a handle and display name for Lounge posts.'}
             </div>
             <div className="mt-4 space-y-3">
@@ -16366,7 +16366,7 @@ export default function SocialFeed({
                 {loungePostUploadBar.status ||
                   (loungePostUploadBar.threadPartTotal > 1 && loungePostUploadBar.threadPartPublished > 0
                     ? `Part ${loungePostUploadBar.threadPartPublished} of ${loungePostUploadBar.threadPartTotal} posted`
-                    : '—')}
+                    : '-')}
               </div>
               {loungePostUploadBar.detail ? (
                 <div

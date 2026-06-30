@@ -93,7 +93,7 @@ const INFO = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt$(n) {
-  if (n == null || isNaN(n)) return '—'
+  if (n == null || isNaN(n)) return '-'
   const abs = Math.abs(n)
   const str = abs >= 10000
     ? '$' + Math.round(abs).toLocaleString()
@@ -126,7 +126,7 @@ function readChartIsDark() {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
 }
 
-/** Monte Carlo fan — line/fill/legend tokens tuned per theme. */
+/** Monte Carlo fan - line/fill/legend tokens tuned per theme. */
 function fanChartStyle(isDark) {
   if (isDark) {
     return {
@@ -153,7 +153,7 @@ function fanChartStyle(isDark) {
 }
 
 function fmtDurationHrs(hrs) {
-  if (hrs < 0.02) return '—'
+  if (hrs < 0.02) return '-'
   const h = Math.floor(hrs)
   const m = Math.round((hrs - h) * 60)
   if (h === 0) return `${m}m`
@@ -161,7 +161,7 @@ function fmtDurationHrs(hrs) {
 }
 
 function fmtRatio(n, digits = 2) {
-  if (n == null || isNaN(n)) return '—'
+  if (n == null || isNaN(n)) return '-'
   const sign = n >= 0 ? '+' : ''
   return sign + n.toFixed(digits)
 }
@@ -226,7 +226,7 @@ function MetricInfoModal({ title, body, onClose }) {
   )
 }
 
-// Compact metric tile — used in 2-per-row pairs
+// Compact metric tile - used in 2-per-row pairs
 function MetricTile({ label, value, color = 'text-white', sub, onInfo }) {
   return (
     <div className="flex-1 min-w-0 rounded-2xl bg-zinc-800/50 px-3 py-2.5">
@@ -249,7 +249,7 @@ function MetricTile({ label, value, color = 'text-white', sub, onInfo }) {
   )
 }
 
-// Full-width metric row — used for Kelly and section-spanning metrics
+// Full-width metric row - used for Kelly and section-spanning metrics
 function MetricRow({ label, value, color = 'text-white', sub, onInfo }) {
   return (
     <div className="rounded-2xl bg-zinc-800/50 px-4 py-3">
@@ -315,10 +315,10 @@ function SessionDetailModal({ session, onClose }) {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <DetailStat label="Duration" value={fmtDurationHrs(hrs)} />
           <DetailStat label="Buy-in" value={fmt$(session.start_amount)} />
-          <DetailStat label="Cash-out" value={session.end_amount != null ? fmt$(session.end_amount) : '—'} />
+          <DetailStat label="Cash-out" value={session.end_amount != null ? fmt$(session.end_amount) : '-'} />
         </div>
         <div className="grid grid-cols-2 gap-2 mb-4">
-          <DetailStat label="Hourly" value={hourly != null ? `${hourly >= 0 ? '+' : ''}${fmt$(hourly)}/hr` : '—'} colored={hourly != null} positive={hourly != null && hourly >= 0} />
+          <DetailStat label="Hourly" value={hourly != null ? `${hourly >= 0 ? '+' : ''}${fmt$(hourly)}/hr` : '-'} colored={hourly != null} positive={hourly != null && hourly >= 0} />
           <DetailStat label="Game type" value={session.game_type === 'tables' ? '🃏 Tables' : '🎰 Slots'} />
         </div>
 
@@ -573,7 +573,7 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
         ? parseFloat((totalPL - activeMC.ruinDrop).toFixed(2))
         : null
 
-      // Dataset 1 — ruin threshold
+      // Dataset 1 - ruin threshold
       datasets.push({
         data: ruinY != null
           ? [...Array(nHist).fill(null), ...Array(horizon).fill(ruinY)]
@@ -586,15 +586,15 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
         fill: false,
         tension: 0,
       })
-      // Dataset 2 — p90, fill '+4' → p10
+      // Dataset 2 - p90, fill '+4' → p10
       datasets.push({ data: [...projNulls, ...p90d], borderColor: 'transparent', borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: '+4', backgroundColor: fanStyle.bandOuter, tension: 0.35, spanGaps: false })
-      // Dataset 3 — p75, fill '+2' → p25 (upper IQR edge visible)
+      // Dataset 3 - p75, fill '+2' → p25 (upper IQR edge visible)
       datasets.push({ data: [...projNulls, ...p75d], borderColor: fanStyle.bandEdge, borderWidth: 1.25, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 0, fill: '+2', backgroundColor: fanStyle.bandInner, tension: 0.35, spanGaps: false })
-      // Dataset 4 — p50 median
+      // Dataset 4 - p50 median
       datasets.push({ data: [...projNulls, ...p50d], borderColor: fanStyle.medianLine, borderWidth: fanStyle.medianWidth, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.35, spanGaps: false })
-      // Dataset 5 — p25 (lower IQR edge visible)
+      // Dataset 5 - p25 (lower IQR edge visible)
       datasets.push({ data: [...projNulls, ...p25d], borderColor: fanStyle.bandEdge, borderWidth: 1.25, borderDash: [4, 3], pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.35, spanGaps: false })
-      // Dataset 6 — p10
+      // Dataset 6 - p10
       datasets.push({ data: [...projNulls, ...p10d], borderColor: 'transparent', borderWidth: 0, pointRadius: 0, pointHoverRadius: 0, fill: false, tension: 0.35, spanGaps: false })
     }
 
@@ -796,7 +796,7 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
             <div ref={chartContainerRef} className="h-[220px] relative">
               <Line data={chartData} options={chartOptions} plugins={boundaryPlugin ? [boundaryPlugin] : []} />
 
-              {/* Dismiss backdrop — fixed so tapping anywhere outside the tooltip closes it */}
+              {/* Dismiss backdrop - fixed so tapping anywhere outside the tooltip closes it */}
               {tooltip && (
                 <div
                   className="fixed inset-0 z-[19]"
@@ -804,9 +804,9 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
                 />
               )}
 
-              {/* HTML tooltip — session detail or fan projection callout */}
+              {/* HTML tooltip - session detail or fan projection callout */}
               {tooltip && (() => {
-                // Light-mode theme — dark mode is unchanged
+                // Light-mode theme - dark mode is unchanged
                 const bg  = isDark ? '#18181b' : '#ffffff'
                 const bdr = isDark ? '#3f3f46' : '#d4d4d8'
                 const clrDate  = isDark ? '#a1a1aa' : '#52525b'
@@ -960,13 +960,13 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
               <div className="flex gap-2">
                 <MetricTile
                   label="Profit Factor"
-                  value={m.profitFactor != null ? `${m.profitFactor.toFixed(2)}×` : '—'}
+                  value={m.profitFactor != null ? `${m.profitFactor.toFixed(2)}×` : '-'}
                   color={m.profitFactor == null ? 'text-white' : m.profitFactor > 1.1 ? 'text-emerald-400' : m.profitFactor >= 1.0 ? 'text-amber-400' : 'text-red-400'}
                   onInfo={() => showInfo('profitFactor')}
                 />
                 <MetricTile
                   label="Payoff Ratio"
-                  value={m.payoffRatio != null ? `${m.payoffRatio.toFixed(2)}×` : '—'}
+                  value={m.payoffRatio != null ? `${m.payoffRatio.toFixed(2)}×` : '-'}
                   color={m.payoffRatio == null ? 'text-white' : m.payoffRatio > 1.2 ? 'text-emerald-400' : m.payoffRatio >= 1.0 ? 'text-amber-400' : 'text-red-400'}
                   sub={m.avgWin > 0 ? `avg win ${fmt$(m.avgWin)} / avg loss ${fmt$(m.avgLoss)}` : undefined}
                   onInfo={() => showInfo('payoffRatio')}
@@ -985,7 +985,7 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
                 />
                 <MetricTile
                   label="Recovery Factor"
-                  value={m.recoveryFactor != null ? `${m.recoveryFactor.toFixed(2)}×` : '—'}
+                  value={m.recoveryFactor != null ? `${m.recoveryFactor.toFixed(2)}×` : '-'}
                   color={m.recoveryFactor == null ? 'text-white' : m.recoveryFactor > 1.5 ? 'text-emerald-400' : m.recoveryFactor >= 0 ? 'text-amber-400' : 'text-red-400'}
                   onInfo={() => showInfo('recoveryFactor')}
                 />
@@ -1001,7 +1001,7 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
                 <MetricTile
                   label="Risk of Ruin"
                   value={mcResult == null
-                    ? (sessionResults.length < 5 ? 'Need 5+ sessions' : '—')
+                    ? (sessionResults.length < 5 ? 'Need 5+ sessions' : '-')
                     : mcResult.ror < 0.1 ? '<0.1%' : `${mcResult.ror.toFixed(1)}%`}
                   color={rorColor}
                   sub={mcResult != null ? `${fanHorizon}-session horizon` : undefined}
@@ -1022,7 +1022,7 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
                 />
                 <MetricTile
                   label="Skewness"
-                  value={m.skewness != null ? fmtRatio(m.skewness) : '—'}
+                  value={m.skewness != null ? fmtRatio(m.skewness) : '-'}
                   color={m.skewness == null ? 'text-white' : m.skewness > 0.2 ? 'text-emerald-400' : m.skewness < -0.2 ? 'text-red-400' : 'text-white'}
                   sub={m.skewness != null ? (m.skewness > 0.2 ? 'positive skew, good for AP' : m.skewness < -0.2 ? 'negative skew, watch closely' : 'roughly symmetric') : undefined}
                   onInfo={() => showInfo('skewness')}
@@ -1035,13 +1035,13 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
               <div className="flex gap-2">
                 <MetricTile
                   label="Sortino Ratio"
-                  value={m.sortino != null ? fmtRatio(m.sortino) : '—'}
+                  value={m.sortino != null ? fmtRatio(m.sortino) : '-'}
                   color={m.sortino == null ? 'text-white' : m.sortino >= 0 ? 'text-emerald-400' : 'text-red-400'}
                   onInfo={() => showInfo('sortino')}
                 />
                 <MetricTile
                   label="Calmar Ratio"
-                  value={m.calmar != null ? fmtRatio(m.calmar) : '—'}
+                  value={m.calmar != null ? fmtRatio(m.calmar) : '-'}
                   color={m.calmar == null ? 'text-white' : m.calmar >= 0 ? 'text-emerald-400' : 'text-red-400'}
                   onInfo={() => showInfo('calmar')}
                 />
@@ -1055,7 +1055,7 @@ export default function BankrollTrendTab({ sessions, adjustments, initialBankrol
                 value={kellyPct ?? 'No Edge'}
                 color={kellyPct ? (m.kelly > 0.05 ? 'text-emerald-400' : 'text-amber-400') : 'text-red-400'}
                 sub={kellyPct
-                  ? `Half Kelly: ${halfKellyPct} — recommended starting point`
+                  ? `Half Kelly: ${halfKellyPct} - recommended starting point`
                   : 'Negative Kelly: sample does not yet show a mathematical edge'}
                 onInfo={() => showInfo('kelly')}
               />

@@ -102,7 +102,7 @@ async function loadSnapshotLogoImage(url, opts = {}) {
         if (img) return img
       }
     } catch {
-      // Most logo CDNs block browser CORS — use Edge proxy for snapshots.
+      // Most logo CDNs block browser CORS - use Edge proxy for snapshots.
     }
   }
 
@@ -296,7 +296,7 @@ function drawSnapshotFloatingLegendSwatch(ctx, x, midY, w, h, color, dashed = fa
 }
 
 /**
- * Floating on-chart legend — matches Advanced `MarketChartFloatingIndicatorLegend`.
+ * Floating on-chart legend - matches Advanced `MarketChartFloatingIndicatorLegend`.
  * @param {CanvasRenderingContext2D} ctx
  * @param {ReturnType<typeof planMarketChartSnapshotFloatingLegend>} plan
  * @param {number} chartX
@@ -667,7 +667,7 @@ export function marketChartSnapshotBrandingFromEmbed(embed, isLight = false, leg
 }
 
 /**
- * Branding for Advanced chart snapshots — embed identity, visible range, and live quote.
+ * Branding for Advanced chart snapshots - embed identity, visible range, and live quote.
  * @param {{
  *   embed?: object | null,
  *   isLight?: boolean,

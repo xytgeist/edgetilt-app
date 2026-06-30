@@ -50,7 +50,7 @@ function OptionsDivider() {
 }
 
 /**
- * DM conversation header row — matches `ChatConversation.jsx` chrome (back, avatar, pill, options).
+ * DM conversation header row - matches `ChatConversation.jsx` chrome (back, avatar, pill, options).
  *
  * @param {{
  *   onBack: () => void,

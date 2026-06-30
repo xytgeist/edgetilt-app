@@ -10,7 +10,7 @@ import { normalizeCashtagsInCaption } from '../../utils/loungeMarketCaptionParse
 import { LOUNGE_RICH_COMPOSER_VARIANTS } from './loungeRichComposerVariants.js'
 
 /**
- * Contenteditable Lounge caption field — real @ / # / link styling with aligned caret.
+ * Contenteditable Lounge caption field - real @ / # / link styling with aligned caret.
  * Value contract is plain text (same as the former textarea + mirror stack).
  */
 const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
@@ -44,7 +44,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 
   useImperativeHandle(ref, () => rootRef.current, [])
 
-  /** Notify mention layer — sync first (pre-DOM rewrite), rAF backup for late Android selection. */
+  /** Notify mention layer - sync first (pre-DOM rewrite), rAF backup for late Android selection. */
   const notifyComposerInput = useCallback((el, text, caret, { sync = false } = {}) => {
     const payload = { target: el, text, caret }
     if (sync) onInputRef.current?.(payload)

@@ -237,7 +237,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
           <div ref={scrollRef} className="absolute inset-0 overflow-y-auto overscroll-contain px-2 py-2">
             <div className="min-h-[1.375rem] px-2 pb-1">
               {!debounced ? (
-                <p className="text-[13px] text-zinc-500">Trending — type to search.</p>
+                <p className="text-[13px] text-zinc-500">Trending - type to search.</p>
               ) : (
                 <p className="text-[13px] text-zinc-500" aria-hidden>
                   &nbsp;
@@ -298,7 +298,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
             ) : null}
             {hasNext && page >= KLIPY_PICKER_MAX_PAGES && items.length > 0 ? (
               <p className="px-2 pb-2 text-center text-[12px] leading-snug text-zinc-500">
-                Showing {KLIPY_PICKER_MAX_PAGES} pages of results — refine your search to dig deeper.
+                Showing {KLIPY_PICKER_MAX_PAGES} pages of results - refine your search to dig deeper.
               </p>
             ) : null}
           </div>

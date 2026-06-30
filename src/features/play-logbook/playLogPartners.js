@@ -2,14 +2,14 @@
 
 /**
  * @typedef {Object} PlayLogPartnerRow
- * @property {string} key — stable React key
+ * @property {string} key - stable React key
  * @property {PlayLogPartnerKind} kind
  * @property {string} [userId]
  * @property {string} [handle]
  * @property {string} [displayName]
  * @property {string} [avatarUrl]
  * @property {string} [guestLabel]
- * @property {string} sharePercent — form string, e.g. "50"
+ * @property {string} sharePercent - form string, e.g. "50"
  * @property {boolean} [isManager]
  * @property {boolean} [paid]
  */

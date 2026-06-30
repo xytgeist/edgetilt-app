@@ -11,7 +11,7 @@ function labelForScope(scope) {
 }
 
 /**
- * Discover vs Following — compact dropdown (matches post-detail comment sort + feed sort menus).
+ * Discover vs Following - compact dropdown (matches post-detail comment sort + feed sort menus).
  */
 export default function LoungeFeedScopeSwitch({
   scope = LOUNGE_FEED_SCOPE_ALL,

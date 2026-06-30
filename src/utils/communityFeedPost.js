@@ -456,7 +456,7 @@ export async function deleteLoungeFeedMediaFromPublicUrl(supabaseClient, publicU
     try {
       await deleteCfR2ObjectByPublicUrl(supabaseClient, u)
     } catch {
-      // ignore — row delete should still proceed
+      // ignore - row delete should still proceed
     }
     return
   }
@@ -506,7 +506,7 @@ async function uploadLoungeFeedPostImageToSupabase({ supabaseClient, user, file 
   return { data: data?.publicUrl || null, error: null }
 }
 
-/** Upload a single image — Cloudflare R2 when configured, else legacy Supabase `lounge-feed`. */
+/** Upload a single image - Cloudflare R2 when configured, else legacy Supabase `lounge-feed`. */
 export async function uploadLoungeFeedPostImage({ supabaseClient, user, file, signal }) {
   const r2 = await uploadLoungeFeedPostImageToCfR2(supabaseClient, user, file, { signal })
   if (r2.error) return { data: null, error: r2.error }

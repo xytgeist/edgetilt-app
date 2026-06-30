@@ -11,7 +11,7 @@ export const CALCULATOR_KEYS = /** @type {CalculatorKey[]} */ ([
   'wof-collectors-edition',
 ])
 
-/** Static calculator chrome — served from `public/calculators/` (not guide R2 assets). */
+/** Static calculator chrome - served from `public/calculators/` (not guide R2 assets). */
 export const CALCULATOR_ICON_SRC = {
   phoenix: '/calculators/phoenix-link.webp',
   'buffalo-link': '/calculators/buffalo-link.webp',
@@ -148,7 +148,7 @@ export const CALCULATOR_CATALOG_ENTRIES = [
   },
 ]
 
-/** Calculators hub list — A–Z by display title. */
+/** Calculators hub list - A–Z by display title. */
 export const CALCULATOR_CATALOG = CALCULATOR_CATALOG_ENTRIES.slice().sort((a, b) =>
   a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }),
 )

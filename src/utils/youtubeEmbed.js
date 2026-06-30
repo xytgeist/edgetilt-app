@@ -85,7 +85,7 @@ export function youtubeThumbnailUrl(videoId, quality = 'hqdefault') {
   return `https://i.ytimg.com/vi/${encodeURIComponent(String(videoId || '').trim())}/${quality}.jpg`
 }
 
-/** Chat inline YouTube card — do not shrink below this when a caption is short. */
+/** Chat inline YouTube card - do not shrink below this when a caption is short. */
 export const CHAT_YOUTUBE_EMBED_MIN_WIDTH_PX = 280
 export const CHAT_YOUTUBE_EMBED_MAX_WIDTH_PX = 320
 export const CHAT_YOUTUBE_EMBED_WIDTH_CLASS = 'w-full min-w-[280px] max-w-[320px]'

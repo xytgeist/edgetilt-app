@@ -1,5 +1,5 @@
 /**
- * Full-screen dark backdrop matching LoungeAppSplash — shown during auth bootstrap
+ * Full-screen dark backdrop matching LoungeAppSplash - shown during auth bootstrap
  * so "Loading…" never flashes before the Lottie splash on cold boot.
  */
 export default function LoungeColdBootBootstrapBackdrop() {

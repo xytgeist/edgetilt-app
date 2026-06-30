@@ -112,7 +112,7 @@ export default function LoungeDockSlidePanels({
   onOpenPostFromSearch,
   /** Signed-in Supabase client for Phase G server search RPCs. */
   searchSupabaseClient = null,
-  /** Same as `AppShell` `hydrateCommunityPosts` — attaches author profiles + repost embeds. */
+  /** Same as `AppShell` `hydrateCommunityPosts` - attaches author profiles + repost embeds. */
   hydrateSearchPosts = null,
   /** Open a profile row from search (`user_id` + optional `author_profile`). */
   onOpenProfileFromSearch,
@@ -130,9 +130,9 @@ export default function LoungeDockSlidePanels({
   onOpenOwnProfileFollowers,
   onNotificationsUnreadChange,
   notificationInteractionProps = null,
-  /** Bumped when post detail closes over notifications — refresh interaction bar counts. */
+  /** Bumped when post detail closes over notifications - refresh interaction bar counts. */
   notificationInteractionCountsRefreshKey = 0,
-  /** `'wheel'` | `'cornerL'` — persisted in `loungeDockMenuLayout:v1`. */
+  /** `'wheel'` | `'cornerL'` - persisted in `loungeDockMenuLayout:v1`. */
   dockMenuLayout = 'wheel',
   onDockMenuLayoutChange,
   feedVideoAutoplayEnabled = true,
@@ -333,7 +333,7 @@ export default function LoungeDockSlidePanels({
   const [searchComments, setSearchComments] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(null)
-  /** Last query we finished fetching (success or error) — avoids "No results" during debounce. */
+  /** Last query we finished fetching (success or error) - avoids "No results" during debounce. */
   const [searchSettledQuery, setSearchSettledQuery] = useState('')
   const [searchCategorySlug, setSearchCategorySlug] = useState('')
   const [searchSettledCategorySlug, setSearchSettledCategorySlug] = useState('')
@@ -382,7 +382,7 @@ export default function LoungeDockSlidePanels({
   }, [])
   const searchHasResults =
     searchPosts.length > 0 || searchProfiles.length > 0 || searchComments.length > 0
-  /** Full "Searching…" row only when there is nothing to show yet — refetches keep stale results. */
+  /** Full "Searching…" row only when there is nothing to show yet - refetches keep stale results. */
   const showSearchInitialLoading = searchLoading && !searchHasResults
   const showSearchLoadMore =
     searchFetchActive &&
@@ -546,7 +546,7 @@ export default function LoungeDockSlidePanels({
 
   const showSearchSortOnPosts = searchFetchActive && displaySearchFeedItems.length > 0
 
-  /** Search-only lightbox ctx — media fullscreen stays on search; no caption/comment chrome → post detail. */
+  /** Search-only lightbox ctx - media fullscreen stays on search; no caption/comment chrome → post detail. */
   const searchPostCardProps = useMemo(() => {
     if (!postCardProps) return null
     return {
@@ -1416,7 +1416,7 @@ export default function LoungeDockSlidePanels({
                     <div className="px-3.5 py-3">
                       <div className="text-[15px] font-semibold text-zinc-100">Email</div>
                       <div className="mt-1 break-all text-[14px] text-zinc-300">
-                        {settingsAccountEmail || '—'}
+                        {settingsAccountEmail || '-'}
                       </div>
                       <p className="mt-1 text-[12px] leading-snug text-zinc-500">
                         Login address for this account. Contact support to change it for now.
@@ -1548,7 +1548,7 @@ export default function LoungeDockSlidePanels({
                         </button>
                       </div>
                       <p className="text-amber-100/95">
-                        Push alerts on iPhone only work when you open Edge from a Home Screen icon — not a regular
+                        Push alerts on iPhone only work when you open Edge from a Home Screen icon - not a regular
                         Safari tab.
                       </p>
                       <button

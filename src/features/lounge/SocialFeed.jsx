@@ -98,8 +98,11 @@ import {
   writeProfileGateAck,
   readLoungeWelcomeAck,
   writeLoungeWelcomeAck,
+  readLoungeSlotsMenuHintAck,
+  writeLoungeSlotsMenuHintAck,
 } from './loungeStorage'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
+import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
 import {
   consumeReopenLoungeDockPanel,
   consumeReopenLoungeWelcome,
@@ -713,6 +716,7 @@ export default function SocialFeed({
   const [profileGateOpen, setProfileGateOpen] = useState(false)
   const [loungeWelcomeOpen, setLoungeWelcomeOpen] = useState(false)
   const loungeWelcomeScheduleRef = useRef(false)
+  const [slotsMenuHintOpen, setSlotsMenuHintOpen] = useState(false)
   const [profileGateBusy, setProfileGateBusy] = useState(false)
   const [profileGateErr, setProfileGateErr] = useState('')
   const [profileGateHandle, setProfileGateHandle] = useState('')
@@ -8171,6 +8175,42 @@ export default function SocialFeed({
     if (composerUserId) writeLoungeWelcomeAck(composerUserId)
     setLoungeWelcomeOpen(false)
   }, [composerUserId])
+
+  const onSlotsMenuHintDismiss = useCallback(() => {
+    if (composerUserId) writeLoungeSlotsMenuHintAck(composerUserId)
+    setSlotsMenuHintOpen(false)
+  }, [composerUserId])
+
+  useEffect(() => {
+    if (!composerUserId) {
+      setSlotsMenuHintOpen(false)
+      return undefined
+    }
+    if (!readLoungeWelcomeAck(composerUserId)) return undefined
+    if (readLoungeSlotsMenuHintAck(composerUserId)) return undefined
+    if (slotsMenuHintOpen || loungeWelcomeOpen || profileGateOpen) return undefined
+    if (!isActivePage) return undefined
+    if (loungeFeedBrowseMode !== 'member' || !authSessionReady || !composerAuthResolved) return undefined
+    if (coldBootSplashVisible) return undefined
+
+    const timer = window.setTimeout(() => {
+      if (readLoungeSlotsMenuHintAck(composerUserId)) return
+      if (loungeWelcomeOpen || profileGateOpen) return
+      setSlotsMenuHintOpen(true)
+    }, 400)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    composerUserId,
+    slotsMenuHintOpen,
+    loungeWelcomeOpen,
+    profileGateOpen,
+    isActivePage,
+    loungeFeedBrowseMode,
+    authSessionReady,
+    composerAuthResolved,
+    coldBootSplashVisible,
+  ])
 
   const onOpenGuidelinesFromWelcome = useCallback(() => {
     setLoungeWelcomeOpen(false)
@@ -16193,6 +16233,10 @@ export default function SocialFeed({
           onAcknowledge={onLoungeWelcomeAcknowledge}
           onOpenGuidelines={onOpenGuidelinesFromWelcome}
         />
+      ) : null}
+
+      {slotsMenuHintOpen ? (
+        <LoungeSlotsMenuHintOverlay open={slotsMenuHintOpen} onDismiss={onSlotsMenuHintDismiss} />
       ) : null}
 
       {profileGateOpen && typeof document !== 'undefined'

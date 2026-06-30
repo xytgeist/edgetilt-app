@@ -1,49 +1,8 @@
 import { createPortal } from 'react-dom'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 
-const SLOTS_TOOL_LABELS = ['Calcs', 'Calendar', 'Bankroll', 'Logbook', 'AP Guides']
-
 const WELCOME_GUIDELINES_INTRO =
   'Whether you are here for trading, sports, poker, slots, or any other edge-hunting niche, this is a chill community for you to learn, share, troll, and have fun.'
-
-function TitleBarMenuHint() {
-  return (
-    <div
-      className="mt-3 rounded-2xl border border-zinc-700/80 bg-zinc-900/80 p-3"
-      aria-hidden
-    >
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-700/60 bg-zinc-950/90 px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <img
-            src="/edge-lounge-logo-transparent.png"
-            alt=""
-            className="edge-logo--dark h-4 w-auto max-w-[4.5rem] object-contain opacity-90"
-            loading="lazy"
-          />
-          <img
-            src="/edge-lounge-logo-light.png"
-            alt=""
-            className="edge-logo--light h-4 w-auto max-w-[4.5rem] object-contain opacity-90"
-            loading="lazy"
-          />
-        </div>
-        <div className="relative shrink-0">
-          <span
-            className="absolute -inset-1.5 rounded-lg bg-orange-500/25 ring-2 ring-orange-400/70 animate-pulse"
-            aria-hidden
-          />
-          <span className="relative flex h-9 min-w-[2.75rem] items-center justify-center rounded-lg border border-zinc-600 bg-zinc-800 text-lg font-semibold text-zinc-100">
-            ☰
-          </span>
-        </div>
-      </div>
-      <p className="mt-2.5 text-[12px] leading-snug text-zinc-400">
-        Tap <span className="font-semibold text-zinc-200">☰</span> (top-right) →{' '}
-        <span className="font-semibold text-zinc-200">Slots</span> for {SLOTS_TOOL_LABELS.join(', ')}.
-      </p>
-    </div>
-  )
-}
 
 export default function LoungeWelcomeModal({ open, onAcknowledge, onOpenGuidelines }) {
   if (!open || typeof document === 'undefined') return null
@@ -90,11 +49,6 @@ export default function LoungeWelcomeModal({ open, onAcknowledge, onOpenGuidelin
           >
             Read full Community Guidelines
           </a>
-
-          <div className="mt-5 border-t border-zinc-800 pt-4">
-            <h3 className="text-[15px] font-semibold text-white">Slot tools live in the menu</h3>
-            <TitleBarMenuHint />
-          </div>
         </div>
 
         <div className="shrink-0 border-t border-zinc-800 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">

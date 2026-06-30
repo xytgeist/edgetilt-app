@@ -1044,6 +1044,7 @@ export default function AppShell({
       ) : null}
       <button
         type="button"
+        data-title-bar-menu-btn
         onClick={() => setMenuOpen((v) => !v)}
         aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
         aria-expanded={menuOpen}

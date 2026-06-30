@@ -2,6 +2,7 @@ import { clearPendingLegalAcceptance } from '../features/legal/legalAcceptance.j
 import {
   clearLoungeComposerDraft,
   clearLoungeWelcomeAck,
+  clearLoungeSlotsMenuHintAck,
   clearProfileGateAck,
   LOUNGE_PROFILE_CACHE_KEY,
 } from '../features/lounge/loungeStorage.js'
@@ -59,6 +60,7 @@ export function clearAccountClientState(userId) {
   if (userId) {
     clearProfileGateAck(userId)
     clearLoungeWelcomeAck(userId)
+    clearLoungeSlotsMenuHintAck(userId)
     for (const prefix of OFFERS_USER_KEY_PREFIXES) {
       removeLocalStorageKey(`${prefix}${userId}`)
     }

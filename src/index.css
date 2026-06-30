@@ -3634,6 +3634,38 @@ html.light [data-lounge-welcome-modal] .lounge-welcome-kicker {
   color: rgb(21 94 117) !important;
 }
 
+.lounge-slots-menu-hint-arrow__path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: lounge-slots-menu-hint-arrow-draw 0.85s ease-out 0.15s forwards;
+}
+
+@keyframes lounge-slots-menu-hint-arrow-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+html.light [data-lounge-slots-menu-hint] .lounge-slots-menu-hint-card {
+  border-color: rgb(251 146 60 / 0.45);
+  background: rgb(255 255 255 / 0.98);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+html.light [data-lounge-slots-menu-hint] .lounge-slots-menu-hint-card h2 {
+  color: rgb(24 24 27);
+}
+
+html.light [data-lounge-slots-menu-hint] .lounge-slots-menu-hint-card p {
+  color: rgb(63 63 70);
+}
+
+html.light [data-lounge-slots-menu-hint] .lounge-slots-menu-hint-card p span {
+  color: rgb(24 24 27);
+}
+
 @keyframes pwa-install-drop-panel-in {
   from {
     opacity: 0;

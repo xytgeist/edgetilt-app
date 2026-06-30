@@ -79,6 +79,7 @@ export function useFreemiumToolUsage({
   return useMemo(
     () => ({
       loading: loading && !unlimited,
+      freemiumUsageLoading: loading && !unlimited,
       bankrollSessionCount: counts.bankrollSessionCount,
       playLogCount: counts.playLogCount,
       canCreateBankrollSession: canCreateBankrollSession({

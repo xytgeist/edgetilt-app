@@ -74,6 +74,8 @@ import {
 } from './guideAccess.js'
 import { resolveGuideAccent } from '../../utils/guideCardAccent.js'
 import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButton.jsx'
+import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
+import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 
 const ACTIVE_SUPABASE_HOST = (() => {
   try {
@@ -1443,6 +1445,8 @@ export default function GuidesScreen({
   onSetContentGate,
   onRequireSubscribe,
   canCreatePlayLog = true,
+  playLogsRemaining = null,
+  freemiumUsageLoading = false,
   titleBarNavSlot = null,
   /** When set, scroll to and expand this guide card slug (used by Lounge guide embed tap). */
   openCardSlug = null,
@@ -2032,6 +2036,17 @@ export default function GuidesScreen({
                     </button>
 
                     <div className={`px-4 pb-4 flex flex-col gap-2 border-t border-zinc-800/80 pt-3 -mt-px ${lockedSectionBlurClass}`}>
+                      <div className="flex flex-col gap-2">
+                        {!calcKey && onOpenLogbook ? (
+                          <FreemiumUsageCounter
+                            remaining={playLogsRemaining}
+                            limit={FREE_PLAY_LOG_LIMIT}
+                            itemLabelPlural="play logs"
+                            loading={freemiumUsageLoading}
+                            compact
+                            className="!mt-0 !mb-0 text-left"
+                          />
+                        ) : null}
                       <div className="flex gap-2">
                         {calcKey ? (
                           <button
@@ -2077,6 +2092,7 @@ export default function GuidesScreen({
                         >
                           Ask community
                         </button>
+                      </div>
                       </div>
                     </div>
 

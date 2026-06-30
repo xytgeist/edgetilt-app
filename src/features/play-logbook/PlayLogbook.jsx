@@ -2,6 +2,8 @@ import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, laz
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
+import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
+import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -154,6 +156,8 @@ export default function PlayLogbook({
   highlightEntryId = null,
   onHighlightEntryConsumed = null,
   canCreatePlayLog = true,
+  playLogsRemaining = null,
+  freemiumUsageLoading = false,
   onRequireSubscribeForPlayLog = null,
   onPlayLogCreated = null,
 }) {
@@ -937,6 +941,13 @@ export default function PlayLogbook({
             <QuickLinkPageToggle destinationId="logbook" className="mb-0 shrink-0" />
           </div>
           <p className="text-zinc-400 text-sm mt-0.5">Capture AP slot data · analyze later</p>
+          <FreemiumUsageCounter
+            remaining={playLogsRemaining}
+            limit={FREE_PLAY_LOG_LIMIT}
+            itemLabelPlural="play logs"
+            loading={freemiumUsageLoading}
+            className="mt-2 text-left"
+          />
         </div>
 
         <div className="flex rounded-2xl bg-zinc-900 p-1 gap-1 mb-5" data-play-logbook-card>

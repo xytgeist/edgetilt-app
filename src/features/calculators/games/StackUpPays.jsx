@@ -200,7 +200,7 @@ function getCalibratedStateRTP(overallRTP, meters) {
   return baseRTP + stateBonusRTP
 }
 
-function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null }) {
+function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null, playLogsRemaining = null, freemiumUsageLoading = false }) {
   const [mega, setMega] = useState(300)
   const [grand, setGrand] = useState(225)
   const [major, setMajor] = useState(175)
@@ -653,6 +653,8 @@ function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null, logP
           onOpenLogbook={onOpenLogbook}
           logPlayLocked={logPlayLocked}
           onRequireSubscribe={onRequireSubscribe}
+          playLogsRemaining={playLogsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
         />
 
         {/* Acquisition Fee */}

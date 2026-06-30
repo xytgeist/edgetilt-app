@@ -39,7 +39,7 @@ import {
   REFERENCE_OVERALL_RTP,
 } from './buffaloDiamondCalc.js'
 
-export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null }) {
+export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null, playLogsRemaining = null, freemiumUsageLoading = false }) {
   const [variantKey, setVariantKey] = useState('diamond')
   const [betLevelKey, setBetLevelKey] = useState(DEFAULT_BET_LEVEL_KEY)
   const [extremeDenom, setExtremeDenom] = useState(0.01)
@@ -571,6 +571,8 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
           onOpenLogbook={onOpenLogbook}
           logPlayLocked={logPlayLocked}
           onRequireSubscribe={onRequireSubscribe}
+          playLogsRemaining={playLogsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
           accentBtnClass="bg-violet-700 hover:bg-violet-600"
         />
 

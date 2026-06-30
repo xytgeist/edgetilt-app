@@ -279,6 +279,9 @@ export default function AppShell({
   const {
     canCreateBankrollSession,
     canCreatePlayLog,
+    bankrollSessionsRemaining,
+    playLogsRemaining,
+    freemiumUsageLoading,
     refreshFreemiumUsage,
   } = useFreemiumToolUsage({
     supabaseClient,
@@ -1309,6 +1312,8 @@ export default function AppShell({
           onRequireSubscribe={onRequireSubscribe}
           onOpenLogbook={openLogbook}
           logPlayLocked={!canCreatePlayLog}
+          playLogsRemaining={playLogsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           supabaseClient={supabaseClient}
@@ -1428,6 +1433,8 @@ export default function AppShell({
           onSetContentGate={onSetContentAccessGate}
           onRequireSubscribe={onRequireSubscribe}
           canCreatePlayLog={canCreatePlayLog}
+          playLogsRemaining={playLogsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           openCardSlug={guideOpenCardSlug}
@@ -1453,6 +1460,8 @@ export default function AppShell({
         <BankrollTracker
           supabaseClient={supabaseClient}
           canCreateBankrollSession={canCreateBankrollSession}
+          bankrollSessionsRemaining={bankrollSessionsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
           onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
           onBankrollSessionCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}
@@ -1465,6 +1474,8 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           isAdmin={isAdmin}
           canCreatePlayLog={canCreatePlayLog}
+          playLogsRemaining={playLogsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
           onRequireSubscribeForPlayLog={() => onRequireSubscribe?.('slots-edge')}
           onPlayLogCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}

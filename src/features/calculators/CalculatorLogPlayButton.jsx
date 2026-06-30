@@ -1,5 +1,7 @@
 import { stashPlayLogPrefill } from '../../utils/playLogPrefill.js'
 import { playLogCalcSnapshotNotes } from '../../utils/playLogCalcSnapshot.js'
+import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
+import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 
 /** Shared with Guides card row - warm amber, distinct from Ask community (cyan). */
 export const LOG_PLAY_LOGBOOK_BTN_CLASS = 'bg-amber-700 hover:bg-amber-600 active:bg-amber-800'
@@ -14,6 +16,8 @@ export const LOG_PLAY_LOGBOOK_BTN_CLASS = 'bg-amber-700 hover:bg-amber-600 activ
  * @param {string} [props.accentBtnClass]
  * @param {boolean} [props.logPlayLocked]
  * @param {() => void} [props.onRequireSubscribe]
+ * @param {number | null} [props.playLogsRemaining]
+ * @param {boolean} [props.freemiumUsageLoading]
  */
 export default function CalculatorLogPlayButton({
   calculatorSlug,
@@ -22,6 +26,8 @@ export default function CalculatorLogPlayButton({
   accentBtnClass = LOG_PLAY_LOGBOOK_BTN_CLASS,
   logPlayLocked = false,
   onRequireSubscribe = null,
+  playLogsRemaining = null,
+  freemiumUsageLoading = false,
 }) {
   if (!onOpenLogbook) return null
 
@@ -51,6 +57,13 @@ export default function CalculatorLogPlayButton({
       >
         Log play in Logbook
       </button>
+      <FreemiumUsageCounter
+        remaining={playLogsRemaining}
+        limit={FREE_PLAY_LOG_LIMIT}
+        itemLabelPlural="play logs"
+        loading={freemiumUsageLoading}
+        compact
+      />
       <p className="mt-2 text-center text-xs text-zinc-500">
         Pre-fills game fields, Current EV, Average Case, and acquisition fee from this calculator.
       </p>

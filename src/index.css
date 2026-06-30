@@ -3000,6 +3000,13 @@ html.light [data-log-play-logbook-btn]:hover {
   background-color: #d97706 !important;
 }
 
+html.light [data-freemium-usage-counter] {
+  color: rgb(82 82 91) !important;
+}
+html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
+  color: rgb(180 83 9) !important;
+}
+
 /* Play Logbook page - light mode (Log Play sheet uses data-bankroll-sheet rules above) */
 html.light [data-play-logbook-card] {
   box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);

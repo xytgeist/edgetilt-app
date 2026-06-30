@@ -149,6 +149,8 @@ export default function CalculatorsTab({
   supabaseClient = null,
   onOpenLogbook = null,
   logPlayLocked = false,
+  playLogsRemaining = null,
+  freemiumUsageLoading = false,
 }) {
   if (!activeCalculator) {
     return (
@@ -192,6 +194,8 @@ export default function CalculatorsTab({
             onOpenLogbook={onOpenLogbook}
             logPlayLocked={logPlayLocked}
             onRequireSubscribe={onRequireSubscribe}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
@@ -203,6 +207,8 @@ export default function CalculatorsTab({
             onOpenLogbook={onOpenLogbook}
             logPlayLocked={logPlayLocked}
             onRequireSubscribe={onRequireSubscribe}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
@@ -214,6 +220,8 @@ export default function CalculatorsTab({
             onOpenLogbook={onOpenLogbook}
             logPlayLocked={logPlayLocked}
             onRequireSubscribe={onRequireSubscribe}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
@@ -225,6 +233,8 @@ export default function CalculatorsTab({
             onOpenLogbook={onOpenLogbook}
             logPlayLocked={logPlayLocked}
             onRequireSubscribe={onRequireSubscribe}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
@@ -236,6 +246,8 @@ export default function CalculatorsTab({
             onOpenLogbook={onOpenLogbook}
             logPlayLocked={logPlayLocked}
             onRequireSubscribe={onRequireSubscribe}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
@@ -247,6 +259,8 @@ export default function CalculatorsTab({
             onOpenLogbook={onOpenLogbook}
             logPlayLocked={logPlayLocked}
             onRequireSubscribe={onRequireSubscribe}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
+import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
+import { FREE_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -102,6 +104,8 @@ export default function BankrollTracker({
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
   canCreateBankrollSession = true,
+  bankrollSessionsRemaining = null,
+  freemiumUsageLoading = false,
   onRequireSubscribeForBankroll = null,
   onBankrollSessionCreated = null,
 }) {
@@ -669,6 +673,13 @@ export default function BankrollTracker({
       >
 
         <SlotsToolPageHeader quickLinkDestinationId="bankroll" />
+
+        <FreemiumUsageCounter
+          remaining={bankrollSessionsRemaining}
+          limit={FREE_BANKROLL_SESSION_LIMIT}
+          itemLabelPlural="sessions"
+          loading={freemiumUsageLoading}
+        />
 
         {/* Tab navigation */}
         <div className="flex gap-1 overflow-x-auto no-scrollbar mb-5 -mx-3 px-3">

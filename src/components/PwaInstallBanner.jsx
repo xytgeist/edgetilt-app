@@ -181,6 +181,32 @@ export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'p
 
   const chipLabel = 'How to Install'
 
+  const installChip = (
+    <button
+      type="button"
+      onClick={() => setPanelOpen((open) => !open)}
+      data-pwa-install-title-chip
+      aria-expanded={panelOpen}
+      aria-controls="pwa-install-drop-panel"
+      className={`flex max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+        panelOpen
+          ? 'border-cyan-400/70 bg-cyan-900/80 text-cyan-50'
+          : 'border-cyan-500/45 bg-cyan-950/70 text-cyan-100 hover:border-cyan-400/55 hover:bg-cyan-900/70 active:bg-cyan-900/90'
+      }`}
+      aria-label={`${chipLabel}. ${panelOpen ? 'Close' : 'Open'} install instructions.`}
+    >
+      <img
+        src="/apple-touch-icon.png"
+        alt=""
+        width={18}
+        height={18}
+        className="h-[18px] w-[18px] shrink-0 rounded-[5px]"
+        loading="lazy"
+      />
+      <span className="whitespace-nowrap">{chipLabel}</span>
+    </button>
+  )
+
   if (!visible) {
     return (
       <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>
@@ -192,34 +218,13 @@ export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'p
 
   return (
     <>
-      <div className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 ${rowClassName}`}>
-        {logo}
-        <div className="flex min-w-0 items-center justify-center px-0.5">
-          <button
-            type="button"
-            onClick={() => setPanelOpen((open) => !open)}
-            data-pwa-install-title-chip
-            aria-expanded={panelOpen}
-            aria-controls="pwa-install-drop-panel"
-            className={`flex max-w-full min-w-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-              panelOpen
-                ? 'border-cyan-400/70 bg-cyan-900/80 text-cyan-50'
-                : 'border-cyan-500/45 bg-cyan-950/70 text-cyan-100 hover:border-cyan-400/55 hover:bg-cyan-900/70 active:bg-cyan-900/90'
-            }`}
-            aria-label={`${chipLabel}. ${panelOpen ? 'Close' : 'Open'} install instructions.`}
-          >
-            <img
-              src="/apple-touch-icon.png"
-              alt=""
-              width={18}
-              height={18}
-              className="h-[18px] w-[18px] shrink-0 rounded-[5px]"
-              loading="lazy"
-            />
-            <span className="min-w-0 whitespace-normal text-left">{chipLabel}</span>
-          </button>
-        </div>
-        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">{navSlot}</div>
+      <div
+        className={`grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`}
+        data-pwa-install-title-row
+      >
+        <div className="min-w-0 justify-self-start">{logo}</div>
+        {installChip}
+        <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">{navSlot}</div>
       </div>
 
       <PwaInstallHelpDropPanel

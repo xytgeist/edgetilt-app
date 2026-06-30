@@ -18,6 +18,10 @@ import {
   profileNeedsLegalAcceptance,
   markPendingLegalAcceptance,
   readPendingLegalAcceptance,
+  markLegalReturnToAuth,
+  readLegalReturnToAuth,
+  clearLegalReturnToAuth,
+  shouldReturnLegalToAuth,
 } from './features/legal'
 import {
   readLoungeComposerDraftPendingWork,
@@ -611,6 +615,58 @@ function App() {
     setVerificationSuccess(false)
   }, [])
 
+  const openLegalFromAuth = useCallback(
+    (slug) => {
+      if (slug !== 'terms' && slug !== 'privacy') return
+      markLegalReturnToAuth(authTab === 'signin' ? 'signin' : 'join')
+      setCurrentView(slug)
+      setAuthPanelOpen(false)
+      window.history.pushState({ lvLegalFromAuth: true }, '', `/${slug}?from=auth`)
+    },
+    [authTab],
+  )
+
+  const exitLegalDocument = useCallback(() => {
+    const slug = currentView
+    if (
+      (slug === 'terms' || slug === 'privacy' || slug === 'guidelines') &&
+      shouldReturnLegalToAuth(slug)
+    ) {
+      const meta = readLegalReturnToAuth() || { tab: 'join' }
+      clearLegalReturnToAuth()
+      setAuthTab(meta.tab === 'signin' ? 'signin' : 'join')
+      setCurrentView('app')
+      setAuthPanelOpen(true)
+      window.history.replaceState({}, document.title, '/')
+      return
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back()
+      return
+    }
+    setCurrentView('app')
+    window.history.replaceState({}, document.title, '/')
+  }, [currentView])
+
+  useEffect(() => {
+    const onPopState = () => {
+      const slug = parseLegalPathname(window.location.pathname)
+      if (slug) {
+        setCurrentView(slug)
+        return
+      }
+      setCurrentView('app')
+      const returnAuth = readLegalReturnToAuth()
+      if (returnAuth) {
+        setAuthTab(returnAuth.tab === 'signin' ? 'signin' : 'join')
+        setAuthPanelOpen(true)
+        clearLegalReturnToAuth()
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
   useEffect(() => {
     if (!authPanelOpen) return
     const onKey = (e) => {
@@ -640,14 +696,8 @@ function App() {
     return (
       <LegalDocumentScreen
         slug={currentView}
-        onBack={() => {
-          if (typeof window !== 'undefined' && window.history.length > 1) {
-            window.history.back()
-            return
-          }
-          setCurrentView('app')
-          window.history.replaceState({}, document.title, '/')
-        }}
+        onBack={exitLegalDocument}
+        onGotIt={exitLegalDocument}
       />
     )
   }
@@ -824,6 +874,7 @@ function App() {
                 isOAuthLoading={isOAuthLoading}
                 acceptedLegal={acceptedLegal}
                 onAcceptedLegalChange={setAcceptedLegal}
+                onOpenLegalFromAuth={openLegalFromAuth}
                 onGoogleSignIn={({ setErrorTarget }) => {
                   const setError =
                     setErrorTarget === 'forgot'

@@ -1,7 +1,10 @@
+import { btnPrimary } from '../shell/shellClasses'
 import { getLegalDocument } from './legalDocuments.js'
 
-export default function LegalDocumentScreen({ slug, onBack }) {
+export default function LegalDocumentScreen({ slug, onBack, onGotIt }) {
   const doc = getLegalDocument(slug)
+  const showGotItFooter = slug === 'terms' || slug === 'privacy'
+  const handleGotIt = onGotIt ?? onBack
   if (!doc) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-zinc-950 px-4 text-zinc-300" data-legal-document>
@@ -41,7 +44,11 @@ export default function LegalDocumentScreen({ slug, onBack }) {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-        <article className="legal-prose mx-auto max-w-2xl px-4 py-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+        <article
+          className={`legal-prose mx-auto max-w-2xl px-4 py-6 ${
+            showGotItFooter ? 'pb-6' : 'pb-[calc(2rem+env(safe-area-inset-bottom,0px))]'
+          }`}
+        >
           {doc.intro ? <p className="legal-prose-lead">{doc.intro}</p> : null}
           {doc.sections.map((section) => (
             <section key={section.id} id={section.id} className="legal-prose-section">
@@ -53,6 +60,20 @@ export default function LegalDocumentScreen({ slug, onBack }) {
           ))}
         </article>
       </div>
+
+      {showGotItFooter ? (
+        <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950/95 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+          <div className="mx-auto max-w-2xl">
+            <button
+              type="button"
+              onClick={handleGotIt}
+              className={`${btnPrimary} min-h-11 w-full rounded-xl bg-orange-600 hover:bg-orange-500 touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

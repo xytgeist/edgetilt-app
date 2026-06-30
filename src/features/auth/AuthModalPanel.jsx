@@ -51,6 +51,7 @@ export default function AuthModalPanel({
   onGoogleSignIn,
   acceptedLegal = false,
   onAcceptedLegalChange,
+  onOpenLegalFromAuth,
 }) {
   /** Which signup control triggered the legal nudge: `google` | `create`. */
   const [legalNudgeSource, setLegalNudgeSource] = useState(null)
@@ -83,11 +84,25 @@ export default function AuthModalPanel({
   const legalCheckboxHighlighted = authTab === 'join' && !acceptedLegal && legalNudgeSource != null
   const legalLinks = (
     <>
-      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-orange-400 underline underline-offset-2 hover:text-orange-300">
+      <a
+        href="/terms?from=auth"
+        onClick={(e) => {
+          e.preventDefault()
+          onOpenLegalFromAuth?.('terms')
+        }}
+        className="text-orange-400 underline underline-offset-2 hover:text-orange-300"
+      >
         Terms &amp; Conditions
       </a>
       {' '}and{' '}
-      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-orange-400 underline underline-offset-2 hover:text-orange-300">
+      <a
+        href="/privacy?from=auth"
+        onClick={(e) => {
+          e.preventDefault()
+          onOpenLegalFromAuth?.('privacy')
+        }}
+        className="text-orange-400 underline underline-offset-2 hover:text-orange-300"
+      >
         Privacy Policy
       </a>
     </>

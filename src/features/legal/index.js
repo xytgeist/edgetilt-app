@@ -14,3 +14,11 @@ export {
   readPendingLegalAcceptance,
   clearPendingLegalAcceptance,
 } from './legalAcceptance.js'
+export {
+  markLegalReturnToAuth,
+  readLegalReturnToAuth,
+  clearLegalReturnToAuth,
+  isLegalFromAuthUrl,
+  shouldReturnLegalToAuth,
+  legalDocumentPathFromAuth,
+} from './legalDocumentNavigation.js'

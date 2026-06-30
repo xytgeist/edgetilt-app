@@ -2167,10 +2167,10 @@ html.light [data-review-queue] .bg-cyan-500\/15 { background-color: rgba(6,182,2
 html.light [data-review-queue] .border-cyan-400\/30 { border-color: rgba(6,182,212,0.35) !important; }
 html.light [data-review-queue] .text-cyan-300   { color: #0e7490 !important; }
 
-/* TV snow uses screen blend which looks bad on light bg - switch to multiply */
+/* TV snow: light mode uses darker gray static (see GuideLockTvSnowCanvas) + multiply */
 html.light .guide-lock-glitch__tv-snow-canvas {
   mix-blend-mode: multiply;
-  opacity: 0.55;
+  opacity: 0.62;
 }
 
 /* Light guide cards: keep TV snow visible; readable copy lives on the frosted mini card */

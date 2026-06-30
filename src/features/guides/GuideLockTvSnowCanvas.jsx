@@ -20,7 +20,16 @@ function hashNoise(x, y, seed = 0) {
   return v - Math.floor(v)
 }
 
-function pickSnowColor(t, chromaBias) {
+function pickSnowColor(t, chromaBias, grayish = false) {
+  if (grayish) {
+    const base = 56 + Math.floor(t * 54)
+    if (chromaBias > 0.88) return [base - 10, base + 5, base + 8]
+    if (chromaBias > 0.76) return [base + 8, base - 6, base + 3]
+    if (chromaBias > 0.64) return [base - 4, base + 7, base - 5]
+    if (chromaBias > 0.52) return [base + 5, base + 2, base - 7]
+    return [base + 1, base, base - 2]
+  }
+
   const base = 192 + Math.floor(t * 48)
 
   if (chromaBias > 0.92) {
@@ -71,7 +80,7 @@ function paintSnowLayer(
   width,
   height,
   frameSeed,
-  { gridX, gridY, showThreshold, flakeWRange, flakeHRange, alphaScale, seedOffset },
+  { gridX, gridY, showThreshold, flakeWRange, flakeHRange, alphaScale, seedOffset, grayish = false },
 ) {
   for (let y = 0; y < height; y += gridY) {
     const intensity = rowIntensity(y, height)
@@ -85,7 +94,7 @@ function paintSnowLayer(
       const flakeH = flakeHRange[0] + Math.floor(hashNoise(x + 1, y, frameSeed + seedOffset + 9.1) * flakeHRange[1])
       const colorT = hashNoise(x * 0.15, y * 0.08 + frameSeed, seedOffset + 5.6)
       const chromaBias = hashNoise(x, y + frameSeed, seedOffset + 6.3)
-      const [r, g, b] = pickSnowColor(colorT, chromaBias)
+      const [r, g, b] = pickSnowColor(colorT, chromaBias, grayish)
       const flicker = 0.55 + hashNoise(x, y + frameSeed, seedOffset + 7.2) * 0.35
       const alpha = intensity * flicker * alphaScale * (show > 0.92 ? 1.08 : 1)
 
@@ -94,70 +103,88 @@ function paintSnowLayer(
   }
 }
 
-function paintMediumSnow(data, width, height, frameSeed) {
+function paintMediumSnow(data, width, height, frameSeed, grayish = false) {
   paintSnowLayer(data, width, height, frameSeed, {
     gridX: MEDIUM_GRID_X,
     gridY: MEDIUM_GRID_Y,
     showThreshold: MEDIUM_SHOW,
     flakeWRange: [3, 3],
     flakeHRange: [2, 3],
-    alphaScale: 0.5,
+    alphaScale: grayish ? 0.62 : 0.5,
     seedOffset: 0.6,
+    grayish,
   })
 }
 
-function paintFineSnow(data, width, height, frameSeed) {
+function paintFineSnow(data, width, height, frameSeed, grayish = false) {
   paintSnowLayer(data, width, height, frameSeed, {
     gridX: FINE_GRID_X,
     gridY: FINE_GRID_Y,
     showThreshold: FINE_SHOW,
     flakeWRange: [2, 1],
     flakeHRange: [2, 1],
-    alphaScale: 0.44,
+    alphaScale: grayish ? 0.54 : 0.44,
     seedOffset: 14.8,
+    grayish,
   })
 }
 
-function paintFlatSnow(data, width, height, frameSeed) {
+function paintFlatSnow(data, width, height, frameSeed, grayish = false) {
   paintSnowLayer(data, width, height, frameSeed, {
     gridX: FLAT_GRID_X,
     gridY: FLAT_GRID_Y,
     showThreshold: FLAT_SHOW,
     flakeWRange: [2, 3],
     flakeHRange: [1, 0],
-    alphaScale: 0.42,
+    alphaScale: grayish ? 0.52 : 0.42,
     seedOffset: 22.4,
+    grayish,
   })
 }
 
-function paintMicroFlatSnow(data, width, height, frameSeed) {
+function paintMicroFlatSnow(data, width, height, frameSeed, grayish = false) {
   paintSnowLayer(data, width, height, frameSeed, {
     gridX: MICRO_GRID_X,
     gridY: MICRO_GRID_Y,
     showThreshold: MICRO_SHOW,
     flakeWRange: [2, 2],
     flakeHRange: [1, 0],
-    alphaScale: 0.36,
+    alphaScale: grayish ? 0.46 : 0.36,
     seedOffset: 31.6,
+    grayish,
   })
 }
 
-function paintTvSnow(imageData, width, height, frameSeed) {
+function paintTvSnow(imageData, width, height, frameSeed, grayish = false) {
   imageData.data.fill(0)
-  paintMediumSnow(imageData.data, width, height, frameSeed)
-  paintFineSnow(imageData.data, width, height, frameSeed)
-  paintFlatSnow(imageData.data, width, height, frameSeed)
-  paintMicroFlatSnow(imageData.data, width, height, frameSeed)
+  paintMediumSnow(imageData.data, width, height, frameSeed, grayish)
+  paintFineSnow(imageData.data, width, height, frameSeed, grayish)
+  paintFlatSnow(imageData.data, width, height, frameSeed, grayish)
+  paintMicroFlatSnow(imageData.data, width, height, frameSeed, grayish)
 }
 
 export default function GuideLockTvSnowCanvas({ className = '' }) {
   const rootRef = useRef(null)
   const canvasRef = useRef(null)
+  const grayishRef = useRef(
+    typeof document !== 'undefined' && document.documentElement.classList.contains('light'),
+  )
 
   useEffect(() => {
     const root = rootRef.current
     const canvas = canvasRef.current
     if (!root || !canvas) return undefined
+
+    const syncGrayishSnow = () => {
+      grayishRef.current = document.documentElement.classList.contains('light')
+    }
+    syncGrayishSnow()
+
+    const themeObserver = new MutationObserver(syncGrayishSnow)
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
 
     const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return undefined
@@ -206,7 +233,7 @@ export default function GuideLockTvSnowCanvas({ className = '' }) {
         (reducedMotion || ts - lastPaintTs >= MIN_FRAME_MS)
 
       if (shouldPaint) {
-        paintTvSnow(imageData, imageData.width, imageData.height, frameSeed)
+        paintTvSnow(imageData, imageData.width, imageData.height, frameSeed, grayishRef.current)
         ctx.putImageData(imageData, 0, 0)
         lastPaintTs = ts
       }
@@ -233,6 +260,7 @@ export default function GuideLockTvSnowCanvas({ className = '' }) {
     rafId = window.requestAnimationFrame(tick)
 
     return () => {
+      themeObserver.disconnect()
       resizeObserver?.disconnect()
       intersectionObserver?.disconnect()
       window.cancelAnimationFrame(rafId)

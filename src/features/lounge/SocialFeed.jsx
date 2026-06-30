@@ -557,6 +557,10 @@ export default function SocialFeed({
   onRequestOpenProfileConsumed,
   /** Open terms, privacy, or guidelines in-app with return navigation. */
   onOpenLegalDocument = null,
+  /** Staff-only: trigger TabErrorBoundary on the active Slots tool tab. */
+  onSimulateTabError = null,
+  /** Staff-only: clear tab error strike count (False Start vs Fumble testing). */
+  onResetTabErrorStrikes = null,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -15626,6 +15630,8 @@ export default function SocialFeed({
           onDeleteAccount={onDeleteAccount}
           deleteAccountBusy={deleteAccountBusy}
           onOpenLegalDocument={onOpenLegalDocument}
+          onSimulateTabError={onSimulateTabError}
+          onResetTabErrorStrikes={onResetTabErrorStrikes}
         />
       ) : null}
 

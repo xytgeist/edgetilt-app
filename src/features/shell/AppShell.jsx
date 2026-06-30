@@ -57,6 +57,12 @@ import {
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
+import {
+  TAB_ERROR_COUNT_KEY,
+  TabErrorSimulator,
+  isStaffTabErrorTest,
+  resetTabErrorStrikes,
+} from './tabErrorBoundaryTools.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 const GUIDES_SCREEN_CHUNK_RELOAD_KEY = 'lvsp_guides_screen_chunk_reload'
@@ -96,27 +102,38 @@ function TabLoadingFallback() {
   )
 }
 
-const TAB_ERROR_COUNT_KEY = 'lvsp_tab_error_count'
-
 class TabErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { error: null, attemptCount: 0 }
+    /** Per-boundary ref so Strict Mode remount can throw again; Replay keeps the same instance. */
+    this.lastSimulatedTriggerRef = { current: 0 }
     this.handleReport = this.handleReport.bind(this)
+    this.handleRetry = this.handleRetry.bind(this)
+    this.handleBack = this.handleBack.bind(this)
   }
 
   static getDerivedStateFromError(error) {
-    // Read count before incrementing so first render shows the right screen immediately
+    // Read persisted strike count only - increment happens in componentDidCatch after paint.
     const count = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
     return { error, attemptCount: count }
   }
 
   componentDidCatch(error, info) {
     const prev = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
-    const next = prev + 1
-    sessionStorage.setItem(TAB_ERROR_COUNT_KEY, String(next))
-    this.setState({ attemptCount: next })
-    Sentry.captureException(error, { extra: { componentStack: info?.componentStack } })
+    sessionStorage.setItem(TAB_ERROR_COUNT_KEY, String(prev + 1))
+    if (!isStaffTabErrorTest(error)) {
+      Sentry.captureException(error, { extra: { componentStack: info?.componentStack } })
+    }
+  }
+
+  handleRetry() {
+    this.setState({ error: null })
+    this.props.onRecover?.()
+  }
+
+  handleBack() {
+    this.props.onBack?.()
   }
 
   // No componentDidMount clear - sessionStorage persists across reloads within the session.
@@ -138,10 +155,14 @@ class TabErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       const isFumble = this.state.attemptCount > 0
+      const shellClass =
+        this.props.variant === 'fullscreen'
+          ? 'flex min-h-full w-full flex-col items-center justify-center gap-5 px-6 py-10 text-center'
+          : 'flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 text-center'
 
       if (isFumble) {
         return (
-          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className={shellClass}>
             {/* Red flag SVG */}
             <svg width="64" height="64" viewBox="0 0 40 52" aria-hidden fill="none">
               <line x1="8" y1="2" x2="8" y2="50" stroke="#EF4444" strokeWidth="3.5" strokeLinecap="round"/>
@@ -156,19 +177,28 @@ class TabErrorBoundary extends React.Component {
                 {String(this.state.error?.message || 'Unknown penalty').slice(0, 140)}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={this.handleReport}
-              className="min-h-11 rounded-2xl border border-rose-500/40 bg-rose-600/15 hover:bg-rose-600/25 px-5 py-2.5 text-sm font-bold text-rose-300 touch-manipulation transition-colors"
-            >
-              Report Issue
-            </button>
+            <div className="flex w-full max-w-xs flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={this.handleBack}
+                className="min-h-11 flex-1 rounded-2xl border border-zinc-600 bg-zinc-800 hover:bg-zinc-700 px-5 py-2.5 text-sm font-bold text-zinc-200 touch-manipulation transition-colors"
+              >
+                Back to Lounge
+              </button>
+              <button
+                type="button"
+                onClick={this.handleReport}
+                className="min-h-11 flex-1 rounded-2xl border border-rose-500/40 bg-rose-600/15 hover:bg-rose-600/25 px-5 py-2.5 text-sm font-bold text-rose-300 touch-manipulation transition-colors"
+              >
+                Report Issue
+              </button>
+            </div>
           </div>
         )
       }
 
       return (
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 text-center">
+        <div className={shellClass}>
           {/* Yellow flag SVG */}
           <svg width="64" height="64" viewBox="0 0 40 52" aria-hidden fill="none">
             <line x1="8" y1="2" x2="8" y2="50" stroke="#EAB308" strokeWidth="3.5" strokeLinecap="round"/>
@@ -185,7 +215,7 @@ class TabErrorBoundary extends React.Component {
           </div>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={this.handleRetry}
             className="min-h-11 rounded-2xl border border-cyan-500/40 bg-cyan-600/20 hover:bg-cyan-600/30 px-5 py-2.5 text-sm font-bold text-cyan-300 touch-manipulation transition-colors"
           >
             Replay 2nd Down
@@ -193,7 +223,17 @@ class TabErrorBoundary extends React.Component {
         </div>
       )
     }
-    return this.props.children
+    return (
+      <>
+        {this.props.simulatorTrigger != null ? (
+          <TabErrorSimulator
+            trigger={this.props.simulatorTrigger}
+            lastSimulatedRef={this.lastSimulatedTriggerRef}
+          />
+        ) : null}
+        {this.props.children}
+      </>
+    )
   }
 }
 
@@ -233,6 +273,8 @@ export default function AppShell({
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
+  const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo-link' | 'stackup' | 'mhb' | null
   const [communityPosts, setCommunityPosts] = useState([])
   const [communityFeedLoading, setCommunityFeedLoading] = useState(false)
@@ -881,6 +923,19 @@ export default function AppShell({
     setMenuOpen(false)
   }, [])
 
+  const simulateTabError = useCallback(() => {
+    setTabErrorTestOpen(true)
+    setTabErrorTestTrigger((n) => n + 1)
+  }, [])
+
+  const dismissTabErrorTest = useCallback(() => {
+    setTabErrorTestOpen(false)
+  }, [])
+
+  const handleResetTabErrorStrikes = useCallback(() => {
+    resetTabErrorStrikes()
+  }, [])
+
   const backToSlotsHub = useCallback(() => {
     setActiveCalculator(null)
     setTab('slots')
@@ -1209,6 +1264,8 @@ export default function AppShell({
             requestOpenProfileUserId={pendingLoungeProfileUserId}
             onRequestOpenProfileConsumed={() => setPendingLoungeProfileUserId(null)}
             onOpenLegalDocument={onOpenLegalDocument}
+            onSimulateTabError={simulateTabError}
+            onResetTabErrorStrikes={handleResetTabErrorStrikes}
           />
         </div>
       </Suspense>
@@ -1463,7 +1520,7 @@ export default function AppShell({
       <>
         {keepAliveSocialFeed}
         {visibleTab != null ? (
-          <TabErrorBoundary>
+          <TabErrorBoundary onBack={() => setTab('home')}>
             <Suspense fallback={<TabLoadingFallback />}>{visibleTab}</Suspense>
           </TabErrorBoundary>
         ) : null}
@@ -1548,6 +1605,21 @@ export default function AppShell({
       )}
 
       {isStaff && consoleLogHudEnabled ? <AppConsoleLogDebugHud /> : null}
+
+      {tabErrorTestOpen && isStaff ? (
+        <div
+          className="fixed inset-0 z-[300] flex w-full flex-col bg-zinc-950"
+          data-tab-error-test-overlay
+          aria-hidden={false}
+        >
+          <TabErrorBoundary
+            variant="fullscreen"
+            onRecover={dismissTabErrorTest}
+            onBack={dismissTabErrorTest}
+            simulatorTrigger={tabErrorTestTrigger}
+          />
+        </div>
+      ) : null}
 
     </div>
   )

@@ -179,6 +179,10 @@ export default function LoungeDockSlidePanels({
   onPanelScrollRestored = null,
   /** Open a legal document in-app (e.g. Community Guidelines from Settings). */
   onOpenLegalDocument = null,
+  /** Staff-only: trigger TabErrorBoundary on the active Slots tool tab. */
+  onSimulateTabError = null,
+  /** Staff-only: clear tab error strike count (False Start vs Fumble testing). */
+  onResetTabErrorStrikes = null,
 }) {
   const panelRef = useRef(null)
   const panelScrollRef = useRef(null)
@@ -1802,6 +1806,28 @@ export default function LoungeDockSlidePanels({
                         />
                       </span>
                     </button>
+                    <div className="rounded-lg border border-zinc-700/90 bg-zinc-950/80 p-3">
+                      <div className="text-[15px] font-semibold text-zinc-100">Tab error screens</div>
+                      <p className="mt-1 text-[12px] leading-snug text-zinc-500">
+                        Test False Start (1st strike) and FUMBLE (2nd). Overlay only ... stays on your current screen.
+                      </p>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => onSimulateTabError?.()}
+                          className="min-h-11 flex-1 rounded-xl border border-amber-500/40 bg-amber-600/20 px-3 text-sm font-bold text-amber-200 touch-manipulation hover:bg-amber-600/30 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          Simulate tab error
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onResetTabErrorStrikes?.()}
+                          className="min-h-11 flex-1 rounded-xl border border-zinc-600/80 bg-zinc-800/80 px-3 text-sm font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-700/80 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          Reset strikes
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : null}
               </div>

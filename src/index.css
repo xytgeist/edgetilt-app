@@ -3507,14 +3507,31 @@ html.light [data-legal-document] .legal-prose a {
 }
 
 html.light [data-pwa-install-title-chip] {
-  border-color: rgb(6 182 212 / 0.45);
-  background: rgb(236 254 255);
-  color: rgb(14 116 144);
+  border-color: rgb(8 145 178) !important;
+  background: rgb(255 255 255) !important;
+  color: rgb(21 94 117) !important;
+  box-shadow:
+    inset 0 0 0 0.33px rgb(8 145 178 / 0.4),
+    0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 html.light [data-pwa-install-title-chip]:hover {
-  border-color: rgb(6 182 212 / 0.65);
-  background: rgb(207 250 254);
+  border-color: rgb(14 116 144) !important;
+  background: rgb(236 254 255) !important;
+  color: rgb(22 78 99) !important;
+}
+
+html.light [data-pwa-install-title-chip]:active {
+  background: rgb(207 250 254) !important;
+}
+
+html.light [data-pwa-install-title-chip][aria-expanded='true'] {
+  border-color: rgb(234 88 12) !important;
+  background: rgb(255 247 237) !important;
+  color: rgb(154 52 18) !important;
+  box-shadow:
+    inset 0 0 0 0.33px rgb(234 88 12 / 0.45),
+    0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 @keyframes pwa-install-drop-panel-in {
@@ -3535,8 +3552,12 @@ html.light [data-pwa-install-title-chip]:hover {
 
 html.light [data-pwa-install-drop-panel] {
   border-top-color: rgb(228 228 231);
+  border-bottom-color: rgb(228 228 231);
   background: rgb(255 255 255 / 0.98);
   color: rgb(24 24 27);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 html.light [data-pwa-install-drop-panel] h2 {

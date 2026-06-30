@@ -49,7 +49,7 @@ function PwaInstallHelpDropPanel({
     <div
       id="pwa-install-drop-panel"
       data-pwa-install-drop-panel
-      className="pwa-install-drop-panel w-full border-t border-zinc-800/90 bg-zinc-950/98 px-3 py-3 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
+      className="pwa-install-drop-panel absolute left-0 right-0 top-full z-[60] max-h-[min(72dvh,calc(100dvh-env(safe-area-inset-top)-3.5rem))] w-full overflow-y-auto overscroll-contain border-t border-b border-zinc-800/90 bg-zinc-950/98 px-3 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
       role="region"
       aria-labelledby="pwa-install-drop-title"
     >
@@ -121,7 +121,7 @@ function PwaInstallHelpDropPanel({
 }
 
 /**
- * Title bar row: logo | install chip | nav — plus full-width install help panel below the row.
+ * Title bar row: logo | install chip | nav — install help panel overlays feed below the row.
  */
 export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'px-3 py-2' }) {
   const deferredPromptRef = useRef(null)
@@ -217,7 +217,7 @@ export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'p
   }
 
   return (
-    <>
+    <div className="relative" data-pwa-install-title-row-wrap>
       <div
         className={`grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`}
         data-pwa-install-title-row
@@ -235,6 +235,6 @@ export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'p
         onNativeInstall={onNativeInstall}
         nativeInstallReady={nativeInstallReady}
       />
-    </>
+    </div>
   )
 }

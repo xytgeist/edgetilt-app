@@ -9,7 +9,8 @@ function LegalAcceptanceNudge() {
   return (
     <div
       role="alert"
-      className="mb-2 rounded-xl border border-amber-500/55 bg-amber-950/90 px-3 py-2.5 text-center text-[13px] font-medium leading-snug text-amber-100"
+      data-auth-legal-nudge
+      className="mb-2 rounded-xl border border-cyan-500/40 bg-cyan-950/35 px-3 py-2.5 text-center text-[13px] font-medium leading-snug text-cyan-100"
     >
       {LEGAL_NUDGE_MESSAGE}
     </div>
@@ -204,7 +205,7 @@ export default function AuthModalPanel({
           >
             {legalCheckboxHighlighted ? (
               <span
-                className="pointer-events-none absolute -inset-0.5 rounded-[1.1rem] ring-2 ring-orange-400/85 auth-legal-checkbox-pulse"
+                className="pointer-events-none absolute -inset-0.5 rounded-[1.1rem] ring-2 ring-cyan-400/75 auth-legal-checkbox-pulse"
                 aria-hidden
               />
             ) : null}

@@ -3576,15 +3576,21 @@ html.light [data-pwa-install-drop-panel] .font-semibold {
   color: rgb(24 24 27);
 }
 
+html.light [data-auth-modal] [data-auth-legal-nudge] {
+  border-color: rgb(165 243 252) !important;
+  background: rgb(236 254 255) !important;
+  color: rgb(21 94 117) !important;
+}
+
 /* Auth signup — legal acceptance nudge pulse on checkbox */
 @keyframes auth-legal-checkbox-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.55);
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.5);
     opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(251, 146, 60, 0.12);
+    box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.12);
     opacity: 0.85;
   }
 }

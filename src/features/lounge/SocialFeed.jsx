@@ -13769,9 +13769,7 @@ export default function SocialFeed({
             </div>
           ) : (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
-              No posts yet. Run{' '}
-              <code className="text-fuchsia-200/90">supabase/feed_phase_a_profiles_public_read.sql</code> in Supabase,
-              then post from Guides → Ask community.
+              No posts yet. Tap the compose button to share, or post from Guides → Ask community.
             </div>
           )
         ) : (

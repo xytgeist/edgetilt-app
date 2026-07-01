@@ -1377,15 +1377,15 @@ export default function AppShell({
               </button>
             </div>
             <p className="text-zinc-500 text-xs mb-3 leading-relaxed">
-              Questions posted from <span className="text-zinc-400">Guides → Ask community</span> land here once{' '}
-              <code className="text-zinc-400">community_feed_posts</code> is applied in Supabase.
+              Questions posted from <span className="text-zinc-400">Guides → Ask community</span> appear here in the
+              Lounge feed.
             </p>
             {communityFeedLoading && communityPosts.length === 0 ? (
               <div className="text-zinc-500 text-sm py-2">Loading feed…</div>
             ) : communityPosts.length === 0 ? (
               <div className="rounded-2xl bg-zinc-800/70 p-4 text-zinc-400 text-sm leading-relaxed">
-                No posts yet. Open a guide card and use <span className="text-zinc-200 font-semibold">Ask community</span>, or run{' '}
-                <code className="text-amber-200/90">supabase/community_feed_posts.sql</code> if inserts fail.
+                No posts yet. Open a guide card and use{' '}
+                <span className="text-zinc-200 font-semibold">Ask community</span>, or tap compose in the Lounge.
               </div>
             ) : (
               <div className="space-y-3">

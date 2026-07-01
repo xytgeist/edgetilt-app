@@ -45,6 +45,7 @@ export default function CasinoAutocomplete({
   const [localResults, setLocalResults] = useState([])
   const [onlineResults, setOnlineResults] = useState([])
   const [onlineLoading, setOnlineLoading] = useState(false)
+  const [onlineError, setOnlineError] = useState(null)
   const [showOnline, setShowOnline] = useState(false)
   const [focused, setFocused] = useState(false)
   const [userTyped, setUserTyped] = useState(false)
@@ -85,8 +86,6 @@ export default function CasinoAutocomplete({
         .order('name')
         .limit(LOCAL_LIMIT)
       setLocalResults(data ?? [])
-      setShowOnline(false)
-      setOnlineResults([])
     }, DEBOUNCE_MS)
   }, [supabaseClient])
 
@@ -95,6 +94,9 @@ export default function CasinoAutocomplete({
     setQuery(q)
     onChange(q)
     setUserTyped(true)
+    setShowOnline(false)
+    setOnlineResults([])
+    setOnlineError(null)
     searchLocal(q)
   }
 
@@ -116,8 +118,11 @@ export default function CasinoAutocomplete({
 
   const searchOnline = async () => {
     if (query.length < MIN_CHARS) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     setOnlineLoading(true)
     setShowOnline(true)
+    setOnlineResults([])
+    setOnlineError(null)
     try {
       const { data: { session } } = await supabaseClient.auth.getSession()
       const token = session?.access_token
@@ -125,10 +130,18 @@ export default function CasinoAutocomplete({
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/casino-places-search?q=${encodeURIComponent(query)}`,
         { headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY } }
       )
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setOnlineError(json.error || 'Online search failed. Try again.')
+        return
+      }
+      if (json.error && !(json.results?.length)) {
+        setOnlineError(json.error)
+        return
+      }
       setOnlineResults(json.results ?? [])
     } catch {
-      setOnlineResults([])
+      setOnlineError('Online search failed. Check your connection and try again.')
     } finally {
       setOnlineLoading(false)
     }
@@ -280,6 +293,8 @@ export default function CasinoAutocomplete({
               {showOnline && (
                 onlineLoading ? (
                   <div className="px-4 py-3 text-zinc-400 text-sm">Searching…</div>
+                ) : onlineError ? (
+                  <div className="px-4 py-3 text-amber-300/90 text-sm">{onlineError}</div>
                 ) : onlineResults.length === 0 ? (
                   <div className="px-4 py-3 text-zinc-400 text-sm">No results found.</div>
                 ) : (

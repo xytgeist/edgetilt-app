@@ -38,7 +38,7 @@ Run **`supabase/lounge_feed_post_stream_video.sql`** on the same Supabase projec
 supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucumuoswnbauxry
 ```
 
-**Production** uses a different ref (see `docs/production-rollout-checklist.md` — currently **`wedrhwtsxifbnnbgxdkm`**).
+**Production** uses **`jtjgtucumuoswnbauxry`** (see `docs/production-rollout-checklist.md` + `docs/edgetilt-production-cutover.md`). **Test sandbox:** **`kcosfvmreeiosdjdzycb`** (`edgetilt-sandbox`).
 
 ## Product limits (enforced in app + upload token)
 

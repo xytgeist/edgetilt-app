@@ -3,6 +3,7 @@
  * Usage: node scripts/ap-guide-backup-test-guides.mjs [slug...]
  *        node scripts/ap-guide-backup-test-guides.mjs --all-published
  *        node scripts/ap-guide-backup-test-guides.mjs --all-batch
+ *        node scripts/ap-guide-backup-test-guides.mjs --target=production --all-batch
  *
  * Run before any Ryan-approved batch ingest. See AGENTS.md AGENT_RULE_TEST_IS_PROD.
  *
@@ -19,6 +20,8 @@ const GUIDE_SELECT =
   'slug, title, card_ev_threshold, content_markdown, published, thumbnail_url, card_accent_color, updated_at, machines(slug, name, manufacturer, type, difficulty, popularity, nerf_risk, volatility_index, popularity_summary, release_year, has_calculator, calculator_slug, thumbnail_url)'
 
 const args = process.argv.slice(2)
+const targetRaw = args.find((a) => a.startsWith('--target='))?.split('=')[1]?.trim().toLowerCase()
+const target = targetRaw === 'test' ? 'test' : 'production'
 const allPublished = args.includes('--all-published')
 const allBatch = args.includes('--all-batch')
 const slugArgs = args.filter((a) => !a.startsWith('--'))
@@ -49,7 +52,7 @@ if (!slugs.length && !allPublished) {
   process.exit(1)
 }
 
-loadSupabaseEnv('test')
+loadSupabaseEnv(target)
 const { url, key } = readSupabaseCredentials()
 const sb = createClient(url, key, { auth: { persistSession: false } })
 

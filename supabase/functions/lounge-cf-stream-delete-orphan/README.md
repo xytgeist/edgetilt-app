@@ -18,7 +18,7 @@ supabase functions deploy lounge-cf-stream-delete-orphan --project-ref jtjgtucum
 
 A **copy-paste deploy block** and **Supabase `pg_cron` schedule** (Vault + migration) are in **`lounge-cf-stream-purge-pending-uploads/README.md`**.
 
-**Production** uses a different ref (see `docs/production-rollout-checklist.md` — currently **`wedrhwtsxifbnnbgxdkm`**).
+**Production** uses **`jtjgtucumuoswnbauxry`**. **Test sandbox:** **`kcosfvmreeiosdjdzycb`**.
 
 ## Security
 

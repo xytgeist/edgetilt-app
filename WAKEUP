@@ -34,7 +34,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal:** _Bug finding / fixing — guide cards and broader app polish (light + dark). Card content + accent ingest phase is ~done._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (§ **AP Guide editor** + Update log **2026-06-25**). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — most migrations/Edge/env steps are **test-validated only** until replayed on prod (`wedrhwtsxifbnnbgxdkm`).
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** (§ **AP Guide editor** + Update log **2026-06-25**). For **production** work: **`docs/production-rollout-checklist.md`** top-to-bottom — replay validated test work onto prod **`jtjgtucumuoswnbauxry`** (`edgetilt.com`). Test sandbox: **`kcosfvmreeiosdjdzycb`** (`edgetilt-sandbox`, `lvslotpro.com`).
 
 **Optional add-ons** (delete lines you do not need)
 

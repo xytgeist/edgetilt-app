@@ -126,11 +126,18 @@ async function uploadGuideImageToR2OrStorage(file, { slug, filename }) {
 const STORAGE_KEY = 'slotGuideFormSettings:v4'
 
 // Ingest API targets - controls which Vercel function receives new guide ingests.
-// Reads and writes use the authenticated Supabase client from LoginGate (test env).
+// Login + Save changes use the deployment's Supabase (VITE_SUPABASE_*). Prod ingests from
+// lvslotpro.com require signing in on edgetilt.com (cross-origin session won't validate).
+const PROD_APP_ORIGIN = String(import.meta.env.VITE_PROD_APP_ORIGIN || 'https://edgetilt.com').replace(/\/+$/, '')
 const INGEST_TARGETS = [
-  { id: 'test',       label: 'test',       apiUrl: '/api/slot-guide-ingest' },
-  { id: 'production', label: 'production', apiUrl: 'https://lvslotpro-calc-tx18.vercel.app/api/slot-guide-ingest' },
+  { id: 'test', label: 'test', apiUrl: '/api/slot-guide-ingest' },
+  { id: 'production', label: 'production', apiUrl: `${PROD_APP_ORIGIN}/api/slot-guide-ingest` },
 ]
+
+function defaultIngestId() {
+  if (typeof window === 'undefined') return 'test'
+  return /(^|\.)edgetilt\.com$/i.test(window.location.hostname) ? 'production' : 'test'
+}
 
 const PLACEMENTS = [
   { id: 'when_to_play', label: 'After When to play' },
@@ -509,7 +516,7 @@ export default function SlotGuideFormApp() {
   const saved = useMemo(() => (typeof window !== 'undefined' ? readSettings() : null), [])
 
   // ── Connection settings (ingest target only - auth uses LoginGate session token)
-  const [ingestId, setIngestId] = useState(saved?.ingestId || 'test')
+  const [ingestId, setIngestId] = useState(saved?.ingestId || defaultIngestId())
 
   const activeIngest = INGEST_TARGETS.find(t => t.id === ingestId) ?? INGEST_TARGETS[0]
   const apiUrl       = activeIngest.apiUrl

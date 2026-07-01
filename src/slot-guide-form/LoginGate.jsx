@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-const SB_URL = 'https://jtjgtucumuoswnbauxry.supabase.co'
-const SB_ANON = 'sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B'
+const SB_URL = String(import.meta.env.VITE_SUPABASE_URL || '').trim()
+const SB_ANON = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
+
+if (!SB_URL || !SB_ANON) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY for /slot-guide-form.')
+}
 
 export const supabase = createClient(SB_URL, SB_ANON)
 

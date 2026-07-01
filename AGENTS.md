@@ -27,23 +27,27 @@ Good: `composerFocused && IS_IOS ? { paddingTop: X } : undefined`
 
 ---
 
-## CRITICAL — TEST SUPABASE IS PRODUCTION (for guides and Ryan's data)
+## CRITICAL — PRODUCTION vs TEST SUPABASE (post EdgeTilt cutover)
 
-> **Treat the test Supabase project like production.** It is where Ryan validates the real app, edits AP guides in **`/slot-guide-form`**, and stores live **`guides.content_markdown`**, heroes (R2), and inline images. It is **not** a sandbox agents can overwrite to "try something."
+> **Production** is **`jtjgtucumuoswnbauxry`** (`edgetilt.com`). **Test** is **`kcosfvmreeiosdjdzycb`** (`lvslotpro.com` sandbox). Cutover runbook: **`docs/edgetilt-production-cutover.md`**.
+
+**Treat production Supabase like production.** AP guides, heroes (R2), and live **`guides.content_markdown`** on **`jtjgtucumuoswnbauxry`** are not a sandbox.
 
 **Never without Ryan's explicit instruction (slug or batch named in chat):**
 
-- `runSlotGuideIngest` / `npm run slots:sync:*` / `ap-guide-workspace-batch-run.mjs` / `ap-guide-reingest-payloads.mjs`
-- Any script that upserts **`guides`** or **`machines`** on test
-- "Quick" one-liner `node -e` ingest to fix copy
+- `runSlotGuideIngest` / `npm run slots:sync:*` / `ap-guide-workspace-batch-run.mjs` / `ap-guide-reingest-payloads.mjs` against **production**
+- Any script that upserts **`guides`** or **`machines`** on **production**
+- "Quick" one-liner `node -e` ingest to fix copy on **production**
 
-**Default agent workflow for guide text:** edit **`scripts/lib/apGuideBatch*Payloads.mjs`** (or answer in chat) only. Ryan pushes to test via the form or tells you exactly when to ingest.
+**Default agent workflow for guide text:** edit **`scripts/lib/apGuideBatch*Payloads.mjs`** (or answer in chat) only. Ryan pushes via **`/slot-guide-form` on edgetilt.com** or tells you exactly when to ingest to prod.
 
-**Before any approved batch ingest:** offer or run **`node scripts/ap-guide-backup-test-guides.mjs --all-batch`** (or slug list) so test rows are snapshotted under **`ap-guide-workspace/_guide-backups/`**.
+**Test sandbox (`kcosfvmreeiosdjdzycb`):** agents may propose test ingests only when Ryan explicitly asks; still offer backup before batch work.
 
-**Ingest must not wipe form assets:** re-ingest without a new hero file **preserves** existing **`thumbnail_url`** on test (see **`runSlotGuideIngest.mjs`**). Re-ingest still replaces **`content_markdown`** when Ryan explicitly requests it ... that is destructive by design.
+**Before any approved batch ingest to production:** offer or run **`node scripts/ap-guide-backup-test-guides.mjs --all-batch --target=production`** (or slug list) so rows are snapshotted under **`ap-guide-workspace/_guide-backups/`**.
 
-`AGENT_RULE_TEST_IS_PROD` — searchability token.
+**Ingest must not wipe form assets:** re-ingest without a new hero file **preserves** existing **`thumbnail_url`** (see **`runSlotGuideIngest.mjs`**). Re-ingest still replaces **`content_markdown`** when Ryan explicitly requests it ... that is destructive by design.
+
+`AGENT_RULE_TEST_IS_PROD` — searchability token (rule now: **prod is prod**, test is sandbox).
 
 ---
 
@@ -117,6 +121,7 @@ Future sessions have **no memory** of this chat. Treat the repo as the **source 
 | 3 | `docs/social-feed-roadmap.md` | Phased plan for Lounge / feed / social (A, B, C, …) |
 | 4 | `docs/test-buildout-backlog.md` | Test-first work, phase checkboxes, **smoke list**, sign-offs, SQL/RLS notes tied to test |
 | 5 | `docs/production-rollout-checklist.md` | Promoting test work to production (SQL, functions, smoke) |
+| 6 | `docs/edgetilt-production-cutover.md` | **One-time** prod/test Supabase + domain cutover (`edgetilt.com` / `lvslotpro.com`) |
 | 6 | `docs/access-tiers.md` | **Freemium spec:** no account vs free vs paid — per-surface read/write matrix; update when product rules change |
 | 7 | `docs/test-user-roles.md` | **`profiles.role`** + **`has_active_subscription`** — tier testing SQL recipes |
 | 8 | `supabase/*.sql` | Schema, RLS, triggers; read headers/comments when touching the DB |

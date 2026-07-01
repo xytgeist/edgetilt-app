@@ -16,7 +16,7 @@ Same as **`lounge-cf-stream-direct-upload`**: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLA
 supabase functions deploy lounge-cf-stream-delete-video --project-ref jtjgtucumuoswnbauxry
 ```
 
-**Production** uses a different ref (see `docs/production-rollout-checklist.md` — currently **`wedrhwtsxifbnnbgxdkm`**).
+**Production** uses **`jtjgtucumuoswnbauxry`**. **Test sandbox:** **`kcosfvmreeiosdjdzycb`**.
 
 ## RLS
 

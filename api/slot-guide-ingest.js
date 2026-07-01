@@ -10,11 +10,12 @@
  * }
  *
  * Auth: Authorization: Bearer <supabase-session-token> header.
- *   Token is validated against the test Supabase project; caller must have
- *   profiles.role = 'admin'. No separate ingest secret needed.
+ *   Token is validated against the Supabase project for `body.target`; caller must have
+ *   profiles.role = 'admin' on that project. No separate ingest secret needed.
  *
  * Supabase: set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY on Vercel (test ingest), or
  *   SUPABASE_URL_PRODUCTION + SUPABASE_SERVICE_ROLE_KEY_PRODUCTION when target=production.
+ *   JWT validation uses matching URL + anon key (VITE_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY_*).
  *   (No .env.supabase.* file on Vercel — uses process.env only.)
  * Local dev with repo writes: SLOT_GUIDE_WRITE_REPO=1 and run via `npm run slot-guide:serve`.
  */
@@ -22,11 +23,28 @@
 import { createClient } from "@supabase/supabase-js";
 import { runSlotGuideIngest } from "../scripts/lib/runSlotGuideIngest.mjs";
 
-// Publishable — safe to hardcode. Admin accounts live on test.
-const AUTH_SB_URL  = "https://jtjgtucumuoswnbauxry.supabase.co";
-const AUTH_SB_ANON = "sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B";
+function resolveAuthSupabase(target) {
+  const isProd = target === "production";
+  const urlRaw = isProd
+    ? process.env.SUPABASE_URL_PRODUCTION || process.env.VITE_SUPABASE_URL
+    : process.env.SUPABASE_URL_TEST || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const url = String(urlRaw || "").trim().replace(/\/+$/, "");
+  const anon = String(
+    isProd
+      ? process.env.SUPABASE_ANON_KEY_PRODUCTION || process.env.VITE_SUPABASE_ANON_KEY
+      : process.env.SUPABASE_ANON_KEY_TEST || process.env.VITE_SUPABASE_ANON_KEY
+  ).trim();
+  if (!url || !anon) {
+    return {
+      ok: false,
+      status: 500,
+      error: `Ingest auth misconfigured for target=${target}. Set Supabase URL + anon key env vars on this deployment.`,
+    };
+  }
+  return { ok: true, url, anon };
+}
 
-async function checkAdminJwt(req) {
+async function checkAdminJwt(req, target) {
   const authHeader =
     req.headers?.["authorization"] ||
     req.headers?.["Authorization"] ||
@@ -37,8 +55,10 @@ async function checkAdminJwt(req) {
   }
   const token = authHeader.slice(7).trim();
 
-  // Validate the token and get the user
-  const sb = createClient(AUTH_SB_URL, AUTH_SB_ANON);
+  const resolved = resolveAuthSupabase(target);
+  if (!resolved.ok) return resolved;
+
+  const sb = createClient(resolved.url, resolved.anon);
   const { data: { user }, error: authErr } = await sb.auth.getUser(token);
   if (authErr || !user) {
     return { ok: false, status: 401, error: "Invalid or expired session token." };
@@ -71,12 +91,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  const auth = await checkAdminJwt(req);
-  if (!auth.ok) {
-    res.status(auth.status).json({ error: auth.error });
-    return;
-  }
-
   let body = req.body;
   if (typeof body === "string") {
     try {
@@ -93,6 +107,12 @@ export default async function handler(req, res) {
 
   const targetRaw = String(body.target ?? "test").trim().toLowerCase();
   const target = targetRaw === "production" || targetRaw === "prod" ? "production" : "test";
+
+  const auth = await checkAdminJwt(req, target);
+  if (!auth.ok) {
+    res.status(auth.status).json({ error: auth.error });
+    return;
+  }
   const writeRepo = body.writeRepo === true;
 
   try {

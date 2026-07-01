@@ -1,9 +1,8 @@
 # Production rollout checklist (mirror from **test**)
 
-**Workflow:** Ship the **full feature set on `test` first** (app + Supabase schema, RLS, Edge Functions, Vercel preview against test). Use this checklist only when you are ready to **replay** everything on **production** so prod never drifts behind what you validated on test.
+**Post cutover (2026-06-30):** **Production** Supabase = **`jtjgtucumuoswnbauxry`** (`edgetilt.com`). **Test** = **`kcosfvmreeiosdjdzycb`** (`lvslotpro.com`). One-time cutover steps: **`docs/edgetilt-production-cutover.md`**.
 
-Use this when merging **`test` → production** so parity gaps aren’t missed.  
-Treat **`jtjgtucumuoswnbauxry`** as reference (**test**) unless documented elsewhere — **`wedrhwtsxifbnnbgxdkm`** is the (**production**) Supabase project ref inferred from `.env.supabase.production`.
+**Workflow:** Ship the **full feature set on test first** (`kcosfvmreeiosdjdzycb` + `lvslotpro.com`), then **replay** on **production** (`jtjgtucumuoswnbauxry` + `edgetilt.com`) so prod never drifts behind what you validated on test.
 
 **Doc routing for agents:** Root **`AGENTS.md`** explains when to edit this file vs `docs/test-buildout-backlog.md` vs roadmap after infra or smoke changes.
 
@@ -13,9 +12,9 @@ Treat **`jtjgtucumuoswnbauxry`** as reference (**test**) unless documented elsew
 
 ## 1. Prerequisites before flipping prod traffic
 
-- [ ] Confirm **`origin/main`** (or whichever Git/Vercel branch fronts **`lvslotpro.com`)**) carries exactly what should ship.
-- [ ] Confirm **`production`** Supabase project ref **`wedrhwtsxifbnnbgxdkm`** is intentional CLI/UI link (`supabase link --project-ref wedrhwtsxifbnnbgxdkm`).
-- [ ] Confirm **Vercel** production env has **`VITE_SUPABASE_URL`** / **`VITE_SUPABASE_ANON_KEY`** (and any other `VITE_*`) pointed at **production**.
+- [ ] Confirm **`origin/main`** (or whichever Git/Vercel branch fronts **`edgetilt.com`**) carries exactly what should ship.
+- [ ] Confirm **production** Supabase project ref **`jtjgtucumuoswnbauxry`** is intentional CLI/UI link (`supabase link --project-ref jtjgtucumuoswnbauxry`).
+- [ ] Confirm **Vercel** production env has **`VITE_SUPABASE_URL`** / **`VITE_SUPABASE_ANON_KEY`** (and any other `VITE_*`) pointed at **production** (`jtjgtucumuoswnbauxry`).
 - [ ] **AP Guide ingest API** (if prod hosts **`/api/slot-guide-ingest`** or editors use prod target): **`SUPABASE_URL_PRODUCTION`** + **`SUPABASE_SERVICE_ROLE_KEY_PRODUCTION`** (or plain **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`** when only one project). **Preview / test deploy** (e.g. **tx18**): **`SUPABASE_URL`** + **`SUPABASE_SERVICE_ROLE_KEY`** for **test** project — **service_role**, not anon. No repo **`.env.supabase.*`** on Vercel; **`scripts/lib/supabaseEnv.mjs`** reads dashboard vars @ **`24d0412`**.
 - [ ] Prefer a **no-op or tagged deploy** after env changes if clients cache aggressively.
 
@@ -26,7 +25,7 @@ Treat **`jtjgtucumuoswnbauxry`** as reference (**test**) unless documented elsew
 Apply in the **Supabase Dashboard → SQL Editor** for **production**, or via CLI from this repo after linking production:
 
 ```bash
-supabase link --project-ref wedrhwtsxifbnnbgxdkm --yes
+supabase link --project-ref jtjgtucumuoswnbauxry --yes
 supabase db query --linked -f supabase/community_feed_posts.sql
 supabase db query --linked -f supabase/feed_phase_a_profiles_public_read.sql
 ```
@@ -113,7 +112,7 @@ Uploads set object metadata **`Cache-Control: public, max-age=31536000, immutabl
 After DB + env are correct, redeploy edge functions whose **logical code lives in repo** (`supabase/functions/…`) against **production** so versions don’t drift:
 
 ```bash
-supabase link --project-ref wedrhwtsxifbnnbgxdkm --yes
+supabase link --project-ref jtjgtucumuoswnbauxry --yes
 supabase functions deploy process-offer-uploads
 supabase functions deploy get-web-push-config
 supabase functions deploy send-test-push

@@ -22,7 +22,7 @@ supabase functions deploy lounge-cf-stream-delete-orphan --project-ref jtjgtucum
 supabase functions deploy lounge-cf-stream-purge-pending-uploads --project-ref jtjgtucumuoswnbauxry
 ```
 
-**Production** uses a different ref (see `docs/production-rollout-checklist.md` — currently **`wedrhwtsxifbnnbgxdkm`**).
+**Production** uses **`jtjgtucumuoswnbauxry`** (see `docs/edgetilt-production-cutover.md`). **Test sandbox:** **`kcosfvmreeiosdjdzycb`**.
 
 ## Schedule (Supabase `pg_cron` + `pg_net` — recommended)
 
@@ -31,6 +31,7 @@ Migrations:
 1. **`supabase/migrations/20260509180000_lounge_cf_stream_purge_pg_cron.sql`** — defines **`invoke_lounge_cf_stream_purge_pending()`** and the daily **07:15 UTC** cron.
 2. **`supabase/migrations/20260512120000_lounge_cf_stream_purge_normalize_vault_secrets.sql`** — fixes **`UNAUTHORIZED_INVALID_JWT_FORMAT`**: legacy **`eyJ…`** keys use `apikey` + `Authorization: Bearer`; **`sb_publishable_` / `sb_secret_`** keys use **`apikey` only** (never Bearer), per [Supabase API key docs](https://supabase.com/docs/guides/getting-started/api-keys).
 3. **`supabase/migrations/20260515120000_lounge_cf_stream_purge_invoke_options.sql`** — overload **`invoke_lounge_cf_stream_purge_pending(integer, boolean)`** for manual tests (`maxAgeHours`, `dryRun`) without changing the cron’s zero-arg call.
+4. **`supabase/migrations/20260701100000_lounge_cf_stream_purge_vault_project_url.sql`** — **`base_url`** from Vault **`lounge_cf_stream_purge_project_url`** (no hardcoded project ref; required per Supabase project after cutover).
 
 **Edge deploy:** repo **`supabase/config.toml`** sets **`verify_jwt = false`** for this function only (required for **`sb_*`** gateway calls). Redeploy after any change:
 
@@ -52,10 +53,12 @@ Dashboard → **SQL Editor**, **once per environment**:
 - **`lounge_cf_stream_purge_supabase_anon_key`** — either:
   - **Legacy JWT** **`anon` `public`** (`eyJ…`, **Legacy** tab in API keys), or  
   - **`sb_publishable_…`** publishable key (default tab) — **only** after **`verify_jwt = false`** deploy + migration **`20260512120000`** (SQL uses `apikey` only, no `Authorization` Bearer for `sb_*`).
+- **`lounge_cf_stream_purge_project_url`** — this project’s API URL, no trailing slash (e.g. **`https://jtjgtucumuoswnbauxry.supabase.co`** on prod, **`https://kcosfvmreeiosdjdzycb.supabase.co`** on sandbox).
 
 ```sql
 select vault.create_secret('PASTE_PURGE_SECRET_SAME_AS_EDGE', 'lounge_cf_stream_purge_http_secret');
 select vault.create_secret('PASTE_EYJ_ANON_OR_SB_PUBLISHABLE', 'lounge_cf_stream_purge_supabase_anon_key');
+select vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'lounge_cf_stream_purge_project_url');
 ```
 
 If a name already exists: `delete from vault.secrets where name = '…';` then `create_secret` again.

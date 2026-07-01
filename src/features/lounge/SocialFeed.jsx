@@ -1213,6 +1213,19 @@ export default function SocialFeed({
     onRequireAuth?.()
   }, [onRequireAuth])
 
+  const openLoungeGuideCard = useCallback(
+    (guideSlug) => {
+      const slug = String(guideSlug || '').trim()
+      if (!slug) return
+      if (loungeReadOnly) {
+        requireLoungeAuth()
+        return
+      }
+      onOpenGuideCard?.(slug)
+    },
+    [loungeReadOnly, onOpenGuideCard, requireLoungeAuth],
+  )
+
   const refreshLoungeDraftCount = useCallback(async () => {
     if (!supabaseClient || loungeReadOnly) {
       setLoungeDraftCount(0)
@@ -12722,11 +12735,7 @@ export default function SocialFeed({
       }
       const guideSlug = parseGuideSlugFromUrlOrScheme(url)
       if (guideSlug) {
-        if (loungeReadOnly) {
-          onRequireAuth?.()
-          return
-        }
-        onOpenGuideCard?.(guideSlug)
+        openLoungeGuideCard(guideSlug)
         return
       }
       if (loungeReadOnly) {
@@ -12744,9 +12753,9 @@ export default function SocialFeed({
     [
       loungeReadOnly,
       onRequireAuth,
+      openLoungeGuideCard,
       openLoungePostById,
       openProfileByHandle,
-      onOpenGuideCard,
       pushLoungeNavReturnContext,
     ],
   )
@@ -12935,7 +12944,7 @@ export default function SocialFeed({
       onFollowUser: loungeReadOnly ? undefined : handleLoungeFollowUser,
       feedVideoAutoplayEnabled: loungeFeedVideoAutoplayEnabled,
       onFeedVideoAutoplayChange: onLoungeFeedVideoAutoplayChange,
-      onOpenGuideCard,
+      onOpenGuideCard: openLoungeGuideCard,
     }),
     [
       loungeReadOnly,
@@ -12993,7 +13002,7 @@ export default function SocialFeed({
       handleLoungeFollowUser,
       loungeFeedVideoAutoplayEnabled,
       onLoungeFeedVideoAutoplayChange,
-      onOpenGuideCard,
+      openLoungeGuideCard,
     ]
   )
 
@@ -13038,7 +13047,7 @@ export default function SocialFeed({
       onHashtagClick: openSearchByHashtag,
       onLinkClick: openCaptionLink,
       onLinkPreviewOpen: openLinkPreview,
-      onOpenGuideCard,
+      onOpenGuideCard: openLoungeGuideCard,
     }),
     [
       loungeReadOnly,
@@ -13067,7 +13076,7 @@ export default function SocialFeed({
       openSearchByHashtag,
       openCaptionLink,
       openLinkPreview,
-      onOpenGuideCard,
+      openLoungeGuideCard,
     ],
   )
 
@@ -13962,7 +13971,7 @@ export default function SocialFeed({
                   onFollowUser={loungeReadOnly ? undefined : handleLoungeFollowUser}
                   feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
                   onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
-                  onOpenGuideCard={onOpenGuideCard}
+                  onOpenGuideCard={openLoungeGuideCard}
                   onOpenMarketChart={openMarketChartModal}
                 />
               </article>
@@ -14560,7 +14569,7 @@ export default function SocialFeed({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          onOpenGuideCard?.(loungePostDetail.reposted_post.game_slug)
+                          openLoungeGuideCard(loungePostDetail.reposted_post.game_slug)
                         }}
                         className="mt-2 w-full text-left rounded-xl overflow-hidden border border-zinc-700/60 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
                         aria-label={`View AP Guide: ${loungePostDetail.reposted_post.game_title}`}
@@ -14648,7 +14657,7 @@ export default function SocialFeed({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          onOpenGuideCard?.(loungePostDetail.game_slug)
+                          openLoungeGuideCard(loungePostDetail.game_slug)
                         }}
                         className="mt-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80 bg-zinc-900/80 hover:border-zinc-600 active:border-cyan-700/60 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent]"
                         aria-label={`View AP Guide: ${loungePostDetail.game_title}`}

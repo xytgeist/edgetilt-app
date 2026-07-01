@@ -27,17 +27,29 @@ export const CALCULATOR_ICON_SRC = {
  * Admin UI overrides (when migration applied) take precedence.
  */
 export const FREE_CALCULATOR_KEYS = new Set(
-  /** @type {CalculatorKey[]} */ (['stackup', 'phoenix', 'buffalo-diamond']),
+  /** @type {CalculatorKey[]} */ (['buffalo-link', 'mhb']),
+)
+
+/**
+ * Premium calculators: never on the free tier. Admin lock toggles cannot open these for
+ * non-subscribers; Starter guide pairing and Full Edge still apply via `canOpenCalculator`.
+ */
+export const SUBSCRIBER_ONLY_CALCULATOR_KEYS = new Set(
+  /** @type {CalculatorKey[]} */ (['phoenix', 'stackup']),
 )
 
 function codeDefaultCalculatorRequiresSlotsEdge(key) {
   if (!key || !CALCULATOR_KEYS.includes(/** @type {CalculatorKey} */ (key))) return true
+  if (SUBSCRIBER_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))) return true
   return !FREE_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))
 }
 
 /** @param {string | null | undefined} key @param {Map<string, boolean> | null | undefined} [gatesMap] */
 export function calculatorRequiresSlotsEdge(key, gatesMap = null) {
   const calcKey = String(key || '').trim().toLowerCase()
+  if (SUBSCRIBER_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) {
+    return true
+  }
   return resolveRequiresSlotsEdge(
     'calculator',
     calcKey,
@@ -46,24 +58,55 @@ export function calculatorRequiresSlotsEdge(key, gatesMap = null) {
   )
 }
 
-/** @param {string | null | undefined} key @param {{ isStaff?: boolean, hasSlotsEdge?: boolean, gatesMap?: Map<string, boolean> | null }} [access] */
-export function canOpenCalculator(key, { isStaff = false, hasSlotsEdge = false, gatesMap = null } = {}) {
+/** @param {string | null | undefined} key @param {{ isStaff?: boolean, hasSlotsEdge?: boolean, starterUnlockedCalculatorKeys?: Set<string> | null, gatesMap?: Map<string, boolean> | null }} [access] */
+export function canOpenCalculator(
+  key,
+  {
+    isStaff = false,
+    hasSlotsEdge = false,
+    starterUnlockedCalculatorKeys = null,
+    gatesMap = null,
+  } = {},
+) {
   if (isStaff || hasSlotsEdge) return true
-  return !calculatorRequiresSlotsEdge(key, gatesMap)
+  const calcKey = String(key || '').trim().toLowerCase()
+  if (FREE_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) return true
+  if (
+    starterUnlockedCalculatorKeys instanceof Set &&
+    calcKey &&
+    starterUnlockedCalculatorKeys.has(calcKey)
+  ) {
+    return true
+  }
+  return !calculatorRequiresSlotsEdge(calcKey, gatesMap)
 }
 
-/** @param {Map<string, boolean> | null | undefined} [gatesMap] */
-export function calculatorsTabFullyGated(gatesMap = null) {
-  return CALCULATOR_KEYS.every((key) => calculatorRequiresSlotsEdge(key, gatesMap))
+/** @param {Map<string, boolean> | null | undefined} [gatesMap] @param {Set<string> | null | undefined} [starterUnlockedCalculatorKeys] */
+export function calculatorsTabFullyGated(gatesMap = null, starterUnlockedCalculatorKeys = null) {
+  return CALCULATOR_KEYS.every((key) => {
+    if (
+      starterUnlockedCalculatorKeys instanceof Set &&
+      starterUnlockedCalculatorKeys.has(key)
+    ) {
+      return false
+    }
+    return calculatorRequiresSlotsEdge(key, gatesMap)
+  })
 }
 
-/** @param {string | null | undefined} key @param {{ browseMode?: string, isStaff?: boolean, hasSlotsEdge?: boolean, gatesMap?: Map<string, boolean> | null }} [access] */
+/** @param {string | null | undefined} key @param {{ browseMode?: string, isStaff?: boolean, hasSlotsEdge?: boolean, starterUnlockedCalculatorKeys?: Set<string> | null, gatesMap?: Map<string, boolean> | null }} [access] */
 export function showCalculatorLock(
   key,
-  { browseMode = 'member', isStaff = false, hasSlotsEdge = false, gatesMap = null } = {},
+  {
+    browseMode = 'member',
+    isStaff = false,
+    hasSlotsEdge = false,
+    starterUnlockedCalculatorKeys = null,
+    gatesMap = null,
+  } = {},
 ) {
   if (browseMode !== 'member' || isStaff || hasSlotsEdge) return false
-  return calculatorRequiresSlotsEdge(key, gatesMap)
+  return !canOpenCalculator(key, { isStaff, hasSlotsEdge, starterUnlockedCalculatorKeys, gatesMap })
 }
 
 export const CALCULATOR_CATALOG_ENTRIES = [

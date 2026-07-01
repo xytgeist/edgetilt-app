@@ -72,6 +72,7 @@ import {
   resolveGuidePostSlug,
   showGuideLock,
 } from './guideAccess.js'
+import { resolveCalculatorKeyFromMachine } from './guideCalculatorKey.js'
 import { resolveGuideAccent } from '../../utils/guideCardAccent.js'
 import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButton.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
@@ -163,49 +164,6 @@ function shouldIgnoreGuideCardCollapseClick(event) {
 /** Shipped with the app when Supabase has no published row for that slug yet (see `mergeLocalGuideDemos`). */
 function isLocalDemoGuide(row) {
   return typeof row?.id === 'string' && row.id.startsWith('local-demo-')
-}
-
-/** Map DB \`machines.calculator_slug\` / slug → AppShell \`openCalculator\` keys. */
-function resolveCalculatorKey(machine) {
-  if (!machine) return null
-  const { slug, calculator_slug: calc, has_calculator: has } = machine
-  if (
-    slug === 'buffalo-link' ||
-    slug === 'lightning-buffalo-link' ||
-    calc === 'buffalo-link' ||
-    calc === 'buffalo'
-  ) {
-    return 'buffalo-link'
-  }
-  if (slug === 'buffalo-diamond' || slug === 'buffalo-diamond-extreme' || calc === 'buffalo-diamond') {
-    return 'buffalo-diamond'
-  }
-  if (slug === 'stack-up-pays' || calc === 'stack-up-pays') return 'stackup'
-  if (slug === 'phoenix-link' || calc === 'phoenix-link') return 'phoenix'
-  if (
-    slug === 'wheel-of-fortune-4d-collectors-edition' ||
-    calc === 'wof-collectors-edition' ||
-    calc === 'wheel-of-fortune-4d-collectors-edition'
-  ) {
-    return 'wof-collectors-edition'
-  }
-  if (
-    slug === 'ainsworth-must-hit-by' ||
-    slug === 'must-hit-by-aig' ||
-    slug === 'ags-must-hit-by' ||
-    slug === 'must-hit-by-ags' ||
-    slug === 'igt-must-hit-by' ||
-    slug === 'must-hit-by-igt' ||
-    calc === 'mhb'
-  ) {
-    return 'mhb'
-  }
-  if (slug === 'cash-machine-lock' || calc === 'cash-machine-lock') return null
-  if (has && calc === 'mhb') return 'mhb'
-  if (has && calc && ['buffalo-link', 'buffalo', 'buffalo-diamond', 'stackup', 'phoenix', 'mhb'].includes(calc)) {
-    return calc === 'buffalo' ? 'buffalo-link' : calc
-  }
-  return null
 }
 
 /**
@@ -1438,6 +1396,8 @@ export default function GuidesScreen({
   onCommunityPosted,
   onRequireAuth,
   hasSlotsEdge = false,
+  hasSlotsEdgeStarter = false,
+  starterUnlockedGuideSlugs = null,
   isStaff = false,
   isAdmin = false,
   gatesMap = null,
@@ -1459,16 +1419,6 @@ export default function GuidesScreen({
   const [expandedSlug, setExpandedSlug] = useState(null)
   const [askFor, setAskFor] = useState(null)
 
-  // Deep-link: when openCardSlug is provided (from Lounge guide embed tap), expand + scroll to card
-  useEffect(() => {
-    if (!openCardSlug || loading) return
-    const slug = normalizeGuideAccessSlug(openCardSlug)
-    if (!slug) return
-    setExpandedSlug(slug)
-    setTimeout(() => {
-      document.getElementById(`guide-card-${slug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 120)
-  }, [openCardSlug, loading])
   const [gateBusySlug, setGateBusySlug] = useState(null)
   /** @type {[null | { guideId: string, machineId: string | null, slug: string, name: string }, import('react').Dispatch<import('react').SetStateAction<null | { guideId: string, machineId: string | null, slug: string, name: string }>>]} */
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -1484,22 +1434,55 @@ export default function GuidesScreen({
     setExpandedSlug(null)
   }, [])
   const access = useMemo(
-    () => ({ isStaff, hasSlotsEdge, gatesMap, browseMode: 'member' }),
-    [isStaff, hasSlotsEdge, gatesMap],
+    () => ({
+      isStaff,
+      hasSlotsEdge,
+      hasSlotsEdgeStarter,
+      starterUnlockedGuideSlugs,
+      gatesMap,
+      browseMode: 'member',
+    }),
+    [isStaff, hasSlotsEdge, hasSlotsEdgeStarter, starterUnlockedGuideSlugs, gatesMap],
+  )
+
+  const releaseYearBySlug = useMemo(() => {
+    const map = new Map()
+    for (const row of rows) {
+      const m = machineForGuide(row)
+      const slug = normalizeGuideAccessSlug(m?.slug || row.slug)
+      if (!slug) continue
+      const y = m?.release_year
+      if (y != null && Number.isFinite(Number(y))) map.set(slug, Number(y))
+    }
+    return map
+  }, [rows])
+
+  const resolveGuideReleaseYear = useCallback(
+    (rawSlug) => releaseYearBySlug.get(normalizeGuideAccessSlug(rawSlug)) ?? null,
+    [releaseYearBySlug],
   )
 
   const openGuideSlug = useCallback(
     (rawSlug) => {
       const slug = normalizeGuideAccessSlug(rawSlug)
       if (!slug) return
-      if (!canOpenGuide(slug, { isStaff, hasSlotsEdge, gatesMap })) {
+      if (
+        !canOpenGuide(slug, {
+          isStaff,
+          hasSlotsEdge,
+          hasSlotsEdgeStarter,
+          starterUnlockedGuideSlugs,
+          gatesMap,
+          releaseYear: resolveGuideReleaseYear(slug),
+        })
+      ) {
         onRequireSubscribe?.('slots-edge')
         return
       }
       setQuery('')
       setExpandedSlug(slug)
     },
-    [gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe],
+    [gatesMap, hasSlotsEdge, hasSlotsEdgeStarter, starterUnlockedGuideSlugs, isStaff, onRequireSubscribe, resolveGuideReleaseYear],
   )
 
   const toggleGuideExpanded = useCallback(
@@ -1512,21 +1495,94 @@ export default function GuidesScreen({
         collapseGuideCard(slug)
         return
       }
-      if (!canOpenGuide(slug, { isStaff, hasSlotsEdge, gatesMap })) {
+      if (
+        !canOpenGuide(slug, {
+          isStaff,
+          hasSlotsEdge,
+          hasSlotsEdgeStarter,
+          starterUnlockedGuideSlugs,
+          gatesMap,
+          releaseYear: resolveGuideReleaseYear(slug),
+        })
+      ) {
         onRequireSubscribe?.('slots-edge')
         return
       }
       setExpandedSlug(slug)
     },
-    [expandedSlug, gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe, collapseGuideCard],
+    [
+      expandedSlug,
+      gatesMap,
+      hasSlotsEdge,
+      hasSlotsEdgeStarter,
+      starterUnlockedGuideSlugs,
+      isStaff,
+      onRequireSubscribe,
+      collapseGuideCard,
+      resolveGuideReleaseYear,
+    ],
   )
 
   useEffect(() => {
     if (!expandedSlug || isStaff || hasSlotsEdge) return
-    if (!guideRequiresSlotsEdge(expandedSlug, gatesMap)) return
+    if (
+      canOpenGuide(expandedSlug, {
+        isStaff,
+        hasSlotsEdge,
+        hasSlotsEdgeStarter,
+        starterUnlockedGuideSlugs,
+        gatesMap,
+        releaseYear: resolveGuideReleaseYear(expandedSlug),
+      })
+    ) {
+      return
+    }
     onRequireSubscribe?.('slots-edge')
     setExpandedSlug(null)
-  }, [expandedSlug, gatesMap, hasSlotsEdge, isStaff, onRequireSubscribe])
+  }, [
+    expandedSlug,
+    gatesMap,
+    hasSlotsEdge,
+    hasSlotsEdgeStarter,
+    starterUnlockedGuideSlugs,
+    isStaff,
+    onRequireSubscribe,
+    resolveGuideReleaseYear,
+  ])
+
+  // Deep-link: when openCardSlug is provided (from Lounge guide embed tap), expand + scroll to card
+  useEffect(() => {
+    if (!openCardSlug || loading) return
+    const slug = normalizeGuideAccessSlug(openCardSlug)
+    if (!slug) return
+    if (
+      !canOpenGuide(slug, {
+        isStaff,
+        hasSlotsEdge,
+        hasSlotsEdgeStarter,
+        starterUnlockedGuideSlugs,
+        gatesMap,
+        releaseYear: resolveGuideReleaseYear(slug),
+      })
+    ) {
+      onRequireSubscribe?.('slots-edge')
+      return
+    }
+    setExpandedSlug(slug)
+    setTimeout(() => {
+      document.getElementById(`guide-card-${slug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+  }, [
+    openCardSlug,
+    loading,
+    isStaff,
+    hasSlotsEdge,
+    hasSlotsEdgeStarter,
+    starterUnlockedGuideSlugs,
+    gatesMap,
+    onRequireSubscribe,
+    resolveGuideReleaseYear,
+  ])
 
   const handleAdminGuideLockToggle = useCallback(
     async (slug, locked) => {
@@ -1819,14 +1875,14 @@ export default function GuidesScreen({
             const expanded =
               expandedSlug != null &&
               String(expandedSlug).toLowerCase() === String(cardSlug || '').toLowerCase()
-            const calcKey = resolveCalculatorKey(m)
+            const calcKey = resolveCalculatorKeyFromMachine(m)
             const evThresholdLine = cardEvThresholdForRow(row)
             const accent = resolveGuideAccent({
               slug,
               cardAccentColor: row.card_accent_color,
             })
             const heroThumb = heroImage(row)
-            const guideLocked = showGuideLock(slug, access)
+            const guideLocked = showGuideLock(slug, { ...access, releaseYear: m?.release_year })
             const adminGuideLocked = guideRequiresSlotsEdge(slug, gatesMap)
             const guideLockedCollapsed = guideLocked && !expanded
             const lockedSectionBlurClass = guideLockedCollapsed

@@ -33,11 +33,12 @@ function CalculatorsHome({
   isStaff = false,
   onRequireSubscribe,
   gatesMap = null,
+  starterUnlockedCalculatorKeys = null,
   isAdmin = false,
   gatesDbReady = false,
   onSetContentGate,
 }) {
-  const access = { browseMode, isStaff, hasSlotsEdge, gatesMap }
+  const access = { browseMode, isStaff, hasSlotsEdge, gatesMap, starterUnlockedCalculatorKeys }
   const [gateBusyKey, setGateBusyKey] = useState(null)
 
   const handleSelect = (key) => {
@@ -45,7 +46,14 @@ function CalculatorsHome({
       onOpenAuth?.()
       return
     }
-    if (!canOpenCalculator(key, { isStaff, hasSlotsEdge, gatesMap })) {
+    if (
+      !canOpenCalculator(key, {
+        isStaff,
+        hasSlotsEdge,
+        gatesMap,
+        starterUnlockedCalculatorKeys,
+      })
+    ) {
       onRequireSubscribe?.('slots-edge')
       return
     }
@@ -141,6 +149,7 @@ export default function CalculatorsTab({
   isStaff = false,
   onRequireSubscribe,
   gatesMap = null,
+  starterUnlockedCalculatorKeys = null,
   isAdmin = false,
   gatesDbReady = false,
   onSetContentGate,
@@ -168,6 +177,7 @@ export default function CalculatorsTab({
           isStaff={isStaff}
           onRequireSubscribe={onRequireSubscribe}
           gatesMap={gatesMap}
+          starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
           isAdmin={isAdmin}
           gatesDbReady={gatesDbReady}
           onSetContentGate={onSetContentGate}

@@ -50,7 +50,6 @@ import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
 import TitleBarCloseButton from '../../components/TitleBarCloseButton.jsx'
 import {
-  calculatorRequiresSlotsEdge,
   canOpenCalculator,
   calculatorsTabFullyGated,
 } from '../calculators/calculatorAccess.js'
@@ -64,6 +63,8 @@ import {
   resetTabErrorStrikes,
 } from './tabErrorBoundaryTools.js'
 import { useFreemiumToolUsage } from '../billing/useFreemiumToolUsage.js'
+import { useStarterCalculatorUnlocks } from '../billing/useStarterCalculatorUnlocks.js'
+import { useStarterWeeklyDropGuideSlugs } from '../billing/useStarterWeeklyDropGuideSlugs.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 const GUIDES_SCREEN_CHUNK_RELOAD_KEY = 'lvsp_guides_screen_chunk_reload'
@@ -251,6 +252,7 @@ export default function AppShell({
   accessNotice = '',
   onDismissAccessNotice,
   hasActiveSubscription = false,
+  hasSlotsEdgeStarter = false,
   isStaff = false,
   isAdmin = false,
   contentAccessGatesMap = null,
@@ -288,6 +290,13 @@ export default function AppShell({
     enabled: browseMode === 'member',
     isStaff,
     hasSlotsEdge: hasActiveSubscription,
+  })
+  const starterWeeklyDropGuideSlugs = useStarterWeeklyDropGuideSlugs(supabaseClient, {
+    enabled: browseMode === 'member' && hasSlotsEdgeStarter && !hasActiveSubscription && !isStaff,
+  })
+  const starterUnlockedCalculatorKeys = useStarterCalculatorUnlocks(supabaseClient, {
+    enabled: browseMode === 'member' && hasSlotsEdgeStarter && !hasActiveSubscription && !isStaff,
+    starterUnlockedGuideSlugs: starterWeeklyDropGuideSlugs,
   })
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo-link' | 'stackup' | 'mhb' | null
   const [communityPosts, setCommunityPosts] = useState([])
@@ -916,7 +925,14 @@ export default function AppShell({
       setMenuOpen(false)
       return
     }
-    if (!canOpenCalculator(key, { isStaff, hasSlotsEdge: hasActiveSubscription, gatesMap: contentAccessGatesMap })) {
+    if (
+      !canOpenCalculator(key, {
+        isStaff,
+        hasSlotsEdge: hasActiveSubscription,
+        starterUnlockedCalculatorKeys,
+        gatesMap: contentAccessGatesMap,
+      })
+    ) {
       onRequireSubscribe?.('slots-edge')
       setMenuOpen(false)
       return
@@ -972,10 +988,27 @@ export default function AppShell({
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
     if (tab !== 'calculators' || !activeCalculator) return
-    if (!calculatorRequiresSlotsEdge(activeCalculator, contentAccessGatesMap)) return
+    if (
+      canOpenCalculator(activeCalculator, {
+        isStaff,
+        hasSlotsEdge: hasActiveSubscription,
+        starterUnlockedCalculatorKeys,
+        gatesMap: contentAccessGatesMap,
+      })
+    ) {
+      return
+    }
     onRequireSubscribe?.('slots-edge')
     setActiveCalculator(null)
-  }, [tab, activeCalculator, isStaff, hasActiveSubscription, onRequireSubscribe, contentAccessGatesMap])
+  }, [
+    tab,
+    activeCalculator,
+    isStaff,
+    hasActiveSubscription,
+    onRequireSubscribe,
+    contentAccessGatesMap,
+    starterUnlockedCalculatorKeys,
+  ])
 
   const renderNavMenuItems = () =>
     navItems.map((item) => {
@@ -1031,6 +1064,7 @@ export default function AppShell({
         hasSlotsEdge={hasActiveSubscription}
         isStaff={isStaff}
         gatesMap={contentAccessGatesMap}
+        starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
         onNavigate={handleQuickLinkNavigate}
       />
       <div className="relative z-[55] shrink-0">
@@ -1080,7 +1114,10 @@ export default function AppShell({
         onRequireSubscribe?.('slots-edge')
         return
       }
-      if (id === 'calculators' && calculatorsTabFullyGated(contentAccessGatesMap)) {
+      if (
+        id === 'calculators' &&
+        calculatorsTabFullyGated(contentAccessGatesMap, starterUnlockedCalculatorKeys)
+      ) {
         onRequireSubscribe?.('slots-edge')
         return
       }
@@ -1093,6 +1130,7 @@ export default function AppShell({
     isStaff,
     onRequireAuth,
     onRequireSubscribe,
+    starterUnlockedCalculatorKeys,
   ])
 
   useEffect(() => {
@@ -1296,6 +1334,7 @@ export default function AppShell({
           hasSlotsEdge={hasActiveSubscription}
           isStaff={isStaff}
           gatesMap={contentAccessGatesMap}
+          starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
         />
       )
     } else if (tab === 'calculators') {
@@ -1309,6 +1348,7 @@ export default function AppShell({
           isStaff={isStaff}
           isAdmin={isAdmin}
           gatesMap={contentAccessGatesMap}
+          starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
           gatesDbReady={contentAccessGatesDbReady}
           onSetContentGate={onSetContentAccessGate}
           onRequireSubscribe={onRequireSubscribe}
@@ -1428,6 +1468,8 @@ export default function AppShell({
           onCommunityPosted={loadCommunityFeed}
           onRequireAuth={onRequireAuth}
           hasSlotsEdge={hasActiveSubscription}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarter}
+          starterUnlockedGuideSlugs={starterWeeklyDropGuideSlugs}
           isStaff={isStaff}
           isAdmin={isAdmin}
           gatesMap={contentAccessGatesMap}

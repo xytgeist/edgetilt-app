@@ -27,7 +27,8 @@ const SLOTS_TOOLS = [
     Icon: Calculator,
     color: '#22d3ee',
     description: 'EV calculators for slot games',
-    subscriberGated: (gatesMap) => calculatorsTabFullyGated(gatesMap),
+    subscriberGated: (gatesMap, starterUnlockedCalculatorKeys) =>
+      calculatorsTabFullyGated(gatesMap, starterUnlockedCalculatorKeys),
   },
   {
     id: 'offers',
@@ -57,6 +58,7 @@ export default function SlotsScreen({
   hasSlotsEdge = false,
   isStaff = false,
   gatesMap = null,
+  starterUnlockedCalculatorKeys = null,
 }) {
   const showSubscriberLocks = browseMode === 'member' && !isStaff && !hasSlotsEdge
 
@@ -65,7 +67,8 @@ export default function SlotsScreen({
       onOpenAuth?.()
       return
     }
-    const locked = showSubscriberLocks && tool.subscriberGated(gatesMap)
+    const locked =
+      showSubscriberLocks && tool.subscriberGated(gatesMap, starterUnlockedCalculatorKeys)
     if (locked) {
       onRequireSubscribe?.('slots-edge')
       return
@@ -85,7 +88,8 @@ export default function SlotsScreen({
 
       <div className="space-y-3">
         {SLOTS_TOOLS.map((tool) => {
-          const locked = showSubscriberLocks && tool.subscriberGated(gatesMap)
+          const locked =
+      showSubscriberLocks && tool.subscriberGated(gatesMap, starterUnlockedCalculatorKeys)
           const { Icon, color } = tool
           return (
             <button

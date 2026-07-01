@@ -6,10 +6,51 @@ export const GUIDE_SLUG_CANONICAL = {
 }
 
 /**
- * Guides available to free (logged-in) users without Slots Edge.
+ * Guides available to free (logged-in) users without any paid Slots Edge plan.
  * Toggle access here; admin UI overrides take precedence when DB migration is applied.
  */
-export const FREE_GUIDE_SLUGS = new Set(['phoenix-link', 'stack-up-pays'])
+export const FREE_GUIDE_SLUGS = new Set([
+  '5-coin-frenzy-jackpots',
+  '88-fortunes-emperors-coins',
+  'ags-must-hit-by',
+  'ainsworth-must-hit-by',
+  'brian-christophers-world-cruise',
+  'buffalo-link',
+  'buffalo-cash',
+  'lightning-buffalo-link',
+  'igt-must-hit-by',
+  'cashman-bingo',
+  'crush-conquest',
+  'crush-dynasty',
+  'dancing-phoenix-soaring-dragon',
+  'golden-egypt',
+])
+
+/**
+ * Starter ($14/mo) pack: all guides with `machines.release_year` at or before this year (inclusive).
+ * Not included on the free tier — see `docs/access-tiers.md` §5.2.
+ */
+export const GUIDE_STARTER_PACK_MAX_RELEASE_YEAR = 2019
+
+/**
+ * Weekly premium drop pool: published guides with `machines.release_year` at or after this year.
+ * Each Starter subscriber gets one random slug per week from their **remaining** pool (see §5.2).
+ */
+export const GUIDE_WEEKLY_DROP_MIN_RELEASE_YEAR = 2020
+
+/** @param {number | string | null | undefined} releaseYear */
+export function isGuideInStarterPackByReleaseYear(releaseYear) {
+  const y = Number(releaseYear)
+  if (!Number.isFinite(y)) return false
+  return y <= GUIDE_STARTER_PACK_MAX_RELEASE_YEAR
+}
+
+/** @param {number | string | null | undefined} releaseYear */
+export function isGuideInWeeklyDropPoolByReleaseYear(releaseYear) {
+  const y = Number(releaseYear)
+  if (!Number.isFinite(y)) return false
+  return y >= GUIDE_WEEKLY_DROP_MIN_RELEASE_YEAR
+}
 
 /** @param {string | null | undefined} rawSlug */
 export function normalizeGuideAccessSlug(rawSlug) {
@@ -59,9 +100,39 @@ export function guideRequiresSlotsEdge(slug, gatesMap = null) {
   )
 }
 
-/** @param {string | null | undefined} slug @param {{ isStaff?: boolean, hasSlotsEdge?: boolean, gatesMap?: Map<string, boolean> | null }} [access] */
-export function canOpenGuide(slug, { isStaff = false, hasSlotsEdge = false, gatesMap = null } = {}) {
+/**
+ * @param {string | null | undefined} slug
+ * @param {{
+ *   isStaff?: boolean,
+ *   hasSlotsEdge?: boolean,
+ *   hasSlotsEdgeStarter?: boolean,
+ *   starterUnlockedGuideSlugs?: Set<string> | null,
+ *   gatesMap?: Map<string, boolean> | null,
+ *   releaseYear?: number | string | null,
+ * }} [access]
+ */
+export function canOpenGuide(
+  slug,
+  {
+    isStaff = false,
+    hasSlotsEdge = false,
+    hasSlotsEdgeStarter = false,
+    starterUnlockedGuideSlugs = null,
+    gatesMap = null,
+    releaseYear = null,
+  } = {},
+) {
   if (isStaff || hasSlotsEdge) return true
+
+  const normalized = normalizeGuideAccessSlug(slug)
+
+  if (hasSlotsEdgeStarter) {
+    if (isGuideInStarterPackByReleaseYear(releaseYear)) return true
+    if (starterUnlockedGuideSlugs instanceof Set && normalized && starterUnlockedGuideSlugs.has(normalized)) {
+      return true
+    }
+  }
+
   return !guideRequiresSlotsEdge(slug, gatesMap)
 }
 
@@ -78,11 +149,19 @@ export function guidesTabFullyGated(gatesMap = null) {
   return true
 }
 
-/** @param {string | null | undefined} slug @param {{ browseMode?: string, isStaff?: boolean, hasSlotsEdge?: boolean, gatesMap?: Map<string, boolean> | null }} [access] */
-export function showGuideLock(
-  slug,
-  { browseMode = 'member', isStaff = false, hasSlotsEdge = false, gatesMap = null } = {},
-) {
-  if (browseMode !== 'member' || isStaff || hasSlotsEdge) return false
-  return guideRequiresSlotsEdge(slug, gatesMap)
+/**
+ * @param {string | null | undefined} slug
+ * @param {{
+ *   browseMode?: string,
+ *   isStaff?: boolean,
+ *   hasSlotsEdge?: boolean,
+ *   hasSlotsEdgeStarter?: boolean,
+ *   starterUnlockedGuideSlugs?: Set<string> | null,
+ *   gatesMap?: Map<string, boolean> | null,
+ *   releaseYear?: number | string | null,
+ * }} [access]
+ */
+export function showGuideLock(slug, access = {}) {
+  if (access.browseMode !== 'member' || access.isStaff || access.hasSlotsEdge) return false
+  return !canOpenGuide(slug, access)
 }

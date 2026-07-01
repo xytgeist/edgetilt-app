@@ -69,7 +69,7 @@ Product direction (not fully implemented yet; today’s **anonymous shell + open
 
 1. **Anonymous** — See **`docs/access-tiers.md`**: Lounge **read-only** (no artificial post cap; normal pagination/RLS), no search/filter/post open; **create account** modal on any attempt to leave Lounge / use other disallowed UI.
 2. **Free account** — **Verified user** badge; **full Lounge**; other tabs reachable; **subscribe** gates on bankroll, offer alerts + OCR, locked calculators/guides (see access tiers).
-3. **Subscriber** — Verified + **subscriber** badges on Lounge posts; **full app** access; **optional add-on paywalls** for brand-new game packs offered **only to subscribers**. Billing likely **Stripe** + webhooks → Supabase.
+3. **Paid — Starter or Full Edge** — Verified + **subscriber** badges; **guide cards are the hero product** (Starter: fixed pack + weekly random premium drop; Full: instant library). **Full Edge** unlocks all tools; **optional add-on paywalls** for new game packs offered **only to Full subscribers**. Pricing locked in **`docs/access-tiers.md` §5.1** ($14 Starter, $42/mo / $420/yr Full, 10% off first year for early subs). Billing: **Stripe** + webhooks → Supabase.
 
 **Engineering rules when this ships:**
 

@@ -20,6 +20,7 @@ const ICONS = {
  *   hasSlotsEdge?: boolean,
  *   isStaff?: boolean,
  *   gatesMap?: Map<string, boolean> | null,
+ *   starterUnlockedCalculatorKeys?: Set<string> | null,
  *   onNavigate: (id: string) => void,
  * }} props
  */
@@ -28,6 +29,7 @@ export default function TitleBarQuickLinks({
   hasSlotsEdge = false,
   isStaff = false,
   gatesMap = null,
+  starterUnlockedCalculatorKeys = null,
   onNavigate,
 }) {
   const ids = useQuickLinkIds()
@@ -45,7 +47,12 @@ export default function TitleBarQuickLinks({
         if (showLocks) {
           if (dest.requiresSlotsEdge) locked = true
           else if (dest.guidesTabGate && guidesTabFullyGated(gatesMap)) locked = true
-          else if (id === 'calculators' && calculatorsTabFullyGated(gatesMap)) locked = true
+          else if (
+            id === 'calculators' &&
+            calculatorsTabFullyGated(gatesMap, starterUnlockedCalculatorKeys)
+          ) {
+            locked = true
+          }
         }
         return (
           <button

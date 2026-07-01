@@ -324,6 +324,7 @@ function App() {
     entitlements,
     refresh: refreshEntitlements,
     hasSlotsEdge: hasSlotsEdgeFromRpc,
+    hasSlotsEdgeStarter: hasSlotsEdgeStarterFromRpc,
   } = useEdgeEntitlements(supabase, user?.id)
 
   const {
@@ -794,6 +795,8 @@ function App() {
     hasActiveSubscriptionFromProfile ||
     String(import.meta.env.VITE_HAS_ACTIVE_SUBSCRIPTION || '').toLowerCase() === 'true'
 
+  const hasSlotsEdgeStarterAccess = isStaffRole || hasSlotsEdgeStarterFromRpc
+
   // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {
     return (
@@ -802,6 +805,7 @@ function App() {
           browseMode={user ? 'member' : 'anonymous'}
           authSessionReady={!isChecking}
           hasActiveSubscription={hasSlotsEdgeAccess}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarterAccess}
           isStaff={isStaffRole}
           isAdmin={isAdminRole}
           contentAccessGatesMap={contentAccessGatesMap}

@@ -93,6 +93,63 @@ where lower(u.email) = lower('subscriber-test@example.com');
 
 Client entitlements: **`get_my_entitlements()`** → `{ "slots-edge": { "active": true, … } }`.
 
+**Grant Starter only** (2019-and-older guide pack; no full library / tool unlocks):
+
+```sql
+insert into public.subscription_products (slug, display_name, description, active, sort_order)
+values (
+  'slots-edge-starter',
+  'Slots Edge Starter',
+  'Starter guide pack (2019 and older) plus weekly premium guide drops.',
+  true,
+  5
+)
+on conflict (slug) do nothing;
+
+insert into public.user_subscriptions (
+  user_id, product_slug, stripe_subscription_id, stripe_customer_id, status
+)
+select
+  p.user_id,
+  'slots-edge-starter',
+  'test_starter_sub_' || p.user_id::text,
+  coalesce(p.stripe_customer_id, 'test_cus_' || p.user_id::text),
+  'active'
+from public.profiles p
+join auth.users u on u.id = p.user_id
+where lower(u.email) = lower('starter-test@example.com')
+on conflict (user_id, product_slug) do update set status = excluded.status;
+```
+
+Client entitlements: **`get_my_entitlements()`** → `{ "slots-edge-starter": { "active": true, … } }`. Reload app after SQL.
+
+### Weekly premium drop (test)
+
+Apply migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, then either:
+
+**A. Service-role grant (simulates cron):**
+
+```sql
+select public.grant_starter_weekly_guide_drop(
+  (select id from auth.users where lower(email) = lower('starter-test@example.com'))
+);
+```
+
+**B. Manual row (specific slug):**
+
+```sql
+insert into public.starter_weekly_guide_unlocks (user_id, guide_slug, drop_week)
+select
+  u.id,
+  'stack-up-pays',  -- any published 2020+ slug not already granted
+  date_trunc('week', timezone('UTC', now()))::date
+from auth.users u
+where lower(u.email) = lower('starter-test@example.com')
+on conflict (user_id, guide_slug) do nothing;
+```
+
+Reload app. **`get_my_starter_weekly_guide_slugs()`** should include the slug; AP Guides + paired calculator should unlock for that title.
+
 ## 5. Local env override
 
 `VITE_HAS_ACTIVE_SUBSCRIPTION=true` in **`.env.local`** still forces **subscriber UI for every logged-in user** (useful for a quick check). Remove it when testing **per-row** `has_active_subscription`.

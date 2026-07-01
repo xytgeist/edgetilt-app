@@ -12,7 +12,8 @@
 | --- | --- | --- |
 | **No account** | `anonymous` | Lounge only: **read-only** feed (no post cap — same feed depth as public RLS + app pagination allow). No search/filter/post detail/navigation; **create account** modal on forbidden actions. |
 | **Free (verified user)** | `free` | Full **Lounge** (post, lounge search, filter, comment, like, repost, bookmark, etc.). **Verified user** badge by display name. Rest of app reachable from menu; **subscribe** gates on bankroll, offer alerts/OCR, locked calcs/guides. |
-| **Paid subscriber** | `subscriber` | **Verified user** + **subscriber** badges on Lounge posts. Full access to current shipped features. **New** games/calcs/guides may ship with an **extra paywall** purchasable **only by subscribers** (optional add-on). |
+| **Paid — Starter** | `starter` | **Verified** + **subscriber** badges. **AP guide cards** are the primary product: fixed **starter pack** on subscribe + **one random premium guide drop per week** (engagement + upgrade funnel). Tools mostly gated. See **§5**. |
+| **Paid — Full Edge** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
 | **Moderator / admin** | `staff` (`role` on profile) | **Full access** to everything, including new calcs/guides before/during any add-on rollout. **Special badges** distinct from verified/subscriber. |
 
 ---
@@ -71,19 +72,81 @@ If the user attempts **any** of the following, show the **create account** popup
 | **Bankroll manager** | **10 free sessions**; subscribe for unlimited. Hub tile unlocked; **Start Session** locks at limit. |
 | **Play Logbook** | **10 free play logs**; subscribe for unlimited. Hub tile unlocked; **+ Log Play** and **Log play in Logbook** lock at limit. |
 | **Calendar** | May use calendar **without** subscribe. **Subscribe** for **alerts** and for **image upload AI OCR** on offers. |
-| **Calculators** | **Subset unlocked**; **majority locked**. Locked rows: **lock icon** on calculator button; tap → **subscribe** popup with path to purchase. Unlocked calcs behave normally. |
-| **AP Guides** | **Some guides unlocked**, **many locked**; same pattern as calcs — lock affordance + tap → **subscribe** popup. |
+| **Calculators** | **Buffalo Link** + **Must Hit By (MHB)** free; **Phoenix Link** + **Stack Up Pays** + all other premium calcs locked → subscribe (**`FREE_CALCULATOR_KEYS`**, **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`**). |
+| **AP Guides** | **14 free guides** — see **`FREE_GUIDE_SLUGS`** in **`guideAccess.js`** (5 Coin Frenzy Jackpots, 88 Fortunes Emperor's Coins, AGS/Ainsworth/IGT Must Hit By, Brian Christopher's World Cruise, Buffalo Link/Cash, Lightning Buffalo Link, Cashman Bingo, Crush Conquest/Dynasty, Dancing Phoenix Soaring Dragon, Golden Egypt). All others locked → subscribe. |
 
 Copy for modals: distinguish **create account** (anon) vs **subscribe** (free user hitting paid feature).
 
 ---
 
-## 5. Paid subscriber
+## 5. Paid plans — Slots Edge (guide-first product)
 
-- **Verified** + **subscriber** badges on **posts in Lounge** (display rules as designed in UI).
-- **Full access** to all features that are generally available in the app at that time.
-- **New content paywall:** When **new games** launch with **new calculators and/or guides**, those assets may have an **additional paywall**. **Only subscribers** are offered the **option to purchase** that add-on (free users do not get that purchase path).
-- Staff (§6) bypass normal gates including add-ons.
+**Product thesis:** **AP guide cards** (which slots are +EV and how to play them) are the **primary value**. Calculators, bankroll, logbook, calendar, and Lounge are built around the guide library.
+
+### 5.1 Pricing catalog (locked 2026-07-01)
+
+| Plan | Internal slug (planned) | List price | Early bird (first 12 billing months) |
+| --- | --- | --- | --- |
+| **Starter** | `slots-edge-starter` | **$14/mo** | **$12.60/mo** (10% off) |
+| **Full Edge — monthly** | `slots-edge` | **$42/mo** | **$37.80/mo** (10% off) |
+| **Full Edge — annual** | `slots-edge` (annual Price) | **$420/yr** (~$35/mo effective) | **$378/yr** (10% off) |
+
+**Early subscriber offer:** **10% off for the first year** on any paid Slots Edge plan (Starter monthly, Full monthly, or Full annual). Implement via Stripe **Coupon** (`percent_off: 10`, `duration: repeating`, `duration_in_months: 12`). Launch window / promo code name **TBD** (e.g. auto-apply at checkout during early access, or single shared code).
+
+**Competitive positioning:** Full Edge at **$42/mo** undercuts typical AP sites (**$35–49/mo**) while staying **3× Starter** ($14) for clear tier separation.
+
+**Not in v1 catalog:** Lifetime / founding membership — **TBD** (optional later offer).
+
+### 5.2 Starter (`slots-edge-starter`)
+
+**Guides (hero)**
+
+- **Starter pack** on subscribe: **all guides with `machines.release_year` ≤ 2019** (**`GUIDE_STARTER_PACK_MAX_RELEASE_YEAR`** in **`guideAccess.js`**). Guides without a release year are **not** in the starter pack unless also granted via weekly drop.
+- **Weekly Guide Drop:** once per UTC week, **each Starter subscriber** gets **one independent random roll** from their **remaining** pool:
+  - **Eligible pool:** published guides with **`machines.release_year` ≥ 2020** (`GUIDE_WEEKLY_DROP_MIN_RELEASE_YEAR`), excluding **`FREE_GUIDE_SLUGS`** (already free for everyone).
+  - **Remaining pool (per user):** eligible slugs minus slugs that user **already earned** via prior weekly drops (starter pack ≤ 2019 is implicit and never in the pool).
+  - **No duplicates** for that user; when the pool is exhausted, the job skips until new 2020+ guides ship.
+  - **Persistence:** `starter_weekly_guide_unlocks` + **`get_my_starter_weekly_guide_slugs()`**; cron calls **`grant_starter_weekly_guide_drop(user_id)`** (service role).
+- **Reveal UX:** in-app drop moment + optional push; each reveal surfaces **upgrade to Full Edge** CTA.
+- **On cancel:** user **keeps** guides already unlocked (earned library persists).
+
+**Tools**
+
+- Bankroll, logbook, calendar OCR/alerts remain **gated** (same free-tier limits).
+- **Calculators:** Starter unlocks any calculator **paired** with a guide they can open (starter pack **`release_year` ≤ 2019** + weekly drops). Implemented via **`buildStarterUnlockedCalculatorKeys`** / **`useStarterCalculatorUnlocks`** + **`starterUnlockedCalculatorKeys`** in **`calculatorAccess.js`**. Free tier still uses **`FREE_CALCULATOR_KEYS`** only (not auto-paired from free guides).
+
+**Lounge**
+
+- **Subscriber** badge on posts (any paid plan).
+
+### 5.3 Full Edge (`slots-edge`)
+
+**Guides**
+
+- **Instant access to the entire published AP guide library** (no weekly drop; no randomness on this tier).
+
+**Tools**
+
+- **All** calculators unlocked.
+- **Unlimited** bankroll sessions and play logbook entries.
+- Calendar **alerts** + offer image **OCR**.
+
+**Lounge**
+
+- **Subscriber** badge on posts.
+
+**Add-ons**
+
+- When **new games** ship with new calculators and/or guides, those assets may have an **additional paywall**. **Only Full Edge subscribers** (and staff) get the purchase path; free and Starter users see upgrade/subscribe flows instead.
+
+### 5.4 Upgrades
+
+- **Starter → Full Edge:** one checkout path; Stripe proration; **immediate** full library unlock.
+- **Free → either plan:** standard subscribe modal with plan picker (**engineering TBD**).
+
+### 5.5 Future verticals
+
+- **`sports-edge`**, **`crypto-edge`** remain separate product slugs when those verticals ship (not part of Slots Edge Starter/Full pricing above).
 
 ---
 
@@ -101,23 +164,25 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 | Topic | Status |
 | --- | --- |
-| **Which calcs/guides are free vs locked** | **Calcs:** **`FREE_CALCULATOR_KEYS`** in **`src/features/calculators/calculatorAccess.js`**. **Guides:** **`FREE_GUIDE_SLUGS`** in **`src/features/guides/guideAccess.js`**. **Admins:** lock switches on Calcs / AP Guides rows (persists to **`content_access_gates`** when migration applied). DB overrides beat code defaults. |
+| **Which calcs/guides are free vs locked** | **Calcs (free):** **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB). **Calcs (always subscriber):** **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`** (Phoenix Link + Stack Up Pays; admin gates cannot unlock for free). **Guides (free):** **`FREE_GUIDE_SLUGS`** only. **Guides (Starter $14):** **`machines.release_year` ≤ 2019** + weekly **2020+** drops (**`GUIDE_STARTER_PACK_MAX_RELEASE_YEAR`**). **Admins:** **`content_access_gates`** (except subscriber-only calcs). |
 | **Signup / verification** | Supabase auth + email verification policy for “free” tier — **TBD** (no `allowed_emails` gate in the client). |
-| **Stripe products** | **`slots-edge`**, **`sports-edge`**, **`crypto-edge`** product slugs; Price IDs in Supabase Edge secrets (`STRIPE_PRICE_SLOTS_EDGE`, …). **`user_subscriptions`** + **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **`slots-edge`**. See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
+| **Stripe products** | **Slots Edge:** `slots-edge-starter` ($14/mo), **`slots-edge`** Full ($42/mo + $420/yr) — see **§5.1**. **`sports-edge`**, **`crypto-edge`** later. Price IDs in Edge secrets; **10% early-bird coupon** (12-month repeating). **`user_subscriptions`** + per-user **guide unlocks** (Starter pack + weekly drops — schema **TBD**). **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **active Full `slots-edge`** (Starter **TBD**). See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
+| **Starter pack slugs** | **Release year ≤ 2019** on **`machines.release_year`**. Weekly drop pool = published guides **2020+** only (minus **`FREE_GUIDE_SLUGS`**). |
+| **Weekly drop job** | **`grant_starter_weekly_guide_drop(user_id)`** — uniform random from **that user's remaining** 2020+ slugs; idempotent per UTC week. Cron/Edge scheduler **TBD**; reveal UX **TBD**. |
 
 ---
 
 ## 8. Per-surface matrix (condensed)
 
-| Surface | No account | Free | Paid | Staff |
-| --- | --- | --- | --- | --- |
-| **Lounge** | Read-only full feed (no search/filter/post tap); forbidden actions → create account modal | Full + verified badge | Full + verified + subscriber on posts | Full + staff badges |
-| **Hamburger / other tabs** | Create account modal | Allowed; gated features show subscribe modal | Full | Full |
-| **Bankroll** | Create account modal | 10 sessions free; subscribe for unlimited | Full | Full |
-| **Play Logbook** | Create account modal | 10 logs free; subscribe for unlimited | Full | Full |
-| **Calendar** | Create account modal | Calendar yes; **alerts + OCR** subscribe | Full | Full |
-| **Calculators** | Create account modal | Some unlocked; locks → subscribe | Full; add-on paywalls **offered to subscribers only** | Full |
-| **AP Guides** | Create account modal | Some unlocked; locks → subscribe | Full; new-game add-ons **offered to subscribers only** | Full |
+| Surface | No account | Free | Paid Starter | Paid Full | Staff |
+| --- | --- | --- | --- | --- | --- |
+| **Lounge** | Read-only feed; forbidden actions → create account modal | Full + verified badge | Full + subscriber badge | Full + subscriber badge | Full + staff badges |
+| **Hamburger / other tabs** | Create account modal | Allowed; gated features → subscribe modal | Same as free for tools; guides per Starter rules | Full | Full |
+| **Bankroll** | Create account modal | 10 sessions free | 10 sessions free (unless changed) | Unlimited | Full |
+| **Play Logbook** | Create account modal | 10 logs free | 10 logs free (unless changed) | Unlimited | Full |
+| **Calendar** | Create account modal | Calendar yes; **alerts + OCR** subscribe | Alerts + OCR gated | Full | Full |
+| **Calculators** | Create account modal | Buffalo Link + MHB free; locks → subscribe | Gated | Full | Full |
+| **AP Guides** | Create account modal | **`FREE_GUIDE_SLUGS`** (14 titles) | **Release year ≤ 2019** pack + weekly **2020+** drop | Full library instantly | Full |
 
 ---
 
@@ -140,3 +205,5 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | 2026-05-10 | Hamburger: lock icons on **Calcs**, **AP Guides**, **Bankroll** for free non-subscribers; staff/subscribers see no locks; Calendar menu row unlocked (gates in-feature). |
 | 2026-05-10 | **Signup:** no client **`allowed_emails`** whitelist; free tier = signed-in user until billing flags ship. |
 | 2026-06-27 | **Bankroll + Logbook:** free users get **10 bankroll sessions** and **10 play logs**; hub tiles unlocked; create buttons lock at limit → subscribe. Constants in **`freemiumToolLimits.js`**. |
+| 2026-07-01 | **Free tier guide + calc list:** **`FREE_GUIDE_SLUGS`** (14 AP guides) and **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB only). Starter pack remains release year ≤ 2019. |
+| 2026-07-01 | **Starter weekly drop rules locked:** per-user uniform random from **remaining** published **2020+** slugs (excludes free list + prior grants). Migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, pool helpers **`starterWeeklyDropPool.js`**, client **`useStarterWeeklyDropGuideSlugs`**. |

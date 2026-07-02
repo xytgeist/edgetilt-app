@@ -7,6 +7,13 @@ import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
 import BillingManageModal from './features/billing/BillingManageModal.jsx'
+import StarterWeeklyDropScratchModal from './features/billing/StarterWeeklyDropScratchModal.jsx'
+import {
+  listenStarterWeeklyDropOpen,
+  stripStarterDropQueryParam,
+} from './features/billing/starterWeeklyDropApi.js'
+import { useStarterWeeklyDropGuideSlugs } from './features/billing/useStarterWeeklyDropGuideSlugs.js'
+import { useStarterWeeklyDropPoolExhausted } from './features/billing/useStarterWeeklyDropPoolExhausted.js'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
 import { useEdgeEntitlements } from './features/billing/useEdgeEntitlements.js'
 import { useContentAccessGates } from './features/billing/useContentAccessGates.js'
@@ -90,6 +97,7 @@ function App() {
     openKey: 0,
   })
   const [billingManageOpen, setBillingManageOpen] = useState(false)
+  const [starterDropModal, setStarterDropModal] = useState({ open: false, unlockId: '' })
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -342,6 +350,31 @@ function App() {
     gatesDbReady: contentAccessGatesDbReady,
     setContentGate: setContentAccessGate,
   } = useContentAccessGates(supabase, isAdminRole)
+
+  const starterDropGuideContextEnabled = Boolean(
+    user?.id && hasSlotsEdgeStarterFromRpc && !hasSlotsEdgeProFromRpc && !isStaffRole,
+  )
+  const starterWeeklyDropGuideSlugs = useStarterWeeklyDropGuideSlugs(supabase, {
+    enabled: starterDropGuideContextEnabled,
+  })
+  const starterWeeklyDropPoolExhausted = useStarterWeeklyDropPoolExhausted(supabase, {
+    enabled: starterDropGuideContextEnabled,
+  })
+
+  useEffect(() => {
+    return listenStarterWeeklyDropOpen(({ unlockId }) => {
+      setStarterDropModal({ open: true, unlockId })
+    })
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user?.id) return
+    const params = new URLSearchParams(window.location.search || '')
+    const unlockId = (params.get('starterDrop') || '').trim()
+    if (!unlockId) return
+    setStarterDropModal({ open: true, unlockId })
+    stripStarterDropQueryParam()
+  }, [user?.id])
 
   useEffect(() => {
     const billing = readBillingQueryParams()
@@ -887,6 +920,21 @@ function App() {
           starterPriceInterval={starterPriceInterval}
           fullPriceInterval={fullPriceInterval}
           entitlements={entitlements}
+        />
+        <StarterWeeklyDropScratchModal
+          open={starterDropModal.open}
+          unlockId={starterDropModal.unlockId}
+          onClose={() => setStarterDropModal({ open: false, unlockId: '' })}
+          onRequireSubscribe={openSubscribeModal}
+          supabaseClient={supabase}
+          guideAccessContext={{
+            isStaff: isStaffRole,
+            hasSlotsEdge: hasSlotsEdgeProAccess,
+            hasSlotsEdgeStarter: hasSlotsEdgeStarterAccess,
+            starterUnlockedGuideSlugs: starterWeeklyDropGuideSlugs,
+            starterWeeklyDropPoolExhausted: starterWeeklyDropPoolExhausted,
+            gatesMap: contentAccessGatesMap,
+          }}
         />
         {legalAcceptancePending && user ? (
           <LegalAcceptanceModal

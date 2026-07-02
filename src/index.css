@@ -2293,6 +2293,54 @@ html.light [data-subscribe-modal] button.border-zinc-700 {
   background-color: #f4f4f5 !important;
 }
 
+/* Starter weekly drop scratch modal - light mode */
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 16px 48px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-white {
+  color: #18181b !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-red-300 {
+  color: #dc2626 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-orange-400 {
+  color: #ea580c !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .hover\:text-orange-300:hover {
+  color: #c2410c !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .border-zinc-700\/80,
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .border-zinc-700 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .bg-zinc-950,
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .bg-zinc-950\/50 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .starter-weekly-drop-pro-cta .text-zinc-300 {
+  color: #52525b !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .starter-weekly-drop-pro-cta .text-white {
+  color: #18181b !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-open-guide {
+  color: #ffffff !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
+  color: #ffffff !important;
+}
+
 /* Subscribe plan 3D carousel */
 [data-subscribe-modal] .subscribe-plan-card {
   backface-visibility: hidden;

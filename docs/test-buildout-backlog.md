@@ -702,6 +702,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-07-02: **Starter weekly drop scratch reveal (code):** migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** — weekly pg_cron job, stacked **`activity_events`**, scratch modal + motion-gated audio, tap-to-reveal, Pro upgrade count CTA, exhausted-pool auto-unlock for new **2020+** guides. Apply on **test** first; redeploy **`lounge-send-activity-push`**. Requires **`@edgelord`** profile for system actor + **pg_cron** enabled.
 - 2026-07-01: **Legal URLs (Ryan decision):** **`edgetilt.com/terms`**, **`/privacy`**, **`/guidelines`** in-app routes are sufficient; no separate hosted legal site. Prod checklist §7 closed.
 - 2026-07-01: **Legal counsel review (Ryan sign-off):** in-app **`/terms`**, **`/privacy`**, and **`/guidelines`** copy in **`src/features/legal/legalDocuments.js`** reviewed by counsel. Prod checklist §7 updated; policy version still **`2026-06-27`** (`legalPolicyVersion.js`).
 - 2026-07-01: **Stripe billing — production (Ryan sign-off):** **`jtjgtucumuoswnbauxry`** migrations through **`20260701160000`**, live **`STRIPE_*`** secrets + webhook, three Edge functions deployed; minimal smoke **PASSED** on **`edgetilt.com`** (Starter monthly Checkout, founding **25% × 12 mo** coupon **`QnYlzKuK`**). Handoff: **`docs/stripe-billing-test-to-prod-handoff.md`**. **Still open on test/prod:** full interval/upgrade/portal smoke matrix on prod; starter weekly drop cron; RLS hardening.

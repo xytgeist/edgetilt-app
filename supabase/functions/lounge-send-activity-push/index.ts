@@ -21,6 +21,7 @@ type ActivityEventRow = {
   comment_id: string | null
   play_log_entry_id: string | null
   chat_room_id: string | null
+  starter_weekly_unlock_id?: string | null
   created_at: string
 }
 
@@ -168,6 +169,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'sent you a message'
     case 'chat_group_invite':
       return 'added you to a group'
+    case 'starter_weekly_guide_drop':
+      return 'Weekly guide drop ready — scratch to reveal'
     default:
       return 'interacted with you'
   }
@@ -215,6 +218,10 @@ function buildTargetUrl(
     } else {
       params.set('lounge', 'notifications')
     }
+  } else if (event.event_type === 'starter_weekly_guide_drop' && event.starter_weekly_unlock_id) {
+    params.set('tab', 'home')
+    params.set('lounge', 'notifications')
+    params.set('starterDrop', String(event.starter_weekly_unlock_id))
   } else if (event.event_type === 'repost' && !event.comment_id) {
     params.set('lounge', 'notifications')
   } else if (event.post_id) {
@@ -269,6 +276,14 @@ function buildSingleNotification(
   actor: ActorProfile | null | undefined,
   isReply = false,
 ): PushNotificationPayload {
+  if (event.event_type === 'starter_weekly_guide_drop') {
+    return {
+      title: 'Edge',
+      body: 'Weekly guide drop ready — scratch to reveal',
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      activityEventId: event.id,
+    }
+  }
   const who = actorDisplayName(actor)
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
   return {

@@ -121,9 +121,11 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 - **Weekly Guide Drop:** once per UTC week, **each Starter subscriber** gets **one independent random roll** from their **remaining** pool:
   - **Eligible pool:** published guides with **`machines.release_year` ≥ 2020** (`GUIDE_WEEKLY_DROP_MIN_RELEASE_YEAR`), excluding **`FREE_GUIDE_SLUGS`** (already free for everyone).
   - **Remaining pool (per user):** eligible slugs minus slugs that user **already earned** via prior weekly drops (starter pack ≤ 2019 is implicit and never in the pool).
-  - **No duplicates** for that user; when the pool is exhausted, the job skips until new 2020+ guides ship.
-  - **Persistence:** `starter_weekly_guide_unlocks` + **`get_my_starter_weekly_guide_slugs()`**; cron calls **`grant_starter_weekly_guide_drop(user_id)`** (service role).
-- **Reveal UX:** in-app drop moment + optional push; each reveal surfaces **upgrade to Slots Edge Pro** CTA.
+  - **No duplicates** for that user. When the pool is **exhausted**, new published **2020+** guides **auto-unlock** for that user (no weekly roll).
+  - **Persistence:** `starter_weekly_guide_unlocks` + **`get_my_starter_weekly_guide_slugs()`**; pg_cron **`starter_weekly_guide_drop_weekly`** (Mon **00:10 UTC**) calls **`run_starter_weekly_guide_drop_job()`** → **`grant_starter_weekly_guide_drop(user_id)`** + **`activity_events`** row (`starter_weekly_guide_drop`).
+  - **Access timing:** guide unlock is written at **grant** time (scratch is ceremony only).
+  - **Reveal UX (scratch-off):** stacked pending reveals (one notification per week). Lounge notification + push copy is anti-spoil (**"Scratch to reveal"**). Canvas scratch with motion-gated scratch audio; **Tap to reveal** skips audio. Post-reveal: **Open guide** + optional Pro upsell (**N additional guides**) when `count > 0`.
+  - **Stacking:** ignored weeks accumulate separate scratch tickets (FIFO); guides remain unlocked even if never scratched.
 - **On cancel:** user **keeps** guides already unlocked (earned library persists).
 
 **Tools**
@@ -184,7 +186,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | **Signup / verification** | Supabase auth + email verification policy for “free” tier — **TBD** (no `allowed_emails` gate in the client). |
 | **Stripe products** | **Slots Edge:** `slots-edge-starter` ($19.99/mo MSRP), **`slots-edge`** Full ($59.99/mo + $660/yr MSRP), **`slots-edge-lifetime`** ($1,699 one-time) — see **§5.1**. **`sports-edge`**, **`crypto-edge`** later. Price IDs in Edge secrets; **25% founding coupons** (monthly ×12 + once for annual/lifetime). **`user_subscriptions`** + Starter guide unlocks. **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **active Full `slots-edge`** or **Lifetime**. See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
 | **Starter pack slugs** | **Release year ≤ 2019** on **`machines.release_year`**. Weekly drop pool = published guides **2020+** only (minus **`FREE_GUIDE_SLUGS`**). |
-| **Weekly drop job** | **`grant_starter_weekly_guide_drop(user_id)`** — uniform random from **that user's remaining** 2020+ slugs; idempotent per UTC week. Cron/Edge scheduler **TBD**; reveal UX **TBD**. |
+| **Weekly drop job** | **`run_starter_weekly_guide_drop_job()`** + pg_cron **`starter_weekly_guide_drop_weekly`**; **`StarterWeeklyDropScratchModal`** + notification type **`starter_weekly_guide_drop`**. Redeploy **`lounge-send-activity-push`** after migration **`20260702120000`**. |
 
 ---
 

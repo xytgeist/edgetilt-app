@@ -15,6 +15,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   PLAY_LOG_SHARED: 'play_log_shared',
   PLAY_LOG_PARTNER_PAID: 'play_log_partner_paid',
   PLAY_LOG_PARTNER_UNPAID: 'play_log_partner_unpaid',
+  STARTER_WEEKLY_GUIDE_DROP: 'starter_weekly_guide_drop',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */
@@ -40,6 +41,8 @@ export function loungeActivityNotificationBadgeKind(eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_PAID:
     case LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_UNPAID:
+      return 'play_log'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.STARTER_WEEKLY_GUIDE_DROP:
       return 'play_log'
     default:
       return null
@@ -206,6 +209,8 @@ export function loungeActivityActionPhrase(event) {
       const game = String(event?.play_log_game_name || '').trim() || 'a play log'
       return `marked your share as unpaid on ${game}`
     }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.STARTER_WEEKLY_GUIDE_DROP:
+      return 'Weekly guide drop ready — scratch to reveal'
     default:
       return 'interacted with you'
   }

@@ -118,6 +118,7 @@ export function guideRequiresSlotsEdge(slug, gatesMap = null) {
  *   hasSlotsEdge?: boolean,
  *   hasSlotsEdgeStarter?: boolean,
  *   starterUnlockedGuideSlugs?: Set<string> | null,
+ *   starterWeeklyDropPoolExhausted?: boolean,
  *   gatesMap?: Map<string, boolean> | null,
  *   releaseYear?: number | string | null,
  * }} [access]
@@ -129,6 +130,7 @@ export function canOpenGuide(
     hasSlotsEdge = false,
     hasSlotsEdgeStarter = false,
     starterUnlockedGuideSlugs = null,
+    starterWeeklyDropPoolExhausted = false,
     gatesMap = null,
     releaseYear = null,
   } = {},
@@ -142,6 +144,14 @@ export function canOpenGuide(
   if (hasSlotsEdgeStarter) {
     if (isGuideInStarterPackByReleaseYear(releaseYear)) return true
     if (starterUnlockedGuideSlugs instanceof Set && normalized && starterUnlockedGuideSlugs.has(normalized)) {
+      return true
+    }
+    if (
+      starterWeeklyDropPoolExhausted &&
+      normalized &&
+      isGuideInWeeklyDropPoolByReleaseYear(releaseYear) &&
+      !FREE_GUIDE_SLUGS.has(normalized)
+    ) {
       return true
     }
   }

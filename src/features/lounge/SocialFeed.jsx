@@ -91,6 +91,10 @@ import {
 import useLoungePushNotifications from './hooks/useLoungePushNotifications.js'
 import useLoungeNotificationPreferences from './hooks/useLoungeNotificationPreferences.js'
 import {
+  dispatchStarterWeeklyDropOpen,
+  stripStarterDropQueryParam,
+} from '../billing/starterWeeklyDropApi.js'
+import {
   readLoungeProfileCache,
   writeLoungeProfileCache,
   readLoungeComposerDraft,
@@ -7340,6 +7344,11 @@ export default function SocialFeed({
     let cancelled = false
     const run = () => {
       const params = new URLSearchParams(window.location.search || '')
+      const starterDrop = (params.get('starterDrop') || '').trim()
+      if (starterDrop && authSessionReady && composerAuthResolved && loungeFeedBrowseMode !== 'anonymous') {
+        dispatchStarterWeeklyDropOpen(starterDrop)
+        stripStarterDropQueryParam()
+      }
       const loungePanel = (params.get('lounge') || '').trim().toLowerCase()
       if (loungePanel !== 'notifications') return
       if (!authSessionReady || !composerAuthResolved) return

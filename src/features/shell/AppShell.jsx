@@ -70,6 +70,7 @@ import {
 import { useFreemiumToolUsage } from '../billing/useFreemiumToolUsage.js'
 import { useStarterCalculatorUnlocks } from '../billing/useStarterCalculatorUnlocks.js'
 import { useStarterWeeklyDropGuideSlugs } from '../billing/useStarterWeeklyDropGuideSlugs.js'
+import { useStarterWeeklyDropPoolExhausted } from '../billing/useStarterWeeklyDropPoolExhausted.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 const GUIDES_SCREEN_CHUNK_RELOAD_KEY = 'lvsp_guides_screen_chunk_reload'
@@ -299,6 +300,9 @@ export default function AppShell({
     hasSlotsEdge: hasActiveSubscription,
   })
   const starterWeeklyDropGuideSlugs = useStarterWeeklyDropGuideSlugs(supabaseClient, {
+    enabled: browseMode === 'member' && hasSlotsEdgeStarter && !hasActiveSubscription && !isStaff,
+  })
+  const starterWeeklyDropPoolExhausted = useStarterWeeklyDropPoolExhausted(supabaseClient, {
     enabled: browseMode === 'member' && hasSlotsEdgeStarter && !hasActiveSubscription && !isStaff,
   })
   const starterUnlockedCalculatorKeys = useStarterCalculatorUnlocks(supabaseClient, {
@@ -1482,6 +1486,7 @@ export default function AppShell({
           hasSlotsEdge={hasActiveSubscription}
           hasSlotsEdgeStarter={hasSlotsEdgeStarter}
           starterUnlockedGuideSlugs={starterWeeklyDropGuideSlugs}
+          starterWeeklyDropPoolExhausted={starterWeeklyDropPoolExhausted}
           isStaff={isStaff}
           isAdmin={isAdmin}
           gatesMap={contentAccessGatesMap}

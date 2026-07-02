@@ -34,6 +34,7 @@ import {
   LOUNGE_ACTIVITY_EVENT_TYPES,
   LOUNGE_ACTIVITY_PAGE_SIZE,
 } from '../../utils/loungeActivityApi.js'
+import { dispatchStarterWeeklyDropOpen } from '../billing/starterWeeklyDropApi.js'
 import {
   hydrateLoungeActivityEventPreviews,
   loungeActivityShowsContextPreview,
@@ -385,6 +386,14 @@ export default function LoungeNotificationsPanel({
         onOpenOwnProfileFollowers?.({
           highlightUserIds: groupedActors.map((actor) => actor?.user_id).filter(Boolean),
         })
+        return
+      }
+
+      if (
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.STARTER_WEEKLY_GUIDE_DROP &&
+        event.starter_weekly_unlock_id
+      ) {
+        dispatchStarterWeeklyDropOpen(String(event.starter_weekly_unlock_id))
         return
       }
 

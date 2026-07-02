@@ -1430,6 +1430,7 @@ export default function GuidesScreen({
   hasSlotsEdge = false,
   hasSlotsEdgeStarter = false,
   starterUnlockedGuideSlugs = null,
+  starterWeeklyDropPoolExhausted = false,
   isStaff = false,
   isAdmin = false,
   gatesMap = null,
@@ -1478,10 +1479,11 @@ export default function GuidesScreen({
       hasSlotsEdge,
       hasSlotsEdgeStarter,
       starterUnlockedGuideSlugs,
+      starterWeeklyDropPoolExhausted,
       gatesMap,
       browseMode: 'member',
     }),
-    [isStaff, hasSlotsEdge, hasSlotsEdgeStarter, starterUnlockedGuideSlugs, gatesMap],
+    [isStaff, hasSlotsEdge, hasSlotsEdgeStarter, starterUnlockedGuideSlugs, starterWeeklyDropPoolExhausted, gatesMap],
   )
 
   const releaseYearBySlug = useMemo(() => {
@@ -1507,11 +1509,7 @@ export default function GuidesScreen({
       if (!slug) return
       if (
         !canOpenGuide(slug, {
-          isStaff,
-          hasSlotsEdge,
-          hasSlotsEdgeStarter,
-          starterUnlockedGuideSlugs,
-          gatesMap,
+          ...access,
           releaseYear: resolveGuideReleaseYear(slug),
         })
       ) {
@@ -1536,11 +1534,7 @@ export default function GuidesScreen({
       }
       if (
         !canOpenGuide(slug, {
-          isStaff,
-          hasSlotsEdge,
-          hasSlotsEdgeStarter,
-          starterUnlockedGuideSlugs,
-          gatesMap,
+          ...access,
           releaseYear: resolveGuideReleaseYear(slug),
         })
       ) {
@@ -1566,11 +1560,7 @@ export default function GuidesScreen({
     if (!expandedSlug || isStaff || hasSlotsEdge) return
     if (
       canOpenGuide(expandedSlug, {
-        isStaff,
-        hasSlotsEdge,
-        hasSlotsEdgeStarter,
-        starterUnlockedGuideSlugs,
-        gatesMap,
+        ...access,
         releaseYear: resolveGuideReleaseYear(expandedSlug),
       })
     ) {
@@ -1580,10 +1570,8 @@ export default function GuidesScreen({
     setExpandedSlug(null)
   }, [
     expandedSlug,
-    gatesMap,
+    access,
     hasSlotsEdge,
-    hasSlotsEdgeStarter,
-    starterUnlockedGuideSlugs,
     isStaff,
     onRequireSubscribe,
     resolveGuideReleaseYear,
@@ -1822,11 +1810,7 @@ export default function GuidesScreen({
     if (!slug) return
     if (
       !canOpenGuide(slug, {
-        isStaff,
-        hasSlotsEdge,
-        hasSlotsEdgeStarter,
-        starterUnlockedGuideSlugs,
-        gatesMap,
+        ...access,
         releaseYear: resolveGuideReleaseYear(slug),
       })
     ) {

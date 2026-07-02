@@ -65,10 +65,9 @@ The agent should treat the following as **standing instructions for this session
 
 ### Next priorities (ordered)
 
-1. **Stripe prod smoke matrix** — full interval/upgrade/Lifetime/portal cancel checklist in **`docs/stripe-billing-test-to-prod-handoff.md`** §Test plan
-2. **Starter weekly guide drop** — schema + RPC shipped; **cron scheduler + reveal UX** still open (`20260701130000`)
+1. **Apply migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** on test** + redeploy **`lounge-send-activity-push`**; smoke scratch flow (manual grant SQL in **`docs/test-user-roles.md`**)
+2. **Stripe prod smoke matrix** — full interval/upgrade/Lifetime/portal cancel checklist in **`docs/stripe-billing-test-to-prod-handoff.md`** §Test plan
 3. **Billing RLS hardening** — entitlements (backlog)
-4. **Bug hunt** — guide cards light/dark, mobile **Where to find** tables, whatever Ryan finds in smoke
 
 **Do not commit:** untracked `public/edge-email-logo*` experiment PNGs/JPG unless Ryan asks.
 

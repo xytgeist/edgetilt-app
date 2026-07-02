@@ -169,17 +169,28 @@ Optional: delete **`starter_weekly_guide_unlocks`** for that user if you need a 
 
 ### Weekly premium drop (test)
 
-Apply migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, then either:
+Apply migrations **`20260701130000`** + **`20260702120000_starter_weekly_drop_reveal_cron.sql`**, redeploy **`lounge-send-activity-push`**, then either:
 
-**A. Service-role grant (simulates cron):**
+**A. Full job (all active Starter subs):**
+
+```sql
+select public.run_starter_weekly_guide_drop_job();
+```
+
+**B. Single-user grant + notification (simulates one cron row):**
 
 ```sql
 select public.grant_starter_weekly_guide_drop(
   (select id from auth.users where lower(email) = lower('starter-test@example.com'))
 );
+-- Then insert activity row (requires @edgelord profile):
+select public.starter_weekly_drop_create_activity_event(
+  (select id from auth.users where lower(email) = lower('starter-test@example.com')),
+  (select id from public.starter_weekly_guide_unlocks order by granted_at desc limit 1)
+);
 ```
 
-**B. Manual row (specific slug):**
+**C. Manual row (specific slug, no notification):**
 
 ```sql
 insert into public.starter_weekly_guide_unlocks (user_id, guide_slug, drop_week)

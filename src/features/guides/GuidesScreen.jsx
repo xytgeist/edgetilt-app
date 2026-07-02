@@ -791,15 +791,15 @@ function GuideLockedPaywallOverlay({ onUnlock, upgradeMode = false }) {
       <div className="guide-lock-glitch__veil pointer-events-none absolute inset-0" aria-hidden />
       <GuideLockTvSnowCanvas className="guide-lock-glitch__tv-snow pointer-events-none absolute inset-0 overflow-hidden" />
       <div className="relative z-10 flex max-w-[16rem] flex-col items-center gap-3 text-center">
-        {upgradeMode ? (
-          <span className="inline-flex items-center rounded-full border border-cyan-500/45 bg-cyan-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-cyan-100 shadow-[0_0_22px_rgba(6,182,212,0.18)]">
-            Upgrade
-          </span>
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/5 shadow-[0_0_22px_rgba(255,255,255,0.08)] backdrop-blur-[2px]">
-            <NavLockGlyph className="h-4 w-4 text-white/90" />
-          </div>
-        )}
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-2xl border shadow-[0_0_22px_rgba(255,255,255,0.08)] backdrop-blur-[2px] ${
+            upgradeMode
+              ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_22px_rgba(6,182,212,0.14)]'
+              : 'border-white/20 bg-white/5'
+          }`}
+        >
+          <NavLockGlyph className={`h-4 w-4 ${upgradeMode ? 'text-cyan-100/95' : 'text-white/90'}`} />
+        </div>
         <div>
           <p className="text-sm font-semibold leading-snug text-zinc-100 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)]">
             Full guide on Slots Edge Pro

@@ -210,4 +210,4 @@ Success / portal return: `/?billing=success` or `/?billing=portal` → App polls
 ## Update log
 
 - **2026-07-01:** Handoff doc created from Cursor session (interval switch, `price_interval`, Subscribe modal tab UX, Billing manage screen, settings entry).
-- **2026-07-01:** Starter → Pro upgrade fix — `billingDb` updates existing row by `stripe_subscription_id` instead of insert (avoids `user_subscriptions_stripe_subscription_id_key` duplicate). Redeploy **`stripe-create-checkout-session`** + **`stripe-webhook`**.
+- **2026-07-01:** Starter → Pro upgrade fix — clear starter + stale pro rows before write, then update/upsert by `stripe_subscription_id`. Redeploy **`stripe-create-checkout-session`** + **`stripe-webhook`**.

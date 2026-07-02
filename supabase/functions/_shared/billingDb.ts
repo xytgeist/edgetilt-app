@@ -75,8 +75,14 @@ export async function upsertUserSubscriptionFromStripe(
     updated_at: new Date().toISOString(),
   }
 
-  // Same Stripe subscription id can move starter → pro in place. Updating by sub id avoids
-  // duplicate key on user_subscriptions_stripe_subscription_id_key when the starter row still exists.
+  // Starter → Pro reuses one Stripe subscription id but changes product_slug. Clear conflicting
+  // rows before write so we do not hit user_subscriptions_stripe_subscription_id_key or
+  // user_subscriptions_user_product_key (e.g. stale test pro row + active starter row).
+  if (productSlug === 'slots-edge') {
+    await clearStarterSubscriptionRow(admin, userId)
+    await clearStaleFullSubscriptionRows(admin, userId, subscription.id)
+  }
+
   const { data: existingBySubId, error: subLookupErr } = await admin
     .from('user_subscriptions')
     .select('id')
@@ -94,10 +100,6 @@ export async function upsertUserSubscriptionFromStripe(
     if (error) throw new Error(`user_subscriptions upsert: ${error.message}`)
   }
 
-  if (productSlug === 'slots-edge') {
-    await clearStarterSubscriptionRow(admin, userId)
-  }
-
   await syncProfileHasActiveSubscription(admin, userId)
 }
 
@@ -109,6 +111,21 @@ export async function clearStarterSubscriptionRow(admin: SupabaseClient, userId:
     .eq('user_id', userId)
     .eq('product_slug', 'slots-edge-starter')
   if (error) throw new Error(`user_subscriptions starter clear: ${error.message}`)
+}
+
+/** Drop orphan Full rows for other Stripe subscription ids (failed upgrades, manual tier SQL). */
+async function clearStaleFullSubscriptionRows(
+  admin: SupabaseClient,
+  userId: string,
+  keepStripeSubscriptionId: string,
+) {
+  const { error } = await admin
+    .from('user_subscriptions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('product_slug', 'slots-edge')
+    .neq('stripe_subscription_id', keepStripeSubscriptionId)
+  if (error) throw new Error(`user_subscriptions stale full clear: ${error.message}`)
 }
 
 /** One-time Slots Edge Lifetime checkout (Stripe mode payment). */

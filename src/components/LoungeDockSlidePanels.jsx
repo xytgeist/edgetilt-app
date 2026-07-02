@@ -1404,7 +1404,10 @@ export default function LoungeDockSlidePanels({
                 </button>
 
                 {accountSettingsOpen ? (
-                  <div className="mt-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90">
+                  <div
+                    data-settings-account
+                    className="mt-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90"
+                  >
                     {typeof onSettingsEditProfile === 'function' ? (
                       <button
                         type="button"

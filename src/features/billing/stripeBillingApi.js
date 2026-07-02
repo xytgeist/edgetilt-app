@@ -1,10 +1,16 @@
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} productSlug
+ * @param {{ priceInterval?: 'monthly' | 'annual', applyEarlyBird?: boolean }} [options]
  */
-export async function startEdgeCheckout(supabaseClient, productSlug) {
+export async function startEdgeCheckout(supabaseClient, productSlug, options = {}) {
+  const { priceInterval = 'monthly', applyEarlyBird = true } = options
   const { data, error } = await supabaseClient.functions.invoke('stripe-create-checkout-session', {
-    body: { product_slug: productSlug },
+    body: {
+      product_slug: productSlug,
+      price_interval: priceInterval,
+      apply_early_bird: applyEarlyBird,
+    },
   })
   if (error) {
     throw new Error(error.message || 'Could not start checkout.')

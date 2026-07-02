@@ -89,9 +89,9 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | --- | --- | --- | --- |
 | **Starter** | `slots-edge-starter` | **$14/mo** | **$12.60/mo** (10% off) |
 | **Full Edge — monthly** | `slots-edge` | **$42/mo** | **$37.80/mo** (10% off) |
-| **Full Edge — annual** | `slots-edge` (annual Price) | **$420/yr** (~$35/mo effective) | **$378/yr** (10% off) |
+| **Full Edge — annual** | `slots-edge` (annual Price) | **$420/yr** (~$35/mo effective) | **$420/yr** (built-in yearly savings; **no** founding-member coupon) |
 
-**Early subscriber offer:** **10% off for the first year** on any paid Slots Edge plan (Starter monthly, Full monthly, or Full annual). Implement via Stripe **Coupon** (`percent_off: 10`, `duration: repeating`, `duration_in_months: 12`). Launch window / promo code name **TBD** (e.g. auto-apply at checkout during early access, or single shared code).
+**Early subscriber offer:** **10% off for the first 12 billing months** on **monthly** Starter and **monthly** Full Edge via Stripe **Coupon** (`percent_off: 10`, `duration: repeating`, `duration_in_months: 12`). **Not** applied to annual Full Edge (yearly price already discounted vs 12× monthly).
 
 **Competitive positioning:** Full Edge at **$42/mo** undercuts typical AP sites (**$35–49/mo**) while staying **3× Starter** ($14) for clear tier separation.
 

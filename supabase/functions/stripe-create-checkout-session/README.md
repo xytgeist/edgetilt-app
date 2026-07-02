@@ -8,7 +8,7 @@ Multi-product Edge subscriptions. **Slots Edge pricing (locked):** see **`docs/a
 | Full (monthly) | `slots-edge` | $42/mo |
 | Full (annual) | `slots-edge` + annual Price | $420/yr |
 
-**Early subscribers:** 10% off the **first 12 billing months** (Starter or Full) via Stripe Coupon — e.g. $37.80/mo Full, $378/yr annual, $12.60/mo Starter.
+**Early subscribers:** 10% off the **first 12 billing months** on **monthly** Starter and **monthly** Full only (Stripe Coupon). **Annual Full Edge** uses list **$420/yr** with no coupon stacked.
 
 Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
@@ -16,13 +16,13 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
 | Function | Auth | Purpose |
 | --- | --- | --- |
-| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual" }` → `{ url }` (**interval + starter slug wiring TBD**) |
+| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true }` → `{ url }` |
 | **`stripe-create-portal-session`** | User JWT | Manage/cancel billing in Stripe Customer Portal |
 | **`stripe-webhook`** | Stripe signature | Updates **`user_subscriptions`** + syncs **`profiles.has_active_subscription`** for **Full `slots-edge`** |
 
 ## Prerequisites
 
-1. Apply migration **`supabase/migrations/20260526120000_edge_subscriptions.sql`** on test (then prod). **Starter plan + guide unlock tables:** additional migration **TBD**.
+1. Apply migrations **`20260526120000_edge_subscriptions.sql`** and **`20260701120000_subscription_products_slots_edge_starter.sql`** on test (then prod). Weekly drop grants: **`20260701130000_starter_weekly_guide_unlocks.sql`**.
 2. Stripe Dashboard → Products + recurring Prices (test mode first):
    - **Slots Edge Starter** — $14/mo
    - **Slots Edge Full** — $42/mo and $420/yr (two Prices on one Product, or separate Products — team choice at implement time)
@@ -60,8 +60,8 @@ supabase functions deploy stripe-webhook
 
 ## Client
 
-- **`get_my_entitlements()`** RPC → `{ "slots-edge": { active, status, … } }` (**starter entitlements TBD**)
-- Subscribe modal → plan picker + checkout; success redirect `?billing=success&product=…`
+- **`get_my_entitlements()`** RPC → `{ "slots-edge-starter": { … }, "slots-edge": { … } }`
+- **`SubscribeModal`** → Starter vs Full plan picker, monthly/annual Full toggle, early-bird list prices; success redirect `?billing=success&product=…`
 - Legacy **`profiles.has_active_subscription`** still updated for **active Full `slots-edge`** (hamburger locks, chat subscriber rooms)
 
 ## Manual tier testing (without Stripe)

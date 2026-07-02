@@ -1,11 +1,27 @@
-/** Maps product slug to Edge secret name, e.g. slots-edge → STRIPE_PRICE_SLOTS_EDGE */
-export function stripePriceSecretForProduct(productSlug: string): string {
+/** Maps product slug (+ optional billing interval) to Edge secret Stripe Price id. */
+export function stripePriceSecretForProduct(
+  productSlug: string,
+  priceInterval: 'monthly' | 'annual' = 'monthly',
+): string {
+  if (productSlug === 'slots-edge' && priceInterval === 'annual') {
+    const annual = Deno.env.get('STRIPE_PRICE_SLOTS_EDGE_ANNUAL')?.trim()
+    if (!annual) {
+      throw new Error('Missing Edge secret STRIPE_PRICE_SLOTS_EDGE_ANNUAL for annual Full Edge billing.')
+    }
+    return annual
+  }
+
   const envKey = `STRIPE_PRICE_${productSlug.toUpperCase().replace(/-/g, '_')}`
   const priceId = Deno.env.get(envKey)?.trim()
   if (!priceId) {
     throw new Error(`Missing Edge secret ${envKey} for product "${productSlug}".`)
   }
   return priceId
+}
+
+/** Optional early-bird coupon (10% × 12 months). Returns null when unset. */
+export function stripeEarlyBirdCouponId(): string | null {
+  return Deno.env.get('STRIPE_COUPON_EARLY_BIRD')?.trim() || null
 }
 
 export function requireStripeSecretKey(): string {

@@ -83,7 +83,11 @@ function App() {
   /** From `profiles.has_active_subscription` when column exists (see `supabase/profiles_tier_testing.sql`). */
   const [hasActiveSubscriptionFromProfile, setHasActiveSubscriptionFromProfile] = useState(false)
   const [stripeCustomerId, setStripeCustomerId] = useState(null)
-  const [subscribeModal, setSubscribeModal] = useState({ open: false, productSlug: PRODUCT_SLOTS_EDGE })
+  const [subscribeModal, setSubscribeModal] = useState({
+    open: false,
+    productSlug: PRODUCT_SLOTS_EDGE,
+    openKey: 0,
+  })
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -374,9 +378,12 @@ function App() {
 
   const openSubscribeModal = useCallback((productSlug = PRODUCT_SLOTS_EDGE, options = {}) => {
     if (options?.directCheckout) {
-      return startEdgeCheckout(supabase, productSlug)
+      return startEdgeCheckout(supabase, productSlug, {
+        priceInterval: options.priceInterval === 'annual' ? 'annual' : 'monthly',
+        applyEarlyBird: options.applyEarlyBird !== false,
+      })
     }
-    setSubscribeModal({ open: true, productSlug })
+    setSubscribeModal((s) => ({ open: true, productSlug, openKey: s.openKey + 1 }))
   }, [])
 
   const closeSubscribeModal = useCallback(() => {
@@ -823,11 +830,14 @@ function App() {
           onOpenLegalDocument={openLegalDocument}
         />
         <SubscribeModal
+          key={subscribeModal.openKey}
           open={subscribeModal.open}
-          productSlug={subscribeModal.productSlug}
+          initialProductSlug={subscribeModal.productSlug}
           onClose={closeSubscribeModal}
           supabaseClient={supabase}
           hasBillingAccount={Boolean(stripeCustomerId)}
+          hasSlotsEdge={hasSlotsEdgeAccess}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarterAccess}
         />
         {legalAcceptancePending && user ? (
           <LegalAcceptanceModal

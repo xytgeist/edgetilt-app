@@ -55,6 +55,8 @@ Track **everything else** already used on test that production must also have ap
 - [ ] **Chat Phase 2** — apply **`supabase/migrations/20260601120000_chat_phase2.sql`** (adds read receipts, reactions, soft delete, reply columns, `chat_message_reactions` + trigger). Apply **after** `chat_phase1.sql` (base chat tables). Redeploy `lounge-chat` Edge (§4) after this migration.
 - [ ] **Chat link previews** — **`20260604180000_link_previews_chat_and_lounge.sql`**, **`20260604180100_chat_messages_rpc_link_preview.sql`** (after Phase 2 + group migrations you ship). Deploy **`lounge-link-unfurl`** (§4). Do **not** re-run **`20260601160000_chat_messages_page_catchup.sql`** after `041801`.
 - [ ] **Chat group delete** — **`20260605120000_chat_group_delete.sql`** (empty-group trigger + **`chat_delete_group`** RPC). No Edge redeploy required for trigger path; client uses RPC only.
+- [ ] **`supabase/migrations/20260701130000_starter_weekly_guide_unlocks.sql`** — Starter weekly drop table + **`grant_starter_weekly_guide_drop`** (included in Stripe billing chain through **`20260701160000`** if that promote already ran).
+- [ ] **`supabase/migrations/20260702120000_starter_weekly_drop_reveal_cron.sql`** — scratch reveal column, **`starter_weekly_guide_drop`** activity type, weekly pg_cron (**Mon 00:10 UTC**), reveal RPCs. **Prereqs:** **`pg_cron`** enabled; **`@edgelord`** profile exists (system actor for notifications). Redeploy **`lounge-send-activity-push`** (§4) after apply.
 - [ ] **Play Logbook (if prod ships Logbook):** apply test-validated chain through **`20260531540000_buffalo_calculator_slug_buffalo_link.sql`** — base **`20260529120000_play_logbook.sql`**, shared sessions **`20260531140000`**, manager/paid **`20260531190000`**, paid/unpaid notify repair order (**`20260531300000`** → **`20260531310000`**, repair **`20260531320000`** if needed), custom metrics **`20260531350000`**, admin primary templates **`20260531400000`**, MHB fields **`20260531500000`**, label migrations **`20260531330000`**–**`20260531360000`**, **`20260531510000`**–**`20260531530000`**, **`20260531540000`**. Redeploy **`lounge-send-activity-push`** after activity-event migrations.
 
 **After deploy — quick smoke SQL (production):**
@@ -131,6 +133,8 @@ supabase functions deploy lounge-cf-r2-backfill-cache-control
 supabase functions deploy lounge-chat
 # Chat + Lounge link previews (OG unfurl + attach):
 supabase functions deploy lounge-link-unfurl
+# Starter weekly drop push deep links (after migration 20260702120000):
+supabase functions deploy lounge-send-activity-push
 # Stripe billing (after migrations through 20260701160000 — full checklist docs/stripe-billing-test-to-prod-handoff.md):
 supabase functions deploy stripe-create-checkout-session
 supabase functions deploy stripe-create-portal-session
@@ -158,7 +162,7 @@ Cross-check dashboards: **Production** function list versus **test** (names acti
 
 Secrets (secrets / env vault in Supabase) for push + web-push must exist on production — mirror **test** configuration.
 
-**Stripe billing:** live **`STRIPE_*`** secrets + live webhook endpoint on prod; see **`docs/stripe-billing-test-to-prod-handoff.md`** (migrations, smoke, deploy order). **Ryan sign-off 2026-07-01:** prod migrations **`20260701120000`**–**`160000`**, Edge deploy, minimal live Checkout smoke **PASSED**; founding monthly coupon **`QnYlzKuK`**. Broader prod billing matrix (upgrade, portal cancel, Lifetime) still optional follow-up smoke.
+**Stripe billing:** live **`STRIPE_*`** secrets + live webhook endpoint on prod; see **`docs/stripe-billing-test-to-prod-handoff.md`** (migrations, smoke, deploy order). **Ryan sign-off 2026-07-01:** prod migrations **`20260701120000`**–**`160000`**, Edge deploy, minimal live Checkout smoke **PASSED**; founding monthly coupon **`QnYlzKuK`**. **Ryan sign-off 2026-07-02:** prod migration **`20260702120000`**, **`lounge-send-activity-push`** redeploy, frontend **`main`** through **`66d6ed7`**. Broader prod billing matrix (upgrade, portal cancel, Lifetime) still optional follow-up smoke.
 
 ---
 
@@ -174,6 +178,7 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 - [ ] **Lounge search (Phase G):** signed-in dock **Search** — **2+ chars** returns posts/profiles; logged-out tap → account gate. Requires **`20260518160000_lounge_search_phase_g.sql`** on prod DB.
 - [ ] **Lounge media lightbox:** image full-screen pinch-zoom + pan; Stream hero expand with interaction bar — spot-check feed + post detail (client-only; no extra deploy beyond app bundle).
 - [ ] **AP Guide editor (`/slot-guide-form`):** admin login → **+ New guide** → **Save draft** (optional) → **Ingest guide** with Vercel **§1** Supabase service vars set → **Fetch guides** → **Load** → edit section → **Save changes**. Spot-check **Buffalo Link** calculator slug **`buffalo-link`** in app after **`20260531540000`** on prod DB.
+- [ ] **Starter weekly guide drop:** on a **Slots Edge Starter** prod account, SQL grant + activity event per **`docs/test-user-roles.md`** → scratch modal, real rub audio, tap-to-open guide, Pro CTA; notification tap deep-links with **`starterDrop=`**. Cron **`starter_weekly_guide_drop_weekly`** scheduled (Mon **00:10 UTC**). Do **not** run bulk **`run_starter_weekly_guide_drop_job()`** on prod without intent.
 
 ---
 
@@ -199,4 +204,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Play Logbook** migration chain through **`20260531540000`** + **AP Guide editor** (`/slot-guide-form`, draft localStorage, Vercel ingest env vars, admin JWT auth). Prior: Lounge **Cloudflare R2** feed images + **unified Stream/image lightbox** + **Phase G search** + **Cloudflare Stream**. Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **Starter weekly drop** prod promote (**`20260702120000`**, **`lounge-send-activity-push`**, **`main`** **`66d6ed7`**). Prior: **Play Logbook** migration chain through **`20260531540000`** + **AP Guide editor** (`/slot-guide-form`, draft localStorage, Vercel ingest env vars, admin JWT auth). Prior: Lounge **Cloudflare R2** feed images + **unified Stream/image lightbox** + **Phase G search** + **Cloudflare Stream**. Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

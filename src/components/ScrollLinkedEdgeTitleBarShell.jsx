@@ -24,12 +24,15 @@ export default function ScrollLinkedEdgeTitleBarShell({
   titleBarToolCloseVisible = false,
   /** Publish scroll-linked reveal for the portaled lounge dock on other tabs. */
   publishScrollReveal = true,
+  /** Optional ref to the scroll viewport (infinite scroll sentinels, etc.). */
+  scrollRootRef = null,
   children,
   contentClassName = defaultShellContentClassName,
   fullWidth = false,
 }) {
   const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
-  const feedScrollRef = useRef(null)
+  const internalScrollRef = useRef(null)
+  const feedScrollRef = scrollRootRef ?? internalScrollRef
   const titleBarRef = useRef(null)
   const scrollPrevTopRef = useRef(0)
   const titleRevealRef = useRef(1)

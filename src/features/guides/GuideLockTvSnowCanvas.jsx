@@ -238,7 +238,12 @@ export default function GuideLockTvSnowCanvas({ className = '' }) {
         lastPaintTs = ts
       }
 
-      rafId = window.requestAnimationFrame(tick)
+      if (visible) {
+        rafId = window.requestAnimationFrame(tick)
+      } else {
+        rafId = 0
+        lastTs = 0
+      }
     }
 
     resize()
@@ -246,18 +251,26 @@ export default function GuideLockTvSnowCanvas({ className = '' }) {
     const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null
     resizeObserver?.observe(root)
 
+    const scheduleTick = () => {
+      if (rafId) return
+      rafId = window.requestAnimationFrame(tick)
+    }
+
     const intersectionObserver =
       typeof IntersectionObserver !== 'undefined'
         ? new IntersectionObserver(
             (entries) => {
-              visible = entries.some((entry) => entry.isIntersecting)
+              const nextVisible = entries.some((entry) => entry.isIntersecting)
+              if (nextVisible === visible) return
+              visible = nextVisible
+              if (visible) scheduleTick()
             },
             { threshold: 0.05 },
           )
         : null
     intersectionObserver?.observe(root)
 
-    rafId = window.requestAnimationFrame(tick)
+    scheduleTick()
 
     return () => {
       themeObserver.disconnect()

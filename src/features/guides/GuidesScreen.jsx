@@ -78,6 +78,78 @@ import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButt
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 
+/** Collapsed cards rendered at once; more load via scroll sentinel. */
+const GUIDES_LIST_PAGE_SIZE = 24
+
+const GUIDE_LIST_SELECT = `
+          id,
+          slug,
+          title,
+          card_ev_threshold,
+          card_accent_color,
+          last_updated,
+          created_at,
+          updated_at,
+          thumbnail_url,
+          published,
+          machines (
+            id,
+            slug,
+            name,
+            manufacturer,
+            type,
+            difficulty,
+            popularity,
+            nerf_risk,
+            has_calculator,
+            calculator_slug,
+            thumbnail_url,
+            created_at,
+            updated_at,
+            release_year,
+            volatility_index,
+            popularity_summary
+          )
+        `
+
+const GUIDE_LIST_SELECT_FALLBACK_POPULARITY = `
+              id,
+              slug,
+              title,
+              card_ev_threshold,
+              card_accent_color,
+              last_updated,
+              created_at,
+              updated_at,
+              thumbnail_url,
+              published,
+              machines (
+                id,
+                slug,
+                name,
+                manufacturer,
+                type,
+                difficulty,
+                vegas_availability,
+                nerf_risk,
+                has_calculator,
+                calculator_slug,
+                thumbnail_url,
+                created_at,
+                updated_at,
+                release_year,
+                volatility_index,
+                popularity_summary
+              )
+            `
+
+function resolveGuideContentMarkdown(row, contentById) {
+  if (row?.content_markdown) return row.content_markdown
+  const id = row?.id
+  if (typeof id === 'string' && contentById.has(id)) return contentById.get(id) || ''
+  return ''
+}
+
 const ACTIVE_SUPABASE_HOST = (() => {
   try {
     return new URL(import.meta.env.VITE_SUPABASE_URL || '').host || 'unknown-host'
@@ -1372,6 +1444,13 @@ export default function GuidesScreen({
   const [loadErr, setLoadErr] = useState('')
   const [expandedSlug, setExpandedSlug] = useState(null)
   const [askFor, setAskFor] = useState(null)
+  const [guideContentById, setGuideContentById] = useState(() => new Map())
+  const [skinSearchByRowId, setSkinSearchByRowId] = useState(() => Object.create(null))
+  const [visibleCount, setVisibleCount] = useState(GUIDES_LIST_PAGE_SIZE)
+  const [expandedContentLoading, setExpandedContentLoading] = useState(false)
+
+  const guidesScrollRootRef = useRef(null)
+  const loadMoreSentinelRef = useRef(null)
 
   const [gateBusySlug, setGateBusySlug] = useState(null)
   /** @type {[null | { guideId: string, machineId: string | null, slug: string, name: string }, import('react').Dispatch<import('react').SetStateAction<null | { guideId: string, machineId: string | null, slug: string, name: string }>>]} */
@@ -1504,40 +1583,6 @@ export default function GuidesScreen({
     resolveGuideReleaseYear,
   ])
 
-  // Deep-link: when openCardSlug is provided (from Lounge guide embed tap), expand + scroll to card
-  useEffect(() => {
-    if (!openCardSlug || loading) return
-    const slug = normalizeGuideAccessSlug(openCardSlug)
-    if (!slug) return
-    if (
-      !canOpenGuide(slug, {
-        isStaff,
-        hasSlotsEdge,
-        hasSlotsEdgeStarter,
-        starterUnlockedGuideSlugs,
-        gatesMap,
-        releaseYear: resolveGuideReleaseYear(slug),
-      })
-    ) {
-      onRequireSubscribe?.('slots-edge')
-      return
-    }
-    setExpandedSlug(slug)
-    setTimeout(() => {
-      document.getElementById(`guide-card-${slug}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 120)
-  }, [
-    openCardSlug,
-    loading,
-    isStaff,
-    hasSlotsEdge,
-    hasSlotsEdgeStarter,
-    starterUnlockedGuideSlugs,
-    gatesMap,
-    onRequireSubscribe,
-    resolveGuideReleaseYear,
-  ])
-
   const handleAdminGuideLockToggle = useCallback(
     async (slug, locked) => {
       if (!isAdmin || !gatesDbReady || !onSetContentGate) return
@@ -1601,37 +1646,7 @@ export default function GuidesScreen({
     setLoading(true)
     setLoadErr('')
     try {
-      const { data, error } = await supabaseClient.from('guides').select(`
-          id,
-          slug,
-          title,
-          content_markdown,
-          card_ev_threshold,
-          card_accent_color,
-          last_updated,
-          created_at,
-          updated_at,
-          thumbnail_url,
-          published,
-          machines (
-            id,
-            slug,
-            name,
-            manufacturer,
-            type,
-            difficulty,
-            popularity,
-            nerf_risk,
-            has_calculator,
-            calculator_slug,
-            thumbnail_url,
-            created_at,
-            updated_at,
-            release_year,
-            volatility_index,
-            popularity_summary
-          )
-        `)
+      const { data, error } = await supabaseClient.from('guides').select(GUIDE_LIST_SELECT)
         .eq('published', true)
         .order('title')
 
@@ -1640,37 +1655,7 @@ export default function GuidesScreen({
           error.message?.includes('popularity') &&
           (error.message?.includes('machines') || error.message?.includes('column'))
         if (missingPopularityCol) {
-          const { data: dPop, error: ePop } = await supabaseClient.from('guides').select(`
-              id,
-              slug,
-              title,
-              content_markdown,
-              card_ev_threshold,
-              card_accent_color,
-              last_updated,
-              created_at,
-              updated_at,
-              thumbnail_url,
-              published,
-              machines (
-                id,
-                slug,
-                name,
-                manufacturer,
-                type,
-                difficulty,
-                vegas_availability,
-                nerf_risk,
-                has_calculator,
-                calculator_slug,
-                thumbnail_url,
-                created_at,
-                updated_at,
-                release_year,
-                volatility_index,
-                popularity_summary
-              )
-            `)
+          const { data: dPop, error: ePop } = await supabaseClient.from('guides').select(GUIDE_LIST_SELECT_FALLBACK_POPULARITY)
             .eq('published', true)
             .order('title')
           if (ePop) throw ePop
@@ -1686,39 +1671,7 @@ export default function GuidesScreen({
         if (missingOptionalCols) {
           const { data: d2, error: e2 } = await supabaseClient
             .from('guides')
-            .select(
-              `
-              id,
-              slug,
-              title,
-              content_markdown,
-              card_ev_threshold,
-              card_accent_color,
-              last_updated,
-              created_at,
-              updated_at,
-              thumbnail_url,
-              published,
-              machines (
-                id,
-                slug,
-                name,
-                manufacturer,
-                type,
-                difficulty,
-                popularity,
-                nerf_risk,
-                has_calculator,
-                calculator_slug,
-                thumbnail_url,
-                created_at,
-                updated_at,
-                release_year,
-                volatility_index,
-                popularity_summary
-              )
-            `
-            )
+            .select(GUIDE_LIST_SELECT)
             .eq('published', true)
             .order('title')
           if (e2) throw e2
@@ -1739,9 +1692,164 @@ export default function GuidesScreen({
     }
   }, [supabaseClient])
 
+  /** Title + Skins only (not hunt copy, manufacturer, slug, or MHB keyword blobs). */
+  const searchHaystackByRowId = useMemo(() => {
+    /** @type {Record<string, string>} */
+    const map = Object.create(null)
+    for (const r of rows) {
+      const mx = machineForGuide(r)
+      const cardTitle = (mx?.name || r.title || '').toLowerCase()
+      const guideTitle = (r.title || '').toLowerCase()
+      const skins = skinSearchByRowId[r.id] || ''
+      map[r.id] = [cardTitle, guideTitle !== cardTitle ? guideTitle : '', skins].filter(Boolean).join('\n')
+    }
+    return map
+  }, [rows, skinSearchByRowId])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((r) => searchHaystackByRowId[r.id]?.includes(q))
+  }, [rows, query, searchHaystackByRowId])
+
+  const visibleRows = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  )
+
   useEffect(() => {
     void load()
   }, [load])
+
+  /** After card list paints, fetch markdown in the background for skin search + expand cache. */
+  useEffect(() => {
+    if (loading || !rows.length || !supabaseClient) return undefined
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabaseClient
+        .from('guides')
+        .select('id, content_markdown')
+        .eq('published', true)
+      if (cancelled || error) return
+      const contentMap = new Map()
+      const skinMap = Object.create(null)
+      for (const guide of data || []) {
+        if (!guide?.id) continue
+        const markdown = guide.content_markdown || ''
+        contentMap.set(guide.id, markdown)
+        skinMap[guide.id] = parseGuideMarkdown(markdown).skins_markdown.toLowerCase()
+      }
+      for (const row of rows) {
+        if (!isLocalDemoGuide(row) || !row.content_markdown) continue
+        contentMap.set(row.id, row.content_markdown)
+        skinMap[row.id] = parseGuideMarkdown(row.content_markdown).skins_markdown.toLowerCase()
+      }
+      setGuideContentById(contentMap)
+      setSkinSearchByRowId(skinMap)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loading, rows, supabaseClient])
+
+  useEffect(() => {
+    if (!expandedSlug || !supabaseClient) return undefined
+    const row = rows.find((r) => {
+      const m = machineForGuide(r)
+      const slug = normalizeGuideAccessSlug(m?.slug || r.slug)
+      return slug && String(slug).toLowerCase() === String(expandedSlug).toLowerCase()
+    })
+    if (!row?.id || row.content_markdown || guideContentById.has(row.id) || isLocalDemoGuide(row)) {
+      setExpandedContentLoading(false)
+      return undefined
+    }
+    let cancelled = false
+    setExpandedContentLoading(true)
+    void (async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from('guides')
+          .select('content_markdown')
+          .eq('id', row.id)
+          .maybeSingle()
+        if (cancelled || error) return
+        setGuideContentById((prev) => {
+          const next = new Map(prev)
+          next.set(row.id, data?.content_markdown || '')
+          return next
+        })
+      } finally {
+        if (!cancelled) setExpandedContentLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [expandedSlug, rows, supabaseClient])
+
+  useEffect(() => {
+    setVisibleCount(GUIDES_LIST_PAGE_SIZE)
+  }, [query])
+
+  useEffect(() => {
+    if (loading || filtered.length === 0) return
+    if (visibleCount >= filtered.length) return
+    const root = guidesScrollRootRef.current
+    const node = loadMoreSentinelRef.current
+    if (!node || typeof window === 'undefined' || !('IntersectionObserver' in window)) return undefined
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        if (entries?.[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(filtered.length, prev + GUIDES_LIST_PAGE_SIZE))
+        }
+      },
+      { root: root || null, rootMargin: '320px 0px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [filtered.length, loading, visibleCount])
+
+  // Deep-link: when openCardSlug is provided (from Lounge guide embed tap), expand + scroll to card
+  useEffect(() => {
+    if (!openCardSlug || loading) return
+    const slug = normalizeGuideAccessSlug(openCardSlug)
+    if (!slug) return
+    if (
+      !canOpenGuide(slug, {
+        isStaff,
+        hasSlotsEdge,
+        hasSlotsEdgeStarter,
+        starterUnlockedGuideSlugs,
+        gatesMap,
+        releaseYear: resolveGuideReleaseYear(slug),
+      })
+    ) {
+      onRequireSubscribe?.('slots-edge')
+      return
+    }
+    const idx = filtered.findIndex((row) => {
+      const m = machineForGuide(row)
+      const cardSlug = normalizeGuideAccessSlug(m?.slug || row.slug)
+      return cardSlug && String(cardSlug).toLowerCase() === String(slug).toLowerCase()
+    })
+    if (idx >= 0) {
+      setVisibleCount((prev) =>
+        Math.min(filtered.length, Math.max(prev, idx + 4, GUIDES_LIST_PAGE_SIZE)),
+      )
+    }
+    setExpandedSlug(slug)
+  }, [
+    openCardSlug,
+    loading,
+    filtered,
+    isStaff,
+    hasSlotsEdge,
+    hasSlotsEdgeStarter,
+    starterUnlockedGuideSlugs,
+    gatesMap,
+    onRequireSubscribe,
+    resolveGuideReleaseYear,
+  ])
 
   useLayoutEffect(() => {
     const reduceMotion =
@@ -1765,31 +1873,12 @@ export default function GuidesScreen({
     scrollCardToStart(collapseSlug)
   }, [expandedSlug])
 
-  /** Title + Skins only (not hunt copy, manufacturer, slug, or MHB keyword blobs). */
-  const searchHaystackByRowId = useMemo(() => {
-    /** @type {Record<string, string>} */
-    const map = Object.create(null)
-    for (const r of rows) {
-      const mx = machineForGuide(r)
-      const cardTitle = (mx?.name || r.title || '').toLowerCase()
-      const guideTitle = (r.title || '').toLowerCase()
-      const skins = parseGuideMarkdown(r.content_markdown || '').skins_markdown.toLowerCase()
-      map[r.id] = [cardTitle, guideTitle !== cardTitle ? guideTitle : '', skins].filter(Boolean).join('\n')
-    }
-    return map
-  }, [rows])
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) => searchHaystackByRowId[r.id]?.includes(q))
-  }, [rows, query, searchHaystackByRowId])
-
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
+        scrollRootRef={guidesScrollRootRef}
         contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <SlotsToolPageHeader quickLinkDestinationId="guides" />
@@ -1822,13 +1911,14 @@ export default function GuidesScreen({
         <div className="text-zinc-500 text-sm py-8 text-center">No guides match that search.</div>
       ) : (
         <ul className="space-y-8 list-none p-0 m-0">
-          {filtered.map((row) => {
+          {visibleRows.map((row) => {
             const m = machineForGuide(row)
             const slug = m?.slug || row.slug
             const cardSlug = normalizeGuideAccessSlug(slug) || slug
             const expanded =
               expandedSlug != null &&
               String(expandedSlug).toLowerCase() === String(cardSlug || '').toLowerCase()
+            const expandedMarkdown = resolveGuideContentMarkdown(row, guideContentById)
             const calcKey = resolveCalculatorKeyFromMachine(m)
             const evThresholdLine = cardEvThresholdForRow(row)
             const accent = resolveGuideAccent({
@@ -1926,6 +2016,8 @@ export default function GuidesScreen({
                           <img
                             src={heroThumb}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className={
                               expanded
                                 ? 'guide-card-hero-img-expanded opacity-95'
@@ -2116,19 +2208,35 @@ export default function GuidesScreen({
 
                   {expanded ? (
                     <div className="guide-markdown-body border-t border-zinc-800 px-4 py-5 bg-zinc-950/90 text-sm max-w-none">
-                      <ReactMarkdown
-                        urlTransform={guideMarkdownUrlTransform}
-                        remarkPlugins={[remarkGfm]}
-                        components={makeGuideMarkdownComponents(accent, { onOpenGuideSlug: openGuideSlug, allGuides: rows })}
-                      >
-                        {guideMarkdownForDisplay(row.content_markdown || '')}
-                      </ReactMarkdown>
+                      {expandedMarkdown || !expandedContentLoading ? (
+                        <ReactMarkdown
+                          urlTransform={guideMarkdownUrlTransform}
+                          remarkPlugins={[remarkGfm]}
+                          components={makeGuideMarkdownComponents(accent, {
+                            onOpenGuideSlug: openGuideSlug,
+                            allGuides: rows,
+                          })}
+                        >
+                          {guideMarkdownForDisplay(expandedMarkdown)}
+                        </ReactMarkdown>
+                      ) : (
+                        <div className="py-6 text-center text-sm text-zinc-500">Loading guide…</div>
+                      )}
                     </div>
                   ) : null}
                 </article>
               </li>
             )
           })}
+          {visibleCount < filtered.length ? (
+            <li
+              ref={loadMoreSentinelRef}
+              className="py-6 text-center text-sm text-zinc-500 list-none"
+              aria-hidden
+            >
+              Loading more guides…
+            </li>
+          ) : null}
         </ul>
       )}
 

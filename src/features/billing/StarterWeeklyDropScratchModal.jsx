@@ -10,8 +10,8 @@ import { ScratchRevealAudio } from './scratchRevealAudio.js'
 import { loadScratchFoilLogo, paintScratchFoil } from './scratchRevealFoil.js'
 
 const SCRATCH_BRUSH_RADIUS = 20
-const SCRATCH_REVEAL_RATIO = 0.62
-const SCRATCH_MIN_MS = 2000
+const SCRATCH_REVEAL_RATIO = 0.75
+const SCRATCH_MIN_MS = 2500
 
 export default function StarterWeeklyDropScratchModal({
   open = false,

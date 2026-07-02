@@ -131,7 +131,8 @@ Body: `{ "product_slug", "price_interval": "monthly"|"annual", "apply_early_bird
 | Case | Response |
 | --- | --- |
 | New subscriber | `{ url }` → Stripe Checkout |
-| Active **Starter** + checkout **Pro** | Updates existing Stripe sub (prorated) → `{ upgraded: true, url: success_url }` |
+| Active **Starter** + checkout **Pro** | Stripe Checkout (`payment_method_collection: always`); webhook upserts Pro sub and **cancels** the Starter subscription |
+| Active **Starter or Pro** + checkout **Lifetime** | Stripe Checkout one-time payment; webhook grants Lifetime and **cancels** active recurring subscription(s) |
 | Active **Starter** or **Pro** + **different** interval | Updates sub in place → `{ interval_changed: true, url: success_url }` |
 | Already on **Lifetime** | 400 |
 | Same interval as current | 400 from interval change path |
@@ -210,4 +211,4 @@ Success / portal return: `/?billing=success` or `/?billing=portal` → App polls
 ## Update log
 
 - **2026-07-01:** Handoff doc created from Cursor session (interval switch, `price_interval`, Subscribe modal tab UX, Billing manage screen, settings entry).
-- **2026-07-01:** Starter → Pro upgrade fix — clear starter + stale pro rows before write, then update/upsert by `stripe_subscription_id`. Redeploy **`stripe-create-checkout-session`** + **`stripe-webhook`**.
+- **2026-07-01:** Starter → Pro goes through **Stripe Checkout** (not silent in-place upgrade); webhook cancels replaced Starter sub after checkout completes.

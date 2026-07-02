@@ -4,10 +4,44 @@ import { requireStripeSecretKey, requireStripeWebhookSecret } from '../_shared/b
 import {
   createBillingAdmin,
   recordWebhookEvent,
+  deleteUserSubscriptionByStripeId,
+  listActiveRecurringStripeSubscriptionIds,
   upsertLifetimePurchaseFromCheckout,
   upsertUserSubscriptionFromStripe,
   type StripeSubscriptionPayload,
 } from '../_shared/billingDb.ts'
+
+function parseReplaceSubscriptionIds(session: Stripe.Checkout.Session): string[] {
+  const raw =
+    session.metadata?.replaces_stripe_subscription_ids?.trim() ||
+    session.metadata?.replaces_stripe_subscription_id?.trim() ||
+    ''
+  if (!raw) return []
+  return [...new Set(raw.split(',').map((id) => id.trim()).filter(Boolean))]
+}
+
+async function cancelReplacedStripeSubscriptions(
+  stripe: Stripe,
+  admin: ReturnType<typeof createBillingAdmin>,
+  subscriptionIds: string[],
+  syncUserId: string | null,
+) {
+  for (const subId of subscriptionIds) {
+    try {
+      await stripe.subscriptions.cancel(subId)
+    } catch (cancelErr) {
+      console.warn('stripe-webhook: could not cancel replaced subscription', subId, cancelErr)
+    }
+    await deleteUserSubscriptionByStripeId(admin, subId)
+  }
+
+  if (syncUserId) {
+    const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
+      p_user_id: syncUserId,
+    })
+    if (syncErr) throw new Error(`sync_profile_has_active_subscription: ${syncErr.message}`)
+  }
+}
 
 async function resolveUserAndProduct(
   admin: ReturnType<typeof createBillingAdmin>,
@@ -64,8 +98,7 @@ Deno.serve(async (req) => {
 
     if (
       event.type === 'customer.subscription.created' ||
-      event.type === 'customer.subscription.updated' ||
-      event.type === 'customer.subscription.deleted'
+      event.type === 'customer.subscription.updated'
     ) {
       const subscription = event.data.object as StripeSubscriptionPayload
       const { userId, productSlug } = await resolveUserAndProduct(admin, subscription)
@@ -78,6 +111,17 @@ Deno.serve(async (req) => {
         productSlug: productSlug || 'slots-edge',
         subscription,
       })
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as StripeSubscriptionPayload
+      const userId = await deleteUserSubscriptionByStripeId(admin, subscription.id)
+      if (userId) {
+        const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
+          p_user_id: userId,
+        })
+        if (syncErr) throw new Error(`sync_profile_has_active_subscription: ${syncErr.message}`)
+      }
     }
 
     if (event.type === 'checkout.session.completed') {
@@ -117,6 +161,12 @@ Deno.serve(async (req) => {
           paymentReferenceId,
         })
 
+        let replaceIds = parseReplaceSubscriptionIds(session)
+        if (replaceIds.length === 0) {
+          replaceIds = await listActiveRecurringStripeSubscriptionIds(admin, userId)
+        }
+        await cancelReplacedStripeSubscriptions(stripe, admin, replaceIds, userId)
+
         return jsonResponse({ ok: true })
       }
 
@@ -143,6 +193,16 @@ Deno.serve(async (req) => {
           productSlug,
           subscription,
         })
+
+        const replaceSubId =
+          session.metadata?.replaces_stripe_subscription_id?.trim() ||
+          subscription.metadata?.replaces_stripe_subscription_id?.trim() ||
+          null
+        const replaceIds = [
+          ...parseReplaceSubscriptionIds(session),
+          ...(replaceSubId && replaceSubId !== subscriptionId ? [replaceSubId] : []),
+        ]
+        await cancelReplacedStripeSubscriptions(stripe, admin, replaceIds, resolvedUserId)
       }
     }
 

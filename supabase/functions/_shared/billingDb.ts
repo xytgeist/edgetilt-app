@@ -128,6 +128,41 @@ async function clearStaleFullSubscriptionRows(
   if (error) throw new Error(`user_subscriptions stale full clear: ${error.message}`)
 }
 
+/** Remove a subscription row after Stripe cancels the sub (upgrade checkout, portal cancel). */
+export async function deleteUserSubscriptionByStripeId(
+  admin: SupabaseClient,
+  stripeSubscriptionId: string,
+) {
+  const { data, error } = await admin
+    .from('user_subscriptions')
+    .delete()
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .select('user_id')
+  if (error) throw new Error(`user_subscriptions delete (${stripeSubscriptionId}): ${error.message}`)
+  return data?.[0]?.user_id ?? null
+}
+
+/** Active recurring Starter / Pro Stripe subscription ids for a user. */
+export async function listActiveRecurringStripeSubscriptionIds(
+  admin: SupabaseClient,
+  userId: string,
+) {
+  const { data, error } = await admin
+    .from('user_subscriptions')
+    .select('stripe_subscription_id')
+    .eq('user_id', userId)
+    .in('product_slug', ['slots-edge-starter', 'slots-edge'])
+    .in('status', ['active', 'trialing'])
+  if (error) throw new Error(`user_subscriptions recurring lookup: ${error.message}`)
+  return [
+    ...new Set(
+      (data ?? [])
+        .map((row) => String(row.stripe_subscription_id ?? '').trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
 /** One-time Slots Edge Lifetime checkout (Stripe mode payment). */
 export async function upsertLifetimePurchaseFromCheckout(
   admin: SupabaseClient,

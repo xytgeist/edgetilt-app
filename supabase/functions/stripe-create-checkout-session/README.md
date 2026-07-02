@@ -38,7 +38,7 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
 | --- | --- | --- |
 
-| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true }` → `{ url }`. **`slots-edge-lifetime`** uses one-time payment checkout (no interval). **Starter → Pro:** active **`slots-edge-starter`** + checkout for **`slots-edge`** updates the existing Stripe subscription (prorated) — **`upgraded: true`**. **Same plan, new interval:** active **`slots-edge-starter`** or **`slots-edge`** + different **`price_interval`** updates the subscription in place (monthly ↔ annual) — **`interval_changed: true`** (no Checkout redirect). |
+| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true }` → `{ url }`. **`slots-edge-lifetime`** uses one-time payment checkout (no interval); if the user has active Starter or Pro, Checkout collects payment method and metadata lists subs to cancel on success. **Starter → Pro:** active **`slots-edge-starter`** + checkout for **`slots-edge`** opens **Stripe Checkout** (payment method + confirm); webhook cancels the old Starter subscription after success. **Same plan, new interval:** active **`slots-edge-starter`** or **`slots-edge`** + different **`price_interval`** updates the subscription in place — **`interval_changed: true`** (no Checkout redirect). |
 
 | **`stripe-create-portal-session`** | User JWT | Manage/cancel billing in Stripe Customer Portal |
 

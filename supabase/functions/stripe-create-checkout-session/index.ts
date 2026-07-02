@@ -76,6 +76,19 @@ async function getActiveStarterSubscription(
   return getActiveSubscriptionRow(admin, userId, STARTER_PRODUCT_SLUG)
 }
 
+/** Active Starter and/or Pro Stripe subscription ids to cancel after Lifetime checkout. */
+async function getActiveRecurringStripeSubscriptionIds(
+  admin: ReturnType<typeof createBillingAdmin>,
+  userId: string,
+) {
+  const ids: string[] = []
+  for (const slug of [STARTER_PRODUCT_SLUG, FULL_PRODUCT_SLUG]) {
+    const row = await getActiveSubscriptionRow(admin, userId, slug)
+    if (row?.stripe_subscription_id) ids.push(row.stripe_subscription_id)
+  }
+  return [...new Set(ids)]
+}
+
 function subscriptionPriceIntervalForProduct(
   subscription: Stripe.Subscription,
   productSlug: string,
@@ -141,28 +154,6 @@ async function updateExistingSubscriptionPrice(
   })
 
   return updated
-}
-
-async function upgradeStarterSubscriptionToFull(
-  stripe: Stripe,
-  admin: ReturnType<typeof createBillingAdmin>,
-  args: {
-    userId: string
-    starterSubscriptionId: string
-    fullPriceId: string
-    priceInterval: 'monthly' | 'annual'
-    couponId: string | null
-  },
-) {
-  return updateExistingSubscriptionPrice(stripe, admin, {
-    userId: args.userId,
-    subscriptionId: args.starterSubscriptionId,
-    productSlug: FULL_PRODUCT_SLUG,
-    priceId: args.fullPriceId,
-    priceInterval: args.priceInterval,
-    couponId: args.couponId,
-    upgradedFrom: STARTER_PRODUCT_SLUG,
-  })
 }
 
 async function changeSubscriptionBillingInterval(
@@ -266,27 +257,14 @@ Deno.serve(async (req) => {
     const { success_url, cancel_url } = checkoutReturnUrls(req, productSlug)
     const wantsFounding = body.apply_early_bird !== false
 
+    let replaceStripeSubscriptionId: string | null = null
     if (
       !isLifetime &&
       productSlug === FULL_PRODUCT_SLUG &&
       (await userHasActiveProduct(admin, auth.user.id, STARTER_PRODUCT_SLUG))
     ) {
       const starterRow = await getActiveStarterSubscription(admin, auth.user.id)
-      if (starterRow?.stripe_subscription_id) {
-        const couponId = foundingCouponId(productSlug, priceInterval, false, wantsFounding)
-        await upgradeStarterSubscriptionToFull(stripe, admin, {
-          userId: auth.user.id,
-          starterSubscriptionId: starterRow.stripe_subscription_id,
-          fullPriceId: priceId,
-          priceInterval,
-          couponId,
-        })
-        return jsonResponse({
-          url: success_url,
-          product_slug: productSlug,
-          upgraded: true,
-        })
-      }
+      replaceStripeSubscriptionId = starterRow?.stripe_subscription_id?.trim() || null
     }
 
     if (
@@ -322,6 +300,15 @@ Deno.serve(async (req) => {
     }
 
     if (isLifetime) {
+      const replaceSubscriptionIds = await getActiveRecurringStripeSubscriptionIds(admin, auth.user.id)
+      const sessionMetadata: Record<string, string> = {
+        supabase_user_id: auth.user.id,
+        product_slug: productSlug,
+      }
+      if (replaceSubscriptionIds.length > 0) {
+        sessionMetadata.replaces_stripe_subscription_ids = replaceSubscriptionIds.join(',')
+      }
+
       const couponId = foundingCouponId(productSlug, 'monthly', true, wantsFounding)
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
@@ -330,15 +317,10 @@ Deno.serve(async (req) => {
         success_url,
         cancel_url,
         client_reference_id: auth.user.id,
-        metadata: {
-          supabase_user_id: auth.user.id,
-          product_slug: productSlug,
-        },
+        payment_method_collection: replaceSubscriptionIds.length > 0 ? 'always' : 'if_required',
+        metadata: sessionMetadata,
         payment_intent_data: {
-          metadata: {
-            supabase_user_id: auth.user.id,
-            product_slug: productSlug,
-          },
+          metadata: sessionMetadata,
         },
       }
       if (couponId) {
@@ -355,6 +337,16 @@ Deno.serve(async (req) => {
     }
 
     const couponId = foundingCouponId(productSlug, priceInterval, false, wantsFounding)
+    const upgradeFromStarter = Boolean(replaceStripeSubscriptionId)
+    const sessionMetadata: Record<string, string> = {
+      supabase_user_id: auth.user.id,
+      product_slug: productSlug,
+      price_interval: priceInterval,
+    }
+    if (upgradeFromStarter && replaceStripeSubscriptionId) {
+      sessionMetadata.upgraded_from = STARTER_PRODUCT_SLUG
+      sessionMetadata.replaces_stripe_subscription_id = replaceStripeSubscriptionId
+    }
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
@@ -363,18 +355,11 @@ Deno.serve(async (req) => {
       success_url,
       cancel_url,
       client_reference_id: auth.user.id,
+      payment_method_collection: upgradeFromStarter ? 'always' : 'if_required',
       subscription_data: {
-        metadata: {
-          supabase_user_id: auth.user.id,
-          product_slug: productSlug,
-          price_interval: priceInterval,
-        },
+        metadata: sessionMetadata,
       },
-      metadata: {
-        supabase_user_id: auth.user.id,
-        product_slug: productSlug,
-        price_interval: priceInterval,
-      },
+      metadata: sessionMetadata,
     }
 
     if (couponId) {

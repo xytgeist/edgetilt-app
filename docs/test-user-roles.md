@@ -123,6 +123,50 @@ on conflict (user_id, product_slug) do update set status = excluded.status;
 
 Client entitlements: **`get_my_entitlements()`** → `{ "slots-edge-starter": { "active": true, … } }`. Reload app after SQL.
 
+**Grant Lifetime (test only):**
+
+```sql
+insert into public.user_subscriptions (
+  user_id, product_slug, stripe_subscription_id, stripe_customer_id, status
+)
+select
+  p.user_id,
+  'slots-edge-lifetime',
+  'test_lifetime_' || p.user_id::text,
+  coalesce(p.stripe_customer_id, 'test_cus_' || p.user_id::text),
+  'active'
+from public.profiles p
+where lower(p.handle) = lower('smokewagon')
+on conflict (user_id, product_slug) do update set status = excluded.status;
+
+select public.sync_profile_has_active_subscription(p.user_id)
+from public.profiles p
+where lower(p.handle) = lower('smokewagon');
+```
+
+**Revoke all Slots Edge access (quick free-tier reset for testing):**
+
+By **handle** (e.g. `@smokewagon`):
+
+```sql
+update public.user_subscriptions us
+set status = 'canceled', updated_at = now()
+from public.profiles p
+where us.user_id = p.user_id
+  and lower(p.handle) = lower('smokewagon')
+  and us.product_slug in ('slots-edge', 'slots-edge-starter', 'slots-edge-lifetime');
+
+select public.sync_profile_has_active_subscription(p.user_id)
+from public.profiles p
+where lower(p.handle) = lower('smokewagon');
+```
+
+Full script with verify query: **`supabase/scripts/revoke_slots_edge_subscription_by_handle.sql`**.
+
+**Do not** flip **`has_active_subscription` alone** ... **`get_my_entitlements()`** still reads active rows from **`user_subscriptions`**. Reload the app after revoke.
+
+Optional: delete **`starter_weekly_guide_unlocks`** for that user if you need a clean Starter weekly-drop retest (see script comment).
+
 ### Weekly premium drop (test)
 
 Apply migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, then either:

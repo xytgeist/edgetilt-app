@@ -4,6 +4,7 @@ import { requireStripeSecretKey, requireStripeWebhookSecret } from '../_shared/b
 import {
   createBillingAdmin,
   recordWebhookEvent,
+  upsertLifetimePurchaseFromCheckout,
   upsertUserSubscriptionFromStripe,
   type StripeSubscriptionPayload,
 } from '../_shared/billingDb.ts'
@@ -81,23 +82,11 @@ Deno.serve(async (req) => {
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
-      if (session.mode !== 'subscription' || !session.subscription) {
-        return jsonResponse({ ok: true })
-      }
-
-      const subscriptionId =
-        typeof session.subscription === 'string' ? session.subscription : session.subscription.id
-      const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as StripeSubscriptionPayload
 
       const userId =
         session.client_reference_id?.trim() ||
         session.metadata?.supabase_user_id?.trim() ||
-        subscription.metadata?.supabase_user_id?.trim() ||
         null
-      const productSlug =
-        session.metadata?.product_slug?.trim() ||
-        subscription.metadata?.product_slug?.trim() ||
-        'slots-edge'
 
       if (userId && session.customer) {
         await admin
@@ -106,8 +95,54 @@ Deno.serve(async (req) => {
           .eq('user_id', userId)
       }
 
-      if (userId) {
-        await upsertUserSubscriptionFromStripe(admin, { userId, productSlug, subscription })
+      if (session.mode === 'payment') {
+        const productSlug = session.metadata?.product_slug?.trim() || 'slots-edge-lifetime'
+        if (productSlug !== 'slots-edge-lifetime') {
+          return jsonResponse({ ok: true, skipped: true })
+        }
+        if (!userId) {
+          console.warn('stripe-webhook: lifetime payment missing user', session.id)
+          return jsonResponse({ ok: true, skipped: true })
+        }
+
+        const paymentReferenceId =
+          (typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id) || session.id
+
+        await upsertLifetimePurchaseFromCheckout(admin, {
+          userId,
+          productSlug,
+          stripeCustomerId: String(session.customer),
+          paymentReferenceId,
+        })
+
+        return jsonResponse({ ok: true })
+      }
+
+      if (session.mode !== 'subscription' || !session.subscription) {
+        return jsonResponse({ ok: true })
+      }
+
+      const subscriptionId =
+        typeof session.subscription === 'string' ? session.subscription : session.subscription.id
+      const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as StripeSubscriptionPayload
+
+      const resolvedUserId =
+        userId ||
+        subscription.metadata?.supabase_user_id?.trim() ||
+        null
+      const productSlug =
+        session.metadata?.product_slug?.trim() ||
+        subscription.metadata?.product_slug?.trim() ||
+        'slots-edge'
+
+      if (resolvedUserId) {
+        await upsertUserSubscriptionFromStripe(admin, {
+          userId: resolvedUserId,
+          productSlug,
+          subscription,
+        })
       }
     }
 

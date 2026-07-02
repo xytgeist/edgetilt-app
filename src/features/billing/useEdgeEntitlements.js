@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchMyEntitlements } from './stripeBillingApi.js'
-import { hasEntitlement, hasSlotsEdge, hasSlotsEdgeStarter, PRODUCT_SLOTS_EDGE } from './edgeProducts.js'
+import { hasEntitlement, hasSlotsEdge, hasSlotsEdgeLifetime, hasSlotsEdgeStarter, PRODUCT_SLOTS_EDGE } from './edgeProducts.js'
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient | null | undefined} supabaseClient
@@ -41,6 +41,7 @@ export function useEdgeEntitlements(supabaseClient, userId) {
     refresh,
     hasEntitlement: checkEntitlement,
     hasSlotsEdge: hasSlotsEdge(entitlements),
+    hasSlotsEdgeLifetime: hasSlotsEdgeLifetime(entitlements),
     hasSlotsEdgeStarter: hasSlotsEdgeStarter(entitlements),
     slotsEdgeSlug: PRODUCT_SLOTS_EDGE,
   }

@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import SlotsEdgeUpgradePill from '../../components/SlotsEdgeUpgradePill.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
   CALCULATOR_CATALOG,
@@ -30,6 +31,7 @@ function CalculatorsHome({
   browseMode,
   onOpenAuth,
   hasSlotsEdge = false,
+  hasSlotsEdgeStarter = false,
   isStaff = false,
   onRequireSubscribe,
   gatesMap = null,
@@ -39,6 +41,7 @@ function CalculatorsHome({
   onSetContentGate,
 }) {
   const access = { browseMode, isStaff, hasSlotsEdge, gatesMap, starterUnlockedCalculatorKeys }
+  const showUpgradePill = hasSlotsEdgeStarter && !hasSlotsEdge
   const [gateBusyKey, setGateBusyKey] = useState(null)
 
   const handleSelect = (key) => {
@@ -96,7 +99,13 @@ function CalculatorsHome({
             ) : null}
             <button
               type="button"
-              title={locked ? 'Subscribe to unlock Slots Edge' : undefined}
+              title={
+                locked
+                  ? showUpgradePill
+                    ? 'Upgrade to Slots Edge Pro to unlock this calculator'
+                    : 'Subscribe to unlock Slots Edge'
+                  : undefined
+              }
               onClick={() => handleSelect(calc.key)}
               className={`calc-list-btn ${calc.buttonClassName}`}
             >
@@ -114,7 +123,13 @@ function CalculatorsHome({
               <div className="min-w-0 flex-1 self-center">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className={`min-w-0 flex-1 ${calc.titleClassName}`}>{calc.title}</div>
-                  {locked ? <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" /> : null}
+                  {locked ? (
+                    showUpgradePill ? (
+                      <SlotsEdgeUpgradePill />
+                    ) : (
+                      <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" />
+                    )
+                  ) : null}
                 </div>
                 <p className={calc.subtitleClassName} title={calc.subtitleTitle || undefined}>
                   {calc.subtitle}
@@ -146,6 +161,7 @@ export default function CalculatorsTab({
   browseMode,
   onOpenAuth,
   hasSlotsEdge = false,
+  hasSlotsEdgeStarter = false,
   isStaff = false,
   onRequireSubscribe,
   gatesMap = null,
@@ -174,6 +190,7 @@ export default function CalculatorsTab({
           browseMode={browseMode}
           onOpenAuth={onOpenAuth}
           hasSlotsEdge={hasSlotsEdge}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarter}
           isStaff={isStaff}
           onRequireSubscribe={onRequireSubscribe}
           gatesMap={gatesMap}

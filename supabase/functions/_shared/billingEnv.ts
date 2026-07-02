@@ -11,6 +11,14 @@ export function stripePriceSecretForProduct(
     return annual
   }
 
+  if (productSlug === 'slots-edge-starter' && priceInterval === 'annual') {
+    const annual = Deno.env.get('STRIPE_PRICE_SLOTS_EDGE_STARTER_ANNUAL')?.trim()
+    if (!annual) {
+      throw new Error('Missing Edge secret STRIPE_PRICE_SLOTS_EDGE_STARTER_ANNUAL for annual Starter billing.')
+    }
+    return annual
+  }
+
   const envKey = `STRIPE_PRICE_${productSlug.toUpperCase().replace(/-/g, '_')}`
   const priceId = Deno.env.get(envKey)?.trim()
   if (!priceId) {
@@ -19,9 +27,23 @@ export function stripePriceSecretForProduct(
   return priceId
 }
 
-/** Optional early-bird coupon (10% × 12 months). Returns null when unset. */
+/** Founding 25% × 12 months on monthly Starter / Full subscriptions. */
+export function stripeFoundingMonthlyCouponId(): string | null {
+  return (
+    Deno.env.get('STRIPE_COUPON_FOUNDING_MONTHLY')?.trim() ||
+    Deno.env.get('STRIPE_COUPON_EARLY_BIRD')?.trim() ||
+    null
+  )
+}
+
+/** Founding 25% once on annual Full subscription checkout and Lifetime payment checkout. */
+export function stripeFoundingOnceCouponId(): string | null {
+  return Deno.env.get('STRIPE_COUPON_FOUNDING_ONCE')?.trim() || null
+}
+
+/** @deprecated use stripeFoundingMonthlyCouponId */
 export function stripeEarlyBirdCouponId(): string | null {
-  return Deno.env.get('STRIPE_COUPON_EARLY_BIRD')?.trim() || null
+  return stripeFoundingMonthlyCouponId()
 }
 
 export function requireStripeSecretKey(): string {

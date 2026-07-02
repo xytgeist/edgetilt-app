@@ -327,6 +327,7 @@ function App() {
     entitlements,
     refresh: refreshEntitlements,
     hasSlotsEdge: hasSlotsEdgeFromRpc,
+    hasSlotsEdgeLifetime: hasSlotsEdgeLifetimeFromRpc,
     hasSlotsEdgeStarter: hasSlotsEdgeStarterFromRpc,
   } = useEdgeEntitlements(supabase, user?.id)
 
@@ -796,6 +797,7 @@ function App() {
     String(import.meta.env.VITE_HAS_ACTIVE_SUBSCRIPTION || '').toLowerCase() === 'true'
 
   const hasSlotsEdgeStarterAccess = isStaffRole || hasSlotsEdgeStarterFromRpc
+  const hasSlotsEdgeLifetimeAccess = isStaffRole || hasSlotsEdgeLifetimeFromRpc
 
   // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {
@@ -828,8 +830,8 @@ function App() {
           initialProductSlug={subscribeModal.productSlug}
           onClose={closeSubscribeModal}
           supabaseClient={supabase}
-          hasBillingAccount={Boolean(stripeCustomerId)}
           hasSlotsEdge={hasSlotsEdgeAccess}
+          hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeAccess}
           hasSlotsEdgeStarter={hasSlotsEdgeStarterAccess}
         />
         {legalAcceptancePending && user ? (

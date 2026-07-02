@@ -3,14 +3,115 @@ import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import {
   checkoutReturnUrls,
   requireStripeSecretKey,
-  stripeEarlyBirdCouponId,
+  stripeFoundingMonthlyCouponId,
+  stripeFoundingOnceCouponId,
   stripePriceSecretForProduct,
 } from '../_shared/billingEnv.ts'
 import {
   assertActiveProduct,
   createBillingAdmin,
   getUserFromJwt,
+  upsertUserSubscriptionFromStripe,
 } from '../_shared/billingDb.ts'
+
+const LIFETIME_PRODUCT_SLUG = 'slots-edge-lifetime'
+const STARTER_PRODUCT_SLUG = 'slots-edge-starter'
+const FULL_PRODUCT_SLUG = 'slots-edge'
+
+function foundingCouponId(
+  productSlug: string,
+  priceInterval: 'monthly' | 'annual',
+  isLifetime: boolean,
+  wantsFounding: boolean,
+): string | null {
+  if (!wantsFounding) return null
+  if (isLifetime || priceInterval === 'annual') {
+    return stripeFoundingOnceCouponId()
+  }
+  if (
+    priceInterval === 'monthly' &&
+    (productSlug === 'slots-edge' || productSlug === 'slots-edge-starter')
+  ) {
+    return stripeFoundingMonthlyCouponId()
+  }
+  return null
+}
+
+async function userHasActiveProduct(
+  admin: ReturnType<typeof createBillingAdmin>,
+  userId: string,
+  productSlug: string,
+) {
+  const { data, error } = await admin
+    .from('user_subscriptions')
+    .select('status')
+    .eq('user_id', userId)
+    .eq('product_slug', productSlug)
+    .maybeSingle()
+  if (error) throw new Error(`user_subscriptions lookup: ${error.message}`)
+  return data?.status === 'active' || data?.status === 'trialing'
+}
+
+async function getActiveStarterSubscription(
+  admin: ReturnType<typeof createBillingAdmin>,
+  userId: string,
+) {
+  const { data, error } = await admin
+    .from('user_subscriptions')
+    .select('stripe_subscription_id, status')
+    .eq('user_id', userId)
+    .eq('product_slug', STARTER_PRODUCT_SLUG)
+    .maybeSingle()
+  if (error) throw new Error(`user_subscriptions starter lookup: ${error.message}`)
+  if (!data?.stripe_subscription_id) return null
+  if (data.status !== 'active' && data.status !== 'trialing') return null
+  return data
+}
+
+async function upgradeStarterSubscriptionToFull(
+  stripe: Stripe,
+  admin: ReturnType<typeof createBillingAdmin>,
+  args: {
+    userId: string
+    starterSubscriptionId: string
+    fullPriceId: string
+    priceInterval: 'monthly' | 'annual'
+    couponId: string | null
+  },
+) {
+  const subscription = await stripe.subscriptions.retrieve(args.starterSubscriptionId)
+  if (subscription.status !== 'active' && subscription.status !== 'trialing') {
+    throw new Error('Starter subscription is not active.')
+  }
+
+  const itemId = subscription.items.data[0]?.id
+  if (!itemId) throw new Error('Starter subscription has no billable item.')
+
+  const updateParams: Stripe.SubscriptionUpdateParams = {
+    items: [{ id: itemId, price: args.fullPriceId }],
+    proration_behavior: 'always_invoice',
+    metadata: {
+      supabase_user_id: args.userId,
+      product_slug: FULL_PRODUCT_SLUG,
+      price_interval: args.priceInterval,
+      upgraded_from: STARTER_PRODUCT_SLUG,
+    },
+  }
+
+  if (args.couponId) {
+    updateParams.discounts = [{ coupon: args.couponId }]
+  }
+
+  const updated = await stripe.subscriptions.update(args.starterSubscriptionId, updateParams)
+
+  await upsertUserSubscriptionFromStripe(admin, {
+    userId: args.userId,
+    productSlug: FULL_PRODUCT_SLUG,
+    subscription: updated,
+  })
+
+  return updated
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,15 +138,32 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'product_slug is required.' }, 400)
     }
 
+    const isLifetime = productSlug === LIFETIME_PRODUCT_SLUG
+
     const rawInterval = String(body.price_interval ?? 'monthly').trim().toLowerCase()
     const priceInterval = rawInterval === 'annual' ? 'annual' : 'monthly'
-    if (productSlug !== 'slots-edge' && priceInterval === 'annual') {
-      return jsonResponse({ error: 'Annual billing is only available for Full Edge (slots-edge).' }, 400)
+    if (
+      !isLifetime &&
+      priceInterval === 'annual' &&
+      productSlug !== 'slots-edge' &&
+      productSlug !== 'slots-edge-starter'
+    ) {
+      return jsonResponse({ error: 'Annual billing is only available for Slots Edge and Slots Edge Pro.' }, 400)
     }
 
     const productCheck = await assertActiveProduct(admin, productSlug)
     if (!productCheck.ok) {
       return jsonResponse({ error: productCheck.error }, productCheck.status)
+    }
+
+    if (isLifetime && (await userHasActiveProduct(admin, auth.user.id, LIFETIME_PRODUCT_SLUG))) {
+      return jsonResponse({ error: 'You already have Slots Edge Lifetime on this account.' }, 400)
+    }
+
+    if (!isLifetime && productSlug === FULL_PRODUCT_SLUG) {
+      if (await userHasActiveProduct(admin, auth.user.id, FULL_PRODUCT_SLUG)) {
+        return jsonResponse({ error: 'You already have Slots Edge Pro on this account.' }, 400)
+      }
     }
 
     const priceId = stripePriceSecretForProduct(productSlug, priceInterval)
@@ -72,10 +190,65 @@ Deno.serve(async (req) => {
     }
 
     const { success_url, cancel_url } = checkoutReturnUrls(req, productSlug)
-    const wantsEarlyBird = body.apply_early_bird !== false
-    // Annual Full Edge is already discounted vs monthly; do not stack founding-member coupon.
-    const applyEarlyBird = wantsEarlyBird && priceInterval !== 'annual'
-    const earlyBirdCouponId = applyEarlyBird ? stripeEarlyBirdCouponId() : null
+    const wantsFounding = body.apply_early_bird !== false
+
+    if (
+      !isLifetime &&
+      productSlug === FULL_PRODUCT_SLUG &&
+      (await userHasActiveProduct(admin, auth.user.id, STARTER_PRODUCT_SLUG))
+    ) {
+      const starterRow = await getActiveStarterSubscription(admin, auth.user.id)
+      if (starterRow?.stripe_subscription_id) {
+        const couponId = foundingCouponId(productSlug, priceInterval, false, wantsFounding)
+        await upgradeStarterSubscriptionToFull(stripe, admin, {
+          userId: auth.user.id,
+          starterSubscriptionId: starterRow.stripe_subscription_id,
+          fullPriceId: priceId,
+          priceInterval,
+          couponId,
+        })
+        return jsonResponse({
+          url: success_url,
+          product_slug: productSlug,
+          upgraded: true,
+        })
+      }
+    }
+
+    if (isLifetime) {
+      const couponId = foundingCouponId(productSlug, 'monthly', true, wantsFounding)
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
+        mode: 'payment',
+        customer: customerId,
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url,
+        cancel_url,
+        client_reference_id: auth.user.id,
+        metadata: {
+          supabase_user_id: auth.user.id,
+          product_slug: productSlug,
+        },
+        payment_intent_data: {
+          metadata: {
+            supabase_user_id: auth.user.id,
+            product_slug: productSlug,
+          },
+        },
+      }
+      if (couponId) {
+        sessionParams.discounts = [{ coupon: couponId }]
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams)
+
+      if (!session.url) {
+        throw new Error('Stripe Checkout session missing url.')
+      }
+
+      return jsonResponse({ url: session.url, product_slug: productSlug })
+    }
+
+    const couponId = foundingCouponId(productSlug, priceInterval, false, wantsFounding)
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
@@ -98,8 +271,8 @@ Deno.serve(async (req) => {
       },
     }
 
-    if (earlyBirdCouponId) {
-      sessionParams.discounts = [{ coupon: earlyBirdCouponId }]
+    if (couponId) {
+      sessionParams.discounts = [{ coupon: couponId }]
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams)

@@ -1345,6 +1345,7 @@ export default function AppShell({
           browseMode={browseMode}
           onOpenAuth={() => onOpenAuth?.('login')}
           hasSlotsEdge={hasActiveSubscription}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarter}
           isStaff={isStaff}
           isAdmin={isAdmin}
           gatesMap={contentAccessGatesMap}

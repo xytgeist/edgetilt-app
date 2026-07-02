@@ -12,8 +12,8 @@
 | --- | --- | --- |
 | **No account** | `anonymous` | Lounge only: **read-only** feed (no post cap — same feed depth as public RLS + app pagination allow). No search/filter/post detail/navigation; **create account** modal on forbidden actions. |
 | **Free (verified user)** | `free` | Full **Lounge** (post, lounge search, filter, comment, like, repost, bookmark, etc.). **Verified user** badge by display name. Rest of app reachable from menu; **subscribe** gates on bankroll, offer alerts/OCR, locked calcs/guides. |
-| **Paid — Starter** | `starter` | **Verified** + **subscriber** badges. **AP guide cards** are the primary product: fixed **starter pack** on subscribe + **one random premium guide drop per week** (engagement + upgrade funnel). Tools mostly gated. See **§5**. |
-| **Paid — Full Edge** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
+| **Paid — Slots Edge** | `starter` / `slots-edge-starter` | **Verified** + **subscriber** badges. **AP guide cards** are the primary product: fixed **starter pack** on subscribe + **one random premium guide drop per week** (engagement + upgrade funnel). Tools mostly gated. See **§5**. |
+| **Paid — Slots Edge Pro** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
 | **Moderator / admin** | `staff` (`role` on profile) | **Full access** to everything, including new calcs/guides before/during any add-on rollout. **Special badges** distinct from verified/subscriber. |
 
 ---
@@ -83,21 +83,37 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 **Product thesis:** **AP guide cards** (which slots are +EV and how to play them) are the **primary value**. Calculators, bankroll, logbook, calendar, and Lounge are built around the guide library.
 
-### 5.1 Pricing catalog (locked 2026-07-01)
+### 5.1 Pricing catalog (MSRP + founding member 25% off — locked 2026-07-02)
 
-| Plan | Internal slug (planned) | List price | Early bird (first 12 billing months) |
+| Plan | Internal slug | MSRP (anchor) | Founding member (25% off) |
 | --- | --- | --- | --- |
-| **Starter** | `slots-edge-starter` | **$14/mo** | **$12.60/mo** (10% off) |
-| **Full Edge — monthly** | `slots-edge` | **$42/mo** | **$37.80/mo** (10% off) |
-| **Full Edge — annual** | `slots-edge` (annual Price) | **$420/yr** (~$35/mo effective) | **$420/yr** (built-in yearly savings; **no** founding-member coupon) |
+| **Slots Edge** | `slots-edge-starter` | **$19.99/mo** | **$14.99/mo** (× 12 billing months) |
+| **Slots Edge — annual** | `slots-edge-starter` (annual Price) | **$219.99/yr** (~$18.33/mo; one month free vs $19.99×12) | **$164.99/yr** (~$13.75/mo effective; once at checkout) |
+| **Slots Edge Pro — monthly** | `slots-edge` | **$59.99/mo** | **$44.99/mo** (× 12 billing months) |
+| **Slots Edge Pro — annual** | `slots-edge` (annual Price) | **$660/yr** (~$55/mo; one month free vs $59.99×12) | **$495/yr** (~$41.25/mo effective; once at checkout) |
+| **Slots Edge Lifetime** | `slots-edge-lifetime` | **$1,699** one-time | **$1,274.25** (once at checkout) |
 
-**Early subscriber offer:** **10% off for the first 12 billing months** on **monthly** Starter and **monthly** Full Edge via Stripe **Coupon** (`percent_off: 10`, `duration: repeating`, `duration_in_months: 12`). **Not** applied to annual Full Edge (yearly price already discounted vs 12× monthly).
+**Founding member offer:** **25% off** via Stripe Coupons — **`STRIPE_COUPON_FOUNDING_MONTHLY`** (or legacy **`STRIPE_COUPON_EARLY_BIRD`**) on **monthly** Slots Edge and Slots Edge Pro: `percent_off: 25`, `duration: repeating`, `duration_in_months: 12`. **`STRIPE_COUPON_FOUNDING_ONCE`**: `percent_off: 25`, `duration: once` on **annual Slots Edge**, **annual Slots Edge Pro** subscription checkout, and **Slots Edge Lifetime** one-time payment.
 
-**Competitive positioning:** Full Edge at **$42/mo** undercuts typical AP sites (**$35–49/mo**) while staying **3× Starter** ($14) for clear tier separation.
+**Competitive positioning:** Founding Slots Edge Pro at **~$45/mo** sits at the top of typical AP sites (**$35–49/mo**) while MSRP **$60** anchors premium vs competitors. Slots Edge founding **~$15/mo** keeps a clear **~3×** gap to Pro.
 
-**Not in v1 catalog:** Lifetime / founding membership — **TBD** (optional later offer).
+### 5.3.1 Slots Edge Lifetime (`slots-edge-lifetime`)
 
-### 5.2 Starter (`slots-edge-starter`)
+**Guides + tools**
+
+- **Same as Slots Edge Pro today:** entire published AP guide library, all calculators, unlimited bankroll/logbook, calendar OCR/alerts.
+- **Future Slots vertical:** all **new Slots Edge guides, calculators, and tools** we ship are included **without add-on paywalls** (see §5.3 add-ons ... Lifetime is the exception within **Slots** only).
+- **Not included:** separate verticals when they ship (**`sports-edge`**, **`crypto-edge`**) ... those remain their own products.
+
+**Billing**
+
+- **One-time** Stripe Checkout (`mode: payment`), not a subscription.
+- Entitlement row in **`user_subscriptions`** with **`product_slug = slots-edge-lifetime`**, **`status = active`**, no renewal.
+- **`profiles.has_active_subscription`** mirrors Lifetime the same as active **`slots-edge`** (Slots Edge Pro; legacy hamburger/chat gates).
+
+**Removed from v1 note:** Lifetime was TBD; now catalogued above. MSRP **$1,699** · founding **$1,274.25** at 25% off.
+
+### 5.2 Slots Edge (`slots-edge-starter`)
 
 **Guides (hero)**
 
@@ -107,7 +123,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
   - **Remaining pool (per user):** eligible slugs minus slugs that user **already earned** via prior weekly drops (starter pack ≤ 2019 is implicit and never in the pool).
   - **No duplicates** for that user; when the pool is exhausted, the job skips until new 2020+ guides ship.
   - **Persistence:** `starter_weekly_guide_unlocks` + **`get_my_starter_weekly_guide_slugs()`**; cron calls **`grant_starter_weekly_guide_drop(user_id)`** (service role).
-- **Reveal UX:** in-app drop moment + optional push; each reveal surfaces **upgrade to Full Edge** CTA.
+- **Reveal UX:** in-app drop moment + optional push; each reveal surfaces **upgrade to Slots Edge Pro** CTA.
 - **On cancel:** user **keeps** guides already unlocked (earned library persists).
 
 **Tools**
@@ -119,7 +135,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 - **Subscriber** badge on posts (any paid plan).
 
-### 5.3 Full Edge (`slots-edge`)
+### 5.3 Slots Edge Pro (`slots-edge`)
 
 **Guides**
 
@@ -137,12 +153,12 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 **Add-ons**
 
-- When **new games** ship with new calculators and/or guides, those assets may have an **additional paywall**. **Only Full Edge subscribers** (and staff) get the purchase path; free and Starter users see upgrade/subscribe flows instead.
+- When **new games** ship with new calculators and/or guides, those assets may have an **additional paywall** for **monthly/annual Slots Edge Pro** subscribers. **Slots Edge Lifetime** and **staff** get those Slots assets without add-on purchase; free and Slots Edge users see upgrade/subscribe flows instead.
 
 ### 5.4 Upgrades
 
-- **Starter → Full Edge:** one checkout path; Stripe proration; **immediate** full library unlock.
-- **Free → either plan:** standard subscribe modal with plan picker (**engineering TBD**).
+- **Slots Edge → Slots Edge Pro:** same **Upgrade to Slots Edge Pro** button in **`SubscribeModal`**. Edge **`stripe-create-checkout-session`** detects active **`slots-edge-starter`** and **updates the existing Stripe subscription** to the Pro price with **`proration_behavior: always_invoice`** (unused Slots Edge time credits against the upgrade invoice). **`user_subscriptions`** Starter row is removed; Pro row is upserted on the same **`stripe_subscription_id`**. **Immediate** full library unlock.
+- **Free → either plan:** standard subscribe modal with plan picker.
 
 ### 5.5 Future verticals
 
@@ -166,7 +182,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | --- | --- |
 | **Which calcs/guides are free vs locked** | **Calcs (free):** **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB). **Calcs (always subscriber):** **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`** (Phoenix Link + Stack Up Pays; admin gates cannot unlock for free). **Guides (free):** **`FREE_GUIDE_SLUGS`** only. **Guides (Starter $14):** **`machines.release_year` ≤ 2019** + weekly **2020+** drops (**`GUIDE_STARTER_PACK_MAX_RELEASE_YEAR`**). **Admins:** **`content_access_gates`** (except subscriber-only calcs). |
 | **Signup / verification** | Supabase auth + email verification policy for “free” tier — **TBD** (no `allowed_emails` gate in the client). |
-| **Stripe products** | **Slots Edge:** `slots-edge-starter` ($14/mo), **`slots-edge`** Full ($42/mo + $420/yr) — see **§5.1**. **`sports-edge`**, **`crypto-edge`** later. Price IDs in Edge secrets; **10% early-bird coupon** (12-month repeating). **`user_subscriptions`** + per-user **guide unlocks** (Starter pack + weekly drops — schema **TBD**). **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **active Full `slots-edge`** (Starter **TBD**). See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
+| **Stripe products** | **Slots Edge:** `slots-edge-starter` ($19.99/mo MSRP), **`slots-edge`** Full ($59.99/mo + $660/yr MSRP), **`slots-edge-lifetime`** ($1,699 one-time) — see **§5.1**. **`sports-edge`**, **`crypto-edge`** later. Price IDs in Edge secrets; **25% founding coupons** (monthly ×12 + once for annual/lifetime). **`user_subscriptions`** + Starter guide unlocks. **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **active Full `slots-edge`** or **Lifetime**. See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
 | **Starter pack slugs** | **Release year ≤ 2019** on **`machines.release_year`**. Weekly drop pool = published guides **2020+** only (minus **`FREE_GUIDE_SLUGS`**). |
 | **Weekly drop job** | **`grant_starter_weekly_guide_drop(user_id)`** — uniform random from **that user's remaining** 2020+ slugs; idempotent per UTC week. Cron/Edge scheduler **TBD**; reveal UX **TBD**. |
 
@@ -207,3 +223,4 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | 2026-06-27 | **Bankroll + Logbook:** free users get **10 bankroll sessions** and **10 play logs**; hub tiles unlocked; create buttons lock at limit → subscribe. Constants in **`freemiumToolLimits.js`**. |
 | 2026-07-01 | **Free tier guide + calc list:** **`FREE_GUIDE_SLUGS`** (14 AP guides) and **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB only). Starter pack remains release year ≤ 2019. |
 | 2026-07-01 | **Starter weekly drop rules locked:** per-user uniform random from **remaining** published **2020+** slugs (excludes free list + prior grants). Migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, pool helpers **`starterWeeklyDropPool.js`**, client **`useStarterWeeklyDropGuideSlugs`**. |
+| 2026-07-01 | **Public tier names:** **Slots Edge** (`slots-edge-starter`), **Slots Edge Pro** (`slots-edge`), **Slots Edge Lifetime** (`slots-edge-lifetime`). Migration **`20260701150000_subscription_product_tier_display_names.sql`**. Subscribe modal + **`edgeProducts.js`** display names. |

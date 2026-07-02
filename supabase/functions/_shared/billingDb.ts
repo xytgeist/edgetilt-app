@@ -75,6 +75,54 @@ export async function upsertUserSubscriptionFromStripe(
   })
   if (error) throw new Error(`user_subscriptions upsert: ${error.message}`)
 
+  if (productSlug === 'slots-edge') {
+    await clearStarterSubscriptionRow(admin, userId)
+  }
+
+  await syncProfileHasActiveSubscription(admin, userId)
+}
+
+/** Remove Starter row after the same Stripe subscription is upgraded to Full Edge. */
+export async function clearStarterSubscriptionRow(admin: SupabaseClient, userId: string) {
+  const { error } = await admin
+    .from('user_subscriptions')
+    .delete()
+    .eq('user_id', userId)
+    .eq('product_slug', 'slots-edge-starter')
+  if (error) throw new Error(`user_subscriptions starter clear: ${error.message}`)
+}
+
+/** One-time Slots Edge Lifetime checkout (Stripe mode payment). */
+export async function upsertLifetimePurchaseFromCheckout(
+  admin: SupabaseClient,
+  args: {
+    userId: string
+    productSlug: string
+    stripeCustomerId: string
+    paymentReferenceId: string
+  },
+) {
+  const { userId, productSlug, stripeCustomerId, paymentReferenceId } = args
+  const row = {
+    user_id: userId,
+    product_slug: productSlug,
+    stripe_subscription_id: paymentReferenceId,
+    stripe_customer_id: stripeCustomerId,
+    status: 'active',
+    current_period_end: null,
+    cancel_at_period_end: false,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { error } = await admin.from('user_subscriptions').upsert(row, {
+    onConflict: 'user_id,product_slug',
+  })
+  if (error) throw new Error(`user_subscriptions lifetime upsert: ${error.message}`)
+
+  await syncProfileHasActiveSubscription(admin, userId)
+}
+
+async function syncProfileHasActiveSubscription(admin: SupabaseClient, userId: string) {
   const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
     p_user_id: userId,
   })

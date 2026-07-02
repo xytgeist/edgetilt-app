@@ -22,6 +22,7 @@ export async function startEdgeCheckout(supabaseClient, productSlug, options = {
     throw new Error('Checkout URL missing from server response.')
   }
   window.location.assign(data.url)
+  return data
 }
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */

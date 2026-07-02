@@ -2218,21 +2218,24 @@ html.light [data-subscribe-modal] button.border-zinc-700 {
   background: linear-gradient(145deg, #451a03 0%, #09090b 58%) !important;
 }
 [data-subscribe-modal] .subscribe-plan-carousel-3d {
-  perspective: 1400px;
-  perspective-origin: 50% 50%;
+  perspective: 1600px;
+  perspective-origin: 50% 42%;
   overflow: visible;
   min-height: 100%;
+  height: 100%;
+  width: 100%;
 }
 [data-subscribe-modal] .subscribe-plan-carousel-stage {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 25rem;
+  min-height: 22rem;
   transform-style: preserve-3d;
+  transform: translateZ(0);
 }
 @media (min-width: 640px) {
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    min-height: 27rem;
+    min-height: 24rem;
   }
 }
 [data-subscribe-modal] .subscribe-plan-carousel-floor {
@@ -2244,13 +2247,38 @@ html.light [data-subscribe-modal] button.border-zinc-700 {
   top: 50%;
   width: min(16.75rem, 70vw);
   transform-style: preserve-3d;
-  opacity: 1;
   overflow: visible;
-  transition: transform 680ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition:
+    transform 820ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 680ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform, opacity;
+}
+[data-subscribe-modal] .subscribe-plan-slide-3d--instant {
+  transition: none !important;
+}
+[data-subscribe-modal] .subscribe-plan-slide-3d--dragging,
+[data-subscribe-modal] .subscribe-plan-carousel-3d--dragging .subscribe-plan-slide-3d {
+  transition: none !important;
+}
+[data-subscribe-modal] .subscribe-plan-carousel-3d--dragging .subscribe-plan-card {
+  transition: none !important;
+}
+[data-subscribe-modal] .subscribe-plan-carousel-3d {
+  touch-action: pan-y;
+  cursor: grab;
+}
+[data-subscribe-modal] .subscribe-plan-carousel-3d--dragging {
+  cursor: grabbing;
 }
 [data-subscribe-modal] .subscribe-plan-card {
   overflow: visible;
+  transition:
+    filter 820ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 820ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 680ms cubic-bezier(0.32, 0.72, 0, 1),
+    background 680ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 [data-subscribe-modal] .subscribe-plan-founding-badge {
   z-index: 40;
@@ -2292,7 +2320,8 @@ html.light [data-subscribe-modal] .subscribe-plan-carousel-floor {
   background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.12) 0%, rgba(6, 182, 212, 0.03) 42%, transparent 72%);
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-subscribe-modal] .subscribe-plan-slide-3d {
+  [data-subscribe-modal] .subscribe-plan-slide-3d,
+  [data-subscribe-modal] .subscribe-plan-card {
     transition: none;
   }
 }

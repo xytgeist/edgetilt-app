@@ -35,25 +35,77 @@ function getSlideOffset(index, activeIndex) {
   return offset
 }
 
-/** @param {number} offset */
-function getSlide3DStyle(offset) {
-  const base = 'translate(-50%, -50%)'
-  if (offset === 0) {
-    return {
-      transform: `${base} translate3d(0, 0, 120px) rotateY(0deg) scale(1)`,
-      zIndex: 30,
-    }
-  }
-  if (offset === -1) {
-    return {
-      transform: `${base} translate3d(-52%, 0, -140px) rotateY(0deg) scale(0.86)`,
-      zIndex: 12,
-    }
-  }
+/** @param {number} prevActive @param {number} nextActive @param {number} slideIndex */
+function isCarouselWrapJump(prevActive, nextActive, slideIndex) {
+  const prevOffset = getSlideOffset(slideIndex, prevActive)
+  const nextOffset = getSlideOffset(slideIndex, nextActive)
+  return Math.abs(prevOffset - nextOffset) > 1
+}
+
+const SLIDE_POSES = {
+  left: { tx: -56, tz: -110, ry: 16, scale: 0.88, opacity: 0.92, z: 14 },
+  center: { tx: 0, tz: 96, ry: 0, scale: 1, opacity: 1, z: 30 },
+  right: { tx: 56, tz: -110, ry: -16, scale: 0.88, opacity: 0.92, z: 14 },
+}
+
+/** @param {number} a @param {number} b @param {number} t */
+function lerp(a, b, t) {
+  return a + (b - a) * t
+}
+
+/** @param {typeof SLIDE_POSES.left} from @param {typeof SLIDE_POSES.center} to @param {number} t */
+function lerpPose(from, to, t) {
   return {
-    transform: `${base} translate3d(52%, 0, -140px) rotateY(0deg) scale(0.86)`,
-    zIndex: 12,
+    tx: lerp(from.tx, to.tx, t),
+    tz: lerp(from.tz, to.tz, t),
+    ry: lerp(from.ry, to.ry, t),
+    scale: lerp(from.scale, to.scale, t),
+    opacity: lerp(from.opacity, to.opacity, t),
+    z: Math.round(lerp(from.z, to.z, t)),
   }
+}
+
+/** @param {number} offset */
+function poseFromEffectiveOffset(offset) {
+  const fade = Math.max(0, 1 - Math.max(0, Math.abs(offset) - 1) * 2.5)
+  let pose
+  if (offset <= -1) {
+    pose = { ...SLIDE_POSES.left }
+  } else if (offset >= 1) {
+    pose = { ...SLIDE_POSES.right }
+  } else if (offset <= 0) {
+    pose = lerpPose(SLIDE_POSES.left, SLIDE_POSES.center, offset + 1)
+  } else {
+    pose = lerpPose(SLIDE_POSES.center, SLIDE_POSES.right, offset)
+  }
+  pose.opacity *= fade
+  return pose
+}
+
+/** @param {typeof SLIDE_POSES.center} pose */
+function poseToSlideStyle(pose) {
+  const base = 'translate(-50%, -50%)'
+  return {
+    transform: `${base} translate3d(${pose.tx}%, 0, ${pose.tz}px) rotateY(${pose.ry}deg) scale(${pose.scale})`,
+    zIndex: pose.z,
+    opacity: pose.opacity,
+  }
+}
+
+/**
+ * @param {number} slideIndex
+ * @param {number} activeIndex
+ * @param {number} dragProgress Fraction of one slide (-1..1) from horizontal drag.
+ */
+function getSlide3DStyle(slideIndex, activeIndex, dragProgress = 0) {
+  const baseOffset = getSlideOffset(slideIndex, activeIndex)
+  const effectiveOffset = baseOffset - dragProgress
+  return poseToSlideStyle(poseFromEffectiveOffset(effectiveOffset))
+}
+
+/** @param {number} widthPx */
+function getCarouselStepPx(widthPx) {
+  return Math.max(120, widthPx * 0.42)
 }
 
 const STARTER_FEATURES = [
@@ -156,7 +208,17 @@ export default function SubscribeModal({
   const [fullInterval, setFullInterval] = useState(/** @type {'monthly' | 'annual'} */ ('monthly'))
   const [starterInterval, setStarterInterval] = useState(/** @type {'monthly' | 'annual'} */ ('monthly'))
   const [activeSlide, setActiveSlide] = useState(1)
-  const touchStartX = useRef(0)
+  /** Slides that reposition instantly on wrap (avoids flying across the deck). */
+  const [instantSlideIndexes, setInstantSlideIndexes] = useState(() => new Set())
+  const [dragPx, setDragPx] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const carouselRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const pointerStartX = useRef(0)
+  const pointerStartY = useRef(0)
+  const dragArmedRef = useRef(false)
+  const isDraggingRef = useRef(false)
+  const suppressCarouselClickRef = useRef(false)
+  const instantSlideResetRef = useRef(0)
 
   useEffect(() => {
     if (!open) return
@@ -165,14 +227,70 @@ export default function SubscribeModal({
     setStarterInterval('monthly')
     setError('')
     setBusy(false)
+    setInstantSlideIndexes(new Set())
+    setDragPx(0)
+    setIsDragging(false)
+    dragArmedRef.current = false
+    isDraggingRef.current = false
     const idx = Math.max(0, PLAN_SLUGS.indexOf(defaultPlan))
     setActiveSlide(idx >= 0 ? idx : 1)
   }, [open, defaultPlan])
 
+  useEffect(() => {
+    return () => {
+      if (instantSlideResetRef.current) {
+        window.clearTimeout(instantSlideResetRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const clearCheckoutBusy = () => {
+      setBusy(false)
+    }
+
+    const onPageShow = (event) => {
+      if (event.persisted) clearCheckoutBusy()
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') clearCheckoutBusy()
+    }
+
+    window.addEventListener('pageshow', onPageShow)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('pageshow', onPageShow)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [open])
+
   const selectPlan = useCallback((slug, slideIndex) => {
+    const instant = new Set()
+    for (let i = 0; i < PLAN_SLUGS.length; i += 1) {
+      if (isCarouselWrapJump(activeSlide, slideIndex, i)) instant.add(i)
+    }
+
+    if (instantSlideResetRef.current) {
+      window.clearTimeout(instantSlideResetRef.current)
+      instantSlideResetRef.current = 0
+    }
+
+    if (instant.size > 0) {
+      setInstantSlideIndexes(instant)
+      instantSlideResetRef.current = window.setTimeout(() => {
+        setInstantSlideIndexes(new Set())
+        instantSlideResetRef.current = 0
+      }, 32)
+    } else {
+      setInstantSlideIndexes(new Set())
+    }
+
     setSelectedPlan(slug)
     setActiveSlide(slideIndex)
-  }, [])
+  }, [activeSlide])
 
   const shiftFocus = useCallback(
     (delta) => {
@@ -182,19 +300,107 @@ export default function SubscribeModal({
     [activeSlide, selectPlan],
   )
 
-  const handleCarouselTouchStart = useCallback((event) => {
-    touchStartX.current = event.changedTouches[0]?.clientX ?? 0
-  }, [])
+  const dragProgress = useMemo(() => {
+    const width = carouselRef.current?.clientWidth ?? 320
+    return -dragPx / getCarouselStepPx(width)
+  }, [dragPx])
 
-  const handleCarouselTouchEnd = useCallback(
-    (event) => {
-      const endX = event.changedTouches[0]?.clientX ?? 0
-      const delta = endX - touchStartX.current
-      if (Math.abs(delta) < 40) return
-      shiftFocus(delta < 0 ? 1 : -1)
+  const finishCarouselDrag = useCallback(
+    (clientX) => {
+      const width = carouselRef.current?.clientWidth ?? 320
+      const stepPx = getCarouselStepPx(width)
+      const progress = -(clientX - pointerStartX.current) / stepPx
+
+      dragArmedRef.current = false
+      isDraggingRef.current = false
+      setIsDragging(false)
+      setDragPx(0)
+
+      if (Math.abs(clientX - pointerStartX.current) < 8) return
+
+      suppressCarouselClickRef.current = true
+      window.setTimeout(() => {
+        suppressCarouselClickRef.current = false
+      }, 0)
+
+      if (progress > 0.22) {
+        shiftFocus(1)
+      } else if (progress < -0.22) {
+        shiftFocus(-1)
+      }
     },
     [shiftFocus],
   )
+
+  const handleCarouselPointerDown = useCallback(
+    (event) => {
+      if (busy) return
+      if (event.pointerType === 'mouse' && event.button !== 0) return
+
+      pointerStartX.current = event.clientX
+      pointerStartY.current = event.clientY
+      dragArmedRef.current = true
+      isDraggingRef.current = false
+      setIsDragging(false)
+      setDragPx(0)
+      event.currentTarget.setPointerCapture(event.pointerId)
+    },
+    [busy],
+  )
+
+  const handleCarouselPointerMove = useCallback((event) => {
+    if (!dragArmedRef.current && !isDraggingRef.current) return
+
+    const deltaX = event.clientX - pointerStartX.current
+    const deltaY = event.clientY - pointerStartY.current
+
+    if (!isDraggingRef.current) {
+      if (Math.abs(deltaX) < 8) return
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        dragArmedRef.current = false
+        return
+      }
+      isDraggingRef.current = true
+      setIsDragging(true)
+    }
+
+    event.preventDefault()
+    setDragPx(deltaX)
+  }, [])
+
+  const handleCarouselPointerUp = useCallback(
+    (event) => {
+      if (!dragArmedRef.current && !isDraggingRef.current) return
+
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        // ignore if capture was already released
+      }
+
+      finishCarouselDrag(event.clientX)
+    },
+    [finishCarouselDrag],
+  )
+
+  const handleCarouselClickCapture = useCallback((event) => {
+    if (!suppressCarouselClickRef.current) return
+    event.preventDefault()
+    event.stopPropagation()
+    suppressCarouselClickRef.current = false
+  }, [])
+
+  const handleCarouselPointerCancel = useCallback((event) => {
+    dragArmedRef.current = false
+    isDraggingRef.current = false
+    setIsDragging(false)
+    setDragPx(0)
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      // ignore
+    }
+  }, [])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -264,7 +470,7 @@ export default function SubscribeModal({
         aria-modal="true"
         aria-labelledby="subscribe-modal-title"
         data-subscribe-modal
-        className="subscribe-modal-shell relative z-10 flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:max-h-[88dvh] sm:max-w-2xl sm:rounded-[1.75rem]"
+        className="subscribe-modal-shell relative z-10 flex h-[90dvh] max-h-[90dvh] min-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:max-w-2xl sm:rounded-[1.75rem]"
       >
         <div className="subscribe-modal-hero relative z-30 shrink-0 bg-zinc-950 px-6 pb-6 pt-6 sm:px-7 sm:pb-7 sm:pt-7">
           <div
@@ -302,7 +508,7 @@ export default function SubscribeModal({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6 sm:px-7 sm:pb-6 sm:pt-7">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-7 sm:pb-6">
           {hasSlotsEdgeLifetime ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5">
               <p className="text-sm leading-relaxed text-zinc-300">
@@ -312,7 +518,7 @@ export default function SubscribeModal({
             </div>
           ) : (
             <>
-              <div className="relative z-10 mx-auto w-full min-h-[25rem] overflow-visible px-1 py-4 sm:min-h-[27rem] sm:py-5">
+              <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center overflow-visible px-1 py-2">
                 <button
                   type="button"
                   aria-label="Previous plan"
@@ -333,10 +539,17 @@ export default function SubscribeModal({
                 </button>
 
                 <div
-                  className="subscribe-plan-carousel-3d h-full w-full touch-pan-y"
+                  ref={carouselRef}
+                  className={[
+                    'subscribe-plan-carousel-3d h-full w-full touch-pan-y select-none',
+                    isDragging ? 'subscribe-plan-carousel-3d--dragging' : '',
+                  ].join(' ')}
                   aria-label="Subscription plan options"
-                  onTouchStart={handleCarouselTouchStart}
-                  onTouchEnd={handleCarouselTouchEnd}
+                  onPointerDown={handleCarouselPointerDown}
+                  onPointerMove={handleCarouselPointerMove}
+                  onPointerUp={handleCarouselPointerUp}
+                  onPointerCancel={handleCarouselPointerCancel}
+                  onClickCapture={handleCarouselClickCapture}
                 >
                   <div className="subscribe-plan-carousel-stage">
                     <div className="subscribe-plan-carousel-floor" aria-hidden />
@@ -344,9 +557,11 @@ export default function SubscribeModal({
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
-                        getSlideOffset(0, activeSlide) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        getSlideOffset(0, activeSlide) === 0 && !isDragging ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        instantSlideIndexes.has(0) ? 'subscribe-plan-slide-3d--instant' : '',
+                        isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
-                      style={getSlide3DStyle(getSlideOffset(0, activeSlide))}
+                      style={getSlide3DStyle(0, activeSlide, dragProgress)}
                     >
                     <div
                       role="button"
@@ -450,9 +665,11 @@ export default function SubscribeModal({
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
-                        getSlideOffset(1, activeSlide) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        getSlideOffset(1, activeSlide) === 0 && !isDragging ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        instantSlideIndexes.has(1) ? 'subscribe-plan-slide-3d--instant' : '',
+                        isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
-                      style={getSlide3DStyle(getSlideOffset(1, activeSlide))}
+                      style={getSlide3DStyle(1, activeSlide, dragProgress)}
                     >
                     <div
                       role="button"
@@ -557,9 +774,11 @@ export default function SubscribeModal({
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
-                        getSlideOffset(2, activeSlide) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        getSlideOffset(2, activeSlide) === 0 && !isDragging ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        instantSlideIndexes.has(2) ? 'subscribe-plan-slide-3d--instant' : '',
+                        isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
-                      style={getSlide3DStyle(getSlideOffset(2, activeSlide))}
+                      style={getSlide3DStyle(2, activeSlide, dragProgress)}
                     >
                     <div
                       role="button"
@@ -607,8 +826,9 @@ export default function SubscribeModal({
                 </div>
               </div>
 
+              <div className="subscribe-modal-footer shrink-0 pt-2">
               <div
-                className="mt-5 flex items-center justify-center gap-2"
+                className="flex items-center justify-center gap-2"
                 role="tablist"
                 aria-label="Plan carousel pagination"
               >
@@ -643,6 +863,7 @@ export default function SubscribeModal({
               >
                 {busy ? 'Redirecting to Stripe…' : checkoutLabel}
               </button>
+              </div>
             </>
           )}
         </div>

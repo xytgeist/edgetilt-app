@@ -1,11 +1,32 @@
 /**
+ * @param {Response | undefined} response
+ */
+async function readEdgeFunctionError(response) {
+  if (!response || typeof response.status !== 'number') return ''
+  try {
+    const raw = await response.clone().text()
+    if (!raw) return ''
+    const body = JSON.parse(raw)
+    if (body && typeof body === 'object' && body.error != null) {
+      return String(body.error).trim()
+    }
+    if (body && typeof body === 'object' && body.message != null) {
+      return String(body.message).trim()
+    }
+  } catch {
+    // ignore parse failures
+  }
+  return ''
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} productSlug
  * @param {{ priceInterval?: 'monthly' | 'annual', applyEarlyBird?: boolean }} [options]
  */
 export async function startEdgeCheckout(supabaseClient, productSlug, options = {}) {
   const { priceInterval = 'monthly', applyEarlyBird = true } = options
-  const { data, error } = await supabaseClient.functions.invoke('stripe-create-checkout-session', {
+  const { data, error, response } = await supabaseClient.functions.invoke('stripe-create-checkout-session', {
     body: {
       product_slug: productSlug,
       price_interval: priceInterval,
@@ -13,7 +34,8 @@ export async function startEdgeCheckout(supabaseClient, productSlug, options = {
     },
   })
   if (error) {
-    throw new Error(error.message || 'Could not start checkout.')
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not start checkout.')
   }
   if (data?.error) {
     throw new Error(String(data.error))
@@ -27,11 +49,12 @@ export async function startEdgeCheckout(supabaseClient, productSlug, options = {
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */
 export async function openBillingPortal(supabaseClient) {
-  const { data, error } = await supabaseClient.functions.invoke('stripe-create-portal-session', {
+  const { data, error, response } = await supabaseClient.functions.invoke('stripe-create-portal-session', {
     body: {},
   })
   if (error) {
-    throw new Error(error.message || 'Could not open billing portal.')
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not open billing portal.')
   }
   if (data?.error) {
     throw new Error(String(data.error))

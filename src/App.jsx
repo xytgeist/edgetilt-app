@@ -75,6 +75,7 @@ function App() {
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
   /** Optional shell banner (e.g. future account notices). */
   const [accessNotice, setAccessNotice] = useState('')
+  const ACCESS_NOTICE_DISMISS_MS = 4500
   /** Moderator/admin: full access; hamburger hides subscriber-only lock icons. */
   const [isStaffRole, setIsStaffRole] = useState(false)
   /** Admin only: content access lock switches on calcs/guides, guide delete, play log system templates. */
@@ -375,6 +376,12 @@ function App() {
       cancelled = true
     }
   }, [user?.id, refreshEntitlements])
+
+  useEffect(() => {
+    if (!accessNotice) return undefined
+    const timer = window.setTimeout(() => setAccessNotice(''), ACCESS_NOTICE_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [accessNotice])
 
   const openSubscribeModal = useCallback((productSlug = PRODUCT_SLOTS_EDGE) => {
     setSubscribeModal((s) => ({ open: true, productSlug, openKey: s.openKey + 1 }))
@@ -816,7 +823,6 @@ function App() {
           onOpenAuth={openAuthPanel}
           onRequireSubscribe={openSubscribeModal}
           accessNotice={accessNotice}
-          onDismissAccessNotice={() => setAccessNotice('')}
           onLogout={handleLogout}
           onDeleteAccount={handleDeleteAccount}
           deleteAccountBusy={deleteAccountBusy}

@@ -2336,6 +2336,18 @@ html.light [data-subscribe-modal] .subscribe-plan-carousel-nav {
   color: #3f3f46 !important;
 }
 
+/* Billing / subscription access notice toast */
+html.light [data-access-notice] .access-notice-banner {
+  background: rgba(239, 246, 255, 0.96) !important;
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  box-shadow:
+    0 8px 28px rgba(59, 130, 246, 0.12),
+    0 0 0 1px rgba(59, 130, 246, 0.08) !important;
+}
+html.light [data-access-notice] .access-notice-banner-text {
+  color: #1d4ed8 !important;
+}
+
 /* Error / success / warning alert boxes */
 html.light .bg-red-900\/50     { background-color: rgba(254,226,226,0.9) !important; }
 html.light .bg-emerald-900\/50 { background-color: rgba(209,250,229,0.9) !important; }

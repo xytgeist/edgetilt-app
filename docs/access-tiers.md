@@ -117,7 +117,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 **Guides (hero)**
 
-- **Starter pack** on subscribe: **all guides with `machines.release_year` ≤ 2019** (**`GUIDE_STARTER_PACK_MAX_RELEASE_YEAR`** in **`guideAccess.js`**). Guides without a release year are **not** in the starter pack unless also granted via weekly drop.
+- **Starter pack** on subscribe: **all guides with `machines.release_year` ≤ 2019**, except **`SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS`** (today: **Buffalo Diamond** → Pro only). Guides without a release year are **not** in the starter pack unless also granted via weekly drop.
 - **Weekly Guide Drop:** once per UTC week, **each Starter subscriber** gets **one independent random roll** from their **remaining** pool:
   - **Eligible pool:** published guides with **`machines.release_year` ≥ 2020** (`GUIDE_WEEKLY_DROP_MIN_RELEASE_YEAR`), excluding **`FREE_GUIDE_SLUGS`** (already free for everyone).
   - **Remaining pool (per user):** eligible slugs minus slugs that user **already earned** via prior weekly drops (starter pack ≤ 2019 is implicit and never in the pool).
@@ -129,7 +129,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 **Tools**
 
 - Bankroll, logbook, calendar OCR/alerts remain **gated** (same free-tier limits).
-- **Calculators:** Starter unlocks any calculator **paired** with a guide they can open (starter pack **`release_year` ≤ 2019** + weekly drops). Implemented via **`buildStarterUnlockedCalculatorKeys`** / **`useStarterCalculatorUnlocks`** + **`starterUnlockedCalculatorKeys`** in **`calculatorAccess.js`**. Free tier still uses **`FREE_CALCULATOR_KEYS`** only (not auto-paired from free guides).
+- **Calculators:** Starter unlocks calculators **paired** with guides they can open (starter pack **`release_year` ≤ 2019** + weekly drops), except **`SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS`** (today: **Buffalo Diamond** → Pro only). WoF 4D CE and other paired tools stay on Starter when the guide is unlocked. Implemented via **`buildStarterUnlockedCalculatorKeys`** / **`useStarterCalculatorUnlocks`**. Free tier uses **`FREE_CALCULATOR_KEYS`** only.
 
 **Lounge**
 
@@ -180,7 +180,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 | Topic | Status |
 | --- | --- |
-| **Which calcs/guides are free vs locked** | **Calcs (free):** **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB). **Calcs (always subscriber):** **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`** (Phoenix Link + Stack Up Pays; admin gates cannot unlock for free). **Guides (free):** **`FREE_GUIDE_SLUGS`** only. **Guides (Starter $14):** **`machines.release_year` ≤ 2019** + weekly **2020+** drops (**`GUIDE_STARTER_PACK_MAX_RELEASE_YEAR`**). **Admins:** **`content_access_gates`** (except subscriber-only calcs). |
+| **Which calcs/guides are free vs locked** | **Calcs (free):** **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB). **Calcs (Pro only, not Starter pairing):** **`SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS`** (Buffalo Diamond). **Calcs (always subscriber):** **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`** (Phoenix Link + Stack Up Pays). **Guides (free):** **`FREE_GUIDE_SLUGS`**. **Guides (Pro only, not Starter pack):** **`SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS`** (Buffalo Diamond). **Guides (Starter):** **`release_year` ≤ 2019** + weekly **2020+** drops, minus Pro-only slugs. **Admins:** **`content_access_gates`** (except subscriber-only / Pro-only lists). |
 | **Signup / verification** | Supabase auth + email verification policy for “free” tier — **TBD** (no `allowed_emails` gate in the client). |
 | **Stripe products** | **Slots Edge:** `slots-edge-starter` ($19.99/mo MSRP), **`slots-edge`** Full ($59.99/mo + $660/yr MSRP), **`slots-edge-lifetime`** ($1,699 one-time) — see **§5.1**. **`sports-edge`**, **`crypto-edge`** later. Price IDs in Edge secrets; **25% founding coupons** (monthly ×12 + once for annual/lifetime). **`user_subscriptions`** + Starter guide unlocks. **`get_my_entitlements()`** RPC; legacy **`has_active_subscription`** mirrors **active Full `slots-edge`** or **Lifetime**. See **`supabase/functions/stripe-create-checkout-session/README.md`**. |
 | **Starter pack slugs** | **Release year ≤ 2019** on **`machines.release_year`**. Weekly drop pool = published guides **2020+** only (minus **`FREE_GUIDE_SLUGS`**). |
@@ -224,3 +224,4 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | 2026-07-01 | **Free tier guide + calc list:** **`FREE_GUIDE_SLUGS`** (14 AP guides) and **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB only). Starter pack remains release year ≤ 2019. |
 | 2026-07-01 | **Starter weekly drop rules locked:** per-user uniform random from **remaining** published **2020+** slugs (excludes free list + prior grants). Migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, pool helpers **`starterWeeklyDropPool.js`**, client **`useStarterWeeklyDropGuideSlugs`**. |
 | 2026-07-01 | **Public tier names:** **Slots Edge** (`slots-edge-starter`), **Slots Edge Pro** (`slots-edge`), **Slots Edge Lifetime** (`slots-edge-lifetime`). Migration **`20260701150000_subscription_product_tier_display_names.sql`**. Subscribe modal + **`edgeProducts.js`** display names. |
+| 2026-07-02 | **Buffalo Diamond → Pro only:** **`SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS`** + **`SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS`** in **`guideAccess.js`** / **`calculatorAccess.js`**. Starter keeps WoF 4D CE guide + calc when guide is unlocked. |

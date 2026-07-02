@@ -250,7 +250,6 @@ export default function AppShell({
   authSessionReady = true,
   onOpenAuth,
   accessNotice = '',
-  onDismissAccessNotice,
   hasActiveSubscription = false,
   hasSlotsEdgeStarter = false,
   isStaff = false,
@@ -1604,17 +1603,14 @@ export default function AppShell({
       {accessNotice ? (
         <div
           role="status"
+          aria-live="polite"
+          data-access-notice
           className="pointer-events-none fixed inset-x-0 top-0 z-[94] flex justify-center px-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
         >
-          <div className="pointer-events-auto flex w-full max-w-2xl items-start justify-between gap-3 rounded-2xl border border-amber-800/50 bg-amber-950/95 px-4 py-3 shadow-lg backdrop-blur">
-            <p className="min-w-0 flex-1 text-left text-[13px] leading-snug text-amber-100">{accessNotice}</p>
-            <button
-              type="button"
-              onClick={() => onDismissAccessNotice?.()}
-              className="shrink-0 rounded-lg border border-amber-700/60 px-2.5 py-1 text-[12px] font-semibold text-amber-200 touch-manipulation hover:bg-amber-900/50"
-            >
-              Dismiss
-            </button>
+          <div className="access-notice-banner w-[min(calc(100vw-1.5rem),20rem)] rounded-xl border border-cyan-500/45 bg-cyan-950/95 px-3 py-2 text-center shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-md">
+            <p className="access-notice-banner-text text-[12px] font-medium leading-snug text-cyan-100">
+              {accessNotice}
+            </p>
           </div>
         </div>
       ) : null}

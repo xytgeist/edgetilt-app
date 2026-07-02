@@ -97,6 +97,11 @@ function CalculatorsHome({
                 />
               </div>
             ) : null}
+            {locked && showUpgradePill ? (
+              <div className="pointer-events-none absolute right-3 top-2 z-[5] sm:top-2.5">
+                <SlotsEdgeUpgradePill />
+              </div>
+            ) : null}
             <button
               type="button"
               title={
@@ -123,12 +128,8 @@ function CalculatorsHome({
               <div className="min-w-0 flex-1 self-center">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className={`min-w-0 flex-1 ${calc.titleClassName}`}>{calc.title}</div>
-                  {locked ? (
-                    showUpgradePill ? (
-                      <SlotsEdgeUpgradePill />
-                    ) : (
-                      <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" />
-                    )
+                  {locked && !showUpgradePill ? (
+                    <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" />
                   ) : null}
                 </div>
                 <p className={calc.subtitleClassName} title={calc.subtitleTitle || undefined}>

@@ -38,6 +38,12 @@ export const GUIDE_STARTER_PACK_MAX_RELEASE_YEAR = 2019
  */
 export const GUIDE_WEEKLY_DROP_MIN_RELEASE_YEAR = 2020
 
+/**
+ * AP guides (and paired tools) that require Slots Edge Pro — not the Starter pack or weekly drops.
+ * Keep in sync with `SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS` in calculatorAccess.js when paired.
+ */
+export const SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS = new Set(['buffalo-diamond'])
+
 /** @param {number | string | null | undefined} releaseYear */
 export function isGuideInStarterPackByReleaseYear(releaseYear) {
   const y = Number(releaseYear)
@@ -58,6 +64,11 @@ export function normalizeGuideAccessSlug(rawSlug) {
   if (!slug) return ''
   slug = GUIDE_SLUG_CANONICAL[slug] || slug
   return slug
+}
+
+/** @param {string | null | undefined} slug */
+export function isSlotsEdgeProOnlyGuide(slug) {
+  return SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS.has(normalizeGuideAccessSlug(slug))
 }
 
 /**
@@ -125,6 +136,8 @@ export function canOpenGuide(
   if (isStaff || hasSlotsEdge) return true
 
   const normalized = normalizeGuideAccessSlug(slug)
+
+  if (isSlotsEdgeProOnlyGuide(normalized)) return false
 
   if (hasSlotsEdgeStarter) {
     if (isGuideInStarterPackByReleaseYear(releaseYear)) return true

@@ -1,8 +1,10 @@
 import {
   isGuideInStarterPackByReleaseYear,
+  isSlotsEdgeProOnlyGuide,
   normalizeGuideAccessSlug,
 } from './guideAccess.js'
 import { machineForGuideRow, resolveCalculatorKeyFromMachine } from './guideCalculatorKey.js'
+import { SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS } from '../calculators/calculatorAccess.js'
 
 /**
  * Calculator keys unlocked for Slots Edge Starter via guide access (2019 pack + weekly drops).
@@ -18,13 +20,14 @@ export function buildStarterUnlockedCalculatorKeys(guideRows, starterUnlockedGui
     const m = machineForGuideRow(row)
     const slug = normalizeGuideAccessSlug(m?.slug || row.slug)
     if (!slug) continue
+    if (isSlotsEdgeProOnlyGuide(slug)) continue
 
     const inStarterPack = isGuideInStarterPackByReleaseYear(m?.release_year)
     const inWeeklyDrop = weekly.has(slug)
     if (!inStarterPack && !inWeeklyDrop) continue
 
     const calcKey = resolveCalculatorKeyFromMachine(m)
-    if (calcKey) keys.add(calcKey)
+    if (calcKey && !SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS.has(calcKey)) keys.add(calcKey)
   }
 
   return keys

@@ -38,16 +38,28 @@ export const SUBSCRIBER_ONLY_CALCULATOR_KEYS = new Set(
   /** @type {CalculatorKey[]} */ (['phoenix', 'stackup']),
 )
 
+/**
+ * Premium calculators that require Slots Edge Pro (not Starter guide pairing).
+ * Keep in sync with `SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS` in guideAccess.js when paired.
+ */
+export const SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS = new Set(
+  /** @type {CalculatorKey[]} */ (['buffalo-diamond']),
+)
+
 function codeDefaultCalculatorRequiresSlotsEdge(key) {
   if (!key || !CALCULATOR_KEYS.includes(/** @type {CalculatorKey} */ (key))) return true
   if (SUBSCRIBER_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))) return true
+  if (SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))) return true
   return !FREE_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))
 }
 
 /** @param {string | null | undefined} key @param {Map<string, boolean> | null | undefined} [gatesMap] */
 export function calculatorRequiresSlotsEdge(key, gatesMap = null) {
   const calcKey = String(key || '').trim().toLowerCase()
-  if (SUBSCRIBER_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) {
+  if (
+    SUBSCRIBER_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey)) ||
+    SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))
+  ) {
     return true
   }
   return resolveRequiresSlotsEdge(
@@ -71,6 +83,7 @@ export function canOpenCalculator(
   if (isStaff || hasSlotsEdge) return true
   const calcKey = String(key || '').trim().toLowerCase()
   if (FREE_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) return true
+  if (SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) return false
   if (
     starterUnlockedCalculatorKeys instanceof Set &&
     calcKey &&

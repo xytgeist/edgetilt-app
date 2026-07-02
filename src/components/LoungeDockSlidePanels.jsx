@@ -1470,14 +1470,14 @@ export default function LoungeDockSlidePanels({
 
                     <div className="px-3.5 py-3">
                       <div className="text-[15px] font-semibold text-zinc-100">Legal</div>
-                      <div className="mt-2 flex flex-col gap-2 text-[14px]">
+                      <div className="mt-2 flex flex-col gap-1 text-[14px] leading-snug">
                         <a
                           href="/terms?from=settings"
                           onClick={(e) => {
                             e.preventDefault()
                             onOpenLegalDocument?.('terms', 'settings')
                           }}
-                          className="min-h-11 inline-flex items-center text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
+                          className="inline-flex items-center py-0.5 text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
                         >
                           Terms &amp; Conditions
                         </a>
@@ -1487,7 +1487,7 @@ export default function LoungeDockSlidePanels({
                             e.preventDefault()
                             onOpenLegalDocument?.('privacy', 'settings')
                           }}
-                          className="min-h-11 inline-flex items-center text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
+                          className="inline-flex items-center py-0.5 text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
                         >
                           Privacy Policy
                         </a>
@@ -1497,7 +1497,7 @@ export default function LoungeDockSlidePanels({
                             e.preventDefault()
                             onOpenLegalDocument?.('guidelines', 'settings')
                           }}
-                          className="min-h-11 inline-flex items-center text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
+                          className="inline-flex items-center py-0.5 text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
                         >
                           Community Guidelines
                         </a>

@@ -7,7 +7,6 @@ import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
-import { startEdgeCheckout } from './features/billing/stripeBillingApi.js'
 import { useEdgeEntitlements } from './features/billing/useEdgeEntitlements.js'
 import { useContentAccessGates } from './features/billing/useContentAccessGates.js'
 import {
@@ -376,13 +375,7 @@ function App() {
     }
   }, [user?.id, refreshEntitlements])
 
-  const openSubscribeModal = useCallback((productSlug = PRODUCT_SLOTS_EDGE, options = {}) => {
-    if (options?.directCheckout) {
-      return startEdgeCheckout(supabase, productSlug, {
-        priceInterval: options.priceInterval === 'annual' ? 'annual' : 'monthly',
-        applyEarlyBird: options.applyEarlyBird !== false,
-      })
-    }
+  const openSubscribeModal = useCallback((productSlug = PRODUCT_SLOTS_EDGE) => {
     setSubscribeModal((s) => ({ open: true, productSlug, openKey: s.openKey + 1 }))
   }, [])
 

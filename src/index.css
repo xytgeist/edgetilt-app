@@ -2113,17 +2113,57 @@ html.light [data-subscribe-modal] {
     0 16px 48px rgba(0, 0, 0, 0.16),
     0 0 0 1px rgba(0, 0, 0, 0.05) !important;
 }
+html.light [data-subscribe-modal] .subscribe-modal-hero {
+  border-bottom-color: #e4e4e7 !important;
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, #ffffff 55%) !important;
+}
+html.light [data-subscribe-modal] .subscribe-plan-card {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-subscribe-modal] .subscribe-plan-card--selected,
+html.light [data-subscribe-modal] .subscribe-plan-card--featured.subscribe-plan-card--selected {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, #ffffff 100%) !important;
+  border-color: rgba(6, 182, 212, 0.45) !important;
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.12), 0 12px 32px rgba(6, 182, 212, 0.1) !important;
+}
+html.light [data-subscribe-modal] .bg-zinc-950,
+html.light [data-subscribe-modal] .bg-zinc-950\/95,
+html.light [data-subscribe-modal] .bg-zinc-950\/70 {
+  background-color: #ffffff !important;
+}
+html.light [data-subscribe-modal] .bg-zinc-900\/50,
+html.light [data-subscribe-modal] .bg-zinc-900\/80 {
+  background-color: #fafafa !important;
+}
 html.light [data-subscribe-modal] .bg-gray-900 {
   background-color: #ffffff !important;
 }
 html.light [data-subscribe-modal] .text-white {
   color: #18181b !important;
 }
+html.light [data-subscribe-modal] .text-zinc-300,
+html.light [data-subscribe-modal] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
 html.light [data-subscribe-modal] .text-zinc-400 {
   color: #71717a !important;
 }
-html.light [data-subscribe-modal] .text-zinc-200 {
-  color: #27272a !important;
+html.light [data-subscribe-modal] .text-zinc-500 {
+  color: #a1a1aa !important;
+}
+html.light [data-subscribe-modal] .text-amber-100 {
+  color: #78350f !important;
+}
+html.light [data-subscribe-modal] .text-amber-200\/75 {
+  color: rgba(120, 53, 15, 0.75) !important;
+}
+html.light [data-subscribe-modal] .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light [data-subscribe-modal] .text-cyan-200,
+html.light [data-subscribe-modal] .text-cyan-300\/80 {
+  color: #0e7490 !important;
 }
 html.light [data-subscribe-modal] .hover\:text-zinc-200:hover {
   color: #18181b !important;
@@ -2132,10 +2172,14 @@ html.light [data-subscribe-modal] .text-red-400 {
   color: #b91c1c !important;
 }
 html.light [data-subscribe-modal] .border-zinc-700,
-html.light [data-subscribe-modal] .border-zinc-600\/80 {
+html.light [data-subscribe-modal] .border-zinc-600\/80,
+html.light [data-subscribe-modal] .border-zinc-800,
+html.light [data-subscribe-modal] .border-zinc-800\/80,
+html.light [data-subscribe-modal] .border-zinc-800\/90 {
   border-color: #d4d4d8 !important;
 }
-html.light [data-subscribe-modal] .bg-cyan-600 {
+html.light [data-subscribe-modal] .bg-cyan-600,
+html.light [data-subscribe-modal] .from-cyan-600 {
   color: #ffffff !important;
   box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35) !important;
 }

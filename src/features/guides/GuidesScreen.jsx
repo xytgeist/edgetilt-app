@@ -714,51 +714,6 @@ function IconEvTrendingUp({ className }) {
 }
 
 function GuideLockedPaywallOverlay({ onUnlock }) {
-  const [checkoutBusy, setCheckoutBusy] = useState(false)
-  const [checkoutError, setCheckoutError] = useState('')
-  const checkoutRedirectStartedRef = useRef(false)
-
-  useEffect(() => {
-    const resetCheckoutUi = () => {
-      checkoutRedirectStartedRef.current = false
-      setCheckoutBusy(false)
-      setCheckoutError('')
-    }
-
-    const shouldResetAfterStripeReturn = () => {
-      if (typeof window === 'undefined') return false
-      try {
-        return new URLSearchParams(window.location.search).get('billing') === 'cancel'
-      } catch {
-        return false
-      }
-    }
-
-    const onPageShow = (event) => {
-      if (!checkoutRedirectStartedRef.current) return
-      if (event.persisted || shouldResetAfterStripeReturn()) {
-        resetCheckoutUi()
-      }
-    }
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return
-      if (!checkoutRedirectStartedRef.current) return
-      resetCheckoutUi()
-    }
-
-    if (checkoutRedirectStartedRef.current && shouldResetAfterStripeReturn()) {
-      resetCheckoutUi()
-    }
-
-    window.addEventListener('pageshow', onPageShow)
-    document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => {
-      window.removeEventListener('pageshow', onPageShow)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-    }
-  }, [])
-
   return (
     <div className="guide-lock-glitch absolute inset-x-0 bottom-0 top-[10.5rem] z-10 flex items-center justify-center overflow-hidden rounded-b-3xl px-4 py-5">
       <div className="guide-lock-glitch__veil pointer-events-none absolute inset-0" aria-hidden />
@@ -775,28 +730,15 @@ function GuideLockedPaywallOverlay({ onUnlock }) {
             Subscribe to unlock this playbook and the rest of AP Guides.
           </p>
         </div>
-        {checkoutError ? (
-          <p className="text-xs leading-snug text-red-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.8)]">{checkoutError}</p>
-        ) : null}
         <button
           type="button"
-          disabled={checkoutBusy}
-          onClick={async (event) => {
+          onClick={(event) => {
             event.stopPropagation()
-            setCheckoutError('')
-            checkoutRedirectStartedRef.current = true
-            setCheckoutBusy(true)
-            try {
-              await onUnlock?.()
-            } catch (error) {
-              checkoutRedirectStartedRef.current = false
-              setCheckoutBusy(false)
-              setCheckoutError(error instanceof Error ? error.message : String(error))
-            }
+            onUnlock?.()
           }}
-          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_24px_rgba(255,234,0,0.2)] disabled:cursor-wait disabled:opacity-80"
+          className="min-h-11 w-full max-w-[13rem] rounded-2xl bg-amber-500 px-4 text-sm font-bold text-zinc-950 touch-manipulation hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_24px_rgba(255,234,0,0.2)]"
         >
-          {checkoutBusy ? 'Opening checkout…' : 'Unlock guide'}
+          See plans
         </button>
       </div>
     </div>
@@ -2154,7 +2096,7 @@ export default function GuidesScreen({
 
                     {guideLockedCollapsed ? (
                       <GuideLockedPaywallOverlay
-                        onUnlock={() => onRequireSubscribe?.('slots-edge', { directCheckout: true })}
+                        onUnlock={() => onRequireSubscribe?.('slots-edge')}
                       />
                     ) : null}
                   </div>

@@ -146,15 +146,13 @@ where lower(p.handle) = lower('smokewagon');
 
 **Revoke all Slots Edge access (quick free-tier reset for testing):**
 
-By **handle** (e.g. `@smokewagon`):
+By **handle** (e.g. `@smokewagon`) ... **deletes** `user_subscriptions` rows (cleanest retest):
 
 ```sql
-update public.user_subscriptions us
-set status = 'canceled', updated_at = now()
-from public.profiles p
+delete from public.user_subscriptions us
+using public.profiles p
 where us.user_id = p.user_id
-  and lower(p.handle) = lower('smokewagon')
-  and us.product_slug in ('slots-edge', 'slots-edge-starter', 'slots-edge-lifetime');
+  and lower(p.handle) = lower('smokewagon');
 
 select public.sync_profile_has_active_subscription(p.user_id)
 from public.profiles p
@@ -164,6 +162,8 @@ where lower(p.handle) = lower('smokewagon');
 Full script with verify query: **`supabase/scripts/revoke_slots_edge_subscription_by_handle.sql`**.
 
 **Do not** flip **`has_active_subscription` alone** ... **`get_my_entitlements()`** still reads active rows from **`user_subscriptions`**. Reload the app after revoke.
+
+Stripe may still show an active subscription until you cancel in **Stripe Dashboard** or via **Manage membership → Cancel in Stripe** (portal cancel flow: **`supabase/functions/stripe-create-portal-session/README.md`**).
 
 Optional: delete **`starter_weekly_guide_unlocks`** for that user if you need a clean Starter weekly-drop retest (see script comment).
 

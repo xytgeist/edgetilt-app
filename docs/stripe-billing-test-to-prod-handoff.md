@@ -59,7 +59,7 @@ Shared code: **`supabase/functions/_shared/billingDb.ts`** (stores `price_interv
 | Function | Auth | Role |
 | --- | --- | --- |
 | **`stripe-create-checkout-session`** | User JWT | New checkout; **Starter → Pro** upgrade (`upgraded: true`); **same plan, new interval** (`interval_changed: true`, no Checkout redirect) |
-| **`stripe-create-portal-session`** | User JWT | Cancel / payment method in Stripe Customer Portal |
+| **`stripe-create-portal-session`** | User JWT | Cancel at period end + payment method; deep-links **`subscription_cancel`** when user has Starter/Pro recurring sub |
 | **`stripe-webhook`** | Stripe signature (`verify_jwt = false`) | Upserts **`user_subscriptions`**, syncs **`profiles.has_active_subscription`** for Full **`slots-edge`** |
 
 ### Deploy commands
@@ -139,6 +139,12 @@ Body: `{ "product_slug", "price_interval": "monthly"|"annual", "apply_early_bird
 
 Subscription metadata written on update: `supabase_user_id`, `product_slug`, `price_interval`, optional `upgraded_from`.
 
+### `POST stripe-create-portal-session`
+
+- Ensures a Customer Portal configuration with **subscription cancel** enabled (uses **`STRIPE_BILLING_PORTAL_CONFIGURATION_ID`** if set, else finds or creates one).
+- If the user has an active **Starter** or **Pro** recurring subscription, opens portal **`flow_data`** directly on **cancel subscription** (at period end).
+- **Lifetime** has no recurring sub ... use SQL revoke for test reset; portal button is hidden in **`BillingManageModal`** for lifetime holders.
+
 ### Client checkout
 
 **`src/features/billing/stripeBillingApi.js`** — `startEdgeCheckout()`, `openBillingPortal()`, `fetchMyEntitlements()` via **`get_my_entitlements()`**.
@@ -204,7 +210,7 @@ Success / portal return: `/?billing=success` or `/?billing=portal` → App polls
 
 - **Downgrade Pro → Starter** (no Stripe path; cancel + resubscribe only)
 - Automatic **backfill** of `price_interval` for all existing subs (webhook on next Stripe event, or one-off script if needed)
-- **`stripe-create-portal-session`** redeploy only if portal behavior changed (unchanged today, but deploy with the set above)
+- **`stripe-create-portal-session`** redeploy after portal cancel / configuration changes (see **`supabase/functions/stripe-create-portal-session/README.md`**)
 
 ---
 

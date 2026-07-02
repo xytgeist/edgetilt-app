@@ -1,23 +1,18 @@
--- Revoke Slots Edge test access by Lounge handle — run in Supabase **Dashboard → SQL Editor** (test sandbox).
+-- Delete Slots Edge test access by Lounge handle — run in Supabase **Dashboard → SQL Editor** (test sandbox).
 --
--- Use this to flip a real Stripe test subscriber back to free tier without waiting on Stripe cancel webhooks.
+-- Use this to reset a test account (e.g. @smokewagon) so checkout / upgrade / cancel flows can be retried.
 -- After running: have the user **hard-reload** the app (or sign out/in) so entitlements refetch.
 --
--- Replace the handle below. Does NOT cancel the Stripe subscription (see note at bottom).
+-- Replace the handle below. Does NOT cancel Stripe subscriptions (see note at bottom).
 
 begin;
 
--- 1) Mark Edge subscription rows inactive (entitlements + legacy sync read this table)
-update public.user_subscriptions us
-set
-  status = 'canceled',
-  cancel_at_period_end = false,
-  updated_at = now()
-from public.profiles p
+-- 1) Remove all Edge entitlement rows for this user (cleanest retest; avoids unique-key leftovers)
+delete from public.user_subscriptions us
+using public.profiles p
 where
   us.user_id = p.user_id
-  and lower(p.handle) = lower('smokewagon')
-  and us.product_slug in ('slots-edge', 'slots-edge-starter', 'slots-edge-lifetime');
+  and lower(p.handle) = lower('smokewagon');
 
 -- 2) Legacy boolean (Full Edge only) — kept in sync via RPC
 select public.sync_profile_has_active_subscription(p.user_id)
@@ -26,7 +21,7 @@ where lower(p.handle) = lower('smokewagon');
 
 commit;
 
--- Verify: expect zero active/trialing rows; has_active_subscription = false
+-- Verify: no user_subscriptions rows; has_active_subscription = false
 select
   p.handle,
   p.has_active_subscription,
@@ -44,6 +39,7 @@ order by us.product_slug nulls last;
 -- using public.profiles p
 -- where sw.user_id = p.user_id and lower(p.handle) = lower('smokewagon');
 
--- Stripe note: this script does not call Stripe. The test subscription may still show "active"
--- in Stripe Dashboard until you cancel via Customer Portal or Stripe test mode.
--- For UI/freemium testing, SQL revoke is enough. For webhook cancel smoke, cancel in Stripe instead.
+-- Stripe note: this script does not call Stripe. Active subs may still show in Stripe Dashboard
+-- until you cancel them there (Customers → select customer → cancel subscription) or use
+-- Settings → Manage membership → Cancel in Stripe after redeploying stripe-create-portal-session.
+-- For app/freemium retest, SQL delete is enough. For webhook cancel smoke, cancel in Stripe too.

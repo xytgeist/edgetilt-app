@@ -1,7 +1,44 @@
 import Stripe from 'npm:stripe@17.7.0'
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { requireStripeSecretKey } from '../_shared/billingEnv.ts'
-import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
+import { createBillingAdmin, getUserFromJwt, listActiveRecurringStripeSubscriptionIds } from '../_shared/billingDb.ts'
+
+let cachedPortalConfigurationId: string | null = null
+
+async function billingPortalConfigurationId(stripe: Stripe): Promise<string> {
+  const fromEnv = Deno.env.get('STRIPE_BILLING_PORTAL_CONFIGURATION_ID')?.trim()
+  if (fromEnv) return fromEnv
+
+  if (cachedPortalConfigurationId) return cachedPortalConfigurationId
+
+  const existing = await stripe.billingPortal.configurations.list({ limit: 10 })
+  const withCancel = existing.data.find((config) => config.features?.subscription_cancel?.enabled === true)
+  if (withCancel?.id) {
+    cachedPortalConfigurationId = withCancel.id
+    return withCancel.id
+  }
+
+  const created = await stripe.billingPortal.configurations.create({
+    business_profile: {
+      headline: 'Manage your Edge subscription',
+    },
+    features: {
+      subscription_cancel: {
+        enabled: true,
+        mode: 'at_period_end',
+        cancellation_reason: {
+          enabled: true,
+          options: ['too_expensive', 'missing_features', 'switched_service', 'unused', 'other'],
+        },
+      },
+      payment_method_update: { enabled: true },
+      invoice_history: { enabled: true },
+      subscription_update: { enabled: false },
+    },
+  })
+  cachedPortalConfigurationId = created.id
+  return created.id
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,10 +72,31 @@ Deno.serve(async (req) => {
     const returnUrl = `${origin.replace(/\/+$/, '')}/?billing=portal`
 
     const stripe = new Stripe(requireStripeSecretKey())
-    const portal = await stripe.billingPortal.sessions.create({
+    const configurationId = await billingPortalConfigurationId(stripe)
+
+    const recurringSubscriptionIds = await listActiveRecurringStripeSubscriptionIds(admin, auth.user.id)
+    const cancelSubscriptionId = recurringSubscriptionIds[0] ?? null
+
+    const sessionParams: Stripe.BillingPortal.SessionCreateParams = {
       customer: customerId,
       return_url: returnUrl,
-    })
+      configuration: configurationId,
+    }
+
+    if (cancelSubscriptionId) {
+      sessionParams.flow_data = {
+        type: 'subscription_cancel',
+        subscription_cancel: {
+          subscription: cancelSubscriptionId,
+        },
+        after_completion: {
+          type: 'redirect',
+          redirect: { return_url: returnUrl },
+        },
+      }
+    }
+
+    const portal = await stripe.billingPortal.sessions.create(sessionParams)
 
     return jsonResponse({ url: portal.url })
   } catch (e) {

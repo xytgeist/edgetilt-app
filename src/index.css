@@ -2334,8 +2334,8 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .starter
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .starter-weekly-drop-pro-cta .text-white {
   color: #18181b !important;
 }
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-open-guide {
-  color: #ffffff !important;
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-open {
+  border-color: rgba(249, 115, 22, 0.45) !important;
 }
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
   color: #ffffff !important;

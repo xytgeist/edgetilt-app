@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
-import { btnPrimary } from '../shell/shellClasses.js'
 import { countStarterProUpgradeGuides } from '../guides/starterProUpgradeGuideCount.js'
 import {
   fetchStarterWeeklyDropReveal,
@@ -59,6 +58,7 @@ export default function StarterWeeklyDropScratchModal({
       setRevealed(false)
       setError('')
       setLoading(false)
+      setProUpgradeCount(0)
       resetScratchState()
       return undefined
     }
@@ -88,6 +88,45 @@ export default function StarterWeeklyDropScratchModal({
       cancelled = true
     }
   }, [open, unlockId, supabaseClient, resetScratchState])
+
+  const starterUnlockedSlugsKey = (guideAccessContext.starterUnlockedGuideSlugs || []).join('|')
+
+  useEffect(() => {
+    if (!open || !payload || !supabaseClient || guideAccessContext.hasSlotsEdge) {
+      if (!guideAccessContext.hasSlotsEdge) setProUpgradeCount(0)
+      return undefined
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data: guides } = await supabaseClient
+          .from('guides')
+          .select('slug, published, machines ( slug, release_year )')
+          .eq('published', true)
+        if (cancelled) return
+        setProUpgradeCount(
+          countStarterProUpgradeGuides(guides || [], {
+            ...guideAccessContext,
+            starterUnlockedGuideSlugs: guideAccessContext.starterUnlockedGuideSlugs,
+          }),
+        )
+      } catch {
+        if (!cancelled) setProUpgradeCount(0)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    open,
+    payload,
+    supabaseClient,
+    guideAccessContext.hasSlotsEdge,
+    guideAccessContext.starterWeeklyDropPoolExhausted,
+    starterUnlockedSlugsKey,
+  ])
 
   useEffect(() => {
     if (!open || !payload || revealed) return undefined
@@ -135,22 +174,7 @@ export default function StarterWeeklyDropScratchModal({
     setRevealed(true)
     await markStarterWeeklyDropScratched(supabaseClient, unlockId)
     onRevealed?.(unlockId)
-
-    try {
-      const { data: guides } = await supabaseClient
-        .from('guides')
-        .select('slug, published, machines ( slug, release_year )')
-        .eq('published', true)
-      setProUpgradeCount(
-        countStarterProUpgradeGuides(guides || [], {
-          ...guideAccessContext,
-          starterUnlockedGuideSlugs: guideAccessContext.starterUnlockedGuideSlugs,
-        }),
-      )
-    } catch {
-      setProUpgradeCount(0)
-    }
-  }, [guideAccessContext, onRevealed, revealed, supabaseClient, unlockId])
+  }, [onRevealed, revealed, supabaseClient, unlockId])
 
   const sampleClearedRatio = useCallback((canvas) => {
     const ctx = canvas.getContext('2d')
@@ -272,12 +296,14 @@ export default function StarterWeeklyDropScratchModal({
         className="starter-weekly-drop-dialog relative z-10 w-full max-w-md rounded-3xl border border-zinc-600/80 bg-gray-900 p-4 shadow-2xl sm:p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="starter-weekly-drop-title" className="text-center text-lg font-bold text-white">
-          {revealed ? 'You unlocked' : 'Weekly guide drop'}
-        </h2>
-        {!revealed ? (
-          <p className="mt-2 text-center text-sm text-zinc-300">Scratch to reveal</p>
-        ) : null}
+        <div className="min-h-[4.5rem]">
+          <h2 id="starter-weekly-drop-title" className="text-center text-lg font-bold text-white">
+            {revealed ? 'You unlocked' : 'Weekly guide drop'}
+          </h2>
+          <p className="mt-2 text-center text-sm text-zinc-300">
+            {revealed ? 'Tap the card to open your guide' : 'Scratch to reveal'}
+          </p>
+        </div>
 
         {loading ? <p className="mt-8 text-center text-sm text-zinc-400">Loading…</p> : null}
         {error ? (
@@ -290,7 +316,9 @@ export default function StarterWeeklyDropScratchModal({
           <>
             <div
               ref={heroWrapRef}
-              className="relative mx-auto mt-3 aspect-[4/3] w-full overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-950"
+              className={`relative mx-auto mt-3 aspect-[4/3] w-full overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-950 ${
+                revealed ? 'starter-weekly-drop-hero-open ring-2 ring-orange-500/35' : ''
+              }`}
             >
               {heroUrl ? (
                 <img src={heroUrl} alt="" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
@@ -307,9 +335,16 @@ export default function StarterWeeklyDropScratchModal({
                   onPointerUp={onPointerUp}
                   onPointerCancel={onPointerUp}
                 />
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenGuide}
+                  className="starter-weekly-drop-hero-open-btn absolute inset-0 z-10 cursor-pointer touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-400/70"
+                  aria-label={`Open guide: ${title}`}
+                />
+              )}
               {revealed ? (
-                <div className="starter-weekly-drop-hero-caption absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/55 to-transparent px-3 pb-3 pt-12">
+                <div className="starter-weekly-drop-hero-caption pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/55 to-transparent px-3 pb-3 pt-12">
                   <p className="starter-weekly-drop-hero-title text-center text-base font-semibold text-[#fff] drop-shadow-[0_1px_2px_rgba(0,0,0,0.95),0_2px_8px_rgba(0,0,0,0.75)]">
                     {title}
                   </p>
@@ -317,43 +352,32 @@ export default function StarterWeeklyDropScratchModal({
               ) : null}
             </div>
 
-            {!revealed ? (
-              <button
-                type="button"
-                onClick={onTapReveal}
-                className="mt-4 w-full text-center text-sm text-orange-400 underline underline-offset-2 hover:text-orange-300"
-              >
-                Tap to reveal
-              </button>
-            ) : null}
-
-            {revealed ? (
-              <div className="mt-5 space-y-4">
+            <div className="mt-3 h-[6.75rem]">
+              {!revealed ? (
                 <button
                   type="button"
-                  onClick={onOpenGuide}
-                  className={`starter-weekly-drop-open-guide ${btnPrimary} w-full rounded-2xl bg-orange-600 hover:bg-orange-500`}
+                  onClick={onTapReveal}
+                  className="w-full text-center text-sm text-orange-400 underline underline-offset-2 hover:text-orange-300"
                 >
-                  Open guide
+                  Tap to reveal
                 </button>
-                {showProCta ? (
-                  <div className="starter-weekly-drop-pro-cta rounded-xl border border-zinc-700/80 bg-zinc-950/50 px-3 py-3 text-center">
-                    <p className="text-[13px] leading-snug text-zinc-300">
-                      Get immediate access to all{' '}
-                      <span className="font-semibold text-white">{proUpgradeCount}</span> additional guides by
-                      upgrading to Pro.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => onRequireSubscribe?.('slots-edge')}
-                      className="mt-2 text-sm font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300"
-                    >
-                      View plans
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+              ) : showProCta ? (
+                <div className="starter-weekly-drop-pro-cta rounded-xl border border-zinc-700/80 bg-zinc-950/50 px-3 py-3 text-center">
+                  <p className="text-[13px] leading-snug text-zinc-300">
+                    Get immediate access to all{' '}
+                    <span className="font-semibold text-white">{proUpgradeCount}</span> additional guides by upgrading
+                    to Pro.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onRequireSubscribe?.('slots-edge')}
+                    className="mt-2 text-sm font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300"
+                  >
+                    View plans
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </>
         ) : null}
       </div>

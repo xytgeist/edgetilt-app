@@ -158,7 +158,7 @@ Cross-check dashboards: **Production** function list versus **test** (names acti
 
 Secrets (secrets / env vault in Supabase) for push + web-push must exist on production — mirror **test** configuration.
 
-**Stripe billing:** live **`STRIPE_*`** secrets + live webhook endpoint on prod; see **`docs/stripe-billing-test-to-prod-handoff.md`** (migrations, smoke, deploy order). Do not promote until test sign-off on interval switch + manage membership UI.
+**Stripe billing:** live **`STRIPE_*`** secrets + live webhook endpoint on prod; see **`docs/stripe-billing-test-to-prod-handoff.md`** (migrations, smoke, deploy order). **Ryan sign-off 2026-07-01:** prod migrations **`20260701120000`**–**`160000`**, Edge deploy, minimal live Checkout smoke **PASSED**; founding monthly coupon **`QnYlzKuK`**. Broader prod billing matrix (upgrade, portal cancel, Lifetime) still optional follow-up smoke.
 
 ---
 

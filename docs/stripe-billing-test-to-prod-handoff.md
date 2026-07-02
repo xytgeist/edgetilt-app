@@ -66,7 +66,7 @@ Entitlements: **`get_my_entitlements()`** → `{ active, status, current_period_
 ### Portal (`stripe-create-portal-session`)
 
 - Ensures portal config with **cancel at period end** (or uses **`STRIPE_BILLING_PORTAL_CONFIGURATION_ID`**).
-- Deep-links **`subscription_cancel`** when user has active Starter/Pro recurring sub.
+- Opens **Customer Portal** home (subscription summary, cancel, payment method, invoices); return URL polls entitlements on `/?billing=portal`.
 - **Manage membership** hides portal button when `cancel_at_period_end` is already set; shows **Access until [date]** block.
 
 ### Client surfaces
@@ -254,3 +254,5 @@ where table_schema = 'public' and table_name = 'user_subscriptions' and column_n
 - **2026-07-01:** Handoff doc created (interval switch, manage membership, settings entry).
 - **2026-07-01:** Starter → Pro + monthly → annual via Checkout; portal cancel; Lifetime payment mode fix; manage cancel UX; light mode; tagline.
 - **2026-07-01:** Full prod walkthrough + bug-fix table; all commits through **`6680e25`** on **`origin/test`**.
+- **2026-07-01:** **Production sign-off (Ryan):** prod SQL **`20260701120000`**–**`160000`**, live Stripe catalog + webhook, Edge deploy on **`jtjgtucumuoswnbauxry`**, minimal smoke **PASSED** (Starter monthly Checkout + founding coupon). Live founding monthly coupon **`QnYlzKuK`** (replaces misconfigured **`9kzEJI5c`** one-month duration). Prod auth SMTP fixed separately (**`noreply@auth.edgetilt.com`**).
+- **2026-07-02:** Portal session opens **Customer Portal home** (not **`subscription_cancel`** deep-link); redeploy **`stripe-create-portal-session`** on test + prod.

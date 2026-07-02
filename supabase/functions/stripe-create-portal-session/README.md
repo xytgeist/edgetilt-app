@@ -10,8 +10,8 @@ User JWT (`Authorization: Bearer …`).
 
 - Loads **`profiles.stripe_customer_id`**
 - Ensures a portal **configuration** with **subscription cancel** enabled (uses **`STRIPE_BILLING_PORTAL_CONFIGURATION_ID`** if set, else reuses an existing config or creates one)
-- If the user has an active **Starter** or **Pro** recurring sub, opens the portal **directly on the cancel flow** for that subscription (`flow_data.type = subscription_cancel`)
-- Otherwise opens the generic portal (payment method / invoices)
+- Opens the **default Customer Portal home** (current subscription, cancel, payment methods, invoices)
+- If the user has an active **Starter** or **Pro** recurring sub, they cancel from the portal subscription card (not a deep-linked cancel flow)
 - Return URL: `/?billing=portal`
 
 **Lifetime** (`slots-edge-lifetime`) is a one-time payment ... no subscription to cancel in portal. Use SQL revoke for test resets.

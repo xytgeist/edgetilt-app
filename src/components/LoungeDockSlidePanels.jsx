@@ -170,6 +170,10 @@ export default function LoungeDockSlidePanels({
   /** Signed-in login email (read-only). */
   settingsAccountEmail = '',
   settingsHasActiveSubscription = false,
+  settingsHasSlotsEdgeStarter = false,
+  settingsHasSlotsEdgePro = false,
+  settingsHasSlotsEdgeLifetime = false,
+  settingsOnOpenBillingManage = null,
   settingsSupabaseClient = null,
   onSettingsEditProfile,
   /** Parent captures panel scroller for navigation return stack. */
@@ -306,9 +310,21 @@ export default function LoungeDockSlidePanels({
 
   const settingsMembershipLabel = useMemo(() => {
     if (settingsViewerIsStaff) return 'Staff'
+    if (settingsHasSlotsEdgeLifetime) return 'Lifetime'
+    if (settingsHasSlotsEdgePro) return 'Slots Edge Pro'
+    if (settingsHasSlotsEdgeStarter) return 'Slots Edge'
     if (settingsHasActiveSubscription) return 'Subscriber'
     return 'Free'
-  }, [settingsHasActiveSubscription, settingsViewerIsStaff])
+  }, [
+    settingsHasActiveSubscription,
+    settingsHasSlotsEdgeLifetime,
+    settingsHasSlotsEdgePro,
+    settingsHasSlotsEdgeStarter,
+    settingsViewerIsStaff,
+  ])
+
+  const settingsHasPaidMembership =
+    settingsHasSlotsEdgeLifetime || settingsHasSlotsEdgePro || settingsHasSlotsEdgeStarter
 
   const onSettingsChangePassword = useCallback(async () => {
     const email = String(settingsAccountEmail || '').trim()
@@ -1500,9 +1516,26 @@ export default function LoungeDockSlidePanels({
                           {settingsMembershipLabel}
                         </span>
                       </div>
-                      {!settingsHasActiveSubscription && !settingsViewerIsStaff ? (
+                      {settingsViewerIsStaff ? null : settingsHasPaidMembership ? (
+                        <button
+                          type="button"
+                          onClick={() => settingsOnOpenBillingManage?.()}
+                          className="mt-3 min-h-10 w-full rounded-xl border border-cyan-500/35 bg-cyan-950/25 px-3 text-[13px] font-semibold text-cyan-100 touch-manipulation hover:bg-cyan-950/40 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          Manage membership
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => settingsOnOpenBillingManage?.()}
+                          className="mt-3 min-h-10 w-full rounded-xl border border-zinc-700/80 bg-zinc-900 px-3 text-[13px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800/80 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          View Edge AP Slots plans
+                        </button>
+                      )}
+                      {!settingsHasPaidMembership && !settingsViewerIsStaff ? (
                         <p className="mt-2 text-[12px] leading-snug text-zinc-500">
-                          Subscriptions and billing are coming soon.
+                          Unlock AP guides, calculators, and subscriber Lounge perks.
                         </p>
                       ) : null}
                     </div>

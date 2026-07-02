@@ -5,6 +5,7 @@ import {
   PRODUCT_SLOTS_EDGE_LIFETIME,
   PRODUCT_SLOTS_EDGE_STARTER,
   productDisplayName,
+  resolvedEntitlementBillingInterval,
 } from './edgeProducts.js'
 import {
   SLOTS_EDGE_FOUNDING,
@@ -183,7 +184,7 @@ function billingSwitchTargetInterval(interval) {
  *   onClose: () => void,
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   onCheckoutStarted?: () => void,
- *   hasSlotsEdge?: boolean,
+ *   hasSlotsEdgePro?: boolean,
  *   hasSlotsEdgeLifetime?: boolean,
  *   hasSlotsEdgeStarter?: boolean,
  *   starterPriceInterval?: 'monthly' | 'annual' | null,
@@ -196,7 +197,7 @@ export default function SubscribeModal({
   onClose,
   supabaseClient,
   onCheckoutStarted,
-  hasSlotsEdge = false,
+  hasSlotsEdgePro = false,
   hasSlotsEdgeLifetime = false,
   hasSlotsEdgeStarter = false,
   starterPriceInterval = null,
@@ -205,9 +206,11 @@ export default function SubscribeModal({
   const defaultPlan = useMemo(() => {
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME) return PRODUCT_SLOTS_EDGE_LIFETIME
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_STARTER) return PRODUCT_SLOTS_EDGE_STARTER
-    if (hasSlotsEdgeStarter && !hasSlotsEdge) return PRODUCT_SLOTS_EDGE
+    if (initialProductSlug === PRODUCT_SLOTS_EDGE) return PRODUCT_SLOTS_EDGE
+    if (hasSlotsEdgeStarter && !hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE_STARTER
+    if (hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE
     return PRODUCT_SLOTS_EDGE
-  }, [hasSlotsEdge, hasSlotsEdgeStarter, initialProductSlug])
+  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, initialProductSlug])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -227,19 +230,22 @@ export default function SubscribeModal({
   const suppressCarouselClickRef = useRef(false)
   const instantSlideResetRef = useRef(0)
 
+  const starterCurrentInterval = resolvedEntitlementBillingInterval(
+    starterPriceInterval,
+    hasSlotsEdgeStarter,
+  )
+  const fullCurrentInterval = resolvedEntitlementBillingInterval(
+    fullPriceInterval,
+    hasSlotsEdgePro && !hasSlotsEdgeLifetime,
+  )
+
   useEffect(() => {
     if (!open) return
     setSelectedPlan(defaultPlan)
     setStarterInterval(
-      hasSlotsEdgeStarter && starterPriceInterval
-        ? billingSwitchTargetInterval(starterPriceInterval)
-        : 'monthly',
+      starterCurrentInterval ? billingSwitchTargetInterval(starterCurrentInterval) : 'monthly',
     )
-    setFullInterval(
-      hasSlotsEdge && !hasSlotsEdgeLifetime && fullPriceInterval
-        ? billingSwitchTargetInterval(fullPriceInterval)
-        : 'monthly',
-    )
+    setFullInterval(fullCurrentInterval ? billingSwitchTargetInterval(fullCurrentInterval) : 'monthly')
     setError('')
     setBusy(false)
     setInstantSlideIndexes(new Set())
@@ -249,15 +255,7 @@ export default function SubscribeModal({
     isDraggingRef.current = false
     const idx = Math.max(0, PLAN_SLUGS.indexOf(defaultPlan))
     setActiveSlide(idx >= 0 ? idx : 1)
-  }, [
-    open,
-    defaultPlan,
-    fullPriceInterval,
-    hasSlotsEdge,
-    hasSlotsEdgeLifetime,
-    hasSlotsEdgeStarter,
-    starterPriceInterval,
-  ])
+  }, [open, defaultPlan, fullCurrentInterval, starterCurrentInterval])
 
   useEffect(() => {
     return () => {
@@ -445,12 +443,12 @@ export default function SubscribeModal({
   const lifetimeSelected = selectedPlan === PRODUCT_SLOTS_EDGE_LIFETIME
   const starterSelected = selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
   const fullSelected = selectedPlan === PRODUCT_SLOTS_EDGE
-  const starterOnlySubscriber = hasSlotsEdgeStarter && !hasSlotsEdge
-  const fullSubscriber = hasSlotsEdge && !hasSlotsEdgeLifetime && !hasSlotsEdgeStarter
-  const starterMonthlyLocked = hasSlotsEdgeStarter && starterPriceInterval === 'monthly'
-  const starterAnnualLocked = hasSlotsEdgeStarter && starterPriceInterval === 'annual'
-  const fullMonthlyLocked = fullSubscriber && fullPriceInterval === 'monthly'
-  const fullAnnualLocked = fullSubscriber && fullPriceInterval === 'annual'
+  const starterOnlySubscriber = hasSlotsEdgeStarter && !hasSlotsEdgePro && !hasSlotsEdgeLifetime
+  const fullSubscriber = hasSlotsEdgePro && !hasSlotsEdgeLifetime
+  const starterMonthlyLocked = starterCurrentInterval === 'monthly'
+  const starterAnnualLocked = starterCurrentInterval === 'annual'
+  const fullMonthlyLocked = fullCurrentInterval === 'monthly'
+  const fullAnnualLocked = fullCurrentInterval === 'annual'
   const selectedInterval =
     selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
       ? starterInterval
@@ -459,6 +457,11 @@ export default function SubscribeModal({
         : 'monthly'
   const switchingBillingInterval =
     (starterOnlySubscriber && starterSelected) || (fullSubscriber && fullSelected)
+  const checkoutDisabled =
+    busy ||
+    (switchingBillingInterval &&
+      ((starterSelected && starterInterval === starterCurrentInterval) ||
+        (fullSelected && fullInterval === fullCurrentInterval)))
 
   const checkoutLabel =
     lifetimeSelected
@@ -606,24 +609,21 @@ export default function SubscribeModal({
                     >
                     <div
                       role="button"
-                      tabIndex={busy || hasSlotsEdgeStarter ? -1 : 0}
+                      tabIndex={busy ? -1 : 0}
                       aria-pressed={starterSelected}
-                      aria-disabled={busy || hasSlotsEdgeStarter}
+                      aria-disabled={busy}
                       onKeyDown={(event) => {
-                        if (busy || hasSlotsEdgeStarter) return
+                        if (busy) return
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault()
                           selectPlan(PRODUCT_SLOTS_EDGE_STARTER, 0)
                         }
                       }}
                       onClick={() => {
-                        if (busy || hasSlotsEdgeStarter) return
+                        if (busy) return
                         selectPlan(PRODUCT_SLOTS_EDGE_STARTER, 0)
                       }}
-                      className={planCardClass(
-                        starterSelected,
-                        hasSlotsEdgeStarter ? 'opacity-90 cursor-default' : 'cursor-pointer',
-                      )}
+                      className={planCardClass(starterSelected, busy ? 'cursor-default' : 'cursor-pointer')}
                     >
                       <FoundingMemberBadge />
                       {hasSlotsEdgeStarter ? (
@@ -737,9 +737,15 @@ export default function SubscribeModal({
                       ].join(' ')}
                     >
                       <FoundingMemberBadge />
-                      <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
-                        Most popular
-                      </span>
+                      {fullSubscriber ? (
+                        <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
+                          Current
+                        </span>
+                      ) : (
+                        <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
+                          Most popular
+                        </span>
+                      )}
                       <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300/80">Everything now</div>
                       <div className="mt-0.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE)}</div>
                       <p className="mt-0.5 text-xs text-zinc-400">The complete AP slots toolkit.</p>
@@ -898,7 +904,7 @@ export default function SubscribeModal({
 
               <button
                 type="button"
-                disabled={busy}
+                disabled={checkoutDisabled}
                 onClick={() => void handleCheckout()}
                 className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
               >

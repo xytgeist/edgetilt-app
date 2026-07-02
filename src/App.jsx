@@ -6,6 +6,7 @@ import AuthModalPanel from './features/auth/AuthModalPanel'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
+import BillingManageModal from './features/billing/BillingManageModal.jsx'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
 import { useEdgeEntitlements } from './features/billing/useEdgeEntitlements.js'
 import { useContentAccessGates } from './features/billing/useContentAccessGates.js'
@@ -88,6 +89,7 @@ function App() {
     productSlug: PRODUCT_SLOTS_EDGE,
     openKey: 0,
   })
+  const [billingManageOpen, setBillingManageOpen] = useState(false)
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -330,6 +332,7 @@ function App() {
     hasSlotsEdge: hasSlotsEdgeFromRpc,
     hasSlotsEdgeLifetime: hasSlotsEdgeLifetimeFromRpc,
     hasSlotsEdgeStarter: hasSlotsEdgeStarterFromRpc,
+    hasSlotsEdgePro: hasSlotsEdgeProFromRpc,
     starterPriceInterval,
     fullPriceInterval,
   } = useEdgeEntitlements(supabase, user?.id)
@@ -392,6 +395,26 @@ function App() {
   const closeSubscribeModal = useCallback(() => {
     setSubscribeModal((s) => ({ ...s, open: false }))
   }, [])
+
+  const closeBillingManageModal = useCallback(() => {
+    setBillingManageOpen(false)
+  }, [])
+
+  const handleCheckoutStarted = useCallback(() => {
+    void refreshEntitlements()
+  }, [refreshEntitlements])
+
+  const openBillingManageModal = useCallback(() => {
+    const hasPaidMembership =
+      hasSlotsEdgeStarterFromRpc ||
+      hasSlotsEdgeProFromRpc ||
+      hasSlotsEdgeLifetimeFromRpc
+    if (hasPaidMembership) {
+      setBillingManageOpen(true)
+    } else {
+      openSubscribeModal(PRODUCT_SLOTS_EDGE)
+    }
+  }, [hasSlotsEdgeLifetimeFromRpc, hasSlotsEdgeProFromRpc, hasSlotsEdgeStarterFromRpc, openSubscribeModal])
 
   const getFriendlyErrorMessage = (error, context = 'general') => {
     const message = error?.message || 'Unknown error'
@@ -807,6 +830,7 @@ function App() {
 
   const hasSlotsEdgeStarterAccess = isStaffRole || hasSlotsEdgeStarterFromRpc
   const hasSlotsEdgeLifetimeAccess = isStaffRole || hasSlotsEdgeLifetimeFromRpc
+  const hasSlotsEdgeProAccess = isStaffRole || hasSlotsEdgeProFromRpc
 
   // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {
@@ -824,6 +848,9 @@ function App() {
           onSetContentAccessGate={setContentAccessGate}
           onOpenAuth={openAuthPanel}
           onRequireSubscribe={openSubscribeModal}
+          onOpenBillingManage={openBillingManageModal}
+          hasSlotsEdgePro={hasSlotsEdgeProAccess}
+          hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeAccess}
           accessNotice={accessNotice}
           onLogout={handleLogout}
           onDeleteAccount={handleDeleteAccount}
@@ -838,11 +865,25 @@ function App() {
           initialProductSlug={subscribeModal.productSlug}
           onClose={closeSubscribeModal}
           supabaseClient={supabase}
-          hasSlotsEdge={hasSlotsEdgeAccess}
-          hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeAccess}
-          hasSlotsEdgeStarter={hasSlotsEdgeStarterAccess}
+          onCheckoutStarted={handleCheckoutStarted}
+          hasSlotsEdgePro={hasSlotsEdgeProFromRpc}
+          hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeFromRpc}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarterFromRpc}
           starterPriceInterval={starterPriceInterval}
           fullPriceInterval={fullPriceInterval}
+        />
+        <BillingManageModal
+          open={billingManageOpen}
+          onClose={closeBillingManageModal}
+          supabaseClient={supabase}
+          onCheckoutStarted={handleCheckoutStarted}
+          onOpenSubscribe={openSubscribeModal}
+          hasSlotsEdgeStarter={hasSlotsEdgeStarterFromRpc}
+          hasSlotsEdgePro={hasSlotsEdgeProFromRpc}
+          hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeFromRpc}
+          starterPriceInterval={starterPriceInterval}
+          fullPriceInterval={fullPriceInterval}
+          entitlements={entitlements}
         />
         {legalAcceptancePending && user ? (
           <LegalAcceptanceModal

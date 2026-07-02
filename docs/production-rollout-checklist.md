@@ -131,6 +131,10 @@ supabase functions deploy lounge-cf-r2-backfill-cache-control
 supabase functions deploy lounge-chat
 # Chat + Lounge link previews (OG unfurl + attach):
 supabase functions deploy lounge-link-unfurl
+# Stripe billing (after migrations through 20260701160000 — full checklist docs/stripe-billing-test-to-prod-handoff.md):
+supabase functions deploy stripe-create-checkout-session
+supabase functions deploy stripe-create-portal-session
+supabase functions deploy stripe-webhook
 ```
 
 Deploy **`lounge-cf-stream-purge-pending-uploads`** from a repo copy that includes **`supabase/config.toml`** (`verify_jwt = false` for that function) so **`sb_*`** gateway keys work when used from Vault.
@@ -153,6 +157,8 @@ Set **production** Edge secrets for Stream (same **names** as test; rotate value
 Cross-check dashboards: **Production** function list versus **test** (names active, versions reasonable).
 
 Secrets (secrets / env vault in Supabase) for push + web-push must exist on production — mirror **test** configuration.
+
+**Stripe billing:** live **`STRIPE_*`** secrets + live webhook endpoint on prod; see **`docs/stripe-billing-test-to-prod-handoff.md`** (migrations, smoke, deploy order). Do not promote until test sign-off on interval switch + manage membership UI.
 
 ---
 

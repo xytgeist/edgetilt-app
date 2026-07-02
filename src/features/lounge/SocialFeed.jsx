@@ -533,6 +533,9 @@ export default function SocialFeed({
   titleBarNavSlot = null,
   /** Shell subscription + staff (topic channels); merged in-feed with profile role where useful. */
   hasActiveSubscription = false,
+  hasSlotsEdgeStarter = false,
+  hasSlotsEdgePro = false,
+  hasSlotsEdgeLifetime = false,
   isStaff = false,
   loungeFeedScope = LOUNGE_FEED_SCOPE_ALL,
   onLoungeFeedScopeChange,
@@ -563,6 +566,8 @@ export default function SocialFeed({
   onRequestOpenProfileConsumed,
   /** Open terms, privacy, or guidelines in-app with return navigation. */
   onOpenLegalDocument = null,
+  /** Open in-app billing manage modal (upgrade / interval / cancel). */
+  onOpenBillingManage = null,
   /** Staff-only: trigger TabErrorBoundary on the active Slots tool tab. */
   onSimulateTabError = null,
   /** Staff-only: clear tab error strike count (False Start vs Fumble testing). */
@@ -15766,6 +15771,10 @@ export default function SocialFeed({
           onNotificationPrefToggle={onLoungeNotificationPrefToggle}
           settingsAccountEmail={String(composerAuthUser?.email || '').trim()}
           settingsHasActiveSubscription={hasActiveSubscription}
+          settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
+          settingsHasSlotsEdgePro={hasSlotsEdgePro}
+          settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
+          settingsOnOpenBillingManage={onOpenBillingManage}
           settingsSupabaseClient={supabaseClient}
           onSettingsEditProfile={onLoungeSettingsEditProfile}
           onLogout={onLogout}

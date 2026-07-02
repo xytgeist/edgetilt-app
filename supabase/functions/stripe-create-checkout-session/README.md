@@ -107,6 +107,8 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
 | **`STRIPE_CHECKOUT_DEFAULT_ORIGIN`** | Optional fallback if `Origin` header missing (e.g. `https://edgetilt.com`) |
 
+**Migrations through `20260701160000_user_subscriptions_price_interval.sql`** (display names **`20260701150000`**, starter/lifetime **`20260701120000`**–**`140000`**) before interval UX works end-to-end. Full test → prod checklist: **`docs/stripe-billing-test-to-prod-handoff.md`**.
+
 
 
 Price IDs are **per Stripe account** (test vs live). Map slug → secret via **`STRIPE_PRICE_<SLUG>`** with hyphens → underscores.

@@ -65,10 +65,29 @@ export function hasSlotsEdgeStarter(entitlements) {
   return hasEntitlement(entitlements, PRODUCT_SLOTS_EDGE_STARTER)
 }
 
+/** Active recurring Pro subscription (`slots-edge`), not lifetime. */
+export function hasSlotsEdgePro(entitlements) {
+  return hasEntitlement(entitlements, PRODUCT_SLOTS_EDGE)
+}
+
 /** @param {Record<string, { price_interval?: string }> | null | undefined} entitlements @param {string} productSlug @returns {'monthly' | 'annual' | null} */
 export function entitlementPriceInterval(entitlements, productSlug) {
   const raw = entitlements?.[productSlug]?.price_interval
   return raw === 'monthly' || raw === 'annual' ? raw : null
+}
+
+/**
+ * When a plan is active but Stripe metadata has not synced yet, assume monthly
+ * so subscribe UI can lock the current cadence and pre-select the switch target.
+ *
+ * @param {'monthly' | 'annual' | null | undefined} interval
+ * @param {boolean} planActive
+ * @returns {'monthly' | 'annual' | null}
+ */
+export function resolvedEntitlementBillingInterval(interval, planActive) {
+  if (!planActive) return null
+  if (interval === 'monthly' || interval === 'annual') return interval
+  return 'monthly'
 }
 
 export function productDisplayName(slug) {

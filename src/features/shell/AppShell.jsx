@@ -252,12 +252,15 @@ export default function AppShell({
   accessNotice = '',
   hasActiveSubscription = false,
   hasSlotsEdgeStarter = false,
+  hasSlotsEdgePro = false,
+  hasSlotsEdgeLifetime = false,
   isStaff = false,
   isAdmin = false,
   contentAccessGatesMap = null,
   contentAccessGatesDbReady = false,
   onSetContentAccessGate,
   onRequireSubscribe,
+  onOpenBillingManage,
   onOpenLegalDocument,
 }) {
   const consoleLogHudEnabled = useSyncExternalStore(
@@ -1280,6 +1283,9 @@ export default function AppShell({
             hydrateCommunityPosts={hydrateCommunityPosts}
             titleBarNavSlot={renderTitleBarNavSlot()}
             hasActiveSubscription={hasActiveSubscription}
+            hasSlotsEdgeStarter={hasSlotsEdgeStarter}
+            hasSlotsEdgePro={hasSlotsEdgePro}
+            hasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
             isStaff={isStaff}
             loungeFeedScope={loungeFeedScope}
             onLoungeFeedScopeChange={onLoungeFeedScopeChange}
@@ -1313,6 +1319,7 @@ export default function AppShell({
             requestOpenProfileUserId={pendingLoungeProfileUserId}
             onRequestOpenProfileConsumed={() => setPendingLoungeProfileUserId(null)}
             onOpenLegalDocument={onOpenLegalDocument}
+            onOpenBillingManage={onOpenBillingManage}
             onSimulateTabError={simulateTabError}
             onResetTabErrorStrikes={handleResetTabErrorStrikes}
           />

@@ -2302,37 +2302,76 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog {
     0 16px 48px rgba(0, 0, 0, 0.16),
     0 0 0 1px rgba(0, 0, 0, 0.05) !important;
 }
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-white {
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-header {
+  background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, #ffffff 100%) !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-header > .pointer-events-none {
+  background: radial-gradient(ellipse 90% 70% at 50% -20%, rgba(249, 115, 22, 0.14), transparent 62%) !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-white,
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-pro-copy {
   color: #18181b !important;
 }
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-subtitle,
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-zinc-300 {
-  color: #3f3f46 !important;
+  color: #52525b !important;
 }
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-zinc-400 {
   color: #71717a !important;
 }
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-kicker {
+  border-color: rgba(234, 88, 12, 0.35) !important;
+  background-color: rgba(255, 237, 213, 0.85) !important;
+  color: #c2410c !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-close {
+  border-color: #d4d4d8 !important;
+  background-color: #f4f4f5 !important;
+  color: #71717a !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-close:hover {
+  border-color: #a1a1aa !important;
+  color: #3f3f46 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-skip {
+  border-color: #d4d4d8 !important;
+  background-color: #f4f4f5 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-skip:hover {
+  border-color: #a1a1aa !important;
+  background-color: #e4e4e7 !important;
+}
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-red-300 {
   color: #dc2626 !important;
-}
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .text-orange-400 {
-  color: #ea580c !important;
-}
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .hover\:text-orange-300:hover {
-  color: #c2410c !important;
 }
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .border-zinc-700\/80,
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .border-zinc-700 {
   border-color: #d4d4d8 !important;
 }
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .bg-zinc-950,
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .bg-zinc-950\/50 {
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero:not(.starter-weekly-drop-hero-open) {
   background-color: #f4f4f5 !important;
 }
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .starter-weekly-drop-pro-cta .text-zinc-300 {
-  color: #52525b !important;
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-pro-cta {
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 48%, #f4f4f5 100%) !important;
+  box-shadow:
+    0 4px 16px rgba(59, 130, 246, 0.1),
+    0 0 0 1px rgba(59, 130, 246, 0.08) !important;
 }
-html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog .starter-weekly-drop-pro-cta .text-white {
-  color: #18181b !important;
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-pro-cta .text-cyan-300\/90 {
+  color: #0369a1 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-pro-count {
+  color: #1d4ed8 !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-pro-btn {
+  color: #ffffff !important;
+  background-image: linear-gradient(to right, #2563eb, #3b82f6) !important;
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.22) !important;
+}
+html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-pro-btn:hover {
+  background-image: linear-gradient(to right, #3b82f6, #60a5fa) !important;
 }
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-open {
   border-color: rgba(249, 115, 22, 0.45) !important;

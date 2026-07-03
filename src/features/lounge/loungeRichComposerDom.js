@@ -74,8 +74,6 @@ export function buildRichComposerHtml(text) {
 export function normalizeComposerPlainText(text, root) {
   let t = String(text ?? '')
   if (!root) return t
-  // Caret-anchor zero-width chars used only for empty trailing lines (iOS/Android).
-  t = t.replace(/\u200b/g, '')
   // Lone <br> placeholder reads as "\n" via the walker.
   if (t === '\n' && /^<br\s*\/?>$/i.test(String(root.innerHTML || '').trim())) return ''
   // Sole inner block wrapper: walker may append one trailing newline between blocks.
@@ -342,14 +340,6 @@ export function syncComposerHtml(root, text, caretOffset = null) {
   if (!root) return
   const html = buildRichComposerHtml(text)
   root.innerHTML = html || '<br>'
-  const caretOnTrailingNewline =
-    caretOffset != null &&
-    caretOffset > 0 &&
-    caretOffset === text.length &&
-    text.endsWith('\n')
-  if (caretOnTrailingNewline) {
-    root.appendChild(document.createTextNode('\u200b'))
-  }
   if (caretOffset != null) {
     setCaretTextOffset(root, caretOffset)
   }

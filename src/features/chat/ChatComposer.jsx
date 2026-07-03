@@ -13,9 +13,6 @@ import {
   LOUNGE_VIDEO_MAX_SECONDS,
 } from '../../utils/loungeVideoUpload.js'
 import {
-  COMPOSER_LINE_BREAK_INPUT_TYPES,
-  composerNewlineFromCaret,
-  ensureComposerSelection,
   getCaretTextOffset,
   setCaretTextOffset,
 } from '../lounge/loungeRichComposerDom.js'
@@ -85,8 +82,7 @@ export default function ChatComposer({
   const fileInputRef   = useRef(null)
   const videoInputRef  = useRef(null)
   const plusBtnRef     = useRef(null)
-  const skipNextEnterKeydownRef = useRef(false)
-  const skipNextInputReadRef = useRef(false)
+  const caretRef       = useRef(0)
 
   const hasContent = body.trim().length > 0 || imageSlots.length > 0
   const canSend = !disabled && !sending && hasContent
@@ -161,13 +157,10 @@ export default function ChatComposer({
   }, [body, composerActive, footerHost])
 
   const handleBodyInput = (e) => {
-    if (skipNextInputReadRef.current) {
-      skipNextInputReadRef.current = false
-      return
-    }
     // Strip HTML - only keep plain text from the contenteditable div.
     const raw = e.currentTarget.innerText ?? ''
     const trimmed = raw.slice(0, MAX_BODY)
+    caretRef.current = getCaretTextOffset(e.currentTarget)
     // If browser inserted HTML (e.g. from autocomplete), normalize back to text.
     if (e.currentTarget.innerHTML !== trimmed && e.currentTarget.innerText !== trimmed) {
       const sel = window.getSelection()
@@ -515,38 +508,19 @@ export default function ChatComposer({
 
   const applyChatNewlineAtCaret = useCallback(
     (e) => {
-      e?.preventDefault?.()
-      skipNextEnterKeydownRef.current = true
+      e.preventDefault()
       const el = textareaRef.current
       if (!el) return
-      ensureComposerSelection(el)
-      const inserted = composerNewlineFromCaret(el)
-      if (!inserted) return
-      const capped = inserted.text.slice(0, MAX_BODY)
-      const nextCaret = Math.min(inserted.caret, capped.length)
-      el.innerText = capped
+      const caret = Math.max(0, Math.min(caretRef.current, body.length))
+      const next = `${body.slice(0, caret)}\n${body.slice(caret)}`.slice(0, MAX_BODY)
+      const nextCaret = Math.min(caret + 1, next.length)
+      el.innerText = next
       setCaretTextOffset(el, nextCaret)
-      setBody(capped)
-      skipNextInputReadRef.current = true
+      caretRef.current = nextCaret
+      setBody(next)
       onTyping(viewerDisplayName)
     },
-    [onTyping, viewerDisplayName],
-  )
-
-  const handleComposerLineBreak = useCallback(
-    (e) => {
-      applyChatNewlineAtCaret(e)
-    },
-    [applyChatNewlineAtCaret],
-  )
-
-  const handleBeforeInput = useCallback(
-    (e) => {
-      if (COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) {
-        handleComposerLineBreak(e)
-      }
-    },
-    [handleComposerLineBreak],
+    [body, onTyping, viewerDisplayName],
   )
 
   const handleKeyDown = (e) => {
@@ -556,12 +530,6 @@ export default function ChatComposer({
       return
     }
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-      if (skipNextEnterKeydownRef.current) {
-        skipNextEnterKeydownRef.current = false
-        e.preventDefault()
-        return
-      }
-      e.preventDefault()
       applyChatNewlineAtCaret(e)
     }
   }
@@ -764,7 +732,6 @@ export default function ChatComposer({
             aria-placeholder="Message…"
             data-placeholder="Message…"
             onInput={handleBodyInput}
-            onBeforeInput={handleBeforeInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onPointerDown={handleComposerPointerDown}

@@ -1,7 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import {
   COMPOSER_LINE_BREAK_INPUT_TYPES,
-  composerNewlineFromCaret,
   getCaretTextOffset,
   insertPlainTextAtSelection,
   plainTextFromComposerRoot,
@@ -39,9 +38,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 ) {
   const rootRef = useRef(null)
   const lastValueRef = useRef(value)
+  const caretRef = useRef(0)
   const composingRef = useRef(false)
-  const skipNextEnterKeydownRef = useRef(false)
-  const skipNextInputReadRef = useRef(false)
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
@@ -50,16 +48,19 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 
   /** Notify mention layer - sync first (pre-DOM rewrite), rAF backup for late Android selection. */
   const notifyComposerInput = useCallback((el, text, caret, { sync = false } = {}) => {
+    caretRef.current = caret
     const payload = { target: el, text, caret }
     if (sync) onInputRef.current?.(payload)
     requestAnimationFrame(() => {
       onInputRef.current?.(payload)
       requestAnimationFrame(() => {
         if (!el?.isConnected) return
+        const liveCaret = getCaretTextOffset(el)
+        caretRef.current = liveCaret
         onInputRef.current?.({
           target: el,
           text: plainTextFromComposerRoot(el),
-          caret: getCaretTextOffset(el),
+          caret: liveCaret,
         })
       })
     })
@@ -76,50 +77,28 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     const nextCaret =
       maxLength != null ? Math.min(caret, capped.length) : caret
     lastValueRef.current = capped
+    caretRef.current = nextCaret
     notifyComposerInput(el, capped, nextCaret, { sync: true })
     syncComposerHtml(el, capped, nextCaret)
     if (capped !== value) onChange?.(capped)
   }, [maxLength, notifyComposerInput, onChange, value])
 
-  const applyNewlineAtCaret = useCallback(
-    (e) => {
-      if (!enterInsertsNewline) return false
-      e?.preventDefault?.()
-      skipNextEnterKeydownRef.current = true
-      const el = rootRef.current
-      if (!el) return false
-      const inserted = composerNewlineFromCaret(el)
-      if (!inserted) return false
-      let next = normalizeCashtagsInCaption(inserted.text)
-      if (maxLength != null && next.length > maxLength) return false
-      const nextCaret =
-        maxLength != null ? Math.min(inserted.caret, next.length) : inserted.caret
-      lastValueRef.current = next
-      notifyComposerInput(el, next, nextCaret, { sync: true })
-      syncComposerHtml(el, next, nextCaret)
-      skipNextInputReadRef.current = true
-      onChange?.(next)
-      return true
-    },
-    [enterInsertsNewline, maxLength, notifyComposerInput, onChange],
-  )
-
   useLayoutEffect(() => {
     const el = rootRef.current
     if (!el || composingRef.current) return
-    if (lastValueRef.current === value) return
     const domText = plainTextFromComposerRoot(el)
-    // Local edit (Enter/readAndEmit) can be ahead of a stale value prop for one frame.
-    if (domText === lastValueRef.current && domText !== value) return
     if (domText === value) {
       lastValueRef.current = value
       return
     }
+    // Enter/readAndEmit may update DOM before the parent value prop catches up.
+    if (domText === lastValueRef.current) return
     lastValueRef.current = value
     const caret =
       document.activeElement === el
         ? Math.min(getCaretTextOffset(el), value.length)
         : value.length
+    caretRef.current = caret
     syncComposerHtml(el, value, caret)
   }, [value])
 
@@ -147,33 +126,24 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       if (!root) return
       const active = document.activeElement
       if (active !== root && !root.contains(active)) return
-      notifyComposerInput(root, plainTextFromComposerRoot(root), getCaretTextOffset(root))
+      const caret = getCaretTextOffset(root)
+      caretRef.current = caret
+      notifyComposerInput(root, plainTextFromComposerRoot(root), caret)
     }
     document.addEventListener('selectionchange', onSelectionChange)
     return () => document.removeEventListener('selectionchange', onSelectionChange)
   }, [disabled, notifyComposerInput])
 
-  const handleLineBreakInsert = useCallback(
-    (e) => applyNewlineAtCaret(e),
-    [applyNewlineAtCaret],
-  )
-
   const handleBeforeInput = useCallback(
     (e) => {
-      if (enterInsertsNewline && COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) {
-        if (handleLineBreakInsert(e)) return
-      }
-      // Android defers selection updates; a follow-up read after the edit lands helps mentions.
+      // Mobile fires insertLineBreak before keydown; a follow-up read here races Enter handling.
+      if (COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) return
       requestAnimationFrame(() => readAndEmit())
     },
-    [enterInsertsNewline, handleLineBreakInsert, readAndEmit],
+    [readAndEmit],
   )
 
   const handleInput = useCallback(() => {
-    if (skipNextInputReadRef.current) {
-      skipNextInputReadRef.current = false
-      return
-    }
     readAndEmit()
   }, [readAndEmit])
 
@@ -193,16 +163,23 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       onKeyDown?.(e)
       if (e.defaultPrevented) return
       if (enterInsertsNewline && e.key === 'Enter' && !e.shiftKey) {
-        if (skipNextEnterKeydownRef.current) {
-          skipNextEnterKeydownRef.current = false
-          e.preventDefault()
-          return
-        }
         e.preventDefault()
-        applyNewlineAtCaret(e)
+        const el = rootRef.current
+        if (!el) return
+        const base = lastValueRef.current ?? value ?? ''
+        const caret = Math.max(0, Math.min(caretRef.current, base.length))
+        let next = `${base.slice(0, caret)}\n${base.slice(caret)}`
+        next = normalizeCashtagsInCaption(next)
+        if (maxLength != null && next.length > maxLength) return
+        const nextCaret = caret + 1
+        lastValueRef.current = next
+        caretRef.current = nextCaret
+        syncComposerHtml(el, next, nextCaret)
+        notifyComposerInput(el, next, nextCaret, { sync: true })
+        onChange?.(next)
       }
     },
-    [enterInsertsNewline, onKeyDown, applyNewlineAtCaret],
+    [enterInsertsNewline, maxLength, notifyComposerInput, onChange, onKeyDown, value],
   )
 
   return (

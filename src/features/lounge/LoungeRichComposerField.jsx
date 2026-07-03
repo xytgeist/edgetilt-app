@@ -4,6 +4,7 @@ import {
   insertComposerLineBreakViaExecCommand,
   insertPlainTextAtSelection,
   plainTextFromComposerRoot,
+  setCaretTextOffset,
   syncComposerHtml,
 } from './loungeRichComposerDom.js'
 import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
@@ -17,7 +18,7 @@ function isEnterKeyEvent(e) {
 
 /**
  * Contenteditable Lounge caption field with live @ / # / link styling.
- * Enter uses execCommand insertLineBreak (X-style); rich HTML sync waits for the next keystroke.
+ * Enter uses execCommand insertLineBreak; feed defers rich HTML sync, nested composers sync immediately (iOS caret).
  */
 const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   {
@@ -45,8 +46,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const lastValueRef = useRef(value)
   const caretRef = useRef(0)
   const composingRef = useRef(false)
-  const enterHandledRef = useRef(false)
-  /** Skip one readAndEmit rich HTML rebuild right after Enter (DOM rewrite races mobile caret). */
+  /** Feed-only: skip one readAndEmit rich HTML rebuild right after Enter (Android). */
   const skipRichSyncRef = useRef(false)
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
@@ -95,37 +95,34 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [maxLength, notifyComposerInput, onChange, value])
 
   const insertEnterNewline = useCallback(() => {
-    if (enterHandledRef.current) return true
     const el = rootRef.current
     if (!el) return false
-
-    enterHandledRef.current = true
-    queueMicrotask(() => {
-      enterHandledRef.current = false
-    })
-
-    skipRichSyncRef.current = true
-    if (!insertComposerLineBreakViaExecCommand(el)) {
-      skipRichSyncRef.current = false
-      return false
-    }
-
     if (composingRef.current) return true
 
-    const caret = getCaretTextOffset(el)
+    const beforeCaret = Math.max(getCaretTextOffset(el), caretRef.current)
+    if (!insertComposerLineBreakViaExecCommand(el)) return false
+
     let text = plainTextFromComposerRoot(el)
     text = normalizeCashtagsInCaption(text)
     if (maxLength != null && text.length > maxLength) {
       text = text.slice(0, maxLength)
     }
-    const nextCaret = maxLength != null ? Math.min(caret, text.length) : caret
+    const nextCaret = Math.min(beforeCaret + 1, text.length)
     lastValueRef.current = text
     caretRef.current = nextCaret
+
+    const deferRichSyncOnEnter = variant === 'feed' && !autoGrow
+    if (deferRichSyncOnEnter) {
+      skipRichSyncRef.current = true
+    } else {
+      syncComposerHtml(el, text, nextCaret)
+    }
+
     notifyComposerInput(el, text, nextCaret, { sync: true })
     if (text !== value) onChange?.(text)
     setDomHasText(text.length > 0)
     return true
-  }, [maxLength, notifyComposerInput, onChange, value])
+  }, [maxLength, notifyComposerInput, onChange, value, variant])
 
   useEffect(() => {
     syncPlaceholderFromDom()
@@ -162,7 +159,10 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     } catch {
       // ignore
     }
-  }, [autoGrow, value])
+    if (document.activeElement === el && (autoGrow || variant !== 'feed')) {
+      setCaretTextOffset(el, caretRef.current)
+    }
+  }, [autoGrow, value, variant])
 
   useEffect(() => {
     const el = rootRef.current

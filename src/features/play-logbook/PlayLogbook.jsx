@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
@@ -81,8 +81,9 @@ import {
   updatePlayLogSessionPartnersPaid,
   updatePlayLogSharedSession,
 } from './playLogApi.js'
+import { lazyRoute } from '../../utils/lazyImportWithChunkReload.js'
 
-const PlayLogAnalyzeTrendChart = lazy(() => import('./PlayLogAnalyzeTrendChart.jsx'))
+const PlayLogAnalyzeTrendChart = lazyRoute(() => import('./PlayLogAnalyzeTrendChart.jsx'))
 
 /** Max entries loaded for Log + Analyze (service returns newest first). */
 const PLAY_LOG_ENTRIES_FETCH_LIMIT = 500

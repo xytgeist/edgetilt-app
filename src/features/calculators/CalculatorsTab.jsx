@@ -1,9 +1,10 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import SlotsEdgeUpgradePill from '../../components/SlotsEdgeUpgradePill.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
+import { lazyRoute } from '../../utils/lazyImportWithChunkReload.js'
 import {
   CALCULATOR_CATALOG,
   calculatorRequiresSlotsEdge,
@@ -11,12 +12,12 @@ import {
   showCalculatorLock,
 } from './calculatorAccess.js'
 
-const PhoenixLink = lazy(() => import('./games/PhoenixLink.jsx'))
-const BuffaloLink = lazy(() => import('./games/BuffaloLink.jsx'))
-const BuffaloDiamond = lazy(() => import('./games/BuffaloDiamond.jsx'))
-const StackUpPays = lazy(() => import('./games/StackUpPays.jsx'))
-const MHBCalculator = lazy(() => import('./games/MHBCalculator.jsx'))
-const WheelOfFortuneCollectorsEdition = lazy(() => import('./games/WheelOfFortuneCollectorsEdition.jsx'))
+const PhoenixLink = lazyRoute(() => import('./games/PhoenixLink.jsx'))
+const BuffaloLink = lazyRoute(() => import('./games/BuffaloLink.jsx'))
+const BuffaloDiamond = lazyRoute(() => import('./games/BuffaloDiamond.jsx'))
+const StackUpPays = lazyRoute(() => import('./games/StackUpPays.jsx'))
+const MHBCalculator = lazyRoute(() => import('./games/MHBCalculator.jsx'))
+const WheelOfFortuneCollectorsEdition = lazyRoute(() => import('./games/WheelOfFortuneCollectorsEdition.jsx'))
 
 function CalculatorLoadingFallback() {
   return (

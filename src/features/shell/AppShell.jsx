@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense, useSyncExternalStore } from 'react'
+import React, { useState, useEffect, useRef, useCallback, Suspense, useSyncExternalStore } from 'react'
 import * as Sentry from '@sentry/react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
@@ -70,40 +70,25 @@ import { useFreemiumToolUsage } from '../billing/useFreemiumToolUsage.js'
 import { useStarterCalculatorUnlocks } from '../billing/useStarterCalculatorUnlocks.js'
 import { useStarterWeeklyDropGuideSlugs } from '../billing/useStarterWeeklyDropGuideSlugs.js'
 import { useStarterWeeklyDropPoolExhausted } from '../billing/useStarterWeeklyDropPoolExhausted.js'
+import {
+  STALE_CHUNK_RELOAD_KEY,
+  clearStaleChunkReloadGuard,
+  importRoute,
+  lazyRoute,
+} from '../../utils/lazyImportWithChunkReload.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
-const GUIDES_SCREEN_CHUNK_RELOAD_KEY = 'lvsp_guides_screen_chunk_reload'
-const CHAT_TAB_CHUNK_RELOAD_KEY = 'lvsp_chat_tab_chunk_reload'
 
-/** One hard reload when a stale deploy serves index.html for a missing lazy chunk. */
-function lazyImportWithChunkReload(importFn, reloadKey) {
-  return importFn().catch((err) => {
-    if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(reloadKey)) {
-      sessionStorage.setItem(reloadKey, '1')
-      window.location.reload()
-      return new Promise(() => {})
-    }
-    throw err
-  })
-}
-
-const SocialFeed = lazy(() => import('../lounge/SocialFeed.jsx'))
-const OffersCalendar = lazy(() => import('../offers/OffersCalendar.jsx'))
-const GuidesScreen = lazy(() =>
-  lazyImportWithChunkReload(
-    () => import('../guides/GuidesScreen.jsx'),
-    GUIDES_SCREEN_CHUNK_RELOAD_KEY,
-  ),
-)
-const BankrollTracker = lazy(() => import('../bankroll/BankrollTracker.jsx'))
-const LocalIntel = lazy(() => import('../intel/LocalIntel.jsx'))
-const CalculatorsTab = lazy(() => import('../calculators/CalculatorsTab.jsx'))
-const PlayLogbook = lazy(() => import('../play-logbook/PlayLogbook.jsx'))
-const SlotsScreen = lazy(() => import('../slots/SlotsScreen.jsx'))
-const ChatTab = lazy(() =>
-  lazyImportWithChunkReload(() => import('../chat/ChatTab.jsx'), CHAT_TAB_CHUNK_RELOAD_KEY),
-)
-const EdgeMonitorScreen = lazy(() => import('../ops/EdgeMonitorScreen.jsx'))
+const SocialFeed = lazyRoute(() => import('../lounge/SocialFeed.jsx'))
+const OffersCalendar = lazyRoute(() => import('../offers/OffersCalendar.jsx'))
+const GuidesScreen = lazyRoute(() => import('../guides/GuidesScreen.jsx'))
+const BankrollTracker = lazyRoute(() => import('../bankroll/BankrollTracker.jsx'))
+const LocalIntel = lazyRoute(() => import('../intel/LocalIntel.jsx'))
+const CalculatorsTab = lazyRoute(() => import('../calculators/CalculatorsTab.jsx'))
+const PlayLogbook = lazyRoute(() => import('../play-logbook/PlayLogbook.jsx'))
+const SlotsScreen = lazyRoute(() => import('../slots/SlotsScreen.jsx'))
+const ChatTab = lazyRoute(() => import('../chat/ChatTab.jsx'))
+const EdgeMonitorScreen = lazyRoute(() => import('../ops/EdgeMonitorScreen.jsx'))
 
 function TabLoadingFallback() {
   return (
@@ -1195,25 +1180,21 @@ export default function AppShell({
 
   useEffect(() => {
     if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: false })) {
-      void import('../lounge/SocialFeed.jsx')
+    void importRoute(() => import('../lounge/SocialFeed.jsx'))
     }
   }, [])
 
   /** Prefetch AP Guides chunk while Lounge is visible (Ask Community embed taps). */
   useEffect(() => {
     if (tab !== 'home') return undefined
-    void import('../guides/GuidesScreen.jsx')
-    void import('../chat/ChatTab.jsx')
+    void importRoute(() => import('../guides/GuidesScreen.jsx'))
+    void importRoute(() => import('../chat/ChatTab.jsx'))
     return undefined
   }, [tab])
 
   useEffect(() => {
     if (tab !== 'chat') return
-    try {
-      sessionStorage.removeItem(CHAT_TAB_CHUNK_RELOAD_KEY)
-    } catch {
-      /* ignore */
-    }
+    clearStaleChunkReloadGuard()
   }, [tab])
 
   const openGuideFromLounge = useCallback((rawSlug) => {
@@ -1221,20 +1202,16 @@ export default function AppShell({
     if (!slug) return
     setActiveCalculator(null)
     setMenuOpen(false)
-    void import('../guides/GuidesScreen.jsx')
+    void importRoute(() => import('../guides/GuidesScreen.jsx'))
       .then(() => {
-        try {
-          sessionStorage.removeItem(GUIDES_SCREEN_CHUNK_RELOAD_KEY)
-        } catch {
-          /* ignore */
-        }
+        clearStaleChunkReloadGuard()
         setGuideOpenCardSlug(slug)
         setTab('guides')
       })
       .catch(() => {
         try {
-          if (!sessionStorage.getItem(GUIDES_SCREEN_CHUNK_RELOAD_KEY)) {
-            sessionStorage.setItem(GUIDES_SCREEN_CHUNK_RELOAD_KEY, '1')
+          if (!sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY)) {
+            sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, '1')
             window.location.assign(`/?guide=${encodeURIComponent(slug)}`)
           }
         } catch {

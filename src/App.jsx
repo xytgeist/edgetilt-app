@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage } from './features/auth/oauthCallback'
@@ -37,8 +37,9 @@ import {
 } from './utils/loungeColdBootSplash.js'
 import { clearAccountClientState } from './utils/clearAccountClientState.js'
 import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
+import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
-const EdgeMonitorDesktopPage = lazy(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
+const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY

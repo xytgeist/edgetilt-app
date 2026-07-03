@@ -17,7 +17,20 @@ function resolveBuildSha() {
 process.env.VITE_BUILD_SHA = resolveBuildSha()
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'edge-build-sha-meta',
+      transformIndexHtml(html) {
+        const sha = process.env.VITE_BUILD_SHA || 'local'
+        return html.replace(
+          '<title>Edge</title>',
+          `<title>Edge</title>\n    <meta name="edge-build-sha" content="${sha}" />`,
+        )
+      },
+    },
+  ],
   build: {
     rollupOptions: {
       input: {

@@ -103,6 +103,7 @@ const SlotsScreen = lazy(() => import('../slots/SlotsScreen.jsx'))
 const ChatTab = lazy(() =>
   lazyImportWithChunkReload(() => import('../chat/ChatTab.jsx'), CHAT_TAB_CHUNK_RELOAD_KEY),
 )
+const EdgeMonitorScreen = lazy(() => import('../ops/EdgeMonitorScreen.jsx'))
 
 function TabLoadingFallback() {
   return (
@@ -853,6 +854,14 @@ export default function AppShell({
           if (roomId) setPendingChatRoomId(roomId)
         }
       }
+      if (targetTab === 'monitor') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else if (isAdmin) {
+          setTab('monitor')
+          setMenuOpen(false)
+        }
+      }
       const guideFromQuery = (params.get('guide') || '').trim()
       const guideFromPath = parseGuideSlugFromPathname(window.location.pathname || '')
       const guideSlug = guideFromQuery || guideFromPath
@@ -887,7 +896,7 @@ export default function AppShell({
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
     return () => window.removeEventListener('popstate', applyFromUrl)
-  }, [browseMode])
+  }, [browseMode, isAdmin])
 
   /** Only refire when entering Lounge - not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {
@@ -1013,10 +1022,11 @@ export default function AppShell({
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
 
-  /** Title bar ☰ menu - Slots hub + Chat (Lounge via dock home; Team not in menu). */
+  /** Title bar ☰ menu - Slots hub + Chat (Lounge via dock home; Monitor admin-only). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
+    ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: '📊', subscriberGated: false }] : []),
   ]
 
   const showNavSubscriberLocks =
@@ -1609,6 +1619,20 @@ export default function AppShell({
             setMenuOpen(false)
           }}
         />
+      )
+    } else if (tab === 'monitor') {
+      visibleTab = isAdmin ? (
+        <EdgeMonitorScreen
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          onBack={() => setTab('home')}
+        />
+      ) : (
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+          <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
+            Edge Monitor is admin-only.
+          </div>
+        </ScrollLinkedEdgeTitleBarShell>
       )
     } else if (tab === 'team') {
       visibleTab = (

@@ -339,6 +339,18 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ---
 
+## Edge Monitor (admin ops)
+
+In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-monitor-roadmap.md`**.
+
+- [ ] **v1 snapshot (code on branch):** migration **`20260703100000_admin_ops_monitor_snapshot.sql`** — RPC **`admin_ops_monitor_snapshot()`**; client **`src/features/ops/EdgeMonitorScreen.jsx`**; AppShell tab **`monitor`** + hamburger **Monitor** + **`?tab=monitor`**. Apply SQL on **test** before smoke.
+- [ ] **Ryan smoke (test):** admin opens Monitor → sections populate (users, subs, lounge, search, chat, guides, bankroll, play log, offers, push, starter drops); **Refresh** updates timestamp; non-admin sees access denied.
+- [ ] **Prod promote:** after test sign-off, apply migration on **`jtjgtucumuoswnbauxry`** per **`docs/production-rollout-checklist.md`**.
+
+**Phase 2+ (not started):** time-series charts, top search queries, Sentry/Stripe/Cloudflare deep links, alert thresholds — see roadmap.
+
+---
+
 ## Roadmap status snapshot
 
 ### Phase A - Foundation (DB + auth shaping)
@@ -722,6 +734,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 - 2026-07-02: **Chat inbox swipe archive/delete (code):** migration **`20260702150000_chat_room_member_archive.sql`** — **`chat_room_members.archived_at`**, RPC **`chat_archive_room`**, **`chat_rooms_for_user`** / **`chat_unread_room_count`** exclude archived rows. Client: **`ChatTab.jsx`** swipe left → archive, right → delete ( **`chatLeaveRoom`** ); **`chatApi.chatArchiveRoom`**. **Apply migration on test before smoke.** No archived-inbox UI yet (rooms reappear only if unarchive is added later).
 - 2026-07-02: **Starter weekly drop — production (Ryan sign-off):** **`jtjgtucumuoswnbauxry`** migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** applied; pg_cron job **`starter_weekly_guide_drop_weekly`** + **`@edgelord`** verified; **`lounge-send-activity-push`** redeployed; frontend **`origin/main`** fast-forward through **`66d6ed7`** (Vercel **`edgetilt.com`**). **Test sign-off:** scratch reveal UX validated on **`lvslotpro.com`**. **Prod app smoke:** Ryan — one Starter grant via **`docs/test-user-roles.md`** SQL on prod.
 - 2026-07-02: **Starter weekly drop scratch reveal (code):** migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** — weekly pg_cron job, stacked **`activity_events`**, scratch modal + motion-gated audio, tap-to-reveal, Pro upgrade count CTA, exhausted-pool auto-unlock for new **2020+** guides. Apply on **test** first; redeploy **`lounge-send-activity-push`**. Requires **`@edgelord`** profile for system actor + **pg_cron** enabled.
+- 2026-07-03: **Edge Monitor v1 (code):** admin-only **`/?tab=monitor`** — RPC **`admin_ops_monitor_snapshot()`** (migration **`20260703100000`**) + **`EdgeMonitorScreen`** lazy tab. Hamburger **Monitor** when **`isAdmin`**. Roadmap **`docs/edge-monitor-roadmap.md`**. Apply SQL on test before smoke.
 - 2026-07-01: **Legal URLs (Ryan decision):** **`edgetilt.com/terms`**, **`/privacy`**, **`/guidelines`** in-app routes are sufficient; no separate hosted legal site. Prod checklist §7 closed.
 - 2026-07-01: **Legal counsel review (Ryan sign-off):** in-app **`/terms`**, **`/privacy`**, and **`/guidelines`** copy in **`src/features/legal/legalDocuments.js`** reviewed by counsel. Prod checklist §7 updated; policy version still **`2026-06-27`** (`legalPolicyVersion.js`).
 - 2026-07-01: **Stripe billing — production (Ryan sign-off):** **`jtjgtucumuoswnbauxry`** migrations through **`20260701160000`**, live **`STRIPE_*`** secrets + webhook, three Edge functions deployed; minimal smoke **PASSED** on **`edgetilt.com`** (Starter monthly Checkout, founding **25% × 12 mo** coupon **`QnYlzKuK`**). Handoff: **`docs/stripe-billing-test-to-prod-handoff.md`**. **Still open on test/prod:** full interval/upgrade/portal smoke matrix on prod; RLS hardening. **Weekly drop cron:** shipped prod **2026-07-02** (see Update log).

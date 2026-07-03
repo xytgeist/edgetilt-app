@@ -439,3 +439,69 @@ export function getComposerCaretClientRect(root) {
 export function isRichComposerElement(el) {
   return Boolean(el?.isContentEditable)
 }
+
+export const LOUNGE_IOS =
+  typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+/**
+ * iOS WebKit: execCommand insertLineBreak can leave the DOM selection correct while the
+ * painted caret stays on an earlier line (common under fixed/transformed footers). Re-sync
+ * styled HTML when provided, then scroll a zero-width marker into view to force repaint.
+ */
+export function nudgeIosComposerCaretPaint(root, { text = null, caretOffset = null } = {}) {
+  if (!LOUNGE_IOS || !root || typeof window === 'undefined') return
+
+  const run = () => {
+    if (!root.isConnected) return
+
+    const caret =
+      caretOffset != null
+        ? Math.max(0, caretOffset)
+        : getCaretTextOffset(root)
+
+    if (text != null) {
+      syncComposerHtml(root, text, caret)
+    } else {
+      setCaretTextOffset(root, caret)
+    }
+
+    const sel = window.getSelection()
+    if (!sel?.rangeCount || !root.contains(sel.anchorNode)) {
+      setCaretTextOffset(root, caret)
+      return
+    }
+
+    try {
+      const range = sel.getRangeAt(0).cloneRange()
+      range.collapse(true)
+      const marker = document.createElement('span')
+      marker.setAttribute('data-composer-caret-nudge', '')
+      marker.style.display = 'inline-block'
+      marker.style.width = '0'
+      marker.style.height = '0'
+      marker.style.overflow = 'hidden'
+      marker.appendChild(document.createTextNode('\u200b'))
+      range.insertNode(marker)
+      marker.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      marker.remove()
+    } catch {
+      // ignore marker failure
+    }
+
+    setCaretTextOffset(root, caret)
+
+    try {
+      if (root.scrollHeight > root.clientHeight + 1) {
+        const st = root.scrollTop
+        root.scrollTop = st + 1
+        root.scrollTop = st
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(run)
+  })
+}

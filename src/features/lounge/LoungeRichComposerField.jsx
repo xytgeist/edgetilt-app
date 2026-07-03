@@ -3,6 +3,8 @@ import {
   getCaretTextOffset,
   insertComposerLineBreakViaExecCommand,
   insertPlainTextAtSelection,
+  LOUNGE_IOS,
+  nudgeIosComposerCaretPaint,
   plainTextFromComposerRoot,
   syncComposerHtml,
 } from './loungeRichComposerDom.js'
@@ -124,8 +126,12 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     notifyComposerInput(el, text, nextCaret, { sync: true })
     if (text !== value) onChange?.(text)
     setDomHasText(text.length > 0)
+    if (LOUNGE_IOS && variant !== 'feed') {
+      skipRichSyncRef.current = false
+      nudgeIosComposerCaretPaint(el, { text, caretOffset: nextCaret })
+    }
     return true
-  }, [maxLength, notifyComposerInput, onChange, value])
+  }, [maxLength, notifyComposerInput, onChange, value, variant])
 
   useEffect(() => {
     syncPlaceholderFromDom()

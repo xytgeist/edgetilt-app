@@ -15,6 +15,7 @@ import {
 import {
   getCaretTextOffset,
   insertComposerLineBreakViaExecCommand,
+  nudgeIosComposerCaretPaint,
   plainTextFromComposerRoot,
 } from '../lounge/loungeRichComposerDom.js'
 
@@ -497,6 +498,7 @@ export default function ChatComposer({
     const text = plainTextFromComposerRoot(el).slice(0, MAX_BODY)
     caretRef.current = getCaretTextOffset(el)
     setBody(text)
+    nudgeIosComposerCaretPaint(el, { caretOffset: caretRef.current })
     onTyping(viewerDisplayName)
     return true
   }, [onTyping, viewerDisplayName])

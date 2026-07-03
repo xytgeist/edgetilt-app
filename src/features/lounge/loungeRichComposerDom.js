@@ -230,13 +230,18 @@ export function setCaretTextOffset(root, targetOffset) {
     if (node.nodeType !== Node.ELEMENT_NODE) return
     const tag = node.tagName
     if (tag === 'BR') {
-      if (remaining <= 1) {
-        range.setStartBefore(node)
+      if (remaining === 0) {
+        range.setStartAfter(node)
         range.collapse(true)
         placed = true
         return
       }
       remaining -= 1
+      if (remaining === 0) {
+        range.setStartAfter(node)
+        range.collapse(true)
+        placed = true
+      }
       return
     }
     if (tag === 'DIV' || tag === 'P') {
@@ -330,6 +335,24 @@ export function insertPlainTextAtSelection(root, text) {
   const node = document.createTextNode(text)
   range.insertNode(node)
   range.setStartAfter(node)
+  range.collapse(true)
+  sel.removeAllRanges()
+  sel.addRange(range)
+  return true
+}
+
+/** Insert a visible line break at the current selection (mobile Enter / newline). */
+export function insertComposerLineBreakAtSelection(root) {
+  if (!root || typeof document === 'undefined') return false
+  if (!ensureComposerSelection(root)) return false
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return false
+  if (!root.contains(sel.anchorNode)) return false
+  sel.deleteFromDocument()
+  const range = sel.getRangeAt(0)
+  const br = document.createElement('br')
+  range.insertNode(br)
+  range.setStartAfter(br)
   range.collapse(true)
   sel.removeAllRanges()
   sel.addRange(range)

@@ -14,7 +14,7 @@ import {
 } from '../../utils/loungeVideoUpload.js'
 import {
   COMPOSER_LINE_BREAK_INPUT_TYPES,
-  insertPlainTextAtSelection,
+  insertComposerLineBreakAtSelection,
 } from '../lounge/loungeRichComposerDom.js'
 
 const MAX_BODY            = 4000
@@ -510,7 +510,7 @@ export default function ChatComposer({
     skipNextEnterKeydownRef.current = true
     const el = textareaRef.current
     if (!el) return
-    insertPlainTextAtSelection(el, '\n')
+    insertComposerLineBreakAtSelection(el)
     el.dispatchEvent(new Event('input', { bubbles: true }))
   }, [])
 
@@ -538,7 +538,7 @@ export default function ChatComposer({
       e.preventDefault()
       const el = textareaRef.current
       if (!el) return
-      insertPlainTextAtSelection(el, '\n')
+      insertComposerLineBreakAtSelection(el)
       el.dispatchEvent(new Event('input', { bubbles: true }))
     }
   }

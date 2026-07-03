@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffec
 import {
   COMPOSER_LINE_BREAK_INPUT_TYPES,
   getCaretTextOffset,
+  insertComposerLineBreakAtSelection,
   insertPlainTextAtSelection,
   plainTextFromComposerRoot,
   syncComposerHtml,
@@ -129,7 +130,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       if (!enterInsertsNewline) return false
       e.preventDefault()
       skipNextEnterKeydownRef.current = true
-      insertPlainTextAtSelection(rootRef.current, '\n')
+      insertComposerLineBreakAtSelection(rootRef.current)
       readAndEmit()
       return true
     },
@@ -173,7 +174,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
           return
         }
         e.preventDefault()
-        insertPlainTextAtSelection(rootRef.current, '\n')
+        insertComposerLineBreakAtSelection(rootRef.current)
         readAndEmit()
       }
     },

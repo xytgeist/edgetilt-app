@@ -3,15 +3,16 @@ import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.jsx'
+import AppUpdateAvailableBanner from './components/AppUpdateAvailableBanner.jsx'
 import {
   readLoungeComposerDraftPendingWork,
   shouldShowLoungeColdBootSplash,
 } from './utils/loungeColdBootSplash.js'
 import {
   importRoute,
-  installDeployVersionWatch,
   installStaleChunkReloadListener,
 } from './utils/lazyImportWithChunkReload.js'
+import { installDeployVersionWatch } from './utils/appDeployVersion.js'
 import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.js'
 import { installAppDebugLog } from './utils/appDebugLog.js'
 
@@ -39,6 +40,7 @@ if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeCompose
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <AppUpdateAvailableBanner />
     <App />
   </StrictMode>,
 )

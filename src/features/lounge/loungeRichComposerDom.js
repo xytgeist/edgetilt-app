@@ -283,18 +283,6 @@ export function setCaretTextOffset(root, targetOffset) {
   sel.addRange(range)
 }
 
-/** Restore caret after Enter; iOS WebKit often needs sync + rAF when rich HTML sync is deferred. */
-export function restoreComposerCaret(root, offset) {
-  if (!root || typeof window === 'undefined') return
-  const max = plainTextFromComposerRoot(root).length
-  const pos = Math.max(0, Math.min(offset, max))
-  setCaretTextOffset(root, pos)
-  requestAnimationFrame(() => {
-    if (!root.isConnected) return
-    setCaretTextOffset(root, pos)
-  })
-}
-
 /** Input types mobile virtual keyboards use for Enter / newline. */
 export const COMPOSER_LINE_BREAK_INPUT_TYPES = new Set(['insertLineBreak', 'insertParagraph'])
 
@@ -382,7 +370,15 @@ export function insertPlainTextAtSelection(root, text) {
 export function insertComposerLineBreakViaExecCommand(root) {
   if (!root || typeof document === 'undefined') return false
   if (!ensureComposerSelection(root)) return false
-  // Avoid redundant focus() — iOS WebKit can reset the caret to an earlier line.
+  try {
+    root.focus({ preventScroll: true })
+  } catch {
+    try {
+      root.focus()
+    } catch {
+      // ignore
+    }
+  }
   try {
     if (document.execCommand('insertLineBreak', false, null)) return true
   } catch {

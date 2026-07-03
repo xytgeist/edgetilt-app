@@ -178,7 +178,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [value, iosNativeTextarea])
 
   useLayoutEffect(() => {
-    if (!autoGrow) return
+    if (!autoGrow && !iosNativeTextarea) return
     const el = rootRef.current
     if (!el) return
     try {
@@ -190,7 +190,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     } catch {
       // ignore
     }
-  }, [autoGrow, value])
+  }, [autoGrow, iosNativeTextarea, value])
 
   useEffect(() => {
     if (iosNativeTextarea) return undefined

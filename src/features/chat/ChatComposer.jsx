@@ -126,27 +126,37 @@ export default function ChatComposer({
     }, 220)
   }, [body, footerHost, imageSlots.length, plusOpen, replyTarget])
 
-  // Auto-grow: measure the contenteditable's natural (unclipped) scroll height.
-  // When expanded the element has py-2.5 (20px vertical padding), so 1 line = 40px -
-  // we use a threshold above that to detect genuine multi-line content.
-  // When collapsed the element has h-full (40px) with line-height:40px, so 2 lines = 80px.
+  // Auto-grow: measure natural scroll height (contenteditable grows on its own; iOS textarea needs explicit height).
   useLayoutEffect(() => {
     if (footerHost && !composerActive) return
     const el = textareaRef.current
     const wrap = inputWrapRef.current
     if (!el) return
 
+    const isIosTextarea = LOUNGE_IOS && el.tagName === 'TEXTAREA'
+
     // Measure unclipped height: temporarily lift height constraint so scrollHeight
     // reflects content, not the forced h-full size.
     const savedH = el.style.height
     el.style.height = 'auto'
     const scrollH = el.scrollHeight
-    el.style.height = savedH
+    if (!isIosTextarea) {
+      el.style.height = savedH
+    }
 
     // expanded py-2.5 adds 20px padding → 1 line = ~40px, 2 lines = ~60px.
     // Use 50px as threshold so any genuine second line of text triggers expand.
     const isMultiLine = body.includes('\n') || scrollH > 50
     setExpanded(isMultiLine)
+
+    if (isIosTextarea) {
+      const targetH = isMultiLine
+        ? Math.min(Math.max(scrollH, COMPOSER_ROW_H), COMPOSER_MAX_H)
+        : COMPOSER_ROW_H
+      el.style.height = `${targetH}px`
+      el.style.overflowY = isMultiLine && scrollH > COMPOSER_MAX_H ? 'auto' : 'hidden'
+    }
+
     if (wrap) {
       if (isMultiLine) {
         wrap.style.height = ''

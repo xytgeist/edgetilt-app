@@ -484,10 +484,24 @@ export function isRichComposerElement(el) {
 export const LOUNGE_IOS =
   typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
+/** Caret offset immediately after a single `\n` insert at `beforeCaret`. */
+export function caretOffsetAfterLineBreak(beforeCaret, text) {
+  const len = String(text ?? '').length
+  return Math.min(Math.max(0, beforeCaret) + 1, len)
+}
+
+/**
+ * Read caret before insertLineBreak. After execCommand on iOS (especially Hello → Enter → Enter),
+ * post-insert range reads lag one line; trust pre-insert position + caretRef instead.
+ */
+export function readComposerCaretBeforeLineBreak(root, caretRefFallback = 0) {
+  return Math.max(getCaretTextOffsetViaRange(root), caretRefFallback)
+}
+
 /**
  * iOS fixed/transformed footers: execCommand inserts the newline but WebKit keeps caret paint
- * on an earlier line until the field is rebuilt. Sync HTML from plain text, place caret via
- * range measurement, then toggle contenteditable to force repaint.
+ * on an earlier line until the field is rebuilt. Sync HTML from plain text, place caret at
+ * beforeCaret+1 (not a post-insert range read), then toggle contenteditable to force repaint.
  */
 export function resyncComposerAfterIosLineBreak(root, { text, caretOffset, rich = true } = {}) {
   if (!root || typeof window === 'undefined') return

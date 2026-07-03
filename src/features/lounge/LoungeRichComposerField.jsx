@@ -1,11 +1,12 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import {
+  caretOffsetAfterLineBreak,
   getCaretTextOffset,
-  getCaretTextOffsetViaRange,
   insertComposerLineBreakViaExecCommand,
   insertPlainTextAtSelection,
   LOUNGE_IOS,
   plainTextFromComposerRoot,
+  readComposerCaretBeforeLineBreak,
   resyncComposerAfterIosLineBreak,
   syncComposerHtml,
 } from './loungeRichComposerDom.js'
@@ -107,6 +108,11 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       enterHandledRef.current = false
     })
 
+    const beforeCaret =
+      LOUNGE_IOS && variant !== 'feed'
+        ? readComposerCaretBeforeLineBreak(el, caretRef.current)
+        : caretRef.current
+
     skipRichSyncRef.current = true
     if (!insertComposerLineBreakViaExecCommand(el)) {
       skipRichSyncRef.current = false
@@ -122,10 +128,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     }
 
     if (LOUNGE_IOS && variant !== 'feed') {
-      const nextCaret =
-        maxLength != null
-          ? Math.min(getCaretTextOffsetViaRange(el), text.length)
-          : getCaretTextOffsetViaRange(el)
+      const nextCaret = caretOffsetAfterLineBreak(beforeCaret, text)
       skipRichSyncRef.current = false
       resyncComposerAfterIosLineBreak(el, { text, caretOffset: nextCaret, rich: true })
       lastValueRef.current = text

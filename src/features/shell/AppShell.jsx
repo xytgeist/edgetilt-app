@@ -73,6 +73,7 @@ import { useStarterWeeklyDropPoolExhausted } from '../billing/useStarterWeeklyDr
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 const GUIDES_SCREEN_CHUNK_RELOAD_KEY = 'lvsp_guides_screen_chunk_reload'
+const CHAT_TAB_CHUNK_RELOAD_KEY = 'lvsp_chat_tab_chunk_reload'
 
 /** One hard reload when a stale deploy serves index.html for a missing lazy chunk. */
 function lazyImportWithChunkReload(importFn, reloadKey) {
@@ -99,7 +100,9 @@ const LocalIntel = lazy(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazy(() => import('../calculators/CalculatorsTab.jsx'))
 const PlayLogbook = lazy(() => import('../play-logbook/PlayLogbook.jsx'))
 const SlotsScreen = lazy(() => import('../slots/SlotsScreen.jsx'))
-const ChatTab = lazy(() => import('../chat/ChatTab.jsx'))
+const ChatTab = lazy(() =>
+  lazyImportWithChunkReload(() => import('../chat/ChatTab.jsx'), CHAT_TAB_CHUNK_RELOAD_KEY),
+)
 
 function TabLoadingFallback() {
   return (
@@ -1190,7 +1193,17 @@ export default function AppShell({
   useEffect(() => {
     if (tab !== 'home') return undefined
     void import('../guides/GuidesScreen.jsx')
+    void import('../chat/ChatTab.jsx')
     return undefined
+  }, [tab])
+
+  useEffect(() => {
+    if (tab !== 'chat') return
+    try {
+      sessionStorage.removeItem(CHAT_TAB_CHUNK_RELOAD_KEY)
+    } catch {
+      /* ignore */
+    }
   }, [tab])
 
   const openGuideFromLounge = useCallback((rawSlug) => {

@@ -172,6 +172,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Lounge strict hashtag search (2026-07-02):** **Ryan sign-off** — migration **`20260702210000`**, client **`a496a97`** on **`edgetilt.com`**; tap **`#tag`** → literal hashtag post results only (no fuzzy prose matches) smoke **PASSED**.
 
+**Lightbox video scrubber (2026-07-03):** **Ryan sign-off** — client-only **`14372ac`** on **`origin/main`** / **`edgetilt.com`**; feed hero + chat lightbox seek/scrub controls (two-tone track, iOS pointer seek, Android MSE seeked-gated resume) smoke **PASSED** on test. No migration or Edge redeploy.
+
 **Android chat video lightbox (2026-07-03):** **Ryan sign-off** — client-only **`ac9a948`** on **`origin/main`** / **`edgetilt.com`**; Android chat video → lounge-style lightbox (swipe dismiss, playback controls, audio stops on dismiss) smoke **PASSED**. No migration or Edge redeploy.
 
 ---

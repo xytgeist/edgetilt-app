@@ -1039,26 +1039,21 @@ function ChatMediaImage({ src, className }) {
 }
 
 /**
- * Enter true OS fullscreen for an R2 MP4 `<video>` - bypasses the iOS PWA white
- * status bar entirely. Must run inside the tap gesture with metadata preloaded;
- * returns false (→ fall back to the in-app lightbox) when not possible.
+ * iOS-only: enter native `<video>` fullscreen for R2 MP4s (bypasses PWA white status bar).
+ * Android and desktop fall back to {@link ChatVideoLightbox} (swipe dismiss + reliable stop).
+ * Must run inside the tap gesture with metadata preloaded.
  */
 function openNativeVideoFullscreen(video) {
   if (!video || video.readyState < 1) return false
+  if (typeof video.webkitEnterFullscreen !== 'function') return false
   try {
     video.muted = false
     const p = video.play?.()
     if (p && typeof p.catch === 'function') p.catch(() => {})
   } catch { /* ignore */ }
   try {
-    if (typeof video.webkitEnterFullscreen === 'function') {
-      video.webkitEnterFullscreen()
-      return true
-    }
-    if (typeof video.requestFullscreen === 'function') {
-      video.requestFullscreen().catch(() => {})
-      return true
-    }
+    video.webkitEnterFullscreen()
+    return true
   } catch { /* ignore */ }
   return false
 }
@@ -1087,8 +1082,8 @@ function ChatMediaGrid({ media, onOpen }) {
         // 3-item layout: first image spans full width
         const spanFull = count === 3 && i === 0
 
-        // R2 MP4s can open in true OS fullscreen (no white status bar); legacy
-        // CF Stream (videoUid) and fullscreen failures fall back to the lightbox.
+        // iOS R2 MP4s: native video fullscreen (no PWA white status bar). Android / desktop /
+        // CF Stream (videoUid) / failures → lounge-style ChatVideoLightbox (swipe dismiss).
         const isR2Video = item.type === 'video' && item.videoUrl
 
         const handleTileTap = () => {

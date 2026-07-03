@@ -5,3 +5,4 @@ export {
   formatOpsMonitorCount,
   opsMonitorSupabaseProjectRef,
 } from './opsMonitorApi.js'
+export { OPS_SECTION_THEMES } from './opsMonitorTheme.js'

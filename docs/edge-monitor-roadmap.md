@@ -14,11 +14,11 @@ Admin-only in-app ops dashboard for EdgeTilt. **v1 shipped:** DB snapshot via RP
 
 ## v1 (current)
 
-**Migration:** `supabase/migrations/20260703100000_admin_ops_monitor_snapshot.sql`
+**Migrations:** `supabase/migrations/20260703100000_admin_ops_monitor_snapshot.sql`, **`20260703110000_admin_ops_monitor_trends.sql`** (7-day UTC chart buckets)
 
-**Code:** `src/features/ops/` (`EdgeMonitorScreen.jsx`, `opsMonitorApi.js`)
+**Code:** `src/features/ops/` (`EdgeMonitorScreen.jsx`, `OpsMonitorCharts.jsx`, `opsMonitorTheme.js`, `opsMonitorApi.js`)
 
-**Sections (all counts from Postgres):**
+**UI:** Gradient hero + KPI strip, 7-day pulse line chart, 24h vs 7d velocity bars, doughnuts (roles, subs, status), section accent colors (lv palette), engagement bar charts. Chart.js via lazy ops chunk (same lib as Bankroll).
 
 - Users & roles (`profiles`)
 - Subscriptions (`user_subscriptions`, `stripe_webhook_events`)

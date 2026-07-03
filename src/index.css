@@ -4480,3 +4480,44 @@ html.light [data-auth-modal] [data-auth-legal-nudge] {
 [data-auth-modal] .auth-legal-checkbox-pulse {
   animation: auth-legal-checkbox-pulse 1.35s ease-in-out infinite;
 }
+
+/* Edge Monitor — admin ops dashboard (dark default; light chart ticks scoped) */
+@keyframes edge-monitor-shimmer {
+  0% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+.edge-monitor-shimmer {
+  animation: edge-monitor-shimmer 1.4s ease-in-out infinite;
+}
+
+.edge-monitor-header-glow {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(6, 206, 252, 0.18), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 10%, rgba(157, 0, 255, 0.14), transparent 50%);
+}
+
+.edge-monitor-hero-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.edge-monitor-hero-card:active {
+  transform: scale(0.98);
+}
+
+html.light [data-edge-monitor] .edge-monitor-section,
+html.light [data-edge-monitor] .edge-monitor-chart-shell {
+  background-color: rgb(250 250 250 / 0.92) !important;
+}
+
+html.light [data-edge-monitor] .edge-monitor-header {
+  background: linear-gradient(135deg, rgb(236 254 255), rgb(245 245 245), rgb(237 233 254)) !important;
+  border-color: rgb(6 182 212 / 0.25) !important;
+}

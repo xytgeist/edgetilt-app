@@ -4077,18 +4077,51 @@ html.light .chat-room-menu-danger {
   color: #dc2626;
 }
 
+.chat-room-swipe-row {
+  --chat-room-swipe-radius: 12px;
+  margin-bottom: 4px;
+  isolation: isolate;
+}
+.chat-room-swipe-underlay-clip {
+  overflow: hidden;
+  border-radius: var(--chat-room-swipe-radius);
+}
+.chat-room-swipe-foreground-shell {
+  position: relative;
+  z-index: 1;
+}
 .chat-room-swipe-delete {
   background: #d93025;
 }
 .chat-room-swipe-archive {
   background: #188038;
 }
+.chat-room-swipe-unarchive {
+  background: #1a73e8;
+}
 .chat-room-swipe-icon {
   display: inline-flex;
   color: #ffffff;
 }
+.chat-room-swipe-foreground {
+  position: relative;
+  border-radius: var(--chat-room-swipe-radius, 12px);
+  overflow: hidden;
+}
+.chat-room-swipe-foreground-active {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+html.light .chat-room-swipe-foreground-active {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+.chat-room-swipe-unread-dot {
+  border-color: #09090b;
+}
 html.light .chat-room-swipe-foreground {
   background: #ffffff;
+}
+html.light .chat-room-swipe-unread-dot {
+  border-color: #ffffff;
 }
 
 /* iOS-style vibrancy input field - dark */

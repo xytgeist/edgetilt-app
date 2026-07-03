@@ -232,6 +232,53 @@ export function chatArchiveRoom(supabase, roomId) {
 }
 
 /**
+ * Restore an archived room to the main inbox.
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatUnarchiveRoom(supabase, roomId) {
+  return chatInboxRpc(supabase, 'chat_unarchive_room', { p_room_id: roomId })
+}
+
+/**
+ * Count of archived conversations for the signed-in user.
+ * @param {SupabaseClient} supabase
+ */
+export async function chatArchivedRoomCount(supabase) {
+  const { data, error } = await supabase.rpc('chat_archived_room_count')
+  if (error) throw error
+  return Number(data) || 0
+}
+
+/**
+ * Map `chat_rooms_for_user` / `chat_archived_rooms_for_user` RPC rows to inbox UI rows.
+ * @param {unknown[] | null | undefined} rows
+ * @param {string} viewerUserId
+ * @param {Record<string, unknown>} [profilesCache]
+ */
+export function mapChatRoomsRpcRows(rows, viewerUserId, profilesCache = {}) {
+  return (rows || []).map((r) => {
+    if (r.peer_user_id) {
+      profilesCache[r.peer_user_id] = {
+        user_id: r.peer_user_id,
+        handle: r.peer_handle,
+        display_name: r.peer_display_name,
+        avatar_url: r.peer_avatar_url,
+      }
+    }
+    if (r.last_message_sender_id && r.sender_handle) {
+      profilesCache[r.last_message_sender_id] = {
+        ...profilesCache[r.last_message_sender_id],
+        user_id: r.last_message_sender_id,
+        handle: r.sender_handle,
+        display_name: r.sender_display_name,
+      }
+    }
+    return enrichChatRoomRow(r, viewerUserId)
+  })
+}
+
+/**
  * Delete a group chat for all members (owner or admin).
  * @param {SupabaseClient} supabase
  * @param {string} roomId

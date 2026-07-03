@@ -125,6 +125,8 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
  *   onViewProfile?: ((userId: string) => void) | null,
  *   onOpenDm?: ((userId: string) => void | Promise<void>) | null,
  *   onRoomUpdated?: ((patch: Record<string, unknown>) => void) | null,
+ *   openedFromArchived?: boolean,
+ *   onInboxRestored?: (() => void) | null,
  *   viewerReadReceiptsEnabled?: boolean,
  *   onViewerReadReceiptsEnabledChange?: ((enabled: boolean) => void | Promise<void>) | null,
  *   readReceiptsBusy?: boolean,
@@ -141,6 +143,8 @@ export default function ChatConversation({
   onViewProfile = null,
   onOpenDm = null,
   onRoomUpdated = null,
+  openedFromArchived = false,
+  onInboxRestored = null,
   viewerReadReceiptsEnabled = true,
   onViewerReadReceiptsEnabledChange = null,
   readReceiptsBusy = false,
@@ -1203,6 +1207,10 @@ export default function ChatConversation({
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
+  const notifyInboxRestoredIfNeeded = useCallback(() => {
+    if (openedFromArchived) onInboxRestored?.()
+  }, [openedFromArchived, onInboxRestored])
+
   const handleSend = useCallback(async ({ body, imageUrls, previewUrls, pendingUploads, videoUrl = null, streamVideoUid = null, streamPosterUrl = null, streamVideoWidth = null, streamVideoHeight = null, replyToMessageId }) => {
     // If user is viewing history, jump to live end before sending
     if (hasNewerRef.current) {
@@ -1272,6 +1280,7 @@ export default function ChatConversation({
         })
         pinTailAfterMutation()
       }
+      notifyInboxRestoredIfNeeded()
       void refreshReadReceipts()
 
       // Background: finish pending image uploads then patch image_urls on the server.
@@ -1302,7 +1311,7 @@ export default function ChatConversation({
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       throw err
     }
-  }, [supabaseClient, room.id, viewerUserId, loadMessages, pinTailAfterMutation, refreshReadReceipts])
+  }, [supabaseClient, room.id, viewerUserId, loadMessages, pinTailAfterMutation, refreshReadReceipts, notifyInboxRestoredIfNeeded])
 
   // ── Video prep job queue ──────────────────────────────────────────────────
 
@@ -1388,12 +1397,13 @@ export default function ChatConversation({
         })
       }
 
+      notifyInboxRestoredIfNeeded()
       if (atBottomRef.current) pinTailAfterMutation()
     } catch (e) {
       if (e?.name === 'AbortError') { removeVideoPrepJob(jobId); return }
       updateVideoPrepJob(jobId, { status: 'error', errorMessage: e?.message || 'Upload failed.' })
     }
-  }, [supabaseClient, room.id, viewerUserId, updateVideoPrepJob, removeVideoPrepJob, pinTailAfterMutation])
+  }, [supabaseClient, room.id, viewerUserId, updateVideoPrepJob, removeVideoPrepJob, pinTailAfterMutation, notifyInboxRestoredIfNeeded])
 
   /**
    * Called when the composer hands off a confirmed video spec (File or composerTrimJob).

@@ -12,12 +12,14 @@ import {
   chatUnpinRoom,
   chatLeaveRoom,
   chatArchiveRoom,
+  chatUnarchiveRoom,
+  chatArchivedRoomCount,
+  mapChatRoomsRpcRows,
   chatMuteRoom,
   chatUnmuteRoom,
   chatRoomLabel,
   chatRoomIsMuted,
   chatGroupHeaderMembersBatch,
-  enrichChatRoomRow,
   chatFetchRoomForViewer,
   chatSetReadReceiptsEnabled,
   buildProvisionalDmRoom,
@@ -63,6 +65,11 @@ export default function ChatTab({
   const [activeRoomId, setActiveRoomId] = useState(/** @type {string | null} */ (null))
   const [iosResumeCount, setIosResumeCount] = useState(0)
   const [tab, setTab] = useState(/** @type {'inbox' | 'topics'} */ ('inbox'))
+  const [showArchivedList, setShowArchivedList] = useState(false)
+  const [archivedRooms, setArchivedRooms] = useState(/** @type {any[]} */ ([]))
+  const [archivedRoomsLoading, setArchivedRoomsLoading] = useState(false)
+  const [archivedRoomsErr, setArchivedRoomsErr] = useState('')
+  const [archivedCount, setArchivedCount] = useState(0)
   const [actionErr, setActionErr] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
   const [openingConversation, setOpeningConversation] = useState(false)
@@ -203,32 +210,12 @@ export default function ChatTab({
     setRoomsErr('')
     setRoomsLoading(true)
     try {
-      // Single RPC - replaces 3 sequential client-side queries
       const { data, error } = await supabaseClient.rpc('chat_rooms_for_user', {
         p_user_id: viewerUserId,
       })
       if (error) throw error
 
-      const enriched = (data || []).map((r) => {
-        if (r.peer_user_id) {
-          profilesCacheRef.current[r.peer_user_id] = {
-            user_id: r.peer_user_id,
-            handle: r.peer_handle,
-            display_name: r.peer_display_name,
-            avatar_url: r.peer_avatar_url,
-          }
-        }
-        if (r.last_message_sender_id && r.sender_handle) {
-          profilesCacheRef.current[r.last_message_sender_id] = {
-            ...profilesCacheRef.current[r.last_message_sender_id],
-            user_id: r.last_message_sender_id,
-            handle: r.sender_handle,
-            display_name: r.sender_display_name,
-          }
-        }
-        return enrichChatRoomRow(r, viewerUserId)
-      })
-
+      const enriched = mapChatRoomsRpcRows(data, viewerUserId, profilesCacheRef.current)
       setRooms(enriched)
       const groupIds = enriched.filter((r) => r.kind === 'group').map((r) => r.id)
       if (groupIds.length > 0) {
@@ -246,9 +233,62 @@ export default function ChatTab({
     }
   }, [supabaseClient, viewerUserId])
 
+  const loadArchivedCount = useCallback(async () => {
+    if (!viewerUserId || !supabaseClient) {
+      setArchivedCount(0)
+      return
+    }
+    try {
+      const count = await chatArchivedRoomCount(supabaseClient)
+      setArchivedCount(count)
+    } catch {
+      setArchivedCount(0)
+    }
+  }, [supabaseClient, viewerUserId])
+
+  const loadArchivedRooms = useCallback(async () => {
+    if (!viewerUserId || !supabaseClient) {
+      setArchivedRooms([])
+      setArchivedRoomsLoading(false)
+      return
+    }
+    setArchivedRoomsErr('')
+    setArchivedRoomsLoading(true)
+    try {
+      const { data, error } = await supabaseClient.rpc('chat_archived_rooms_for_user', {
+        p_user_id: viewerUserId,
+      })
+      if (error) throw error
+      const enriched = mapChatRoomsRpcRows(data, viewerUserId, profilesCacheRef.current)
+      setArchivedRooms(enriched)
+      setArchivedCount(enriched.length)
+      const groupIds = enriched.filter((r) => r.kind === 'group').map((r) => r.id)
+      if (groupIds.length > 0) {
+        void chatGroupHeaderMembersBatch(supabaseClient, groupIds)
+          .then((batch) => setGroupHeaderByRoomId((prev) => ({ ...prev, ...batch })))
+          .catch(() => {})
+      }
+    } catch (e) {
+      setArchivedRoomsErr(e?.message || 'Could not load archived conversations.')
+      setArchivedRooms([])
+    } finally {
+      setArchivedRoomsLoading(false)
+    }
+  }, [supabaseClient, viewerUserId])
+
+  const refreshInboxLists = useCallback(async () => {
+    await Promise.all([loadRooms(), loadArchivedCount()])
+    if (showArchivedList) await loadArchivedRooms()
+  }, [loadRooms, loadArchivedCount, loadArchivedRooms, showArchivedList])
+
   useEffect(() => {
     void loadRooms()
-  }, [loadRooms])
+    void loadArchivedCount()
+  }, [loadRooms, loadArchivedCount])
+
+  useEffect(() => {
+    if (showArchivedList) void loadArchivedRooms()
+  }, [showArchivedList, loadArchivedRooms])
 
   // ── Realtime - refresh inbox on new messages + group room updates ───────────
   // postgres_changes is filtered by RLS, so only rows the viewer can SELECT
@@ -264,16 +304,16 @@ export default function ChatTab({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        () => { void loadRooms() },
+        () => { void refreshInboxLists() },
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'chat_rooms' },
-        () => { void loadRooms() },
+        () => { void refreshInboxLists() },
       )
       .subscribe()
     return () => { void supabaseClient.removeChannel(channel) }
-  }, [supabaseClient, viewerUserId, loadRooms])
+  }, [supabaseClient, viewerUserId, refreshInboxLists])
 
   // ── Handle initialPeerUserId (from profile Message tap) ──────────────────
   // Use a ref so we don't re-fire when loadRooms/supabaseClient identity changes.
@@ -428,16 +468,17 @@ export default function ChatTab({
       else if (action === 'mute')   await chatMuteRoom(supabaseClient, room.id)
       else if (action === 'unmute') await chatUnmuteRoom(supabaseClient, room.id)
       else if (action === 'archive') await chatArchiveRoom(supabaseClient, room.id)
+      else if (action === 'unarchive') await chatUnarchiveRoom(supabaseClient, room.id)
       else if (action === 'delete') await chatLeaveRoom(supabaseClient, room.id)
-      if (action === 'archive' || action === 'delete') {
+      if (action === 'archive' || action === 'unarchive' || action === 'delete') {
         setOpenSwipeRoomId(null)
         if (activeRoomId === room.id) setActiveRoomId(null)
       }
-      void loadRooms()
+      void refreshInboxLists()
     } catch (e) {
       setActionErr(e?.message || 'Action failed.')
     }
-  }, [supabaseClient, loadRooms, activeRoomId])
+  }, [supabaseClient, refreshInboxLists, activeRoomId])
 
   // ── Group creation ────────────────────────────────────────────────────────
 
@@ -494,8 +535,11 @@ export default function ChatTab({
   // ── Active room data ──────────────────────────────────────────────────────
 
   const activeRoom = useMemo(
-    () => rooms.find((r) => r.id === activeRoomId) || hydratedOpenRoom || null,
-    [rooms, activeRoomId, hydratedOpenRoom]
+    () => rooms.find((r) => r.id === activeRoomId)
+      || archivedRooms.find((r) => r.id === activeRoomId)
+      || hydratedOpenRoom
+      || null,
+    [rooms, archivedRooms, activeRoomId, hydratedOpenRoom],
   )
 
   useEffect(() => {
@@ -504,7 +548,7 @@ export default function ChatTab({
       setHydrateOpenRoomDone(false)
       return undefined
     }
-    if (rooms.some((r) => r.id === activeRoomId)) {
+    if (rooms.some((r) => r.id === activeRoomId) || archivedRooms.some((r) => r.id === activeRoomId)) {
       setHydratedOpenRoom(null)
       setHydrateOpenRoomDone(true)
       return undefined
@@ -522,7 +566,7 @@ export default function ChatTab({
       }
     })()
     return () => { cancelled = true }
-  }, [activeRoomId, rooms, supabaseClient, viewerUserId])
+  }, [activeRoomId, rooms, archivedRooms, supabaseClient, viewerUserId])
 
   // ── Profiles map for ChatConversation ─────────────────────────────────────
 
@@ -581,6 +625,7 @@ export default function ChatTab({
       )
     }
     const otherUnreadCount = rooms.filter((r) => r.id !== activeRoomId && r.hasUnread).length
+    const openedFromArchived = archivedRooms.some((r) => r.id === activeRoomId)
     return (
       <ChatConversation
         key={`${activeRoomId}-${iosResumeCount}`}
@@ -590,11 +635,17 @@ export default function ChatTab({
         viewerProfile={viewerProfile}
         profilesById={profilesById}
         otherUnreadCount={otherUnreadCount}
-        onBack={() => { setActiveRoomId(null); setHydratedOpenRoom(null); void loadRooms() }}
+        onBack={() => { setActiveRoomId(null); setHydratedOpenRoom(null); void refreshInboxLists() }}
         onViewProfile={onViewProfile}
         onOpenDm={openDmWithUser}
+        openedFromArchived={openedFromArchived}
+        onInboxRestored={() => {
+          setShowArchivedList(false)
+          void refreshInboxLists()
+        }}
         onRoomUpdated={(patch) => {
           setRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
+          setArchivedRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
           setHydratedOpenRoom((prev) => prev?.id === activeRoomId ? { ...prev, ...patch } : prev)
         }}
         viewerReadReceiptsEnabled={viewerReadReceiptsEnabled}
@@ -777,31 +828,65 @@ export default function ChatTab({
         </div>
       )}
 
-      {/* Inbox / Topics tabs */}
-      <div className="flex gap-1 border-b border-zinc-800 px-3 pb-0 pt-1">
-        <button
-          type="button"
-          onClick={() => setTab('inbox')}
-          className={`min-h-10 rounded-t-xl px-4 text-[14px] font-bold touch-manipulation ${
-            tab === 'inbox'
-              ? 'border-b-2 border-cyan-500 text-cyan-400'
-              : 'text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          Inbox
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('topics')}
-          className={`min-h-10 rounded-t-xl px-4 text-[14px] font-bold touch-manipulation ${
-            tab === 'topics'
-              ? 'border-b-2 border-cyan-500 text-cyan-400'
-              : 'text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          Topics
-        </button>
-      </div>
+      {/* Inbox / Topics tabs + Archived entry */}
+      {showArchivedList ? (
+        <div className="flex items-center gap-2 border-b border-zinc-800 px-3 pb-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setShowArchivedList(false)}
+            className="inline-flex min-h-10 items-center gap-1 rounded-xl px-2 text-[14px] font-semibold text-zinc-400 touch-manipulation hover:text-zinc-200"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" aria-hidden>
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            Inbox
+          </button>
+          <span className="text-[14px] font-bold text-cyan-400">Archived</span>
+          {archivedCount > 0 && (
+            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-400">
+              {archivedCount}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 border-b border-zinc-800 px-3 pb-0 pt-1">
+          <button
+            type="button"
+            onClick={() => { setTab('inbox'); setShowArchivedList(false) }}
+            className={`min-h-10 rounded-t-xl px-4 text-[14px] font-bold touch-manipulation ${
+              tab === 'inbox'
+                ? 'border-b-2 border-cyan-500 text-cyan-400'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            Inbox
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTab('topics'); setShowArchivedList(false) }}
+            className={`min-h-10 rounded-t-xl px-4 text-[14px] font-bold touch-manipulation ${
+              tab === 'topics'
+                ? 'border-b-2 border-cyan-500 text-cyan-400'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            Topics
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTab('inbox'); setShowArchivedList(true) }}
+            className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-t-xl px-3 text-[13px] font-semibold text-zinc-500 touch-manipulation hover:text-zinc-300"
+          >
+            <ChatSwipeArchiveIcon className="h-4 w-4" />
+            Archived
+            {archivedCount > 0 && (
+              <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold leading-none text-zinc-300">
+                {archivedCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
       {actionErr ? (
         <div className="mx-3 mt-3 rounded-2xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
@@ -834,6 +919,49 @@ export default function ChatTab({
             </div>
           ))}
         </div>
+      ) : showArchivedList ? (
+        archivedRoomsLoading ? (
+          <div className="flex items-center justify-center py-16 text-[14px] text-zinc-500">
+            Loading archived…
+          </div>
+        ) : archivedRoomsErr ? (
+          <div className="mx-3 mt-4 rounded-2xl border border-rose-500/40 bg-rose-950/30 px-3 py-2 text-[13px] text-rose-200">
+            {archivedRoomsErr}
+          </div>
+        ) : archivedRooms.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+            <div className="text-4xl">📦</div>
+            <p className="text-[15px] leading-relaxed text-zinc-400">
+              No archived conversations.
+            </p>
+            <p className="text-[13px] text-zinc-500">
+              Swipe left on a chat in Inbox to archive it. In Archived, swipe left to move back to Inbox.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="px-4 pt-2 text-[12px] text-zinc-500">
+              Swipe left to move back to Inbox, or long-press for more options.
+            </p>
+            <ul className="px-2 py-1.5">
+            {archivedRooms.map((room) => (
+              <ChatRoomListRow
+                key={room.id}
+                listMode="archived"
+                room={room}
+                label={chatRoomLabel(room)}
+                groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
+                onOpen={(roomId) => setActiveRoomId(roomId)}
+                onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'archived' })}
+                onUnarchive={(r) => void handleRoomAction('unarchive', r)}
+                onDelete={(r) => void handleRoomAction('delete', r)}
+                openSwipeRoomId={openSwipeRoomId}
+                onSwipeOpen={setOpenSwipeRoomId}
+              />
+            ))}
+          </ul>
+          </>
+        )
       ) : roomsLoading ? (
         <div className="flex items-center justify-center py-16 text-[14px] text-zinc-500">
           Loading conversations…
@@ -852,7 +980,7 @@ export default function ChatTab({
           </p>
         </div>
       ) : (
-        <ul className="divide-y divide-zinc-800/50">
+        <ul className="px-2 py-1.5">
           {rooms.map((room) => (
             <ChatRoomListRow
               key={room.id}
@@ -860,7 +988,7 @@ export default function ChatTab({
               label={chatRoomLabel(room)}
               groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
               onOpen={(roomId) => setActiveRoomId(roomId)}
-              onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y })}
+              onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
               onArchive={(r) => void handleRoomAction('archive', r)}
               onDelete={(r) => void handleRoomAction('delete', r)}
               openSwipeRoomId={openSwipeRoomId}
@@ -875,6 +1003,7 @@ export default function ChatTab({
     {roomMenu && createPortal(
       <RoomContextMenu
         room={roomMenu.room}
+        listMode={roomMenu.listMode || 'inbox'}
         anchorY={roomMenu.y}
         anchorX={roomMenu.x}
         onAction={handleRoomAction}
@@ -912,9 +1041,14 @@ const ROOM_SWIPE_AXIS_LOCK_PX = 8
 const ROOM_SWIPE_COMMIT_RATIO = 0.38
 const ROOM_SWIPE_COMMIT_MIN_PX = 72
 const ROOM_SWIPE_SNAP_MS = 240
+const ROOM_SWIPE_ICON_FULL_PX = 52
 
 function getRoomSwipeCommitThreshold(width) {
   return Math.max(ROOM_SWIPE_COMMIT_MIN_PX, width * ROOM_SWIPE_COMMIT_RATIO)
+}
+
+function getSwipeIconRevealProgress(absOffset) {
+  return Math.min(1, absOffset / ROOM_SWIPE_ICON_FULL_PX)
 }
 
 function ChatSwipeTrashIcon({ className = 'h-6 w-6' }) {
@@ -958,14 +1092,36 @@ function ChatSwipeArchiveIcon({ className = 'h-6 w-6' }) {
   )
 }
 
+function ChatSwipeInboxIcon({ className = 'h-6 w-6' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" />
+      <path d="M12 16V10" />
+      <path d="m9 13 3-3 3 3" />
+    </svg>
+  )
+}
+
 /** Inbox row with swipe actions + touch/mouse long-press. */
 function ChatRoomListRow({
   room,
   label,
   groupHeaderMembers = [],
+  listMode = 'inbox',
   onOpen,
   onLongPress,
   onArchive,
+  onUnarchive,
   onDelete,
   openSwipeRoomId,
   onSwipeOpen,
@@ -1041,7 +1197,8 @@ function ChatRoomListRow({
 
   const onPointerMove = useCallback((e) => {
     const g = gestureRef.current
-    if (g.pointerId != null && e.pointerId !== g.pointerId) return
+    if (g.pointerId == null || e.pointerId !== g.pointerId) return
+    if (e.pointerType === 'mouse' && e.buttons === 0) return
     const dx = e.clientX - g.startX
     const dy = e.clientY - g.startY
     if (!g.axis) {
@@ -1083,7 +1240,10 @@ function ChatRoomListRow({
       }
 
       if (offset <= -commitAt) {
-        runActionAfterSnap(-width, () => onArchive?.(room))
+        const leftAction = listMode === 'archived'
+          ? () => onUnarchive?.(room)
+          : () => onArchive?.(room)
+        runActionAfterSnap(-width, leftAction)
       } else if (offset >= commitAt) {
         runActionAfterSnap(width, () => onDelete?.(room))
       } else {
@@ -1094,10 +1254,11 @@ function ChatRoomListRow({
     }
     g.axis = null
     g.pointerId = null
-  }, [clearTimer, onArchive, onDelete, onSwipeOpen, room, setOffset])
+  }, [clearTimer, listMode, onArchive, onUnarchive, onDelete, onSwipeOpen, room, setOffset])
 
   const onPointerUp = useCallback(
     (e) => {
+      if (gestureRef.current.pointerId !== e.pointerId) return
       finishGesture()
       try {
         e.currentTarget.releasePointerCapture(e.pointerId)
@@ -1110,6 +1271,7 @@ function ChatRoomListRow({
 
   const onPointerCancel = useCallback(
     (e) => {
+      if (gestureRef.current.pointerId !== e.pointerId) return
       finishGesture()
       try {
         e.currentTarget.releasePointerCapture(e.pointerId)
@@ -1135,51 +1297,55 @@ function ChatRoomListRow({
 
   const rowWidth = rowWidthRef.current || 320
   const commitAt = getRoomSwipeCommitThreshold(rowWidth)
-  const deleteProgress = offsetX > 0 ? Math.min(1, offsetX / commitAt) : 0
-  const archiveProgress = offsetX < 0 ? Math.min(1, -offsetX / commitAt) : 0
+  const deleteProgress = offsetX > 0 ? getSwipeIconRevealProgress(offsetX) : 0
+  const leftSwipeProgress = offsetX < 0 ? getSwipeIconRevealProgress(-offsetX) : 0
+  const leftUnderlayClass = listMode === 'archived'
+    ? 'chat-room-swipe-unarchive absolute inset-0'
+    : 'chat-room-swipe-archive absolute inset-0'
+  const LeftSwipeIcon = listMode === 'archived' ? ChatSwipeInboxIcon : ChatSwipeArchiveIcon
   const rowTransition = swipeDragging ? 'none' : 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
+  const iconScale = (progress) => 0.84 + progress * 0.16
+  const foregroundInnerClass = offsetX !== 0
+    ? 'chat-room-swipe-foreground chat-room-swipe-foreground-active relative bg-zinc-950'
+    : 'chat-room-swipe-foreground relative bg-zinc-950'
 
   return (
-    <li ref={rowRef} className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0">
+    <li ref={rowRef} className="chat-room-swipe-row relative">
+      <div className="chat-room-swipe-underlay-clip pointer-events-none absolute inset-0 z-0">
         {offsetX > 0 && (
-          <div
-            className="chat-room-swipe-delete absolute inset-y-0 left-0 flex items-center pl-5"
-            style={{ width: offsetX }}
-            aria-hidden
-          >
+          <>
+            <div className="chat-room-swipe-delete absolute inset-0" aria-hidden />
             <span
-              className="chat-room-swipe-icon"
+              className="chat-room-swipe-icon absolute left-5 top-1/2"
               style={{
                 opacity: deleteProgress,
-                transform: `scale(${0.84 + deleteProgress * 0.16})`,
+                transform: `translateY(-50%) scale(${iconScale(deleteProgress)})`,
               }}
+              aria-hidden
             >
               <ChatSwipeTrashIcon />
             </span>
-          </div>
+          </>
         )}
         {offsetX < 0 && (
-          <div
-            className="chat-room-swipe-archive absolute inset-y-0 right-0 flex items-center justify-end pr-5"
-            style={{ width: -offsetX }}
-            aria-hidden
-          >
+          <>
+            <div className={leftUnderlayClass} aria-hidden />
             <span
-              className="chat-room-swipe-icon"
+              className="chat-room-swipe-icon absolute right-5 top-1/2"
               style={{
-                opacity: archiveProgress,
-                transform: `scale(${0.84 + archiveProgress * 0.16})`,
+                opacity: leftSwipeProgress,
+                transform: `translateY(-50%) scale(${iconScale(leftSwipeProgress)})`,
               }}
+              aria-hidden
             >
-              <ChatSwipeArchiveIcon />
+              <LeftSwipeIcon />
             </span>
-          </div>
+          </>
         )}
       </div>
 
       <div
-        className="chat-room-swipe-foreground relative bg-zinc-950"
+        className="chat-room-swipe-foreground-shell relative z-[1]"
         style={{
           transform: `translate3d(${offsetX}px, 0, 0)`,
           transition: rowTransition,
@@ -1194,10 +1360,11 @@ function ChatRoomListRow({
         onPointerCancel={onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
       >
+        <div className={foregroundInnerClass}>
         <button
           type="button"
           onClick={handleClick}
-          className="flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
+          className="flex w-full select-none items-center gap-3 rounded-[inherit] px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
         >
           <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
             {room.kind === 'dm' && room.peerAvatarUrl ? (
@@ -1220,7 +1387,7 @@ function ChatRoomListRow({
               </div>
             )}
             {room.hasUnread && (
-              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-zinc-950 bg-cyan-500" />
+              <span className="chat-room-swipe-unread-dot absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 bg-cyan-500" />
             )}
           </div>
 
@@ -1269,6 +1436,7 @@ function ChatRoomListRow({
             </div>
           )}
         </button>
+        </div>
       </div>
     </li>
   )
@@ -1276,11 +1444,11 @@ function ChatRoomListRow({
 
 // ── RoomContextMenu ────────────────────────────────────────────────────────
 
-function RoomContextMenu({ room, anchorY, anchorX, onAction, onClose }) {
+function RoomContextMenu({ room, listMode = 'inbox', anchorY, anchorX, onAction, onClose }) {
   const menuRef = useRef(null)
 
   // Position: prefer showing below touch point; if near bottom, flip up.
-  const MENU_H = 200
+  const MENU_H = listMode === 'archived' ? 220 : 260
   const top = anchorY + MENU_H > window.innerHeight - 16
     ? anchorY - MENU_H
     : anchorY
@@ -1332,18 +1500,56 @@ function RoomContextMenu({ room, anchorY, anchorX, onAction, onClose }) {
 
         <RoomMenuDivider />
 
-        <button
-          type="button"
-          className={`${rowBase} text-zinc-100`}
-          onClick={() => onAction(isPinned ? 'unpin' : 'pin', room)}
-        >
-          <span>{isPinned ? 'Unpin conversation' : 'Pin conversation'}</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke={isPinned ? 'none' : 'currentColor'} strokeWidth="1.75" className="shrink-0 opacity-75">
-            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
-          </svg>
-        </button>
+        {listMode === 'inbox' ? (
+          <>
+            <button
+              type="button"
+              className={`${rowBase} text-zinc-100`}
+              onClick={() => onAction(isPinned ? 'unpin' : 'pin', room)}
+            >
+              <span>{isPinned ? 'Unpin conversation' : 'Pin conversation'}</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke={isPinned ? 'none' : 'currentColor'} strokeWidth="1.75" className="shrink-0 opacity-75">
+                <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+              </svg>
+            </button>
 
-        <RoomMenuDivider />
+            <RoomMenuDivider />
+
+            <button
+              type="button"
+              className={`${rowBase} text-zinc-100`}
+              onClick={() => onAction('archive', room)}
+            >
+              <span>Archive conversation</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0 opacity-75">
+                <rect x="3" y="4" width="18" height="4" rx="1"/>
+                <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+                <path d="M12 11v6"/>
+                <path d="m9 14 3 3 3-3"/>
+              </svg>
+            </button>
+
+            <RoomMenuDivider />
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={`${rowBase} text-zinc-100`}
+              onClick={() => onAction('unarchive', room)}
+            >
+              <span>Move to inbox</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0 opacity-75">
+                <rect x="3" y="4" width="18" height="4" rx="1"/>
+                <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+                <path d="M12 16V10"/>
+                <path d="m9 13 3-3 3 3"/>
+              </svg>
+            </button>
+
+            <RoomMenuDivider />
+          </>
+        )}
 
         <button
           type="button"

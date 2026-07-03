@@ -56,12 +56,13 @@ async function enqueueChatDmPush(
 
   const { data: peerMem } = await admin
     .from('chat_room_members')
-    .select('muted_until, last_read_at')
+    .select('muted_until, last_read_at, archived_at')
     .eq('room_id', roomId)
     .eq('user_id', peerId)
     .maybeSingle()
   const muteUntil = peerMem?.muted_until ? new Date(peerMem.muted_until) : null
   if (muteUntil && muteUntil > new Date()) return
+  if (peerMem?.archived_at) return
 
   const lastReadAt = peerMem?.last_read_at ? new Date(peerMem.last_read_at) : null
   if (lastReadAt && Date.now() - lastReadAt.getTime() < 30_000) return
@@ -81,7 +82,16 @@ async function enqueueChatGroupInvitePush(
   recipientIds: string[],
 ) {
   if (recipientIds.length === 0) return
-  const eventRows = recipientIds.map((uid) => ({
+  const { data: members } = await admin
+    .from('chat_room_members')
+    .select('user_id, archived_at')
+    .eq('room_id', roomId)
+    .in('user_id', recipientIds)
+  const deliverTo = (members || [])
+    .filter((m) => !m.archived_at)
+    .map((m) => m.user_id)
+  if (deliverTo.length === 0) return
+  const eventRows = deliverTo.map((uid) => ({
     recipient_user_id: uid,
     actor_user_id: actorId,
     event_type: 'chat_group_invite',
@@ -453,12 +463,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Stamp sender's last_read_at so their own send never shows as unread
-    // and future incoming messages correctly flip has_unread back to true.
+    // Stamp sender read position; replying from an archived thread restores it to inbox
+    // (Gmail-style). Clears archived_at so DM push resumes for future inbound messages.
     if (inserted?.id) {
       void admin
         .from('chat_room_members')
-        .update({ last_read_at: new Date().toISOString(), last_read_message_id: inserted.id })
+        .update({
+          last_read_at: new Date().toISOString(),
+          last_read_message_id: inserted.id,
+          archived_at: null,
+        })
         .eq('room_id', roomId)
         .eq('user_id', user.id)
     }

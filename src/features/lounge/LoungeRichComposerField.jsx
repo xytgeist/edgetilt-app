@@ -40,6 +40,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const lastValueRef = useRef(value)
   const caretRef = useRef(0)
   const composingRef = useRef(false)
+  const lastNewlineAtMsRef = useRef(0)
+  const skipNextInputReadRef = useRef(false)
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
@@ -81,6 +83,30 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     notifyComposerInput(el, capped, nextCaret, { sync: true })
     syncComposerHtml(el, capped, nextCaret)
     if (capped !== value) onChange?.(capped)
+  }, [maxLength, notifyComposerInput, onChange, value])
+
+  const insertNewlineAtCaret = useCallback(() => {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    if (now - lastNewlineAtMsRef.current < 80) return false
+    lastNewlineAtMsRef.current = now
+
+    const el = rootRef.current
+    if (!el) return false
+    const base = lastValueRef.current ?? value ?? ''
+    let caret = getCaretTextOffset(el)
+    if (!Number.isFinite(caret) || caret < 0) caret = caretRef.current
+    caret = Math.max(0, Math.min(caret, base.length))
+    let next = `${base.slice(0, caret)}\n${base.slice(caret)}`
+    next = normalizeCashtagsInCaption(next)
+    if (maxLength != null && next.length > maxLength) return false
+    const nextCaret = caret + 1
+    lastValueRef.current = next
+    caretRef.current = nextCaret
+    syncComposerHtml(el, next, nextCaret)
+    notifyComposerInput(el, next, nextCaret, { sync: true })
+    onChange?.(next)
+    skipNextInputReadRef.current = true
+    return true
   }, [maxLength, notifyComposerInput, onChange, value])
 
   useLayoutEffect(() => {
@@ -136,14 +162,21 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 
   const handleBeforeInput = useCallback(
     (e) => {
-      // Mobile fires insertLineBreak before keydown; a follow-up read here races Enter handling.
-      if (COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) return
+      if (enterInsertsNewline && COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) {
+        e.preventDefault()
+        insertNewlineAtCaret()
+        return
+      }
       requestAnimationFrame(() => readAndEmit())
     },
-    [readAndEmit],
+    [enterInsertsNewline, insertNewlineAtCaret, readAndEmit],
   )
 
   const handleInput = useCallback(() => {
+    if (skipNextInputReadRef.current) {
+      skipNextInputReadRef.current = false
+      return
+    }
     readAndEmit()
   }, [readAndEmit])
 
@@ -164,22 +197,10 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       if (e.defaultPrevented) return
       if (enterInsertsNewline && e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        const el = rootRef.current
-        if (!el) return
-        const base = lastValueRef.current ?? value ?? ''
-        const caret = Math.max(0, Math.min(caretRef.current, base.length))
-        let next = `${base.slice(0, caret)}\n${base.slice(caret)}`
-        next = normalizeCashtagsInCaption(next)
-        if (maxLength != null && next.length > maxLength) return
-        const nextCaret = caret + 1
-        lastValueRef.current = next
-        caretRef.current = nextCaret
-        syncComposerHtml(el, next, nextCaret)
-        notifyComposerInput(el, next, nextCaret, { sync: true })
-        onChange?.(next)
+        insertNewlineAtCaret()
       }
     },
-    [enterInsertsNewline, maxLength, notifyComposerInput, onChange, onKeyDown, value],
+    [enterInsertsNewline, insertNewlineAtCaret, onKeyDown],
   )
 
   return (

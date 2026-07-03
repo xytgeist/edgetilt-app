@@ -816,6 +816,7 @@ export default function SocialFeed({
   const loungeDetailCommentFieldRef = useRef(null)
   /** iOS: skip visualViewport scroll + footer RO churn while typing in the reply field. */
   const loungeDetailCommentFieldFocusedRef = useRef(false)
+  const [loungeDetailCommentFieldFocused, setLoungeDetailCommentFieldFocused] = useState(false)
   const loungeDetailCommentDraftRef = useRef('')
   const loungePostDetailTitleBarRef = useRef(null)
   const loungePostDetailTitleRevealRef = useRef(1)
@@ -14121,8 +14122,12 @@ export default function SocialFeed({
             }}
           />
           <div
-            className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 pt-[max(0px,env(safe-area-inset-top))] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md transition-transform duration-300 ease-out motion-reduce:transition-none ${
-              loungePostDetailVisible ? 'translate-x-0' : 'translate-x-full'
+            className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 pt-[max(0px,env(safe-area-inset-top))] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
+              LOUNGE_IOS && loungeDetailCommentFieldFocused
+                ? 'transform-none'
+                : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
+                    loungePostDetailVisible ? 'translate-x-0' : 'translate-x-full'
+                  }`
             }`}
             onTransitionEnd={onLoungePostDetailPanelTransitionEnd}
             onTransitionCancel={onLoungePostDetailPanelTransitionEnd}
@@ -15580,9 +15585,11 @@ export default function SocialFeed({
                           onInput={mentionDetailComment.onCursorMove}
                           onFocus={() => {
                             loungeDetailCommentFieldFocusedRef.current = true
+                            setLoungeDetailCommentFieldFocused(true)
                           }}
                           onBlur={(e) => {
                             loungeDetailCommentFieldFocusedRef.current = false
+                            setLoungeDetailCommentFieldFocused(false)
                             if (LOUNGE_IOS) {
                               requestAnimationFrame(() => {
                                 const footerEl = loungeDetailCommentFooterRef.current

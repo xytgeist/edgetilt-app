@@ -70,6 +70,49 @@ export function buildRichComposerHtml(text) {
   return out.join('')
 }
 
+export const LOUNGE_IOS =
+  typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+const IOS_CARET_ANCHOR_CLASS = 'ios-caret-anchor'
+
+function isIosCaretAnchorBr(node) {
+  return (
+    node?.nodeType === Node.ELEMENT_NODE &&
+    node.tagName === 'BR' &&
+    node.classList?.contains(IOS_CARET_ANCHOR_CLASS)
+  )
+}
+
+function shouldAppendIosCaretAnchor(text, caretOffset) {
+  return (
+    LOUNGE_IOS &&
+    caretOffset != null &&
+    caretOffset === String(text ?? '').length &&
+    String(text ?? '').length > 0 &&
+    String(text ?? '').endsWith('\n')
+  )
+}
+
+function appendIosCaretAnchorBr(html) {
+  return `${html || '<br>'}<br class="${IOS_CARET_ANCHOR_CLASS}" aria-hidden="true">`
+}
+
+function refocusIosComposerRoot(root, caretOffset) {
+  if (!LOUNGE_IOS || !root) return
+  try {
+    root.contentEditable = 'false'
+    root.contentEditable = 'true'
+    root.focus({ preventScroll: true })
+  } catch {
+    try {
+      root.focus()
+    } catch {
+      // ignore
+    }
+  }
+  if (caretOffset != null) setCaretTextOffset(root, caretOffset)
+}
+
 /** Normalize plain text read from a composer root (Android block/div quirks). */
 export function normalizeComposerPlainText(text, root) {
   let t = String(text ?? '')
@@ -98,6 +141,7 @@ export function plainTextFromComposerRoot(root) {
     if (node.nodeType !== Node.ELEMENT_NODE) return
     const tag = node.tagName
     if (tag === 'BR') {
+      if (isIosCaretAnchorBr(node)) return
       parts.push('\n')
       return
     }
@@ -125,7 +169,10 @@ function textLengthOfComposerNode(node, root) {
   if (node.nodeType === Node.TEXT_NODE) return node.nodeValue?.length ?? 0
   if (node.nodeType !== Node.ELEMENT_NODE) return 0
   const tag = node.tagName
-  if (tag === 'BR') return 1
+  if (tag === 'BR') {
+    if (isIosCaretAnchorBr(node)) return 0
+    return 1
+  }
   if (tag === 'DIV' || tag === 'P') {
     let len = 0
     for (const child of node.childNodes) len += textLengthOfComposerNode(child, root)
@@ -174,6 +221,7 @@ export function getCaretTextOffset(root) {
     if (node.nodeType !== Node.ELEMENT_NODE) return
     const tag = node.tagName
     if (tag === 'BR') {
+      if (isIosCaretAnchorBr(node)) return
       offset += 1
       return
     }
@@ -359,10 +407,14 @@ export function composerNewlineFromCaret(root) {
 /** Replace composer HTML from plain text and optionally restore caret. */
 export function syncComposerHtml(root, text, caretOffset = null) {
   if (!root) return
-  const html = buildRichComposerHtml(text)
+  let html = buildRichComposerHtml(text)
+  if (shouldAppendIosCaretAnchor(text, caretOffset)) {
+    html = appendIosCaretAnchorBr(html)
+  }
   root.innerHTML = html || '<br>'
   if (caretOffset != null) {
     setCaretTextOffset(root, caretOffset)
+    refocusIosComposerRoot(root, caretOffset)
   }
 }
 
@@ -370,8 +422,9 @@ export function syncComposerHtml(root, text, caretOffset = null) {
 export function syncPlainComposerHtml(root, text, caretOffset = null) {
   if (!root) return
   const s = String(text ?? '')
+  let html
   if (!s) {
-    root.innerHTML = '<br>'
+    html = '<br>'
   } else {
     const lines = s.split('\n')
     const out = []
@@ -379,10 +432,15 @@ export function syncPlainComposerHtml(root, text, caretOffset = null) {
       if (i > 0) out.push('<br>')
       if (lines[i]) out.push(escapeHtml(lines[i]))
     }
-    root.innerHTML = out.join('') || '<br>'
+    html = out.join('') || '<br>'
   }
+  if (shouldAppendIosCaretAnchor(text, caretOffset)) {
+    html = appendIosCaretAnchorBr(html)
+  }
+  root.innerHTML = html
   if (caretOffset != null) {
     setCaretTextOffset(root, caretOffset)
+    refocusIosComposerRoot(root, caretOffset)
   }
 }
 
@@ -481,54 +539,40 @@ export function isRichComposerElement(el) {
   return Boolean(el?.isContentEditable)
 }
 
-export const LOUNGE_IOS =
-  typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
-
-/** Caret offset immediately after a single `\n` insert at `beforeCaret`. */
-export function caretOffsetAfterLineBreak(beforeCaret, text) {
-  const len = String(text ?? '').length
-  return Math.min(Math.max(0, beforeCaret) + 1, len)
-}
-
 /**
- * Read caret before insertLineBreak. After execCommand on iOS (especially Hello → Enter → Enter),
- * post-insert range reads lag one line; trust pre-insert position + caretRef instead.
+ * Read caret before a line break. On iOS, trust caretRef when range reads lag (Hello → Enter → Enter).
  */
 export function readComposerCaretBeforeLineBreak(root, caretRefFallback = 0) {
   return Math.max(getCaretTextOffsetViaRange(root), caretRefFallback)
 }
 
 /**
- * iOS fixed/transformed footers: execCommand inserts the newline but WebKit keeps caret paint
- * on an earlier line until the field is rebuilt. Sync HTML from plain text, place caret at
- * beforeCaret+1 (not a post-insert range read), then toggle contenteditable to force repaint.
+ * iOS nested/fixed composers: splice `\n` in plain text and rebuild HTML (no execCommand).
+ * Avoids WebKit caret paint bugs from messy post-execCommand DOM on empty lines.
  */
-export function resyncComposerAfterIosLineBreak(root, { text, caretOffset, rich = true } = {}) {
-  if (!root || typeof window === 'undefined') return
-  const len = String(text ?? '').length
-  const cappedCaret =
-    caretOffset != null
-      ? Math.max(0, Math.min(caretOffset, len))
-      : getCaretTextOffsetViaRange(root)
+export function insertComposerNewlineByPlainSync(
+  root,
+  { maxLength, normalize, caretRefFallback = 0, rich = true } = {},
+) {
+  if (!root || typeof document === 'undefined') return null
+  if (!ensureComposerSelection(root)) return null
 
-  if (rich) {
-    syncComposerHtml(root, text, cappedCaret)
-  } else {
-    syncPlainComposerHtml(root, text, cappedCaret)
+  const beforeCaret = readComposerCaretBeforeLineBreak(root, caretRefFallback)
+  let text = plainTextFromComposerRoot(root)
+  if (normalize) text = normalize(text)
+
+  const safeBefore = Math.max(0, Math.min(beforeCaret, text.length))
+  let nextText = text.slice(0, safeBefore) + '\n' + text.slice(safeBefore)
+  if (normalize) nextText = normalize(nextText)
+
+  let nextCaret = safeBefore + 1
+  if (maxLength != null && nextText.length > maxLength) {
+    nextText = nextText.slice(0, maxLength)
+    nextCaret = Math.min(nextCaret, maxLength)
   }
 
-  if (!LOUNGE_IOS) return
+  if (rich) syncComposerHtml(root, nextText, nextCaret)
+  else syncPlainComposerHtml(root, nextText, nextCaret)
 
-  try {
-    root.contentEditable = 'false'
-    root.contentEditable = 'true'
-    root.focus({ preventScroll: true })
-  } catch {
-    try {
-      root.focus()
-    } catch {
-      // ignore
-    }
-  }
-  setCaretTextOffset(root, cappedCaret)
+  return { text: nextText, caret: nextCaret }
 }

@@ -13,14 +13,11 @@ import {
   LOUNGE_VIDEO_MAX_SECONDS,
 } from '../../utils/loungeVideoUpload.js'
 import {
-  caretOffsetAfterLineBreak,
   getCaretTextOffset,
-  getCaretTextOffsetViaRange,
   insertComposerLineBreakViaExecCommand,
+  insertComposerNewlineByPlainSync,
   LOUNGE_IOS,
   plainTextFromComposerRoot,
-  readComposerCaretBeforeLineBreak,
-  resyncComposerAfterIosLineBreak,
 } from '../lounge/loungeRichComposerDom.js'
 
 const MAX_BODY            = 4000
@@ -497,20 +494,23 @@ export default function ChatComposer({
       enterHandledRef.current = false
     })
 
-    const beforeCaret = LOUNGE_IOS
-      ? readComposerCaretBeforeLineBreak(el, caretRef.current)
-      : caretRef.current
+    if (LOUNGE_IOS) {
+      const result = insertComposerNewlineByPlainSync(el, {
+        maxLength: MAX_BODY,
+        caretRefFallback: caretRef.current,
+        rich: false,
+      })
+      if (!result) return false
+      caretRef.current = result.caret
+      setBody(result.text)
+      onTyping(viewerDisplayName)
+      return true
+    }
 
     if (!insertComposerLineBreakViaExecCommand(el)) return false
 
     const text = plainTextFromComposerRoot(el).slice(0, MAX_BODY)
-    if (LOUNGE_IOS) {
-      const nextCaret = caretOffsetAfterLineBreak(beforeCaret, text)
-      caretRef.current = nextCaret
-      resyncComposerAfterIosLineBreak(el, { text, caretOffset: nextCaret, rich: false })
-    } else {
-      caretRef.current = getCaretTextOffsetViaRange(el)
-    }
+    caretRef.current = getCaretTextOffset(el)
     setBody(text)
     onTyping(viewerDisplayName)
     return true

@@ -1,13 +1,11 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import {
-  caretOffsetAfterLineBreak,
   getCaretTextOffset,
   insertComposerLineBreakViaExecCommand,
+  insertComposerNewlineByPlainSync,
   insertPlainTextAtSelection,
   LOUNGE_IOS,
   plainTextFromComposerRoot,
-  readComposerCaretBeforeLineBreak,
-  resyncComposerAfterIosLineBreak,
   syncComposerHtml,
 } from './loungeRichComposerDom.js'
 import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
@@ -108,10 +106,23 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       enterHandledRef.current = false
     })
 
-    const beforeCaret =
-      LOUNGE_IOS && variant !== 'feed'
-        ? readComposerCaretBeforeLineBreak(el, caretRef.current)
-        : caretRef.current
+    if (LOUNGE_IOS && variant !== 'feed') {
+      if (composingRef.current) return true
+      const result = insertComposerNewlineByPlainSync(el, {
+        maxLength,
+        normalize: normalizeCashtagsInCaption,
+        caretRefFallback: caretRef.current,
+        rich: true,
+      })
+      if (!result) return false
+      const { text, caret: nextCaret } = result
+      lastValueRef.current = text
+      caretRef.current = nextCaret
+      notifyComposerInput(el, text, nextCaret, { sync: true })
+      if (text !== value) onChange?.(text)
+      setDomHasText(text.length > 0)
+      return true
+    }
 
     skipRichSyncRef.current = true
     if (!insertComposerLineBreakViaExecCommand(el)) {
@@ -125,18 +136,6 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     text = normalizeCashtagsInCaption(text)
     if (maxLength != null && text.length > maxLength) {
       text = text.slice(0, maxLength)
-    }
-
-    if (LOUNGE_IOS && variant !== 'feed') {
-      const nextCaret = caretOffsetAfterLineBreak(beforeCaret, text)
-      skipRichSyncRef.current = false
-      resyncComposerAfterIosLineBreak(el, { text, caretOffset: nextCaret, rich: true })
-      lastValueRef.current = text
-      caretRef.current = nextCaret
-      notifyComposerInput(el, text, nextCaret, { sync: true })
-      if (text !== value) onChange?.(text)
-      setDomHasText(text.length > 0)
-      return true
     }
 
     const caret = getCaretTextOffset(el)

@@ -226,18 +226,29 @@ export function writeLoungeDockMenuLayout(mode) {
   }
 }
 
-export function readLoungeDockMenuLayoutIntroCompleted() {
+export function readLoungeDockMenuLayoutIntroCompleted(userId = null) {
   if (typeof window === 'undefined') return true
   try {
-    return window.localStorage.getItem(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY) === '1'
+    const uid = userId ? String(userId) : ''
+    if (uid) {
+      if (window.localStorage.getItem(`${LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY}:${uid}`) === '1') return true
+    }
+    if (window.localStorage.getItem(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY) === '1') return true
+    const prefs = readLoungeDockFabPrefs()
+    if (prefs?.locked) return true
+    return false
   } catch {
     return true
   }
 }
 
-export function writeLoungeDockMenuLayoutIntroCompleted() {
+export function writeLoungeDockMenuLayoutIntroCompleted(userId = null) {
   if (typeof window === 'undefined') return
   try {
+    const uid = userId ? String(userId) : ''
+    if (uid) {
+      window.localStorage.setItem(`${LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY}:${uid}`, '1')
+    }
     window.localStorage.setItem(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY, '1')
   } catch {
     /* quota / private mode */

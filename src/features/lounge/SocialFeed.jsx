@@ -107,15 +107,19 @@ import {
   loungeProfileNeedsGate,
   writeProfileGateAck,
   readLoungeWelcomeAck,
-  writeLoungeWelcomeAck,
   readLoungeSlotsMenuHintAck,
-  writeLoungeSlotsMenuHintAck,
   readLoungeFabHintAck,
-  writeLoungeFabHintAck,
 } from './loungeStorage'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
 import LoungeFabHintOverlay from './LoungeFabHintOverlay.jsx'
+import {
+  markLoungeDockMenuLayoutIntroSeen,
+  markLoungeFabHintSeen,
+  markLoungeSlotsMenuHintSeen,
+  markLoungeWelcomeSeen,
+  syncLoungeOnboardingFromProfile,
+} from './loungeOnboardingPersistence.js'
 import {
   consumeReopenLoungeDockPanel,
   consumeReopenLoungeWelcome,
@@ -734,6 +738,8 @@ export default function SocialFeed({
   const [profileGateOpen, setProfileGateOpen] = useState(false)
   const [loungeWelcomeOpen, setLoungeWelcomeOpen] = useState(false)
   const loungeWelcomeScheduleRef = useRef(false)
+  const reopenWelcomePendingRef = useRef(false)
+  const [loungeOnboardingHydrated, setLoungeOnboardingHydrated] = useState(false)
   const [slotsMenuHintOpen, setSlotsMenuHintOpen] = useState(false)
   const [fabHintOpen, setFabHintOpen] = useState(false)
   const [profileGateBusy, setProfileGateBusy] = useState(false)
@@ -951,14 +957,23 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (consumeReopenLoungeWelcome()) {
-      loungeWelcomeScheduleRef.current = true
-      setLoungeWelcomeOpen(true)
+      reopenWelcomePendingRef.current = true
     }
     const panel = consumeReopenLoungeDockPanel()
     if (panel === 'settings') {
       setLoungeDockPanel('settings')
     }
   }, [])
+
+  useEffect(() => {
+    if (reopenWelcomePendingRef.current && loungeOnboardingHydrated && composerUserId) {
+      reopenWelcomePendingRef.current = false
+      if (!readLoungeWelcomeAck(composerUserId)) {
+        loungeWelcomeScheduleRef.current = true
+        setLoungeWelcomeOpen(true)
+      }
+    }
+  }, [loungeOnboardingHydrated, composerUserId])
   const prevLoungeFeedActiveRef = useRef(isActivePage)
   const ensureLoungeFeedVisible = useCallback(() => {
     if (!isActivePage) onNavigateToLoungeFeed?.()
@@ -8195,7 +8210,7 @@ export default function SocialFeed({
     if (loungeWelcomeScheduleRef.current || loungeWelcomeOpen) return
     if (!isActivePage) return
     if (loungeFeedBrowseMode !== 'member' || !composerUserId) return
-    if (!authSessionReady || !composerAuthResolved) return
+    if (!authSessionReady || !composerAuthResolved || !loungeOnboardingHydrated) return
     if (coldBootSplashVisible) return
     if (readLoungeWelcomeAck(composerUserId)) return
 
@@ -8212,24 +8227,43 @@ export default function SocialFeed({
     composerUserId,
     authSessionReady,
     composerAuthResolved,
+    loungeOnboardingHydrated,
     coldBootSplashVisible,
     loungeWelcomeOpen,
   ])
 
+  useEffect(() => {
+    if (!composerUserId || !authSessionReady || !composerAuthResolved) {
+      setLoungeOnboardingHydrated(false)
+      return undefined
+    }
+    let cancelled = false
+    void syncLoungeOnboardingFromProfile(supabaseClient, composerUserId).finally(() => {
+      if (!cancelled) setLoungeOnboardingHydrated(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, composerUserId, authSessionReady, composerAuthResolved])
+
   const onLoungeWelcomeAcknowledge = useCallback(() => {
-    if (composerUserId) writeLoungeWelcomeAck(composerUserId)
+    markLoungeWelcomeSeen(supabaseClient, composerUserId)
     setLoungeWelcomeOpen(false)
-  }, [composerUserId])
+  }, [supabaseClient, composerUserId])
 
   const onSlotsMenuHintDismiss = useCallback(() => {
-    if (composerUserId) writeLoungeSlotsMenuHintAck(composerUserId)
+    markLoungeSlotsMenuHintSeen(supabaseClient, composerUserId)
     setSlotsMenuHintOpen(false)
-  }, [composerUserId])
+  }, [supabaseClient, composerUserId])
 
   const onFabHintDismiss = useCallback(() => {
-    if (composerUserId) writeLoungeFabHintAck(composerUserId)
+    markLoungeFabHintSeen(supabaseClient, composerUserId)
     setFabHintOpen(false)
-  }, [composerUserId])
+  }, [supabaseClient, composerUserId])
+
+  const onMenuLayoutIntroCompleted = useCallback(() => {
+    markLoungeDockMenuLayoutIntroSeen(supabaseClient, composerUserId)
+  }, [supabaseClient, composerUserId])
 
   useEffect(() => {
     if (!composerUserId) {
@@ -8240,7 +8274,7 @@ export default function SocialFeed({
     if (readLoungeSlotsMenuHintAck(composerUserId)) return undefined
     if (slotsMenuHintOpen || loungeWelcomeOpen || profileGateOpen || fabHintOpen) return undefined
     if (!isActivePage) return undefined
-    if (loungeFeedBrowseMode !== 'member' || !authSessionReady || !composerAuthResolved) return undefined
+    if (loungeFeedBrowseMode !== 'member' || !authSessionReady || !composerAuthResolved || !loungeOnboardingHydrated) return undefined
     if (coldBootSplashVisible) return undefined
 
     const timer = window.setTimeout(() => {
@@ -8260,6 +8294,7 @@ export default function SocialFeed({
     loungeFeedBrowseMode,
     authSessionReady,
     composerAuthResolved,
+    loungeOnboardingHydrated,
     coldBootSplashVisible,
   ])
 
@@ -8270,7 +8305,7 @@ export default function SocialFeed({
     if (readLoungeFabHintAck(composerUserId)) return undefined
     if (fabHintOpen || slotsMenuHintOpen || loungeWelcomeOpen || profileGateOpen) return undefined
     if (!isActivePage) return undefined
-    if (loungeFeedBrowseMode !== 'member' || !authSessionReady || !composerAuthResolved) return undefined
+    if (loungeFeedBrowseMode !== 'member' || !authSessionReady || !composerAuthResolved || !loungeOnboardingHydrated) return undefined
     if (coldBootSplashVisible) return undefined
 
     const timer = window.setTimeout(() => {
@@ -8290,13 +8325,15 @@ export default function SocialFeed({
     loungeFeedBrowseMode,
     authSessionReady,
     composerAuthResolved,
+    loungeOnboardingHydrated,
     coldBootSplashVisible,
   ])
 
   const onOpenGuidelinesFromWelcome = useCallback(() => {
+    markLoungeWelcomeSeen(supabaseClient, composerUserId)
     setLoungeWelcomeOpen(false)
     onOpenLegalDocument?.('guidelines', 'welcome')
-  }, [onOpenLegalDocument])
+  }, [onOpenLegalDocument, supabaseClient, composerUserId])
 
   useEffect(() => {
     if (!composerUserId) {
@@ -13203,6 +13240,8 @@ export default function SocialFeed({
       stackAboveSlidePanel={loungeDockStackAboveSlidePanel}
       stackAboveDetailOrProfile={loungeDockStackAboveDetailOrProfile}
       fabDetailShellCompact={Boolean(loungePostDetail?.id)}
+      viewerUserId={composerUserId || null}
+      onMenuLayoutIntroCompleted={onMenuLayoutIntroCompleted}
     />
   ) : null
 

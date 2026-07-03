@@ -51,6 +51,11 @@ function removeSessionStorageKey(key) {
   }
 }
 
+function removePerUserLocalStorageKey(prefix, userId) {
+  if (!userId) return
+  removeLocalStorageKey(`${prefix}:${userId}`)
+}
+
 /**
  * Wipe per-user and first-run browser state after account deletion so a re-signup on the
  * same device gets profile gate, welcome modal, dock menu intro, legal nudge, etc. again.
@@ -63,6 +68,7 @@ export function clearAccountClientState(userId) {
     clearLoungeWelcomeAck(userId)
     clearLoungeSlotsMenuHintAck(userId)
     clearLoungeFabHintAck(userId)
+    removePerUserLocalStorageKey(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY, userId)
     for (const prefix of OFFERS_USER_KEY_PREFIXES) {
       removeLocalStorageKey(`${prefix}${userId}`)
     }

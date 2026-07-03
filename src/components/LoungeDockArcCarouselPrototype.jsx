@@ -271,6 +271,10 @@ export default function LoungeDockArcCarouselPrototype({
    * wheel shrinks and flies to the Edge L corner slot ({@link loungeDockFabCornerPosition} raised).
    */
   fabDetailShellCompact = false,
+  /** Signed-in user — scopes one-time menu layout intro ack. */
+  viewerUserId = null,
+  /** Persist menu layout intro completion (local + profile). */
+  onMenuLayoutIntroCompleted = null,
 }) {
   const panelCompactChrome = panelChrome != null && PANEL_CHROME_PANELS.has(panelChrome)
   const isCornerL = menuLayout === 'cornerL'
@@ -299,16 +303,21 @@ export default function LoungeDockArcCarouselPrototype({
   const expandMenu = useCallback(() => {
     setFabNotifBadgeDismissed(true)
     setOpen(true)
-    if (!readLoungeDockMenuLayoutIntroCompleted()) {
+    if (!readLoungeDockMenuLayoutIntroCompleted(viewerUserId)) {
       setMenuLayoutIntroOpen(true)
     }
-  }, [])
+  }, [viewerUserId])
+
+  const completeMenuLayoutIntro = useCallback(() => {
+    writeLoungeDockMenuLayoutIntroCompleted(viewerUserId)
+    onMenuLayoutIntroCompleted?.()
+    setMenuLayoutIntroOpen(false)
+  }, [viewerUserId, onMenuLayoutIntroCompleted])
 
   const onIntroChooseLayout = useCallback((mode) => {
     writeLoungeDockMenuLayout(mode)
-    writeLoungeDockMenuLayoutIntroCompleted()
-    setMenuLayoutIntroOpen(false)
-  }, [])
+    completeMenuLayoutIntro()
+  }, [completeMenuLayoutIntro])
 
   const fabNotifBadgeCount =
     !fabNotifBadgeDismissed && notificationsUnreadCount > 0 ? notificationsUnreadCount : 0
@@ -768,8 +777,11 @@ export default function LoungeDockArcCarouselPrototype({
       if (!pos) return
       const pct = loungeDockFabPctFromPosition(pos.left, pos.top, fabMoveBounds)
       writeLoungeDockFabPrefs({ ...pct, locked: true })
+      if (!readLoungeDockMenuLayoutIntroCompleted(viewerUserId)) {
+        completeMenuLayoutIntro()
+      }
     },
-    [fabMoveBounds],
+    [fabMoveBounds, viewerUserId, completeMenuLayoutIntro],
   )
 
   /** When using L layout, snap FAB to bottom corner for the screen half (preferences / resize / mode switch). */

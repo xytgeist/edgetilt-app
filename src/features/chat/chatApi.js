@@ -269,6 +269,24 @@ export function chatJoinChannel(supabase, slug) {
  * @param {Record<string, unknown>} r
  * @param {string} viewerUserId
  */
+/** Minimal DM row so conversation can open before inbox refresh catches up. */
+export function buildProvisionalDmRoom(roomId, peerProfile, viewerUserId) {
+  return enrichChatRoomRow(
+    {
+      id: roomId,
+      kind: 'dm',
+      peer_user_id: peerProfile.user_id,
+      peer_handle: peerProfile.handle,
+      peer_display_name: peerProfile.display_name,
+      peer_avatar_url: peerProfile.avatar_url ?? null,
+      member_role: 'member',
+      has_unread: false,
+      muted_until: null,
+    },
+    viewerUserId,
+  )
+}
+
 export function enrichChatRoomRow(r, viewerUserId) {
   const peerLabel = (r.peer_display_name && String(r.peer_display_name).trim())
     || (r.peer_handle ? `@${r.peer_handle}` : null)

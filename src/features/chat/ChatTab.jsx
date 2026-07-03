@@ -19,6 +19,7 @@ import {
   enrichChatRoomRow,
   chatFetchRoomForViewer,
   chatSetReadReceiptsEnabled,
+  buildProvisionalDmRoom,
 } from './chatApi.js'
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants.js'
 import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
@@ -63,6 +64,7 @@ export default function ChatTab({
   const [tab, setTab] = useState(/** @type {'inbox' | 'topics'} */ ('inbox'))
   const [actionErr, setActionErr] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
+  const [openingConversation, setOpeningConversation] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState(/** @type {any[]} */ ([]))
   const [searchBusy, setSearchBusy] = useState(false)
@@ -284,18 +286,18 @@ export default function ChatTab({
     const consumed = onInitialPeerConsumed
     void (async () => {
       setActionErr('')
-      setActionBusy(true)
+      setOpeningConversation(true)
       try {
         const res = await chatOpenDm(supabaseClient, initialPeerUserId)
         if (res?.room_id) {
-          await loadRooms()
           setActiveRoomId(res.room_id)
           setTab('inbox')
+          void loadRooms()
         }
       } catch (e) {
         setActionErr(e?.message || 'Could not open conversation.')
       } finally {
-        setActionBusy(false)
+        setOpeningConversation(false)
         consumed?.()
       }
     })()
@@ -332,7 +334,32 @@ export default function ChatTab({
     } finally {
       setActionBusy(false)
     }
-  }, [supabaseClient, loadRooms])
+  }, [supabaseClient, viewerUserId, loadRooms])
+
+  const openDmAndNavigate = useCallback(
+    async (userId, peerProfile = null) => {
+      if (!userId || !supabaseClient) return
+      setActionErr('')
+      setOpeningConversation(true)
+      try {
+        const res = await chatOpenDm(supabaseClient, userId)
+        if (res?.room_id) {
+          if (peerProfile) {
+            setHydratedOpenRoom(buildProvisionalDmRoom(res.room_id, peerProfile, viewerUserId))
+            setHydrateOpenRoomDone(true)
+          }
+          setActiveRoomId(res.room_id)
+          setTab('inbox')
+          void loadRooms()
+        }
+      } catch (e) {
+        setActionErr(e?.message || 'Could not open conversation.')
+      } finally {
+        setOpeningConversation(false)
+      }
+    },
+    [supabaseClient, viewerUserId, loadRooms],
+  )
 
   // ── User search (new DM) ─────────────────────────────────────────────────
 
@@ -360,41 +387,21 @@ export default function ChatTab({
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
   }, [searchQuery, supabaseClient, viewerUserId])
 
-  const startDmFromSearch = useCallback(async (userId) => {
-    setSearchQuery('')
-    setSearchResults([])
-    setActionErr('')
-    setActionBusy(true)
-    try {
-      const res = await chatOpenDm(supabaseClient, userId)
-      if (res?.room_id) {
-        await loadRooms()
-        setActiveRoomId(res.room_id)
-        setTab('inbox')
-      }
-    } catch (e) {
-      setActionErr(e?.message || 'Could not open conversation.')
-    } finally {
-      setActionBusy(false)
-    }
-  }, [supabaseClient, loadRooms])
+  const startDmFromSearch = useCallback(
+    async (peerProfile) => {
+      setSearchQuery('')
+      setSearchResults([])
+      await openDmAndNavigate(peerProfile.user_id, peerProfile)
+    },
+    [openDmAndNavigate],
+  )
 
-  const openDmWithUser = useCallback(async (userId) => {
-    if (!userId) return
-    setActionErr('')
-    setActionBusy(true)
-    try {
-      const res = await chatOpenDm(supabaseClient, userId)
-      if (res?.room_id) {
-        await loadRooms()
-        setActiveRoomId(res.room_id)
-      }
-    } catch (e) {
-      setActionErr(e?.message || 'Could not open conversation.')
-    } finally {
-      setActionBusy(false)
-    }
-  }, [supabaseClient, loadRooms])
+  const openDmWithUser = useCallback(
+    async (userId) => {
+      await openDmAndNavigate(userId)
+    },
+    [openDmAndNavigate],
+  )
 
   // ── Room long-press actions ───────────────────────────────────────────────
 
@@ -591,12 +598,7 @@ export default function ChatTab({
       <div className="px-3 pt-4 pb-2 flex items-center justify-between">
         <div>
           <div className="text-2xl font-black tracking-tight text-zinc-100">Chat</div>
-          <div className="text-sm text-zinc-500 mt-0.5">
-            Messages &amp; topic rooms
-            {import.meta.env.VITE_BUILD_SHA ? (
-              <span className="ml-1 text-[10px] text-zinc-600">· {import.meta.env.VITE_BUILD_SHA}</span>
-            ) : null}
-          </div>
+          <div className="text-sm text-zinc-500 mt-0.5">Messages &amp; topic rooms</div>
         </div>
         <QuickLinkPageToggle destinationId="chat" />
       </div>
@@ -613,7 +615,7 @@ export default function ChatTab({
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="New message…"
+              placeholder="Search Users..."
               className="min-w-0 flex-1 bg-transparent text-[14px] text-zinc-100 placeholder-zinc-500 outline-none"
             />
             {searchQuery.length > 0 && (
@@ -657,7 +659,7 @@ export default function ChatTab({
               <button
                 key={p.user_id}
                 type="button"
-                onClick={() => void startDmFromSearch(p.user_id)}
+                onClick={() => void startDmFromSearch(p)}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left touch-manipulation hover:bg-zinc-800/60 active:bg-zinc-800"
               >
                 {p.avatar_url ? (
@@ -857,6 +859,26 @@ export default function ChatTab({
       />,
       document.body,
     )}
+
+    {openingConversation
+      ? createPortal(
+          <div
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="fixed inset-0 z-[105] flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm"
+          >
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-700/50 bg-zinc-900/95 px-6 py-5 shadow-2xl">
+              <div
+                className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-cyan-400"
+                aria-hidden
+              />
+              <p className="text-[14px] font-medium text-zinc-200">Opening conversation…</p>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null}
     </>
   )
 }

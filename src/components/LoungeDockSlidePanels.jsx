@@ -28,7 +28,7 @@ import {
   LOUNGE_SEARCH_SORT,
   SEARCH_DEBOUNCE_MS,
   hydrateLoungeSearchCommentResults,
-  loungeSearch,
+  loungeSearchUnified,
 } from '../features/lounge/loungeSearchApi.js'
 import LoungeSearchCommentResultRow from '../features/lounge/LoungeSearchCommentResultRow.jsx'
 import LoungeSearchSortSwitch from '../features/lounge/LoungeSearchSortSwitch.jsx'
@@ -439,7 +439,7 @@ export default function LoungeDockSlidePanels({
       }
 
       try {
-        const result = await loungeSearch(searchSupabaseClient, query, {
+        const result = await loungeSearchUnified(searchSupabaseClient, query, {
           sort,
           postsOffset,
           profilesOffset,

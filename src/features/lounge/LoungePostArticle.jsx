@@ -103,6 +103,8 @@ export default function LoungePostArticle({
   onMentionClick,
   /** Open search filtered by hashtag (tapping #tag in caption). */
   onHashtagClick,
+  /** Open search filtered by cashtag (tapping $TICKER in caption). */
+  onCashtagClick,
   /** Set of user IDs the viewer follows. When provided (with `onFollowUser`), shows the follow pill. */
   viewerFollowingUserIds,
   /** Follow the given user ID. Called with the author's user_id on pill tap. */
@@ -268,11 +270,11 @@ export default function LoungePostArticle({
     viewerUserId && post.user_id === viewerUserId ? 'You reposted' : `${displayNameFor(post)} reposted`
 
   const richCaptionOpts = useMemo(() => {
-    const base = { onMentionClick, onHashtagClick, onLinkClick }
+    const base = { onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }
     const hq = String(loungeSearchHighlightQuery || '').trim()
     if (hq.length >= 2) return { ...base, highlightQuery: hq }
     return base
-  }, [onMentionClick, onHashtagClick, onLinkClick, loungeSearchHighlightQuery])
+  }, [onMentionClick, onHashtagClick, onCashtagClick, onLinkClick, loungeSearchHighlightQuery])
 
   const captionOpensDetail = Boolean(onPostBodyClick || onOpenCommentDetail)
   const captionBlockClass = `${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200${

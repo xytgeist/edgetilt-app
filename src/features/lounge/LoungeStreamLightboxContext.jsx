@@ -166,6 +166,7 @@ export function buildLoungeStreamLightboxCtxFromPostCardProps(pp, extras = {}) {
     onFollowUser: pp.onFollowUser,
     onMentionClick: pp.onMentionClick,
     onHashtagClick: pp.onHashtagClick,
+    onCashtagClick: pp.onCashtagClick,
     onLinkClick: pp.onLinkClick,
     loungePinBusy: pp.loungePinBusy,
     feedVideoAutoplayEnabled: pp.feedVideoAutoplayEnabled,

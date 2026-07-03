@@ -292,6 +292,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     resolveMediaFeedVariant: (c) => (String(c?.id) === focusCommentId ? 'detail' : 'commentInline'),
     onMentionClick: pp.onMentionClick,
     onHashtagClick: pp.onHashtagClick,
+    onCashtagClick: pp.onCashtagClick,
     onLinkClick: pp.onLinkClick,
     onLinkPreviewOpen: pp.onLinkPreviewOpen,
   }
@@ -375,6 +376,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                     captionOpts={{
                       onMentionClick: pp.onMentionClick,
                       onHashtagClick: pp.onHashtagClick,
+                      onCashtagClick: pp.onCashtagClick,
                       onLinkClick: pp.onLinkClick,
                     }}
                   />

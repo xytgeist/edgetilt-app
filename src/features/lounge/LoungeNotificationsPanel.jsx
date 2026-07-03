@@ -137,6 +137,7 @@ export default function LoungeNotificationsPanel({
     () => ({
       onMentionClick: notificationPostCardProps?.onMentionClick,
       onHashtagClick: notificationPostCardProps?.onHashtagClick,
+      onCashtagClick: notificationPostCardProps?.onCashtagClick,
       onLinkClick: notificationPostCardProps?.onLinkClick,
     }),
     [notificationPostCardProps],

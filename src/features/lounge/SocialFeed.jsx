@@ -12736,6 +12736,42 @@ export default function SocialFeed({
     ],
   )
 
+  /** Open the search panel pre-filtered by a tapped $TICKER (strict cashtag post search). */
+  const openSearchByCashtag = useCallback(
+    (ticker, e) => {
+      e?.stopPropagation?.()
+      e?.preventDefault?.()
+      if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
+        onRequireAuth?.()
+        return
+      }
+      const tag = String(ticker || '').trim().toUpperCase()
+      if (!tag) return
+      pushLoungeNavReturnContext()
+      loungeNavSearchReturnPendingRef.current = true
+      if (loungePostDetail?.id) {
+        finalizeLoungePostDetailClose()
+      }
+      if (profileModalOpen) {
+        closeProfileModal()
+      }
+      setProfileOverlayStack([])
+      setLoungeDockSearchQuery(`$${tag}`)
+      setLoungeDockSearchQueryVersion((v) => v + 1)
+      setLoungeDockPanel('search')
+    },
+    [
+      closeProfileModal,
+      finalizeLoungePostDetailClose,
+      loungeFeedBrowseMode,
+      loungePostDetail?.id,
+      loungeReadOnly,
+      onRequireAuth,
+      profileModalOpen,
+      pushLoungeNavReturnContext,
+    ],
+  )
+
   const openLoungePostById = useCallback(
     async (postId, opts = {}) => {
       const raw = String(postId || '').trim()
@@ -12842,9 +12878,10 @@ export default function SocialFeed({
         'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
       onMentionClick: openProfileByHandle,
       onHashtagClick: openSearchByHashtag,
+      onCashtagClick: openSearchByCashtag,
       onLinkClick: openCaptionLink,
     }),
-    [openCaptionLink, openProfileByHandle, openSearchByHashtag],
+    [openCaptionLink, openProfileByHandle, openSearchByHashtag, openSearchByCashtag],
   )
 
   const onProfileScreenUpdated = useCallback((next) => {
@@ -12995,6 +13032,7 @@ export default function SocialFeed({
       busyDeletingPostId: loungeFeedDeleteBusyPostId,
       onMentionClick: openProfileByHandle,
       onHashtagClick: openSearchByHashtag,
+      onCashtagClick: openSearchByCashtag,
       onLinkClick: openCaptionLink,
       onLinkPreviewOpen: openLinkPreview,
       viewerFollowingUserIds: loungeReadOnly ? null : loungeFollowingUserIds,
@@ -13053,6 +13091,7 @@ export default function SocialFeed({
       loungeDetailCommentDeleteBusyId,
       openProfileByHandle,
       openSearchByHashtag,
+      openSearchByCashtag,
       openCaptionLink,
       openLinkPreview,
       loungeFollowingUserIds,
@@ -13102,6 +13141,7 @@ export default function SocialFeed({
       hydrateCommentInteractionsForIds: hydrateCommentInteractionsForIds,
       onMentionClick: openProfileByHandle,
       onHashtagClick: openSearchByHashtag,
+      onCashtagClick: openSearchByCashtag,
       onLinkClick: openCaptionLink,
       onLinkPreviewOpen: openLinkPreview,
       onOpenGuideCard: openLoungeGuideCard,
@@ -13131,6 +13171,7 @@ export default function SocialFeed({
       hydrateCommentInteractionsForIds,
       openProfileByHandle,
       openSearchByHashtag,
+      openSearchByCashtag,
       openCaptionLink,
       openLinkPreview,
       openLoungeGuideCard,
@@ -14025,6 +14066,7 @@ export default function SocialFeed({
                   onStreamLightboxOpenDetail={openLoungeStreamLightboxDetail}
                   onMentionClick={openProfileByHandle}
                   onHashtagClick={openSearchByHashtag}
+                  onCashtagClick={openSearchByCashtag}
                   onLinkClick={openCaptionLink}
                   onLinkPreviewOpen={openLinkPreview}
                   viewerFollowingUserIds={loungeReadOnly ? null : loungeFollowingUserIds}
@@ -15198,6 +15240,7 @@ export default function SocialFeed({
                     commentEditVideoPostBlocked: loungeDetailCommentEditVideoPostBlocked,
                     onMentionClick: openProfileByHandle,
                     onHashtagClick: openSearchByHashtag,
+                    onCashtagClick: openSearchByCashtag,
                     onLinkClick: openCaptionLink,
                     onLinkPreviewOpen: openLinkPreview,
                     youtubeIframeLoading: 'eager',
@@ -15279,6 +15322,7 @@ export default function SocialFeed({
                       c?.id === loungeDetailCommentHierarchyFocusId ? 'detail' : 'commentInline',
                     onMentionClick: openProfileByHandle,
                     onHashtagClick: openSearchByHashtag,
+                    onCashtagClick: openSearchByCashtag,
                     onLinkClick: openCaptionLink,
                     onLinkPreviewOpen: openLinkPreview,
                     lightboxPortalClass: loungeDetailMediaLightboxPortalClass,
@@ -15388,6 +15432,7 @@ export default function SocialFeed({
                           repostActionBusy={repostManageBusy}
                           onMentionClick={openProfileByHandle}
                           onHashtagClick={openSearchByHashtag}
+                          onCashtagClick={openSearchByCashtag}
                           onLinkClick={openCaptionLink}
                           onLinkPreviewOpen={openLinkPreview}
                           youtubeIframeLoading="eager"

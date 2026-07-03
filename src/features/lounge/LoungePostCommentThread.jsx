@@ -105,6 +105,7 @@ export function LoungeCommentCard({
   repostMenuPortalClass = 'z-[48]',
   onMentionClick,
   onHashtagClick,
+  onCashtagClick,
   onLinkClick,
   onLinkPreviewOpen,
   youtubeIframeLoading = 'lazy',
@@ -236,7 +237,7 @@ export function LoungeCommentCard({
             >
               <LoungeExpandableRichCaption
                 text={bodyText}
-                captionOpts={{ onMentionClick, onHashtagClick, onLinkClick }}
+                captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
               />
             </div>
           ) : null}
@@ -484,6 +485,7 @@ export default function LoungePostCommentThread({
   followingUserIds = [],
   onMentionClick,
   onHashtagClick,
+  onCashtagClick,
   onLinkClick,
   onLinkPreviewOpen,
   youtubeIframeLoading = 'lazy',
@@ -610,6 +612,7 @@ export default function LoungePostCommentThread({
     onCommentReplyInteraction,
     onMentionClick,
     onHashtagClick,
+    onCashtagClick,
     onLinkClick,
     onLinkPreviewOpen,
     youtubeIframeLoading,

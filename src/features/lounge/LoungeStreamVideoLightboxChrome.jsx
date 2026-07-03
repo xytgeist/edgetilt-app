@@ -94,6 +94,7 @@ export default function LoungeStreamVideoLightboxChrome({
   interactionBar,
   onMentionClick,
   onHashtagClick,
+  onCashtagClick,
   onLinkClick,
   onCaptionClick,
 }) {
@@ -183,14 +184,14 @@ export default function LoungeStreamVideoLightboxChrome({
               >
                 <LoungeExpandableRichCaption
                   text={caption}
-                  captionOpts={{ onMentionClick, onHashtagClick, onLinkClick }}
+                  captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
                 />
               </div>
             ) : (
               <div className={`mt-1 text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}>
                 <LoungeExpandableRichCaption
                   text={caption}
-                  captionOpts={{ onMentionClick, onHashtagClick, onLinkClick }}
+                  captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
                 />
               </div>
             )

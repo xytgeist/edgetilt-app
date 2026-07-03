@@ -1,4 +1,5 @@
 import { COMMUNITY_FEED_SELECT } from '../../utils/loungeFeedScope.js'
+import { MARKET_CASHTAG_RPC_RE } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeSearchErrorMessage } from '../../utils/loungeSearchSortPref.js'
 
 /** Minimum query length enforced by `lounge_search` RPC (server + client). */
@@ -20,6 +21,49 @@ export const LOUNGE_SEARCH_PAGE = {
 }
 
 const SEARCH_DEBOUNCE_MS = 300
+
+/** `$AAPL` or bare `AAPL` when typed in search — ticker for `lounge_search_cashtag_posts`. */
+export function parseCashtagSearchQuery(query) {
+  const raw = String(query || '').trim()
+  if (!raw) return null
+  const body = raw.startsWith('$') ? raw.slice(1).trim() : raw
+  const tag = body.toUpperCase()
+  if (!MARKET_CASHTAG_RPC_RE.test(tag)) return null
+  return tag
+}
+
+/**
+ * Dock search: strict cashtag post lookup when query is `$TICKER`, else bundled `lounge_search`.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} query
+ * @param {Parameters<typeof loungeSearch>[2]} [opts]
+ */
+export async function loungeSearchUnified(supabaseClient, query, opts = {}) {
+  const cashtag = parseCashtagSearchQuery(query)
+  if (cashtag) {
+    const {
+      sort = LOUNGE_SEARCH_SORT.ENGAGEMENT,
+      postsLimit = LOUNGE_SEARCH_PAGE.POSTS,
+      postsOffset = 0,
+    } = opts
+    const result = await loungeSearchCashtagPosts(supabaseClient, cashtag, {
+      sort,
+      limit: postsLimit,
+      offset: postsOffset,
+    })
+    return {
+      posts: result.posts,
+      profiles: [],
+      comments: [],
+      pagination: {
+        postsHasMore: result.pagination.postsHasMore,
+        profilesHasMore: false,
+        commentsHasMore: false,
+      },
+    }
+  }
+  return loungeSearch(supabaseClient, query, opts)
+}
 
 const PROFILE_SEARCH_SELECT = 'user_id,handle,display_name,avatar_url,role,is_og'
 

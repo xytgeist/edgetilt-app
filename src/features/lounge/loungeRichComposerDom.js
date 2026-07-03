@@ -297,6 +297,12 @@ export function ensureComposerSelection(root) {
   const sel = window.getSelection()
   if (!sel) return false
 
+  // Do not re-focus when the caret is already inside the field — mobile WebKit
+  // often resets selection to the wrong line when focus() runs unnecessarily.
+  if (sel.rangeCount > 0 && sel.anchorNode && root.contains(sel.anchorNode)) {
+    return true
+  }
+
   try {
     root.focus({ preventScroll: true })
   } catch {
@@ -321,12 +327,13 @@ export function ensureComposerSelection(root) {
  */
 export function composerNewlineFromCaret(root) {
   if (!root) return null
-  ensureComposerSelection(root)
   const caret = getCaretTextOffset(root)
+  ensureComposerSelection(root)
   const text = plainTextFromComposerRoot(root)
+  const safeCaret = Math.max(0, Math.min(caret, text.length))
   return {
-    text: text.slice(0, caret) + '\n' + text.slice(caret),
-    caret: caret + 1,
+    text: text.slice(0, safeCaret) + '\n' + text.slice(safeCaret),
+    caret: safeCaret + 1,
   }
 }
 

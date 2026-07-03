@@ -41,6 +41,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const lastValueRef = useRef(value)
   const composingRef = useRef(false)
   const skipNextEnterKeydownRef = useRef(false)
+  const skipNextInputReadRef = useRef(false)
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
@@ -96,16 +97,24 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       lastValueRef.current = next
       notifyComposerInput(el, next, nextCaret, { sync: true })
       syncComposerHtml(el, next, nextCaret)
-      if (next !== value) onChange?.(next)
+      skipNextInputReadRef.current = true
+      onChange?.(next)
       return true
     },
-    [enterInsertsNewline, maxLength, notifyComposerInput, onChange, value],
+    [enterInsertsNewline, maxLength, notifyComposerInput, onChange],
   )
 
   useLayoutEffect(() => {
     const el = rootRef.current
     if (!el || composingRef.current) return
     if (lastValueRef.current === value) return
+    const domText = plainTextFromComposerRoot(el)
+    // Local edit (Enter/readAndEmit) can be ahead of a stale value prop for one frame.
+    if (domText === lastValueRef.current && domText !== value) return
+    if (domText === value) {
+      lastValueRef.current = value
+      return
+    }
     lastValueRef.current = value
     const caret =
       document.activeElement === el
@@ -161,6 +170,10 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   )
 
   const handleInput = useCallback(() => {
+    if (skipNextInputReadRef.current) {
+      skipNextInputReadRef.current = false
+      return
+    }
     readAndEmit()
   }, [readAndEmit])
 

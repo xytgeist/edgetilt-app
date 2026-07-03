@@ -86,6 +86,7 @@ export default function ChatComposer({
   const videoInputRef  = useRef(null)
   const plusBtnRef     = useRef(null)
   const skipNextEnterKeydownRef = useRef(false)
+  const skipNextInputReadRef = useRef(false)
 
   const hasContent = body.trim().length > 0 || imageSlots.length > 0
   const canSend = !disabled && !sending && hasContent
@@ -160,6 +161,10 @@ export default function ChatComposer({
   }, [body, composerActive, footerHost])
 
   const handleBodyInput = (e) => {
+    if (skipNextInputReadRef.current) {
+      skipNextInputReadRef.current = false
+      return
+    }
     // Strip HTML - only keep plain text from the contenteditable div.
     const raw = e.currentTarget.innerText ?? ''
     const trimmed = raw.slice(0, MAX_BODY)
@@ -522,6 +527,7 @@ export default function ChatComposer({
       el.innerText = capped
       setCaretTextOffset(el, nextCaret)
       setBody(capped)
+      skipNextInputReadRef.current = true
       onTyping(viewerDisplayName)
     },
     [onTyping, viewerDisplayName],

@@ -167,6 +167,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Chat archive (2026-07-02):** **Ryan sign-off** — prod migrations **`20260702150000`**–**`170000`**, **`lounge-chat`** redeploy, frontend **`main`** **`f31d9a7`** on **`edgetilt.com`**; archive/restore/push-mute/reply-unarchive smoke **PASSED**.
 
+**Lounge cashtag tap-to-search (2026-07-02):** **Ryan sign-off** — client-only **`efe255d`** on **`origin/main`** / **`edgetilt.com`**; tap **`$TICKER`** in feed caption → dock Search + cashtag post results smoke **PASSED**. No migration or Edge redeploy.
+
 ---
 
 ## 5. Post-deploy smoke (application)
@@ -182,6 +184,7 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 - [ ] **Lounge media lightbox:** image full-screen pinch-zoom + pan; Stream hero expand with interaction bar — spot-check feed + post detail (client-only; no extra deploy beyond app bundle).
 - [ ] **AP Guide editor (`/slot-guide-form`):** admin login → **+ New guide** → **Save draft** (optional) → **Ingest guide** with Vercel **§1** Supabase service vars set → **Fetch guides** → **Load** → edit section → **Save changes**. Spot-check **Buffalo Link** calculator slug **`buffalo-link`** in app after **`20260531540000`** on prod DB.
 - [ ] **Starter weekly guide drop:** on a **Slots Edge Starter** prod account, SQL grant + activity event per **`docs/test-user-roles.md`** → scratch modal, real rub audio, tap-to-open guide, Pro CTA; notification tap deep-links with **`starterDrop=`**. Cron **`starter_weekly_guide_drop_weekly`** scheduled (Mon **00:10 UTC**). Do **not** run bulk **`run_starter_weekly_guide_drop_job()`** on prod without intent.
+- [x] **Lounge cashtag tap-to-search:** tap **`$AAPL`** (or any cashtag) in a feed caption → dock **Search** opens with **`$TICKER`** query and cashtag post results (client-only; **`efe255d`**).
 - [x] **Chat archive inbox:** swipe left → archive (green); **Archived** tab → swipe left restore (blue) or reply from thread → returns to Inbox; inbound while archived → **no push**; restore or reply → push resumes.
 
 ---
@@ -208,4 +211,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Chat archive inbox** prod **sign-off** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`main`** **`f31d9a7`**). Prior: prod merge **`889a927`**. Prior: **Starter weekly drop** (**`20260702120000`**, **`lounge-send-activity-push`**, **`66d6ed7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **Lounge cashtag tap-to-search** prod **sign-off** (**`efe255d`**, client-only). Prior: **Chat archive inbox** prod **sign-off** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`main`** **`f31d9a7`**). Prior: prod merge **`889a927`**. Prior: **Starter weekly drop** (**`20260702120000`**, **`lounge-send-activity-push`**, **`66d6ed7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

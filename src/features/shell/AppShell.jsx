@@ -376,12 +376,36 @@ export default function AppShell({
   const openLoungeActivityInAppToast = useCallback(
     (payload) => {
       dismissLoungeActivityInAppToast()
-      const { activityEventId, activityBatchId } = navigateFromLoungeActivityPayload(payload, {
-        onTabHome: () => {
-          setTab('home')
+      const { activityEventId, activityBatchId, tab: targetTab, roomId, playLogEntryId } =
+        navigateFromLoungeActivityPayload(payload)
+
+      if (targetTab === 'chat') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('chat')
           setMenuOpen(false)
-        },
-      })
+          if (roomId) setPendingChatRoomId(roomId)
+        }
+      } else if (targetTab === 'logbook') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('logbook')
+          setMenuOpen(false)
+          if (playLogEntryId) setPendingPlayLogEntryId(playLogEntryId)
+        }
+      } else if (targetTab === 'offers') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('offers')
+        }
+      } else {
+        setTab('home')
+        setMenuOpen(false)
+      }
+
       if (activityEventId || activityBatchId) {
         queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
         window.dispatchEvent(
@@ -391,7 +415,7 @@ export default function AppShell({
         )
       }
     },
-    [dismissLoungeActivityInAppToast],
+    [browseMode, dismissLoungeActivityInAppToast],
   )
 
   useEffect(() => {

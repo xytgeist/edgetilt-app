@@ -1,17 +1,24 @@
 /** Navigate from a Lounge activity push / in-app toast payload (relative app URL). */
-export function navigateFromLoungeActivityPayload(payload, { onTabHome } = {}) {
-  if (typeof window === 'undefined') return { activityEventId: null, activityBatchId: null }
+export function navigateFromLoungeActivityPayload(payload) {
+  const empty = {
+    activityEventId: null,
+    activityBatchId: null,
+    tab: 'home',
+    roomId: null,
+    playLogEntryId: null,
+    urlChanged: false,
+  }
+  if (typeof window === 'undefined') return empty
 
   const relative =
     typeof payload?.url === 'string' && payload.url.trim() ? payload.url.trim() : '/?tab=home'
   const parsed = new URL(relative, window.location.origin)
   const nextPath = `${parsed.pathname}${parsed.search}`
-  if (window.location.pathname + window.location.search !== nextPath) {
+  const urlChanged = window.location.pathname + window.location.search !== nextPath
+  if (urlChanged) {
     window.history.pushState({}, '', nextPath)
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
-
-  onTabHome?.()
 
   const activityEventId =
     payload?.activityEventId || parsed.searchParams.get('activityEvent') || null
@@ -21,6 +28,10 @@ export function navigateFromLoungeActivityPayload(payload, { onTabHome } = {}) {
   return {
     activityEventId: activityEventId ? String(activityEventId) : null,
     activityBatchId: activityBatchId ? String(activityBatchId) : null,
+    tab: parsed.searchParams.get('tab') || 'home',
+    roomId: (parsed.searchParams.get('room') || '').trim() || null,
+    playLogEntryId: (parsed.searchParams.get('playLogEntry') || '').trim() || null,
+    urlChanged,
   }
 }
 

@@ -215,4 +215,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Lounge + chat composer Enter + Android placeholder** prod **sign-off** (client **`d9ef2a9`**, client-only). Prior: **Lounge strict hashtag search** (**`20260702210000`**, **`a496a97`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **iOS nested lounge + chat composer caret** prod **sign-off** (client **`60652cd`**, client-only; native iOS textarea + auto-grow). Prior: **Lounge + chat composer Enter + Android placeholder** (**`d9ef2a9`**). Prior: **Lounge strict hashtag search** (**`20260702210000`**, **`a496a97`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

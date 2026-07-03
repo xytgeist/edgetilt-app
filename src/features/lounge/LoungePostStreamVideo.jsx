@@ -21,6 +21,7 @@ import {
   pauseLoungeStreamInlineVideos,
   subscribeLoungeStreamBackgroundPause,
 } from '../../utils/loungeStreamInlineVideoControl.js'
+import { pauseLoungeHeroStreamForDismiss } from '../../utils/loungeLightboxMediaControl.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD } from './LoungeStreamVideoLightboxChrome.jsx'
@@ -2117,6 +2118,9 @@ export default function LoungePostStreamVideo({
 
   const closeLightbox = useCallback(() => {
     if (!lightboxOpenRef.current || heroShrinkInFlightRef.current) return
+    pauseLoungeHeroStreamForDismiss(videoRef.current)
+    setHeroSoundUnmuted(false)
+    heroWantsSoundRef.current = false
     const slot = heroInlineSlotRef.current
     const measuredBack = slot
       ? readHeroMediaViewportRect(

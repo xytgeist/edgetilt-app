@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
@@ -7,6 +7,7 @@ import {
 import { useLoungeLightboxSwipeDismiss } from '../lounge/loungeLightboxSwipeDismiss.js'
 import { notifyLoungeStreamLightboxOpen } from '../lounge/loungeStreamLightboxRegistry.js'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
+import { stopLoungeLightboxMedia } from '../../utils/loungeLightboxMediaControl.js'
 
 /**
  * Full-screen chat video viewer - lounge-style chrome (back + swipe dismiss).
@@ -20,12 +21,27 @@ export default function ChatVideoLightbox({
   lightboxPortalClass = 'z-[130]',
 }) {
   const videoRef = useRef(null)
+  const iframeRef = useRef(null)
+  const lightboxRootRef = useRef(null)
   const uid = videoUid ? String(videoUid).trim() : ''
   const url = videoUrl ? String(videoUrl).trim() : ''
   const poster = posterUrl ? loungeFeedImageDeliveryUrl(String(posterUrl).trim(), 'poster') : ''
 
+  const stopPlayback = useCallback(() => {
+    stopLoungeLightboxMedia({
+      videoEl: videoRef.current,
+      iframeEl: iframeRef.current,
+      rootEl: lightboxRootRef.current,
+    })
+  }, [])
+
+  const handleClose = useCallback(() => {
+    stopPlayback()
+    onClose()
+  }, [onClose, stopPlayback])
+
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
-    onClose,
+    onClose: handleClose,
     allowSwipeOnVideo: true,
     className: 'relative flex min-h-0 flex-1 flex-col',
   })
@@ -48,14 +64,15 @@ export default function ChatVideoLightbox({
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') handleClose()
     }
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
+      stopPlayback()
     }
-  }, [onClose])
+  }, [handleClose, stopPlayback])
 
   useEffect(() => {
     if (uid || !url) return
@@ -72,6 +89,7 @@ export default function ChatVideoLightbox({
 
   return createPortal(
     <div
+      ref={lightboxRootRef}
       data-lounge-media-lightbox
       className={`fixed inset-0 ${lightboxPortalClass} flex flex-col bg-black`}
       role="dialog"
@@ -87,7 +105,7 @@ export default function ChatVideoLightbox({
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              onClose()
+              handleClose()
             }}
             aria-label="Back"
             className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
@@ -110,6 +128,7 @@ export default function ChatVideoLightbox({
         <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
           {uid ? (
             <iframe
+              ref={iframeRef}
               src={`https://iframe.videodelivery.net/${uid}?autoplay=true&muted=false`}
               className="h-full w-full max-h-full max-w-full"
               allow="autoplay; fullscreen; picture-in-picture"

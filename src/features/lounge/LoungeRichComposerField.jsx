@@ -53,6 +53,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
+  /** iOS nested composers: native textarea avoids WebKit caret paint bugs in fixed/transformed footers. */
+  const iosNativeTextarea = LOUNGE_IOS && variant !== 'feed'
   /** Android: DOM text can lead React value by a keystroke; do not overlay placeholder on typed chars. */
   const [domHasText, setDomHasText] = useState(() => String(value ?? '').length > 0)
   const [isComposing, setIsComposing] = useState(false)
@@ -61,9 +63,13 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 
   const syncPlaceholderFromDom = useCallback(() => {
     const el = rootRef.current
-    const domLen = el ? plainTextFromComposerRoot(el).length : 0
+    const domLen = el
+      ? iosNativeTextarea
+        ? (el.value?.length ?? 0)
+        : plainTextFromComposerRoot(el).length
+      : 0
     setDomHasText(Boolean(String(value ?? '').length) || domLen > 0)
-  }, [value])
+  }, [value, iosNativeTextarea])
 
   const notifyComposerInput = useCallback((el, text, caret, { sync = false } = {}) => {
     caretRef.current = caret
@@ -153,6 +159,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [syncPlaceholderFromDom])
 
   useLayoutEffect(() => {
+    if (iosNativeTextarea) return
     const el = rootRef.current
     if (!el || composingRef.current) return
     const domText = plainTextFromComposerRoot(el)
@@ -168,7 +175,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
         : value.length
     caretRef.current = caret
     syncComposerHtml(el, value, caret)
-  }, [value])
+  }, [value, iosNativeTextarea])
 
   useLayoutEffect(() => {
     if (!autoGrow) return
@@ -186,6 +193,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [autoGrow, value])
 
   useEffect(() => {
+    if (iosNativeTextarea) return undefined
     const el = rootRef.current
     if (!el || disabled) return undefined
     const onSelectionChange = () => {
@@ -200,7 +208,43 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     }
     document.addEventListener('selectionchange', onSelectionChange)
     return () => document.removeEventListener('selectionchange', onSelectionChange)
-  }, [disabled, notifyComposerInput])
+  }, [disabled, notifyComposerInput, iosNativeTextarea])
+
+  const handleTextareaChange = useCallback(
+    (e) => {
+      const el = e.target
+      let text = el.value
+      text = normalizeCashtagsInCaption(text)
+      if (maxLength != null && text.length > maxLength) {
+        text = text.slice(0, maxLength)
+      }
+      const caret = el.selectionStart ?? text.length
+      lastValueRef.current = text
+      caretRef.current = caret
+      notifyComposerInput(el, text, caret, { sync: true })
+      if (text !== value) onChange?.(text)
+      setDomHasText(text.length > 0)
+    },
+    [maxLength, notifyComposerInput, onChange, value],
+  )
+
+  const handleTextareaKeyDown = useCallback(
+    (e) => {
+      onKeyDown?.(e)
+    },
+    [onKeyDown],
+  )
+
+  const handleTextareaSelect = useCallback(
+    (e) => {
+      const el = e.target
+      const caret = el.selectionStart ?? 0
+      caretRef.current = caret
+      notifyComposerInput(el, el.value, caret)
+      onMouseUp?.(e)
+    },
+    [notifyComposerInput, onMouseUp],
+  )
 
   const handleBeforeInput = useCallback((e) => {
     const type = String(e?.inputType ?? '')
@@ -241,6 +285,31 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 
   const showPlaceholder =
     Boolean(placeholder) && !value && !domHasText && !isComposing
+
+  if (iosNativeTextarea) {
+    return (
+      <div className="relative min-h-0 w-full">
+        <textarea
+          ref={rootRef}
+          id={id}
+          rows={1}
+          value={value}
+          disabled={disabled}
+          readOnly={disabled}
+          spellCheck
+          aria-label={ariaLabel}
+          placeholder={placeholder || undefined}
+          onChange={handleTextareaChange}
+          onKeyDown={handleTextareaKeyDown}
+          onKeyUp={onKeyUp}
+          onSelect={handleTextareaSelect}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          className={`w-full resize-none border-0 bg-transparent touch-manipulation whitespace-pre-wrap break-words px-0 text-left text-zinc-100 outline-none selection:bg-cyan-500/25 [-webkit-tap-highlight-color:transparent] ${preset.fieldClass} ${autoGrow ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="relative min-h-0 w-full">

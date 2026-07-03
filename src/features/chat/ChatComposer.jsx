@@ -168,6 +168,42 @@ export default function ChatComposer({
     onTyping(viewerDisplayName)
   }
 
+  const handleTextareaChange = (e) => {
+    const el = e.target
+    const trimmed = el.value.slice(0, MAX_BODY)
+    caretRef.current = el.selectionStart ?? trimmed.length
+    setBody(trimmed)
+    onTyping(viewerDisplayName)
+  }
+
+  const insertTextIntoChatBody = useCallback(
+    (insertText) => {
+      const el = textareaRef.current
+      const snippet = String(insertText ?? '').slice(0, MAX_BODY)
+      if (!snippet) return
+      if (LOUNGE_IOS && el?.tagName === 'TEXTAREA') {
+        const start = el.selectionStart ?? body.length
+        const end = el.selectionEnd ?? start
+        const next = (body.slice(0, start) + snippet + body.slice(end)).slice(0, MAX_BODY)
+        const caret = Math.min(start + snippet.length, next.length)
+        caretRef.current = caret
+        setBody(next)
+        onTyping(viewerDisplayName)
+        requestAnimationFrame(() => {
+          try {
+            el.setSelectionRange(caret, caret)
+          } catch {
+            // ignore
+          }
+        })
+        return
+      }
+      el?.focus()
+      document.execCommand('insertText', false, snippet)
+    },
+    [body, onTyping, viewerDisplayName],
+  )
+
   // Shared core: takes an array of File objects, caps to remaining slots,
   // creates blob preview slots, and starts background uploads.
   const enqueueImageFiles = useCallback((rawFiles) => {
@@ -283,7 +319,7 @@ export default function ChatComposer({
     if (hasHtml) {
       e.preventDefault()
       const text = e.clipboardData?.getData('text/plain') ?? ''
-      if (text) document.execCommand('insertText', false, text.slice(0, MAX_BODY))
+      if (text) insertTextIntoChatBody(text)
       return
     }
 
@@ -304,7 +340,7 @@ export default function ChatComposer({
     } catch {
       // Permission denied or API not available - silently ignore
     }
-  }, [enqueueImageFiles])
+  }, [enqueueImageFiles, insertTextIntoChatBody])
 
   // ── Long-press "Paste" menu (Android: clipboard images are grayed out for <input>/<textarea>,
   //    but navigator.clipboard.read() via a button tap bypasses the OS restriction entirely)
@@ -370,13 +406,12 @@ export default function ChatComposer({
       if (imageFiles.length) {
         enqueueImageFiles(imageFiles)
       } else if (plainText) {
-        textareaRef.current?.focus()
-        document.execCommand('insertText', false, plainText.slice(0, MAX_BODY))
+        insertTextIntoChatBody(plainText)
       }
     } catch {
       // Permission denied or clipboard API unavailable - silently ignore
     }
-  }, [enqueueImageFiles])
+  }, [enqueueImageFiles, insertTextIntoChatBody])
 
   const handleKlipyGifPick = ({ gifUrl }) => {
     const url = String(gifUrl || '').trim()
@@ -462,7 +497,7 @@ export default function ChatComposer({
 
     // Clear composer immediately.
     setBody('')
-    if (textareaRef.current) textareaRef.current.innerText = ''
+    if (textareaRef.current && !LOUNGE_IOS) textareaRef.current.innerText = ''
     setImageSlots([])
     uploadPromisesRef.current.clear()
     onClearReply()
@@ -522,6 +557,7 @@ export default function ChatComposer({
       void handleSend()
       return
     }
+    if (LOUNGE_IOS) return
     if ((e.key === 'Enter' || e.keyCode === 13) && !e.ctrlKey && !e.metaKey) {
       e.preventDefault()
       insertChatNewlineAtCaret()
@@ -715,45 +751,86 @@ export default function ChatComposer({
           } ${expanded ? '' : 'h-10'}`}
           style={{ borderRadius: expanded ? COMPOSER_EXPANDED_RADIUS_PX : '9999px' }}
         >
-          <div
-            ref={textareaRef}
-            contentEditable={!disabled}
-            suppressContentEditableWarning
-            role="textbox"
-            aria-multiline="true"
-            aria-label="Message"
-            aria-placeholder="Message…"
-            data-placeholder="Message…"
-            onInput={handleBodyInput}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onPointerDown={handleComposerPointerDown}
-            onPointerMove={handleComposerPointerMove}
-            onPointerUp={cancelLongPress}
-            onPointerCancel={cancelLongPress}
-            onContextMenu={(e) => { if (lastPointerTypeRef.current !== 'mouse') e.preventDefault() }}
-            onBlur={maybeCollapseComposer}
-            onFocus={
-              footerHost
-                ? (e) => {
-                    requestAnimationFrame(() => {
-                      try { e.currentTarget.focus({ preventScroll: true }) } catch { /* ignore */ }
-                    })
-                  }
-                : undefined
-            }
-            className={`chat-composer-ce min-w-0 flex-1 box-border bg-transparent pl-4 pr-2 text-[16px] text-zinc-100 outline-none ${
-              disabled ? 'opacity-50 pointer-events-none' : ''
-            } ${expanded ? 'leading-5 py-2.5' : 'h-full py-0'}`}
-            style={{
-              maxHeight: COMPOSER_MAX_H,
-              overflowY: expanded ? 'auto' : 'hidden',
-              WebkitUserSelect: 'text',
-              userSelect: 'text',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          />
+          {LOUNGE_IOS ? (
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={body}
+              disabled={disabled}
+              readOnly={disabled}
+              placeholder="Message…"
+              aria-label="Message"
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onPointerDown={handleComposerPointerDown}
+              onPointerMove={handleComposerPointerMove}
+              onPointerUp={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onContextMenu={(e) => { if (lastPointerTypeRef.current !== 'mouse') e.preventDefault() }}
+              onBlur={maybeCollapseComposer}
+              onFocus={
+                footerHost
+                  ? (e) => {
+                      requestAnimationFrame(() => {
+                        try { e.currentTarget.focus({ preventScroll: true }) } catch { /* ignore */ }
+                      })
+                    }
+                  : undefined
+              }
+              className={`chat-composer-ce min-w-0 flex-1 box-border resize-none border-0 bg-transparent pl-4 pr-2 text-[16px] text-zinc-100 outline-none ${
+                disabled ? 'opacity-50 pointer-events-none' : ''
+              } ${expanded ? 'leading-5 py-2.5' : 'h-full py-0'}`}
+              style={{
+                maxHeight: COMPOSER_MAX_H,
+                overflowY: expanded ? 'auto' : 'hidden',
+                WebkitUserSelect: 'text',
+                userSelect: 'text',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            />
+          ) : (
+            <div
+              ref={textareaRef}
+              contentEditable={!disabled}
+              suppressContentEditableWarning
+              role="textbox"
+              aria-multiline="true"
+              aria-label="Message"
+              aria-placeholder="Message…"
+              data-placeholder="Message…"
+              onInput={handleBodyInput}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onPointerDown={handleComposerPointerDown}
+              onPointerMove={handleComposerPointerMove}
+              onPointerUp={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onContextMenu={(e) => { if (lastPointerTypeRef.current !== 'mouse') e.preventDefault() }}
+              onBlur={maybeCollapseComposer}
+              onFocus={
+                footerHost
+                  ? (e) => {
+                      requestAnimationFrame(() => {
+                        try { e.currentTarget.focus({ preventScroll: true }) } catch { /* ignore */ }
+                      })
+                    }
+                  : undefined
+              }
+              className={`chat-composer-ce min-w-0 flex-1 box-border bg-transparent pl-4 pr-2 text-[16px] text-zinc-100 outline-none ${
+                disabled ? 'opacity-50 pointer-events-none' : ''
+              } ${expanded ? 'leading-5 py-2.5' : 'h-full py-0'}`}
+              style={{
+                maxHeight: COMPOSER_MAX_H,
+                overflowY: expanded ? 'auto' : 'hidden',
+                WebkitUserSelect: 'text',
+                userSelect: 'text',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            />
+          )}
 
           {hasContent ? (
             <button

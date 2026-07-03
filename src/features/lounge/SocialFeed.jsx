@@ -12712,7 +12712,8 @@ export default function SocialFeed({
       }
       pushLoungeNavReturnContext()
       loungeNavSearchReturnPendingRef.current = true
-      const q = tag.startsWith('#') ? tag.slice(1) : tag
+      const q = tag.startsWith('#') ? tag : `#${String(tag || '').trim()}`
+      if (!q || q === '#') return
       if (loungePostDetail?.id) {
         finalizeLoungePostDetailClose()
       }

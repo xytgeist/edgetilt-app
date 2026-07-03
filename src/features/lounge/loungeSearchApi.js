@@ -22,13 +22,12 @@ export const LOUNGE_SEARCH_PAGE = {
 
 const SEARCH_DEBOUNCE_MS = 300
 
-/** `$AAPL` or bare `AAPL` when typed in search — ticker for `lounge_search_cashtag_posts`. */
+/** Explicit `$AAPL` in search — ticker for `lounge_search_cashtag_posts`. Bare words stay on `lounge_search`. */
 export function parseCashtagSearchQuery(query) {
   const raw = String(query || '').trim()
-  if (!raw) return null
-  const body = raw.startsWith('$') ? raw.slice(1).trim() : raw
-  const tag = body.toUpperCase()
-  if (!MARKET_CASHTAG_RPC_RE.test(tag)) return null
+  if (!raw.startsWith('$')) return null
+  const tag = raw.slice(1).trim().toUpperCase()
+  if (!tag || !MARKET_CASHTAG_RPC_RE.test(tag)) return null
   return tag
 }
 

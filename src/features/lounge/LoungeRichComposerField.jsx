@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import {
+  COMPOSER_LINE_BREAK_INPUT_TYPES,
   getCaretTextOffset,
   insertPlainTextAtSelection,
   plainTextFromComposerRoot,
@@ -38,6 +39,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const rootRef = useRef(null)
   const lastValueRef = useRef(value)
   const composingRef = useRef(false)
+  const skipNextEnterKeydownRef = useRef(false)
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
@@ -122,10 +124,28 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     return () => document.removeEventListener('selectionchange', onSelectionChange)
   }, [disabled, notifyComposerInput])
 
-  const handleBeforeInput = useCallback(() => {
-    // Android defers selection updates; a follow-up read after the edit lands helps mentions.
-    requestAnimationFrame(() => readAndEmit())
-  }, [readAndEmit])
+  const handleLineBreakInsert = useCallback(
+    (e) => {
+      if (!enterInsertsNewline) return false
+      e.preventDefault()
+      skipNextEnterKeydownRef.current = true
+      insertPlainTextAtSelection(rootRef.current, '\n')
+      readAndEmit()
+      return true
+    },
+    [enterInsertsNewline, readAndEmit],
+  )
+
+  const handleBeforeInput = useCallback(
+    (e) => {
+      if (enterInsertsNewline && COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) {
+        if (handleLineBreakInsert(e)) return
+      }
+      // Android defers selection updates; a follow-up read after the edit lands helps mentions.
+      requestAnimationFrame(() => readAndEmit())
+    },
+    [enterInsertsNewline, handleLineBreakInsert, readAndEmit],
+  )
 
   const handleInput = useCallback(() => {
     readAndEmit()
@@ -147,6 +167,11 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       onKeyDown?.(e)
       if (e.defaultPrevented) return
       if (enterInsertsNewline && e.key === 'Enter' && !e.shiftKey) {
+        if (skipNextEnterKeydownRef.current) {
+          skipNextEnterKeydownRef.current = false
+          e.preventDefault()
+          return
+        }
         e.preventDefault()
         insertPlainTextAtSelection(rootRef.current, '\n')
         readAndEmit()

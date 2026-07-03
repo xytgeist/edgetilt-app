@@ -12,6 +12,10 @@ import {
   probeVideoFileDurationSeconds,
   LOUNGE_VIDEO_MAX_SECONDS,
 } from '../../utils/loungeVideoUpload.js'
+import {
+  COMPOSER_LINE_BREAK_INPUT_TYPES,
+  insertPlainTextAtSelection,
+} from '../lounge/loungeRichComposerDom.js'
 
 const MAX_BODY            = 4000
 const MAX_IMAGES          = 12
@@ -78,6 +82,7 @@ export default function ChatComposer({
   const fileInputRef   = useRef(null)
   const videoInputRef  = useRef(null)
   const plusBtnRef     = useRef(null)
+  const skipNextEnterKeydownRef = useRef(false)
 
   const hasContent = body.trim().length > 0 || imageSlots.length > 0
   const canSend = !disabled && !sending && hasContent
@@ -500,6 +505,24 @@ export default function ChatComposer({
     }
   }, [canSend, body, imageSlots, replyTarget, onSend, onClearReply])
 
+  const handleComposerLineBreak = useCallback((e) => {
+    e.preventDefault()
+    skipNextEnterKeydownRef.current = true
+    const el = textareaRef.current
+    if (!el) return
+    insertPlainTextAtSelection(el, '\n')
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, [])
+
+  const handleBeforeInput = useCallback(
+    (e) => {
+      if (COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) {
+        handleComposerLineBreak(e)
+      }
+    },
+    [handleComposerLineBreak],
+  )
+
   const handleKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
@@ -507,21 +530,16 @@ export default function ChatComposer({
       return
     }
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-      // On desktop: plain Enter inserts a real \n into the contenteditable.
-      // We intercept to insert a text node so we never get <div> wrappers.
+      if (skipNextEnterKeydownRef.current) {
+        skipNextEnterKeydownRef.current = false
+        e.preventDefault()
+        return
+      }
       e.preventDefault()
-      const sel = window.getSelection()
-      if (!sel?.rangeCount) return
-      const range = sel.getRangeAt(0)
-      range.deleteContents()
-      const textNode = document.createTextNode('\n')
-      range.insertNode(textNode)
-      range.setStartAfter(textNode)
-      range.collapse(true)
-      sel.removeAllRanges()
-      sel.addRange(range)
-      // Fire input event so handleBodyInput syncs state
-      e.currentTarget.dispatchEvent(new Event('input', { bubbles: true }))
+      const el = textareaRef.current
+      if (!el) return
+      insertPlainTextAtSelection(el, '\n')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
     }
   }
 
@@ -723,6 +741,7 @@ export default function ChatComposer({
             aria-placeholder="Message…"
             data-placeholder="Message…"
             onInput={handleBodyInput}
+            onBeforeInput={handleBeforeInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onPointerDown={handleComposerPointerDown}

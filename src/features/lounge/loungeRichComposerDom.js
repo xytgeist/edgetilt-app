@@ -47,17 +47,25 @@ function appendHashtagHtml(out, fragment, mentionOpts) {
 const COMPOSER_MENTION_OPTS = { committedOnly: true }
 
 /** Build styled HTML for a plain caption string (composer contenteditable). */
-export function buildRichComposerHtml(text) {
-  const s = String(text ?? '')
-  if (!s) return ''
-  const out = []
-  // Same URL rules as feed captions; never trim trailing `.` while typing (e.g. www.ebay.com).
-  for (const seg of splitTextWithLinks(s, { trimTrailing: false })) {
+function appendStyledComposerFragment(out, fragment) {
+  if (!fragment) return
+  for (const seg of splitTextWithLinks(fragment, { trimTrailing: false })) {
     if (seg.type === 'link' && seg.href) {
       out.push(wrapSpan(LINK_CLASS, escapeHtml(seg.value)))
     } else if (seg.value) {
       appendHashtagHtml(out, seg.value, COMPOSER_MENTION_OPTS)
     }
+  }
+}
+
+export function buildRichComposerHtml(text) {
+  const s = String(text ?? '')
+  if (!s) return ''
+  const lines = s.split('\n')
+  const out = []
+  for (let i = 0; i < lines.length; i++) {
+    if (i > 0) out.push('<br>')
+    appendStyledComposerFragment(out, lines[i])
   }
   return out.join('')
 }
@@ -270,6 +278,36 @@ export function setCaretTextOffset(root, targetOffset) {
   sel.addRange(range)
 }
 
+/** Input types mobile virtual keyboards use for Enter / newline. */
+export const COMPOSER_LINE_BREAK_INPUT_TYPES = new Set(['insertLineBreak', 'insertParagraph'])
+
+/**
+ * Mobile keyboards often anchor selection outside the contenteditable until focus is reconciled.
+ * Returns whether a usable range inside `root` exists after this call.
+ */
+export function ensureComposerSelection(root) {
+  if (!root || typeof window === 'undefined') return false
+  const sel = window.getSelection()
+  if (!sel) return false
+
+  try {
+    root.focus({ preventScroll: true })
+  } catch {
+    try {
+      root.focus()
+    } catch {
+      // ignore focus errors
+    }
+  }
+
+  if (sel.rangeCount > 0 && sel.anchorNode && root.contains(sel.anchorNode)) {
+    return true
+  }
+
+  setCaretTextOffset(root, plainTextFromComposerRoot(root).length)
+  return sel.rangeCount > 0 && sel.anchorNode != null && root.contains(sel.anchorNode)
+}
+
 /** Replace composer HTML from plain text and optionally restore caret. */
 export function syncComposerHtml(root, text, caretOffset = null) {
   if (!root) return
@@ -282,10 +320,11 @@ export function syncComposerHtml(root, text, caretOffset = null) {
 
 /** Insert plain text at the current selection (used for paste + Enter). */
 export function insertPlainTextAtSelection(root, text) {
-  if (!root || typeof document === 'undefined') return
+  if (!root || typeof document === 'undefined') return false
+  if (!ensureComposerSelection(root)) return false
   const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0) return
-  if (!root.contains(sel.anchorNode)) return
+  if (!sel || sel.rangeCount === 0) return false
+  if (!root.contains(sel.anchorNode)) return false
   sel.deleteFromDocument()
   const range = sel.getRangeAt(0)
   const node = document.createTextNode(text)
@@ -294,6 +333,7 @@ export function insertPlainTextAtSelection(root, text) {
   range.collapse(true)
   sel.removeAllRanges()
   sel.addRange(range)
+  return true
 }
 
 /** Client rect for the current selection caret inside a composer root. */

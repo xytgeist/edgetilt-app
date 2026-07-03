@@ -84,8 +84,7 @@ export default function ChatComposer({
   const videoInputRef  = useRef(null)
   const plusBtnRef     = useRef(null)
   const caretRef       = useRef(0)
-  const lastNewlineAtMsRef = useRef(0)
-  const skipNextInputReadRef = useRef(false)
+  const enterHandledRef = useRef(false)
 
   const hasContent = body.trim().length > 0 || imageSlots.length > 0
   const canSend = !disabled && !sending && hasContent
@@ -160,10 +159,6 @@ export default function ChatComposer({
   }, [body, composerActive, footerHost])
 
   const handleBodyInput = (e) => {
-    if (skipNextInputReadRef.current) {
-      skipNextInputReadRef.current = false
-      return
-    }
     // Strip HTML - only keep plain text from the contenteditable div.
     const raw = e.currentTarget.innerText ?? ''
     const trimmed = raw.slice(0, MAX_BODY)
@@ -514,32 +509,38 @@ export default function ChatComposer({
   }, [canSend, body, imageSlots, replyTarget, onSend, onClearReply])
 
   const insertChatNewlineAtCaret = useCallback(() => {
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    if (now - lastNewlineAtMsRef.current < 80) return false
-    lastNewlineAtMsRef.current = now
-
+    if (enterHandledRef.current) return true
     const el = textareaRef.current
     if (!el) return false
+
     let caret = getCaretTextOffset(el)
     if (!Number.isFinite(caret) || caret < 0) caret = caretRef.current
     caret = Math.max(0, Math.min(caret, body.length))
     const next = `${body.slice(0, caret)}\n${body.slice(caret)}`.slice(0, MAX_BODY)
+    if (next === body) return false
+
+    enterHandledRef.current = true
+    queueMicrotask(() => {
+      enterHandledRef.current = false
+    })
+
     const nextCaret = Math.min(caret + 1, next.length)
     el.innerText = next
     setCaretTextOffset(el, nextCaret)
     caretRef.current = nextCaret
     setBody(next)
-    skipNextInputReadRef.current = true
     onTyping(viewerDisplayName)
     return true
   }, [body, onTyping, viewerDisplayName])
 
   const handleBeforeInput = useCallback(
     (e) => {
-      if (COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType)) {
-        e.preventDefault()
-        insertChatNewlineAtCaret()
-      }
+      const isLineBreak =
+        COMPOSER_LINE_BREAK_INPUT_TYPES.has(e.inputType) ||
+        (e.inputType === 'insertText' && e.data === '\n')
+      if (!isLineBreak) return
+      e.preventDefault()
+      insertChatNewlineAtCaret()
     },
     [insertChatNewlineAtCaret],
   )
@@ -550,7 +551,7 @@ export default function ChatComposer({
       void handleSend()
       return
     }
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault()
       insertChatNewlineAtCaret()
     }

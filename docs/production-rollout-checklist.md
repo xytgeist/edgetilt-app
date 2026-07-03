@@ -57,6 +57,7 @@ Track **everything else** already used on test that production must also have ap
 - [ ] **Chat group delete** — **`20260605120000_chat_group_delete.sql`** (empty-group trigger + **`chat_delete_group`** RPC). No Edge redeploy required for trigger path; client uses RPC only.
 - [ ] **`supabase/migrations/20260701130000_starter_weekly_guide_unlocks.sql`** — Starter weekly drop table + **`grant_starter_weekly_guide_drop`** (included in Stripe billing chain through **`20260701160000`** if that promote already ran).
 - [ ] **`supabase/migrations/20260702120000_starter_weekly_drop_reveal_cron.sql`** — scratch reveal column, **`starter_weekly_guide_drop`** activity type, weekly pg_cron (**Mon 00:10 UTC**), reveal RPCs. **Prereqs:** **`pg_cron`** enabled; **`@edgelord`** profile exists (system actor for notifications). Redeploy **`lounge-send-activity-push`** (§4) after apply.
+- [ ] **Chat archive inbox** — apply in order: **`20260702150000_chat_room_member_archive.sql`** (`archived_at`, **`chat_archive_room`**, inbox/unread exclude archived), **`20260702160000_chat_archived_rooms_list.sql`** (**`chat_unarchive_room`**, archived list RPCs), **`20260702170000_chat_unarchive_notifications_comment.sql`** (comments only; safe re-run). Redeploy **`lounge-chat`** (§4) after apply.
 - [ ] **Play Logbook (if prod ships Logbook):** apply test-validated chain through **`20260531540000_buffalo_calculator_slug_buffalo_link.sql`** — base **`20260529120000_play_logbook.sql`**, shared sessions **`20260531140000`**, manager/paid **`20260531190000`**, paid/unpaid notify repair order (**`20260531300000`** → **`20260531310000`**, repair **`20260531320000`** if needed), custom metrics **`20260531350000`**, admin primary templates **`20260531400000`**, MHB fields **`20260531500000`**, label migrations **`20260531330000`**–**`20260531360000`**, **`20260531510000`**–**`20260531530000`**, **`20260531540000`**. Redeploy **`lounge-send-activity-push`** after activity-event migrations.
 
 **After deploy — quick smoke SQL (production):**
@@ -164,6 +165,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Stripe billing:** live **`STRIPE_*`** secrets + live webhook endpoint on prod; see **`docs/stripe-billing-test-to-prod-handoff.md`** (migrations, smoke, deploy order). **Ryan sign-off 2026-07-01:** prod migrations **`20260701120000`**–**`160000`**, Edge deploy, minimal live Checkout smoke **PASSED**; founding monthly coupon **`QnYlzKuK`**. **Ryan sign-off 2026-07-02:** prod migration **`20260702120000`**, **`lounge-send-activity-push`** redeploy, frontend **`main`** through **`66d6ed7`**. Broader prod billing matrix (upgrade, portal cancel, Lifetime) still optional follow-up smoke.
 
+**Chat archive (2026-07-02):** frontend **`main`** through **`889a927`** (merge from **`test`**). **Before smoke:** run §2 chat archive migrations **`20260702150000`**–**`170000`** on **`jtjgtucumuoswnbauxry`**, then **`supabase functions deploy lounge-chat --project-ref jtjgtucumuoswnbauxry --no-verify-jwt false`**.
+
 ---
 
 ## 5. Post-deploy smoke (application)
@@ -179,6 +182,7 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 - [ ] **Lounge media lightbox:** image full-screen pinch-zoom + pan; Stream hero expand with interaction bar — spot-check feed + post detail (client-only; no extra deploy beyond app bundle).
 - [ ] **AP Guide editor (`/slot-guide-form`):** admin login → **+ New guide** → **Save draft** (optional) → **Ingest guide** with Vercel **§1** Supabase service vars set → **Fetch guides** → **Load** → edit section → **Save changes**. Spot-check **Buffalo Link** calculator slug **`buffalo-link`** in app after **`20260531540000`** on prod DB.
 - [ ] **Starter weekly guide drop:** on a **Slots Edge Starter** prod account, SQL grant + activity event per **`docs/test-user-roles.md`** → scratch modal, real rub audio, tap-to-open guide, Pro CTA; notification tap deep-links with **`starterDrop=`**. Cron **`starter_weekly_guide_drop_weekly`** scheduled (Mon **00:10 UTC**). Do **not** run bulk **`run_starter_weekly_guide_drop_job()`** on prod without intent.
+- [ ] **Chat archive inbox:** swipe left → archive (green); **Archived** tab → swipe left restore (blue) or reply from thread → returns to Inbox; inbound while archived → **no push**; restore or reply → push resumes.
 
 ---
 
@@ -204,4 +208,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Starter weekly drop** prod promote (**`20260702120000`**, **`lounge-send-activity-push`**, **`main`** **`66d6ed7`**). Prior: **Play Logbook** migration chain through **`20260531540000`** + **AP Guide editor** (`/slot-guide-form`, draft localStorage, Vercel ingest env vars, admin JWT auth). Prior: Lounge **Cloudflare R2** feed images + **unified Stream/image lightbox** + **Phase G search** + **Cloudflare Stream**. Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **Chat archive inbox** prod merge (**`main`** **`889a927`**; apply **`20260702150000`**–**`170000`** + redeploy **`lounge-chat`** on prod). Prior: **Starter weekly drop** (**`20260702120000`**, **`lounge-send-activity-push`**, **`66d6ed7`**). Prior: **Play Logbook** migration chain through **`20260531540000`** + **AP Guide editor**. Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

@@ -11,6 +11,7 @@ import {
   chatPinRoom,
   chatUnpinRoom,
   chatLeaveRoom,
+  chatArchiveRoom,
   chatMuteRoom,
   chatUnmuteRoom,
   chatRoomLabel,
@@ -72,6 +73,7 @@ export default function ChatTab({
 
   // Long-press context menu on room rows
   const [roomMenu, setRoomMenu] = useState(/** @type {{ room: any, y: number, x: number } | null} */ (null))
+  const [openSwipeRoomId, setOpenSwipeRoomId] = useState(/** @type {string | null} */ (null))
   const inboxRootRef = useRef(null)
   const showInboxList = browseMode !== 'anonymous' && !activeRoomId
 
@@ -413,12 +415,17 @@ export default function ChatTab({
       else if (action === 'unpin')  await chatUnpinRoom(supabaseClient, room.id)
       else if (action === 'mute')   await chatMuteRoom(supabaseClient, room.id)
       else if (action === 'unmute') await chatUnmuteRoom(supabaseClient, room.id)
+      else if (action === 'archive') await chatArchiveRoom(supabaseClient, room.id)
       else if (action === 'delete') await chatLeaveRoom(supabaseClient, room.id)
+      if (action === 'archive' || action === 'delete') {
+        setOpenSwipeRoomId(null)
+        if (activeRoomId === room.id) setActiveRoomId(null)
+      }
       void loadRooms()
     } catch (e) {
       setActionErr(e?.message || 'Action failed.')
     }
-  }, [supabaseClient, loadRooms])
+  }, [supabaseClient, loadRooms, activeRoomId])
 
   // ── Group creation ────────────────────────────────────────────────────────
 
@@ -842,6 +849,10 @@ export default function ChatTab({
               groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
               onOpen={(roomId) => setActiveRoomId(roomId)}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y })}
+              onArchive={(r) => void handleRoomAction('archive', r)}
+              onDelete={(r) => void handleRoomAction('delete', r)}
+              openSwipeRoomId={openSwipeRoomId}
+              onSwipeOpen={setOpenSwipeRoomId}
             />
           ))}
         </ul>
@@ -885,12 +896,42 @@ export default function ChatTab({
 
 const ROOM_LONG_PRESS_MS = 380
 const ROOM_LONG_PRESS_MOVE_PX = 10
+const ROOM_SWIPE_ACTION_PX = 88
+const ROOM_SWIPE_COMMIT_PX = 72
+const ROOM_SWIPE_AXIS_LOCK_PX = 8
 
-/** Inbox row with touch + mouse long-press (pointer-only fails on iOS/Android in scroll lists). */
-function ChatRoomListRow({ room, label, groupHeaderMembers = [], onOpen, onLongPress }) {
+/** Inbox row with swipe actions + touch/mouse long-press. */
+function ChatRoomListRow({
+  room,
+  label,
+  groupHeaderMembers = [],
+  onOpen,
+  onLongPress,
+  onArchive,
+  onDelete,
+  openSwipeRoomId,
+  onSwipeOpen,
+}) {
   const timerRef = useRef(null)
   const suppressClickRef = useRef(false)
-  const touchRef = useRef({ startX: 0, startY: 0, cancelled: false })
+  const offsetRef = useRef(0)
+  const gestureRef = useRef({
+    startX: 0,
+    startY: 0,
+    axis: null,
+    pointerId: null,
+  })
+  const [offsetX, setOffsetX] = useState(0)
+  const [swipeDragging, setSwipeDragging] = useState(false)
+
+  const setOffset = useCallback((next) => {
+    offsetRef.current = next
+    setOffsetX(next)
+  }, [])
+
+  useEffect(() => {
+    if (openSwipeRoomId !== room.id) setOffset(0)
+  }, [openSwipeRoomId, room.id, setOffset])
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -901,158 +942,227 @@ function ChatRoomListRow({ room, label, groupHeaderMembers = [], onOpen, onLongP
 
   const fireLongPress = useCallback((x, y) => {
     clearTimer()
-    touchRef.current.cancelled = true
+    gestureRef.current.axis = 'blocked'
     suppressClickRef.current = true
     window.getSelection()?.removeAllRanges()
     onLongPress(room, x, y)
   }, [room, onLongPress, clearTimer])
 
-  const onTouchStart = useCallback((e) => {
-    if (e.touches.length !== 1) return
-    window.getSelection()?.removeAllRanges()
-    touchRef.current.cancelled = false
-    touchRef.current.startX = e.touches[0].clientX
-    touchRef.current.startY = e.touches[0].clientY
-    clearTimer()
-    timerRef.current = setTimeout(() => {
-      if (!touchRef.current.cancelled) {
-        fireLongPress(touchRef.current.startX, touchRef.current.startY)
-      }
-    }, ROOM_LONG_PRESS_MS)
-  }, [clearTimer, fireLongPress])
-
-  const onTouchMove = useCallback((e) => {
-    if (e.touches.length !== 1 || touchRef.current.cancelled) return
-    window.getSelection()?.removeAllRanges()
-    const dx = Math.abs(e.touches[0].clientX - touchRef.current.startX)
-    const dy = Math.abs(e.touches[0].clientY - touchRef.current.startY)
-    if (dx > ROOM_LONG_PRESS_MOVE_PX || dy > ROOM_LONG_PRESS_MOVE_PX) {
-      touchRef.current.cancelled = true
-      clearTimer()
-    }
-  }, [clearTimer])
-
-  const onTouchEnd = useCallback(() => {
-    clearTimer()
-  }, [clearTimer])
-
   const onPointerDown = useCallback((e) => {
-    if (e.pointerType !== 'mouse' || e.button !== 0) return
-    let cancelled = false
-    const startX = e.clientX
-    const startY = e.clientY
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    gestureRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      axis: null,
+      pointerId: e.pointerId,
+    }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
     clearTimer()
     timerRef.current = setTimeout(() => {
-      if (!cancelled) fireLongPress(startX, startY)
+      if (!gestureRef.current.axis) fireLongPress(e.clientX, e.clientY)
     }, ROOM_LONG_PRESS_MS)
-    const onMove = (ev) => {
-      if (Math.abs(ev.clientX - startX) > ROOM_LONG_PRESS_MOVE_PX || Math.abs(ev.clientY - startY) > ROOM_LONG_PRESS_MOVE_PX) {
-        cancelled = true
+  }, [clearTimer, fireLongPress])
+
+  const onPointerMove = useCallback((e) => {
+    const g = gestureRef.current
+    if (g.pointerId != null && e.pointerId !== g.pointerId) return
+    const dx = e.clientX - g.startX
+    const dy = e.clientY - g.startY
+    if (!g.axis) {
+      if (Math.abs(dx) > ROOM_SWIPE_AXIS_LOCK_PX && Math.abs(dx) > Math.abs(dy)) {
+        g.axis = 'x'
         clearTimer()
-        document.removeEventListener('pointermove', onMove)
+        setSwipeDragging(true)
+        onSwipeOpen?.(room.id)
+      } else if (Math.abs(dy) > ROOM_LONG_PRESS_MOVE_PX && Math.abs(dy) > Math.abs(dx)) {
+        g.axis = 'y'
+        clearTimer()
+        return
+      } else {
+        return
       }
     }
-    const onUp = () => {
+    if (g.axis !== 'x') return
+    e.preventDefault()
+    const clamped = Math.max(-ROOM_SWIPE_ACTION_PX, Math.min(ROOM_SWIPE_ACTION_PX, dx))
+    setOffset(clamped)
+  }, [clearTimer, onSwipeOpen, room.id, setOffset])
+
+  const finishGesture = useCallback(
+    (target) => {
       clearTimer()
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup', onUp)
-    }
-    document.addEventListener('pointermove', onMove, { passive: true })
-    document.addEventListener('pointerup', onUp, { passive: true })
-  }, [clearTimer, fireLongPress])
+      const g = gestureRef.current
+      if (g.axis === 'x') {
+        const offset = offsetRef.current
+        if (offset <= -ROOM_SWIPE_COMMIT_PX) {
+          setOffset(0)
+          onSwipeOpen?.(null)
+          onArchive?.(room)
+        } else if (offset >= ROOM_SWIPE_COMMIT_PX) {
+          setOffset(0)
+          onSwipeOpen?.(null)
+          onDelete?.(room)
+        } else if (target === -ROOM_SWIPE_ACTION_PX || target === ROOM_SWIPE_ACTION_PX) {
+          setOffset(target)
+          onSwipeOpen?.(room.id)
+        } else {
+          setOffset(0)
+          onSwipeOpen?.(null)
+        }
+      }
+      g.axis = null
+      g.pointerId = null
+      setSwipeDragging(false)
+    },
+    [clearTimer, onArchive, onDelete, onSwipeOpen, room, setOffset],
+  )
+
+  const onPointerUp = useCallback(
+    (e) => {
+      finishGesture(0)
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+    },
+    [finishGesture],
+  )
+
+  const onPointerCancel = useCallback(
+    (e) => {
+      finishGesture(0)
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+    },
+    [finishGesture],
+  )
 
   const handleClick = useCallback(() => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
+    if (Math.abs(offsetRef.current) >= ROOM_SWIPE_COMMIT_PX / 2) {
+      setOffset(0)
+      onSwipeOpen?.(null)
+      return
+    }
     onOpen(room.id)
-  }, [onOpen, room.id])
+  }, [onOpen, onSwipeOpen, room.id, setOffset])
+
+  const rowTransition = swipeDragging ? 'none' : 'transform 0.28s cubic-bezier(0.33, 1, 0.45, 1)'
 
   return (
-    <li className="relative">
-      <button
-        type="button"
-        onClick={handleClick}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
+    <li className="relative overflow-hidden">
+      <div className="chat-room-swipe-actions pointer-events-none absolute inset-0 flex">
+        <div className="chat-room-swipe-delete flex w-[5.5rem] shrink-0 items-center justify-center px-2 text-center text-[13px] font-semibold text-white">
+          Delete
+        </div>
+        <div className="min-w-0 flex-1" aria-hidden />
+        <div className="chat-room-swipe-archive flex w-[5.5rem] shrink-0 items-center justify-center px-2 text-center text-[13px] font-semibold text-white">
+          Archive
+        </div>
+      </div>
+
+      <div
+        className="chat-room-swipe-foreground relative bg-zinc-950"
+        style={{
+          transform: `translateX(${offsetX}px)`,
+          transition: rowTransition,
+          touchAction: 'pan-y',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+        }}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
-        className="flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
-        style={{ touchAction: 'pan-y', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
       >
-        <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
-          {room.kind === 'dm' && room.peerAvatarUrl ? (
-            <img
-              src={room.peerAvatarUrl}
-              alt=""
-              className="h-11 w-11 rounded-full object-cover"
-            />
-          ) : room.kind === 'group' ? (
-            <ChatGroupHeaderStack
-              groupAvatarUrl={room.avatar_url}
-              members={groupHeaderMembers}
-              size={44}
-            />
-          ) : (
-            <div className={`grid h-11 w-11 place-items-center rounded-full text-[18px] ${
-              room.kind === 'channel' ? 'bg-violet-900/60' : 'bg-zinc-800'
-            }`}>
-              {room.kind === 'channel' ? '#' : (room.peer_display_name?.[0] || room.peer_handle?.[0] || '?').toUpperCase()}
-            </div>
-          )}
-          {room.hasUnread && (
-            <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-zinc-950 bg-cyan-500" />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            {room.pinned && (
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-cyan-500" aria-hidden>
-                <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
-              </svg>
+        <button
+          type="button"
+          onClick={handleClick}
+          className="flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
+        >
+          <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
+            {room.kind === 'dm' && room.peerAvatarUrl ? (
+              <img
+                src={room.peerAvatarUrl}
+                alt=""
+                className="h-11 w-11 rounded-full object-cover"
+              />
+            ) : room.kind === 'group' ? (
+              <ChatGroupHeaderStack
+                groupAvatarUrl={room.avatar_url}
+                members={groupHeaderMembers}
+                size={44}
+              />
+            ) : (
+              <div className={`grid h-11 w-11 place-items-center rounded-full text-[18px] ${
+                room.kind === 'channel' ? 'bg-violet-900/60' : 'bg-zinc-800'
+              }`}>
+                {room.kind === 'channel' ? '#' : (room.peer_display_name?.[0] || room.peer_handle?.[0] || '?').toUpperCase()}
+              </div>
             )}
-            <div className="flex min-w-0 flex-1 items-center gap-1">
-              <span className={`truncate text-[15px] font-semibold ${room.hasUnread ? 'text-zinc-100' : 'text-zinc-300'}`}>
-                {label}
-              </span>
-              {room.isMuted && (
-                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-zinc-500" aria-hidden>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="block h-4 w-4"
-                  >
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                </span>
-              )}
-            </div>
+            {room.hasUnread && (
+              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-zinc-950 bg-cyan-500" />
+            )}
           </div>
-          {room.previewText ? (
-            <div className={`truncate text-[13px] ${room.hasUnread ? 'font-medium text-zinc-300' : 'text-zinc-500'}`}>
-              {room.previewText}
-            </div>
-          ) : (
-            <div className="text-[13px] text-zinc-600">No messages yet</div>
-          )}
-        </div>
 
-        {room.last_message_at && (
-          <div className="shrink-0 text-[11px] text-zinc-600">
-            {formatChatTimestamp(room.last_message_at)}
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {room.pinned && (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-cyan-500" aria-hidden>
+                  <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
+                </svg>
+              )}
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <span className={`truncate text-[15px] font-semibold ${room.hasUnread ? 'text-zinc-100' : 'text-zinc-300'}`}>
+                  {label}
+                </span>
+                {room.isMuted && (
+                  <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-zinc-500" aria-hidden>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="block h-4 w-4"
+                    >
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+            </div>
+            {room.previewText ? (
+              <div className={`truncate text-[13px] ${room.hasUnread ? 'font-medium text-zinc-300' : 'text-zinc-500'}`}>
+                {room.previewText}
+              </div>
+            ) : (
+              <div className="text-[13px] text-zinc-600">No messages yet</div>
+            )}
           </div>
-        )}
-      </button>
+
+          {room.last_message_at && (
+            <div className="shrink-0 text-[11px] text-zinc-600">
+              {formatChatTimestamp(room.last_message_at)}
+            </div>
+          )}
+        </button>
+      </div>
     </li>
   )
 }

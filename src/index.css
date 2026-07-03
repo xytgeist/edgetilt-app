@@ -4077,6 +4077,19 @@ html.light .chat-room-menu-danger {
   color: #dc2626;
 }
 
+.chat-room-swipe-delete {
+  background: #dc2626;
+}
+.chat-room-swipe-archive {
+  background: #52525b;
+}
+html.light .chat-room-swipe-foreground {
+  background: #ffffff;
+}
+html.light .chat-room-swipe-archive {
+  background: #71717a;
+}
+
 /* iOS-style vibrancy input field - dark */
 .chat-input-glass {
   background: rgba(44, 44, 46, 0.55);

@@ -223,6 +223,15 @@ export function chatLeaveRoom(supabase, roomId) {
 }
 
 /**
+ * Archive a room (hide from inbox; membership retained).
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export function chatArchiveRoom(supabase, roomId) {
+  return chatInboxRpc(supabase, 'chat_archive_room', { p_room_id: roomId })
+}
+
+/**
  * Delete a group chat for all members (owner or admin).
  * @param {SupabaseClient} supabase
  * @param {string} roomId

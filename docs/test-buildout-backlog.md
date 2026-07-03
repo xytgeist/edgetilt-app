@@ -47,6 +47,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### Smoke (test)
 - [ ] **Conversation list** — Chat tab loads; DMs + topic channels sorted unread-first; unread dot appears for rooms with messages newer than `last_read_at`.
+- [ ] **Inbox swipe actions** — Swipe a conversation **left** → **Archive** (hidden from inbox); swipe **right** → **Delete** (leave room). Long-press context menu still works. Apply migration **`20260702150000_chat_room_member_archive.sql`** on test first.
 - [ ] **Send/receive** — Send a message in a DM; confirm Realtime INSERT appends it; second device receives it.
 - [ ] **Reply** — Long-press a bubble, tap Reply; reply quote strip shows in composer; sent message has `reply_to_preview` rendered above bubble.
 - [ ] **Reactions** — Long-press bubble; tap emoji; reaction row appears; **second device sees pill + attribution sheet update live via Realtime** (groups: tap pill emoji to toggle; tap pill → Reactions sheet). Apply **`20260606140000_chat_message_reactions_page.sql`** + **`20260606150000_chat_message_reactions_realtime.sql`** on test first.
@@ -702,6 +703,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-07-02: **Chat inbox swipe archive/delete (code):** migration **`20260702150000_chat_room_member_archive.sql`** — **`chat_room_members.archived_at`**, RPC **`chat_archive_room`**, **`chat_rooms_for_user`** / **`chat_unread_room_count`** exclude archived rows. Client: **`ChatTab.jsx`** swipe left → archive, right → delete ( **`chatLeaveRoom`** ); **`chatApi.chatArchiveRoom`**. **Apply migration on test before smoke.** No archived-inbox UI yet (rooms reappear only if unarchive is added later).
 - 2026-07-02: **Starter weekly drop — production (Ryan sign-off):** **`jtjgtucumuoswnbauxry`** migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** applied; pg_cron job **`starter_weekly_guide_drop_weekly`** + **`@edgelord`** verified; **`lounge-send-activity-push`** redeployed; frontend **`origin/main`** fast-forward through **`66d6ed7`** (Vercel **`edgetilt.com`**). **Test sign-off:** scratch reveal UX validated on **`lvslotpro.com`**. **Prod app smoke:** Ryan — one Starter grant via **`docs/test-user-roles.md`** SQL on prod.
 - 2026-07-02: **Starter weekly drop scratch reveal (code):** migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** — weekly pg_cron job, stacked **`activity_events`**, scratch modal + motion-gated audio, tap-to-reveal, Pro upgrade count CTA, exhausted-pool auto-unlock for new **2020+** guides. Apply on **test** first; redeploy **`lounge-send-activity-push`**. Requires **`@edgelord`** profile for system actor + **pg_cron** enabled.
 - 2026-07-01: **Legal URLs (Ryan decision):** **`edgetilt.com/terms`**, **`/privacy`**, **`/guidelines`** in-app routes are sufficient; no separate hosted legal site. Prod checklist §7 closed.

@@ -172,6 +172,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Lounge strict hashtag search (2026-07-02):** **Ryan sign-off** — migration **`20260702210000`**, client **`a496a97`** on **`edgetilt.com`**; tap **`#tag`** → literal hashtag post results only (no fuzzy prose matches) smoke **PASSED**.
 
+**Android chat video lightbox (2026-07-03):** **Ryan sign-off** — client-only **`ac9a948`** on **`origin/main`** / **`edgetilt.com`**; Android chat video → lounge-style lightbox (swipe dismiss, playback controls, audio stops on dismiss) smoke **PASSED**. No migration or Edge redeploy.
+
 ---
 
 ## 5. Post-deploy smoke (application)
@@ -215,4 +217,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Android dock Home ghost click** prod **sign-off** (client **`cdb5c69`**, client-only). Prior: **iOS nested lounge + chat composer caret** (**`60652cd`**). Prior: **Lounge + chat composer Enter + Android placeholder** (**`d9ef2a9`**). Prior: **Lounge strict hashtag search** (**`20260702210000`**, **`a496a97`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **Android chat video lightbox** prod **sign-off** (client **`ac9a948`**, client-only). Prior: **Android dock Home ghost click** (**`cdb5c69`**). Prior: **iOS nested lounge + chat composer caret** (**`60652cd`**). Prior: **Lounge + chat composer Enter + Android placeholder** (**`d9ef2a9`**). Prior: **Lounge strict hashtag search** (**`20260702210000`**, **`a496a97`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

@@ -1,8 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import {
   COMPOSER_LINE_BREAK_INPUT_TYPES,
+  composerNewlineFromCaret,
   getCaretTextOffset,
-  insertComposerLineBreakAtSelection,
   insertPlainTextAtSelection,
   plainTextFromComposerRoot,
   syncComposerHtml,
@@ -80,13 +80,32 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     if (capped !== value) onChange?.(capped)
   }, [maxLength, notifyComposerInput, onChange, value])
 
+  const applyNewlineAtCaret = useCallback(
+    (e) => {
+      if (!enterInsertsNewline) return false
+      e?.preventDefault?.()
+      skipNextEnterKeydownRef.current = true
+      const el = rootRef.current
+      if (!el) return false
+      const inserted = composerNewlineFromCaret(el)
+      if (!inserted) return false
+      let next = normalizeCashtagsInCaption(inserted.text)
+      if (maxLength != null && next.length > maxLength) return false
+      const nextCaret =
+        maxLength != null ? Math.min(inserted.caret, next.length) : inserted.caret
+      lastValueRef.current = next
+      notifyComposerInput(el, next, nextCaret, { sync: true })
+      syncComposerHtml(el, next, nextCaret)
+      if (next !== value) onChange?.(next)
+      return true
+    },
+    [enterInsertsNewline, maxLength, notifyComposerInput, onChange, value],
+  )
+
   useLayoutEffect(() => {
     const el = rootRef.current
     if (!el || composingRef.current) return
-    if (plainTextFromComposerRoot(el) === value) {
-      lastValueRef.current = value
-      return
-    }
+    if (lastValueRef.current === value) return
     lastValueRef.current = value
     const caret =
       document.activeElement === el
@@ -126,15 +145,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [disabled, notifyComposerInput])
 
   const handleLineBreakInsert = useCallback(
-    (e) => {
-      if (!enterInsertsNewline) return false
-      e.preventDefault()
-      skipNextEnterKeydownRef.current = true
-      insertComposerLineBreakAtSelection(rootRef.current)
-      readAndEmit()
-      return true
-    },
-    [enterInsertsNewline, readAndEmit],
+    (e) => applyNewlineAtCaret(e),
+    [applyNewlineAtCaret],
   )
 
   const handleBeforeInput = useCallback(
@@ -174,11 +186,10 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
           return
         }
         e.preventDefault()
-        insertComposerLineBreakAtSelection(rootRef.current)
-        readAndEmit()
+        applyNewlineAtCaret(e)
       }
     },
-    [enterInsertsNewline, onKeyDown, readAndEmit],
+    [enterInsertsNewline, onKeyDown, applyNewlineAtCaret],
   )
 
   return (

@@ -74,6 +74,8 @@ export function buildRichComposerHtml(text) {
 export function normalizeComposerPlainText(text, root) {
   let t = String(text ?? '')
   if (!root) return t
+  // Caret-anchor zero-width chars used only for empty trailing lines (iOS/Android).
+  t = t.replace(/\u200b/g, '')
   // Lone <br> placeholder reads as "\n" via the walker.
   if (t === '\n' && /^<br\s*\/?>$/i.test(String(root.innerHTML || '').trim())) return ''
   // Sole inner block wrapper: walker may append one trailing newline between blocks.
@@ -313,11 +315,34 @@ export function ensureComposerSelection(root) {
   return sel.rangeCount > 0 && sel.anchorNode != null && root.contains(sel.anchorNode)
 }
 
+/**
+ * Insert `\n` at the current caret using plain text (avoid DOM insert + re-read races on mobile).
+ * Returns `{ text, caret }` or null when selection cannot be resolved.
+ */
+export function composerNewlineFromCaret(root) {
+  if (!root) return null
+  ensureComposerSelection(root)
+  const caret = getCaretTextOffset(root)
+  const text = plainTextFromComposerRoot(root)
+  return {
+    text: text.slice(0, caret) + '\n' + text.slice(caret),
+    caret: caret + 1,
+  }
+}
+
 /** Replace composer HTML from plain text and optionally restore caret. */
 export function syncComposerHtml(root, text, caretOffset = null) {
   if (!root) return
   const html = buildRichComposerHtml(text)
   root.innerHTML = html || '<br>'
+  const caretOnTrailingNewline =
+    caretOffset != null &&
+    caretOffset > 0 &&
+    caretOffset === text.length &&
+    text.endsWith('\n')
+  if (caretOnTrailingNewline) {
+    root.appendChild(document.createTextNode('\u200b'))
+  }
   if (caretOffset != null) {
     setCaretTextOffset(root, caretOffset)
   }

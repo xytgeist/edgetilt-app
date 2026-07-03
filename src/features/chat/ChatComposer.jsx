@@ -14,7 +14,10 @@ import {
 } from '../../utils/loungeVideoUpload.js'
 import {
   COMPOSER_LINE_BREAK_INPUT_TYPES,
-  insertComposerLineBreakAtSelection,
+  composerNewlineFromCaret,
+  ensureComposerSelection,
+  getCaretTextOffset,
+  setCaretTextOffset,
 } from '../lounge/loungeRichComposerDom.js'
 
 const MAX_BODY            = 4000
@@ -505,14 +508,31 @@ export default function ChatComposer({
     }
   }, [canSend, body, imageSlots, replyTarget, onSend, onClearReply])
 
-  const handleComposerLineBreak = useCallback((e) => {
-    e.preventDefault()
-    skipNextEnterKeydownRef.current = true
-    const el = textareaRef.current
-    if (!el) return
-    insertComposerLineBreakAtSelection(el)
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-  }, [])
+  const applyChatNewlineAtCaret = useCallback(
+    (e) => {
+      e?.preventDefault?.()
+      skipNextEnterKeydownRef.current = true
+      const el = textareaRef.current
+      if (!el) return
+      ensureComposerSelection(el)
+      const inserted = composerNewlineFromCaret(el)
+      if (!inserted) return
+      const capped = inserted.text.slice(0, MAX_BODY)
+      const nextCaret = Math.min(inserted.caret, capped.length)
+      el.innerText = capped
+      setCaretTextOffset(el, nextCaret)
+      setBody(capped)
+      onTyping(viewerDisplayName)
+    },
+    [onTyping, viewerDisplayName],
+  )
+
+  const handleComposerLineBreak = useCallback(
+    (e) => {
+      applyChatNewlineAtCaret(e)
+    },
+    [applyChatNewlineAtCaret],
+  )
 
   const handleBeforeInput = useCallback(
     (e) => {
@@ -536,10 +556,7 @@ export default function ChatComposer({
         return
       }
       e.preventDefault()
-      const el = textareaRef.current
-      if (!el) return
-      insertComposerLineBreakAtSelection(el)
-      el.dispatchEvent(new Event('input', { bubbles: true }))
+      applyChatNewlineAtCaret(e)
     }
   }
 

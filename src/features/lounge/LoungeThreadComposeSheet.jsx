@@ -608,7 +608,6 @@ export default function LoungeThreadComposeSheet({
                       <LoungeRichComposerField
                         ref={(el) => registerPartRef?.(0, el)}
                         variant="feed"
-                        autoGrow
                         value={partText}
                         onChange={(next) => notifyPartChange(partIdx, next)}
                         onFocus={() => handlePartFocus(partIdx)}
@@ -653,7 +652,6 @@ export default function LoungeThreadComposeSheet({
                     <LoungeRichComposerField
                       ref={(el) => registerPartRef?.(partIdx, el)}
                       variant="feed"
-                      autoGrow
                       value={partText}
                       onChange={(next) => notifyPartChange(partIdx, next)}
                       onFocus={() => handlePartFocus(partIdx)}

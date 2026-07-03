@@ -178,7 +178,6 @@ export function LoungeCommentCard({
         <LoungeRichComposerField
           ref={commentEditFieldRef}
           variant="detailCommentEdit"
-          autoGrow
           value={commentEditDraft}
           onChange={onCommentEditDraftChange}
           maxLength={LOUNGE_COMMENT_BODY_MAX}

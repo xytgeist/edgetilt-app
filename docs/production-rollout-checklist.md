@@ -215,4 +215,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Lounge strict hashtag search** prod **sign-off** (**`20260702210000`**, client **`a496a97`**). Prior: **Lounge cashtag tap-to-search** (**`efe255d`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **Lounge + chat composer Enter + Android placeholder** prod **sign-off** (client **`d9ef2a9`**, client-only). Prior: **Lounge strict hashtag search** (**`20260702210000`**, **`a496a97`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

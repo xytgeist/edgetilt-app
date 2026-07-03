@@ -704,6 +704,7 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 ## Update log
 
+- 2026-07-03: **Lounge + chat composer Enter + Android placeholder (Ryan sign-off):** contenteditable **`execCommand('insertLineBreak')`** with deferred **`syncComposerHtml`** after Enter (fixes mobile double-tap newline); overlay placeholder hides on first keystroke via DOM/`beforeinput` (fixes Android ghost placeholder). Client **`52071b2`** + **`d9ef2a9`** on **`origin/main`** / **`edgetilt.com`**. iOS + Android smoke **PASSED** (feed/comment/chat Enter; first-char placeholder).
 - 2026-07-02: **Lounge strict hashtag search (Ryan sign-off):** **`#tag`** dock search routes through **`lounge_search_hashtag_posts`** (literal **`#TAG`** only; case-insensitive tag body; no fuzzy **`edge`** / **`edgeai`** prose matches). Migration **`20260702210000`** + client **`a496a97`** on **`edgetilt.com`**. **PASSED** smoke.
 - 2026-07-02: **Lounge strict hashtag search (code):** **`lounge_caption_has_hashtag`** + **`lounge_search_hashtag_posts`**; **`loungeSearchUnified`** routes **`#tag`** queries before **`$TICKER`**. Apply **`20260702210000_lounge_search_strict_hashtag.sql`** on test + prod.
 - 2026-07-02: **Lounge hashtag tap-to-search hotfix (code):** **`68de674`** — cashtag unified router requires explicit **`$`**; hashtag tap keeps **`#`** in search input (fixes empty results after cashtag ship).

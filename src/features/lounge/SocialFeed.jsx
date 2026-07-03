@@ -995,6 +995,9 @@ export default function SocialFeed({
   const [loungeDockSearchQuery, setLoungeDockSearchQuery] = useState('')
   const [loungeDockSearchQueryVersion, setLoungeDockSearchQueryVersion] = useState(0)
   const [loungeFabPointerBlocked, setLoungeFabPointerBlocked] = useState(false)
+  /** Sync guard for dock Home from another tab: Android can synthesize a click on the feed under the chip. */
+  const loungeFeedNavClickSuppressUntilRef = useRef(0)
+  const LOUNGE_AWAY_HOME_CLICK_SUPPRESS_MS = 650
   const [loungeDockMenuLayout, setLoungeDockMenuLayout] = useState(() =>
     typeof window !== 'undefined' ? readLoungeDockMenuLayout() : 'wheel',
   )
@@ -6648,6 +6651,7 @@ export default function SocialFeed({
   const openLoungePostDetail = useCallback(
     (post, opts) => {
       if (!post?.id) return
+      if (performance.now() < loungeFeedNavClickSuppressUntilRef.current) return
       pauseAllLoungeStreamInlineVideos()
       if (loungeReadOnly && !opts?.fromPublicLink) {
         onRequireAuth?.()
@@ -6913,6 +6917,8 @@ export default function SocialFeed({
 
   const onLoungeDockHome = useCallback(() => {
     if (!isActivePage) {
+      loungeFeedNavClickSuppressUntilRef.current =
+        performance.now() + LOUNGE_AWAY_HOME_CLICK_SUPPRESS_MS
       onNavigateToLoungeFeed?.()
       return
     }

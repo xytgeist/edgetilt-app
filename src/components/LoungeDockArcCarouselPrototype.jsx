@@ -53,6 +53,8 @@ const SPIN_WHEEL_SENSITIVITY = 0.0045
 const SPIN_TAP_SLOP_RAD = 0.04
 /** Brief block on feed/panel under the wheel so synthesized clicks cannot pass through after tap. */
 const POINTER_GUARD_MS = 400
+/** Home from another tab/panel: feed un-hides under the finger; Android needs a longer capture guard. */
+const AWAY_HOME_POINTER_GUARD_MS = 650
 /** After reposition, release often synthesizes a click on whatever is under the finger. */
 const REPOSITION_POINTER_GUARD_MS = 1000
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
@@ -360,6 +362,7 @@ export default function LoungeDockArcCarouselPrototype({
   const carouselRotationRef = useRef(0)
   const pointerGuardRef = useRef(false)
   const pointerGuardTimerRef = useRef(0)
+  const pointerGuardCaptureCleanupRef = useRef(null)
   const spinEnabledRef = useRef(false)
   const suppressFabClickRef = useRef(false)
   const repositionCaptureCleanupRef = useRef(null)
@@ -614,21 +617,47 @@ export default function LoungeDockArcCarouselPrototype({
     syncPointerBlock()
   }, [open, syncPointerBlock])
 
+  const clearPointerGuardCapture = useCallback(() => {
+    pointerGuardCaptureCleanupRef.current?.()
+    pointerGuardCaptureCleanupRef.current = null
+  }, [])
+
   const armPointerGuard = useCallback(
     (durationMs = POINTER_GUARD_MS) => {
       pointerGuardRef.current = true
       setClickShield(true)
       syncPointerBlock()
+      clearPointerGuardCapture()
+      const blockCapture = (e) => blockPointerEvent(e)
+      REPOSITION_CAPTURE_EVENT_TYPES.forEach((type) => {
+        document.addEventListener(type, blockCapture, true)
+      })
+      pointerGuardCaptureCleanupRef.current = () => {
+        REPOSITION_CAPTURE_EVENT_TYPES.forEach((type) => {
+          document.removeEventListener(type, blockCapture, true)
+        })
+      }
       if (pointerGuardTimerRef.current) window.clearTimeout(pointerGuardTimerRef.current)
       pointerGuardTimerRef.current = window.setTimeout(() => {
         pointerGuardTimerRef.current = 0
         pointerGuardRef.current = false
         setClickShield(false)
+        clearPointerGuardCapture()
         syncPointerBlock()
       }, durationMs)
     },
-    [syncPointerBlock],
+    [clearPointerGuardCapture, syncPointerBlock],
   )
+
+  useEffect(() => {
+    return () => {
+      if (pointerGuardTimerRef.current) {
+        window.clearTimeout(pointerGuardTimerRef.current)
+        pointerGuardTimerRef.current = 0
+      }
+      clearPointerGuardCapture()
+    }
+  }, [clearPointerGuardCapture])
 
   const clearRepositionCapture = useCallback(() => {
     repositionCaptureCleanupRef.current?.()
@@ -1453,10 +1482,15 @@ export default function LoungeDockArcCarouselPrototype({
       flushSync(() => {
         setOpen(false)
       })
+      const guardMs =
+        panelCompactChrome && item.id === HOME_ITEM_ID
+          ? AWAY_HOME_POINTER_GUARD_MS
+          : POINTER_GUARD_MS
+      /** Arm capture guard before navigation so Android ghost clicks cannot hit the feed under the home chip. */
+      armPointerGuard(guardMs)
       item.onSelect?.()
-      armPointerGuard()
     },
-    [armPointerGuard],
+    [armPointerGuard, panelCompactChrome],
   )
 
   const menuExpanded = open

@@ -4524,6 +4524,16 @@ html.light [data-edge-monitor] .edge-monitor-header {
 
 .edge-monitor-desktop-page {
   color-scheme: dark;
+  height: 100%;
+  max-height: 100dvh;
+}
+
+/* /monitor desktop page: body is overflow:hidden globally; scroll inside main column */
+html:has([data-edge-monitor-desktop]) #root {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .edge-monitor-desktop-bg {

@@ -38,7 +38,7 @@ export type OddsPick = {
   consensusPrice: number
   /** +EV percent return on a $1 stake (EV × 100). Stored as edgePct for log compat. */
   edgePct: number
-  /** Consensus fair win probability (0–1) after devig across books. */
+  /** Consensus fair win probability (0-1) after devig across books. */
   consensusProb: number
   bookCount: number
 }
@@ -137,6 +137,36 @@ export function formatOddsCommenceTime(iso: string): string {
     minute: '2-digit',
     timeZoneName: 'short',
   }).format(new Date(t))
+}
+
+/** Compact kickoff for feed captions (e.g. "Sun Jul 5 at 3am PT"). */
+export function formatOddsCommenceTimeShort(iso: string): string {
+  const t = Date.parse(String(iso || ''))
+  if (!Number.isFinite(t)) return ''
+  const d = new Date(t)
+  const tz = 'America/Los_Angeles'
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d)
+  const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short', day: 'numeric' }).format(d)
+  const timeRaw = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d)
+  const time = timeRaw.replace(':00', '').replace(' AM', 'am').replace(' PM', 'pm')
+  return `${weekday} ${monthDay} at ${time} PT`
+}
+
+function formatAmericanOdds(price: number): string {
+  if (!Number.isFinite(price) || price === 0) return ''
+  return price > 0 ? `+${price}` : String(price)
+}
+
+/** Last word for long player/team names (Mochizuki, Sinner, Chiefs). */
+function shortDisplayName(name: string): string {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return parts[0] || ''
+  return parts[parts.length - 1]!
 }
 
 /**
@@ -263,16 +293,22 @@ export function pickFeaturedEvent(events: OddsEvent[]): OddsFeaturedEvent | null
 }
 
 export function buildOddsEdgeAlertCaption(pick: OddsPick, opts?: { categoryLabel?: string }): string {
-  const when = formatOddsCommenceTime(pick.commenceTime)
-  const priceStr = pick.pickPrice > 0 ? `+${pick.pickPrice}` : String(pick.pickPrice)
-  const fairPct = Math.round(pick.consensusProb * 1000) / 10
-  const line = `${pick.pickName} ML ${priceStr} at ${pick.bookTitle}.`
+  const pickLabel = shortDisplayName(pick.pickName)
+  const away = shortDisplayName(pick.awayTeam)
+  const home = shortDisplayName(pick.homeTeam)
+  const odds = formatAmericanOdds(pick.pickPrice)
+  const fair = formatAmericanOdds(pick.consensusPrice)
+  const when = formatOddsCommenceTimeShort(pick.commenceTime)
+  const event = opts?.categoryLabel?.trim()
 
-  const category = opts?.categoryLabel ? `${opts.categoryLabel} · ` : ''
-  const matchup = when ? `${when}: ${pick.awayTeam} @ ${pick.homeTeam}.` : `${pick.awayTeam} @ ${pick.homeTeam}.`
+  const opener = event ? `${event}: ` : ''
+  const matchup = when ? `${away} vs ${home}, ${when}` : `${away} vs ${home}`
   const cap =
-    `⚡ +EV · ${category}${matchup} ${line} EV +${pick.edgePct}% on $1 (fair ~${fairPct}%, ${pick.bookCount} books).`
-  return cap.length <= CAPTION_MAX ? cap : cap.slice(0, CAPTION_MAX - 1) + '…'
+    `⚡ ${opener}${pickLabel} ${odds} at ${pick.bookTitle} looks like the play. ` +
+    `Fair closer to ${fair} across ${pick.bookCount} books, roughly +${pick.edgePct}% edge on the ML. ` +
+    `${matchup}.`
+
+  return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
 export type SlateCaptionInput = {
@@ -283,26 +319,30 @@ export type SlateCaptionInput = {
 
 export function buildOddsSlateCaption(input: SlateCaptionInput): string {
   const { categoryLabel, eventsInWindow, featured } = input
-  const prefix = categoryLabel ? `${categoryLabel} · ` : ''
+  const event = categoryLabel?.trim()
+  const label = event ? `${event}: ` : ''
 
   if (eventsInWindow <= 0) {
-    const cap = `${prefix}Slate check · No matches in our 48h window right now. Nothing to fire today.`
-    return cap.length <= CAPTION_MAX ? cap : cap.slice(0, CAPTION_MAX - 1) + '…'
+    const cap = `${label}Checked the board... no matches in our 48h window. Nothing to post today.`
+    return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
   }
 
+  const matchWord = eventsInWindow === 1 ? 'match' : 'matches'
+
   if (featured) {
-    const when = formatOddsCommenceTime(featured.commenceTime)
-    const nextUp = when
-      ? `Next up: ${when} — ${featured.awayTeam} @ ${featured.homeTeam}.`
-      : `Next up: ${featured.awayTeam} @ ${featured.homeTeam}.`
+    const when = formatOddsCommenceTimeShort(featured.commenceTime)
+    const away = shortDisplayName(featured.awayTeam)
+    const home = shortDisplayName(featured.homeTeam)
+    const nextUp = when ? `${away} vs ${home}, ${when}` : `${away} vs ${home}`
     const cap =
-      `${prefix}Slate check · ${eventsInWindow} match${eventsInWindow === 1 ? '' : 'es'} in the next 48h. ${nextUp} Books aligned — no +EV price worth firing on this card today.`
-    return cap.length <= CAPTION_MAX ? cap : cap.slice(0, CAPTION_MAX - 1) + '…'
+      `${label}Ran ${eventsInWindow} ${matchWord} in the next 48h... books look aligned, nothing +EV enough to fire today. ` +
+      `Next up: ${nextUp}.`
+    return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
   }
 
   const cap =
-    `${prefix}Slate check · ${eventsInWindow} match${eventsInWindow === 1 ? '' : 'es'} in the next 48h. Market's tight — nothing we like enough to fire today.`
-  return cap.length <= CAPTION_MAX ? cap : cap.slice(0, CAPTION_MAX - 1) + '…'
+    `${label}Ran ${eventsInWindow} ${matchWord} in the next 48h... market's tight, nothing we like enough to post today.`
+  return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
 /** @deprecated use buildOddsEdgeAlertCaption */

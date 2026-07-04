@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — finish Stripe prod smoke on edgetilt.com.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — finish Scott Share smoke on test.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -28,7 +28,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `test` ( **`origin/main`** and **`origin/test`** aligned at **`dea9eae`** as of **2026-07-01** )
+**Branch:** `main` / `test` aligned at **`0a6424e1`** (2026-07-04)
 
 **Supabase (do not swap these):**
 
@@ -37,64 +37,81 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Prod polish + remaining Stripe smoke; commit uncommitted legal fix; Starter weekly drop cron when ready._
+**Goal:** _Scott Share sports odds bot — apply test migrations, deploy Edge fns + frontend, smoke slate/+EV posts; then Stripe prod smoke / Starter weekly cron when ready._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log (**2026-07-01** tail). For **Stripe prod:** **`docs/stripe-billing-test-to-prod-handoff.md`**. For **prod replay gaps:** **`docs/production-rollout-checklist.md`** §1–§6. Cutover runbook: **`docs/edgetilt-production-cutover.md`**.
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-04**). Sports odds spec: **`docs/lounge-bot-sports-odds.md`**. Bot portal: **`/?tab=bots`**.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. Stripe upgrade smoke, commit legal modal fix, guide card bugs]_
+- Session focus: _[e.g. wire Supabase cron for lounge-odds-poll, line-movement v2, delete bogus NFL post]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see backlog Update log 2026-07-01"]_
+- Context: _[e.g. "see backlog Planned → Lounge bots → Sports odds smoke"]_
 
 ---
 
 ## Pick up here (Jul 2026)
 
-**Latest commits (`main` / `test`):** `dea9eae` (Gmail-safe auth email header + template doc) · `9acf054` (Stripe portal opens billing home, not cancel deep-link) · `5af508f` (Stripe prod handoff doc) · `6680e25` (Settings legal link spacing) · `a5427cd` (light mode Settings/billing)
+**Latest commits (`main` / `test`):** `0a6424e1` (Min +EV % portal field) · `408cdbbe` (slate check-ins + devig +EV engine + `lounge-odds-poll`) · `cb58d62e` (sports betting calendar + manual slate picker) · `620924ae` (off-season / bogus edge fix) · `2991f35c` (bot profile editor)
 
-### Shipped on production (`edgetilt.com`) — recent
+### Scott Share / sports odds bot (test — in progress)
+
+| Item | Detail |
+| --- | --- |
+| **Bot** | **Scott Share** — `@sharpesignal`, pipeline **`odds_api`**, **`review_mode: automatic`** |
+| **Portal** | **`/?tab=bots`** — calendar dropdown, **Fetch odds**, **Scan all · edge**, **Post all slates**, **Min +EV %** in Settings (0.5–15) |
+| **Post types** | **⚡ +EV alert** (h2h devig, EV on $1) · **Slate check-in** when no edge clears |
+| **+EV engine** | Per-book devig → average fair prob → best line vs consensus; **`min_edge_pct`** = min +EV % (default **2**); max filter **15%** stale-data cap |
+| **API** | The Odds API **`THE_ODDS_API_KEY`** on Edge; ~**2 credits/fetch** (`h2h`+`spreads`, `us`) |
+| **Calendar** | **`lounge_sports_betting_calendar`** + **`admin_lounge_sports_betting_calendar_today()`** — manual major-sport picker (no auto sport guess) |
+
+**Apply on test (in order, skip any already applied):**
+
+`20260704120000` → `20260704130000` → `20260704140000` → `20260704150000` → `20260704160000` → **`20260704170000`**
+
+**Deploy on test:**
+
+```bash
+supabase functions deploy lounge-odds-ingest --project-ref kcosfvmreeiosdjdzycb
+supabase functions deploy lounge-odds-poll --project-ref kcosfvmreeiosdjdzycb
+```
+
+Plus frontend deploy for portal UI.
+
+**Ryan smoke checklist:**
+
+1. Portal → Scott Share → set **Min +EV %** to **2** if still **4** (old row) → Save settings
+2. **Dry run** on today's calendar sport → expect `wouldPostKind: edge` or `slate`
+3. **Fetch odds** → slate or ⚡ post on Lounge as `@sharpesignal`
+4. **Scan all · edge** / **Post all slates** on a busy calendar day
+5. Delete any leftover bogus off-season NFL post manually
+
+**Not built yet:** Supabase cron for 30-min **`poll_edges`** (README only); line-movement captions; spreads/totals +EV; feed UI +EV badge; portal calendar editor (SQL/table only).
+
+### Shipped on production (`edgetilt.com`) — still true
 
 | Area | Status |
 | --- | --- |
-| **EdgeTilt cutover** | **`edgetilt.com`** → prod Supabase; **`lvslotpro.com`** → test sandbox (Ryan sign-off **2026-07-01**) |
-| **Auth** | Google + email signup/reset; Resend SMTP **`noreply@auth.edgetilt.com`**; confirm + reset templates in Supabase (see **`docs/supabase-auth-email-templates.md`**) |
-| **Stripe billing** | Live catalog, webhooks, 3 Edge fns; migrations **`20260701120000`–`20260701160000`**; minimal smoke **PASSED** (Starter monthly + founding coupon **`QnYlzKuK`**) |
-| **Legal** | **`/terms`**, **`/privacy`**, **`/guidelines`** on **`edgetilt.com`** — counsel-reviewed; in-app routes = public legal URLs (Ryan **2026-07-01**); prod checklist §7 **closed** |
-| **Subscribe / billing UX** | Plan picker, interval tabs, manage membership modal, light-mode contrast fixes |
+| **EdgeTilt cutover** | **`edgetilt.com`** → prod Supabase; **`lvslotpro.com`** → test sandbox |
+| **Auth + Stripe + Legal** | See backlog Update log **2026-07-01** tail |
 
 ### Next priorities (ordered)
 
-1. **Apply migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** on test** + redeploy **`lounge-send-activity-push`**; smoke scratch flow (manual grant SQL in **`docs/test-user-roles.md`**)
-2. **Stripe prod smoke matrix** — full interval/upgrade/Lifetime/portal cancel checklist in **`docs/stripe-billing-test-to-prod-handoff.md`** §Test plan
-3. **Billing RLS hardening** — entitlements (backlog)
+1. **Scott Share test smoke** (above) — migrations + Edge + frontend on **`kcosfvmreeiosdjdzycb`**
+2. **Apply migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** on test** + redeploy **`lounge-send-activity-push`**
+3. **Stripe prod smoke matrix** — **`docs/stripe-billing-test-to-prod-handoff.md`**
+4. **Billing RLS hardening** — entitlements (backlog)
 
 **Do not commit:** untracked `public/edge-email-logo*` experiment PNGs/JPG unless Ryan asks.
 
 ### AP guides (ongoing workflow)
 
-**Source of truth:** Supabase **`guides.content_markdown`** + R2 heroes. **Not** repo markdown.
+**Source of truth:** Supabase **`guides.content_markdown`** + R2 heroes. **Editor:** **`/slot-guide-form`** on **`edgetilt.com`**.
 
-**Editor:** **`/slot-guide-form`** on **`edgetilt.com`** (prod) or local **`npm run dev`**.
-
-| Task | Steps |
-| --- | --- |
-| **New guide** | Admin login → sections → hero → **Ingest guide** |
-| **Edit existing** | **Fetch guides** → **Load** → edit → **Save changes** |
-| **WIP** | **Save draft** (localStorage only) |
-
-**Critical:** Always **Fetch → Load** before editing. Empty **Where to find** on save wipes that section.
-
-**Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch. Backup first: **`node scripts/ap-guide-backup-test-guides.mjs --all-batch --target=production`**.
-
-**Test DB:** **310** published guides; **`release_year`** + **`card_accent_color`** backfilled on test.
-
-**Light mode trap:** zinc **`bg-zinc-950`** remaps pale in light mode; **`text-white`** on inputs does not — scope under **`html.light`** + **`data-*`** roots.
+**Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch.
 
 ### Parked
 
 - Thread compose iOS keyboard / options bar overlap after media pick
-- Automated docx → guide ingest script
 - Chat R2 video promote to prod; link-preview + group-delete smoke sign-off
 - Multiple Stream clips per post (v2 cap: 2)
 - Formal **`WAKEUP`** is not a substitute for backlog SQL apply order — grep migration dates in Update log before applying

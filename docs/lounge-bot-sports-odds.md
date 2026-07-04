@@ -43,7 +43,7 @@ Draw ML +718 @ MyBookie (+9.6% EV)
 Canada ML +490 @ BetUS (+3.1% EV)
 BIGGEST DOGS:
 • MLB - Padres vs Dodgers (Sat 7:11PM PT)
-Padres ML +219 @ lowvig
+Padres ML +219 @ LowVig
 • Wimbledon - Zverev vs Giron (Sat 6:30AM PT)
 Giron ML +900 @ DraftKings
 🍺 ON TAP TOMORROW:

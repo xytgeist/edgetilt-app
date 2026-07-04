@@ -213,6 +213,7 @@ const BOOK_DISPLAY_BY_KEY: Record<string, string> = {
   mybookieag: 'MyBookie',
   betonlineag: 'BetOnline',
   lowvigag: 'LowVig',
+  lowvig: 'LowVig',
   bookmaker: 'Bookmaker',
   pinnacle: 'Pinnacle',
   bet365: 'bet365',
@@ -222,38 +223,41 @@ function hasLinkableDomain(text: string): boolean {
   return /\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,}\b/i.test(String(text || ''))
 }
 
-/** e.g. MyBookie.ag → mybookie(.ag) when no friendly name is mapped. */
-function domainToParenDisplay(raw: string): string | null {
+/** e.g. MyBookie.ag → mybookie[.ag] when no friendly name is mapped. */
+function domainToBracketDisplay(raw: string): string | null {
   const m = String(raw || '').trim().match(/^([a-z0-9][a-z0-9.-]*?)\.([a-z]{2,})$/i)
   if (!m) return null
   const base = m[1].replace(/\./g, '').toLowerCase()
   const tld = m[2].toLowerCase()
-  return `${base}(.${tld})`
+  return `${base}[.${tld}]`
 }
 
-/** Caption-safe sportsbook label: brand name when known, else domain as name(.tld). */
+function bookKeyFromLabel(text: string): string {
+  return String(text || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/** Caption-safe sportsbook label: brand name when known, else domain as name[.tld] (avoids feed auto-linkify). */
 export function formatBookDisplayName(title: string, key?: string): string {
   const k = String(key || '').trim().toLowerCase()
   const t = String(title || '').trim()
 
   if (k && BOOK_DISPLAY_BY_KEY[k]) return BOOK_DISPLAY_BY_KEY[k]
 
-  if (t && !hasLinkableDomain(t)) {
-    const titleKey = t.toLowerCase().replace(/[^a-z0-9]/g, '')
-    if (BOOK_DISPLAY_BY_KEY[titleKey]) return BOOK_DISPLAY_BY_KEY[titleKey]
-    return t
-  }
+  const titleKey = bookKeyFromLabel(t)
+  if (titleKey && BOOK_DISPLAY_BY_KEY[titleKey]) return BOOK_DISPLAY_BY_KEY[titleKey]
 
-  const fromTitle = domainToParenDisplay(t)
+  if (t && !hasLinkableDomain(t)) return t
+
+  const fromTitle = domainToBracketDisplay(t)
   if (fromTitle) return fromTitle
 
   if (k.endsWith('ag') && k.length > 3) {
     if (BOOK_DISPLAY_BY_KEY[k]) return BOOK_DISPLAY_BY_KEY[k]
-    return `${k.slice(0, -2)}(.ag)`
+    return `${k.slice(0, -2)}[.ag]`
   }
 
   if (k.endsWith('eu') && k.length > 3) {
-    return `${k.slice(0, -2)}(.eu)`
+    return `${k.slice(0, -2)}[.eu]`
   }
 
   if (t) return t.length <= 20 ? t : `${t.slice(0, 18)}..`

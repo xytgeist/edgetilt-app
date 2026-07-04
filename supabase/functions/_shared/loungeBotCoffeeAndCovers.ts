@@ -39,6 +39,59 @@ export const COFFEE_ON_TAP_NEAR_THRESHOLD_PCT = 1
 
 const CAPTION_MAX = 2000
 
+/** Calendar label → thread part header emoji (Coffee & Covers best-lines threads). */
+const SPORT_THREAD_EMOJI_BY_LABEL: Record<string, string> = {
+  'world cup': '⚽',
+  mlb: '⚾',
+  wnba: '🏀',
+  nba: '🏀',
+  'march madness': '🏀',
+  nfl: '🏈',
+  'nfl preseason': '🏈',
+  ncaaf: '🏈',
+  wimbledon: '🎾',
+  'us open tennis': '🎾',
+  nhl: '🏒',
+  pga: '⛳',
+}
+
+const SPORT_THREAD_EMOJI_BY_ODDS_PREFIX: [string, string][] = [
+  ['soccer_', '⚽'],
+  ['baseball_', '⚾'],
+  ['basketball_', '🏀'],
+  ['americanfootball_', '🏈'],
+  ['tennis_', '🎾'],
+  ['icehockey_', '🏒'],
+  ['golf_', '⛳'],
+]
+
+/** Emoji prefix for Coffee & Covers thread part headers (e.g. "🎾 Wimbledon"). */
+export function sportThreadEmojiForCategory(categoryLabel: string, sportKey?: string): string {
+  const label = String(categoryLabel || '').trim().toLowerCase()
+  if (label && SPORT_THREAD_EMOJI_BY_LABEL[label]) return SPORT_THREAD_EMOJI_BY_LABEL[label]!
+  if (label.includes('world cup') || label.includes('soccer')) return '⚽'
+  if (label.includes('wimbledon') || label.includes('tennis')) return '🎾'
+  if (label.includes('march madness') || label.includes('ncaab')) return '🏀'
+  if (label.includes('wnba') || label.includes('nba')) return '🏀'
+  if (label.includes('mlb') || label.includes('baseball')) return '⚾'
+  if (label.includes('nhl') || label.includes('hockey')) return '🏒'
+  if (label.includes('pga') || label.includes('golf')) return '⛳'
+  if (label.includes('nfl') || label.includes('ncaaf') || label.includes('football')) return '🏈'
+
+  const sk = String(sportKey || '').trim().toLowerCase()
+  for (const [prefix, emoji] of SPORT_THREAD_EMOJI_BY_ODDS_PREFIX) {
+    if (sk.startsWith(prefix)) return emoji
+  }
+  return ''
+}
+
+export function formatSportThreadHeader(categoryLabel: string, sportKey?: string): string {
+  const label = String(categoryLabel || '').trim()
+  if (!label) return ''
+  const emoji = sportThreadEmojiForCategory(label, sportKey)
+  return emoji ? `${emoji} ${label}` : label
+}
+
 type Outcome = { name?: string; price?: number; point?: number }
 type Market = { key?: string; outcomes?: Outcome[] }
 type Bookmaker = { key?: string; title?: string; markets?: Market[] }
@@ -351,12 +404,16 @@ function formatSlateGameBlock(game: ReturnType<typeof extractSlateGameBestLines>
 }
 
 /** Thread body: sport header + today's best lines for every game (truncates at cap). */
-export function buildSportLinesThreadBody(categoryLabel: string, events: OddsEvent[]): string {
+export function buildSportLinesThreadBody(
+  categoryLabel: string,
+  events: OddsEvent[],
+  sportKey?: string,
+): string {
   const label = String(categoryLabel || '').trim()
   const games = extractSlateGameBestLines(events)
   if (!games.length || !label) return ''
 
-  const lines: string[] = [label, '']
+  const lines: string[] = [formatSportThreadHeader(label, sportKey), '']
   let included = 0
 
   for (let i = 0; i < games.length; i++) {
@@ -551,7 +608,7 @@ export function generateCoffeeAndCovers(input: CoffeeAndCoversOptions): CoffeeAn
   const biggestDog = findBiggestDog(categoryLabel, events)
   const biggestDogs = biggestDog ? [biggestDog] : []
   const onTapPicks = findOnTapPicks(input).slice(0, input.onTapMaxPicks ?? COFFEE_ON_TAP_MAX_PICKS)
-  const threadBody = buildSportLinesThreadBody(categoryLabel, events)
+  const threadBody = buildSportLinesThreadBody(categoryLabel, events, sportKey)
   const threadParts: CoffeeThreadPart[] = threadBody
     ? [{ categoryLabel, body: threadBody }]
     : []
@@ -629,7 +686,7 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
   const onTapSlices: OnTapPick[][] = []
   for (const slice of slices) {
     if (slice.gameCount <= 0 || !slice.categoryLabel) continue
-    const body = buildSportLinesThreadBody(slice.categoryLabel, slice.events)
+    const body = buildSportLinesThreadBody(slice.categoryLabel, slice.events, slice.sportKey)
     if (body) threadParts.push({ categoryLabel: slice.categoryLabel, body })
     const dog = findBiggestDog(slice.categoryLabel, slice.events)
     if (dog) biggestDogs.push(dog)

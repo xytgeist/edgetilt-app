@@ -54,7 +54,7 @@ Best lines 👇
 
 **Thread part (one per calendar sport today), e.g. MLB:**
 ```text
-MLB
+⚾ MLB
 
 Yankees vs Red Sox (Sat 1PM PT)
 Yankees -110 (FanDuel), Red Sox +105 (DraftKings)
@@ -116,7 +116,7 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`** (h2h aler
 | **ML spots** | **+3%** EV on $1 | **3** per sport (merged in root) |
 | **Biggest dogs** | Longest h2h price on today's board | **One line per calendar sport** |
 | **On Tap (tomorrow)** | Tomorrow spread/ML at or within **1%** of bar | **Max 3** across all sports |
-| **Best Lines 👇** | Best ML + book per outcome | One **thread part** per calendar sport |
+| **Best Lines 👇** | Best ML + book per outcome | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`) |
 
 Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consensus average, EV at best juice. Dedupe key: **`coffee:daily:{ptDay}`** (one post per bot per PT day). Log **`post_kind: coffee_covers`**. Root post ends with **`Best Lines 👇`**; lines board lives in author thread parts (`feed_comments.is_thread_part`).
 

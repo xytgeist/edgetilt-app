@@ -24,7 +24,7 @@ import {
   toggleBotNewsSource,
   updateBotPostCaption,
 } from './botPortalApi.js'
-import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
+import { LOUNGE_CAPTION_MAX, LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
 import {
   LOUNGE_POST_CATEGORY_PILL_SLUGS,
   loungePostCategoryPillLabel,
@@ -39,7 +39,29 @@ function RunStateBadge({ runState }) {
   )
 }
 
-function NumberField({ label, value, min, max, step, onChange, hint = '' }) {
+function NumberField({ label, value, min, max, step, onChange, hint = '', decimal = false }) {
+  const inputClassName =
+    'mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm tabular-nums focus:border-cyan-500/50 focus:outline-none'
+
+  if (decimal) {
+    return (
+      <label className="block min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => {
+            const raw = e.target.value
+            if (raw === '' || /^\d*\.?\d*$/.test(raw)) onChange(raw)
+          }}
+          className={inputClassName}
+        />
+        {hint ? <div className="text-zinc-600 text-[10px] mt-1">{hint}</div> : null}
+      </label>
+    )
+  }
+
   return (
     <label className="block min-w-0">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
@@ -48,9 +70,17 @@ function NumberField({ label, value, min, max, step, onChange, hint = '' }) {
         min={min}
         max={max}
         step={step ?? 1}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm tabular-nums focus:border-cyan-500/50 focus:outline-none"
+        value={value === '' ? '' : value}
+        onChange={(e) => {
+          const raw = e.target.value
+          if (raw === '') {
+            onChange('')
+            return
+          }
+          const n = Number(raw)
+          if (!Number.isNaN(n)) onChange(n)
+        }}
+        className={inputClassName}
       />
       {hint ? <div className="text-zinc-600 text-[10px] mt-1">{hint}</div> : null}
     </label>
@@ -70,13 +100,13 @@ function EditPostModal({ post, onClose, onSave, busy }) {
         <div className="text-white font-bold text-sm mb-2">Edit bot post</div>
         <textarea
           value={caption}
-          maxLength={LOUNGE_CAPTION_MAX}
+          maxLength={LOUNGE_CAPTION_SUBSCRIBER_MAX}
           rows={5}
           onChange={(e) => setCaption(e.target.value)}
           className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm leading-relaxed resize-y focus:border-cyan-500/50 focus:outline-none"
         />
         <div className="text-zinc-500 text-[10px] mt-1 tabular-nums">
-          {caption.length}/{LOUNGE_CAPTION_MAX}
+          {caption.length}/{LOUNGE_CAPTION_SUBSCRIBER_MAX}
         </div>
         <div className="mt-4 flex gap-2 justify-end">
           <button
@@ -165,7 +195,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       maxPostsDay: bot.max_posts_per_day ?? 12,
       maxPostsHour: bot.max_posts_per_hour ?? 4,
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
-      minEdgePct: Number(bot.odds_config?.min_edge_pct) || 2,
+      minEdgePct: String(bot.odds_config?.min_edge_pct ?? 2),
       displayName: bot.display_name || '',
       categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
       watchlistText: watchlist,
@@ -208,6 +238,19 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   }
 
   const saveSettings = async () => {
+    if (bot.pipeline === 'odds_api') {
+      const minEdgeRaw = String(draft.minEdgePct ?? '').trim()
+      if (!minEdgeRaw) {
+        setToast('Min +EV % is required (0.5–15).')
+        return
+      }
+      const minEdge = Number(minEdgeRaw)
+      if (!Number.isFinite(minEdge) || minEdge < 0.5 || minEdge > 15) {
+        setToast('Min +EV % must be between 0.5 and 15.')
+        return
+      }
+    }
+
     setBusy('save')
     const tickers = draft.watchlistText
       .split(/[,\s]+/)
@@ -222,7 +265,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       config: { watchlist_tickers: tickers },
     }
     if (bot.pipeline === 'odds_api') {
-      patch.min_edge_pct = draft.minEdgePct
+      patch.min_edge_pct = Number(String(draft.minEdgePct).trim())
     }
     const { error } = await saveBotSettings(supabaseClient, bot.user_id, patch)
     setBusy('')
@@ -615,10 +658,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           {isAutomatic && bot.pipeline === 'odds_api' ? (
             <NumberField
               label="Min +EV %"
+              decimal
               value={draft.minEdgePct}
-              min={0.5}
-              max={15}
-              step={0.5}
               hint="Minimum +EV on a $1 stake to fire ⚡ alerts (h2h devig)"
               onChange={(v) => setDraft((d) => ({ ...d, minEdgePct: v }))}
             />
@@ -771,14 +812,14 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         </div>
         <textarea
           value={composeCaption}
-          maxLength={LOUNGE_CAPTION_MAX}
+          maxLength={LOUNGE_CAPTION_SUBSCRIBER_MAX}
           rows={5}
           onChange={(e) => setComposeCaption(e.target.value)}
           placeholder="Write a caption…"
           className="w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm leading-relaxed resize-y focus:border-cyan-500/50 focus:outline-none"
         />
         <div className="text-zinc-500 text-[10px] mt-1 tabular-nums">
-          {composeCaption.length}/{LOUNGE_CAPTION_MAX}
+          {composeCaption.length}/{LOUNGE_CAPTION_SUBSCRIBER_MAX}
         </div>
         <div className="mt-3">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-2">

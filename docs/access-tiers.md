@@ -59,6 +59,7 @@ If the user attempts **any** of the following, show the **create account** popup
 
 - **Verified user** badge next to display name.
 - **Full access:** post, **Lounge search**, **filter**, comment, like, repost, bookmark, and other Lounge features as they ship.
+- **Post/comment length:** **500 characters** per post or comment (see paid tier for longer posts).
 
 **Navigation**
 
@@ -136,6 +137,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 **Lounge**
 
 - **Subscriber** badge on posts (any paid plan).
+- **2000 characters** per post and comment (free tier: **500**). Enforced in app + DB (`lounge_feed_caption_max_for_user`).
 
 ### 5.3 Slots Edge Pro (`slots-edge`)
 
@@ -152,6 +154,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 **Lounge**
 
 - **Subscriber** badge on posts.
+- **2000 characters** per post and comment (same as Starter).
 
 **Add-ons**
 

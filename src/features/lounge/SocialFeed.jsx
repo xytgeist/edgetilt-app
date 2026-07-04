@@ -331,9 +331,8 @@ import LoungePullRefreshZone from './LoungePullRefreshZone.jsx'
 import { useLoungePullToRefresh } from './useLoungePullToRefresh.js'
 import LoungeFeedScopeSwitch from './LoungeFeedScopeSwitch.jsx'
 import {
-  LOUNGE_CAPTION_MAX,
-  LOUNGE_COMMENT_BODY_MAX,
   LOUNGE_POST_THREAD_MAX_PARTS,
+  loungeCaptionMaxForProfile,
 } from '../../utils/loungeCommentLimits.js'
 import {
   collectThreadComposePartMediaBlobUrls,
@@ -1182,6 +1181,15 @@ export default function SocialFeed({
   )
 
   const loungeStaffToolsEnabled = Boolean(isStaff || loungeViewerIsStaff)
+
+  const loungeComposerCaptionMax = useMemo(
+    () =>
+      loungeCaptionMaxForProfile(composerUserProfile, {
+        hasActiveSubscription,
+        isStaff: loungeStaffToolsEnabled,
+      }),
+    [composerUserProfile, hasActiveSubscription, loungeStaffToolsEnabled],
+  )
 
   const loungeTitleBarShowBuildBadge = loungeStaffToolsEnabled && loungeBuildBadgeEnabled
 
@@ -5334,7 +5342,7 @@ export default function SocialFeed({
     if (!modal || modal.mode !== 'compose' || !modal.original?.id) return
     const quoteComment = modal.originalKind === 'comment'
     const originalId = modal.original.id
-    const cap = normalizeFeedCaption(quoteRepostDraft)
+    const cap = normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax)
     setQuoteRepostErr('')
     const quoteGifCheck = validateAtMostOneGifUrl(quoteRepostMediaUrl)
     if (!quoteGifCheck.ok) {
@@ -5931,8 +5939,8 @@ export default function SocialFeed({
     const hasImages = loungeDetailCommentImageItems.length > 0
     const hasMedia = hasImages || Boolean(gifOnlyUrl) || hasVideo
     if (!body && !hasMedia) return
-    if (body.length > LOUNGE_COMMENT_BODY_MAX) {
-      setLoungeDetailCommentErr(`Reply must be ${LOUNGE_COMMENT_BODY_MAX} characters or fewer.`)
+    if (body.length > loungeComposerCaptionMax) {
+      setLoungeDetailCommentErr(`Reply must be ${loungeComposerCaptionMax} characters or fewer.`)
       return
     }
     if (loungeDetailCommentVideoPostBlocked) return
@@ -6121,8 +6129,8 @@ export default function SocialFeed({
       loungeDetailCommentEditImageItems.length > 0 || loungeDetailCommentEditImageUrls.length > 0
     const hasMedia = hasImages || Boolean(gifOnlyUrl) || hasVideo
     if (!body && !hasMedia) return
-    if (body.length > LOUNGE_COMMENT_BODY_MAX) {
-      setLoungeDetailCommentErr(`Reply must be ${LOUNGE_COMMENT_BODY_MAX} characters or fewer.`)
+    if (body.length > loungeComposerCaptionMax) {
+      setLoungeDetailCommentErr(`Reply must be ${loungeComposerCaptionMax} characters or fewer.`)
       return
     }
     if (loungeDetailCommentEditVideoPostBlocked) return
@@ -7771,7 +7779,7 @@ export default function SocialFeed({
 
   const saveLoungeDetailCaption = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId) return
-    const cap = normalizeFeedCaption(loungeDetailDraftCaption)
+    const cap = normalizeFeedCaption(loungeDetailDraftCaption, loungeComposerCaptionMax)
     setLoungeDetailEditErr('')
     const gifCheck = validateAtMostOneGifUrl(loungeDetailEditMediaUrl)
     if (!gifCheck.ok) {
@@ -11372,7 +11380,7 @@ export default function SocialFeed({
       composerFieldRef.current && typeof composerFieldRef.current.value === 'string'
         ? composerFieldRef.current.value
         : postText
-    const hasSeedCaption = Boolean(normalizeFeedCaption(seed))
+    const hasSeedCaption = Boolean(normalizeFeedCaption(seed, loungeComposerCaptionMax))
     const initialFocusPartIndex = hasSeedCaption ? 1 : 0
     const applyOpen = () => {
       setThreadComposeCaptions([seed, ''])
@@ -11489,8 +11497,8 @@ export default function SocialFeed({
       return
     }
     for (let i = 0; i < threadComposeCaptions.length; i += 1) {
-      if (String(threadComposeCaptions[i] || '').length > LOUNGE_CAPTION_MAX) {
-        setThreadComposeErr(`Post ${i + 1} must be ${LOUNGE_CAPTION_MAX} characters or fewer.`)
+      if (String(threadComposeCaptions[i] || '').length > loungeComposerCaptionMax) {
+        setThreadComposeErr(`Post ${i + 1} must be ${loungeComposerCaptionMax} characters or fewer.`)
         return
       }
     }
@@ -11712,7 +11720,7 @@ export default function SocialFeed({
   ])
 
   const submitLoungePost = useCallback(async () => {
-    const caption = normalizeFeedCaption(postText)
+    const caption = normalizeFeedCaption(postText, loungeComposerCaptionMax)
     setPostErr('')
     const gifCheck = validateAtMostOneGifUrl(composerMediaUrl)
     if (!gifCheck.ok) {
@@ -11724,8 +11732,8 @@ export default function SocialFeed({
     const hasVideo = composerVideoSlot != null
     const hasMarket = composerMarketSymbols.length > 0 || extractCashtagsFromCaption(caption).length > 0
     if (!caption && !hasGif && !hasImages && !hasVideo && !hasMarket) return
-    if (caption.length > LOUNGE_CAPTION_MAX) {
-      setPostErr(`Caption must be ${LOUNGE_CAPTION_MAX} characters or fewer.`)
+    if (caption.length > loungeComposerCaptionMax) {
+      setPostErr(`Caption must be ${loungeComposerCaptionMax} characters or fewer.`)
       return
     }
     if (loungeComposerVideoPostBlocked) return
@@ -13567,7 +13575,7 @@ export default function SocialFeed({
                       variant="feed"
                       value={postText}
                       onChange={setPostText}
-                      maxLength={LOUNGE_CAPTION_MAX}
+                      maxLength={loungeComposerCaptionMax}
                       placeholder="Are ya winning, son?"
                       ariaLabel="Lounge post caption"
                       onKeyDown={(e) => {
@@ -13799,7 +13807,7 @@ export default function SocialFeed({
                   </button>
                   <LoungeComposerCharRing
                     len={postText.length}
-                    max={LOUNGE_CAPTION_MAX}
+                    max={loungeComposerCaptionMax}
                     aria-live="polite"
                   />
                   <button
@@ -14450,7 +14458,7 @@ export default function SocialFeed({
                       variant="detailEdit"
                       value={loungeDetailDraftCaption}
                       onChange={setLoungeDetailDraftCaption}
-                      maxLength={LOUNGE_CAPTION_MAX}
+                      maxLength={loungeComposerCaptionMax}
                       placeholder="Are ya winning, son?"
                       ariaLabel="Edit caption"
                       disabled={loungeDetailEditBusy}
@@ -14887,7 +14895,7 @@ export default function SocialFeed({
                           <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                             <LoungeComposerCharRing
                               len={loungeDetailDraftCaption.length}
-                              max={LOUNGE_CAPTION_MAX}
+                              max={loungeComposerCaptionMax}
                               aria-live="polite"
                             />
                             <button
@@ -14895,7 +14903,7 @@ export default function SocialFeed({
                               onClick={() => void saveLoungeDetailCaption()}
                               disabled={
                                 loungeDetailEditVideoPostBlocked ||
-                                (!normalizeFeedCaption(loungeDetailDraftCaption) &&
+                                (!normalizeFeedCaption(loungeDetailDraftCaption, loungeComposerCaptionMax) &&
                                   loungeDetailEditImageItems.length === 0 &&
                                   loungeDetailEditImageUrls.length === 0 &&
                                   !String(loungeDetailEditMediaUrl || '').trim() &&
@@ -15579,7 +15587,7 @@ export default function SocialFeed({
                           variant="detailComment"
                           value={loungeDetailCommentDraft}
                           onChange={setLoungeDetailCommentDraft}
-                          maxLength={LOUNGE_COMMENT_BODY_MAX}
+                          maxLength={loungeComposerCaptionMax}
                           placeholder={LOUNGE_DETAIL_COMMENT_PLACEHOLDER}
                           ariaLabel="Write a reply"
                           onKeyDown={(e) =>
@@ -15745,7 +15753,7 @@ export default function SocialFeed({
                           <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                             <LoungeComposerCharRing
                               len={loungeDetailCommentDraft.length}
-                              max={LOUNGE_COMMENT_BODY_MAX}
+                              max={loungeComposerCaptionMax}
                               aria-live="polite"
                             />
                             <button
@@ -15757,7 +15765,7 @@ export default function SocialFeed({
                                   loungeDetailCommentImageItems.length === 0 &&
                                   !String(loungeDetailCommentMediaUrl || '').trim() &&
                                   !loungeDetailCommentVideoSlot) ||
-                                loungeDetailCommentDraft.length > LOUNGE_COMMENT_BODY_MAX
+                                loungeDetailCommentDraft.length > loungeComposerCaptionMax
                               }
                               className="min-h-7 shrink-0 touch-manipulation rounded-md bg-cyan-600 px-2 py-0.5 text-[13px] font-bold leading-none text-white hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent]"
                             >
@@ -16196,7 +16204,7 @@ export default function SocialFeed({
                               variant="quote"
                               value={quoteRepostDraft}
                               onChange={setQuoteRepostDraft}
-                              maxLength={LOUNGE_CAPTION_MAX}
+                              maxLength={loungeComposerCaptionMax}
                               placeholder="Add a comment"
                               ariaLabel="Quote for repost"
                               onKeyDown={(e) =>
@@ -16335,7 +16343,7 @@ export default function SocialFeed({
                             />
                           </div>
                         <div className="flex min-w-0 grow basis-[min(100%,14rem)] flex-wrap items-center justify-end gap-2">
-                          <LoungeComposerCharRing len={quoteRepostDraft.length} max={LOUNGE_CAPTION_MAX} />
+                          <LoungeComposerCharRing len={quoteRepostDraft.length} max={loungeComposerCaptionMax} />
                           <button
                             type="button"
                             disabled={
@@ -16343,7 +16351,7 @@ export default function SocialFeed({
                               loungeQuoteRepostVideoPostBlocked ||
                               loungePostUploadFailedOpen ||
                               loungeVideoCrop != null ||
-                              (!normalizeFeedCaption(quoteRepostDraft) &&
+                              (!normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) &&
                                 quoteRepostImageItems.length === 0 &&
                                 !String(quoteRepostMediaUrl || '').trim() &&
                                 !quoteRepostVideoSlot)
@@ -16355,7 +16363,7 @@ export default function SocialFeed({
                             className={`shrink-0 touch-manipulation rounded-lg border px-2.5 text-center text-[12px] font-semibold leading-tight transition-colors disabled:opacity-45 [-webkit-tap-highlight-color:transparent] ${
                               quoteRepostBusy ? 'min-h-10 min-w-[6.5rem] py-2' : 'min-h-8 py-1'
                             } ${
-                              (normalizeFeedCaption(quoteRepostDraft) ||
+                              (normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) ||
                                 quoteRepostImageItems.length > 0 ||
                                 !!String(quoteRepostMediaUrl || '').trim() ||
                                 quoteRepostVideoSlot) &&
@@ -16944,6 +16952,7 @@ export default function SocialFeed({
         registerPartRef={registerThreadComposePartRef}
         getPartRef={getThreadComposePartRef}
         focusPartIndex={threadComposeFocusPartIndex}
+        captionMax={loungeComposerCaptionMax}
         onFocusPartIndexConsumed={consumeThreadComposeFocusPartIndex}
         categoryPills={composerCategoryPills}
         onCategoryPillsChange={setComposerCategoryPills}

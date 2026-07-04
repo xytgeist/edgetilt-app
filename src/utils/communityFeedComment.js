@@ -3,17 +3,18 @@ import {
   feedPostImageUrls,
   feedPostStreamVideoUid,
 } from './communityFeedPost.js'
-import { LOUNGE_COMMENT_BODY_MAX } from './loungeCommentLimits.js'
+import { LOUNGE_CAPTION_MAX } from './loungeCommentLimits.js'
 
 export { feedPostAuthorEditMediaSeed as feedCommentAuthorEditMediaSeed }
 export { feedPostImageUrls as feedCommentImageUrls }
 export { feedPostStreamVideoUid as feedCommentStreamVideoUid }
 
-/** Trimmed reply body (max {@link LOUNGE_COMMENT_BODY_MAX}). */
-export function normalizeFeedCommentBody(body) {
+/** Trimmed reply body. */
+export function normalizeFeedCommentBody(body, max = LOUNGE_CAPTION_MAX) {
+  const cap = Number.isFinite(max) && max > 0 ? max : LOUNGE_CAPTION_MAX
   return String(body ?? '')
     .trim()
-    .slice(0, LOUNGE_COMMENT_BODY_MAX)
+    .slice(0, cap)
 }
 
 /** True when the row has any attachment (images, GIF, or Stream). */

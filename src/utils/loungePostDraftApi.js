@@ -1,6 +1,6 @@
 import { prepareLoungeFeedImageForUpload } from './compressImageForUpload.js'
 import { uploadLoungeFeedPostImage } from './communityFeedPost.js'
-import { LOUNGE_CAPTION_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from './loungeCommentLimits.js'
+import { LOUNGE_CAPTION_SUBSCRIBER_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from './loungeCommentLimits.js'
 import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
 import { buildThreadDraftCaptionsWithSnapshotMediaMarkers } from './loungeThreadComposeDraftMediaMarkers.js'
 import { emptyThreadComposePartMedia, threadPartVideoSlotFromDraft } from './loungeThreadComposeMedia.js'
@@ -34,7 +34,7 @@ function isDraftMediaSchemaError(error) {
 
 function normalizeThreadCaptionsForDraft(raw) {
   const parts = Array.isArray(raw)
-    ? raw.map((t) => String(t ?? '').slice(0, LOUNGE_CAPTION_MAX))
+    ? raw.map((t) => String(t ?? '').slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX))
     : []
   let end = parts.length
   while (end > 1 && !parts[end - 1].trim()) end -= 1
@@ -111,7 +111,7 @@ function normalizeDraftPartMediaRow(raw) {
 function normalizeDraftRow(row) {
   if (!row?.id) return null
   const threadCaptions = Array.isArray(row.thread_captions)
-    ? row.thread_captions.map((t) => String(t ?? '').slice(0, LOUNGE_CAPTION_MAX))
+    ? row.thread_captions.map((t) => String(t ?? '').slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX))
     : []
   const normalizedThread = normalizeThreadCaptionsForDraft(threadCaptions)
   let threadPartMedia = []
@@ -129,7 +129,7 @@ function normalizeDraftRow(row) {
   const h = row.stream_video_height
   return {
     id: String(row.id),
-    caption: String(row.caption ?? normalizedThread.caption).slice(0, LOUNGE_CAPTION_MAX),
+    caption: String(row.caption ?? normalizedThread.caption).slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX),
     category_pills: normalizeLoungePostCategoryPills(row.category_pills),
     gif_url: String(row.gif_url ?? '').trim().slice(0, 2048),
     image_urls: parseImageUrls(row.image_urls),
@@ -574,7 +574,7 @@ export function loungePostDraftPayloadFromSubmissionSnapshot(snapshot, opts = {}
 /** Ordered caption parts for thread compose restore. */
 export function loungePostDraftThreadParts(draft) {
   if (!loungePostDraftIsThread(draft)) return []
-  return draft.thread_captions.map((t) => String(t ?? '').slice(0, LOUNGE_CAPTION_MAX))
+  return draft.thread_captions.map((t) => String(t ?? '').slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX))
 }
 
 export function loungePostDraftHasContent({
@@ -754,10 +754,10 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
     ? normalizeThreadCaptionsForDraft(threadInput)
     : normalizeThreadCaptionsForDraft([payload.caption ?? ''])
   const caption = normalizedThread.threadCaptions.length > 1
-    ? String(normalizedThread.threadCaptions[0] ?? '').slice(0, LOUNGE_CAPTION_MAX)
+    ? String(normalizedThread.threadCaptions[0] ?? '').slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX)
     : String(payload.caption ?? normalizedThread.caption ?? '')
         .trim()
-        .slice(0, LOUNGE_CAPTION_MAX)
+        .slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX)
   const threadCaptions = normalizedThread.threadCaptions
   const gifUrl = String(payload.gifUrl ?? '').trim().slice(0, 2048)
   const categoryPills = normalizeLoungePostCategoryPills(payload.categoryPills)

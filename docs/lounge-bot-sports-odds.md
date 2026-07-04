@@ -20,14 +20,13 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 | **Edge** | Best h2h line clears **`min_edge_pct`** | See example below |
 | **Slate** | No edge clears (or **`daily_slates`** poll) | See example below |
 
-**Caption style:** factual labels only (no opinion phrases). Line breaks between sections. Plain keyboard punctuation.
+**Caption style:** factual labels only (no opinion phrases). Line breaks between sections. Plain keyboard punctuation. Sportsbook names use brand labels (FanDuel, MyBookie) ... not bare domains (avoids auto-linkify in feed).
 
 **+EV example:**
 ```text
-⚡ +EV
-World Cup: France vs Paraguay, Sat Jul 4 at 2pm PT
+⚡ World Cup: France vs Paraguay, Sat Jul 4 at 2pm PT
 
-Draw ML +718 at MyBookie.ag
+France ML +718 at MyBookie
 Fair +652 (9 books)
 +8.8% edge on ML
 ```
@@ -43,7 +42,7 @@ Germany vs Portugal, Sat Jul 4 at 5pm PT
 Germany -110 (FanDuel), Portugal +105 (DraftKings)
 ```
 
-Long slates truncate with `+N more games today.` at the 500-char caption cap. **+EV alerts and morning slates** only consider games **kicking off today (PT)** that have not started yet.
+Long slates may still truncate with `+N more games today.` at the **2000-char** caption cap (subscriber/bot tier). **+EV alerts and morning slates** only consider games **kicking off today (PT)** that have not started yet.
 
 **Morning automation:** cron calls **`lounge-odds-poll`** with **`daily_slates`** every 15 min between **7-10am PT**; each bot fires once per day at a random minute in that window. See **`lounge-odds-poll/README.md`**.
 

@@ -3,7 +3,7 @@
  * h2h only: per-book devig → consensus fair prob → EV on best available price.
  */
 
-const CAPTION_MAX = 500
+const CAPTION_MAX = 2000
 
 export const DEFAULT_ODDS_WINDOW_HOURS = 48
 export const DEFAULT_MIN_BOOKS = 3
@@ -188,6 +188,77 @@ function formatAmericanOdds(price: number): string {
   return price > 0 ? `+${price}` : String(price)
 }
 
+/** US / common The Odds API book keys → display name (avoid bare domains in captions). */
+const BOOK_DISPLAY_BY_KEY: Record<string, string> = {
+  bovada: 'Bovada',
+  fanduel: 'FanDuel',
+  draftkings: 'DraftKings',
+  betmgm: 'BetMGM',
+  betrivers: 'BetRivers',
+  pointsbetus: 'PointsBet',
+  caesars: 'Caesars',
+  williamhill_us: 'Caesars',
+  wynnbet: 'WynnBET',
+  barstool: 'Barstool',
+  twinspires: 'TwinSpires',
+  superbook: 'SuperBook',
+  unibet_us: 'Unibet',
+  espnbet: 'ESPN BET',
+  fanatics: 'Fanatics',
+  hardrockbet: 'Hard Rock',
+  fliff: 'Fliff',
+  betus: 'BetUS',
+  mybookieag: 'MyBookie',
+  betonlineag: 'BetOnline',
+  lowvigag: 'LowVig',
+  bookmaker: 'Bookmaker',
+  pinnacle: 'Pinnacle',
+  bet365: 'bet365',
+}
+
+function hasLinkableDomain(text: string): boolean {
+  return /\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,}\b/i.test(String(text || ''))
+}
+
+/** e.g. MyBookie.ag → mybookie(.ag) when no friendly name is mapped. */
+function domainToParenDisplay(raw: string): string | null {
+  const m = String(raw || '').trim().match(/^([a-z0-9][a-z0-9.-]*?)\.([a-z]{2,})$/i)
+  if (!m) return null
+  const base = m[1].replace(/\./g, '').toLowerCase()
+  const tld = m[2].toLowerCase()
+  return `${base}(.${tld})`
+}
+
+/** Caption-safe sportsbook label: brand name when known, else domain as name(.tld). */
+export function formatBookDisplayName(title: string, key?: string): string {
+  const k = String(key || '').trim().toLowerCase()
+  const t = String(title || '').trim()
+
+  if (k && BOOK_DISPLAY_BY_KEY[k]) return BOOK_DISPLAY_BY_KEY[k]
+
+  if (t && !hasLinkableDomain(t)) {
+    const titleKey = t.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (BOOK_DISPLAY_BY_KEY[titleKey]) return BOOK_DISPLAY_BY_KEY[titleKey]
+    return t
+  }
+
+  const fromTitle = domainToParenDisplay(t)
+  if (fromTitle) return fromTitle
+
+  if (k.endsWith('ag') && k.length > 3) {
+    if (BOOK_DISPLAY_BY_KEY[k]) return BOOK_DISPLAY_BY_KEY[k]
+    return `${k.slice(0, -2)}(.ag)`
+  }
+
+  if (k.endsWith('eu') && k.length > 3) {
+    return `${k.slice(0, -2)}(.eu)`
+  }
+
+  if (t) return t.length <= 20 ? t : `${t.slice(0, 18)}..`
+  if (k) return k.length <= 20 ? k : `${k.slice(0, 18)}..`
+  return 'Book'
+}
+
 /** Last word for long player/team names (Mochizuki, Sinner, Chiefs). */
 function shortDisplayName(name: string): string {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
@@ -224,8 +295,8 @@ export function findPlusEvOpportunities(
       const fair = devigFairProbsForH2h(market)
       if (!fair?.size) continue
 
-      const bookTitle = String(book.title || book.key || 'Book')
-      fairByBook.push({ book: bookTitle, fair })
+      const bookLabel = formatBookDisplayName(String(book.title || ''), book.key)
+      fairByBook.push({ book: bookLabel, fair })
 
       for (const out of market.outcomes || []) {
         const name = String(out.name || '').trim()
@@ -233,7 +304,7 @@ export function findPlusEvOpportunities(
         if (!name || !Number.isFinite(price)) continue
         const cur = bestPriceByOutcome.get(name)
         if (!cur || price > cur.price) {
-          bestPriceByOutcome.set(name, { price, book: bookTitle })
+          bestPriceByOutcome.set(name, { price, book: bookLabel })
         }
       }
     }
@@ -345,8 +416,7 @@ export function buildOddsEdgeAlertCaption(pick: OddsPick, opts?: { categoryLabel
   const event = opts?.categoryLabel?.trim()
 
   return joinCaptionLines([
-    '⚡ +EV',
-    formatEventMatchupLine(event, away, home, when),
+    `⚡ ${formatEventMatchupLine(event, away, home, when)}`,
     '',
     `${pickLabel} ML ${odds} at ${pick.bookTitle}`,
     `Fair ${fair} (${pick.bookCount} books)`,
@@ -366,10 +436,15 @@ export type SlateGameBestLine = {
   picks: { label: string; price: number; book: string }[]
 }
 
-function shortBookName(title: string): string {
-  const t = String(title || 'Book').trim()
-  if (t.length <= 16) return t
-  return `${t.slice(0, 14)}..`
+function formatSlateGameBlock(game: SlateGameBestLine): string {
+  const away = shortDisplayName(game.awayTeam)
+  const home = shortDisplayName(game.homeTeam)
+  const when = formatOddsCommenceTimeShort(game.commenceTime)
+  const head = formatEventMatchupLine(undefined, away, home, when)
+  const oddsLine = game.picks
+    .map((p) => `${p.label} ${formatAmericanOdds(p.price)} (${p.book})`)
+    .join(', ')
+  return `${head}\n${oddsLine}`
 }
 
 function formatOutcomeLabel(name: string): string {
@@ -404,7 +479,7 @@ export function extractSlateGameBestLines(events: OddsEvent[]): SlateGameBestLin
     for (const book of ev.bookmakers || []) {
       const market = (book.markets || []).find((m) => m.key === 'h2h')
       if (!market) continue
-      const bookTitle = String(book.title || book.key || 'Book')
+      const bookLabel = formatBookDisplayName(String(book.title || ''), book.key)
 
       for (const out of market.outcomes || []) {
         const name = String(out.name || '').trim()
@@ -412,7 +487,7 @@ export function extractSlateGameBestLines(events: OddsEvent[]): SlateGameBestLin
         if (!name || !Number.isFinite(price)) continue
         const cur = bestByOutcome.get(name)
         if (!cur || price > cur.price) {
-          bestByOutcome.set(name, { price, book: bookTitle })
+          bestByOutcome.set(name, { price, book: bookLabel })
         }
       }
     }
@@ -436,17 +511,6 @@ export function extractSlateGameBestLines(events: OddsEvent[]): SlateGameBestLin
 
   rows.sort((a, b) => Date.parse(a.commenceTime) - Date.parse(b.commenceTime))
   return rows
-}
-
-function formatSlateGameBlock(game: SlateGameBestLine): string {
-  const away = shortDisplayName(game.awayTeam)
-  const home = shortDisplayName(game.homeTeam)
-  const when = formatOddsCommenceTimeShort(game.commenceTime)
-  const head = formatEventMatchupLine(undefined, away, home, when)
-  const oddsLine = game.picks
-    .map((p) => `${p.label} ${formatAmericanOdds(p.price)} (${shortBookName(p.book)})`)
-    .join(', ')
-  return `${head}\n${oddsLine}`
 }
 
 export function buildOddsSlateCaption(input: SlateCaptionInput): string {

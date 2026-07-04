@@ -59,7 +59,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Bot ops UI (code):** **`/?tab=bots`** Bot Portal — all bots, run/pause/stop, caps, score threshold, watchlist, source toggles, edit/delete posts, **manual post + reply as bot**, automation log, **Scott Share odds controls** (calendar picker, Fetch odds, Scan all · edge, Post morning slates, **Min +EV %**). Edge Monitor links here.
 - [ ] **Market news smoke (test):** dry run → enable bot → poll now → confirm Lounge post as bot user; verify day/hour caps.
 - [ ] **Sports odds bot smoke (test):** **`docs/lounge-bot-sports-odds.md`**
-  - [ ] Apply migrations **`20260704120000`** through **`20260704180000`** on **`kcosfvmreeiosdjdzycb`** (skip any already applied)
+  - [ ] Apply migrations **`20260704120000`** through **`20260704190000`** on **`kcosfvmreeiosdjdzycb`** (skip any already applied)
   - [ ] Deploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**; frontend deploy for portal
   - [ ] **`THE_ODDS_API_KEY`** on test Edge
   - [ ] Portal → Scott Share (`@sharpesignal`): **Min +EV %** = **2** if row still **4** → Save settings
@@ -760,7 +760,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
-- 2026-07-04: **Bot portal manual post + reply:** migration **`20260704180000`** — **`admin_lounge_bot_publish_post`**, **`admin_lounge_bot_post_comment`**; **`/?tab=bots`** compose box + per-post reply thread (**`BotPostRepliesPanel.jsx`**). Apply on test; frontend deploy only (no Edge redeploy).
+- 2026-07-04: **Subscriber lounge caption 2000:** migration **`20260704190000`** — hard max 2000 on posts/comments/drafts; **`lounge_feed_caption_max_for_user`** + triggers (free **500**, subscriber/bot/staff **2000**). Scott slate cap in **`loungeBotOddsCaption.ts`**. Apply on test; redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**; frontend deploy for composer limits.
 - 2026-07-04: **Odds caption format:** factual multi-line posts (no opinion phrases); line breaks in feed via `whitespace-pre-wrap` — **`loungeBotOddsCaption.ts`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
 - 2026-07-04: **Odds caption voice:** edge + slate posts use plain sentences (short names, fair as American odds, `vs` matchups, compact PT kickoff) — **`loungeBotOddsCaption.ts`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
 - 2026-07-04: **Continuity docs refresh:** **`WAKEUP`**, **`docs/lounge-bot-sports-odds.md`** (shipped v1 spec), **`docs/frontend-architecture.md`** **`bots/`** row, backlog sports-odds smoke checklist expanded.

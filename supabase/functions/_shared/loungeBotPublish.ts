@@ -32,7 +32,7 @@ export async function publishLoungeBotPost(
 ): Promise<BotPublishResult> {
   const caption = String(input.caption || '').trim()
   if (!caption) return { postId: null, error: 'Empty caption.' }
-  if (caption.length > 500) return { postId: null, error: 'Caption exceeds 500 chars.' }
+  if (caption.length > 2000) return { postId: null, error: 'Caption exceeds 2000 chars.' }
 
   const pills = Array.isArray(input.categoryPills)
     ? input.categoryPills.map((p) => String(p || '').trim()).filter(Boolean).slice(0, 3)
@@ -42,7 +42,7 @@ export async function publishLoungeBotPost(
   const url = String(input.sourceUrl || '').trim()
   if (url && !finalCaption.includes(url)) {
     const withUrl = `${finalCaption} ${url}`.trim()
-    finalCaption = withUrl.length <= 500 ? withUrl : caption
+    finalCaption = withUrl.length <= 2000 ? withUrl : caption
   }
 
   const row: Record<string, unknown> = {

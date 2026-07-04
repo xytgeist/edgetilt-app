@@ -125,6 +125,7 @@ export default function LoungeThreadComposeSheet({
   onRemovePartGif,
   onRemovePartVideo,
   onFocusPartIndexConsumed,
+  captionMax = LOUNGE_CAPTION_MAX,
 }) {
   const scrollRef = useRef(null)
   const toolbarRef = useRef(null)
@@ -459,7 +460,7 @@ export default function LoungeThreadComposeSheet({
   const canPost =
     captions.some((t, i) => threadComposePartHasContent(t, partsMedia[i])) &&
     !submitting &&
-    captions.every((t) => String(t || '').length <= LOUNGE_CAPTION_MAX)
+    captions.every((t) => String(t || '').length <= captionMax)
 
   const activeLen = String(captions[activePartIndex] || '').length
 
@@ -611,7 +612,7 @@ export default function LoungeThreadComposeSheet({
                         value={partText}
                         onChange={(next) => notifyPartChange(partIdx, next)}
                         onFocus={() => handlePartFocus(partIdx)}
-                        maxLength={LOUNGE_CAPTION_MAX}
+                        maxLength={captionMax}
                         placeholder={
                           String(partText || '').trim() ? '' : 'Are ya winning, son?'
                         }
@@ -659,7 +660,7 @@ export default function LoungeThreadComposeSheet({
                       onInput={() => {
                         if (shouldTailFollowPart(partIdx)) pinThreadPartTail(partIdx, { maxPasses: 4 })
                       }}
-                      maxLength={LOUNGE_CAPTION_MAX}
+                      maxLength={captionMax}
                       placeholder={
                         String(partText || '').trim() ? '' : 'Say more…'
                       }
@@ -810,7 +811,7 @@ export default function LoungeThreadComposeSheet({
           ) : null}
           <div className="min-w-0 flex-1" aria-hidden />
           <div className="flex shrink-0 items-center gap-2">
-            <LoungeComposerCharRing len={activeLen} max={LOUNGE_CAPTION_MAX} />
+            <LoungeComposerCharRing len={activeLen} max={captionMax} />
             <div className="shrink-0 p-2">
               <button
                 type="button"

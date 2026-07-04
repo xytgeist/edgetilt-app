@@ -159,9 +159,10 @@ export function feedPostMediaUpdatePayload({ imageUrls, gifUrl }) {
   }
 }
 
-/** Normalized caption for insert/update (trim, uppercase cashtags, max {@link LOUNGE_CAPTION_MAX}). */
-export function normalizeFeedCaption(caption) {
-  return normalizeCashtagsInCaption(String(caption ?? '').trim()).slice(0, LOUNGE_CAPTION_MAX)
+/** Normalized caption for insert/update (trim, uppercase cashtags). */
+export function normalizeFeedCaption(caption, max = LOUNGE_CAPTION_MAX) {
+  const cap = Number.isFinite(max) && max > 0 ? max : LOUNGE_CAPTION_MAX
+  return normalizeCashtagsInCaption(String(caption ?? '').trim()).slice(0, cap)
 }
 
 function attachCategoryPills(out, categoryPills) {

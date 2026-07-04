@@ -1,4 +1,4 @@
-import { LOUNGE_CAPTION_MAX } from './loungeCommentLimits.js'
+import { LOUNGE_CAPTION_SUBSCRIBER_MAX } from './loungeCommentLimits.js'
 
 /** Visible draft reminder line - stripped when matching media is re-attached. */
 export const THREAD_DRAFT_MEDIA_MARKER_PREFIX = '📎 '
@@ -112,11 +112,11 @@ export function injectDraftMediaMarkersIntoCaption(caption, names) {
   const toAdd = (Array.isArray(names) ? names : [])
     .map((n) => String(n || '').trim())
     .filter((n) => n && !captionHasDraftMediaMarker(base, n))
-  if (!toAdd.length) return base.slice(0, LOUNGE_CAPTION_MAX)
+  if (!toAdd.length) return base.slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX)
   const suffix = toAdd.map(threadDraftMediaMarkerLine).join('\n')
   const trimmed = base.replace(/\s+$/, '')
   const next = trimmed ? `${trimmed}\n${suffix}` : suffix
-  return next.slice(0, LOUNGE_CAPTION_MAX)
+  return next.slice(0, LOUNGE_CAPTION_SUBSCRIBER_MAX)
 }
 
 /**

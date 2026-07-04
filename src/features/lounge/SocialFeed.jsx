@@ -251,7 +251,13 @@ import LoungeMarketChartModal from './LoungeMarketChartModal.jsx'
 import LoungeMarketChartStrip from './LoungeMarketChartStrip.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { useLoungeMarketPollActivityTracker } from './loungeMarketPollActivity.js'
-import { LOUNGE_IOS } from './useLoungeKeyboardOverlapPx.js'
+import {
+  LOUNGE_IOS,
+  LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  loungeComposerFooterPaddingBottom,
+  useLoungeIosSafeBottomPx,
+  useLoungeKeyboardOverlapPx,
+} from './useLoungeKeyboardOverlapPx.js'
 import LoungeMarketSymbolPickerSheet from './LoungeMarketSymbolPickerSheet.jsx'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 import PwaInstallTitleBarRow from '../../components/PwaInstallBanner.jsx'
@@ -877,8 +883,6 @@ export default function SocialFeed({
   /** Mirrors feed composer: collapsed one-line affordance → expanded textarea + toolbar. */
   const [loungeDetailCommentComposerExpanded, setLoungeDetailCommentComposerExpanded] = useState(false)
   const [loungeDetailCommentDiscardPromptOpen, setLoungeDetailCommentDiscardPromptOpen] = useState(false)
-  /** iOS / visualViewport: lift footer above software keyboard. */
-  const [loungeDetailCommentKbOverlapPx, setLoungeDetailCommentKbOverlapPx] = useState(0)
   /** Bottom inset for post-detail scroll so content clears the floating reply footer. */
   const [loungeDetailCommentFooterInsetPx, setLoungeDetailCommentFooterInsetPx] = useState(72)
   const [loungeDetailCommentImageItems, setLoungeDetailCommentImageItems] = useState([])
@@ -1206,6 +1210,28 @@ export default function SocialFeed({
     !loungePostDetail?.id &&
     !loungeDockPanel &&
     (profileModalOpen || profileOverlayStack.length > 0)
+
+  /** Only while reply field focused — avoid visualViewport false positives on post open / comment load. */
+  const loungeDetailCommentKbTrackActive = Boolean(
+    loungePostDetail && !loungeReadOnly && loungeDetailCommentFieldFocused,
+  )
+  const loungeDetailCommentIosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
+  const {
+    overlapPx: loungeDetailCommentKbOverlapPx,
+    targetPx: loungeDetailCommentKbOverlapTargetPx,
+  } = useLoungeKeyboardOverlapPx(loungeDetailCommentKbTrackActive, {
+    smooth: LOUNGE_IOS,
+    smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  })
+  const loungeDetailCommentKbFooterLiftPx = Math.max(
+    loungeDetailCommentKbOverlapPx,
+    loungeDetailCommentKbOverlapTargetPx,
+  )
+  const loungeDetailCommentKeyboardUp =
+    loungeDetailCommentKbFooterLiftPx > loungeDetailCommentIosSafeBottomPx + 0.5
+  const loungeDetailCommentFooterPadBottom = loungeDetailCommentKeyboardUp
+    ? `${Math.round(loungeDetailCommentKbFooterLiftPx)}px`
+    : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
 
   // ── @mention autocomplete - one instance per composer ──────────────────────
   const mentionComposer = useMentionState(postText, supabaseClient, !loungeReadOnly)
@@ -1614,7 +1640,6 @@ export default function SocialFeed({
       return composerFieldRef.current
     }
     blurLoungeComposerCaption(getTextarea)
-    if (target === 'detailComment') setLoungeDetailCommentKbOverlapPx(0)
   }, [])
 
   const loungeFileInputMediaPickerHandlers = useCallback(
@@ -1751,35 +1776,6 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (!loungePostDetail || loungeReadOnly) {
-      setLoungeDetailCommentKbOverlapPx(0)
-      return undefined
-    }
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null
-    if (!vv) return undefined
-    const applyOverlap = () => {
-      try {
-        const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-        setLoungeDetailCommentKbOverlapPx(Number.isFinite(overlap) ? overlap : 0)
-      } catch {
-        setLoungeDetailCommentKbOverlapPx(0)
-      }
-    }
-    const onVvScroll = () => {
-      if (LOUNGE_IOS && loungeDetailCommentFieldFocusedRef.current) return
-      applyOverlap()
-    }
-    applyOverlap()
-    vv.addEventListener('resize', applyOverlap)
-    vv.addEventListener('scroll', onVvScroll)
-    return () => {
-      vv.removeEventListener('resize', applyOverlap)
-      vv.removeEventListener('scroll', onVvScroll)
-      setLoungeDetailCommentKbOverlapPx(0)
-    }
-  }, [loungePostDetail, loungeReadOnly])
-
-  useEffect(() => {
-    if (!loungePostDetail || loungeReadOnly) {
       setLoungeDetailCommentFooterInsetPx(72)
       return undefined
     }
@@ -1799,7 +1795,7 @@ export default function SocialFeed({
     loungePostDetail?.id,
     loungeReadOnly,
     loungeDetailCommentComposerExpanded,
-    loungeDetailCommentKbOverlapPx,
+    loungeDetailCommentKbFooterLiftPx,
     loungeDetailCommentErr,
     loungeDetailCommentImageItems.length,
     loungeDetailCommentVideoSlot,
@@ -6552,7 +6548,6 @@ export default function SocialFeed({
     setLoungeDetailCommentErr('')
     setLoungeDetailCommentComposerExpanded(false)
     setLoungeDetailCommentDiscardPromptOpen(false)
-    setLoungeDetailCommentKbOverlapPx(0)
     clearLoungeDetailCommentComposerMedia({ preserveBackgroundUpload: commentUploadInFlight })
     setLoungeCommentDetailPathIds([])
     setLoungeDetailCommentEditingId(null)
@@ -15498,13 +15493,8 @@ export default function SocialFeed({
                 <div
                   className="lounge-detail-comment-footer-glass pointer-events-auto px-3 pt-2.5 pb-0"
                   style={{
-                    // Keyboard open: `visualViewport` overlap already clears the keyboard - do not add
-                    // `env(safe-area-inset-bottom)` here; iOS often keeps ~34px inset while the keyboard is up,
-                    // which stacked under overlap and left a large dead band above the keys.
-                    paddingBottom:
-                      loungeDetailCommentKbOverlapPx > 0
-                        ? `${loungeDetailCommentKbOverlapPx}px`
-                        : `max(0.625rem, env(safe-area-inset-bottom))`,
+                    // Keyboard open: overlap clears the keys — do not stack env(safe-area) under it (iOS dead band).
+                    paddingBottom: loungeDetailCommentFooterPadBottom,
                   }}
                 >
                 {loungeDetailCommentErr ? (
@@ -15614,20 +15604,6 @@ export default function SocialFeed({
                                   setLoungeDetailCommentFooterInsetPx(
                                     footerEl.offsetHeight + LOUNGE_DETAIL_COMMENT_FOOTER_SCROLL_GAP_PX,
                                   )
-                                }
-                                const vv = window.visualViewport
-                                if (vv) {
-                                  try {
-                                    const overlap = Math.max(
-                                      0,
-                                      window.innerHeight - vv.height - vv.offsetTop,
-                                    )
-                                    setLoungeDetailCommentKbOverlapPx(
-                                      Number.isFinite(overlap) ? overlap : 0,
-                                    )
-                                  } catch {
-                                    setLoungeDetailCommentKbOverlapPx(0)
-                                  }
                                 }
                               })
                             }

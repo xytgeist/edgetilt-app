@@ -136,6 +136,21 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ---
 
+## Planned (Lounge feed — optional Markdown captions)
+
+**Product idea (Ryan, 2026-07-04):** Optional **Markdown rendering** in Lounge post + comment captions (and thread parts) for richer structure (section headers, bold, lists) without fighting plain-text hacks. Today captions use **`renderRichCaption`** only (`loungeCaption.jsx`): plain text + line breaks + auto **`@` / `#` / `$` / URLs** — **no** `**bold**`, `# headings`, etc. AP Guides already use **`ReactMarkdown`** + GFM; Lounge never shipped a doc renderer.
+
+- [ ] **Spike + scope:** Pick a **safe subset** (e.g. bold, `##` headers, lists only — no raw HTML, no arbitrary links overriding unfurl rules). Decide: all posts vs subscriber/bot-only vs opt-in per post.
+- [ ] **Renderer:** Extend **`LoungeExpandableRichCaption`** / **`renderRichCaption`** — either layered Markdown pass + existing token parser, or **`react-markdown`** + **`remark-gfm`** with strict sanitization (reuse patterns from **`GuidesScreen.jsx`**).
+- [ ] **Token parity:** **`@mentions`**, **`#hashtags`**, **`$cashtags`** must still tap through to profile / search / market chart after Markdown parse.
+- [ ] **Search + highlight:** **`lounge_search_*`**, **`loungeSearchHighlight`**, link unfurl — confirm searchable plain text vs formatted display; no regression on strict hashtag/cashtag routes.
+- [ ] **Composer (optional v2):** Preview toggle or WYSIWYG — not required for read-only bot posts first.
+- [ ] **Smoke:** Coffee & Covers / Scott Share thread posts; user compose with `**Covers**` + emoji sections; thread parts; quote reposts; notifications snippet truncation.
+
+**Not scheduled.** Rough effort once picked up: **~1 week** test-ready read path; composer polish extra.
+
+---
+
 ## Play Logbook (shipped on `test` — Ryan smoke pending)
 
 **Product intent (Ryan, 2026-05-29):** AP slot players — especially on **newer titles** — need a **Play Logbook** to capture floor data during scouting/plays and **analyze** it later for exploitation (hit distributions, bonus frequency, counter behavior, etc.). Distinct from **Bankroll Tracker** (session P&L only) and from **Local Intel** (public field reports).
@@ -760,7 +775,8 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
-- 2026-07-04: **Coffee & Covers thread format:** root post **☕💰 Coffee & Covers** + Covers (+ ML spots) + **`Best lines in 🧵👇`**; best lines moved to author **thread parts** (one per calendar sport). **`daily_slates`** poll posts **one** combined thread/day (`coffee:daily:{ptDay}`). Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`** (no new SQL).
+- 2026-07-04: **Planned — Lounge Markdown captions:** backlog + roadmap note for optional Markdown in feed captions/comments (preserve `@`/`#`/`$` tokens; spike scope + **`LoungeExpandableRichCaption`**). Ryan idea — structured bot posts (Coffee & Covers). **Not scheduled.**
+- 2026-07-04: **Coffee & Covers simplified bullet format:** root post uses `BEST ML SPOTS RIGHT NOW`, `BIGGEST DOGS`, `🍺 ON TAP TOMORROW`, `Best lines 👇`; plain `@` book labels and `(+X% EV)` suffixes; no middle dots. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`** (no new SQL).
 - 2026-07-04: **Coffee & Covers morning post:** migration **`20260704200000`** (`post_kind: coffee_covers`, `coffee_covers_enabled`); **`loungeBotCoffeeAndCovers.ts`** — spread covers **+4%** EV, ML spots **+3%**, today's lines board, sitting-on-hands copy when no covers; **`daily_slates`** poll + manual fetch fallback use Coffee & Covers (legacy slate when disabled). Portal: **Post Coffee & Covers**. Apply **`20260704200000`** on test; redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
 - 2026-07-04: **Subscriber lounge caption 2000:** migration **`20260704190000`** — hard max 2000 on posts/comments/drafts; **`lounge_feed_caption_max_for_user`** + triggers (free **500**, subscriber/bot/staff **2000**). Scott slate cap in **`loungeBotOddsCaption.ts`**. Apply on test; redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**; frontend deploy for composer limits.
 - 2026-07-04: **Odds caption format:** factual multi-line posts (no opinion phrases); line breaks in feed via `whitespace-pre-wrap` — **`loungeBotOddsCaption.ts`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.

@@ -21,7 +21,7 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 | **Coffee & Covers** | No edge on manual fetch, or **`daily_slates`** morning poll | See example below |
 | **Slate** (legacy) | When **`coffee_covers_enabled = false`** | See legacy example below |
 
-**Caption style:** factual labels only (no opinion phrases). Line breaks between sections. Plain keyboard punctuation. Sportsbook names use brand labels (FanDuel, MyBookie) ... not bare domains (avoids auto-linkify in feed).
+**Caption style:** factual labels only (no opinion phrases). Line breaks between sections. Plain keyboard punctuation only (colons, commas, hyphens in odds ... no middle dots or em/en dashes). Sportsbook names use brand labels (FanDuel, MyBookie) ... not bare domains (avoids auto-linkify in feed).
 
 **+EV example:**
 ```text
@@ -35,27 +35,21 @@ Fair +652 (9 books)
 **Coffee & Covers example:**
 ```text
 ☕ Coffee & Covers 💵
-
-Covers
-France vs Paraguay, Sat Jul 4 at 2pm PT
-France -1.5 (+105) at FanDuel
-Fair -115 (9 books) · +4.2% EV
-
-ML spots
-Germany vs Portugal, Sat Jul 4 at 5pm PT
-Germany ML +145 at DraftKings
-Fair +132 (8 books) · +3.1% EV
-
-Biggest dogs
-World Cup · Paraguay vs France, Sat Jul 4 at 2pm PT
-Paraguay ML +718 at MyBookie
-
-🍺 On tap:
-MLB · Red Sox vs Yankees, Sun Jul 5 at 10am PT
-Red Sox +3.5 (-105) at FanDuel
-Fair -115 (8 books) · +3.6% EV
-
-Best lines in 🧵👇
+No strong covers today - sitting on hands until we see better value.
+BEST ML SPOTS RIGHT NOW:
+• World Cup - France vs Paraguay (Sat 2PM PT)
+Draw ML +718 @ MyBookie (+9.6% EV)
+• World Cup - Morocco vs Canada (Sat 10AM PT)
+Canada ML +490 @ BetUS (+3.1% EV)
+BIGGEST DOGS:
+• MLB - Padres vs Dodgers (Sat 7:11PM PT)
+Padres ML +219 @ lowvig
+• Wimbledon - Zverev vs Giron (Sat 6:30AM PT)
+Giron ML +900 @ DraftKings
+🍺 ON TAP TOMORROW:
+• Wimbledon - Mochizuki vs Sinner: Mochizuki +1600 (+8.1% EV)
+• World Cup - Norway vs Brazil: Norway +367 (+2.8% EV)
+Best lines 👇
 ```
 
 **Thread part (one per calendar sport today), e.g. MLB:**
@@ -66,7 +60,7 @@ Yankees vs Red Sox, Sat Jul 4 at 1pm PT
 Yankees -110 (FanDuel), Red Sox +105 (DraftKings)
 ```
 
-When no spread clears **+4%** EV, the **Covers** section opens with: *Sitting on hands today until we find something worth calling.*
+When no spread clears **+4%** EV, the root post opens with: *No strong covers today - sitting on hands until we see better value.*
 
 **Legacy slate example:**
 ```text
@@ -121,10 +115,10 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`** (h2h aler
 | **Covers** (spread/handicap) | **+4%** EV on $1 | **3** per sport (merged in root) |
 | **ML spots** | **+3%** EV on $1 | **3** per sport (merged in root) |
 | **Biggest dogs** | Longest h2h price on today's board | **One line per calendar sport** |
-| **On tap** | Tomorrow spread/ML at or within **1%** of bar | **Max 3** across all sports |
-| **Best lines** | Best ML + book per outcome | One **thread part** per calendar sport |
+| **On Tap (tomorrow)** | Tomorrow spread/ML at or within **1%** of bar | **Max 3** across all sports |
+| **Best Lines 👇** | Best ML + book per outcome | One **thread part** per calendar sport |
 
-Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consensus average, EV at best juice. Dedupe key: **`coffee:daily:{ptDay}`** (one post per bot per PT day). Log **`post_kind: coffee_covers`**. Root post ends with **`Best lines in 🧵👇`**; lines board lives in author thread parts (`feed_comments.is_thread_part`).
+Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consensus average, EV at best juice. Dedupe key: **`coffee:daily:{ptDay}`** (one post per bot per PT day). Log **`post_kind: coffee_covers`**. Root post ends with **`Best Lines 👇`**; lines board lives in author thread parts (`feed_comments.is_thread_part`).
 
 Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall back to legacy slate check-ins.
 
@@ -191,7 +185,7 @@ Table **`lounge_sports_betting_calendar`** — seeded for 2026 major events.
 
 RPC **`admin_lounge_sports_betting_calendar_today()`** → portal dropdown.
 
-Captions prefix category label from calendar row (e.g. `Wimbledon · …`).
+Captions prefix category label from calendar row (e.g. `Wimbledon: ...`).
 
 **No portal calendar editor yet** — extend rows via SQL.
 

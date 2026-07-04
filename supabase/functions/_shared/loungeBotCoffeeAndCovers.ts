@@ -24,17 +24,20 @@ export const COFFEE_SPREAD_EV_THRESHOLD_PCT = 4
 export const COFFEE_MAX_PICKS_PER_SPORT = 3
 
 export const COFFEE_COVERS_HEADER = '☕ Coffee & Covers 💵'
-export const COFFEE_COVERS_SECTION = 'Covers'
-export const COFFEE_ON_TAP_SECTION = '🍺 On tap:'
-export const COFFEE_BEST_LINES_TEASER = 'Best lines in 🧵👇'
+export const COFFEE_NO_COVERS_LINE =
+  'No strong covers today - sitting on hands until we see better value.'
+export const COFFEE_ML_SECTION = 'BEST ML SPOTS RIGHT NOW:'
+export const COFFEE_DOGS_SECTION = 'BIGGEST DOGS:'
+export const COFFEE_ON_TAP_SECTION = '🍺 ON TAP TOMORROW:'
+export const COFFEE_BEST_LINES_TEASER = 'Best lines 👇'
+/** Max ML spots listed in the combined morning post (global, sorted by EV). */
+export const COFFEE_ML_SPOTS_MAX_TOTAL = 8
 /** Max tomorrow lookahead calls in the morning post. */
 export const COFFEE_ON_TAP_MAX_PICKS = 3
 /** Include tomorrow picks within this many % of the spread/ML bar. */
 export const COFFEE_ON_TAP_NEAR_THRESHOLD_PCT = 1
 
 const CAPTION_MAX = 2000
-const NO_COVERS_LINE =
-  'Sitting on hands today until we find something worth calling.'
 
 type Outcome = { name?: string; price?: number; point?: number }
 type Market = { key?: string; outcomes?: Outcome[] }
@@ -172,49 +175,96 @@ function joinCaptionLines(lines: string[]): string {
   return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
-function formatSpreadPickLine(pick: SpreadPick, sportLabel?: string): string {
-  const team = shortDisplayName(pick.pickName)
+/** e.g. "Sat 2PM PT" or "Sat 7:11PM PT" */
+function formatOddsCommenceTimeCoffee(iso: string): string {
+  const t = Date.parse(String(iso || ''))
+  if (!Number.isFinite(t)) return ''
+  const d = new Date(t)
+  const tz = 'America/Los_Angeles'
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).formatToParts(d)
+  const hour = parts.find((p) => p.type === 'hour')?.value ?? ''
+  const minute = parts.find((p) => p.type === 'minute')?.value ?? ''
+  const dayPeriod = (parts.find((p) => p.type === 'dayPeriod')?.value ?? '').toUpperCase()
+  const time = minute === '00' ? `${hour}${dayPeriod}` : `${hour}:${minute}${dayPeriod}`
+  return `${weekday} ${time} PT`
+}
+
+function formatPickNameLabel(name: string): string {
+  const n = String(name || '').trim()
+  if (/^draw$|^tie$/i.test(n)) return 'Draw'
+  return shortDisplayName(n)
+}
+
+function formatEvSuffix(edgePct: number): string {
+  const ev = Math.round(edgePct * 10) / 10
+  return `(+${ev}% EV)`
+}
+
+function formatMatchupTeams(awayTeam: string, homeTeam: string): string {
+  return `${shortDisplayName(awayTeam)} vs ${shortDisplayName(homeTeam)}`
+}
+
+function formatCoverBulletLines(pick: SpreadPick, categoryLabel: string): string[] {
+  const when = formatOddsCommenceTimeCoffee(pick.commenceTime)
+  const team = formatPickNameLabel(pick.pickName)
   const spread = formatSpreadPoint(pick.pickPoint)
   const juice = formatAmericanOdds(pick.pickPrice)
-  const fair = formatAmericanOdds(pick.consensusPrice)
-  const when = formatOddsCommenceTimeShort(pick.commenceTime)
-  const away = shortDisplayName(pick.awayTeam)
-  const home = shortDisplayName(pick.homeTeam)
-  const matchup = `${away} vs ${home}, ${when}`
+  const label = String(categoryLabel || '').trim()
+  const head = label
+    ? `• ${label} - ${formatMatchupTeams(pick.awayTeam, pick.homeTeam)} (${when})`
+    : `• ${formatMatchupTeams(pick.awayTeam, pick.homeTeam)} (${when})`
   return [
-    sportLabel ? `${sportLabel} · ${matchup}` : matchup,
-    `${team} ${spread} (${juice}) at ${pick.bookTitle}`,
-    `Fair ${fair} (${pick.bookCount} books) · +${pick.edgePct}% EV`,
-  ].join('\n')
+    head,
+    `${team} ${spread} (${juice}) @ ${pick.bookTitle} ${formatEvSuffix(pick.edgePct)}`,
+  ]
 }
 
-function formatMlSpotLine(pick: OddsPick, sportLabel?: string): string {
-  const team = shortDisplayName(pick.pickName)
+function formatMlSpotBulletLines(pick: OddsPick, categoryLabel: string): string[] {
+  const when = formatOddsCommenceTimeCoffee(pick.commenceTime)
+  const team = formatPickNameLabel(pick.pickName)
   const odds = formatAmericanOdds(pick.pickPrice)
-  const fair = formatAmericanOdds(pick.consensusPrice)
-  const when = formatOddsCommenceTimeShort(pick.commenceTime)
-  const away = shortDisplayName(pick.awayTeam)
-  const home = shortDisplayName(pick.homeTeam)
-  const matchup = `${away} vs ${home}, ${when}`
+  const label = String(categoryLabel || '').trim()
+  const head = label
+    ? `• ${label} - ${formatMatchupTeams(pick.awayTeam, pick.homeTeam)} (${when})`
+    : `• ${formatMatchupTeams(pick.awayTeam, pick.homeTeam)} (${when})`
   return [
-    sportLabel ? `${sportLabel} · ${matchup}` : matchup,
-    `${team} ML ${odds} at ${pick.bookTitle}`,
-    `Fair ${fair} (${pick.bookCount} books) · +${pick.edgePct}% EV`,
-  ].join('\n')
+    head,
+    `${team} ML ${odds} @ ${pick.bookTitle} ${formatEvSuffix(pick.edgePct)}`,
+  ]
 }
 
-function formatBiggestDogLine(dog: BiggestDog): string {
+function formatBiggestDogBulletLines(dog: BiggestDog): string[] {
+  const when = formatOddsCommenceTimeCoffee(dog.commenceTime)
+  const pickLabel = formatPickNameLabel(dog.pickName)
   const odds = formatAmericanOdds(dog.pickPrice)
-  const when = formatOddsCommenceTimeShort(dog.commenceTime)
-  const away = shortDisplayName(dog.awayTeam)
-  const home = shortDisplayName(dog.homeTeam)
-  const name = String(dog.pickName || '').trim()
-  const isDraw = /^draw$|^tie$/i.test(name)
-  const pickLabel = isDraw ? 'Draw' : shortDisplayName(name)
   return [
-    `${dog.categoryLabel} · ${away} vs ${home}, ${when}`,
-    `${pickLabel} ML ${odds} at ${dog.bookTitle}`,
-  ].join('\n')
+    `• ${dog.categoryLabel} - ${formatMatchupTeams(dog.awayTeam, dog.homeTeam)} (${when})`,
+    `${pickLabel} ML ${odds} @ ${dog.bookTitle}`,
+  ]
+}
+
+function formatOnTapBulletLine(entry: OnTapPick): string {
+  const label = entry.categoryLabel
+  const matchup = formatMatchupTeams(
+    entry.kind === 'spread' ? entry.pick.awayTeam : entry.pick.awayTeam,
+    entry.kind === 'spread' ? entry.pick.homeTeam : entry.pick.homeTeam,
+  )
+  const ev = formatEvSuffix(entry.edgePct)
+  if (entry.kind === 'spread') {
+    const team = formatPickNameLabel(entry.pick.pickName)
+    const spread = formatSpreadPoint(entry.pick.pickPoint)
+    const juice = formatAmericanOdds(entry.pick.pickPrice)
+    return `• ${label} - ${matchup}: ${team} ${spread} (${juice}) ${ev}`
+  }
+  const team = formatPickNameLabel(entry.pick.pickName)
+  const odds = formatAmericanOdds(entry.pick.pickPrice)
+  return `• ${label} - ${matchup}: ${team} ${odds} ${ev}`
 }
 
 /** Longest h2h price on today's board for one calendar sport. */
@@ -303,13 +353,6 @@ export function findOnTapPicks(input: CoffeeAndCoversOptions): OnTapPick[] {
   return merged
 }
 
-function formatOnTapPickLine(entry: OnTapPick): string {
-  if (entry.kind === 'spread') {
-    return formatSpreadPickLine(entry.pick, entry.categoryLabel)
-  }
-  return formatMlSpotLine(entry.pick, entry.categoryLabel)
-}
-
 function mergeOnTapPicks(slices: OnTapPick[][]): OnTapPick[] {
   const merged = slices.flat()
   merged.sort((a, b) => b.edgePct - a.edgePct)
@@ -368,45 +411,50 @@ function buildMainCaption(
   onTapPicks: OnTapPick[],
   sportLabelByPick?: (pick: SpreadPick | OddsPick) => string | undefined,
 ): string {
-  const lines: string[] = [COFFEE_COVERS_HEADER, '', COFFEE_COVERS_SECTION]
+  const lines: string[] = [COFFEE_COVERS_HEADER, '']
 
-  if (coverPicks.length) {
-    for (const pick of coverPicks) {
-      const label = sportLabelByPick?.(pick)
-      lines.push(formatSpreadPickLine(pick, label))
-      lines.push('')
+  const coverSorted = [...coverPicks].sort((a, b) => b.edgePct - a.edgePct).slice(0, 3)
+  if (coverSorted.length) {
+    for (const pick of coverSorted) {
+      const label = sportLabelByPick?.(pick) ?? ''
+      lines.push(...formatCoverBulletLines(pick, label))
     }
   } else {
-    lines.push(NO_COVERS_LINE)
-    lines.push('')
+    lines.push(COFFEE_NO_COVERS_LINE)
   }
 
-  if (mlPicks.length) {
-    lines.push('ML spots')
-    for (const pick of mlPicks) {
-      const label = sportLabelByPick?.(pick)
-      lines.push(formatMlSpotLine(pick, label))
-      lines.push('')
+  lines.push('', COFFEE_ML_SECTION)
+  const mlSorted = [...mlPicks].sort((a, b) => b.edgePct - a.edgePct)
+    .slice(0, COFFEE_ML_SPOTS_MAX_TOTAL)
+  if (mlSorted.length) {
+    for (const pick of mlSorted) {
+      const label = sportLabelByPick?.(pick) ?? ''
+      lines.push(...formatMlSpotBulletLines(pick, label))
     }
+  } else {
+    lines.push('Nothing clearing the ML bar right now.')
   }
 
-  if (biggestDogs.length) {
-    lines.push('Biggest dogs')
-    for (const dog of biggestDogs) {
-      lines.push(formatBiggestDogLine(dog))
-      lines.push('')
+  lines.push('', COFFEE_DOGS_SECTION)
+  const dogsSorted = [...biggestDogs].sort((a, b) => b.pickPrice - a.pickPrice)
+  if (dogsSorted.length) {
+    for (const dog of dogsSorted) {
+      lines.push(...formatBiggestDogBulletLines(dog))
     }
+  } else {
+    lines.push('No big dogs on today\'s slate.')
   }
 
+  lines.push('', COFFEE_ON_TAP_SECTION)
   if (onTapPicks.length) {
-    lines.push(COFFEE_ON_TAP_SECTION)
     for (const entry of onTapPicks) {
-      lines.push(formatOnTapPickLine(entry))
-      lines.push('')
+      lines.push(formatOnTapBulletLine(entry))
     }
+  } else {
+    lines.push('Nothing on tap for tomorrow yet.')
   }
 
-  lines.push(COFFEE_BEST_LINES_TEASER)
+  lines.push('', COFFEE_BEST_LINES_TEASER)
   return joinCaptionLines(lines)
 }
 
@@ -529,7 +577,7 @@ export function generateCoffeeAndCovers(input: CoffeeAndCoversOptions): CoffeeAn
     : []
 
   return {
-    caption: buildMainCaption(coverPicks, mlPicks, biggestDogs, onTapPicks),
+    caption: buildMainCaption(coverPicks, mlPicks, biggestDogs, onTapPicks, () => categoryLabel),
     threadParts,
     coverPicks,
     mlPicks,

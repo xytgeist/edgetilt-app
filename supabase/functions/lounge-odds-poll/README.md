@@ -13,7 +13,7 @@ Background odds poller for sports bots.
 
 `daily_slates` only publishes between **7:00am and 10:00am PT**. Each bot gets a **stable random minute** in that window per day (derived from `bot_user_id` + PT date) so posts do not land at the same time every morning.
 
-Each post opens with **☕ Coffee & Covers 💵**, then **Covers** (spread +EV at **+4%**, max **3** per sport). If none qualify, Scott opens with *"Sitting on hands today until we find something worth calling."* Optional **ML spots** at **+3%** +EV, then **`Best lines in 🧵👇`**. Today's lines live in **thread parts** (one per calendar sport with games).
+Each post opens with **☕ Coffee & Covers 💵**. If no spread clears **+4%** EV, Scott opens with *"No strong covers today - sitting on hands until we see better value."* Then **BEST ML SPOTS RIGHT NOW** (+3% bar), **BIGGEST DOGS**, **🍺 ON TAP TOMORROW**, and **`Best lines 👇`**. Today's lines live in **thread parts** (one per calendar sport with games).
 
 **Cron:** invoke every **15 minutes** from **7:00-9:59am PT** with service role:
 

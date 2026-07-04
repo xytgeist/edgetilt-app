@@ -25,7 +25,7 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 
 **+EV example:**
 ```text
-⚡ World Cup: France vs Paraguay, Sat Jul 4 at 2pm PT
+⚡ World Cup: France vs Paraguay (Sat 2PM PT)
 
 France ML +718 at MyBookie
 Fair +652 (9 books)
@@ -56,7 +56,7 @@ Best lines 👇
 ```text
 MLB
 
-Yankees vs Red Sox, Sat Jul 4 at 1pm PT
+Yankees vs Red Sox (Sat 1PM PT)
 Yankees -110 (FanDuel), Red Sox +105 (DraftKings)
 ```
 
@@ -66,10 +66,10 @@ When no spread clears **+4%** EV, the root post opens with: *No strong covers to
 ```text
 World Cup slate
 
-France vs Paraguay, Sat Jul 4 at 2pm PT
+France vs Paraguay (Sat 2PM PT)
 France +145 (DraftKings), Draw +652 (FanDuel), Paraguay +718 (MyBookie)
 
-Germany vs Portugal, Sat Jul 4 at 5pm PT
+Germany vs Portugal (Sat 5PM PT)
 Germany -110 (FanDuel), Portugal +105 (DraftKings)
 ```
 

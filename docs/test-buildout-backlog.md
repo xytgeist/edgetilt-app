@@ -775,6 +775,8 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-04: **Scott bot kickoff times:** **`formatOddsCommenceTimeShort`** now **`Sat 2PM PT`** style (no calendar date); thread parts, edge alerts, and legacy slate use **`Matchup (Sat 2PM PT)`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
+- 2026-07-04: **Lounge feed caption collapse 12 lines:** **`LOUNGE_CAPTION_DISPLAY_MAX_LINES`** **8 → 12** (still **320** chars; whichever hits first). Frontend deploy only.
 - 2026-07-04: **Planned — Lounge Markdown captions:** backlog + roadmap note for optional Markdown in feed captions/comments (preserve `@`/`#`/`$` tokens; spike scope + **`LoungeExpandableRichCaption`**). Ryan idea — structured bot posts (Coffee & Covers). **Not scheduled.**
 - 2026-07-04: **Coffee & Covers simplified bullet format:** root post uses `BEST ML SPOTS RIGHT NOW`, `BIGGEST DOGS`, `🍺 ON TAP TOMORROW`, `Best lines 👇`; plain `@` book labels and `(+X% EV)` suffixes; no middle dots. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`** (no new SQL).
 - 2026-07-04: **Coffee & Covers morning post:** migration **`20260704200000`** (`post_kind: coffee_covers`, `coffee_covers_enabled`); **`loungeBotCoffeeAndCovers.ts`** — spread covers **+4%** EV, ML spots **+3%**, today's lines board, sitting-on-hands copy when no covers; **`daily_slates`** poll + manual fetch fallback use Coffee & Covers (legacy slate when disabled). Portal: **Post Coffee & Covers**. Apply **`20260704200000`** on test; redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.

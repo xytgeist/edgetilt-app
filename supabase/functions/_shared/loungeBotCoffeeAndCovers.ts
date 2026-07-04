@@ -175,26 +175,6 @@ function joinCaptionLines(lines: string[]): string {
   return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
-/** e.g. "Sat 2PM PT" or "Sat 7:11PM PT" */
-function formatOddsCommenceTimeCoffee(iso: string): string {
-  const t = Date.parse(String(iso || ''))
-  if (!Number.isFinite(t)) return ''
-  const d = new Date(t)
-  const tz = 'America/Los_Angeles'
-  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d)
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).formatToParts(d)
-  const hour = parts.find((p) => p.type === 'hour')?.value ?? ''
-  const minute = parts.find((p) => p.type === 'minute')?.value ?? ''
-  const dayPeriod = (parts.find((p) => p.type === 'dayPeriod')?.value ?? '').toUpperCase()
-  const time = minute === '00' ? `${hour}${dayPeriod}` : `${hour}:${minute}${dayPeriod}`
-  return `${weekday} ${time} PT`
-}
-
 function formatPickNameLabel(name: string): string {
   const n = String(name || '').trim()
   if (/^draw$|^tie$/i.test(n)) return 'Draw'
@@ -211,7 +191,7 @@ function formatMatchupTeams(awayTeam: string, homeTeam: string): string {
 }
 
 function formatCoverBulletLines(pick: SpreadPick, categoryLabel: string): string[] {
-  const when = formatOddsCommenceTimeCoffee(pick.commenceTime)
+  const when = formatOddsCommenceTimeShort(pick.commenceTime)
   const team = formatPickNameLabel(pick.pickName)
   const spread = formatSpreadPoint(pick.pickPoint)
   const juice = formatAmericanOdds(pick.pickPrice)
@@ -226,7 +206,7 @@ function formatCoverBulletLines(pick: SpreadPick, categoryLabel: string): string
 }
 
 function formatMlSpotBulletLines(pick: OddsPick, categoryLabel: string): string[] {
-  const when = formatOddsCommenceTimeCoffee(pick.commenceTime)
+  const when = formatOddsCommenceTimeShort(pick.commenceTime)
   const team = formatPickNameLabel(pick.pickName)
   const odds = formatAmericanOdds(pick.pickPrice)
   const label = String(categoryLabel || '').trim()
@@ -240,7 +220,7 @@ function formatMlSpotBulletLines(pick: OddsPick, categoryLabel: string): string[
 }
 
 function formatBiggestDogBulletLines(dog: BiggestDog): string[] {
-  const when = formatOddsCommenceTimeCoffee(dog.commenceTime)
+  const when = formatOddsCommenceTimeShort(dog.commenceTime)
   const pickLabel = formatPickNameLabel(dog.pickName)
   const odds = formatAmericanOdds(dog.pickPrice)
   return [
@@ -363,7 +343,7 @@ function formatSlateGameBlock(game: ReturnType<typeof extractSlateGameBestLines>
   const away = shortDisplayName(game.awayTeam)
   const home = shortDisplayName(game.homeTeam)
   const when = formatOddsCommenceTimeShort(game.commenceTime)
-  const head = when ? `${away} vs ${home}, ${when}` : `${away} vs ${home}`
+  const head = when ? `${away} vs ${home} (${when})` : `${away} vs ${home}`
   const oddsLine = game.picks
     .map((p) => `${p.label} ${formatAmericanOdds(p.price)} (${p.book})`)
     .join(', ')

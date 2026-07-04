@@ -165,22 +165,24 @@ export function formatOddsCommenceTime(iso: string): string {
   }).format(new Date(t))
 }
 
-/** Compact kickoff for feed captions (e.g. "Sun Jul 5 at 3am PT"). */
+/** Compact kickoff for Scott bot captions (e.g. "Sat 2PM PT" or "Sat 7:11PM PT"). */
 export function formatOddsCommenceTimeShort(iso: string): string {
   const t = Date.parse(String(iso || ''))
   if (!Number.isFinite(t)) return ''
   const d = new Date(t)
   const tz = 'America/Los_Angeles'
   const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d)
-  const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short', day: 'numeric' }).format(d)
-  const timeRaw = new Intl.DateTimeFormat('en-US', {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  }).format(d)
-  const time = timeRaw.replace(':00', '').replace(' AM', 'am').replace(' PM', 'pm')
-  return `${weekday} ${monthDay} at ${time} PT`
+  }).formatToParts(d)
+  const hour = parts.find((p) => p.type === 'hour')?.value ?? ''
+  const minute = parts.find((p) => p.type === 'minute')?.value ?? ''
+  const dayPeriod = (parts.find((p) => p.type === 'dayPeriod')?.value ?? '').toUpperCase()
+  const time = minute === '00' ? `${hour}${dayPeriod}` : `${hour}:${minute}${dayPeriod}`
+  return `${weekday} ${time} PT`
 }
 
 export function formatAmericanOdds(price: number): string {
@@ -394,7 +396,7 @@ function joinCaptionLines(lines: string[]): string {
   return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
-/** e.g. "World Cup: France vs Paraguay, Sat Jul 4 at 2pm PT" */
+/** e.g. "World Cup: France vs Paraguay (Sat 2PM PT)" */
 function formatEventMatchupLine(
   event: string | undefined,
   away: string,
@@ -402,7 +404,7 @@ function formatEventMatchupLine(
   when: string,
 ): string {
   const matchup = `${away} vs ${home}`
-  const body = when ? `${matchup}, ${when}` : matchup
+  const body = when ? `${matchup} (${when})` : matchup
   return event ? `${event}: ${body}` : body
 }
 

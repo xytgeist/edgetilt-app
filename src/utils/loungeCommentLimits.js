@@ -11,7 +11,7 @@ export const LOUNGE_POST_THREAD_MAX_PARTS = 25
 export const LOUNGE_CAPTION_DISPLAY_MAX = 320
 
 /** Collapsed caption line count in feed/list UI (whichever limit hits first: chars or lines). */
-export const LOUNGE_CAPTION_DISPLAY_MAX_LINES = 8
+export const LOUNGE_CAPTION_DISPLAY_MAX_LINES = 12
 
 /** @deprecated use {@link loungeCaptionMaxForProfile} */
 export const LOUNGE_COMMENT_BODY_MAX = LOUNGE_CAPTION_MAX

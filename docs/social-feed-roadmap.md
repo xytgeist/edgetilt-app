@@ -98,7 +98,7 @@ Order vs phases **A–L** is TBD; likely after **Phase C** (profiles + identity)
 
 ### A2. Evolve `community_feed_posts` (or rename to `feed_posts`)
 
-- **v1 on test:** single user-authored text column **`caption`** (currently **≤500** chars; feed UI collapses at **320** before …more). Legacy **`title` / `body`** were removed after a one-time backfill in `feed_phase_a_profiles_public_read.sql` (test-only data acceptable).
+- **v1 on test:** single user-authored text column **`caption`** (currently **≤500** chars; feed UI collapses at **320** chars or **12** lines before …more). Legacy **`title` / `body`** were removed after a one-time backfill in `feed_phase_a_profiles_public_read.sql` (test-only data acceptable).
 - **Planned (not shipped):** optional **Markdown rendering** in captions/comments (bold, headers, lists) while preserving **`@` / `#` / `$`** tap behavior — today **`renderRichCaption`** is plain text + rich tokens only. Track in **`docs/test-buildout-backlog.md`** → *Planned (Lounge feed — optional Markdown captions)*. Ryan flagged **2026-07-04** (useful for structured bot posts like Coffee & Covers).
 - Keep optional **`game_slug` / `game_title`** in v1 (FK later if needed).
 - Moderation / edit metadata:

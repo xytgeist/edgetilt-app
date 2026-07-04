@@ -751,6 +751,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-04: **Bot portal profile editor:** **`BotProfileEditor`** in **`/?tab=bots`** (avatar crop, banner upload/presets, handle, bio, about); migration **`20260704130000`** extends **`admin_lounge_bot_save_settings`** + portal snapshot profile fields. Apply on test.
 - 2026-07-04: **Sports tribe (`sports`):** new Lounge category pill + profile tribe; migration **`20260704120000`** updates **`lounge_allowed_category_slugs()`** + post/profile CHECK constraints; green chip in feed/compose; sports odds bot defaults to **`sports`** (was **`gaming`**). Apply on test before tagging posts.
 - 2026-07-03: **Bot portal wizard + editorial inbox + odds fetch (code):** migration **`20260703160000`** (`lounge_bot_queue`, `lounge_bot_x_sources`, odds config, editorial RPCs); Edge **`lounge-bot-admin`**, **`lounge-odds-ingest`**, **`lounge-x-ingest`**, **`lounge-bot-publish-due`**; UI **`/?tab=bots`**: **+ Create bot** wizard, **Editorial inbox** tab, sports odds **Fetch odds** button. Apply **`20260703140000`** through **`20260703160000`** on test; deploy Edge fns + secrets before smoke.
 - 2026-07-03: **Bot management portal (code):** migration **`20260703150000`** (`run_state` running/paused/stopped, **`admin_lounge_bot_portal_snapshot`**, **`admin_lounge_bot_save_settings`**); in-app **`/?tab=bots`** admin tab; edit/delete bot posts, caps, sources, pipeline run. Apply **`20260703140000`** + **`20260703150000`** on test.

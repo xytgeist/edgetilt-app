@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import BotCreateWizard from './BotCreateWizard.jsx'
 import BotEditorialInbox from './BotEditorialInbox.jsx'
+import BotProfileEditor from './BotProfileEditor.jsx'
 import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
@@ -357,6 +358,15 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           </div>
         )}
       </div>
+
+      <BotProfileEditor
+        bot={bot}
+        supabaseClient={supabaseClient}
+        onReload={onReload}
+        setToast={setToast}
+        busy={busy}
+        setBusy={setBusy}
+      />
 
       <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-4">
         <div className="text-white font-bold text-sm mb-3">Settings</div>

@@ -60,6 +60,7 @@ Track **everything else** already used on test that production must also have ap
 - [x] **Chat archive inbox** — apply in order: **`20260702150000_chat_room_member_archive.sql`** (`archived_at`, **`chat_archive_room`**, inbox/unread exclude archived), **`20260702160000_chat_archived_rooms_list.sql`** (**`chat_unarchive_room`**, archived list RPCs), **`20260702170000_chat_unarchive_notifications_comment.sql`** (comments only; safe re-run). Redeploy **`lounge-chat`** (§4) after apply.
 - [x] **Lounge strict hashtag search** — **`20260702210000_lounge_search_strict_hashtag.sql`** (**`lounge_search_hashtag_posts`**; Ryan sign-off **2026-07-02**, client **`a496a97`**).
 - [ ] **Lounge caption cap 500** — **`20260703130000_lounge_caption_500.sql`** (posts, comments, drafts, thread draft validator; client **`LOUNGE_CAPTION_MAX`** = 500, feed collapse **`LOUNGE_CAPTION_DISPLAY_MAX`** = 320).
+- [ ] **Lounge bots (Scott Share / portal)** — apply in order (skip any already applied): **`20260703140000`** through **`20260703160000`** (bot accounts, portal snapshot, odds config), **`20260704120000`** (sports tribe), **`20260704130000`** (bot profile admin edit), **`20260704140000`** (sports betting calendar), **`20260704150000`**–**`20260704200000`** (slate/edge/coffee covers, subscriber 2000-char cap), **`20260704210000`** (bot profile tribes on save), **`20260704220000`** (**reply on any visible post**). Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`** after odds migrations; set **`THE_ODDS_API_KEY`** on prod Edge. **Note:** prod often applies via SQL editor — **`schema_migrations`** may lag; verify **`admin_lounge_bot_post_comment`** via function body. **`20260704220000`** **verified applied** on prod **2026-07-04** (Ryan manual apply).
 - [ ] **Play Logbook (if prod ships Logbook):** apply test-validated chain through **`20260531540000_buffalo_calculator_slug_buffalo_link.sql`** — base **`20260529120000_play_logbook.sql`**, shared sessions **`20260531140000`**, manager/paid **`20260531190000`**, paid/unpaid notify repair order (**`20260531300000`** → **`20260531310000`**, repair **`20260531320000`** if needed), custom metrics **`20260531350000`**, admin primary templates **`20260531400000`**, MHB fields **`20260531500000`**, label migrations **`20260531330000`**–**`20260531360000`**, **`20260531510000`**–**`20260531530000`**, **`20260531540000`**. Redeploy **`lounge-send-activity-push`** after activity-event migrations.
 
 **After deploy — quick smoke SQL (production):**
@@ -177,6 +178,14 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Android chat video lightbox (2026-07-03):** **Ryan sign-off** — client-only **`ac9a948`** on **`origin/main`** / **`edgetilt.com`**; Android chat video → lounge-style lightbox (swipe dismiss, playback controls, audio stops on dismiss) smoke **PASSED**. No migration or Edge redeploy.
 
+**Post detail reply composer iOS footer (2026-07-04):** client-only **`308ef6eb`** — **`SocialFeed.jsx`**; reply footer no longer floats mid-screen when opening long post detail without keyboard. No migration or Edge redeploy.
+
+**Deploy update banner 20s (2026-07-04):** client-only **`843c5f32`** — **`appDeployVersion.js`**; refocus deploy detect auto-reloads after **20s** (was 3s). No migration or Edge redeploy.
+
+**Advanced chart Add to post confirm (2026-07-04):** client-only **`014b3d4d`** — **`LoungeMarketChartModal`** confirm before inserting Advanced snapshot into composer. No migration or Edge redeploy.
+
+**Bot portal reply on any post (2026-07-04):** client **`48d739db`** + SQL **`20260704220000`**. **Ryan sign-off:** prod RPC verified **2026-07-04** on **`jtjgtucumuoswnbauxry`** (manual SQL editor; function comment + no bot-owner guard). Not recorded in **`schema_migrations`**. Residual portal errors → wrong env / UUID / stale tab.
+
 ---
 
 ## 5. Post-deploy smoke (application)
@@ -220,4 +229,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **Android chat video lightbox** prod **sign-off** (client **`ac9a948`**, client-only). Prior: **Android dock Home ghost click** (**`cdb5c69`**). Prior: **iOS nested lounge + chat composer caret** (**`60652cd`**). Prior: **Lounge + chat composer Enter + Android placeholder** (**`d9ef2a9`**). Prior: **Lounge strict hashtag search** (**`20260702210000`**, **`a496a97`**). Prior: **Chat archive inbox** (**`20260702150000`**–**`170000`**, **`lounge-chat`**, **`f31d9a7`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._
+_Last updated: **2026-07-04** — bot portal reply SQL chain (**`20260704220000`**), client ship notes (**`308ef6eb`**, **`843c5f32`**, **`014b3d4d`**, **`48d739db`**). Prior: **Android chat video lightbox** (**`ac9a948`**). Prior: **Android dock Home ghost click** (**`cdb5c69`**). Prior: **iOS nested lounge + chat composer caret** (**`60652cd`**). Frontend: `docs/frontend-architecture.md`; test tracking: `docs/test-buildout-backlog.md`._

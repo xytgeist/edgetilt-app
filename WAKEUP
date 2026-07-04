@@ -28,7 +28,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`0a6424e1`** (2026-07-04)
+**Branch:** `main` / `test` aligned at **`014b3d4d`** (2026-07-04)
 
 **Supabase (do not swap these):**
 
@@ -37,13 +37,13 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Scott Share sports odds bot — apply test migrations, deploy Edge fns + frontend, smoke slate/+EV posts; then Stripe prod smoke / Starter weekly cron when ready._
+**Goal:** _Scott Share test smoke on **`kcosfvmreeiosdjdzycb`**; then Stripe prod smoke / Starter weekly cron when ready._
 
 **Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-04**). Sports odds spec: **`docs/lounge-bot-sports-odds.md`**. Bot portal: **`/?tab=bots`**.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. wire Supabase cron for lounge-odds-poll, line-movement v2, delete bogus NFL post]_
+- Session focus: _[e.g. Scott Share smoke on test, prod bot reply migration, line-movement v2]_
 - No prod writes / no commits / PR only: _[say which]_
 - Context: _[e.g. "see backlog Planned → Lounge bots → Sports odds smoke"]_
 
@@ -51,22 +51,38 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Jul 2026)
 
-**Latest commits (`main` / `test`):** `0a6424e1` (Min +EV % portal field) · `408cdbbe` (slate check-ins + devig +EV engine + `lounge-odds-poll`) · `cb58d62e` (sports betting calendar + manual slate picker) · `620924ae` (off-season / bogus edge fix) · `2991f35c` (bot profile editor)
+**Latest commits (`main` / `test`):** `014b3d4d` (advanced chart Add to post confirm modal) · `843c5f32` (deploy banner auto-reload **20s**) · `308ef6eb` (post detail reply composer iOS footer fix) · `48d739db` (bot portal reply on any post) · `0a6424e1` (Min +EV % portal field)
 
-### Scott Share / sports odds bot (test — in progress)
+### Shipped client (prod deploy via Vercel `main`)
+
+| Commit | What |
+| --- | --- |
+| **`014b3d4d`** | **`LoungeMarketChartModal`** — Advanced fullscreen **Add to post** shows confirm (Continue / Save to Photos / Cancel) before inserting snapshot into composer |
+| **`843c5f32`** | **`AppUpdateAvailableBanner`** — silent auto-reload after **20s** (was 3s) on refocus deploy detect |
+| **`308ef6eb`** | **`SocialFeed.jsx`** — post detail reply footer no longer floats mid-screen on iOS when opening a long thread (keyboard overlap only while reply focused) |
+| **`48d739db`** | **`BotReplyOnPostPanel`** + **`20260704220000`** — Scott (any bot) can reply on **any** visible Lounge post from portal (paste `/lounge/p/{uuid}` or UUID) |
+
+### Prod SQL (Ryan-owned, manual SQL editor)
+
+| Migration | Status |
+| --- | --- |
+| **`20260704220000`** bot reply on any post | **Applied on prod** (**`jtjgtucumuoswnbauxry`**, verified **2026-07-04**): **`admin_lounge_bot_post_comment`** has new comment + no **`post does not belong to this bot`** guard. Not in **`schema_migrations`** (prod manual-apply pattern; table last records **`20260519120000`**). If portal still errors → env mismatch / stale tab / bad UUID, not missing SQL. |
+
+Share link UUID = last path segment of **`https://edgetilt.com/lounge/p/{uuid}`** (must match post's environment).
+
+### Scott Share / sports odds bot (test — smoke pending)
 
 | Item | Detail |
 | --- | --- |
 | **Bot** | **Scott Share** — `@sharpesignal`, pipeline **`odds_api`**, **`review_mode: automatic`** |
-| **Portal** | **`/?tab=bots`** — calendar dropdown, **Fetch odds**, **Scan all · edge**, **Post all slates**, **Min +EV %** in Settings (0.5–15) |
-| **Post types** | **⚡ +EV alert** (h2h devig, EV on $1) · **Slate check-in** when no edge clears |
-| **+EV engine** | Per-book devig → average fair prob → best line vs consensus; **`min_edge_pct`** = min +EV % (default **2**); max filter **15%** stale-data cap |
-| **API** | The Odds API **`THE_ODDS_API_KEY`** on Edge; ~**2 credits/fetch** (`h2h`+`spreads`, `us`) |
-| **Calendar** | **`lounge_sports_betting_calendar`** + **`admin_lounge_sports_betting_calendar_today()`** — manual major-sport picker (no auto sport guess) |
+| **Portal** | **`/?tab=bots`** — calendar dropdown, **Fetch odds**, **Scan all · edge**, **Post Coffee & Covers**, **Min +EV %**, **Reply on any post** |
+| **Post types** | **⚡ +EV alert** · **Coffee & Covers** daily board · legacy slate when Coffee disabled |
+| **+EV engine** | Per-book devig → consensus; **`min_edge_pct`** default **2**; max filter **15%** |
+| **Calendar** | **`lounge_sports_betting_calendar`** + manual major-sport picker |
 
 **Apply on test (in order, skip any already applied):**
 
-`20260704120000` → `20260704130000` → `20260704140000` → `20260704150000` → `20260704160000` → **`20260704170000`**
+`20260704120000` → `20260704130000` → `20260704140000` → `20260704150000` → `20260704160000` → `20260704170000` → `20260704180000` → `20260704190000` → `20260704200000` → `20260704210000` → **`20260704220000`**
 
 **Deploy on test:**
 
@@ -77,13 +93,7 @@ supabase functions deploy lounge-odds-poll --project-ref kcosfvmreeiosdjdzycb
 
 Plus frontend deploy for portal UI.
 
-**Ryan smoke checklist:**
-
-1. Portal → Scott Share → set **Min +EV %** to **2** if still **4** (old row) → Save settings
-2. **Dry run** on today's calendar sport → expect `wouldPostKind: edge` or `slate`
-3. **Fetch odds** → slate or ⚡ post on Lounge as `@sharpesignal`
-4. **Scan all · edge** / **Post all slates** on a busy calendar day
-5. Delete any leftover bogus off-season NFL post manually
+**Ryan smoke checklist:** see **`docs/test-buildout-backlog.md`** → **Planned → Lounge bots → Sports odds smoke**.
 
 **Not built yet:** Supabase cron for 30-min **`poll_edges`** (README only); line-movement captions; spreads/totals +EV; feed UI +EV badge; portal calendar editor (SQL/table only).
 
@@ -93,10 +103,11 @@ Plus frontend deploy for portal UI.
 | --- | --- |
 | **EdgeTilt cutover** | **`edgetilt.com`** → prod Supabase; **`lvslotpro.com`** → test sandbox |
 | **Auth + Stripe + Legal** | See backlog Update log **2026-07-01** tail |
+| **Client through `014b3d4d`** | Deploy banner 20s, iOS post detail composer fix, chart insert confirm, bot reply UI + prod **`20260704220000`** RPC (manual apply, verified) |
 
 ### Next priorities (ordered)
 
-1. **Scott Share test smoke** (above) — migrations + Edge + frontend on **`kcosfvmreeiosdjdzycb`**
+1. **Scott Share test smoke** — migrations + Edge + frontend on **`kcosfvmreeiosdjdzycb`**
 2. **Apply migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** on test** + redeploy **`lounge-send-activity-push`**
 3. **Stripe prod smoke matrix** — **`docs/stripe-billing-test-to-prod-handoff.md`**
 4. **Billing RLS hardening** — entitlements (backlog)

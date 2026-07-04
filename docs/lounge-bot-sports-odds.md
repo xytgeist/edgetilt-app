@@ -1,6 +1,6 @@
 # Lounge bot — sports odds / +EV plays
 
-**Status:** **Shipped on test (code, Jul 2026)** — migrations through **`20260704200000`**, Edge fns **`lounge-odds-ingest`** + **`lounge-odds-poll`**, admin portal **`/?tab=bots`**. **Ryan smoke pending** on **`kcosfvmreeiosdjdzycb`**.
+**Status:** **Shipped on test (code, Jul 2026)** — migrations through **`20260704220000`**, Edge fns **`lounge-odds-ingest`** + **`lounge-odds-poll`**, admin portal **`/?tab=bots`**. **Ryan smoke pending** on **`kcosfvmreeiosdjdzycb`**. **Prod:** **`20260704220000`** RPC verified on **`jtjgtucumuoswnbauxry`** (**2026-07-04**, manual SQL editor apply).
 
 **Live bot (test):** **Scott Share** — `@sharpesignal`, pipeline **`odds_api`**, category pill **`sports`**.
 
@@ -205,7 +205,8 @@ Captions prefix category label from calendar row (e.g. `Wimbledon: ...`).
 | **`20260704180000`** | Manual post + comment as bot (`admin_lounge_bot_publish_post`, `admin_lounge_bot_post_comment`) |
 | **`20260704190000`** | Subscriber 2000-char lounge caption cap |
 | **`20260704200000`** | **`coffee_covers`** post kind + **`coffee_covers_enabled`** |
-| **`20260704220000`** | Bot portal reply on any visible post |
+| **`20260704210000`** | Bot profile interest tribes on **`admin_lounge_bot_save_settings`** |
+| **`20260704220000`** | Bot portal reply on any visible post (**`admin_lounge_bot_post_comment`**) |
 
 ---
 

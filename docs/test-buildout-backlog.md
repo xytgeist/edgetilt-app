@@ -59,7 +59,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Bot ops UI (code):** **`/?tab=bots`** Bot Portal — all bots, run/pause/stop, caps, score threshold, watchlist, source toggles, edit/delete posts, **manual post + reply as bot**, automation log, **Scott Share odds controls** (calendar picker, Fetch odds, Scan all · edge, **Post Coffee & Covers**, **Min +EV %**). Edge Monitor links here.
 - [ ] **Market news smoke (test):** dry run → enable bot → poll now → confirm Lounge post as bot user; verify day/hour caps.
 - [ ] **Sports odds bot smoke (test):** **`docs/lounge-bot-sports-odds.md`**
-  - [ ] Apply migrations **`20260704120000`** through **`20260704200000`** on **`kcosfvmreeiosdjdzycb`** (skip any already applied)
+  - [ ] Apply migrations **`20260704120000`** through **`20260704220000`** on **`kcosfvmreeiosdjdzycb`** (skip any already applied)
   - [ ] Deploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**; frontend deploy for portal
   - [ ] **`THE_ODDS_API_KEY`** on test Edge
   - [ ] Portal → Scott Share (`@sharpesignal`): **Min +EV %** = **2** if row still **4** → Save settings
@@ -67,6 +67,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - [ ] **Fetch odds** → ⚡ +EV or Coffee & Covers post on Lounge
   - [ ] **Scan all · edge** + **Post Coffee & Covers** on multi-sport calendar day
   - [ ] **Manual post as Scott** + **reply to a comment** on that post from portal
+  - [ ] **Reply on any post:** paste **`/lounge/p/{uuid}`** share link or raw UUID → **Reply as bot** on a **member** post (requires **`20260704220000`**)
   - [ ] Wire Supabase cron: **`daily_slates`** every 15 min **7-10am PT** (see **`lounge-odds-poll/README.md`**)
 
 ### X editorial
@@ -775,7 +776,11 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
-- 2026-07-04: **Bot portal reply on any post:** migration **`20260704220000`** — **`admin_lounge_bot_post_comment`** on any visible post; portal **Reply on any post** (paste `?post=` link or UUID). Apply on test; frontend deploy.
+- 2026-07-04: **Advanced chart Add to post confirm (client):** **`LoungeMarketChartModal`** — Advanced fullscreen snapshot menu **Add to post** opens confirm modal (**Continue** → composer insert + close chart; **Save to Photos** / **Save image** → save only; **Cancel** / backdrop / Escape → stay on chart). Client **`014b3d4d`** on **`origin/main`** / **`origin/test`**. Frontend deploy only.
+- 2026-07-04: **Deploy update banner 20s reload (client):** **`APP_UPDATE_VISIBILITY_RELOAD_MS`** **3000 → 20000** in **`appDeployVersion.js`** — refocus deploy detect shows **`AppUpdateAvailableBanner`** then silent reload after **20s** (cancel via **Not now**). Client **`843c5f32`**. **`docs/frontend-architecture.md`** stale-deploy row updated.
+- 2026-07-04: **Post detail reply composer iOS footer (client):** **`SocialFeed.jsx`** — removed always-on **`visualViewport`** listener on post detail open; **`useLoungeKeyboardOverlapPx`** only while reply field focused; footer padding uses thread-compose safe-area threshold. Fixes reply bar floating mid-screen when opening long threads without keyboard (regression from Jul 3 **`startExpanded`** + first long-comment load). Client **`308ef6eb`**. Smoke: iOS PWA open post with Scott reply → composer anchored bottom before tap.
+- 2026-07-04: **Bot portal reply on any post — prod verified:** migration **`20260704220000`** logic live on **`jtjgtucumuoswnbauxry`** (manual SQL editor apply; **`admin_lounge_bot_post_comment`** comment + body match repo; no **`post does not belong to this bot`**). **`schema_migrations`** on prod does not list Jul 4 rows (manual-apply drift — verify via **`pg_get_functiondef`**, not migration table). Client **`48d739db`**. Portal **`BotReplyOnPostPanel`**. Still apply on **test** if smoke pending.
+- 2026-07-04: **Bot portal reply on any post (code):** migration **`20260704220000`** — **`admin_lounge_bot_post_comment`** on any visible post; portal **`BotReplyOnPostPanel`** (paste **`/lounge/p/{uuid}`**, **`?post=`** link, or UUID). Client **`48d739db`**.
 - 2026-07-04: **Scott bot kickoff times:** **`formatOddsCommenceTimeShort`** now **`Sat 2PM PT`** style (no calendar date); thread parts, edge alerts, and legacy slate use **`Matchup (Sat 2PM PT)`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
 - 2026-07-04: **Lounge feed caption collapse 12 lines:** **`LOUNGE_CAPTION_DISPLAY_MAX_LINES`** **8 → 12** (still **320** chars; whichever hits first). Frontend deploy only.
 - 2026-07-04: **Planned — Lounge Markdown captions:** backlog + roadmap note for optional Markdown in feed captions/comments (preserve `@`/`#`/`$` tokens; spike scope + **`LoungeExpandableRichCaption`**). Ryan idea — structured bot posts (Coffee & Covers). **Not scheduled.**

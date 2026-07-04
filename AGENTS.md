@@ -173,7 +173,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 | Lounge (feed, Stream/R2, dock FAB, threads, profiles, **market charts**, smoke §11–§21) | **`docs/frontend-architecture.md`** → **`lounge/`** row; backlog **Lounge market** Update log lines |
 | Chat (DM, groups, video prep, link previews, glass CSS blast radius) | **`docs/frontend-architecture.md`** → **`chat/`** row; backlog **Chat** section |
 | Play Logbook, calculators, bankroll, offers, guides | Matching **`docs/frontend-architecture.md`** feature rows; backlog sections |
-| **Lounge bots (Scott Share / odds, wire, X editorial)** | **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-editorial-queue.md`**; portal **`/?tab=bots`** (**`src/features/bots/`**); Edge **`lounge-odds-ingest`**, **`lounge-odds-poll`**, **`lounge-news-poll`**; +EV math **`loungeBotOddsCaption.ts`**; migrations **`20260704140000`**–**`20260704170000`** |
+| **Lounge bots (Scott Share / odds, wire, X editorial)** | **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-editorial-queue.md`**; portal **`/?tab=bots`** (**`BotReplyOnPostPanel`**, **`BotProfileEditor`**); Edge **`lounge-odds-ingest`**, **`lounge-odds-poll`**, **`lounge-news-poll`**; migrations **`20260704120000`**–**`20260704220000`**; prod **`20260704220000`** verified **2026-07-04** (manual SQL — **`schema_migrations`** on prod lags) |
 | Freemium product rules | **`docs/access-tiers.md`** |
 | Tier testing SQL (`profiles.role`, `has_active_subscription`) | **`docs/test-user-roles.md`** |
 | **Test:** SQL apply order, Edge deploy list, smoke sign-offs, shipped facts | **`docs/test-buildout-backlog.md`** (sections + **Update log** tail) |

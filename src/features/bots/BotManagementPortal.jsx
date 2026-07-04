@@ -16,6 +16,7 @@ import {
   fetchSportsBettingCalendarToday,
   invokeLoungeNewsPoll,
   invokeLoungeOddsIngest,
+  invokeLoungeOddsPoll,
   invokeLoungeXIngest,
   saveBotSettings,
   toggleBotNewsSource,
@@ -255,22 +256,29 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     const d = result.data || {}
     if (bot.pipeline === 'odds_api') {
       const skipMsg =
-        d.skipped === 'no_upcoming_games'
-          ? `${d.categoryLabel || 'Sport'}: no games in the next 48h.`
-          : d.skipped === 'no_calendar_today'
-            ? 'No major events on the betting calendar today.'
-            : d.skipped === 'sport_not_active'
-              ? `${d.categoryLabel || d.sportKey || 'Sport'} is off-season at The Odds API right now.`
+        d.skipped === 'no_calendar_today'
+          ? 'No major events on the betting calendar today.'
+          : d.skipped === 'sport_not_active'
+            ? `${d.categoryLabel || d.sportKey || 'Sport'} is off-season at The Odds API right now.`
+            : d.skipped === 'already_posted_or_capped'
+              ? `${d.categoryLabel || selectedCalendarEntry?.label_short || 'Sport'}: already posted today or cap reached.`
               : d.skipped === 'no_edge_picks'
-                ? `${d.categoryLabel || 'Sport'}: ${d.eventsInWindow ?? 0} games in window, none cleared the edge bar.`
-                : d.skipped === 'daily_cap'
-                  ? 'Daily post cap reached.'
-                  : null
-      setToast(
-        dryRun
-          ? `Dry run (${d.categoryLabel || selectedCalendarEntry?.label_short || 'sport'}): ${d.candidateCount ?? 0} candidates (${d.eventsInWindow ?? 0} games in 48h)`
-          : skipMsg || `Published ${d.published ?? 0} pick${d.published === 1 ? '' : 's'} · ${d.categoryLabel || selectedCalendarEntry?.label_short || 'sport'}`,
-      )
+                ? `${d.categoryLabel || 'Sport'}: no edge alert (slate-only mode).`
+                : null
+      const label = d.categoryLabel || selectedCalendarEntry?.label_short || 'sport'
+      if (dryRun) {
+        setToast(
+          d.wouldPostKind === 'edge'
+            ? `Dry run · would post ⚡ +EV (${label})${d.edgeCandidate?.ev != null ? ` · +${d.edgeCandidate.ev}% EV` : ''}`
+            : `Dry run · would post slate check-in (${label}) · ${d.eventsInWindow ?? 0} games`,
+        )
+      } else if (d.publishedEdge) {
+        setToast(`⚡ +EV alert posted · ${label}${d.evPct != null ? ` (+${d.evPct}% EV)` : ''}`)
+      } else if (d.publishedSlate) {
+        setToast(`Slate check-in posted · ${label}`)
+      } else {
+        setToast(skipMsg || `Done · ${label}`)
+      }
     } else if (bot.pipeline === 'x') {
       setToast(dryRun ? `Dry run: ${d.ingested ?? 0} drafts` : `Ingested ${d.ingested ?? 0} to inbox`)
     } else {
@@ -278,6 +286,37 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         dryRun
           ? `Dry run: ${d.candidateCount ?? 0} candidates`
           : `Published ${d.published ?? 0} · ingested ${d.ingested ?? 0}`,
+      )
+    }
+    void onReload()
+  }
+
+  const runOddsPoll = async (action, dryRun = false) => {
+    setBusy(dryRun ? 'poll-dry' : action === 'daily_slates' ? 'slates' : 'poll-all')
+    const result = await invokeLoungeOddsPoll(supabaseClient, {
+      slug: bot.slug,
+      action,
+      dryRun,
+    })
+    setBusy('')
+    if (result.error) {
+      setToast(result.error.message || 'Odds poll failed.')
+      return
+    }
+    const d = result.data || {}
+    if (d.skipped === 'no_calendar_today') {
+      setToast('No major events on the betting calendar today.')
+    } else if (action === 'daily_slates') {
+      setToast(
+        dryRun
+          ? `Dry run · would post up to ${d.sportsChecked ?? 0} slate check-ins`
+          : `Posted ${d.publishedSlates ?? 0} slate check-in${d.publishedSlates === 1 ? '' : 's'} (${d.sportsChecked ?? 0} sports checked)`,
+      )
+    } else {
+      setToast(
+        dryRun
+          ? `Dry run · scanned ${d.sportsChecked ?? 0} sports for edge alerts`
+          : `⚡ ${d.publishedEdges ?? 0} +EV alert${d.publishedEdges === 1 ? '' : 's'} posted (${d.sportsChecked ?? 0} sports scanned)`,
       )
     }
     void onReload()
@@ -415,11 +454,11 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
                     ))}
                   </select>
                   <div className="text-zinc-500 text-[10px] mt-1.5">
-                    Fetch odds runs only for{' '}
-                    <span className="text-zinc-400 font-mono">{selectedSportKey || '…'}</span>
+                    Fetch odds posts ⚡ +EV if one clears the bar, otherwise a daily slate check-in.{' '}
+                    <span className="font-mono text-zinc-400">{selectedSportKey || '…'}</span>
                     {bot.odds_config?.min_edge_pct != null
-                      ? ` · min edge ${bot.odds_config.min_edge_pct}%`
-                      : ' · min edge 4%'}
+                      ? ` · min +EV ${bot.odds_config.min_edge_pct}%`
+                      : ' · min +EV 2%'}
                   </div>
                 </>
               ) : (
@@ -450,6 +489,26 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
             >
               {busy === 'poll' ? 'Running…' : botPollActionLabel(bot.pipeline)}
             </button>
+            {bot.pipeline === 'odds_api' ? (
+              <>
+                <button
+                  type="button"
+                  disabled={Boolean(busy) || bot.run_state !== 'running'}
+                  onClick={() => void runOddsPoll('poll_edges', false)}
+                  className="min-h-8 rounded-lg bg-amber-900/80 px-3 text-amber-100 text-[11px] font-semibold disabled:opacity-50"
+                >
+                  {busy === 'poll-all' ? '…' : 'Scan all · edge'}
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(busy) || bot.run_state !== 'running'}
+                  onClick={() => void runOddsPoll('daily_slates', false)}
+                  className="min-h-8 rounded-lg bg-zinc-800 px-3 text-zinc-200 text-[11px] font-semibold disabled:opacity-50"
+                >
+                  {busy === 'slates' ? '…' : 'Post all slates'}
+                </button>
+              </>
+            ) : null}
           </div>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">

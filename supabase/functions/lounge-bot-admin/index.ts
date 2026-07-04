@@ -76,8 +76,11 @@ async function seedPipelineExtras(
       sports_keys: ['baseball_mlb', 'basketball_wnba', 'americanfootball_nfl', 'basketball_nba'],
       regions: ['us'],
       markets: ['h2h', 'spreads'],
-      min_edge_pct: 4,
+      min_edge_pct: 2,
       max_picks_per_run: 1,
+      max_edge_alerts_per_day: 6,
+      max_slate_posts_per_day: 10,
+      daily_slate_enabled: true,
       enabled: true,
     })
   }

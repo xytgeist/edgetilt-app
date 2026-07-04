@@ -104,7 +104,7 @@ export async function fetchSportsBettingCalendarToday(supabaseClient) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean, sportKey?: string, calendarSlug?: string }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, sportKey?: string, calendarSlug?: string, postMode?: string }} [opts]
  */
 export async function invokeLoungeOddsIngest(supabaseClient, opts = {}) {
   const { data, error } = await supabaseClient.functions.invoke('lounge-odds-ingest', {
@@ -113,9 +113,27 @@ export async function invokeLoungeOddsIngest(supabaseClient, opts = {}) {
       dryRun: opts.dryRun === true,
       sportKey: opts.sportKey || undefined,
       calendarSlug: opts.calendarSlug || undefined,
+      postMode: opts.postMode || 'auto',
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'lounge-odds-ingest failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, action?: 'poll_edges' | 'daily_slates', dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeOddsPoll(supabaseClient, opts = {}) {
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug: opts.slug,
+      action: opts.action || 'poll_edges',
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'lounge-odds-poll failed') }
   if (data?.error) return { data: null, error: new Error(String(data.error)) }
   return { data, error: null }
 }

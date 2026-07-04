@@ -205,6 +205,7 @@ Captions prefix category label from calendar row (e.g. `Wimbledon: ...`).
 | **`20260704180000`** | Manual post + comment as bot (`admin_lounge_bot_publish_post`, `admin_lounge_bot_post_comment`) |
 | **`20260704190000`** | Subscriber 2000-char lounge caption cap |
 | **`20260704200000`** | **`coffee_covers`** post kind + **`coffee_covers_enabled`** |
+| **`20260704220000`** | Bot portal reply on any visible post |
 
 ---
 
@@ -215,9 +216,10 @@ On **`/?tab=bots`**, any bot card includes:
 | Control | RPC / behavior |
 | --- | --- |
 | **Post as @handle** | **`admin_lounge_bot_publish_post`** — inserts feed post as bot; logs **`post_kind: other`** |
-| **Replies** on each recent post | Load thread from **`feed_comments`**; **Reply as bot** → **`admin_lounge_bot_post_comment`** |
+| **Reply on any post** | Paste Lounge **`?post=`** link or UUID → **Load post** → thread + **Reply as bot** on any visible post (**`20260704220000`**) |
+| **Replies** on each recent bot post | Same reply UI on Scott's own posts in **Feed posts** |
 
-Works for Scott Share and all other bots. Does not bypass day/hour caps on automated ingest (manual posts are separate).
+Works for Scott Share and all other bots. Does not bypass day/hour caps on automated ingest (manual posts are separate). Bot reply body cap: **2000** chars (via **`lounge_feed_caption_max_for_user`**).
 
 ---
 

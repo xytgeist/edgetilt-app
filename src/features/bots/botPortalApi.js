@@ -205,6 +205,33 @@ export async function postBotComment(supabaseClient, opts) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} postId
  */
+export async function fetchPostForBotReply(supabaseClient, postId) {
+  const id = String(postId || '').trim()
+  if (!id) return { data: null, error: new Error('Post id required.') }
+
+  const { data, error } = await supabaseClient
+    .from('community_feed_posts')
+    .select('id, caption, user_id, created_at, comment_count')
+    .eq('id', id)
+    .is('hidden_at', null)
+    .maybeSingle()
+
+  if (error) return { data: null, error }
+  if (!data?.id) return { data: null, error: new Error('Post not found.') }
+
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('user_id, handle, display_name')
+    .eq('user_id', data.user_id)
+    .maybeSingle()
+
+  return { data: { ...data, author_profile: profile || null }, error: null }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} postId
+ */
 export async function fetchBotPostComments(supabaseClient, postId) {
   const { data, error } = await supabaseClient
     .from('feed_comments')

@@ -775,6 +775,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-04: **Bot portal reply on any post:** migration **`20260704220000`** — **`admin_lounge_bot_post_comment`** on any visible post; portal **Reply on any post** (paste `?post=` link or UUID). Apply on test; frontend deploy.
 - 2026-07-04: **Scott bot kickoff times:** **`formatOddsCommenceTimeShort`** now **`Sat 2PM PT`** style (no calendar date); thread parts, edge alerts, and legacy slate use **`Matchup (Sat 2PM PT)`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
 - 2026-07-04: **Lounge feed caption collapse 12 lines:** **`LOUNGE_CAPTION_DISPLAY_MAX_LINES`** **8 → 12** (still **320** chars; whichever hits first). Frontend deploy only.
 - 2026-07-04: **Planned — Lounge Markdown captions:** backlog + roadmap note for optional Markdown in feed captions/comments (preserve `@`/`#`/`$` tokens; spike scope + **`LoungeExpandableRichCaption`**). Ryan idea — structured bot posts (Coffee & Covers). **Not scheduled.**

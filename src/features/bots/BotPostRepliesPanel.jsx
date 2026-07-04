@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchBotPostComments, postBotComment } from './botPortalApi.js'
 import { formatBotPortalWhen } from './botPortalConstants.js'
-import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
+import { LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
 
 async function hydrateCommentsWithProfiles(supabaseClient, rows) {
   const list = rows || []
@@ -34,8 +34,9 @@ export default function BotPostRepliesPanel({
   supabaseClient,
   setToast,
   onReload,
+  defaultOpen = false,
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [loading, setLoading] = useState(false)
   const [comments, setComments] = useState([])
   const [replyBody, setReplyBody] = useState('')
@@ -138,8 +139,7 @@ export default function BotPostRepliesPanel({
                           </span>
                         ) : null}
                       </div>
-                      {!isBot ? (
-                        <button
+                      <button
                           type="button"
                           disabled={busy}
                           onClick={() => {
@@ -150,7 +150,6 @@ export default function BotPostRepliesPanel({
                         >
                           Reply as bot
                         </button>
-                      ) : null}
                     </div>
                     <div className="text-zinc-300 text-xs mt-1 leading-relaxed whitespace-pre-wrap">
                       {comment.body}
@@ -182,7 +181,7 @@ export default function BotPostRepliesPanel({
             )}
             <textarea
               value={replyBody}
-              maxLength={LOUNGE_COMMENT_BODY_MAX}
+              maxLength={LOUNGE_CAPTION_SUBSCRIBER_MAX}
               rows={3}
               onChange={(e) => setReplyBody(e.target.value)}
               placeholder="Write a reply…"
@@ -190,7 +189,7 @@ export default function BotPostRepliesPanel({
             />
             <div className="mt-2 flex items-center justify-between gap-2">
               <div className="text-zinc-600 text-[10px] tabular-nums">
-                {replyBody.length}/{LOUNGE_COMMENT_BODY_MAX}
+                {replyBody.length}/{LOUNGE_CAPTION_SUBSCRIBER_MAX}
               </div>
               <button
                 type="button"

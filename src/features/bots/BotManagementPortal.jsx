@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import BotCreateWizard from './BotCreateWizard.jsx'
 import BotEditorialInbox from './BotEditorialInbox.jsx'
 import BotPostRepliesPanel from './BotPostRepliesPanel.jsx'
+import BotReplyOnPostPanel from './BotReplyOnPostPanel.jsx'
 import BotProfileEditor from './BotProfileEditor.jsx'
 import {
   BOT_PIPELINE_LABELS,
@@ -875,6 +876,14 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           {busy === 'compose-post' ? 'Publishing…' : 'Publish post'}
         </button>
       </div>
+
+      <BotReplyOnPostPanel
+        botUserId={bot.user_id}
+        botHandle={bot.handle}
+        supabaseClient={supabaseClient}
+        setToast={setToast}
+        onReload={onReload}
+      />
 
       <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-4">
         <div className="text-white font-bold text-sm mb-3">Feed posts</div>

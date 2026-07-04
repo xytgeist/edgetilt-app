@@ -237,6 +237,7 @@ export function LoungeCommentCard({
               <LoungeExpandableRichCaption
                 text={bodyText}
                 captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
+                startExpanded
               />
             </div>
           ) : null}

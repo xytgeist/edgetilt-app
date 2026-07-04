@@ -14579,6 +14579,7 @@ export default function SocialFeed({
                       <LoungeExpandableRichCaption
                         text={loungeDetailCaptionDisplayText(loungePostDetail)}
                         captionOpts={loungePostDetailRichCaptionOpts}
+                        startExpanded
                       />
                     </div>
                   ) : null}
@@ -14661,6 +14662,7 @@ export default function SocialFeed({
                         <LoungeExpandableRichCaption
                           text={loungeDetailCaptionDisplayText(loungePostDetail.reposted_post)}
                           captionOpts={loungePostDetailRichCaptionOpts}
+                          startExpanded
                         />
                       </div>
                     ) : null}
@@ -14731,6 +14733,7 @@ export default function SocialFeed({
                       <LoungeExpandableRichCaption
                         text={loungeDetailCaptionDisplayText(loungePostDetail)}
                         captionOpts={loungePostDetailRichCaptionOpts}
+                        startExpanded
                       />
                     </div>
                   ) : null}

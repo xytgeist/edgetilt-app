@@ -1344,8 +1344,10 @@ function ChatRoomListRow({
         )}
       </div>
 
-      <div
-        className="chat-room-swipe-foreground-shell relative z-[1]"
+      <button
+        type="button"
+        onClick={handleClick}
+        className={`chat-room-swipe-foreground-shell relative z-[1] flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent] ${foregroundInnerClass}`}
         style={{
           transform: `translate3d(${offsetX}px, 0, 0)`,
           transition: rowTransition,
@@ -1360,12 +1362,6 @@ function ChatRoomListRow({
         onPointerCancel={onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <div className={foregroundInnerClass}>
-        <button
-          type="button"
-          onClick={handleClick}
-          className="flex w-full select-none items-center gap-3 rounded-[inherit] px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent]"
-        >
           <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
             {room.kind === 'dm' && room.peerAvatarUrl ? (
               <img
@@ -1435,9 +1431,7 @@ function ChatRoomListRow({
               {formatChatTimestamp(room.last_message_at)}
             </div>
           )}
-        </button>
-        </div>
-      </div>
+      </button>
     </li>
   )
 }

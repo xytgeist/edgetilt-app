@@ -15,7 +15,7 @@ export const DEFAULT_MIN_EV_PCT = 2
 type Outcome = { name?: string; price?: number }
 type Market = { key?: string; outcomes?: Outcome[] }
 type Bookmaker = { key?: string; title?: string; markets?: Market[] }
-type OddsEvent = {
+export type OddsEvent = {
   id?: string
   sport_key?: string
   home_team?: string
@@ -183,7 +183,7 @@ export function formatOddsCommenceTimeShort(iso: string): string {
   return `${weekday} ${monthDay} at ${time} PT`
 }
 
-function formatAmericanOdds(price: number): string {
+export function formatAmericanOdds(price: number): string {
   if (!Number.isFinite(price) || price === 0) return ''
   return price > 0 ? `+${price}` : String(price)
 }

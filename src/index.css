@@ -4578,3 +4578,208 @@ html.light .edge-monitor-desktop-page .edge-monitor-desktop-bg {
     radial-gradient(ellipse 50% 40% at 10% 0%, rgba(6, 182, 212, 0.12), transparent 50%),
     radial-gradient(ellipse 45% 35% at 90% 5%, rgba(157, 0, 255, 0.08), transparent 45%);
 }
+
+/* Bot management portal — light mode (/?tab=bots). Dark default unchanged. */
+html.light [data-bot-portal] .text-white:not([class*="bg-"]):not([class*="from-"]) {
+  color: #18181b !important;
+}
+
+html.light [data-bot-portal] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-bot-portal] .text-zinc-200 {
+  color: #27272a !important;
+}
+html.light [data-bot-portal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-bot-portal] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-bot-portal] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-bot-portal] .text-zinc-600 {
+  color: #71717a !important;
+}
+
+html.light [data-bot-portal] .border-zinc-800,
+html.light [data-bot-portal] .border-zinc-800\/80,
+html.light [data-bot-portal] .border-zinc-800\/70 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-bot-portal] .border-zinc-700,
+html.light [data-bot-portal] .border-zinc-700\/80 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light [data-bot-portal] .ring-zinc-700 {
+  --tw-ring-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light [data-bot-portal] .ring-zinc-600\/50 {
+  --tw-ring-color: rgba(0, 0, 0, 0.14) !important;
+}
+
+html.light [data-bot-portal] .bg-zinc-900,
+html.light [data-bot-portal] .bg-zinc-900\/90,
+html.light [data-bot-portal] .bg-zinc-900\/50 {
+  background-color: #ffffff !important;
+}
+html.light [data-bot-portal] .bg-zinc-950,
+html.light [data-bot-portal] .bg-zinc-950\/50,
+html.light [data-bot-portal] .bg-zinc-950\/60,
+html.light [data-bot-portal] .bg-zinc-950\/40 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-bot-portal] .bg-zinc-800,
+html.light [data-bot-portal] .bg-zinc-800\/80,
+html.light [data-bot-portal] .bg-zinc-800\/60 {
+  background-color: #ececef !important;
+}
+html.light [data-bot-portal] .bg-zinc-800\/60.edge-monitor-shimmer {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-bot-portal] .hover\:bg-zinc-800\/60:hover,
+html.light [data-bot-portal] .hover\:bg-zinc-700:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light [data-bot-portal] input,
+html.light [data-bot-portal] textarea,
+html.light [data-bot-portal] select {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  -webkit-text-fill-color: #18181b;
+}
+html.light [data-bot-portal] input::placeholder,
+html.light [data-bot-portal] textarea::placeholder {
+  color: #71717a !important;
+  opacity: 1;
+}
+
+/* Portal tabs + sidebar selection */
+html.light [data-bot-portal] .bg-cyan-950\/50 {
+  background-color: rgba(236, 254, 255, 0.95) !important;
+}
+html.light [data-bot-portal] .bg-violet-950\/50 {
+  background-color: rgba(245, 243, 255, 0.95) !important;
+}
+html.light [data-bot-portal] .ring-cyan-500\/35,
+html.light [data-bot-portal] .ring-cyan-500\/30,
+html.light [data-bot-portal] .ring-cyan-500\/40 {
+  --tw-ring-color: rgba(6, 182, 212, 0.35) !important;
+}
+html.light [data-bot-portal] .ring-violet-500\/35 {
+  --tw-ring-color: rgba(139, 92, 246, 0.35) !important;
+}
+html.light [data-bot-portal] .text-cyan-200,
+html.light [data-bot-portal] .text-cyan-300,
+html.light [data-bot-portal] .text-cyan-400 {
+  color: #0e7490 !important;
+}
+html.light [data-bot-portal] .text-violet-200,
+html.light [data-bot-portal] .text-violet-300 {
+  color: #6d28d9 !important;
+}
+html.light [data-bot-portal] .border-cyan-500\/40,
+html.light [data-bot-portal] .border-cyan-500\/30 {
+  border-color: rgba(6, 182, 212, 0.35) !important;
+}
+
+/* Run state + source toggles */
+html.light [data-bot-portal] .bg-emerald-950\/50,
+html.light [data-bot-portal] .bg-emerald-950\/60 {
+  background-color: rgba(220, 252, 231, 0.85) !important;
+}
+html.light [data-bot-portal] .text-emerald-200,
+html.light [data-bot-portal] .text-emerald-400 {
+  color: #047857 !important;
+}
+html.light [data-bot-portal] .ring-emerald-500\/35,
+html.light [data-bot-portal] .ring-emerald-500\/40 {
+  --tw-ring-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+html.light [data-bot-portal] .bg-amber-950\/50 {
+  background-color: rgba(254, 243, 199, 0.85) !important;
+}
+html.light [data-bot-portal] .text-amber-100,
+html.light [data-bot-portal] .text-amber-400,
+html.light [data-bot-portal] .text-amber-400\/90 {
+  color: #b45309 !important;
+}
+html.light [data-bot-portal] .ring-amber-500\/35 {
+  --tw-ring-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.light [data-bot-portal] .text-red-400 {
+  color: #dc2626 !important;
+}
+
+/* Category pills + wizard pipeline cards */
+html.light [data-bot-portal] .bg-cyan-950\/30 {
+  background-color: rgba(236, 254, 255, 0.75) !important;
+}
+html.light [data-bot-portal] .bg-cyan-950\/60 {
+  background-color: rgba(207, 250, 254, 0.9) !important;
+}
+
+/* Toast + error banners */
+html.light [data-bot-portal] .bg-cyan-950\/40 {
+  background-color: rgba(236, 254, 255, 0.95) !important;
+  border-color: rgba(6, 182, 212, 0.35) !important;
+}
+html.light [data-bot-portal] .text-cyan-100 {
+  color: #0e7490 !important;
+}
+html.light [data-bot-portal] .bg-amber-950\/30,
+html.light [data-bot-portal] .bg-amber-950\/40 {
+  background-color: rgba(254, 243, 199, 0.75) !important;
+}
+html.light [data-bot-portal] .border-amber-500\/30 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+html.light [data-bot-portal] .text-amber-100 {
+  color: #92400e !important;
+}
+html.light [data-bot-portal] .text-amber-200\/70 {
+  color: rgba(146, 64, 14, 0.85) !important;
+}
+
+html.light [data-bot-portal] .bg-red-950\/40 {
+  background-color: rgba(254, 226, 226, 0.85) !important;
+}
+html.light [data-bot-portal] .border-red-500\/30 {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+html.light [data-bot-portal] .text-red-100 {
+  color: #991b1b !important;
+}
+
+/* Primary action buttons — keep white label on colored fills */
+html.light [data-bot-portal] .bg-cyan-700,
+html.light [data-bot-portal] .bg-cyan-600,
+html.light [data-bot-portal] .bg-violet-800 {
+  color: #ffffff !important;
+}
+html.light [data-bot-portal] [class*="bg-gradient-to-r"].text-white,
+html.light [data-bot-portal] .bg-cyan-700.text-white,
+html.light [data-bot-portal] .bg-violet-800.text-white {
+  color: #ffffff !important;
+}
+
+html.light [data-bot-portal] .hover\:text-white:hover {
+  color: #18181b !important;
+}
+html.light [data-bot-portal] .hover\:text-cyan-300:hover {
+  color: #0e7490 !important;
+}
+html.light [data-bot-portal] .hover\:text-red-300:hover {
+  color: #dc2626 !important;
+}
+
+/* Wizard + edit modals (fixed overlays inside portal) */
+html.light [data-bot-portal] .bg-black\/75,
+html.light [data-bot-portal] .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.45) !important;
+}

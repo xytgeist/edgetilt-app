@@ -37,7 +37,7 @@ function RunStateBadge({ runState }) {
   )
 }
 
-function NumberField({ label, value, min, max, onChange, hint = '' }) {
+function NumberField({ label, value, min, max, step, onChange, hint = '' }) {
   return (
     <label className="block min-w-0">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
@@ -45,6 +45,7 @@ function NumberField({ label, value, min, max, onChange, hint = '' }) {
         type="number"
         min={min}
         max={max}
+        step={step ?? 1}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm tabular-nums focus:border-cyan-500/50 focus:outline-none"
@@ -160,11 +161,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       maxPostsDay: bot.max_posts_per_day ?? 12,
       maxPostsHour: bot.max_posts_per_hour ?? 4,
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
+      minEdgePct: Number(bot.odds_config?.min_edge_pct) || 2,
       displayName: bot.display_name || '',
       categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
       watchlistText: watchlist,
     })
-  }, [bot?.user_id, bot?.max_posts_per_day, bot?.max_posts_per_hour, bot?.publish_score_threshold, bot?.display_name, bot?.category_pills_default, bot?.config])
+  }, [
+    bot?.user_id,
+    bot?.max_posts_per_day,
+    bot?.max_posts_per_hour,
+    bot?.publish_score_threshold,
+    bot?.odds_config?.min_edge_pct,
+    bot?.display_name,
+    bot?.category_pills_default,
+    bot?.config,
+  ])
 
   if (!bot || !draft) {
     return (
@@ -203,6 +214,9 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       publish_score_threshold: draft.scoreThreshold,
       category_pills_default: draft.categoryPills,
       config: { watchlist_tickers: tickers },
+    }
+    if (bot.pipeline === 'odds_api') {
+      patch.min_edge_pct = draft.minEdgePct
     }
     const { error } = await saveBotSettings(supabaseClient, bot.user_id, patch)
     setBusy('')
@@ -456,9 +470,6 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
                   <div className="text-zinc-500 text-[10px] mt-1.5">
                     Fetch odds posts ⚡ +EV if one clears the bar, otherwise a daily slate check-in.{' '}
                     <span className="font-mono text-zinc-400">{selectedSportKey || '…'}</span>
-                    {bot.odds_config?.min_edge_pct != null
-                      ? ` · min +EV ${bot.odds_config.min_edge_pct}%`
-                      : ' · min +EV 2%'}
                   </div>
                 </>
               ) : (
@@ -563,6 +574,17 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
             max={30}
             onChange={(v) => setDraft((d) => ({ ...d, maxPostsHour: v }))}
           />
+          {isAutomatic && bot.pipeline === 'odds_api' ? (
+            <NumberField
+              label="Min +EV %"
+              value={draft.minEdgePct}
+              min={0.5}
+              max={15}
+              step={0.5}
+              hint="Minimum +EV on a $1 stake to fire ⚡ alerts (h2h devig)"
+              onChange={(v) => setDraft((d) => ({ ...d, minEdgePct: v }))}
+            />
+          ) : null}
           {isAutomatic && bot.pipeline !== 'odds_api' ? (
             <NumberField
               label="Publish score min"

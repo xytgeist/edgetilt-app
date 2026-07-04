@@ -751,6 +751,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-04: **Odds min +EV portal field:** **`/?tab=bots`** Settings shows **Min +EV %** for **`odds_api`** bots (0.5–15); **`admin_lounge_bot_save_settings`** patch **`min_edge_pct`** → **`lounge_bot_odds_config`**. Migration **`20260704170000`**. Apply on test.
 - 2026-07-04: **+EV engine (devig h2h):** `pickBestOddsCandidate` uses per-book no-vig fair probs, average consensus, and EV on $1 (`min_edge_pct` = min +EV %, default **2**); migration **`20260704160000`**. Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**.
 - 2026-07-04: **Odds slate check-ins + edge alerts:** migration **`20260704150000`** (`post_kind`, `dedupe_key`, slate/edge caps on odds config); **`lounge-odds-ingest`** auto-posts ⚡ EDGE or daily slate check-in; new **`lounge-odds-poll`** (`poll_edges`, `daily_slates`). Portal: **Scan all · edge**, **Post all slates**. Apply **`20260704150000`** on test; redeploy **`lounge-odds-ingest`** + deploy **`lounge-odds-poll`**.
 - 2026-07-04: **Sports betting calendar + manual slate picker:** migration **`20260704140000`** (`lounge_sports_betting_calendar`, 2026 seed, **`admin_lounge_sports_betting_calendar_today`**); odds bot portal dropdown picks today's major sport before **Fetch odds**; **`lounge-odds-ingest`** requires **`sportKey`** + validates against calendar; captions prefix category (e.g. `World Cup · …`). Apply migration on test; redeploy **`lounge-odds-ingest`**.

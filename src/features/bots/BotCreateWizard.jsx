@@ -16,7 +16,7 @@ const PIPELINE_OPTIONS = [
     label: 'Sports odds',
     hint: 'Self-contained · The Odds API · ~2 posts/day',
     defaultSlug: 'sports-odds',
-    defaultPills: ['gaming'],
+    defaultPills: ['sports'],
     maxDay: 2,
   },
   {

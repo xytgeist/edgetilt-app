@@ -107,7 +107,7 @@ immutable
 set search_path = public
 as $$
   select array[
-    'ap_slots','ap_tables','poker','gaming','tabletop',
+    'ap_slots','ap_tables','poker','gaming','sports','tabletop',
     'investing','trading','stocks','crypto','collectibles'
   ]::text[];
 $$;

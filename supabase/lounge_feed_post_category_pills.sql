@@ -25,6 +25,7 @@ alter table public.community_feed_posts
       'ap_tables',
       'poker',
       'gaming',
+      'sports',
       'tabletop',
       'investing',
       'trading',

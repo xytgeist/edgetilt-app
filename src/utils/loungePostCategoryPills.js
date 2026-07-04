@@ -6,6 +6,7 @@ export const LOUNGE_POST_CATEGORY_PILL_SLUGS = Object.freeze([
   'ap_tables',
   'poker',
   'gaming',
+  'sports',
   'tabletop',
   'investing',
   'trading',
@@ -19,6 +20,7 @@ const LOUNGE_POST_CATEGORY_PILL_LABEL_BY_SLUG = Object.freeze({
   ap_tables: 'AP Tables',
   poker: 'Poker',
   gaming: 'Gaming',
+  sports: 'Sports',
   tabletop: 'Tabletop',
   investing: 'Investing',
   trading: 'Trading',
@@ -58,6 +60,11 @@ const LOUNGE_POST_CATEGORY_PILL_CHIP_PALETTE = Object.freeze({
     display: 'border-violet-500/35 bg-violet-500/10 text-violet-300',
     selected: 'border-violet-400/50 bg-violet-500/20 text-violet-100',
     idle: 'border-zinc-600/70 bg-zinc-900/50 text-zinc-400 hover:border-violet-500/35 hover:text-violet-200',
+  },
+  sports: {
+    display: 'border-green-500/35 bg-green-500/10 text-green-300',
+    selected: 'border-green-400/50 bg-green-500/20 text-green-100',
+    idle: 'border-zinc-600/70 bg-zinc-900/50 text-zinc-400 hover:border-green-500/35 hover:text-green-200',
   },
   tabletop: {
     display: 'border-sky-500/35 bg-sky-500/10 text-sky-300',

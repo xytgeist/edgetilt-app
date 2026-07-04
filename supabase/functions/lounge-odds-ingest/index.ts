@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
         .maybeSingle()
       if (dupe?.id) continue
 
-      const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['gaming']
+      const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
       const result = await publishLoungeBotPost(admin, {
         botUserId: bot.user_id,
         caption,

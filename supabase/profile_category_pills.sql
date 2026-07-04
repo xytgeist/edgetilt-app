@@ -17,6 +17,7 @@ alter table public.profiles
       'ap_tables',
       'poker',
       'gaming',
+      'sports',
       'tabletop',
       'investing',
       'trading',

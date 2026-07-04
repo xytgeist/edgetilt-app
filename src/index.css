@@ -1113,6 +1113,7 @@ html.light .klipy-gif-sheet {
   --lounge-pill-ap_tables: #4754ff;
   --lounge-pill-poker: #38b8ff;
   --lounge-pill-gaming: #14c9bc;
+  --lounge-pill-sports: #22c55e;
   --lounge-pill-tabletop: #d4b83a;
   --lounge-pill-investing: #f5936a;
   --lounge-pill-trading: #f5727d;
@@ -1131,6 +1132,7 @@ html.light {
   --lounge-pill-ap_tables: #3333ff;
   --lounge-pill-poker: #1fa2ff;
   --lounge-pill-gaming: #03b5aa;
+  --lounge-pill-sports: #16a34a;
   --lounge-pill-tabletop: #f9d94e;
   --lounge-pill-investing: #eb8258;
   --lounge-pill-trading: #eb5c68;
@@ -1236,6 +1238,25 @@ html.light [data-lounge-youtube-embed] [data-lounge-youtube-embed-footer] .text-
 .lounge-pill-row .text-violet-100,
 .lounge-category-pill.text-violet-300,
 .lounge-category-pill.text-violet-100 {
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+
+.lounge-pill-row .bg-green-500\/10,
+.lounge-pill-row .bg-green-500\/20,
+.lounge-category-pill.bg-green-500\/10,
+.lounge-category-pill.bg-green-500\/20 {
+  background-color: var(--lounge-pill-sports) !important;
+}
+.lounge-pill-row .border-green-500\/35,
+.lounge-pill-row .border-green-400\/50,
+.lounge-category-pill.border-green-500\/35,
+.lounge-category-pill.border-green-400\/50 {
+  border-color: var(--lounge-pill-sports) !important;
+}
+.lounge-pill-row .text-green-300,
+.lounge-pill-row .text-green-100,
+.lounge-category-pill.text-green-300,
+.lounge-category-pill.text-green-100 {
   color: var(--lounge-pill-on-dark-fg) !important;
 }
 
@@ -1400,6 +1421,11 @@ html:not(.light) .lounge-pill-row[data-lounge-category-picker] button[aria-press
 .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="gaming"] {
   background-color: var(--lounge-pill-gaming) !important;
   border-color: var(--lounge-pill-gaming) !important;
+  color: var(--lounge-pill-on-dark-fg) !important;
+}
+.lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="sports"] {
+  background-color: var(--lounge-pill-sports) !important;
+  border-color: var(--lounge-pill-sports) !important;
   color: var(--lounge-pill-on-dark-fg) !important;
 }
 .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="tabletop"] {

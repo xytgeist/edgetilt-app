@@ -30,10 +30,12 @@ export type OddsPick = {
   homeTeam: string
   awayTeam: string
   commenceTime: string
-  marketKey: 'h2h'
+  marketKey: 'h2h' | 'spreads' | 'totals'
   pickName: string
   pickPrice: number
   bookTitle: string
+  /** Spread/total line when applicable. */
+  linePoint?: number | null
   /** American odds equivalent of consensus fair win probability. */
   consensusPrice: number
   /** +EV percent return on a $1 stake (EV × 100). Stored as edgePct for log compat. */
@@ -54,6 +56,34 @@ export type PlusEvPickOptions = {
   minBooks?: number
   minEvPct?: number
   maxEvPct?: number
+  /** Defaults to h2h only; pass spreads/totals for live multi-market scans. */
+  marketKeys?: Array<'h2h' | 'spreads' | 'totals'>
+}
+
+function outcomeLinePoint(out: Outcome): number | null {
+  const point = Number((out as { point?: number }).point)
+  return Number.isFinite(point) ? point : null
+}
+
+/** Caption line for a pick across ML / spread / total markets. */
+export function formatOddsPickLine(pick: OddsPick): string {
+  const odds = formatAmericanOdds(pick.pickPrice)
+  if (pick.marketKey === 'h2h') return `${shortDisplayName(pick.pickName)} ML ${odds}`
+  if (pick.marketKey === 'spreads' && pick.linePoint != null) {
+    const pt = pick.linePoint > 0 ? `+${pick.linePoint}` : String(pick.linePoint)
+    return `${shortDisplayName(pick.pickName)} ${pt} (${odds})`
+  }
+  if (pick.marketKey === 'totals' && pick.linePoint != null) {
+    const side = /^over$/i.test(pick.pickName) ? 'Over' : /^under$/i.test(pick.pickName) ? 'Under' : pick.pickName
+    return `${side} ${pick.linePoint} (${odds})`
+  }
+  return `${pick.pickName} (${odds})`
+}
+
+export function marketLabel(marketKey: OddsPick['marketKey']): string {
+  if (marketKey === 'spreads') return 'spread'
+  if (marketKey === 'totals') return 'total'
+  return 'ML'
 }
 
 /** American odds → implied probability (with vig). */
@@ -88,8 +118,8 @@ function average(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0) / nums.length
 }
 
-/** Remove vig for one book's h2h market (normalize implied probs to sum to 1). */
-export function devigFairProbsForH2h(market: Market): Map<string, number> | null {
+/** Remove vig for a two-sided market (h2h, spreads, totals). */
+export function devigFairProbsForMarket(market: Market): Map<string, number> | null {
   const implied = new Map<string, number>()
   for (const out of market.outcomes || []) {
     const name = String(out.name || '').trim()
@@ -109,6 +139,11 @@ export function devigFairProbsForH2h(market: Market): Map<string, number> | null
     fair.set(name, imp / sum)
   }
   return fair
+}
+
+/** Remove vig for one book's h2h market (normalize implied probs to sum to 1). */
+export function devigFairProbsForH2h(market: Market): Map<string, number> | null {
+  return devigFairProbsForMarket(market)
 }
 
 /** Only games starting within the next N hours (actionable slate, not season-long futures). */
@@ -273,7 +308,8 @@ function shortDisplayName(name: string): string {
 }
 
 /**
- * Find all h2h +EV opportunities: devig per book, average fair prob consensus, EV on best line.
+ * Find +EV opportunities: devig per book, consensus fair prob, EV on best line.
+ * Default market is h2h; pass marketKeys for live spread/total scans.
  */
 export function findPlusEvOpportunities(
   events: OddsEvent[],
@@ -283,6 +319,7 @@ export function findPlusEvOpportunities(
   const minBooks = opts.minBooks ?? DEFAULT_MIN_BOOKS
   const minEvPct = opts.minEvPct ?? DEFAULT_MIN_EV_PCT
   const maxEvPct = opts.maxEvPct ?? DEFAULT_MAX_EV_PCT
+  const marketKeys = opts.marketKeys?.length ? opts.marketKeys : ['h2h']
   const opportunities: OddsPick[] = []
 
   for (const ev of events) {
@@ -291,69 +328,84 @@ export function findPlusEvOpportunities(
     const commenceTime = String(ev.commence_time || '').trim()
     if (!home || !away || !commenceTime) continue
 
-    const fairByBook: { book: string; fair: Map<string, number> }[] = []
-    const bestPriceByOutcome = new Map<string, { price: number; book: string }>()
+    for (const marketKey of marketKeys) {
+      const fairByBook: { book: string; fair: Map<string, number> }[] = []
+      const bestPriceByOutcome = new Map<string, { price: number; book: string; linePoint: number | null }>()
 
-    for (const book of ev.bookmakers || []) {
-      const market = (book.markets || []).find((m) => m.key === 'h2h')
-      if (!market) continue
+      for (const book of ev.bookmakers || []) {
+        const market = (book.markets || []).find((m) => m.key === marketKey)
+        if (!market) continue
 
-      const fair = devigFairProbsForH2h(market)
-      if (!fair?.size) continue
+        const fair = devigFairProbsForMarket(market)
+        if (!fair?.size) continue
 
-      const bookLabel = formatBookDisplayName(String(book.title || ''), book.key)
-      fairByBook.push({ book: bookLabel, fair })
+        const bookLabel = formatBookDisplayName(String(book.title || ''), book.key)
+        fairByBook.push({ book: bookLabel, fair })
 
-      for (const out of market.outcomes || []) {
-        const name = String(out.name || '').trim()
-        const price = Number(out.price)
-        if (!name || !Number.isFinite(price)) continue
-        const cur = bestPriceByOutcome.get(name)
-        if (!cur || price > cur.price) {
-          bestPriceByOutcome.set(name, { price, book: bookLabel })
+        for (const out of market.outcomes || []) {
+          const name = String(out.name || '').trim()
+          const price = Number(out.price)
+          if (!name || !Number.isFinite(price)) continue
+          const linePoint = outcomeLinePoint(out)
+          const outcomeKey = (marketKey === 'totals' || marketKey === 'spreads') && linePoint != null
+            ? `${name}:${linePoint}`
+            : name
+          const cur = bestPriceByOutcome.get(outcomeKey)
+          if (!cur || price > cur.price) {
+            bestPriceByOutcome.set(outcomeKey, { price, book: bookLabel, linePoint })
+          }
         }
       }
-    }
 
-    if (fairByBook.length < minBooks) continue
+      if (fairByBook.length < minBooks) continue
 
-    const outcomeNames = new Set<string>()
-    for (const row of fairByBook) {
-      for (const name of row.fair.keys()) outcomeNames.add(name)
-    }
-
-    for (const name of outcomeNames) {
-      const fairSamples: number[] = []
+      const outcomeNames = new Set<string>()
       for (const row of fairByBook) {
-        const p = row.fair.get(name)
-        if (p != null && p > 0 && p < 1) fairSamples.push(p)
+        for (const name of row.fair.keys()) outcomeNames.add(name)
       }
-      if (fairSamples.length < minBooks) continue
 
-      const best = bestPriceByOutcome.get(name)
-      if (!best) continue
+      for (const name of outcomeNames) {
+        const fairSamples: number[] = []
+        for (const row of fairByBook) {
+          const p = row.fair.get(name)
+          if (p != null && p > 0 && p < 1) fairSamples.push(p)
+        }
+        if (fairSamples.length < minBooks) continue
 
-      const consensusProb = average(fairSamples)
-      const evDecimal = computeEvDecimal(consensusProb, best.price, 1)
-      const evPct = Math.round(evDecimal * 1000) / 10
+        let best = bestPriceByOutcome.get(name)
+        if (!best && (marketKey === 'spreads' || marketKey === 'totals')) {
+          for (const [key, row] of bestPriceByOutcome) {
+            if (key.startsWith(`${name}:`)) {
+              best = row
+              break
+            }
+          }
+        }
+        if (!best) continue
 
-      if (evPct < minEvPct || evPct > maxEvPct) continue
+        const consensusProb = average(fairSamples)
+        const evDecimal = computeEvDecimal(consensusProb, best.price, 1)
+        const evPct = Math.round(evDecimal * 1000) / 10
 
-      opportunities.push({
-        sportKey,
-        eventId: String(ev.id || `${home}-${away}`),
-        homeTeam: home,
-        awayTeam: away,
-        commenceTime,
-        marketKey: 'h2h',
-        pickName: name,
-        pickPrice: best.price,
-        bookTitle: best.book,
-        consensusPrice: impliedToAmerican(consensusProb),
-        consensusProb: Math.round(consensusProb * 1000) / 1000,
-        edgePct: evPct,
-        bookCount: fairSamples.length,
-      })
+        if (evPct < minEvPct || evPct > maxEvPct) continue
+
+        opportunities.push({
+          sportKey,
+          eventId: String(ev.id || `${home}-${away}`),
+          homeTeam: home,
+          awayTeam: away,
+          commenceTime,
+          marketKey,
+          pickName: name,
+          pickPrice: best.price,
+          bookTitle: best.book,
+          linePoint: best.linePoint,
+          consensusPrice: impliedToAmerican(consensusProb),
+          consensusProb: Math.round(consensusProb * 1000) / 1000,
+          edgePct: evPct,
+          bookCount: fairSamples.length,
+        })
+      }
     }
   }
 

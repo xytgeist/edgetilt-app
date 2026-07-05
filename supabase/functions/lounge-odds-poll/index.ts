@@ -4,16 +4,19 @@
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/adminAuth.ts'
+import { tryPublishLiveGameContent } from '../_shared/loungeBotLiveContent.ts'
 import {
   countPublishedKindToday,
   fetchActiveSportKeys,
   formatPtMinuteAsClock,
   loadSportOddsContext,
   loadTodayCalendarRows,
+  marketsForOddsPoll,
   morningSlateShouldRunNow,
   ptDayStartIso,
   tryPublishCombinedCoffeeAndCovers,
   tryPublishEdgeAlert,
+  tryPublishLineMovementAlerts,
   tryPublishSlateCheckIn,
   type OddsCfgRow,
   type SportOddsContext,
@@ -75,7 +78,8 @@ Deno.serve(async (req) => {
 
     const oddsCfg = (oddsCfgRaw || {}) as OddsCfgRow
     const regions = oddsCfg.regions || ['us']
-    const markets = oddsCfg.markets || ['h2h', 'spreads']
+    const lineMovementEnabled = oddsCfg.line_movement_enabled !== false
+    const markets = marketsForOddsPoll(oddsCfg, lineMovementEnabled)
     const minEdge = Number(oddsCfg.min_edge_pct) ?? DEFAULT_MIN_EV_PCT
     const maxEdgeAlerts = Number(oddsCfg.max_edge_alerts_per_day) || 6
     const maxMorningPosts = Number(oddsCfg.max_slate_posts_per_day) || 10
@@ -109,6 +113,9 @@ Deno.serve(async (req) => {
 
     const activeSports = await fetchActiveSportKeys()
     let publishedEdges = 0
+    let publishedLineMoves = 0
+    let publishedLiveEdges = 0
+    let publishedPeriodReports = 0
     let publishedCoffeeCovers = 0
     let publishedSlates = 0
     let requestsRemaining: string | null = null
@@ -145,17 +152,60 @@ Deno.serve(async (req) => {
             details.push({ calendarSlug: row.slug, skipped: 'edge_cap' })
             continue
           }
-          const edgeResult = await tryPublishEdgeAlert(admin, bot, ctx, minEdge, dayStart, dryRun)
+          const edgeResult = await tryPublishEdgeAlert(
+            admin,
+            bot,
+            ctx,
+            minEdge,
+            dayStart,
+            dryRun,
+            oddsCfg.alert_audience,
+          )
           if (edgeResult.published) {
             publishedEdges += 1
             edgeCount += 1
           }
+
+          const lineResult = await tryPublishLineMovementAlerts(
+            admin,
+            bot,
+            ctx,
+            oddsCfg,
+            dayStart,
+            dryRun,
+          )
+          if (lineResult.published > 0) {
+            publishedLineMoves += lineResult.published
+          }
+
+          const liveResult = await tryPublishLiveGameContent(
+            admin,
+            bot,
+            sportKey,
+            ctx.inProgress,
+            oddsCfg,
+            calendarPick.categoryLabel,
+            dayStart,
+            dryRun,
+          )
+          if (liveResult.publishedLiveEdges > 0) publishedLiveEdges += liveResult.publishedLiveEdges
+          if (liveResult.publishedPeriodReports > 0) {
+            publishedPeriodReports += liveResult.publishedPeriodReports
+          }
+
           details.push({
             calendarSlug: row.slug,
             sportKey,
             publishedEdge: edgeResult.published,
             edge: edgeResult.pick?.edgePct ?? null,
             skipped: edgeResult.skipped,
+            publishedLineMoves: lineResult.published,
+            lineMovementsDetected: lineResult.detected,
+            lineSkipped: lineResult.skipped,
+            publishedLiveEdges: liveResult.publishedLiveEdges,
+            publishedPeriodReports: liveResult.publishedPeriodReports,
+            liveSkipped: liveResult.skipped,
+            liveGames: ctx.inProgress.length,
           })
         } else if (morningEnabled) {
           if (coffeeCoversEnabled) {
@@ -172,7 +222,14 @@ Deno.serve(async (req) => {
               continue
             }
 
-            const slateResult = await tryPublishSlateCheckIn(admin, bot, ctx, dayStart, dryRun)
+            const slateResult = await tryPublishSlateCheckIn(
+              admin,
+              bot,
+              ctx,
+              dayStart,
+              dryRun,
+              oddsCfg.alert_audience,
+            )
             if (slateResult.published) {
               publishedSlates += 1
               morningCount += 1
@@ -210,6 +267,7 @@ Deno.serve(async (req) => {
           coffeeSportContexts,
           dayStart,
           dryRun,
+          oddsCfg.alert_audience,
         )
         if (coffeeResult.published) {
           publishedCoffeeCovers = 1
@@ -232,7 +290,8 @@ Deno.serve(async (req) => {
 
     const publishedMorning = publishedCoffeeCovers + publishedSlates
 
-    if (!dryRun && (publishedEdges > 0 || publishedMorning > 0)) {
+    if (!dryRun && (publishedEdges > 0 || publishedLineMoves > 0 || publishedLiveEdges > 0
+      || publishedPeriodReports > 0 || publishedMorning > 0)) {
       await admin.from('lounge_bot_accounts').update({
         last_poll_at: new Date().toISOString(),
         last_publish_at: new Date().toISOString(),
@@ -253,6 +312,9 @@ Deno.serve(async (req) => {
       coffeeCoversEnabled,
       sportsChecked: details.length,
       publishedEdges,
+      publishedLineMoves,
+      publishedLiveEdges,
+      publishedPeriodReports,
       publishedCoffeeCovers,
       publishedSlates,
       publishedMorning,

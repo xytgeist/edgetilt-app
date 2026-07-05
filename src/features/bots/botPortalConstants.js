@@ -39,6 +39,23 @@ export function formatBotPortalWhen(iso) {
   })
 }
 
+/** Scott Share alert types for All | Subs audience routing. */
+export const ODDS_ALERT_AUDIENCE_ROWS = Object.freeze([
+  { key: 'coffee_covers', label: 'Coffee & Covers' },
+  { key: 'edge', label: '+EV Edge Alerts' },
+  { key: 'line_movement', label: 'Line Movement' },
+  { key: 'in_game_edge', label: 'In-Game Edge' },
+  { key: 'period_report', label: 'Period / Halftime Report' },
+])
+
+export const DEFAULT_ODDS_ALERT_AUDIENCE = Object.freeze({
+  coffee_covers: 'all',
+  edge: 'subscribers',
+  line_movement: 'subscribers',
+  in_game_edge: 'subscribers',
+  period_report: 'subscribers',
+})
+
 /** @param {string} tone */
 export function botRunStateBadgeClass(tone) {
   if (tone === 'emerald') return 'bg-emerald-950/60 text-emerald-200 ring-emerald-500/40'

@@ -8,6 +8,8 @@ import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
   BOT_RUN_STATES,
+  DEFAULT_ODDS_ALERT_AUDIENCE,
+  ODDS_ALERT_AUDIENCE_ROWS,
   botPollActionLabel,
   botRunStateBadgeClass,
   formatBotPortalWhen,
@@ -197,6 +199,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       maxPostsHour: bot.max_posts_per_hour ?? 4,
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
       minEdgePct: String(bot.odds_config?.min_edge_pct ?? 2),
+      alertAudience: {
+        ...DEFAULT_ODDS_ALERT_AUDIENCE,
+        ...(bot.odds_config?.alert_audience || {}),
+      },
       displayName: bot.display_name || '',
       categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
       watchlistText: watchlist,
@@ -209,6 +215,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     bot?.max_posts_per_hour,
     bot?.publish_score_threshold,
     bot?.odds_config?.min_edge_pct,
+    bot?.odds_config?.alert_audience,
     bot?.display_name,
     bot?.category_pills_default,
     bot?.config,
@@ -267,6 +274,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     }
     if (bot.pipeline === 'odds_api') {
       patch.min_edge_pct = Number(String(draft.minEdgePct).trim())
+      patch.alert_audience = draft.alertAudience
     }
     const { error } = await saveBotSettings(supabaseClient, bot.user_id, patch)
     setBusy('')
@@ -694,6 +702,62 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
             />
           ) : null}
         </div>
+
+        {isAutomatic && bot.pipeline === 'odds_api' ? (
+          <div className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">
+              Alert audience
+            </div>
+            <div className="text-zinc-600 text-[10px] mb-3">
+              Choose whether each alert type posts to the public feed (All) or subscribers only (Subs).
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-zinc-500 border-b border-zinc-800/80">
+                    <th className="py-2 pr-3 font-semibold">Alert type</th>
+                    <th className="py-2 px-2 font-semibold text-center w-16">All</th>
+                    <th className="py-2 pl-2 font-semibold text-center w-16">Subs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ODDS_ALERT_AUDIENCE_ROWS.map((row) => {
+                    const value = draft.alertAudience?.[row.key] || DEFAULT_ODDS_ALERT_AUDIENCE[row.key]
+                    return (
+                      <tr key={row.key} className="border-b border-zinc-800/50 last:border-0">
+                        <td className="py-2 pr-3 text-zinc-200">{row.label}</td>
+                        <td className="py-2 px-2 text-center">
+                          <input
+                            type="radio"
+                            name={`alert-audience-${row.key}`}
+                            checked={value === 'all'}
+                            onChange={() => setDraft((d) => ({
+                              ...d,
+                              alertAudience: { ...d.alertAudience, [row.key]: 'all' },
+                            }))}
+                            className="accent-cyan-500"
+                          />
+                        </td>
+                        <td className="py-2 pl-2 text-center">
+                          <input
+                            type="radio"
+                            name={`alert-audience-${row.key}`}
+                            checked={value === 'subscribers'}
+                            onChange={() => setDraft((d) => ({
+                              ...d,
+                              alertAudience: { ...d.alertAudience, [row.key]: 'subscribers' },
+                            }))}
+                            className="accent-cyan-500"
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-2">

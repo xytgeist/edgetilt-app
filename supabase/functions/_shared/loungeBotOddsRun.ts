@@ -15,6 +15,7 @@ import {
   pickBestOddsCandidate,
   slateDedupeKey,
   type OddsPick,
+  type OddsEvent,
 } from './loungeBotOddsCaption.ts'
 import {
   coffeeDailyDedupeKey,
@@ -22,6 +23,18 @@ import {
   generateCombinedCoffeeAndCovers,
   type CoffeeAndCoversOptions,
 } from './loungeBotCoffeeAndCovers.ts'
+import {
+  buildLineMovementCaption,
+  detectLineMovements,
+  extractEventLines,
+  lineMovementDedupeKey,
+  loadStoredEventLines,
+  SNAPSHOT_COMPARE_MAX_MS,
+  SNAPSHOT_COMPARE_MIN_MS,
+  upsertEventLines,
+  type LineMovementAlert,
+} from './loungeBotLineMovement.ts'
+import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
@@ -48,6 +61,17 @@ export type OddsCfgRow = {
   max_slate_posts_per_day: number | null
   daily_slate_enabled: boolean | null
   coffee_covers_enabled: boolean | null
+  line_movement_enabled: boolean | null
+  max_line_alerts_per_day: number | null
+  min_spread_move_pts: number | null
+  min_total_move_pts: number | null
+  min_ml_move_pts: number | null
+  alert_audience?: Record<string, unknown> | null
+  live_edge_enabled?: boolean | null
+  period_report_enabled?: boolean | null
+  min_live_edge_pct?: number | null
+  max_live_alerts_per_day?: number | null
+  max_period_reports_per_day?: number | null
 }
 
 export function oddsApiKey(): string {
@@ -228,6 +252,29 @@ export async function countPublishedKindToday(
   return count || 0
 }
 
+const LINE_POST_KINDS = ['line_movement', 'sharp_move', 'steam', 'rlm'] as const
+
+export async function countLineAlertsToday(
+  admin: SupabaseClient,
+  botUserId: string,
+  dayStart: string,
+): Promise<number> {
+  const { count } = await admin
+    .from('lounge_bot_publish_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('bot_user_id', botUserId)
+    .eq('status', 'published')
+    .in('post_kind', [...LINE_POST_KINDS])
+    .gte('created_at', dayStart)
+  return count || 0
+}
+
+export function marketsForOddsPoll(cfg: OddsCfgRow, lineMovementEnabled: boolean): string[] {
+  const base = cfg.markets?.length ? cfg.markets : ['h2h', 'spreads']
+  if (!lineMovementEnabled) return base
+  return [...new Set([...base, 'totals'])]
+}
+
 export async function hasDedupePublishedToday(
   admin: SupabaseClient,
   botUserId: string,
@@ -251,9 +298,20 @@ export type SportOddsContext = {
   categoryLabel: string
   upcoming: ReturnType<typeof filterOddsEventsByWindow>
   tomorrow: ReturnType<typeof filterOddsEventsForPtCalendarDay>
+  inProgress: OddsEvent[]
   eventsInWindow: number
   eventsTomorrow: number
   requestsRemaining: string | null
+}
+
+/** Games that kicked off recently and may still be in play (up to 6h). */
+export function filterLiveOddsEvents(events: OddsEvent[], maxHoursAgo = 6): OddsEvent[] {
+  const now = Date.now()
+  const minT = now - maxHoursAgo * 3_600_000
+  return events.filter((ev) => {
+    const t = Date.parse(String(ev.commence_time || ''))
+    return Number.isFinite(t) && t <= now && t >= minT
+  })
 }
 
 export async function loadSportOddsContext(
@@ -270,6 +328,7 @@ export async function loadSportOddsContext(
   const inWindow = filterOddsEventsByWindow(raw, DEFAULT_ODDS_WINDOW_HOURS)
   const upcoming = filterOddsEventsForPtCalendarDay(inWindow, ptTodayDate())
   const tomorrow = filterOddsEventsForPtCalendarDay(inWindow, ptTomorrowDate())
+  const inProgress = filterLiveOddsEvents(raw)
 
   if (!dryRun) {
     await admin.from('lounge_odds_snapshots').insert({
@@ -282,6 +341,7 @@ export async function loadSportOddsContext(
         windowCount: inWindow.length,
         todayCount: upcoming.length,
         tomorrowCount: tomorrow.length,
+        liveCount: inProgress.length,
         ptDate: ptTodayDate(),
         events: upcoming,
       },
@@ -294,6 +354,7 @@ export async function loadSportOddsContext(
     categoryLabel: calendarPick.categoryLabel,
     upcoming,
     tomorrow,
+    inProgress,
     eventsInWindow: upcoming.length,
     eventsTomorrow: tomorrow.length,
     requestsRemaining: remaining,
@@ -307,6 +368,7 @@ export async function tryPublishEdgeAlert(
   minEdge: number,
   dayStart: string,
   dryRun: boolean,
+  alertAudience?: Record<string, unknown> | null,
 ): Promise<{ published: boolean; pick: OddsPick | null; skipped?: string }> {
   const pick = pickBestOddsCandidate(ctx.upcoming, ctx.sportKey, {
     minBooks: DEFAULT_MIN_BOOKS,
@@ -327,10 +389,12 @@ export async function tryPublishEdgeAlert(
   if (dryRun) return { published: false, pick }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+  const subscriberOnly = resolveAlertSubscriberOnly('edge', alertAudience)
   const result = await publishLoungeBotPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
+    subscriberOnly,
   })
 
   if (result.postId) {
@@ -364,6 +428,7 @@ export async function tryPublishCoffeeAndCovers(
   ctx: SportOddsContext,
   dayStart: string,
   dryRun: boolean,
+  alertAudience?: Record<string, unknown> | null,
 ): Promise<{
   published: boolean
   skipped?: string
@@ -404,11 +469,13 @@ export async function tryPublishCoffeeAndCovers(
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+  const subscriberOnly = resolveAlertSubscriberOnly('coffee_covers', alertAudience)
   const result = await publishLoungeBotPostWithThread(admin, {
     botUserId: bot.user_id,
     caption: generated.caption,
     categoryPills: pills,
     threadParts: generated.threadParts.map((part) => ({ body: part.body })),
+    subscriberOnly,
   })
 
   const topScore = generated.coverPicks[0]?.edgePct
@@ -453,6 +520,7 @@ export async function tryPublishCombinedCoffeeAndCovers(
   sportContexts: SportOddsContext[],
   dayStart: string,
   dryRun: boolean,
+  alertAudience?: Record<string, unknown> | null,
 ): Promise<{
   published: boolean
   skipped?: string
@@ -511,11 +579,13 @@ export async function tryPublishCombinedCoffeeAndCovers(
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+  const subscriberOnly = resolveAlertSubscriberOnly('coffee_covers', alertAudience)
   const result = await publishLoungeBotPostWithThread(admin, {
     botUserId: bot.user_id,
     caption: generated.caption,
     categoryPills: pills,
     threadParts: generated.threadParts.map((part) => ({ body: part.body })),
+    subscriberOnly,
   })
 
   const topScore = generated.coverPicks[0]?.edgePct
@@ -567,6 +637,7 @@ export async function tryPublishSlateCheckIn(
   ctx: SportOddsContext,
   dayStart: string,
   dryRun: boolean,
+  alertAudience?: Record<string, unknown> | null,
 ): Promise<{ published: boolean; skipped?: string; gamesToday?: number }> {
   if (ctx.eventsInWindow <= 0) {
     return { published: false, skipped: 'no_games_today', gamesToday: 0 }
@@ -585,10 +656,12 @@ export async function tryPublishSlateCheckIn(
   if (dryRun) return { published: false, gamesToday: ctx.eventsInWindow }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+  const subscriberOnly = resolveAlertSubscriberOnly('coffee_covers', alertAudience)
   const result = await publishLoungeBotPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
+    subscriberOnly,
   })
 
   if (result.postId) {
@@ -613,4 +686,116 @@ export async function tryPublishSlateCheckIn(
     error_message: result.error?.slice(0, 400),
   })
   return { published: false, skipped: 'publish_failed', gamesToday: ctx.eventsInWindow }
+}
+
+export async function tryPublishLineMovementAlerts(
+  admin: SupabaseClient,
+  bot: OddsBotRow,
+  ctx: SportOddsContext,
+  oddsCfg: OddsCfgRow,
+  dayStart: string,
+  dryRun: boolean,
+): Promise<{
+  published: number
+  detected: number
+  skipped?: string
+  alerts?: LineMovementAlert[]
+}> {
+  if (oddsCfg.line_movement_enabled === false) {
+    return { published: 0, detected: 0, skipped: 'line_movement_disabled' }
+  }
+  if (!ctx.upcoming.length) {
+    return { published: 0, detected: 0, skipped: 'no_games_today' }
+  }
+
+  const cfg = {
+    minSpreadMovePts: Number(oddsCfg.min_spread_move_pts) || 0.5,
+    minTotalMovePts: Number(oddsCfg.min_total_move_pts) || 0.5,
+    minMlMovePts: Number(oddsCfg.min_ml_move_pts) || 20,
+  }
+
+  const eventIds = ctx.upcoming
+    .map((ev) => String(ev.id || '').trim())
+    .filter(Boolean)
+  const { lines: previous, snapshotAgeMs } = await loadStoredEventLines(admin, bot.user_id, eventIds)
+  const currentLines = ctx.upcoming.flatMap((ev) => extractEventLines(ev, ctx.sportKey))
+
+  if (dryRun) {
+    const movements = previous.length
+      ? detectLineMovements(ctx.upcoming, ctx.sportKey, previous, cfg)
+      : []
+    return {
+      published: 0,
+      detected: movements.length,
+      skipped: previous.length ? undefined : 'baseline_snapshot',
+      alerts: movements.slice(0, 5),
+    }
+  }
+
+  if (!previous.length) {
+    await upsertEventLines(admin, bot.user_id, currentLines)
+    return { published: 0, detected: 0, skipped: 'baseline_snapshot' }
+  }
+
+  if (snapshotAgeMs != null && snapshotAgeMs < SNAPSHOT_COMPARE_MIN_MS) {
+    return { published: 0, detected: 0, skipped: 'snapshot_too_fresh' }
+  }
+
+  if (snapshotAgeMs != null && snapshotAgeMs > SNAPSHOT_COMPARE_MAX_MS) {
+    await upsertEventLines(admin, bot.user_id, currentLines)
+    return { published: 0, detected: 0, skipped: 'snapshot_stale_rebaseline' }
+  }
+
+  const movements = detectLineMovements(ctx.upcoming, ctx.sportKey, previous, cfg)
+
+  const maxPerDay = Number(oddsCfg.max_line_alerts_per_day) || 12
+  let publishedToday = await countLineAlertsToday(admin, bot.user_id, dayStart)
+  let published = 0
+  const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+
+  for (const alert of movements) {
+    if (publishedToday >= maxPerDay) break
+
+    const dedupeKey = lineMovementDedupeKey(alert)
+    if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
+
+    const caption = buildLineMovementCaption(alert, { categoryLabel: ctx.categoryLabel })
+    const subscriberOnly = resolveAlertSubscriberOnly(alert.kind, oddsCfg.alert_audience)
+    const result = await publishLoungeBotPost(admin, {
+      botUserId: bot.user_id,
+      caption,
+      categoryPills: pills,
+      subscriberOnly,
+    })
+
+    const score = Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta)
+
+    if (result.postId) {
+      await admin.from('lounge_bot_publish_log').insert({
+        bot_user_id: bot.user_id,
+        post_id: result.postId,
+        caption,
+        score,
+        status: 'published',
+        post_kind: alert.kind,
+        dedupe_key: dedupeKey,
+      })
+      published += 1
+      publishedToday += 1
+    } else {
+      await admin.from('lounge_bot_publish_log').insert({
+        bot_user_id: bot.user_id,
+        caption,
+        score,
+        status: 'failed',
+        post_kind: alert.kind,
+        dedupe_key: dedupeKey,
+        error_message: result.error?.slice(0, 400),
+      })
+    }
+  }
+
+  await upsertEventLines(admin, bot.user_id, currentLines)
+
+  return { published, detected: movements.length, alerts: movements.slice(0, 5) }
 }

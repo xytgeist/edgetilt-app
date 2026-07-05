@@ -198,6 +198,8 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | Surface | No account | Free | Paid Starter | Paid Full | Staff |
 | --- | --- | --- | --- | --- | --- |
 | **Lounge** | Read-only feed; forbidden actions → create account modal | Full + verified badge | Full + subscriber badge | Full + subscriber badge | Full + staff badges |
+
+**Scott Share bot posts:** some alert types may be **`subscriber_only`** on the feed (migration **`20260704260000`**). Anon and free users do not see those posts in the timeline; subscribers and staff do. Configured per alert type in **`/?tab=bots`** (All vs Subs).
 | **Hamburger / other tabs** | Create account modal | Allowed; gated features → subscribe modal | Same as free for tools; guides per Starter rules | Full | Full |
 | **Bankroll** | Create account modal | 10 sessions free | 10 sessions free (unless changed) | Unlimited | Full |
 | **Play Logbook** | Create account modal | 10 logs free | 10 logs free (unless changed) | Unlimited | Full |

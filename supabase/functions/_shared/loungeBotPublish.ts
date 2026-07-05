@@ -10,6 +10,8 @@ export type BotPublishInput = {
   caption: string
   categoryPills?: string[]
   sourceUrl?: string | null
+  /** When true, post is hidden from anon / non-subscribers on the lounge feed. */
+  subscriberOnly?: boolean
 }
 
 export type BotPublishResult = {
@@ -56,6 +58,7 @@ export async function publishLoungeBotPost(
     game_title: '',
     game_slug: null,
     category_pills: pills,
+    subscriber_only: input.subscriberOnly === true,
   }
 
   const { data, error } = await admin

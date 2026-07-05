@@ -90,6 +90,15 @@ Long posts may still truncate with `+N more games today.` at the **2000-char** c
 | **Scan all · edge** | All calendar sports today → edge alerts only |
 | **Post Coffee & Covers** | One morning post/day (dedupe) with thread parts per sport |
 | **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** via **`admin_lounge_bot_save_settings`** |
+| **Alert audience** | Per alert type: **All** (public feed) or **Subs** (subscriber-only post). Matrix in Settings → **`lounge_bot_odds_config.alert_audience`**. Defaults: Coffee & Covers **All**; edge, line movement, in-game, period reports **Subs**. |
+
+---
+
+## Freemium feed gating
+
+Migration **`20260704260000`**: **`community_feed_posts.subscriber_only`**. RLS + **`lounge_viewer_is_subscriber_or_staff()`** hides subscriber-only posts from anon and signed-in free users; active **`has_active_subscription`** or staff see them.
+
+Each publish path sets **`subscriber_only`** from **`alert_audience`** (see portal matrix above).
 
 ---
 
@@ -124,6 +133,67 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
 
 **`min_edge_pct`:** minimum **+EV percent on $1 stake** (default **2**). Column default + new bots use **2**; existing rows may still be **4** until saved in portal.
 
+### Line movement alerts (poll_edges)
+
+**`loungeBotLineMovement.ts`** — runs on every **`poll_edges`** tick (15 min, 24/7):
+
+1. Load prior lines from **`lounge_odds_event_lines`** (saved on the **last poll**, ~**15 min** ago when cron is on schedule)
+2. Fetch current odds (**`h2h`**, **`spreads`**, **`totals`** when line movement enabled)
+3. **Only compare** if prior snapshot age is **8–22 minutes** (15-min poll jitter). Too fresh → skip; too stale → re-baseline without alert.
+4. Compare consensus vs that snapshot; flag when **in that interval**:
+   - Spread moves **≥ 0.5** pts (config **`min_spread_move_pts`**)
+   - Total moves **≥ 0.5** pts (**`min_total_move_pts`**)
+   - ML moves **≥ 20** American pts in the interval (e.g. +150 → +130, -140 → -160; config **`min_ml_move_pts`**, default **20**)
+4. Classify: **`sharp_move`** (≥ 1 pt or large ML), **`steam`**, **`rlm`** (spread vs ML diverge), **`line_movement`**
+5. Post feed alert with sport, matchup, kickoff, what moved, leading books, meaning, timestamp
+6. Upsert new snapshot (first poll = baseline only, no alerts)
+
+Dedupe: one alert per movement direction per game/market/outcome per PT day. Cap: **`max_line_alerts_per_day`** (default **12**). Disable via **`line_movement_enabled = false`**.
+
+### Live in-game edge + period reports (poll_edges)
+
+**`loungeBotLiveContent.ts`** — same **15 min** cron as edge + line movement:
+
+| Post kind | Trigger | Threshold |
+| --- | --- | --- |
+| **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **4%**) on **ML, spreads, or totals** |
+| **`period_report`** | Sport-specific period milestone (halftime, NHL period end, MLB 5th-inning heuristic) | Best **+EV** lines for remainder of game; same **4%** bar when picks exist |
+
+Period milestones use elapsed-time heuristics per sport (not play-by-play). State in **`lounge_odds_game_period_state`** — one report per game per milestone. Caps: **`max_live_alerts_per_day`** (default **8**), **`max_period_reports_per_day`** (default **6**). Toggle via **`live_edge_enabled`** / **`period_report_enabled`**.
+
+Example in-game:
+```text
+🔴 LIVE In-Game Edge · ~12m left in 2nd half
+
+NBA: Celtics 52 - 48 Lakers
+
+Celtics -3.5 (-110) at FanDuel
+Fair -5 (-108) (7 books)
++4.2% EV on spread
+```
+
+Example period report:
+```text
+📊 Halftime Report · 2nd half underway
+
+NFL: Chiefs 14 - 10 Bills
+
+Best bets for the rest of the game:
+• Chiefs -2.5 (-108) at DraftKings (+4.5% EV)
+```
+
+Example:
+```text
+🔥 Sharp Move Alert
+World Cup: France vs Paraguay (Sat 2PM PT)
+
+France spread -3 (-110) → -4 (-108)
+Books leading move: FanDuel, DraftKings
+Sharp action shifting the France spread.
+
+Updated 6:45 PM PT
+```
+
 ---
 
 ## Edge Functions
@@ -134,7 +204,7 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
 | **`lounge-odds-poll`** | Background: **`poll_edges`** \| **`daily_slates`** |
 | **`lounge-bot-admin`** | Create bot + seed **`lounge_bot_odds_config`** |
 
-Shared run/publish: **`supabase/functions/_shared/loungeBotOddsRun.ts`**, **`loungeBotCoffeeAndCovers.ts`**
+Shared run/publish: **`supabase/functions/_shared/loungeBotOddsRun.ts`**, **`loungeBotCoffeeAndCovers.ts`**, **`loungeBotLineMovement.ts`**
 
 Deploy:
 
@@ -171,6 +241,11 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `max_slate_posts_per_day` | Default **10** |
 | `daily_slate_enabled` | Default **true** — gates **`daily_slates`** poll |
 | `coffee_covers_enabled` | Default **true** — Coffee & Covers vs legacy slate |
+| `line_movement_enabled` | Default **true** — line movement alerts on **`poll_edges`** |
+| `max_line_alerts_per_day` | Default **12** |
+| `min_spread_move_pts` | Default **0.5** |
+| `min_total_move_pts` | Default **0.5** |
+| `min_ml_move_pts` | Default **20** (American odds points) |
 | `sports_keys` | Fallback list; calendar drives manual picks |
 | `regions` | `['us']` |
 | `markets` | `['h2h','spreads']` |
@@ -209,6 +284,7 @@ Captions prefix category label from calendar row (e.g. `Wimbledon: ...`).
 | **`20260704220000`** | Bot portal reply on any visible post (**`admin_lounge_bot_post_comment`**) |
 | **`20260704230000`** | pg_cron **`daily_slates`** + **`poll_edges`** → **`lounge-odds-poll`** (Vault secrets) |
 | **`20260704240000`** | Reschedule: Coffee & Covers **6-8am PT**; **`poll_edges`** every **15 min** **24/7** |
+| **`20260704250000`** | Line movement snapshots + alert post kinds (**`lounge_odds_event_lines`**) |
 
 ---
 
@@ -232,7 +308,7 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 | --- | --- | --- |
 | **1** | Manual fetch + devig +EV + Coffee & Covers + portal | **Code shipped** |
 | **2** | **`lounge-odds-poll`** cron (30-min edge scan, morning Coffee & Covers) | **Migration `20260704230000` — apply + Vault on test/prod** |
-| **3** | Line movement vs snapshot ("moved from -2.5 to -3.5") | Not started |
+| **3** | Line movement alerts (spread / ML / total) | **Shipped** — **`loungeBotLineMovement.ts`**, migration **`20260704250000`** |
 | **4** | Props, rich cards | Not started |
 
 **Legal/compliance (before prod):** Nevada/gambling content policy, no guaranteed-profit claims, disclaimer on profile or posts — counsel review.

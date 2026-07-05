@@ -125,7 +125,15 @@ Deno.serve(async (req) => {
     const wantMorning = postMode === 'auto' || postMode === 'slate_only'
 
     if (wantEdge && edgeCount < maxEdgeAlerts) {
-      const edgeResult = await tryPublishEdgeAlert(admin, bot, ctx, minEdge, dayStart, dryRun)
+      const edgeResult = await tryPublishEdgeAlert(
+        admin,
+        bot,
+        ctx,
+        minEdge,
+        dayStart,
+        dryRun,
+        oddsCfg.alert_audience,
+      )
       edgePick = edgeResult.pick
       if (edgeResult.published) {
         publishedEdge = true
@@ -137,7 +145,14 @@ Deno.serve(async (req) => {
 
     if (!publishedEdge && wantMorning && morningCount < maxMorningPosts) {
       if (coffeeCoversEnabled) {
-        const coffeeResult = await tryPublishCoffeeAndCovers(admin, bot, ctx, dayStart, dryRun)
+        const coffeeResult = await tryPublishCoffeeAndCovers(
+          admin,
+          bot,
+          ctx,
+          dayStart,
+          dryRun,
+          oddsCfg.alert_audience,
+        )
         coffeeMeta = {
           coverCount: coffeeResult.coverCount,
           mlCount: coffeeResult.mlCount,
@@ -150,7 +165,14 @@ Deno.serve(async (req) => {
           postKind = 'coffee_covers'
         }
       } else {
-        const slateResult = await tryPublishSlateCheckIn(admin, bot, ctx, dayStart, dryRun)
+        const slateResult = await tryPublishSlateCheckIn(
+          admin,
+          bot,
+          ctx,
+          dayStart,
+          dryRun,
+          oddsCfg.alert_audience,
+        )
         if (slateResult.published) {
           publishedMorning = true
           postKind = 'slate'

@@ -49,7 +49,7 @@ function secretKeysFromEnv(): string[] {
 }
 
 /**
- * Accept cron/pg_net bearer: exact env match, legacy service_role JWT, or sb_secret_* from SUPABASE_SECRET_KEYS.
+ * Accept cron/pg_net credential: exact env match, legacy service_role JWT, or sb_secret_* from SUPABASE_SECRET_KEYS.
  * Edge SUPABASE_SERVICE_ROLE_KEY may differ from Dashboard legacy JWT even on the same project.
  */
 export function isKnownServiceRoleBearer(
@@ -64,6 +64,13 @@ export function isKnownServiceRoleBearer(
   return false
 }
 
+/** pg_net often sends service role on apikey only (sb_secret must not use Authorization Bearer). */
+export function serviceRoleCredentialFromRequest(req: Request): string {
+  const authBearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
+  if (authBearer) return authBearer
+  return (req.headers.get('apikey') || '').trim()
+}
+
 /** Service role (cron) or admin user JWT (portal). */
 export async function authorizeServiceRoleOrAdmin(req: Request): Promise<SupabaseClient> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
@@ -72,9 +79,9 @@ export async function authorizeServiceRoleOrAdmin(req: Request): Promise<Supabas
     throw adminOpsJson(503, { error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.' })
   }
 
-  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
-  if (isKnownServiceRoleBearer(bearer, serviceRoleKey, supabaseUrl)) {
-    return createClient(supabaseUrl, bearer || serviceRoleKey)
+  const credential = serviceRoleCredentialFromRequest(req)
+  if (isKnownServiceRoleBearer(credential, serviceRoleKey, supabaseUrl)) {
+    return createClient(supabaseUrl, credential || serviceRoleKey)
   }
 
   const { admin } = await requireAdminUser(req)

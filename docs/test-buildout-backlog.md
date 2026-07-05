@@ -780,6 +780,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-05: **Scott pg_net → Edge auth headers:** migration **`20260705080000`** — **`lounge_bot_pg_net_service_headers`** (sb_secret uses **apikey only**, no Bearer); **`adminAuth.ts`** reads **apikey** header for service role. Fixes pg_net **401 Invalid session** when Vault key is valid. Apply SQL on test + prod; redeploy **`lounge-odds-poll`** + **`lounge-bot-publish-due`**.
 - 2026-07-05: **Scott portal odds poll slug fix:** migration **`20260705070000`** — **`admin_lounge_bot_queue_odds_poll`** renamed PL/pgSQL variable `slug` → **`v_slug`** (fixes **column reference slug is ambiguous** on **Post Coffee & Covers** / **Scan all · edge** / **Best bet · hour** / **Value radar**). Same migration fixes **`admin_lounge_bot_publish_post`** unnest alias **`pill_slug`**. Apply on test after **`20260705060000`**.
 - 2026-07-05: **Scott NCAAB Coffee & Covers slate filter:** `loungeBotNcaabCoffeeFilter.ts` — AP Top 25 → power conf → spread move → rivalry/high total; max **40** games in morning board. Redeploy **`lounge-odds-poll`**.
 - 2026-07-05: **Scott NCAAB venue expansion (complete):** Pac-12 (12), WCC (12), MWC (12), American (13), A-10 (14), MVC (11) — added Seattle U, Grand Canyon; dropped departed Missouri State/UMass; **153** NCAAB rows in **`loungeSportsVenues.ts`**. Redeploy **`lounge-odds-poll`**.

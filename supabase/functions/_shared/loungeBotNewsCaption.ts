@@ -4,6 +4,7 @@
  * Dry humor is rare and only when headline already has a wry hook (no forced jokes).
  */
 
+import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
 import { extractTickers, type NewsCandidate } from './loungeBotNewsScore.ts'
 
 const CAPTION_MAX = 500
@@ -11,7 +12,7 @@ const CAPTION_MAX = 500
 const FLUFF_PREFIX_RE = /^(breaking|just in|update|alert|exclusive)[:\s-]+/i
 
 function cleanHeadline(raw: string): string {
-  let s = String(raw || '')
+  let s = decodeHtmlEntities(String(raw || ''))
     .replace(/\s+/g, ' ')
     .trim()
   s = s.replace(FLUFF_PREFIX_RE, '')

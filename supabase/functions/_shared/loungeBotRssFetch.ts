@@ -2,6 +2,7 @@
  * Allowlisted RSS/Atom fetch for Market Edge (headline + link only).
  */
 
+import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
 import { extractTickers, normalizeTitleHash, type NewsCandidate } from './loungeBotNewsScore.ts'
 
 export type NormalizedNewsItem = NewsCandidate & {
@@ -12,14 +13,11 @@ export type NormalizedNewsItem = NewsCandidate & {
 }
 
 function decodeXmlText(raw: string): string {
-  return String(raw || '')
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+  return decodeHtmlEntities(
+    String(raw || '')
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+      .replace(/<[^>]+>/g, ''),
+  )
     .replace(/\s+/g, ' ')
     .trim()
 }

@@ -10,6 +10,7 @@
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/adminAuth.ts'
+import { decodeHtmlEntities } from '../_shared/decodeHtmlEntities.ts'
 import { buildFinancialWireCaption } from '../_shared/loungeBotNewsCaption.ts'
 import {
   extractTickers,
@@ -143,18 +144,19 @@ async function finnhubFetch(path: string, params: Record<string, string>): Promi
 function parseFinnhubNewsRow(row: unknown): NormalizedItem | null {
   if (!row || typeof row !== 'object') return null
   const r = row as Record<string, unknown>
-  const title = String(r.headline || '').trim()
+  const title = decodeHtmlEntities(String(r.headline || '')).trim()
   if (!title) return null
   const dtSec = Number(r.datetime) || 0
   const publishedAtIso = dtSec > 0 ? new Date(dtSec * 1000).toISOString() : null
   const related = String(r.related || '').trim()
+  const summaryRaw = r.summary ? decodeHtmlEntities(String(r.summary)).trim() : ''
   const tickers = related
     ? related.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
-    : extractTickers(`${title} ${String(r.summary || '')}`)
+    : extractTickers(`${title} ${summaryRaw}`)
   const externalId = String(r.id || r.url || title).trim()
   return {
     title,
-    summary: r.summary ? String(r.summary).trim() : undefined,
+    summary: summaryRaw || undefined,
     url: String(r.url || '').trim() || undefined,
     publishedAt: publishedAtIso,
     tickers,

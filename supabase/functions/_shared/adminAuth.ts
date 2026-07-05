@@ -1,8 +1,11 @@
 import { createClient, type SupabaseClient, type User } from 'npm:@supabase/supabase-js@2'
 
+export const LOUNGE_ODDS_POLL_CRON_HEADER = 'x-lounge-odds-poll-cron-secret'
+
 export const adminOpsCorsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-lounge-odds-poll-cron-secret',
 }
 
 export function adminOpsJson(status: number, body: Record<string, unknown>) {
@@ -49,7 +52,7 @@ function secretKeysFromEnv(): string[] {
 }
 
 /**
- * Accept cron/pg_net bearer: exact env match, legacy service_role JWT, or sb_secret_* from SUPABASE_SECRET_KEYS.
+ * Accept cron/pg_net credential: exact env match, legacy service_role JWT, or sb_secret_* from SUPABASE_SECRET_KEYS.
  * Edge SUPABASE_SERVICE_ROLE_KEY may differ from Dashboard legacy JWT even on the same project.
  */
 export function isKnownServiceRoleBearer(
@@ -64,6 +67,46 @@ export function isKnownServiceRoleBearer(
   return false
 }
 
+/** pg_net often sends service role on apikey only (sb_secret must not use Authorization Bearer). */
+export function serviceRoleCredentialFromRequest(req: Request): string {
+  const apikey = (req.headers.get('apikey') || '').trim()
+  const authBearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
+  if (apikey && (!authBearer || authBearer === apikey)) return apikey
+  if (authBearer) return authBearer
+  return apikey
+}
+
+/** Shared secret for pg_net → lounge-odds-poll / lounge-bot-publish-due (Vault + Edge env). */
+export function isOddsPollCronSecret(req: Request): boolean {
+  const expected = Deno.env.get('LOUNGE_ODDS_POLL_CRON_SECRET')?.trim()
+  if (!expected) return false
+  const got = req.headers.get(LOUNGE_ODDS_POLL_CRON_HEADER)?.trim()
+  return Boolean(got && got === expected)
+}
+
+/** pg_net sends x-lounge-odds-poll-cron-secret; fail clearly when env/header mismatch. */
+function authorizeOddsPollCronSecret(req: Request): SupabaseClient | null {
+  const got = req.headers.get(LOUNGE_ODDS_POLL_CRON_HEADER)?.trim()
+  if (!got) return null
+
+  const expected = Deno.env.get('LOUNGE_ODDS_POLL_CRON_SECRET')?.trim()
+  if (!expected) {
+    throw adminOpsJson(503, {
+      error: 'LOUNGE_ODDS_POLL_CRON_SECRET is not set on this Edge function (redeploy after secrets set).',
+    })
+  }
+  if (got !== expected) {
+    throw adminOpsJson(401, { error: 'Invalid lounge odds poll cron secret.' })
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw adminOpsJson(503, { error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.' })
+  }
+  return createClient(supabaseUrl, serviceRoleKey)
+}
+
 /** Service role (cron) or admin user JWT (portal). */
 export async function authorizeServiceRoleOrAdmin(req: Request): Promise<SupabaseClient> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
@@ -72,9 +115,12 @@ export async function authorizeServiceRoleOrAdmin(req: Request): Promise<Supabas
     throw adminOpsJson(503, { error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.' })
   }
 
-  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
-  if (isKnownServiceRoleBearer(bearer, serviceRoleKey, supabaseUrl)) {
-    return createClient(supabaseUrl, bearer || serviceRoleKey)
+  const cronAuth = authorizeOddsPollCronSecret(req)
+  if (cronAuth) return cronAuth
+
+  const credential = serviceRoleCredentialFromRequest(req)
+  if (isKnownServiceRoleBearer(credential, serviceRoleKey, supabaseUrl)) {
+    return createClient(supabaseUrl, credential || serviceRoleKey)
   }
 
   const { admin } = await requireAdminUser(req)

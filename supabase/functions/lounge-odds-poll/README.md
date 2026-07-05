@@ -34,8 +34,23 @@ Invokes **each** `odds_api` bot with `run_state = running` via **`invoke_lounge_
 
 ```sql
 select vault.create_secret('https://YOUR_PROJECT_REF.supabase.co', 'lounge_odds_poll_project_url');
-select vault.create_secret('YOUR_SERVICE_ROLE_KEY', 'lounge_odds_poll_service_role_key');
+-- Random string (same value on Edge as LOUNGE_ODDS_POLL_CRON_SECRET) — migration 20260705090000
+select vault.create_secret('YOUR_LONG_RANDOM_SECRET', 'lounge_odds_poll_cron_secret');
+-- Project anon/publishable for pg_net gateway (eyJ anon OR sb_publishable_) — migration 20260705100000
+-- Or reuse stream purge anon if already set:
+select vault.create_secret('YOUR_ANON_OR_SB_PUBLISHABLE_KEY', 'lounge_odds_poll_supabase_anon_key');
 ```
+
+Set Edge secret **`LOUNGE_ODDS_POLL_CRON_SECRET`** on **`lounge-odds-poll`** and **`lounge-bot-publish-due`** to the same random string. pg_net sends **`apikey`** (anon/publishable, **not** service role) plus header **`x-lounge-odds-poll-cron-secret`**. Service role in `Authorization: Bearer` caused **`Invalid or expired session`** on Edge.
+
+**Smoke headers from SQL:**
+
+```sql
+select public.lounge_bot_odds_poll_pg_net_headers();
+-- Expect apikey (anon/publishable) + x-lounge-odds-poll-cron-secret; no service_role Bearer.
+```
+
+**Portal manual runs** use your **admin session JWT** (sync Edge invoke), not pg_net.
 
 **Verify:**
 

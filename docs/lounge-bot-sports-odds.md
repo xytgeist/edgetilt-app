@@ -171,7 +171,7 @@ Dedupe: one alert per movement direction per game/market/outcome per PT day. Cap
 | Post kind | Trigger | Threshold |
 | --- | --- | --- |
 | **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **4%**) on **ML, spreads, or totals** |
-| **`period_report`** | Sport-specific period milestone (halftime, NHL period end, MLB 5th-inning heuristic) | Best **+EV** lines for remainder of game; same **4%** bar when picks exist |
+| **`period_report`** | Sport-specific period milestone (halftime, NHL period end, MLB 5th-inning heuristic) | Best **+EV** lines for remainder of game; header is milestone label only (e.g. **Halftime Report**) |
 
 Period milestones use elapsed-time heuristics per sport (not play-by-play). State in **`lounge_odds_game_period_state`** — one report per game per milestone. Caps: **`max_live_alerts_per_day`** (default **8**), **`max_period_reports_per_day`** (default **6**). Toggle via **`live_edge_enabled`** / **`period_report_enabled`**.
 
@@ -274,7 +274,7 @@ Quick hits. Bet responsibly.
 
 Example period report:
 ```text
-📊 Halftime Report · 2nd half underway
+📊 Halftime Report
 
 NFL: Chiefs 14 - 10 Bills
 

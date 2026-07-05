@@ -224,7 +224,7 @@ export const SCOTT_EXAMPLE_POST_SPECS: ScottExamplePostSpec[] = [
     caption: [
       `${EXAMPLE_PREFIX} · Halftime Report`,
       '',
-      '📊 Halftime Report · 2nd half underway',
+      '📊 Halftime Report',
       '',
       'NFL: Chiefs 14 - 10 Bills',
       '',

@@ -62,19 +62,19 @@ type PeriodMilestone = {
 
 const PERIOD_RULES: Record<string, PeriodMilestone[]> = {
   basketball_nba: [
-    { key: 'halftime', label: 'Halftime Report', minMinutes: 55 },
+    { key: 'halftime', label: 'Halftime Report', minMinutes: 50 },
   ],
   basketball_ncaab: [
-    { key: 'halftime', label: 'Halftime Report', minMinutes: 55 },
+    { key: 'halftime', label: 'Halftime Report', minMinutes: 50 },
   ],
   basketball_wnba: [
-    { key: 'halftime', label: 'Halftime Report', minMinutes: 55 },
+    { key: 'halftime', label: 'Halftime Report', minMinutes: 50 },
   ],
   americanfootball_nfl: [
-    { key: 'halftime', label: 'Halftime Report', minMinutes: 90 },
+    { key: 'halftime', label: 'Halftime Report', minMinutes: 70 },
   ],
   americanfootball_ncaaf: [
-    { key: 'halftime', label: 'Halftime Report', minMinutes: 90 },
+    { key: 'halftime', label: 'Halftime Report', minMinutes: 70 },
   ],
   icehockey_nhl: [
     { key: 'p1_end', label: 'End of 1st Period', minMinutes: 20 },
@@ -223,7 +223,6 @@ export function buildPeriodReportCaption(
     categoryLabel?: string
     periodLabel: string
     scoreLine?: string
-    clockHint?: string
   },
 ): string {
   const away = shortName(String(event.away_team || 'Away'))
@@ -231,10 +230,9 @@ export function buildPeriodReportCaption(
   const matchup = opts.scoreLine || `${away} @ ${home}`
   const eventLabel = opts.categoryLabel?.trim()
   const head = eventLabel ? `${eventLabel}: ${matchup}` : matchup
-  const clock = opts.clockHint ? ` · ${opts.clockHint}` : ''
 
   const lines = [
-    `📊 ${opts.periodLabel}${clock}`,
+    `📊 ${opts.periodLabel}`,
     '',
     head,
     '',
@@ -474,14 +472,12 @@ export async function tryPublishLiveGameContent(
       const home = String(ev.home_team || '')
       const away = String(ev.away_team || '')
       const scoreLine = formatLiveScoreLine(home, away, scoreRow?.scores)
-      const clockHint = formatLiveClockHint(sportKey, commence)
 
       const eventPicks = livePicks.filter((p) => p.eventId === eventId)
       const caption = buildPeriodReportCaption(ev, eventPicks, {
         categoryLabel,
         periodLabel: milestone.label,
         scoreLine,
-        clockHint,
       })
 
       const dedupeKey = periodReportDedupeKey(sportKey, eventId, milestone.key, ptDay)

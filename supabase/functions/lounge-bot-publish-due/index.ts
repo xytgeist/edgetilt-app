@@ -1,10 +1,11 @@
 /**
  * Publish due scheduled editorial queue rows (+ optional immediate publish).
- * Body: { "queueId": "uuid" } | { "publishDue": true }
+ * Body: { "queueId": "uuid" } | { "publishDue": true } | { "publishScheduledOdds": true }
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/adminAuth.ts'
 import { publishDueQueueRows, publishQueueRow } from '../_shared/loungeBotQueuePublish.ts'
+import { drainDueScheduledBotPosts } from '../_shared/loungeBotPublishSchedule.ts'
 
 async function authorize(req: Request): Promise<{ admin: SupabaseClient; reviewerId: string | null }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
@@ -48,7 +49,14 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, { ok: true, ...stats })
     }
 
-    return adminOpsJson(400, { error: 'Provide queueId or publishDue:true' })
+    if (body?.publishScheduledOdds === true) {
+      const stats = await drainDueScheduledBotPosts(admin, {
+        limit: Number(body.limit) || 10,
+      })
+      return adminOpsJson(200, { ok: true, ...stats })
+    }
+
+    return adminOpsJson(400, { error: 'Provide queueId, publishDue:true, or publishScheduledOdds:true' })
   } catch (err) {
     if (err instanceof Response) return err
     return adminOpsJson(500, { error: err instanceof Error ? err.message : 'Unexpected error' })

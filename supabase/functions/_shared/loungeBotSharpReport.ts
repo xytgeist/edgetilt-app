@@ -13,7 +13,12 @@ import {
 } from './loungeBotLineMovement.ts'
 import { formatAmericanOdds, formatOddsCommenceTimeShort, ptTodayDate, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { hasDedupePublishedToday, type OddsBotRow, type OddsCfgRow } from './loungeBotOddsRun.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import {
+  countScheduledKindToday,
+  DEFAULT_MIN_POST_GAP_MINUTES,
+  hasPendingScheduleDedupe,
+  submitLoungeBotAlertPost,
+} from './loungeBotPublishSchedule.ts'
 
 const CAPTION_MAX = 2000
 /** Wider than per-tick line alerts (8–22 min) — report uses 10–60 min snapshot age. */
@@ -209,6 +214,7 @@ export async function tryPublishSharpReport(
   dryRun: boolean,
 ): Promise<{
   published: boolean
+  scheduled?: boolean
   skipped?: string
   candidate?: { sportKey: string; eventId: string; kind: string; movementScore: number } | null
   captionPreview?: string
@@ -230,13 +236,17 @@ export async function tryPublishSharpReport(
     .eq('status', 'published')
     .eq('post_kind', 'sharp_report')
     .gte('created_at', dayStart)
-  if ((count ?? 0) >= maxPerDay) {
+  const acceptedToday = (count ?? 0) + await countScheduledKindToday(admin, bot.user_id, 'sharp_report', dayStart)
+  if (acceptedToday >= maxPerDay) {
     return { published: false, skipped: 'daily_cap', candidate: null }
   }
 
   const dedupeKey = sharpReportDedupeKey(best.alert)
   if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) {
     return { published: false, skipped: 'already_reported_today', candidate: null }
+  }
+  if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
+    return { published: false, skipped: 'already_scheduled', candidate: null }
   }
 
   const caption = buildSharpReportCaption(best)
@@ -257,24 +267,24 @@ export async function tryPublishSharpReport(
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const subscriberOnly = resolveAlertSubscriberOnly('sharp_report', oddsCfg.alert_audience)
-  const result = await publishLoungeBotPost(admin, {
+  const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
+  const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     subscriberOnly,
+    postKind: 'sharp_report',
+    dedupeKey,
+    score: best.movementScore,
+    minGapMinutes: minGap,
   })
 
-  if (result.postId) {
-    await admin.from('lounge_bot_publish_log').insert({
-      bot_user_id: bot.user_id,
-      post_id: result.postId,
-      caption,
-      score: best.movementScore,
-      status: 'published',
-      post_kind: 'sharp_report',
-      dedupe_key: dedupeKey,
-    })
-    return { published: true, candidate: meta }
+  if (result.accepted) {
+    return { published: false, scheduled: true, candidate: meta }
+  }
+
+  if (result.skipped) {
+    return { published: false, skipped: result.skipped, candidate: meta }
   }
 
   await admin.from('lounge_bot_publish_log').insert({
@@ -287,5 +297,5 @@ export async function tryPublishSharpReport(
     error_message: result.error?.slice(0, 400),
   })
 
-  return { published: false, skipped: 'publish_failed', candidate: meta }
+  return { published: false, skipped: 'schedule_failed', candidate: meta }
 }

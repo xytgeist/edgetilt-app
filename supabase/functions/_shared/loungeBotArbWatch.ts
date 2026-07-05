@@ -17,7 +17,12 @@ import {
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import {
+  countScheduledKindToday,
+  DEFAULT_MIN_POST_GAP_MINUTES,
+  hasPendingScheduleDedupe,
+  submitLoungeBotAlertPost,
+} from './loungeBotPublishSchedule.ts'
 
 const CAPTION_MAX = 2000
 const DEFAULT_MIN_ARB_PROFIT_PCT = 3
@@ -471,41 +476,40 @@ export async function tryPublishArbWatchAlerts(
     .eq('post_kind', 'arb_watch')
     .gte('created_at', dayStart)
   publishedToday = count ?? 0
+  publishedToday += await countScheduledKindToday(admin, bot.user_id, 'arb_watch', dayStart)
 
   let published = 0
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+  const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
 
   for (const arb of arbs) {
     if (publishedToday >= maxPerDay) break
 
     const dedupeKey = arbWatchDedupeKey(arb)
     if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
+    if (await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
 
     const caption = buildArbWatchCaption(arb, {
       displayName: bot.display_name || 'Scott Sharpe',
       categoryLabel,
     })
     const subscriberOnly = resolveAlertSubscriberOnly('arb_watch', oddsCfg.alert_audience)
-    const result = await publishLoungeBotPost(admin, {
+    const result = await submitLoungeBotAlertPost(admin, {
       botUserId: bot.user_id,
       caption,
       categoryPills: pills,
       subscriberOnly,
+      postKind: 'arb_watch',
+      dedupeKey,
+      score: arb.profitPct,
+      minGapMinutes: minGap,
+      priority: 'urgent',
     })
 
-    if (result.postId) {
-      await admin.from('lounge_bot_publish_log').insert({
-        bot_user_id: bot.user_id,
-        post_id: result.postId,
-        caption,
-        score: arb.profitPct,
-        status: 'published',
-        post_kind: 'arb_watch',
-        dedupe_key: dedupeKey,
-      })
+    if (result.accepted) {
       published += 1
       publishedToday += 1
-    } else {
+    } else if (!result.skipped) {
       await admin.from('lounge_bot_publish_log').insert({
         bot_user_id: bot.user_id,
         caption,

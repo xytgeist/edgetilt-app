@@ -26,7 +26,11 @@ import {
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import {
+  DEFAULT_MIN_POST_GAP_MINUTES,
+  hasPendingScheduleDedupe,
+  submitLoungeBotAlertPost,
+} from './loungeBotPublishSchedule.ts'
 
 const HOURLY_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
 const CAPTION_MAX = 2000
@@ -262,6 +266,9 @@ export async function runBestBetHourPoll(
   if (!dryRun && await hasDedupePublished(admin, bot.user_id, dedupeKey)) {
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'already_posted_this_hour', hourBucket }
   }
+  if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
+    return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'already_scheduled_this_hour', hourBucket }
+  }
 
   const candidates: HourlyBestPick[] = []
   let requestsRemaining: string | null = null
@@ -324,26 +331,21 @@ export async function runBestBetHourPoll(
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const subscriberOnly = resolveAlertSubscriberOnly('best_bet_hour', oddsCfg.alert_audience)
-  const result = await publishLoungeBotPost(admin, {
+  const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
+  const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     subscriberOnly,
+    postKind: 'best_bet_hour',
+    dedupeKey,
+    score: best.edgePct,
+    minGapMinutes: minGap,
   })
 
-  if (result.postId) {
-    await admin.from('lounge_bot_publish_log').insert({
-      bot_user_id: bot.user_id,
-      post_id: result.postId,
-      caption,
-      score: best.edgePct,
-      status: 'published',
-      post_kind: 'best_bet_hour',
-      dedupe_key: dedupeKey,
-    })
+  if (result.accepted) {
     await admin.from('lounge_bot_accounts').update({
       last_poll_at: new Date().toISOString(),
-      last_publish_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('user_id', bot.user_id)
 
@@ -352,7 +354,8 @@ export async function runBestBetHourPoll(
       slug,
       action: 'best_bet_hour',
       dryRun,
-      published: true,
+      published: false,
+      scheduled: true,
       hourBucket,
       pick: {
         edgePct: best.edgePct,
@@ -363,6 +366,18 @@ export async function runBestBetHourPoll(
       },
       sportsScanned: calendarRows.length,
       candidatesFound: candidates.length,
+      requestsRemaining,
+    }
+  }
+
+  if (result.skipped) {
+    return {
+      ok: true,
+      slug,
+      action: 'best_bet_hour',
+      dryRun,
+      skipped: result.skipped,
+      hourBucket,
       requestsRemaining,
     }
   }
@@ -382,7 +397,7 @@ export async function runBestBetHourPoll(
     slug,
     action: 'best_bet_hour',
     dryRun,
-    skipped: 'publish_failed',
+    skipped: 'schedule_failed',
     hourBucket,
     requestsRemaining,
   }

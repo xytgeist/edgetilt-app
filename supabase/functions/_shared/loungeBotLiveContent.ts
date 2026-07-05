@@ -15,6 +15,12 @@ import {
   ptTodayDate,
 } from './loungeBotOddsCaption.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import {
+  countScheduledKindToday,
+  DEFAULT_MIN_POST_GAP_MINUTES,
+  hasPendingScheduleDedupe,
+  submitLoungeBotAlertPost,
+} from './loungeBotPublishSchedule.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 const LIVE_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
@@ -407,6 +413,7 @@ export async function tryPublishLiveGameContent(
       if (liveCount >= maxLive) break
       const dedupeKey = inGameEdgeDedupeKey(pick, ptDay)
       if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
+      if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
 
       const scoreRow = scoreById.get(pick.eventId)
       const scoreLine = formatLiveScoreLine(pick.homeTeam, pick.awayTeam, scoreRow?.scores)
@@ -419,27 +426,23 @@ export async function tryPublishLiveGameContent(
       }
 
       const subscriberOnly = resolveAlertSubscriberOnly('in_game_edge', oddsCfg.alert_audience)
-      const result = await publishLoungeBotPost(admin, {
+      const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
+      const result = await submitLoungeBotAlertPost(admin, {
         botUserId: bot.user_id,
         caption,
         categoryPills: pills,
         subscriberOnly,
+        postKind: 'in_game_edge',
+        dedupeKey,
+        score: pick.edgePct,
+        minGapMinutes: minGap,
       })
 
-      if (result.postId) {
-        await admin.from('lounge_bot_publish_log').insert({
-          bot_user_id: bot.user_id,
-          post_id: result.postId,
-          caption,
-          score: pick.edgePct,
-          status: 'published',
-          post_kind: 'in_game_edge',
-          dedupe_key: dedupeKey,
-        })
+      if (result.accepted) {
         publishedLiveEdges += 1
         liveCount += 1
         if (!topLivePick) topLivePick = pick
-      } else {
+      } else if (!result.skipped) {
         await admin.from('lounge_bot_publish_log').insert({
           bot_user_id: bot.user_id,
           caption,
@@ -494,6 +497,18 @@ export async function tryPublishLiveGameContent(
         )
         continue
       }
+      if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
+        await upsertPeriodState(
+          admin,
+          bot.user_id,
+          eventId,
+          sportKey,
+          milestone.key,
+          parseScoreValue(scoreRow?.scores, home),
+          parseScoreValue(scoreRow?.scores, away),
+        )
+        continue
+      }
 
       if (dryRun) {
         publishedPeriodReports += 1
@@ -502,27 +517,23 @@ export async function tryPublishLiveGameContent(
       }
 
       const subscriberOnly = resolveAlertSubscriberOnly('period_report', oddsCfg.alert_audience)
-      const result = await publishLoungeBotPost(admin, {
+      const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
+      const result = await submitLoungeBotAlertPost(admin, {
         botUserId: bot.user_id,
         caption,
         categoryPills: pills,
         subscriberOnly,
+        postKind: 'period_report',
+        dedupeKey,
+        score: eventPicks[0]?.edgePct ?? null,
+        minGapMinutes: minGap,
       })
 
       const topScore = eventPicks[0]?.edgePct ?? null
-      if (result.postId) {
-        await admin.from('lounge_bot_publish_log').insert({
-          bot_user_id: bot.user_id,
-          post_id: result.postId,
-          caption,
-          score: topScore,
-          status: 'published',
-          post_kind: 'period_report',
-          dedupe_key: dedupeKey,
-        })
+      if (result.accepted) {
         publishedPeriodReports += 1
         periodCount += 1
-      } else {
+      } else if (!result.skipped) {
         await admin.from('lounge_bot_publish_log').insert({
           bot_user_id: bot.user_id,
           caption,

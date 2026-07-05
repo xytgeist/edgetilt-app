@@ -7,6 +7,7 @@ import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/
 import { tryPublishArbWatchAlerts } from '../_shared/loungeBotArbWatch.ts'
 import { runBestBetHourPoll } from '../_shared/loungeBotBestBetHour.ts'
 import { runValueBetRadarPoll } from '../_shared/loungeBotValueBetRadar.ts'
+import { tryPublishLiveGameContent } from '../_shared/loungeBotLiveContent.ts'
 import {
   findSharpReportCandidateForSport,
   tryPublishSharpReport,
@@ -29,6 +30,7 @@ import {
   type SportOddsContext,
 } from '../_shared/loungeBotOddsRun.ts'
 import { DEFAULT_MIN_EV_PCT } from '../_shared/loungeBotOddsCaption.ts'
+import { countScheduledKindToday } from '../_shared/loungeBotPublishSchedule.ts'
 
 async function authorize(req: Request): Promise<SupabaseClient> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
@@ -127,7 +129,9 @@ Deno.serve(async (req) => {
       : null
 
     const dayStart = ptDayStartIso()
+    const minPostGap = Number(oddsCfg.min_post_gap_minutes) || 8
     let edgeCount = await countPublishedKindToday(admin, bot.user_id, 'edge', dayStart)
+    edgeCount += await countScheduledKindToday(admin, bot.user_id, 'edge', dayStart)
     const morningPostKind = coffeeCoversEnabled ? 'coffee_covers' : 'slate'
     let morningCount = await countPublishedKindToday(admin, bot.user_id, morningPostKind, dayStart)
 
@@ -188,9 +192,10 @@ Deno.serve(async (req) => {
             dayStart,
             dryRun,
             oddsCfg.alert_audience,
+            minPostGap,
           )
-          if (edgeResult.published) {
-            publishedEdges += 1
+          if (edgeResult.published || edgeResult.scheduled) {
+            publishedEdges += edgeResult.scheduled ? 0 : 1
             edgeCount += 1
           }
 
@@ -352,7 +357,7 @@ Deno.serve(async (req) => {
         dayStart,
         dryRun,
       )
-      if (sharpReportResult.published) publishedSharpReport = 1
+      if (sharpReportResult.published || sharpReportResult.scheduled) publishedSharpReport = 1
       details.push({
         sharpReport: true,
         publishedSharpReport: sharpReportResult.published,
@@ -370,7 +375,6 @@ Deno.serve(async (req) => {
       || publishedPeriodReports > 0 || publishedMorning > 0)) {
       await admin.from('lounge_bot_accounts').update({
         last_poll_at: new Date().toISOString(),
-        last_publish_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq('user_id', bot.user_id)
     } else if (!dryRun) {

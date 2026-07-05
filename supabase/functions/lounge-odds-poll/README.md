@@ -57,4 +57,6 @@ supabase functions deploy lounge-odds-poll --project-ref YOUR_PROJECT_REF
 supabase functions deploy lounge-odds-ingest --project-ref YOUR_PROJECT_REF
 ```
 
-Requires **`THE_ODDS_API_KEY`**, migrations through **`20260704300000`**, and Vault secrets above.
+Requires **`THE_ODDS_API_KEY`**, migrations through **`20260704310000`**, and Vault secrets above.
+
+**Scheduled odds posts:** pg_cron **`lounge_bot_publish_scheduled_odds`** every minute drains **`lounge_bot_scheduled_posts`** via **`lounge-bot-publish-due`** (`publishScheduledOdds: true`).

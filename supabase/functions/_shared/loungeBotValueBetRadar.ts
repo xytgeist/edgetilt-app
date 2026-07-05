@@ -21,7 +21,12 @@ import {
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import {
+  countScheduledKindToday,
+  DEFAULT_MIN_POST_GAP_MINUTES,
+  hasPendingScheduleDedupe,
+  submitLoungeBotAlertPost,
+} from './loungeBotPublishSchedule.ts'
 
 const RADAR_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
 const CAPTION_MAX = 2000
@@ -258,18 +263,28 @@ export async function runValueBetRadarPoll(
   if (!dryRun) {
     const dayStart = new Date()
     dayStart.setHours(0, 0, 0, 0)
+    const dayStartIso = dayStart.toISOString()
     const { count } = await admin
       .from('lounge_bot_publish_log')
       .select('id', { count: 'exact', head: true })
       .eq('bot_user_id', bot.user_id)
       .eq('status', 'published')
       .eq('post_kind', 'value_bet_radar')
-      .gte('created_at', dayStart.toISOString())
-    if ((count ?? 0) >= maxPerDay) {
+      .gte('created_at', dayStartIso)
+    const acceptedToday = (count ?? 0) + await countScheduledKindToday(
+      admin,
+      bot.user_id,
+      'value_bet_radar',
+      dayStartIso,
+    )
+    if (acceptedToday >= maxPerDay) {
       return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'daily_cap', halfHourBucket }
     }
     if (await hasRadarDedupePublished(admin, bot.user_id, dedupeKey)) {
       return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'already_posted_this_window', halfHourBucket }
+    }
+    if (await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
+      return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'already_scheduled_this_window', halfHourBucket }
     }
   }
 
@@ -335,26 +350,21 @@ export async function runValueBetRadarPoll(
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const subscriberOnly = resolveAlertSubscriberOnly('value_bet_radar', oddsCfg.alert_audience)
   const topEv = selected[0]?.edgePct ?? 0
-  const result = await publishLoungeBotPost(admin, {
+  const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
+  const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     subscriberOnly,
+    postKind: 'value_bet_radar',
+    dedupeKey,
+    score: topEv,
+    minGapMinutes: minGap,
   })
 
-  if (result.postId) {
-    await admin.from('lounge_bot_publish_log').insert({
-      bot_user_id: bot.user_id,
-      post_id: result.postId,
-      caption,
-      score: topEv,
-      status: 'published',
-      post_kind: 'value_bet_radar',
-      dedupe_key: dedupeKey,
-    })
+  if (result.accepted) {
     await admin.from('lounge_bot_accounts').update({
       last_poll_at: new Date().toISOString(),
-      last_publish_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('user_id', bot.user_id)
 
@@ -363,12 +373,25 @@ export async function runValueBetRadarPoll(
       slug,
       action: 'value_bet_radar',
       dryRun,
-      published: true,
+      published: false,
+      scheduled: true,
       halfHourBucket,
       pickCount: selected.length,
       picks: pickMeta,
       sportsScanned: calendarRows.length,
       candidatesFound: allCandidates.length,
+      requestsRemaining,
+    }
+  }
+
+  if (result.skipped) {
+    return {
+      ok: true,
+      slug,
+      action: 'value_bet_radar',
+      dryRun,
+      skipped: result.skipped,
+      halfHourBucket,
       requestsRemaining,
     }
   }
@@ -388,7 +411,7 @@ export async function runValueBetRadarPoll(
     slug,
     action: 'value_bet_radar',
     dryRun,
-    skipped: 'publish_failed',
+    skipped: 'schedule_failed',
     halfHourBucket,
     requestsRemaining,
   }

@@ -230,7 +230,19 @@ Disable via **`best_bet_hour_enabled = false`**. Audience key **`best_bet_hour`*
 4. Short analytical caption with cautious language (`appears to be`, `leaning`, etc.) ... **no fabricated injury/news context**
 5. Dedupe **`sharp_report:{ptDay}:{eventId}:...`**; cap **`max_sharp_reports_per_day`** (default **4**)
 
-Disable via **`sharp_report_enabled = false`**.
+Runs **before** line-movement snapshot upsert so both read the same prior lines. Disable via **`sharp_report_enabled = false`**.
+
+### Human-paced publishing (scheduled queue)
+
+Odds alerts no longer burst-post when several qualify in one **`poll_edges`** tick. **`loungeBotPublishSchedule.ts`** queues captions with randomized delay:
+
+| Priority | Alert kinds | Typical delay after spacing gate |
+| --- | --- | --- |
+| **Urgent** | Arb Watch | ~15s–2min after min gap |
+| **Normal** | +EV edge, Best Bet, Value Radar, in-game edge | ~2–10min after min gap |
+| **Low** | Line movement, Sharp Report, period reports | ~6–20min after min gap |
+
+**`min_post_gap_minutes`** (default **8**) enforces minimum spacing between any Scott posts. **`lounge_bot_scheduled_posts`** is drained every minute by pg_cron **`lounge_bot_publish_scheduled_odds`** → **`lounge-bot-publish-due`** (`publishScheduledOdds: true`). Stale pending rows (**> 3h**) cancel automatically. **Coffee & Covers** still posts immediately (threaded morning post).
 
 ### Value Bet Radar (peak hours, ~30 min)
 
@@ -347,8 +359,9 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `value_bet_radar_enabled` | Default **true** — 2–3 strongest +EV plays during peak hours |
 | `min_value_bet_radar_ev_pct` | Default **3.5** — min +EV % per Radar pick |
 | `max_value_bet_radar_posts_per_day` | Default **20** |
+| `min_post_gap_minutes` | Default **8** — min minutes between Scott feed posts (queue spacing) |
 
-Publish log: **`post_kind`** (… `sharp_report` \| `value_bet_radar`), **`dedupe_key`** — through **`20260704300000`**.
+Publish log: **`post_kind`** (… `value_bet_radar`), **`dedupe_key`** — through **`20260704310000`**. Pending queue: **`lounge_bot_scheduled_posts`**.
 
 ---
 
@@ -388,6 +401,7 @@ Captions prefix category label from calendar row (e.g. `Wimbledon: ...`).
 | **`20260704280000`** | **Arb Watch** (`arb_watch` on `poll_edges`, min 3% guaranteed profit) |
 | **`20260704290000`** | **Sharp Report Card** (`sharp_report` narrative on meaningful line moves) |
 | **`20260704300000`** | **Value Bet Radar** (`value_bet_radar` — 2–3 top +EV plays, ~30 min peak cron) |
+| **`20260704310000`** | **Human-paced publish queue** (`lounge_bot_scheduled_posts`, minute drain cron) |
 
 ---
 

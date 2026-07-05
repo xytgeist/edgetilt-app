@@ -36,6 +36,11 @@ import {
 } from './loungeBotLineMovement.ts'
 import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
+import {
+  DEFAULT_MIN_POST_GAP_MINUTES,
+  hasPendingScheduleDedupe,
+  submitLoungeBotAlertPost,
+} from './loungeBotPublishSchedule.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -83,6 +88,7 @@ export type OddsCfgRow = {
   value_bet_radar_enabled?: boolean | null
   min_value_bet_radar_ev_pct?: number | null
   max_value_bet_radar_posts_per_day?: number | null
+  min_post_gap_minutes?: number | null
 }
 
 export function oddsApiKey(): string {
@@ -380,7 +386,8 @@ export async function tryPublishEdgeAlert(
   dayStart: string,
   dryRun: boolean,
   alertAudience?: Record<string, unknown> | null,
-): Promise<{ published: boolean; pick: OddsPick | null; skipped?: string }> {
+  minPostGapMinutes = DEFAULT_MIN_POST_GAP_MINUTES,
+): Promise<{ published: boolean; scheduled?: boolean; pick: OddsPick | null; skipped?: string }> {
   const pick = pickBestOddsCandidate(ctx.upcoming, ctx.sportKey, {
     minBooks: DEFAULT_MIN_BOOKS,
     minEvPct: minEdge,
@@ -395,30 +402,32 @@ export async function tryPublishEdgeAlert(
   if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) {
     return { published: false, pick, skipped: 'edge_already_posted' }
   }
+  if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
+    return { published: false, pick, skipped: 'edge_already_scheduled' }
+  }
 
   const caption = buildOddsEdgeAlertCaption(pick, { categoryLabel: ctx.categoryLabel })
   if (dryRun) return { published: false, pick }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const subscriberOnly = resolveAlertSubscriberOnly('edge', alertAudience)
-  const result = await publishLoungeBotPost(admin, {
+  const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     subscriberOnly,
+    postKind: 'edge',
+    dedupeKey,
+    score: pick.edgePct,
+    minGapMinutes: minPostGapMinutes,
   })
 
-  if (result.postId) {
-    await admin.from('lounge_bot_publish_log').insert({
-      bot_user_id: bot.user_id,
-      post_id: result.postId,
-      caption,
-      score: pick.edgePct,
-      status: 'published',
-      post_kind: 'edge',
-      dedupe_key: dedupeKey,
-    })
-    return { published: true, pick }
+  if (result.accepted) {
+    return { published: false, scheduled: true, pick }
+  }
+
+  if (result.skipped) {
+    return { published: false, pick, skipped: result.skipped }
   }
 
   await admin.from('lounge_bot_publish_log').insert({
@@ -430,7 +439,7 @@ export async function tryPublishEdgeAlert(
     dedupe_key: dedupeKey,
     error_message: result.error?.slice(0, 400),
   })
-  return { published: false, pick, skipped: 'publish_failed' }
+  return { published: false, pick, skipped: 'schedule_failed' }
 }
 
 export async function tryPublishCoffeeAndCovers(
@@ -769,35 +778,30 @@ export async function tryPublishLineMovementAlerts(
 
     const dedupeKey = lineMovementDedupeKey(alert)
     if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
+    if (await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
 
     const caption = buildLineMovementCaption(alert, { categoryLabel: ctx.categoryLabel })
     const subscriberOnly = resolveAlertSubscriberOnly(alert.kind, oddsCfg.alert_audience)
-    const result = await publishLoungeBotPost(admin, {
+    const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
+    const result = await submitLoungeBotAlertPost(admin, {
       botUserId: bot.user_id,
       caption,
       categoryPills: pills,
       subscriberOnly,
+      postKind: alert.kind,
+      dedupeKey,
+      score: Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta),
+      minGapMinutes: minGap,
     })
 
-    const score = Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta)
-
-    if (result.postId) {
-      await admin.from('lounge_bot_publish_log').insert({
-        bot_user_id: bot.user_id,
-        post_id: result.postId,
-        caption,
-        score,
-        status: 'published',
-        post_kind: alert.kind,
-        dedupe_key: dedupeKey,
-      })
+    if (result.accepted) {
       published += 1
       publishedToday += 1
-    } else {
+    } else if (!result.skipped) {
       await admin.from('lounge_bot_publish_log').insert({
         bot_user_id: bot.user_id,
         caption,
-        score,
+        score: Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta),
         status: 'failed',
         post_kind: alert.kind,
         dedupe_key: dedupeKey,

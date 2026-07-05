@@ -413,6 +413,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         )
       } else if (d.published) {
         setToast(`🔥 Best Bet of the Hour posted${ev ? ` · +${ev} EV` : ''}`)
+      } else if (d.scheduled) {
+        setToast(`🔥 Best Bet queued${ev ? ` · +${ev} EV` : ''} · posts on natural cadence`)
       } else if (dryRun && d.captionPreview) {
         setToast(`Dry run · would post Best Bet${ev ? ` (+${ev} EV)` : ''}: ${d.captionPreview.slice(0, 120)}…`)
       } else {
@@ -434,6 +436,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         )
       } else if (d.published) {
         setToast(`📡 Value Bet Radar posted · ${d.pickCount ?? 0} plays${topEv ? ` (top +${topEv})` : ''}`)
+      } else if (d.scheduled) {
+        setToast(`📡 Value Bet Radar queued · ${d.pickCount ?? 0} plays${topEv ? ` (top +${topEv})` : ''}`)
       } else if (dryRun && d.captionPreview) {
         setToast(`Dry run · would post Radar (${d.pickCount ?? 0} plays): ${d.captionPreview.slice(0, 120)}…`)
       } else {

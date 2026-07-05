@@ -5,6 +5,7 @@ import {
   marketChartResolutionShowsTimeAxis,
   marketChartTimeToDate,
 } from './loungeMarketChartTimeAxis.js'
+import { marketChartLocalizationBase, safeChartDateFormat } from './loungeMarketChartLocale.js'
 
 export const LOUNGE_MARKET_CHART_VIEW_MODE_STORAGE_KEY = 'loungeMarketChartViewMode:v1'
 
@@ -71,20 +72,27 @@ function formatMarketChartAxisTime(time, timeframeLabel) {
   if (!d || Number.isNaN(d.getTime())) return ''
   switch (timeframeLabel) {
     case '1H':
-      return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }))
     case '1D':
-      return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }))
     case '1W':
-      return d.toLocaleDateString(undefined, { weekday: 'short' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { weekday: 'short' }))
     case '1M':
     case '3M':
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short', day: 'numeric' }))
     case '1Y':
-      return d.toLocaleDateString(undefined, { month: 'short' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short' }))
     case 'ALL':
-      return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short', year: '2-digit' }))
     default:
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short', day: 'numeric' }))
   }
 }
 
@@ -94,35 +102,41 @@ function formatMarketChartCrosshairTime(time, timeframeLabel) {
   if (!d || Number.isNaN(d.getTime())) return ''
   switch (timeframeLabel) {
     case '1H':
-      return d.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleString(locale, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }))
     case '1D':
-      return d.toLocaleString(undefined, {
-        weekday: 'short',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleString(locale, {
+          weekday: 'short',
+          hour: 'numeric',
+          minute: '2-digit',
+        }))
     case '1W':
-      return d.toLocaleString(undefined, {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleString(locale, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }))
     case '1M':
     case '3M':
-      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' }))
     case '1Y':
-      return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short', year: 'numeric' }))
     case 'ALL':
-      return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short', year: 'numeric' }))
     default:
-      return d.toLocaleString(undefined)
+      return safeChartDateFormat(d, (date, locale) => date.toLocaleString(locale))
   }
 }
 
@@ -132,35 +146,40 @@ export function formatMarketChartTimeLabelForResolution(time, resolutionId) {
   if (!d || Number.isNaN(d.getTime())) return ''
   switch (resolutionId) {
     case '1':
-      return d.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-      })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleString(locale, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          second: '2-digit',
+        }))
     case '5':
     case '15':
     case '60':
-      return d.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleString(locale, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }))
     case '120':
     case '240':
-      return d.toLocaleString(undefined, {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-      })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleString(locale, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        }))
     case 'D':
-      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))
     case 'W':
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      return safeChartDateFormat(d, (date, locale) =>
+        date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' }))
     default:
-      return d.toLocaleString(undefined)
+      return safeChartDateFormat(d, (date, locale) => date.toLocaleString(locale))
   }
 }
 
@@ -239,7 +258,13 @@ export function marketChartAdvancedTimeScaleOptions(timeframeLabel, isLight = fa
     fixRightEdge: false,
     timeVisible: timeframeLabel === '1H' || timeframeLabel === '1D' || timeframeLabel === '1W',
     secondsVisible: timeframeLabel === '1H',
-    tickMarkFormatter: (time) => formatMarketChartAxisTime(time, timeframeLabel),
+    tickMarkFormatter: (time) => {
+      try {
+        return formatMarketChartAxisTime(time, timeframeLabel) || ''
+      } catch {
+        return ''
+      }
+    },
   }
 }
 
@@ -255,13 +280,20 @@ export function marketChartAdvancedTimeScaleOptionsForResolution(resolutionId, i
     fixRightEdge: false,
     timeVisible: marketChartResolutionShowsTimeAxis(id),
     secondsVisible: false,
-    tickMarkFormatter: (time, tickMarkType) => formatMarketChartAxisTickForResolution(time, tickMarkType, id),
+    tickMarkFormatter: (time, tickMarkType) => {
+      try {
+        return formatMarketChartAxisTickForResolution(time, tickMarkType, id) || ''
+      } catch {
+        return ''
+      }
+    },
   }
 }
 
 /** @param {string} timeframeLabel */
 export function marketChartAdvancedLocalization(timeframeLabel) {
   return {
+    ...marketChartLocalizationBase(),
     timeFormatter: (time) => formatMarketChartCrosshairTime(time, timeframeLabel),
   }
 }
@@ -270,6 +302,7 @@ export function marketChartAdvancedLocalization(timeframeLabel) {
 export function marketChartAdvancedLocalizationForResolution(resolutionId) {
   const id = String(resolutionId || '')
   return {
+    ...marketChartLocalizationBase(),
     timeFormatter: (time) => formatMarketChartTimeLabelForResolution(time, id),
   }
 }

@@ -3,6 +3,8 @@
  * Crosshair labels stay fully detailed in loungeMarketChartViewMode.js.
  */
 
+import { safeChartDateFormat } from './loungeMarketChartLocale.js'
+
 /** @typedef {import('./loungeMarketChartResolution.js').MarketChartResolutionId} MarketChartResolutionId */
 
 /** @enum {number} Lightweight Charts TickMarkType */
@@ -25,7 +27,7 @@ export function marketChartTimeToDate(time) {
 
 /** @param {Date} d */
 function monthAbbrev(d) {
-  return d.toLocaleDateString('en-US', { month: 'short' })
+  return safeChartDateFormat(d, (date, locale) => date.toLocaleDateString(locale, { month: 'short' }))
 }
 
 /** 1st → "Jun"; otherwise day-of-month number. */
@@ -47,11 +49,13 @@ function hourMinuteLabel(d) {
 function formatDailyWeeklyTick(d, tickMarkType, resolutionId) {
   if (resolutionId === 'W') {
     if (tickMarkType === TICK.Year) return String(d.getFullYear())
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return safeChartDateFormat(d, (date, locale) =>
+      date.toLocaleDateString(locale, { month: 'short', day: 'numeric' }))
   }
   if (tickMarkType === TICK.Year) return String(d.getFullYear())
   if (tickMarkType === TICK.Month) return monthAbbrev(d)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return safeChartDateFormat(d, (date, locale) =>
+    date.toLocaleDateString(locale, { month: 'short', day: 'numeric' }))
 }
 
 /** 1H / 2H / 4H - dates only: month on the 1st, day number otherwise. */
@@ -110,26 +114,30 @@ function format1mTick(d, tickMarkType) {
  * @param {MarketChartResolutionId | string} resolutionId
  */
 export function formatMarketChartAxisTickForResolution(time, tickMarkType, resolutionId) {
-  const d = marketChartTimeToDate(time)
-  if (!d || Number.isNaN(d.getTime())) return ''
-  const id = String(resolutionId || '')
+  try {
+    const d = marketChartTimeToDate(time)
+    if (!d || Number.isNaN(d.getTime())) return ''
+    const id = String(resolutionId || '')
 
-  switch (id) {
-    case '1':
-      return format1mTick(d, tickMarkType)
-    case '5':
-      return format5mTick(d, tickMarkType)
-    case '15':
-      return format15mTick(d, tickMarkType)
-    case '60':
-    case '120':
-    case '240':
-      return formatHourlyBarTick(d, tickMarkType)
-    case 'D':
-    case 'W':
-      return formatDailyWeeklyTick(d, tickMarkType, id)
-    default:
-      return formatDailyWeeklyTick(d, tickMarkType, 'D')
+    switch (id) {
+      case '1':
+        return format1mTick(d, tickMarkType)
+      case '5':
+        return format5mTick(d, tickMarkType)
+      case '15':
+        return format15mTick(d, tickMarkType)
+      case '60':
+      case '120':
+      case '240':
+        return formatHourlyBarTick(d, tickMarkType)
+      case 'D':
+      case 'W':
+        return formatDailyWeeklyTick(d, tickMarkType, id)
+      default:
+        return formatDailyWeeklyTick(d, tickMarkType, 'D')
+    }
+  } catch {
+    return ''
   }
 }
 

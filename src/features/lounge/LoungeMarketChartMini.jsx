@@ -8,6 +8,7 @@ import {
   pickRollingMarketPayload,
 } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketBarsToSeries, loungeMarketChartTheme } from './loungeMarketChartTheme.js'
+import { marketChartLocalizationBase } from './loungeMarketChartLocale.js'
 
 /**
  * @param {{
@@ -41,6 +42,7 @@ export default function LoungeMarketChartMini({ embed, rollingLive = null, onOpe
       height: 52,
       layout: theme.layout,
       grid: theme.grid,
+      localization: marketChartLocalizationBase(),
       rightPriceScale: { visible: false },
       leftPriceScale: { visible: false },
       timeScale: { visible: false },

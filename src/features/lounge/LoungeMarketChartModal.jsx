@@ -97,6 +97,7 @@ import {
   saveMarketChartScreenshot,
 } from './loungeMarketChartSnapshot.js'
 import LoungeMarketChartAnnotationOverlay from './LoungeMarketChartAnnotationOverlay.jsx'
+import { marketChartLocalizationBase } from './loungeMarketChartLocale.js'
 import {
   marketChartAdvancedHandleScaleOptions,
   marketChartAdvancedLayoutPanesOptions,
@@ -1873,7 +1874,7 @@ export default function LoungeMarketChartModal({
       },
       localization: isAdvancedView
         ? marketChartAdvancedLocalizationForResolution(advancedResolutionId)
-        : undefined,
+        : marketChartLocalizationBase(),
       grid: isAdvancedView ? marketChartAnalysisGrid(isLight) : theme.grid,
       rightPriceScale: isAdvancedView
         ? marketChartAdvancedPriceScaleOptions(isLight)

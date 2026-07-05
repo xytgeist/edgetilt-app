@@ -102,7 +102,7 @@ Long posts may still truncate with `+N more games today.` at the **2000-char** c
 | **Scan all · edge** | All calendar sports today → edge alerts only |
 | **Post Coffee & Covers** | One morning post/day (dedupe) with thread parts per sport |
 | **Best bet · hour** | Manual smoke for hourly strongest +EV post (same logic as cron) |
-| **Post all examples** | One 🧪 Example feed post per alert type (**12** total, incl. Coffee & Covers thread part) |
+| **Post all examples** | One feed post per alert type (**12** total, incl. Coffee & Covers thread part); captions match live format |
 | **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** |
 | **Alert audience** | Per alert type: **All** (public feed) or **Subs** (subscriber-only post). Matrix in Settings → **`lounge_bot_odds_config.alert_audience`**. Defaults: Coffee & Covers **All**; edge, line movement, in-game, period reports, Best Bet of the Hour, Arb Watch, **Sharp Report** **Subs**. **Arb Watch** and **Sharp Report** only post when quality signal exists. |
 

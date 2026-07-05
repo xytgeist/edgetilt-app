@@ -41,11 +41,10 @@ No strong covers today - sitting on hands until we see better value.
 Draw ML +718 @ MyBookie (+9.6% EV)
 • World Cup - Morocco vs Canada (Sat 10AM PT)
 Canada ML +490 @ BetUS (+3.1% EV)
-- Biggest Dogs -
-• MLB - Padres vs Dodgers (Sat 7:11PM PT)
-Padres ML +219 @ LowVig
-• Wimbledon - Zverev vs Giron (Sat 6:30AM PT)
-Giron ML +900 @ DraftKings
+- Dog of the Day -
+• World Cup - France vs Paraguay (Sat 2PM PT)
+Paraguay ML +718 @ MyBookie (+9.6% EV)
+Plus money ahead of fair +652 (9 books).
 - 🍺 On Tap Tomorrow -
 • Wimbledon - Mochizuki vs Sinner: Mochizuki +1600 (+8.1% EV)
 • World Cup - Norway vs Brazil: Norway +367 (+2.8% EV)
@@ -123,7 +122,7 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`** (h2h aler
 | --- | --- | --- |
 | **Covers** (spread/handicap) | **+4%** EV on $1 | **3** per sport (merged in root) |
 | **ML spots** | **+3%** EV on $1 | **3** per sport (merged in root) |
-| **Biggest dogs** | Longest h2h price on today's board | **One line per calendar sport** |
+| **Dog of the Day** | Highest **+EV underdog** (ML plus money or spread **+points**) across the full slate | **One** pick with odds, +EV %, and short reason vs consensus |
 | **On Tap (tomorrow)** | Tomorrow spread/ML at or within **1%** of bar | **Max 3** across all sports |
 | **Best Lines 👇** | Best ML + book per outcome | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`) |
 

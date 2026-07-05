@@ -112,7 +112,7 @@ Plus frontend deploy for portal UI.
 3. **Stripe prod smoke matrix** — **`docs/stripe-billing-test-to-prod-handoff.md`**
 4. **Billing RLS hardening** — entitlements (backlog)
 
-**Do not commit:** untracked `public/edge-email-logo*` experiment PNGs/JPG unless Ryan asks.
+**Email headers:** `node scripts/build-edge-email-logo.mjs` → `public/edge-email-header-*.jpg` only (no standalone `edge-email-logo*` assets).
 
 ### AP guides (ongoing workflow)
 

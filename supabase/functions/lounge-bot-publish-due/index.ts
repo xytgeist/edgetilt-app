@@ -7,7 +7,6 @@ import {
   adminOpsCorsHeaders,
   adminOpsJson,
   isKnownServiceRoleBearer,
-  isOddsPollCronSecret,
   requireAdminUser,
   serviceRoleCredentialFromRequest,
 } from '../_shared/adminAuth.ts'
@@ -19,7 +18,17 @@ async function authorize(req: Request): Promise<{ admin: SupabaseClient; reviewe
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()
   if (!supabaseUrl || !serviceRoleKey) throw adminOpsJson(503, { error: 'Missing env.' })
 
-  if (isOddsPollCronSecret(req)) {
+  const gotCron = req.headers.get('x-lounge-odds-poll-cron-secret')?.trim()
+  if (gotCron) {
+    const expected = Deno.env.get('LOUNGE_ODDS_POLL_CRON_SECRET')?.trim()
+    if (!expected) {
+      throw adminOpsJson(503, {
+        error: 'LOUNGE_ODDS_POLL_CRON_SECRET is not set on this Edge function (redeploy after secrets set).',
+      })
+    }
+    if (gotCron !== expected) {
+      throw adminOpsJson(401, { error: 'Invalid lounge odds poll cron secret.' })
+    }
     return { admin: createClient(supabaseUrl, serviceRoleKey), reviewerId: null }
   }
 

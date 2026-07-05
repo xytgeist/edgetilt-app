@@ -84,6 +84,29 @@ export function isOddsPollCronSecret(req: Request): boolean {
   return Boolean(got && got === expected)
 }
 
+/** pg_net sends x-lounge-odds-poll-cron-secret; fail clearly when env/header mismatch. */
+function authorizeOddsPollCronSecret(req: Request): SupabaseClient | null {
+  const got = req.headers.get(LOUNGE_ODDS_POLL_CRON_HEADER)?.trim()
+  if (!got) return null
+
+  const expected = Deno.env.get('LOUNGE_ODDS_POLL_CRON_SECRET')?.trim()
+  if (!expected) {
+    throw adminOpsJson(503, {
+      error: 'LOUNGE_ODDS_POLL_CRON_SECRET is not set on this Edge function (redeploy after secrets set).',
+    })
+  }
+  if (got !== expected) {
+    throw adminOpsJson(401, { error: 'Invalid lounge odds poll cron secret.' })
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw adminOpsJson(503, { error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.' })
+  }
+  return createClient(supabaseUrl, serviceRoleKey)
+}
+
 /** Service role (cron) or admin user JWT (portal). */
 export async function authorizeServiceRoleOrAdmin(req: Request): Promise<SupabaseClient> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
@@ -92,9 +115,8 @@ export async function authorizeServiceRoleOrAdmin(req: Request): Promise<Supabas
     throw adminOpsJson(503, { error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.' })
   }
 
-  if (isOddsPollCronSecret(req)) {
-    return createClient(supabaseUrl, serviceRoleKey)
-  }
+  const cronAuth = authorizeOddsPollCronSecret(req)
+  if (cronAuth) return cronAuth
 
   const credential = serviceRoleCredentialFromRequest(req)
   if (isKnownServiceRoleBearer(credential, serviceRoleKey, supabaseUrl)) {

@@ -11,9 +11,10 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import { decodeHtmlEntities } from '../_shared/decodeHtmlEntities.ts'
-import { buildFinancialWireCaption, shouldAttachNewsSourceLink } from '../_shared/loungeBotNewsCaption.ts'
+import { buildFinancialWireCaption } from '../_shared/loungeBotNewsCaption.ts'
 import {
   extractTickers,
+  isBlockedNewsItem,
   normalizeTitleHash,
   scoreNewsCandidate,
 } from '../_shared/loungeBotNewsScore.ts'
@@ -350,6 +351,11 @@ Deno.serve(async (req) => {
       try {
         const items = await fetchSourceItems(source)
         for (const item of items) {
+          if (isBlockedNewsItem(item)) {
+            skipped += 1
+            continue
+          }
+
           if (await hashRecentlyUsed(admin, account.user_id, item.contentHash)) {
             skipped += 1
             continue
@@ -437,14 +443,11 @@ Deno.serve(async (req) => {
           .eq('external_id', cand.item.externalId)
           .maybeSingle()
 
-        const attachSourceLink = shouldAttachNewsSourceLink(account.user_id, cand.item.externalId)
-
         const result = await publishLoungeBotPost(admin, {
           botUserId: account.user_id,
           caption,
           categoryPills: pills,
-          sourceUrl: attachSourceLink ? cand.item.url : null,
-          requirePreviewToAttachLink: true,
+          sourceUrl: cand.item.url,
         })
 
         if (result.postId) {

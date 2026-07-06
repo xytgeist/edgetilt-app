@@ -242,6 +242,18 @@ const DROP_KEYWORDS = [
   'recipe',
 ]
 
+/** Routine EDGAR 8-K filings — not Lounge-worthy wire posts. */
+export function isBlockedNewsItem(item: NewsCandidate & { raw?: Record<string, unknown> }): boolean {
+  const title = String(item.title || '').trim().toLowerCase()
+  const source = String(item.sourceName || '').trim().toLowerCase()
+  const filingType = String(item.raw?.filingType || item.raw?.filing_type || '').trim().toUpperCase()
+
+  if (filingType === '8-K') return true
+  if (source.includes('edgar 8-k') || source === 'sec edgar 8-k') return true
+  if (/^8-k\b/i.test(title) || /\b8-k filing:/i.test(title)) return true
+  return false
+}
+
 const CASHTAG_RE = /\$([A-Za-z][A-Za-z0-9.-]{0,14})\b/g
 
 export type NewsCandidate = {
@@ -309,6 +321,9 @@ export function scoreNewsCandidateDetailed(
   item: NewsCandidate,
   opts: NewsScoreOpts = {},
 ): TopicScoreResult {
+  if (isBlockedNewsItem(item)) {
+    return { score: 0, matchedTiers: [] }
+  }
   if (opts.newsProfile === 'crypto') {
     return scoreCryptoNewsCandidateDetailed(item, opts)
   }

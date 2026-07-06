@@ -292,7 +292,6 @@ async function fetchLoungePostPreview(
   }
 }
 
-/** HEAD/GET probe so rich cards never store og:image URLs that 403 or return HTML. */
 async function imageUrlIsReachable(imageUrl: string): Promise<boolean> {
   if (!/^https?:\/\//i.test(imageUrl)) return false
   const ctrl = new AbortController()
@@ -321,6 +320,15 @@ async function imageUrlIsReachable(imageUrl: string): Promise<boolean> {
   } finally {
     clearTimeout(timer)
   }
+}
+
+async function sanitizePreviewImages(preview: LinkPreviewPayload): Promise<LinkPreviewPayload> {
+  let p = withYouTubeEmbedFields(preview)
+  if (p.layout === 'rich' && p.image_url) {
+    const ok = await imageUrlIsReachable(p.image_url)
+    if (!ok) p = { ...p, layout: 'compact', image_url: null }
+  }
+  return p
 }
 
 async function fetchHtmlSafe(url: string): Promise<string> {
@@ -379,7 +387,7 @@ export async function unfurlUrl(
     .eq('url_normalized', key)
     .maybeSingle()
   if (cached?.preview && typeof cached.preview === 'object') {
-    return withYouTubeEmbedFields(cached.preview as LinkPreviewPayload)
+    return sanitizePreviewImages(cached.preview as LinkPreviewPayload)
   }
 
   const loungePostId = parseLoungePostId(url)
@@ -421,17 +429,19 @@ export async function unfurlUrl(
     metaContent(html, 'og:site_name') || parsed.hostname.replace(/^www\./i, ''),
   )
 
-  const preview = withYouTubeEmbedFields({
-    url: key,
-    title: title.slice(0, 380) || null,
-    description: description ? description.slice(0, 500) : null,
-    image_url,
-    favicon_url: faviconForHost(parsed.hostname),
-    site_name,
-    layout: image_url ? 'rich' : 'compact',
-    lounge_post_id: null,
-    accent_color: accentForHost(parsed.hostname, html),
-  })
+  const preview = await sanitizePreviewImages(
+    withYouTubeEmbedFields({
+      url: key,
+      title: title.slice(0, 380) || null,
+      description: description ? description.slice(0, 500) : null,
+      image_url,
+      favicon_url: faviconForHost(parsed.hostname),
+      site_name,
+      layout: image_url ? 'rich' : 'compact',
+      lounge_post_id: null,
+      accent_color: accentForHost(parsed.hostname, html),
+    }),
+  )
 
   await admin.from('link_preview_cache').upsert({
     url_normalized: key,

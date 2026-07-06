@@ -20,7 +20,7 @@ Cron **`invoke_lounge_news_poll()`** already loops **every** running `market_new
 
 ## Default allowlist (tier 1 + tier 2)
 
-Migration **`20260705050000`**. Headline rewrite only ... source link + preview card on **~5%** of posts (`shouldAttachNewsSourceLink` in `loungeBotNewsCaption.ts`); unfurl validates og:image before rich cards.
+Migration **`20260705050000`**. Headline rewrite + source link on every publish; rich preview only when og:image loads; first-person publisher headlines reframed (e.g. CNBC "we're watching" → attributed third person).
 
 ### Tier 1
 

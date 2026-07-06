@@ -54,20 +54,8 @@ export async function publishLoungeBotPost(
 
   if (url) {
     preparedPreview = await unfurlUrl(admin, url)
-    const previewOk = Boolean(
-      preparedPreview &&
-        (preparedPreview.layout === 'compact' ||
-          (preparedPreview.layout === 'rich' && preparedPreview.image_url)),
-    )
 
-    if (previewOk) {
-      if (!finalCaption.includes(url)) {
-        const withUrl = `${finalCaption} ${url}`.trim()
-        finalCaption = withUrl.length <= 2000 ? withUrl : caption
-      }
-    } else if (requirePreview) {
-      preparedPreview = null
-    } else if (!finalCaption.includes(url)) {
+    if (!finalCaption.includes(url)) {
       const withUrl = `${finalCaption} ${url}`.trim()
       finalCaption = withUrl.length <= 2000 ? withUrl : caption
     }

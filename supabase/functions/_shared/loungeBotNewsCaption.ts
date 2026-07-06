@@ -11,6 +11,10 @@ const CAPTION_MAX = 500
 
 const FLUFF_PREFIX_RE = /^(breaking|just in|update|alert|exclusive)[:\s-]+/i
 
+/** Publisher/editorial voice — bot must not repost as its own take. */
+const FIRST_PERSON_RE =
+  /\b(here are|here'?s|what we'?re|we'?re|we'?ve|we'?ll|\bwe\b|\bour\b|\bus\b|\bi'?m|\bi'?ve|\bmy\b|\bi\b)\b/i
+
 function cleanHeadline(raw: string): string {
   let s = decodeHtmlEntities(String(raw || ''))
     .replace(/\s+/g, ' ')
@@ -35,12 +39,58 @@ function bodyWithoutTickerDup(body: string, tickers: string[]): string {
   return stripped.length > 24 ? stripped : body
 }
 
+function sourceLabel(item: NewsCandidate): string {
+  const fromName = String(item.sourceName || '').trim()
+  if (fromName) return fromName.replace(/\s+rss$/i, '').trim()
+  const url = String(item.url || '').trim()
+  if (!url) return 'Report'
+  try {
+    return new URL(url).hostname.replace(/^www\./i, '')
+  } catch {
+    return 'Report'
+  }
+}
+
+function headlineUsesFirstPerson(title: string): boolean {
+  return FIRST_PERSON_RE.test(String(title || ''))
+}
+
+/** Reframe publisher "we/our" headlines as third-person wire with attribution. */
+function rewriteFirstPersonHeadline(title: string, label: string): string {
+  let t = cleanHeadline(title).replace(/[.!?]+$/, '').trim()
+
+  t = t.replace(/^here are (?:the )?/i, '')
+  t = t.replace(/^here'?s (?:the )?/i, '')
+  t = t.replace(/^what we'?re (?:watching|tracking|following)[:\s-]*/i, '')
+  t = t.replace(/\bwe'?re watching\b/gi, 'worth watching')
+  t = t.replace(/\bwe'?re tracking\b/gi, 'in focus')
+  t = t.replace(/\bwe'?re following\b/gi, 'on the radar')
+  t = t.replace(/\bwe'?re\b/gi, '')
+  t = t.replace(/\bwe'?ve\b/gi, '')
+  t = t.replace(/\bwe'?ll\b/gi, '')
+  t = t.replace(/\bour\b/gi, 'the')
+  t = t.replace(/\b(i am|i'?m|i'?ve)\b/gi, '')
+  t = t.replace(/\bmy\b/gi, 'the')
+  t = t.replace(/\s+/g, ' ').trim()
+
+  if (t && !/[.!?]$/.test(t)) t += '.'
+
+  const lead = label && label !== 'Report' ? `${label} — ` : 'Report — '
+  return `${lead}${t.charAt(0).toUpperCase()}${t.slice(1)}`
+}
+
+function wireHeadline(item: NewsCandidate): string {
+  const title = cleanHeadline(item.title)
+  if (!headlineUsesFirstPerson(item.title || '')) return title
+  return rewriteFirstPersonHeadline(item.title || '', sourceLabel(item))
+}
+
 /**
  * Build Lounge caption from a news candidate.
  * Voice: factual wire rewrite; sparing dry humor only if source headline is already punchy.
  */
 export function buildFinancialWireCaption(item: NewsCandidate): string {
-  const title = cleanHeadline(item.title)
+  const title = wireHeadline(item)
   const tickers = item.tickers?.length
     ? item.tickers.map((t) => t.toUpperCase())
     : extractTickers(`${item.title} ${item.summary || ''}`)
@@ -57,17 +107,3 @@ export function buildFinancialWireCaption(item: NewsCandidate): string {
 
 /** @deprecated alias */
 export const buildMarketEdgeCaption = buildFinancialWireCaption
-
-/** ~5% of news posts include a source link + preview card (Market Edge + Crypto Edge). */
-export const NEWS_SOURCE_LINK_RATE = 0.05
-
-/** Stable per-item bucket — same raw item always gets the same link/no-link decision. */
-export function shouldAttachNewsSourceLink(botUserId: string, externalId: string): boolean {
-  const key = `${botUserId}:${externalId}`
-  let h = 2166136261
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return (h >>> 0) % 10_000 < Math.round(NEWS_SOURCE_LINK_RATE * 10_000)
-}

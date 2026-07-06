@@ -58,7 +58,6 @@ Migration **`20260705040000`**. Headline rewrite + source link only ... no full-
 | Finnhub M&A | `finnhub_category` | 5 min | Deals, takeovers |
 | Finnhub forex | `finnhub_category` | 5 min | Macro / FX |
 | Finnhub crypto | `finnhub_category` | 5 min | Digital assets, crypto regs |
-| **SEC EDGAR 8-K** | `edgar` | 3 min | Material events (official Atom) |
 | **SEC EDGAR 10-Q** | `edgar` | 10 min | Quarterly filings |
 | **SEC EDGAR 10-K** | `edgar` | 15 min | Annual filings |
 | **SEC press releases** | `rss` | 5 min | Enforcement, rule proposals |
@@ -82,7 +81,7 @@ Toggle any source off in **`/?tab=bots`** without removing the row.
 | Source | Shipped? | Notes |
 | --- | --- | --- |
 | **Finnhub** categories | Yes | general, merger, forex, crypto |
-| **SEC EDGAR** Atom | Yes | 8-K, 10-Q, 10-K current filings |
+| **SEC EDGAR** Atom | Yes | 10-Q, 10-K current filings (8-K disabled Jul 2026 — routine noise) |
 | **Gov/reg RSS** | Yes | SEC, Fed, Treasury, CFTC, EIA |
 | **Publisher RSS** | Yes | BBC Business, NPR Business (headline + link) |
 | **Benzinga API** | No | Requires license |
@@ -188,8 +187,8 @@ Always **rewrite** ... do not paste licensed wire text verbatim unless API contr
 | Schema | `supabase/migrations/20260703140000_lounge_bot_financial_wire.sql` |
 | Poll fn | `supabase/functions/lounge-news-poll/` |
 | Scoring | `supabase/functions/_shared/loungeBotNewsScore.ts` |
-| Captions | `supabase/functions/_shared/loungeBotNewsCaption.ts` — wire voice; **`shouldAttachNewsSourceLink`** (~5% source link + preview) |
-| Publish | `supabase/functions/_shared/loungeBotPublish.ts` — **`requirePreviewToAttachLink`** skips naked/broken URLs for news bots |
+| Captions | `supabase/functions/_shared/loungeBotNewsCaption.ts` — wire voice; first-person headlines reframed with source attribution |
+| Publish | `supabase/functions/_shared/loungeBotPublish.ts` — source link + preview on every post; rich card only when og:image loads |
 | Admin UI | `src/features/ops/EdgeMonitorBotOpsPanel.jsx` |
 | Finnhub (existing) | `supabase/functions/_shared/finnhubMarket.ts` |
 

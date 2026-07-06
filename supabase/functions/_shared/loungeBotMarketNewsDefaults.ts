@@ -17,8 +17,7 @@ export const DEFAULT_MARKET_NEWS_SOURCES: MarketNewsSourceSeed[] = [
   { name: 'Finnhub forex / macro', kind: 'finnhub_category', api_config: { category: 'forex' }, poll_interval_sec: 300 },
   { name: 'Finnhub crypto', kind: 'finnhub_category', api_config: { category: 'crypto' }, poll_interval_sec: 300 },
 
-  // SEC EDGAR (official; User-Agent required)
-  { name: 'SEC EDGAR 8-K', kind: 'edgar', api_config: { filing_type: '8-K', count: 40 }, poll_interval_sec: 180 },
+  // SEC EDGAR (official; User-Agent required) — 8-K disabled (routine filing noise)
   { name: 'SEC EDGAR 10-Q', kind: 'edgar', api_config: { filing_type: '10-Q', count: 30 }, poll_interval_sec: 600 },
   { name: 'SEC EDGAR 10-K', kind: 'edgar', api_config: { filing_type: '10-K', count: 30 }, poll_interval_sec: 900 },
 

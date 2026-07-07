@@ -344,7 +344,7 @@ Example period report:
 📊 Halftime Report - Chiefs 14-10 Bills
 
 Best bets for 2nd half:
-• Chiefs -2.5 (-108) @ DraftKings (+4.5% EV)
+• Chiefs -2.5 (-108) @ DraftKings (+4.5% EV vs consensus)
 ```
 
 Example live edge:
@@ -355,7 +355,7 @@ NBA
 Lakers 88-82 Warriors
 
 Lakers -4.5 (+105) @ DraftKings
-+5.2% EV on the spread
++5.2% EV vs market consensus on the spread · 9 books
 ```
 
 Example line movement (sharp money):

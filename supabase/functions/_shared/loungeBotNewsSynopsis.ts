@@ -19,7 +19,7 @@ const PERSONA: Record<NewsProfile, string> = {
 
 const CRYPTO_VOICE_RULES =
   `Crypto voice extras:\n` +
-  `- Headline is fixed; synopsis may add context or one dry ironic beat when the story invites it.\n` +
+  `- Headline is fixed and already shown; synopsis must add new detail only (never restate the headline).\n` +
   `- Liquidations, depegs, exchange halts, ETF/reg enforcement = straight wire, no jokes.\n` +
   `- Never sound like a shill account or paid promo.\n\n`
 
@@ -38,24 +38,99 @@ export type WirePostComposeResult = {
   includeLink: boolean
 }
 
-function clipFeedSummary(summary: string, maxSentences: 1 | 2): string {
-  let t = decodeHtmlEntities(String(summary || ''))
+function normalizeCompareText(text: string): string {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\w\s$']/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  if (!t || t.length < 48) return ''
-  if (/^(read more|click here|view article)/i.test(t)) return ''
+}
 
-  t = sanitizeWireProse(t)
+function headlineBodiesForCompare(headline: string, originalTitle?: string): string[] {
+  const out = new Set<string>()
+  const h = String(headline || '').trim()
+  if (h) out.add(h)
+  const credited = h.match(/^[^:]+:\s*(.+)$/i)
+  if (credited?.[1]?.trim()) out.add(credited[1].trim())
+  const orig = String(originalTitle || '').trim()
+  if (orig) out.add(orig)
+  return [...out]
+}
 
-  const parts = t.match(/[^.!?]+[.!?]+(?:\s|$)/g)
-  if (parts?.length) {
-    return parts
-      .slice(0, maxSentences)
-      .join(' ')
-      .trim()
-      .slice(0, SYNOPSIS_MAX)
+function textsAreNearDuplicate(a: string, b: string): boolean {
+  const na = normalizeCompareText(a)
+  const nb = normalizeCompareText(b)
+  if (!na || !nb) return false
+  if (na === nb) return true
+
+  const shorter = na.length <= nb.length ? na : nb
+  const longer = na.length <= nb.length ? nb : na
+  if (longer.includes(shorter) && shorter.length / longer.length >= 0.55) return true
+
+  const tokensA = shorter.split(' ').filter((w) => w.length > 2)
+  const tokensB = new Set(longer.split(' ').filter((w) => w.length > 2))
+  if (tokensA.length < 3 || tokensB.size < 3) return false
+  let overlap = 0
+  for (const t of tokensA) if (tokensB.has(t)) overlap += 1
+  return overlap / tokensA.length >= 0.65
+}
+
+function sentenceRedundantWithHeadline(sentence: string, headlines: string[]): boolean {
+  const s = String(sentence || '').trim()
+  if (!s) return true
+  return headlines.some((h) => textsAreNearDuplicate(s, h))
+}
+
+/** Drop synopsis sentences that only restate the headline (title is already shown above). */
+function filterSynopsisRedundancy(
+  synopsis: string,
+  headline: string,
+  originalTitle?: string,
+): string {
+  const raw = String(synopsis || '').trim()
+  if (!raw) return ''
+
+  const refs = headlineBodiesForCompare(headline, originalTitle)
+  const parts = raw.match(/[^.!?]+[.!?]+(?:\s|$)/g)
+  if (!parts?.length) {
+    return sentenceRedundantWithHeadline(raw, refs) ? '' : sanitizeWireProse(raw)
   }
-  return t.slice(0, SYNOPSIS_MAX)
+
+  const kept: string[] = []
+  for (const part of parts) {
+    const s = part.trim()
+    if (!s || sentenceRedundantWithHeadline(s, refs)) continue
+    kept.push(s)
+  }
+  return sanitizeWireProse(kept.join(' ').trim())
+}
+
+function splitSummarySentences(summary: string): string[] {
+  const t = sanitizeWireProse(
+    decodeHtmlEntities(String(summary || ''))
+      .replace(/\s+/g, ' ')
+      .trim(),
+  )
+  if (!t || t.length < 48) return []
+  if (/^(read more|click here|view article)/i.test(t)) return []
+  return t.match(/[^.!?]+[.!?]+(?:\s|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? [t]
+}
+
+function clipFeedSummary(
+  summary: string,
+  maxSentences: 1 | 2,
+  headline: string,
+  originalTitle?: string,
+): string {
+  const refs = headlineBodiesForCompare(headline, originalTitle)
+  const kept: string[] = []
+  for (const sentence of splitSummarySentences(summary)) {
+    if (sentenceRedundantWithHeadline(sentence, refs)) continue
+    kept.push(sentence)
+    if (kept.length >= maxSentences) break
+  }
+  const joined = kept.join(' ').trim()
+  return joined ? joined.slice(0, SYNOPSIS_MAX) : ''
 }
 
 function headlineLooksSelfContained(headline: string): boolean {
@@ -77,7 +152,7 @@ function fallbackCompose(input: WirePostComposeInput): WirePostComposeResult {
     return { caption: sanitizeWireProse(headline), includeLink: false }
   }
 
-  const synopsis = clipFeedSummary(summary, selfContained ? 1 : 2)
+  const synopsis = clipFeedSummary(summary, selfContained ? 1 : 2, headline, input.originalTitle)
   if (!synopsis) {
     return {
       caption: sanitizeWireProse(headline),
@@ -158,7 +233,9 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
                 `- "" (empty) when no extra context is needed under the headline.\n` +
                 `- ONE short sentence when a little context helps.\n` +
                 `- TWO sentences when the story needs more setup (use the minimum that works).\n` +
-                `- Never repeat the headline. Third person only ... no we/our/us/I. No investment advice.\n` +
+                `- Must ADD facts not already in the headline (who, how, impact, next step). Never restate or lightly rephrase the headline.\n` +
+                `- If the feed excerpt only repeats the headline, skip it and pull a later detail or return "".\n` +
+                `- Third person only ... no we/our/us/I. No investment advice.\n` +
                 `- NEVER use em dashes or en dashes. Use commas or " ... " for breaks.\n` +
                 `- Max ${SYNOPSIS_MAX} characters in synopsis.`,
             },
@@ -180,7 +257,11 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
         const json = await res.json()
         const parsed = parseComposeJson(String(json?.choices?.[0]?.message?.content || ''))
         if (parsed) {
-          const synopsis = sanitizeWireProse(parsed.synopsis)
+          const synopsis = filterSynopsisRedundancy(
+            sanitizeWireProse(parsed.synopsis),
+            headline,
+            opts.originalTitle,
+          )
           const caption = synopsis
             ? sanitizeWireProse(`${headline}\n\n${synopsis}`)
             : sanitizeWireProse(headline)

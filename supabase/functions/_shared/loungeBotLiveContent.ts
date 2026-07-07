@@ -8,7 +8,8 @@ import {
   DEFAULT_MIN_BOOKS,
   findPlusEvOpportunities,
   formatOddsPickLine,
-  marketLabel,
+  formatPlusEvConsensusBullet,
+  formatPlusEvConsensusLine,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
@@ -273,7 +274,6 @@ export function buildInGameEdgeCaption(
   const pickLine = formatOddsPickLine(pick)
   const period = opts.periodLabel?.trim()
   const header = period ? `🔴 LIVE In-Game Edge • ${period}` : '🔴 LIVE In-Game Edge'
-  const ev = Math.round(pick.edgePct * 10) / 10
   const sport = String(opts.categoryLabel || '').trim()
   const contextLines = sport ? [sport, matchup] : [matchup]
 
@@ -283,7 +283,7 @@ export function buildInGameEdgeCaption(
     ...contextLines,
     '',
     `${pickLine} @ ${pick.bookTitle}`,
-    `+${ev}% EV on the ${marketLabel(pick.marketKey)}`,
+    formatPlusEvConsensusLine(pick),
   ]
   if (opts.contextNote?.trim()) {
     lines.push('', opts.contextNote.trim())
@@ -324,8 +324,7 @@ export function buildPeriodReportCaption(
     lines.push('No +EV live lines clearing the threshold right now.')
   } else {
     for (const pick of picks.slice(0, 2)) {
-      const ev = Math.round(pick.edgePct * 10) / 10
-      lines.push(`• ${formatOddsPickLine(pick)} @ ${pick.bookTitle} (+${ev}% EV)`)
+      lines.push(`• ${formatOddsPickLine(pick)} @ ${pick.bookTitle} ${formatPlusEvConsensusBullet(pick)}`)
     }
   }
 

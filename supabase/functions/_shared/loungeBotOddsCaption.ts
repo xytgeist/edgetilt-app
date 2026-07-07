@@ -90,6 +90,20 @@ export function marketLabel(marketKey: OddsPick['marketKey']): string {
   return 'ML'
 }
 
+/** +EV line clarifying edge is vs devigged multi-book consensus (e.g. live in-game edge). */
+export function formatPlusEvConsensusLine(pick: OddsPick): string {
+  const ev = Math.round(pick.edgePct * 10) / 10
+  const mk = marketLabel(pick.marketKey)
+  const books = pick.bookCount >= 2 ? ` · ${pick.bookCount} books` : ''
+  return `+${ev}% EV vs market consensus on the ${mk}${books}`
+}
+
+/** Compact +EV suffix for period-report bullets. */
+export function formatPlusEvConsensusBullet(pick: OddsPick): string {
+  const ev = Math.round(pick.edgePct * 10) / 10
+  return `(+${ev}% EV vs consensus)`
+}
+
 /** American odds → implied probability (with vig). */
 export function americanToImplied(price: number): number {
   if (!Number.isFinite(price) || price === 0) return 0

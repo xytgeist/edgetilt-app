@@ -5,6 +5,7 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/adminAuth.ts'
 import { rewriteTweetForBot } from '../_shared/loungeBotXRewrite.ts'
+import { resolveXBotVoicePrompt } from '../_shared/loungeBotXVoice.ts'
 
 const X_API = 'https://api.x.com/2'
 
@@ -32,12 +33,31 @@ async function resolveXUserId(handle: string, token: string): Promise<string | n
   return String(json?.data?.id || '') || null
 }
 
-async function fetchTweets(userId: string, sinceId: string | null, token: string) {
+function buildTweetExclude(src: { exclude_replies?: boolean | null; exclude_retweets?: boolean | null }) {
+  const parts: string[] = []
+  if (src.exclude_replies !== false) parts.push('replies')
+  if (src.exclude_retweets !== false) parts.push('retweets')
+  return parts.length ? parts.join(',') : ''
+}
+
+function isTopLevelTweet(tw: { referenced_tweets?: Array<{ type?: string }> }) {
+  const refs = tw.referenced_tweets
+  if (!Array.isArray(refs) || refs.length === 0) return true
+  return !refs.some((r) => r?.type === 'replied_to' || r?.type === 'retweeted')
+}
+
+async function fetchTweets(
+  userId: string,
+  sinceId: string | null,
+  token: string,
+  src: { exclude_replies?: boolean | null; exclude_retweets?: boolean | null },
+) {
   const params = new URLSearchParams({
     max_results: '10',
-    exclude: 'replies,retweets',
     'tweet.fields': 'created_at,entities,referenced_tweets',
   })
+  const exclude = buildTweetExclude(src)
+  if (exclude) params.set('exclude', exclude)
   if (sinceId) params.set('since_id', sinceId)
   const res = await fetch(`${X_API}/users/${userId}/tweets?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -85,6 +105,12 @@ Deno.serve(async (req) => {
         .eq('bot_user_id', bot.user_id)
         .eq('enabled', true)
 
+      const botConfig = (bot.config && typeof bot.config === 'object' ? bot.config : {}) as Record<string, unknown>
+      const voicePrompt = resolveXBotVoicePrompt({
+        config: botConfig,
+        displayName: String(bot.display_name || ''),
+      })
+
       for (const src of sources || []) {
         polled += 1
         try {
@@ -97,11 +123,12 @@ Deno.serve(async (req) => {
           }
           if (!xUserId) continue
 
-          const json = await fetchTweets(xUserId, src.since_id, token)
+          const json = await fetchTweets(xUserId, src.since_id, token, src)
           const tweets = Array.isArray(json?.data) ? json.data : []
           const newestId = json?.meta?.newest_id as string | undefined
 
           for (const tw of tweets) {
+            if (!isTopLevelTweet(tw)) continue
             const text = String(tw.text || '').trim()
             const tweetId = String(tw.id || '')
             if (!text || !tweetId) continue
@@ -117,7 +144,7 @@ Deno.serve(async (req) => {
             const draft = await rewriteTweetForBot({
               sourceText: text,
               xHandle: src.x_handle,
-              persona: String(bot.display_name || bot.slug),
+              voicePrompt,
             })
 
             if (dryRun) {

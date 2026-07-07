@@ -37,6 +37,9 @@ import {
   loungePostCategoryPillLabel,
 } from '../../utils/loungePostCategoryPills.js'
 
+const X_BOT_VOICE_PLACEHOLDER =
+  'Explain each tweet in plain English for a layperson. Keep it accurate, vivid, and on-brand for this bot.'
+
 const SCOTT_ASYNC_TOAST =
   'Still running in the background (up to ~3 min). Refresh this panel for Last poll and new Lounge posts.'
 
@@ -251,6 +254,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     const watchlist = Array.isArray(bot.config?.watchlist_tickers)
       ? bot.config.watchlist_tickers.join(', ')
       : ''
+    const defaultVoice = String(bot.config?.voice_prompt || '').trim()
     setDraft({
       maxPostsDay: bot.max_posts_per_day ?? 12,
       maxPostsHour: bot.max_posts_per_hour ?? 4,
@@ -263,6 +267,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       displayName: bot.display_name || '',
       categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
       watchlistText: watchlist,
+      voicePrompt: defaultVoice,
     })
     setComposeCaption('')
     setComposePills(Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [])
@@ -327,7 +332,11 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       max_posts_per_hour: draft.maxPostsHour,
       publish_score_threshold: draft.scoreThreshold,
       category_pills_default: draft.categoryPills,
-      config: { watchlist_tickers: tickers },
+    }
+    if (bot.pipeline === 'market_news') {
+      patch.config = { watchlist_tickers: tickers }
+    } else if (bot.pipeline === 'x') {
+      patch.config = { voice_prompt: String(draft.voicePrompt || '').trim() }
     }
     if (bot.pipeline === 'odds_api') {
       patch.min_edge_pct = Number(String(draft.minEdgePct).trim())
@@ -1030,6 +1039,25 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
               onChange={(e) => setDraft((d) => ({ ...d, watchlistText: e.target.value }))}
               className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm font-mono focus:border-cyan-500/50 focus:outline-none"
               placeholder="AAPL, NVDA, SPY, QQQ"
+            />
+          </label>
+        ) : null}
+
+        {bot.pipeline === 'x' ? (
+          <label className="block mt-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              LLM voice instructions
+            </div>
+            <div className="text-zinc-600 text-[10px] mt-0.5 mb-1">
+              Ingest runs each top-level tweet through OpenAI with this prompt. Set per bot ... not shared
+              across X trackers.
+            </div>
+            <textarea
+              value={draft.voicePrompt}
+              rows={5}
+              onChange={(e) => setDraft((d) => ({ ...d, voicePrompt: e.target.value }))}
+              placeholder={X_BOT_VOICE_PLACEHOLDER}
+              className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm leading-relaxed resize-y focus:border-violet-500/50 focus:outline-none"
             />
           </label>
         ) : null}

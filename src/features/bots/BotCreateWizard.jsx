@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react'
 import { createBotAccount } from './botPortalApi.js'
 import { LOUNGE_POST_CATEGORY_PILL_SLUGS, loungePostCategoryPillLabel } from '../../utils/loungePostCategoryPills.js'
 
+const X_BOT_VOICE_PLACEHOLDER =
+  'Explain each tweet in plain English for a layperson. Keep it accurate, vivid, and on-brand for this bot.'
+
 const DEFAULT_WATCHLIST_TEXT = ''
 
 const PIPELINE_OPTIONS = [
@@ -79,6 +82,7 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
   const [scoreMin, setScoreMin] = useState(55)
   const [pills, setPills] = useState(['stocks', 'trading'])
   const [xHandles, setXHandles] = useState('')
+  const [xVoicePrompt, setXVoicePrompt] = useState('')
   const [watchlist, setWatchlist] = useState(DEFAULT_WATCHLIST_TEXT)
 
   const pipelineMeta = useMemo(
@@ -126,7 +130,9 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
             news_profile: pipelineMeta.newsProfile || 'market',
             watchlist_tickers: watchlist.split(/[,\s]+/).map((t) => t.replace(/^\$/, '').toUpperCase()).filter(Boolean),
           }
-        : {},
+        : pipeline === 'x' && xVoicePrompt.trim()
+          ? { voice_prompt: xVoicePrompt.trim() }
+          : {},
     }
 
     const { data, error } = await createBotAccount(supabaseClient, payload)
@@ -221,16 +227,31 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
               />
             </label>
             {pipeline === 'x' ? (
-              <label className="block">
-                <div className="text-[11px] font-semibold uppercase text-zinc-500">X handles to track</div>
-                <textarea
-                  value={xHandles}
-                  rows={2}
-                  placeholder="@handle1, handle2"
-                  onChange={(e) => setXHandles(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
-                />
-              </label>
+              <>
+                <label className="block">
+                  <div className="text-[11px] font-semibold uppercase text-zinc-500">X handles to track</div>
+                  <textarea
+                    value={xHandles}
+                    rows={2}
+                    placeholder="@handle1, handle2"
+                    onChange={(e) => setXHandles(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <div className="text-[11px] font-semibold uppercase text-zinc-500">LLM voice instructions</div>
+                  <div className="text-zinc-600 text-[10px] mt-0.5 mb-1">
+                    Top-level tweets only. Ingest sends each through OpenAI with this prompt before the editorial inbox.
+                  </div>
+                  <textarea
+                    value={xVoicePrompt}
+                    rows={4}
+                    placeholder={X_BOT_VOICE_PLACEHOLDER}
+                    onChange={(e) => setXVoicePrompt(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm leading-relaxed resize-y"
+                  />
+                </label>
+              </>
             ) : null}
           </div>
         ) : null}

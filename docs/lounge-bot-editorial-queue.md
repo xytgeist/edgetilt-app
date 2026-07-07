@@ -1,6 +1,6 @@
 # Lounge bot editorial queue — X-tracker bots only (planned)
 
-**Status:** Design only ... not implemented.
+**Status:** **Code shipped (Jul 2026)** ... X ingest, editorial inbox, LLM rewrite via per-bot `config.voice_prompt` (portal **Settings** / create wizard). Cron for X ingest still TBD.
 
 **Decision (2026-07-03):** The **morning editorial inbox** is **only** for **X-tracker bots** ... human-imitating Edge accounts that follow configured `@handles`, rewrite tweets in persona voice, and need Ryan's review before publish.
 
@@ -60,6 +60,7 @@ Each bot = **one** `auth.users` + **`profiles`** row + **one ingest pipeline** +
 | `review_mode` | `automatic` \| `editorial` ... **`editorial` only when `pipeline = x`** |
 | `display_name`, `bio`, `avatar` | Public persona |
 | `voice_prompt_id` | LLM system prompt key (X bots; optional for self-contained templates) |
+| `config.voice_prompt` | **Shipped:** full LLM instruction for X ingest rewrite (portal **Settings** on X bots) |
 | `category_pills_default` | Per-account defaults |
 | `max_posts_per_day` | Per-account cap |
 | `enabled` | Kill switch |

@@ -7,10 +7,14 @@ const CAPTION_MAX = 500
 export async function rewriteTweetForBot(opts: {
   sourceText: string
   xHandle: string
-  persona?: string
+  /** Full LLM voice instruction (from bot config or persona registry). */
+  voicePrompt?: string
 }): Promise<string> {
   const raw = String(opts.sourceText || '').trim()
   if (!raw) return ''
+
+  const voice =
+    String(opts.voicePrompt || '').trim() || 'concise, informed EdgeTilt Lounge bot; not spammy'
 
   const key = Deno.env.get('OPENAI_API_KEY')?.trim()
   if (key) {
@@ -29,9 +33,10 @@ export async function rewriteTweetForBot(opts: {
             {
               role: 'system',
               content:
-                `Rewrite the following X post for an EdgeTilt Lounge bot account. ` +
-                `Voice: ${opts.persona || 'concise, informed, not spammy'}. ` +
-                `Do not copy verbatim. No em dashes. Max ${CAPTION_MAX} chars. ` +
+                `You rewrite X posts into Lounge feed captions for an EdgeTilt bot account. ` +
+                `Follow this voice instruction exactly:\n${voice}\n\n` +
+                `Rules: output a single caption only. Do not copy the tweet verbatim. ` +
+                `No em dashes. Max ${CAPTION_MAX} chars. ` +
                 `Do not impersonate the original author; informational tone only.`,
             },
             {

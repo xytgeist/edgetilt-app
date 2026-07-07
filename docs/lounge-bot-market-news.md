@@ -77,6 +77,8 @@ Migration **`20260705040000`**. Headline rewrite + source link only ... no full-
 
 Toggle any source off in **`/?tab=bots`** without removing the row.
 
+**Reuters:** public **`feeds.reuters.com`** RSS is **deprecated/dead** (2026). Do not add. Yahoo Finance + MarketWatch RSS are the wire-style public replacement (**`20260706180000`**).
+
 ---
 
 ## Automated ingest (self-contained)

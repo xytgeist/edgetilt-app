@@ -103,7 +103,7 @@ Long posts may still truncate with `+N more games today.` at the **2000-char** c
 | **Best bet · hour** | Manual smoke for hourly strongest +EV post (same logic as cron) |
 | **Post all examples** | One feed post per alert type (**17** total, incl. Coffee & Covers thread part); captions match live format |
 | **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** |
-| **Alert audience** | Per alert type: **All** (public feed) or **Subs** (subscriber-only post). Matrix in Settings → **`lounge_bot_odds_config.alert_audience`**. Defaults: Coffee & Covers **All**; edge, line movement, in-game, period reports, Best Bet of the Hour, Arb Watch, **Sharp Report** **Subs**. **Arb Watch** and **Sharp Report** only post when quality signal exists. |
+| **Alert audience** | Per alert type: **All** (public feed) or **Subs** (subscriber-only post). Matrix in Settings → **`lounge_bot_odds_config.alert_audience`**. Code defaults: Coffee & Covers + Value Radar **All**; most other kinds **Subs**. **Ryan prod (Jul 2026):** all types set **All** in portal. |
 
 ---
 
@@ -683,6 +683,39 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 
 ---
 
+| **`20260706170000`** | **`invoke_lounge_odds_poll(action, force)`** — optional `force` for Coffee cron tests |
+| **`20260706140000`**–**`20260706160000`** | Portal async pg_net queue + outcome polling RPC |
+| **`20260706150000`** | Queue RPC slug ambiguous fix (`v_slug`) |
+
+---
+
+## Ops / troubleshooting (Jul 2026)
+
+### `poll_edges` silent but Coffee works
+
+**Symptom:** Cron **`lounge_odds_poll_edges`** runs (see **`cron.job_run_details`**), but no edge/line/arb/sharp/live posts; **`last_poll_at`** only updates on **`daily_slates`**.
+
+**Cause (Jul 6 2026):** After dynamic-import BOOT fix, several **`poll_edges`** modules imported **`ptTodayDate`** from **`loungeBotOddsCaption.ts`** (wrong) and **`shortDisplayName`** was not exported. Edge returned **500** on every **`poll_edges`** invoke. **`daily_slates`** never loaded those modules, so Coffee still posted.
+
+**Fix:** commit **`1d5d8fca`** — redeploy **`lounge-odds-poll`** on affected project.
+
+**Verify:**
+
+```sql
+select id, status_code, left(content::text, 200)
+from net._http_response
+where content::text like '%"action":"poll_edges"%'
+order by id desc limit 5;
+```
+
+Expect **200** and **`last_poll_at`** updating every ~15 min when Scott is **Running**.
+
+### Agent SQL probes (local only)
+
+Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw **`supabase db query --linked`**. See **`AGENTS.md`** → Automation. This does **not** affect cron/Edge runtime.
+
+---
+
 ## Open questions
 
 - [x] Supabase cron schedule for **`poll_edges`** / **`daily_slates`** — **`20260704230000`** (Vault + apply per project)
@@ -693,6 +726,10 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 ---
 
 _Updated 2026-07-04: TheRundown context layer (`loungeBotRundownContext.ts`) for pitchers, status, headlines on publish; optional `THERUNDOWN_API_KEY`._
+
+---
+
+_Updated 2026-07-06: `poll_edges` ESM import fix (`1d5d8fca`); Coffee +EV-only + biggest-dog ML + On Tap `@ book`; portal async queue; cron `force`; troubleshooting section._
 
 ---
 

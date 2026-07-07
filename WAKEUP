@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — finish Scott Share smoke on test.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — verify Scott morning Coffee on prod.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -25,10 +25,11 @@ The agent should treat the following as **standing instructions for this session
 - **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
 - **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning*.
 - **Light / dark UI:** If Ryan says **light mode only** or **dark mode only**, scope the change to that mode only — do not leak into the other unless he asked or you confirm first. See **`AGENTS.md`** → *LIGHT MODE vs DARK MODE* (`AGENT_RULE_THEME_MODE_ONLY`).
+- **Supabase default:** **test** (`kcosfvmreeiosdjdzycb`) unless Ryan explicitly asks for **prod** (`jtjgtucumuoswnbauxry`).
 
 ---
 
-**Branch:** `main` / `test` aligned at **`014b3d4d`** (2026-07-04)
+**Branch:** `main` / `test` aligned at **`7344d09c`** (2026-07-06)
 
 **Supabase (do not swap these):**
 
@@ -37,82 +38,75 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Scott Share test smoke on **`kcosfvmreeiosdjdzycb`**; then Stripe prod smoke / Starter weekly cron when ready._
+**Goal:** _Morning smoke: Scott **Coffee & Covers** auto-post **6–8am PT** on prod; confirm **`poll_edges`** alerts flowing after Jul 6 fix._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-04**). Sports odds spec: **`docs/lounge-bot-sports-odds.md`**. Bot portal: **`/?tab=bots`**.
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-06**). Scott spec: **`docs/lounge-bot-sports-odds.md`**. Market Edge: **`docs/lounge-bot-market-news.md`**. Bot portal: **`/?tab=bots`**.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. Scott Share smoke on test, prod bot reply migration, line-movement v2]_
+- Session focus: _[e.g. unschedule leftover Coffee force-test cron on prod, Market Edge smoke]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see backlog Planned → Lounge bots → Sports odds smoke"]_
+- Context: _[e.g. "see backlog Planned → Lounge bots"]_
 
 ---
 
-## Pick up here (Jul 2026)
+## Pick up here (Jul 2026 — session 2026-07-06)
 
-**Latest commits (`main` / `test`):** `014b3d4d` (advanced chart Add to post confirm modal) · `843c5f32` (deploy banner auto-reload **20s**) · `308ef6eb` (post detail reply composer iOS footer fix) · `48d739db` (bot portal reply on any post) · `0a6424e1` (Min +EV % portal field)
-
-### Shipped client (prod deploy via Vercel `main`)
+### Latest commits (`main` / `test`)
 
 | Commit | What |
 | --- | --- |
-| **`014b3d4d`** | **`LoungeMarketChartModal`** — Advanced fullscreen **Add to post** shows confirm (Continue / Save to Photos / Cancel) before inserting snapshot into composer |
-| **`843c5f32`** | **`AppUpdateAvailableBanner`** — silent auto-reload after **20s** (was 3s) on refocus deploy detect |
-| **`308ef6eb`** | **`SocialFeed.jsx`** — post detail reply footer no longer floats mid-screen on iOS when opening a long thread (keyboard overlap only while reply focused) |
-| **`48d739db`** | **`BotReplyOnPostPanel`** + **`20260704220000`** — Scott (any bot) can reply on **any** visible Lounge post from portal (paste `/lounge/p/{uuid}` or UUID) |
+| **`7344d09c`** | Backlog sign-off: Market Edge Yahoo/MW applied test + prod |
+| **`9795a21f`** | Market Edge: Yahoo Finance + MarketWatch Top + Real-Time RSS |
+| **`b658647c`** | Scott Coffee +EV fixes, portal async poll, cron `force`, `db-query` wrapper |
+| **`1d5d8fca`** | **Critical:** `poll_edges` Edge 500 fix (broken ESM imports after dynamic-load split) |
 
-### Prod SQL (Ryan-owned, manual SQL editor)
-
-| Migration | Status |
-| --- | --- |
-| **`20260704220000`** bot reply on any post | **Applied on prod** (**`jtjgtucumuoswnbauxry`**, verified **2026-07-04**): **`admin_lounge_bot_post_comment`** has new comment + no **`post does not belong to this bot`** guard. Not in **`schema_migrations`** (prod manual-apply pattern; table last records **`20260519120000`**). If portal still errors → env mismatch / stale tab / bad UUID, not missing SQL. |
-
-Share link UUID = last path segment of **`https://edgetilt.com/lounge/p/{uuid}`** (must match post's environment).
-
-### Scott Share / sports odds bot (test — smoke pending)
-
-| Item | Detail |
-| --- | --- |
-| **Bot** | **Scott Share** — `@sharpesignal`, pipeline **`odds_api`**, **`review_mode: automatic`** |
-| **Portal** | **`/?tab=bots`** — calendar dropdown, **Fetch odds**, **Scan all · edge**, **Post Coffee & Covers**, **Min +EV %**, **Reply on any post** |
-| **Post types** | **⚡ +EV alert** · **Coffee & Covers** daily board · legacy slate when Coffee disabled |
-| **+EV engine** | Per-book devig → consensus; **`min_edge_pct`** default **2**; max filter **15%** |
-| **Calendar** | **`lounge_sports_betting_calendar`** + manual major-sport picker |
-
-**Apply on test (in order, skip any already applied):**
-
-`20260704120000` → `20260704130000` → `20260704140000` → `20260704150000` → `20260704160000` → `20260704170000` → `20260704180000` → `20260704190000` → `20260704200000` → `20260704210000` → `20260704220000` → **`20260704230000`** (cron + Vault)
-
-**Deploy on test:**
-
-```bash
-supabase functions deploy lounge-odds-ingest --project-ref kcosfvmreeiosdjdzycb
-supabase functions deploy lounge-odds-poll --project-ref kcosfvmreeiosdjdzycb
-```
-
-Plus frontend deploy for portal UI.
-
-**Ryan smoke checklist:** see **`docs/test-buildout-backlog.md`** → **Planned → Lounge bots → Sports odds smoke**.
-
-**Not built yet:** line-movement captions; spreads/totals +EV; feed UI +EV badge; portal calendar editor (SQL/table only). **Cron:** migration **`20260704230000`** (apply + Vault on test/prod).
-
-### Shipped on production (`edgetilt.com`) — still true
+### Scott Share / sports odds — **prod status (2026-07-06 night)**
 
 | Area | Status |
 | --- | --- |
-| **EdgeTilt cutover** | **`edgetilt.com`** → prod Supabase; **`lvslotpro.com`** → test sandbox |
-| **Auth + Stripe + Legal** | See backlog Update log **2026-07-01** tail |
-| **Client through `014b3d4d`** | Deploy banner 20s, iOS post detail composer fix, chart insert confirm, bot reply UI + prod **`20260704220000`** RPC (manual apply, verified) |
+| **Bot** | **`sports-odds`** / Scott, **`run_state: running`**, slug on prod |
+| **Cron** | `lounge_odds_poll_edges` every **15 min**; `daily_slates` every **5 min** **6–8am PT**; `best_bet_hour`, `value_bet_radar` active |
+| **Vault** | `lounge_odds_poll_*` refreshed — cron returns **200** (was **401** earlier Jul 6) |
+| **Edge** | `lounge-odds-poll` + `lounge-odds-ingest` redeployed test + prod |
+| **`poll_edges`** | **Was broken all day** (500: `ptTodayDate` / `shortDisplayName` wrong imports). **Fixed + deployed** `1d5d8fca`. Prod smoke after fix: **200**, MLB live edge + period report published on manual invoke |
+| **Coffee & Covers** | **+EV-only** picks above bar; below-bar = context not picks. **Dog of the Day** = biggest **plus-money ML** per sport (not +EV dog). **On Tap** includes **`@ book`**. Dedupe clears when feed post deleted |
+| **Alert audience** | Ryan set **all alert types → All** in portal (not subs-gated) |
+| **Portal** | Async pg_net queue + outcome polling (`20260706140000`–`20260706160000`); calendar label **"Today's major sporting events"** |
+| **Morning smoke** | **Pending** — first unattended **6–8am PT** Coffee after fixes (evening force tests proved cron path; **7:40** skipped `no_games_today`) |
+
+**Unschedule when done:** one-shot cron `lounge_odds_poll_coffee_force_test_20260706` on prod (job **30** at 7:40 PM Jul 6).
+
+### Market Edge — **prod status (2026-07-06 night)**
+
+| Area | Status |
+| --- | --- |
+| **Sources** | Finnhub + gov RSS + BBC/NPR + **Yahoo Finance** + **MarketWatch Top/Real-Time** (`20260706180000`) |
+| **Edge** | `lounge-news-poll` redeployed test + prod (RSS default User-Agent) |
+| **Voice** | Financial Juice / DeItaone brief; EDGAR filing feeds **off** (`20260706130000`) |
+| **Reuters RSS** | **Do not add** — public `feeds.reuters.com` feeds are dead; use Yahoo/MW instead |
+
+### Agent / CLI tooling (Jul 6)
+
+- **`npm run db:query:test`** / **`db:query:production`** — serialized Supabase SQL (`scripts/supabase-db-query.mjs`). Use instead of parallel raw `supabase db query --linked` (pooler circuit breaker). Optional **`SUPABASE_DB_PASSWORD`** in `.env.supabase.*` for stable local probes only — **not** prod runtime.
+
+### Shipped client (Vercel `main` → **edgetilt.com**)
+
+Includes through **`b658647c`**: Bot portal async odds queue + outcome toasts, Coffee portal label, Scott calendar helper text. Prior: chart Add to post confirm (`014b3d4d`), deploy banner 20s, iOS post detail composer fix, bot reply on any post (`48d739db` + prod **`20260704220000`**).
+
+### Prod SQL applied (Jul 2026 Scott + Market Edge — manual pattern)
+
+Key migrations through **`20260706180000`** on **both** test + prod (verify via function/source rows, not only `schema_migrations`):
+
+`20260704230000`–`20260704240000` (cron) · `20260705060000`–`20260706170000` (portal queue, slug fix, pg_net result, invoke `force`) · `20260706180000` (Yahoo/MW RSS)
 
 ### Next priorities (ordered)
 
-1. **Scott Share test smoke** — migrations + Edge + frontend on **`kcosfvmreeiosdjdzycb`**
-2. **Apply migration **`20260702120000_starter_weekly_drop_reveal_cron.sql`** on test** + redeploy **`lounge-send-activity-push`**
-3. **Stripe prod smoke matrix** — **`docs/stripe-billing-test-to-prod-handoff.md`**
-4. **Billing RLS hardening** — entitlements (backlog)
-
-**Email headers:** `node scripts/build-edge-email-logo.mjs` → `public/edge-email-header-*.jpg` only (no standalone `edge-email-logo*` assets).
+1. **Scott morning Coffee smoke** — prod **~6–8am PT**; grep `net._http_response` + `lounge_bot_publish_log` for `coffee_covers`
+2. **Scott `poll_edges` smoke** — confirm edge / line move / arb / sharp / live alerts publish (not just Coffee)
+3. **Unschedule** leftover Coffee force-test cron on prod
+4. **Market Edge smoke** — Poll now; confirm Yahoo/MW items score + publish
+5. **Stripe prod smoke** / Starter weekly cron — **`docs/stripe-billing-test-to-prod-handoff.md`**
 
 ### AP guides (ongoing workflow)
 
@@ -123,6 +117,5 @@ Plus frontend deploy for portal UI.
 ### Parked
 
 - Thread compose iOS keyboard / options bar overlap after media pick
-- Chat R2 video promote to prod; link-preview + group-delete smoke sign-off
-- Multiple Stream clips per post (v2 cap: 2)
-- Formal **`WAKEUP`** is not a substitute for backlog SQL apply order — grep migration dates in Update log before applying
+- Feed UI +EV badge (caption prefix only today)
+- Reuters wire (needs LSEG/API license — no free RSS)

@@ -60,19 +60,21 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Market news bot v1 (code):** Finnhub general + M&A + watchlist company feeds → score → auto-publish; migration + Edge fn + Bot Portal. **`docs/lounge-bot-market-news.md`**
 - [x] **Market Edge persona + cron (code):** migration **`20260705020000`** (`invoke_lounge_news_poll`, pg_cron every 3 min, watchlist seed); wizard defaults **Market Edge** / `@marketedge`.
 - [x] **Bot ops UI (code):** **`/?tab=bots`** Bot Portal — all bots, run/pause/stop, caps, score threshold, watchlist, source toggles, edit/delete posts, **manual post + reply as bot**, automation log, **Scott Share odds controls** (calendar picker, Fetch odds, Scan all · edge, **Post Coffee & Covers**, **Min +EV %**, **Alert audience All | Subs**). Edge Monitor links here.
-- [ ] **Market news smoke (test):** dry run → enable bot → poll now → confirm Lounge post as bot user; verify day/hour caps.
-- [ ] **Sports odds bot smoke (test):** **`docs/lounge-bot-sports-odds.md`**
-  - [ ] Apply migrations **`20260704120000`** through **`20260704230000`** on **`kcosfvmreeiosdjdzycb`** (skip any already applied)
-  - [ ] Deploy **`lounge-odds-ingest`** + **`lounge-odds-poll`**; frontend deploy for portal
-  - [ ] **`THE_ODDS_API_KEY`** on test Edge
-  - [ ] **`THERUNDOWN_API_KEY`** on test Edge (optional Scott context: pitchers, status, headlines)
-  - [ ] Portal → Scott Share (`@sharpesignal`): **Min +EV %** = **2** if row still **4** → Save settings
+- [ ] **Market news smoke (test + prod):** dry run → enable bot → poll now → confirm Lounge post; Yahoo/MW RSS live after **`20260706180000`**.
+- [ ] **Sports odds bot smoke (test + prod):** **`docs/lounge-bot-sports-odds.md`**
+  - [x] Apply migrations **`20260704120000`** through **`20260706180000`** on test + prod (manual SQL; skip any already applied)
+  - [x] Deploy **`lounge-odds-ingest`** + **`lounge-odds-poll`** test + prod; frontend deploy for portal (**`b658647c`**)
+  - [x] Vault **`lounge_odds_poll_*`** on test + prod (service role JWT)
+  - [x] **`poll_edges` ESM fix** deployed — was 500 all day Jul 6 until **`1d5d8fca`**
+  - [ ] **`THE_ODDS_API_KEY`** on prod Edge (verify set)
+  - [ ] **Morning Coffee auto-post** — unattended **6–8am PT** on prod after Jul 6 fixes
+  - [ ] **`poll_edges` alerts** — edge, line move, arb, sharp, live, context (Ryan: all audience **All**)
+  - [ ] Unschedule one-shot **`lounge_odds_poll_coffee_force_test_20260706`** on prod when done testing
   - [ ] **Dry run** today's calendar sport → `wouldPostKind` edge or `coffee_covers`
   - [ ] **Fetch odds** → ⚡ +EV or Coffee & Covers post on Lounge
   - [ ] **Scan all · edge** + **Post Coffee & Covers** on multi-sport calendar day
   - [ ] **Manual post as Scott** + **reply to a comment** on that post from portal
-  - [ ] **Reply on any post:** paste **`/lounge/p/{uuid}`** share link or raw UUID → **Reply as bot** on a **member** post (requires **`20260704220000`**)
-  - [ ] Wire Supabase cron: apply **`20260704230000`** + Vault **`lounge_odds_poll_project_url`** + **`lounge_odds_poll_service_role_key`** (see **`lounge-odds-poll/README.md`**)
+  - [ ] **Reply on any post:** paste **`/lounge/p/{uuid}`** share link or raw UUID → **Reply as bot** on a **member** post (requires **`20260704220000`** — prod verified **2026-07-04**)
 
 ### X editorial
 
@@ -780,7 +782,9 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
-- 2026-07-06: **Market Edge Yahoo + MarketWatch RSS:** migration **`20260706180000`** adds **`Yahoo Finance`**, **`MarketWatch Top Stories`**, **`MarketWatch Real-Time`** to Market Edge allowlist; default **`User-Agent`** on RSS fetch. Applied test + prod; **`lounge-news-poll`** redeployed test + prod. Commit **`9795a21f`**.
+- 2026-07-06: **Scott `poll_edges` ESM import fix (prod alerts were dead):** dynamic-import split left **`ptTodayDate`** / **`shortDisplayName`** imported from wrong modules → every **`poll_edges`** invoke **500** while **`daily_slates`** (Coffee) still worked. Fix in **`loungeBotSharpReport`**, **`loungeBotArbWatch`**, **`loungeBotBestBetHour`**, **`loungeBotLiveContent`**, **`loungeBotOddsCaption`**. Deployed **`lounge-odds-poll`** test + prod. Commit **`1d5d8fca`**. Prod smoke post-fix: **200**, **`last_poll_at`** updates, MLB live edge + period report on invoke.
+- 2026-07-06: **Scott odds session bundle (commit `b658647c`):** Coffee +EV-only picks + biggest-dog ML + On Tap **`@ book`**; publish-log dedupe after feed delete; portal async pg_net queue (**`20260706140000`**–**`20260706150000`**) + outcome polling (**`20260706160000`**); **`invoke_lounge_odds_poll(..., force)`** (**`20260706170000`**); agent SQL wrapper **`scripts/supabase-db-query.mjs`**; calendar label **Today's major sporting events**. Frontend + Edge + SQL applied test + prod.
+- 2026-07-06: **Market Edge Yahoo + MarketWatch RSS:** migration **`20260706180000`** adds **`Yahoo Finance`**, **`MarketWatch Top Stories`**, **`MarketWatch Real-Time`** to Market Edge allowlist; default **`User-Agent`** on RSS fetch. Applied test + prod; **`lounge-news-poll`** redeployed test + prod. Commits **`9795a21f`**, **`7344d09c`**.
 - 2026-07-06: **Coffee & Covers dedupe after delete:** `hasDedupePublishedToday` / `countPublishedKindToday` ignore publish-log rows whose **`post_id`** was cleared (feed post deleted). Portal delete → repost same PT day works. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**.
 - 2026-07-06: **Coffee & Covers On Tap:** tomorrow lines now include **`@ book`** (best price book already on pick). Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**.
 - 2026-07-06: **Scott `lounge-odds-poll` BOOT_ERROR fix:** Coffee & Covers / poll actions queued OK but Edge returned **503 BOOT_ERROR** (function failed cold start — bundle too heavy). Slimmed **`lounge-odds-poll/index.ts`** with dynamic imports for poll_edges-only modules; redeployed test + prod. Prod smoke: live **`daily_slates` + `force`** → **`publishedCoffeeCovers: 1`** (MLB+WNBA thread). Portal outcome polling (**`20260706160000`**) still needs frontend deploy.

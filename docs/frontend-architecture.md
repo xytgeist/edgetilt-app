@@ -4,7 +4,7 @@ How the React app is organized after the **feature-module split** (2026). Use th
 
 ## Entry and bootstrap
 
-- **`src/main.jsx`** — mounts the root component (unchanged pattern).
+- **`src/main.jsx`** — mounts the root component (unchanged pattern). **`installGlobalTapHaptic()`** from **`src/utils/tapHaptic.js`** registers capture-phase **`pointerdown`** haptics on touch-first devices (Android **`navigator.vibrate`**, iOS Safari 17.4+ hidden **`input[switch]`** fallback). Skips text fields, **`prefers-reduced-motion`**, and targets marked **`data-no-tap-haptic`**; opt in stray divs with **`data-tap-haptic`**.
 - **`src/App.jsx`** — **auth and session only**: Supabase client, login / signup / forgot password / reset password, OAuth callback handling, routing between auth panel vs the app shell, and **`browseMode`** (anonymous vs member). It imports **`AppShell`** when `currentView === 'app'`. **No client-side email whitelist** — any successful Supabase session is treated as a member for shell access (freemium / subscribe gates are separate).
 - **`src/features/shell/AppShell.jsx`** — **logged-in application**: bottom navigation, tab state, Lounge feed wiring, Offers / Guides / Intel / Bankroll / Calculators / Team surfaces, global confirm modal, URL query handling for **Offers** deep links and **Lounge** deep links (`post` / `u` / legacy `profile` query → Home tab; share URLs use **`/lounge/p/<uuid>`** and **`/u/<handle>`** on Vercel for OG), and installed PWA notification prompt coordination (iOS + Android Home Screen / Install app).
 

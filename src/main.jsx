@@ -15,6 +15,7 @@ import {
 import { installDeployVersionWatch } from './utils/appDeployVersion.js'
 import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.js'
 import { installAppDebugLog } from './utils/appDebugLog.js'
+import { installGlobalTapHaptic } from './utils/tapHaptic.js'
 
 // Capture console output for in-app debug log (staff only)
 installAppDebugLog()
@@ -26,6 +27,7 @@ watchSystemTheme()
 
 installStaleChunkReloadListener()
 installDeployVersionWatch()
+installGlobalTapHaptic()
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || 'https://8d6b45f5282d2474693cb8b9957f51d9@o4511453426876416.ingest.us.sentry.io/4511453430611968',

@@ -321,13 +321,14 @@ export async function invokeLoungeOddsPoll(supabaseClient, opts = {}) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, tweetUrl?: string, sourceText?: string }} [opts]
  */
 export async function invokeLoungeXIngest(supabaseClient, opts = {}) {
   return invokeAdminEdgeFunction(supabaseClient, 'lounge-x-ingest', {
     slug: opts.slug,
     dryRun: opts.dryRun === true,
     tweetUrl: opts.tweetUrl ? String(opts.tweetUrl).trim() : undefined,
+    sourceText: opts.sourceText ? String(opts.sourceText).trim() : undefined,
   })
 }
 

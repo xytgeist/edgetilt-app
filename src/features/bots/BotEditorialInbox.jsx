@@ -21,6 +21,7 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
   const [editId, setEditId] = useState('')
   const [editCaption, setEditCaption] = useState('')
   const [ingestTweetUrl, setIngestTweetUrl] = useState('')
+  const [ingestTweetText, setIngestTweetText] = useState('')
 
   const xBots = (bots || []).filter((b) => b.pipeline === 'x' || b.review_mode === 'editorial')
   const filteredBot = botFilter ? bots.find((b) => b.user_id === botFilter) : null
@@ -121,7 +122,11 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
     const url = ingestTweetUrl.trim()
     if (!slug || !url) return
     setBusy('tweet-url')
-    const { data, error } = await invokeLoungeXIngest(supabaseClient, { slug, tweetUrl: url })
+    const { data, error } = await invokeLoungeXIngest(supabaseClient, {
+      slug,
+      tweetUrl: url,
+      sourceText: ingestTweetText.trim() || undefined,
+    })
     setBusy('')
     if (error) {
       setToast?.(error.message || 'Could not transform post.')
@@ -132,6 +137,7 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
     } else {
       setToast?.('Draft added to inbox.')
       setIngestTweetUrl('')
+      setIngestTweetText('')
     }
     setStatus('pending_review')
     void load()
@@ -220,19 +226,26 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
         </div>
 
         {filteredBot?.pipeline === 'x' ? (
-          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <div className="flex flex-col gap-2 mb-3">
             <input
               type="url"
               value={ingestTweetUrl}
               placeholder={`https://x.com/handle/status/… (${filteredBot.display_name || filteredBot.slug})`}
               onChange={(e) => setIngestTweetUrl(e.target.value)}
-              className="flex-1 min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
+              className="w-full min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
+            />
+            <textarea
+              value={ingestTweetText}
+              rows={2}
+              placeholder="Tweet text (optional — paste from X if API not configured)"
+              onChange={(e) => setIngestTweetText(e.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm leading-relaxed resize-y"
             />
             <button
               type="button"
               disabled={busy === 'tweet-url' || !ingestTweetUrl.trim()}
               onClick={() => void transformTweetUrl()}
-              className="shrink-0 min-h-9 rounded-xl bg-cyan-800 px-4 text-white text-[11px] font-bold disabled:opacity-50"
+              className="self-start min-h-9 rounded-xl bg-cyan-800 px-4 text-white text-[11px] font-bold disabled:opacity-50"
             >
               {busy === 'tweet-url' ? '…' : 'Transform post'}
             </button>

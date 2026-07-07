@@ -130,7 +130,7 @@ Use **official X API v2**, not scraping. **Each X-tracker Edge account** has its
 
 1. Developer account at [console.x.com](https://console.x.com) ... Project + App.
 2. **Bearer Token** (OAuth 2.0 app-only) for public reads.
-3. Supabase Edge secrets: `X_API_BEARER_TOKEN` (never in repo).
+3. Supabase Edge secrets: `X_API_BEARER_TOKEN` (never in repo). **Required for timeline polling only** ... manual **Transform a post** can use pasted tweet text or public oEmbed/syndication without a bearer.
 4. Billing: X **pay-per-use credits** (check console for current read pricing).
 
 ### Config table: `lounge_bot_x_sources`
@@ -159,6 +159,18 @@ Authorization: Bearer <token>
 **Cron:** every 30–60 min overnight, or 2–4 fixed runs (11pm, 2am, 5am PT). Advance `since_id` after processing.
 
 **Dedupe:** unique `external_key` (tweet id) on queue table.
+
+### Manual transform (portal **Transform a post**)
+
+Does **not** require `X_API_BEARER_TOKEN`. Body:
+
+```json
+{ "slug": "vitalik-meth", "tweetUrl": "https://x.com/VitalikButerin/status/123", "sourceText": "optional pasted tweet copy" }
+```
+
+Resolution order: pasted `sourceText` → X API v2 (if bearer set) → public oEmbed → syndication JSON. If all fail, portal shows an error asking for pasted tweet text.
+
+Timeline polling still requires a valid bearer and paid X read access.
 
 ---
 

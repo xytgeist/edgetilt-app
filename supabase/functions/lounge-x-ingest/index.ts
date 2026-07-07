@@ -1,7 +1,7 @@
 /**
  * X-tracker ingest → editorial queue (pending_review).
  * Body: { "slug": "x-crypto", "dryRun": false }
- * Body (single post): { "slug": "x-crypto", "tweetUrl": "https://x.com/handle/status/123" }
+ * Body (single post): { "slug": "x-crypto", "tweetUrl": "https://x.com/handle/status/123", "sourceText"?: "..." }
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/adminAuth.ts'
@@ -9,6 +9,7 @@ import { rewriteTweetForBot } from '../_shared/loungeBotXRewrite.ts'
 import { resolveXBotVoicePrompt } from '../_shared/loungeBotXVoice.ts'
 import { canonicalXTweetUrl, parseXTweetUrl } from '../_shared/loungeBotXTweetUrl.ts'
 import { readXApiError } from '../_shared/loungeBotXApi.ts'
+import { resolveTweetForManualIngest } from '../_shared/loungeBotXTweetFetch.ts'
 
 const X_API = 'https://api.x.com/2'
 
@@ -71,47 +72,9 @@ async function fetchTweets(
   return res.json()
 }
 
-type FetchedTweet = {
-  id: string
-  text: string
-  created_at?: string
-  authorHandle: string
-  payload: Record<string, unknown>
-}
-
-async function fetchTweetById(tweetId: string, token: string): Promise<FetchedTweet | null> {
-  const params = new URLSearchParams({
-    'tweet.fields': 'created_at,entities,referenced_tweets,author_id',
-    expansions: 'author_id',
-    'user.fields': 'username',
-  })
-  const res = await fetch(`${X_API}/tweets/${encodeURIComponent(tweetId)}?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) {
-    throw new Error(await readXApiError(res))
-  }
-  const json = await res.json()
-  const tw = json?.data
-  if (!tw?.id) return null
-
-  const users = Array.isArray(json?.includes?.users) ? json.includes.users : []
-  const authorId = String(tw.author_id || '')
-  const author = users.find((u: { id?: string }) => String(u?.id || '') === authorId)
-  const authorHandle = String(author?.username || '').trim().toLowerCase()
-
-  return {
-    id: String(tw.id),
-    text: String(tw.text || '').trim(),
-    created_at: tw.created_at,
-    authorHandle,
-    payload: tw,
-  }
-}
-
 async function ingestTweetUrl(
   admin: SupabaseClient,
-  opts: { slug: string; tweetUrl: string; dryRun: boolean; token: string },
+  opts: { slug: string; tweetUrl: string; dryRun: boolean; token: string; sourceText?: string },
 ) {
   const parsed = parseXTweetUrl(opts.tweetUrl)
   if (!parsed?.tweetId) {
@@ -128,17 +91,23 @@ async function ingestTweetUrl(
   if (botErr) return adminOpsJson(500, { error: botErr.message })
   if (!bot?.user_id) return adminOpsJson(404, { error: `X bot not found: ${opts.slug}` })
 
-  let fetched: FetchedTweet | null
+  let fetched
   try {
-    fetched = await fetchTweetById(parsed.tweetId, opts.token)
+    fetched = await resolveTweetForManualIngest({
+      tweetUrl: opts.tweetUrl,
+      tweetId: parsed.tweetId,
+      handleHint: parsed.handle,
+      sourceText: opts.sourceText,
+      xBearerToken: opts.token || undefined,
+    })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'X API request failed'
-    console.error('lounge-x-ingest tweet fetch failed', { slug: opts.slug, tweetId: parsed.tweetId, msg })
-    return adminOpsJson(502, { error: msg })
+    const msg = err instanceof Error ? err.message : 'Could not resolve tweet text'
+    console.error('lounge-x-ingest tweet resolve failed', { slug: opts.slug, tweetId: parsed.tweetId, msg })
+    return adminOpsJson(400, { error: msg })
   }
 
   if (!fetched?.text) {
-    return adminOpsJson(404, { error: 'Tweet not found or not accessible via X API.' })
+    return adminOpsJson(404, { error: 'Tweet not found or text could not be resolved.' })
   }
 
   const xHandle = parsed.handle || fetched.authorHandle || 'unknown'
@@ -210,7 +179,7 @@ async function ingestTweetUrl(
       category_pills: bot.category_pills_default || [],
       attach_source_link: true,
       status: 'pending_review',
-      source_payload: fetched.payload,
+      source_payload: fetched.payload ?? { source: fetched.source },
     })
     .select('id')
     .single()
@@ -238,16 +207,23 @@ Deno.serve(async (req) => {
     const slug = String(body?.slug || '').trim()
     const dryRun = body?.dryRun === true
     const tweetUrl = String(body?.tweetUrl || body?.tweet_url || '').trim()
-
-    const token = xToken()
-    if (!token) return adminOpsJson(503, { error: 'X_API_BEARER_TOKEN not set on Edge.' })
+    const sourceText = String(body?.sourceText || body?.source_text || '').trim()
 
     if (tweetUrl) {
       if (!slug) {
         return adminOpsJson(400, { error: 'slug required when ingesting a specific X post URL.' })
       }
-      return await ingestTweetUrl(admin, { slug, tweetUrl, dryRun, token })
+      return await ingestTweetUrl(admin, {
+        slug,
+        tweetUrl,
+        dryRun,
+        token: xToken(),
+        sourceText: sourceText || undefined,
+      })
     }
+
+    const token = xToken()
+    if (!token) return adminOpsJson(503, { error: 'X_API_BEARER_TOKEN not set on Edge (required for timeline polling).' })
 
     let botQuery = admin
       .from('lounge_bot_accounts')

@@ -191,6 +191,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   const [draft, setDraft] = useState(null)
   const [newXHandle, setNewXHandle] = useState('')
   const [ingestTweetUrl, setIngestTweetUrl] = useState('')
+  const [ingestTweetText, setIngestTweetText] = useState('')
   const [calendarToday, setCalendarToday] = useState([])
   const [selectedCalendarSlug, setSelectedCalendarSlug] = useState('')
   const [composeCaption, setComposeCaption] = useState('')
@@ -705,6 +706,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     const { data, error } = await invokeLoungeXIngest(supabaseClient, {
       slug: bot.slug,
       tweetUrl: url,
+      sourceText: ingestTweetText.trim() || undefined,
     })
     setBusy('')
     if (error) {
@@ -716,6 +718,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     } else {
       setToast('Draft added to editorial inbox.')
       setIngestTweetUrl('')
+      setIngestTweetText('')
     }
     void onReload()
   }
@@ -1178,22 +1181,31 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-4">
           <div className="text-white font-bold text-sm mb-1">Transform a post</div>
           <div className="text-zinc-500 text-[11px] mb-3">
-            Paste an x.com link to an older tweet. Fetches the post, runs your LLM voice instructions,
-            and adds a draft to the editorial inbox.
+            Paste an x.com link to an older tweet. No X API key needed if you paste the tweet text
+            below ... otherwise we try public embed fetch. Runs your LLM voice instructions and adds
+            a draft to the editorial inbox. Timeline polling still needs{' '}
+            <span className="font-mono text-zinc-400">X_API_BEARER_TOKEN</span>.
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-2">
             <input
               type="url"
               value={ingestTweetUrl}
               placeholder="https://x.com/handle/status/1234567890"
               onChange={(e) => setIngestTweetUrl(e.target.value)}
-              className="flex-1 min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
+              className="w-full min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
+            />
+            <textarea
+              value={ingestTweetText}
+              rows={3}
+              placeholder="Tweet text (optional — paste from X if auto-fetch fails or API is not set up)"
+              onChange={(e) => setIngestTweetText(e.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm leading-relaxed resize-y"
             />
             <button
               type="button"
               disabled={busy === 'tweet-url' || !ingestTweetUrl.trim()}
               onClick={() => void transformTweetUrl()}
-              className="shrink-0 min-h-9 rounded-xl bg-cyan-800 px-4 text-white text-xs font-bold disabled:opacity-50"
+              className="self-start min-h-9 rounded-xl bg-cyan-800 px-4 text-white text-xs font-bold disabled:opacity-50"
             >
               {busy === 'tweet-url' ? 'Transforming…' : 'Transform → inbox'}
             </button>

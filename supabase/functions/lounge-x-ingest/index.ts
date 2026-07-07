@@ -8,6 +8,7 @@ import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/
 import { rewriteTweetForBot } from '../_shared/loungeBotXRewrite.ts'
 import { resolveXBotVoicePrompt } from '../_shared/loungeBotXVoice.ts'
 import { canonicalXTweetUrl, parseXTweetUrl } from '../_shared/loungeBotXTweetUrl.ts'
+import { readXApiError } from '../_shared/loungeBotXApi.ts'
 
 const X_API = 'https://api.x.com/2'
 
@@ -65,8 +66,7 @@ async function fetchTweets(
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`X API ${res.status}: ${text.slice(0, 200)}`)
+    throw new Error(await readXApiError(res))
   }
   return res.json()
 }
@@ -89,8 +89,7 @@ async function fetchTweetById(tweetId: string, token: string): Promise<FetchedTw
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`X API ${res.status}: ${text.slice(0, 200)}`)
+    throw new Error(await readXApiError(res))
   }
   const json = await res.json()
   const tw = json?.data
@@ -129,7 +128,15 @@ async function ingestTweetUrl(
   if (botErr) return adminOpsJson(500, { error: botErr.message })
   if (!bot?.user_id) return adminOpsJson(404, { error: `X bot not found: ${opts.slug}` })
 
-  const fetched = await fetchTweetById(parsed.tweetId, opts.token)
+  let fetched: FetchedTweet | null
+  try {
+    fetched = await fetchTweetById(parsed.tweetId, opts.token)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'X API request failed'
+    console.error('lounge-x-ingest tweet fetch failed', { slug: opts.slug, tweetId: parsed.tweetId, msg })
+    return adminOpsJson(502, { error: msg })
+  }
+
   if (!fetched?.text) {
     return adminOpsJson(404, { error: 'Tweet not found or not accessible via X API.' })
   }
@@ -358,6 +365,9 @@ Deno.serve(async (req) => {
     return adminOpsJson(200, { ok: true, slug: slug || 'all', dryRun, polled, ingested })
   } catch (err) {
     if (err instanceof Response) return err
-    return adminOpsJson(500, { error: err instanceof Error ? err.message : 'Unexpected error' })
+    const msg = err instanceof Error ? err.message : 'Unexpected error'
+    console.error('lounge-x-ingest unhandled', msg)
+    const status = msg.startsWith('X API') ? 502 : 500
+    return adminOpsJson(status, { error: msg })
   }
 })

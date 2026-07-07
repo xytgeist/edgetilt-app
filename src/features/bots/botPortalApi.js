@@ -69,6 +69,9 @@ async function invokeAdminEdgeFunction(supabaseClient, functionName, body) {
         ),
       }
     }
+    if (res.status === 502) {
+      return { data: null, error: new Error(fromBody || text.slice(0, 400) || 'Upstream X API error.') }
+    }
     if (res.status === 401) {
       return { data: null, error: new Error('Sign in again, then retry (session expired).') }
     }

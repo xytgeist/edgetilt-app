@@ -3,6 +3,54 @@
  */
 
 /**
+ * Surface `{ error }` from Edge Function JSON when invoke returns non-2xx.
+ * @param {unknown} error
+ * @param {Response | undefined} response
+ * @param {{ functionName?: string, defaultMessage?: string }} [opts]
+ */
+async function messageFromEdgeInvokeError(error, response, opts = {}) {
+  const functionName = opts.functionName || 'edge function'
+  const defaultMessage = opts.defaultMessage || 'Request failed.'
+  const fallback = String(
+    (error && typeof error === 'object' && 'message' in error && error.message) || defaultMessage,
+  ).trim()
+
+  const ctx = error && typeof error === 'object' ? /** @type {{ context?: Response }} */ (error).context : null
+  const res =
+    ctx && typeof ctx.status === 'number'
+      ? ctx
+      : response && typeof response.status === 'number'
+        ? response
+        : null
+
+  if (res) {
+    try {
+      const raw = await res.clone().text()
+      if (raw) {
+        try {
+          const body = JSON.parse(raw)
+          if (body?.error != null) return String(body.error).trim() || fallback
+          if (body?.message != null) return String(body.message).trim() || fallback
+        } catch {
+          return raw.slice(0, 400) || fallback
+        }
+      }
+    } catch {
+      // ignore
+    }
+    if (res.status === 503) {
+      return `Server misconfigured (check Edge secrets for ${functionName}, e.g. X_API_BEARER_TOKEN).`
+    }
+    if (res.status === 401) return 'Sign in again, then retry (session expired).'
+    if (res.status === 403) return 'Admin access required.'
+    if (res.status === 404) return `Not found (${functionName} or requested resource).`
+    return fallback || `Service returned HTTP ${res.status}.`
+  }
+
+  return fallback || defaultMessage
+}
+
+/**
  * Poll pg_net response for async Scott queue (admin_lounge_bot_queue_odds_* request_id).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {number | string} requestId
@@ -238,14 +286,20 @@ export async function invokeLoungeOddsPoll(supabaseClient, opts = {}) {
  * @param {{ slug?: string, dryRun?: boolean }} [opts]
  */
 export async function invokeLoungeXIngest(supabaseClient, opts = {}) {
-  const { data, error } = await supabaseClient.functions.invoke('lounge-x-ingest', {
+  const { data, error, response } = await supabaseClient.functions.invoke('lounge-x-ingest', {
     body: {
       slug: opts.slug,
       dryRun: opts.dryRun === true,
       tweetUrl: opts.tweetUrl ? String(opts.tweetUrl).trim() : undefined,
     },
   })
-  if (error) return { data: null, error: new Error(error.message || 'lounge-x-ingest failed') }
+  if (error) {
+    const msg = await messageFromEdgeInvokeError(error, response, {
+      functionName: 'lounge-x-ingest',
+      defaultMessage: 'lounge-x-ingest failed.',
+    })
+    return { data: null, error: new Error(msg) }
+  }
   if (data?.error) return { data: null, error: new Error(String(data.error)) }
   return { data, error: null }
 }

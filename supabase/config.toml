@@ -37,6 +37,13 @@ verify_jwt = false
 [functions.lounge-bot-publish-due]
 verify_jwt = false
 
+# X tracker ingest: admin JWT checked in function (adminAuth.ts).
+[functions.lounge-x-ingest]
+verify_jwt = false
+
+[functions.lounge-bot-admin]
+verify_jwt = false
+
 # Stripe billing webhook (signed by Stripe, not Supabase JWT).
 [functions.stripe-webhook]
 verify_jwt = false

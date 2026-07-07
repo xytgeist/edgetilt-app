@@ -537,6 +537,17 @@ function loungePostEditSnapshotShowsFeedCardSpinner(snapshot) {
   return false
 }
 
+/** In-app confirm on mobile PWA; `window.confirm` blocks the UI thread after portaled menus close. */
+async function loungeDestructiveConfirm(showGlobalConfirm, { title, message, confirmLabel = 'Delete' }) {
+  if (typeof showGlobalConfirm === 'function') {
+    return showGlobalConfirm({ title, message, confirmLabel, cancelLabel: 'Cancel' })
+  }
+  if (typeof window !== 'undefined') {
+    return window.confirm(message ? `${title}\n\n${message}` : title)
+  }
+  return false
+}
+
 export default function SocialFeed({
   supabaseClient,
   onRequireAuth,
@@ -593,6 +604,8 @@ export default function SocialFeed({
   onSimulateTabError = null,
   /** Staff-only: clear tab error strike count (False Start vs Fumble testing). */
   onResetTabErrorStrikes = null,
+  /** AppShell in-app confirm (avoids native `window.confirm` freeze on iOS PWA). */
+  showGlobalConfirm = null,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -2154,7 +2167,7 @@ export default function SocialFeed({
 
   const handleBlockLoungeProfile = useCallback((profileRow) => {
     void profileRow
-    if (typeof window !== 'undefined') window.alert('Blocking users is not available yet.')
+    setLoungeShareFlash('Blocking users is not available yet.')
   }, [])
 
   const avatarText = useCallback((p) => {
@@ -6215,10 +6228,11 @@ export default function SocialFeed({
   const deleteLoungeDetailComment = useCallback(
     async (c) => {
       if (!c?.id || !composerUserId || !loungePostDetail?.id) return
-      if (typeof window !== 'undefined') {
-        const ok = window.confirm('Delete this reply? This cannot be undone.')
-        if (!ok) return
-      }
+      const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+        title: 'Delete this reply?',
+        message: 'This cannot be undone.',
+      })
+      if (!ok) return
       const removeIds = new Set([c.id])
       let grew = true
       while (grew) {
@@ -6309,18 +6323,19 @@ export default function SocialFeed({
       loungeDetailComments,
       loungePostDetail?.id,
       patchPostAggregate,
+      showGlobalConfirm,
       supabaseClient,
     ],
   )
 
   const onCommentMenuBlockFromDetail = useCallback((c) => {
     void c
-    if (typeof window !== 'undefined') window.alert('Blocking users is not available yet.')
+    setLoungeShareFlash('Blocking users is not available yet.')
   }, [])
 
   const onCommentMenuReportFromDetail = useCallback((c) => {
     void c
-    if (typeof window !== 'undefined') window.alert('Reporting comments is not available yet.')
+    setLoungeShareFlash('Reporting comments is not available yet.')
   }, [])
 
   /**
@@ -7895,8 +7910,8 @@ export default function SocialFeed({
         if (error) {
           const raw = String(error.message || '')
           if (raw.includes('MAX_PINNED_POSTS')) {
-            if (typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
             setLoungeManageErr(LOUNGE_MAX_PINNED_ALERT)
+            setLoungeShareFlash(LOUNGE_MAX_PINNED_ALERT)
             return
           }
           setLoungeManageErr(raw || 'Could not update pin.')
@@ -7916,10 +7931,11 @@ export default function SocialFeed({
   const performLoungePostDeleteFromDetail = useCallback(async () => {
     if (!loungePostDetail?.id || loungePostDetail.user_id !== composerUserId) return
     if (loungePostDeleteInflightRef.current) return
-    if (typeof window !== 'undefined') {
-      const ok = window.confirm('Delete this post? This cannot be undone.')
-      if (!ok) return
-    }
+    const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+      title: 'Delete this post?',
+      message: 'This cannot be undone.',
+    })
+    if (!ok) return
     loungePostDeleteInflightRef.current = true
     const postId = loungePostDetail.id
     setLoungeManageErr('')
@@ -7953,16 +7969,17 @@ export default function SocialFeed({
       loungePostDeleteInflightRef.current = false
       setLoungeDetailDeleteBusy(false)
     }
-  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, supabaseClient])
+  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, showGlobalConfirm, supabaseClient])
 
   const performLoungeStaffDeleteFromDetail = useCallback(async () => {
     if (!loungePostDetail?.id || !loungeViewerIsStaff) return
     if (loungePostDetail.user_id === composerUserId) return
     if (loungePostDeleteInflightRef.current) return
-    if (typeof window !== 'undefined') {
-      const ok = window.confirm('Delete this post as staff? This cannot be undone.')
-      if (!ok) return
-    }
+    const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+      title: 'Delete this post as staff?',
+      message: 'This cannot be undone.',
+    })
+    if (!ok) return
     loungePostDeleteInflightRef.current = true
     const postId = loungePostDetail.id
     setLoungeManageErr('')
@@ -7996,16 +8013,17 @@ export default function SocialFeed({
       loungePostDeleteInflightRef.current = false
       setLoungeDetailDeleteBusy(false)
     }
-  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, loungeViewerIsStaff, supabaseClient])
+  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, loungeViewerIsStaff, showGlobalConfirm, supabaseClient])
 
   const deleteLoungePostFromFeed = useCallback(
     async (post) => {
       if (!post?.id || post.user_id !== composerUserId) return
       if (loungePostDeleteInflightRef.current) return
-      if (typeof window !== 'undefined') {
-        const ok = window.confirm('Delete this post? This cannot be undone.')
-        if (!ok) return
-      }
+      const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+        title: 'Delete this post?',
+        message: 'This cannot be undone.',
+      })
+      if (!ok) return
       loungePostDeleteInflightRef.current = true
       setLoungeFeedDeleteBusyPostId(post.id)
       setLoungeManageErr('')
@@ -8039,7 +8057,7 @@ export default function SocialFeed({
         setLoungeFeedDeleteBusyPostId(null)
       }
     },
-    [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, supabaseClient]
+    [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, showGlobalConfirm, supabaseClient]
   )
 
   const deleteStaffLoungePostFromFeed = useCallback(
@@ -8050,10 +8068,11 @@ export default function SocialFeed({
         return
       }
       if (loungePostDeleteInflightRef.current) return
-      if (typeof window !== 'undefined') {
-        const ok = window.confirm('Delete this post as staff? This cannot be undone.')
-        if (!ok) return
-      }
+      const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+        title: 'Delete this post as staff?',
+        message: 'This cannot be undone.',
+      })
+      if (!ok) return
       loungePostDeleteInflightRef.current = true
       setLoungeFeedDeleteBusyPostId(post.id)
       setLoungeManageErr('')
@@ -8094,18 +8113,19 @@ export default function SocialFeed({
       loadCommunityFeed,
       loungePostDetail,
       loungeViewerIsStaff,
+      showGlobalConfirm,
       supabaseClient,
     ]
   )
 
   const onPostMenuBlockFromFeed = useCallback((p) => {
     void p
-    if (typeof window !== 'undefined') window.alert('Blocking users is not available yet.')
+    setLoungeShareFlash('Blocking users is not available yet.')
   }, [])
 
   const onPostMenuReportFromFeed = useCallback((p) => {
     void p
-    if (typeof window !== 'undefined') window.alert('Reporting posts is not available yet.')
+    setLoungeShareFlash('Reporting posts is not available yet.')
   }, [])
 
   useEffect(() => {
@@ -9860,7 +9880,6 @@ export default function SocialFeed({
       } catch (e) {
         if (e?.name === 'AbortError') return
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Unknown error'
-        if (msg === LOUNGE_MAX_PINNED_ALERT && typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
         if (threadTotal > 1) {
           const retrySnap = restoreThreadAfterUploadFailure(snap)
           const detail = msg !== 'Unknown error' ? msg : ''
@@ -10437,7 +10456,6 @@ export default function SocialFeed({
           loungeDetailEditSnapshotRef.current = snap
         }
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Could not save edit.'
-        if (msg === LOUNGE_MAX_PINNED_ALERT && typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
         setLoungeDetailEditErr(msg)
         setLoungePostUploadFailureDetails({
           kind: 'postEdit',
@@ -10821,7 +10839,6 @@ export default function SocialFeed({
           return
         }
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Could not post right now.'
-        if (msg === LOUNGE_MAX_PINNED_ALERT && typeof window !== 'undefined') window.alert(LOUNGE_MAX_PINNED_ALERT)
         const failKind =
           type === 'comment'
             ? 'comment'

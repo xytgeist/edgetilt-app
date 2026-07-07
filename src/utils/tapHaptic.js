@@ -3,11 +3,6 @@ import { isAndroidDevice, isIosDevice } from './pwaNotificationPrompt.js'
 /** Opt-in only — global listener does not haptic every button. */
 const TAP_TARGET_SELECTOR = '[data-tap-haptic]'
 
-const IOS_SWITCH_INPUT_ID = 'edge-tap-haptic-switch'
-
-let iosHapticLabel = null
-let iosHapticInput = null
-
 function hasVibrationApi() {
   return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'
 }
@@ -30,30 +25,23 @@ export function isTapHapticSupported() {
   return hasVibrationApi() || isIosDevice()
 }
 
-function ensureIosHapticSwitch() {
-  if (iosHapticLabel || typeof document === 'undefined' || !document.body) return
-
-  const input = document.createElement('input')
-  input.type = 'checkbox'
-  input.id = IOS_SWITCH_INPUT_ID
-  input.setAttribute('switch', '')
-  input.style.display = 'none'
-  document.body.appendChild(input)
-  iosHapticInput = input
-
-  const label = document.createElement('label')
-  label.htmlFor = IOS_SWITCH_INPUT_ID
-  label.setAttribute('aria-hidden', 'true')
-  label.style.display = 'none'
-  document.body.appendChild(label)
-  iosHapticLabel = label
-}
+const IOS_HAPTIC_HIDDEN_STYLE =
+  'position:fixed;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;'
 
 function fireIosSwitchHaptic() {
-  ensureIosHapticSwitch()
-  if (!iosHapticLabel || !iosHapticInput) return
+  if (typeof document === 'undefined' || !document.body) return
   try {
-    iosHapticLabel.click()
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.setAttribute('switch', '')
+    input.style.cssText = IOS_HAPTIC_HIDDEN_STYLE
+    const label = document.createElement('label')
+    label.setAttribute('aria-hidden', 'true')
+    label.style.cssText = IOS_HAPTIC_HIDDEN_STYLE
+    label.appendChild(input)
+    document.body.appendChild(label)
+    label.click()
+    document.body.removeChild(label)
   } catch {
     // no-op
   }
@@ -104,8 +92,6 @@ function shouldHapticForTapEvent(event) {
  */
 export function installGlobalTapHaptic() {
   if (typeof document === 'undefined' || !isMobileTapEnvironment()) return () => {}
-
-  ensureIosHapticSwitch()
 
   const onTap = (event) => {
     if (!shouldHapticForTapEvent(event)) return

@@ -1367,6 +1367,7 @@ export default function AppShell({
             onOpenBillingManage={onOpenBillingManage}
             onSimulateTabError={simulateTabError}
             onResetTabErrorStrikes={handleResetTabErrorStrikes}
+            showGlobalConfirm={showGlobalConfirm}
           />
         </div>
       </Suspense>

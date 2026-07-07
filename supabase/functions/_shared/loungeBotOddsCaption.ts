@@ -305,7 +305,7 @@ export function formatBookDisplayName(title: string, key?: string): string {
 }
 
 /** Last word for long player/team names (Mochizuki, Sinner, Chiefs). */
-function shortDisplayName(name: string): string {
+export function shortDisplayName(name: string): string {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
   if (parts.length <= 1) return parts[0] || ''
   return parts[parts.length - 1]!

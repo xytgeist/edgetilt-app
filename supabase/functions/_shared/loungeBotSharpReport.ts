@@ -11,8 +11,8 @@ import {
   type LineMovementAlert,
   type LineMovementConfig,
 } from './loungeBotLineMovement.ts'
-import { formatAmericanOdds, formatScottSportContextLines, ptTodayDate, type OddsEvent } from './loungeBotOddsCaption.ts'
-import { hasDedupePublishedToday, type OddsBotRow, type OddsCfgRow } from './loungeBotOddsRun.ts'
+import { formatAmericanOdds, formatScottSportContextLines, type OddsEvent } from './loungeBotOddsCaption.ts'
+import { hasDedupePublishedToday, ptTodayDate, type OddsBotRow, type OddsCfgRow } from './loungeBotOddsRun.ts'
 import {
   countScheduledKindToday,
   DEFAULT_MIN_POST_GAP_MINUTES,

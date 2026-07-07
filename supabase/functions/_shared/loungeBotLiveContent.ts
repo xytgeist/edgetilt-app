@@ -11,8 +11,8 @@ import {
   marketLabel,
   type OddsEvent,
   type OddsPick,
-  ptTodayDate,
 } from './loungeBotOddsCaption.ts'
+import { ptTodayDate } from './loungeBotOddsRun.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import {
   countScheduledKindToday,
@@ -354,6 +354,8 @@ async function hasDedupePublishedToday(
     .eq('status', 'published')
     .eq('dedupe_key', dedupeKey)
     .gte('created_at', dayStart)
+    .not('post_id', 'is', null)
+    .limit(1)
     .maybeSingle()
   return Boolean(data?.id)
 }

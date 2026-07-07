@@ -14,7 +14,6 @@ import {
   formatOddsPickLine,
   formatScottSportContextLines,
   marketLabel,
-  ptTodayDate,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
@@ -23,6 +22,7 @@ import {
   fetchSportOdds,
   filterLiveOddsEvents,
   loadTodayCalendarRows,
+  ptTodayDate,
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'

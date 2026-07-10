@@ -634,8 +634,14 @@ Player props and deep injury narratives may still need a dedicated injuries feed
 | **`20260704320000`** | **Sports calendar portal** (list + save RPCs, Scott bot calendar UI) |
 | **`20260704330000`** | **Scott coverage tiers** (`coverage_tier` on calendar, expanded 2026 seed incl. UFC 329) |
 | **`20260705010000`** | **Context alerts** (`starter_spotlight`, `confirmed_starters`, `injury_impact`, `rest_travel_edge`, `fade_the_public` off by default) |
+| **`20260706140000`**–**`20260706160000`** | Portal async pg_net queue + outcome polling RPC |
+| **`20260706150000`** | Queue RPC slug ambiguous fix (`v_slug`) |
+| **`20260706170000`** | **`invoke_lounge_odds_poll(action, force)`** — optional `force` for Coffee cron tests |
+| **`20260706180000`** | Market Edge Yahoo Finance + MarketWatch RSS |
+| **`20260706190000`** | Scott **`poll_live`** cron + Rundown period/halftime live content |
+| **`20260707000000`** | Bot portal **Post as** optional **`image_urls`** (up to 6) |
 
-**Edge code (no migration):** **`loungeBotSportAnalysis.ts`** — sport market weights, WNBA +0.5% min EV, multi-market edge alerts. Redeploy **`lounge-odds-poll`** after pull.
+**Edge code (no migration):** **`loungeBotSportAnalysis.ts`** — sport market weights, WNBA +0.5% min EV, multi-market edge alerts. Redeploy **`lounge-odds-poll`** after pull. **`lounge-x-ingest`** — redeploy after X manual-transform changes (**`loungeBotXTweetFetch.ts`**).
 
 ---
 
@@ -671,7 +677,7 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 | Piece | Location |
 | --- | --- |
 | Spec (this file) | **`docs/lounge-bot-sports-odds.md`** |
-| Portal UI | **`src/features/bots/BotManagementPortal.jsx`**, **`botPortalApi.js`** |
+| Portal UI | **`src/features/bots/BotManagementPortal.jsx`**, **`BotComposeImagePicker.jsx`**, **`botPortalApi.js`** |
 | +EV math | **`supabase/functions/_shared/loungeBotOddsCaption.ts`** |
 | Sport pick ranking | **`supabase/functions/_shared/loungeBotSportAnalysis.ts`** |
 | Example post pack | **`supabase/functions/_shared/loungeBotExamplePosts.ts`** |
@@ -687,13 +693,15 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 
 ---
 
-| **`20260706170000`** | **`invoke_lounge_odds_poll(action, force)`** — optional `force` for Coffee cron tests |
-| **`20260706140000`**–**`20260706160000`** | Portal async pg_net queue + outcome polling RPC |
-| **`20260706150000`** | Queue RPC slug ambiguous fix (`v_slug`) |
-
----
-
 ## Ops / troubleshooting (Jul 2026)
+
+### Odds API 401 on every sport (Scott mute)
+
+**Symptom:** Cron `200` / `ok: true`, but `details[].error` is `Odds API baseball_mlb 401` (all sports). No edges/line moves/context. `requestsRemaining: null`.
+
+**Cause:** The Odds API returns **401** for **invalid key** *and* for **OUT_OF_USAGE_CREDITS**. `/sports` does not burn credits so the poll still “finds” sports; `/odds` fails. Aggressive crons (~4k+ credits/day) can empty a mid-tier plan in days.
+
+**Fix:** Top up / upgrade at the-odds-api.com, confirm **`THE_ODDS_API_KEY`** on Edge matches that account. After hard-fail ship: all-sport 401 returns **503** + stores **`config.odds_api_last_error`** on the bot (portal amber banner).
 
 ### `poll_edges` silent but Coffee works
 

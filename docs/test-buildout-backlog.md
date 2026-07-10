@@ -74,13 +74,15 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
   - [ ] **Fetch odds** → ⚡ +EV or Coffee & Covers post on Lounge
   - [ ] **Scan all · edge** + **Post Coffee & Covers** on multi-sport calendar day
   - [ ] **Manual post as Scott** + **reply to a comment** on that post from portal
+  - [ ] **Post as with images:** attach up to 6 photos on **Post as @handle** → publish to Lounge feed (**`20260707000000`**)
   - [ ] **Reply on any post:** paste **`/lounge/p/{uuid}`** share link or raw UUID → **Reply as bot** on a **member** post (requires **`20260704220000`** — prod verified **2026-07-04**)
 
 ### X editorial
 
-- [ ] **Phase 0 (test):** `lounge_bot_accounts` + `lounge_bot_queue` + admin **X editorial** inbox UI (**`/?tab=bots` → Editorial inbox**); manual paste tweet → edit → schedule → publish (RPC **`admin_lounge_bot_queue_manual_draft`**).
-- [ ] **Phase 1 (test):** `lounge_bot_x_sources` + `lounge-x-ingest` cron; LLM rewrite → `pending_review`.
-- [ ] **X-tracker bots (incremental):** one profile per niche (crypto, investing, poker, slots/AP); handles in `lounge_bot_x_sources`.
+- [x] **Phase 0 (code):** **`/?tab=bots` → Editorial inbox**; **`lounge_bot_queue`** + editorial RPCs; **Transform a post** (URL + optional tweet text → **`lounge-x-ingest`** → **`pending_review`**). Bearer optional for manual path (**`35942f61`**).
+- [ ] **Phase 0 smoke (test/prod):** paste X link → LLM draft in inbox → edit → schedule → publish to feed.
+- [ ] **Phase 1 (test):** `lounge_bot_x_sources` + **`lounge-x-ingest`** timeline cron; LLM rewrite → `pending_review` (needs **`X_API_BEARER_TOKEN`** + X Developer app).
+- [ ] **X-tracker bots (incremental):** one profile per niche (crypto, investing, poker, slots/AP); per-bot **`config.voice_prompt`** (manual only).
 - [ ] **X smoke:** Ryan morning pass ... edit 3 drafts, schedule, confirm feed posts; skip audit.
 
 ### Prod
@@ -782,7 +784,11 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
-- 2026-07-07: **Bot portal Post as images:** migration **`20260707000000`** extends **`admin_lounge_bot_publish_post`** with optional **`image_urls`** (up to 6); portal compose uploads via R2/lounge-feed then publishes. Applied test + prod; **`main`** + **`test`** at **`c10ee337`**.
+- 2026-07-10: **Scott Odds API out of credits:** prod `poll_edges` returning per-sport **401** since ~9am PT (credits exhausted; Odds API uses 401 for quota). Ryan upgraded to **5M/mo**. Hard-fail: all-sport Odds 401 → **503** + `config.odds_api_last_error` portal banner; richer Odds error body. Redeploy **`lounge-odds-poll`**. Confirm Edge **`THE_ODDS_API_KEY`** matches upgraded account.
+- 2026-07-07: **Continuity docs refresh:** **`WAKEUP`**, **`AGENTS.md`**, **`frontend-architecture.md`**, **`production-rollout-checklist.md`**, **`lounge-bot-editorial-queue.md`**, **`lounge-bot-sports-odds.md`** — Jul 7 bot/X ship state + **`schema_migrations`** through **`20260707000000`**.
+- 2026-07-07: **Pending migrations batch (test + prod):** reapplied + recorded **`20260706150000`**–**`20260707000000`** in **`schema_migrations`** (slug fix, pg_net result, invoke `force`, Coffee one-shot crons, Yahoo/MW RSS, **`poll_live`**, bot Post as images). Earlier July migrations were already live but untracked in migration table.
+- 2026-07-07: **X manual transform without bearer (shipped `35942f61`):** **`lounge-x-ingest`** tweet URL path uses pasted **`sourceText`** → oEmbed → syndication; timeline poll still needs **`X_API_BEARER_TOKEN`**. Portal **Transform a post** + optional tweet text field; Edge redeployed test + prod.
+- 2026-07-07: **Bot portal Post as images:** migration **`20260707000000`** extends **`admin_lounge_bot_publish_post`** with optional **`image_urls`** (up to 6); portal compose uploads via R2/lounge-feed then publishes. Applied test + prod; **`main`** + **`test`** at **`30fa305e`**.
 - 2026-07-07: **Scott live `poll_live` + Rundown milestones (shipped `6bbdc72c`):** **`loungeBotRundownLiveState.ts`**, **`loungeBotPollLive.ts`** — period/halftime from TheRundown `game_period` / `event_status` (3 min cache); elapsed-time fallback. Live content on **`poll_live`** every **5 min** (**10am-2am PT**), not **`poll_edges`**. Migration **`20260706190000`** applied test + prod; **`lounge_odds_poll_live`** cron verified both. Edge redeployed: **`lounge-odds-poll`**, **`lounge-bot-publish-due`**, **`lounge-news-poll`** (RSS source labels). **`main`** + **`test`** at **`6bbdc72c`**.
 - 2026-07-07: **Scott live period report timing fix (in `6bbdc72c`):** milestone windows, **`loungeBotLiveGuards.ts`**, publish-due re-validation, urgent live queue. Bundled with **`poll_live`** ship above.
 - 2026-07-06: **Scott `poll_edges` ESM import fix (prod alerts were dead):** dynamic-import split left **`ptTodayDate`** / **`shortDisplayName`** imported from wrong modules → every **`poll_edges`** invoke **500** while **`daily_slates`** (Coffee) still worked. Fix in **`loungeBotSharpReport`**, **`loungeBotArbWatch`**, **`loungeBotBestBetHour`**, **`loungeBotLiveContent`**, **`loungeBotOddsCaption`**. Deployed **`lounge-odds-poll`** test + prod. Commit **`1d5d8fca`**. Prod smoke post-fix: **200**, **`last_poll_at`** updates, MLB live edge + period report on invoke.

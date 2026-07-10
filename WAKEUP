@@ -29,7 +29,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`7344d09c`** (2026-07-06)
+**Branch:** `main` / `test` aligned at **`30fa305e`** (2026-07-07)
 
 **Supabase (do not swap these):**
 
@@ -38,9 +38,9 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Morning smoke: Scott **Coffee & Covers** auto-post **6–8am PT** on prod; confirm **`poll_edges`** alerts flowing after Jul 6 fix._
+**Goal:** _Confirm Odds API 5M plan live on prod key; Scott posting again after Jul 10 credit outage._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-06**). Scott spec: **`docs/lounge-bot-sports-odds.md`**. Market Edge: **`docs/lounge-bot-market-news.md`**. Bot portal: **`/?tab=bots`**.
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-10**). Scott: **`docs/lounge-bot-sports-odds.md`**. Bot portal: **`/?tab=bots`**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -50,63 +50,113 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-## Pick up here (Jul 2026 — session 2026-07-06)
+## Cursor model switch guide (Ryan quick ref)
+
+Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; switch when stuck or the job type changes.
+
+### Quick pick
+
+| Situation | Use |
+| --- | --- |
+| Ship a feature, fix a bug, deploy, update docs | **Grok** or **Composer 2.5** |
+| Pure multi-file edits / “just change the code” | **Composer 2.5** |
+| Hard architecture / subtle correctness / “why is this wrong?” | **Opus** |
+| Balanced coding + reasoning, default daily driver | **Sonnet** |
+| Product copy, UX wording, creative exploration | **Fable** |
+| Structured analysis, tables, careful review | **Terra** |
+
+### When to switch (one-liners)
+
+- **Stay on Grok** when you want: find it → fix it → commit/push/deploy → update `WAKEUP` / backlog. Fast agent loops.
+- **Switch to Composer 2.5** when the job is mostly mechanical repo surgery and you don’t need much product chat.
+- **Switch to Opus** when you’re stuck after 1–2 attempts, the blast radius is scary, or the bug is “impossible” / cross-system.
+- **Switch to Sonnet** when you want a steady middle ground: solid code + clear reasoning without Opus weight.
+- **Switch to Fable** for voice, landing copy, bot persona wording, marketing-ish text.
+- **Switch to Terra** for audits, checklists, migration inventories, “compare A vs B carefully.”
+
+### EdgeTilt cheat sheet
+
+| Task | Model |
+| --- | --- |
+| Bot portal UI, Lounge CSS, small Edge Function tweak | Grok / Composer |
+| Scott odds / live poll / cron / SQL chain | Grok first; **Opus** if cron/RLS/Edge auth is cursed |
+| X ingest / bearer / oEmbed weirdness | Grok |
+| Freemium / RLS / entitlements design | **Opus** or Sonnet |
+| AP guide copy / voice prompts | Fable or Grok |
+| “Update all continuity docs” | Grok |
+| Security / production cutover review | **Opus** (or Security Review subagent) |
+| PR babysit / CI loop | Composer or Grok |
+
+### Rule of thumb
+
+1. Start with **Grok** or **Composer**.
+2. If you’re spinning or the design has real tradeoffs → **Opus**.
+3. If you need pretty words → **Fable**.
+4. Don’t model-hop mid-tiny-fix unless you’re stuck.
+
+---
+
+## Pick up here (Jul 2026 — session 2026-07-07)
 
 ### Latest commits (`main` / `test`)
 
 | Commit | What |
 | --- | --- |
-| **`7344d09c`** | Backlog sign-off: Market Edge Yahoo/MW applied test + prod |
-| **`9795a21f`** | Market Edge: Yahoo Finance + MarketWatch Top + Real-Time RSS |
-| **`b658647c`** | Scott Coffee +EV fixes, portal async poll, cron `force`, `db-query` wrapper |
-| **`1d5d8fca`** | **Critical:** `poll_edges` Edge 500 fix (broken ESM imports after dynamic-load split) |
+| **`30fa305e`** | Backlog sign-off: bot Post as images migration applied test + prod |
+| **`c10ee337`** | Bot portal **Post as** image attachments (up to 6; R2/lounge-feed upload) |
+| **`35942f61`** | X manual **Transform a post** bypasses bearer (oEmbed / pasted `sourceText`) |
+| **`017c772e`** | Actionable X API errors from **`lounge-x-ingest`** |
+| **`6bbdc72c`** | Scott **`poll_live`** + Rundown period/halftime milestones |
+| **`7344d09c`** | Market Edge Yahoo/MW applied test + prod |
 
-### Scott Share / sports odds — **prod status (2026-07-06 night)**
-
-| Area | Status |
-| --- | --- |
-| **Bot** | **`sports-odds`** / Scott, **`run_state: running`**, slug on prod |
-| **Cron** | `lounge_odds_poll_edges` every **15 min**; `daily_slates` every **5 min** **6–8am PT**; `best_bet_hour`, `value_bet_radar` active |
-| **Vault** | `lounge_odds_poll_*` refreshed — cron returns **200** (was **401** earlier Jul 6) |
-| **Edge** | `lounge-odds-poll` + `lounge-odds-ingest` redeployed test + prod |
-| **`poll_edges`** | **Was broken all day** (500: `ptTodayDate` / `shortDisplayName` wrong imports). **Fixed + deployed** `1d5d8fca`. Prod smoke after fix: **200**, MLB live edge + period report published on manual invoke |
-| **Coffee & Covers** | **+EV-only** picks above bar; below-bar = context not picks. **Dog of the Day** = biggest **plus-money ML** per sport (not +EV dog). **On Tap** includes **`@ book`**. Dedupe clears when feed post deleted |
-| **Alert audience** | Ryan set **all alert types → All** in portal (not subs-gated) |
-| **Portal** | Async pg_net queue + outcome polling (`20260706140000`–`20260706160000`); calendar label **"Today's major sporting events"** |
-| **Morning smoke** | **Pending** — first unattended **6–8am PT** Coffee after fixes (evening force tests proved cron path; **7:40** skipped `no_games_today`) |
-
-**Unschedule when done:** one-shot cron `lounge_odds_poll_coffee_force_test_20260706` on prod (job **30** at 7:40 PM Jul 6).
-
-### Market Edge — **prod status (2026-07-06 night)**
+### X editorial bots — **status (2026-07-07)**
 
 | Area | Status |
 | --- | --- |
-| **Sources** | Finnhub + gov RSS + BBC/NPR + **Yahoo Finance** + **MarketWatch Top/Real-Time** (`20260706180000`) |
-| **Edge** | `lounge-news-poll` redeployed test + prod (RSS default User-Agent) |
-| **Voice** | Financial Juice / DeItaone brief; EDGAR filing feeds **off** (`20260706130000`) |
-| **Reuters RSS** | **Do not add** — public `feeds.reuters.com` feeds are dead; use Yahoo/MW instead |
+| **Portal** | **`/?tab=bots`** — per-bot **LLM voice** (`config.voice_prompt`), **Transform a post** (URL + optional tweet text), **Editorial inbox** tab |
+| **Manual transform** | **`lounge-x-ingest`** `{ slug, tweetUrl, sourceText? }` — no **`X_API_BEARER_TOKEN`** required; resolution: pasted text → X API (if bearer) → oEmbed → syndication |
+| **Timeline poll** | Still needs valid **`X_API_BEARER_TOKEN`** + paid X read; Ryan fixing X Developer app setup |
+| **Edge** | **`lounge-x-ingest`** redeployed test + prod (**`35942f61`** chain) |
+| **Bot example** | **vitalik.meth** tracking **@VitalikButerin** — voice is manual per bot, not auto-assigned |
 
-### Agent / CLI tooling (Jul 6)
+### Bot portal **Post as** — **shipped (2026-07-07)**
 
-- **`npm run db:query:test`** / **`db:query:production`** — serialized Supabase SQL (`scripts/supabase-db-query.mjs`). Use instead of parallel raw `supabase db query --linked` (pooler circuit breaker). Optional **`SUPABASE_DB_PASSWORD`** in `.env.supabase.*` for stable local probes only — **not** prod runtime.
+| Area | Status |
+| --- | --- |
+| **UI** | **`BotComposeImagePicker`** — up to 6 images on **Post as @handle** compose |
+| **SQL** | **`20260707000000`** — **`admin_lounge_bot_publish_post(..., p_image_urls)`**; caption **or** image required |
+| **Upload** | Same R2 / **`lounge-feed`** path as Lounge composer; attributed to bot **`user_id`** |
+
+### Scott Share / sports odds — **prod status (carry-forward)**
+
+| Area | Status |
+| --- | --- |
+| **`poll_live`** | Every **5 min** **10am–2am PT** — period/halftime reports + live edge (**`20260706190000`**) |
+| **`poll_edges`** | Every **15 min** 24/7 — fixed **`1d5d8fca`** Jul 6 |
+| **Coffee & Covers** | **6–8am PT** cron; +EV-only picks; morning smoke ongoing |
+| **Portal** | Async pg_net queue + outcome polling through **`20260706160000`** |
+
+### Prod SQL / `schema_migrations` (Jul 7)
+
+**`schema_migrations` on both test + prod now through **`20260707000000`** (batch apply Jul 7). Earlier July rows (Market Edge **`20260705020000`**, bot portal chain, etc.) were applied manually before tracking caught up — verify via function/cron rows, not only migration table.
+
+Jul 7 batch reapplied + recorded: **`20260706150000`**–**`20260707000000`**.
+
+### Agent / CLI tooling
+
+- **`npm run db:query:test`** / **`db:query:production`** — serialized Supabase SQL (`scripts/supabase-db-query.mjs`).
 
 ### Shipped client (Vercel `main` → **edgetilt.com**)
 
-Includes through **`b658647c`**: Bot portal async odds queue + outcome toasts, Coffee portal label, Scott calendar helper text. Prior: chart Add to post confirm (`014b3d4d`), deploy banner 20s, iOS post detail composer fix, bot reply on any post (`48d739db` + prod **`20260704220000`**).
-
-### Prod SQL applied (Jul 2026 Scott + Market Edge — manual pattern)
-
-Key migrations through **`20260706180000`** on **both** test + prod (verify via function/source rows, not only `schema_migrations`):
-
-`20260704230000`–`20260704240000` (cron) · `20260705060000`–`20260706170000` (portal queue, slug fix, pg_net result, invoke `force`) · `20260706180000` (Yahoo/MW RSS)
+Through **`30fa305e`**: bot Post as images, X transform tweet-text field, X ingest error surfacing in portal.
 
 ### Next priorities (ordered)
 
-1. **Scott morning Coffee smoke** — prod **~6–8am PT**; grep `net._http_response` + `lounge_bot_publish_log` for `coffee_covers`
-2. **Scott `poll_edges` smoke** — confirm edge / line move / arb / sharp / live alerts publish (not just Coffee)
-3. **Unschedule** leftover Coffee force-test cron on prod
-4. **Market Edge smoke** — Poll now; confirm Yahoo/MW items score + publish
-5. **Stripe prod smoke** / Starter weekly cron — **`docs/stripe-billing-test-to-prod-handoff.md`**
+1. **X transform smoke** — paste Vitalik tweet URL (+ optional text) → editorial inbox draft with LLM voice
+2. **Bot Post as images smoke** — photo post as bot on prod Lounge feed
+3. **X Developer app** — fix bearer for timeline polling when ready
+4. **Scott morning Coffee** — prod **~6–8am PT** unattended check
+5. **Unschedule** leftover one-shot Coffee force-test crons if still scheduled
 
 ### AP guides (ongoing workflow)
 

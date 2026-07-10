@@ -227,18 +227,16 @@ Optional shared **`lounge-bot-draft`** for LLM polish pass.
 
 ## Admin UI
 
-**Edge Monitor** tab: **Lounge editorial (X bots)**
+**In-app portal:** **`/?tab=bots`** (not Edge Monitor)
 
-| Tab | Purpose |
+| Surface | Purpose |
 | --- | --- |
-| **Inbox** | `pending_review` where `source_type = x`; filter by bot; oldest-first |
-| **Scheduled** | Today + upcoming X drafts |
-| **Published** | Last 7 days audit |
-| **X sources** | Handles per niche bot; toggle enabled |
+| **Bot card** | Settings, **LLM voice instructions** (`config.voice_prompt`), X handles, **Transform a post** (URL + optional tweet text) |
+| **Post as @handle** | Manual feed post with optional images (up to 6; migration **`20260707000000`**) |
+| **Editorial inbox** tab | `pending_review` queue; filter by X bot; **Transform post** shortcut when bot filtered |
+| **Feed posts** | Recent bot posts; edit caption; reply-as-bot threads |
 
-Separate **Bot ops** panel (TBD): self-contained bot health, last post, enable/disable ... **not** a morning review queue.
-
-Card shows: source tweet (read-only), editable draft, pills, schedule controls, Skip / Save / Schedule.
+Legacy doc name **Edge Monitor → Lounge editorial** referred to early planning; shipped UI is **`BotManagementPortal`** + **`BotEditorialInbox`**.
 
 ---
 
@@ -246,14 +244,14 @@ Card shows: source tweet (read-only), editable draft, pills, schedule controls, 
 
 | Phase | Scope | X API? |
 | --- | --- | --- |
-| **0** | Manual "paste tweet" → queue → schedule → publish on **test** | No |
-| **1** | X poll → queue → morning workflow | Yes, 1–2 handles on test |
+| **0** | Manual transform (URL + optional pasted text) → queue → schedule → publish | **No** (oEmbed/syndication fallback) |
+| **1** | X timeline poll → queue → morning workflow | Yes, 1–2 handles on test |
 | **2** | Multiple X personas + sources; better filters + dedupe | Yes |
 | **3** | Smarter drafts ... still **editorial** by default | Yes |
 
 **Never v1:** auto-replies, auto-likes, auto-DMs, **auto-publish for X bots without explicit product decision**.
 
-**Environment:** test first (`kcosfvmreeiosdjdzycb`). Prod only after checklist + Ryan sign-off.
+**Environment:** test first (`kcosfvmreeiosdjdzycb`). Prod **`jtjgtucumuoswnbauxry`** — manual transform + Post as images shipped **2026-07-07** (**`35942f61`** / **`30fa305e`**). Timeline poll still needs Ryan X Developer sign-off.
 
 ---
 
@@ -262,10 +260,11 @@ Card shows: source tweet (read-only), editable draft, pills, schedule controls, 
 | Piece | Location |
 | --- | --- |
 | Schema | `supabase/migrations/` |
-| X ingest | `supabase/functions/lounge-x-ingest/` |
+| X ingest | `supabase/functions/lounge-x-ingest/` + `_shared/loungeBotXTweetFetch.ts` |
 | Publish due | `supabase/functions/lounge-bot-publish-due/` |
-| Persona prompts | `scripts/lib/loungeBotPersonas.mjs` (TBD) |
-| Admin UI | `EdgeMonitorDashboard.jsx` or dedicated screen |
+| Per-bot voice | `config.voice_prompt` via portal Settings; **`loungeBotXVoice.ts`** |
+| Portal UI | `src/features/bots/BotManagementPortal.jsx`, `BotEditorialInbox.jsx`, `botPortalApi.js` |
+| Manual Post as images | `BotComposeImagePicker.jsx`, `botComposeImages.js` |
 | Insert payload | `src/utils/communityFeedPost.js` |
 
 ---

@@ -10,6 +10,7 @@ import {
   countPublishedKindToday,
   fetchActiveSportKeys,
   formatPtMinuteAsClock,
+  isOddsApiAuthOrQuotaError,
   loadSportOddsContext,
   loadTodayCalendarRows,
   marketsForOddsPoll,
@@ -518,11 +519,59 @@ Deno.serve(async (req) => {
 
     const publishedMorning = publishedCoffeeCovers + publishedSlates
 
+    const sportFetchErrors = details.filter((d) => typeof d.error === 'string' && d.sportKey)
+    const attemptedSportFetches = details.filter((d) => d.sportKey && d.skipped !== 'sport_not_active' && !d.sharpReport && !d.combinedCoffee)
+    const allSportFetchesFailed =
+      attemptedSportFetches.length > 0
+      && sportFetchErrors.length >= attemptedSportFetches.length
+      && sportFetchErrors.every((d) => isOddsApiAuthOrQuotaError(String(d.error || '')))
+
+    const oddsApiHealth = allSportFetchesFailed
+      ? {
+          ok: false,
+          error: 'odds_api_auth_or_quota',
+          message:
+            sportFetchErrors[0] && typeof sportFetchErrors[0].error === 'string'
+              ? sportFetchErrors[0].error
+              : 'Odds API rejected all sport fetches (401 = bad key or out of monthly credits).',
+          failedSports: sportFetchErrors.length,
+        }
+      : null
+
     if (!dryRun) {
+      const { data: existingBot } = await admin
+        .from('lounge_bot_accounts')
+        .select('config')
+        .eq('user_id', bot.user_id)
+        .maybeSingle()
+      const prevConfig = (existingBot?.config && typeof existingBot.config === 'object')
+        ? existingBot.config as Record<string, unknown>
+        : {}
+      const nextConfig = {
+        ...prevConfig,
+        odds_api_requests_remaining: requestsRemaining,
+        odds_api_last_error: oddsApiHealth?.message || null,
+        odds_api_last_error_at: oddsApiHealth ? new Date().toISOString() : null,
+        odds_api_last_ok_at: oddsApiHealth ? prevConfig.odds_api_last_ok_at || null : new Date().toISOString(),
+      }
       await admin.from('lounge_bot_accounts').update({
         last_poll_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        config: nextConfig,
       }).eq('user_id', bot.user_id)
+    }
+
+    if (oddsApiHealth) {
+      console.error('lounge-odds-poll odds API hard fail', { slug, action, ...oddsApiHealth })
+      return adminOpsJson(503, {
+        ok: false,
+        slug,
+        action,
+        dryRun,
+        ...oddsApiHealth,
+        requestsRemaining,
+        details,
+      })
     }
 
     return adminOpsJson(200, {

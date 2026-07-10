@@ -198,11 +198,44 @@ export function morningSlateShouldRunNow(
   return { shouldRun: true, scheduledMinute, nowMinute }
 }
 
+/** Parse Odds API error body — 401 is used for both bad keys AND out-of-credits. */
+export async function readOddsApiError(res: Response, label: string): Promise<string> {
+  const status = res.status
+  let code = ''
+  let message = ''
+  try {
+    const json = await res.json()
+    code = String(json?.error_code || json?.code || '').trim()
+    message = String(json?.message || json?.error || json?.msg || '').trim()
+  } catch {
+    try {
+      message = (await res.text()).trim().slice(0, 200)
+    } catch {
+      // ignore
+    }
+  }
+  const parts = [`Odds API ${label} ${status}`]
+  if (code) parts.push(code)
+  if (message) parts.push(message)
+  if (status === 401 && !code) {
+    parts.push('(invalid key OR monthly credits exhausted — check the-odds-api.com account)')
+  }
+  return parts.join(' · ')
+}
+
+export function isOddsApiAuthOrQuotaError(message: string): boolean {
+  const m = String(message || '')
+  return /Odds API .+ 401/i.test(m)
+    || /OUT_OF_USAGE_CREDITS/i.test(m)
+    || /INVALID_KEY/i.test(m)
+    || /DEACTIVATED_KEY/i.test(m)
+}
+
 export async function fetchActiveSportKeys(): Promise<Set<string>> {
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const res = await fetch(`${ODDS_BASE}/sports/?apiKey=${encodeURIComponent(key)}`)
-  if (!res.ok) throw new Error(`Odds API sports list ${res.status}`)
+  if (!res.ok) throw new Error(await readOddsApiError(res, 'sports list'))
   const sports = await res.json()
   const active = new Set<string>()
   if (Array.isArray(sports)) {
@@ -223,8 +256,12 @@ export async function fetchSportOdds(sport: string, regions: string[], markets: 
     oddsFormat: 'american',
   })
   const res = await fetch(`${ODDS_BASE}/sports/${sport}/odds?${qs}`)
-  if (!res.ok) throw new Error(`Odds API ${sport} ${res.status}`)
-  return { events: await res.json(), remaining: res.headers.get('x-requests-remaining') }
+  if (!res.ok) throw new Error(await readOddsApiError(res, sport))
+  return {
+    events: await res.json(),
+    remaining: res.headers.get('x-requests-remaining'),
+    used: res.headers.get('x-requests-used'),
+  }
 }
 
 export async function loadTodayCalendarRows(admin: SupabaseClient): Promise<CalendarRow[]> {

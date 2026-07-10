@@ -807,6 +807,24 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           ))}
         </div>
 
+        {bot.pipeline === 'odds_api' && bot.config?.odds_api_last_error ? (
+          <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-amber-100 text-[11px] leading-snug">
+            <div className="font-bold text-amber-200">Odds API alert</div>
+            <div className="mt-0.5 break-words">{String(bot.config.odds_api_last_error)}</div>
+            {bot.config.odds_api_requests_remaining != null ? (
+              <div className="mt-1 text-amber-200/80 tabular-nums">
+                Credits remaining (last success header): {String(bot.config.odds_api_requests_remaining)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {bot.pipeline === 'odds_api' && !bot.config?.odds_api_last_error && bot.config?.odds_api_requests_remaining != null ? (
+          <div className="mt-3 text-zinc-500 text-[10px] tabular-nums">
+            Odds API credits remaining: {String(bot.config.odds_api_requests_remaining)}
+          </div>
+        ) : null}
+
         {isAutomatic && bot.pipeline === 'odds_api' ? (
           <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-950/20 px-3 py-3">
             <label className="block min-w-0">

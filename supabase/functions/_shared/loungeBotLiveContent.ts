@@ -13,7 +13,7 @@ import {
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
-import { ptTodayDate } from './loungeBotOddsRun.ts'
+import { ptTodayDate, readOddsApiError } from './loungeBotOddsRun.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import {
   countScheduledKindToday,
@@ -104,7 +104,7 @@ export async function fetchSportScores(sportKey: string): Promise<ScoreEvent[]> 
     dateFormat: 'iso',
   })
   const res = await fetch(`${ODDS_BASE}/sports/${sportKey}/scores?${qs}`)
-  if (!res.ok) throw new Error(`Odds API scores ${sportKey} ${res.status}`)
+  if (!res.ok) throw new Error(await readOddsApiError(res, `scores ${sportKey}`))
   const data = await res.json()
   return Array.isArray(data) ? data : []
 }

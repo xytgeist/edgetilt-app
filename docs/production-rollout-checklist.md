@@ -186,6 +186,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Deploy update banner close+reopen (2026-07-11):** client-only — banner copy asks full close + reopen (no Refresh / auto soft-reload). No migration or Edge redeploy.
 
+**iOS PWA status bar translucent (2026-07-11):** restored **`apple-mobile-web-app-status-bar-style=black-translucent`** in **`index.html`**. Requires **delete + re-add** home screen icon on iOS. No migration or Edge redeploy.
+
 **Advanced chart Add to post confirm (2026-07-04):** client-only **`014b3d4d`** — **`LoungeMarketChartModal`** confirm before inserting Advanced snapshot into composer. No migration or Edge redeploy.
 
 **Bot portal reply on any post (2026-07-04):** client **`48d739db`** + SQL **`20260704220000`**. **Ryan sign-off:** prod RPC verified **2026-07-04** on **`jtjgtucumuoswnbauxry`** (manual SQL editor; function comment + no bot-owner guard). Not recorded in **`schema_migrations`**. Residual portal errors → wrong env / UUID / stale tab.

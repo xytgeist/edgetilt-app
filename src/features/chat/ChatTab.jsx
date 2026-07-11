@@ -662,8 +662,11 @@ export default function ChatTab({
     <div ref={inboxRootRef} data-chat-feature className="select-none">
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
-      contentClassName="pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+      fillViewport
+      contentClassName="px-0 pb-0"
     >
+      {/* Pinned chrome: title, search, tabs — list scrolls underneath */}
+      <div className="shrink-0">
       {/* Quick link toggle */}
       <div className="px-3 pt-4 pb-2 flex items-center justify-between">
         <div>
@@ -893,7 +896,10 @@ export default function ChatTab({
           {actionErr}
         </div>
       ) : null}
+      </div>
 
+      {/* Room / topic list — only this region scrolls */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[calc(6rem+env(safe-area-inset-bottom,0px))] [-webkit-overflow-scrolling:touch]">
       {tab === 'topics' ? (
         <div className="px-3 py-4 space-y-2">
           <p className="mb-3 text-[13px] leading-relaxed text-zinc-500">
@@ -997,6 +1003,7 @@ export default function ChatTab({
           ))}
         </ul>
       )}
+      </div>
     </ScrollLinkedEdgeTitleBarShell>
     </div>
 

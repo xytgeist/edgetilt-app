@@ -15,6 +15,8 @@ import { setEdgeTitleBarReveal } from '../features/shell/edgeTitleBarRevealStore
  * @param {React.ReactNode} children - scrollable body (placed inside padded column).
  * @param {string} [contentClassName] - inner wrapper classes. Default adds horizontal padding + bottom inset for FAB / thumb clearance **including** `env(safe-area-inset-bottom)` inside the scroller (no dead strip under the scroll viewport).
  * @param {boolean} [fullWidth=false] - use full viewport width for column + fixed bar (e.g. Offers week landscape).
+ * @param {boolean} [fillViewport=false] - pin title bar + fill remaining height; outer body does not scroll.
+ *   Put your own `overflow-y-auto` region inside children (e.g. chat inbox list under sticky tabs).
  */
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
 
@@ -29,6 +31,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   children,
   contentClassName = defaultShellContentClassName,
   fullWidth = false,
+  fillViewport = false,
 }) {
   const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
   const internalScrollRef = useRef(null)
@@ -82,6 +85,12 @@ export default function ScrollLinkedEdgeTitleBarShell({
   }, [])
 
   useEffect(() => {
+    if (fillViewport) {
+      // No outer scroll → keep title bar fully revealed.
+      titleRevealRef.current = 1
+      setTitleReveal(1)
+      return undefined
+    }
     const el = feedScrollRef.current
     if (!el || typeof window === 'undefined') return
     scrollPrevTopRef.current = el.scrollTop
@@ -122,7 +131,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
       el.removeEventListener('scroll', onScroll)
       if (scrollVisualRafRef.current) window.cancelAnimationFrame(scrollVisualRafRef.current)
     }
-  }, [])
+  }, [fillViewport])
 
   useEffect(() => {
     if (!publishScrollReveal) return undefined
@@ -160,7 +169,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
       <div
         ref={feedScrollRef}
         data-edge-scroll-shell
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
+        className={
+          fillViewport
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-950'
+            : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]'
+        }
       >
         <div
           aria-hidden
@@ -168,7 +181,15 @@ export default function ScrollLinkedEdgeTitleBarShell({
           style={{ height: titleBarHeight > 0 ? titleBarHeight : 56 }}
         />
 
-        <div className={contentClassName}>{children}</div>
+        <div
+          className={
+            fillViewport
+              ? `${contentClassName} flex min-h-0 flex-1 flex-col overflow-hidden`
+              : contentClassName
+          }
+        >
+          {children}
+        </div>
       </div>
     </div>
   )

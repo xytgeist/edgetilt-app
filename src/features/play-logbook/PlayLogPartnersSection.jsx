@@ -250,9 +250,11 @@ export default function PlayLogPartnersSection({
         Partner
       </span>
       <div className="flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-        <span className="w-7 text-right">Share</span>
-        <span className="w-9 text-right" title="Dollar share of bet size">
-          Play $
+        <span className="w-[3.25rem] text-right" title="Percent of the play">
+          Share %
+        </span>
+        <span className="w-[3.25rem] text-right" title="Dollar share of bet size">
+          Share $
         </span>
         <span className="w-11 text-right" title="Share of session net win/loss">
           P/L
@@ -266,11 +268,11 @@ export default function PlayLogPartnersSection({
   const managerNameHint = showManagerNameHint ? (
     <p className="text-zinc-600 text-[10px] mb-1.5 font-normal normal-case tracking-normal">
       Tap name to set manager
-      {!betSize ? ' · Enter bet size to use Play $' : ''}
+      {!betSize ? ' · Enter bet size to use Share $' : ''}
     </p>
   ) : !readOnly && hasExtraPartner && !betSize ? (
     <p className="text-zinc-600 text-[10px] mb-1.5 font-normal normal-case tracking-normal">
-      Enter bet size to use Play $
+      Enter bet size to use Share $
     </p>
   ) : null
 
@@ -293,7 +295,7 @@ export default function PlayLogPartnersSection({
       )}
       <div className="flex shrink-0 items-center gap-1">
         {readOnly ? (
-          <span className="flex h-4 w-7 items-center justify-end text-cyan-300 text-xs font-semibold tabular-nums leading-none">
+          <span className="flex h-4 w-[3.25rem] items-center justify-end text-cyan-300 text-xs font-semibold tabular-nums leading-none">
             {row.sharePercent}%
           </span>
         ) : (
@@ -303,11 +305,11 @@ export default function PlayLogPartnersSection({
             value={row.sharePercent}
             onChange={e => updateSharePercent(row.key, e.target.value)}
             placeholder="0"
-            className="w-7 min-h-8 rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
+            className="w-[3.25rem] min-h-8 rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
             aria-label="Share percent of the play"
           />
         )}
-        <div className={`flex w-9 items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}>
+        <div className={`flex w-[3.25rem] items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}>
           <PartnerPlayShareUsd
             betSize={betSize}
             sharePercent={row.sharePercent}
@@ -600,7 +602,7 @@ function PartnerPlayShareUsd({
   onEditChange,
   onEditBlur,
 }) {
-  // Numbers only in the field; column header already says Play $.
+  // Numbers only in the field; column header already says Share $.
   const displayValue = playLogPartnerPlayUsdEditSeed(betSize, sharePercent)
   const canConvert = betSize != null && Number.isFinite(betSize) && betSize > 0
 
@@ -621,8 +623,8 @@ function PartnerPlayShareUsd({
   if (!canConvert) {
     return (
       <span
-        className="w-9 text-center text-zinc-600 text-xs font-semibold tabular-nums"
-        title="Enter bet size to use play $"
+        className="w-[3.25rem] text-center text-zinc-600 text-xs font-semibold tabular-nums"
+        title="Enter bet size to use Share $"
       >
         -
       </span>
@@ -638,7 +640,7 @@ function PartnerPlayShareUsd({
       onChange={e => onEditChange?.(e.target.value)}
       onBlur={onEditBlur}
       placeholder="0"
-      className="w-9 min-h-8 rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
+      className="w-[3.25rem] min-h-8 rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
       aria-label="Dollar share of the play (bet size)"
       title="Edit dollar share of bet size; percent updates to match"
     />

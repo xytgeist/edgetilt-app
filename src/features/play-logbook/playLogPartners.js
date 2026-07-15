@@ -204,58 +204,6 @@ export function playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr
   return Math.round(usd)
 }
 
-/**
- * Parse a partner amount field (allows `$`, commas, optional leading minus).
- * @param {string} raw
- * @returns {number | null}
- */
-export function parsePlayLogPartnerUsdInput(raw) {
-  const s = String(raw ?? '')
-    .trim()
-    .replace(/\$/g, '')
-    .replace(/,/g, '')
-  if (!s || s === '-' || s === '.' || s === '-.') return null
-  const n = Number(s)
-  if (!Number.isFinite(n)) return null
-  return n
-}
-
-/**
- * Format a numeric share percent for the form field (trim trailing zeros).
- * @param {number} pct
- * @returns {string}
- */
-export function formatPlayLogPartnerSharePercent(pct) {
-  if (!Number.isFinite(pct)) return ''
-  const clamped = Math.min(100, Math.max(0, pct))
-  const rounded = Math.round(clamped * 10000) / 10000
-  if (Object.is(rounded, -0) || rounded === 0) return '0'
-  const asFixed = rounded.toFixed(4).replace(/\.?0+$/, '')
-  return asFixed
-}
-
-/**
- * Convert a typed dollar share into share percent of session net.
- * Uses absolute magnitudes so entering `25` means $25 of the play whether it won or lost.
- * @param {number | null | undefined} netOutcome
- * @param {string} usdRaw
- * @returns {string | null} sharePercent form string, or null if not convertible yet
- */
-export function playLogPartnerSharePercentFromUsd(netOutcome, usdRaw) {
-  if (netOutcome == null || !Number.isFinite(netOutcome) || netOutcome === 0) return null
-  const usd = parsePlayLogPartnerUsdInput(usdRaw)
-  if (usd == null) return null
-  const pct = (Math.abs(usd) / Math.abs(netOutcome)) * 100
-  return formatPlayLogPartnerSharePercent(pct)
-}
-
-/** Editable amount seed (absolute whole dollars, no `$`). */
-export function playLogPartnerUsdEditSeed(netOutcome, sharePercentStr) {
-  const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr)
-  if (usd == null) return ''
-  return String(Math.abs(usd))
-}
-
 /** @param {number | null | undefined} netOutcome @param {string} sharePercentStr */
 export function formatPlayLogPartnerOutcomeShare(netOutcome, sharePercentStr) {
   const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr)

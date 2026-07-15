@@ -4,8 +4,6 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import PlayLogPartnerPickerModal from './PlayLogPartnerPickerModal.jsx'
 import {
   formatPlayLogPartnerOutcomeShare,
-  playLogPartnerSharePercentFromUsd,
-  playLogPartnerUsdEditSeed,
   playLogPartnersEnsureCreatorRow,
   playLogPartnersHasExtraPartner,
   playLogPartnersSplitForDisplay,
@@ -50,10 +48,6 @@ export default function PlayLogPartnersSection({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [paidSaving, setPaidSaving] = useState(false)
-  /** While typing an amount, keep the raw draft so intermediate strings do not fight formatting. */
-  const [amountEdit, setAmountEdit] = useState(
-    /** @type {{ key: string, draft: string } | null} */ (null),
-  )
 
   const hasExtraPartner = useMemo(
     () => playLogPartnersHasExtraPartner(partners, ownerUserId),
@@ -90,21 +84,6 @@ export default function PlayLogPartnersSection({
 
   const updateRow = (key, patch) => {
     onPartnersChange(partners.map(row => (row.key === key ? { ...row, ...patch } : row)))
-  }
-
-  const updateSharePercent = (key, sharePercent) => {
-    updateRow(key, { sharePercent })
-  }
-
-  const updateShareFromUsd = (key, usdRaw) => {
-    const trimmed = String(usdRaw ?? '').trim()
-    if (!trimmed) {
-      updateSharePercent(key, '')
-      return
-    }
-    const pct = playLogPartnerSharePercentFromUsd(netOutcome, trimmed)
-    if (pct == null) return
-    updateSharePercent(key, pct)
   }
 
   const setManager = key => {
@@ -286,7 +265,7 @@ export default function PlayLogPartnersSection({
             type="text"
             inputMode="decimal"
             value={row.sharePercent}
-            onChange={e => updateSharePercent(row.key, e.target.value)}
+            onChange={e => updateRow(row.key, { sharePercent: e.target.value })}
             placeholder="0"
             className="w-12 min-h-8 rounded-lg bg-zinc-900 px-1 text-right text-sm text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
             aria-label="Share percent"
@@ -295,24 +274,7 @@ export default function PlayLogPartnersSection({
         <div
           className={`flex min-w-[4.75rem] items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}
         >
-          <PartnerShareAmount
-            netOutcome={netOutcome}
-            sharePercent={row.sharePercent}
-            readOnly={readOnly}
-            editing={amountEdit?.key === row.key}
-            editDraft={amountEdit?.key === row.key ? amountEdit.draft : ''}
-            onEditFocus={() =>
-              setAmountEdit({
-                key: row.key,
-                draft: playLogPartnerUsdEditSeed(netOutcome, row.sharePercent),
-              })
-            }
-            onEditChange={draft => {
-              setAmountEdit({ key: row.key, draft })
-              updateShareFromUsd(row.key, draft)
-            }}
-            onEditBlur={() => setAmountEdit(null)}
-          />
+          <PartnerShareAmount netOutcome={netOutcome} sharePercent={row.sharePercent} />
         </div>
         {showPaidColumn ? (
           <div className={`flex w-6 items-center justify-center ${readOnly ? 'h-4' : 'min-h-8'}`}>
@@ -561,61 +523,19 @@ function PaidCheckbox({ checked, disabled = false, onChange }) {
   )
 }
 
-/** @param {{
- *   netOutcome: number | null,
- *   sharePercent: string,
- *   readOnly?: boolean,
- *   editing?: boolean,
- *   editDraft?: string,
- *   onEditFocus?: () => void,
- *   onEditChange?: (draft: string) => void,
- *   onEditBlur?: () => void,
- * }} props */
-function PartnerShareAmount({
-  netOutcome,
-  sharePercent,
-  readOnly = false,
-  editing = false,
-  editDraft = '',
-  onEditFocus,
-  onEditChange,
-  onEditBlur,
-}) {
+/** @param {{ netOutcome: number | null, sharePercent: string }} props */
+function PartnerShareAmount({ netOutcome, sharePercent }) {
   const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercent)
   const label = formatPlayLogPartnerOutcomeShare(netOutcome, sharePercent)
-  const amountEditable =
-    !readOnly && netOutcome != null && Number.isFinite(netOutcome) && netOutcome !== 0
-
-  if (readOnly || !amountEditable) {
-    if (!label) {
-      return <span className="text-zinc-600 text-xs font-semibold tabular-nums">-</span>
-    }
-    return (
-      <span
-        className={`text-xs font-bold tabular-nums whitespace-nowrap ${playLogPartnerOutcomeShareToneClass(usd)}`}
-        title={
-          readOnly
-            ? 'Share of session net win/loss'
-            : 'Enter money in / out first to edit amount'
-        }
-      >
-        {label}
-      </span>
-    )
+  if (!label) {
+    return <span className="text-zinc-600 text-xs font-semibold tabular-nums">-</span>
   }
-
   return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={editing ? editDraft : label || ''}
-      onFocus={onEditFocus}
-      onChange={e => onEditChange?.(e.target.value)}
-      onBlur={onEditBlur}
-      placeholder="$"
-      className={`w-[4.75rem] min-h-8 rounded-lg bg-zinc-900 px-1 text-right text-xs font-bold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40 ${playLogPartnerOutcomeShareToneClass(usd)}`}
-      aria-label="Share amount in dollars"
-      title="Edit dollar share; percent updates to match"
-    />
+    <span
+      className={`text-xs font-bold tabular-nums whitespace-nowrap ${playLogPartnerOutcomeShareToneClass(usd)}`}
+      title="Share of session net win/loss"
+    >
+      {label}
+    </span>
   )
 }

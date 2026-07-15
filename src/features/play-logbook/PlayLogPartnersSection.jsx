@@ -4,6 +4,10 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import PlayLogPartnerPickerModal from './PlayLogPartnerPickerModal.jsx'
 import {
   formatPlayLogPartnerOutcomeShare,
+  formatPlayLogPartnerPlayShareUsd,
+  parsePlayLogBetSize,
+  playLogPartnerPlayUsdEditSeed,
+  playLogPartnerSharePercentFromPlayUsd,
   playLogPartnersEnsureCreatorRow,
   playLogPartnersHasExtraPartner,
   playLogPartnersSplitForDisplay,
@@ -28,6 +32,7 @@ import { addSavedGuestLabel } from './playLogSavedGuests.js'
  *   canEditManager?: boolean,
  *   canEditPaid?: boolean,
  *   netOutcome?: number | null,
+ *   playBetSize?: unknown,
  *   onPaidPersist?: (rows: import('./playLogPartners.js').PlayLogPartnerRow[]) => void | Promise<void>,
  *   onPaidPersistError?: (error: unknown) => void,
  * }} props
@@ -43,11 +48,18 @@ export default function PlayLogPartnersSection({
   canEditManager = true,
   canEditPaid = false,
   netOutcome = null,
+  playBetSize = null,
   onPaidPersist = null,
   onPaidPersistError = null,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [paidSaving, setPaidSaving] = useState(false)
+  /** While typing play-$, keep the raw draft so intermediate strings do not fight formatting. */
+  const [playUsdEdit, setPlayUsdEdit] = useState(
+    /** @type {{ key: string, draft: string } | null} */ (null),
+  )
+
+  const betSize = useMemo(() => parsePlayLogBetSize(playBetSize), [playBetSize])
 
   const hasExtraPartner = useMemo(
     () => playLogPartnersHasExtraPartner(partners, ownerUserId),
@@ -84,6 +96,21 @@ export default function PlayLogPartnersSection({
 
   const updateRow = (key, patch) => {
     onPartnersChange(partners.map(row => (row.key === key ? { ...row, ...patch } : row)))
+  }
+
+  const updateSharePercent = (key, sharePercent) => {
+    updateRow(key, { sharePercent })
+  }
+
+  const updateShareFromPlayUsd = (key, usdRaw) => {
+    const trimmed = String(usdRaw ?? '').trim()
+    if (!trimmed) {
+      updateSharePercent(key, '')
+      return
+    }
+    const pct = playLogPartnerSharePercentFromPlayUsd(betSize, trimmed)
+    if (pct == null) return
+    updateSharePercent(key, pct)
   }
 
   const setManager = key => {
@@ -225,7 +252,12 @@ export default function PlayLogPartnersSection({
       </span>
       <div className="flex shrink-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
         <span className="w-12 text-right">Share</span>
-        <span className="min-w-[4.75rem] text-right">Amount</span>
+        <span className="w-[4.75rem] text-right" title="Dollar share of bet size">
+          Play $
+        </span>
+        <span className="min-w-[4.75rem] text-right" title="Share of session net win/loss">
+          Amount
+        </span>
         {showPaidColumn ? <span className="w-6 text-center">Paid</span> : null}
       </div>
       {!readOnly ? <span className="w-4 shrink-0" aria-hidden /> : null}
@@ -235,6 +267,11 @@ export default function PlayLogPartnersSection({
   const managerNameHint = showManagerNameHint ? (
     <p className="text-zinc-600 text-[10px] mb-1.5 font-normal normal-case tracking-normal">
       Tap name to set manager
+      {!betSize ? ' · Enter bet size to use Play $' : ''}
+    </p>
+  ) : !readOnly && hasExtraPartner && !betSize ? (
+    <p className="text-zinc-600 text-[10px] mb-1.5 font-normal normal-case tracking-normal">
+      Enter bet size to use Play $
     </p>
   ) : null
 
@@ -265,12 +302,32 @@ export default function PlayLogPartnersSection({
             type="text"
             inputMode="decimal"
             value={row.sharePercent}
-            onChange={e => updateRow(row.key, { sharePercent: e.target.value })}
+            onChange={e => updateSharePercent(row.key, e.target.value)}
             placeholder="0"
             className="w-12 min-h-8 rounded-lg bg-zinc-900 px-1 text-right text-sm text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
-            aria-label="Share percent"
+            aria-label="Share percent of the play"
           />
         )}
+        <div className={`flex w-[4.75rem] items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}>
+          <PartnerPlayShareUsd
+            betSize={betSize}
+            sharePercent={row.sharePercent}
+            readOnly={readOnly}
+            editing={playUsdEdit?.key === row.key}
+            editDraft={playUsdEdit?.key === row.key ? playUsdEdit.draft : ''}
+            onEditFocus={() =>
+              setPlayUsdEdit({
+                key: row.key,
+                draft: playLogPartnerPlayUsdEditSeed(betSize, row.sharePercent),
+              })
+            }
+            onEditChange={draft => {
+              setPlayUsdEdit({ key: row.key, draft })
+              updateShareFromPlayUsd(row.key, draft)
+            }}
+            onEditBlur={() => setPlayUsdEdit(null)}
+          />
+        </div>
         <div
           className={`flex min-w-[4.75rem] items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}
         >
@@ -519,6 +576,73 @@ function PaidCheckbox({ checked, disabled = false, onChange }) {
       onChange={e => onChange(e.target.checked)}
       aria-label="Paid"
       className="block h-3.5 w-3.5 shrink-0 rounded border-zinc-600 bg-zinc-900 accent-cyan-500 disabled:opacity-40"
+    />
+  )
+}
+
+/**
+ * Editable dollar share of bet size (the play). Synced with Share %.
+ * @param {{
+ *   betSize: number | null,
+ *   sharePercent: string,
+ *   readOnly?: boolean,
+ *   editing?: boolean,
+ *   editDraft?: string,
+ *   onEditFocus?: () => void,
+ *   onEditChange?: (draft: string) => void,
+ *   onEditBlur?: () => void,
+ * }} props
+ */
+function PartnerPlayShareUsd({
+  betSize,
+  sharePercent,
+  readOnly = false,
+  editing = false,
+  editDraft = '',
+  onEditFocus,
+  onEditChange,
+  onEditBlur,
+}) {
+  const label = formatPlayLogPartnerPlayShareUsd(betSize, sharePercent)
+  const canConvert = betSize != null && Number.isFinite(betSize) && betSize > 0
+
+  if (readOnly) {
+    if (!label) {
+      return <span className="text-zinc-600 text-xs font-semibold tabular-nums">-</span>
+    }
+    return (
+      <span
+        className="text-xs font-bold tabular-nums whitespace-nowrap text-zinc-200"
+        title="Dollar share of bet size"
+      >
+        {label}
+      </span>
+    )
+  }
+
+  if (!canConvert) {
+    return (
+      <span
+        className="text-zinc-600 text-xs font-semibold tabular-nums"
+        title="Enter bet size to use play $"
+      >
+        -
+      </span>
+    )
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={editing ? editDraft : label || ''}
+      onFocus={onEditFocus}
+      onChange={e => onEditChange?.(e.target.value)}
+      onBlur={onEditBlur}
+      placeholder="0"
+      className="w-[4.75rem] min-h-8 rounded-lg bg-zinc-900 px-1 text-right text-sm text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
+      aria-label="Dollar share of the play (bet size)"
+      title="Edit dollar share of bet size; percent updates to match"
     />
   )
 }

@@ -204,6 +204,93 @@ export function playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr
   return Math.round(usd)
 }
 
+/**
+ * Parse a money field from the log form or partner inputs (`$`, commas, optional minus).
+ * @param {unknown} raw
+ * @returns {number | null}
+ */
+export function parsePlayLogPartnerMoneyInput(raw) {
+  const s = String(raw ?? '')
+    .trim()
+    .replace(/\$/g, '')
+    .replace(/,/g, '')
+  if (!s || s === '-' || s === '.' || s === '-.') return null
+  const n = Number(s)
+  if (!Number.isFinite(n)) return null
+  return n
+}
+
+/** @param {unknown} raw */
+export function parsePlayLogBetSize(raw) {
+  const n = parsePlayLogPartnerMoneyInput(raw)
+  if (n == null || n <= 0) return null
+  return n
+}
+
+/**
+ * Format a numeric share percent for the form field (trim trailing zeros).
+ * @param {number} pct
+ * @returns {string}
+ */
+export function formatPlayLogPartnerSharePercent(pct) {
+  if (!Number.isFinite(pct)) return ''
+  const clamped = Math.min(100, Math.max(0, pct))
+  const rounded = Math.round(clamped * 10000) / 10000
+  if (Object.is(rounded, -0) || rounded === 0) return '0'
+  return rounded.toFixed(4).replace(/\.?0+$/, '')
+}
+
+/**
+ * Dollar slice of the play (bet size) for a partner share percent.
+ * @param {number | null | undefined} betSize
+ * @param {string} sharePercentStr
+ * @returns {number | null}
+ */
+export function playLogPartnerPlayShareUsd(betSize, sharePercentStr) {
+  if (betSize == null || !Number.isFinite(betSize) || betSize <= 0) return null
+  const raw = String(sharePercentStr ?? '').trim()
+  if (!raw) return null
+  const pct = Number(raw.replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(pct) || pct < 0) return null
+  return betSize * (pct / 100)
+}
+
+/** Whole-dollar play-share for display / edit seed. */
+export function playLogPartnerPlayShareUsdRounded(betSize, sharePercentStr) {
+  const usd = playLogPartnerPlayShareUsd(betSize, sharePercentStr)
+  if (usd == null) return null
+  return Math.round(usd)
+}
+
+/** @param {number | null | undefined} betSize @param {string} sharePercentStr */
+export function formatPlayLogPartnerPlayShareUsd(betSize, sharePercentStr) {
+  const usd = playLogPartnerPlayShareUsdRounded(betSize, sharePercentStr)
+  if (usd == null) return null
+  const abs = Math.abs(usd)
+  return abs >= 1000 ? `$${abs.toLocaleString()}` : `$${abs}`
+}
+
+/** Absolute whole dollars for the play-$ input seed. */
+export function playLogPartnerPlayUsdEditSeed(betSize, sharePercentStr) {
+  const usd = playLogPartnerPlayShareUsdRounded(betSize, sharePercentStr)
+  if (usd == null) return ''
+  return String(Math.abs(usd))
+}
+
+/**
+ * Convert a typed play-$ share into share percent of bet size.
+ * @param {number | null | undefined} betSize
+ * @param {string} usdRaw
+ * @returns {string | null}
+ */
+export function playLogPartnerSharePercentFromPlayUsd(betSize, usdRaw) {
+  if (betSize == null || !Number.isFinite(betSize) || betSize <= 0) return null
+  const usd = parsePlayLogPartnerMoneyInput(usdRaw)
+  if (usd == null) return null
+  const pct = (Math.abs(usd) / betSize) * 100
+  return formatPlayLogPartnerSharePercent(pct)
+}
+
 /** @param {number | null | undefined} netOutcome @param {string} sharePercentStr */
 export function formatPlayLogPartnerOutcomeShare(netOutcome, sharePercentStr) {
   const usd = playLogPartnerOutcomeShareUsdRounded(netOutcome, sharePercentStr)

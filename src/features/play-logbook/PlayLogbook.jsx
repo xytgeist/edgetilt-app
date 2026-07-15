@@ -1324,6 +1324,7 @@ export default function PlayLogbook({
                         partners={partners}
                         onPartnersChange={setPartners}
                         netOutcome={logPlayNetOutcome}
+                        playBetSize={formFields.bet_size}
                         canEditPaid={playLogPartnersViewerCanMarkPaid(
                           partners,
                           userId,
@@ -1449,6 +1450,7 @@ export default function PlayLogbook({
                           canEditManager={false}
                           canEditPaid={detailCanMarkPaid}
                           netOutcome={detailNetOutcome}
+                          playBetSize={viewingEntry.values?.bet_size}
                           onPaidPersist={
                             detailCanMarkPaid && viewingEntry.session_id
                               ? async rows => {

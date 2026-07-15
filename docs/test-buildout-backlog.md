@@ -784,6 +784,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-15: **Play log partners Share ↔ Play $:** on Log play, partners rows add editable **Play $** (of **`bet_size`**) synced with **Share %**; existing **Amount** stays read-only net P/L share. Search clear after partner pick kept.
 - 2026-07-11: **Lounge Stream publish readiness:** `waitForCfStreamManifestReady` now probes real HLS (native / hls.js `MANIFEST_PARSED`) instead of CF thumbnail alone (thumbnail can succeed before playback → poster-only dead tiles). Post/comment/thread submit skip a second wait when composer prep already exposed the uid. Client-only; no Edge/SQL.
 - 2026-07-11: **Lounge resume Lottie:** play only after **≥1 hour** background (was 10 min); on resume splash start, silent **feed + unread** refresh under the Lottie (`lounge:cold-boot-resume`). **`loungeColdBootSplash.js`**, **`useLoungeColdBootSplash.js`**, **`AppShell`**, **`SocialFeed`**.
 - 2026-07-10: **Scott per-alert invoke + Best Bet same-game:** portal **Run alert now** buttons (each alert type); queue RPC **`p_alert_kind`** + **`poll_live`**; Edge **`alertKind`** filter on **`poll_edges`/`poll_live`**. Best Bet skips when top pick is same **`eventId`** as last Best Bet. Migration **`20260710160000`**; redeploy **`lounge-odds-poll`**.

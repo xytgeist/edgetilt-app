@@ -422,6 +422,7 @@ function BuffaloLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
 
         <CalculatorLogPlayButton
           calculatorSlug="buffalo-link"
+          templateSlug="buffalo-link"
           prefillValues={{
             counter: currentX,
             bet_size: betSize,

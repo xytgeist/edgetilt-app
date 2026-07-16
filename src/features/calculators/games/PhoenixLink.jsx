@@ -397,6 +397,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
 
         <CalculatorLogPlayButton
           calculatorSlug="phoenix"
+          templateSlug="phoenix-link"
           prefillValues={{
             counter: currentX,
             bet_size: betSize,

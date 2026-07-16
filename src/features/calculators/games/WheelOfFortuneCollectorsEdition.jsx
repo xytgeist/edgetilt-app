@@ -293,6 +293,7 @@ export default function WheelOfFortuneCollectorsEdition({
 
       <CalculatorLogPlayButton
         calculatorSlug="wof-collectors-edition"
+        templateSlug="wheel-of-fortune-4d-collectors-edition"
         prefillValues={{
           r1_prize: Number(prizeCredits.r1) || 0,
           r2_prize: Number(prizeCredits.r2) || 0,

@@ -636,6 +636,7 @@ function StackUpPays({ onBack, supabaseClient = null, onOpenLogbook = null, logP
 
         <CalculatorLogPlayButton
           calculatorSlug="stackup"
+          templateSlug="stack-up-pays"
           prefillValues={{
             mega: meterCounterValue(mega, MUST_HIT.mega, RESET.mega),
             grand: meterCounterValue(grand, MUST_HIT.grand, RESET.grand),

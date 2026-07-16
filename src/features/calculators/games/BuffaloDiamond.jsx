@@ -556,6 +556,7 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
 
         <CalculatorLogPlayButton
           calculatorSlug="buffalo-diamond"
+          templateSlug="buffalo-diamond"
           prefillValues={{
             green_fg: meterValues.green,
             blue_fg: meterValues.blue,

@@ -629,7 +629,18 @@ export default function PlayLogbook({
   const onTemplateChange = (tid) => {
     setSelectedTemplateId(tid)
     const tpl = templateById[tid]
-    setFormFields(emptyFormFields(tpl?.metric_slugs || []))
+    const nextSlugs = tpl?.metric_slugs || []
+    setFormFields(prev => {
+      const next = emptyFormFields(nextSlugs)
+      for (const slug of nextSlugs) {
+        const v = prev[slug]
+        if (v != null && v !== '') next[slug] = v
+      }
+      if (nextSlugs.includes('denom')) {
+        next.denom = normalizeDenomFormValue(next.denom)
+      }
+      return next
+    })
   }
 
   const saveEntry = async () => {

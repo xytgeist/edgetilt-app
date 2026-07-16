@@ -696,6 +696,20 @@ export function gameTemplateMatchesSearch(template, queryNorm) {
 }
 
 /**
+ * Prefer this system template when opening Log Play from a shared calculator
+ * (multiple machines can share one calculator_slug).
+ * @type {Record<string, string>}
+ */
+export const PLAY_LOG_PRIMARY_TEMPLATE_SLUG_BY_CALCULATOR = {
+  phoenix: 'phoenix-link',
+  'buffalo-link': 'buffalo-link',
+  'buffalo-diamond': 'buffalo-diamond',
+  stackup: 'stack-up-pays',
+  mhb: 'must-hit-by',
+  'wof-collectors-edition': 'wheel-of-fortune-4d-collectors-edition',
+}
+
+/**
  * Resolve prefill → system template (guide slug, machine slug, or calculator).
  * @param {PlayLogTemplate[]} templates
  * @param {{ calculatorSlug?: string | null, templateSlug?: string | null }} pre
@@ -713,10 +727,17 @@ export function resolvePlayLogPrefillTemplate(templates, pre) {
   }
 
   if (calculatorSlug) {
-    const withMachineSlug = templates.filter(t => t.calculator_slug === calculatorSlug)
-    const canonical = withMachineSlug.find(t => t.slug && t.machine_slug && t.slug === t.machine_slug)
+    const withCalc = templates.filter(t => t.calculator_slug === calculatorSlug)
+    const primarySlug = PLAY_LOG_PRIMARY_TEMPLATE_SLUG_BY_CALCULATOR[calculatorSlug]
+    if (primarySlug) {
+      const primary =
+        withCalc.find(t => t.slug === primarySlug) ||
+        withCalc.find(t => t.machine_slug === primarySlug)
+      if (primary) return primary
+    }
+    const canonical = withCalc.find(t => t.slug && t.machine_slug && t.slug === t.machine_slug)
     if (canonical) return canonical
-    return withMachineSlug[0] || null
+    return withCalc[0] || null
   }
 
   return null

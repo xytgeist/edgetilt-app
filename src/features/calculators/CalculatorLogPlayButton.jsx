@@ -11,6 +11,7 @@ export const LOG_PLAY_LOGBOOK_BTN_CLASS = 'bg-amber-700 hover:bg-amber-600 activ
  *
  * @param {object} props
  * @param {string} props.calculatorSlug - matches `play_log_game_templates.calculator_slug`
+ * @param {string} [props.templateSlug] - preferred system game (`play_log_game_templates.slug`) when several share the calculator
  * @param {Record<string, number | string>} props.prefillValues - metric slug → value
  * @param {() => void} props.onOpenLogbook
  * @param {string} [props.accentBtnClass]
@@ -21,6 +22,7 @@ export const LOG_PLAY_LOGBOOK_BTN_CLASS = 'bg-amber-700 hover:bg-amber-600 activ
  */
 export default function CalculatorLogPlayButton({
   calculatorSlug,
+  templateSlug = null,
   prefillValues = {},
   onOpenLogbook,
   accentBtnClass = LOG_PLAY_LOGBOOK_BTN_CLASS,
@@ -46,6 +48,7 @@ export default function CalculatorLogPlayButton({
           }
           stashPlayLogPrefill({
             calculatorSlug,
+            templateSlug: templateSlug || null,
             values: prefillValues,
             notes: playLogCalcSnapshotNotes(prefillValues),
           })

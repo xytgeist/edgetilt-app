@@ -1078,6 +1078,7 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null, lo
 
         <CalculatorLogPlayButton
           calculatorSlug="mhb"
+          templateSlug="must-hit-by"
           prefillValues={{
             mhb_manufacturer: manufacturer,
             ...(Number.isFinite(Number(current))

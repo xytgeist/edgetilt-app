@@ -784,6 +784,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-15: **Log Play from shared calculators:** default game is the calculator’s primary title (e.g. Phoenix Link, not Lightning 10-Year Storm); changing game keeps overlapping prefilled metric values. **`templateSlug`** on **`CalculatorLogPlayButton`** + primary map in **`resolvePlayLogPrefillTemplate`**.
 - 2026-07-15: **Play log partners Share ↔ Play $:** on Log play, partners rows add editable **Play $** (of **`bet_size`**) synced with **Share %**; existing **Amount** stays read-only net P/L share. Search clear after partner pick kept.
 - 2026-07-11: **Lounge Stream publish readiness:** `waitForCfStreamManifestReady` now probes real HLS (native / hls.js `MANIFEST_PARSED`) instead of CF thumbnail alone (thumbnail can succeed before playback → poster-only dead tiles). Post/comment/thread submit skip a second wait when composer prep already exposed the uid. Client-only; no Edge/SQL.
 - 2026-07-11: **Lounge resume Lottie:** play only after **≥1 hour** background (was 10 min); on resume splash start, silent **feed + unread** refresh under the Lottie (`lounge:cold-boot-resume`). **`loungeColdBootSplash.js`**, **`useLoungeColdBootSplash.js`**, **`AppShell`**, **`SocialFeed`**.

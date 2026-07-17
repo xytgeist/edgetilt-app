@@ -42,6 +42,72 @@ function foundingCouponId(
   return null
 }
 
+function isStripePromoIneligibleError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  const lower = msg.toLowerCase()
+  if (lower.includes('prior transactions')) return true
+  if (!lower.includes('promotion code') && !lower.includes('promo')) return false
+  return (
+    lower.includes('cannot be redeemed') ||
+    lower.includes('not eligible') ||
+    lower.includes('expired') ||
+    lower.includes('first time')
+  )
+}
+
+async function customerHasPriorStripeTransactions(
+  stripe: Stripe,
+  customerId: string,
+): Promise<boolean> {
+  try {
+    const [charges, invoices] = await Promise.all([
+      stripe.charges.list({ customer: customerId, limit: 1 }),
+      stripe.invoices.list({ customer: customerId, status: 'paid', limit: 1 }),
+    ])
+    return charges.data.length > 0 || invoices.data.length > 0
+  } catch {
+    return false
+  }
+}
+
+async function createCheckoutSessionAllowingPromoFallback(
+  stripe: Stripe,
+  sessionParams: Stripe.Checkout.SessionCreateParams,
+  opts: {
+    affiliatePromotionCodeId: string | null
+    foundingCouponIdValue: string | null
+    allowFoundingFallback: boolean
+  },
+): Promise<Stripe.Checkout.Session> {
+  const withAffiliatePromo = Boolean(opts.affiliatePromotionCodeId)
+  if (withAffiliatePromo) {
+    sessionParams.discounts = [{ promotion_code: opts.affiliatePromotionCodeId! }]
+  } else if (opts.foundingCouponIdValue) {
+    sessionParams.discounts = [{ coupon: opts.foundingCouponIdValue }]
+  } else {
+    delete sessionParams.discounts
+  }
+
+  try {
+    return await stripe.checkout.sessions.create(sessionParams)
+  } catch (err) {
+    if (!withAffiliatePromo || !isStripePromoIneligibleError(err)) throw err
+
+    // Returning customers / prior transactions must still be able to check out.
+    // Keep affiliate metadata for attribution; drop only the ineligible promo.
+    console.warn(
+      'stripe-create-checkout-session: affiliate promo ineligible; retrying without it',
+      err instanceof Error ? err.message : err,
+    )
+    if (opts.allowFoundingFallback && opts.foundingCouponIdValue) {
+      sessionParams.discounts = [{ coupon: opts.foundingCouponIdValue }]
+    } else {
+      delete sessionParams.discounts
+    }
+    return await stripe.checkout.sessions.create(sessionParams)
+  }
+}
+
 async function userHasActiveProduct(
   admin: ReturnType<typeof createBillingAdmin>,
   userId: string,
@@ -288,11 +354,24 @@ Deno.serve(async (req) => {
         stripeCustomerId: customerId,
         source: 'ref',
       })
+
+      // First-time-only Stripe promos block Checkout for returning customers if we force them.
+      // Keep attribution metadata; skip the promo when the customer already has history.
+      if (await customerHasPriorStripeTransactions(stripe, customerId)) {
+        console.warn(
+          'stripe-create-checkout-session: skipping affiliate promo for customer with prior transactions',
+          customerId,
+          affiliate.code,
+        )
+        affiliatePromotionCodeId = null
+      }
     }
 
     const { success_url, cancel_url } = checkoutReturnUrls(req, productSlug)
-    // Creator promo and founding are mutually exclusive.
-    const wantsFounding = !affiliateMeta && body.apply_early_bird !== false
+    // Creator promo and founding are mutually exclusive when the creator promo actually applies.
+    const wantsFounding =
+      body.apply_early_bird !== false && (!affiliateMeta || !affiliatePromotionCodeId)
+    const allowFoundingFallback = body.apply_early_bird !== false
 
     const applyAffiliateToMetadata = (meta: Record<string, string>) => {
       if (!affiliateMeta) return meta
@@ -300,16 +379,6 @@ Deno.serve(async (req) => {
         ...meta,
         affiliate_id: affiliateMeta.affiliate_id,
         affiliate_code: affiliateMeta.affiliate_code,
-      }
-    }
-
-    const applyCheckoutDiscount = (sessionParams: Stripe.Checkout.SessionCreateParams, foundingCouponIdValue: string | null) => {
-      if (affiliatePromotionCodeId) {
-        sessionParams.discounts = [{ promotion_code: affiliatePromotionCodeId }]
-        return
-      }
-      if (foundingCouponIdValue) {
-        sessionParams.discounts = [{ coupon: foundingCouponIdValue }]
       }
     }
 
@@ -391,9 +460,11 @@ Deno.serve(async (req) => {
           metadata: sessionMetadata,
         },
       }
-      applyCheckoutDiscount(sessionParams, couponId)
-
-      const session = await stripe.checkout.sessions.create(sessionParams)
+      const session = await createCheckoutSessionAllowingPromoFallback(stripe, sessionParams, {
+        affiliatePromotionCodeId,
+        foundingCouponIdValue: couponId,
+        allowFoundingFallback,
+      })
 
       if (!session.url) {
         throw new Error('Stripe Checkout session missing url.')
@@ -431,9 +502,11 @@ Deno.serve(async (req) => {
       metadata: sessionMetadata,
     }
 
-    applyCheckoutDiscount(sessionParams, couponId)
-
-    const session = await stripe.checkout.sessions.create(sessionParams)
+    const session = await createCheckoutSessionAllowingPromoFallback(stripe, sessionParams, {
+      affiliatePromotionCodeId,
+      foundingCouponIdValue: couponId,
+      allowFoundingFallback,
+    })
 
     if (!session.url) {
       throw new Error('Stripe Checkout session missing url.')

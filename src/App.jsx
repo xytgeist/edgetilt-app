@@ -12,7 +12,12 @@ import {
   listenStarterWeeklyDropOpen,
   stripStarterDropQueryParam,
 } from './features/billing/starterWeeklyDropApi.js'
-import { captureAffiliateRefFromUrl } from './features/affiliates/affiliateRefApi.js'
+import {
+  authRedirectUrlWithAffiliateRef,
+  captureAffiliateRefFromUrl,
+  ensureAffiliateStampFromUserMetadata,
+  getAffiliateCodeForCheckout,
+} from './features/affiliates/affiliateRefApi.js'
 import { useStarterWeeklyDropGuideSlugs } from './features/billing/useStarterWeeklyDropGuideSlugs.js'
 import { useStarterWeeklyDropPoolExhausted } from './features/billing/useStarterWeeklyDropPoolExhausted.js'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
@@ -379,6 +384,13 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!user?.id) return
+    void ensureAffiliateStampFromUserMetadata(supabase, user)
+    // Re-stamp once per signed-in user when localStorage was lost (email confirm in another profile).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: user.id gate only
+  }, [user?.id])
+
+  useEffect(() => {
     if (typeof window === 'undefined' || !user?.id) return
     const params = new URLSearchParams(window.location.search || '')
     const unlockId = (params.get('starterDrop') || '').trim()
@@ -516,7 +528,7 @@ function App() {
     setIsOAuthLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/` }
+      options: { redirectTo: authRedirectUrlWithAffiliateRef(`${window.location.origin}/`) },
     })
     if (error) {
       setError(getFriendlyErrorMessage(error))
@@ -536,13 +548,15 @@ function App() {
     markPendingLegalAcceptance()
     setIsSigningUp(true)
 
-    const { data, error } = await supabase.auth.signUp({ 
-      email: signupEmail, 
+    const affiliateCode = getAffiliateCodeForCheckout()
+    const { data, error } = await supabase.auth.signUp({
+      email: signupEmail,
       password: signupPassword,
       options: {
-        emailRedirectTo: window.location.origin
-
-      }
+        // Carry ?ref= into the confirm link so a normal-tab open still restamps attribution.
+        emailRedirectTo: authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
+        data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
+      },
     })
     if (error) {
       const message = error.message?.toLowerCase() || ''

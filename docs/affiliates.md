@@ -92,6 +92,7 @@ W-9/W-8 fields + optional `document_path` under Storage.
 
 ### Client
 - [`affiliateRefApi.js`](../src/features/affiliates/affiliateRefApi.js) + boot in `App.jsx`
+- Email signup / Google OAuth redirects include `?ref=` from the stamp so confirm links opened outside the signup browser (e.g. incognito → normal tab) still restamp. Signup also stores `affiliate_code` on user metadata as a backup.
 - [`stripeBillingApi.js`](../src/features/billing/stripeBillingApi.js) passes `affiliate_code`
 - Subscribe / Billing manage modals include stamp
 

@@ -98,3 +98,49 @@ export async function captureAffiliateRefFromUrl(supabaseClient) {
 export function getAffiliateCodeForCheckout() {
   return readAffiliateStamp()?.code || null
 }
+
+/**
+ * Append current affiliate stamp to an auth redirect URL so email-confirm / OAuth
+ * return links re-apply `?ref=` even when they open in a different browser profile
+ * (e.g. signup in incognito, verify link in a normal tab).
+ * @param {string} baseUrl
+ */
+export function authRedirectUrlWithAffiliateRef(baseUrl) {
+  const base = String(baseUrl || '').trim() || (typeof window !== 'undefined' ? window.location.origin : '')
+  if (!base) return base
+  try {
+    const u = new URL(base, typeof window !== 'undefined' ? window.location.origin : base)
+    const code = readAffiliateStamp()?.code
+    if (code) u.searchParams.set('ref', code)
+    return u.toString()
+  } catch {
+    return base
+  }
+}
+
+/**
+ * If localStorage stamp is missing but signup stored affiliate_code on the user,
+ * re-resolve and stamp (covers email confirm without ?ref= on the redirect).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ user_metadata?: Record<string, unknown> } | null | undefined} user
+ */
+export async function ensureAffiliateStampFromUserMetadata(supabaseClient, user) {
+  if (!supabaseClient || !user) return readAffiliateStamp()
+  if (readAffiliateStamp()) return readAffiliateStamp()
+  const code = String(user.user_metadata?.affiliate_code || '')
+    .trim()
+    .toLowerCase()
+  if (!code) return null
+
+  const { data, error } = await supabaseClient.rpc('resolve_affiliate_ref', { p_code: code })
+  if (error || !data?.affiliate_id || !data?.code) return null
+
+  const stamp = {
+    code: String(data.code),
+    affiliateId: String(data.affiliate_id),
+    promoCode: data.promo_code ? String(data.promo_code) : null,
+    exp: Date.now() + ATTRIBUTION_MS,
+  }
+  writeAffiliateStamp(stamp)
+  return stamp
+}

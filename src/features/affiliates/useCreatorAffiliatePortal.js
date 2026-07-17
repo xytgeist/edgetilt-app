@@ -13,7 +13,7 @@ export function useCreatorAffiliatePortal(supabaseClient) {
       const data = await fetchMyAffiliatePortal(supabaseClient)
       setPortal(data)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(affiliateErrorMessage(e, 'Could not load creator portal.'))
     } finally {
       setLoading(false)
     }

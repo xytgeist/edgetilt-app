@@ -26,7 +26,7 @@ Goal: curated X/creator affiliates with tiered commissions, unique links + disco
 - Real Stripe coupon / promotion code per creator (typically **10% / 20% / 25%** off first payment ... configure once / first invoice in Stripe Dashboard).
 - Store matching **`affiliates.buyer_discount_pct`** in admin (drives subscribe modal preview). Checkout still applies `stripe_promotion_code_id`.
 - Founding / sitewide promos: **mutually exclusive** with creator codes (Checkout skips founding when `affiliate_code` is present).
-- Subscribe UI: with a valid `?ref=` stamp, plan cards show creator **avatar + % off** pill (not Founding Member), price caption includes `via @handle`, and list prices use that %.
+- Subscribe UI: with a valid `?ref=` stamp, plan cards show creator **avatar + promo code + % off** pill (not Founding Member), price caption includes `via @handle`, and list prices use that %.
 
 ### Attribution
 

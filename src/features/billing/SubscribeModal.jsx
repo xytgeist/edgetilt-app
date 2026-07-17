@@ -187,17 +187,24 @@ function affiliateHandleLabel(affiliate) {
 
 function PlanPromoBadge({ affiliate = null }) {
   if (affiliate?.buyerDiscountPct) {
+    const promoLabel = affiliate.promoCode
+      ? String(affiliate.promoCode).trim()
+      : affiliate.code
+        ? String(affiliate.code).toUpperCase()
+        : null
     const handleLabel = affiliateHandleLabel(affiliate)
     const initials = profileAvatarInitials(affiliate.displayName, affiliate.handle || affiliate.code)
-    const tone = profileAvatarToneClass(affiliate.handle || affiliate.code || handleLabel || 'creator')
+    const tone = profileAvatarToneClass(affiliate.handle || affiliate.code || promoLabel || 'creator')
     return (
       <div className="subscribe-plan-founding-badge subscribe-plan-affiliate-badge pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
         <div
-          className="subscribe-plan-affiliate-badge-inner flex items-center gap-2 rounded-full border border-cyan-400/40 bg-zinc-900 py-1 pl-1 pr-3 shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-cyan-400/25"
+          className="subscribe-plan-affiliate-badge-inner flex items-center gap-2.5 rounded-full border border-cyan-400/40 bg-zinc-900 py-1 pl-1 pr-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-cyan-400/25"
           aria-label={
-            handleLabel
-              ? `${handleLabel} · ${affiliate.buyerDiscountPct}% off`
-              : `${affiliate.buyerDiscountPct}% off`
+            promoLabel
+              ? `${promoLabel} · ${affiliate.buyerDiscountPct}% off`
+              : handleLabel
+                ? `${handleLabel} · ${affiliate.buyerDiscountPct}% off`
+                : `${affiliate.buyerDiscountPct}% off`
           }
         >
           {affiliate.avatarUrl ? (
@@ -214,6 +221,14 @@ function PlanPromoBadge({ affiliate = null }) {
               {initials}
             </span>
           )}
+          {promoLabel ? (
+            <>
+              <span className="subscribe-plan-affiliate-badge-label shrink-0 text-[11px] font-semibold tracking-wide text-cyan-50">
+                {promoLabel}
+              </span>
+              <span className="subscribe-plan-affiliate-badge-divider h-3 w-px shrink-0 bg-cyan-400/35" aria-hidden />
+            </>
+          ) : null}
           <span className="subscribe-plan-affiliate-badge-value shrink-0 text-[11px] font-semibold text-cyan-50">
             {affiliate.buyerDiscountPct}% off
           </span>

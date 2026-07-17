@@ -2646,8 +2646,12 @@ html.light [data-subscribe-modal] .subscribe-plan-affiliate-badge-inner {
     0 8px 22px rgba(6, 182, 212, 0.22),
     0 0 0 1px rgba(34, 211, 238, 0.4) !important;
 }
+html.light [data-subscribe-modal] .subscribe-plan-affiliate-badge-label,
 html.light [data-subscribe-modal] .subscribe-plan-affiliate-badge-value {
   color: #164e63 !important;
+}
+html.light [data-subscribe-modal] .subscribe-plan-affiliate-badge-divider {
+  background-color: rgba(22, 78, 99, 0.3) !important;
 }
 [data-subscribe-modal] .subscribe-plan-slide-3d--side {
   cursor: pointer;

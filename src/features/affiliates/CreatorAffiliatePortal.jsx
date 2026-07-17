@@ -57,10 +57,16 @@ export default function CreatorAffiliatePortal({
   const [certified, setCertified] = useState(false)
   const [file, setFile] = useState(null)
   const taxFileInputRef = useRef(null)
+  /** null = auto (open if incomplete, collapsed if submitted) */
+  const [taxFormOpen, setTaxFormOpen] = useState(null)
   const [busy, setBusy] = useState(false)
   const [localError, setLocalError] = useState('')
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
+
+  const taxSubmitted =
+    tax.status === 'submitted' || tax.status === 'reviewed' || Boolean(tax.document_path)
+  const showTaxForm = taxFormOpen ?? !taxSubmitted
 
   useEffect(() => {
     const pref =
@@ -262,6 +268,7 @@ export default function CreatorAffiliatePortal({
           ? 'Tax profile saved with your uploaded document.'
           : 'Tax profile saved. Generated attestation PDF stored for year-end prep.') + emailNote,
       )
+      setTaxFormOpen(false)
       await onReload?.()
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : String(e))
@@ -400,10 +407,49 @@ export default function CreatorAffiliatePortal({
       </section>
 
       <section className="rounded-3xl bg-zinc-900 p-5 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-white font-bold">Tax profile (W-9 / W-8)</div>
-          <div className="text-xs text-zinc-500 uppercase tracking-wide">status: {tax.status || 'incomplete'}</div>
-        </div>
+        <button
+          type="button"
+          className="w-full flex flex-wrap items-center justify-between gap-2 text-left"
+          onClick={() => {
+            if (!taxSubmitted) return
+            setTaxFormOpen(!showTaxForm)
+          }}
+          disabled={!taxSubmitted}
+          aria-expanded={showTaxForm}
+        >
+          <div>
+            <div className="text-white font-bold">Tax profile (W-9 / W-8)</div>
+            {taxSubmitted && !showTaxForm ? (
+              <div className="text-xs text-zinc-500 mt-0.5">
+                {[form.legal_name || tax.legal_name, (form.form_type || tax.form_type || 'w9').toUpperCase()]
+                  .filter(Boolean)
+                  .join(' · ')}
+                {tax.document_path ? ' · document on file' : ''}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-zinc-500 uppercase tracking-wide">
+              status: {tax.status || 'incomplete'}
+            </div>
+            {taxSubmitted ? (
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className={`w-5 h-5 text-zinc-400 transition-transform ${showTaxForm ? 'rotate-180' : ''}`}
+                aria-hidden
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : null}
+          </div>
+        </button>
+        {showTaxForm ? (
+          <>
         <div className="text-sm text-zinc-400">
           Fill this out and we generate an official IRS W-9 (or a substitute W-8) PDF with your typed
           signature. Full TIN goes on the PDF only; we store last 4 in the database. Edge does not e-file with
@@ -609,7 +655,7 @@ export default function CreatorAffiliatePortal({
             onClick={() => void saveTax()}
             className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-50"
           >
-            {file ? 'Save & email copy' : 'Generate PDF, save & email'}
+            {taxSubmitted ? 'Resubmit' : file ? 'Save & email copy' : 'Generate PDF, save & email'}
           </button>
           {tax.document_path ? (
             <button
@@ -622,6 +668,21 @@ export default function CreatorAffiliatePortal({
             </button>
           ) : null}
         </div>
+          </>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tax.document_path ? (
+              <button
+                type="button"
+                disabled={busy || !isValidEmail(form.tax_email)}
+                onClick={() => void resendTaxEmail()}
+                className="rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-200 disabled:opacity-50"
+              >
+                Resend email copy
+              </button>
+            ) : null}
+          </div>
+        )}
       </section>
 
       <section className="rounded-3xl bg-zinc-900 p-5">

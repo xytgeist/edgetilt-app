@@ -10,6 +10,7 @@ export default function CreatorAffiliateScreen({
 }) {
   const { portal, loading, error, reload } = useCreatorAffiliatePortal(supabaseClient)
   const [userId, setUserId] = useState(null)
+  const [accountEmail, setAccountEmail] = useState('')
 
   useEffect(() => {
     if (!supabaseClient) return
@@ -17,6 +18,7 @@ export default function CreatorAffiliateScreen({
     void supabaseClient.auth.getSession().then(({ data }) => {
       if (cancelled) return
       setUserId(data?.session?.user?.id || null)
+      setAccountEmail(String(data?.session?.user?.email || '').trim())
     })
     return () => {
       cancelled = true
@@ -31,6 +33,7 @@ export default function CreatorAffiliateScreen({
       <CreatorAffiliatePortal
         supabaseClient={supabaseClient}
         userId={userId}
+        accountEmail={accountEmail}
         portal={portal}
         loading={loading}
         error={error}

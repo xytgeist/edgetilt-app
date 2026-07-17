@@ -97,6 +97,33 @@ export async function uploadAffiliateTaxDocument(supabaseClient, file, userId, f
   return path
 }
 
+/**
+ * Email the stored tax PDF copy to the affiliate.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ tax_email: string, document_path: string }} payload
+ */
+export async function emailAffiliateTaxDocument(supabaseClient, payload) {
+  const { data, error, response } = await supabaseClient.functions.invoke('affiliate-tax-email', {
+    body: {
+      tax_email: payload.tax_email,
+      document_path: payload.document_path,
+    },
+  })
+  if (error) {
+    let detail = ''
+    try {
+      const raw = await response?.clone?.().text()
+      const body = raw ? JSON.parse(raw) : null
+      detail = body?.error || ''
+    } catch {
+      // ignore
+    }
+    throw new Error(detail || error.message || 'Could not email tax document.')
+  }
+  if (data?.error) throw new Error(String(data.error))
+  return data
+}
+
 export async function startAffiliateConnectOnboarding(supabaseClient) {
   const { data, error, response } = await supabaseClient.functions.invoke('affiliate-connect', {
     body: { action: 'onboard' },

@@ -45,7 +45,7 @@ Goal: curated X/creator affiliates with tiered commissions, unique links + disco
 
 - **v1 payouts:** admin **Mark paid** (+ optional payout ref) from `/?tab=affiliates`.
 - **Connect (phase 2, shipped in same epic):** creator onboards Express via `affiliate-connect`; admin **Pay via Connect** transfers payable rows.
-- **Tax:** Creator portal collects profile fields + typed signature / perjury cert → generates a **substitute W-9/W-8 PDF** (`affiliateTaxPdf.js`) into private Storage `affiliate-tax-docs`. Full TIN is written to the PDF only; DB stores **TIN last 4** + optional **FTIN Not Legally Required**. Optional manual upload still overrides generate. Year-end CSV / accountant or Tax1099 … **no IRS e-file in-app**.
+- **Tax:** Creator portal collects profile fields + typed signature / perjury cert + **tax email** → generates a **substitute W-9/W-8 PDF** (`affiliateTaxPdf.js`) into private Storage `affiliate-tax-docs` (`{user_id}/…pdf`, path on `document_path`). Full TIN is written to the PDF only; DB stores **TIN last 4** + optional **FTIN Not Legally Required**. Edge **`affiliate-tax-email`** (Resend) emails a copy to the tax email (account email prefilled, editable). Optional manual upload still overrides generate. Year-end CSV / accountant or Tax1099 … **no IRS e-file in-app**.
 
 ---
 
@@ -84,7 +84,7 @@ Per checkout stamp when Checkout runs with affiliate.
 Dedupe on invoice / session / payment_intent unique indexes.
 
 ### `affiliate_tax_profiles`
-W-9/W-8 fields + `tin_last4` + `ftin_not_legally_required` + `signature_name` + `document_path` (generated or uploaded) under Storage. Migration **`20260711150000_affiliate_tax_generate_pdf.sql`**.
+W-9/W-8 fields + `tin_last4` + `ftin_not_legally_required` + `signature_name` + `tax_email` + `document_path` (generated or uploaded) under Storage. Migrations **`20260711150000`**, **`20260711160000`**.
 
 ---
 
@@ -155,6 +155,7 @@ W-9/W-8 fields + `tin_last4` + `ftin_not_legally_required` + `signature_name` + 
 ## Update log
 
 - **2026-07-16:** Product rules locked; reject Rewardful/Tolt for small creator set.
+- **2026-07-17:** Tax email copy: required `tax_email` (prefill account email), Edge **`affiliate-tax-email`** via Resend, Resend email copy button.
 - **2026-07-17:** Tax form UI: FTIN Not Legally Required sits next to Full TIN; last 4 derived from full TIN (no separate field).
 - **2026-07-16:** Tax generate PDF: substitute W-9/W-8 from portal fields + typed signature; TIN last 4 label; FTIN Not Legally Required; migration `20260711150000`.
 - **2026-07-16:** Implementation: schema/RLS, `?ref=` + Checkout, webhook ledger, admin + creator portals, Connect Express Edge, tax collect (no e-file).

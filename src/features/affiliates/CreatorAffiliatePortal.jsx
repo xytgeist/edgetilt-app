@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  emailAffiliateTaxDocument,
   formatCents,
   refreshAffiliateConnectStatus,
   startAffiliateConnectOnboarding,
@@ -17,9 +18,14 @@ function moneyCard(label, cents) {
   )
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim())
+}
+
 export default function CreatorAffiliatePortal({
   supabaseClient,
   userId,
+  accountEmail = '',
   portal,
   loading,
   error,
@@ -46,6 +52,7 @@ export default function CreatorAffiliatePortal({
     foreign_tax_id: '',
     ftin_not_legally_required: false,
     signature_name: '',
+    tax_email: '',
   })
   const [certified, setCertified] = useState(false)
   const [file, setFile] = useState(null)
@@ -53,6 +60,15 @@ export default function CreatorAffiliatePortal({
   const [localError, setLocalError] = useState('')
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    const pref =
+      (tax?.tax_email && String(tax.tax_email).trim()) ||
+      (accountEmail && String(accountEmail).trim()) ||
+      ''
+    if (!pref) return
+    setForm((f) => (f.tax_email.trim() ? f : { ...f, tax_email: pref }))
+  }, [accountEmail, tax?.tax_email])
 
   useEffect(() => {
     if (!tax || tax.status === 'incomplete') return
@@ -72,9 +88,10 @@ export default function CreatorAffiliatePortal({
       foreign_tax_id: tax.foreign_tax_id || '',
       ftin_not_legally_required: Boolean(tax.ftin_not_legally_required),
       signature_name: tax.signature_name || tax.legal_name || '',
+      tax_email: tax.tax_email || accountEmail || f.tax_email || '',
     }))
     setCertified(false)
-  }, [tax])
+  }, [tax, accountEmail])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -150,9 +167,11 @@ export default function CreatorAffiliatePortal({
     try {
       const legalName = form.legal_name.trim()
       const signatureName = form.signature_name.trim() || legalName
+      const taxEmail = form.tax_email.trim().toLowerCase()
       if (!legalName) throw new Error('Legal name is required.')
       if (!signatureName) throw new Error('Typed signature name is required.')
       if (!certified) throw new Error('Check the certification box to continue.')
+      if (!isValidEmail(taxEmail)) throw new Error('A valid email is required for your form copy.')
 
       const ftinNotRequired = Boolean(form.ftin_not_legally_required)
       const tinFull = form.tin_full.trim()
@@ -210,18 +229,53 @@ export default function CreatorAffiliatePortal({
         foreign_tax_id: '',
         ftin_not_legally_required: ftinNotRequired,
         signature_name: signatureName,
+        tax_email: taxEmail,
         certified: true,
         document_path,
       })
       setFile(null)
-      setForm((f) => ({ ...f, tin_full: '', signature_name: signatureName }))
+      setForm((f) => ({ ...f, tin_full: '', signature_name: signatureName, tax_email: taxEmail }))
       setCertified(false)
+
+      let emailNote = ''
+      try {
+        await emailAffiliateTaxDocument(supabaseClient, {
+          tax_email: taxEmail,
+          document_path,
+        })
+        emailNote = ` A copy was emailed to ${taxEmail}.`
+      } catch (emailErr) {
+        emailNote = ` Saved, but email failed: ${
+          emailErr instanceof Error ? emailErr.message : String(emailErr)
+        }`
+      }
+
       setNotice(
-        file
+        (file
           ? 'Tax profile saved with your uploaded document.'
-          : 'Tax profile saved. Generated attestation PDF stored for year-end prep.',
+          : 'Tax profile saved. Generated attestation PDF stored for year-end prep.') + emailNote,
       )
       await onReload?.()
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resendTaxEmail = async () => {
+    setBusy(true)
+    setLocalError('')
+    setNotice('')
+    try {
+      const taxEmail = form.tax_email.trim().toLowerCase()
+      if (!isValidEmail(taxEmail)) throw new Error('A valid email is required.')
+      if (!tax.document_path) throw new Error('No tax document on file yet.')
+      await emailAffiliateTaxDocument(supabaseClient, {
+        tax_email: taxEmail,
+        document_path: tax.document_path,
+      })
+      setNotice(`Tax form copy emailed to ${taxEmail}.`)
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -469,6 +523,21 @@ export default function CreatorAffiliatePortal({
             </div>
           </div>
           <label className="block text-xs text-zinc-400 sm:col-span-2">
+            Email for form copy
+            <input
+              type="email"
+              className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
+              value={form.tax_email}
+              onChange={(e) => setField('tax_email', e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+            />
+            <div className="mt-1 text-[11px] text-zinc-500">
+              Prefills from your account email. Change it if you want the PDF copy somewhere else.
+            </div>
+          </label>
+          <label className="block text-xs text-zinc-400 sm:col-span-2">
             Typed signature (legal name)
             <input
               className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
@@ -503,16 +572,28 @@ export default function CreatorAffiliatePortal({
           </label>
         </div>
         {tax.document_path ? (
-          <div className="text-xs text-zinc-500">Saved tax document on file.</div>
+          <div className="text-xs text-zinc-500">Saved tax document on file (private storage).</div>
         ) : null}
-        <button
-          type="button"
-          disabled={busy || !form.legal_name.trim() || !certified}
-          onClick={() => void saveTax()}
-          className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-50"
-        >
-          {file ? 'Save tax profile' : 'Generate PDF & save'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy || !form.legal_name.trim() || !certified || !isValidEmail(form.tax_email)}
+            onClick={() => void saveTax()}
+            className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-50"
+          >
+            {file ? 'Save & email copy' : 'Generate PDF, save & email'}
+          </button>
+          {tax.document_path ? (
+            <button
+              type="button"
+              disabled={busy || !isValidEmail(form.tax_email)}
+              onClick={() => void resendTaxEmail()}
+              className="rounded-xl bg-zinc-800 px-4 py-2 text-sm text-zinc-200 disabled:opacity-50"
+            >
+              Resend email copy
+            </button>
+          ) : null}
+        </div>
       </section>
 
       <section className="rounded-3xl bg-zinc-900 p-5">

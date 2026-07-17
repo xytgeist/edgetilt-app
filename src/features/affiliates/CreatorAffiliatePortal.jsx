@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   emailAffiliateTaxDocument,
   formatCents,
@@ -56,6 +56,7 @@ export default function CreatorAffiliatePortal({
   })
   const [certified, setCertified] = useState(false)
   const [file, setFile] = useState(null)
+  const taxFileInputRef = useRef(null)
   const [busy, setBusy] = useState(false)
   const [localError, setLocalError] = useState('')
   const [notice, setNotice] = useState('')
@@ -565,18 +566,39 @@ export default function CreatorAffiliatePortal({
               complete, and that my typed name is my electronic signature.
             </span>
           </label>
-          <label className="block text-xs text-zinc-400 sm:col-span-2">
-            Upload your own signed form instead (optional PDF/image)
+          <div className="sm:col-span-2 space-y-1">
+            <div className="text-xs text-zinc-400">Upload your own signed form instead (optional PDF/image)</div>
             <input
+              ref={taxFileInputRef}
               type="file"
               accept="image/*,.pdf,application/pdf"
-              className="mt-1 block w-full text-sm text-zinc-300"
+              className="hidden"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
-            <div className="mt-1 text-[11px] text-zinc-500">
-              If you upload a file, we use that instead of generating a PDF.
-            </div>
-          </label>
+            <button
+              type="button"
+              onClick={() => taxFileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 bg-zinc-950 px-3 py-3 text-sm text-zinc-200 hover:border-zinc-500"
+            >
+              {file ? file.name : 'Choose PDF or image'}
+            </button>
+            {file ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFile(null)
+                  if (taxFileInputRef.current) taxFileInputRef.current.value = ''
+                }}
+                className="text-[11px] text-zinc-500 hover:text-zinc-300"
+              >
+                Clear upload
+              </button>
+            ) : (
+              <div className="text-[11px] text-zinc-500">
+                If you upload a file, we use that instead of generating a PDF.
+              </div>
+            )}
+          </div>
         </div>
         {tax.document_path ? (
           <div className="text-xs text-zinc-500">Saved tax document on file (private storage).</div>

@@ -786,6 +786,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-17: **Lounge video upload resume on background → prod:** `main` fast-forwarded to **`d2499095`** (Ryan smoke OK on test). Fingerprint resume + visibility soft-pause.
 - 2026-07-17: **Lounge video upload resume on background:** `uploadVideoToCfStreamResumableTus` now calls **`findPreviousUploads` / `resumeFromPreviousUpload`**, soft-pauses on `visibilitychange` → hidden, resumes on visible; prep retries wait while foregrounded. Upload bar: "Waiting until you are back".
 - 2026-07-17: **Chat inbox preview for R2 video:** migration **`20260717120000`** … `chat_message_preview_text` treats `video_url` as `[video]` (was Stream-uid only); backfill blank room previews. Fixes list **"No messages yet"** after video-only sends.
 - 2026-07-17: **Subscribe modal affiliate promo badge → prod:** migration **`20260711170000`** on **`jtjgtucumuoswnbauxry`**; `main` fast-forwarded to **`148819b8`**. Pill = avatar + promo code + %; caption `via @handle`. Josh resolve returns **25%** + avatar.

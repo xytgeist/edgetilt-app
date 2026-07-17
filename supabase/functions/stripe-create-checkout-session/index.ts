@@ -13,6 +13,11 @@ import {
   getUserFromJwt,
   upsertUserSubscriptionFromStripe,
 } from '../_shared/billingDb.ts'
+import {
+  isSelfReferral,
+  loadActiveAffiliateByCode,
+  upsertCheckoutAttribution,
+} from '../_shared/affiliateLedger.ts'
 
 const LIFETIME_PRODUCT_SLUG = 'slots-edge-lifetime'
 const STARTER_PRODUCT_SLUG = 'slots-edge-starter'
@@ -197,7 +202,12 @@ Deno.serve(async (req) => {
     const auth = await getUserFromJwt(admin, req)
     if ('error' in auth) return jsonResponse({ error: auth.error }, auth.status)
 
-    let body: { product_slug?: string; price_interval?: string; apply_early_bird?: boolean } = {}
+    let body: {
+      product_slug?: string
+      price_interval?: string
+      apply_early_bird?: boolean
+      affiliate_code?: string
+    } = {}
     try {
       body = await req.json()
     } catch {
@@ -254,8 +264,54 @@ Deno.serve(async (req) => {
       if (custErr) throw new Error(`profiles.stripe_customer_id update: ${custErr.message}`)
     }
 
+    const affiliateCodeRaw = String(body.affiliate_code ?? '').trim()
+    let affiliateMeta: { affiliate_id: string; affiliate_code: string } | null = null
+    let affiliatePromotionCodeId: string | null = null
+    if (affiliateCodeRaw) {
+      const affiliate = await loadActiveAffiliateByCode(admin, affiliateCodeRaw)
+      if (!affiliate) {
+        return jsonResponse({ error: 'Affiliate referral code is invalid or inactive.' }, 400)
+      }
+      if (isSelfReferral(affiliate, auth.user.id, auth.user.email)) {
+        return jsonResponse({ error: 'Self-referral is not allowed.' }, 400)
+      }
+      if (!affiliate.stripe_promotion_code_id?.trim()) {
+        return jsonResponse({
+          error: 'This affiliate is missing a Stripe promotion code. Ask an admin to paste stripe_promotion_code_id.',
+        }, 400)
+      }
+      affiliateMeta = { affiliate_id: affiliate.id, affiliate_code: affiliate.code }
+      affiliatePromotionCodeId = affiliate.stripe_promotion_code_id.trim()
+      await upsertCheckoutAttribution(admin, {
+        affiliateId: affiliate.id,
+        userId: auth.user.id,
+        stripeCustomerId: customerId,
+        source: 'ref',
+      })
+    }
+
     const { success_url, cancel_url } = checkoutReturnUrls(req, productSlug)
-    const wantsFounding = body.apply_early_bird !== false
+    // Creator promo and founding are mutually exclusive.
+    const wantsFounding = !affiliateMeta && body.apply_early_bird !== false
+
+    const applyAffiliateToMetadata = (meta: Record<string, string>) => {
+      if (!affiliateMeta) return meta
+      return {
+        ...meta,
+        affiliate_id: affiliateMeta.affiliate_id,
+        affiliate_code: affiliateMeta.affiliate_code,
+      }
+    }
+
+    const applyCheckoutDiscount = (sessionParams: Stripe.Checkout.SessionCreateParams, foundingCouponIdValue: string | null) => {
+      if (affiliatePromotionCodeId) {
+        sessionParams.discounts = [{ promotion_code: affiliatePromotionCodeId }]
+        return
+      }
+      if (foundingCouponIdValue) {
+        sessionParams.discounts = [{ coupon: foundingCouponIdValue }]
+      }
+    }
 
     let replaceStripeSubscriptionId: string | null = null
     const upgradeFromStarter =
@@ -313,13 +369,14 @@ Deno.serve(async (req) => {
 
     if (isLifetime) {
       const replaceSubscriptionIds = await getActiveRecurringStripeSubscriptionIds(admin, auth.user.id)
-      const sessionMetadata: Record<string, string> = {
+      let sessionMetadata: Record<string, string> = {
         supabase_user_id: auth.user.id,
         product_slug: productSlug,
       }
       if (replaceSubscriptionIds.length > 0) {
         sessionMetadata.replaces_stripe_subscription_ids = replaceSubscriptionIds.join(',')
       }
+      sessionMetadata = applyAffiliateToMetadata(sessionMetadata)
 
       const couponId = foundingCouponId(productSlug, 'monthly', true, wantsFounding)
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -334,9 +391,7 @@ Deno.serve(async (req) => {
           metadata: sessionMetadata,
         },
       }
-      if (couponId) {
-        sessionParams.discounts = [{ coupon: couponId }]
-      }
+      applyCheckoutDiscount(sessionParams, couponId)
 
       const session = await stripe.checkout.sessions.create(sessionParams)
 
@@ -349,7 +404,7 @@ Deno.serve(async (req) => {
 
     const couponId = foundingCouponId(productSlug, priceInterval, false, wantsFounding)
     const checkoutRequiresPayment = Boolean(replaceStripeSubscriptionId)
-    const sessionMetadata: Record<string, string> = {
+    let sessionMetadata: Record<string, string> = {
       supabase_user_id: auth.user.id,
       product_slug: productSlug,
       price_interval: priceInterval,
@@ -360,6 +415,7 @@ Deno.serve(async (req) => {
         sessionMetadata.upgraded_from = STARTER_PRODUCT_SLUG
       }
     }
+    sessionMetadata = applyAffiliateToMetadata(sessionMetadata)
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
@@ -375,9 +431,7 @@ Deno.serve(async (req) => {
       metadata: sessionMetadata,
     }
 
-    if (couponId) {
-      sessionParams.discounts = [{ coupon: couponId }]
-    }
+    applyCheckoutDiscount(sessionParams, couponId)
 
     const session = await stripe.checkout.sessions.create(sessionParams)
 

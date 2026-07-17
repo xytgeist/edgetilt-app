@@ -22,16 +22,21 @@ async function readEdgeFunctionError(response) {
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} productSlug
- * @param {{ priceInterval?: 'monthly' | 'annual', applyEarlyBird?: boolean }} [options]
+ * @param {{ priceInterval?: 'monthly' | 'annual', applyEarlyBird?: boolean, affiliateCode?: string | null }} [options]
  */
 export async function startEdgeCheckout(supabaseClient, productSlug, options = {}) {
-  const { priceInterval = 'monthly', applyEarlyBird = true } = options
+  const { priceInterval = 'monthly', applyEarlyBird = true, affiliateCode = null } = options
+  /** @type {Record<string, unknown>} */
+  const body = {
+    product_slug: productSlug,
+    price_interval: priceInterval,
+    apply_early_bird: applyEarlyBird,
+  }
+  const code = typeof affiliateCode === 'string' ? affiliateCode.trim() : ''
+  if (code) body.affiliate_code = code
+
   const { data, error, response } = await supabaseClient.functions.invoke('stripe-create-checkout-session', {
-    body: {
-      product_slug: productSlug,
-      price_interval: priceInterval,
-      apply_early_bird: applyEarlyBird,
-    },
+    body,
   })
   if (error) {
     const detail = await readEdgeFunctionError(response)

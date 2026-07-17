@@ -20,6 +20,7 @@ import {
   formatUsdOneTime,
 } from './edgePricing.js'
 import { startEdgeCheckout } from './stripeBillingApi.js'
+import { getAffiliateCodeForCheckout } from '../affiliates/affiliateRefApi.js'
 
 const PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
 const PLAN_LABELS = {
@@ -493,6 +494,7 @@ export default function SubscribeModal({
               ? starterInterval
               : 'monthly',
         applyEarlyBird: true,
+        affiliateCode: getAffiliateCodeForCheckout(),
       })
     } catch (e) {
       setBusy(false)

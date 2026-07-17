@@ -72,6 +72,7 @@ import { useFreemiumToolUsage } from '../billing/useFreemiumToolUsage.js'
 import { useStarterCalculatorUnlocks } from '../billing/useStarterCalculatorUnlocks.js'
 import { useStarterWeeklyDropGuideSlugs } from '../billing/useStarterWeeklyDropGuideSlugs.js'
 import { useStarterWeeklyDropPoolExhausted } from '../billing/useStarterWeeklyDropPoolExhausted.js'
+import { checkIAmActiveAffiliate } from '../affiliates/affiliatePortalApi.js'
 import {
   STALE_CHUNK_RELOAD_KEY,
   clearStaleChunkReloadGuard,
@@ -92,6 +93,8 @@ const SlotsScreen = lazyRoute(() => import('../slots/SlotsScreen.jsx'))
 const ChatTab = lazyRoute(() => import('../chat/ChatTab.jsx'))
 const EdgeMonitorScreen = lazyRoute(() => import('../ops/EdgeMonitorScreen.jsx'))
 const BotManagementScreen = lazyRoute(() => import('../bots/BotManagementScreen.jsx'))
+const AffiliateAdminScreen = lazyRoute(() => import('../affiliates/AffiliateAdminScreen.jsx'))
+const CreatorAffiliateScreen = lazyRoute(() => import('../affiliates/CreatorAffiliateScreen.jsx'))
 
 function TabLoadingFallback() {
   return (
@@ -277,6 +280,7 @@ export default function AppShell({
   const [menuOpen, setMenuOpen] = useState(false)
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
+  const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
   const {
     canCreateBankrollSession,
     canCreatePlayLog,
@@ -858,6 +862,22 @@ export default function AppShell({
           setMenuOpen(false)
         }
       }
+      if (targetTab === 'affiliates') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else if (isAdmin) {
+          setTab('affiliates')
+          setMenuOpen(false)
+        }
+      }
+      if (targetTab === 'creator') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('creator')
+          setMenuOpen(false)
+        }
+      }
       const guideFromQuery = (params.get('guide') || '').trim()
       const guideFromPath = parseGuideSlugFromPathname(window.location.pathname || '')
       const guideSlug = guideFromQuery || guideFromPath
@@ -1028,12 +1048,34 @@ export default function AppShell({
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
 
+  useEffect(() => {
+    if (browseMode !== 'member' || !supabaseClient) {
+      setIsActiveAffiliate(false)
+      return
+    }
+    let cancelled = false
+    void checkIAmActiveAffiliate(supabaseClient)
+      .then((ok) => {
+        if (!cancelled) setIsActiveAffiliate(Boolean(ok))
+      })
+      .catch(() => {
+        if (!cancelled) setIsActiveAffiliate(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [browseMode, supabaseClient, tab])
+
   /** Title bar ☰ menu - Slots hub + Chat (Lounge via dock home; Monitor admin-only). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: '📊', subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: '🤖', subscriberGated: false }] : []),
+    ...(isAdmin ? [{ id: 'affiliates', label: 'Affiliates', icon: '🤝', subscriberGated: false }] : []),
+    ...(isActiveAffiliate
+      ? [{ id: 'creator', label: 'Creator', icon: '✨', subscriberGated: false }]
+      : []),
   ]
 
   const showNavSubscriberLocks =
@@ -1653,6 +1695,28 @@ export default function AppShell({
             Bot Portal is admin-only.
           </div>
         </ScrollLinkedEdgeTitleBarShell>
+      )
+    } else if (tab === 'affiliates') {
+      visibleTab = isAdmin ? (
+        <AffiliateAdminScreen
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          onBack={() => setTab('home')}
+        />
+      ) : (
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+          <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
+            Affiliates admin is admin-only.
+          </div>
+        </ScrollLinkedEdgeTitleBarShell>
+      )
+    } else if (tab === 'creator') {
+      visibleTab = (
+        <CreatorAffiliateScreen
+          supabaseClient={supabaseClient}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          onBack={() => setTab('home')}
+        />
       )
     } else if (tab === 'team') {
       visibleTab = (

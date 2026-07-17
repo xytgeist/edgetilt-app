@@ -561,6 +561,8 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
 
+- [ ] **Creator affiliates** — SQL **`20260711120000`** applied on **test** + Edge redeployed (**`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`**). Remaining: Stripe Dashboard 10% once coupon + per-creator **`promo_…`** ids; paste into admin **`?tab=affiliates`**; client smoke **`docs/affiliates.md`** §6. Source: `src/features/affiliates/`. **Not for production until Ryan says promote.**
+
 - [ ] Function-by-function smoke notes captured  
   - Change: Record minimal expected input/output for each function.
   - Source: function `README.md` files
@@ -784,6 +786,8 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-16: **Creator affiliates v1 (code):** migration **`20260711120000_creator_affiliates.sql`** (packages/affiliates/attributions/commissions/tax + RLS/RPCs + Storage **`affiliate-tax-docs`**); client **`src/features/affiliates/`** + AppShell **`?tab=affiliates`** (admin) / **`?tab=creator`**; Checkout **`affiliate_code`** + founding mutual exclusion; webhook commission ledger; Edge **`affiliate-connect`** (Express onboard + admin pay). Apply SQL + redeploy **`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`** on **test** only until Ryan promotes. Spec: **`docs/affiliates.md`**.
+- 2026-07-16: **Creator affiliates in-house (decision):** **`docs/affiliates.md`** ... build thin EdgeTilt stack (packages 20/25/30, `?ref=` ↔ promo, webhook ledger, manual payouts); third-party SaaS rejected for small creator set.
 - 2026-07-15: **Log Play from shared calculators:** default game is the calculator’s primary title (e.g. Phoenix Link, not Lightning 10-Year Storm); changing game keeps overlapping prefilled metric values. **`templateSlug`** on **`CalculatorLogPlayButton`** + primary map in **`resolvePlayLogPrefillTemplate`**.
 - 2026-07-15: **Play log partners Share ↔ Play $:** on Log play, partners rows add editable **Play $** (of **`bet_size`**) synced with **Share %**; existing **Amount** stays read-only net P/L share. Search clear after partner pick kept.
 - 2026-07-11: **Lounge Stream publish readiness:** `waitForCfStreamManifestReady` now probes real HLS (native / hls.js `MANIFEST_PARSED`) instead of CF thumbnail alone (thumbnail can succeed before playback → poster-only dead tiles). Post/comment/thread submit skip a second wait when composer prep already exposed the uid. Client-only; no Edge/SQL.

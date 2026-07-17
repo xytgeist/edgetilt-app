@@ -8,6 +8,7 @@ import {
   resolvedEntitlementBillingInterval,
 } from './edgeProducts.js'
 import { openBillingPortal, startEdgeCheckout } from './stripeBillingApi.js'
+import { getAffiliateCodeForCheckout } from '../affiliates/affiliateRefApi.js'
 
 /** @param {'monthly' | 'annual'} interval */
 function billingIntervalLabel(interval) {
@@ -127,6 +128,7 @@ export default function BillingManageModal({
         await startEdgeCheckout(supabaseClient, productSlug, {
           priceInterval,
           applyEarlyBird: true,
+          affiliateCode: getAffiliateCodeForCheckout(),
         })
       } catch (e) {
         setBusyKey('')

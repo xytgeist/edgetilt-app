@@ -10,6 +10,7 @@
 **Canonical setup:** `supabase/functions/stripe-create-checkout-session/README.md`  
 **Portal:** `supabase/functions/stripe-create-portal-session/README.md`  
 **Product rules:** `docs/access-tiers.md` §5  
+**Creator affiliates (planned):** `docs/affiliates.md`  
 **Tier testing / revoke SQL:** `docs/test-user-roles.md`  
 **Prod mirror checklist:** `docs/production-rollout-checklist.md` §2 + §4
 

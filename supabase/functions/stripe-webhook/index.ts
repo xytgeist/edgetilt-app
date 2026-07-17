@@ -10,6 +10,12 @@ import {
   upsertUserSubscriptionFromStripe,
   type StripeSubscriptionPayload,
 } from '../_shared/billingDb.ts'
+import {
+  insertAffiliateCommission,
+  loadActiveAffiliateById,
+  promotePayableCommissions,
+  voidAffiliateCommissionsForRefund,
+} from '../_shared/affiliateLedger.ts'
 
 function parseReplaceSubscriptionIds(session: Stripe.Checkout.Session): string[] {
   const raw =
@@ -69,6 +75,122 @@ async function resolveUserAndProduct(
   }
 
   return { userId, productSlug }
+}
+
+function moneyFromSession(session: Stripe.Checkout.Session) {
+  const net = typeof session.amount_total === 'number' ? session.amount_total : 0
+  const gross = typeof session.amount_subtotal === 'number' ? session.amount_subtotal : net
+  const discount = Math.max(0, gross - net)
+  return { grossCents: gross, discountCents: discount, netCents: net }
+}
+
+function moneyFromInvoice(invoice: Stripe.Invoice) {
+  const net = typeof invoice.amount_paid === 'number' ? invoice.amount_paid : 0
+  const gross =
+    typeof invoice.subtotal === 'number'
+      ? invoice.subtotal
+      : typeof invoice.total === 'number'
+        ? invoice.total
+        : net
+  const discount = Math.max(0, gross - net)
+  return { grossCents: gross, discountCents: discount, netCents: net }
+}
+
+async function commissionFromCheckoutSession(
+  admin: ReturnType<typeof createBillingAdmin>,
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+) {
+  const affiliateId = session.metadata?.affiliate_id?.trim() || null
+  if (!affiliateId) return
+
+  const affiliate = await loadActiveAffiliateById(admin, affiliateId)
+  if (!affiliate) {
+    console.warn('stripe-webhook: affiliate missing for checkout', session.id, affiliateId)
+    return
+  }
+
+  const { grossCents, discountCents, netCents } = moneyFromSession(session)
+  const paymentIntentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id || null
+
+  const priceInterval =
+    session.mode === 'payment'
+      ? 'lifetime'
+      : session.metadata?.price_interval?.trim() || null
+
+  await insertAffiliateCommission(admin, {
+    affiliateId: affiliate.id,
+    package: affiliate.package,
+    userId,
+    stripeCheckoutSessionId: session.id,
+    stripePaymentIntentId: paymentIntentId,
+    productSlug: session.metadata?.product_slug?.trim() || null,
+    priceInterval,
+    grossCents,
+    discountCents,
+    netCents,
+  })
+}
+
+async function commissionFromInvoice(
+  admin: ReturnType<typeof createBillingAdmin>,
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+) {
+  // First paid invoice is recorded on checkout.session.completed (session-id dedupe).
+  // Renewals use invoice.paid only.
+  if (
+    !invoice.billing_reason ||
+    invoice.billing_reason === 'subscription_create' ||
+    invoice.billing_reason === 'manual'
+  ) {
+    return
+  }
+
+  const subscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription?.id || null
+  if (!subscriptionId) return
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+  const affiliateId = subscription.metadata?.affiliate_id?.trim() || null
+  if (!affiliateId) return
+
+  const affiliate = await loadActiveAffiliateById(admin, affiliateId)
+  if (!affiliate) return
+
+  const userId =
+    subscription.metadata?.supabase_user_id?.trim() ||
+    null
+
+  const { grossCents, discountCents, netCents } = moneyFromInvoice(invoice)
+  const paymentIntentId =
+    typeof invoice.payment_intent === 'string'
+      ? invoice.payment_intent
+      : invoice.payment_intent?.id || null
+
+  const priceInterval = subscription.metadata?.price_interval?.trim() || null
+  const productSlug =
+    subscription.metadata?.product_slug?.trim() ||
+    invoice.metadata?.product_slug?.trim() ||
+    null
+
+  await insertAffiliateCommission(admin, {
+    affiliateId: affiliate.id,
+    package: affiliate.package,
+    userId,
+    stripeInvoiceId: invoice.id,
+    stripePaymentIntentId: paymentIntentId,
+    productSlug,
+    priceInterval,
+    grossCents,
+    discountCents,
+    netCents,
+  })
 }
 
 Deno.serve(async (req) => {
@@ -166,6 +288,8 @@ Deno.serve(async (req) => {
           replaceIds = await listActiveRecurringStripeSubscriptionIds(admin, userId)
         }
         await cancelReplacedStripeSubscriptions(stripe, admin, replaceIds, userId)
+        await commissionFromCheckoutSession(admin, session, userId)
+        await promotePayableCommissions(admin)
 
         return jsonResponse({ ok: true })
       }
@@ -204,6 +328,39 @@ Deno.serve(async (req) => {
         ]
         await cancelReplacedStripeSubscriptions(stripe, admin, replaceIds, resolvedUserId)
       }
+
+      await commissionFromCheckoutSession(admin, session, resolvedUserId)
+      await promotePayableCommissions(admin)
+    }
+
+    if (event.type === 'invoice.paid') {
+      const invoice = event.data.object as Stripe.Invoice
+      if (invoice.status === 'paid' && (invoice.amount_paid ?? 0) > 0) {
+        await commissionFromInvoice(admin, stripe, invoice)
+        await promotePayableCommissions(admin)
+      }
+    }
+
+    if (
+      event.type === 'charge.refunded' ||
+      event.type === 'charge.dispute.created'
+    ) {
+      const charge = event.data.object as Stripe.Charge
+      const paymentIntentId =
+        typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : charge.payment_intent?.id || null
+      await voidAffiliateCommissionsForRefund(admin, {
+        stripeChargeId: charge.id,
+        stripePaymentIntentId: paymentIntentId,
+        reason: event.type === 'charge.dispute.created' ? 'dispute' : 'refund',
+      })
+    }
+
+    if (event.type === 'invoice.payment_failed') {
+      const invoice = event.data.object as Stripe.Invoice
+      // Do not void historical commissions on payment_failed; renewals simply won't insert.
+      console.warn('stripe-webhook: invoice.payment_failed', invoice.id)
     }
 
     return jsonResponse({ ok: true })

@@ -38,7 +38,7 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
 | --- | --- | --- |
 
-| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true }` → `{ url }`. **`slots-edge-lifetime`** uses one-time **`mode: payment`** checkout (no `payment_method_collection`; Stripe still collects payment for the charge). If the user has active Starter or Pro, metadata lists subs to cancel on success. **Starter → Pro:** active **`slots-edge-starter`** + checkout for **`slots-edge`** opens **Stripe Checkout** (payment method + confirm); webhook cancels the old Starter subscription after success. **Monthly → annual (same tier):** active **`slots-edge-starter`** or **`slots-edge`** + checkout **`price_interval: annual`** opens **Stripe Checkout**; webhook cancels the old monthly sub after success. **Annual → monthly:** in-place update — **`interval_changed: true`** (no Checkout redirect). |
+| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true, "affiliate_code"?: "…" }` → `{ url }`. Optional **`affiliate_code`** applies that creator’s Stripe promotion code and sets **`affiliate_id` / `affiliate_code`** metadata (mutually exclusive with founding coupons). **`slots-edge-lifetime`** uses one-time **`mode: payment`** checkout. If the user has active Starter or Pro, metadata lists subs to cancel on success. **Starter → Pro** / **monthly → annual** open Checkout; **annual → monthly** in-place update returns **`interval_changed: true`**. Affiliates: **`docs/affiliates.md`**. |
 
 | **`stripe-create-portal-session`** | User JWT | Manage/cancel billing in Stripe Customer Portal |
 

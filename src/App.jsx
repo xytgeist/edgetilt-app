@@ -12,6 +12,7 @@ import {
   listenStarterWeeklyDropOpen,
   stripStarterDropQueryParam,
 } from './features/billing/starterWeeklyDropApi.js'
+import { captureAffiliateRefFromUrl } from './features/affiliates/affiliateRefApi.js'
 import { useStarterWeeklyDropGuideSlugs } from './features/billing/useStarterWeeklyDropGuideSlugs.js'
 import { useStarterWeeklyDropPoolExhausted } from './features/billing/useStarterWeeklyDropPoolExhausted.js'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
@@ -370,6 +371,11 @@ function App() {
     return listenStarterWeeklyDropOpen(({ unlockId }) => {
       setStarterDropModal({ open: true, unlockId })
     })
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    void captureAffiliateRefFromUrl(supabase)
   }, [])
 
   useEffect(() => {

@@ -786,6 +786,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-17: **Lounge video upload resume on background:** `uploadVideoToCfStreamResumableTus` now calls **`findPreviousUploads` / `resumeFromPreviousUpload`**, soft-pauses on `visibilitychange` → hidden, resumes on visible; prep retries wait while foregrounded. Upload bar: "Waiting until you are back".
 - 2026-07-17: **Chat inbox preview for R2 video:** migration **`20260717120000`** … `chat_message_preview_text` treats `video_url` as `[video]` (was Stream-uid only); backfill blank room previews. Fixes list **"No messages yet"** after video-only sends.
 - 2026-07-17: **Subscribe modal affiliate promo badge → prod:** migration **`20260711170000`** on **`jtjgtucumuoswnbauxry`**; `main` fast-forwarded to **`148819b8`**. Pill = avatar + promo code + %; caption `via @handle`. Josh resolve returns **25%** + avatar.
 - 2026-07-17: **Subscribe modal affiliate promo badge:** migration **`20260711170000`** (`affiliates.buyer_discount_pct`); `resolve_affiliate_ref` returns avatar/handle/%; stamp + **`SubscribeModal`** swap Founding Member pill for creator avatar + % when `?ref=` present. Admin form: buyer discount %. Apply SQL on test (+ prod when promoting).

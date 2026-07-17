@@ -16734,6 +16734,9 @@ export default function SocialFeed({
                   className={`mt-0.5 text-[11px] leading-snug break-words ${
                     loungePostUploadBar.mode === 'mediaPrep' &&
                     (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
+                      String(loungePostUploadBar.status || '')
+                        .toLowerCase()
+                        .includes('waiting until you are back') ||
                       String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
                       String(loungePostUploadBar.detail || '').includes('goblins'))
                       ? 'text-amber-200/90'

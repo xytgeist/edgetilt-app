@@ -8,9 +8,8 @@ import {
   deleteCfStreamOrphanAsset,
   probeVideoFileDisplaySize,
   probeVideoFileDurationSeconds,
-  uploadVideoToCfStreamResumableTus,
-  waitForCfStreamManifestReady,
 } from '../../utils/loungeVideoUpload'
+import { uploadEncodedVideoToCfStreamWithRetries } from './loungeComposerVideoPrep.js'
 import { fetchLoungeStreamPosterFileFromSnapshot } from './loungeStreamSessionPoster.js'
 import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 
@@ -111,27 +110,21 @@ export async function executeLoungeCommentSubmission({
         throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
       }
       report(0.1, 'Uploading video', 'Ether Stream (resumable)')
-      const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, vf, {
+      const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({
+        supabaseClient,
         signal,
+        uploadFile: vf,
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingCfUploadUid = id
         },
-        onProgress: (r) => report(0.1 + r * 0.5, 'Uploading video', `${Math.round(r * 100)}% sent`),
-      })
-      pendingCfUploadUid = uid
-      throwIfAborted()
-      report(0.62, 'Waiting for encoding', '')
-      await waitForCfStreamManifestReady(uid, {
-        signal,
-        onUploadDiagnostic,
-        onPoll: ({ elapsed }) => {
-          const cap = 120_000
-          const t = Math.min(1, elapsed / cap)
-          report(0.62 + t * 0.22, 'Waiting for encoding', `${Math.round(elapsed / 1000)}s`)
+        onProgress: ({ progress, status, detail }) => {
+          report(0.1 + (progress || 0) * 0.74, status || 'Uploading video', detail || '')
         },
       })
+      pendingCfUploadUid = uid
       streamVideoUid = uid
+      throwIfAborted()
     }
 
     let streamPosterPublicUrl = ''
@@ -352,27 +345,21 @@ export async function executeLoungeCommentUpdate({
         throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
       }
       report(0.1, 'Uploading video', 'Ether Stream (resumable)')
-      const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, vf, {
+      const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({
+        supabaseClient,
         signal,
+        uploadFile: vf,
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingCfUploadUid = id
         },
-        onProgress: (r) => report(0.1 + r * 0.5, 'Uploading video', `${Math.round(r * 100)}% sent`),
-      })
-      pendingCfUploadUid = uid
-      throwIfAborted()
-      report(0.62, 'Waiting for encoding', '')
-      await waitForCfStreamManifestReady(uid, {
-        signal,
-        onUploadDiagnostic,
-        onPoll: ({ elapsed }) => {
-          const cap = 120_000
-          const t = Math.min(1, elapsed / cap)
-          report(0.62 + t * 0.22, 'Waiting for encoding', `${Math.round(elapsed / 1000)}s`)
+        onProgress: ({ progress, status, detail }) => {
+          report(0.1 + (progress || 0) * 0.74, status || 'Uploading video', detail || '')
         },
       })
+      pendingCfUploadUid = uid
       streamVideoUid = uid
+      throwIfAborted()
     }
 
     let streamPosterPublicUrl = ''

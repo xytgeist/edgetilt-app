@@ -13,9 +13,8 @@ import {
   deleteCfStreamOrphanAsset,
   probeVideoFileDisplaySize,
   probeVideoFileDurationSeconds,
-  uploadVideoToCfStreamResumableTus,
-  waitForCfStreamManifestReady,
 } from '../../utils/loungeVideoUpload'
+import { uploadEncodedVideoToCfStreamWithRetries } from './loungeComposerVideoPrep.js'
 import { fetchLoungeStreamPosterFileFromSnapshot } from './loungeStreamSessionPoster.js'
 import { normalizeLoungePostCategoryPills } from '../../utils/loungePostCategoryPills.js'
 import { feedCommentThreadPartInsertPayload } from '../../utils/communityFeedComment.js'
@@ -943,32 +942,21 @@ export async function executeLoungeCommunityPostSubmission({
         throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
       }
       report(0.08, 'Uploading video', 'Ether Stream (resumable)')
-      const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, vf, {
+      const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({
+        supabaseClient,
         signal,
+        uploadFile: vf,
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingCfUploadUid = id
         },
-        onProgress: (r) =>
-          report(0.08 + r * 0.54, 'Uploading video to Ether', `${Math.round(r * 100)}% sent`),
-      })
-      pendingCfUploadUid = uid
-      throwIfAborted()
-      report(0.64, 'Waiting for Ether encoding', 'Polling HLS…')
-      await waitForCfStreamManifestReady(uid, {
-        signal,
-        onUploadDiagnostic,
-        onPoll: ({ elapsed }) => {
-          const cap = 120_000
-          const t = Math.min(1, elapsed / cap)
-          report(
-            0.64 + t * 0.24,
-            'Waiting for Ether encoding',
-            `${Math.round(elapsed / 1000)}s elapsed`,
-          )
+        onProgress: ({ progress, status, detail }) => {
+          report(0.08 + (progress || 0) * 0.8, status || 'Uploading video', detail || '')
         },
       })
+      pendingCfUploadUid = uid
       streamVideoUid = uid
+      throwIfAborted()
     }
 
     let streamPosterPublicUrl = ''
@@ -1392,32 +1380,21 @@ export async function executeLoungeCommunityPostUpdate({
         throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
       }
       report(0.08, 'Uploading video', 'Ether Stream (resumable)')
-      const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, vf, {
+      const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({
+        supabaseClient,
         signal,
+        uploadFile: vf,
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingCfUploadUid = id
         },
-        onProgress: (r) =>
-          report(0.08 + r * 0.54, 'Uploading video to Ether', `${Math.round(r * 100)}% sent`),
-      })
-      pendingCfUploadUid = uid
-      throwIfAborted()
-      report(0.64, 'Waiting for Ether encoding', 'Polling HLS…')
-      await waitForCfStreamManifestReady(uid, {
-        signal,
-        onUploadDiagnostic,
-        onPoll: ({ elapsed }) => {
-          const cap = 120_000
-          const t = Math.min(1, elapsed / cap)
-          report(
-            0.64 + t * 0.24,
-            'Waiting for Ether encoding',
-            `${Math.round(elapsed / 1000)}s elapsed`,
-          )
+        onProgress: ({ progress, status, detail }) => {
+          report(0.08 + (progress || 0) * 0.8, status || 'Uploading video', detail || '')
         },
       })
+      pendingCfUploadUid = uid
       streamVideoUid = uid
+      throwIfAborted()
     }
 
     let streamPosterPublicUrl = ''

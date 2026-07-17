@@ -6,6 +6,7 @@ import {
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
   waitForCfStreamManifestReady,
+  waitForDocumentVisible,
 } from '../../utils/loungeVideoUpload'
 
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
@@ -15,6 +16,23 @@ function sleep(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms)
   })
+}
+
+/** Backoff only while the tab is foregrounded (iOS freezes timers when locked). */
+async function sleepWhileVisible(ms, signal) {
+  await waitForDocumentVisible(signal)
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+  const end = Date.now() + Math.max(0, Number(ms) || 0)
+  while (Date.now() < end) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      await waitForDocumentVisible(signal)
+      continue
+    }
+    const remaining = end - Date.now()
+    if (remaining <= 0) break
+    await sleep(Math.min(remaining, 500))
+  }
 }
 
 /**
@@ -134,6 +152,15 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         },
         onProgress: (r) =>
           report(0.44 + r * 0.46, 'Uploading to Ether', `${Math.round(r * 100)}%`, attempt),
+        onVisibilityPause: () =>
+          report(
+            0.44,
+            'Waiting until you are back',
+            'Upload paused while EdgeTilt is in the background',
+            attempt,
+          ),
+        onVisibilityResume: () =>
+          report(0.44, 'Resuming upload', 'Picking up where you left off...', attempt),
       })
       pendingUid = uid
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -144,6 +171,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       }
 
       report(0.92, 'Finishing upload', 'Waiting for playback…', attempt)
+      await waitForDocumentVisible(signal)
       await waitForCfStreamManifestReady(uid, {
         signal,
         onUploadDiagnostic,
@@ -171,18 +199,16 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         attempt,
       )
       // Do NOT delete the CF asset on intermediate failures.
-      // tus-js-client stores the TUS URL fingerprint in localStorage; the next attempt
-      // will resume from the last ACK'd byte rather than re-uploading the whole file.
-      // This is critical on iOS where background network drops can happen at 98%+.
+      // Fingerprint resume (findPreviousUploads) continues from the last ACK'd byte.
+      // Critical on iOS where background network drops can happen at 98%+.
       // The CF upload URL stays valid for 6 hours; the orphan purge cron handles
       // any assets that are truly abandoned after all attempts fail.
       if (attempt >= COMPOSER_VIDEO_PREP_MAX_ATTEMPTS && pendingUid) {
         await deleteCfStreamOrphanAsset(supabaseClient, pendingUid)
       }
       if (attempt < COMPOSER_VIDEO_PREP_MAX_ATTEMPTS) {
-        // Back off long enough for iOS to return to foreground after a background drop.
-        // Old: 500 + attempt*350 ms (max ~2s). New: ramps from 4s to 16s.
-        await sleep(2000 + attempt * 3500)
+        // Back off only while foregrounded so iOS timers aren't frozen mid-wait.
+        await sleepWhileVisible(2000 + attempt * 3500, signal)
       }
     }
   }

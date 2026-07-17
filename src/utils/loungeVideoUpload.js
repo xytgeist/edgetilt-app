@@ -994,14 +994,67 @@ function loungeTusSafeFilename(name) {
 }
 
 /**
+ * Resolve when the document is visible again (or immediately if already visible).
+ * Mobile Safari suspends XHR when backgrounded; callers should gate tus start/retry on this.
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<void>}
+ */
+export function waitForDocumentVisible(signal) {
+  return new Promise((resolve, reject) => {
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      resolve()
+      return
+    }
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const cleanup = () => {
+      document.removeEventListener('visibilitychange', onVis)
+      try {
+        signal?.removeEventListener('abort', onAbort)
+      } catch {
+        // ignore
+      }
+    }
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return
+      cleanup()
+      resolve()
+    }
+    const onAbort = () => {
+      cleanup()
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    document.addEventListener('visibilitychange', onVis)
+    signal?.addEventListener('abort', onAbort)
+  })
+}
+
+/**
  * Resumable tus upload: POST creation via Supabase `lounge-cf-stream-tus-create`, then PATCH chunks to Cloudflare.
+ * Resumes from tus-js-client fingerprint (localStorage) across attempts and soft-pauses while the tab is hidden.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {File} file
- * @param {{ signal?: AbortSignal, onProgress?: (ratio: number) => void, onUploadDiagnostic?: (detail: string) => void, onStreamUidAvailable?: (uid: string) => void }} [options]
+ * @param {{
+ *   signal?: AbortSignal,
+ *   onProgress?: (ratio: number) => void,
+ *   onUploadDiagnostic?: (detail: string) => void,
+ *   onStreamUidAvailable?: (uid: string) => void,
+ *   onVisibilityPause?: () => void,
+ *   onVisibilityResume?: () => void,
+ * }} [options]
  * @returns {Promise<{ uid: string }>}
  */
 export function uploadVideoToCfStreamResumableTus(supabaseClient, file, options = {}) {
-  const { signal, onProgress, onUploadDiagnostic, onStreamUidAvailable } = options
+  const {
+    signal,
+    onProgress,
+    onUploadDiagnostic,
+    onStreamUidAvailable,
+    onVisibilityPause,
+    onVisibilityResume,
+  } = options
   return new Promise((resolve, reject) => {
     const anon = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
     if (!anon) {
@@ -1014,177 +1067,339 @@ export function uploadVideoToCfStreamResumableTus(supabaseClient, file, options 
       return
     }
 
-    let uploadRef = /** @type {{ abort: (t?: boolean) => Promise<void> } | null} */ (null)
-    const detachAbort = () => {
-      if (!signal) return
+    const t0 = nowMs()
+    const bytesTotal = typeof file?.size === 'number' ? file.size : null
+    let lastBytesSent = 0
+    /** @type {string} */
+    let capturedUid = ''
+    /** @type {string} */
+    let lastReportedUid = ''
+    let settled = false
+    let pausedForVisibility = false
+    let starting = false
+    /** @type {{ abort: (shouldTerminate?: boolean) => Promise<void> } | null} */
+    let uploadRef = null
+
+    const cleanupListeners = () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+      }
       try {
-        signal.removeEventListener('abort', onAbort)
+        signal?.removeEventListener('abort', onAbortSignal)
       } catch {
         // ignore
       }
     }
-    const onAbort = () => {
-      if (uploadRef) {
-        uploadRef.abort(true).catch(() => {})
-      }
+
+    const finishResolve = (uid) => {
+      if (settled) return
+      settled = true
+      pausedForVisibility = false
+      cleanupListeners()
+      resolve({ uid })
     }
-    signal?.addEventListener('abort', onAbort)
 
-    const t0 = nowMs()
-    const bytesTotal = typeof file?.size === 'number' ? file.size : null
-    let lastBytesSent = 0
+    const finishReject = (err) => {
+      if (settled) return
+      settled = true
+      pausedForVisibility = false
+      cleanupListeners()
+      reject(err instanceof Error || err instanceof DOMException ? err : new Error(String(err)))
+    }
 
-    ;(async () => {
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession()
-      if (!session?.access_token) {
-        detachAbort()
-        reject(new Error('You must be signed in to post a video.'))
-        return
-      }
-
-      const endpoint = loungeCfStreamTusCreateEndpointUrl()
-      const accessToken = session.access_token
-      const chunkSize = pickTusChunkSizeForCfStream(bytesTotal ?? 0)
-      const expiry = new Date(Date.now() + LOUNGE_CF_STREAM_UPLOAD_EXPIRY_MS).toISOString()
-
-      const { Upload } = await import('tus-js-client')
-
-      /** @type {string} */
-      let capturedUid = ''
-      /** @type {string} */
-      let lastReportedUid = ''
-
-      const maybeNotifyUid = (idRaw) => {
-        const id = String(idRaw || '').trim()
-        if (!id || !CF_STREAM_VIDEO_UID_RE.test(id) || id === lastReportedUid) return
-        lastReportedUid = id
-        if (typeof onStreamUidAvailable === 'function') {
-          try {
-            onStreamUidAvailable(id)
-          } catch {
-            // ignore UI callback failures
-          }
+    const maybeNotifyUid = (idRaw) => {
+      const id = String(idRaw || '').trim()
+      if (!id || !CF_STREAM_VIDEO_UID_RE.test(id) || id === lastReportedUid) return
+      lastReportedUid = id
+      if (typeof onStreamUidAvailable === 'function') {
+        try {
+          onStreamUidAvailable(id)
+        } catch {
+          // ignore UI callback failures
         }
       }
+    }
 
-      const upload = new Upload(file, {
-        endpoint,
-        chunkSize,
-        // Longer delays give iOS background-dropped connections time to recover
-        // before tus gives up and fires onError (which triggers the outer retry).
-        retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
-        storeFingerprintForResuming: true,
-        removeFingerprintOnSuccess: true,
-        metadata: {
-          name: loungeTusSafeFilename(file.name),
-          maxDurationSeconds: String(LOUNGE_CF_STREAM_MAX_DURATION_SECONDS),
-          expiry,
-        },
-        headers: {},
-        onBeforeRequest: (req) => {
-          const u = req.getURL()
-          if (u.includes('/functions/v1/lounge-cf-stream-tus-create')) {
-            req.setHeader('Authorization', `Bearer ${accessToken}`)
-            req.setHeader('apikey', anon)
+    const softPauseForVisibility = () => {
+      if (settled || pausedForVisibility) return
+      if (!uploadRef) return
+      pausedForVisibility = true
+      if (typeof onVisibilityPause === 'function') {
+        try {
+          onVisibilityPause()
+        } catch {
+          // ignore
+        }
+      }
+      const current = uploadRef
+      uploadRef = null
+      // false = do not terminate server upload; fingerprint stays for resume.
+      current.abort(false).catch(() => {})
+    }
+
+    const onAbortSignal = () => {
+      pausedForVisibility = false
+      if (uploadRef) {
+        const current = uploadRef
+        uploadRef = null
+        current.abort(true).catch(() => {})
+      }
+      finishReject(new DOMException('Aborted', 'AbortError'))
+    }
+
+    const onVisibilityChange = () => {
+      if (settled) return
+      if (typeof document === 'undefined') return
+      if (document.visibilityState === 'hidden') {
+        softPauseForVisibility()
+        return
+      }
+      if (!pausedForVisibility) return
+      pausedForVisibility = false
+      if (typeof onVisibilityResume === 'function') {
+        try {
+          onVisibilityResume()
+        } catch {
+          // ignore
+        }
+      }
+      void startUploadSession({ resumeAfterVisibility: true })
+    }
+
+    /**
+     * @param {{ resumeAfterVisibility?: boolean }} [opts]
+     */
+    const startUploadSession = async (opts = {}) => {
+      if (settled || starting) return
+      starting = true
+      try {
+        if (signal?.aborted) {
+          finishReject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+
+        // Don't burn network while locked / backgrounded.
+        await waitForDocumentVisible(signal)
+        if (settled || signal?.aborted) {
+          if (!settled && signal?.aborted) finishReject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (!session?.access_token) {
+          finishReject(new Error('You must be signed in to post a video.'))
+          return
+        }
+
+        const endpoint = loungeCfStreamTusCreateEndpointUrl()
+        const accessToken = session.access_token
+        const chunkSize = pickTusChunkSizeForCfStream(bytesTotal ?? 0)
+        const expiry = new Date(Date.now() + LOUNGE_CF_STREAM_UPLOAD_EXPIRY_MS).toISOString()
+        const { Upload } = await import('tus-js-client')
+
+        if (settled || signal?.aborted) {
+          if (!settled && signal?.aborted) finishReject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+
+        // Tab can hide again while we were minting session / importing tus.
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          pausedForVisibility = true
+          if (typeof onVisibilityPause === 'function') {
+            try {
+              onVisibilityPause()
+            } catch {
+              // ignore
+            }
           }
-        },
-        onAfterResponse: (_req, res) => {
-          const id = String(res.getHeader('stream-media-id') || '').trim()
-          if (id && CF_STREAM_VIDEO_UID_RE.test(id)) {
-            capturedUid = id
-            maybeNotifyUid(id)
-          }
-        },
-        onProgress: (bytesSent, total) => {
-          lastBytesSent = bytesSent
-          if (typeof onProgress === 'function' && total > 0) {
-            onProgress(Math.max(0, Math.min(1, bytesSent / total)))
-          }
-        },
-        onSuccess: (payload) => {
-          detachAbort()
-          const last = payload.lastResponse
-          const fromHeader = String(last.getHeader('stream-media-id') || '').trim()
-          const uid = (fromHeader && CF_STREAM_VIDEO_UID_RE.test(fromHeader) ? fromHeader : capturedUid).trim()
-          maybeNotifyUid(uid)
-          if (!uid || !CF_STREAM_VIDEO_UID_RE.test(uid)) {
+          return
+        }
+
+        const upload = new Upload(file, {
+          endpoint,
+          chunkSize,
+          // Longer delays give iOS background-dropped connections time to recover
+          // before tus gives up and fires onError (which triggers the outer retry).
+          retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
+          storeFingerprintForResuming: true,
+          removeFingerprintOnSuccess: true,
+          metadata: {
+            name: loungeTusSafeFilename(file.name),
+            maxDurationSeconds: String(LOUNGE_CF_STREAM_MAX_DURATION_SECONDS),
+            expiry,
+          },
+          headers: {},
+          onBeforeRequest: (req) => {
+            const u = req.getURL()
+            if (u.includes('/functions/v1/lounge-cf-stream-tus-create')) {
+              req.setHeader('Authorization', `Bearer ${accessToken}`)
+              req.setHeader('apikey', anon)
+            }
+          },
+          onAfterResponse: (_req, res) => {
+            const id = String(res.getHeader('stream-media-id') || '').trim()
+            if (id && CF_STREAM_VIDEO_UID_RE.test(id)) {
+              capturedUid = id
+              maybeNotifyUid(id)
+            }
+          },
+          onProgress: (bytesSent, total) => {
+            lastBytesSent = bytesSent
+            if (typeof onProgress === 'function' && total > 0) {
+              onProgress(Math.max(0, Math.min(1, bytesSent / total)))
+            }
+          },
+          onSuccess: (payload) => {
+            uploadRef = null
+            const last = payload.lastResponse
+            const fromHeader = String(last.getHeader('stream-media-id') || '').trim()
+            const uid = (fromHeader && CF_STREAM_VIDEO_UID_RE.test(fromHeader) ? fromHeader : capturedUid).trim()
+            maybeNotifyUid(uid)
+            if (!uid || !CF_STREAM_VIDEO_UID_RE.test(uid)) {
+              logLoungeVideoUploadTelemetry(
+                {
+                  phase: 'cf_stream_tus',
+                  outcome: 'missing_uid',
+                  durationMs: Math.round(nowMs() - t0),
+                  httpStatus: last.getStatus(),
+                  bytesLoaded: lastBytesSent,
+                  bytesTotal,
+                },
+                onUploadDiagnostic,
+              )
+              finishReject(new Error('Video upload finished but the service did not return a video id.'))
+              return
+            }
+            finishResolve(uid)
+          },
+          onError: (err) => {
+            uploadRef = null
+            if (settled) return
+            if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+              finishReject(new DOMException('Aborted', 'AbortError'))
+              return
+            }
+            // Soft-pause / background kill: keep the Promise pending and resume on visible.
+            if (
+              pausedForVisibility ||
+              (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+            ) {
+              pausedForVisibility = true
+              if (typeof onVisibilityPause === 'function') {
+                try {
+                  onVisibilityPause()
+                } catch {
+                  // ignore
+                }
+              }
+              return
+            }
+            let httpStatus = null
+            let bodySnippet = ''
+            if (err && typeof err === 'object' && 'originalResponse' in err) {
+              const res = /** @type {{ getStatus?: () => number, getBody?: () => string }} */ (
+                /** @type {{ originalResponse?: unknown }} */ (err).originalResponse
+              )
+              if (res && typeof res.getStatus === 'function') httpStatus = res.getStatus()
+              if (res && typeof res.getBody === 'function') {
+                bodySnippet = String(res.getBody() || '')
+                  .trim()
+                  .slice(0, 240)
+              }
+            }
+            const rawMsg = err instanceof Error ? err.message : String(err)
+            const userMsg = mapGenericNetworkErrorMessage(rawMsg, 'Video upload failed.')
             logLoungeVideoUploadTelemetry(
               {
                 phase: 'cf_stream_tus',
-                outcome: 'missing_uid',
+                outcome: 'http_error',
                 durationMs: Math.round(nowMs() - t0),
-                httpStatus: last.getStatus(),
+                httpStatus,
                 bytesLoaded: lastBytesSent,
                 bytesTotal,
+                uploadProgressApprox:
+                  bytesTotal != null && bytesTotal > 0
+                    ? Math.round((lastBytesSent / bytesTotal) * 1000) / 1000
+                    : null,
+                message: userMsg.slice(0, 400),
+                responseSnippet: bodySnippet,
+                resumedAfterVisibility: Boolean(opts.resumeAfterVisibility),
               },
               onUploadDiagnostic,
             )
-            reject(new Error('Video upload finished but the service did not return a video id.'))
-            return
-          }
-          resolve({ uid })
-        },
-        onError: (err) => {
-          detachAbort()
-          if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
-            reject(new DOMException('Aborted', 'AbortError'))
-            return
-          }
-          let httpStatus = null
-          let bodySnippet = ''
-          if (err && typeof err === 'object' && 'originalResponse' in err) {
-            const res = /** @type {{ getStatus?: () => number, getBody?: () => string }} */ (
-              /** @type {{ originalResponse?: unknown }} */ (err).originalResponse
-            )
-            if (res && typeof res.getStatus === 'function') httpStatus = res.getStatus()
-            if (res && typeof res.getBody === 'function') bodySnippet = String(res.getBody() || '').trim().slice(0, 240)
-          }
-          const rawMsg = err instanceof Error ? err.message : String(err)
-          const userMsg = mapGenericNetworkErrorMessage(rawMsg, 'Video upload failed.')
-          logLoungeVideoUploadTelemetry(
-            {
-              phase: 'cf_stream_tus',
-              outcome: 'http_error',
-              durationMs: Math.round(nowMs() - t0),
-              httpStatus,
-              bytesLoaded: lastBytesSent,
-              bytesTotal,
-              uploadProgressApprox:
-                bytesTotal != null && bytesTotal > 0 ? Math.round((lastBytesSent / bytesTotal) * 1000) / 1000 : null,
-              message: userMsg.slice(0, 400),
-              responseSnippet: bodySnippet,
-            },
-            onUploadDiagnostic,
-          )
-          reject(new Error(userMsg))
-        },
-      })
+            finishReject(new Error(userMsg))
+          },
+        })
 
-      uploadRef = upload
-      if (signal?.aborted) {
-        detachAbort()
-        reject(new DOMException('Aborted', 'AbortError'))
-        return
+        // Wire fingerprint resume so outer retries / unlock actually continue mid-file.
+        try {
+          const previous = await upload.findPreviousUploads()
+          if (Array.isArray(previous) && previous.length > 0) {
+            upload.resumeFromPreviousUpload(previous[0])
+            logLoungeVideoUploadTelemetry(
+              {
+                phase: 'cf_stream_tus',
+                outcome: 'resume_from_fingerprint',
+                durationMs: Math.round(nowMs() - t0),
+                bytesTotal,
+                previousCount: previous.length,
+              },
+              onUploadDiagnostic,
+            )
+          }
+        } catch {
+          // Fingerprint lookup failure should not block a fresh upload.
+        }
+
+        if (settled || signal?.aborted) {
+          if (!settled && signal?.aborted) finishReject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          pausedForVisibility = true
+          if (typeof onVisibilityPause === 'function') {
+            try {
+              onVisibilityPause()
+            } catch {
+              // ignore
+            }
+          }
+          return
+        }
+
+        uploadRef = upload
+        upload.start()
+      } catch (e) {
+        if (settled) return
+        if (signal?.aborted || (e instanceof DOMException && e.name === 'AbortError')) {
+          finishReject(new DOMException('Aborted', 'AbortError'))
+          return
+        }
+        const msg = e instanceof Error ? e.message : String(e)
+        logLoungeVideoUploadTelemetry(
+          {
+            phase: 'cf_stream_tus',
+            outcome: 'client_throw',
+            durationMs: Math.round(nowMs() - t0),
+            message: msg.slice(0, 400),
+            bytesLoaded: lastBytesSent,
+            bytesTotal,
+          },
+          onUploadDiagnostic,
+        )
+        finishReject(e instanceof Error ? e : new Error(String(e)))
+      } finally {
+        starting = false
       }
-      upload.start()
-    })().catch((e) => {
-      detachAbort()
-      const msg = e instanceof Error ? e.message : String(e)
-      logLoungeVideoUploadTelemetry(
-        {
-          phase: 'cf_stream_tus',
-          outcome: 'client_throw',
-          durationMs: Math.round(nowMs() - t0),
-          message: msg.slice(0, 400),
-          bytesLoaded: lastBytesSent,
-          bytesTotal,
-        },
-        onUploadDiagnostic,
-      )
-      reject(e instanceof Error ? e : new Error(String(e)))
-    })
+    }
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange)
+    }
+    signal?.addEventListener('abort', onAbortSignal)
+    void startUploadSession()
   })
 }
 

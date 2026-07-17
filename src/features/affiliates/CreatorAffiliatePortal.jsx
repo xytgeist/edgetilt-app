@@ -524,7 +524,6 @@ export default function CreatorAffiliatePortal({
               }}
               disabled={form.ftin_not_legally_required}
               autoComplete="off"
-              placeholder={form.ftin_not_legally_required ? 'Not required' : 'Written to generated PDF only'}
             />
             <div className="text-[11px] text-zinc-500">
               Full number is written to your generated PDF only. We store last 4 in the database.

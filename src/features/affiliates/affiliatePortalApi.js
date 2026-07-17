@@ -79,17 +79,19 @@ export async function upsertMyTaxProfile(supabaseClient, payload) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {File} file
+ * @param {File | Blob} file
  * @param {string} userId
+ * @param {string} [fileName]
  */
-export async function uploadAffiliateTaxDocument(supabaseClient, file, userId) {
-  const safeName = String(file.name || 'tax.pdf')
+export async function uploadAffiliateTaxDocument(supabaseClient, file, userId, fileName) {
+  const safeName = String(fileName || (file instanceof File ? file.name : '') || 'tax.pdf')
     .replace(/[^a-zA-Z0-9._-]+/g, '_')
     .slice(0, 80)
   const path = `${userId}/${Date.now()}_${safeName}`
   const { error } = await supabaseClient.storage.from('affiliate-tax-docs').upload(path, file, {
     cacheControl: '3600',
     upsert: false,
+    contentType: file.type || 'application/pdf',
   })
   if (error) throw error
   return path

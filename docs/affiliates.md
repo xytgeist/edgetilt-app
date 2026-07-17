@@ -45,7 +45,7 @@ Goal: curated X/creator affiliates with tiered commissions, unique links + disco
 
 - **v1 payouts:** admin **Mark paid** (+ optional payout ref) from `/?tab=affiliates`.
 - **Connect (phase 2, shipped in same epic):** creator onboards Express via `affiliate-connect`; admin **Pay via Connect** transfers payable rows.
-- **Tax:** W-9/W-8 collected in creator portal + private Storage `affiliate-tax-docs`. Year-end CSV / accountant or Tax1099 … **no IRS e-file in-app**.
+- **Tax:** Creator portal collects profile fields + typed signature / perjury cert → generates a **substitute W-9/W-8 PDF** (`affiliateTaxPdf.js`) into private Storage `affiliate-tax-docs`. Full TIN is written to the PDF only; DB stores **TIN last 4** + optional **FTIN Not Legally Required**. Optional manual upload still overrides generate. Year-end CSV / accountant or Tax1099 … **no IRS e-file in-app**.
 
 ---
 
@@ -84,7 +84,7 @@ Per checkout stamp when Checkout runs with affiliate.
 Dedupe on invoice / session / payment_intent unique indexes.
 
 ### `affiliate_tax_profiles`
-W-9/W-8 fields + optional `document_path` under Storage.
+W-9/W-8 fields + `tin_last4` + `ftin_not_legally_required` + `signature_name` + `document_path` (generated or uploaded) under Storage. Migration **`20260711150000_affiliate_tax_generate_pdf.sql`**.
 
 ---
 
@@ -145,7 +145,7 @@ W-9/W-8 fields + optional `document_path` under Storage.
 3. Incognito `/?ref=scott` → Subscribe → Checkout shows creator 10% (not founding stack).
 4. Complete payment → commission `pending` with correct net %.
 5. Refund → `void`.
-6. Admin Mark paid or Pay via Connect; creator portal shows totals; complete W-9.
+6. Admin Mark paid or Pay via Connect; creator portal shows totals; complete tax form (Generate PDF & save with typed signature).
 7. Self-ref as affiliate user → blocked.
 
 **Production:** do not apply SQL / deploy Edge / create live promos until Ryan explicitly promotes.
@@ -155,4 +155,5 @@ W-9/W-8 fields + optional `document_path` under Storage.
 ## Update log
 
 - **2026-07-16:** Product rules locked; reject Rewardful/Tolt for small creator set.
+- **2026-07-16:** Tax generate PDF: substitute W-9/W-8 from portal fields + typed signature; TIN last 4 label; FTIN Not Legally Required; migration `20260711150000`.
 - **2026-07-16:** Implementation: schema/RLS, `?ref=` + Checkout, webhook ledger, admin + creator portals, Connect Express Edge, tax collect (no e-file).

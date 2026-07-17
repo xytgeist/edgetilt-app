@@ -561,7 +561,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
 
-- [ ] **Creator affiliates** — SQL **`20260711120000`** applied on **test** + Edge redeployed (**`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`**). Remaining: Stripe Dashboard 10% once coupon + per-creator **`promo_…`** ids; paste into admin **`?tab=affiliates`**; client smoke **`docs/affiliates.md`** §6. Source: `src/features/affiliates/`. **Not for production until Ryan says promote.**
+- [ ] **Creator affiliates** — SQL **`20260711120000`** (+ **`20260711140000`** handle link, **`20260711150000`** tax generate PDF) applied on **test** + Edge redeployed. Client smoke mid-flight (**`docs/affiliates.md`** §6): tax Generate PDF & save + self-ref block remaining. Source: `src/features/affiliates/`. **Not for production until Ryan says promote.**
 
 - [ ] Function-by-function smoke notes captured  
   - Change: Record minimal expected input/output for each function.
@@ -786,6 +786,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-16: **Creator affiliates tax PDF:** migration **`20260711150000`** (`ftin_not_legally_required`, `signature_name`); creator portal generates substitute W-9/W-8 PDF (`pdf-lib`) with typed signature; TIN last 4 label + FTIN Not Legally Required. Applied on **test** via Management API. Spec: **`docs/affiliates.md`**.
 - 2026-07-16: **Creator affiliates v1 (code):** migration **`20260711120000_creator_affiliates.sql`** (packages/affiliates/attributions/commissions/tax + RLS/RPCs + Storage **`affiliate-tax-docs`**); client **`src/features/affiliates/`** + AppShell **`?tab=affiliates`** (admin) / **`?tab=creator`**; Checkout **`affiliate_code`** + founding mutual exclusion; webhook commission ledger; Edge **`affiliate-connect`** (Express onboard + admin pay). Apply SQL + redeploy **`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`** on **test** only until Ryan promotes. Spec: **`docs/affiliates.md`**.
 - 2026-07-16: **Creator affiliates in-house (decision):** **`docs/affiliates.md`** ... build thin EdgeTilt stack (packages 20/25/30, `?ref=` ↔ promo, webhook ledger, manual payouts); third-party SaaS rejected for small creator set.
 - 2026-07-15: **Log Play from shared calculators:** default game is the calculator’s primary title (e.g. Phoenix Link, not Lightning 10-Year Storm); changing game keeps overlapping prefilled metric values. **`templateSlug`** on **`CalculatorLogPlayButton`** + primary map in **`resolvePlayLogPrefillTemplate`**.

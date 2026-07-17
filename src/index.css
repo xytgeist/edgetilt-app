@@ -4980,3 +4980,7 @@ html.light [data-affiliates-portal] .bg-amber-500,
 html.light [data-affiliates-portal] .bg-sky-500 {
   color: #18181b !important;
 }
+
+html.light [data-affiliates-portal] input[type='checkbox'] {
+  accent-color: #d97706;
+}

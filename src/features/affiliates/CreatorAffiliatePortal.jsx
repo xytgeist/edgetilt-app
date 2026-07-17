@@ -6,6 +6,7 @@ import {
   uploadAffiliateTaxDocument,
   upsertMyTaxProfile,
 } from './affiliatePortalApi.js'
+import { buildAffiliateTaxAttestationPdf, tinLast4FromFull } from './affiliateTaxPdf.js'
 
 function moneyCard(label, cents) {
   return (
@@ -41,9 +42,13 @@ export default function CreatorAffiliatePortal({
     region: '',
     postal_code: '',
     country: 'US',
+    tin_full: '',
     tin_last4: '',
     foreign_tax_id: '',
+    ftin_not_legally_required: false,
+    signature_name: '',
   })
+  const [certified, setCertified] = useState(false)
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [localError, setLocalError] = useState('')
@@ -64,9 +69,13 @@ export default function CreatorAffiliatePortal({
       region: tax.region || '',
       postal_code: tax.postal_code || '',
       country: tax.country || 'US',
+      tin_full: '',
       tin_last4: tax.tin_last4 || '',
       foreign_tax_id: tax.foreign_tax_id || '',
+      ftin_not_legally_required: Boolean(tax.ftin_not_legally_required),
+      signature_name: tax.signature_name || tax.legal_name || '',
     }))
+    setCertified(false)
   }, [tax])
 
   useEffect(() => {
@@ -141,16 +150,79 @@ export default function CreatorAffiliatePortal({
     setLocalError('')
     setNotice('')
     try {
-      let document_path = tax.document_path || null
-      if (file && userId) {
-        document_path = await uploadAffiliateTaxDocument(supabaseClient, file, userId)
+      const legalName = form.legal_name.trim()
+      const signatureName = form.signature_name.trim() || legalName
+      if (!legalName) throw new Error('Legal name is required.')
+      if (!signatureName) throw new Error('Typed signature name is required.')
+      if (!certified) throw new Error('Check the certification box to continue.')
+
+      const ftinNotRequired = Boolean(form.ftin_not_legally_required)
+      const tinFull = form.tin_full.trim()
+      const tinLast4 = (form.tin_last4.trim() || tinLast4FromFull(tinFull)).slice(0, 4)
+      if (!ftinNotRequired && tinFull.length < 4) {
+        throw new Error('Enter your full TIN (SSN / EIN / Foreign-TIN), or check FTIN Not Legally Required.')
       }
+      if (!ftinNotRequired && tinLast4.length < 4) {
+        throw new Error('TIN last 4 is required unless FTIN is not legally required.')
+      }
+      if (!userId) throw new Error('Sign in required to save tax profile.')
+
+      const attestedAtIso = new Date().toISOString()
+      let document_path = tax.document_path || null
+      if (file) {
+        document_path = await uploadAffiliateTaxDocument(supabaseClient, file, userId)
+      } else {
+        const pdfBlob = await buildAffiliateTaxAttestationPdf({
+          formType: form.form_type,
+          legalName,
+          businessName: form.business_name,
+          taxClassification: form.tax_classification,
+          addressLine1: form.address_line1,
+          city: form.city,
+          region: form.region,
+          postalCode: form.postal_code,
+          country: form.country,
+          tinFull: ftinNotRequired ? '' : tinFull,
+          tinLast4: ftinNotRequired ? '' : tinLast4,
+          ftinNotLegallyRequired: ftinNotRequired,
+          signatureName,
+          attestedAtIso,
+        })
+        const formLabel = form.form_type === 'w8' ? 'w8' : 'w9'
+        document_path = await uploadAffiliateTaxDocument(
+          supabaseClient,
+          pdfBlob,
+          userId,
+          `affiliate-${formLabel}-attestation.pdf`,
+        )
+      }
+
       await upsertMyTaxProfile(supabaseClient, {
-        ...form,
+        form_type: form.form_type,
+        legal_name: legalName,
+        business_name: form.business_name,
+        tax_classification: form.tax_classification,
+        address_line1: form.address_line1,
+        address_line2: form.address_line2,
+        city: form.city,
+        region: form.region,
+        postal_code: form.postal_code,
+        country: form.country,
+        tin_last4: ftinNotRequired ? '' : tinLast4,
+        foreign_tax_id: '',
+        ftin_not_legally_required: ftinNotRequired,
+        signature_name: signatureName,
+        certified: true,
         document_path,
       })
       setFile(null)
-      setNotice('Tax profile saved.')
+      setForm((f) => ({ ...f, tin_full: '', tin_last4: tinLast4, signature_name: signatureName }))
+      setCertified(false)
+      setNotice(
+        file
+          ? 'Tax profile saved with your uploaded document.'
+          : 'Tax profile saved. Generated attestation PDF stored for year-end prep.',
+      )
       await onReload?.()
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : String(e))
@@ -274,7 +346,8 @@ export default function CreatorAffiliatePortal({
           <div className="text-xs text-zinc-500 uppercase tracking-wide">status: {tax.status || 'incomplete'}</div>
         </div>
         <div className="text-sm text-zinc-400">
-          We store this for year-end 1099 prep. Edge does not e-file with the IRS from the app.
+          Fill this out and we generate a substitute W-9/W-8 PDF with your typed signature. Full TIN goes on
+          the PDF only; we store last 4 in the database. Edge does not e-file with the IRS from the app.
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-xs text-zinc-400">
@@ -293,7 +366,14 @@ export default function CreatorAffiliatePortal({
             <input
               className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
               value={form.legal_name}
-              onChange={(e) => setField('legal_name', e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value
+                setForm((f) => ({
+                  ...f,
+                  legal_name: v,
+                  signature_name: f.signature_name.trim() ? f.signature_name : v,
+                }))
+              }}
             />
           </label>
           <label className="block text-xs text-zinc-400">
@@ -353,44 +433,98 @@ export default function CreatorAffiliatePortal({
               onChange={(e) => setField('country', e.target.value)}
             />
           </label>
-          {form.form_type === 'w9' ? (
-            <label className="block text-xs text-zinc-400">
-              TIN last 4
-              <input
-                className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
-                value={form.tin_last4}
-                onChange={(e) => setField('tin_last4', e.target.value.slice(0, 4))}
-                inputMode="numeric"
-                maxLength={4}
-              />
-            </label>
-          ) : (
-            <label className="block text-xs text-zinc-400">
-              Foreign tax id
-              <input
-                className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
-                value={form.foreign_tax_id}
-                onChange={(e) => setField('foreign_tax_id', e.target.value)}
-              />
-            </label>
-          )}
           <label className="block text-xs text-zinc-400 sm:col-span-2">
-            Upload signed form (optional PDF/image)
+            Full TIN (SSN / EIN / Foreign-TIN)
+            <input
+              className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
+              value={form.tin_full}
+              onChange={(e) => {
+                const tin_full = e.target.value
+                setForm((f) => ({
+                  ...f,
+                  tin_full,
+                  tin_last4: tinLast4FromFull(tin_full) || f.tin_last4,
+                  ftin_not_legally_required: false,
+                }))
+              }}
+              disabled={form.ftin_not_legally_required}
+              autoComplete="off"
+              placeholder={form.ftin_not_legally_required ? 'Not required' : 'Written to generated PDF only'}
+            />
+            <div className="mt-1 text-[11px] text-zinc-500">
+              Full number is written to your generated PDF only. We store last 4 in the database.
+            </div>
+          </label>
+          <label className="block text-xs text-zinc-400">
+            TIN last 4 (SSN / EIN / Foreign-TIN)
+            <input
+              className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
+              value={form.tin_last4}
+              onChange={(e) => setField('tin_last4', e.target.value.replace(/\D/g, '').slice(0, 4))}
+              inputMode="numeric"
+              maxLength={4}
+              disabled={form.ftin_not_legally_required}
+            />
+          </label>
+          <label className="flex items-start gap-2 text-xs text-zinc-300 sm:col-span-1 mt-6">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={form.ftin_not_legally_required}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  ftin_not_legally_required: e.target.checked,
+                  tin_full: e.target.checked ? '' : f.tin_full,
+                }))
+              }
+            />
+            <span>FTIN Not Legally Required</span>
+          </label>
+          <label className="block text-xs text-zinc-400 sm:col-span-2">
+            Typed signature (legal name)
+            <input
+              className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
+              value={form.signature_name}
+              onChange={(e) => setField('signature_name', e.target.value)}
+              placeholder="Type your full legal name"
+            />
+          </label>
+          <label className="flex items-start gap-2 text-xs text-zinc-300 sm:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={certified}
+              onChange={(e) => setCertified(e.target.checked)}
+            />
+            <span>
+              I certify under penalties of perjury that the information on this form is true, correct, and
+              complete, and that my typed name is my electronic signature.
+            </span>
+          </label>
+          <label className="block text-xs text-zinc-400 sm:col-span-2">
+            Upload your own signed form instead (optional PDF/image)
             <input
               type="file"
               accept="image/*,.pdf,application/pdf"
               className="mt-1 block w-full text-sm text-zinc-300"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
+            <div className="mt-1 text-[11px] text-zinc-500">
+              If you upload a file, we use that instead of generating a PDF.
+            </div>
           </label>
         </div>
+        {tax.document_path ? (
+          <div className="text-xs text-zinc-500">Saved tax document on file.</div>
+        ) : null}
         <button
           type="button"
-          disabled={busy || !form.legal_name.trim()}
+          disabled={busy || !form.legal_name.trim() || !certified}
           onClick={() => void saveTax()}
           className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-50"
         >
-          Save tax profile
+          {file ? 'Save tax profile' : 'Generate PDF & save'}
         </button>
       </section>
 

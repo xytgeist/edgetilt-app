@@ -98,6 +98,7 @@ function moneyFromInvoice(invoice: Stripe.Invoice) {
 
 async function commissionFromCheckoutSession(
   admin: ReturnType<typeof createBillingAdmin>,
+  stripe: Stripe,
   session: Stripe.Checkout.Session,
   userId: string | null,
 ) {
@@ -111,10 +112,32 @@ async function commissionFromCheckoutSession(
   }
 
   const { grossCents, discountCents, netCents } = moneyFromSession(session)
-  const paymentIntentId =
+  let paymentIntentId =
     typeof session.payment_intent === 'string'
       ? session.payment_intent
       : session.payment_intent?.id || null
+  let invoiceId =
+    typeof session.invoice === 'string' ? session.invoice : session.invoice?.id || null
+  let chargeId: string | null = null
+
+  // Subscription Checkout often has null payment_intent on the session; identities live on the invoice.
+  if (invoiceId) {
+    try {
+      const invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ['payment_intent', 'charge'],
+      })
+      if (!paymentIntentId) {
+        paymentIntentId =
+          typeof invoice.payment_intent === 'string'
+            ? invoice.payment_intent
+            : invoice.payment_intent?.id || null
+      }
+      chargeId =
+        typeof invoice.charge === 'string' ? invoice.charge : invoice.charge?.id || null
+    } catch (err) {
+      console.warn('stripe-webhook: could not expand invoice for affiliate commission', invoiceId, err)
+    }
+  }
 
   const priceInterval =
     session.mode === 'payment'
@@ -126,13 +149,74 @@ async function commissionFromCheckoutSession(
     package: affiliate.package,
     userId,
     stripeCheckoutSessionId: session.id,
+    stripeInvoiceId: invoiceId,
     stripePaymentIntentId: paymentIntentId,
+    stripeChargeId: chargeId,
     productSlug: session.metadata?.product_slug?.trim() || null,
     priceInterval,
     grossCents,
     discountCents,
     netCents,
   })
+}
+
+async function voidCommissionsForCharge(
+  admin: ReturnType<typeof createBillingAdmin>,
+  stripe: Stripe,
+  charge: Stripe.Charge,
+  reason: string,
+) {
+  const paymentIntentId =
+    typeof charge.payment_intent === 'string'
+      ? charge.payment_intent
+      : charge.payment_intent?.id || null
+  const invoiceId =
+    typeof charge.invoice === 'string' ? charge.invoice : charge.invoice?.id || null
+
+  const sessionIds: string[] = []
+  if (invoiceId) {
+    try {
+      const invoice = await stripe.invoices.retrieve(invoiceId)
+      const subscriptionId =
+        typeof invoice.subscription === 'string'
+          ? invoice.subscription
+          : invoice.subscription?.id || null
+      if (subscriptionId) {
+        const sessions = await stripe.checkout.sessions.list({
+          subscription: subscriptionId,
+          limit: 10,
+        })
+        for (const s of sessions.data) {
+          if (s.id) sessionIds.push(s.id)
+        }
+      }
+    } catch (err) {
+      console.warn('stripe-webhook: could not resolve checkout sessions for refund', invoiceId, err)
+    }
+  }
+
+  let voided = await voidAffiliateCommissionsForRefund(admin, {
+    stripeChargeId: charge.id,
+    stripePaymentIntentId: paymentIntentId,
+    stripeInvoiceId: invoiceId,
+    reason,
+  })
+
+  for (const sessionId of sessionIds) {
+    voided += await voidAffiliateCommissionsForRefund(admin, {
+      stripeCheckoutSessionId: sessionId,
+      reason,
+    })
+  }
+
+  if (voided === 0) {
+    console.warn('stripe-webhook: refund/dispute matched no affiliate commissions', {
+      chargeId: charge.id,
+      paymentIntentId,
+      invoiceId,
+      sessionIds,
+    })
+  }
 }
 
 async function commissionFromInvoice(
@@ -288,7 +372,7 @@ Deno.serve(async (req) => {
           replaceIds = await listActiveRecurringStripeSubscriptionIds(admin, userId)
         }
         await cancelReplacedStripeSubscriptions(stripe, admin, replaceIds, userId)
-        await commissionFromCheckoutSession(admin, session, userId)
+        await commissionFromCheckoutSession(admin, stripe, session, userId)
         await promotePayableCommissions(admin)
 
         return jsonResponse({ ok: true })
@@ -329,7 +413,7 @@ Deno.serve(async (req) => {
         await cancelReplacedStripeSubscriptions(stripe, admin, replaceIds, resolvedUserId)
       }
 
-      await commissionFromCheckoutSession(admin, session, resolvedUserId)
+      await commissionFromCheckoutSession(admin, stripe, session, resolvedUserId)
       await promotePayableCommissions(admin)
     }
 
@@ -346,15 +430,12 @@ Deno.serve(async (req) => {
       event.type === 'charge.dispute.created'
     ) {
       const charge = event.data.object as Stripe.Charge
-      const paymentIntentId =
-        typeof charge.payment_intent === 'string'
-          ? charge.payment_intent
-          : charge.payment_intent?.id || null
-      await voidAffiliateCommissionsForRefund(admin, {
-        stripeChargeId: charge.id,
-        stripePaymentIntentId: paymentIntentId,
-        reason: event.type === 'charge.dispute.created' ? 'dispute' : 'refund',
-      })
+      await voidCommissionsForCharge(
+        admin,
+        stripe,
+        charge,
+        event.type === 'charge.dispute.created' ? 'dispute' : 'refund',
+      )
     }
 
     if (event.type === 'invoice.payment_failed') {

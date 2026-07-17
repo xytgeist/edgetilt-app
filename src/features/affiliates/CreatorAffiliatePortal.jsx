@@ -94,16 +94,20 @@ export default function CreatorAffiliatePortal({
   }, [supabaseClient, onReload])
 
   if (loading && !portal) {
-    return <div className="text-zinc-400 text-sm py-8">Loading creator portal…</div>
+    return (
+      <div className="text-zinc-400 text-sm py-8" data-affiliates-portal>
+        Loading creator portal…
+      </div>
+    )
   }
 
   if (!affiliate) {
     return (
-      <div className="rounded-3xl bg-zinc-900 p-5 space-y-3">
+      <div className="rounded-3xl bg-zinc-900 p-5 space-y-3" data-affiliates-portal>
         <div className="text-white text-xl font-black">Creator portal</div>
         <div className="text-zinc-400 text-sm leading-relaxed">
           This account is not linked as an active affiliate. Ask an admin to set your{' '}
-          <span className="text-zinc-200">user_id</span> on an affiliate row and set status to active.
+          <span className="text-zinc-200">handle</span> on an affiliate row and set status to active.
         </div>
         {error ? <div className="text-rose-300 text-sm">{error}</div> : null}
         {onBack ? (
@@ -173,7 +177,7 @@ export default function CreatorAffiliatePortal({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-affiliates-portal>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-white text-2xl font-black tracking-tight">Creator portal</div>

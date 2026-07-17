@@ -4853,3 +4853,130 @@ html.light [data-bot-portal] .bg-black\/75,
 html.light [data-bot-portal] .bg-black\/70 {
   background-color: rgba(0, 0, 0, 0.45) !important;
 }
+
+/* Affiliates portal — light mode (/?tab=affiliates, /?tab=creator). Dark default unchanged. */
+html.light [data-affiliates-portal] .text-white:not([class*="bg-"]):not([class*="from-"]) {
+  color: #18181b !important;
+}
+
+html.light [data-affiliates-portal] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-affiliates-portal] .text-zinc-200 {
+  color: #27272a !important;
+}
+html.light [data-affiliates-portal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-affiliates-portal] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-affiliates-portal] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-affiliates-portal] .text-zinc-600 {
+  color: #71717a !important;
+}
+
+html.light [data-affiliates-portal] .border-zinc-800,
+html.light [data-affiliates-portal] .border-zinc-800\/80,
+html.light [data-affiliates-portal] .border-zinc-800\/70 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-affiliates-portal] .border-zinc-700,
+html.light [data-affiliates-portal] .border-zinc-700\/80 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light [data-affiliates-portal] .border-zinc-600 {
+  border-color: rgba(0, 0, 0, 0.16) !important;
+}
+
+html.light [data-affiliates-portal] .bg-zinc-900,
+html.light [data-affiliates-portal] .bg-zinc-900\/90,
+html.light [data-affiliates-portal] .bg-zinc-900\/50 {
+  background-color: #ffffff !important;
+}
+html.light [data-affiliates-portal] .bg-zinc-950,
+html.light [data-affiliates-portal] .bg-zinc-950\/50,
+html.light [data-affiliates-portal] .bg-zinc-950\/60,
+html.light [data-affiliates-portal] .bg-zinc-950\/70,
+html.light [data-affiliates-portal] .bg-zinc-950\/80,
+html.light [data-affiliates-portal] .bg-zinc-950\/40 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-affiliates-portal] .bg-zinc-800,
+html.light [data-affiliates-portal] .bg-zinc-800\/80,
+html.light [data-affiliates-portal] .bg-zinc-800\/60 {
+  background-color: #ececef !important;
+}
+html.light [data-affiliates-portal] .bg-zinc-700\/60 {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-affiliates-portal] .hover\:bg-zinc-700:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+html.light [data-affiliates-portal] .hover\:border-zinc-600:hover {
+  border-color: rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Inputs keep text-white + bg-zinc-* in markup; force readable light fills. */
+html.light [data-affiliates-portal] input,
+html.light [data-affiliates-portal] textarea,
+html.light [data-affiliates-portal] select {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  -webkit-text-fill-color: #18181b;
+}
+html.light [data-affiliates-portal] input::placeholder,
+html.light [data-affiliates-portal] textarea::placeholder {
+  color: #71717a !important;
+  opacity: 1;
+  -webkit-text-fill-color: #71717a;
+}
+
+/* Status pills + banners */
+html.light [data-affiliates-portal] .text-emerald-200,
+html.light [data-affiliates-portal] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-affiliates-portal] .text-amber-200 {
+  color: #b45309 !important;
+}
+html.light [data-affiliates-portal] .text-rose-200,
+html.light [data-affiliates-portal] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-affiliates-portal] .text-sky-200 {
+  color: #0369a1 !important;
+}
+html.light [data-affiliates-portal] .bg-emerald-500\/15 {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+html.light [data-affiliates-portal] .bg-amber-500\/15 {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+}
+html.light [data-affiliates-portal] .bg-rose-500\/15 {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+}
+html.light [data-affiliates-portal] .bg-sky-500\/15 {
+  background-color: rgba(14, 165, 233, 0.14) !important;
+}
+html.light [data-affiliates-portal] .bg-rose-500\/10 {
+  background-color: rgba(254, 226, 226, 0.85) !important;
+}
+html.light [data-affiliates-portal] .bg-emerald-500\/10 {
+  background-color: rgba(220, 252, 231, 0.85) !important;
+}
+html.light [data-affiliates-portal] .border-rose-500\/30 {
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+html.light [data-affiliates-portal] .border-emerald-500\/30 {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Keep dark labels on amber/sky CTAs (already text-zinc-950 in JSX). */
+html.light [data-affiliates-portal] .bg-amber-500,
+html.light [data-affiliates-portal] .bg-sky-500 {
+  color: #18181b !important;
+}

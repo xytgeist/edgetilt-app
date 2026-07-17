@@ -495,7 +495,7 @@ export default function CreatorAffiliatePortal({
           </label>
           <div className="sm:col-span-2 space-y-1">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <span className="text-xs text-zinc-400">Full TIN (SSN / EIN / Foreign-TIN)</span>
+              <span className="text-xs text-zinc-400">TIN (SSN / EIN / Foreign-TIN)</span>
               <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
                 <input
                   type="checkbox"

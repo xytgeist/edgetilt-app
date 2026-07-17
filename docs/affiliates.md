@@ -155,5 +155,6 @@ W-9/W-8 fields + `tin_last4` + `ftin_not_legally_required` + `signature_name` + 
 ## Update log
 
 - **2026-07-16:** Product rules locked; reject Rewardful/Tolt for small creator set.
+- **2026-07-17:** Tax form UI: FTIN Not Legally Required sits next to Full TIN; last 4 derived from full TIN (no separate field).
 - **2026-07-16:** Tax generate PDF: substitute W-9/W-8 from portal fields + typed signature; TIN last 4 label; FTIN Not Legally Required; migration `20260711150000`.
 - **2026-07-16:** Implementation: schema/RLS, `?ref=` + Checkout, webhook ledger, admin + creator portals, Connect Express Edge, tax collect (no e-file).

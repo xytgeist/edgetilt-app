@@ -43,7 +43,6 @@ export default function CreatorAffiliatePortal({
     postal_code: '',
     country: 'US',
     tin_full: '',
-    tin_last4: '',
     foreign_tax_id: '',
     ftin_not_legally_required: false,
     signature_name: '',
@@ -70,7 +69,6 @@ export default function CreatorAffiliatePortal({
       postal_code: tax.postal_code || '',
       country: tax.country || 'US',
       tin_full: '',
-      tin_last4: tax.tin_last4 || '',
       foreign_tax_id: tax.foreign_tax_id || '',
       ftin_not_legally_required: Boolean(tax.ftin_not_legally_required),
       signature_name: tax.signature_name || tax.legal_name || '',
@@ -158,12 +156,12 @@ export default function CreatorAffiliatePortal({
 
       const ftinNotRequired = Boolean(form.ftin_not_legally_required)
       const tinFull = form.tin_full.trim()
-      const tinLast4 = (form.tin_last4.trim() || tinLast4FromFull(tinFull)).slice(0, 4)
+      const tinLast4 = tinLast4FromFull(tinFull)
       if (!ftinNotRequired && tinFull.length < 4) {
         throw new Error('Enter your full TIN (SSN / EIN / Foreign-TIN), or check FTIN Not Legally Required.')
       }
       if (!ftinNotRequired && tinLast4.length < 4) {
-        throw new Error('TIN last 4 is required unless FTIN is not legally required.')
+        throw new Error('Could not derive TIN last 4 from the full TIN.')
       }
       if (!userId) throw new Error('Sign in required to save tax profile.')
 
@@ -216,7 +214,7 @@ export default function CreatorAffiliatePortal({
         document_path,
       })
       setFile(null)
-      setForm((f) => ({ ...f, tin_full: '', tin_last4: tinLast4, signature_name: signatureName }))
+      setForm((f) => ({ ...f, tin_full: '', signature_name: signatureName }))
       setCertified(false)
       setNotice(
         file
@@ -433,17 +431,32 @@ export default function CreatorAffiliatePortal({
               onChange={(e) => setField('country', e.target.value)}
             />
           </label>
-          <label className="block text-xs text-zinc-400 sm:col-span-2">
-            Full TIN (SSN / EIN / Foreign-TIN)
+          <div className="sm:col-span-2 space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="text-xs text-zinc-400">Full TIN (SSN / EIN / Foreign-TIN)</span>
+              <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={form.ftin_not_legally_required}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      ftin_not_legally_required: e.target.checked,
+                      tin_full: e.target.checked ? '' : f.tin_full,
+                    }))
+                  }
+                />
+                <span>FTIN Not Legally Required</span>
+              </label>
+            </div>
             <input
-              className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
+              className="w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
               value={form.tin_full}
               onChange={(e) => {
                 const tin_full = e.target.value
                 setForm((f) => ({
                   ...f,
                   tin_full,
-                  tin_last4: tinLast4FromFull(tin_full) || f.tin_last4,
                   ftin_not_legally_required: false,
                 }))
               }}
@@ -451,36 +464,10 @@ export default function CreatorAffiliatePortal({
               autoComplete="off"
               placeholder={form.ftin_not_legally_required ? 'Not required' : 'Written to generated PDF only'}
             />
-            <div className="mt-1 text-[11px] text-zinc-500">
+            <div className="text-[11px] text-zinc-500">
               Full number is written to your generated PDF only. We store last 4 in the database.
             </div>
-          </label>
-          <label className="block text-xs text-zinc-400">
-            TIN last 4 (SSN / EIN / Foreign-TIN)
-            <input
-              className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
-              value={form.tin_last4}
-              onChange={(e) => setField('tin_last4', e.target.value.replace(/\D/g, '').slice(0, 4))}
-              inputMode="numeric"
-              maxLength={4}
-              disabled={form.ftin_not_legally_required}
-            />
-          </label>
-          <label className="flex items-start gap-2 text-xs text-zinc-300 sm:col-span-1 mt-6">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={form.ftin_not_legally_required}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  ftin_not_legally_required: e.target.checked,
-                  tin_full: e.target.checked ? '' : f.tin_full,
-                }))
-              }
-            />
-            <span>FTIN Not Legally Required</span>
-          </label>
+          </div>
           <label className="block text-xs text-zinc-400 sm:col-span-2">
             Typed signature (legal name)
             <input

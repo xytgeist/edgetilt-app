@@ -182,6 +182,12 @@ export default function CreatorAffiliatePortal({
       if (!ftinNotRequired && tinLast4.length < 4) {
         throw new Error('Could not derive TIN last 4 from the full TIN.')
       }
+      if (form.form_type === 'w9' && !ftinNotRequired) {
+        const tinDigits = tinFull.replace(/\D/g, '')
+        if (tinDigits.length !== 9) {
+          throw new Error('W-9 needs a 9-digit SSN or EIN for the official IRS form.')
+        }
+      }
       if (!userId) throw new Error('Sign in required to save tax profile.')
 
       const attestedAtIso = new Date().toISOString()
@@ -398,8 +404,9 @@ export default function CreatorAffiliatePortal({
           <div className="text-xs text-zinc-500 uppercase tracking-wide">status: {tax.status || 'incomplete'}</div>
         </div>
         <div className="text-sm text-zinc-400">
-          Fill this out and we generate a substitute W-9/W-8 PDF with your typed signature. Full TIN goes on
-          the PDF only; we store last 4 in the database. Edge does not e-file with the IRS from the app.
+          Fill this out and we generate an official IRS W-9 (or a substitute W-8) PDF with your typed
+          signature. Full TIN goes on the PDF only; we store last 4 in the database. Edge does not e-file with
+          the IRS from the app.
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-xs text-zinc-400">
@@ -442,7 +449,7 @@ export default function CreatorAffiliatePortal({
               className="mt-1 w-full rounded-xl bg-zinc-950 border border-zinc-700 px-3 py-2 text-sm text-white"
               value={form.tax_classification}
               onChange={(e) => setField('tax_classification', e.target.value)}
-              placeholder="Individual / LLC / …"
+              placeholder="Individual / LLC C / S Corp / …"
             />
           </label>
           <label className="block text-xs text-zinc-400 sm:col-span-2">

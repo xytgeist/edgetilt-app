@@ -158,7 +158,7 @@ Authorization: Bearer <token>
 
 **Cron:** every 30–60 min overnight, or 2–4 fixed runs (11pm, 2am, 5am PT). Advance `since_id` after processing.
 
-**Dedupe:** unique `external_key` (tweet id) on queue table.
+**Dedupe:** unique `external_key` (tweet id) on queue table. **Skip** keeps the row (key stays locked). Portal **Discard** hard-deletes via RPC **`admin_lounge_bot_queue_delete`** so Transform can re-ingest the same tweet.
 
 ### Manual transform (portal **Transform a post**)
 

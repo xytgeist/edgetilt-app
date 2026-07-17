@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { formatBotPortalWhen } from './botPortalConstants.js'
 import {
+  deleteEditorialQueueRow,
   fetchEditorialInbox,
   invokeLoungeBotPublishDue,
   invokeLoungeXIngest,
@@ -72,6 +73,26 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
       return
     }
     setToast?.('Skipped.')
+    void load()
+    void onReload?.()
+  }
+
+  const discardRow = async (id) => {
+    const ok =
+      typeof window !== 'undefined'
+        ? window.confirm(
+            'Discard this inbox item? You can Transform the same X post again after this.',
+          )
+        : true
+    if (!ok) return
+    setBusy(`discard-${id}`)
+    const { error } = await deleteEditorialQueueRow(supabaseClient, id)
+    setBusy('')
+    if (error) {
+      setToast?.(error.message || 'Discard failed.')
+      return
+    }
+    setToast?.('Discarded. You can Transform that post again.')
     void load()
     void onReload?.()
   }
@@ -312,9 +333,28 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                         type="button"
                         disabled={Boolean(busy)}
                         onClick={() => void skipRow(row.id)}
-                        className="text-red-400 text-[11px] font-semibold"
+                        className="text-amber-400 text-[11px] font-semibold"
                       >
                         Skip
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void discardRow(row.id)}
+                        className="text-red-400 text-[11px] font-semibold"
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  ) : status === 'skipped' || status === 'failed' || status === 'scheduled' ? (
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void discardRow(row.id)}
+                        className="text-red-400 text-[11px] font-semibold"
+                      >
+                        Discard
                       </button>
                     </div>
                   ) : null}

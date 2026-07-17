@@ -171,6 +171,18 @@ export async function updateEditorialQueueRow(supabaseClient, queueId, patch) {
 }
 
 /**
+ * Hard-delete a queue row so Transform can re-ingest the same tweet (dedupe key freed).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} queueId
+ */
+export async function deleteEditorialQueueRow(supabaseClient, queueId) {
+  const { data, error } = await supabaseClient.rpc('admin_lounge_bot_queue_delete', {
+    p_queue_id: queueId,
+  })
+  return { data, error }
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} botUserId
  * @param {string} handle

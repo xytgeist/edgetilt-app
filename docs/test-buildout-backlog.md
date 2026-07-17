@@ -561,7 +561,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
 
-- [ ] **Creator affiliates** — SQL through **`20260711160000`** (tax email) on **test**; Edge **`affiliate-tax-email`** needs **`RESEND_API_KEY`**. Client smoke mid-flight (**`docs/affiliates.md`** §6): tax email copy + self-ref block remaining. Source: `src/features/affiliates/`. **Not for production until Ryan says promote.**
+- [x] **Creator affiliates** — Smoked on **test** (Ryan, 2026-07-17). Promoted to **prod**: SQL through **`20260711160000`**, Edge checkout/webhook/connect/tax-email, frontend **`main`**. Live Stripe Connect + live promo ids + prod **`RESEND_API_KEY`** still ops follow-through. Spec: **`docs/affiliates.md`**.
 
 - [ ] Function-by-function smoke notes captured  
   - Change: Record minimal expected input/output for each function.
@@ -786,6 +786,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-17: **Creator affiliates → production:** SQL **`20260711140000`–`160000`** on **`jtjgtucumuoswnbauxry`**; Edge **`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`**, **`affiliate-tax-email`** redeployed; **`main`** fast-forwarded from **`test`**. Remaining live ops: Connect + promo ids + prod **`RESEND_API_KEY`**.
 - 2026-07-17: **Creator affiliates tax email copy:** migration **`20260711160000`** (`tax_email`); Edge **`affiliate-tax-email`** (Resend attachment from `affiliate-tax-docs`). Set **`RESEND_API_KEY`** on test. Spec: **`docs/affiliates.md`**.
 - 2026-07-16: **Creator affiliates tax PDF:** migration **`20260711150000`** (`ftin_not_legally_required`, `signature_name`); creator portal generates substitute W-9/W-8 PDF (`pdf-lib`) with typed signature; TIN last 4 label + FTIN Not Legally Required. Applied on **test** via Management API. Spec: **`docs/affiliates.md`**.
 - 2026-07-16: **Creator affiliates v1 (code):** migration **`20260711120000_creator_affiliates.sql`** (packages/affiliates/attributions/commissions/tax + RLS/RPCs + Storage **`affiliate-tax-docs`**); client **`src/features/affiliates/`** + AppShell **`?tab=affiliates`** (admin) / **`?tab=creator`**; Checkout **`affiliate_code`** + founding mutual exclusion; webhook commission ledger; Edge **`affiliate-connect`** (Express onboard + admin pay). Apply SQL + redeploy **`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`** on **test** only until Ryan promotes. Spec: **`docs/affiliates.md`**.

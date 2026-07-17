@@ -148,7 +148,7 @@ W-9/W-8 fields + `tin_last4` + `ftin_not_legally_required` + `signature_name` + 
 6. Admin Mark paid or Pay via Connect; creator portal shows totals; complete tax form (Generate PDF & save with typed signature).
 7. Self-ref as affiliate user → blocked.
 
-**Production:** do not apply SQL / deploy Edge / create live promos until Ryan explicitly promotes.
+**Production (promoted 2026-07-17):** SQL through **`20260711160000`** on **`jtjgtucumuoswnbauxry`**; Edge **`stripe-create-checkout-session`**, **`stripe-webhook`**, **`affiliate-connect`**, **`affiliate-tax-email`** deployed; frontend via **`main`**. Still required on **live** Stripe: Connect marketplace enabled, live 10% coupon + per-creator `promo_…` ids pasted in admin, and **`RESEND_API_KEY`** on prod Edge for tax PDF email.
 
 ---
 

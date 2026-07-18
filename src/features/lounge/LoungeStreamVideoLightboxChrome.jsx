@@ -129,7 +129,7 @@ export default function LoungeStreamVideoLightboxChrome({
         <button
           type="button"
           onClick={openProfile}
-          className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0 overflow-hidden rounded-full border border-white/20 bg-zinc-900 touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+          className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0 overflow-hidden rounded-full bg-zinc-900 touch-manipulation [-webkit-tap-highlight-color:transparent]`}
           aria-label={`Open ${displayName} profile`}
         >
           {avatarUrl ? (

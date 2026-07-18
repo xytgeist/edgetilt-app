@@ -97,10 +97,10 @@ export default function ChatDmHeaderChrome({
             <img
               src={avatarUrl}
               alt={displayName}
-              className="relative z-10 h-16 w-16 rounded-full object-cover shadow-lg ring-2 ring-white/20"
+              className="relative z-10 h-16 w-16 rounded-full object-cover shadow-lg"
             />
           ) : (
-            <div className="relative z-10 grid h-16 w-16 place-items-center rounded-full bg-zinc-700 text-[22px] font-bold text-zinc-300 shadow-lg ring-2 ring-white/15">
+            <div className="relative z-10 grid h-16 w-16 place-items-center rounded-full bg-zinc-700 text-[22px] font-bold text-zinc-300 shadow-lg">
               {initial}
             </div>
           )}

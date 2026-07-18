@@ -326,7 +326,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
               ref={postAvatarRef}
               type="button"
               onClick={(e) => openProfileFromEntity(e, post)}
-              className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
+              className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
                 post?.author_profile?.user_id || post?.user_id || post?.author_profile?.handle || 'member',
               )}`}
               aria-label={`Open profile for ${typeof displayNameFor === 'function' ? displayNameFor(post) : 'member'}`}
@@ -1964,7 +1964,7 @@ export default function LoungeProfileFullScreen({
           <div className="relative px-4">
             <div className="pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
               <div className="relative shrink-0 pointer-events-auto">
-                <div className="flex h-24 w-24 overflow-hidden rounded-full border-4 border-zinc-950 bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
+                <div className="flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
                   {profile?.avatar_url ? (
                     <img
                       key={profile.avatar_url}

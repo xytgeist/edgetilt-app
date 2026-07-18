@@ -40,7 +40,7 @@ function ThreadComposeAvatar({
   composerStableInitialsFromUid,
 }) {
   return (
-    <div className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0 border-zinc-600`}>
+    <div className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0`}>
       {composerUserProfile?.avatar_url ? (
         <img
           src={composerUserProfile.avatar_url}

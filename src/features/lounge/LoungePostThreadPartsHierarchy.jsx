@@ -27,7 +27,7 @@ function ThreadPartAvatarButton({ comment, avatarButtonRef, onAvatarClickProfile
         if (openProfileGateIfNeeded?.()) return
         onAvatarClickProfile?.(comment)
       }}
-      className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_AVATAR_CLASS} flex items-center justify-center touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
+      className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_AVATAR_CLASS} flex items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]`}
       aria-label={`Open profile for ${displayName}`}
     >
       {profile?.avatar_url ? (

@@ -1714,7 +1714,7 @@ export default function ChatConversation({
   const headerAvatar = activeRoom.kind === 'dm' ? peerAvatar : null
   const headerInitial = (peerDisplayName || '?').replace(/^@/, '')[0]?.toUpperCase() || '?'
   const headerAvatarClass =
-    'relative z-10 grid h-16 w-16 place-items-center rounded-full bg-zinc-700 text-[22px] font-bold text-zinc-300 shadow-lg ring-2 ring-white/15'
+    'relative z-10 grid h-16 w-16 place-items-center rounded-full bg-zinc-700 text-[22px] font-bold text-zinc-300 shadow-lg'
   // Track composer textarea focus - extends iOS dismiss grab strip above composer.
   useEffect(() => {
     const composer = composerBarRef.current
@@ -2124,7 +2124,7 @@ export default function ChatConversation({
                 <img
                   src={headerAvatar}
                   alt={headerDisplayName}
-                  className="relative z-10 h-16 w-16 rounded-full object-cover shadow-lg ring-2 ring-white/20"
+                  className="relative z-10 h-16 w-16 rounded-full object-cover shadow-lg"
                 />
               ) : (
                 <div className={headerAvatarClass}>{headerInitial}</div>

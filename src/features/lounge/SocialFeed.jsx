@@ -13593,7 +13593,7 @@ export default function SocialFeed({
                 author_profile: composerUserProfile,
               })
             }}
-            className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
+            className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]`}
             title="Open your profile"
             aria-label="Open your profile"
           >
@@ -14423,7 +14423,7 @@ export default function SocialFeed({
                   id="lounge-detail-post-avatar"
                   ref={loungePostDetailPostAvatarRef}
                   onClick={() => openAuthorProfile(loungePostDetail)}
-                  className={`${LOUNGE_FEED_AVATAR_CLASS} touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
+                  className={`${LOUNGE_FEED_AVATAR_CLASS} touch-manipulation [-webkit-tap-highlight-color:transparent]`}
                   aria-label={`Open profile for ${displayNameFor(loungePostDetail)}`}
                   title="View profile"
                 >
@@ -15610,7 +15610,7 @@ export default function SocialFeed({
                             author_profile: composerUserProfile,
                           })
                         }}
-                        className="mt-px flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-900 text-[14px] font-bold text-zinc-200 touch-manipulation hover:border-zinc-600 sm:h-10 sm:w-10 sm:text-[15px]"
+                        className="mt-px flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-900 text-[14px] font-bold text-zinc-200 touch-manipulation sm:h-10 sm:w-10 sm:text-[15px]"
                         title="Open your profile"
                         aria-label="Open your profile"
                       >
@@ -16220,7 +16220,7 @@ export default function SocialFeed({
                 <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-[86px]">
                   <>
                       <div className="flex items-start gap-3">
-                        <div className={`${LOUNGE_FEED_AVATAR_CLASS} border-zinc-600`}>
+                        <div className={`${LOUNGE_FEED_AVATAR_CLASS}`}>
                           {composerUserProfile?.avatar_url ? (
                             <img
                               src={composerUserProfile.avatar_url}
@@ -16602,7 +16602,7 @@ export default function SocialFeed({
               <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Profile photo</span>
               <div className="mt-1 flex items-center gap-3">
                 <div className="relative shrink-0">
-                  <div className="flex h-[3.3rem] w-[3.3rem] overflow-hidden rounded-full border border-zinc-700 bg-zinc-950 text-[13px] font-bold text-zinc-200">
+                  <div className="flex h-[3.3rem] w-[3.3rem] overflow-hidden rounded-full bg-zinc-950 text-[13px] font-bold text-zinc-200">
                     {profileGateAvatarPreview ? (
                     <img
                       src={profileGateAvatarPreview}

@@ -108,10 +108,10 @@ export default function ChatGroupMemberProfileSheet({
               <img
                 src={member.avatar_url}
                 alt={displayName}
-                className="h-[84px] w-[84px] rounded-full object-cover shadow-lg ring-2 ring-white/15"
+                className="h-[84px] w-[84px] rounded-full object-cover shadow-lg"
               />
             ) : (
-              <div className="grid h-[84px] w-[84px] place-items-center rounded-full bg-zinc-700 text-[28px] font-bold text-zinc-300 shadow-lg ring-2 ring-white/15">
+              <div className="grid h-[84px] w-[84px] place-items-center rounded-full bg-zinc-700 text-[28px] font-bold text-zinc-300 shadow-lg">
                 {initial}
               </div>
             )}

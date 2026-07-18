@@ -14,7 +14,7 @@ export default function ChatGroupHeaderStack({ groupAvatarUrl = null, members = 
       <img
         src={url}
         alt=""
-        className="relative z-10 rounded-full object-cover shadow-lg ring-2 ring-white/20"
+        className="relative z-10 rounded-full object-cover shadow-lg"
         style={{ width: size, height: size }}
       />
     )
@@ -27,7 +27,7 @@ export default function ChatGroupHeaderStack({ groupAvatarUrl = null, members = 
   if (stack.length === 0) {
     return (
       <div
-        className="relative z-10 grid place-items-center rounded-full bg-amber-900/60 text-[22px] font-bold text-amber-100/90 shadow-lg ring-2 ring-white/15"
+        className="relative z-10 grid place-items-center rounded-full bg-amber-900/60 text-[22px] font-bold text-amber-100/90 shadow-lg"
         style={{ width: size, height: size }}
       >
         👥
@@ -46,7 +46,7 @@ export default function ChatGroupHeaderStack({ groupAvatarUrl = null, members = 
         return (
           <div
             key={m.user_id}
-            className="absolute top-0 rounded-full ring-2 ring-zinc-950 shadow-md overflow-hidden bg-zinc-700"
+            className="absolute top-0 rounded-full shadow-md overflow-hidden bg-zinc-700"
             style={{ left: i * overlap, width: face, height: face, zIndex: 10 - i }}
           >
             {av ? (

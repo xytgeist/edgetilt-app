@@ -670,7 +670,7 @@ export default function LoungeNotificationsPanel({
                 e.stopPropagation()
                 openActorProfile(actorProfile)
               }}
-              className={`${LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS} flex items-center justify-center overflow-hidden touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
+              className={`${LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS} flex items-center justify-center overflow-hidden touch-manipulation [-webkit-tap-highlight-color:transparent]`}
             >
               {avatarUrl ? (
                 <img

@@ -115,7 +115,7 @@ export default function LoungeSearchCommentResultRow({
           type="button"
           title="View profile"
           onClick={onAvatar}
-          className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center touch-manipulation hover:border-zinc-600 [-webkit-tap-highlight-color:transparent]`}
+          className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]`}
         >
           {comment?.author_profile?.avatar_url ? (
             <img

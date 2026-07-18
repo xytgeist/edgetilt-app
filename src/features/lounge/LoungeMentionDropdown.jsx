@@ -174,7 +174,7 @@ export default function LoungeMentionDropdown({
                   isActive ? 'bg-zinc-800' : 'hover:bg-zinc-800/60'
                 }`}
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-800 text-[12px] font-bold text-zinc-200">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-800 text-[12px] font-bold text-zinc-200">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}

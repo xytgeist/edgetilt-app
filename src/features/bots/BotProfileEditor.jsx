@@ -157,7 +157,7 @@ export default function BotProfileEditor({ bot, supabaseClient, onReload, setToa
 
       {!profileExpanded ? (
         <div className="mt-3 flex items-center gap-3 min-w-0">
-          <div className="relative h-11 w-11 shrink-0 rounded-full ring-2 ring-zinc-800 overflow-hidden bg-zinc-800">
+          <div className="relative h-11 w-11 shrink-0 rounded-full overflow-hidden bg-zinc-800">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -206,7 +206,7 @@ export default function BotProfileEditor({ bot, supabaseClient, onReload, setToa
 
         <div className="relative px-4 pb-4 pt-10">
           <div className="absolute -top-10 left-4">
-            <div className="relative h-20 w-20 rounded-full ring-4 ring-zinc-900 overflow-hidden bg-zinc-800">
+            <div className="relative h-20 w-20 rounded-full overflow-hidden bg-zinc-800">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (

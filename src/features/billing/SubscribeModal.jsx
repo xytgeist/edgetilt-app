@@ -211,11 +211,11 @@ function PlanPromoBadge({ affiliate = null }) {
             <img
               src={affiliate.avatarUrl}
               alt=""
-              className="subscribe-plan-affiliate-avatar h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/15"
+              className="subscribe-plan-affiliate-avatar h-7 w-7 shrink-0 rounded-full object-cover"
             />
           ) : (
             <span
-              className={`subscribe-plan-affiliate-avatar flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ring-1 ring-white/15 ${tone}`}
+              className={`subscribe-plan-affiliate-avatar flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${tone}`}
               aria-hidden
             >
               {initials}

@@ -1272,7 +1272,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
               <label className="block">
                 <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Profile photo</span>
                 <div className="mt-1 flex items-center gap-3">
-                  <label className="relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-zinc-700 bg-zinc-950 grid place-items-center">
+                  <label className="relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-full bg-zinc-950 grid place-items-center">
                     {profileGateAvatarPreview ? (
                       <img
                         src={profileGateAvatarPreview}

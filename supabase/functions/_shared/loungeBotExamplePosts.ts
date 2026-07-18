@@ -97,7 +97,7 @@ export const SCOTT_EXAMPLE_POST_SPECS: ScottExamplePostSpec[] = [
     caption: [
       '📡 Value Bet Radar',
       '',
-      '• Padres ML +219 @ lowvig (+7.8% EV) · MLB · Sat 7:11 PM PT – Dylan Cease starting',
+      '• Padres ML +219 @ lowvig (+7.8% EV) · MLB · Sat 7:11 PM PT · Dylan Cease starting',
       '• Canada ML +490 @ BetUS (+3.1% EV) · World Cup · Sat 10AM PT',
       '• Giron ML +900 @ DraftKings (+4.2% EV) · Wimbledon · Sat 6:30 AM PT',
     ].join('\n'),

@@ -164,7 +164,7 @@ function formatRadarPickLine(pick: RadarPick, inlineNote?: string): string {
     categoryLabel: pick.categoryLabel,
   })
   const note = inlineNote?.trim()
-  const suffix = note ? ` – ${note}` : ''
+  const suffix = note ? ` · ${note}` : ''
   return `• ${formatOddsPickLine(pick)} @ ${pick.bookTitle} (+${ev}% EV)${ctx}${suffix}`
 }
 

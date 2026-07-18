@@ -4,6 +4,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { attachLinkPreviewToEntity, unfurlUrl, type LinkPreviewPayload } from './linkUnfurl.ts'
+import { sanitizeBotProse } from './wireBotProse.ts'
 
 export type BotPublishInput = {
   botUserId: string
@@ -39,7 +40,7 @@ export async function publishLoungeBotPost(
   admin: SupabaseClient,
   input: BotPublishInput,
 ): Promise<BotPublishResult> {
-  const caption = String(input.caption || '').trim()
+  const caption = sanitizeBotProse(String(input.caption || '').trim())
   if (!caption) return { postId: null, error: 'Empty caption.' }
   if (caption.length > 2000) return { postId: null, error: 'Caption exceeds 2000 chars.' }
 
@@ -105,7 +106,7 @@ export async function publishLoungeBotPostWithThread(
   if (!root.postId) return root
 
   const parts = (input.threadParts || [])
-    .map((part) => String(part?.body || '').trim())
+    .map((part) => sanitizeBotProse(String(part?.body || '').trim()))
     .filter(Boolean)
 
   if (!parts.length) {

@@ -5,6 +5,7 @@ import {
   ensureCaptionKeepsUrls,
   extractHttpUrls,
 } from './loungeBotXTweetFetch.ts'
+import { sanitizeBotProse } from './wireBotProse.ts'
 
 const CAPTION_MAX = 500
 
@@ -45,7 +46,7 @@ export async function rewriteTweetForBot(opts: {
                 `You rewrite X posts into Lounge feed captions for an EdgeTilt bot account. ` +
                 `Follow this voice instruction exactly:\n${voice}\n\n` +
                 `Rules: output a single caption only. Do not copy the tweet verbatim. ` +
-                `No em dashes. Max ${CAPTION_MAX} chars. ` +
+                `No em dashes or en dashes ... use " · " or "-" for breaks. Max ${CAPTION_MAX} chars. ` +
                 `Do not impersonate the original author; informational tone only. ` +
                 `Never start with a salutation or stock opener (Yo, Listen up, Alright, Check this, Hey, So, etc.). ` +
                 `Jump straight into the point. Do not reuse the same opening across posts.` +
@@ -61,7 +62,7 @@ export async function rewriteTweetForBot(opts: {
       if (res.ok) {
         const json = await res.json()
         const text = String(json?.choices?.[0]?.message?.content || '').trim()
-        if (text) return ensureCaptionKeepsUrls(text, sourceUrls, CAPTION_MAX)
+        if (text) return sanitizeBotProse(ensureCaptionKeepsUrls(text, sourceUrls, CAPTION_MAX))
       }
     } catch {
       /* fallback below */
@@ -77,5 +78,5 @@ export async function rewriteTweetForBot(opts: {
   const draft = sourceUrls.length
     ? `${prefix}${withoutUrls}\n${sourceUrls.join('\n')}`
     : `${prefix}${withoutUrls}`
-  return ensureCaptionKeepsUrls(draft, sourceUrls, CAPTION_MAX)
+  return sanitizeBotProse(ensureCaptionKeepsUrls(draft, sourceUrls, CAPTION_MAX))
 }

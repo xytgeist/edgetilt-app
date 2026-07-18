@@ -255,26 +255,26 @@ function movementMeaning(kind: LineMovementKind, marketKey: string, outcomeName:
     const size = formatMoveSizeLabel(marketKey, pointDelta, priceDelta)
     if (marketKey === 'spreads') {
       return priceDelta < 0
-        ? `Significant move (${size}) — sharp books shortening juice on ${label}.`
-        : `Significant move (${size}) — sharp action shifting the ${label} spread.`
+        ? `Significant move (${size}) · sharp books shortening juice on ${label}.`
+        : `Significant move (${size}) · sharp action shifting the ${label} spread.`
     }
     if (marketKey === 'totals') {
-      return `Significant move (${size}) — sharp action on the ${label.toLowerCase()} total.`
+      return `Significant move (${size}) · sharp action on the ${label.toLowerCase()} total.`
     }
     return priceDelta > 0
-      ? `Significant ML move (${size}) — ${label} odds lengthening, potential dog value.`
-      : `Significant ML move (${size}) — ${label} shortening, sharp money in.`
+      ? `Significant ML move (${size}) · ${label} odds lengthening, potential dog value.`
+      : `Significant ML move (${size}) · ${label} shortening, sharp money in.`
   }
   if (kind === 'steam') {
     if (marketKey === 'spreads') {
-      return `Fast multi-book steam — number syncing toward ${label} right now.`
+      return `Fast multi-book steam · number syncing toward ${label} right now.`
     }
     if (marketKey === 'totals') {
       return `Fast multi-book steam on the ${label.toLowerCase()} total.`
     }
-    return `Fast multi-book steam — ${label} ML adjusting across books.`
+    return `Fast multi-book steam · ${label} ML adjusting across books.`
   }
-  return `Minor line shift on ${label} — tracking only (no standalone alert).`
+  return `Minor line shift on ${label} · tracking only (no standalone alert).`
 }
 
 function formatMoveSizeLabel(marketKey: string, pointDelta: number, priceDelta: number): string {

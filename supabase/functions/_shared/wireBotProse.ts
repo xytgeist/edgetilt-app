@@ -1,6 +1,6 @@
 /**
- * Wire bot caption prose — Ryan rule: never em/en dashes in published copy.
- * Prefer ellipses for breaks; hyphen without spaces for numeric ranges only.
+ * Bot caption prose — Ryan rule: never em/en dashes in published copy.
+ * Prose breaks → middle dot (·); numeric ranges → hyphen without spaces.
  */
 
 function sanitizeWireProseLine(text: string): string {
@@ -9,12 +9,12 @@ function sanitizeWireProseLine(text: string): string {
   // Numeric ranges: 2024–2026, $955–968 → hyphen without spaces
   s = s.replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
 
-  // Prose breaks → ellipses (Ryan voice)
-  s = s.replace(/\s*[\u2014\u2013]\s*/g, ' ... ')
-  s = s.replace(/\s--\s/g, ' ... ')
+  // Prose breaks → · (Scott + wire bots; never em/en dash)
+  s = s.replace(/\s*[\u2014\u2013]\s*/g, ' · ')
+  s = s.replace(/\s--\s/g, ' · ')
 
   return s
-    .replace(/(?: \.\.\.){2,}/g, ' ... ')
+    .replace(/(?: · ){2,}/g, ' · ')
     .replace(/[ \t]+/g, ' ')
     .trim()
 }
@@ -30,3 +30,6 @@ export function sanitizeWireProse(text: string): string {
     .filter(Boolean)
     .join('\n\n')
 }
+
+/** Alias — all Lounge bots share the same dash scrub at publish time. */
+export const sanitizeBotProse = sanitizeWireProse

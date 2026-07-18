@@ -236,7 +236,7 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
                 `- Must ADD facts not already in the headline (who, how, impact, next step). Never restate or lightly rephrase the headline.\n` +
                 `- If the feed excerpt only repeats the headline, skip it and pull a later detail or return "".\n` +
                 `- Third person only ... no we/our/us/I. No investment advice.\n` +
-                `- NEVER use em dashes or en dashes. Use commas or " ... " for breaks.\n` +
+                `- NEVER use em dashes or en dashes. Use commas, " · ", or "-" for breaks.\n` +
                 `- Max ${SYNOPSIS_MAX} characters in synopsis.`,
             },
             {

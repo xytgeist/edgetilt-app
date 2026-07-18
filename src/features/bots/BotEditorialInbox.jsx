@@ -77,11 +77,13 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
     void onReload?.()
   }
 
-  const discardRow = async (id) => {
+  const discardRow = async (id, { published = false } = {}) => {
     const ok =
       typeof window !== 'undefined'
         ? window.confirm(
-            'Discard this inbox item? You can Transform the same X post again after this.',
+            published
+              ? 'Delete this post from the feed and remove it from the inbox? You can Transform the same X post again after this.'
+              : 'Discard this inbox item? You can Transform the same X post again after this.',
           )
         : true
     if (!ok) return
@@ -89,10 +91,14 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
     const { error } = await deleteEditorialQueueRow(supabaseClient, id)
     setBusy('')
     if (error) {
-      setToast?.(error.message || 'Discard failed.')
+      setToast?.(error.message || (published ? 'Delete failed.' : 'Discard failed.'))
       return
     }
-    setToast?.('Discarded. You can Transform that post again.')
+    setToast?.(
+      published
+        ? 'Post deleted from feed. You can Transform that X post again.'
+        : 'Discarded. You can Transform that post again.',
+    )
     void load()
     void onReload?.()
   }
@@ -344,6 +350,25 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                         className="text-red-400 text-[11px] font-semibold"
                       >
                         Discard
+                      </button>
+                    </div>
+                  ) : status === 'published' ? (
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      {row.published_post_id ? (
+                        <a
+                          href={`/?tab=lounge&post=${row.published_post_id}`}
+                          className="text-cyan-400 text-[11px] font-semibold hover:text-cyan-300"
+                        >
+                          View post
+                        </a>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void discardRow(row.id, { published: true })}
+                        className="text-red-400 text-[11px] font-semibold"
+                      >
+                        Delete
                       </button>
                     </div>
                   ) : status === 'skipped' || status === 'failed' || status === 'scheduled' ? (

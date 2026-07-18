@@ -172,6 +172,7 @@ export async function updateEditorialQueueRow(supabaseClient, queueId, patch) {
 
 /**
  * Hard-delete a queue row so Transform can re-ingest the same tweet (dedupe key freed).
+ * Published rows also delete the linked Lounge feed post.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} queueId
  */

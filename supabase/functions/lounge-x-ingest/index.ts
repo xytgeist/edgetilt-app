@@ -177,7 +177,7 @@ async function ingestTweetUrl(
       source_posted_at: fetched.created_at || null,
       draft_caption: draft,
       category_pills: bot.category_pills_default || [],
-      attach_source_link: true,
+      attach_source_link: false,
       status: 'pending_review',
       source_payload: fetched.payload ?? { source: fetched.source },
     })
@@ -305,7 +305,7 @@ Deno.serve(async (req) => {
               source_posted_at: tw.created_at || null,
               draft_caption: draft,
               category_pills: bot.category_pills_default || [],
-              attach_source_link: true,
+              attach_source_link: false,
               status: 'pending_review',
               source_payload: tw,
             })

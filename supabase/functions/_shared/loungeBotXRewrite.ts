@@ -5,6 +5,7 @@ import {
   ensureCaptionKeepsUrls,
   extractHttpUrls,
 } from './loungeBotXTweetFetch.ts'
+import { isXTwitterHttpUrl, stripXTwitterUrlsFromText } from './loungeBotXTweetUrl.ts'
 import { sanitizeBotProse } from './wireBotProse.ts'
 
 const CAPTION_MAX = 500
@@ -20,14 +21,14 @@ export async function rewriteTweetForBot(opts: {
 
   const voice =
     String(opts.voicePrompt || '').trim() || 'concise, informed EdgeTilt Lounge bot; not spammy'
-  const sourceUrls = extractHttpUrls(raw)
+  const outboundUrls = extractHttpUrls(raw).filter((url) => !isXTwitterHttpUrl(url))
 
   const key = Deno.env.get('OPENAI_API_KEY')?.trim()
   if (key) {
     try {
-      const linkRule = sourceUrls.length
-        ? ` The source includes these exact URL(s) ... keep every one of them in the caption (usually at the end, unchanged): ${sourceUrls.join(' ')}.`
-        : ' If the source has http(s) links, keep those exact URLs in the caption (usually at the end). Do not invent links.'
+      const linkRule = outboundUrls.length
+        ? ` Non-X outbound links from the source may be kept when essential: ${outboundUrls.join(' ')}. Never add x.com, twitter.com, or t.co links.`
+        : ' Do not include x.com, twitter.com, or t.co links in the caption. Do not invent links.'
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -62,7 +63,11 @@ export async function rewriteTweetForBot(opts: {
       if (res.ok) {
         const json = await res.json()
         const text = String(json?.choices?.[0]?.message?.content || '').trim()
-        if (text) return sanitizeBotProse(ensureCaptionKeepsUrls(text, sourceUrls, CAPTION_MAX))
+        if (text) {
+          return stripXTwitterUrlsFromText(
+            sanitizeBotProse(ensureCaptionKeepsUrls(text, outboundUrls, CAPTION_MAX)),
+          )
+        }
       }
     } catch {
       /* fallback below */
@@ -75,8 +80,10 @@ export async function rewriteTweetForBot(opts: {
     .replace(/\s+/g, ' ')
     .trim()
   const prefix = `@${opts.xHandle.replace(/^@/, '')} pulse: `
-  const draft = sourceUrls.length
-    ? `${prefix}${withoutUrls}\n${sourceUrls.join('\n')}`
+  const draft = outboundUrls.length
+    ? `${prefix}${withoutUrls}\n${outboundUrls.join('\n')}`
     : `${prefix}${withoutUrls}`
-  return sanitizeBotProse(ensureCaptionKeepsUrls(draft, sourceUrls, CAPTION_MAX))
+  return stripXTwitterUrlsFromText(
+    sanitizeBotProse(ensureCaptionKeepsUrls(draft, outboundUrls, CAPTION_MAX)),
+  )
 }

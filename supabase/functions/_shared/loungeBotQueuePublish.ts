@@ -4,6 +4,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import { isXTwitterHttpUrl, stripXTwitterUrlsFromText } from './loungeBotXTweetUrl.ts'
 
 type QueueRow = {
   id: string
@@ -19,11 +20,15 @@ export async function publishQueueRow(
   row: QueueRow,
   reviewerId: string | null,
 ): Promise<{ postId: string | null; error: string | null }> {
+  const sourceUrl = row.attach_source_link && row.source_url && !isXTwitterHttpUrl(row.source_url)
+    ? row.source_url
+    : null
+
   const result = await publishLoungeBotPost(admin, {
     botUserId: row.bot_user_id,
-    caption: row.draft_caption,
+    caption: stripXTwitterUrlsFromText(row.draft_caption),
     categoryPills: row.category_pills || [],
-    sourceUrl: row.attach_source_link ? row.source_url : null,
+    sourceUrl,
   })
 
   if (!result.postId) {

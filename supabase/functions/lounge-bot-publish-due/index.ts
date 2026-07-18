@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     if (body?.queueId) {
       const { data: row, error } = await admin
         .from('lounge_bot_queue')
-        .select('id, bot_user_id, draft_caption, category_pills, attach_source_link, source_url, status')
+        .select('id, bot_user_id, draft_caption, draft_image_urls, category_pills, attach_source_link, source_url, status')
         .eq('id', body.queueId)
         .maybeSingle()
       if (error || !row) return adminOpsJson(404, { error: 'Queue row not found.' })

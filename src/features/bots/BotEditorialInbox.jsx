@@ -1,4 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import BotComposeImagePicker from './BotComposeImagePicker.jsx'
+import {
+  botComposeItemsFromUrls,
+  normalizeDraftImageUrls,
+  revokeBotComposeImagePreviews,
+  uploadBotComposeImageItems,
+} from './botComposeImages.js'
 import { formatBotPortalWhen } from './botPortalConstants.js'
 import {
   deleteEditorialQueueRow,
@@ -21,6 +28,7 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
   const [busy, setBusy] = useState('')
   const [editId, setEditId] = useState('')
   const [editCaption, setEditCaption] = useState('')
+  const [editImageItems, setEditImageItems] = useState([])
   const [ingestTweetUrl, setIngestTweetUrl] = useState('')
   const [ingestTweetText, setIngestTweetText] = useState('')
 
@@ -48,15 +56,49 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
     void load()
   }, [load])
 
-  const saveDraft = async (id, caption) => {
-    setBusy(`save-${id}`)
-    const { error } = await updateEditorialQueueRow(supabaseClient, id, { draft_caption: caption })
+  const cancelEdit = () => {
+    revokeBotComposeImagePreviews(editImageItems.filter((item) => item.file))
+    setEditId('')
+    setEditCaption('')
+    setEditImageItems([])
+  }
+
+  const openEditRow = (row) => {
+    if (editId && editId !== row.id) {
+      revokeBotComposeImagePreviews(editImageItems.filter((item) => item.file))
+    }
+    setEditId(row.id)
+    setEditCaption(row.draft_caption || '')
+    setEditImageItems(botComposeItemsFromUrls(normalizeDraftImageUrls(row.draft_image_urls)))
+  }
+
+  const saveDraft = async (row) => {
+    const caption = editCaption.trim()
+    if (!caption && editImageItems.length === 0) {
+      setToast?.('Caption or image required.')
+      return
+    }
+    setBusy(`save-${row.id}`)
+    const { urls, error: uploadError } = await uploadBotComposeImageItems(
+      supabaseClient,
+      row.bot_user_id,
+      editImageItems,
+    )
+    if (uploadError) {
+      setBusy('')
+      setToast?.(uploadError.message || 'Could not upload images.')
+      return
+    }
+    const { error } = await updateEditorialQueueRow(supabaseClient, row.id, {
+      draft_caption: caption,
+      draft_image_urls: urls,
+    })
     setBusy('')
     if (error) {
       setToast?.(error.message || 'Save failed.')
       return
     }
-    setEditId('')
+    cancelEdit()
     setToast?.('Draft saved.')
     void load()
   }
@@ -298,15 +340,12 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                       {row.scheduled_at ? ` · scheduled ${formatBotPortalWhen(row.scheduled_at)}` : ''}
                     </div>
                   </div>
-                  {status === 'pending_review' ? (
+                  {status === 'pending_review' || status === 'scheduled' ? (
                     <div className="flex flex-wrap gap-2 shrink-0">
                       <button
                         type="button"
                         disabled={Boolean(busy)}
-                        onClick={() => {
-                          setEditId(row.id)
-                          setEditCaption(row.draft_caption || '')
-                        }}
+                        onClick={() => openEditRow(row)}
                         className="text-cyan-400 text-[11px] font-semibold"
                       >
                         Edit
@@ -319,30 +358,34 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                       >
                         Publish now
                       </button>
-                      <button
-                        type="button"
-                        disabled={Boolean(busy)}
-                        onClick={() => void scheduleRow(row.id, 30)}
-                        className="text-violet-300 text-[11px] font-semibold"
-                      >
-                        +30m
-                      </button>
-                      <button
-                        type="button"
-                        disabled={Boolean(busy)}
-                        onClick={() => void scheduleRow(row.id, 120)}
-                        className="text-violet-300 text-[11px] font-semibold"
-                      >
-                        +2h
-                      </button>
-                      <button
-                        type="button"
-                        disabled={Boolean(busy)}
-                        onClick={() => void skipRow(row.id)}
-                        className="text-amber-400 text-[11px] font-semibold"
-                      >
-                        Skip
-                      </button>
+                      {status === 'pending_review' ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={Boolean(busy)}
+                            onClick={() => void scheduleRow(row.id, 30)}
+                            className="text-violet-300 text-[11px] font-semibold"
+                          >
+                            +30m
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(busy)}
+                            onClick={() => void scheduleRow(row.id, 120)}
+                            className="text-violet-300 text-[11px] font-semibold"
+                          >
+                            +2h
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(busy)}
+                            onClick={() => void skipRow(row.id)}
+                            className="text-amber-400 text-[11px] font-semibold"
+                          >
+                            Skip
+                          </button>
+                        </>
+                      ) : null}
                       <button
                         type="button"
                         disabled={Boolean(busy)}
@@ -413,18 +456,24 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                       onChange={(e) => setEditCaption(e.target.value)}
                       className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white text-sm"
                     />
+                    <BotComposeImagePicker
+                      items={editImageItems}
+                      disabled={busy === `save-${row.id}`}
+                      onChange={setEditImageItems}
+                      onLimitMessage={setToast}
+                    />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         disabled={busy === `save-${row.id}`}
-                        onClick={() => void saveDraft(row.id, editCaption)}
+                        onClick={() => void saveDraft(row)}
                         className="min-h-8 rounded-lg bg-cyan-700 px-3 text-white text-[11px] font-bold"
                       >
                         Save
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditId('')}
+                        onClick={cancelEdit}
                         className="min-h-8 rounded-lg bg-zinc-800 px-3 text-zinc-300 text-[11px]"
                       >
                         Cancel
@@ -432,9 +481,23 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                     </div>
                   </div>
                 ) : (
-                  <div className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">
-                    {row.draft_caption}
-                  </div>
+                  <>
+                    {normalizeDraftImageUrls(row.draft_image_urls).length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {normalizeDraftImageUrls(row.draft_image_urls).map((url) => (
+                          <img
+                            key={url}
+                            src={url}
+                            alt=""
+                            className="h-16 w-16 shrink-0 rounded-lg border border-zinc-700/80 object-cover bg-zinc-950"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">
+                      {row.draft_caption}
+                    </div>
+                  </>
                 )}
               </li>
             ))}

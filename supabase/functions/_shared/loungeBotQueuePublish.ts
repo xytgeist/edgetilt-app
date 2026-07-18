@@ -10,9 +10,16 @@ type QueueRow = {
   id: string
   bot_user_id: string
   draft_caption: string
+  draft_image_urls?: string[] | null
   category_pills: string[] | null
   attach_source_link: boolean
   source_url: string | null
+}
+
+function queueImageUrls(row: QueueRow): string[] {
+  const raw = row.draft_image_urls
+  if (!Array.isArray(raw)) return []
+  return raw.map((u) => String(u || '').trim()).filter(Boolean).slice(0, 6)
 }
 
 export async function publishQueueRow(
@@ -29,6 +36,7 @@ export async function publishQueueRow(
     caption: stripXTwitterUrlsFromText(row.draft_caption),
     categoryPills: row.category_pills || [],
     sourceUrl,
+    imageUrls: queueImageUrls(row),
   })
 
   if (!result.postId) {
@@ -58,7 +66,7 @@ export async function publishDueQueueRows(
 ): Promise<{ published: number; failed: number }> {
   let q = admin
     .from('lounge_bot_queue')
-    .select('id, bot_user_id, draft_caption, category_pills, attach_source_link, source_url')
+    .select('id, bot_user_id, draft_caption, draft_image_urls, category_pills, attach_source_link, source_url')
     .eq('status', 'scheduled')
     .lte('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true })

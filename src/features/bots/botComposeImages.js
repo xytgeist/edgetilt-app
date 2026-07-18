@@ -1,4 +1,5 @@
-import { isProbablyImageFile } from '../../utils/compressImageForUpload'
+import { isProbablyImageFile, prepareLoungeFeedImageForUpload } from '../../utils/compressImageForUpload'
+import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost'
 
 export const BOT_COMPOSE_MAX_IMAGES = 6
 
@@ -43,4 +44,55 @@ export function revokeBotComposeImagePreviews(items) {
       }
     }
   }
+}
+
+/** @param {string[]} urls */
+export function botComposeItemsFromUrls(urls) {
+  return (Array.isArray(urls) ? urls : [])
+    .map((url) => String(url || '').trim())
+    .filter(Boolean)
+    .slice(0, BOT_COMPOSE_MAX_IMAGES)
+    .map((url, index) => ({
+      id: `url-${index}-${url.slice(-24)}`,
+      url,
+      preview: url,
+    }))
+}
+
+/**
+ * Upload new files; keep already-hosted URLs from saved draft items.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} botUserId
+ * @param {Array<{ id: string, file?: File, url?: string, preview?: string }>} items
+ */
+export async function uploadBotComposeImageItems(supabaseClient, botUserId, items) {
+  const urls = []
+  for (const item of items || []) {
+    if (item?.file) {
+      const { file: prepared, error: prepErr } = await prepareLoungeFeedImageForUpload(item.file)
+      if (prepErr || !prepared) {
+        return { urls: [], error: prepErr || new Error('Could not prepare image.') }
+      }
+      const { data: upUrl, error: upErr } = await uploadLoungeFeedPostImage({
+        supabaseClient,
+        user: { id: botUserId },
+        file: prepared,
+      })
+      if (upErr || !upUrl) {
+        return { urls: [], error: upErr || new Error('Could not upload image.') }
+      }
+      urls.push(upUrl)
+      continue
+    }
+    const saved = String(item?.url || item?.preview || '').trim()
+    if (saved && !saved.startsWith('blob:')) urls.push(saved)
+  }
+  return { urls: urls.slice(0, BOT_COMPOSE_MAX_IMAGES), error: null }
+}
+
+export function normalizeDraftImageUrls(raw) {
+  if (Array.isArray(raw)) {
+    return raw.map((url) => String(url || '').trim()).filter(Boolean).slice(0, BOT_COMPOSE_MAX_IMAGES)
+  }
+  return []
 }

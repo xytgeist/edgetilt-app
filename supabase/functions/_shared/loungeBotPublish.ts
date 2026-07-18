@@ -12,6 +12,7 @@ export type BotPublishInput = {
   caption: string
   categoryPills?: string[]
   sourceUrl?: string | null
+  imageUrls?: string[]
   /** When true, skip URL + preview unless unfurl succeeds (news bots). Default false. */
   requirePreviewToAttachLink?: boolean
   /** When true, post is hidden from anon / non-subscribers on the lounge feed. */
@@ -37,12 +38,25 @@ export function serviceAdmin(): SupabaseClient {
   return createClient(supabaseUrl, serviceRoleKey)
 }
 
+function normalizeBotImageUrls(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const item of raw) {
+    const url = String(item || '').trim()
+    if (!url || out.includes(url)) continue
+    out.push(url)
+    if (out.length >= 6) break
+  }
+  return out
+}
+
 export async function publishLoungeBotPost(
   admin: SupabaseClient,
   input: BotPublishInput,
 ): Promise<BotPublishResult> {
   const caption = stripXTwitterUrlsFromText(sanitizeBotProse(String(input.caption || '').trim()))
-  if (!caption) return { postId: null, error: 'Empty caption.' }
+  const imageUrls = normalizeBotImageUrls(input.imageUrls)
+  if (!caption && !imageUrls.length) return { postId: null, error: 'Caption or image required.' }
   if (caption.length > 2000) return { postId: null, error: 'Caption exceeds 2000 chars.' }
 
   const pills = Array.isArray(input.categoryPills)
@@ -71,6 +85,8 @@ export async function publishLoungeBotPost(
     game_slug: null,
     category_pills: pills,
     subscriber_only: input.subscriberOnly === true,
+    image_urls: imageUrls,
+    media_url: imageUrls[0] ?? null,
   }
 
   const { data, error } = await admin

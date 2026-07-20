@@ -790,6 +790,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 ## Update log
 
 - 2026-07-20: **Creator fan sub tiers (spec):** five preset monthly MSRPs **$4.99 / $9.99 / $19.99 / $49.99 / $99.99** + `fan-tier-*` keys ... **`docs/entitlements-matrix.md` §5** (Ryan; implementation not started).
+- 2026-07-20: **Creator fan subs (foundation, test):** migration **`20260720180000`** (`creator_fan_tiers`, monetization profiles, `creator_subscriptions`, fan room kind, fan-only post RLS); Edge **`creator-fan-connect`**, **`creator-fan-checkout`**, **`stripe-webhook`** fan routing; Settings **Fan subscriptions** panel. **Before smoke:** apply migration on test, create five Stripe Prices + Edge secrets (see **`supabase/functions/creator-fan-checkout/README.md`**), deploy Edge. **Still open:** profile Support CTA, compose fan-only posts, search gate, moderators.
 - 2026-07-17: **Homepage SEO pack:** `index.html` title/description/canonical + OG/Twitter; **`public/robots.txt`** + **`sitemap.xml`** (static files served ahead of SPA rewrite).
 - 2026-07-17: **GA4 site analytics:** `VITE_GA_MEASUREMENT_ID` (Vercel Production) → **`initGoogleAnalytics`** in **`main.jsx`**; privacy policy + **`LEGAL_POLICY_VERSION`** bumped to **2026-07-17** (re-acceptance).
 - 2026-07-17: **Editorial inbox Discard:** migration **`20260717140000`** RPC **`admin_lounge_bot_queue_delete`**; portal **Discard** removes queue row so Transform can retry the same tweet (Skip alone left dedupe locked).

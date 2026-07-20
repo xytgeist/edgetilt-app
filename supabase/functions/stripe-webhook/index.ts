@@ -5,9 +5,12 @@ import {
   createBillingAdmin,
   recordWebhookEvent,
   deleteUserSubscriptionByStripeId,
+  deleteCreatorFanSubscriptionByStripeId,
   listActiveRecurringStripeSubscriptionIds,
   upsertLifetimePurchaseFromCheckout,
   upsertUserSubscriptionFromStripe,
+  upsertCreatorFanSubscriptionFromStripe,
+  isCreatorFanSubscriptionMetadata,
   type StripeSubscriptionPayload,
 } from '../_shared/billingDb.ts'
 import {
@@ -308,6 +311,10 @@ Deno.serve(async (req) => {
       event.type === 'customer.subscription.updated'
     ) {
       const subscription = event.data.object as StripeSubscriptionPayload
+      if (isCreatorFanSubscriptionMetadata(subscription.metadata)) {
+        await upsertCreatorFanSubscriptionFromStripe(admin, { subscription })
+        return jsonResponse({ ok: true })
+      }
       const { userId, productSlug } = await resolveUserAndProduct(admin, subscription)
       if (!userId) {
         console.warn('stripe-webhook: missing user for subscription', subscription.id)
@@ -322,6 +329,10 @@ Deno.serve(async (req) => {
 
     if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as StripeSubscriptionPayload
+      if (isCreatorFanSubscriptionMetadata(subscription.metadata)) {
+        await deleteCreatorFanSubscriptionByStripeId(admin, subscription.id)
+        return jsonResponse({ ok: true })
+      }
       const userId = await deleteUserSubscriptionByStripeId(admin, subscription.id)
       if (userId) {
         const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
@@ -393,6 +404,17 @@ Deno.serve(async (req) => {
       const subscriptionId =
         typeof session.subscription === 'string' ? session.subscription : session.subscription.id
       const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as StripeSubscriptionPayload
+
+      if (isCreatorFanSubscriptionMetadata(subscription.metadata)) {
+        const resolvedUserId =
+          userId ||
+          subscription.metadata?.subscriber_user_id?.trim() ||
+          null
+        if (resolvedUserId) {
+          await upsertCreatorFanSubscriptionFromStripe(admin, { subscription })
+        }
+        return jsonResponse({ ok: true })
+      }
 
       const resolvedUserId =
         userId ||

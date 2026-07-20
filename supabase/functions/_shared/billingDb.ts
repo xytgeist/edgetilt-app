@@ -205,6 +205,104 @@ export async function upsertLifetimePurchaseFromCheckout(
   await syncProfileHasActiveSubscription(admin, userId)
 }
 
+export function isCreatorFanSubscriptionMetadata(meta: Record<string, string> | undefined): boolean {
+  if (!meta) return false
+  if (meta.billing_kind === 'creator_fan_sub') return true
+  return Boolean(meta.creator_user_id?.trim() && meta.subscriber_user_id?.trim())
+}
+
+export async function upsertCreatorFanSubscriptionFromStripe(
+  admin: SupabaseClient,
+  args: {
+    subscription: StripeSubscriptionPayload
+  },
+) {
+  const { subscription } = args
+  const meta = subscription.metadata ?? {}
+  const subscriberUserId = meta.subscriber_user_id?.trim() || null
+  const creatorUserId = meta.creator_user_id?.trim() || null
+  const fanTierKey = meta.fan_tier_key?.trim() || null
+
+  if (!subscriberUserId || !creatorUserId || !fanTierKey) {
+    throw new Error(`creator fan sub missing metadata on ${subscription.id}`)
+  }
+
+  const periodEnd =
+    typeof subscription.current_period_end === 'number'
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null
+
+  const row = {
+    subscriber_user_id: subscriberUserId,
+    creator_user_id: creatorUserId,
+    fan_tier_key: fanTierKey,
+    stripe_subscription_id: subscription.id,
+    stripe_customer_id: String(subscription.customer),
+    status: subscription.status,
+    current_period_end: periodEnd,
+    cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data: existingBySubId, error: subLookupErr } = await admin
+    .from('creator_subscriptions')
+    .select('id, status')
+    .eq('stripe_subscription_id', subscription.id)
+    .maybeSingle()
+  if (subLookupErr) {
+    throw new Error(`creator_subscriptions lookup (${subscription.id}): ${subLookupErr.message}`)
+  }
+
+  const protectedStatuses = new Set(['active', 'trialing'])
+  const staleIncomingStatuses = new Set(['incomplete', 'incomplete_expired'])
+  if (
+    existingBySubId?.id &&
+    protectedStatuses.has(String(existingBySubId.status)) &&
+    staleIncomingStatuses.has(subscription.status)
+  ) {
+    return
+  }
+
+  const { error } = await admin.from('creator_subscriptions').upsert(row, {
+    onConflict: 'subscriber_user_id,creator_user_id',
+  })
+  if (error) throw new Error(`creator_subscriptions upsert: ${error.message}`)
+
+  const grantAccess = subscription.status === 'active' || subscription.status === 'trialing'
+  const { error: syncErr } = await admin.rpc('creator_fan_sub_sync_chat_member', {
+    p_subscriber_user_id: subscriberUserId,
+    p_creator_user_id: creatorUserId,
+    p_grant_access: grantAccess,
+  })
+  if (syncErr) throw new Error(`creator_fan_sub_sync_chat_member: ${syncErr.message}`)
+}
+
+export async function deleteCreatorFanSubscriptionByStripeId(
+  admin: SupabaseClient,
+  stripeSubscriptionId: string,
+) {
+  const { data, error } = await admin
+    .from('creator_subscriptions')
+    .select('subscriber_user_id, creator_user_id')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .maybeSingle()
+  if (error) throw new Error(`creator_subscriptions lookup: ${error.message}`)
+  if (!data) return
+
+  const { error: delErr } = await admin
+    .from('creator_subscriptions')
+    .delete()
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+  if (delErr) throw new Error(`creator_subscriptions delete: ${delErr.message}`)
+
+  const { error: syncErr } = await admin.rpc('creator_fan_sub_sync_chat_member', {
+    p_subscriber_user_id: data.subscriber_user_id,
+    p_creator_user_id: data.creator_user_id,
+    p_grant_access: false,
+  })
+  if (syncErr) throw new Error(`creator_fan_sub_sync_chat_member: ${syncErr.message}`)
+}
+
 async function syncProfileHasActiveSubscription(admin: SupabaseClient, userId: string) {
   const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
     p_user_id: userId,

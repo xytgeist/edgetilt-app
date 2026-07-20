@@ -2761,6 +2761,34 @@ html.light [data-settings-support] .hover\:bg-zinc-800:hover {
   background-color: #e4e4e7 !important;
 }
 
+html.light [data-settings-fan-monetization] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-settings-fan-monetization] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-settings-fan-monetization] .text-zinc-300 {
+  color: #52525b !important;
+}
+html.light [data-settings-fan-monetization] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-settings-fan-monetization] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-settings-fan-monetization] .bg-zinc-900\/80 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-settings-fan-monetization] .border-zinc-700\/90 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-settings-fan-monetization] .hover\:bg-zinc-800:hover {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-settings-fan-monetization] .text-cyan-200\/90 {
+  color: #0e7490 !important;
+}
+
 /* Manage membership modal - light mode */
 html.light [data-billing-manage-modal] {
   background-color: #ffffff !important;

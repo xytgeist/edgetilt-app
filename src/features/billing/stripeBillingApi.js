@@ -75,12 +75,37 @@ export async function openBillingPortal(supabaseClient) {
  * @returns {Promise<Record<string, { active?: boolean, status?: string, current_period_end?: string | null, cancel_at_period_end?: boolean }>>}
  */
 export async function fetchMyEntitlements(supabaseClient) {
-  const { data, error } = await supabaseClient.rpc('get_my_entitlements')
-  if (error) {
-    if (error.code === 'PGRST202' || error.message?.includes('get_my_entitlements')) {
-      return {}
+  const [platformRes, fanRes] = await Promise.all([
+    supabaseClient.rpc('get_my_entitlements'),
+    supabaseClient.rpc('get_my_creator_fan_entitlements'),
+  ])
+
+  const { data: platformData, error: platformError } = platformRes
+  if (platformError) {
+    if (platformError.code === 'PGRST202' || platformError.message?.includes('get_my_entitlements')) {
+      // migration not applied yet
+    } else {
+      throw platformError
     }
-    throw error
   }
-  return data && typeof data === 'object' ? data : {}
+
+  const platform =
+    platformData && typeof platformData === 'object' && !platformError ? platformData : {}
+
+  let fan = {}
+  const { data: fanData, error: fanError } = fanRes
+  if (fanError) {
+    if (
+      fanError.code === 'PGRST202' ||
+      fanError.message?.includes('get_my_creator_fan_entitlements')
+    ) {
+      fan = {}
+    } else {
+      throw fanError
+    }
+  } else if (fanData && typeof fanData === 'object') {
+    fan = fanData
+  }
+
+  return { ...platform, ...fan }
 }

@@ -26,6 +26,7 @@ import {
   supportMailtoHref,
   SUPPORT_BILLING_NO_ACCESS_SUBJECT,
 } from '../features/legal/supportContact.js'
+import CreatorFanMonetizationPanel from '../features/creatorFanSubs/CreatorFanMonetizationPanel.jsx'
 import {
   formatLoungeSearchError,
   LOUNGE_SEARCH_MIN_CHARS,
@@ -1376,6 +1377,10 @@ export default function LoungeDockSlidePanels({
                 <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{supportEmailCopyMessage}</p>
               ) : null}
             </div>
+
+            {settingsSupabaseClient ? (
+              <CreatorFanMonetizationPanel supabaseClient={settingsSupabaseClient} />
+            ) : null}
 
             <div className="mt-6 border-t border-zinc-800 pt-5">
               <button

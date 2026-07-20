@@ -139,7 +139,9 @@ get_my_entitlements(user_id) → {
 | Item | v1 choice |
 | --- | --- |
 | Who can enable | **Verified** users + completed Connect onboarding |
-| Pricing | **Preset monthly tiers** (e.g. $4.99 / $9.99 / $19.99), not arbitrary free-form |
+| Pricing | **Preset monthly tiers only** (no custom amount). Creators pick **one** tier at enable time; change tier later via settings (new subscribers at new price; existing subs follow Stripe price-change rules). |
+| Tier MSRP (monthly) | **$4.99**, **$9.99**, **$19.99**, **$49.99**, **$99.99** ... locked **2026-07-20** (Ryan) |
+| Tier keys (Stripe / DB) | `fan-tier-499`, `fan-tier-999`, `fan-tier-1999`, `fan-tier-4999`, `fan-tier-9999` ... one shared Connect Price per key platform-wide |
 | Benefits | Fan-only posts + one fan group chat room |
 | Chat | **Not E2EE**; creator-owned moderation; searchable room metadata; message access members-only |
 | Cancel | Access through **paid period end**, then remove room membership |
@@ -167,3 +169,4 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | Date | Change |
 | --- | --- |
 | 2026-07-18 | Initial matrix: multi-product catalog, capability table, creator fan sub v1, Edge Pro platform tier, stacking rules, engineering target, rollout phases (Ryan spec). |
+| 2026-07-20 | Creator fan sub preset tiers locked to **five** monthly MSRPs: $4.99 / $9.99 / $19.99 / $49.99 / $99.99 + tier keys `fan-tier-*`. |

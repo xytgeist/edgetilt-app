@@ -447,7 +447,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 - [x] **Phase G (search, test):** Auth-gated **`lounge_search()`** stack — posts, profiles, comments, highlight/recent/about, Top/Latest, rate limit, bundled pagination, hardening, **`@handle` keyword**, relevance ranking, volatile helpers. Migrations **`20260518160000`** through **`20260520190000`**. Client: **`loungeSearchApi.js`**, **`LoungeDockSlidePanels.jsx`**. Ryan sign-off **PASSED** on **test** (smoke **§16**, 2026-05-21).
 - [ ] **Freemium / subscriptions (Slots Edge, shipped on test):** **`slots-edge-starter`**, **`slots-edge`**, **`slots-edge-lifetime`** ... migration **`20260526120000_edge_subscriptions.sql`**, Stripe Edge functions (**`stripe-create-checkout-session`**, **`stripe-webhook`**, **`stripe-create-portal-session`**), **`get_my_entitlements()`**, Subscribe modal + hamburger/OCR gates on **test**; **apply migration + deploy Edge + Stripe secrets** before smoke; RLS hardening + per-calc/guide locks still open. Spec: **`docs/access-tiers.md`**; setup: **`supabase/functions/stripe-create-checkout-session/README.md`**.
 - [ ] **Entitlements Phase 1 (planned):** refactor **`get_my_entitlements()`** to **`docs/entitlements-matrix.md` §4** shape; Stripe webhook routing by **`product_slug`** / metadata; stub **`edge-pro`** grant ok. Spec: **`docs/entitlements-matrix.md` §6 Phase 1**.
-- [ ] **Creator fan sub MVP (planned):** Connect onboarding, preset monthly tiers, **70/30** split, fan-only Lounge posts + auto fan room, search discover metadata + subscribe CTA gate, owner-assigned moderators. **Not v1:** E2EE. Spec: **`docs/entitlements-matrix.md` §2.3–§5**.
+- [ ] **Creator fan sub MVP (planned):** Connect onboarding, **five** preset monthly tiers (**$4.99 / $9.99 / $19.99 / $49.99 / $99.99**; keys `fan-tier-499` … `fan-tier-9999`), **70/30** split, fan-only Lounge posts + auto fan room, search discover metadata + subscribe CTA gate, owner-assigned moderators. **Not v1:** E2EE. Spec: **`docs/entitlements-matrix.md` §2.3–§5**.
 - [ ] **Edge Pro platform tier (planned):** ads off in Lounge, filter non–Edge-Pro authors, author setting to restrict replies to Edge Pro subscribers. Spec: **`docs/entitlements-matrix.md` §2.1–§2.2**.
 
 ---
@@ -789,6 +789,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-20: **Creator fan sub tiers (spec):** five preset monthly MSRPs **$4.99 / $9.99 / $19.99 / $49.99 / $99.99** + `fan-tier-*` keys ... **`docs/entitlements-matrix.md` §5** (Ryan; implementation not started).
 - 2026-07-17: **Homepage SEO pack:** `index.html` title/description/canonical + OG/Twitter; **`public/robots.txt`** + **`sitemap.xml`** (static files served ahead of SPA rewrite).
 - 2026-07-17: **GA4 site analytics:** `VITE_GA_MEASUREMENT_ID` (Vercel Production) → **`initGoogleAnalytics`** in **`main.jsx`**; privacy policy + **`LEGAL_POLICY_VERSION`** bumped to **2026-07-17** (re-acceptance).
 - 2026-07-17: **Editorial inbox Discard:** migration **`20260717140000`** RPC **`admin_lounge_bot_queue_delete`**; portal **Discard** removes queue row so Transform can retry the same tweet (Skip alone left dedupe locked).

@@ -75,7 +75,7 @@ Product direction (partially implemented; **anonymous shell + open auth** + **Sl
 1. **Anonymous** ... Lounge **read-only** (no artificial post cap; normal pagination/RLS), no search/filter/post open; **create account** modal on forbidden actions (see access tiers).
 2. **Free account** ... **Verified user** badge; **full Lounge**; other tabs reachable; **subscribe** gates on bankroll/logbook limits, offer alerts + OCR, locked calculators/guides.
 3. **Paid ... Slots Edge** ... Verified + **subscriber** badges; guide cards are the hero product (Starter: fixed pack + weekly drop; Pro/Lifetime: full library + all tools). Pricing: **`docs/access-tiers.md` §5.1**. Billing: **Stripe** + webhooks → Supabase (**shipped on test**).
-4. **Planned ... Edge Pro + creator fan subs + add-ons** ... separate products that **stack independently**; never one ambiguous **Subscribe** button. Fan subs: preset monthly tiers, Connect onboarding, fan-only posts + searchable fan room (not E2EE v1). Detail: **`docs/entitlements-matrix.md`**.
+4. **Planned ... Edge Pro + creator fan subs + add-ons** ... separate products that **stack independently**; never one ambiguous **Subscribe** button. Fan subs: **five** preset monthly tiers ($4.99–$99.99), Connect onboarding, fan-only posts + searchable fan room (not E2EE v1). Detail: **`docs/entitlements-matrix.md`**.
 
 **Engineering rules when this ships:**
 

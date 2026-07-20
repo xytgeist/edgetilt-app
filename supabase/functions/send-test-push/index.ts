@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const vapidPublicKey = Deno.env.get('WEB_PUSH_PUBLIC_KEY')
     const vapidPrivateKey = Deno.env.get('WEB_PUSH_PRIVATE_KEY')
-    const vapidSubject = Deno.env.get('WEB_PUSH_SUBJECT') || 'mailto:support@lvslotpro.com'
+    const vapidSubject = Deno.env.get('WEB_PUSH_SUBJECT') || 'mailto:support@edgetilt.com'
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.')
     }

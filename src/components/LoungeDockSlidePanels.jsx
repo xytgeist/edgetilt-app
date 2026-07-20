@@ -22,6 +22,11 @@ import {
   profileAvatarToneClass,
 } from '../features/profiles/profileGate.js'
 import {
+  copySupportEmailToClipboard,
+  supportMailtoHref,
+  SUPPORT_BILLING_NO_ACCESS_SUBJECT,
+} from '../features/legal/supportContact.js'
+import {
   formatLoungeSearchError,
   LOUNGE_SEARCH_MIN_CHARS,
   LOUNGE_SEARCH_MAX_CHARS,
@@ -232,6 +237,23 @@ export default function LoungeDockSlidePanels({
   const [passwordResetBusy, setPasswordResetBusy] = useState(false)
   const [passwordResetMessage, setPasswordResetMessage] = useState('')
   const [passwordResetError, setPasswordResetError] = useState('')
+  const [supportEmailCopyMessage, setSupportEmailCopyMessage] = useState('')
+
+  const onCopySupportEmail = useCallback(async () => {
+    setSupportEmailCopyMessage('')
+    try {
+      const ok = await copySupportEmailToClipboard()
+      setSupportEmailCopyMessage(ok ? 'Support email copied.' : 'Copy not available in this browser.')
+    } catch {
+      setSupportEmailCopyMessage('Could not copy email.')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!supportEmailCopyMessage) return undefined
+    const t = window.setTimeout(() => setSupportEmailCopyMessage(''), 3500)
+    return () => window.clearTimeout(t)
+  }, [supportEmailCopyMessage])
 
   useEffect(() => {
     if (panelScrollRefOut) panelScrollRefOut.current = panelScrollRef.current
@@ -1469,6 +1491,31 @@ export default function LoungeDockSlidePanels({
                     </div>
 
                     <div className="px-3.5 py-3">
+                      <div className="text-[15px] font-semibold text-zinc-100">Help &amp; support</div>
+                      <p className="mt-1 text-[12px] leading-snug text-zinc-500">
+                        Billing, access, bugs, and account help.
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <a
+                          href={supportMailtoHref()}
+                          className="inline-flex min-h-10 items-center py-1 text-[14px] font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                        >
+                          Email support
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => void onCopySupportEmail()}
+                          className="min-h-10 rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 text-[13px] font-semibold text-zinc-200 touch-manipulation transition-colors hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          Copy email
+                        </button>
+                      </div>
+                      {supportEmailCopyMessage ? (
+                        <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{supportEmailCopyMessage}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="px-3.5 py-3">
                       <div className="text-[15px] font-semibold text-zinc-100">Legal</div>
                       <div className="mt-2 flex flex-col gap-1 text-[14px] leading-snug">
                         <a
@@ -1539,6 +1586,17 @@ export default function LoungeDockSlidePanels({
                       {!settingsHasPaidMembership && !settingsViewerIsStaff ? (
                         <p className="mt-2 text-[12px] leading-snug text-zinc-500">
                           Unlock AP guides, calculators, and subscriber Lounge perks.
+                        </p>
+                      ) : null}
+                      {!settingsHasPaidMembership && !settingsViewerIsStaff ? (
+                        <p className="mt-2 text-[12px] leading-snug text-zinc-500">
+                          Paid but don&apos;t see access?{' '}
+                          <a
+                            href={supportMailtoHref({ subject: SUPPORT_BILLING_NO_ACCESS_SUBJECT })}
+                            className="font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
+                          >
+                            Contact support
+                          </a>
                         </p>
                       ) : null}
                     </div>

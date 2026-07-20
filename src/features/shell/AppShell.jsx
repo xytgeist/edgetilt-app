@@ -40,6 +40,7 @@ import LoungeAppSplash from '../../components/LoungeAppSplash.jsx'
 import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.js'
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
+import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
 import {
@@ -148,7 +149,7 @@ class TabErrorBoundary extends React.Component {
       `App tab crashed twice - please investigate.\n\nTimestamp: ${new Date().toISOString()}\n\nError:\n${errText}`,
     )
     // Open mail client
-    window.location.href = `mailto:operations@lvslotpro.com?subject=${subject}&body=${body}`
+    window.location.href = `mailto:${LEGAL_CONTACT_EMAIL}?subject=${subject}&body=${body}`
     // Clear strike counter so next visit starts fresh, then reload to Lounge
     sessionStorage.removeItem(TAB_ERROR_COUNT_KEY)
     setTimeout(() => window.location.reload(), 600)

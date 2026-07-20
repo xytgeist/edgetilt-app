@@ -10,7 +10,7 @@ Set in Supabase Dashboard → Edge Functions → Secrets (same VAPID keys as Off
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `WEB_PUSH_PUBLIC_KEY`
 - `WEB_PUSH_PRIVATE_KEY`
-- `WEB_PUSH_SUBJECT` (e.g. `mailto:support@lvslotpro.com`)
+- `WEB_PUSH_SUBJECT` (e.g. `mailto:support@edgetilt.com`)
 - **`LOUNGE_ACTIVITY_PUSH_SECRET`** — shared with Vault **`lounge_activity_push_http_secret`** (see migration)
 
 ## Deploy

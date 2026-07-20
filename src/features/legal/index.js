@@ -8,6 +8,11 @@ export {
   LEGAL_EFFECTIVE_DATE,
 } from './legalPolicyVersion.js'
 export {
+  copySupportEmailToClipboard,
+  supportMailtoHref,
+  SUPPORT_BILLING_NO_ACCESS_SUBJECT,
+} from './supportContact.js'
+export {
   recordLegalAcceptance,
   profileNeedsLegalAcceptance,
   shouldShowLegalAcceptanceModal,

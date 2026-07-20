@@ -57,11 +57,13 @@ function applyTargetEnvFromProcess(target) {
   const suffix = target === "production" ? "_PRODUCTION" : "_TEST";
   const url =
     process.env[`SUPABASE_URL${suffix}`]?.trim() ||
-    (target === "test" ? process.env.SUPABASE_URL?.trim() : "") ||
+    (target === "production"
+      ? process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim()
+      : process.env.SUPABASE_URL?.trim()) ||
     "";
   const key =
     process.env[`SUPABASE_SERVICE_ROLE_KEY${suffix}`]?.trim() ||
-    (target === "test" ? process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() : "") ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
     "";
   if (url) process.env.SUPABASE_URL = url.replace(/\/+$/, "");
   if (key) process.env.SUPABASE_SERVICE_ROLE_KEY = key;

@@ -24,10 +24,14 @@ const CF_R2_CACHE_CONTROL = "public, max-age=31536000, immutable";
  * Uses service-role bearer auth (server-to-server).
  * Returns the public URL, or null if R2 is not configured (503 → caller falls back to Supabase Storage).
  *
- * @param {{ supabaseUrl: string, serviceRoleKey: string, slug: string, filename: string, buffer: Buffer, contentType?: string }} opts
+ * @param {{ supabaseUrl: string, serviceRoleKey?: string, adminAccessToken?: string, slug: string, filename: string, buffer: Buffer, contentType?: string }} opts
  * @returns {Promise<string | null>}
  */
-async function uploadGuideAssetToR2({ supabaseUrl, serviceRoleKey, slug, filename, buffer, contentType = "image/webp" }) {
+async function uploadGuideAssetToR2({ supabaseUrl, serviceRoleKey, adminAccessToken, slug, filename, buffer, contentType = "image/webp" }) {
+  const bearer = String(adminAccessToken || serviceRoleKey || "").trim();
+  if (!bearer) {
+    throw new Error("guide-cf-r2-upload: missing admin session or service role for auth.");
+  }
   const edgeFnUrl = `${supabaseUrl}/functions/v1/guide-cf-r2-upload`;
   let mintRes;
   try {
@@ -35,7 +39,7 @@ async function uploadGuideAssetToR2({ supabaseUrl, serviceRoleKey, slug, filenam
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceRoleKey}`,
+        "Authorization": `Bearer ${bearer}`,
       },
       body: JSON.stringify({ slug, contentType, filename }),
     });
@@ -87,6 +91,8 @@ function decodeBase64Image(raw) {
  *   target?: "test" | "production" | null,
  *   writeRepo?: boolean,
  *   syncSupabase?: boolean,
+ *   adminAccessToken?: string | null,
+ *   edgeSupabaseUrl?: string | null,
  * }} options
  */
 export async function runSlotGuideIngest({
@@ -96,6 +102,8 @@ export async function runSlotGuideIngest({
   target = "test",
   writeRepo,
   syncSupabase = true,
+  adminAccessToken = null,
+  edgeSupabaseUrl = null,
 }) {
   const validated = validateIngestPayload(payload);
   if (!validated.ok) {
@@ -156,7 +164,8 @@ export async function runSlotGuideIngest({
     loadSupabaseEnv(target);
     const supabase = createSupabaseServiceClient(createClient);
     const { url, key: serviceRoleKey } = readSupabaseCredentials();
-    const supabaseUrl = url;
+    const supabaseUrl = String(edgeSupabaseUrl || url || "").trim().replace(/\/+$/, "");
+    const r2Auth = { supabaseUrl, adminAccessToken, serviceRoleKey };
 
     const existingThumbs = hasHero
       ? { guide: null, machine: null, resolved: null }
@@ -165,7 +174,8 @@ export async function runSlotGuideIngest({
     let heroPublicUrl = null;
     if (heroWebp) {
       heroPublicUrl = await uploadGuideAssetToR2({
-        supabaseUrl, serviceRoleKey, slug,
+        ...r2Auth,
+        slug,
         filename: "hero.webp", buffer: heroWebp, contentType: "image/webp",
       });
       if (!heroPublicUrl) {
@@ -176,7 +186,8 @@ export async function runSlotGuideIngest({
 
     for (const d of diagramsWebp) {
       let publicUrl = await uploadGuideAssetToR2({
-        supabaseUrl, serviceRoleKey, slug,
+        ...r2Auth,
+        slug,
         filename: d.filename, buffer: d.buffer, contentType: "image/webp",
       });
       if (!publicUrl) {

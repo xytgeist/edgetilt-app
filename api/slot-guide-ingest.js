@@ -11,7 +11,8 @@
  *
  * Auth: Authorization: Bearer <supabase-session-token> header.
  *   Token is validated against the Supabase project for `body.target`; caller must have
- *   profiles.role = 'admin' on that project. No separate ingest secret needed.
+ *   profiles.role = 'admin' on that project. The same token mints R2 upload URLs (no Vercel
+ *   service-role match required for guide-cf-r2-upload). DB upsert still uses service role.
  *
  * Supabase: set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY on Vercel (test ingest), or
  *   SUPABASE_URL_PRODUCTION + SUPABASE_SERVICE_ROLE_KEY_PRODUCTION when target=production.
@@ -74,7 +75,7 @@ async function checkAdminJwt(req, target) {
     return { ok: false, status: 403, error: "Admin role required." };
   }
 
-  return { ok: true };
+  return { ok: true, token, supabaseUrl: resolved.url };
 }
 
 export default async function handler(req, res) {
@@ -123,6 +124,8 @@ export default async function handler(req, res) {
       target,
       writeRepo,
       syncSupabase: body.syncSupabase !== false,
+      adminAccessToken: auth.token,
+      edgeSupabaseUrl: auth.supabaseUrl,
     });
     if (!out.ok) {
       res.status(out.status).json({ errors: out.errors });

@@ -16,6 +16,7 @@ import {
   promotePayableCommissions,
   voidAffiliateCommissionsForRefund,
 } from '../_shared/affiliateLedger.ts'
+import { sendBillingCheckoutAdminAlert } from '../_shared/billingAdminAlert.ts'
 
 function parseReplaceSubscriptionIds(session: Stripe.Checkout.Session): string[] {
   const raw =
@@ -375,6 +376,13 @@ Deno.serve(async (req) => {
         await commissionFromCheckoutSession(admin, stripe, session, userId)
         await promotePayableCommissions(admin)
 
+        await sendBillingCheckoutAdminAlert(admin, {
+          session,
+          userId,
+          productSlug,
+          kind: 'lifetime',
+        })
+
         return jsonResponse({ ok: true })
       }
 
@@ -415,6 +423,21 @@ Deno.serve(async (req) => {
 
       await commissionFromCheckoutSession(admin, stripe, session, resolvedUserId)
       await promotePayableCommissions(admin)
+
+      const replaceIdsForAlert = parseReplaceSubscriptionIds(session)
+      const kind =
+        replaceIdsForAlert.length > 0 ||
+        session.metadata?.replaces_stripe_subscription_id?.trim()
+          ? 'plan_change'
+          : 'new_checkout'
+
+      await sendBillingCheckoutAdminAlert(admin, {
+        session,
+        userId: resolvedUserId,
+        productSlug,
+        kind,
+        stripeSubscriptionId: subscriptionId,
+      })
     }
 
     if (event.type === 'invoice.paid') {

@@ -107,6 +107,8 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
 | **`STRIPE_CHECKOUT_DEFAULT_ORIGIN`** | Optional fallback if `Origin` header missing (e.g. `https://edgetilt.com`) |
 
+| **`BILLING_ADMIN_ALERT_EMAILS`** | Comma-separated inbox(es) for **new Checkout** alerts (new sub, plan change, Lifetime). Requires **`RESEND_API_KEY`** (same as affiliate tax email). Optional **`BILLING_ADMIN_ALERT_FROM`** overrides From. |
+
 **Migrations through `20260701160000_user_subscriptions_price_interval.sql`** (display names **`20260701150000`**, starter/lifetime **`20260701120000`**–**`140000`**) before interval UX works end-to-end. Full test → prod checklist: **`docs/stripe-billing-test-to-prod-handoff.md`**.
 
 

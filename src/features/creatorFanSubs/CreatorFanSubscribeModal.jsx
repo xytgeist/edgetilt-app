@@ -7,6 +7,7 @@ import {
   profileAvatarInitials,
   profileAvatarToneClass,
 } from '../profiles/profileGate.js'
+import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 
 /**
  * @param {{
@@ -59,7 +60,7 @@ export default function CreatorFanSubscribeModal({
 
   const body = (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
+      className={`fixed inset-0 z-[${Z_APP_MODAL}] flex items-end justify-center sm:items-center sm:p-4`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="creator-fan-subscribe-title"

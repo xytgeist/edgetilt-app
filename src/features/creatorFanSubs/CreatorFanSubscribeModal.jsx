@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { formatFanTierLabel } from './fanSubTiers.js'
 import { creatorFanOfferHeadline } from './fanSubOffer.js'
 import { startCreatorFanCheckout } from './creatorFanSubsApi.js'
+import { openBillingPortal } from '../billing/stripeBillingApi.js'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -112,6 +113,18 @@ export default function CreatorFanSubscribeModal({
     }
   }
 
+  const onUnsubscribe = async () => {
+    if (!supabaseClient || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await openBillingPortal(supabaseClient)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open billing portal.')
+      setBusy(false)
+    }
+  }
+
   const body = (
     <div
       data-creator-fan-subscribe-modal
@@ -165,7 +178,10 @@ export default function CreatorFanSubscribeModal({
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pb-4 pt-5">
           {alreadySubscribed ? (
-            <p className="text-[15px] leading-relaxed text-emerald-300/95">
+            <p
+              data-creator-fan-subscribed-thanks
+              className="text-[15px] leading-relaxed text-emerald-300/95"
+            >
               You are already supporting this creator. Thanks for being here.
             </p>
           ) : (
@@ -235,6 +251,14 @@ export default function CreatorFanSubscribeModal({
                   Turn off alerts
                 </button>
               ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onUnsubscribe()}
+                className="mb-3 flex min-h-11 w-full items-center justify-center rounded-full border border-red-800/70 px-4 text-[15px] font-semibold text-red-300 touch-manipulation hover:bg-red-950/35 disabled:opacity-50"
+              >
+                {busy ? '…' : 'Unsubscribe'}
+              </button>
               <button
                 type="button"
                 disabled={busy}

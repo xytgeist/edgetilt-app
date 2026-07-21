@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { formatFanTierLabel } from './fanSubTiers.js'
 import { creatorFanOfferHeadline } from './fanSubOffer.js'
 import { startCreatorFanCheckout } from './creatorFanSubsApi.js'
-import CreatorFanSubscribeRubberButton from './CreatorFanSubscribeRubberButton.jsx'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -175,18 +174,19 @@ export default function CreatorFanSubscribeModal({
                 type="button"
                 disabled={busy || postAlertsEnabled}
                 onClick={() => void onAlertsOnly()}
-                data-creator-fan-rubber-secondary
-                className="creator-fan-rubber-secondary touch-manipulation"
+                className="min-h-11 rounded-xl border border-zinc-700/90 px-4 text-[14px] font-semibold text-zinc-200 hover:bg-zinc-900 disabled:opacity-50 touch-manipulation"
               >
                 {postAlertsEnabled ? 'Alerts on' : 'Alerts only'}
               </button>
-              <CreatorFanSubscribeRubberButton
-                label={busy ? '…' : 'Subscribe'}
+              <button
+                type="button"
                 disabled={busy}
                 onClick={() => void onSubscribe()}
                 title={`Paid fan subscription · ${tierLabel}`}
-                bellAlertsActive={postAlertsEnabled}
-              />
+                className="min-h-11 rounded-xl bg-orange-500 px-5 text-[14px] font-bold text-zinc-950 hover:bg-orange-400 disabled:opacity-50 touch-manipulation"
+              >
+                {busy ? '…' : 'Subscribe'}
+              </button>
             </>
           )}
         </div>

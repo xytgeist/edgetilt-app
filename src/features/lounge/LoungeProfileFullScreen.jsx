@@ -72,7 +72,7 @@ import {
   fetchCreatorFanOffer,
 } from '../creatorFanSubs/creatorFanSubsApi.js'
 import CreatorFanSubscribeModal from '../creatorFanSubs/CreatorFanSubscribeModal.jsx'
-import CreatorFanSubscribeRubberButton from '../creatorFanSubs/CreatorFanSubscribeRubberButton.jsx'
+import { formatFanTierLabel } from '../creatorFanSubs/fanSubTiers.js'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
@@ -2023,11 +2023,7 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4">
-            <div
-              className={`pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14${
-                !isOwnProfile && viewerUserId && creatorFanOffer ? ' pb-10' : ''
-              }`}
-            >
+            <div className="pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
               <div className="relative shrink-0 pointer-events-auto">
                 <div className="flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
                   {profile?.avatar_url ? (
@@ -2070,7 +2066,7 @@ export default function LoungeProfileFullScreen({
                 ) : null}
               </div>
               {!isOwnProfile && viewerUserId ? (
-                <div className="pointer-events-auto relative mb-1 shrink-0">
+                <div className="pointer-events-auto mb-1 shrink-0">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                   <button
                     type="button"
@@ -2119,18 +2115,38 @@ export default function LoungeProfileFullScreen({
                       </svg>
                     </button>
                   ) : null}
-                  {!creatorFanOffer ? (
                   <button
                     type="button"
                     disabled={socialBusy}
-                    onClick={() => void toggleSubscribe()}
-                    title="Notify me about their posts"
+                    onClick={() => {
+                      if (creatorFanOffer) supportCreatorFan()
+                      else void toggleSubscribe()
+                    }}
+                    title={
+                      creatorFanOffer
+                        ? hasCreatorFanSub
+                          ? 'View your fan subscription'
+                          : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
+                        : 'Notify me about their posts'
+                    }
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border touch-manipulation disabled:opacity-50 ${
-                      isSubscribed
-                        ? 'border-cyan-500/60 bg-cyan-950/40 text-cyan-200'
-                        : 'border-zinc-600 bg-zinc-900 text-zinc-300 hover:border-zinc-500'
+                      creatorFanOffer
+                        ? isSubscribed || hasCreatorFanSub
+                          ? 'border-orange-500/50 bg-orange-950/30 text-orange-200'
+                          : 'border-orange-500/70 bg-orange-500 text-zinc-950 hover:bg-orange-400'
+                        : isSubscribed
+                          ? 'border-cyan-500/60 bg-cyan-950/40 text-cyan-200'
+                          : 'border-zinc-600 bg-zinc-900 text-zinc-300 hover:border-zinc-500'
                     }`}
-                    aria-label={isSubscribed ? 'Subscribed to notifications' : 'Subscribe to notifications'}
+                    aria-label={
+                      creatorFanOffer
+                        ? hasCreatorFanSub
+                          ? 'Fan subscription and post alerts'
+                          : 'Subscribe or turn on post alerts'
+                        : isSubscribed
+                          ? 'Subscribed to notifications'
+                          : 'Subscribe to notifications'
+                    }
                   >
                     <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" aria-hidden>
                       <path
@@ -2142,7 +2158,6 @@ export default function LoungeProfileFullScreen({
                       <path d="M7.5 14.5h5a2 2 0 01-4 0z" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
                     </svg>
                   </button>
-                  ) : null}
                   {/* Block / Unblock */}
                   <button
                     type="button"
@@ -2163,20 +2178,6 @@ export default function LoungeProfileFullScreen({
                     </svg>
                   </button>
                   </div>
-                  {creatorFanOffer ? (
-                    <CreatorFanSubscribeRubberButton
-                      label={hasCreatorFanSub ? 'Supporting' : 'Subscribe'}
-                      disabled={false}
-                      onClick={() => supportCreatorFan()}
-                      title={
-                        hasCreatorFanSub
-                          ? 'View your fan subscription'
-                          : 'Subscribe or turn on post alerts'
-                      }
-                      bellAlertsActive={isSubscribed}
-                      className="absolute right-0 top-full z-10 mt-2"
-                    />
-                  ) : null}
                 </div>
               ) : null}
             </div>

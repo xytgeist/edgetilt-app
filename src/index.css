@@ -2914,6 +2914,37 @@ html.light [data-settings-account] [data-settings-creators-i-support] .text-zinc
   color: #71717a !important;
 }
 
+/* Settings → Memberships + Subscriptions - light mode (match Account card) */
+html.light [data-settings-memberships],
+html.light [data-settings-subscriptions] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-settings-memberships] .divide-zinc-800\/90 > * + *,
+html.light [data-settings-subscriptions] .divide-zinc-800\/90 > * + * {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-settings-memberships] .text-zinc-100,
+html.light [data-settings-subscriptions] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-settings-memberships] .text-zinc-500,
+html.light [data-settings-subscriptions] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-settings-memberships] .bg-cyan-500\/20 {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+}
+html.light [data-settings-memberships] .text-cyan-200 {
+  color: #1d4ed8 !important;
+}
+html.light [data-settings-memberships] .bg-fuchsia-500\/20 {
+  background-color: rgba(192, 38, 211, 0.12) !important;
+}
+html.light [data-settings-memberships] .text-fuchsia-200 {
+  color: #a21caf !important;
+}
+
 /* Settings → Help & support - light mode */
 html.light [data-settings-support] .text-zinc-100 {
   color: #18181b !important;

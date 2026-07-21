@@ -72,6 +72,7 @@ import {
   fetchCreatorFanOffer,
 } from '../creatorFanSubs/creatorFanSubsApi.js'
 import CreatorFanSubscribeModal from '../creatorFanSubs/CreatorFanSubscribeModal.jsx'
+import OwnProfileFanMonetizationCta from '../creatorFanSubs/OwnProfileFanMonetizationCta.jsx'
 import { formatFanTierLabel } from '../creatorFanSubs/fanSubTiers.js'
 import LoungeProfileOverflowMenu from './LoungeProfileOverflowMenu.jsx'
 import {
@@ -513,6 +514,8 @@ export default function LoungeProfileFullScreen({
   /** One-shot restore after caption @/# navigation (tab + scroll). */
   navRestore = null,
   onNavRestoreApplied = null,
+  /** Open Settings → Subscriptions → Enable fan subscriptions (own profile CTA). */
+  onOpenFanSubscriptionSettings = null,
 }) {
   const [tab, setTab] = useState('posts')
   const [adminRoleBusy, setAdminRoleBusy] = useState(false)
@@ -2369,6 +2372,17 @@ export default function LoungeProfileFullScreen({
                 </p>
               )}
             </div>
+
+            {isOwnProfile &&
+            !showOwnEditControls &&
+            typeof onOpenFanSubscriptionSettings === 'function' &&
+            supabaseClient ? (
+              <OwnProfileFanMonetizationCta
+                supabaseClient={supabaseClient}
+                profileHandle={profile?.handle}
+                onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
+              />
+            ) : null}
           </div>
 
           {!showOwnEditControls ? (

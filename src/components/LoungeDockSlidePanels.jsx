@@ -28,6 +28,7 @@ import {
 } from '../features/legal/supportContact.js'
 import CreatorFanMonetizationPanel from '../features/creatorFanSubs/CreatorFanMonetizationPanel.jsx'
 import CreatorFanSupportedCreatorsPanel from '../features/creatorFanSubs/CreatorFanSupportedCreatorsPanel.jsx'
+import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembershipPanel.jsx'
 import {
   formatLoungeSearchError,
   LOUNGE_SEARCH_MIN_CHARS,
@@ -200,6 +201,8 @@ export default function LoungeDockSlidePanels({
   const panelTitleBarRef = useRef(null)
   const settingsNotificationsSectionRef = useRef(null)
   const settingsAccountSectionRef = useRef(null)
+  const settingsMembershipSectionRef = useRef(null)
+  const settingsSubscriptionsSectionRef = useRef(null)
   const [panelW, setPanelW] = useState(300)
   const [tx, setTx] = useState(0)
   const [txTransition, setTxTransition] = useState(false)
@@ -229,6 +232,7 @@ export default function LoungeDockSlidePanels({
 
   const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
+  const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
   const [adminUtilsSettingsOpen, setAdminUtilsSettingsOpen] = useState(false)
   const [currentTheme, setCurrentTheme] = useState(() => getTheme())
@@ -282,6 +286,7 @@ export default function LoungeDockSlidePanels({
     if (openPanel !== 'settings') {
       setNotificationsSettingsOpen(false)
       setAccountSettingsOpen(false)
+      setFanMonetizationSettingsOpen(false)
       setMenuLayoutSettingsOpen(false)
       setAdminUtilsSettingsOpen(false)
       setIosPwaHelpOpen(false)
@@ -331,6 +336,42 @@ export default function LoungeDockSlidePanels({
     scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
     onSettingsFocusSectionHandled?.()
   }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
+
+  useLayoutEffect(() => {
+    if (openPanel !== 'settings' || settingsFocusSection !== 'memberships') return
+    const scroller = panelScrollRef.current
+    const section = settingsMembershipSectionRef.current
+    if (!scroller || !section) return
+    const top = section.offsetTop - 8
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+    onSettingsFocusSectionHandled?.()
+  }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
+
+  useLayoutEffect(() => {
+    if (openPanel !== 'settings') return
+    const fanSection =
+      settingsFocusSection === 'subscriptions-fan' ||
+      settingsFocusSection === 'fan' ||
+      settingsFocusSection === 'subscriptions'
+    if (!fanSection) return
+    if (settingsFocusSection === 'subscriptions-fan' || settingsFocusSection === 'fan') {
+      setFanMonetizationSettingsOpen(true)
+    }
+    const scroller = panelScrollRef.current
+    const section = settingsSubscriptionsSectionRef.current
+    if (!scroller || !section) return
+    const top = section.offsetTop - 8
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+    onSettingsFocusSectionHandled?.()
+  }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
+
+  useEffect(() => {
+    if (openPanel !== 'settings' || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('settings') === 'fan') {
+      setFanMonetizationSettingsOpen(true)
+    }
+  }, [openPanel])
 
   const settingsMembershipLabel = useMemo(() => {
     if (settingsViewerIsStaff) return 'Staff'
@@ -1354,6 +1395,73 @@ export default function LoungeDockSlidePanels({
               </div>
             </div>
 
+            {showAccountSection ? (
+              <div ref={settingsMembershipSectionRef} className="mt-6 border-t border-zinc-800 pt-5">
+                <span className="block text-[15px] font-semibold text-zinc-100">Memberships</span>
+                <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                  Edge tools and platform access you subscribe to.
+                </span>
+                <SettingsMembershipPanel
+                  membershipLabel={settingsMembershipLabel}
+                  viewerIsStaff={settingsViewerIsStaff}
+                  hasPaidMembership={settingsHasPaidMembership}
+                  hasActiveSubscription={settingsHasActiveSubscription}
+                  onOpenBillingManage={settingsOnOpenBillingManage}
+                />
+              </div>
+            ) : null}
+
+            {settingsSupabaseClient ? (
+              <div ref={settingsSubscriptionsSectionRef} className="mt-6 border-t border-zinc-800 pt-5">
+                <span className="block text-[15px] font-semibold text-zinc-100">Subscriptions</span>
+                <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                  Creators you support and fan monetization if you publish.
+                </span>
+                <div
+                  data-settings-subscriptions
+                  className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90"
+                >
+                  <CreatorFanSupportedCreatorsPanel supabaseClient={settingsSupabaseClient} />
+                  <div>
+                    <button
+                      type="button"
+                      aria-expanded={fanMonetizationSettingsOpen}
+                      onClick={() => setFanMonetizationSettingsOpen((open) => !open)}
+                      className="flex min-h-12 w-full items-start justify-between gap-3 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold text-zinc-100">
+                          Enable fan subscriptions
+                        </span>
+                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                          Preset monthly tiers, fan-only posts, and a private fan group chat.
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+                          fanMonetizationSettingsOpen ? 'rotate-180' : 'rotate-0'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                          <path
+                            d="M6 9l6 6 6-6"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                    {fanMonetizationSettingsOpen ? (
+                      <CreatorFanMonetizationPanel supabaseClient={settingsSupabaseClient} embedded />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-6 border-t border-zinc-800 pt-5" data-settings-support>
               <span className="block text-[15px] font-semibold text-zinc-100">Help &amp; support</span>
               <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
@@ -1378,10 +1486,6 @@ export default function LoungeDockSlidePanels({
                 <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{supportEmailCopyMessage}</p>
               ) : null}
             </div>
-
-            {settingsSupabaseClient ? (
-              <CreatorFanMonetizationPanel supabaseClient={settingsSupabaseClient} />
-            ) : null}
 
             <div className="mt-6 border-t border-zinc-800 pt-5">
               <button
@@ -1435,7 +1539,7 @@ export default function LoungeDockSlidePanels({
                   <span className="min-w-0">
                     <span className="block text-[15px] font-semibold text-zinc-100">Account</span>
                     <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                      Profile, sign-in email, password, and membership.
+                      Profile, sign-in email, password, and legal.
                     </span>
                   </span>
                   <span
@@ -1556,60 +1660,6 @@ export default function LoungeDockSlidePanels({
                         </a>
                       </div>
                     </div>
-
-                    <div className="px-3.5 py-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[15px] font-semibold text-zinc-100">Membership</span>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
-                            settingsViewerIsStaff
-                              ? 'bg-fuchsia-500/20 text-fuchsia-200'
-                              : settingsHasActiveSubscription
-                                ? 'bg-cyan-500/20 text-cyan-200'
-                                : 'bg-zinc-700/80 text-zinc-300'
-                          }`}
-                        >
-                          {settingsMembershipLabel}
-                        </span>
-                      </div>
-                      {settingsViewerIsStaff ? null : settingsHasPaidMembership ? (
-                        <button
-                          type="button"
-                          onClick={() => settingsOnOpenBillingManage?.()}
-                          className="mt-3 min-h-10 w-full rounded-xl border border-cyan-500/35 bg-cyan-950/25 px-3 text-[13px] font-semibold text-cyan-100 touch-manipulation hover:bg-cyan-950/40 [-webkit-tap-highlight-color:transparent]"
-                        >
-                          Manage membership
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => settingsOnOpenBillingManage?.()}
-                          className="mt-3 min-h-10 w-full rounded-xl border border-zinc-700/80 bg-zinc-900 px-3 text-[13px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800/80 [-webkit-tap-highlight-color:transparent]"
-                        >
-                          View Edge AP Slots plans
-                        </button>
-                      )}
-                      {!settingsHasPaidMembership && !settingsViewerIsStaff ? (
-                        <p className="mt-2 text-[12px] leading-snug text-zinc-500">
-                          Unlock AP guides, calculators, and subscriber Lounge perks.
-                        </p>
-                      ) : null}
-                      {!settingsHasPaidMembership && !settingsViewerIsStaff ? (
-                        <p className="mt-2 text-[12px] leading-snug text-zinc-500">
-                          Paid but don&apos;t see access?{' '}
-                          <a
-                            href={supportMailtoHref({ subject: SUPPORT_BILLING_NO_ACCESS_SUBJECT })}
-                            className="font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation"
-                          >
-                            Contact support
-                          </a>
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {settingsSupabaseClient ? (
-                      <CreatorFanSupportedCreatorsPanel supabaseClient={settingsSupabaseClient} />
-                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -7237,9 +7237,20 @@ export default function SocialFeed({
     [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible],
   )
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('settings') !== 'fan') return
+    onLoungeOpenSettingsSection('subscriptions-fan')
+  }, [onLoungeOpenSettingsSection])
+
   const onLoungeSettingsFocusSectionHandled = useCallback(() => {
     setLoungeSettingsFocusSection(null)
   }, [])
+
+  const onOpenFanSubscriptionSettings = useCallback(() => {
+    onLoungeOpenSettingsSection('subscriptions-fan')
+  }, [onLoungeOpenSettingsSection])
 
   const onLoungeDockCompose = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
@@ -16047,6 +16058,7 @@ export default function SocialFeed({
           navSnapshotRef={profileNavSnapshotRef}
           navRestore={profileNavRestore}
           onNavRestoreApplied={onProfileNavRestoreApplied}
+          onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
         />
       ) : null}
 
@@ -16084,6 +16096,7 @@ export default function SocialFeed({
               viewerIsAdmin={loungeViewerIsAdmin}
               onAdminSetProfileRole={handleAdminSetProfileRole}
               onViewerFollowChange={syncLoungeViewerFollowState}
+              onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
             />
           </div>
         )

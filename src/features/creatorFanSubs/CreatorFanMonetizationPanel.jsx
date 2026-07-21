@@ -29,7 +29,13 @@ function clearConnectQueryParams() {
   window.history.replaceState(window.history.state, '', next)
 }
 
-export default function CreatorFanMonetizationPanel({ supabaseClient }) {
+/**
+ * @param {{
+ *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
+ *   embedded?: boolean,
+ * }} props
+ */
+export default function CreatorFanMonetizationPanel({ supabaseClient, embedded = false }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -179,21 +185,14 @@ export default function CreatorFanMonetizationPanel({ supabaseClient }) {
   const canGoLive = connectComplete && (offerComplete || draftOfferComplete)
   const showOfferGap = enabled && !offerComplete
 
-  return (
-    <div className="mt-6 border-t border-zinc-800 pt-5" data-settings-fan-monetization>
-      <span className="block text-[15px] font-semibold text-zinc-100">Fan subscriptions</span>
-      <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-        Preset monthly tiers, 70% to you / 30% platform. Fan-only posts and a private fan group chat.
-      </span>
-
-      {loading ? (
-        <p className="mt-3 text-[13px] text-zinc-500">Loading…</p>
-      ) : missingHandle ? (
-        <p className="mt-3 text-[13px] leading-relaxed text-amber-200/90">
-          Set a profile handle first, then you can connect payouts and choose a tier.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-4">
+  const body = loading ? (
+    <p className="text-[13px] text-zinc-500">Loading…</p>
+  ) : missingHandle ? (
+    <p className="text-[13px] leading-relaxed text-amber-200/90">
+      Set a profile handle first, then you can connect payouts and choose a tier.
+    </p>
+  ) : (
+    <div className="space-y-4">
           {showOfferGap ? (
             <p className="rounded-lg border border-amber-600/40 bg-amber-950/30 px-3 py-2 text-[13px] leading-relaxed text-amber-100/95">
               Your offer is incomplete … fans cannot subscribe until you save the form below.
@@ -279,13 +278,35 @@ export default function CreatorFanMonetizationPanel({ supabaseClient }) {
               </button>
             ) : null}
           </div>
-        </div>
-      )}
+    </div>
+  )
 
+  const footer = (
+    <>
       {statusMessage ? (
         <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{statusMessage}</p>
       ) : null}
       {error ? <p className="mt-2 text-[12px] leading-snug text-red-300/95">{error}</p> : null}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="px-3.5 py-3" data-settings-fan-monetization>
+        {body}
+        {footer}
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6 border-t border-zinc-800 pt-5" data-settings-fan-monetization>
+      <span className="block text-[15px] font-semibold text-zinc-100">Fan subscriptions</span>
+      <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+        Preset monthly tiers, 70% to you / 30% platform. Fan-only posts and a private fan group chat.
+      </span>
+      <div className="mt-3">{body}</div>
+      {footer}
     </div>
   )
 }

@@ -2082,7 +2082,7 @@ export default function LoungeProfileFullScreen({
                     >
                       {hasCreatorFanSub
                         ? 'Supporting'
-                        : `Support ${handle} · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`}
+                        : `Support · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`}
                     </button>
                   ) : null}
                   {onOpenChatWithUser && profileUserId ? (

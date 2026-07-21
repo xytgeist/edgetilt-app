@@ -536,6 +536,8 @@ export default function LoungeProfileFullScreen({
   const [socialBusy, setSocialBusy] = useState(false)
   const [creatorFanOffer, setCreatorFanOffer] = useState(null)
   const [hasCreatorFanSub, setHasCreatorFanSub] = useState(false)
+  const [fanSubCancelAtPeriodEnd, setFanSubCancelAtPeriodEnd] = useState(false)
+  const [fanSubPeriodEnd, setFanSubPeriodEnd] = useState(/** @type {string | null} */ (null))
   const [fanSubscribeModalOpen, setFanSubscribeModalOpen] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
   const [locationDraft, setLocationDraft] = useState('')
@@ -1279,6 +1281,8 @@ export default function LoungeProfileFullScreen({
     if (!open || !panelVisible || !profileUserId || isOwnProfile) {
       setCreatorFanOffer(null)
       setHasCreatorFanSub(false)
+      setFanSubCancelAtPeriodEnd(false)
+      setFanSubPeriodEnd(null)
       return
     }
     try {
@@ -1286,17 +1290,24 @@ export default function LoungeProfileFullScreen({
       setCreatorFanOffer(offer)
       if (!viewerUserId || !offer) {
         setHasCreatorFanSub(false)
+        setFanSubCancelAtPeriodEnd(false)
+        setFanSubPeriodEnd(null)
         return
       }
       const { data, error } = await supabaseClient.rpc('get_my_creator_fan_entitlements')
       if (error) return
       const key = `creator-fan:${profileUserId}`
       const grant = data?.[key]
-      const activePaidFan = Boolean(grant?.active) && !Boolean(grant?.cancel_at_period_end)
-      setHasCreatorFanSub(activePaidFan)
+      setHasCreatorFanSub(Boolean(grant?.active))
+      setFanSubCancelAtPeriodEnd(Boolean(grant?.cancel_at_period_end))
+      setFanSubPeriodEnd(
+        typeof grant?.current_period_end === 'string' ? grant.current_period_end : null,
+      )
     } catch {
       setCreatorFanOffer(null)
       setHasCreatorFanSub(false)
+      setFanSubCancelAtPeriodEnd(false)
+      setFanSubPeriodEnd(null)
     }
   }, [open, panelVisible, profileUserId, isOwnProfile, viewerUserId, supabaseClient])
 
@@ -2753,6 +2764,8 @@ export default function LoungeProfileFullScreen({
         supabaseClient={supabaseClient}
         offer={creatorFanOffer}
         alreadySubscribed={hasCreatorFanSub}
+        fanCancelAtPeriodEnd={fanSubCancelAtPeriodEnd}
+        fanCurrentPeriodEnd={fanSubPeriodEnd}
         postAlertsEnabled={isSubscribed}
         onEnablePostAlerts={enableProfilePostAlertsOnly}
         onDisablePostAlerts={toggleSubscribe}

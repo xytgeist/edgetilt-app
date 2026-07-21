@@ -10,6 +10,14 @@ import {
 } from '../profiles/profileGate.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 
+/** @param {string | null | undefined} iso */
+function formatFanSubAccessThrough(iso) {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 /**
  * @param {{
  *   open: boolean,
@@ -17,6 +25,8 @@ import { Z_APP_MODAL } from '../../constants/appZIndex.js'
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   offer: Record<string, unknown> | null,
  *   alreadySubscribed?: boolean,
+ *   fanCancelAtPeriodEnd?: boolean,
+ *   fanCurrentPeriodEnd?: string | null,
  *   postAlertsEnabled?: boolean,
  *   onEnablePostAlerts?: () => void | Promise<void>,
  *   onDisablePostAlerts?: () => void | Promise<void>,
@@ -28,6 +38,8 @@ export default function CreatorFanSubscribeModal({
   supabaseClient,
   offer,
   alreadySubscribed = false,
+  fanCancelAtPeriodEnd = false,
+  fanCurrentPeriodEnd = null,
   postAlertsEnabled = false,
   onEnablePostAlerts,
   onDisablePostAlerts,
@@ -70,6 +82,8 @@ export default function CreatorFanSubscribeModal({
   const posts = String(offer.offer_private_posts || '').trim()
   const chat = String(offer.offer_fan_chat || '').trim()
   const creatorUserId = String(offer.creator_user_id || '')
+  const fanAccessThroughLabel = formatFanSubAccessThrough(fanCurrentPeriodEnd)
+  const fanPendingCancel = alreadySubscribed && fanCancelAtPeriodEnd
 
   const onSubscribe = async () => {
     if (!supabaseClient || !creatorUserId || busy || alreadySubscribed) return
@@ -177,12 +191,24 @@ export default function CreatorFanSubscribeModal({
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pb-4 pt-5">
           {alreadySubscribed ? (
-            <p
-              data-creator-fan-subscribed-thanks
-              className="text-[15px] leading-relaxed text-emerald-300/95"
-            >
-              You are already supporting this creator. Thanks for being here.
-            </p>
+            <div data-creator-fan-subscribed-thanks className="space-y-2">
+              {fanPendingCancel ? (
+                <>
+                  <p className="text-[15px] font-semibold leading-relaxed text-zinc-100">
+                    {fanAccessThroughLabel
+                      ? `You are subscribed through ${fanAccessThroughLabel}.`
+                      : 'Your subscription is set to cancel at the end of the current billing period.'}
+                  </p>
+                  <p className="text-[14px] leading-relaxed text-zinc-400">
+                    Fan access and perks stay active until then. Thanks for supporting this creator.
+                  </p>
+                </>
+              ) : (
+                <p className="text-[15px] leading-relaxed text-emerald-300/95">
+                  You are already supporting this creator. Thanks for being here.
+                </p>
+              )}
+            </div>
           ) : (
             <>
               <p className="text-[17px] font-bold text-zinc-100">{headline}</p>
@@ -250,14 +276,16 @@ export default function CreatorFanSubscribeModal({
                   Turn off alerts
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void onUnsubscribe()}
-                className="mb-3 flex min-h-11 w-full items-center justify-center rounded-full border border-red-800/70 px-4 text-[15px] font-semibold text-red-300 touch-manipulation hover:bg-red-950/35 disabled:opacity-50"
-              >
-                {busy ? '…' : 'Cancel Subscription'}
-              </button>
+              {!fanPendingCancel ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onUnsubscribe()}
+                  className="mb-3 flex min-h-11 w-full items-center justify-center rounded-full border border-red-800/70 px-4 text-[15px] font-semibold text-red-300 touch-manipulation hover:bg-red-950/35 disabled:opacity-50"
+                >
+                  {busy ? '…' : 'Cancel Subscription'}
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={busy}

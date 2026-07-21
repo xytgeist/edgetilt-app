@@ -3000,6 +3000,15 @@ html.light [data-creator-fan-subscribe-sheet] .bg-zinc-800 {
 html.light [data-creator-fan-subscribe-sheet] [data-creator-fan-subscribed-thanks] {
   color: #18181b !important;
 }
+html.light [data-creator-fan-subscribe-sheet] [data-creator-fan-subscribed-thanks] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-creator-fan-subscribe-sheet] [data-creator-fan-subscribed-thanks] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-creator-fan-subscribe-sheet] [data-creator-fan-subscribed-thanks] .text-emerald-300\/95 {
+  color: #18181b !important;
+}
 html.light [data-creator-fan-subscribe-sheet] .border-red-800\/70 {
   border-color: rgba(185, 28, 28, 0.45) !important;
 }

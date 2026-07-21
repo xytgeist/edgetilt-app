@@ -94,6 +94,28 @@ const VERTICAL_BEATS_HORIZONTAL = 1.52
  * Search tab: `postCardProps` is the same shape as profile/feed `LoungePostArticle` handlers (without
  * `repostMenuScrollRootRef`); this component injects `repostMenuScrollRootRef={panelScrollRef}`.
  */
+
+function SettingsSectionChevron({ open }) {
+  return (
+    <span
+      aria-hidden
+      className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+        open ? 'rotate-180' : 'rotate-0'
+      }`}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+        <path
+          d="M6 9l6 6 6-6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  )
+}
+
 export default function LoungeDockSlidePanels({
   openPanel,
   onClose,
@@ -232,6 +254,11 @@ export default function LoungeDockSlidePanels({
 
   const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
+  const [appearanceSettingsOpen, setAppearanceSettingsOpen] = useState(false)
+  const [autoplaySettingsOpen, setAutoplaySettingsOpen] = useState(false)
+  const [helpSupportSettingsOpen, setHelpSupportSettingsOpen] = useState(false)
+  const [membershipsSettingsOpen, setMembershipsSettingsOpen] = useState(false)
+  const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
   const [adminUtilsSettingsOpen, setAdminUtilsSettingsOpen] = useState(false)
@@ -286,6 +313,11 @@ export default function LoungeDockSlidePanels({
     if (openPanel !== 'settings') {
       setNotificationsSettingsOpen(false)
       setAccountSettingsOpen(false)
+      setAppearanceSettingsOpen(false)
+      setAutoplaySettingsOpen(false)
+      setHelpSupportSettingsOpen(false)
+      setMembershipsSettingsOpen(false)
+      setSubscriptionsSettingsOpen(false)
       setFanMonetizationSettingsOpen(false)
       setMenuLayoutSettingsOpen(false)
       setAdminUtilsSettingsOpen(false)
@@ -339,6 +371,7 @@ export default function LoungeDockSlidePanels({
 
   useLayoutEffect(() => {
     if (openPanel !== 'settings' || settingsFocusSection !== 'memberships') return
+    setMembershipsSettingsOpen(true)
     const scroller = panelScrollRef.current
     const section = settingsMembershipSectionRef.current
     if (!scroller || !section) return
@@ -354,6 +387,7 @@ export default function LoungeDockSlidePanels({
       settingsFocusSection === 'fan' ||
       settingsFocusSection === 'subscriptions'
     if (!fanSection) return
+    setSubscriptionsSettingsOpen(true)
     if (settingsFocusSection === 'subscriptions-fan' || settingsFocusSection === 'fan') {
       setFanMonetizationSettingsOpen(true)
     }
@@ -369,6 +403,7 @@ export default function LoungeDockSlidePanels({
     if (openPanel !== 'settings' || typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('settings') === 'fan') {
+      setSubscriptionsSettingsOpen(true)
       setFanMonetizationSettingsOpen(true)
     }
   }, [openPanel])
@@ -1365,34 +1400,46 @@ export default function LoungeDockSlidePanels({
             </p>
 
             {/* ── Appearance ── */}
-            <div className="mt-5">
-              <span className="block text-[15px] font-semibold text-zinc-100">Appearance</span>
-              <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                Choose dark, light, or follow your device.
-              </span>
-              <div className="mt-3 flex gap-1.5 rounded-xl bg-zinc-800/50 p-1">
-                {[
-                  { value: 'dark', label: 'Dark' },
-                  { value: 'system', label: 'System' },
-                  { value: 'light', label: 'Light' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setTheme(value)
-                      setCurrentTheme(value)
-                    }}
-                    className={`flex-1 rounded-lg py-1.5 text-[13px] font-semibold transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                      currentTheme === value
-                        ? 'bg-zinc-700 text-zinc-100 shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-300'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-6 border-t border-zinc-800 pt-5">
+              <button
+                type="button"
+                aria-expanded={appearanceSettingsOpen}
+                onClick={() => setAppearanceSettingsOpen((open) => !open)}
+                className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold text-zinc-100">Appearance</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                    Choose dark, light, or follow your device.
+                  </span>
+                </span>
+                <SettingsSectionChevron open={appearanceSettingsOpen} />
+              </button>
+              {appearanceSettingsOpen ? (
+                <div className="mt-3 flex gap-1.5 rounded-xl bg-zinc-800/50 p-1">
+                  {[
+                    { value: 'dark', label: 'Dark' },
+                    { value: 'system', label: 'System' },
+                    { value: 'light', label: 'Light' },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setTheme(value)
+                        setCurrentTheme(value)
+                      }}
+                      className={`flex-1 rounded-lg py-1.5 text-[13px] font-semibold transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                        currentTheme === value
+                          ? 'bg-zinc-700 text-zinc-100 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-6 border-t border-zinc-800 pt-5">
@@ -1730,54 +1777,86 @@ export default function LoungeDockSlidePanels({
             <div className="mt-6 border-t border-zinc-800 pt-5">
               <button
                 type="button"
-                role="switch"
-                aria-checked={feedVideoAutoplayEnabled}
-                onClick={() => onFeedVideoAutoplayChange?.(!feedVideoAutoplayEnabled)}
-                className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+                aria-expanded={autoplaySettingsOpen}
+                onClick={() => setAutoplaySettingsOpen((open) => !open)}
+                className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
               >
                 <span className="min-w-0">
                   <span className="block text-[15px] font-semibold text-zinc-100">Autoplay while scrolling</span>
-                  <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                  <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
                     Inline video across Lounge - home feed, search, profiles, and post detail.
                   </span>
                 </span>
-                <span
-                  aria-hidden
-                  className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-                    feedVideoAutoplayEnabled ? 'bg-cyan-500' : 'bg-zinc-700'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
-                      feedVideoAutoplayEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-                    }`}
-                  />
-                </span>
+                <SettingsSectionChevron open={autoplaySettingsOpen} />
               </button>
+              {autoplaySettingsOpen ? (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={feedVideoAutoplayEnabled}
+                    onClick={() => onFeedVideoAutoplayChange?.(!feedVideoAutoplayEnabled)}
+                    className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-zinc-700/90 bg-zinc-950/80 px-4 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[15px] font-semibold text-zinc-100">Autoplay videos</span>
+                      <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                        {feedVideoAutoplayEnabled ? 'On for this device' : 'Off for this device'}
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden
+                      className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+                        feedVideoAutoplayEnabled ? 'bg-cyan-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                          feedVideoAutoplayEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </span>
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-6 border-t border-zinc-800 pt-5" data-settings-support>
-              <span className="block text-[15px] font-semibold text-zinc-100">Help &amp; support</span>
-              <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                Billing, access, bugs, and account help.
-              </span>
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <a
-                  href={supportMailtoHref()}
-                  className="inline-flex min-h-10 items-center py-1 text-[14px] font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                >
-                  Email support
-                </a>
-                <button
-                  type="button"
-                  onClick={() => void onCopySupportEmail()}
-                  className="min-h-10 rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 text-[13px] font-semibold text-zinc-200 touch-manipulation transition-colors hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
-                >
-                  Copy email
-                </button>
-              </div>
-              {supportEmailCopyMessage ? (
-                <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{supportEmailCopyMessage}</p>
+              <button
+                type="button"
+                aria-expanded={helpSupportSettingsOpen}
+                onClick={() => setHelpSupportSettingsOpen((open) => !open)}
+                className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold text-zinc-100">Help &amp; support</span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                    Billing, access, bugs, and account help.
+                  </span>
+                </span>
+                <SettingsSectionChevron open={helpSupportSettingsOpen} />
+              </button>
+              {helpSupportSettingsOpen ? (
+                <>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <a
+                      href={supportMailtoHref()}
+                      className="inline-flex min-h-10 items-center py-1 text-[14px] font-semibold text-orange-400 underline underline-offset-2 hover:text-orange-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                    >
+                      Email support
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => void onCopySupportEmail()}
+                      className="min-h-10 rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 text-[13px] font-semibold text-zinc-200 touch-manipulation transition-colors hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+                    >
+                      Copy email
+                    </button>
+                  </div>
+                  {supportEmailCopyMessage ? (
+                    <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{supportEmailCopyMessage}</p>
+                  ) : null}
+                </>
               ) : null}
             </div>
 
@@ -1922,68 +2001,77 @@ export default function LoungeDockSlidePanels({
 
             {showAccountSection ? (
               <div ref={settingsMembershipSectionRef} className="mt-6 border-t border-zinc-800 pt-5">
-                <span className="block text-[15px] font-semibold text-zinc-100">Memberships</span>
-                <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                  Edge tools and platform access you subscribe to.
-                </span>
-                <SettingsMembershipPanel
-                  membershipLabel={settingsMembershipLabel}
-                  viewerIsStaff={settingsViewerIsStaff}
-                  hasPaidMembership={settingsHasPaidMembership}
-                  hasActiveSubscription={settingsHasActiveSubscription}
-                  onOpenBillingManage={settingsOnOpenBillingManage}
-                />
+                <button
+                  type="button"
+                  aria-expanded={membershipsSettingsOpen}
+                  onClick={() => setMembershipsSettingsOpen((open) => !open)}
+                  className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-zinc-100">Memberships</span>
+                    <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                      Edge tools and platform access you subscribe to.
+                    </span>
+                  </span>
+                  <SettingsSectionChevron open={membershipsSettingsOpen} />
+                </button>
+                {membershipsSettingsOpen ? (
+                  <SettingsMembershipPanel
+                    membershipLabel={settingsMembershipLabel}
+                    viewerIsStaff={settingsViewerIsStaff}
+                    hasPaidMembership={settingsHasPaidMembership}
+                    hasActiveSubscription={settingsHasActiveSubscription}
+                    onOpenBillingManage={settingsOnOpenBillingManage}
+                  />
+                ) : null}
               </div>
             ) : null}
 
             {settingsSupabaseClient ? (
               <div ref={settingsSubscriptionsSectionRef} className="mt-6 border-t border-zinc-800 pt-5">
-                <span className="block text-[15px] font-semibold text-zinc-100">Subscriptions</span>
-                <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                  Creators you support and fan monetization if you publish.
-                </span>
-                <div
-                  data-settings-subscriptions
-                  className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90"
+                <button
+                  type="button"
+                  aria-expanded={subscriptionsSettingsOpen}
+                  onClick={() => setSubscriptionsSettingsOpen((open) => !open)}
+                  className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
                 >
-                  <CreatorFanSupportedCreatorsPanel supabaseClient={settingsSupabaseClient} />
-                  <div>
-                    <button
-                      type="button"
-                      aria-expanded={fanMonetizationSettingsOpen}
-                      onClick={() => setFanMonetizationSettingsOpen((open) => !open)}
-                      className="flex min-h-12 w-full items-start justify-between gap-3 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-[15px] font-semibold text-zinc-100">
-                          Enable fan subscriptions
-                        </span>
-                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                          Preset monthly tiers, fan-only posts, and a private fan group chat.
-                        </span>
-                      </span>
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
-                          fanMonetizationSettingsOpen ? 'rotate-180' : 'rotate-0'
-                        }`}
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-zinc-100">Subscriptions</span>
+                    <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                      Creators you support and fan monetization if you publish.
+                    </span>
+                  </span>
+                  <SettingsSectionChevron open={subscriptionsSettingsOpen} />
+                </button>
+                {subscriptionsSettingsOpen ? (
+                  <div
+                    data-settings-subscriptions
+                    className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90"
+                  >
+                    <CreatorFanSupportedCreatorsPanel supabaseClient={settingsSupabaseClient} />
+                    <div>
+                      <button
+                        type="button"
+                        aria-expanded={fanMonetizationSettingsOpen}
+                        onClick={() => setFanMonetizationSettingsOpen((open) => !open)}
+                        className="flex min-h-12 w-full items-start justify-between gap-3 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                          <path
-                            d="M6 9l6 6 6-6"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                    </button>
-                    {fanMonetizationSettingsOpen ? (
-                      <CreatorFanMonetizationPanel supabaseClient={settingsSupabaseClient} embedded />
-                    ) : null}
+                        <span className="min-w-0">
+                          <span className="block text-[15px] font-semibold text-zinc-100">
+                            Enable fan subscriptions
+                          </span>
+                          <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                            Preset monthly tiers, fan-only posts, and a private fan group chat.
+                          </span>
+                        </span>
+                        <SettingsSectionChevron open={fanMonetizationSettingsOpen} />
+                      </button>
+                      {fanMonetizationSettingsOpen ? (
+                        <CreatorFanMonetizationPanel supabaseClient={settingsSupabaseClient} embedded />
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             ) : null}
 

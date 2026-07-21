@@ -2131,7 +2131,15 @@ export default function LoungeProfileFullScreen({
                 <div className="pointer-events-auto mb-1 shrink-0">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                   {isFollowing ? (
-                    creatorFanOffer && !hasCreatorFanSub ? (
+                    creatorFanOffer && hasCreatorFanSub ? (
+                      <ProfileFanSubPillButton
+                        disabled={socialBusy}
+                        subscribed
+                        onClick={() => supportCreatorFan()}
+                        title="View your fan subscription"
+                        aria-label="Fan subscription and post alerts"
+                      />
+                    ) : creatorFanOffer ? (
                       <ProfileFanSubPillButton
                         disabled={socialBusy}
                         postAlertsOn={isSubscribed}
@@ -2149,63 +2157,18 @@ export default function LoungeProfileFullScreen({
                       <button
                         type="button"
                         disabled={socialBusy}
-                        onClick={() => {
-                          if (creatorFanOffer) {
-                            supportCreatorFan()
-                          } else {
-                            void toggleSubscribe()
-                          }
-                        }}
-                        title={
-                          creatorFanOffer
-                            ? isSubscribed
-                              ? 'Manage post alerts or subscribe'
-                              : hasCreatorFanSub
-                                ? 'View your fan subscription'
-                                : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
-                            : isSubscribed
-                              ? 'Turn off post alerts'
-                              : 'Notify me about their posts'
-                        }
+                        onClick={() => void toggleSubscribe()}
+                        title={isSubscribed ? 'Turn off post alerts' : 'Notify me about their posts'}
                         data-lounge-profile-alerts-btn
-                        data-profile-alerts-colored={
-                          creatorFanOffer && hasCreatorFanSub
-                            ? 'fanSubscribed'
-                            : creatorFanOffer
-                              ? isSubscribed || hasCreatorFanSub
-                                ? 'fanActive'
-                                : 'false'
-                              : isSubscribed
-                                ? 'active'
-                                : 'false'
-                        }
+                        data-profile-alerts-colored={isSubscribed ? 'active' : 'false'}
                         className={profileSocialActionButtonClass(
-                          creatorFanOffer && hasCreatorFanSub
-                            ? 'alertsFan'
-                            : creatorFanOffer
-                              ? isSubscribed || hasCreatorFanSub
-                                ? 'alertsFanActive'
-                                : 'neutral'
-                              : isSubscribed
-                                ? 'alertsActive'
-                                : 'neutral',
+                          isSubscribed ? 'alertsActive' : 'neutral',
                         )}
                         aria-label={
-                          creatorFanOffer
-                            ? isSubscribed
-                              ? 'Turn off post alerts'
-                              : hasCreatorFanSub
-                                ? 'Fan subscription and post alerts'
-                                : 'Subscribe or turn on post alerts'
-                            : isSubscribed
-                              ? 'Turn off post alerts'
-                              : 'Subscribe to notifications'
+                          isSubscribed ? 'Turn off post alerts' : 'Subscribe to notifications'
                         }
                       >
-                        <ProfileSocialAlertsIcon
-                          active={isSubscribed || hasCreatorFanSub}
-                          filled={Boolean(creatorFanOffer && hasCreatorFanSub)}
-                        />
+                        <ProfileSocialAlertsIcon active={isSubscribed} />
                       </button>
                     )
                   ) : null}

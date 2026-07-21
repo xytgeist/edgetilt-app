@@ -1519,12 +1519,22 @@ html.light [data-lounge-profile-block-btn][data-block-active='true']:hover {
   color: #e4e4e7;
   box-shadow: none;
 }
-[data-lounge-profile-fan-sub-btn][data-fan-sub-post-alerts='true'] .profile-fan-sub-pill-knob {
+[data-lounge-profile-fan-sub-btn][data-fan-sub-post-alerts='true'] .profile-fan-sub-bell-glyph {
+  color: #f97316;
+}
+[data-lounge-profile-fan-sub-btn][data-fan-sub-subscribed='true'] .profile-fan-sub-pill-label {
+  letter-spacing: 0.05em;
+  padding-right: calc(1.125rem + 0.35rem);
+}
+[data-lounge-profile-fan-sub-btn][data-fan-sub-subscribed='true'] .profile-fan-sub-pill-knob {
   background: #f97316;
   color: #18181b;
 }
-[data-lounge-profile-fan-sub-btn] .profile-fan-sub-bell-glyph {
+[data-lounge-profile-fan-sub-btn][data-fan-sub-subscribed='true'] .profile-fan-sub-bell-glyph {
   color: #18181b;
+}
+[data-lounge-profile-fan-sub-btn] .profile-fan-sub-bell-glyph {
+  color: inherit;
 }
 
 html.light [data-lounge-profile-fan-sub-btn] .profile-fan-sub-pill-label {
@@ -1539,8 +1549,12 @@ html.light [data-lounge-profile-fan-sub-btn] .profile-fan-sub-pill-knob {
   color: #18181b !important;
   box-shadow: none !important;
 }
-html.light [data-lounge-profile-fan-sub-btn][data-fan-sub-post-alerts='true'] .profile-fan-sub-pill-knob {
+html.light [data-lounge-profile-fan-sub-btn][data-fan-sub-post-alerts='true'] .profile-fan-sub-bell-glyph {
+  color: #ea580c !important;
+}
+html.light [data-lounge-profile-fan-sub-btn][data-fan-sub-subscribed='true'] .profile-fan-sub-pill-knob {
   background: #f97316 !important;
+  color: #18181b !important;
 }
 
 /*

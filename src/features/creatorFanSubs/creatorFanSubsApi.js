@@ -124,6 +124,68 @@ export async function openCreatorFanBillingPortal(supabaseClient, creatorUserId)
   window.location.assign(data.url)
 }
 
+/**
+ * Active creator fan subs for the signed-in user (from `get_my_creator_fan_entitlements`).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @returns {Promise<Array<{
+ *   creatorUserId: string,
+ *   active: boolean,
+ *   status: string,
+ *   currentPeriodEnd: string | null,
+ *   cancelAtPeriodEnd: boolean,
+ *   fanTierKey: string,
+ * }>>}
+ */
+export async function fetchMyCreatorFanSubscriptions(supabaseClient) {
+  const { data, error } = await supabaseClient.rpc('get_my_creator_fan_entitlements')
+  if (error) {
+    if (error.code === 'PGRST202') return []
+    throw error
+  }
+  if (!data || typeof data !== 'object') return []
+
+  /** @type {Array<{ creatorUserId: string, active: boolean, status: string, currentPeriodEnd: string | null, cancelAtPeriodEnd: boolean, fanTierKey: string }>} */
+  const rows = []
+  for (const [key, raw] of Object.entries(data)) {
+    if (!raw || typeof raw !== 'object') continue
+    const grant = /** @type {Record<string, unknown>} */ (raw)
+    const fromKey = String(key).replace(/^creator-fan:/, '').trim()
+    const creatorUserId = String(grant.creator_user_id || fromKey).trim()
+    if (!creatorUserId) continue
+    rows.push({
+      creatorUserId,
+      active: Boolean(grant.active),
+      status: typeof grant.status === 'string' ? grant.status : '',
+      currentPeriodEnd:
+        typeof grant.current_period_end === 'string' ? grant.current_period_end : null,
+      cancelAtPeriodEnd: Boolean(grant.cancel_at_period_end),
+      fanTierKey: typeof grant.fan_tier_key === 'string' ? grant.fan_tier_key : '',
+    })
+  }
+  rows.sort((a, b) => a.creatorUserId.localeCompare(b.creatorUserId))
+  return rows
+}
+
+const FAN_SUB_PROFILE_SELECT = 'user_id,handle,display_name,avatar_url'
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string[]} creatorUserIds
+ */
+export async function fetchCreatorProfilesForFanSubs(supabaseClient, creatorUserIds) {
+  const ids = [...new Set(creatorUserIds.map((id) => String(id || '').trim()).filter(Boolean))]
+  if (!ids.length) return {}
+  const { data, error } = await supabaseClient.from('profiles').select(FAN_SUB_PROFILE_SELECT).in('user_id', ids)
+  if (error) throw error
+  /** @type {Record<string, { user_id: string, handle?: string, display_name?: string, avatar_url?: string }>} */
+  const map = {}
+  for (const row of data || []) {
+    if (row?.user_id) map[String(row.user_id)] = row
+  }
+  return map
+}
+
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */
 export async function fetchCreatorFanOffer(supabaseClient, creatorUserId) {
   const { data, error } = await supabaseClient.rpc('get_creator_fan_offer', {

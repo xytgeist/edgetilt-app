@@ -459,10 +459,10 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 
 ### 1. Settings — “Creators I support”
 
-- [ ] **Settings screen section** listing every active (and optionally pending-cancel) **creator fan sub** for the signed-in user (creator avatar, `@handle`, tier label, renew / access-through date).
-- [ ] **Cancel subscription** per row → reuse **`openCreatorFanBillingPortal(creator_user_id)`** / Stripe portal (same as profile sheet).
-- [ ] Data: **`get_my_creator_fan_entitlements()`** (+ join **`profiles`** for display); handle **`cancel_at_period_end`** copy (“Access until …”).
-- [ ] Light/dark scoped UI (Settings account pattern); empty state when no fan subs.
+- [x] **Settings screen section** listing every active (and optionally pending-cancel) **creator fan sub** for the signed-in user (creator avatar, `@handle`, tier label, renew / access-through date).
+- [x] **Cancel subscription** per row → reuse **`openCreatorFanBillingPortal(creator_user_id)`** / Stripe portal (same as profile sheet).
+- [x] Data: **`get_my_creator_fan_entitlements()`** (+ join **`profiles`** for display); handle **`cancel_at_period_end`** copy (“Access until …”).
+- [x] Light/dark scoped UI (Settings account pattern); empty state when no fan subs.
 
 ### 2. Lounge composer — audience: All vs Subs
 
@@ -841,6 +841,7 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 
 ## Update log
 
+- 2026-07-21: **Creator fan subs Settings — Creators I support (test):** Account accordion lists active fan subs (`get_my_creator_fan_entitlements` + **`profiles`**), tier + renew/access-through copy, **Cancel subscription** → **`openCreatorFanBillingPortal(creator_user_id)`**; refetch on portal return. **`CreatorFanSupportedCreatorsPanel`** in **`LoungeDockSlidePanels`**.
 - 2026-07-21: **Creator fan subs — product backlog (six tracks):** Settings “creators I support” + cancel; composer **All | Subs**; fan-only posts in main feed with **teaser + subscribe CTA** (auto-follow on sub); Chat **Subs** tab + fan rooms; fan room **mod** tools (mute/block/cancel sub/delegate mods); **audio hang out** (Spaces-like) deferred spike. Checklist: **`docs/test-buildout-backlog.md` § Creator fan subs — product backlog**.
 - 2026-07-20: **Profile feed mutes + overflow menu icons (test):** migration **`20260720195000`** applied on **`kcosfvmreeiosdjdzycb`** (`profile_feed_mutes` … hide muted authors on home feed client-side in **`AppShell`**); full-screen profile **⋯** menu **Share** / **Mute posts** / **Block** with Lucide icons; **Block** removed from profile social action row (menu only).
 - 2026-07-20: **Creator fan sub tiers (spec):** five preset monthly MSRPs **$4.99 / $9.99 / $19.99 / $49.99 / $99.99** + `fan-tier-*` keys ... **`docs/entitlements-matrix.md` §5** (Ryan; implementation not started).

@@ -4,19 +4,12 @@ import { X } from 'lucide-react'
 import { formatFanTierLabel } from './fanSubTiers.js'
 import { creatorFanOfferHeadline } from './fanSubOffer.js'
 import { startCreatorFanCheckout, openCreatorFanBillingPortal } from './creatorFanSubsApi.js'
+import { formatFanSubAccessThrough } from './fanSubBillingDates.js'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
 } from '../profiles/profileGate.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
-
-/** @param {string | null | undefined} iso */
-function formatFanSubAccessThrough(iso) {
-  if (!iso) return null
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-}
 
 /**
  * @param {{

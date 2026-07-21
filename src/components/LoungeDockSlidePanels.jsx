@@ -27,6 +27,7 @@ import {
   SUPPORT_BILLING_NO_ACCESS_SUBJECT,
 } from '../features/legal/supportContact.js'
 import CreatorFanMonetizationPanel from '../features/creatorFanSubs/CreatorFanMonetizationPanel.jsx'
+import CreatorFanSupportedCreatorsPanel from '../features/creatorFanSubs/CreatorFanSupportedCreatorsPanel.jsx'
 import {
   formatLoungeSearchError,
   LOUNGE_SEARCH_MIN_CHARS,
@@ -1605,6 +1606,10 @@ export default function LoungeDockSlidePanels({
                         </p>
                       ) : null}
                     </div>
+
+                    {settingsSupabaseClient ? (
+                      <CreatorFanSupportedCreatorsPanel supabaseClient={settingsSupabaseClient} />
+                    ) : null}
                   </div>
                 ) : null}
               </div>

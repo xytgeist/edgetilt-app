@@ -2904,6 +2904,15 @@ html.light [data-settings-account] .border-zinc-700\/90 {
 html.light [data-settings-account] .hover\:bg-zinc-800\/80:hover {
   background-color: #e4e4e7 !important;
 }
+html.light [data-settings-account] [data-settings-creators-i-support] .border-zinc-800\/90 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-settings-account] [data-settings-creators-i-support] .bg-zinc-900\/35 {
+  background-color: #ffffff !important;
+}
+html.light [data-settings-account] [data-settings-creators-i-support] .text-zinc-400 {
+  color: #71717a !important;
+}
 
 /* Settings → Help & support - light mode */
 html.light [data-settings-support] .text-zinc-100 {

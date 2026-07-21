@@ -60,6 +60,7 @@ function readBillingQueryParams() {
     return {
       billing,
       product: params.get('product') || PRODUCT_SLOTS_EDGE,
+      fanCreator: (params.get('fan_creator') || '').trim() || null,
     }
   } catch {
     return null
@@ -72,6 +73,7 @@ function clearBillingQueryParams() {
     const url = new URL(window.location.href)
     url.searchParams.delete('billing')
     url.searchParams.delete('product')
+    url.searchParams.delete('fan_creator')
     const next = `${url.pathname}${url.search}${url.hash}`
     window.history.replaceState({}, document.title, next || '/')
   } catch {
@@ -426,7 +428,15 @@ function App() {
     }
 
     if (billing.billing === 'success' || billing.billing === 'portal') {
-      void pollEntitlements()
+      void pollEntitlements().then(() => {
+        if (billing.fanCreator) {
+          window.dispatchEvent(
+            new CustomEvent('edge:creator-fan-billing-return', {
+              detail: { creatorUserId: billing.fanCreator },
+            }),
+          )
+        }
+      })
       if (billing.billing === 'success') {
         setAccessNotice('Subscription updated - thanks for supporting Edge.')
       } else {

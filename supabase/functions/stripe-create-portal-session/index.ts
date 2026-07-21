@@ -78,7 +78,10 @@ Deno.serve(async (req) => {
       req.headers.get('origin')?.trim() ||
       Deno.env.get('STRIPE_CHECKOUT_DEFAULT_ORIGIN')?.trim() ||
       'http://localhost:5173'
-    const returnUrl = `${origin.replace(/\/+$/, '')}/?billing=portal`
+    const base = origin.replace(/\/+$/, '')
+    const returnUrl = creatorUserId
+      ? `${base}/?billing=portal&fan_creator=${encodeURIComponent(creatorUserId)}`
+      : `${base}/?billing=portal`
 
     const stripe = new Stripe(requireStripeSecretKey())
     const configurationId = await billingPortalConfigurationId(stripe)

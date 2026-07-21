@@ -1275,37 +1275,52 @@ export default function LoungeProfileFullScreen({
     return () => window.cancelAnimationFrame(raf)
   }, [open, panelVisible, refreshSocial])
 
-  useEffect(() => {
+  const reloadCreatorFanSubState = useCallback(async () => {
     if (!open || !panelVisible || !profileUserId || isOwnProfile) {
       setCreatorFanOffer(null)
       setHasCreatorFanSub(false)
       return
     }
-    let cancelled = false
-    void (async () => {
-      try {
-        const offer = await fetchCreatorFanOffer(supabaseClient, profileUserId)
-        if (cancelled) return
-        setCreatorFanOffer(offer)
-        if (!viewerUserId || !offer) {
-          setHasCreatorFanSub(false)
-          return
-        }
-        const { data, error } = await supabaseClient.rpc('get_my_creator_fan_entitlements')
-        if (cancelled || error) return
-        const key = `creator-fan:${profileUserId}`
-        setHasCreatorFanSub(Boolean(data?.[key]?.active))
-      } catch {
-        if (!cancelled) {
-          setCreatorFanOffer(null)
-          setHasCreatorFanSub(false)
-        }
+    try {
+      const offer = await fetchCreatorFanOffer(supabaseClient, profileUserId)
+      setCreatorFanOffer(offer)
+      if (!viewerUserId || !offer) {
+        setHasCreatorFanSub(false)
+        return
       }
-    })()
-    return () => {
-      cancelled = true
+      const { data, error } = await supabaseClient.rpc('get_my_creator_fan_entitlements')
+      if (error) return
+      const key = `creator-fan:${profileUserId}`
+      const grant = data?.[key]
+      const activePaidFan = Boolean(grant?.active) && !Boolean(grant?.cancel_at_period_end)
+      setHasCreatorFanSub(activePaidFan)
+    } catch {
+      setCreatorFanOffer(null)
+      setHasCreatorFanSub(false)
     }
   }, [open, panelVisible, profileUserId, isOwnProfile, viewerUserId, supabaseClient])
+
+  useEffect(() => {
+    void reloadCreatorFanSubState()
+  }, [reloadCreatorFanSubState])
+
+  useEffect(() => {
+    if (!open || !panelVisible || !profileUserId || isOwnProfile) return undefined
+    const onFanBillingReturn = (ev) => {
+      const creatorId = ev?.detail?.creatorUserId
+      if (creatorId && String(creatorId) !== String(profileUserId)) return
+      void reloadCreatorFanSubState()
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void reloadCreatorFanSubState()
+    }
+    window.addEventListener('edge:creator-fan-billing-return', onFanBillingReturn)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('edge:creator-fan-billing-return', onFanBillingReturn)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [open, panelVisible, profileUserId, isOwnProfile, reloadCreatorFanSubState])
 
   useEffect(() => {
     if (!open || !panelVisible) return

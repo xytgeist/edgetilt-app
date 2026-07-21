@@ -232,6 +232,11 @@ export async function upsertCreatorFanSubscriptionFromStripe(
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : null
 
+  if (subscription.status !== 'active' && subscription.status !== 'trialing') {
+    await deleteCreatorFanSubscriptionByStripeId(admin, subscription.id)
+    return
+  }
+
   const row = {
     subscriber_user_id: subscriberUserId,
     creator_user_id: creatorUserId,

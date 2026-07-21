@@ -10,9 +10,12 @@ const PROFILE_SOCIAL_NEUTRAL_BTN =
   `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-zinc-600/85 bg-zinc-950/75 text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-zinc-500 hover:bg-zinc-900 hover:text-zinc-100`
 
 /**
- * @param {'neutral'|'followActive'|'alertsActive'|'alertsFan'|'alertsFanActive'|'blockActive'|'block'} variant
+ * @param {'neutral'|'followInvite'|'followActive'|'alertsActive'|'alertsFan'|'alertsFanActive'|'blockActive'|'block'} variant
  */
 export function profileSocialActionButtonClass(variant) {
+  if (variant === 'followInvite') {
+    return `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-zinc-600/85 bg-zinc-950 text-zinc-50 shadow-none hover:bg-zinc-900 hover:border-zinc-500`
+  }
   if (variant === 'followActive') {
     return `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-cyan-500/55 bg-cyan-950/35 text-cyan-100 shadow-[inset_0_1px_0_rgba(34,211,238,0.12)] hover:border-cyan-400/65`
   }

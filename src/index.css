@@ -1401,6 +1401,18 @@ html.light [data-lounge-profile-follow-btn][data-following='true']:hover {
   color: #1e40af !important;
 }
 
+html.light [data-lounge-profile-follow-btn][data-following='false'] {
+  background-color: #18181b !important;
+  border-color: #18181b !important;
+  color: #fafafa !important;
+  box-shadow: none !important;
+}
+html.light [data-lounge-profile-follow-btn][data-following='false']:hover {
+  background-color: #27272a !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
 html.light [data-lounge-profile-alerts-btn][data-profile-alerts-colored='active'] {
   background-color: #fff7ed !important;
   border-color: rgba(249, 115, 22, 0.52) !important;

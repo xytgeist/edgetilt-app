@@ -3,7 +3,7 @@ import { BellPlus } from 'lucide-react'
 import { PROFILE_SOCIAL_ACTION_ICON_CLASS } from './profileSocialActionChrome.jsx'
 
 /**
- * Fan-sub CTA: SUB capsule + round orange bell+ knob (profile header). Scoped via data-lounge-profile-fan-sub-btn.
+ * Fan-sub CTA: outlined SUB capsule + filled orange bell+ knob (profile header). Scoped via data-lounge-profile-fan-sub-btn.
  *
  * @param {{
  *   disabled?: boolean,

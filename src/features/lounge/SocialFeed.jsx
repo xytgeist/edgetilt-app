@@ -609,6 +609,8 @@ export default function SocialFeed({
   onResetTabErrorStrikes = null,
   /** AppShell in-app confirm (avoids native `window.confirm` freeze on iOS PWA). */
   showGlobalConfirm = null,
+  /** Refilter home feed after muting/unmuting a profile author. */
+  onProfileFeedMuteChange = null,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -16032,7 +16034,7 @@ export default function SocialFeed({
           onDockRevealChange={setLoungeProfileDockReveal}
           onNavigateToProfile={openAuthorProfile}
           onShareProfile={handleShareLoungeProfile}
-          onBlockProfile={handleBlockLoungeProfile}
+          onProfileFeedMuteChange={onProfileFeedMuteChange}
           suspendVideoCoordinator={Boolean(loungePostDetail?.id)}
           showVideoDebugHud={loungeProfileVideoDebugHud}
           viewerIsAdmin={loungeViewerIsAdmin}
@@ -16076,7 +16078,7 @@ export default function SocialFeed({
               hydratePosts={hydrateCommunityPosts}
               onNavigateToProfile={openAuthorProfile}
               onShareProfile={handleShareLoungeProfile}
-              onBlockProfile={handleBlockLoungeProfile}
+              onProfileFeedMuteChange={onProfileFeedMuteChange}
               suspendVideoCoordinator={Boolean(loungePostDetail?.id)}
               showVideoDebugHud={loungeProfileVideoDebugHud && isTop}
               viewerIsAdmin={loungeViewerIsAdmin}

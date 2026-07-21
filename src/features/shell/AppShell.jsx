@@ -15,6 +15,10 @@ import {
 import { LOUNGE_FEED_SORT, readLoungeFeedSort } from '../../utils/loungeFeedSortPref'
 import { readLoungeFeedCategoryFilter } from '../../utils/loungeFeedCategoryFilterPref.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import {
+  fetchProfileFeedMutedUserIds,
+  filterCommunityPostsByMutedAuthors,
+} from '../lounge/profileFeedMutes.js'
 import { renderRichCaption } from '../lounge/loungeCaption'
 import {
   OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX,
@@ -328,6 +332,7 @@ export default function AppShell({
   const loungeFeedPopularAsOfRef = useRef(/** @type {string | null} */ (null))
   /** True while the first page of the Lounge feed is being reloaded (including silent pull-to-refresh). */
   const communityFeedHeadReloadingRef = useRef(false)
+  const feedMutedUserIdsRef = useRef(new Set())
   const pwaNotifPromptInFlightRef = useRef(false)
   const [globalConfirmState, setGlobalConfirmState] = useState({
     open: false,
@@ -597,6 +602,35 @@ export default function AppShell({
     [supabaseClient]
   )
 
+  const reloadFeedMutedUserIds = useCallback(async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession()
+      const viewerId = session?.user?.id
+      if (!viewerId) {
+        feedMutedUserIdsRef.current = new Set()
+        return
+      }
+      feedMutedUserIdsRef.current = await fetchProfileFeedMutedUserIds(supabaseClient, viewerId)
+    } catch {
+      feedMutedUserIdsRef.current = new Set()
+    }
+  }, [supabaseClient])
+
+  const handleProfileFeedMuteChange = useCallback(async () => {
+    await reloadFeedMutedUserIds()
+    setCommunityPosts((prev) => filterCommunityPostsByMutedAuthors(prev, feedMutedUserIdsRef.current))
+  }, [reloadFeedMutedUserIds])
+
+  useEffect(() => {
+    if (browseMode !== 'member') {
+      feedMutedUserIdsRef.current = new Set()
+      return
+    }
+    void reloadFeedMutedUserIds()
+  }, [browseMode, reloadFeedMutedUserIds])
+
   const loadCommunityFeed = useCallback(async (opts) => {
     const silent = opts?.silent === true
     const scope = opts?.scope ?? loungeFeedScopeRef.current
@@ -667,7 +701,7 @@ export default function AppShell({
       const deduped = merged.filter((row, idx, arr) => arr.findIndex((x) => x.id === row.id) === idx)
       const hydrated = await hydrateCommunityPosts(deduped)
 
-      setCommunityPosts(hydrated)
+      setCommunityPosts(filterCommunityPostsByMutedAuthors(hydrated, feedMutedUserIdsRef.current))
       setCommunityFeedHasMore(hasMore)
       setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } catch (e) {
@@ -770,10 +804,15 @@ export default function AppShell({
       const pageLast = pageRows.at(-1) || null
       const hydrated = await hydrateCommunityPosts(filterLoungeFeedTimelinePosts(pageRows))
 
-      setCommunityPosts((prev) => [
-        ...prev,
-        ...hydrated.filter((row) => !prev.some((existing) => existing.id === row.id)),
-      ])
+      setCommunityPosts((prev) =>
+        filterCommunityPostsByMutedAuthors(
+          [
+            ...prev,
+            ...hydrated.filter((row) => !prev.some((existing) => existing.id === row.id)),
+          ],
+          feedMutedUserIdsRef.current,
+        ),
+      )
       setCommunityFeedHasMore(hasMore)
       setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } finally {
@@ -1422,6 +1461,7 @@ export default function AppShell({
             onSimulateTabError={simulateTabError}
             onResetTabErrorStrikes={handleResetTabErrorStrikes}
             showGlobalConfirm={showGlobalConfirm}
+            onProfileFeedMuteChange={handleProfileFeedMuteChange}
           />
         </div>
       </Suspense>

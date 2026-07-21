@@ -73,10 +73,10 @@ import {
 } from '../creatorFanSubs/creatorFanSubsApi.js'
 import CreatorFanSubscribeModal from '../creatorFanSubs/CreatorFanSubscribeModal.jsx'
 import { formatFanTierLabel } from '../creatorFanSubs/fanSubTiers.js'
+import LoungeProfileOverflowMenu from './LoungeProfileOverflowMenu.jsx'
 import {
   profileSocialActionButtonClass,
   ProfileSocialAlertsIcon,
-  ProfileSocialBlockIcon,
   ProfileSocialFollowIcon,
   ProfileSocialMessageIcon,
 } from './profileSocialActionChrome.jsx'
@@ -484,6 +484,8 @@ export default function LoungeProfileFullScreen({
   onDockRevealChange = null,
   onShareProfile = null,
   onBlockProfile = null,
+  /** Refilter Lounge home feed after mute toggle. */
+  onProfileFeedMuteChange = null,
   /** Open another member profile from feed rows (replaces modal). */
   onNavigateToProfile = null,
   /** Stacked profile opened from a parent sheet (follow list); uses absolute overlay. */
@@ -529,6 +531,8 @@ export default function LoungeProfileFullScreen({
   const [iBlockingThem, setIBlockingThem] = useState(false)
   const [theyBlockMe, setTheyBlockMe] = useState(false)
   const [blockBusy, setBlockBusy] = useState(false)
+  const [feedMuteBusy, setFeedMuteBusy] = useState(false)
+  const [isProfileFeedMuted, setIsProfileFeedMuted] = useState(false)
   const [socialBusy, setSocialBusy] = useState(false)
   const [creatorFanOffer, setCreatorFanOffer] = useState(null)
   const [hasCreatorFanSub, setHasCreatorFanSub] = useState(false)
@@ -1210,10 +1214,11 @@ export default function LoungeProfileFullScreen({
       setProfileFollowsViewer(false)
       setIBlockingThem(false)
       setTheyBlockMe(false)
+      setIsProfileFeedMuted(false)
       return
     }
     try {
-      const [followersRes, followingRes, followRow, subRow, reverseFollow, blockStatus] = await Promise.all([
+      const [followersRes, followingRes, followRow, subRow, reverseFollow, blockStatus, muteRow] = await Promise.all([
         supabaseClient
           .from('profile_follows')
           .select('follower_id', { count: 'exact', head: true })
@@ -1241,6 +1246,12 @@ export default function LoungeProfileFullScreen({
           .eq('following_id', viewerUserId)
           .maybeSingle(),
         chatGetBlockStatus(supabaseClient, viewerUserId, profileUserId),
+        supabaseClient
+          .from('profile_feed_mutes')
+          .select('muted_user_id')
+          .eq('muter_id', viewerUserId)
+          .eq('muted_user_id', profileUserId)
+          .maybeSingle(),
       ])
       setFollowerCount(followersRes.count ?? 0)
       setFollowingCount(followingRes.count ?? 0)
@@ -1249,6 +1260,7 @@ export default function LoungeProfileFullScreen({
       setProfileFollowsViewer(!!reverseFollow.data)
       setIBlockingThem(blockStatus.iBlockThem)
       setTheyBlockMe(blockStatus.theyBlockMe)
+      setIsProfileFeedMuted(!!muteRow.data && !muteRow.error)
     } catch {
       setFollowerCount(0)
       setFollowingCount(0)
@@ -1457,6 +1469,36 @@ export default function LoungeProfileFullScreen({
       window.alert(err instanceof Error ? err.message : 'Could not update block status.')
     } finally {
       setBlockBusy(false)
+    }
+  }
+
+  const toggleProfileFeedMute = async () => {
+    if (!viewerUserId || !profileUserId || isOwnProfile || feedMuteBusy) return
+    setFeedMuteBusy(true)
+    const nextMuted = !isProfileFeedMuted
+    try {
+      if (isProfileFeedMuted) {
+        const { error } = await supabaseClient
+          .from('profile_feed_mutes')
+          .delete()
+          .eq('muter_id', viewerUserId)
+          .eq('muted_user_id', profileUserId)
+        if (error) throw error
+      } else {
+        const { error } = await supabaseClient.from('profile_feed_mutes').insert({
+          muter_id: viewerUserId,
+          muted_user_id: profileUserId,
+        })
+        if (error) throw error
+      }
+      setIsProfileFeedMuted(nextMuted)
+      if (typeof onProfileFeedMuteChange === 'function') {
+        await onProfileFeedMuteChange(profileUserId, nextMuted)
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Could not update mute.')
+    } finally {
+      setFeedMuteBusy(false)
     }
   }
 
@@ -1917,7 +1959,7 @@ export default function LoungeProfileFullScreen({
                     )
                   : null}
               </div>
-            ) : typeof onShareProfile === 'function' || typeof onBlockProfile === 'function' ? (
+            ) : !isOwnProfile && viewerUserId ? (
               <div ref={otherProfileMenuWrapRef} className="pointer-events-auto shrink-0">
                 <button
                   ref={otherProfileMenuButtonRef}
@@ -1941,54 +1983,40 @@ export default function LoungeProfileFullScreen({
                         className="min-w-[11rem] rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
                         role="menu"
                       >
-                        {typeof onShareProfile === 'function' ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                            onClick={() => {
-                              setOtherProfileMenuOpen(false)
-                              onShareProfile(profile)
-                            }}
-                          >
-                            Share
-                          </button>
-                        ) : null}
-                        {canAdminPromoteModerator ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={adminRoleBusy}
-                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-fuchsia-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                            onClick={() => void runAdminProfileRoleChange('moderator')}
-                          >
-                            Promote to moderator
-                          </button>
-                        ) : null}
-                        {canAdminDemoteModerator ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={adminRoleBusy}
-                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-fuchsia-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                            onClick={() => void runAdminProfileRoleChange('user')}
-                          >
-                            Remove moderator role
-                          </button>
-                        ) : null}
-                        {typeof onBlockProfile === 'function' ? (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                            onClick={() => {
-                              setOtherProfileMenuOpen(false)
-                              onBlockProfile(profile)
-                            }}
-                          >
-                            Block
-                          </button>
-                        ) : null}
+                        <LoungeProfileOverflowMenu
+                          onShare={
+                            typeof onShareProfile === 'function'
+                              ? () => {
+                                  setOtherProfileMenuOpen(false)
+                                  onShareProfile(profile)
+                                }
+                              : undefined
+                          }
+                          canAdminPromoteModerator={canAdminPromoteModerator}
+                          canAdminDemoteModerator={canAdminDemoteModerator}
+                          adminRoleBusy={adminRoleBusy}
+                          onAdminPromote={() => {
+                            setOtherProfileMenuOpen(false)
+                            void runAdminProfileRoleChange('moderator')
+                          }}
+                          onAdminDemote={() => {
+                            setOtherProfileMenuOpen(false)
+                            void runAdminProfileRoleChange('user')
+                          }}
+                          onToggleMute={() => {
+                            setOtherProfileMenuOpen(false)
+                            void toggleProfileFeedMute()
+                          }}
+                          isFeedMuted={isProfileFeedMuted}
+                          muteBusy={feedMuteBusy}
+                          onToggleBlock={() => {
+                            setOtherProfileMenuOpen(false)
+                            void toggleBlock()
+                          }}
+                          blockBusy={blockBusy}
+                          iBlockingThem={iBlockingThem}
+                          profileHandle={profile?.handle}
+                        />
                       </div>,
                       document.body
                     )
@@ -2183,18 +2211,6 @@ export default function LoungeProfileFullScreen({
                     />
                   </button>
                   )}
-                  <button
-                    type="button"
-                    disabled={blockBusy}
-                    onClick={() => void toggleBlock()}
-                    title={iBlockingThem ? 'Unblock member' : 'Block member'}
-                    aria-label={iBlockingThem ? 'Unblock member' : 'Block member'}
-                    data-lounge-profile-block-btn
-                    data-block-active={iBlockingThem ? 'true' : 'false'}
-                    className={profileSocialActionButtonClass(iBlockingThem ? 'blockActive' : 'block')}
-                  >
-                    <ProfileSocialBlockIcon />
-                  </button>
                   </div>
                 </div>
               ) : null}
@@ -2594,7 +2610,7 @@ export default function LoungeProfileFullScreen({
                 openNestedProfileFromFollowList(entity)
               }}
               onShareProfile={onShareProfile}
-              onBlockProfile={onBlockProfile}
+              onProfileFeedMuteChange={onProfileFeedMuteChange}
               onViewerFollowChange={onViewerFollowChange}
               suspendVideoCoordinator={suspendVideoCoordinator}
               showVideoDebugHud={showVideoDebugHud}

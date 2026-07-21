@@ -789,6 +789,7 @@ In-app ops dashboard for **`profiles.role = admin`**. Roadmap: **`docs/edge-moni
 
 ## Update log
 
+- 2026-07-20: **Profile feed mutes + overflow menu icons (test):** migration **`20260720195000`** applied on **`kcosfvmreeiosdjdzycb`** (`profile_feed_mutes` … hide muted authors on home feed client-side in **`AppShell`**); full-screen profile **⋯** menu **Share** / **Mute posts** / **Block** with Lucide icons; **Block** removed from profile social action row (menu only).
 - 2026-07-20: **Creator fan sub tiers (spec):** five preset monthly MSRPs **$4.99 / $9.99 / $19.99 / $49.99 / $99.99** + `fan-tier-*` keys ... **`docs/entitlements-matrix.md` §5** (Ryan; implementation not started).
 - 2026-07-20: **Creator fan subs (foundation, test):** migration **`20260720180000`** applied on **`kcosfvmreeiosdjdzycb`**; five **`STRIPE_PRICE_FAN_TIER_*`** test secrets + Edge **`creator-fan-connect`**, **`creator-fan-checkout`**, **`stripe-webhook`** deployed on test. Settings **Fan subscriptions** panel + **`20260720190000`** creator **offer form** (save/edit) + subscriber **preview modal** before checkout. **Still open:** compose fan-only posts, search gate, moderators.
 - 2026-07-17: **Homepage SEO pack:** `index.html` title/description/canonical + OG/Twitter; **`public/robots.txt`** + **`sitemap.xml`** (static files served ahead of SPA rewrite).

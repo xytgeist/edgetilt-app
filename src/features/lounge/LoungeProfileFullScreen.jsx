@@ -80,6 +80,7 @@ import {
   ProfileSocialFollowIcon,
   ProfileSocialMessageIcon,
 } from './profileSocialActionChrome.jsx'
+import ProfileFanSubPillButton from './ProfileFanSubPillButton.jsx'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
@@ -2081,6 +2082,8 @@ export default function LoungeProfileFullScreen({
                     onClick={() => void toggleFollow()}
                     title={isFollowing ? 'Following' : 'Follow'}
                     aria-label={isFollowing ? 'Following' : 'Follow'}
+                    data-lounge-profile-follow-btn
+                    data-following={isFollowing ? 'true' : 'false'}
                     className={profileSocialActionButtonClass(isFollowing ? 'followActive' : 'neutral')}
                   >
                     <ProfileSocialFollowIcon following={isFollowing} />
@@ -2113,6 +2116,14 @@ export default function LoungeProfileFullScreen({
                       <ProfileSocialMessageIcon />
                     </button>
                   ) : null}
+                  {creatorFanOffer && !isSubscribed && !hasCreatorFanSub ? (
+                    <ProfileFanSubPillButton
+                      disabled={socialBusy}
+                      onClick={() => supportCreatorFan()}
+                      title={`Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`}
+                      aria-label="Subscribe or turn on post alerts"
+                    />
+                  ) : (
                   <button
                     type="button"
                     disabled={socialBusy}
@@ -2127,11 +2138,21 @@ export default function LoungeProfileFullScreen({
                           : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
                         : 'Notify me about their posts'
                     }
+                    data-lounge-profile-alerts-btn
+                    data-profile-alerts-colored={
+                      creatorFanOffer
+                        ? isSubscribed || hasCreatorFanSub
+                          ? 'fanActive'
+                          : 'false'
+                        : isSubscribed
+                          ? 'active'
+                          : 'false'
+                    }
                     className={profileSocialActionButtonClass(
                       creatorFanOffer
                         ? isSubscribed || hasCreatorFanSub
                           ? 'alertsFanActive'
-                          : 'alertsFan'
+                          : 'neutral'
                         : isSubscribed
                           ? 'alertsActive'
                           : 'neutral',
@@ -2148,15 +2169,18 @@ export default function LoungeProfileFullScreen({
                   >
                     <ProfileSocialAlertsIcon
                       active={isSubscribed || hasCreatorFanSub}
-                      fanOffer={Boolean(creatorFanOffer) && !isSubscribed && !hasCreatorFanSub}
+                      fanOffer={false}
                     />
                   </button>
+                  )}
                   <button
                     type="button"
                     disabled={blockBusy}
                     onClick={() => void toggleBlock()}
                     title={iBlockingThem ? 'Unblock member' : 'Block member'}
                     aria-label={iBlockingThem ? 'Unblock member' : 'Block member'}
+                    data-lounge-profile-block-btn
+                    data-block-active={iBlockingThem ? 'true' : 'false'}
                     className={profileSocialActionButtonClass(iBlockingThem ? 'blockActive' : 'block')}
                   >
                     <ProfileSocialBlockIcon />

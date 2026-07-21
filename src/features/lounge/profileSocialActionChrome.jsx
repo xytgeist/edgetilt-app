@@ -1,4 +1,4 @@
-import { Ban, Bell, BellPlus, BellRing, MessageCircle, UserCheck, UserPlus } from 'lucide-react'
+import { Ban, Bell, BellRing, MessageCircle, UserCheck, UserPlus } from 'lucide-react'
 
 /** Shared glyph size for profile header social actions (Follow, Message, Alerts, Block). */
 export const PROFILE_SOCIAL_ACTION_ICON_CLASS = 'h-[18px] w-[18px] shrink-0'
@@ -17,7 +17,7 @@ export function profileSocialActionButtonClass(variant) {
     return `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-cyan-500/55 bg-cyan-950/35 text-cyan-100 shadow-[inset_0_1px_0_rgba(34,211,238,0.12)] hover:border-cyan-400/65`
   }
   if (variant === 'alertsActive') {
-    return `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-cyan-500/55 bg-cyan-950/35 text-cyan-100 shadow-[inset_0_1px_0_rgba(34,211,238,0.12)] hover:border-cyan-400/65`
+    return `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-orange-500/50 bg-orange-950/35 text-orange-100 shadow-[inset_0_1px_0_rgba(251,146,60,0.12)] hover:border-orange-400/55`
   }
   if (variant === 'alertsFan') {
     return `${PROFILE_SOCIAL_ACTION_BTN_BASE} border-orange-500/65 bg-orange-500 text-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-orange-400`
@@ -49,13 +49,10 @@ export function ProfileSocialMessageIcon() {
   return <MessageCircle {...lucideProps} />
 }
 
-/** @param {{ active?: boolean, fanOffer?: boolean }} props */
-export function ProfileSocialAlertsIcon({ active = false, fanOffer = false }) {
+/** @param {{ active?: boolean }} props */
+export function ProfileSocialAlertsIcon({ active = false }) {
   if (active) {
     return <BellRing {...lucideProps} />
-  }
-  if (fanOffer) {
-    return <BellPlus {...lucideProps} />
   }
   return <Bell {...lucideProps} />
 }

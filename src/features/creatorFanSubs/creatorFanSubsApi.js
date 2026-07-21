@@ -99,6 +99,31 @@ export async function startCreatorFanCheckout(supabaseClient, creatorUserId) {
   window.location.assign(data.url)
 }
 
+/**
+ * Stripe Customer Portal cancel flow for one creator fan sub (uses real sub_ id from creator_subscriptions).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} creatorUserId
+ */
+export async function openCreatorFanBillingPortal(supabaseClient, creatorUserId) {
+  const id = String(creatorUserId || '').trim()
+  if (!id) throw new Error('Creator id required.')
+  const { data, error, response } = await supabaseClient.functions.invoke('stripe-create-portal-session', {
+    body: { creator_user_id: id },
+  })
+  if (error) {
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not open billing portal.')
+  }
+  if (data?.error) {
+    throw new Error(String(data.error))
+  }
+  if (!data?.url) {
+    throw new Error('Portal URL missing from server response.')
+  }
+  window.location.assign(data.url)
+}
+
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */
 export async function fetchCreatorFanOffer(supabaseClient, creatorUserId) {
   const { data, error } = await supabaseClient.rpc('get_creator_fan_offer', {

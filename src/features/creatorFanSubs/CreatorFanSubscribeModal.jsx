@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { formatFanTierLabel } from './fanSubTiers.js'
 import { creatorFanOfferHeadline } from './fanSubOffer.js'
-import { startCreatorFanCheckout } from './creatorFanSubsApi.js'
-import { openBillingPortal } from '../billing/stripeBillingApi.js'
+import { startCreatorFanCheckout, openCreatorFanBillingPortal } from './creatorFanSubsApi.js'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -114,11 +113,11 @@ export default function CreatorFanSubscribeModal({
   }
 
   const onUnsubscribe = async () => {
-    if (!supabaseClient || busy) return
+    if (!supabaseClient || busy || !creatorUserId) return
     setBusy(true)
     setError('')
     try {
-      await openBillingPortal(supabaseClient)
+      await openCreatorFanBillingPortal(supabaseClient, creatorUserId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open billing portal.')
       setBusy(false)

@@ -53,6 +53,15 @@ Deno.serve(async (req) => {
     const auth = await getUserFromJwt(admin, req)
     if ('error' in auth) return jsonResponse({ error: auth.error }, auth.status)
 
+    /** @type {{ creator_user_id?: string }} */
+    let body: { creator_user_id?: string } = {}
+    try {
+      body = await req.json()
+    } catch {
+      body = {}
+    }
+    const creatorUserId = String(body.creator_user_id || '').trim()
+
     const { data: profile, error: profileErr } = await admin
       .from('profiles')
       .select('stripe_customer_id')
@@ -78,6 +87,37 @@ Deno.serve(async (req) => {
       customer: customerId,
       return_url: returnUrl,
       configuration: configurationId,
+    }
+
+    if (creatorUserId) {
+      const { data: fanSub, error: fanSubErr } = await admin
+        .from('creator_subscriptions')
+        .select('stripe_subscription_id, status')
+        .eq('subscriber_user_id', auth.user.id)
+        .eq('creator_user_id', creatorUserId)
+        .maybeSingle()
+      if (fanSubErr) throw new Error(fanSubErr.message)
+
+      const stripeSubId = String(fanSub?.stripe_subscription_id || '').trim()
+      const fanStatus = String(fanSub?.status || '')
+      const fanActive = fanStatus === 'active' || fanStatus === 'trialing'
+      if (!fanActive || !stripeSubId.startsWith('sub_')) {
+        return jsonResponse(
+          { error: 'No active fan subscription found to manage in billing.' },
+          400,
+        )
+      }
+
+      sessionParams.flow_data = {
+        type: 'subscription_cancel',
+        subscription_cancel: {
+          subscription: stripeSubId,
+        },
+        after_completion: {
+          type: 'redirect',
+          redirect: { return_url: returnUrl },
+        },
+      }
     }
 
     const portal = await stripe.billingPortal.sessions.create(sessionParams)

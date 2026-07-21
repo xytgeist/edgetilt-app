@@ -257,7 +257,7 @@ export default function CreatorFanSubscribeModal({
                 onClick={() => void onUnsubscribe()}
                 className="mb-3 flex min-h-11 w-full items-center justify-center rounded-full border border-red-800/70 px-4 text-[15px] font-semibold text-red-300 touch-manipulation hover:bg-red-950/35 disabled:opacity-50"
               >
-                {busy ? '…' : 'Unsubscribe'}
+                {busy ? '…' : 'Cancel Subscription'}
               </button>
               <button
                 type="button"

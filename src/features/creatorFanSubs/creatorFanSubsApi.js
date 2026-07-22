@@ -125,6 +125,36 @@ export async function openCreatorFanBillingPortal(supabaseClient, creatorUserId)
 }
 
 /**
+ * Undo cancel-at-period-end for one creator fan sub (Stripe + creator_subscriptions).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} creatorUserId
+ */
+export async function resumeCreatorFanSubscription(supabaseClient, creatorUserId) {
+  const id = String(creatorUserId || '').trim()
+  if (!id) throw new Error('Creator id required.')
+  const { data, error, response } = await supabaseClient.functions.invoke(
+    'creator-fan-resume-subscription',
+    {
+      body: { creator_user_id: id },
+    },
+  )
+  if (error) {
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not resume subscription.')
+  }
+  if (data?.error) throw new Error(String(data.error))
+  if (!data?.ok) throw new Error('Resume did not complete.')
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('edge:creator-fan-billing-return', {
+        detail: { creatorUserId: id },
+      }),
+    )
+  }
+}
+
+/**
  * Active creator fan subs for the signed-in user (from `get_my_creator_fan_entitlements`).
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient

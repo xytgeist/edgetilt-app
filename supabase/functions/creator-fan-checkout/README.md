@@ -8,6 +8,8 @@
 | --- | --- | --- |
 | **`creator-fan-connect`** | User JWT | `{ "action": "onboard" \| "refresh" }` → onboarding `{ url }` or refresh `{ connect_onboarding_complete }` |
 | **`creator-fan-checkout`** | User JWT | `{ "creator_user_id": "uuid" }` → `{ url }` Connect destination subscription checkout |
+| **`creator-fan-resume-subscription`** | User JWT | `{ "creator_user_id": "uuid" }` → `{ ok: true }` clears **`cancel_at_period_end`** (fan subscribe modal **Resume subscription**) |
+| **`stripe-create-portal-session`** | User JWT | optional `{ "creator_user_id": "uuid" }` → cancel-at-period-end portal flow |
 
 **Webhook:** `stripe-webhook` writes `creator_subscriptions` when subscription metadata includes `billing_kind: creator_fan_sub` (set by checkout).
 

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { formatFanTierLabel } from './fanSubTiers.js'
 import { creatorFanOfferHeadline } from './fanSubOffer.js'
-import { startCreatorFanCheckout, openCreatorFanBillingPortal } from './creatorFanSubsApi.js'
+import { startCreatorFanCheckout, openCreatorFanBillingPortal, resumeCreatorFanSubscription } from './creatorFanSubsApi.js'
 import { formatFanSubAccessThrough } from './fanSubBillingDates.js'
 import {
   profileAvatarInitials,
@@ -147,6 +147,19 @@ export default function CreatorFanSubscribeModal({
     }
   }
 
+  const onResumeSubscription = async () => {
+    if (!supabaseClient || busy || !creatorUserId || !fanPendingCancel) return
+    setBusy(true)
+    setError('')
+    try {
+      await resumeCreatorFanSubscription(supabaseClient, creatorUserId)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not resume subscription.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const requestClose = () => {
     if (busy) return
     onClose()
@@ -225,9 +238,12 @@ export default function CreatorFanSubscribeModal({
                         ? `You are subscribed through ${fanAccessThroughLabel}.`
                         : 'Your subscription is set to cancel at the end of the current billing period.'}
                     </p>
-                    <p className="text-[14px] leading-relaxed text-zinc-400">
-                      Fan access and perks stay active until then. Thanks for supporting this creator.
-                    </p>
+                  <p className="text-[14px] leading-relaxed text-zinc-400">
+                    Fan access and perks stay active until then. Thanks for supporting this creator.
+                  </p>
+                  <p className="text-[14px] leading-relaxed text-zinc-400">
+                    Changed your mind? You can resume before access ends and billing will continue as usual.
+                  </p>
                   </>
                 ) : (
                   <p className="text-[15px] leading-relaxed text-emerald-300/95">
@@ -311,12 +327,25 @@ export default function CreatorFanSubscribeModal({
                   >
                     {busy ? '…' : 'Cancel Subscription'}
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onResumeSubscription()}
+                    className="mb-3 flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
+                  >
+                    {busy ? '…' : 'Resume subscription'}
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busy}
                   onClick={requestClose}
-                  className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
+                  className={
+                    fanPendingCancel
+                      ? 'flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-700/90 px-4 text-[15px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-900/80 disabled:opacity-50'
+                      : 'flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50'
+                  }
                 >
                   Close
                 </button>

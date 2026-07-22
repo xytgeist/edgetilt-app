@@ -841,6 +841,7 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 
 ## Update log
 
+- 2026-07-21: **Creator fan subscribe modal — resume:** pending cancel-at-period-end shows **Resume subscription** (Edge **`creator-fan-resume-subscription`**, deploy to test before smoke); **`stripe-create-portal-session`** still used for cancel. **Creators I support** rows open creator profile (not inline cancel).
 - 2026-07-21: **Settings IA (test):** **Memberships** (Edge AP Slots + staff access) and **Subscriptions** (Creators I support + collapsed **Enable fan subscriptions**); Account slimmed to identity/legal. Own profile **Enable fan subscriptions** CTA → Settings **`subscriptions-fan`**; Stripe Connect return **`?settings=fan`** opens same.
 - 2026-07-21: **Creator fan subs Settings — Creators I support (test):** Account accordion lists active fan subs (`get_my_creator_fan_entitlements` + **`profiles`**), tier + renew/access-through copy, **Cancel subscription** → **`openCreatorFanBillingPortal(creator_user_id)`**; refetch on portal return. **`CreatorFanSupportedCreatorsPanel`** in **`LoungeDockSlidePanels`**.
 - 2026-07-21: **Creator fan subs — product backlog (six tracks):** Settings “creators I support” + cancel; composer **All | Subs**; fan-only posts in main feed with **teaser + subscribe CTA** (auto-follow on sub); Chat **Subs** tab + fan rooms; fan room **mod** tools (mute/block/cancel sub/delegate mods); **audio hang out** (Spaces-like) deferred spike. Checklist: **`docs/test-buildout-backlog.md` § Creator fan subs — product backlog**.

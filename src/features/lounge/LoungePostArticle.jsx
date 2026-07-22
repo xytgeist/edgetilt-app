@@ -579,6 +579,9 @@ export default function LoungePostArticle({
           // Plain post repost: show original post content directly (no embed box)
           <>
             {renderFeedCaptionBlock(displayPost)}
+            {isLoungeFanOnlyPostLocked(displayPost, fanLockCtx) && !showPostCaption(displayPost)
+              ? renderFanSubscribeCta(displayPost)
+              : null}
             {!isLoungeFanOnlyPostLocked(displayPost, fanLockCtx) ? (
               <>
             <LoungeLinkPreviewBlock preview={displayPost.link_preview} className="mt-2" onPreviewOpen={onLinkPreviewOpen} />
@@ -733,6 +736,9 @@ export default function LoungePostArticle({
           // Regular post
           <>
             {renderFeedCaptionBlock(post)}
+            {isLoungeFanOnlyPostLocked(post, fanLockCtx) && !showPostCaption(post)
+              ? renderFanSubscribeCta(post)
+              : null}
             {loungePostIsThreadRoot(post) && !isLoungeFanOnlyPostLocked(post, fanLockCtx) ? (
               <div
                 className={`${showPostCaption(post) ? 'mt-1' : LOUNGE_FEED_CAPTION_TOP_CLASS} text-left text-[13px] font-semibold text-cyan-400/90`}

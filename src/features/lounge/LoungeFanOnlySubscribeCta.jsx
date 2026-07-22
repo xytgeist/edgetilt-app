@@ -1,5 +1,5 @@
 /**
- * Locked creator fan-only post: subscribe to unlock full post + media.
+ * Locked creator fan-only post: subscribe card (feed + profile rows).
  *
  * @param {{
  *   creatorHandle?: string | null,
@@ -8,12 +8,14 @@
  * }} props
  */
 export default function LoungeFanOnlySubscribeCta({ creatorHandle, onSubscribe, busy = false }) {
-  const label = creatorHandle ? `@${creatorHandle.replace(/^@/, '')}` : 'this creator'
+  const raw = creatorHandle ? String(creatorHandle).replace(/^@/, '').trim() : ''
+  const handleLabel = raw ? `@${raw}` : 'this creator'
+
   return (
-    <div className="-mt-1 pt-0.5" data-lounge-fan-only-cta>
-      <p className="text-[13px] leading-snug text-zinc-500">
-        Subscribers-only · subscribe to <span className="text-zinc-400">{label}</span> to read the rest.
-      </p>
+    <div
+      className="mt-2 rounded-2xl border border-cyan-500/30 bg-cyan-950/40 px-3 py-3"
+      data-lounge-fan-only-cta
+    >
       <button
         type="button"
         disabled={busy}
@@ -21,9 +23,16 @@ export default function LoungeFanOnlySubscribeCta({ creatorHandle, onSubscribe, 
           e.stopPropagation()
           onSubscribe()
         }}
-        className="mt-2 inline-flex min-h-9 items-center justify-center rounded-lg border border-zinc-600/65 bg-zinc-800/45 px-3.5 text-[14px] font-medium text-zinc-200 touch-manipulation hover:border-zinc-500/80 hover:bg-zinc-800/80 active:bg-zinc-800 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+        className="flex w-full min-h-11 items-center justify-center rounded-xl bg-cyan-400 px-4 text-[15px] font-semibold text-zinc-950 touch-manipulation hover:bg-cyan-300 active:bg-cyan-500 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
       >
-        {busy ? 'Loading…' : 'Subscribe'}
+        {busy ? (
+          'Loading…'
+        ) : (
+          <span className="inline-flex max-w-full min-w-0 items-center justify-center">
+            <span className="shrink-0">Subscribe to&nbsp;</span>
+            <span className="truncate">{handleLabel}</span>
+          </span>
+        )}
       </button>
     </div>
   )

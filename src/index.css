@@ -2961,6 +2961,39 @@ html.light [data-settings-memberships] .text-fuchsia-200 {
   color: #a21caf !important;
 }
 
+/* Settings → Sign out / delete account */
+html.light [data-settings-session] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-settings-session] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-settings-session] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-settings-session] .border-zinc-700\/90 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-settings-session] .bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+}
+html.light [data-settings-session] .hover\:bg-zinc-800:hover {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-settings-session] .border-red-900\/75 {
+  border-color: rgba(185, 28, 28, 0.45) !important;
+}
+html.light [data-settings-session] .bg-red-950\/30 {
+  background-color: rgba(254, 242, 242, 0.95) !important;
+}
+html.light [data-settings-session] .text-red-300 {
+  color: #b91c1c !important;
+}
+html.light [data-settings-session] .hover\:bg-red-950\/50:hover {
+  background-color: #fee2e2 !important;
+}
+
 /* Settings → Help & support - light mode */
 html.light [data-settings-support] .text-zinc-100 {
   color: #18181b !important;

@@ -2081,27 +2081,38 @@ export default function LoungeDockSlidePanels({
             ) : null}
 
             {typeof onLogout === 'function' ? (
-              <div className="mt-6 flex min-h-[50dvh] flex-col border-t border-zinc-800 pt-5">
-                <div className="flex-1" aria-hidden />
-                <div className="flex flex-col items-center gap-2 pb-2 text-center">
+              <div className="mt-6 border-t border-zinc-800 pt-5">
+                <div className="px-1">
+                  <div className="text-[15px] font-semibold text-zinc-100">Sign out</div>
+                  <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
+                    Log out on this device or permanently delete your account.
+                  </p>
+                </div>
+                <div
+                  data-settings-session
+                  className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40 px-3.5 py-3.5"
+                >
                   <button
                     type="button"
                     onClick={() => void onLogout()}
-                    className="min-h-12 inline-flex items-center justify-center px-4 py-2 text-[15px] text-zinc-400 underline touch-manipulation transition-colors hover:text-red-400 [-webkit-tap-highlight-color:transparent]"
+                    className="flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-4 text-[14px] font-semibold text-zinc-100 touch-manipulation transition-colors hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
                   >
                     Log out
                   </button>
                   {typeof onDeleteAccount === 'function' ? (
-                    <button
-                      type="button"
-                      disabled={deleteAccountBusy}
-                      onClick={() => void onDeleteAccount()}
-                      className="min-h-11 inline-flex max-w-sm items-center justify-center px-4 py-2 text-[14px] leading-snug text-rose-400/95 underline decoration-rose-400/60 underline-offset-2 touch-manipulation transition-colors hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
-                    >
-                      {deleteAccountBusy
-                        ? 'Deleting account…'
-                        : 'Delete account (removes Auth user + cascaded data)'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={deleteAccountBusy}
+                        onClick={() => void onDeleteAccount()}
+                        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg border border-red-900/75 bg-red-950/30 px-4 text-[14px] font-semibold text-red-300 touch-manipulation transition-colors hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                      >
+                        {deleteAccountBusy ? 'Deleting account…' : 'Delete account'}
+                      </button>
+                      <p className="mt-2 text-[12px] leading-snug text-zinc-500">
+                        Permanently removes your login and cascaded profile data. This cannot be undone.
+                      </p>
+                    </>
                   ) : null}
                 </div>
               </div>

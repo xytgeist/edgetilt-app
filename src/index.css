@@ -820,7 +820,9 @@ html.light .text-violet-300 { color: var(--color-violet-600); }
 
 html.light .text-rose-50   { color: var(--color-rose-700); }
 html.light .text-rose-100  { color: var(--color-rose-600); }
-html.light .text-rose-200  { color: var(--color-rose-600); }
+html.light .text-rose-200,
+html.light .text-rose-200\/95,
+html.light .text-rose-200\/90  { color: var(--color-rose-600); }
 html.light .text-rose-300  { color: var(--color-rose-600); }
 
 html.light .text-indigo-50  { color: var(--color-indigo-700); }
@@ -943,6 +945,50 @@ html.light [data-lounge-composer-audience-close] {
 html.light [data-lounge-composer-audience-close]:hover {
   background-color: rgb(228 228 231);
   color: rgb(24 24 27);
+}
+
+/* Lounge post/comment upload failure dialog (Retry / Save as draft). */
+html.light [data-lounge-upload-failed-panel] {
+  border-color: rgb(212 212 216 / 0.95);
+  background-color: rgb(255 255 255 / 0.98);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+html.light [data-lounge-upload-failed-panel] .border-zinc-700\/70,
+html.light [data-lounge-upload-failed-panel] .border-zinc-700\/85 {
+  border-color: rgb(212 212 216 / 0.95);
+}
+html.light [data-lounge-upload-failed-panel] .bg-zinc-900\/80 {
+  background-color: rgb(244 244 245 / 0.95);
+}
+html.light [data-lounge-upload-failed-panel] .text-white {
+  color: rgb(24 24 27);
+}
+html.light [data-lounge-upload-failed-panel] .text-zinc-500 {
+  color: rgb(82 82 91);
+}
+html.light [data-lounge-upload-failed-panel] .text-zinc-200 {
+  color: rgb(39 39 42);
+}
+html.light [data-lounge-upload-failed-panel] .text-rose-200 {
+  color: rgb(190 18 60);
+}
+html.light [data-lounge-upload-failed-panel] button.border-zinc-600 {
+  border-color: rgb(212 212 216);
+  color: rgb(39 39 42);
+  background-color: rgb(255 255 255);
+}
+html.light [data-lounge-upload-failed-panel] button.border-zinc-600:hover {
+  background-color: rgb(244 244 245);
+}
+html.light [data-lounge-upload-failed-panel] button.bg-zinc-800 {
+  background-color: rgb(228 228 231);
+  color: rgb(24 24 27);
+}
+html.light [data-lounge-upload-failed-panel] button.bg-zinc-800:hover {
+  background-color: rgb(212 212 216);
 }
 
 /* Bookmarked: lv-yellow on white is bad; blue is clean and distinct. */

@@ -17403,7 +17403,10 @@ export default function SocialFeed({
             aria-label="Close"
             onClick={() => onLoungePostUploadFailureCancel()}
           />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md">
+          <div
+            data-lounge-upload-failed-panel
+            className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md"
+          >
             <h2 id="lounge-upload-failed-title" className="text-[17px] font-bold text-white">
               {loungePostUploadFailureDetails?.kind === 'mediaPrep' ? 'Media upload failed' : 'Upload failed'}
             </h2>
@@ -17417,7 +17420,7 @@ export default function SocialFeed({
                 </div>
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">What failed</div>
-                  <div className="mt-0.5 text-[12px] leading-snug text-rose-200/95 break-words whitespace-pre-wrap">
+                  <div className="mt-0.5 text-[12px] leading-snug text-rose-200 break-words whitespace-pre-wrap">
                     {loungePostUploadFailureDetails.message}
                   </div>
                 </div>

@@ -95,7 +95,7 @@ async function upsertFanSub(admin, sub) {
     p_creator_user_id: creatorUserId,
     p_grant_access: true,
   })
-  if (syncErr) throw new Error(`creator_fan_sub_sync_chat_member: ${syncErr.message}`)
+  if (syncErr) console.warn('creator_fan_sub_sync_chat_member:', syncErr.message)
 
   const wasActive =
     existing?.id != null && (existing.status === 'active' || existing.status === 'trialing')

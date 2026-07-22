@@ -250,10 +250,12 @@ export const BOT_IMPERSONATE_OPEN_DOCK_KEY = 'edge:post-auth-lounge-dock'
  */
 export async function staffSignInAsBotAndReload(supabaseClient, botUserId, opts = {}) {
   const payload = await staffSignInAsBot(supabaseClient, botUserId)
+  // generateLink returns hashed_token — verify with token_hash, not token (plain OTP / URL token).
+  const otpType = payload.otp_type === 'magiclink' ? 'magiclink' : 'email'
+  await supabaseClient.auth.signOut({ scope: 'local' })
   const { error: otpErr } = await supabaseClient.auth.verifyOtp({
-    email: payload.email,
-    token: payload.token_hash,
-    type: 'magiclink',
+    token_hash: payload.token_hash,
+    type: otpType,
   })
   if (otpErr) throw new Error(otpErr.message || 'Could not sign in as bot.')
   if (typeof window !== 'undefined') {

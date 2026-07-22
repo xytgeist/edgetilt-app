@@ -178,6 +178,11 @@ Deno.serve(async (req) => {
         .eq('user_id', botUserId)
         .maybeSingle()
 
+      const otpType =
+        typeof linkData.properties.verification_type === 'string'
+          ? linkData.properties.verification_type
+          : 'email'
+
       return adminOpsJson(200, {
         ok: true,
         bot_user_id: botUserId,
@@ -186,6 +191,7 @@ Deno.serve(async (req) => {
         handle: profile?.handle ?? null,
         display_name: profile?.display_name ?? null,
         token_hash: linkData.properties.hashed_token,
+        otp_type: otpType,
       })
     }
 

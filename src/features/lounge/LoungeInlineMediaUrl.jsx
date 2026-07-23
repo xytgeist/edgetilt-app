@@ -340,7 +340,7 @@ export function LoungeInlineMediaUrl({
 }) {
   const [lightbox, setLightbox] = useState(null)
   const [feedAttachmentTier, setFeedAttachmentTier] = useState(
-    /** @type {import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier} */ ('column'),
+    /** @type {import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier} */ ('tall'),
   )
   if (!url) return null
   const isEmbed = variant === 'embed'

@@ -1797,6 +1797,64 @@ function evaluateCashtagAmbiguity(
   return false
 }
 
+type CashtagPoolRow = {
+  symbol: string
+  asset_class: MarketAssetClass
+  display_symbol?: string
+  description?: string
+  type?: string
+}
+
+function mergeCashtagPoolRow(pool: CashtagPoolRow[], row: CashtagPoolRow | null | undefined): void {
+  if (!row?.symbol) return
+  const key = attachDedupeKey(row.symbol, row.asset_class)
+  if (pool.some((p) => attachDedupeKey(p.symbol, p.asset_class) === key)) return
+  pool.push(row)
+}
+
+/** Merge exact ticker hits, Yahoo equity, top stock + top crypto from search (compose disambiguation). */
+function buildCashtagDisambiguationPool(
+  tag: string,
+  results: CashtagPoolRow[],
+  yahooEquity: { symbol: string; asset_class: 'stock' } | null,
+): CashtagPoolRow[] {
+  const pool: CashtagPoolRow[] = []
+
+  for (const row of results) {
+    if (isTokenizedMarketSearchRow(row)) continue
+    if (cashtagRowMatchesTicker(tag, row)) mergeCashtagPoolRow(pool, row)
+  }
+
+  if (yahooEquity) {
+    mergeCashtagPoolRow(pool, {
+      symbol: yahooEquity.symbol,
+      asset_class: 'stock',
+      display_symbol: tag,
+      description: '',
+      type: 'EQUITY',
+    })
+  }
+
+  const topStock = results.find((row) => row.asset_class === 'stock' && !isTokenizedMarketSearchRow(row))
+  const topCrypto = results.find((row) => row.asset_class === 'crypto' && !isTokenizedMarketSearchRow(row))
+  mergeCashtagPoolRow(pool, topStock)
+  mergeCashtagPoolRow(pool, topCrypto)
+
+  if (isCommonCryptoCashtag(tag)) {
+    mergeCashtagPoolRow(pool, {
+      symbol: finnhubSymbolForAsset(tag, 'crypto'),
+      asset_class: 'crypto',
+      display_symbol: tag,
+      description: 'Cryptocurrency',
+      type: 'crypto',
+    })
+  }
+
+  if (pool.length) return pool.slice(0, 10)
+
+  return results.filter((row) => !isTokenizedMarketSearchRow(row)).slice(0, 8)
+}
+
 /** Compose-time cashtag resolution: candidates + ambiguity flag (picker overrides attach). */
 export async function resolveCashtagDisambiguation(tag: string): Promise<CashtagDisambiguationResult> {
   const upper = String(tag || '').trim().toUpperCase()
@@ -1809,22 +1867,7 @@ export async function resolveCashtagDisambiguation(tag: string): Promise<Cashtag
     marketSearch(upper),
   ])
 
-  const matching = results.filter((row) => cashtagRowMatchesTicker(upper, row))
-  let pool = matching.length ? [...matching] : results.slice(0, 8)
-
-  if (yahooEquity) {
-    const yahooKey = attachDedupeKey(yahooEquity.symbol, 'stock')
-    const hasYahoo = pool.some((row) => attachDedupeKey(row.symbol, row.asset_class) === yahooKey)
-    if (!hasYahoo) {
-      pool.unshift({
-        symbol: yahooEquity.symbol,
-        asset_class: 'stock',
-        display_symbol: upper,
-        description: '',
-        type: 'EQUITY',
-      })
-    }
-  }
+  const pool = buildCashtagDisambiguationPool(upper, results, yahooEquity)
 
   if (!pool.length) {
     const resolved = await resolveCashtagTicker(upper)

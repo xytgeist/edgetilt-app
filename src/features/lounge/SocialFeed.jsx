@@ -13977,15 +13977,6 @@ export default function SocialFeed({
                       onChange={setComposerMarketSymbols}
                       className="mt-1.5"
                     />
-                    <LoungeComposerCashtagDisambiguation
-                      ambiguousTags={composerCashtagDisambig.ambiguousTags}
-                      byTag={composerCashtagDisambig.byTag}
-                      loading={composerCashtagDisambig.loading}
-                      symbols={composerMarketSymbols}
-                      onChangeSymbols={setComposerMarketSymbols}
-                      onConfirmTag={composerCashtagDisambig.confirmTag}
-                      className="mt-1.5"
-                    />
                   </div>
                   {(() => {
                     const gifUrl = String(composerMediaUrl || '').trim()
@@ -14095,6 +14086,17 @@ export default function SocialFeed({
                 })()}
               </button>
             )}
+            {composerExpanded ? (
+              <LoungeComposerCashtagDisambiguation
+                ambiguousTags={composerCashtagDisambig.ambiguousTags}
+                byTag={composerCashtagDisambig.byTag}
+                loading={composerCashtagDisambig.loading}
+                symbols={composerMarketSymbols}
+                onChangeSymbols={setComposerMarketSymbols}
+                onConfirmTag={composerCashtagDisambig.confirmTag}
+                className="mt-2"
+              />
+            ) : null}
           </div>
         </div>
         {composerExpanded ? (

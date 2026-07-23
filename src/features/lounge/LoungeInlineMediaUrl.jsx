@@ -356,13 +356,13 @@ export function LoungeInlineMediaUrl({
   )
 
   return (
-    <div className={`${marginTopClass} flex justify-start`}>
+    <div className={`${marginTopClass} flex justify-start w-full min-w-0 max-w-full`}>
       {enableLightbox ? (
         <div
           role="button"
           tabIndex={0}
           data-lounge-image-zoom
-          className="max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+          className="block w-full max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
           onClick={(e) => {
             e.stopPropagation()
             setLightbox({ urls: [String(url).trim()], index: 0 })

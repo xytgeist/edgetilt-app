@@ -131,6 +131,12 @@ export const LOUNGE_FEED_CAPTION_TOP_CLASS = 'mt-0.5'
 export const LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS = 'mt-1'
 export const LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS = 'mt-0.5'
 
+/** Single ticker mini + lone feed photo share full content-column width (multi-image / multi-ticker stay capped). */
+export const LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS = 'w-full min-w-0 max-w-full'
+export const LOUNGE_FEED_ATTACHMENT_SINGLE_ROW_CLASS = 'w-full max-w-full'
+export const LOUNGE_FEED_MARKET_MINI_MULTI_CLASS =
+  'w-[min(92vw,22rem)] shrink-0 snap-start sm:w-[22rem]'
+
 /** Indents detail-thread body beside avatar (`LOUNGE_FEED_AVATAR_CLASS` width + `gap-3`). */
 export const LOUNGE_COMMENT_DETAIL_THREAD_PAD = 'pl-[3.75rem] sm:pl-[4.05rem]'
 

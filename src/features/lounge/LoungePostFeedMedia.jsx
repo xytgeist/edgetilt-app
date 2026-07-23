@@ -157,10 +157,13 @@ export function LoungeImageCarousel({
   }, [urlsKey, isComposer, list.length, visibilityResetRootRef])
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const canOpenLightbox = enableLightbox && !isComposer && typeof onRemoveIndex !== 'function'
+  const singleFeedSlide = !isComposer && variant === 'feed' && list.length === 1
   /** Cap slide width in the row; inner frame still shrinks to image (`inline-block` + `w-auto` img). */
-  const slideMaxW = isComposer
-    ? 'max-w-[min(78vw,18rem)]'
-    : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
+  const slideMaxW = singleFeedSlide
+    ? 'w-full max-w-full'
+    : isComposer
+      ? 'max-w-[min(78vw,18rem)]'
+      : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
   const rounding = variant === 'embed' ? 'rounded-lg' : 'rounded-xl'
   const border =
     variant === 'embed' ? 'border-zinc-600/40' : variant === 'commentInline' ? 'border-zinc-700/50' : 'border-zinc-700/60'

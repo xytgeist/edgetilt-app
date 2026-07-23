@@ -193,17 +193,26 @@ export function LoungeImageCarousel({
       >
         {list.map((url, i) => {
           const displaySrc = loungeFeedImageDeliveryUrl(url, deliveryVariant)
+          const slideClass = singleFeedSlide
+            ? 'relative w-full min-w-0 max-w-full shrink-0 snap-start'
+            : `relative w-auto shrink-0 snap-start ${!isComposer ? 'min-w-[3rem]' : ''} ${slideMaxW}`
+          const frameClass = singleFeedSlide
+            ? `block w-full max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+            : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+          const slideImgClass = singleFeedSlide
+            ? 'block w-full max-h-[312px] h-auto max-w-full object-contain'
+            : imgClass
           return (
           <div
             key={`${url}-${i}`}
-            className={`relative w-auto shrink-0 snap-start ${!isComposer ? 'min-w-[3rem]' : ''} ${slideMaxW}`}
+            className={slideClass}
           >
             {canOpenLightbox ? (
               <div
                 role="button"
                 tabIndex={0}
                 data-lounge-image-zoom
-                className="block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+                className={`block w-full max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
                 onClick={(e) => {
                   e.stopPropagation()
                   setLightbox({ urls: list, index: i })
@@ -218,11 +227,11 @@ export function LoungeImageCarousel({
                 aria-label="View full image"
                 title="View full image"
               >
-                <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
+                <div className={frameClass}>
                   <img
                     src={displaySrc}
                     alt=""
-                    className={imgClass}
+                    className={slideImgClass}
                     loading={i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
@@ -234,11 +243,11 @@ export function LoungeImageCarousel({
                 </div>
               </div>
             ) : (
-              <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
+              <div className={frameClass}>
                 <img
                   src={displaySrc}
                   alt=""
-                  className={imgClass}
+                  className={slideImgClass}
                   loading={i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}

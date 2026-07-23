@@ -2,8 +2,8 @@ import LoungeMarketChartMini from './LoungeMarketChartMini.jsx'
 import { marketEmbedCacheKey, normalizeMarketEmbeds } from '../../utils/loungeMarketCaptionParse.js'
 import {
   LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS,
-  LOUNGE_FEED_ATTACHMENT_SINGLE_ROW_CLASS,
-  LOUNGE_FEED_MARKET_MINI_MULTI_CLASS,
+  LOUNGE_FEED_MARKET_MINI_SINGLE_CLASS,
+  LOUNGE_FEED_MARKET_MINI_SNAP_SLIDE_CLASS,
 } from './loungeFeedAvatar.js'
 import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
 
@@ -15,24 +15,18 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
   const { quotes } = useLoungeMarketFeedQuotes()
   if (!embeds.length) return null
 
-  const single = embeds.length === 1
+  const multi = embeds.length > 1
 
   return (
     <div
       className={`mt-2 ${LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS} ${
-        single
-          ? ''
-          : '-mx-1 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
+        multi
+          ? 'overflow-x-auto overscroll-x-contain snap-x snap-mandatory [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
+          : ''
       } ${className}`}
       data-lounge-market-chart-strip
     >
-      <div
-        className={
-          single
-            ? LOUNGE_FEED_ATTACHMENT_SINGLE_ROW_CLASS
-            : 'flex w-max max-w-full snap-x snap-mandatory gap-2.5 px-1 pb-0.5'
-        }
-      >
+      <div className={multi ? 'flex w-full' : 'w-full'}>
         {embeds.map((embed) => {
           const key = marketEmbedCacheKey(embed)
           return (
@@ -42,7 +36,9 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
               rollingLive={embed.kind === 'rolling' ? quotes[key] : null}
               onOpen={() => onOpenChart?.(embed, embeds)}
               className={
-                single ? `${LOUNGE_FEED_ATTACHMENT_SINGLE_ROW_CLASS} max-w-none` : LOUNGE_FEED_MARKET_MINI_MULTI_CLASS
+                multi
+                  ? `${LOUNGE_FEED_MARKET_MINI_SNAP_SLIDE_CLASS} ${LOUNGE_FEED_MARKET_MINI_SINGLE_CLASS}`
+                  : LOUNGE_FEED_MARKET_MINI_SINGLE_CLASS
               }
             />
           )

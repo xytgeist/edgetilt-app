@@ -349,9 +349,17 @@ export function LoungeInlineMediaUrl({
 
   const displayUrl = loungeFeedImageDeliveryUrl(url, variant === 'detail' ? 'detail' : variant === 'commentInline' ? 'commentInline' : variant === 'embed' ? 'embed' : 'feed')
 
+  const isFeedInline = !isEmbed && !isDetail && !isCommentInline
+  const frameClass = isFeedInline
+    ? `block w-full max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+    : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+  const resolvedImgClass = isFeedInline
+    ? 'block w-full max-h-[312px] h-auto max-w-full object-contain'
+    : imgClass
+
   const framed = (
-    <div className={`inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`}>
-      <img src={displayUrl} alt="" className={imgClass} loading="lazy" decoding="async" />
+    <div className={frameClass}>
+      <img src={displayUrl} alt="" className={resolvedImgClass} loading="lazy" decoding="async" />
     </div>
   )
 

@@ -283,6 +283,8 @@ import {
   useLoungeKeyboardOverlapPx,
 } from './useLoungeKeyboardOverlapPx.js'
 import LoungeMarketSymbolPickerSheet from './LoungeMarketSymbolPickerSheet.jsx'
+import LoungeComposerCashtagDisambiguation from './LoungeComposerCashtagDisambiguation.jsx'
+import { useLoungeCashtagDisambiguation } from './useLoungeCashtagDisambiguation.js'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 import PwaInstallTitleBarRow from '../../components/PwaInstallBanner.jsx'
 import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
@@ -1100,6 +1102,11 @@ export default function SocialFeed({
   const [loungeDetailDraftCaption, setLoungeDetailDraftCaption] = useState('')
   const [loungeDetailEditBusy, setLoungeDetailEditBusy] = useState(false)
   const [loungeDetailEditErr, setLoungeDetailEditErr] = useState('')
+  const composerCashtagDisambig = useLoungeCashtagDisambiguation(supabaseClient, postText)
+  const detailEditCashtagDisambig = useLoungeCashtagDisambiguation(
+    supabaseClient,
+    loungeDetailEditing ? loungeDetailDraftCaption : '',
+  )
   /** Remote URLs for the post being edited (remove-only in UI until upload-on-edit exists). */
   const [loungeDetailEditImageUrls, setLoungeDetailEditImageUrls] = useState([])
   const [loungeDetailEditImageItems, setLoungeDetailEditImageItems] = useState([])
@@ -7998,6 +8005,10 @@ export default function SocialFeed({
 
   const saveLoungeDetailCaption = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId) return
+    if (detailEditCashtagDisambig.blockMarketSubmit) {
+      setLoungeDetailEditErr('Confirm each ambiguous $ ticker chart before saving.')
+      return
+    }
     const cap = normalizeFeedCaption(loungeDetailDraftCaption, loungeComposerCaptionMax)
     setLoungeDetailEditErr('')
     const gifCheck = validateAtMostOneGifUrl(loungeDetailEditMediaUrl)
@@ -8101,6 +8112,7 @@ export default function SocialFeed({
     loungeDetailEditMarketSymbols,
     loungeDetailEditMediaUrl,
     loungeDetailEditVideoPostBlocked,
+    detailEditCashtagDisambig.blockMarketSubmit,
     loungePostDetail,
     shouldAssignLoungePostSnapshotRef,
   ])
@@ -9373,6 +9385,7 @@ export default function SocialFeed({
     })
     setComposerMediaUrl('')
     setComposerMarketSymbols([])
+    composerCashtagDisambig.resetConfirmed()
     composerFoldedFromFeedScrollRef.current = false
     composerFoldRevealRef.current = 0
     setComposerFoldReveal(0)
@@ -9389,7 +9402,7 @@ export default function SocialFeed({
     if (postUid && pendingPoster.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
-  }, [])
+  }, [composerCashtagDisambig.resetConfirmed])
 
   const restoreComposerFromSnapshot = useCallback(
     (snap, opts = {}) => {
@@ -12192,6 +12205,11 @@ export default function SocialFeed({
     }
     if (loungeComposerVideoPostBlocked) return
 
+    if (composerCashtagDisambig.blockMarketSubmit) {
+      setPostErr('Confirm each ambiguous $ ticker chart before posting.')
+      return
+    }
+
     if (hasVideo && composerVideoSlot?.file) {
       if (composerVideoSlot.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
         setPostErr('Video must be 200 MB or smaller for upload.')
@@ -12207,6 +12225,7 @@ export default function SocialFeed({
     composerMarketSymbols,
     composerMediaUrl,
     composerVideoSlot,
+    composerCashtagDisambig.blockMarketSubmit,
     loungeComposerCaptionMax,
     loungeComposerVideoPostBlocked,
     postText,
@@ -13958,6 +13977,15 @@ export default function SocialFeed({
                       onChange={setComposerMarketSymbols}
                       className="mt-1.5"
                     />
+                    <LoungeComposerCashtagDisambiguation
+                      ambiguousTags={composerCashtagDisambig.ambiguousTags}
+                      byTag={composerCashtagDisambig.byTag}
+                      loading={composerCashtagDisambig.loading}
+                      symbols={composerMarketSymbols}
+                      onChangeSymbols={setComposerMarketSymbols}
+                      onConfirmTag={composerCashtagDisambig.confirmTag}
+                      className="mt-1.5"
+                    />
                   </div>
                   {(() => {
                     const gifUrl = String(composerMediaUrl || '').trim()
@@ -14167,6 +14195,7 @@ export default function SocialFeed({
                       loungeComposerVideoPostBlocked ||
                       loungePostUploadFailedOpen ||
                       loungeVideoCrop != null ||
+                      composerCashtagDisambig.blockMarketSubmit ||
                       (!postText.trim() &&
                         !String(composerMediaUrl || '').trim() &&
                         composerImageItems.length === 0 &&
@@ -14837,6 +14866,15 @@ export default function SocialFeed({
                       onChange={setLoungeDetailEditMarketSymbols}
                       className="mt-1.5"
                     />
+                    <LoungeComposerCashtagDisambiguation
+                      ambiguousTags={detailEditCashtagDisambig.ambiguousTags}
+                      byTag={detailEditCashtagDisambig.byTag}
+                      loading={detailEditCashtagDisambig.loading}
+                      symbols={loungeDetailEditMarketSymbols}
+                      onChangeSymbols={setLoungeDetailEditMarketSymbols}
+                      onConfirmTag={detailEditCashtagDisambig.confirmTag}
+                      className="mt-1.5"
+                    />
                     {loungeDetailEditErr ? (
                       <div className="mt-2 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
                         {loungeDetailEditErr}
@@ -15217,6 +15255,7 @@ export default function SocialFeed({
                               onClick={() => void saveLoungeDetailCaption()}
                               disabled={
                                 loungeDetailEditVideoPostBlocked ||
+                                detailEditCashtagDisambig.blockMarketSubmit ||
                                 (!normalizeFeedCaption(loungeDetailDraftCaption, loungeComposerCaptionMax) &&
                                   loungeDetailEditImageItems.length === 0 &&
                                   loungeDetailEditImageUrls.length === 0 &&

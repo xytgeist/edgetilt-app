@@ -145,7 +145,8 @@ export async function resolveCashtagTicker(
 
   const results = await marketSearch(upper)
   if (!results.length) return null
-  const pick = pickBestCashtagSearchResult(upper, results)
+  const enriched = await enrichSearchResultsForPicker(results.slice(0, 8))
+  const pick = pickBestCashtagSearchResult(upper, enriched)
   return { symbol: pick.symbol, asset_class: pick.asset_class }
 }
 
@@ -807,6 +808,37 @@ function isTokenizedMarketSearchRow(row: {
   )
 }
 
+/** Deprioritize illiquid / micro-cap crypto when a large-cap stock shares the cashtag. */
+const MICRO_CAP_CRYPTO_USD = 25_000_000
+const LARGE_CAP_STOCK_USD = 500_000_000
+export const CASHTAG_SCORE_AMBIGUITY_DELTA = 20
+
+function cashtagAttachSortScore(
+  tag: string,
+  row: {
+    symbol: string
+    display_symbol?: string
+    description?: string
+    asset_class: MarketAssetClass
+    type?: string
+    market_cap?: number | null
+  },
+): number {
+  let score = marketSearchRelevanceScore(tag, row)
+  const cap = Number(row.market_cap)
+  if (row.asset_class === 'crypto') {
+    if (Number.isFinite(cap) && cap > 0 && cap < MICRO_CAP_CRYPTO_USD) {
+      score += 200
+    } else if (!Number.isFinite(cap) || cap <= 0) {
+      score += 140
+    }
+  }
+  if (row.asset_class === 'stock' && Number.isFinite(cap) && cap >= LARGE_CAP_STOCK_USD) {
+    score -= 35
+  }
+  return score
+}
+
 function pickBestCashtagSearchResult<
   T extends {
     symbol: string
@@ -821,11 +853,11 @@ function pickBestCashtagSearchResult<
   const pool = matching.length ? matching : results
 
   let best = pool[0]
-  let bestScore = marketSearchRelevanceScore(tag, best)
+  let bestScore = cashtagAttachSortScore(tag, best)
 
   for (let i = 1; i < pool.length; i++) {
     const row = pool[i]
-    const score = marketSearchRelevanceScore(tag, row)
+    const score = cashtagAttachSortScore(tag, row)
     if (score < bestScore) {
       best = row
       bestScore = score
@@ -1671,4 +1703,142 @@ export async function finnhubLatestNews(
     url: yahoo.url,
     datetime: yahoo.datetime,
   }
+}
+
+const MARKET_CASHTAG_ATTACH_RE = /^[A-Z][A-Z0-9.-]{0,14}$/
+
+export type CashtagDisambiguationCandidate = {
+  symbol: string
+  asset_class: MarketAssetClass
+  display_symbol: string
+  name: string
+  exchange: string
+  market_cap: number | null
+  logo_url: string
+  price: number | null
+  change_pct: number | null
+  currency: string
+}
+
+export type CashtagDisambiguationResult = {
+  tag: string
+  ambiguous: boolean
+  suggested: { symbol: string; asset_class: MarketAssetClass; display_symbol: string } | null
+  candidates: CashtagDisambiguationCandidate[]
+}
+
+function mapEnrichedToCashtagCandidate(
+  row: Awaited<ReturnType<typeof enrichSearchResultsForPicker>>[number],
+): CashtagDisambiguationCandidate {
+  return {
+    symbol: row.symbol,
+    asset_class: row.asset_class,
+    display_symbol: marketSearchRowDisplay(row),
+    name: String(row.name || row.description || row.display_symbol || row.symbol),
+    exchange: String(row.exchange || row.type || row.asset_class || ''),
+    market_cap: row.market_cap ?? null,
+    logo_url: String(row.logo_url || ''),
+    price: row.price ?? null,
+    change_pct: row.change_pct ?? null,
+    currency: String(row.currency || 'USD'),
+  }
+}
+
+function evaluateCashtagAmbiguity(
+  tag: string,
+  sorted: Array<{ symbol: string; asset_class: MarketAssetClass; market_cap?: number | null } & Record<string, unknown>>,
+  suggested: { symbol: string; asset_class: MarketAssetClass } | null,
+): boolean {
+  if (sorted.length <= 1) return false
+
+  const hasStock = sorted.some((r) => r.asset_class === 'stock')
+  const hasCrypto = sorted.some((r) => r.asset_class === 'crypto')
+  if (hasStock && hasCrypto) return true
+
+  const s0 = cashtagAttachSortScore(tag, sorted[0])
+  const s1 = cashtagAttachSortScore(tag, sorted[1])
+  if (s1 - s0 <= CASHTAG_SCORE_AMBIGUITY_DELTA) return true
+
+  if (suggested?.asset_class === 'crypto') {
+    const largeStock = sorted.find(
+      (r) => r.asset_class === 'stock' && Number(r.market_cap) >= LARGE_CAP_STOCK_USD,
+    )
+    const suggestedRow = sorted.find((r) => r.symbol === suggested.symbol && r.asset_class === 'crypto')
+    const cryptoCap = Number(suggestedRow?.market_cap)
+    if (largeStock && (!Number.isFinite(cryptoCap) || cryptoCap < MICRO_CAP_CRYPTO_USD)) return true
+  }
+
+  return false
+}
+
+/** Compose-time cashtag resolution: candidates + ambiguity flag (picker overrides attach). */
+export async function resolveCashtagDisambiguation(tag: string): Promise<CashtagDisambiguationResult> {
+  const upper = String(tag || '').trim().toUpperCase()
+  if (!upper || !MARKET_CASHTAG_ATTACH_RE.test(upper)) {
+    return { tag: upper, ambiguous: false, suggested: null, candidates: [] }
+  }
+
+  if (isCommonCryptoCashtag(upper)) {
+    const resolved = await resolveCashtagTicker(upper)
+    return {
+      tag: upper,
+      ambiguous: false,
+      suggested: resolved ? { ...resolved, display_symbol: upper } : null,
+      candidates: [],
+    }
+  }
+
+  const yahoo = await yahooResolveUsEquityCashtag(upper).catch(() => null)
+  if (yahoo) {
+    return {
+      tag: upper,
+      ambiguous: false,
+      suggested: { symbol: yahoo.symbol, asset_class: 'stock', display_symbol: upper },
+      candidates: [],
+    }
+  }
+
+  const results = await marketSearch(upper)
+  if (!results.length) {
+    return { tag: upper, ambiguous: false, suggested: null, candidates: [] }
+  }
+
+  const matching = results.filter((row) => cashtagRowMatchesTicker(upper, row))
+  const pool = matching.length ? matching : results
+  const enriched = await enrichSearchResultsForPicker(pool.slice(0, 8))
+  const sorted = [...enriched].sort((a, b) => cashtagAttachSortScore(upper, a) - cashtagAttachSortScore(upper, b))
+  const best = sorted[0]
+  const suggested = best
+    ? {
+        symbol: best.symbol,
+        asset_class: best.asset_class,
+        display_symbol: upper,
+      }
+    : null
+  const ambiguous = evaluateCashtagAmbiguity(upper, sorted, suggested)
+
+  return {
+    tag: upper,
+    ambiguous,
+    suggested,
+    candidates: sorted.slice(0, 6).map(mapEnrichedToCashtagCandidate),
+  }
+}
+
+export async function resolveCashtagsDisambiguationBatch(
+  tags: string[],
+): Promise<Record<string, CashtagDisambiguationResult>> {
+  const seen = new Set<string>()
+  const unique: string[] = []
+  for (const raw of tags) {
+    const t = String(raw || '').trim().toUpperCase()
+    if (!t || seen.has(t)) continue
+    seen.add(t)
+    unique.push(t)
+  }
+  const out: Record<string, CashtagDisambiguationResult> = {}
+  for (const tag of unique.slice(0, MARKET_EMBED_MAX)) {
+    out[tag] = await resolveCashtagDisambiguation(tag)
+  }
+  return out
 }

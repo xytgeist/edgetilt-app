@@ -9,6 +9,12 @@ import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
+import {
+  loungeFeedAttachmentFrameClassName,
+  loungeFeedAttachmentImgClassName,
+  loungeFeedAttachmentTapTargetClassName,
+  loungeFeedImageAttachmentTier,
+} from './loungeFeedImageAttachment.js'
 import MediaLightboxAmbientBackdrop from '../../components/MediaLightboxAmbientBackdrop.jsx'
 
 function normalizeUrlList(urls) {
@@ -333,6 +339,9 @@ export function LoungeInlineMediaUrl({
   renderMediaLightboxInteractionBar,
 }) {
   const [lightbox, setLightbox] = useState(null)
+  const [feedAttachmentTier, setFeedAttachmentTier] = useState(
+    /** @type {import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier} */ ('column'),
+  )
   if (!url) return null
   const isEmbed = variant === 'embed'
   const isDetail = variant === 'detail'
@@ -351,15 +360,32 @@ export function LoungeInlineMediaUrl({
 
   const isFeedInline = !isEmbed && !isDetail && !isCommentInline
   const frameClass = isFeedInline
-    ? `block w-full max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+    ? loungeFeedAttachmentFrameClassName(feedAttachmentTier, { rounding, border })
     : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
   const resolvedImgClass = isFeedInline
-    ? 'block w-full max-h-[312px] h-auto max-w-full object-contain'
+    ? loungeFeedAttachmentImgClassName(feedAttachmentTier)
     : imgClass
+  const tapTargetClass = isFeedInline
+    ? loungeFeedAttachmentTapTargetClassName(feedAttachmentTier)
+    : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
 
   const framed = (
     <div className={frameClass}>
-      <img src={displayUrl} alt="" className={resolvedImgClass} loading="lazy" decoding="async" />
+      <img
+        src={displayUrl}
+        alt=""
+        className={resolvedImgClass}
+        loading="lazy"
+        decoding="async"
+        onLoad={(e) => {
+          if (!isFeedInline) return
+          const tier = loungeFeedImageAttachmentTier(
+            e.currentTarget.naturalWidth,
+            e.currentTarget.naturalHeight,
+          )
+          setFeedAttachmentTier((prev) => (prev === tier ? prev : tier))
+        }}
+      />
     </div>
   )
 
@@ -370,7 +396,7 @@ export function LoungeInlineMediaUrl({
           role="button"
           tabIndex={0}
           data-lounge-image-zoom
-          className="block w-full max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50"
+          className={tapTargetClass}
           onClick={(e) => {
             e.stopPropagation()
             setLightbox({ urls: [String(url).trim()], index: 0 })

@@ -78,6 +78,20 @@ export async function loungeMarketSearch(supabase, query) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string[]} tags Cashtag tickers without `$`
+ */
+export async function loungeMarketResolveCashtags(supabase, tags) {
+  const list = Array.isArray(tags)
+    ? tags.map((t) => String(t || '').trim().toUpperCase()).filter(Boolean)
+    : []
+  if (!list.length) return { by_tag: {} }
+  const data = await loungeMarketInvoke(supabase, { action: 'resolve_cashtags', tags: list })
+  if (!data || data.error) return { error: String(data?.error || 'Could not resolve cashtags.'), by_tag: {} }
+  return { by_tag: data.by_tag && typeof data.by_tag === 'object' ? data.by_tag : {} }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{ symbol: string, asset_class: 'stock'|'crypto' }} symbol
  */
 export async function loungeMarketPreview(supabase, symbol) {

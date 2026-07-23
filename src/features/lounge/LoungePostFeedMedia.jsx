@@ -1,6 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
+import {
+  loungeFeedAttachmentFrameClassName,
+  loungeFeedAttachmentImgClassName,
+  loungeFeedAttachmentSlideClassName,
+  loungeFeedAttachmentTapTargetClassName,
+  loungeFeedImageAttachmentTier,
+} from './loungeFeedImageAttachment.js'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
@@ -46,8 +53,12 @@ export function LoungeImageCarousel({
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
   const [lightbox, setLightbox] = useState(null)
+  const [feedAttachmentTiers, setFeedAttachmentTiers] = useState(/** @type {Record<number, import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier>} */ ({}))
   const carouselScrollRef = useRef(null)
   const urlsKey = list.join('\0')
+  useLayoutEffect(() => {
+    setFeedAttachmentTiers({})
+  }, [urlsKey])
   useLayoutEffect(() => {
     const el = carouselScrollRef.current
     if (!el) return
@@ -157,16 +168,23 @@ export function LoungeImageCarousel({
   }, [urlsKey, isComposer, list.length, visibilityResetRootRef])
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const canOpenLightbox = enableLightbox && !isComposer && typeof onRemoveIndex !== 'function'
-  const singleFeedSlide = !isComposer && variant === 'feed' && list.length === 1
-  /** Cap slide width in the row; inner frame still shrinks to image (`inline-block` + `w-auto` img). */
-  const slideMaxW = singleFeedSlide
-    ? 'w-full max-w-full'
-    : isComposer
-      ? 'max-w-[min(78vw,18rem)]'
-      : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
+  const isFeedVariant = !isComposer && variant === 'feed'
+  const singleFeedSlide = isFeedVariant && list.length === 1
   const rounding = variant === 'embed' ? 'rounded-lg' : 'rounded-xl'
   const border =
     variant === 'embed' ? 'border-zinc-600/40' : variant === 'commentInline' ? 'border-zinc-700/50' : 'border-zinc-700/60'
+  const frameOpts = { rounding, border }
+
+  const tierForSlide = (index) => {
+    if (!isFeedVariant) return 'column'
+    return feedAttachmentTiers[index] ?? 'column'
+  }
+
+  const noteFeedAttachmentTier = (index, img) => {
+    if (!isFeedVariant || !img) return
+    const tier = loungeFeedImageAttachmentTier(img.naturalWidth, img.naturalHeight)
+    setFeedAttachmentTiers((prev) => (prev[index] === tier ? prev : { ...prev, [index]: tier }))
+  }
 
   const nudgeScrollStart = () => {
     const el = carouselScrollRef.current
@@ -193,15 +211,29 @@ export function LoungeImageCarousel({
       >
         {list.map((url, i) => {
           const displaySrc = loungeFeedImageDeliveryUrl(url, deliveryVariant)
-          const slideClass = singleFeedSlide
-            ? 'relative w-full min-w-0 max-w-full shrink-0 snap-start'
-            : `relative w-auto shrink-0 snap-start ${!isComposer ? 'min-w-[3rem]' : ''} ${slideMaxW}`
-          const frameClass = singleFeedSlide
-            ? `block w-full max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+          const tier = tierForSlide(i)
+          const slideClass = isFeedVariant
+            ? loungeFeedAttachmentSlideClassName(tier, {
+                singleInPost: singleFeedSlide,
+                multiCarousel: list.length > 1,
+              })
+            : `relative w-auto shrink-0 snap-start ${!isComposer ? 'min-w-[3rem]' : ''} ${
+                isComposer
+                  ? 'max-w-[min(78vw,18rem)]'
+                  : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
+              }`
+          const frameClass = isFeedVariant
+            ? loungeFeedAttachmentFrameClassName(tier, frameOpts)
             : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
-          const slideImgClass = singleFeedSlide
-            ? 'block w-full max-h-[312px] h-auto max-w-full object-contain'
-            : imgClass
+          const slideImgClass = isFeedVariant ? loungeFeedAttachmentImgClassName(tier) : imgClass
+          const tapClass = isFeedVariant
+            ? loungeFeedAttachmentTapTargetClassName(tier)
+            : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
+          const onImgLoad = (e) => {
+            noteFeedAttachmentTier(i, e.currentTarget)
+            if (i === 0) nudgeScrollStart()
+            notifySlideMediaLayout()
+          }
           return (
           <div
             key={`${url}-${i}`}
@@ -212,7 +244,7 @@ export function LoungeImageCarousel({
                 role="button"
                 tabIndex={0}
                 data-lounge-image-zoom
-                className={`block w-full max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+                className={tapClass}
                 onClick={(e) => {
                   e.stopPropagation()
                   setLightbox({ urls: list, index: i })
@@ -235,10 +267,7 @@ export function LoungeImageCarousel({
                     loading={i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
-                    onLoad={() => {
-                      if (i === 0) nudgeScrollStart()
-                      notifySlideMediaLayout()
-                    }}
+                    onLoad={onImgLoad}
                   />
                 </div>
               </div>
@@ -251,10 +280,7 @@ export function LoungeImageCarousel({
                   loading={i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}
-                  onLoad={() => {
-                    if (i === 0) nudgeScrollStart()
-                    notifySlideMediaLayout()
-                  }}
+                  onLoad={onImgLoad}
                 />
               </div>
             )}

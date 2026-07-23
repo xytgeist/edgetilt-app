@@ -20,6 +20,7 @@ import {
   resolveMarketBars,
   resolveMarketBarsBefore,
   resolveMarketSymbolsForAttach,
+  resolveCashtagsDisambiguationBatch,
   sortMarketSearchResults,
   type MarketAssetClass,
   type MarketEmbed,
@@ -345,6 +346,20 @@ Deno.serve(async (req) => {
       return respond(200, { ok: true, results: sortMarketSearchResults(q, enriched) })
     } catch (e) {
       return respond(502, { error: e instanceof Error ? e.message : 'Search failed.' })
+    }
+  }
+
+  if (action === 'resolve_cashtags') {
+    const rawTags = Array.isArray(body?.tags) ? body.tags : []
+    const tags = rawTags
+      .map((t) => String(t || '').trim().toUpperCase())
+      .filter((t) => t.length > 0)
+    if (!tags.length) return respond(400, { error: 'tags is required.' })
+    try {
+      const by_tag = await resolveCashtagsDisambiguationBatch(tags)
+      return respond(200, { ok: true, by_tag })
+    } catch (e) {
+      return respond(502, { error: e instanceof Error ? e.message : 'Cashtag resolve failed.' })
     }
   }
 

@@ -34,9 +34,14 @@ function clearConnectQueryParams() {
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   embedded?: boolean,
+ *   onMonetizationRowApplied?: (row: Record<string, unknown> | null) => void,
  * }} props
  */
-export default function CreatorFanMonetizationPanel({ supabaseClient, embedded = false }) {
+export default function CreatorFanMonetizationPanel({
+  supabaseClient,
+  embedded = false,
+  onMonetizationRowApplied,
+}) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -59,6 +64,7 @@ export default function CreatorFanMonetizationPanel({ supabaseClient, embedded =
 
   const applyRow = useCallback((row) => {
     if (!row) return
+    onMonetizationRowApplied?.(row)
     if (row.fan_tier_key) setTierKey(String(row.fan_tier_key))
     setEnabled(Boolean(row.enabled))
     setConnectComplete(Boolean(row.connect_onboarding_complete))
@@ -76,7 +82,7 @@ export default function CreatorFanMonetizationPanel({ supabaseClient, embedded =
     setFanRoomDescription(typeof row.fan_room_description === 'string' ? row.fan_room_description : '')
     setFanRoomTopicKeywords(typeof row.fan_room_topic_keywords === 'string' ? row.fan_room_topic_keywords : '')
     setFanRoomAvatarUrl(typeof row.fan_room_avatar_url === 'string' ? row.fan_room_avatar_url : null)
-  }, [])
+  }, [onMonetizationRowApplied])
 
   const reload = useCallback(async () => {
     if (!supabaseClient) {

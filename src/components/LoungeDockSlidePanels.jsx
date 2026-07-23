@@ -26,7 +26,7 @@ import {
   supportMailtoHref,
   SUPPORT_BILLING_NO_ACCESS_SUBJECT,
 } from '../features/legal/supportContact.js'
-import CreatorFanMonetizationPanel from '../features/creatorFanSubs/CreatorFanMonetizationPanel.jsx'
+import SettingsFanMonetizationSection from '../features/creatorFanSubs/SettingsFanMonetizationSection.jsx'
 import CreatorFanSupportedCreatorsPanel from '../features/creatorFanSubs/CreatorFanSupportedCreatorsPanel.jsx'
 import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembershipPanel.jsx'
 import {
@@ -227,6 +227,7 @@ export default function LoungeDockSlidePanels({
   const settingsAccountSectionRef = useRef(null)
   const settingsMembershipSectionRef = useRef(null)
   const settingsSubscriptionsSectionRef = useRef(null)
+  const settingsFanMonetizationSectionRef = useRef(null)
   const [panelW, setPanelW] = useState(300)
   const [tx, setTx] = useState(0)
   const [txTransition, setTxTransition] = useState(false)
@@ -384,28 +385,31 @@ export default function LoungeDockSlidePanels({
 
   useLayoutEffect(() => {
     if (openPanel !== 'settings') return
-    const fanSection =
-      settingsFocusSection === 'subscriptions-fan' ||
-      settingsFocusSection === 'fan' ||
-      settingsFocusSection === 'subscriptions'
-    if (!fanSection) return
-    setSubscriptionsSettingsOpen(true)
+    if (settingsFocusSection === 'subscriptions') {
+      setSubscriptionsSettingsOpen(true)
+      const scroller = panelScrollRef.current
+      const section = settingsSubscriptionsSectionRef.current
+      if (!scroller || !section) return
+      const top = section.offsetTop - 8
+      scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      onSettingsFocusSectionHandled?.()
+      return
+    }
     if (settingsFocusSection === 'subscriptions-fan' || settingsFocusSection === 'fan') {
       setFanMonetizationSettingsOpen(true)
+      const scroller = panelScrollRef.current
+      const section = settingsFanMonetizationSectionRef.current
+      if (!scroller || !section) return
+      const top = section.offsetTop - 8
+      scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      onSettingsFocusSectionHandled?.()
     }
-    const scroller = panelScrollRef.current
-    const section = settingsSubscriptionsSectionRef.current
-    if (!scroller || !section) return
-    const top = section.offsetTop - 8
-    scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
-    onSettingsFocusSectionHandled?.()
   }, [openPanel, settingsFocusSection, onSettingsFocusSectionHandled])
 
   useEffect(() => {
     if (openPanel !== 'settings' || typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('settings') === 'fan') {
-      setSubscriptionsSettingsOpen(true)
       setFanMonetizationSettingsOpen(true)
     }
   }, [openPanel])
@@ -2040,7 +2044,7 @@ export default function LoungeDockSlidePanels({
                   <span className="min-w-0">
                     <span className="block text-[15px] font-semibold text-zinc-100">Subscriptions</span>
                     <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                      Creators you support and fan monetization if you publish.
+                      Creators you support with a fan subscription.
                     </span>
                   </span>
                   <SettingsSectionChevron open={subscriptionsSettingsOpen} />
@@ -2048,36 +2052,25 @@ export default function LoungeDockSlidePanels({
                 {subscriptionsSettingsOpen ? (
                   <div
                     data-settings-subscriptions
-                    className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40 divide-y divide-zinc-800/90"
+                    className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40"
                   >
                     <CreatorFanSupportedCreatorsPanel
                       supabaseClient={settingsSupabaseClient}
                       onOpenCreatorProfile={onOpenProfileFromSettings}
                     />
-                    <div>
-                      <button
-                        type="button"
-                        aria-expanded={fanMonetizationSettingsOpen}
-                        onClick={() => setFanMonetizationSettingsOpen((open) => !open)}
-                        className="flex min-h-12 w-full items-start justify-between gap-3 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50"
-                      >
-                        <span className="min-w-0">
-                          <span className="block text-[15px] font-semibold text-zinc-100">
-                            Enable fan subscriptions
-                          </span>
-                          <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                            Preset monthly tiers, fan-only posts, and a private fan group chat.
-                          </span>
-                        </span>
-                        <SettingsSectionChevron open={fanMonetizationSettingsOpen} />
-                      </button>
-                      {fanMonetizationSettingsOpen ? (
-                        <CreatorFanMonetizationPanel supabaseClient={settingsSupabaseClient} embedded />
-                      ) : null}
-                    </div>
                   </div>
                 ) : null}
               </div>
+            ) : null}
+
+            {settingsSupabaseClient ? (
+              <SettingsFanMonetizationSection
+                ref={settingsFanMonetizationSectionRef}
+                supabaseClient={settingsSupabaseClient}
+                open={fanMonetizationSettingsOpen}
+                onOpenChange={setFanMonetizationSettingsOpen}
+                chevron={<SettingsSectionChevron open={fanMonetizationSettingsOpen} />}
+              />
             ) : null}
 
             {typeof onLogout === 'function' ? (

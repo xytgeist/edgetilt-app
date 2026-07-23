@@ -497,7 +497,7 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 
 **Implementation checklist**
 
-- [x] **SQL:** migration **`20260723200000_creator_fan_private_subs.sql`** — `topic_keywords`, **`list_creator_fan_private_subs`**, **`creator_fan_update_room`**, monetization JSON room fields; apply on test before smoke.
+- [x] **SQL:** migration **`20260723200000_creator_fan_private_subs.sql`** — `topic_keywords`, **`list_creator_fan_private_subs`**, **`creator_fan_update_room`**, monetization JSON room fields; applied **test + prod** (**2026-07-23**).
 - [x] **Creator setup UI:** **`CreatorFanPrivateSubsRoomPanel`** in Settings fan monetization (name, description, keywords, avatar).
 - [x] **`ChatTab.jsx` + `ChatPrivateSubsTab.jsx`:** **Private Subs** tab, search, **Joined** / **Host** pills, enter gate via **`CreatorFanSubscribeModal`**; **`creator_fan` filtered out of Inbox list.
 - [x] **`ChatConversation.jsx`:** `creator_fan` uses group message UX; no group settings sheet (edit in Settings).
@@ -875,6 +875,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-23: **Creator fan subs §4 SQL on prod + test:** **`20260723200000_creator_fan_private_subs.sql`** applied on **`jtjgtucumuoswnbauxry`** and **`kcosfvmreeiosdjdzycb`**; **`schema_migrations`** **`20260723200000`** recorded. Pairs with frontend **`main`** **`a4284186`**.
 - 2026-07-23: **Legal entity + branding:** **`LEGAL_ENTITY_NAME`** → **Digiverse Ventures, LLC**; product copy **EDGE / EDGETILT** (no LVSlotPro in Terms/Privacy/Guidelines); **`LEGAL_POLICY_VERSION` `2026-07-23`** triggers re-acceptance modal for signed-in users.
 - 2026-07-22: **Creator fan subs §4 Private Subs (code):** migration **`20260723200000`**; Chat **Private Subs** tab + catalog RPC; creator room editor in Settings; Inbox excludes `creator_fan`. Apply SQL test then prod; smoke checklist still open.
 - 2026-07-22: **Creator fan subs §4 highlight:** Ryan — member rows use **border + `Joined` micro-pill** (creator own room **`Host`** / **`Yours`** TBD at build); not border-only.

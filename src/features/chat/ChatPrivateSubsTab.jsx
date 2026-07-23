@@ -161,9 +161,6 @@ export default function ChatPrivateSubsTab({
             const pillLabel = row.is_host ? 'Host' : joined ? 'Joined' : null
             const avatar = row.avatar_url || row.creator_avatar_url
             const handle = row.creator_handle ? `@${row.creator_handle}` : ''
-            const keywords = row.topic_keywords
-              ? String(row.topic_keywords).split(',').map((s) => s.trim()).filter(Boolean).slice(0, 4)
-              : []
 
             return (
               <li key={row.room_id}>
@@ -209,11 +206,6 @@ export default function ChatPrivateSubsTab({
                     {row.description ? (
                       <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-zinc-400">
                         {row.description}
-                      </p>
-                    ) : null}
-                    {keywords.length > 0 ? (
-                      <p className="mt-1 truncate text-[11px] text-zinc-500">
-                        {keywords.join(' · ')}
                       </p>
                     ) : null}
                   </div>

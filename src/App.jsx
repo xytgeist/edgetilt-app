@@ -819,19 +819,12 @@ function App() {
       }
     }
     if (typeof window !== 'undefined') {
-      const pathSlug = parseLegalPathname(window.location.pathname)
-      if (!pathSlug) {
-        setCurrentView('app')
-        window.history.replaceState({}, document.title, '/')
-        return
-      }
-      if (window.history.length > 1) {
-        window.history.back()
-        return
-      }
+      // Direct / external visit (e.g. Google → /privacy): no return context — go to app, not history.back() (would leave the site).
+      setCurrentView('app')
+      window.history.replaceState({}, document.title, '/')
+      return
     }
     setCurrentView('app')
-    window.history.replaceState({}, document.title, '/')
   }, [currentView, finishLegalReturn])
 
   useEffect(() => {

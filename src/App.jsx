@@ -27,6 +27,7 @@ import {
   LegalDocumentScreen,
   LegalAcceptanceModal,
   parseLegalPathname,
+  resolveLegalViewFromLocation,
   recordLegalAcceptance,
   shouldShowLegalAcceptanceModal,
   markPendingLegalAcceptance,
@@ -92,7 +93,12 @@ function App() {
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
     if (parseMonitorPathname(window.location.pathname || '/')) return 'monitor'
-    return parseLegalPathname(window.location.pathname || '/') || 'app'
+    return (
+      resolveLegalViewFromLocation(
+        window.location.pathname || '/',
+        window.location.search || '',
+      ) || 'app'
+    )
   })
   /** Login/signup as a modal over the app when the user chooses it or a feature calls onRequireAuth. */
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
@@ -173,7 +179,14 @@ function App() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      const legalSlug = parseLegalPathname(window.location.pathname || '/')
+      const pathname = window.location.pathname || '/'
+      const search = window.location.search || ''
+      const legalSlug = resolveLegalViewFromLocation(pathname, search)
+      if (parseLegalPathname(pathname) && !legalSlug) {
+        window.history.replaceState({}, document.title, '/')
+        setCurrentView('app')
+        return
+      }
       if (legalSlug) {
         setCurrentView(legalSlug)
         return
@@ -189,7 +202,6 @@ function App() {
       }
 
       const hash = window.location.hash || ''
-      const search = window.location.search || ''
       const combinedForType = `${hash}${search}`
       const hashParams = new URLSearchParams(hash.replace('#', ''))
       // Email confirmation uses type=signup (or type=confirmation); Google OAuth includes provider_token in the hash.

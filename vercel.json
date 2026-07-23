@@ -6,6 +6,20 @@
       "permanent": true
     }
   ],
+  "headers": [
+    {
+      "source": "/privacy",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, follow" }]
+    },
+    {
+      "source": "/terms",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, follow" }]
+    },
+    {
+      "source": "/guidelines",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, follow" }]
+    }
+  ],
   "rewrites": [
     { "source": "/reset-password", "destination": "/index.html" },
     {

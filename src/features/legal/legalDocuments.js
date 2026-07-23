@@ -17,14 +17,14 @@ export const LEGAL_DOCUMENTS = {
     title: 'Terms & Conditions',
     effectiveDate: LEGAL_EFFECTIVE_DATE,
     intro:
-      'These Terms & Conditions ("Terms") govern your access to and use of the EDGE mobile and web application and related services (collectively, the "Service") operated by ' +
+      'These Terms & Conditions ("Terms") govern your access to and use of the EDGE / EDGETILT mobile and web application and related services (collectively, the "Service") operated by ' +
       `${LEGAL_ENTITY_NAME}, a ${LEGAL_ENTITY_STATE} limited liability company ("we," "us," or "our"). By creating an account or using the Service, you agree to these Terms and our Privacy Policy.`,
     sections: [
       {
         id: 'about',
         heading: '1. About the Service',
         paragraphs: [
-          'EDGE (also branded LVSlotPro) is a community and tooling platform for slot and advantage-play enthusiasts. Features may include social feeds ("Lounge"), calculators, play logbooks, bankroll tracking, offers calendars, AP guides, messaging, and related content.',
+          'EDGE / EDGETILT is a community and tooling platform for slot and advantage-play enthusiasts. Features may include social feeds ("Lounge"), calculators, play logbooks, bankroll tracking, offers calendars, AP guides, messaging, and related content.',
           'The Service is provided for informational and entertainment purposes. We do not operate casinos, accept wagers, or facilitate gambling.',
         ],
       },
@@ -136,7 +136,7 @@ export const LEGAL_DOCUMENTS = {
     effectiveDate: LEGAL_EFFECTIVE_DATE,
     intro:
       'This Privacy Policy describes how ' +
-      `${LEGAL_ENTITY_NAME} ("we," "us," or "our") collects, uses, and shares information when you use the EDGE / LVSlotPro application and related services (the "Service"). It applies alongside our Terms & Conditions.`,
+      `${LEGAL_ENTITY_NAME} ("we," "us," or "our") collects, uses, and shares information when you use the EDGE / EDGETILT application and related services (the "Service"). It applies alongside our Terms & Conditions.`,
     sections: [
       {
         id: 'collect',
@@ -257,7 +257,7 @@ export const LEGAL_DOCUMENTS = {
     title: 'Community Guidelines',
     effectiveDate: LEGAL_EFFECTIVE_DATE,
     intro:
-      'These Community Guidelines explain how we expect members to behave on EDGE (LVSlotPro). They apply to the Lounge feed, comments, direct messages, group chats, profiles, and any other social or community features ... whether you are here for slots, sports, trading, investing, or any other edge-hunting niche. They work together with our Terms & Conditions and Privacy Policy.',
+      'These Community Guidelines explain how we expect members to behave on EDGE / EDGETILT. They apply to the Lounge feed, comments, direct messages, group chats, profiles, and any other social or community features ... whether you are here for slots, sports, trading, investing, or any other edge-hunting niche. They work together with our Terms & Conditions and Privacy Policy.',
     sections: [
       {
         id: 'purpose',
@@ -361,4 +361,24 @@ export function parseLegalPathname(pathname) {
   if (path === '/privacy') return 'privacy'
   if (path === '/guidelines') return 'guidelines'
   return null
+}
+
+/** Legal full-page routes require ?from= (stops bare /privacy becoming a search landing URL). */
+const LEGAL_BOOTSTRAP_FROM = new Set(['auth', 'welcome', 'settings', 'acceptance', 'public'])
+
+/**
+ * @param {string} pathname
+ * @param {string} [search]
+ * @returns {'terms' | 'privacy' | 'guidelines' | null}
+ */
+export function resolveLegalViewFromLocation(pathname, search) {
+  const slug = parseLegalPathname(pathname)
+  if (!slug) return null
+  try {
+    const from = new URLSearchParams(search ?? '').get('from')
+    if (!from || !LEGAL_BOOTSTRAP_FROM.has(from)) return null
+  } catch {
+    return null
+  }
+  return slug
 }

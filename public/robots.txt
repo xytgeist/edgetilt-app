@@ -2,4 +2,6 @@
 User-agent: *
 Allow: /
 
+# Legal policy pages stay reachable but are not search landing URLs (see sitemap + X-Robots-Tag on /privacy, /terms, /guidelines).
+
 Sitemap: https://edgetilt.com/sitemap.xml

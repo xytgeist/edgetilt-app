@@ -304,7 +304,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 ## Phase L - Legal (parallel)
 
 - **Shipped:** stable routes **`/terms`**, **`/privacy`**, **`/guidelines`**.
-- **Shipped:** counsel-reviewed policy text for **Quantum Capital Ventures, LLC** (Wyoming) — Ryan sign-off **2026-07-01**.
+- **Shipped:** counsel-reviewed policy text for **Digiverse Ventures, LLC** (Wyoming) ... Ryan sign-off **2026-07-01**; operating entity name in **`legalPolicyVersion.js`** updated **2026-07-23** (**`LEGAL_POLICY_VERSION` `2026-07-23`**).
 - **Shipped:** signup acceptance wiring + **`profiles`** legal timestamps (migration **`20260627200000`**).
 
 ---

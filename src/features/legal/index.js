@@ -1,6 +1,6 @@
 export { default as LegalDocumentScreen } from './LegalDocumentScreen.jsx'
 export { default as LegalAcceptanceModal } from './LegalAcceptanceModal.jsx'
-export { LEGAL_DOCUMENTS, getLegalDocument, parseLegalPathname } from './legalDocuments.js'
+export { LEGAL_DOCUMENTS, getLegalDocument, parseLegalPathname, resolveLegalViewFromLocation } from './legalDocuments.js'
 export {
   LEGAL_POLICY_VERSION,
   LEGAL_CONTACT_EMAIL,

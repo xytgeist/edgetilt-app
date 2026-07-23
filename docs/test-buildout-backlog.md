@@ -875,6 +875,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-23: **Legal entity + branding:** **`LEGAL_ENTITY_NAME`** → **Digiverse Ventures, LLC**; product copy **EDGE / EDGETILT** (no LVSlotPro in Terms/Privacy/Guidelines); **`LEGAL_POLICY_VERSION` `2026-07-23`** triggers re-acceptance modal for signed-in users.
 - 2026-07-22: **Creator fan subs §4 Private Subs (code):** migration **`20260723200000`**; Chat **Private Subs** tab + catalog RPC; creator room editor in Settings; Inbox excludes `creator_fan`. Apply SQL test then prod; smoke checklist still open.
 - 2026-07-22: **Creator fan subs §4 highlight:** Ryan — member rows use **border + `Joined` micro-pill** (creator own room **`Host`** / **`Yours`** TBD at build); not border-only.
 - 2026-07-22: **Creator fan subs §4 spec refinements (Ryan):** default room title **`@{handle} fan room`**; topic keywords **comma-separated** field; catalog = **live offer + Connect complete** only; member rows **subtle border** highlight (optional **Joined** pill noted in §4 UX).

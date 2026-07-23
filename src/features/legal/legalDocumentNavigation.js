@@ -2,7 +2,7 @@ const RETURN_CONTEXT_STORAGE_KEY = 'lvslotpro-legal-return:v2'
 const REOPEN_WELCOME_STORAGE_KEY = 'lvslotpro-reopen-lounge-welcome:v1'
 const REOPEN_DOCK_PANEL_STORAGE_KEY = 'lvslotpro-reopen-dock-panel:v1'
 
-/** @typedef {'auth' | 'welcome' | 'settings' | 'acceptance'} LegalReturnSource */
+/** @typedef {'auth' | 'welcome' | 'settings' | 'acceptance' | 'public'} LegalReturnSource */
 
 /**
  * @typedef {object} LegalReturnContext
@@ -10,7 +10,7 @@ const REOPEN_DOCK_PANEL_STORAGE_KEY = 'lvslotpro-reopen-dock-panel:v1'
  * @property {'signin' | 'join'} [authTab]
  */
 
-const VALID_RETURN_SOURCES = new Set(['auth', 'welcome', 'settings', 'acceptance'])
+const VALID_RETURN_SOURCES = new Set(['auth', 'welcome', 'settings', 'acceptance', 'public'])
 
 /** @param {LegalReturnContext} context */
 export function markLegalReturnContext(context) {

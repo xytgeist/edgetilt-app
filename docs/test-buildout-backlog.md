@@ -875,7 +875,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-07-23: **Lounge cashtag disambiguation (code):** Edge **`resolve_cashtags`** + smarter auto-attach scoring (deprioritize micro-cap crypto when a large-cap stock shares the tag); composer + post-edit **`LoungeComposerCashtagDisambiguation`** blocks Post/Save until ambiguous **`$`** tags are confirmed. **Redeploy `lounge-market-data`** on test before smoke.
+- 2026-07-23: **Lounge cashtag disambiguation (code):** Edge **`resolve_cashtags`** + smarter auto-attach scoring (deprioritize micro-cap crypto when a large-cap stock shares the tag); composer + post-edit **`LoungeComposerCashtagDisambiguation`** blocks Post/Save until ambiguous **`$`** tags are confirmed. **`lounge-market-data`** redeployed on **test** + **prod** with client **`70d0c90d`** on **`test`** / **`main`**.
 - 2026-07-23: **Creator fan subs §4 SQL on prod + test:** **`20260723200000_creator_fan_private_subs.sql`** applied on **`jtjgtucumuoswnbauxry`** and **`kcosfvmreeiosdjdzycb`**; **`schema_migrations`** **`20260723200000`** recorded. Pairs with frontend **`main`** **`a4284186`**.
 - 2026-07-23: **Legal entity + branding:** **`LEGAL_ENTITY_NAME`** → **Digiverse Ventures, LLC**; product copy **EDGE / EDGETILT** (no LVSlotPro in Terms/Privacy/Guidelines); **`LEGAL_POLICY_VERSION` `2026-07-23`** triggers re-acceptance modal for signed-in users.
 - 2026-07-22: **Creator fan subs §4 Private Subs (code):** migration **`20260723200000`**; Chat **Private Subs** tab + catalog RPC; creator room editor in Settings; Inbox excludes `creator_fan`. Apply SQL test then prod; smoke checklist still open.

@@ -549,6 +549,7 @@ export default function EdgeMonitorDashboard({
         <MetricTile label="Cancel at end" value={formatOpsMonitorCount(subs.cancel_at_period_end)} accent={OPS_CHART_COLORS.orange} />
         <MetricTile label="Monthly" value={formatOpsMonitorCount(subs.monthly_interval)} />
         <MetricTile label="Annual" value={formatOpsMonitorCount(subs.annual_interval)} />
+        <MetricTile label="Lifetime" value={formatOpsMonitorCount(subs.lifetime)} accent={OPS_CHART_COLORS.yellow} />
         <MetricTile label="Webhooks 24h" value={formatOpsMonitorCount(stripeWebhooks.events_24h)} accent={OPS_CHART_COLORS.yellow} />
       </MonitorSection>
 

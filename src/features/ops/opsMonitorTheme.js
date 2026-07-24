@@ -68,6 +68,14 @@ export const OPS_SECTION_THEMES = {
   ops: { accent: OPS_CHART_COLORS.red, icon: '⚡' },
 }
 
+/** Hero subline for active platform subs: monthly / annual / lifetime buckets. */
+export function opsMonitorActiveSubsCadenceSub(subs = {}) {
+  const monthly = Number(subs.monthly_interval) || 0
+  const annual = Number(subs.annual_interval) || 0
+  const lifetime = Number(subs.lifetime) || 0
+  return `${monthly} monthly · ${annual} annual · ${lifetime} lifetime`
+}
+
 /** @param {object | null | undefined} snapshot */
 export function opsMonitorHeroKpis(snapshot) {
   if (!snapshot) return []
@@ -95,7 +103,7 @@ export function opsMonitorHeroKpis(snapshot) {
       id: 'subs',
       label: 'Active subs',
       value: activeSubs,
-      sub: `${subs.monthly_interval ?? 0} mo · ${subs.annual_interval ?? 0} yr`,
+      sub: opsMonitorActiveSubsCadenceSub(subs),
       theme: OPS_SECTION_THEMES.subs,
     },
     {

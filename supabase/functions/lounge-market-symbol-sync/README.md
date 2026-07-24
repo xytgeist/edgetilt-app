@@ -19,17 +19,12 @@ supabase functions deploy lounge-market-symbol-sync --project-ref <project-ref>
 
 ## Schedule
 
-Migration **`20260723280000_market_symbol_lookup_cron.sql`** — daily **09:00 UTC** via pg_cron.
+Migration **`20260723280000_market_symbol_lookup_cron.sql`** added daily **09:00 UTC** pg_cron; **`20260723290000`** **disabled** it. Stock universe is already in `market_instruments`; new tickers use **`resolve_symbol`**.
 
-Vault (reuse lounge odds cron secrets):
-
-- `lounge_odds_poll_project_url`
-- `lounge_odds_poll_service_role_key`
-
-## Manual smoke
+Optional manual one-shot (service role):
 
 ```sql
 select public.invoke_lounge_market_symbol_sync();
 ```
 
-Check `market_symbol_lookup_meta.row_count` and Edge logs. First run may take several minutes.
+Use sparingly — prefer targeted backfills over full sync.

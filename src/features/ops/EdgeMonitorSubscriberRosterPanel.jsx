@@ -301,7 +301,8 @@ export default function EdgeMonitorSubscriberRosterPanel({
           <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-amber-100 text-xs leading-relaxed">
             {error}
             <div className="mt-1 text-amber-200/70">
-              Apply migration <span className="font-mono">20260723220000</span>, then refresh.
+              If this mentions <span className="font-mono">subscribed_at</span>, apply migration{' '}
+              <span className="font-mono">20260723240000</span>, then refresh.
             </div>
           </div>
         ) : null}

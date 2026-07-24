@@ -11,7 +11,7 @@ export default function EdgeMonitorScreen({
   return (
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
-      contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+      contentClassName="px-3 py-6 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))]"
     >
       <EdgeMonitorDashboard
         supabaseClient={supabaseClient}

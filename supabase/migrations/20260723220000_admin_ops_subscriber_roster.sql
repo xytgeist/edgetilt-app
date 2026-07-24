@@ -334,7 +334,7 @@ begin
             'stripe_subscription_id', r.stripe_subscription_id,
             'subscribed_at', r.created_at
           )
-          order by r.creator_handle nulls last, r.subscribed_at desc
+          order by r.creator_handle nulls last, r.created_at desc
         )
         from (
           select

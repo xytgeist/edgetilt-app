@@ -1,6 +1,5 @@
--- Edge Monitor: subscriber roster stripe ids for Stripe Dashboard deep links (fan + cancel rows).
--- Replaces admin_ops_subscriber_roster() from 20260723220000.
-
+-- Fix admin_ops_subscriber_roster fan active_roster ORDER BY (r.subscribed_at → r.created_at).
+-- Safe re-run of 20260723230000 with corrected sort column.
 create or replace function public.admin_ops_subscriber_roster()
 returns jsonb
 language plpgsql

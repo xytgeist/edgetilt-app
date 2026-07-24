@@ -126,7 +126,8 @@ function MonitorSection({ themeKey, title, subtitle, chart = null, children, cla
   )
 }
 
-function LivePulseStrip({ live, error }) {
+function LivePulseStrip({ live, error, show = true }) {
+  if (!show) return null
   if (error) {
     return (
       <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-950/30 px-4 py-2 text-amber-100 text-xs">
@@ -135,25 +136,61 @@ function LivePulseStrip({ live, error }) {
     )
   }
   if (!live) return null
+  const hasSignal =
+    (Number(live.rate_per_min) || 0) > 0 ||
+    (Number(live.events_1m) || 0) > 0 ||
+    (Number(live.posts_1m) || 0) > 0 ||
+    (Number(live.chat_messages_1m) || 0) > 0
+  if (!hasSignal) return null
   return (
-    <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-      {[
-        { label: 'Activity / min', value: live.rate_per_min, accent: OPS_CHART_COLORS.purple },
-        { label: 'Activity 1m', value: live.events_1m, accent: OPS_CHART_COLORS.cyan },
-        { label: 'Posts 1m', value: live.posts_1m, accent: OPS_CHART_COLORS.green },
-        { label: 'Chat 1m', value: live.chat_messages_1m, accent: OPS_CHART_COLORS.orange },
-      ].map((item) => (
-        <div
-          key={item.label}
-          className="rounded-xl border border-zinc-800/80 bg-zinc-950/50 px-3 py-2"
-          style={{ borderLeftWidth: 3, borderLeftColor: `${item.accent}88` }}
-        >
-          <div className="text-[10px] uppercase tracking-wide text-zinc-500">{item.label}</div>
-          <div className="text-white text-lg font-bold tabular-nums">{formatOpsMonitorCount(item.value)}</div>
-          <div className="text-[10px] text-zinc-600">poll ~15s</div>
-        </div>
-      ))}
-    </div>
+    <section className="mb-4 rounded-2xl border border-zinc-800/80 bg-zinc-950/40 px-3 py-3">
+      <div className="mb-2">
+        <div className="text-white text-xs font-bold">Right now</div>
+        <div className="text-zinc-500 text-[10px]">Last minute on prod · refreshes ~15s</div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {[
+          { label: 'Activity / min', value: live.rate_per_min, accent: OPS_CHART_COLORS.purple },
+          { label: 'Activity 1m', value: live.events_1m, accent: OPS_CHART_COLORS.cyan },
+          { label: 'Posts 1m', value: live.posts_1m, accent: OPS_CHART_COLORS.green },
+          { label: 'Chat 1m', value: live.chat_messages_1m, accent: OPS_CHART_COLORS.orange },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-zinc-800/80 bg-zinc-950/50 px-3 py-2"
+            style={{ borderLeftWidth: 3, borderLeftColor: `${item.accent}88` }}
+          >
+            <div className="text-[10px] uppercase tracking-wide text-zinc-500">{item.label}</div>
+            <div className="text-white text-lg font-bold tabular-nums">{formatOpsMonitorCount(item.value)}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function MobileMonitorGlance({ heroKpis }) {
+  if (!heroKpis?.length) return null
+  return (
+    <section className="mb-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-3">
+      <div className="mb-2">
+        <div className="text-white text-sm font-bold">At a glance</div>
+        <div className="text-zinc-500 text-[10px]">24h snapshot · scroll down for subscriber roster</div>
+      </div>
+      <div className="divide-y divide-zinc-800/70">
+        {heroKpis.map((kpi) => (
+          <div key={kpi.id} className="flex items-center justify-between gap-3 py-2.5 min-w-0">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{kpi.label}</div>
+              <div className="text-[11px] text-zinc-400 truncate mt-0.5">{kpi.sub}</div>
+            </div>
+            <div className="text-white text-xl font-black tabular-nums shrink-0">
+              {formatOpsMonitorCount(kpi.value)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -763,13 +800,17 @@ export default function EdgeMonitorDashboard({
       {snapshot ? (
         <>
           <AlertsBanner alerts={alerts} />
-          <LivePulseStrip live={live} error={liveError} />
+          <LivePulseStrip live={live} error={liveError} show={isDesktop} />
 
-          <div className={`grid gap-3 mb-4 ${isDesktop ? 'grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'}`}>
-            {heroKpis.map((kpi) => (
-              <HeroKpiCard key={kpi.id} kpi={kpi} compact={!isDesktop} />
-            ))}
-          </div>
+          {isDesktop ? (
+            <div className={`grid gap-3 mb-4 grid-cols-5`}>
+              {heroKpis.map((kpi) => (
+                <HeroKpiCard key={kpi.id} kpi={kpi} compact={!isDesktop} />
+              ))}
+            </div>
+          ) : (
+            <MobileMonitorGlance heroKpis={heroKpis} />
+          )}
 
           <EdgeMonitorSubscriberRosterPanel
             roster={roster}

@@ -113,8 +113,16 @@ export function formatOpsMonitorBreakdown(rows, key = 'count') {
 /** First segment of Supabase host for env badge (e.g. jtjgtucumuoswnbauxry). */
 export function opsMonitorSupabaseProjectRef() {
   try {
-    const host = new URL(import.meta.env.VITE_SUPABASE_URL || '').hostname
-    return host.split('.')[0] || 'unknown'
+    const raw = String(import.meta.env.VITE_SUPABASE_URL || '').trim()
+    if (!raw) return 'unknown'
+    const host = new URL(raw).hostname.toLowerCase()
+    const refMatch = host.match(/([a-z0-9]{15,30})\.supabase\.co$/)
+    if (refMatch) return refMatch[1]
+    const embedded = host.match(/([a-z0-9]{15,30})/)
+    if (embedded) return embedded[1]
+    const first = host.split('.')[0]
+    if (first && first !== 'auth' && first !== 'www') return first
+    return host || 'unknown'
   } catch {
     return 'unknown'
   }

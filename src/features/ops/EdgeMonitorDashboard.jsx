@@ -688,94 +688,156 @@ export default function EdgeMonitorDashboard({
         className={
           isDesktop
             ? 'edge-monitor-header relative mb-8 overflow-hidden rounded-2xl border border-cyan-500/25 bg-gradient-to-r from-cyan-950/90 via-zinc-900 to-violet-950/80 px-6 py-5'
-            : 'edge-monitor-header relative mb-5 overflow-hidden rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/80 via-zinc-900 to-violet-950/60 p-4'
+            : 'edge-monitor-header relative mb-5 overflow-hidden rounded-3xl border border-cyan-500/20 bg-zinc-950 p-4'
         }
       >
         <div className="pointer-events-none absolute inset-0 edge-monitor-header-glow" aria-hidden />
-        <div className={`relative flex gap-4 ${isDesktop ? 'items-center justify-between' : 'items-start justify-between'}`}>
-          <div className="min-w-0 flex items-start gap-4">
-            {isDesktop ? (
+        {isDesktop ? (
+          <div className="relative flex items-center justify-between gap-4">
+            <div className="min-w-0 flex items-start gap-4">
               <img
                 src="/edge-lounge-logo-transparent.png"
                 alt=""
                 className="hidden sm:block h-12 w-auto shrink-0 drop-shadow-[0_0_18px_rgba(6,206,252,0.35)]"
               />
-            ) : null}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                {!isDesktop ? (
-                  <span className="text-xl" aria-hidden>
-                    📊
-                  </span>
-                ) : null}
-                <div className="text-2xl lg:text-3xl font-black tracking-tight bg-gradient-to-r from-cyan-300 via-white to-violet-300 bg-clip-text text-transparent">
-                  Edge Monitor
-                </div>
-                {isDesktop ? (
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl lg:text-3xl font-black tracking-tight bg-gradient-to-r from-cyan-300 via-white to-violet-300 bg-clip-text text-transparent">
+                    Edge Monitor
+                  </div>
                   <span className="hidden md:inline rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-200 ring-1 ring-violet-400/30">
                     Desktop
                   </span>
-                ) : null}
-              </div>
-              <div className="text-zinc-400 text-sm mt-1">Live pulse · admin ops</div>
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                <span className="rounded-full bg-black/30 px-2.5 py-1 font-semibold text-cyan-200 ring-1 ring-cyan-500/30">
-                  {opsMonitorSupabaseProjectRef()}
-                </span>
-                <span className="rounded-full bg-black/30 px-2.5 py-1 font-semibold text-zinc-300 ring-1 ring-zinc-600/50">
-                  {APP_BUILD_SHA.slice(0, 7)}
-                </span>
-                {generatedAt ? (
-                  <span className="rounded-full bg-black/20 px-2.5 py-1 font-medium text-zinc-400">{generatedAt}</span>
-                ) : null}
+                </div>
+                <div className="text-zinc-400 text-sm mt-1">Live pulse · admin ops</div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                  <span className="rounded-full bg-black/30 px-2.5 py-1 font-semibold text-cyan-200 ring-1 ring-cyan-500/30">
+                    {opsMonitorSupabaseProjectRef()}
+                  </span>
+                  <span className="rounded-full bg-black/30 px-2.5 py-1 font-semibold text-zinc-300 ring-1 ring-zinc-600/50">
+                    {APP_BUILD_SHA.slice(0, 7)}
+                  </span>
+                  {generatedAt ? (
+                    <span className="rounded-full bg-black/20 px-2.5 py-1 font-medium text-zinc-400">{generatedAt}</span>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {headerSlot}
-            {showDesktopLink ? (
-              <a
-                href={EDGE_MONITOR_PATH}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-9 inline-flex items-center rounded-xl bg-zinc-800/80 px-3 text-zinc-200 text-xs font-semibold hover:bg-zinc-700"
-              >
-                Desktop ↗
-              </a>
-            ) : null}
-            {onBack ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {headerSlot}
+              {showDesktopLink ? (
+                <a
+                  href={EDGE_MONITOR_PATH}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-h-9 inline-flex items-center rounded-xl bg-zinc-800/80 px-3 text-zinc-200 text-xs font-semibold hover:bg-zinc-700"
+                >
+                  Desktop ↗
+                </a>
+              ) : null}
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="min-h-9 rounded-xl bg-zinc-800/80 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-700"
+                >
+                  ← Lounge
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={onBack}
-                className="min-h-9 rounded-xl bg-zinc-800/80 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-700"
+                disabled={loading || refreshing || rosterRefreshing}
+                onClick={() => {
+                  void load(true)
+                  void loadRoster(true)
+                }}
+                className="min-h-9 rounded-xl bg-gradient-to-r from-cyan-600 to-violet-600 px-4 text-white text-xs font-bold touch-manipulation hover:from-cyan-500 hover:to-violet-500 disabled:opacity-50 shadow-lg shadow-cyan-900/30"
               >
-                ← Lounge
+                {refreshing || rosterRefreshing ? 'Refreshing…' : 'Refresh'}
               </button>
-            ) : null}
-            <button
-              type="button"
-              disabled={loading || refreshing || rosterRefreshing}
-              onClick={() => {
-                void load(true)
-                void loadRoster(true)
-              }}
-              className="min-h-9 rounded-xl bg-gradient-to-r from-cyan-600 to-violet-600 px-4 text-white text-xs font-bold touch-manipulation hover:from-cyan-500 hover:to-violet-500 disabled:opacity-50 shadow-lg shadow-cyan-900/30"
-            >
-              {refreshing || rosterRefreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setAutoRefresh((v) => !v)}
-              className={`min-h-9 rounded-xl px-3 text-xs font-semibold touch-manipulation ring-1 ${
-                autoRefresh
-                  ? 'bg-emerald-950/60 text-emerald-200 ring-emerald-500/40'
-                  : 'bg-zinc-800/80 text-zinc-300 ring-zinc-600/50'
-              }`}
-            >
-              Auto 90s {autoRefresh ? 'ON' : 'OFF'}
-            </button>
+              <button
+                type="button"
+                onClick={() => setAutoRefresh((v) => !v)}
+                className={`min-h-9 rounded-xl px-3 text-xs font-semibold touch-manipulation ring-1 ${
+                  autoRefresh
+                    ? 'bg-emerald-950/60 text-emerald-200 ring-emerald-500/40'
+                    : 'bg-zinc-800/80 text-zinc-300 ring-zinc-600/50'
+                }`}
+              >
+                Auto 90s {autoRefresh ? 'ON' : 'OFF'}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="relative flex flex-col gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xl shrink-0" aria-hidden>
+                  📊
+                </span>
+                <div className="text-xl font-black tracking-tight bg-gradient-to-r from-cyan-300 via-white to-violet-300 bg-clip-text text-transparent">
+                  Edge Monitor
+                </div>
+              </div>
+              <div className="text-zinc-400 text-sm mt-1">Live pulse · admin ops</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {headerSlot}
+              {showDesktopLink ? (
+                <a
+                  href={EDGE_MONITOR_PATH}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-h-10 inline-flex items-center justify-center rounded-xl bg-zinc-800 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-700"
+                >
+                  Desktop ↗
+                </a>
+              ) : null}
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="min-h-10 rounded-xl bg-zinc-800 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-700"
+                >
+                  ← Lounge
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={loading || refreshing || rosterRefreshing}
+                onClick={() => {
+                  void load(true)
+                  void loadRoster(true)
+                }}
+                className="min-h-10 rounded-xl bg-gradient-to-r from-cyan-600 to-violet-600 px-3 text-white text-xs font-bold touch-manipulation hover:from-cyan-500 hover:to-violet-500 disabled:opacity-50 shadow-lg shadow-cyan-900/30"
+              >
+                {refreshing || rosterRefreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoRefresh((v) => !v)}
+                className={`min-h-10 rounded-xl px-3 text-xs font-semibold touch-manipulation ring-1 ${
+                  autoRefresh
+                    ? 'bg-emerald-950/60 text-emerald-200 ring-emerald-500/40'
+                    : 'bg-zinc-800 text-zinc-300 ring-zinc-600/50'
+                }`}
+              >
+                Auto 90s {autoRefresh ? 'ON' : 'OFF'}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className="rounded-full bg-zinc-900 px-2.5 py-1 font-semibold text-cyan-200 ring-1 ring-cyan-500/30">
+                {opsMonitorSupabaseProjectRef()}
+              </span>
+              <span className="rounded-full bg-zinc-900 px-2.5 py-1 font-semibold text-zinc-300 ring-1 ring-zinc-600/50">
+                {APP_BUILD_SHA.slice(0, 7)}
+              </span>
+              {generatedAt ? (
+                <span className="rounded-full bg-zinc-900/80 px-2.5 py-1 font-medium text-zinc-400">{generatedAt}</span>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
 
       {error ? (

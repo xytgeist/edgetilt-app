@@ -88,32 +88,41 @@ export default function EdgeMonitorActivityPanel({ snapshot, loading = false }) 
             </button>
 
             {open ? (
-              <div className="border-t border-zinc-800 px-3 pb-3 pt-2">
+              <div className="border-t border-zinc-800 px-2 pb-2 pt-1.5 sm:px-3 sm:pb-3 sm:pt-2">
                 {typeRows.length === 0 ? (
                   <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-zinc-500 text-xs">
                     No activity alert rows in the last 7 days
                   </div>
                 ) : (
-                  <div className="overflow-x-auto overflow-y-auto max-h-64 rounded-lg border border-zinc-800">
-                    <table className="w-full min-w-[420px] text-left text-xs">
-                      <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800">
+                  <div className="rounded-lg border border-zinc-800 sm:max-h-72 sm:overflow-y-auto">
+                    <table className="w-full table-fixed text-left text-[11px] leading-tight">
+                      <colgroup>
+                        <col />
+                        <col className="w-9 sm:w-11" />
+                        <col className="w-9 sm:w-11" />
+                      </colgroup>
+                      <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-500 uppercase text-[9px] tracking-wide border-b border-zinc-800">
                         <tr>
-                          <th className="px-2.5 py-1.5 font-semibold">Type</th>
-                          <th className="px-2.5 py-1.5 font-semibold text-right">24h</th>
-                          <th className="px-2.5 py-1.5 font-semibold text-right">7d</th>
+                          <th className="pl-2 pr-1 py-1 font-semibold">Type</th>
+                          <th className="px-1 py-1 font-semibold text-right">24h</th>
+                          <th className="pr-2 pl-1 py-1 font-semibold text-right">7d</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-800">
+                      <tbody className="divide-y divide-zinc-800/80">
                         {typeRows.map((row) => (
                           <tr key={row.event_type}>
-                            <td className="px-2.5 py-2 min-w-0">
-                              <div className="text-zinc-200 font-medium">{opsMonitorActivityEventLabel(row.event_type)}</div>
-                              <div className="text-zinc-600 text-[10px] font-mono truncate">{row.event_type}</div>
+                            <td className="pl-2 pr-1 py-1 min-w-0 align-middle">
+                              <div className="text-zinc-200 font-medium truncate">
+                                {opsMonitorActivityEventLabel(row.event_type)}
+                              </div>
+                              <div className="hidden sm:block text-zinc-600 text-[9px] font-mono truncate leading-none mt-0.5">
+                                {row.event_type}
+                              </div>
                             </td>
-                            <td className="px-2.5 py-2 text-right text-white font-semibold tabular-nums">
+                            <td className="px-1 py-1 text-right text-white font-semibold tabular-nums align-middle">
                               {formatOpsMonitorCount(row.count24h)}
                             </td>
-                            <td className="px-2.5 py-2 text-right text-zinc-300 tabular-nums">
+                            <td className="pr-2 pl-1 py-1 text-right text-zinc-300 tabular-nums align-middle">
                               {formatOpsMonitorCount(row.count7d)}
                             </td>
                           </tr>

@@ -1,5 +1,5 @@
 /**
- * Bundled cashtag rows for instant local typeahead before / without `symbol_universe`.
+ * Bundled cashtag rows for instant local typeahead (seed + incremental resolve_symbol cache).
  * Keep crypto tickers in sync with `marketCashtagCrypto.ts` / migration seed.
  */
 

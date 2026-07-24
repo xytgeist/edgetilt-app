@@ -40,14 +40,18 @@ Each `lounge-market-data` response (when debug is on) includes:
 
 ```bash
 supabase functions deploy lounge-market-data --project-ref jtjgtucumuoswnbauxry
+supabase functions deploy lounge-market-symbol-sync --project-ref jtjgtucumuoswnbauxry
 ```
+
+Cashtag **`market_instruments`** bulk sync: **`lounge-market-symbol-sync`** (pg_cron daily) — see `supabase/functions/lounge-market-symbol-sync/README.md`.
 
 ## Actions (POST + user JWT)
 
 | action | body | response |
 | --- | --- | --- |
 | `search` | `{ query }` | `{ results[] }` — Finnhub stocks + CoinGecko crypto; **picker enrichment** via Yahoo (price/mcap/exchange) + CoinGecko batch (crypto), 45s Edge cache |
-| `symbol_universe` | `{}` | `{ updated_at, results[] }` — **US stock list** (Finnhub `/stock/symbol`) + **top ~500 crypto** (CoinGecko markets); **24h Edge cache** for client-side `$` cashtag typeahead (no per-keystroke search) |
+| `resolve_symbol` | `{ query }` | `{ results[] }` — prefix search **`market_instruments`** (cron-synced), then provider search on miss; max 8 rows |
+| `symbol_universe` | `{}` | **Deprecated (410)** — daily sync is **`lounge-market-symbol-sync`** cron; clients use bundled seed + `resolve_symbol` |
 | `enrich_symbols` | `{ symbols: [{ symbol, asset_class, display_symbol?, name?, exchange?, logo_url?, coin_id? }] }` (max 8) | `{ results[] }` — **quotes only** for known rows via `enrichSearchResultsForPicker` (no text search); use after local cashtag match |
 | `resolve_cashtags` | `{ tags: string[] }` | `{ by_tag: Record<tag, { ambiguous, suggested, candidates[] }> }` — compose-time cashtag disambiguation (stock vs crypto, close scores); **redeploy after `finnhubMarket.ts` scoring changes** |
 | `preview` | `{ symbol, asset_class }` | `{ preview }` picker info row |

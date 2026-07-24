@@ -643,6 +643,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
   - Source: `supabase/functions/lounge-market-data/README.md`, `finnhubMarket.ts`, `yahooMarket.ts`, `LoungeMarketChartModal.jsx`, `loungeMarketChartSnapshot.js`.
   - Production replay: `production-rollout-checklist.md` §4.
 
+- [ ] **`lounge-market-symbol-sync`** (daily **`market_instruments`** bulk sync for cashtag lookup — **not** user-facing) — deploy on **test** + **prod** with same Finnhub/CoinGecko secrets as **`lounge-market-data`**; apply migration **`20260723280000_market_symbol_lookup_cron.sql`** (pg_cron **09:00 UTC**; reuses Vault **`lounge_odds_poll_*`**). Client: removed **`symbol_universe`** prefetch (bundled seed + **`resolve_symbol`** only). Smoke: `select public.invoke_lounge_market_symbol_sync();` then Lounge open → **no** `symbol_universe` network call; type `$MU` → dropdown via seed/resolve.
+  - Source: `supabase/functions/lounge-market-symbol-sync/README.md`.
+
 - [ ] **`lounge-chat-r2-video-upload`** (chat video MP4 → **Cloudflare R2** direct upload). Clone of `lounge-cf-r2-direct-upload` accepting **`video/mp4`** only; reuses all `_shared/loungeCfR2.ts` helpers. Requires same R2 secrets as existing image upload function (no new secrets needed).
   - **Deploy:** `supabase functions deploy lounge-chat-r2-video-upload` on **test** first.
   - **Also:** redeploy **`lounge-chat`** (now imports `loungeCfR2DeleteObject` to clean up R2 video + poster on `delete_message`; also accepts `video_url` on `send_message`).
@@ -876,6 +879,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-23: **Lounge cashtag symbol sync cron (code):** new Edge **`lounge-market-symbol-sync`** + migration **`20260723280000`** (daily pg_cron **09:00 UTC**); deprecated client **`symbol_universe`** prefetch (546 **`WORKER_RESOURCE_LIMIT`**). Composer uses bundled seed + debounced **`resolve_symbol`**; **`resolve_symbol`** searches **`market_instruments`** first. **Pending:** deploy both Edge fns + apply migration on test/prod; smoke Lounge open → no **`symbol_universe`** request.
 - 2026-07-23: **Edge Monitor subscriber roster Stripe links:** migration **`20260723230000`** (fan/cancel stripe ids + Connect account on roster rows); Monitor panel **Customer / Sub / Connect ↗** dashboard links. Applied test + prod. Pairs with frontend deploy.
 - 2026-07-23: **Lounge cashtag disambiguation (code):** Edge **`resolve_cashtags`** + smarter auto-attach scoring (deprioritize micro-cap crypto when a large-cap stock shares the tag); composer + post-edit **`LoungeComposerCashtagDisambiguation`** blocks Post/Save until ambiguous **`$`** tags are confirmed. **`lounge-market-data`** redeployed on **test** + **prod** with client **`70d0c90d`**. **2026-07-23 follow-up:** **`resolve_cashtags`** no longer skips **`COMMON_CRYPTO`** / Yahoo-only tags — **`$LINK`**-style stock+crypto collisions surface picker; redeploy Edge after **`1cf0c1c8`** client.
 - 2026-07-23: **Creator fan subs §4 SQL on prod + test:** **`20260723200000_creator_fan_private_subs.sql`** applied on **`jtjgtucumuoswnbauxry`** and **`kcosfvmreeiosdjdzycb`**; **`schema_migrations`** **`20260723200000`** recorded. Pairs with frontend **`main`** **`a4284186`**.

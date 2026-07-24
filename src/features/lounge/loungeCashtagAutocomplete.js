@@ -4,10 +4,9 @@ import { loungeMarketResolveSymbol } from '../../utils/loungeMarketApi.js'
 import { searchLoungeMarketSymbolUniverse } from '../../utils/loungeMarketSymbolSearch.js'
 import { marketSymbolDedupeKey } from './loungeMarketSymbolUtils.js'
 import {
-  ensureLoungeMarketSymbolUniverse,
   getLoungeCashtagSymbolSeedUniverse,
+  hydrateLoungeCashtagResolvedSymbols,
   mergeLoungeMarketSymbolUniverseRows,
-  prefetchLoungeMarketSymbolUniverse,
 } from './loungeMarketSymbolUniverse.js'
 import { withCashtagRowLogo } from './marketCashtagLogos.js'
 import {
@@ -233,35 +232,13 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
       return undefined
     }
 
-    prefetchLoungeMarketSymbolUniverse(supabaseClient)
+    const payload = hydrateLoungeCashtagResolvedSymbols()
+    const installed = installUniverseRows(payload?.rows, fullUniverseRef)
+    universeRef.current = installed.rows
+    searchIndexRef.current = installed.index
 
-    let cancelled = false
-    void ensureLoungeMarketSymbolUniverse(supabaseClient)
-      .then((payload) => {
-        if (cancelled) return
-        const installed = installUniverseRows(payload?.rows, fullUniverseRef)
-        universeRef.current = installed.rows
-        searchIndexRef.current = installed.index
-        const caret = lastCaretRef.current
-        if (caret == null) return
-        const active = detectCashtagAtCursor(liveValueRef.current, caret)
-        if (active?.query && active.query.length >= MIN_QUERY_LEN) {
-          lastQueryRef.current = null
-          applyCashtagQuery(active.query)
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return
-        console.warn('[lounge] market symbol universe:', err)
-        const seeded = installUniverseRows(SEED_UNIVERSE.rows, fullUniverseRef)
-        universeRef.current = seeded.rows
-        searchIndexRef.current = seeded.index
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [enabled, supabaseClient, applyCashtagQuery])
+    return undefined
+  }, [enabled, supabaseClient])
 
   const refreshCashtagContext = useCallback(
     (text, caret) => {

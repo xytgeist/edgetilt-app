@@ -1,140 +1,73 @@
-import { loungeMarketSymbolUniverse } from '../../utils/loungeMarketApi.js'
 import { getLoungeCashtagSymbolSeedRows } from './loungeCashtagSymbolSeed.js'
 
-const STORAGE_KEY = 'lounge-market-symbol-universe-v3'
-const TTL_MS = 24 * 60 * 60 * 1000
+const RESOLVED_STORAGE_KEY = 'lounge-market-symbol-resolved-v1'
+const RESOLVED_MAX_ROWS = 200
 
 const SEED_ROWS = getLoungeCashtagSymbolSeedRows()
 
-/** @type {{ updated_at: string, rows: object[], full?: boolean } | null} */
-let memoryCache = null
-/** @type {Promise<{ updated_at: string, rows: object[], full?: boolean }> | null} */
-let inflight = null
+/** @type {object[] | null} */
+let memoryResolvedRows = null
 
-function isStale(updatedAt) {
-  const ts = Date.parse(String(updatedAt || ''))
-  if (!Number.isFinite(ts)) return true
-  return Date.now() - ts > TTL_MS
-}
-
-function seedPayload() {
-  return { updated_at: new Date().toISOString(), rows: SEED_ROWS, full: false }
-}
-
-function readStorageCache() {
-  if (typeof window === 'undefined') return null
+function readResolvedStorage() {
+  if (typeof window === 'undefined') return []
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
+    const raw = window.localStorage.getItem(RESOLVED_STORAGE_KEY)
+    if (!raw) return []
     const parsed = JSON.parse(raw)
-    const rows = Array.isArray(parsed?.rows) ? parsed.rows : null
-    const updated_at = String(parsed?.updated_at || '').trim()
-    if (!rows?.length || !updated_at || isStale(updated_at)) return null
-    return { updated_at, rows, full: Boolean(parsed?.full) }
+    return Array.isArray(parsed?.rows) ? parsed.rows : []
   } catch {
-    return null
+    return []
   }
 }
 
-function writeStorageCache(payload) {
-  if (typeof window === 'undefined' || !payload?.rows?.length) return
+function writeResolvedStorage(rows) {
+  if (typeof window === 'undefined' || !rows.length) return
   try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        updated_at: payload.updated_at,
-        rows: payload.rows,
-        full: Boolean(payload.full),
-      }),
-    )
+    window.localStorage.setItem(RESOLVED_STORAGE_KEY, JSON.stringify({ rows }))
   } catch {
-    // quota / private mode — memory cache still works this session
+    // quota / private mode
   }
 }
 
-async function fetchUniverse(supabaseClient) {
-  try {
-    const data = await loungeMarketSymbolUniverse(supabaseClient)
-    if (Array.isArray(data?.rows) && data.rows.length > SEED_ROWS.length) {
-      const payload = {
-        updated_at: String(data.updated_at || new Date().toISOString()),
-        rows: data.rows,
-        full: true,
-      }
-      memoryCache = payload
-      writeStorageCache(payload)
-      return payload
-    }
-  } catch (err) {
-    console.warn('[lounge] market symbol universe fetch:', err)
+function mergeRows(baseRows, incomingRows) {
+  const byKey = new Map()
+  for (const row of baseRows) {
+    const key = `${row?.asset_class || ''}:${row?.symbol || ''}`.toLowerCase()
+    if (key !== ':') byKey.set(key, row)
   }
-
-  const fallback = seedPayload()
-  memoryCache = fallback
-  return fallback
+  for (const row of incomingRows) {
+    const key = `${row?.asset_class || ''}:${row?.symbol || ''}`.toLowerCase()
+    if (key !== ':') byKey.set(key, row)
+  }
+  return [...byKey.values()].slice(-RESOLVED_MAX_ROWS)
 }
 
 /** Instant bundled rows (crypto + popular US tickers) — no network. */
 export function getLoungeCashtagSymbolSeedUniverse() {
-  return seedPayload()
+  return { rows: SEED_ROWS, full: false }
 }
 
-/**
- * Load US + top-crypto symbol list once per day (localStorage + in-memory).
- * Falls back to bundled seed when Edge `symbol_universe` is unavailable.
- * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ force?: boolean }} [opts]
- */
-export async function ensureLoungeMarketSymbolUniverse(supabaseClient, opts = {}) {
-  if (!opts.force && memoryCache && !isStale(memoryCache.updated_at)) {
-    return memoryCache
-  }
-
-  if (!opts.force) {
-    const stored = readStorageCache()
-    if (stored) {
-      memoryCache = stored
-      return stored
-    }
-  }
-
-  if (inflight) return inflight
-
-  inflight = fetchUniverse(supabaseClient).finally(() => {
-    inflight = null
-  })
-  return inflight
+/** Seed + any previously resolved symbols from localStorage (incremental, capped). */
+export function getLoungeCashtagSymbolUniverse() {
+  const resolved = memoryResolvedRows ?? readResolvedStorage()
+  const rows = mergeRows(SEED_ROWS, resolved)
+  return { rows, full: rows.length > SEED_ROWS.length }
 }
 
-/** Fire-and-forget warm load when composer mounts. */
-export function prefetchLoungeMarketSymbolUniverse(supabaseClient) {
-  void ensureLoungeMarketSymbolUniverse(supabaseClient).catch((err) => {
-    console.warn('[lounge] market symbol universe prefetch:', err)
-  })
-}
-
-/** Merge resolved rows into in-memory + localStorage universe (miss fallback). */
+/** Merge resolve_symbol hits into local seed extension (no full-universe download). */
 export function mergeLoungeMarketSymbolUniverseRows(newRows) {
   const incoming = Array.isArray(newRows) ? newRows : []
-  if (!incoming.length) return memoryCache || seedPayload()
+  if (!incoming.length) return getLoungeCashtagSymbolUniverse()
 
-  const base = memoryCache?.rows?.length ? memoryCache.rows : readStorageCache()?.rows || SEED_ROWS
-  const byKey = new Map()
-  for (const row of base) {
-    const key = `${row?.asset_class || ''}:${row?.symbol || ''}`.toLowerCase()
-    if (key !== ':') byKey.set(key, row)
-  }
-  for (const row of incoming) {
-    const key = `${row?.asset_class || ''}:${row?.symbol || ''}`.toLowerCase()
-    if (key !== ':') byKey.set(key, row)
-  }
-  const rows = [...byKey.values()]
-  const payload = {
-    updated_at: memoryCache?.updated_at || new Date().toISOString(),
-    rows,
-    full: rows.length > SEED_ROWS.length,
-  }
-  memoryCache = payload
-  writeStorageCache(payload)
-  return payload
+  const resolved = mergeRows(memoryResolvedRows ?? readResolvedStorage(), incoming)
+  memoryResolvedRows = resolved
+  writeResolvedStorage(resolved)
+  return getLoungeCashtagSymbolUniverse()
+}
+
+/** Hydrate resolved rows from localStorage once per session. */
+export function hydrateLoungeCashtagResolvedSymbols() {
+  if (memoryResolvedRows) return getLoungeCashtagSymbolUniverse()
+  memoryResolvedRows = readResolvedStorage()
+  return getLoungeCashtagSymbolUniverse()
 }

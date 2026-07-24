@@ -286,7 +286,6 @@ import LoungeMarketSymbolPickerSheet from './LoungeMarketSymbolPickerSheet.jsx'
 import { useCashtagState } from './loungeCashtagAutocomplete.js'
 import LoungeCashtagDropdown from './LoungeCashtagDropdown.jsx'
 import { mergeComposerMarketSymbolForCashtag } from './loungeMarketSymbolUtils.js'
-import { prefetchLoungeMarketSymbolUniverse } from './loungeMarketSymbolUniverse.js'
 import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 import PwaInstallTitleBarRow from '../../components/PwaInstallBanner.jsx'
 import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
@@ -1192,11 +1191,6 @@ export default function SocialFeed({
 
   /** No composer, server-only counts, gated taps until session is known and user is signed in. */
   const loungeReadOnly = !composerAuthResolved || !composerUserId
-
-  useEffect(() => {
-    if (loungeReadOnly || !supabaseClient) return
-    prefetchLoungeMarketSymbolUniverse(supabaseClient)
-  }, [loungeReadOnly, supabaseClient])
 
   const refreshViewerFanEntitlements = useCallback(async () => {
     if (!composerUserId || !supabaseClient) {

@@ -13,7 +13,6 @@ import {
   finnhubQuote,
   finnhubSymbolForAsset,
   marketSearch,
-  marketSymbolUniverse,
   normalizeDisplaySymbol,
   normalizeMarketBarsToUsd,
   normalizeMarketCapToUsd,
@@ -29,11 +28,7 @@ import {
   type MarketProfile,
   type MarketWindowKey,
 } from '../_shared/finnhubMarket.ts'
-import {
-  readMarketSymbolLookup,
-  resolveMarketSymbolLookup,
-  syncMarketSymbolLookupIfStale,
-} from '../_shared/marketSymbolLookup.ts'
+import { resolveMarketSymbolLookup } from '../_shared/marketSymbolLookup.ts'
 import {
   resolveMarketBarsBeforeByResolution,
   resolveMarketSeriesByResolution,
@@ -357,17 +352,10 @@ Deno.serve(async (req) => {
   }
 
   if (action === 'symbol_universe') {
-    try {
-      await syncMarketSymbolLookupIfStale(admin)
-      const { updated_at, rows } = await readMarketSymbolLookup(admin)
-      if (rows.length) {
-        return respond(200, { ok: true, updated_at, results: rows })
-      }
-      const fallback = await marketSymbolUniverse()
-      return respond(200, { ok: true, updated_at: fallback.updated_at, results: fallback.rows })
-    } catch (e) {
-      return respond(502, { error: e instanceof Error ? e.message : 'Symbol universe failed.' })
-    }
+    return respond(410, {
+      error:
+        'symbol_universe is deprecated. Cashtag typeahead uses bundled seed + resolve_symbol; daily sync runs via lounge-market-symbol-sync cron.',
+    })
   }
 
   if (action === 'resolve_symbol') {

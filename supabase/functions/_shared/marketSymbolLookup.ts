@@ -224,13 +224,55 @@ export async function readMarketSymbolLookup(admin: SupabaseClient): Promise<{
   return { updated_at: meta.last_sync_at, rows }
 }
 
-/** Miss fallback — search providers, upsert matches, return up to 8 rows. */
+/** Prefix search in cron-synced `market_instruments` (no upstream API). */
+export async function searchMarketSymbolLookupInDb(
+  admin: SupabaseClient,
+  query: string,
+  limit = 8,
+): Promise<MarketSymbolUniverseRow[]> {
+  const q = String(query || '').trim()
+  if (q.length < 1) return []
+
+  const prefix = q.toUpperCase()
+  const { data, error } = await admin
+    .from('market_instruments')
+    .select('display_symbol, asset_class, symbol, coin_id, name, exchange, logo_url')
+    .ilike('display_symbol', `${prefix}%`)
+    .limit(Math.max(limit * 2, 16))
+
+  if (error || !Array.isArray(data) || !data.length) return []
+
+  const rows = data.map((row) =>
+    withCashtagRowLogo(
+      instrumentToUniverseRow({
+        cache_key: marketInstrumentCacheKey(String(row.symbol || ''), row.asset_class as MarketAssetClass),
+        display_symbol: String(row.display_symbol || row.symbol || '').trim(),
+        asset_class: row.asset_class as MarketAssetClass,
+        symbol: String(row.symbol || '').trim(),
+        coin_id: row.coin_id ? String(row.coin_id).trim() : null,
+        name: String(row.name || row.display_symbol || row.symbol || '').trim(),
+        exchange: String(row.exchange || '').trim(),
+        logo_url: String(row.logo_url || '').trim(),
+        market_cap_usd: null,
+        listing_currency: 'USD',
+        metadata_updated_at: new Date().toISOString(),
+      }),
+    ),
+  )
+
+  return sortMarketSearchResults(q, rows).slice(0, limit)
+}
+
+/** Miss fallback — DB prefix first, then provider search; upsert matches, return up to 8 rows. */
 export async function resolveMarketSymbolLookup(
   admin: SupabaseClient,
   query: string,
 ): Promise<MarketSymbolUniverseRow[]> {
   const q = String(query || '').trim()
   if (q.length < 1) return []
+
+  const dbHits = await searchMarketSymbolLookupInDb(admin, q, 8)
+  if (dbHits.length) return dbHits
 
   const found = await marketSearch(q)
   if (!found.length) return []

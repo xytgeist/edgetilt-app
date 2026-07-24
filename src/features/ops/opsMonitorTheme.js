@@ -1,5 +1,7 @@
 /** Brand palette + section chrome for Edge Monitor. */
 
+import { useSyncExternalStore } from 'react'
+
 export const OPS_CHART_COLORS = {
   cyan: '#06cefc',
   purple: '#9d00ff',
@@ -20,6 +22,41 @@ export const OPS_CHART_SEQUENCE = [
   OPS_CHART_COLORS.red,
   OPS_CHART_COLORS.pink,
 ]
+
+export function opsMonitorChartIsLight() {
+  return typeof document !== 'undefined' && document.documentElement.classList.contains('light')
+}
+
+function subscribeOpsMonitorChartTheme(onStoreChange) {
+  if (typeof document === 'undefined') return () => {}
+  const observer = new MutationObserver(onStoreChange)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  return () => observer.disconnect()
+}
+
+/** Re-renders chart components when html.light toggles. */
+export function useOpsMonitorChartIsLight() {
+  return useSyncExternalStore(
+    subscribeOpsMonitorChartTheme,
+    opsMonitorChartIsLight,
+    () => false,
+  )
+}
+
+/** Chart.js axis, legend, grid, and tooltip colors for Edge Monitor. */
+export function opsMonitorChartChrome(isLight = opsMonitorChartIsLight()) {
+  return {
+    grid: isLight ? 'rgba(113, 113, 122, 0.28)' : 'rgba(113, 113, 122, 0.25)',
+    tick: isLight ? '#3f3f46' : '#a1a1aa',
+    legend: isLight ? '#18181b' : '#d4d4d8',
+    doughnutBorder: isLight ? '#ffffff' : '#09090b',
+    tooltipBg: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(9, 9, 11, 0.92)',
+    tooltipTitle: isLight ? '#18181b' : '#fafafa',
+    tooltipBody: isLight ? '#3f3f46' : '#d4d4d8',
+    tooltipBorder: isLight ? 'rgba(113, 113, 122, 0.35)' : 'rgba(113, 113, 122, 0.35)',
+    plotBg: isLight ? '#f4f4f5' : null,
+  }
+}
 
 export const OPS_SECTION_THEMES = {
   users: { accent: OPS_CHART_COLORS.cyan, icon: '👥' },
@@ -79,7 +116,7 @@ export function opsMonitorHeroKpis(snapshot) {
       id: 'push',
       label: 'Push devices',
       value: push.subscriptions_total,
-      sub: 'registered subs',
+      sub: 'registered devices',
       theme: OPS_SECTION_THEMES.ops,
     },
   ]

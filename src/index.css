@@ -5193,12 +5193,44 @@ html.light [data-auth-modal] [data-auth-legal-nudge] {
 
 html.light [data-edge-monitor] .edge-monitor-section,
 html.light [data-edge-monitor] .edge-monitor-chart-shell {
-  background-color: rgb(250 250 250 / 0.92) !important;
+  background-color: rgb(255 255 255) !important;
+  border-color: rgb(212 212 216) !important;
+}
+
+html.light [data-edge-monitor] .edge-monitor-panel {
+  background-color: rgb(255 255 255) !important;
+  border-color: rgb(228 228 231) !important;
+}
+
+html.light [data-edge-monitor] .text-zinc-500 {
+  color: rgb(82 82 91) !important;
+}
+
+html.light [data-edge-monitor] .text-zinc-400 {
+  color: rgb(63 63 70) !important;
 }
 
 html.light [data-edge-monitor] .edge-monitor-header {
   background: rgb(250 250 250) !important;
   border-color: rgb(228 228 231) !important;
+}
+
+html.light [data-edge-monitor] .edge-monitor-product-metric,
+html.light [data-edge-monitor] .edge-monitor-metric-tile {
+  background: rgb(255 255 255) !important;
+  border-color: rgb(228 228 231) !important;
+}
+
+html.light [data-edge-monitor] .edge-monitor-product-metric .text-white,
+html.light [data-edge-monitor] .edge-monitor-metric-tile .text-white {
+  color: rgb(24 24 27) !important;
+}
+
+html.light [data-edge-monitor] .edge-monitor-product-metric .text-zinc-400,
+html.light [data-edge-monitor] .edge-monitor-product-metric .text-zinc-500,
+html.light [data-edge-monitor] .edge-monitor-product-metric .text-zinc-600,
+html.light [data-edge-monitor] .edge-monitor-metric-tile .text-zinc-500 {
+  color: rgb(82 82 91) !important;
 }
 
 .edge-monitor-desktop-page {

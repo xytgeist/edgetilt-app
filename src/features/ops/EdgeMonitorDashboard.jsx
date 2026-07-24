@@ -29,6 +29,7 @@ import { useEdgeMonitorExternalHealth } from './useEdgeMonitorExternalHealth.js'
 import { useLoungeBotOps } from './useLoungeBotOps.js'
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
 import EdgeMonitorSubscriberRosterPanel from './EdgeMonitorSubscriberRosterPanel.jsx'
+import EdgeMonitorUserSignupsPanel from './EdgeMonitorUserSignupsPanel.jsx'
 import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
 import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster.js'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
@@ -168,7 +169,7 @@ function MobileMonitorGlance({ heroKpis }) {
     <section className={`mb-4 ${MONITOR_PANEL} p-3`}>
       <div className="mb-2">
         <div className="text-white text-sm font-bold">At a glance</div>
-        <div className="text-zinc-500 text-[10px]">24h snapshot · scroll down for subscriber roster</div>
+        <div className="text-zinc-500 text-[10px]">24h snapshot · new accounts + subscriber roster below</div>
       </div>
       <div className="divide-y divide-zinc-800/70">
         {heroKpis.map((kpi) => (
@@ -683,11 +684,20 @@ export default function EdgeMonitorDashboard({
         {isDesktop ? (
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex items-start gap-4">
-              <img
-                src="/edge-lounge-logo-transparent.png"
-                alt=""
-                className="hidden sm:block h-12 w-auto shrink-0"
-              />
+              <span className="hidden sm:inline-flex shrink-0">
+                <img
+                  src="/edge-lounge-logo-transparent.png"
+                  alt=""
+                  className="edge-logo--dark h-12 w-auto object-contain"
+                  draggable={false}
+                />
+                <img
+                  src="/edge-lounge-logo-light.png"
+                  alt=""
+                  className="edge-logo--light h-12 w-auto object-contain"
+                  draggable={false}
+                />
+              </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <div className="text-2xl lg:text-3xl font-black tracking-tight text-white">Edge Monitor</div>
@@ -824,6 +834,13 @@ export default function EdgeMonitorDashboard({
           ) : (
             <MobileMonitorGlance heroKpis={heroKpis} />
           )}
+
+          <EdgeMonitorUserSignupsPanel
+            roster={roster}
+            signupTrends30d={trends30d}
+            loading={rosterLoading}
+            error={rosterError}
+          />
 
           <EdgeMonitorSubscriberRosterPanel
             roster={roster}

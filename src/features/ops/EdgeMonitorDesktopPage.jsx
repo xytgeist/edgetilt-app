@@ -98,7 +98,20 @@ export default function EdgeMonitorDesktopPage({
       <header className="relative z-40 shrink-0 border-b border-zinc-800 bg-zinc-950">
         <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img src="/edge-lounge-logo-transparent.png" alt="" className="h-8 w-auto shrink-0" />
+            <span className="inline-flex shrink-0">
+              <img
+                src="/edge-lounge-logo-transparent.png"
+                alt=""
+                className="edge-logo--dark h-8 w-auto object-contain"
+                draggable={false}
+              />
+              <img
+                src="/edge-lounge-logo-light.png"
+                alt=""
+                className="edge-logo--light h-8 w-auto object-contain"
+                draggable={false}
+              />
+            </span>
             <span className="text-sm font-semibold text-zinc-400 truncate hidden sm:inline">
               {userEmail}
             </span>

@@ -203,14 +203,9 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
 /** MP4 picks that may upload as-is when wasm encode fails (already muxed AAC). */
 export function canPassThroughLoungeVideoMp4OnEncodeFail(file) {
   const size = typeof file?.size === 'number' ? file.size : 0
-  if (
-    isAndroidBrowser()
-    && isLoungeVideoMp4Container(file)
-    && Number.isFinite(size)
-    && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES
-    && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
-  ) {
-    return true
+  // Never pass through large Android sources on encode fail ... wasm/browser paths failed, raw spatial HEVC is unplayable.
+  if (isAndroidBrowser() && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES) {
+    return false
   }
   return (
     isLoungeVideoMp4Container(file)

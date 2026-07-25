@@ -4,6 +4,7 @@
  */
 
 import { detectAppleWebKitInlineStream } from './loungeAppleWebKit.js'
+import { isAndroidBrowser } from './loungeVideoUpload.js'
 
 const DESKTOP_EXTRACT_PLAYBACK_RATE = 4
 const APPLE_EXTRACT_PLAYBACK_RATE = 8
@@ -270,6 +271,53 @@ async function startVideoPlayback(video) {
 }
 
 /**
+ * @param {MediaStream} stream
+ * @param {string} [preferredMime]
+ * @returns {{ recorder: MediaRecorder, mimeType: string }}
+ */
+function createMediaRecorderForStream(stream, preferredMime = '') {
+  if (typeof MediaRecorder === 'undefined') {
+    throw new Error('MediaRecorder unavailable')
+  }
+  /** @type {string[]} */
+  const candidates = [
+    preferredMime,
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+    'video/mp4',
+    '',
+  ].filter((mime, idx, arr) => mime !== undefined && arr.indexOf(mime) === idx)
+  /** @type {Error | null} */
+  let lastErr = null
+  for (const mime of candidates) {
+    if (mime && !MediaRecorder.isTypeSupported(mime)) continue
+    try {
+      /** @type {MediaRecorderOptions} */
+      const opts = { audioBitsPerSecond: 128000 }
+      if (mime) opts.mimeType = mime
+      const recorder = new MediaRecorder(stream, opts)
+      return { recorder, mimeType: mime || recorder.mimeType || 'audio/webm' }
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err))
+    }
+  }
+  throw lastErr || new Error('MediaRecorder not supported for this stream')
+}
+
+/**
+ * @param {MediaStream} stream
+ * @returns {MediaStream}
+ */
+function audioOnlyStream(stream) {
+  const tracks = stream.getAudioTracks?.() || []
+  if (!tracks.length) throw new Error('No audio tracks on capture stream')
+  return new MediaStream(tracks)
+}
+
+/**
  * @param {object} opts
  * @param {HTMLVideoElement} opts.video
  * @param {MediaStream} opts.stream
@@ -292,17 +340,10 @@ async function recordStreamSegment({
   signal,
   onProgress,
 }) {
-  const audioTracks = stream.getAudioTracks?.() || []
-  if (!audioTracks.length) {
-    throw new Error('No audio tracks on capture stream')
-  }
-
+  const recordStream = audioOnlyStream(stream)
+  const { recorder, mimeType: recordMime } = createMediaRecorderForStream(recordStream, mimeType)
   /** @type {BlobPart[]} */
   const chunks = []
-  const recorder = new MediaRecorder(stream, {
-    mimeType,
-    audioBitsPerSecond: 128000,
-  })
   recorder.ondataavailable = (ev) => {
     if (ev.data?.size) chunks.push(ev.data)
   }
@@ -391,13 +432,13 @@ async function recordStreamSegment({
   }
   await recordDone
 
-  const blob = new Blob(chunks, { type: recorder.mimeType || mimeType })
+  const blob = new Blob(chunks, { type: recorder.mimeType || recordMime })
   if (!blob.size) throw new Error('Browser audio capture was empty')
 
   return {
     blob,
-    ext: browserAudioExt(blob, recorder.mimeType || mimeType),
-    mimeType: recorder.mimeType || mimeType,
+    ext: browserAudioExt(blob, recorder.mimeType || recordMime),
+    mimeType: recorder.mimeType || recordMime,
   }
 }
 
@@ -534,6 +575,39 @@ function buildExtractAttempts(isApple) {
         name: 'web-audio-unmuted-8x',
         muted: false,
         playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+      })
+    }
+    return attempts
+  }
+  if (isAndroidBrowser()) {
+    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]} */
+    const attempts = [
+      {
+        name: 'capture-stream-1x',
+        muted: false,
+        playbackRate: 1,
+        useCaptureStream: true,
+      },
+      {
+        name: 'capture-stream-4x',
+        muted: false,
+        playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+        useCaptureStream: true,
+      },
+      {
+        name: 'web-audio-volume0-4x',
+        muted: false,
+        playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+        silentViaVolume: true,
+        silentMonitor: true,
+      },
+    ]
+    if (activation) {
+      attempts.unshift({
+        name: 'capture-stream-unmuted-1x',
+        muted: false,
+        playbackRate: 1,
+        useCaptureStream: true,
       })
     }
     return attempts

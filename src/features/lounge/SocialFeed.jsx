@@ -71,6 +71,7 @@ import {
   deleteCfStreamOrphanAsset,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
   loungeAndroidIphoneSpatialDirectUploadMessage,
+  loungeAndroidIphoneSpatialDirectUploadTitle,
   probeVideoFileDurationSeconds,
 } from '../../utils/loungeVideoUpload'
 import {
@@ -617,6 +618,17 @@ async function loungeDestructiveConfirm(showGlobalConfirm, { title, message, con
     return window.confirm(message ? `${title}\n\n${message}` : title)
   }
   return false
+}
+
+/** Single-button in-app alert (avoids native `window.alert` on mobile PWA). */
+async function loungeAlert(showGlobalConfirm, { title, message, confirmLabel = 'OK' }) {
+  if (typeof showGlobalConfirm === 'function') {
+    await showGlobalConfirm({ title, message, confirmLabel, cancelLabel: '' })
+    return
+  }
+  if (typeof window !== 'undefined') {
+    window.alert(message ? `${title}\n\n${message}` : title)
+  }
 }
 
 export default function SocialFeed({
@@ -5120,34 +5132,36 @@ export default function SocialFeed({
           isLoungeAndroidBlockedIphoneSpatialDirectUpload(vf) &&
           dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35
         if (spatialDirectBlocked) {
+          const spatialTitle = loungeAndroidIphoneSpatialDirectUploadTitle()
           const spatialMsg = loungeAndroidIphoneSpatialDirectUploadMessage()
           if (threadComposeOpenRef.current || mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
-            setThreadComposeErr(spatialMsg)
-            setLoungeVideoCrop({
-              file: vf,
-              mode: LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE,
-              partIdx: threadComposeActivePartIndexRef.current,
-              knownDurationSec: dur,
-            })
+            cancelThreadComposePartVideo(threadComposeActivePartIndexRef.current)
+            setThreadComposeErr('')
             restoreLoungeComposerCaptionAfterMediaPick('composer')
-            return
-          }
-          if (mode === 'composer') setPostErr(spatialMsg)
-          else if (mode === 'quote') setQuoteRepostErr(spatialMsg)
-          else if (mode === 'detailComment') {
-            setLoungeDetailCommentErr(spatialMsg)
+          } else if (mode === 'composer') {
+            cancelComposerMediaPrep()
+            setComposerMediaUrl('')
+            setPostErr('')
+          } else if (mode === 'quote') {
+            cancelQuoteRepostMediaPrep()
+            setQuoteRepostMediaUrl('')
+            setQuoteRepostErr('')
+          } else if (mode === 'detailComment') {
+            cancelLoungeDetailCommentMediaPrep()
             loungeDetailCommentMediaSessionRef.current = false
+            setLoungeDetailCommentErr('')
           } else if (mode === 'detailCommentEdit') {
-            setLoungeDetailCommentErr(spatialMsg)
-          } else setLoungeDetailEditErr(spatialMsg)
-          if (mode === 'detailComment') {
-            focusLoungeComposerCaption(() => loungeDetailCommentFieldRef.current)
-          } else if (mode === 'detailEdit') {
-            focusLoungeComposerCaption(() => loungeDetailEditFieldRef.current)
-          } else if (mode === 'detailCommentEdit') {
-            focusLoungeComposerCaption(() => loungeDetailCommentEditFieldRef.current)
+            cancelLoungeDetailCommentEditMediaPrep()
+            setLoungeDetailCommentErr('')
+          } else {
+            cancelLoungeDetailEditMediaPrep()
+            setLoungeDetailEditErr('')
           }
-          setLoungeVideoCrop({ file: vf, mode, knownDurationSec: dur })
+          await loungeAlert(showGlobalConfirm, {
+            title: spatialTitle,
+            message: spatialMsg,
+            confirmLabel: 'OK',
+          })
           return
         }
         if (threadComposeOpenRef.current || mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
@@ -5297,8 +5311,15 @@ export default function SocialFeed({
       }
     },
     [
+      cancelComposerMediaPrep,
+      cancelLoungeDetailCommentEditMediaPrep,
+      cancelLoungeDetailCommentMediaPrep,
+      cancelLoungeDetailEditMediaPrep,
+      cancelQuoteRepostMediaPrep,
+      cancelThreadComposePartVideo,
       disposeComposerVideoMedia,
       restoreLoungeComposerCaptionAfterMediaPick,
+      showGlobalConfirm,
       startComposerVideoPrepFromSpec,
       startLoungeDetailCommentVideoPrepFromSpec,
       startLoungeDetailCommentEditVideoPrepFromSpec,

@@ -170,29 +170,27 @@ export function isLoungeVideoQuicktimeMov(file) {
   return name.endsWith('.mov') || type.includes('quicktime')
 }
 
-/** User-facing copy when Android must not direct-upload iPhone spatial sources. */
+/** User-facing copy when Android must not direct-upload iPhone camera-roll MOV sources. */
 export function loungeAndroidIphoneSpatialDirectUploadMessage() {
-  return (
-    'This iPhone video cannot be posted directly on Android. ' +
-    'Open the trim editor (confirm the clip), or post from an iPhone.'
-  )
+  return 'iPhone .MOV videos cannot be posted from Android. Please post from an iPhone instead.'
+}
+
+/** Alert title paired with {@link loungeAndroidIphoneSpatialDirectUploadMessage}. */
+export function loungeAndroidIphoneSpatialDirectUploadTitle() {
+  return 'Video not supported on Android'
 }
 
 /**
- * Android direct post (no trim) must not send iPhone spatial MOV/HEVC exports raw to Cloudflare.
+ * Android direct post must not send iPhone camera-roll MOV exports raw to Cloudflare.
  * Client wasm does not work for these on Android; CF often rejects them as incompatible.
+ * Do not use file size on .mp4 ... Android camera recordings are often large MP4 and upload fine.
  *
  * @param {File | undefined} file
  * @returns {boolean}
  */
 export function isLoungeAndroidBlockedIphoneSpatialDirectUpload(file) {
   if (!file || !isAndroidBrowser()) return false
-  if (isLoungeVideoQuicktimeMov(file)) return true
-  const size = typeof file.size === 'number' && Number.isFinite(file.size) ? file.size : 0
-  if (size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES && isLoungeVideoMp4Container(file)) {
-    return true
-  }
-  return false
+  return isLoungeVideoQuicktimeMov(file)
 }
 
 /**

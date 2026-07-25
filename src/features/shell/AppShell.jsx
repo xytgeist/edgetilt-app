@@ -340,7 +340,7 @@ export default function AppShell({
     title: '',
     message: '',
     confirmLabel: 'Continue',
-    cancelLabel: 'Cancel'
+    cancelLabel: 'Cancel',
   })
   const globalConfirmResolverRef = useRef(null)
   const onRequireAuthRef = useRef(onRequireAuth)
@@ -1840,7 +1840,7 @@ export default function AppShell({
         <div
           className="fixed inset-0 flex items-center justify-center bg-black/60 p-4"
           style={{ zIndex: Z_APP_ALERT }}
-          onClick={() => closeGlobalConfirm(false)}
+          onClick={() => closeGlobalConfirm(globalConfirmState.cancelLabel ? false : true)}
         >
           <div
             className="w-full max-w-sm rounded-3xl border border-zinc-700 bg-zinc-900 p-4 shadow-2xl"
@@ -1850,18 +1850,20 @@ export default function AppShell({
             {globalConfirmState.message ? (
               <div className="mt-2 whitespace-pre-line text-[14px] leading-relaxed text-zinc-300">{globalConfirmState.message}</div>
             ) : null}
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => closeGlobalConfirm(false)}
-                className="min-h-11 flex-1 rounded-xl border border-zinc-600 bg-zinc-800 px-3 text-sm font-semibold text-zinc-200 touch-manipulation"
-              >
-                {globalConfirmState.cancelLabel}
-              </button>
+            <div className={`mt-4 flex gap-2${globalConfirmState.cancelLabel ? '' : ' justify-center'}`}>
+              {globalConfirmState.cancelLabel ? (
+                <button
+                  type="button"
+                  onClick={() => closeGlobalConfirm(false)}
+                  className="min-h-11 flex-1 rounded-xl border border-zinc-600 bg-zinc-800 px-3 text-sm font-semibold text-zinc-200 touch-manipulation"
+                >
+                  {globalConfirmState.cancelLabel}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => closeGlobalConfirm(true)}
-                className="min-h-11 flex-1 rounded-xl border border-cyan-400/45 bg-cyan-600 px-3 text-sm font-semibold text-white touch-manipulation"
+                className={`min-h-11 rounded-xl border border-cyan-400/45 bg-cyan-600 px-3 text-sm font-semibold text-white touch-manipulation${globalConfirmState.cancelLabel ? ' flex-1' : ' w-full'}`}
               >
                 {globalConfirmState.confirmLabel}
               </button>

@@ -55,12 +55,12 @@ export function loungeMediaPrepFailureDetails(message, lastStatus = '') {
   const msgLower = msg.toLowerCase()
   const stLower = String(lastStatus || '').toLowerCase()
   if (
-    msgLower.includes('trim editor') ||
+    msgLower.includes('cannot be posted from android') ||
     msgLower.includes('cannot be posted directly on android')
   ) {
     return {
       phase: 'Preparing video…',
-      dialogTitle: 'Use trim editor on Android',
+      dialogTitle: 'Video not supported on Android',
       message: msg,
     }
   }

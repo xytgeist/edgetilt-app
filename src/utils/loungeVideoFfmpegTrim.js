@@ -119,6 +119,8 @@ const DEMUX_LOGGING = [
   '100M',
   '-probesize',
   '100M',
+  '-err_detect',
+  'ignore_err',
 ]
 
 /**
@@ -130,10 +132,11 @@ const DEMUX_LOGGING = [
 function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
   const start = Math.max(0, Number(startSec) || 0)
   const dur = Math.max(0.001, Number(durSec) || 0)
+  const movHints = /\.mov$/i.test(inputPath) ? ['-ignore_editlist', '1'] : []
   if (opts.forceSsBeforeInput || start > 0.05) {
-    return ['-ss', String(start), '-i', inputPath, '-t', String(dur)]
+    return [...movHints, '-ss', String(start), '-i', inputPath, '-t', String(dur)]
   }
-  return ['-i', inputPath, '-t', String(dur)]
+  return [...movHints, '-i', inputPath, '-t', String(dur)]
 }
 
 /**
@@ -144,8 +147,14 @@ function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
 function buildOutputArgs(vf, strategy, outName) {
   const vfChain = vf.includes('format=') ? vf : `format=yuv420p,${vf}`
   const videoOnly = Boolean(strategy.videoOnly)
-  const maps =
-    strategy.useMaps && !videoOnly ? ['-map', '0:v:0', '-map', '0:a:0'] : []
+  /** @type {string[]} */
+  let maps = []
+  if (videoOnly) {
+    maps = ['-map', '0:v:0']
+  } else if (strategy.useMaps) {
+    // Optional audio map: iPhone MOV often has an undecodable spatial/metadata track as 0:a:0.
+    maps = ['-map', '0:v:0', '-map', '0:a:0?']
+  }
   const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', LOUNGE_ENCODE_CRF, '-pix_fmt', 'yuv420p']
   const videoFilters = ['-vf', vfChain]
   let audio
@@ -162,18 +171,21 @@ function buildOutputArgs(vf, strategy, outName) {
 
 /** @param {boolean} sourceHasAudio when false, only Firefox `mozHasAudio === false` (never iOS empty `audioTracks`). */
 function buildEncodeStrategies(sourceHasAudio) {
+  const videoOnlyFallback = [
+    { label: 'video-only-mapped', videoOnly: true, forceSsBeforeInput: false, useMaps: true },
+    { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: true },
+  ]
   if (sourceHasAudio) {
     return [
       { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
-      { label: 'aac-copy', videoOnly: false, forceSsBeforeInput: false, useMaps: true, audioCopy: true },
-      { label: 'aac', videoOnly: false, forceSsBeforeInput: false, useMaps: false },
       { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
+      { label: 'aac-copy-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true, audioCopy: true },
+      ...videoOnlyFallback,
     ]
   }
   return [
-    { label: 'aac', videoOnly: false, forceSsBeforeInput: false, useMaps: false },
-    { label: 'video-only', videoOnly: true, forceSsBeforeInput: false, useMaps: false },
-    { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: false },
+    { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
+    ...videoOnlyFallback,
   ]
 }
 
@@ -288,6 +300,10 @@ async function wasmReencodeToMp4({
         break
       }
       console.warn('[lounge-video-encode]', strategy.label, 'exit', code, formatFfmpegLogTail(logs))
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `try ${strategy.label} failed: ${formatFfmpegLogTail(logs)}`,
+      )
     }
 
     if (lastCode !== 0) {

@@ -6,9 +6,30 @@ import {
   subscribeLoungePendingPostProgress,
 } from './loungePendingPostPublish.js'
 import { useLoungePendingPublishActions } from './LoungePendingPublishActionsContext.jsx'
+import {
+  LOUNGE_PENDING_PUBLISH_MAX_PIXEL_SCALE,
+  loungePendingPublishRevealStrength,
+  loungePendingPublishPixelBlockScale,
+  LoungePendingPublishDevelopReveal,
+  LoungePendingPublishPixelLayer,
+  LoungePendingPublishSnowLayer,
+  loungePendingPublishFrostStrength,
+  LoungePendingPublishFrostVeil,
+} from './LoungePendingPublishDevelopReveal.jsx'
 
-/** Max frosted veil blur at 0% publish progress (dissipates to 0 by 100%). */
+/** @deprecated pixel reveal uses {@link LOUNGE_PENDING_PUBLISH_MAX_PIXEL_SCALE} instead */
 export const LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX = 28
+
+export {
+  LOUNGE_PENDING_PUBLISH_MAX_PIXEL_SCALE,
+  loungePendingPublishRevealStrength,
+  loungePendingPublishPixelBlockScale,
+  LoungePendingPublishDevelopReveal,
+  LoungePendingPublishPixelLayer,
+  LoungePendingPublishSnowLayer,
+  loungePendingPublishFrostStrength,
+  LoungePendingPublishFrostVeil,
+}
 
 export const LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG =
   'Keep EdgeTilt open until upload finishes.'
@@ -20,55 +41,15 @@ export const LOUNGE_PENDING_PUBLISH_CANCEL_LABEL = 'Cancel'
 
 export { resolveLoungePendingPublishProgress }
 
-/**
- * Remaining frost at this progress (1 at 0% → 0 at 100%). Blur and veil opacity track this 1:1.
- * @param {number} progress 0..1
- */
-export function loungePendingPublishFrostStrength(progress) {
-  const p = Math.max(0, Math.min(1, Number(progress) || 0))
-  return 1 - p
-}
-
 /** @param {number} progress 0..1 */
 export function loungePendingPublishFrostBlurPx(progress) {
-  return Math.round(LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX * loungePendingPublishFrostStrength(progress))
+  return Math.round(LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX * loungePendingPublishRevealStrength(progress))
 }
 
-/**
- * Frosted veil over a sharp poster — backdrop blur + tint dissipate with upload progress.
- * @param {number} progress 0..1
- * @returns {import('react').CSSProperties}
- */
+/** @deprecated */
 export function loungePendingPublishFrostVeilStyle(progress) {
-  const strength = loungePendingPublishFrostStrength(progress)
-  if (strength <= 0.01) return { opacity: 0, pointerEvents: 'none' }
-  const blurPx = loungePendingPublishFrostBlurPx(progress)
-  return {
-    opacity: strength,
-    backdropFilter: `blur(${blurPx}px)`,
-    WebkitBackdropFilter: `blur(${blurPx}px)`,
-    backgroundColor: `rgba(9, 9, 11, ${(0.32 * strength).toFixed(3)})`,
-    pointerEvents: 'none',
-  }
-}
-
-/**
- * Sharp poster underneath; frosted veil on top — blur and opacity fall as progress rises.
- *
- * @param {object} props
- * @param {number} props.progress 0..1
- * @param {string} [props.className]
- */
-export function LoungePendingPublishFrostVeil({ progress, className = 'absolute inset-0 z-[3]' }) {
-  const strength = loungePendingPublishFrostStrength(progress)
-  if (strength <= 0.01) return null
-  return (
-    <div
-      className={`pointer-events-none ${className}`}
-      aria-hidden
-      style={loungePendingPublishFrostVeilStyle(progress)}
-    />
-  )
+  void progress
+  return { opacity: 0, pointerEvents: 'none' }
 }
 
 /** @deprecated use {@link loungePendingPublishFrostBlurPx} */
@@ -82,19 +63,21 @@ export function loungePendingPublishPosterOpacity(progress) {
   return 1
 }
 
-/** @deprecated use {@link loungePendingPublishFrostVeilStyle} */
+/** @deprecated */
 export function loungePendingPublishPosterStyle(progress) {
   return loungePendingPublishFrostVeilStyle(progress)
 }
 
-/** @deprecated use {@link loungePendingPublishFrostStrength} */
+/** @deprecated use {@link loungePendingPublishRevealStrength} */
 export function loungePendingPublishBlurredRevealOpacity(progress) {
-  return loungePendingPublishFrostStrength(progress)
+  return loungePendingPublishRevealStrength(progress)
 }
 
-/** @deprecated use {@link LoungePendingPublishFrostVeil} */
-export function LoungePendingPublishBlurredRevealLayer({ progress, className }) {
-  return <LoungePendingPublishFrostVeil progress={progress} className={className} />
+/** @deprecated use {@link LoungePendingPublishDevelopReveal} */
+export function LoungePendingPublishBlurredRevealLayer({ progress, className, posterSrc }) {
+  return (
+    <LoungePendingPublishDevelopReveal progress={progress} posterSrc={posterSrc} className={className} />
+  )
 }
 
 /** @param {string} pendingKey */
@@ -148,8 +131,8 @@ export function useLoungePendingPublishDisplay(pendingKey, opts = {}) {
   return {
     registryProgress,
     publishProgress,
-    frostStrength: loungePendingPublishFrostStrength(publishProgress),
-    frostBlurPx: loungePendingPublishFrostBlurPx(publishProgress),
+    revealStrength: loungePendingPublishRevealStrength(publishProgress),
+    pixelBlockScale: loungePendingPublishPixelBlockScale(publishProgress),
     showOverlay: Boolean(key) && publishProgress < 1,
   }
 }
@@ -190,7 +173,7 @@ export default function LoungePostVideoInlineProgress({
       : phase === 'processing' || publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
         ? LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG
         : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
-  const scrimOpacity = 0.18 + 0.32 * (1 - publishProgress)
+  const scrimOpacity = 0.1 + 0.2 * (1 - publishProgress)
   const cancelKey = String(pendingKey || '').trim()
 
   const onCancelClick = (e) => {

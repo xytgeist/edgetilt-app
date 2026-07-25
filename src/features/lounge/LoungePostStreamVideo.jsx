@@ -26,7 +26,7 @@ import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD } from './LoungeStreamVideoLightboxChrome.jsx'
 import LoungePostVideoInlineProgress, {
-  LoungePendingPublishFrostVeil,
+  LoungePendingPublishDevelopReveal,
   useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import {
@@ -3422,7 +3422,10 @@ export default function LoungePostStreamVideo({
                     onError={onPosterImgError}
                   />
                   {showPublishBlurOverlay && !heroExpanded ? (
-                    <LoungePendingPublishFrostVeil progress={publishBlurProgress} />
+                    <LoungePendingPublishDevelopReveal
+                      progress={publishBlurProgress}
+                      posterSrc={visiblePosterSrc}
+                    />
                   ) : null}
                 </>
               )

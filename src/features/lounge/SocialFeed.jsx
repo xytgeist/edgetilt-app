@@ -3706,10 +3706,11 @@ export default function SocialFeed({
         feed_visible_at: null,
       })
       setLoungePendingPostProgress(id, {
-        progress: 0.9,
+        progress: 0.92,
         status: 'Processing video…',
         detail: '',
         phase: 'processing',
+        processingStartedAt: Date.now(),
       })
       const ac = new AbortController()
       void publishLoungeFeedPostWhenStreamReady({

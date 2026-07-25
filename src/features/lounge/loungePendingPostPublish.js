@@ -4,7 +4,13 @@ import {
   loungeSubmissionSnapshotThreadPartCount,
 } from './loungeSubmissionSnapshot.js'
 
-/** @typedef {{ progress: number, status: string, detail: string, phase?: string }} LoungePendingPostProgress */
+/** @typedef {{ progress: number, status: string, detail: string, phase?: string, processingStartedAt?: number }} LoungePendingPostProgress */
+
+/** Stored progress once CF Stream ingest begins (~92%). */
+export const LOUNGE_CF_PROCESSING_PROGRESS_FLOOR = 0.92
+/** Creep cap while polling CF (~+1% every 7s until ready or this cap). */
+export const LOUNGE_CF_PROCESSING_PROGRESS_CAP = 0.99
+export const LOUNGE_CF_PROCESSING_TICK_MS = 7000
 
 const progressByKey = new Map()
 const listeners = new Set()
@@ -39,16 +45,75 @@ export function setLoungePendingPostProgress(key, info) {
   const k = String(key || '').trim()
   if (!k) return
   const prev = progressByKey.get(k) || { progress: 0, status: '', detail: '' }
+  const nextProgress =
+    typeof info?.progress === 'number'
+      ? Math.max(0, Math.min(1, info.progress))
+      : prev.progress
+  const labels = sanitizeLoungePendingStepLabels(
+    info?.status != null ? info.status : prev.status,
+    info?.detail != null ? info.detail : prev.detail,
+  )
+  const enteringCfWait =
+    nextProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR &&
+    (typeof prev.progress !== 'number' || prev.progress < LOUNGE_CF_PROCESSING_PROGRESS_FLOOR)
   progressByKey.set(k, {
-    progress:
-      typeof info?.progress === 'number'
-        ? Math.max(0, Math.min(1, info.progress))
-        : prev.progress,
-    status: info?.status != null ? String(info.status) : prev.status,
-    detail: info?.detail != null ? String(info.detail) : prev.detail,
+    progress: nextProgress,
+    status: labels.status,
+    detail: labels.detail,
     phase: info?.phase != null ? String(info.phase) : prev.phase,
+    processingStartedAt:
+      typeof info?.processingStartedAt === 'number'
+        ? info.processingStartedAt
+        : typeof prev.processingStartedAt === 'number'
+          ? prev.processingStartedAt
+          : enteringCfWait
+            ? Date.now()
+            : undefined,
   })
   notifyPendingPostProgress()
+}
+
+/** Strip per-step NN% from status/detail — inline tile shows one overall % only. */
+export function sanitizeLoungePendingStepLabels(status, detail) {
+  const strip = (value) => {
+    let text = String(value || '').trim()
+    if (!text) return ''
+    text = text.replace(/\s*·\s*\d{1,3}%\s*$/g, '')
+    text = text.replace(/\s+\d{1,3}%\s*$/g, '')
+    if (/^\d{1,3}%$/.test(text)) return ''
+    return text.trim()
+  }
+  return { status: strip(status), detail: strip(detail) }
+}
+
+/**
+ * @param {number | null | undefined} progress
+ * @param {boolean} [cfPlaybackReady]
+ * @param {number | null | undefined} [processingStartedAt]
+ */
+export function resolveLoungePendingPublishProgress(
+  progress,
+  cfPlaybackReady = false,
+  processingStartedAt = null,
+) {
+  if (cfPlaybackReady) return 1
+  let p = typeof progress === 'number' && Number.isFinite(progress) ? progress : 0
+  p = Math.max(0, Math.min(1, p))
+  if (
+    typeof processingStartedAt === 'number' &&
+    Number.isFinite(processingStartedAt) &&
+    p >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR &&
+    p < LOUNGE_CF_PROCESSING_PROGRESS_CAP
+  ) {
+    const elapsed = Math.max(0, Date.now() - processingStartedAt)
+    const ticks = Math.floor(elapsed / LOUNGE_CF_PROCESSING_TICK_MS)
+    const creep = Math.min(
+      LOUNGE_CF_PROCESSING_PROGRESS_CAP - LOUNGE_CF_PROCESSING_PROGRESS_FLOOR,
+      ticks * 0.01,
+    )
+    p = Math.max(p, LOUNGE_CF_PROCESSING_PROGRESS_FLOOR + creep)
+  }
+  return Math.min(p, 1)
 }
 
 /** @param {string} key */

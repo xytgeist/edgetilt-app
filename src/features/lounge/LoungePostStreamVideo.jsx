@@ -26,8 +26,8 @@ import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD } from './LoungeStreamVideoLightboxChrome.jsx'
 import LoungePostVideoInlineProgress, {
-  loungePendingPublishBlurPx,
-  resolveLoungePendingPublishProgress,
+  LoungePendingPublishGrainOverlay,
+  useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import {
   getLoungePendingPostProgress,
@@ -1772,17 +1772,20 @@ export default function LoungePostStreamVideo({
   const tryMseNativeFallbackRef = useRef(tryMseNativeFallback)
   tryMseNativeFallbackRef.current = tryMseNativeFallback
 
-  const publishBlurProgress = resolveLoungePendingPublishProgress(
-    pendingUploadProgress?.progress ?? (authorPendingPublish ? 0.86 : 0),
-    cfStreamPlaybackReady,
-  )
+  const {
+    publishProgress: publishBlurProgress,
+    blurPx: publishPosterBlurPx,
+    posterOpacity: publishPosterOpacity,
+  } = useLoungePendingPublishDisplay(pendingPublishKey, {
+    cfPlaybackReady: cfStreamPlaybackReady,
+    fallbackProgress: authorPendingPublish ? 0.86 : 0,
+  })
   const showPublishBlurOverlay = Boolean(
     authorPendingPublish &&
       pendingPublishKey &&
       !cfStreamPlaybackReady &&
       publishBlurProgress < 1,
   )
-  const publishPosterBlurPx = loungePendingPublishBlurPx(publishBlurProgress)
 
   useEffect(() => {
     if (!id) {
@@ -3403,7 +3406,8 @@ export default function LoungePostStreamVideo({
                     ...(showPublishBlurOverlay && !heroExpanded
                       ? {
                           filter: `blur(${publishPosterBlurPx}px)`,
-                          transition: 'filter 400ms ease-out',
+                          opacity: publishPosterOpacity,
+                          transition: 'filter 700ms ease-out, opacity 700ms ease-out',
                         }
                       : null),
                   }}
@@ -3438,11 +3442,14 @@ export default function LoungePostStreamVideo({
             </div>
           </div>
           {showPublishBlurOverlay && !heroExpanded ? (
-            <LoungePostVideoInlineProgress
-              pendingKey={pendingPublishKey}
-              cfPlaybackReady={cfStreamPlaybackReady}
-              fallbackProgress={authorPendingPublish ? 0.86 : 0}
-            />
+            <>
+              <LoungePendingPublishGrainOverlay progress={publishBlurProgress} />
+              <LoungePostVideoInlineProgress
+                pendingKey={pendingPublishKey}
+                cfPlaybackReady={cfStreamPlaybackReady}
+                fallbackProgress={authorPendingPublish ? 0.86 : 0}
+              />
+            </>
           ) : null}
           {showStreamRetry ? (
             <div

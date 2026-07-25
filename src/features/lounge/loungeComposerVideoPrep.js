@@ -455,7 +455,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
           onStreamUidAvailable?.(id)
         },
         onProgress: (r) =>
-          report(0.44 + r * 0.46, 'Uploading to Ether', `${Math.round(r * 100)}%`, attempt),
+          report(0.44 + r * 0.46, 'Uploading to Ether', '', attempt),
         onVisibilityPause: () =>
           report(
             0.44,

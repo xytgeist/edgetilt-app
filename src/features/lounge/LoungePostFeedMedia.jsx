@@ -11,9 +11,9 @@ import {
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
 import LoungePostVideoInlineProgress, {
-  loungePendingPublishBlurPx,
-  resolveLoungePendingPublishProgress,
-  useLoungePendingPublishProgress,
+  LoungePendingPublishGrainOverlay,
+  loungePendingPublishPosterStyle,
+  useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
@@ -366,10 +366,7 @@ function loungeFeedAutoplayClientId({
 }
 
 function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMarginTopClass }) {
-  const registryProgress = useLoungePendingPublishProgress(pendingKey)
-  const publishProgress = resolveLoungePendingPublishProgress(registryProgress?.progress ?? 0, false)
-  const blurPx = loungePendingPublishBlurPx(publishProgress)
-  const showPublishOverlay = publishProgress < 1
+  const { publishProgress, showOverlay } = useLoungePendingPublishDisplay(pendingKey)
 
   return (
     <div className={`${firstMarginTopClass} inline-flex w-fit max-w-full flex-col`}>
@@ -381,14 +378,7 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
             decoding="async"
             draggable={false}
             className="block max-h-[312px] w-auto max-w-full h-auto object-contain"
-            style={
-              showPublishOverlay
-                ? {
-                    filter: `blur(${blurPx}px)`,
-                    transition: 'filter 400ms ease-out',
-                  }
-                : undefined
-            }
+            style={showOverlay ? loungePendingPublishPosterStyle(publishProgress) : undefined}
           />
         ) : (
           <div
@@ -396,7 +386,8 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
             aria-hidden
           />
         )}
-        {showPublishOverlay ? <LoungePostVideoInlineProgress pendingKey={pendingKey} /> : null}
+        {showOverlay ? <LoungePendingPublishGrainOverlay progress={publishProgress} /> : null}
+        {showOverlay ? <LoungePostVideoInlineProgress pendingKey={pendingKey} /> : null}
       </div>
     </div>
   )

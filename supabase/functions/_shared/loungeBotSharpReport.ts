@@ -6,6 +6,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
 import { compareMovementWithCoverage, coverageRankForSport, type CalendarCoverageInput } from './loungeBotCoverageScope.ts'
 import {
+  americanOddsMoveDistance,
   detectLineMovements,
   loadStoredEventLines,
   type LineMovementAlert,
@@ -67,7 +68,9 @@ function lookbackPhrase(snapshotAgeMs: number): string {
 }
 
 export function movementScore(alert: LineMovementAlert): number {
-  const magnitude = Math.abs(alert.pointDelta) * 12 + Math.abs(alert.priceDelta)
+  const magnitude = alert.marketKey === 'h2h'
+    ? americanOddsMoveDistance(alert.oldPrice, alert.newPrice)
+    : Math.abs(alert.pointDelta) * 12 + Math.abs(alert.priceDelta)
   const kindBonus = alert.kind === 'rlm'
     ? 35
     : alert.kind === 'sharp_move'
@@ -83,7 +86,7 @@ export function qualifiesForSharpReport(alert: LineMovementAlert): boolean {
   if (alert.kind === 'rlm' || alert.kind === 'sharp_move' || alert.kind === 'steam') return true
   if (alert.marketKey === 'spreads' && Math.abs(alert.pointDelta) >= 0.5) return true
   if (alert.marketKey === 'totals' && Math.abs(alert.pointDelta) >= 0.5) return true
-  if (alert.marketKey === 'h2h' && Math.abs(alert.priceDelta) >= 20) return true
+  if (alert.marketKey === 'h2h' && americanOddsMoveDistance(alert.oldPrice, alert.newPrice) >= 20) return true
   return false
 }
 

@@ -88,6 +88,31 @@ function roundPoint(n: number): number {
   return Math.round(n * 2) / 2
 }
 
+/**
+ * Signed cents from even money on American ML: favorites negative (-101 → -1), dogs positive (+101 → +1).
+ * +100 / -100 both sit at 0 (pick'em).
+ */
+export function mlPositionFromEven(american: number): number {
+  if (!Number.isFinite(american) || american === 0) return 0
+  if (american >= 100) return american - 100
+  if (american <= -100) return -(Math.abs(american) - 100)
+  return american > 0 ? american - 100 : american + 100
+}
+
+/** ML move size in juice cents; handles +/-100 crossover (-101 → +100 = 1 pt, not 201). */
+export function americanOddsMoveDistance(oldPrice: number, newPrice: number): number {
+  return Math.abs(mlPositionFromEven(newPrice) - mlPositionFromEven(oldPrice))
+}
+
+export function lineAlertMovementScore(
+  alert: Pick<LineMovementAlert, 'marketKey' | 'pointDelta' | 'priceDelta' | 'oldPrice' | 'newPrice'>,
+): number {
+  if (alert.marketKey === 'h2h') {
+    return americanOddsMoveDistance(alert.oldPrice, alert.newPrice)
+  }
+  return Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta)
+}
+
 function shortName(name: string): string {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
   return parts.length <= 1 ? (parts[0] || '') : parts[parts.length - 1]!
@@ -226,9 +251,10 @@ function classifyMovement(
   priceDelta: number,
   cfg: LineMovementConfig,
   pairedMlDelta?: number,
+  mlMovePts?: number,
 ): LineMovementKind {
   const absPoint = Math.abs(pointDelta)
-  const absPrice = Math.abs(priceDelta)
+  const absMlMove = mlMovePts ?? Math.abs(priceDelta)
 
   if (marketKey === 'spreads' || marketKey === 'totals') {
     if (pairedMlDelta != null && Math.sign(pointDelta) !== 0 && Math.sign(pairedMlDelta) !== 0
@@ -241,8 +267,8 @@ function classifyMovement(
     return 'line_movement'
   }
 
-  if (absPrice >= 35) return 'sharp_move'
-  if (absPrice >= Math.max(cfg.minMlMovePts, 25)) return 'steam'
+  if (absMlMove >= 35) return 'sharp_move'
+  if (absMlMove >= Math.max(cfg.minMlMovePts, 25)) return 'steam'
   return 'line_movement'
 }
 
@@ -252,7 +278,7 @@ function movementMeaning(kind: LineMovementKind, marketKey: string, outcomeName:
     return `Public side and sharp money diverging ... spread moved one way while ML moved the other.`
   }
   if (kind === 'sharp_move') {
-    const size = formatMoveSizeLabel(marketKey, pointDelta, priceDelta)
+    const size = formatMoveSizeLabel(marketKey, pointDelta)
     if (marketKey === 'spreads') {
       return priceDelta < 0
         ? `Significant move (${size}) · sharp books shortening juice on ${label}.`
@@ -262,8 +288,8 @@ function movementMeaning(kind: LineMovementKind, marketKey: string, outcomeName:
       return `Significant move (${size}) · sharp action on the ${label.toLowerCase()} total.`
     }
     return priceDelta > 0
-      ? `Significant ML move (${size}) · ${label} odds lengthening, potential dog value.`
-      : `Significant ML move (${size}) · ${label} shortening, sharp money in.`
+      ? `Significant ML move · ${label} odds lengthening, potential dog value.`
+      : `Significant ML move · ${label} shortening, sharp money in.`
   }
   if (kind === 'steam') {
     if (marketKey === 'spreads') {
@@ -277,11 +303,11 @@ function movementMeaning(kind: LineMovementKind, marketKey: string, outcomeName:
   return `Minor line shift on ${label} · tracking only (no standalone alert).`
 }
 
-function formatMoveSizeLabel(marketKey: string, pointDelta: number, priceDelta: number): string {
+function formatMoveSizeLabel(marketKey: string, pointDelta: number): string {
   if (marketKey === 'spreads' || marketKey === 'totals') {
     return `${Math.abs(pointDelta)} pt`
   }
-  return `${Math.abs(priceDelta)} ML pts`
+  return ''
 }
 
 export function detectLineMovements(
@@ -306,14 +332,18 @@ export function detectLineMovements(
 
     const priceDelta = row.consensusPrice - prev.consensusPrice
     const pointDelta = (row.linePoint ?? 0) - (prev.linePoint ?? 0)
+    const mlMovePts = row.marketKey === 'h2h'
+      ? americanOddsMoveDistance(prev.consensusPrice, row.consensusPrice)
+      : 0
 
-    if (row.marketKey === 'h2h' && Math.abs(priceDelta) < cfg.minMlMovePts) continue
+    if (row.marketKey === 'h2h' && mlMovePts < cfg.minMlMovePts) continue
     if (row.marketKey === 'spreads' && Math.abs(pointDelta) < cfg.minSpreadMovePts) continue
     if (row.marketKey === 'totals' && Math.abs(pointDelta) < cfg.minTotalMovePts) continue
 
     if (row.marketKey === 'h2h') {
       if (!mlDeltasByEvent.has(row.eventId)) mlDeltasByEvent.set(row.eventId, new Map())
-      mlDeltasByEvent.get(row.eventId)!.set(row.outcomeName, priceDelta)
+      const mlPositionDelta = mlPositionFromEven(row.consensusPrice) - mlPositionFromEven(prev.consensusPrice)
+      mlDeltasByEvent.get(row.eventId)!.set(row.outcomeName, mlPositionDelta)
     }
   }
 
@@ -326,8 +356,11 @@ export function detectLineMovements(
     const pointDelta = row.linePoint != null && prev.linePoint != null
       ? row.linePoint - prev.linePoint
       : 0
+    const mlMovePts = row.marketKey === 'h2h'
+      ? americanOddsMoveDistance(prev.consensusPrice, row.consensusPrice)
+      : 0
 
-    if (row.marketKey === 'h2h' && Math.abs(priceDelta) < cfg.minMlMovePts) continue
+    if (row.marketKey === 'h2h' && mlMovePts < cfg.minMlMovePts) continue
     if (row.marketKey === 'spreads' && Math.abs(pointDelta) < cfg.minSpreadMovePts) continue
     if (row.marketKey === 'totals' && Math.abs(pointDelta) < cfg.minTotalMovePts) continue
 
@@ -337,7 +370,7 @@ export function detectLineMovements(
       pairedMlDelta = mlMap?.get(row.outcomeName)
     }
 
-    const kind = classifyMovement(row.marketKey, pointDelta, priceDelta, cfg, pairedMlDelta)
+    const kind = classifyMovement(row.marketKey, pointDelta, priceDelta, cfg, pairedMlDelta, mlMovePts)
     const ev = eventById.get(row.eventId)
     const direction = row.marketKey === 'h2h'
       ? (priceDelta >= 0 ? 'price_up' : 'price_down')
@@ -366,11 +399,7 @@ export function detectLineMovements(
     })
   }
 
-  alerts.sort((a, b) => {
-    const score = (x: LineMovementAlert) =>
-      Math.abs(x.pointDelta) * 10 + Math.abs(x.priceDelta)
-    return score(b) - score(a)
-  })
+  alerts.sort((a, b) => lineAlertMovementScore(b) - lineAlertMovementScore(a))
 
   return alerts
 }

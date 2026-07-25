@@ -167,7 +167,7 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
 4. Compare consensus vs that snapshot; flag when **in that interval**:
    - Spread moves **≥ 0.5** pts (config **`min_spread_move_pts`**)
    - Total moves **≥ 0.5** pts (**`min_total_move_pts`**)
-   - ML moves **≥ 20** American pts in the interval (e.g. +150 → +130, -140 → -160; config **`min_ml_move_pts`**, default **20**)
+   - ML moves **≥ 20** juice cents in the interval (even-money normalized: +150 → +130 = **20**; -101 → +100 = **1**, not 201; config **`min_ml_move_pts`**, default **20**)
 4. Classify: **`sharp_move`** (≥ 1 pt or large ML), **`steam`** (fast multi-book sync), **`rlm`** (spread vs ML diverge), **`line_movement`** (minor — internal only, no feed post)
 5. Post feed alert for **`sharp_move`**, **`steam`**, and **`rlm`** only (minor **`line_movement`** feeds **Sharp Report Card** but not standalone alerts)
 6. Upsert new snapshot (first poll = baseline only, no alerts)

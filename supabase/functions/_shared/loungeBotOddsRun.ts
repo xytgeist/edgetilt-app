@@ -31,6 +31,7 @@ import {
   extractEventLines,
   LINE_MOVEMENT_PUBLISH_KINDS,
   lineMovementDedupeKey,
+  lineAlertMovementScore,
   loadStoredEventLines,
   SNAPSHOT_COMPARE_MAX_MS,
   SNAPSHOT_COMPARE_MIN_MS,
@@ -902,7 +903,7 @@ export async function tryPublishLineMovementAlerts(
       subscriberOnly,
       postKind: alert.kind,
       dedupeKey,
-      score: Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta),
+      score: lineAlertMovementScore(alert),
       minGapMinutes: minGap,
     })
 
@@ -913,7 +914,7 @@ export async function tryPublishLineMovementAlerts(
       await admin.from('lounge_bot_publish_log').insert({
         bot_user_id: bot.user_id,
         caption,
-        score: Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta),
+        score: lineAlertMovementScore(alert),
         status: 'failed',
         post_kind: alert.kind,
         dedupe_key: dedupeKey,

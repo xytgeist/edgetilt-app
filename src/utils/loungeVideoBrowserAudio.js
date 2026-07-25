@@ -6,11 +6,13 @@
 import { detectAppleWebKitInlineStream } from './loungeAppleWebKit.js'
 
 const DESKTOP_EXTRACT_PLAYBACK_RATE = 4
-const APPLE_EXTRACT_PLAYBACK_RATE = 4
+const APPLE_EXTRACT_PLAYBACK_RATE = 8
 const EXTRACT_TIMEOUT_PAD_MS = 3000
 const PLAY_START_TIMEOUT_MS = 3500
 const PLAYBACK_STALL_MS = 4500
 const MAX_ATTEMPT_MS = 55000
+const MIN_CAPTURE_BYTES_PER_SEC = 4000
+const MIN_CAPTURE_BYTES_FLOOR = 16000
 
 /**
  * @param {AbortSignal | undefined} signal
@@ -26,6 +28,29 @@ function hasUserActivation() {
   } catch {
     return false
   }
+}
+
+/** @returns {boolean} */
+export function hasBrowserVideoAudioUserActivation() {
+  return hasUserActivation()
+}
+
+/** Minimum blob size for a captured audio track to be worth muxing. */
+export function minBrowserVideoAudioCaptureBytes(durSec) {
+  const dur = Math.max(0.5, Number(durSec) || 0)
+  return Math.max(MIN_CAPTURE_BYTES_FLOOR, Math.round(dur * MIN_CAPTURE_BYTES_PER_SEC))
+}
+
+/**
+ * @param {Blob} blob
+ * @param {number} durSec
+ * @param {number} [progressRatio01]
+ */
+export function isViableBrowserVideoAudioCapture(blob, durSec, progressRatio01 = 1) {
+  if (!blob?.size) return false
+  if (blob.size < minBrowserVideoAudioCaptureBytes(durSec)) return false
+  if (typeof progressRatio01 === 'number' && progressRatio01 < 0.75) return false
+  return true
 }
 
 /**
@@ -386,6 +411,7 @@ async function recordStreamSegment({
  * @param {number} opts.playbackRate
  * @param {boolean} opts.muted
  * @param {boolean} [opts.silentMonitor]
+ * @param {boolean} [opts.silentViaVolume]
  * @param {AbortSignal | undefined} opts.signal
  * @param {(ratio01: number) => void} [opts.onProgress]
  */
@@ -399,10 +425,18 @@ async function extractViaWebAudio(opts) {
     playbackRate,
     muted,
     silentMonitor = false,
+    silentViaVolume = false,
     signal,
     onProgress,
   } = opts
-  video.muted = muted
+  // iOS Web Audio often receives no samples when the element is muted.
+  if (silentViaVolume) {
+    video.muted = false
+    video.volume = 0
+  } else {
+    video.muted = muted
+    video.volume = muted ? 0 : 1
+  }
 
   const audioCtx = new AudioContext()
   try {
@@ -441,40 +475,44 @@ async function extractViaWebAudio(opts) {
 
 /**
  * @param {boolean} isApple
- * @returns {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean }[]}
+ * @returns {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean }[]}
  */
 function buildExtractAttempts(isApple) {
   const activation = hasUserActivation()
   if (isApple) {
-    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean }[]} */
+    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean }[]} */
     const attempts = [
       {
-        name: 'web-audio-muted-4x-silent',
-        muted: true,
+        name: 'web-audio-volume0-8x',
+        muted: false,
         playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+        silentViaVolume: true,
         silentMonitor: true,
       },
       {
-        name: 'web-audio-muted-4x',
-        muted: true,
-        playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+        name: 'web-audio-volume0-4x',
+        muted: false,
+        playbackRate: 4,
+        silentViaVolume: true,
+        silentMonitor: true,
       },
     ]
     if (activation) {
       attempts.push({
-        name: 'web-audio-unmuted-4x',
+        name: 'web-audio-unmuted-8x',
         muted: false,
         playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
       })
     }
     return attempts
   }
-  /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean }[]} */
+  /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean }[]} */
   const attempts = [
     {
-      name: 'web-audio-muted-4x-silent',
-      muted: true,
+      name: 'web-audio-volume0-4x',
+      muted: false,
       playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+      silentViaVolume: true,
       silentMonitor: true,
     },
   ]
@@ -548,6 +586,7 @@ export async function extractBrowserVideoAudio(
       throwIfAborted(signal)
       if (start > 0.05) await seekMediaElement(video, start)
 
+      let maxProgress = 0
       const result = await withTimeout(
         extractViaWebAudio({
           video,
@@ -558,12 +597,23 @@ export async function extractBrowserVideoAudio(
           playbackRate: attempt.playbackRate,
           muted: attempt.muted,
           silentMonitor: attempt.silentMonitor,
+          silentViaVolume: attempt.silentViaVolume,
           signal,
-          onProgress,
+          onProgress: (r) => {
+            maxProgress = Math.max(maxProgress, r)
+            onProgress?.(r)
+          },
         }),
         MAX_ATTEMPT_MS,
         attempt.name,
       )
+
+      const minBytes = minBrowserVideoAudioCaptureBytes(dur)
+      if (!isViableBrowserVideoAudioCapture(result.blob, dur, maxProgress)) {
+        throw new Error(
+          `Capture too small (${Math.round(result.blob.size / 1024)}KB, need ~${Math.round(minBytes / 1024)}KB, progress ${Math.round(maxProgress * 100)}%)`,
+        )
+      }
 
       onDebug?.(`browser audio ok ${attempt.name} ${Math.round(result.blob.size / 1024)}KB`)
       return { ...result, method: attempt.name }
@@ -587,6 +637,7 @@ export async function extractBrowserVideoAudio(
 /** True for iPhone-style clips where wasm demux often fails but Safari can decode audio. */
 export function shouldPrefetchBrowserVideoAudio(file) {
   if (!file || !detectAppleWebKitInlineStream()) return false
+  if (!hasUserActivation()) return false
   const name = String(file.name || '').toLowerCase()
   const type = String(file.type || '').toLowerCase()
   return name.endsWith('.mov') || type.includes('quicktime')

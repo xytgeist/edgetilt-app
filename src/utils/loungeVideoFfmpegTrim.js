@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
-import { extractBrowserVideoAudio, shouldPrefetchBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
+import { extractBrowserVideoAudio, isViableBrowserVideoAudioCapture, shouldPrefetchBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic'
@@ -173,9 +173,17 @@ function decodableAudioStreamIndices(streams) {
       (s) =>
         s.kind === 'audio'
         && s.codec !== 'none'
+        && s.codec !== 'apac'
         && (DECODABLE_AUDIO_CODECS.has(s.codec) || s.codec.startsWith('aac')),
     )
     .map((s) => s.index)
+}
+
+/** @param {{ index: number, kind: string, codec: string }[]} streams */
+function formatStreamProbeLog(streams) {
+  if (!streams.length) return 'probe streams none'
+  const parts = streams.map((s) => `${s.index}:${s.codec}`)
+  return `probe streams ${parts.join(',')}`
 }
 
 /**
@@ -246,7 +254,7 @@ function buildOutputArgs(vf, strategy, outName) {
  * }} EncodeStrategy
  */
 
-/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices */
+/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} allStreams */
 function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
   const videoOnlyFallback = /** @type {EncodeStrategy[]} */ ([
     { label: 'video-only-mapped', videoOnly: true, forceSsBeforeInput: false, useMaps: true },
@@ -257,12 +265,12 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
   const withAudio = [
     {
       label: 'aac-by-codec',
-      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac'],
+      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac?'],
       requireOutputAudio: true,
     },
     {
       label: 'aac-by-mp4a',
-      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a'],
+      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a?'],
       requireOutputAudio: true,
     },
   ]
@@ -280,34 +288,35 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
     })
   }
 
-  withAudio.push(
-    {
-      label: 'aac-mapped',
-      videoOnly: false,
-      forceSsBeforeInput: false,
-      useMaps: true,
-      requireOutputAudio: true,
-    },
-    {
-      label: 'aac-mapped-ss',
-      videoOnly: false,
-      forceSsBeforeInput: true,
-      useMaps: true,
-      requireOutputAudio: true,
-    },
-    {
-      label: 'aac-copy-mapped',
-      videoOnly: false,
-      forceSsBeforeInput: false,
-      useMaps: true,
-      audioCopy: true,
-      requireOutputAudio: true,
-    },
-  )
+  if (audioStreamIndices.length > 0) {
+    withAudio.push(
+      {
+        label: 'aac-mapped',
+        videoOnly: false,
+        forceSsBeforeInput: false,
+        useMaps: true,
+        requireOutputAudio: true,
+      },
+      {
+        label: 'aac-mapped-ss',
+        videoOnly: false,
+        forceSsBeforeInput: true,
+        useMaps: true,
+        requireOutputAudio: true,
+      },
+      {
+        label: 'aac-copy-mapped',
+        videoOnly: false,
+        forceSsBeforeInput: false,
+        useMaps: true,
+        audioCopy: true,
+        requireOutputAudio: true,
+      },
+    )
+  }
 
   if (sourceHasAudio) {
-    // Never silently strip audio when the source likely has it (iOS always reports unknown → true).
-    return withAudio
+    return [...withAudio, ...videoOnlyFallback]
   }
   return [...withAudio, ...videoOnlyFallback]
 }
@@ -393,6 +402,13 @@ async function wasmReencodeToMp4({
         ext: extracted.ext,
         method: extracted.method,
       }
+      if (!isViableBrowserVideoAudioCapture(extracted.blob, dur)) {
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio early rejected ${Math.round(extracted.blob.size / 1024)}KB`,
+        )
+        prefetchedBrowserAudio = null
+      }
     } catch (earlyAudioErr) {
       const msg = earlyAudioErr instanceof Error ? earlyAudioErr.message : String(earlyAudioErr)
       maybeReportLoungeVideoUploadDebug('encode', `browser audio early failed: ${msg}`)
@@ -420,9 +436,12 @@ async function wasmReencodeToMp4({
   }
 
   let audioStreamIndices = []
+  /** @type {{ index: number, kind: string, codec: string }[]} */
+  let probedStreams = []
   try {
-    const streams = await probeFfmpegInputStreams(ffmpeg, inputPath, signal)
-    audioStreamIndices = decodableAudioStreamIndices(streams)
+    probedStreams = await probeFfmpegInputStreams(ffmpeg, inputPath, signal)
+    audioStreamIndices = decodableAudioStreamIndices(probedStreams)
+    maybeReportLoungeVideoUploadDebug('encode', formatStreamProbeLog(probedStreams))
     if (audioStreamIndices.length > 0) {
       maybeReportLoungeVideoUploadDebug(
         'encode',
@@ -440,6 +459,15 @@ async function wasmReencodeToMp4({
   if (sourceHasAudio && audioStreamIndices.length === 0) {
     try {
       let extracted = null
+      if (prefetchedBrowserAudio?.blob?.size) {
+        if (!isViableBrowserVideoAudioCapture(prefetchedBrowserAudio.blob, dur)) {
+          maybeReportLoungeVideoUploadDebug(
+            'encode',
+            `browser audio prefetch rejected ${Math.round(prefetchedBrowserAudio.blob.size / 1024)}KB`,
+          )
+          prefetchedBrowserAudio = null
+        }
+      }
       if (prefetchedBrowserAudio?.blob?.size) {
         extracted = {
           blob: prefetchedBrowserAudio.blob,
@@ -496,13 +524,13 @@ async function wasmReencodeToMp4({
     strategies.unshift(
       {
         label: 'browser-audio-mux',
-        maps: ['-map', '0:v:0', '-map', '1:a:0'],
+        maps: ['-map', '0:v:0', '-map', '1:a:0?'],
         browserAudioFile,
         requireOutputAudio: true,
       },
       {
         label: 'browser-audio-copy-mux',
-        maps: ['-map', '0:v:0', '-map', '1:a:0'],
+        maps: ['-map', '0:v:0', '-map', '1:a:0?'],
         browserAudioFile,
         audioCopy: true,
         requireOutputAudio: true,

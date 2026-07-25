@@ -741,10 +741,118 @@ function formatFfmpegLogTail(logs) {
 }
 
 /** @param {File} file @param {boolean} sourceHasAudio */
-function shouldUseAndroidBrowserAudioPrimaryPath(file, sourceHasAudio) {
+function shouldUseAndroidLargePrimaryPath(file, sourceHasAudio) {
   if (!isAndroidBrowser() || !sourceHasAudio) return false
   const n = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0
   return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
+}
+
+/** iPhone spatial: AAC fallback usually on stream #2 (0:a:1); copy both tracks into MP4. */
+function buildAndroidSpatialStreamCopyStrategies() {
+  return /** @type {EncodeStrategy[]} */ ([
+    {
+      label: 'spatial-vcopy-acopy-stream-2',
+      maps: ['-map', '0:v:0', '-map', '0:2'],
+      videoCopy: true,
+      audioCopy: true,
+      requireOutputAudio: true,
+    },
+    {
+      label: 'spatial-vcopy-acopy-a1',
+      maps: ['-map', '0:v:0', '-map', '0:a:1'],
+      videoCopy: true,
+      audioCopy: true,
+      requireOutputAudio: true,
+    },
+  ])
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {object} ctx
+ * @param {File} ctx.file
+ * @param {string} ctx.inputPath
+ * @param {number} ctx.startSec
+ * @param {number} ctx.dur
+ * @param {string} ctx.outName
+ * @param {string} ctx.vf
+ * @param {EncodeStrategy[]} ctx.strategies
+ * @param {AbortSignal | undefined} ctx.signal
+ * @returns {Promise<{ winningStrategy: EncodeStrategy, lastFailureHint: string } | null>}
+ */
+async function runWasmEncodeStrategyLoop(ffmpeg, ctx) {
+  const { file, inputPath, startSec, dur, outName, vf, strategies, signal } = ctx
+  /** @type {EncodeStrategy | null} */
+  let winningStrategy = null
+  let lastCode = 1
+  /** @type {string[]} */
+  let lastLogs = []
+  let lastFailureHint = ''
+
+  for (const strategy of strategies) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    const watchLimits = encodeStrategyWatchLimits(file.size, strategy)
+    maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
+    try {
+      await deleteFfmpegFileSafe(ffmpeg, outName)
+    } catch {
+      // ignore
+    }
+    const inputPart = buildInputArgs(inputPath, startSec, dur, {
+      forceSsBeforeInput: strategy.forceSsBeforeInput,
+    })
+    /** @type {string[]} */
+    const args = [...buildDemuxLogging(), ...inputPart]
+    if (strategy.browserAudioFile) {
+      args.push('-i', strategy.browserAudioFile)
+    }
+    args.push(...buildOutputArgs(vf, strategy, outName))
+    const { code, logs, timedOut, stalled } = await execFfmpegLoggedWithStallWatch(
+      ffmpeg,
+      args,
+      signal,
+      watchLimits,
+    )
+    lastCode = code
+    lastLogs = logs
+    if (stalled || timedOut) {
+      lastFailureHint = stalled
+        ? `${strategy.label}: stalled (no encode progress)`
+        : `${strategy.label}: max wait`
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        stalled
+          ? `try ${strategy.label} stalled (no encode progress ${Math.round(watchLimits.stallMs / 1000)}s)`
+          : `try ${strategy.label} max wait ${Math.round(watchLimits.maxMs / 1000)}s`,
+      )
+      continue
+    }
+    if (code === 0) {
+      if (strategy.requireOutputAudio !== false && !strategy.videoOnly) {
+        const outHasAudio = await probeFfmpegOutputHasAudio(ffmpeg, outName, signal).catch(() => false)
+        if (!outHasAudio) {
+          lastFailureHint = `${strategy.label}: no output audio`
+          maybeReportLoungeVideoUploadDebug('encode', `try ${strategy.label} no output audio track`)
+          continue
+        }
+      }
+      winningStrategy = strategy
+      break
+    }
+    lastFailureHint = `${strategy.label}: exit ${code}`
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `try ${strategy.label} failed: ${formatFfmpegLogTail(logs)}`,
+    )
+  }
+
+  if (!winningStrategy) {
+    if (lastFailureHint || lastLogs.length) {
+      return { winningStrategy: null, lastFailureHint: lastFailureHint || formatFfmpegLogTail(lastLogs) }
+    }
+    return { winningStrategy: null, lastFailureHint: `exit ${lastCode}` }
+  }
+  return { winningStrategy, lastFailureHint: '' }
 }
 
 /** @returns {EncodeStrategy[]} */
@@ -774,7 +882,7 @@ function buildBrowserAudioMuxStrategies(browserAudioFile) {
 }
 
 /**
- * Android large/spatial: browser decodes audio, wasm only vcopy-muxes (no HEVC reencode ladder).
+ * Android large/spatial: wasm stream copy (vcopy+acopy) first, then browser audio vcopy fallback.
  *
  * @param {object} opts
  * @param {File} opts.file
@@ -788,7 +896,7 @@ function buildBrowserAudioMuxStrategies(browserAudioFile) {
  * @param {string} opts.outBaseName
  * @param {string} opts.outSuffix
  */
-async function wasmAndroidBrowserAudioPrimaryPath({
+async function wasmAndroidLargePrimaryPath({
   file,
   startSec,
   endSec,
@@ -802,31 +910,8 @@ async function wasmAndroidBrowserAudioPrimaryPath({
 }) {
   maybeReportLoungeVideoUploadDebug(
     'encode',
-    'android primary: browser audio + vcopy (skip wasm reencode)',
+    'android primary: spatial vcopy+acopy stream copy',
   )
-
-  let extracted
-  try {
-    maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
-    extracted = await extractBrowserVideoAudio(
-      file,
-      startSec,
-      endSec,
-      signal,
-      (r) => {
-        if (typeof onProgress !== 'function') return
-        onProgress(Math.min(0.5, Math.max(0, r) * 0.5))
-      },
-      (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
-    )
-    maybeReportLoungeVideoUploadDebug(
-      'encode',
-      `browser audio extract ok ${extracted.method} ${Math.round(extracted.blob.size / 1024)}KB`,
-    )
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    throw new Error(`Browser audio extract failed (${msg}).`)
-  }
 
   maybeReportLoungeVideoUploadDebug('encode', 'wasm core loading')
   let ffmpeg = await getFfmpeg()
@@ -834,88 +919,93 @@ async function wasmAndroidBrowserAudioPrimaryPath({
 
   let mode
   let inputPath
-  const browserAudioFile = `browser_audio${extracted.ext}`
   const onProg = ({ progress }) => {
     if (typeof onProgress !== 'function') return
     const p = typeof progress === 'number' ? progress : 0
     const r = p <= 1 ? p : p / 100
-    onProgress(0.5 + r * 0.5)
+    onProgress(0.05 + r * 0.9)
   }
   ffmpeg.on('progress', onProg)
+
+  /** @type {string | null} */
+  let browserAudioFile = null
 
   try {
     ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))
     maybeReportLoungeVideoUploadDebug('encode', `input mounted ${mode}`)
-    await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
 
-    const strategies = buildBrowserAudioMuxStrategies(browserAudioFile).slice(0, 1)
+    const streamCopyStrategies = buildAndroidSpatialStreamCopyStrategies()
     maybeReportLoungeVideoUploadDebug(
       'encode',
-      `encode plan ${strategies.map((s) => s.label).join(', ')}`,
+      `encode plan ${streamCopyStrategies.map((s) => s.label).join(', ')}`,
     )
 
-    /** @type {EncodeStrategy | null} */
-    let winningStrategy = null
-    let lastCode = 1
-    /** @type {string[]} */
-    let lastLogs = []
-    let lastFailureHint = ''
+    let loopResult = await runWasmEncodeStrategyLoop(ffmpeg, {
+      file,
+      inputPath,
+      startSec,
+      dur,
+      outName,
+      vf: '',
+      strategies: streamCopyStrategies,
+      signal,
+    })
 
-    for (const strategy of strategies) {
-      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-      const watchLimits = encodeStrategyWatchLimits(file.size, strategy)
-      maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
-      try {
-        await deleteFfmpegFileSafe(ffmpeg, outName)
-      } catch {
-        // ignore
-      }
-      const inputPart = buildInputArgs(inputPath, startSec, dur, {})
-      /** @type {string[]} */
-      const args = [...buildDemuxLogging(), ...inputPart, '-i', browserAudioFile]
-      args.push(...buildOutputArgs('', strategy, outName))
-      const { code, logs, timedOut, stalled } = await execFfmpegLoggedWithStallWatch(
-        ffmpeg,
-        args,
-        signal,
-        watchLimits,
-      )
-      lastCode = code
-      lastLogs = logs
-      if (stalled || timedOut) {
-        lastFailureHint = stalled
-          ? `${strategy.label}: stalled (no encode progress)`
-          : `${strategy.label}: max wait`
-        maybeReportLoungeVideoUploadDebug(
-          'encode',
-          stalled
-            ? `try ${strategy.label} stalled (no encode progress ${Math.round(watchLimits.stallMs / 1000)}s)`
-            : `try ${strategy.label} max wait ${Math.round(watchLimits.maxMs / 1000)}s`,
-        )
-        continue
-      }
-      if (code === 0) {
-        const outHasAudio = await probeFfmpegOutputHasAudio(ffmpeg, outName, signal).catch(
-          () => false,
-        )
-        if (!outHasAudio) {
-          lastFailureHint = `${strategy.label}: no output audio`
-          maybeReportLoungeVideoUploadDebug('encode', `try ${strategy.label} no output audio track`)
-          continue
-        }
-        winningStrategy = strategy
-        break
-      }
-      lastFailureHint = `${strategy.label}: exit ${code}`
-      maybeReportLoungeVideoUploadDebug(
-        'encode',
-        `try ${strategy.label} failed: ${formatFfmpegLogTail(logs)}`,
-      )
-    }
+    /** @type {EncodeStrategy | null} */
+    let winningStrategy = loopResult?.winningStrategy ?? null
 
     if (!winningStrategy) {
-      const hint = lastFailureHint || formatFfmpegLogTail(lastLogs)
-      throw new Error(hint ? `Android vcopy mux failed (${hint}).` : `Android vcopy mux failed (exit ${lastCode}).`)
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `spatial stream copy failed (${loopResult?.lastFailureHint || 'unknown'}), browser audio fallback`,
+      )
+      let extracted
+      try {
+        maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
+        extracted = await extractBrowserVideoAudio(
+          file,
+          startSec,
+          endSec,
+          signal,
+          (r) => {
+            if (typeof onProgress !== 'function') return
+            onProgress(Math.min(0.45, Math.max(0, r) * 0.45))
+          },
+          (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
+        )
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio extract ok ${extracted.method} ${Math.round(extracted.blob.size / 1024)}KB`,
+        )
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        const hint = loopResult?.lastFailureHint || 'stream copy failed'
+        throw new Error(`Android prep failed (${hint}; browser audio: ${msg}).`)
+      }
+
+      browserAudioFile = `browser_audio${extracted.ext}`
+      await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
+
+      const browserStrategies = buildBrowserAudioMuxStrategies(browserAudioFile).slice(0, 1)
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `browser mux plan ${browserStrategies.map((s) => s.label).join(', ')}`,
+      )
+      loopResult = await runWasmEncodeStrategyLoop(ffmpeg, {
+        file,
+        inputPath,
+        startSec,
+        dur,
+        outName,
+        vf: '',
+        strategies: browserStrategies,
+        signal,
+      })
+      winningStrategy = loopResult?.winningStrategy ?? null
+      if (!winningStrategy) {
+        const hint = loopResult?.lastFailureHint || 'browser mux failed'
+        throw new Error(`Android prep failed (${hint}).`)
+      }
     }
 
     maybeReportLoungeVideoUploadDebug(
@@ -929,10 +1019,12 @@ async function wasmAndroidBrowserAudioPrimaryPath({
     } catch {
       // ignore
     }
-    try {
-      await ffmpeg.deleteFile(browserAudioFile)
-    } catch {
-      // ignore
+    if (browserAudioFile) {
+      try {
+        await ffmpeg.deleteFile(browserAudioFile)
+      } catch {
+        // ignore
+      }
     }
 
     const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
@@ -979,8 +1071,8 @@ async function wasmReencodeToMp4({
 
   const sourceHasAudio = await probeVideoFileHasAudio(file)
 
-  if (shouldUseAndroidBrowserAudioPrimaryPath(file, sourceHasAudio)) {
-    return wasmAndroidBrowserAudioPrimaryPath({
+  if (shouldUseAndroidLargePrimaryPath(file, sourceHasAudio)) {
+    return wasmAndroidLargePrimaryPath({
       file,
       startSec: start,
       endSec: end,

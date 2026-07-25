@@ -50,3 +50,7 @@ supabase/.branches/
 
 # Cursor chat export state (stale � scripts removed 2026-05-25)
 .cursor/chat-export-state-*.json
+
+# Local Lounge video fixtures / probe artifacts (never commit)
+IMG_1425.MOV
+.tmp-*.mp4

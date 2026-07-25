@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
-import { extractBrowserVideoAudio, isViableBrowserVideoAudioCapture, shouldPrefetchBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
+import { extractBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic'
@@ -187,6 +187,17 @@ function formatStreamProbeLog(streams) {
 }
 
 /**
+ * iPhone spatial / apac tracks wasm cannot decode (often stream #1).
+ * @param {{ index: number, kind: string, codec: string }[]} streams
+ * @returns {number[]}
+ */
+function spatialBlockedAudioIndices(streams) {
+  return streams
+    .filter((s) => s.kind === 'audio' && (s.codec === 'none' || s.codec === 'apac'))
+    .map((s) => s.index)
+}
+
+/**
  * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
  * @param {string} inputPath
  * @param {AbortSignal | undefined} signal
@@ -254,15 +265,46 @@ function buildOutputArgs(vf, strategy, outName) {
  * }} EncodeStrategy
  */
 
-/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} allStreams */
-function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
+/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} probedStreams */
+function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams) {
   const videoOnlyFallback = /** @type {EncodeStrategy[]} */ ([
     { label: 'video-only-mapped', videoOnly: true, forceSsBeforeInput: false, useMaps: true },
     { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: true },
   ])
 
   /** @type {EncodeStrategy[]} */
-  const withAudio = [
+  const withAudio = []
+  const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
+  const seenStreamLabels = new Set()
+
+  const pushStreamStrategy = (idx, copy = false) => {
+    const label = copy ? `aac-copy-stream-${idx}` : `aac-stream-${idx}`
+    if (seenStreamLabels.has(label)) return
+    seenStreamLabels.add(label)
+    withAudio.push({
+      label,
+      maps: ['-map', '0:v:0', '-map', `0:${idx}`],
+      audioCopy: copy,
+      requireOutputAudio: true,
+    })
+  }
+
+  if (spatialBlocked.includes(1)) {
+    withAudio.push({
+      label: 'exclude-spatial-a1',
+      maps: ['-map', '0:v:0', '-map', '0:a', '-map', '-0:1'],
+      requireOutputAudio: true,
+    })
+    pushStreamStrategy(2, false)
+    pushStreamStrategy(2, true)
+  }
+
+  for (const idx of audioStreamIndices) {
+    pushStreamStrategy(idx, false)
+    pushStreamStrategy(idx, true)
+  }
+
+  withAudio.push(
     {
       label: 'aac-by-codec',
       maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac?'],
@@ -273,20 +315,7 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
       maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a?'],
       requireOutputAudio: true,
     },
-  ]
-
-  for (const idx of audioStreamIndices) {
-    withAudio.push({
-      label: `aac-stream-${idx}`,
-      maps: ['-map', '0:v:0', '-map', `0:${idx}`],
-      requireOutputAudio: true,
-    })
-    withAudio.push({
-      label: `aac-copy-stream-${idx}`,
-      maps: ['-map', '0:v:0', '-map', `0:${idx}`],
-      audioCopy: true,
-    })
-  }
+  )
 
   if (audioStreamIndices.length > 0) {
     withAudio.push(
@@ -381,40 +410,6 @@ async function wasmReencodeToMp4({
 
   const sourceHasAudio = await probeVideoFileHasAudio(file)
 
-  /** @type {{ blob: Blob, ext: string, method: string } | null} */
-  let prefetchedBrowserAudio = null
-  if (sourceHasAudio && shouldPrefetchBrowserVideoAudio(file)) {
-    try {
-      maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start (early)')
-      const extracted = await extractBrowserVideoAudio(
-        file,
-        start,
-        end,
-        signal,
-        (r) => {
-          if (typeof onProgress !== 'function') return
-          onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
-        },
-        (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
-      )
-      prefetchedBrowserAudio = {
-        blob: extracted.blob,
-        ext: extracted.ext,
-        method: extracted.method,
-      }
-      if (!isViableBrowserVideoAudioCapture(extracted.blob, dur)) {
-        maybeReportLoungeVideoUploadDebug(
-          'encode',
-          `browser audio early rejected ${Math.round(extracted.blob.size / 1024)}KB`,
-        )
-        prefetchedBrowserAudio = null
-      }
-    } catch (earlyAudioErr) {
-      const msg = earlyAudioErr instanceof Error ? earlyAudioErr.message : String(earlyAudioErr)
-      maybeReportLoungeVideoUploadDebug('encode', `browser audio early failed: ${msg}`)
-    }
-  }
-
   const ffmpeg = await getFfmpeg()
 
   const onProg = ({ progress }) => {
@@ -456,96 +451,9 @@ async function wasmReencodeToMp4({
 
   /** @type {string | null} */
   let browserAudioFile = null
-  if (sourceHasAudio && audioStreamIndices.length === 0) {
-    try {
-      let extracted = null
-      if (prefetchedBrowserAudio?.blob?.size) {
-        if (!isViableBrowserVideoAudioCapture(prefetchedBrowserAudio.blob, dur)) {
-          maybeReportLoungeVideoUploadDebug(
-            'encode',
-            `browser audio prefetch rejected ${Math.round(prefetchedBrowserAudio.blob.size / 1024)}KB`,
-          )
-          prefetchedBrowserAudio = null
-        }
-      }
-      if (prefetchedBrowserAudio?.blob?.size) {
-        extracted = {
-          blob: prefetchedBrowserAudio.blob,
-          ext: prefetchedBrowserAudio.ext,
-          method: `${prefetchedBrowserAudio.method} (early)`,
-        }
-      } else {
-        maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
-        extracted = await extractBrowserVideoAudio(
-          file,
-          start,
-          end,
-          signal,
-          (r) => {
-            if (typeof onProgress !== 'function') return
-            onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
-          },
-          (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
-        )
-      }
-      browserAudioFile = `browser_audio${extracted.ext}`
-      await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
-      const browserAudioHasStream = await probeFfmpegOutputHasAudio(
-        ffmpeg,
-        browserAudioFile,
-        signal,
-      ).catch(() => false)
-      if (!browserAudioHasStream) {
-        maybeReportLoungeVideoUploadDebug(
-          'encode',
-          `browser audio file not decodable by wasm (${extracted.method})`,
-        )
-        try {
-          await ffmpeg.deleteFile(browserAudioFile)
-        } catch {
-          // ignore
-        }
-        browserAudioFile = null
-      } else {
-        maybeReportLoungeVideoUploadDebug(
-          'encode',
-          `browser audio extract ok ${extracted.method} ${Math.round(extracted.blob.size / 1024)}KB`,
-        )
-      }
-    } catch (browserAudioErr) {
-      const msg =
-        browserAudioErr instanceof Error ? browserAudioErr.message : String(browserAudioErr)
-      maybeReportLoungeVideoUploadDebug('encode', `browser audio extract failed: ${msg}`)
-    }
-  }
 
-  const strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices)
-  if (browserAudioFile) {
-    strategies.unshift(
-      {
-        label: 'browser-audio-mux',
-        maps: ['-map', '0:v:0', '-map', '1:a:0?'],
-        browserAudioFile,
-        requireOutputAudio: true,
-      },
-      {
-        label: 'browser-audio-copy-mux',
-        maps: ['-map', '0:v:0', '-map', '1:a:0?'],
-        browserAudioFile,
-        audioCopy: true,
-        requireOutputAudio: true,
-      },
-    )
-    encodeProgressBase = 0.12
-  }
-
-  try {
-    try {
-      await ffmpeg.deleteFile(outName)
-    } catch {
-      // ignore
-    }
-
+  /** @param {EncodeStrategy[]} strategies */
+  async function runEncodeStrategies(strategies) {
     /** @type {string[]} */
     let lastLogs = []
     let lastCode = 1
@@ -597,6 +505,97 @@ async function wasmReencodeToMp4({
         'encode',
         `try ${strategy.label} failed: ${formatFfmpegLogTail(logs)}`,
       )
+    }
+
+    return { winningStrategy, lastCode, lastLogs }
+  }
+
+  async function maybeExtractBrowserAudio() {
+    if (!sourceHasAudio || browserAudioFile) return
+    try {
+      maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
+      const extracted = await extractBrowserVideoAudio(
+        file,
+        start,
+        end,
+        signal,
+        (r) => {
+          if (typeof onProgress !== 'function') return
+          onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
+        },
+        (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
+      )
+      browserAudioFile = `browser_audio${extracted.ext}`
+      await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
+      const browserAudioHasStream = await probeFfmpegOutputHasAudio(
+        ffmpeg,
+        browserAudioFile,
+        signal,
+      ).catch(() => false)
+      if (!browserAudioHasStream) {
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio file not decodable by wasm (${extracted.method})`,
+        )
+        try {
+          await ffmpeg.deleteFile(browserAudioFile)
+        } catch {
+          // ignore
+        }
+        browserAudioFile = null
+      } else {
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio extract ok ${extracted.method} ${Math.round(extracted.blob.size / 1024)}KB`,
+        )
+      }
+    } catch (browserAudioErr) {
+      const msg =
+        browserAudioErr instanceof Error ? browserAudioErr.message : String(browserAudioErr)
+      maybeReportLoungeVideoUploadDebug('encode', `browser audio extract failed: ${msg}`)
+    }
+  }
+
+  const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
+  let strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams)
+  if (spatialBlocked.length > 0) {
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `spatial blocked audio [${spatialBlocked.join(',')}]`,
+    )
+  }
+
+  try {
+    try {
+      await ffmpeg.deleteFile(outName)
+    } catch {
+      // ignore
+    }
+
+    let { winningStrategy, lastCode, lastLogs } = await runEncodeStrategies(strategies)
+
+    if (!winningStrategy && sourceHasAudio) {
+      await maybeExtractBrowserAudio()
+      if (browserAudioFile) {
+        strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams)
+        strategies.unshift(
+          {
+            label: 'browser-audio-mux',
+            maps: ['-map', '0:v:0', '-map', '1:a:0?'],
+            browserAudioFile,
+            requireOutputAudio: true,
+          },
+          {
+            label: 'browser-audio-copy-mux',
+            maps: ['-map', '0:v:0', '-map', '1:a:0?'],
+            browserAudioFile,
+            audioCopy: true,
+            requireOutputAudio: true,
+          },
+        )
+        encodeProgressBase = 0.12
+        ;({ winningStrategy, lastCode, lastLogs } = await runEncodeStrategies(strategies))
+      }
     }
 
     if (lastCode !== 0 || !winningStrategy) {

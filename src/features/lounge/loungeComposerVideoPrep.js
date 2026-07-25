@@ -192,9 +192,10 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
         if (
+          source.size <= LOUNGE_VIDEO_FAST_PATH_MAX_BYTES &&
           source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
         ) {
-          maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original (CF transcode)')
+          maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
           recordLoungeVideoPrepOutcome({
             outcome: 'pass-through',
             sourceMb,
@@ -202,7 +203,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
-          report(0.39, 'Compress skipped', 'Uploading original for Cloudflare…', 1)
+          report(0.39, 'Compress skipped', 'Uploading original…', 1)
           uploadFile = source
         } else {
           recordLoungeVideoPrepOutcome({

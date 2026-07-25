@@ -2,6 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
+import { extractBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic'
@@ -241,6 +242,7 @@ function buildOutputArgs(vf, strategy, outName) {
  *   audioCopy?: boolean,
  *   maps?: string[],
  *   requireOutputAudio?: boolean,
+ *   browserAudioFile?: string,
  * }} EncodeStrategy
  */
 
@@ -375,12 +377,14 @@ async function wasmReencodeToMp4({
   const onProg = ({ progress }) => {
     if (typeof onProgress !== 'function') return
     const p = typeof progress === 'number' ? progress : 0
-    onProgress(p <= 1 ? p : p / 100)
+    const r = p <= 1 ? p : p / 100
+    onProgress(encodeProgressBase + r * (1 - encodeProgressBase))
   }
   ffmpeg.on('progress', onProg)
 
   let mode
   let inputPath
+  let encodeProgressBase = 0
   try {
     ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))
   } catch (mountErr) {
@@ -404,7 +408,44 @@ async function wasmReencodeToMp4({
     console.warn('[lounge-video-encode] stream probe failed', probeErr)
   }
 
+  /** @type {string | null} */
+  let browserAudioFile = null
+  if (sourceHasAudio && audioStreamIndices.length === 0) {
+    try {
+      maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
+      const extracted = await extractBrowserVideoAudio(
+        file,
+        start,
+        end,
+        signal,
+        (r) => {
+          if (typeof onProgress !== 'function') return
+          onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
+        },
+      )
+      browserAudioFile = `browser_audio${extracted.ext}`
+      await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `browser audio extract ok ${Math.round(extracted.blob.size / 1024)}KB`,
+      )
+    } catch (browserAudioErr) {
+      const msg =
+        browserAudioErr instanceof Error ? browserAudioErr.message : String(browserAudioErr)
+      maybeReportLoungeVideoUploadDebug('encode', `browser audio extract failed: ${msg}`)
+    }
+  }
+
   const strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices)
+  if (browserAudioFile) {
+    strategies.unshift({
+      label: 'browser-audio-mux',
+      maps: ['-map', '0:v:0', '-map', '1:a:0'],
+      browserAudioFile,
+      requireOutputAudio: true,
+    })
+    encodeProgressBase = 0.12
+  }
 
   try {
     try {
@@ -429,8 +470,12 @@ async function wasmReencodeToMp4({
       const inputPart = buildInputArgs(inputPath, start, dur, {
         forceSsBeforeInput: strategy.forceSsBeforeInput,
       })
-      const outputPart = buildOutputArgs(vf, strategy, outName)
-      const args = [...DEMUX_LOGGING, ...inputPart, ...outputPart]
+      /** @type {string[]} */
+      const args = [...DEMUX_LOGGING, ...inputPart]
+      if (strategy.browserAudioFile) {
+        args.push('-i', strategy.browserAudioFile)
+      }
+      args.push(...buildOutputArgs(vf, strategy, outName))
       const { code, logs } = await execFfmpegLogged(ffmpeg, args, signal)
       lastCode = code
       lastLogs = logs
@@ -485,6 +530,13 @@ async function wasmReencodeToMp4({
       await ffmpeg.deleteFile(outName)
     } catch {
       // ignore
+    }
+    if (browserAudioFile) {
+      try {
+        await ffmpeg.deleteFile(browserAudioFile)
+      } catch {
+        // ignore
+      }
     }
 
     const buf = data instanceof Uint8Array ? data : new Uint8Array(data)

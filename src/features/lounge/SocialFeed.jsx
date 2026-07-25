@@ -469,24 +469,9 @@ function loungePostDetailThreadAncestorClick(e, onNavigate) {
 /** Shown in upload bar `detail` instead of raw telemetry when `onUploadDiagnostic` fires. */
 const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying again...'
 
-/** Upload bar headline while `mode === 'mediaPrep'`. */
-function loungeMediaPrepUploadBarTitle(bar) {
-  if (!bar || bar.mode !== 'mediaPrep') return 'Uploading media…'
-  const st = String(bar.status || '').toLowerCase()
-  if (st.includes('encoding') || st.includes('validating')) return 'Encoding video…'
-  if (
-    st.includes('uploading')
-    || st.includes('preparing upload')
-    || st.includes('starting resumable')
-    || st.includes('resuming upload')
-  ) {
-    return 'Uploading media…'
-  }
-  if (st.includes('finishing') || st.includes('waiting for playback') || st.includes('ready')) {
-    return 'Processing video…'
-  }
-  return 'Preparing video…'
-}
+/** Top line of the Lounge video upload bar (`mode === 'mediaPrep'`). Step labels live in `status` / `detail` below. */
+const LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE =
+  'Posting your video. You can continue using the app, but keep the app open…'
 
 const LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS = 30 * 60 * 1000
 
@@ -17179,7 +17164,7 @@ export default function SocialFeed({
                     : loungePostUploadBar.editSave
                       ? 'Saving edit…'
                       : loungePostUploadBar.mode === 'mediaPrep'
-                        ? loungeMediaPrepUploadBarTitle(loungePostUploadBar)
+                        ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
                         : 'Uploading post…'}
               </div>
               <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">

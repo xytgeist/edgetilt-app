@@ -14,6 +14,7 @@ import {
   maybeReportLoungeVideoUploadDebug,
   recordLoungeVideoPrepOutcome,
 } from './loungeFeedVideoDebugRegistry.js'
+import { shouldPrefetchBrowserVideoAudio } from '../../utils/loungeVideoBrowserAudio.js'
 
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
 export const COMPOSER_VIDEO_PREP_MAX_ATTEMPTS = 5
@@ -171,13 +172,21 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       report(0.39, 'Upload ready', 'Already optimized for upload…', 1)
       uploadFile = source
     } else {
-      report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
+      const needsBrowserAudio = shouldPrefetchBrowserVideoAudio(source)
+      const encodePhaseLabel = (r) =>
+        needsBrowserAudio && r < 0.12 ? 'Capturing audio…' : 'Encoding…'
+      report(0.05, encodePhaseLabel(0), loungeVideoEncodingDetail(source, 0), 1)
       maybeReportLoungeVideoUploadDebug('encode', `start direct ${source.name || 'video'} ${sourceMb}MB`)
       try {
         uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
           signal,
           onProgress: (r) =>
-            report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
+            report(
+              0.05 + r * 0.34,
+              encodePhaseLabel(r),
+              loungeVideoEncodingDetail(source, r),
+              1,
+            ),
         })
         const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
         maybeReportLoungeVideoUploadDebug('encode', `done direct → ${outMb}MB`)

@@ -6,7 +6,11 @@
 import { detectAppleWebKitInlineStream } from './loungeAppleWebKit.js'
 
 const DESKTOP_EXTRACT_PLAYBACK_RATE = 4
-const EXTRACT_TIMEOUT_PAD_MS = 4000
+const APPLE_EXTRACT_PLAYBACK_RATE = 4
+const EXTRACT_TIMEOUT_PAD_MS = 3000
+const PLAY_START_TIMEOUT_MS = 3500
+const PLAYBACK_STALL_MS = 4500
+const MAX_ATTEMPT_MS = 55000
 
 /**
  * @param {AbortSignal | undefined} signal
@@ -15,33 +19,71 @@ function throwIfAborted(signal) {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
 }
 
+/** @returns {boolean} */
+function hasUserActivation() {
+  try {
+    return Boolean(typeof navigator !== 'undefined' && navigator.userActivation?.isActive)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @param {string} label
+ * @returns {Promise<T>}
+ * @template T
+ */
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const tid = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`))
+    }, ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(tid)
+        resolve(value)
+      },
+      (err) => {
+        window.clearTimeout(tid)
+        reject(err)
+      },
+    )
+  })
+}
+
 /**
  * @param {HTMLMediaElement} el
  * @param {number} sec
  */
 function seekMediaElement(el, sec) {
-  return new Promise((resolve, reject) => {
-    const onSeeked = () => {
-      cleanup()
-      resolve()
-    }
-    const onError = () => {
-      cleanup()
-      reject(new Error('Could not seek video for audio extract'))
-    }
-    const cleanup = () => {
-      el.removeEventListener('seeked', onSeeked)
-      el.removeEventListener('error', onError)
-    }
-    el.addEventListener('seeked', onSeeked, { once: true })
-    el.addEventListener('error', onError, { once: true })
-    try {
-      el.currentTime = sec
-    } catch (err) {
-      cleanup()
-      reject(err instanceof Error ? err : new Error(String(err)))
-    }
-  })
+  return withTimeout(
+    new Promise((resolve, reject) => {
+      const onSeeked = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = () => {
+        cleanup()
+        reject(new Error('Could not seek video for audio extract'))
+      }
+      const cleanup = () => {
+        el.removeEventListener('seeked', onSeeked)
+        el.removeEventListener('error', onError)
+      }
+      el.addEventListener('seeked', onSeeked, { once: true })
+      el.addEventListener('error', onError, { once: true })
+      try {
+        el.currentTime = sec
+      } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error(String(err)))
+      }
+    }),
+    8000,
+    'audio extract seek',
+  )
 }
 
 /**
@@ -138,30 +180,34 @@ function disposeHiddenVideo(video, url) {
  */
 async function waitForVideoReady(video) {
   if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return
-  await new Promise((resolve, reject) => {
-    const onReady = () => {
-      cleanup()
-      resolve()
-    }
-    const onError = () => {
-      cleanup()
-      reject(new Error('Could not load video for audio extract'))
-    }
-    const cleanup = () => {
-      video.removeEventListener('canplay', onReady)
-      video.removeEventListener('loadeddata', onReady)
-      video.removeEventListener('error', onError)
-    }
-    video.addEventListener('canplay', onReady, { once: true })
-    video.addEventListener('loadeddata', onReady, { once: true })
-    video.addEventListener('error', onError, { once: true })
-    try {
-      video.load()
-    } catch (err) {
-      cleanup()
-      reject(err instanceof Error ? err : new Error(String(err)))
-    }
-  })
+  await withTimeout(
+    new Promise((resolve, reject) => {
+      const onReady = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = () => {
+        cleanup()
+        reject(new Error('Could not load video for audio extract'))
+      }
+      const cleanup = () => {
+        video.removeEventListener('canplay', onReady)
+        video.removeEventListener('loadeddata', onReady)
+        video.removeEventListener('error', onError)
+      }
+      video.addEventListener('canplay', onReady, { once: true })
+      video.addEventListener('loadeddata', onReady, { once: true })
+      video.addEventListener('error', onError, { once: true })
+      try {
+        video.load()
+      } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error(String(err)))
+      }
+    }),
+    12000,
+    'audio extract metadata',
+  )
 }
 
 /**
@@ -170,16 +216,32 @@ async function waitForVideoReady(video) {
 async function startVideoPlayback(video) {
   const playResult = video.play()
   if (playResult && typeof playResult.then === 'function') {
-    await playResult
+    await withTimeout(playResult, PLAY_START_TIMEOUT_MS, 'audio extract play')
   }
-  await new Promise((resolve) => {
-    if (!video.paused) {
-      resolve()
-      return
-    }
-    video.addEventListener('playing', () => resolve(), { once: true })
-    window.setTimeout(resolve, 500)
-  })
+  await withTimeout(
+    new Promise((resolve, reject) => {
+      if (!video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve()
+        return
+      }
+      const onPlaying = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = () => {
+        cleanup()
+        reject(new Error('Video playback failed during audio extract'))
+      }
+      const cleanup = () => {
+        video.removeEventListener('playing', onPlaying)
+        video.removeEventListener('error', onError)
+      }
+      video.addEventListener('playing', onPlaying, { once: true })
+      video.addEventListener('error', onError, { once: true })
+    }),
+    PLAY_START_TIMEOUT_MS,
+    'audio extract playing',
+  )
 }
 
 /**
@@ -229,22 +291,42 @@ async function recordStreamSegment({
   recorder.start(250)
   await startVideoPlayback(video)
 
-  const wallBudgetMs = (dur / Math.max(0.25, playbackRate)) * 1000 + EXTRACT_TIMEOUT_PAD_MS
+  const wallBudgetMs = Math.min(
+    MAX_ATTEMPT_MS,
+    (dur / Math.max(0.25, playbackRate)) * 1000 + EXTRACT_TIMEOUT_PAD_MS,
+  )
 
   await new Promise((resolve, reject) => {
     /** @type {ReturnType<typeof setTimeout> | null} */
     let timeoutId = null
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let stallId = null
+    let lastPos = video.currentTime
 
     const finish = () => {
       video.removeEventListener('timeupdate', onTimeUpdate)
       video.onended = null
-      if (timeoutId) clearTimeout(timeoutId)
+      if (timeoutId) window.clearTimeout(timeoutId)
+      if (stallId) window.clearTimeout(stallId)
       resolve()
+    }
+
+    const armStallWatch = () => {
+      if (stallId) window.clearTimeout(stallId)
+      stallId = window.setTimeout(() => {
+        if (Math.abs(video.currentTime - lastPos) < 0.02) {
+          reject(new Error('Audio extract playback stalled'))
+        }
+      }, PLAYBACK_STALL_MS)
     }
 
     const onTimeUpdate = () => {
       throwIfAborted(signal)
       const pos = video.currentTime
+      if (Math.abs(pos - lastPos) >= 0.02) {
+        lastPos = pos
+        armStallWatch()
+      }
       if (typeof onProgress === 'function') {
         onProgress(Math.min(1, Math.max(0, (pos - start) / dur)))
       }
@@ -254,6 +336,7 @@ async function recordStreamSegment({
     video.addEventListener('timeupdate', onTimeUpdate)
     video.onended = finish
     timeoutId = window.setTimeout(finish, wallBudgetMs)
+    armStallWatch()
 
     signal?.addEventListener(
       'abort',
@@ -278,6 +361,7 @@ async function recordStreamSegment({
     } catch {
       // ignore
     }
+    await new Promise((r) => window.setTimeout(r, 120))
     recorder.stop()
   }
   await recordDone
@@ -301,11 +385,23 @@ async function recordStreamSegment({
  * @param {number} opts.dur
  * @param {number} opts.playbackRate
  * @param {boolean} opts.muted
+ * @param {boolean} [opts.silentMonitor]
  * @param {AbortSignal | undefined} opts.signal
  * @param {(ratio01: number) => void} [opts.onProgress]
  */
 async function extractViaWebAudio(opts) {
-  const { video, mimeType, start, end, dur, playbackRate, muted, signal, onProgress } = opts
+  const {
+    video,
+    mimeType,
+    start,
+    end,
+    dur,
+    playbackRate,
+    muted,
+    silentMonitor = false,
+    signal,
+    onProgress,
+  } = opts
   video.muted = muted
 
   const audioCtx = new AudioContext()
@@ -316,6 +412,12 @@ async function extractViaWebAudio(opts) {
     const elementSource = audioCtx.createMediaElementSource(video)
     const dest = audioCtx.createMediaStreamDestination()
     elementSource.connect(dest)
+    if (silentMonitor) {
+      const monitor = audioCtx.createGain()
+      monitor.gain.value = 0
+      elementSource.connect(monitor)
+      monitor.connect(audioCtx.destination)
+    }
 
     return await recordStreamSegment({
       video,
@@ -338,45 +440,52 @@ async function extractViaWebAudio(opts) {
 }
 
 /**
- * @param {object} opts
- * @param {HTMLVideoElement} opts.video
- * @param {string} opts.mimeType
- * @param {number} opts.start
- * @param {number} opts.end
- * @param {number} opts.dur
- * @param {number} opts.playbackRate
- * @param {boolean} opts.muted
- * @param {AbortSignal | undefined} opts.signal
- * @param {(ratio01: number) => void} [opts.onProgress]
+ * @param {boolean} isApple
+ * @returns {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean }[]}
  */
-async function extractViaCaptureStream(opts) {
-  const { video, mimeType, start, end, dur, playbackRate, muted, signal, onProgress } = opts
-  video.muted = muted
-
-  const captureStream =
-    typeof video.captureStream === 'function'
-      ? video.captureStream.bind(video)
-      : typeof video.mozCaptureStream === 'function'
-        ? video.mozCaptureStream.bind(video)
-        : null
-  if (!captureStream) throw new Error('captureStream not supported')
-
-  const captured = captureStream()
-  const audioTracks = captured.getAudioTracks?.() || []
-  if (!audioTracks.length) throw new Error('captureStream has no audio tracks')
-
-  const audioOnly = new MediaStream(audioTracks)
-  return recordStreamSegment({
-    video,
-    stream: audioOnly,
-    mimeType,
-    start,
-    end,
-    dur,
-    playbackRate,
-    signal,
-    onProgress,
-  })
+function buildExtractAttempts(isApple) {
+  const activation = hasUserActivation()
+  if (isApple) {
+    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean }[]} */
+    const attempts = [
+      {
+        name: 'web-audio-muted-4x-silent',
+        muted: true,
+        playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+        silentMonitor: true,
+      },
+      {
+        name: 'web-audio-muted-4x',
+        muted: true,
+        playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+      },
+    ]
+    if (activation) {
+      attempts.push({
+        name: 'web-audio-unmuted-4x',
+        muted: false,
+        playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+      })
+    }
+    return attempts
+  }
+  /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean }[]} */
+  const attempts = [
+    {
+      name: 'web-audio-muted-4x-silent',
+      muted: true,
+      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+      silentMonitor: true,
+    },
+  ]
+  if (activation) {
+    attempts.unshift({
+      name: 'web-audio-unmuted-4x',
+      muted: false,
+      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+    })
+  }
+  return attempts
 }
 
 /**
@@ -412,19 +521,10 @@ export async function extractBrowserVideoAudio(
   throwIfAborted(signal)
 
   const isApple = detectAppleWebKitInlineStream()
-  /** @type {{ name: string, muted: boolean, playbackRate: number, via: 'web-audio' | 'capture' }[]} */
-  const attempts = isApple
-    ? [
-        { name: 'capture-unmuted-1x', muted: false, playbackRate: 1, via: 'capture' },
-        { name: 'web-audio-unmuted-1x', muted: false, playbackRate: 1, via: 'web-audio' },
-        { name: 'capture-unmuted-2x', muted: false, playbackRate: 2, via: 'capture' },
-        { name: 'web-audio-muted-2x', muted: true, playbackRate: 2, via: 'web-audio' },
-      ]
-    : [
-        { name: 'web-audio-unmuted-4x', muted: false, playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE, via: 'web-audio' },
-        { name: 'capture-unmuted-4x', muted: false, playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE, via: 'capture' },
-        { name: 'web-audio-muted-4x', muted: true, playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE, via: 'web-audio' },
-      ]
+  const attempts = buildExtractAttempts(isApple)
+  onDebug?.(
+    `browser audio plan ${attempts.map((a) => a.name).join(', ')} activation=${hasUserActivation() ? 'yes' : 'no'}`,
+  )
 
   /** @type {string[]} */
   const failures = []
@@ -448,22 +548,22 @@ export async function extractBrowserVideoAudio(
       throwIfAborted(signal)
       if (start > 0.05) await seekMediaElement(video, start)
 
-      const common = {
-        video,
-        mimeType,
-        start,
-        end,
-        dur,
-        playbackRate: attempt.playbackRate,
-        muted: attempt.muted,
-        signal,
-        onProgress,
-      }
-
-      const result =
-        attempt.via === 'capture'
-          ? await extractViaCaptureStream(common)
-          : await extractViaWebAudio(common)
+      const result = await withTimeout(
+        extractViaWebAudio({
+          video,
+          mimeType,
+          start,
+          end,
+          dur,
+          playbackRate: attempt.playbackRate,
+          muted: attempt.muted,
+          silentMonitor: attempt.silentMonitor,
+          signal,
+          onProgress,
+        }),
+        MAX_ATTEMPT_MS,
+        attempt.name,
+      )
 
       onDebug?.(`browser audio ok ${attempt.name} ${Math.round(result.blob.size / 1024)}KB`)
       return { ...result, method: attempt.name }
@@ -482,4 +582,12 @@ export async function extractBrowserVideoAudio(
       ? `Browser audio capture failed (${failures.slice(0, 2).join(' | ')})`
       : 'Browser audio capture failed',
   )
+}
+
+/** True for iPhone-style clips where wasm demux often fails but Safari can decode audio. */
+export function shouldPrefetchBrowserVideoAudio(file) {
+  if (!file || !detectAppleWebKitInlineStream()) return false
+  const name = String(file.name || '').toLowerCase()
+  const type = String(file.type || '').toLowerCase()
+  return name.endsWith('.mov') || type.includes('quicktime')
 }

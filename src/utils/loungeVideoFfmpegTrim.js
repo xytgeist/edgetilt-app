@@ -2,7 +2,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
-import { extractBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
+import { extractBrowserVideoAudio, shouldPrefetchBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic'
@@ -372,6 +372,33 @@ async function wasmReencodeToMp4({
 
   const sourceHasAudio = await probeVideoFileHasAudio(file)
 
+  /** @type {{ blob: Blob, ext: string, method: string } | null} */
+  let prefetchedBrowserAudio = null
+  if (sourceHasAudio && shouldPrefetchBrowserVideoAudio(file)) {
+    try {
+      maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start (early)')
+      const extracted = await extractBrowserVideoAudio(
+        file,
+        start,
+        end,
+        signal,
+        (r) => {
+          if (typeof onProgress !== 'function') return
+          onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
+        },
+        (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
+      )
+      prefetchedBrowserAudio = {
+        blob: extracted.blob,
+        ext: extracted.ext,
+        method: extracted.method,
+      }
+    } catch (earlyAudioErr) {
+      const msg = earlyAudioErr instanceof Error ? earlyAudioErr.message : String(earlyAudioErr)
+      maybeReportLoungeVideoUploadDebug('encode', `browser audio early failed: ${msg}`)
+    }
+  }
+
   const ffmpeg = await getFfmpeg()
 
   const onProg = ({ progress }) => {
@@ -412,18 +439,27 @@ async function wasmReencodeToMp4({
   let browserAudioFile = null
   if (sourceHasAudio && audioStreamIndices.length === 0) {
     try {
-      maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
-      const extracted = await extractBrowserVideoAudio(
-        file,
-        start,
-        end,
-        signal,
-        (r) => {
-          if (typeof onProgress !== 'function') return
-          onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
-        },
-        (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
-      )
+      let extracted = null
+      if (prefetchedBrowserAudio?.blob?.size) {
+        extracted = {
+          blob: prefetchedBrowserAudio.blob,
+          ext: prefetchedBrowserAudio.ext,
+          method: `${prefetchedBrowserAudio.method} (early)`,
+        }
+      } else {
+        maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
+        extracted = await extractBrowserVideoAudio(
+          file,
+          start,
+          end,
+          signal,
+          (r) => {
+            if (typeof onProgress !== 'function') return
+            onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
+          },
+          (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
+        )
+      }
       browserAudioFile = `browser_audio${extracted.ext}`
       await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
       const browserAudioHasStream = await probeFfmpegOutputHasAudio(

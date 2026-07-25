@@ -1923,10 +1923,20 @@ export default function LoungePostStreamVideo({
     }
   }, [attachStream])
 
+  /** iOS hls.js MSE often plays video without audio; native HLS when sound is wanted. */
+  const iosWantsNativeHls =
+    appleWebKitInlineStreamRef.current &&
+    (lightboxOpen ||
+      (feedAutoplayEnabled &&
+        stripSoundUnmuted &&
+        isActive &&
+        !feedInlineSoundExplicitlyMuted))
+
   useLoungeStreamHlsAttachment(videoRef, src, streamAttachKey, {
     enabled: hlsAttachEnabled,
     feedStyleAbr: feedStyleAbr,
-    preferMseHls: appleWebKitInlineStreamRef.current && !streamNativeHlsFallback,
+    preferMseHls:
+      appleWebKitInlineStreamRef.current && !streamNativeHlsFallback && !iosWantsNativeHls,
     ringWarmPrefetch: ringWarmPrefetch && hlsAttachEnabled,
     recoveryBurstRef,
     savedTimeRef: savedStreamTimeRef,

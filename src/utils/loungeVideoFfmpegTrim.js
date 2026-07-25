@@ -192,6 +192,16 @@ async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
 }
 
 /**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string} outName
+ * @param {AbortSignal | undefined} signal
+ */
+async function probeFfmpegOutputHasAudio(ffmpeg, outName, signal) {
+  const streams = await probeFfmpegInputStreams(ffmpeg, outName, signal)
+  return decodableAudioStreamIndices(streams).length > 0
+}
+
+/**
  * @param {string} vf scale/crop filter chain without leading format=
  * @param {{ videoOnly?: boolean, useMaps?: boolean, audioCopy?: boolean, maps?: string[] }} strategy
  * @param {string} outName
@@ -230,6 +240,7 @@ function buildOutputArgs(vf, strategy, outName) {
  *   useMaps?: boolean,
  *   audioCopy?: boolean,
  *   maps?: string[],
+ *   requireOutputAudio?: boolean,
  * }} EncodeStrategy
  */
 
@@ -244,11 +255,13 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
   const withAudio = [
     {
       label: 'aac-by-codec',
-      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac?'],
+      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac'],
+      requireOutputAudio: true,
     },
     {
       label: 'aac-by-mp4a',
-      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a?'],
+      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a'],
+      requireOutputAudio: true,
     },
   ]
 
@@ -256,6 +269,7 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
     withAudio.push({
       label: `aac-stream-${idx}`,
       maps: ['-map', '0:v:0', '-map', `0:${idx}`],
+      requireOutputAudio: true,
     })
     withAudio.push({
       label: `aac-copy-stream-${idx}`,
@@ -265,14 +279,27 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
   }
 
   withAudio.push(
-    { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
-    { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
+    {
+      label: 'aac-mapped',
+      videoOnly: false,
+      forceSsBeforeInput: false,
+      useMaps: true,
+      requireOutputAudio: true,
+    },
+    {
+      label: 'aac-mapped-ss',
+      videoOnly: false,
+      forceSsBeforeInput: true,
+      useMaps: true,
+      requireOutputAudio: true,
+    },
     {
       label: 'aac-copy-mapped',
       videoOnly: false,
       forceSsBeforeInput: false,
       useMaps: true,
       audioCopy: true,
+      requireOutputAudio: true,
     },
   )
 
@@ -408,6 +435,23 @@ async function wasmReencodeToMp4({
       lastCode = code
       lastLogs = logs
       if (code === 0) {
+        const needsOutputAudio =
+          sourceHasAudio && !strategy.videoOnly && strategy.requireOutputAudio !== false
+        if (needsOutputAudio) {
+          let outHasAudio = false
+          try {
+            outHasAudio = await probeFfmpegOutputHasAudio(ffmpeg, outName, signal)
+          } catch (probeOutErr) {
+            console.warn('[lounge-video-encode] output audio probe failed', probeOutErr)
+          }
+          if (!outHasAudio) {
+            maybeReportLoungeVideoUploadDebug(
+              'encode',
+              `try ${strategy.label} no output audio track`,
+            )
+            continue
+          }
+        }
         winningStrategy = strategy
         break
       }
@@ -423,7 +467,9 @@ async function wasmReencodeToMp4({
       throw new Error(tail ? `Video encoding failed. ${tail}` : `Video encoding failed (exit ${lastCode}).`)
     }
 
-    const outputHasAudio = !winningStrategy.videoOnly
+    const outputHasAudio = winningStrategy.videoOnly
+      ? false
+      : await probeFfmpegOutputHasAudio(ffmpeg, outName, signal).catch(() => false)
     console.log('[lounge-video-encode]', 'success', {
       strategy: winningStrategy.label,
       sourceHasAudio,

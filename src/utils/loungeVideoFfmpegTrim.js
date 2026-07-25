@@ -422,13 +422,32 @@ async function wasmReencodeToMp4({
           if (typeof onProgress !== 'function') return
           onProgress(Math.min(0.12, Math.max(0, r) * 0.12))
         },
+        (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
       )
       browserAudioFile = `browser_audio${extracted.ext}`
       await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
-      maybeReportLoungeVideoUploadDebug(
-        'encode',
-        `browser audio extract ok ${Math.round(extracted.blob.size / 1024)}KB`,
-      )
+      const browserAudioHasStream = await probeFfmpegOutputHasAudio(
+        ffmpeg,
+        browserAudioFile,
+        signal,
+      ).catch(() => false)
+      if (!browserAudioHasStream) {
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio file not decodable by wasm (${extracted.method})`,
+        )
+        try {
+          await ffmpeg.deleteFile(browserAudioFile)
+        } catch {
+          // ignore
+        }
+        browserAudioFile = null
+      } else {
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio extract ok ${extracted.method} ${Math.round(extracted.blob.size / 1024)}KB`,
+        )
+      }
     } catch (browserAudioErr) {
       const msg =
         browserAudioErr instanceof Error ? browserAudioErr.message : String(browserAudioErr)
@@ -438,12 +457,21 @@ async function wasmReencodeToMp4({
 
   const strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices)
   if (browserAudioFile) {
-    strategies.unshift({
-      label: 'browser-audio-mux',
-      maps: ['-map', '0:v:0', '-map', '1:a:0'],
-      browserAudioFile,
-      requireOutputAudio: true,
-    })
+    strategies.unshift(
+      {
+        label: 'browser-audio-mux',
+        maps: ['-map', '0:v:0', '-map', '1:a:0'],
+        browserAudioFile,
+        requireOutputAudio: true,
+      },
+      {
+        label: 'browser-audio-copy-mux',
+        maps: ['-map', '0:v:0', '-map', '1:a:0'],
+        browserAudioFile,
+        audioCopy: true,
+        requireOutputAudio: true,
+      },
+    )
     encodeProgressBase = 0.12
   }
 

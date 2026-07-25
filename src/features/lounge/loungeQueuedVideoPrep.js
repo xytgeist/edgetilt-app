@@ -17,6 +17,56 @@ import {
  * @property {Promise<LoungeVideoPrepOutcome> | null} promise
  */
 
+/**
+ * In-flight prep job id at post time (slot state or unsettled handoff when slot lagged).
+ *
+ * @param {object | null | undefined} slot
+ * @param {{ jobId?: number, settled?: boolean } | null | undefined} handoff
+ * @param {boolean} hasVideo
+ * @param {string | null} uid
+ * @returns {number | null}
+ */
+export function loungeComposeVideoPrepAwaitingJobId(slot, handoff, hasVideo, uid) {
+  if (!hasVideo || uid) return null
+  if (slot?.prepStatus === 'preparing' && typeof slot.prepJobId === 'number') {
+    return slot.prepJobId
+  }
+  if (handoff && !handoff.settled && typeof handoff.jobId === 'number') {
+    return handoff.jobId
+  }
+  return null
+}
+
+/** True when a captured submit snapshot must keep composer prep running in the background. */
+export function loungeSnapshotPreservesVideoPrep(snapshot) {
+  if (!snapshot) return false
+  if (snapshot.awaitingComposerVideoPrepJobId != null) return true
+  if (snapshot.awaitingDetailCommentVideoPrepJobId != null) return true
+  if (snapshot.awaitingDetailEditVideoPrepJobId != null) return true
+  if (snapshot.awaitingDetailCommentEditVideoPrepJobId != null) return true
+  if (snapshot.awaitingThreadPartVideoPrepJobId != null) return true
+  const h = snapshot._capturedPrepHandoff
+  if (h && !h.settled) return true
+  if (Array.isArray(snapshot.threadParts)) {
+    return snapshot.threadParts.some(
+      (p) =>
+        p?.awaitingThreadPartVideoPrepJobId != null ||
+        (p?._capturedPrepHandoff && !p._capturedPrepHandoff.settled),
+    )
+  }
+  return false
+}
+
+/** True when snapshot still owns an unsettled in-flight prep handoff promise. */
+export function loungeSnapshotHasActivePrepHandoff(snapshot) {
+  const h = snapshot?._capturedPrepHandoff
+  if (h && !h.settled) return true
+  if (Array.isArray(snapshot?.threadParts)) {
+    return snapshot.threadParts.some((p) => p?._capturedPrepHandoff && !p._capturedPrepHandoff.settled)
+  }
+  return false
+}
+
 /** True when a queued snapshot still needs encode/upload before insert. */
 export function snapshotNeedsBackgroundVideoPrep(snapshot) {
   if (!loungeSubmissionSnapshotIncludesVideo(snapshot)) return false
@@ -84,16 +134,17 @@ export async function resolveLoungeSubmissionVideoPrep({
   const awaitingComment = snapshot?.awaitingDetailCommentVideoPrepJobId
   const awaitingEdit = snapshot?.awaitingDetailEditVideoPrepJobId
   const awaitingCommentEdit = snapshot?.awaitingDetailCommentEditVideoPrepJobId
-  const awaitingId = awaitingComposer ?? awaitingComment ?? awaitingEdit ?? awaitingCommentEdit
   const handoff = snapshot?._capturedPrepHandoff
-  if (awaitingId != null && handoff && handoff.jobId === awaitingId) {
+  let awaitingId = awaitingComposer ?? awaitingComment ?? awaitingEdit ?? awaitingCommentEdit
+  if (awaitingId == null && handoff && !handoff.settled && typeof handoff.jobId === 'number') {
+    awaitingId = handoff.jobId
+  }
+  if (handoff && !handoff.settled && typeof handoff.jobId === 'number' && handoff.jobId === awaitingId) {
     try {
       return await handoff.promise
     } catch (e) {
       if (e?.name === 'AbortError') {
-        if (snapshot?.videoPrepSpec) return runFromSpec(snapshot.videoPrepSpec)
-        if (snapshot?.videoFile instanceof File) return runFromFile(snapshot.videoFile)
-        throw e
+        throw new Error('Video preparation was interrupted.')
       }
       if (snapshot?.videoPrepSpec) return runFromSpec(snapshot.videoPrepSpec)
       if (snapshot?.videoFile instanceof File) return runFromFile(snapshot.videoFile)

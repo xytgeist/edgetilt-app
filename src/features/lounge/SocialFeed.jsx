@@ -172,6 +172,9 @@ import {
 } from './loungeComposerVideoPrep.js'
 import {
   awaitQueuedVideoPrepForJob,
+  loungeComposeVideoPrepAwaitingJobId,
+  loungeSnapshotHasActivePrepHandoff,
+  loungeSnapshotPreservesVideoPrep,
   resolveLoungeSubmissionVideoPrep,
   snapshotNeedsBackgroundVideoPrep,
   startParallelQueuedVideoPrep,
@@ -5675,14 +5678,9 @@ export default function SocialFeed({
       }
 
       const slot = quoteRepostVideoSlotRef.current
+      const handoffNow = quoteRepostVideoPrepHandoffRef.current
       const uid = hasVideo ? String(slot?.streamVideoUid || '').trim() || null : null
-      const awaiting =
-        hasVideo &&
-        !uid &&
-        slot?.prepStatus === 'preparing' &&
-        typeof slot?.prepJobId === 'number'
-          ? slot.prepJobId
-          : null
+      const awaiting = loungeComposeVideoPrepAwaitingJobId(slot, handoffNow, hasVideo, uid)
       const specForSnap =
         hasVideo && !uid && quoteRepostVideoPrepSpecRef.current
           ? quoteRepostVideoPrepSpecRef.current
@@ -5712,7 +5710,7 @@ export default function SocialFeed({
         quoteRepostOfCommentId: quoteComment ? originalId : null,
         categoryPills: quoteRepostCategoryPills,
         // Capture prep handoff by reference so queued jobs don't race on the shared ref
-        _capturedPrepHandoff: quoteRepostVideoPrepHandoffRef.current ?? null,
+        _capturedPrepHandoff: handoffNow ?? null,
       }
     } finally {
       setQuoteRepostBusy(false)
@@ -5720,7 +5718,7 @@ export default function SocialFeed({
 
     if (!snapshot) return
 
-    const preserveVideoPrep = snapshot.awaitingComposerVideoPrepJobId != null
+    const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungePostSnapshotRef.current = snapshot
     }
@@ -6206,6 +6204,7 @@ export default function SocialFeed({
     }
     const gifOnlyUrl = gifCheck.value
     const slotNow = loungeDetailCommentVideoSlotRef.current
+    const handoffNow = loungeDetailCommentVideoPrepHandoffRef.current
     const hasVideo = slotNow != null
     const hasImages = loungeDetailCommentImageItems.length > 0
     const hasMedia = hasImages || Boolean(gifOnlyUrl) || hasVideo
@@ -6234,10 +6233,7 @@ export default function SocialFeed({
         : null
 
     const uid = hasVideo ? String(slotNow?.streamVideoUid || '').trim() || null : null
-    const awaiting =
-      hasVideo && !uid && slotNow?.prepStatus === 'preparing' && typeof slotNow?.prepJobId === 'number'
-        ? slotNow.prepJobId
-        : null
+    const awaiting = loungeComposeVideoPrepAwaitingJobId(slotNow, handoffNow, hasVideo, uid)
     const specForSnap =
       hasVideo && !uid && loungeDetailCommentVideoPrepSpecRef.current
         ? loungeDetailCommentVideoPrepSpecRef.current
@@ -6263,10 +6259,10 @@ export default function SocialFeed({
       commentDetailPathIds:
         loungeCommentDetailPathIds.length > 0 ? [...loungeCommentDetailPathIds] : [],
       // Capture prep handoff by reference so queued jobs don't race on the shared ref
-      _capturedPrepHandoff: loungeDetailCommentVideoPrepHandoffRef.current ?? null,
+      _capturedPrepHandoff: handoffNow ?? null,
     }
 
-    const preserveVideoPrep = snapshot.awaitingDetailCommentVideoPrepJobId != null
+    const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungeDetailCommentSnapshotRef.current = snapshot
     }
@@ -6422,10 +6418,8 @@ export default function SocialFeed({
     const previousStreamUid = feedCommentStreamVideoUid(editingRow) || null
     const uid = hasNewVideo ? String(slotNow?.streamVideoUid || '').trim() || null : keepStream
     const clearStream = Boolean(previousStreamUid && !keepStream && !hasNewVideo)
-    const awaiting =
-      hasNewVideo && !uid && slotNow?.prepStatus === 'preparing' && typeof slotNow?.prepJobId === 'number'
-        ? slotNow.prepJobId
-        : null
+    const handoffNow = loungeDetailCommentEditVideoPrepHandoffRef.current
+    const awaiting = loungeComposeVideoPrepAwaitingJobId(slotNow, handoffNow, hasNewVideo, uid)
     const specForSnap =
       hasNewVideo && !uid && loungeDetailCommentEditVideoPrepSpecRef.current
         ? loungeDetailCommentEditVideoPrepSpecRef.current
@@ -6449,10 +6443,10 @@ export default function SocialFeed({
       userId: composerUserId,
       awaitingDetailCommentEditVideoPrepJobId: awaiting,
       videoPrepSpec: specForSnap,
-      _capturedPrepHandoff: loungeDetailCommentEditVideoPrepHandoffRef.current ?? null,
+      _capturedPrepHandoff: handoffNow ?? null,
     }
 
-    const preserveVideoPrep = snapshot.awaitingDetailCommentEditVideoPrepJobId != null
+    const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungeDetailCommentEditSnapshotRef.current = snapshot
     }
@@ -8120,10 +8114,8 @@ export default function SocialFeed({
     const previousStreamUid = feedPostStreamVideoUid(loungePostDetail) || null
     const uid = hasNewVideo ? String(slotNow?.streamVideoUid || '').trim() || null : keepStream
     const clearStream = Boolean(previousStreamUid && !keepStream && !hasNewVideo)
-    const awaiting =
-      hasNewVideo && !uid && slotNow?.prepStatus === 'preparing' && typeof slotNow?.prepJobId === 'number'
-        ? slotNow.prepJobId
-        : null
+    const handoffNow = loungeDetailEditVideoPrepHandoffRef.current
+    const awaiting = loungeComposeVideoPrepAwaitingJobId(slotNow, handoffNow, hasNewVideo, uid)
     const specForSnap =
       hasNewVideo && !uid && loungeDetailEditVideoPrepSpecRef.current
         ? loungeDetailEditVideoPrepSpecRef.current
@@ -8147,11 +8139,11 @@ export default function SocialFeed({
       clearStream,
       awaitingDetailEditVideoPrepJobId: awaiting,
       videoPrepSpec: specForSnap,
-      _capturedPrepHandoff: loungeDetailEditVideoPrepHandoffRef.current ?? null,
+      _capturedPrepHandoff: handoffNow ?? null,
       marketSymbols: loungeDetailEditMarketSymbols,
     }
 
-    const preserveVideoPrep = snapshot.awaitingDetailEditVideoPrepJobId != null
+    const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungeDetailEditSnapshotRef.current = snapshot
     }
@@ -10093,15 +10085,31 @@ export default function SocialFeed({
         if (snapshotNeedsBackgroundVideoPrep(snap)) {
           loungePostUploadLastPhaseRef.current = 'Waiting for video'
           if (submissionHasVideo) {
-            setLoungePostUploadBar((prev) => ({
-              ...(mediaUploadBarSkin
-                ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
-                : { mode: 'post' }),
-              progress:
-                mediaUploadBarSkin && typeof prev?.progress === 'number' ? Math.max(0.06, prev.progress) : 0.06,
-              status: 'Waiting for video',
-              detail: mediaUploadBarSkin && prev?.detail ? prev.detail : '',
-            }))
+            setLoungePostUploadBar((prev) => {
+              const keepInFlightPrep =
+                mediaUploadBarSkin &&
+                prev?.mode === 'mediaPrep' &&
+                typeof prev?.progress === 'number' &&
+                prev.progress > 0.02 &&
+                String(prev.status || '').trim().length > 0
+              return {
+                ...(mediaUploadBarSkin
+                  ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
+                  : { mode: 'post' }),
+                progress: keepInFlightPrep
+                  ? prev.progress
+                  : mediaUploadBarSkin && typeof prev?.progress === 'number'
+                    ? Math.max(0.06, prev.progress)
+                    : 0.06,
+                status: keepInFlightPrep ? prev.status : 'Waiting for video',
+                detail:
+                  keepInFlightPrep && prev?.detail
+                    ? prev.detail
+                    : mediaUploadBarSkin && prev?.detail
+                      ? prev.detail
+                      : '',
+              }
+            })
           }
 
           /** @type {{ encodedFile: File, streamVideoUid: string }} */
@@ -10133,7 +10141,12 @@ export default function SocialFeed({
           const priorParallel = await awaitQueuedVideoPrepForJob(job)
           if (priorParallel) {
             out = priorParallel
-          } else if (!isQueuedJob && lastEncRef.current && snap.videoPrepSpec) {
+          } else if (
+            !isQueuedJob &&
+            lastEncRef.current &&
+            snap.videoPrepSpec &&
+            !loungeSnapshotHasActivePrepHandoff(snapshot)
+          ) {
             const reuse = lastEncRef.current
             const { streamVideoUid } = await uploadEncodedVideoToCfStreamWithRetries({
               supabaseClient,
@@ -11982,14 +11995,7 @@ export default function SocialFeed({
         }
       }
 
-      const preserveVideoPrep =
-        snapshot.awaitingComposerVideoPrepJobId != null ||
-        (Array.isArray(snapshot.threadParts) &&
-          snapshot.threadParts.some(
-            (p) =>
-              p?.awaitingThreadPartVideoPrepJobId != null ||
-              (p?._capturedPrepHandoff && !p._capturedPrepHandoff.settled),
-          ))
+      const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
       if (shouldAssignLoungePostSnapshotRef()) {
         loungePostSnapshotRef.current = snapshot
       }
@@ -12119,7 +12125,8 @@ export default function SocialFeed({
     }
     const hasGif = gifCheck.value.length > 0
     const hasImages = composerImageItems.length > 0
-    const hasVideo = composerVideoSlot != null
+    const slotNow = composerVideoSlotRef.current
+    const hasVideo = slotNow != null
 
     setPostBusy(true)
     /** @type {{ caption: string, gifOnlyUrl: string, imageFiles: File[], videoFile: File | null, streamVideoUid: string | null, awaitingComposerVideoPrepJobId?: number | null, videoPrepSpec?: object | null, videoPrepSlotRestore?: { posterUrl: string, preview: string } | null, wantsPin: boolean, isStaffPoster: boolean } | null} */
@@ -12169,15 +12176,10 @@ export default function SocialFeed({
         return
       }
 
-      const slot = composerVideoSlot
+      const slot = slotNow
+      const handoffNow = composerVideoPrepHandoffRef.current
       const uid = hasVideo ? String(slot?.streamVideoUid || '').trim() || null : null
-      const awaiting =
-        hasVideo &&
-        !uid &&
-        slot?.prepStatus === 'preparing' &&
-        typeof slot?.prepJobId === 'number'
-          ? slot.prepJobId
-          : null
+      const awaiting = loungeComposeVideoPrepAwaitingJobId(slot, handoffNow, hasVideo, uid)
       const specForSnap =
         hasVideo && !uid && composerVideoPrepSpecRef.current
           ? composerVideoPrepSpecRef.current
@@ -12212,7 +12214,7 @@ export default function SocialFeed({
         isStaffPoster,
         savedDraftId: loungeComposerActiveDraftIdRef.current,
         // Capture prep handoff by reference so queued jobs don't race on the shared ref
-        _capturedPrepHandoff: composerVideoPrepHandoffRef.current ?? null,
+        _capturedPrepHandoff: handoffNow ?? null,
         categoryPills: composerCategoryPills,
         marketSymbols: composerMarketSymbols,
         creatorFanOnly: Boolean(creatorFanOnly) && composerFanMonetizationLive,
@@ -12223,7 +12225,7 @@ export default function SocialFeed({
 
     if (!snapshot) return
 
-    const preserveVideoPrep = snapshot.awaitingComposerVideoPrepJobId != null
+    const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungePostSnapshotRef.current = snapshot
     }
@@ -12251,7 +12253,6 @@ export default function SocialFeed({
     composerMediaUrl,
     composerUserProfile?.avatar_url,
     composerUserProfile?.role,
-    composerVideoSlot,
     onRequireAuth,
     postText,
     supabaseClient,

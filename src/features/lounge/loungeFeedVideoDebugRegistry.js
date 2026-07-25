@@ -1,3 +1,5 @@
+import { readLoungeFeedVideoDebugEnabled } from '../../utils/loungeFeedVideoDebugPref.js'
+
 /** @typedef {{ ts: number, clientId: string | null, kind: string, detail: string }} LoungeVideoDebugEvent */
 
 /** @type {Map<string, () => Record<string, unknown>>} */
@@ -51,6 +53,12 @@ export function reportLoungeVideoDebugEvent(clientId, kind, detail) {
   })
   if (events.length > MAX_EVENTS) events.length = MAX_EVENTS
   emit()
+}
+
+/** Composer upload / encode progress (Settings → Video debug HUD). */
+export function maybeReportLoungeVideoUploadDebug(kind, detail) {
+  if (!readLoungeFeedVideoDebugEnabled()) return
+  reportLoungeVideoDebugEvent(null, String(kind || 'upload'), String(detail || ''))
 }
 
 export function clearLoungeVideoDebugEvents() {

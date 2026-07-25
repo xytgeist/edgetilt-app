@@ -1910,7 +1910,7 @@ export default function LoungeDockSlidePanels({
                       <span className="min-w-0">
                         <span className="block text-[15px] font-semibold text-zinc-100">Video debug HUD</span>
                         <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                          On-device coordinator overlay (PWA-friendly). Copy JSON to share captures.
+                          Feed autoplay + composer encode/upload steps. Copy JSON to share captures.
                         </span>
                       </span>
                       <span

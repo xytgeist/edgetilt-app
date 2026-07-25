@@ -8,9 +8,30 @@ import {
   waitForCfStreamManifestReady,
   waitForDocumentVisible,
 } from '../../utils/loungeVideoUpload'
+import { maybeReportLoungeVideoUploadDebug } from './loungeFeedVideoDebugRegistry.js'
 
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
 export const COMPOSER_VIDEO_PREP_MAX_ATTEMPTS = 5
+
+/** Shown under the upload bar while ffmpeg.wasm runs. */
+export function loungeVideoEncodingDetail(sourceFile, progressRatio) {
+  const bytes = sourceFile?.size
+  const mb = typeof bytes === 'number' && Number.isFinite(bytes) ? bytes / (1024 * 1024) : 0
+  const sizeHint =
+    mb >= 20
+      ? `Large source (~${Math.round(mb)} MB) … often 30–60s on this device`
+      : 'On-device … usually under a minute'
+  if (typeof progressRatio === 'number' && Number.isFinite(progressRatio)) {
+    return `${sizeHint} · ${Math.round(Math.max(0, Math.min(1, progressRatio)) * 100)}%`
+  }
+  return sizeHint
+}
+
+/** @param {string} status @param {string} detail */
+function debugComposerVideoProgress(status, detail) {
+  const line = detail ? `${status} · ${detail}` : status
+  maybeReportLoungeVideoUploadDebug('upload', line)
+}
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -36,7 +57,7 @@ async function sleepWhileVisible(ms, signal) {
 }
 
 /**
- * On-device encode (trim) or pass-through file - once per logical clip.
+ * On-device encode (trim or full clip) - once per logical clip. Always compresses before Stream upload.
  *
  * @param {object} opts
  * @param {AbortSignal} opts.signal
@@ -46,6 +67,7 @@ async function sleepWhileVisible(ms, signal) {
  */
 export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress }) {
   const report = (progress, status, detail, attempt) => {
+    debugComposerVideoProgress(status, detail)
     if (typeof onProgress !== 'function') return
     onProgress({
       progress: Math.max(0, Math.min(1, progress)),
@@ -57,14 +79,30 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
+  const { trimVideoFileToMp4, encodeVideoForChat, prefetchFfmpegCore } = await import('../../utils/loungeVideoFfmpegTrim')
+  void prefetchFfmpegCore()
+
   /** @type {File} */
   let uploadFile
   if (spec.kind === 'direct') {
-    uploadFile = spec.file
-    report(0.08, 'Validating video', '', 1)
+    const source = spec.file
+    report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `start direct ${source.name || 'video'} ${Math.round((source.size || 0) / (1024 * 1024))}MB`,
+    )
+    uploadFile = await encodeVideoForChat(source, {
+      signal,
+      onProgress: (r) =>
+        report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
+    })
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+    )
   } else {
-    report(0.05, 'Encoding clip', 'On-device…', 1)
-    const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
+    report(0.05, 'Encoding…', loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
+    maybeReportLoungeVideoUploadDebug('encode', `start trim ${spec.sourceFile?.name || 'video'}`)
     const c =
       spec.cropPx && spec.intrinsicWidth > 0 && spec.intrinsicHeight > 0
         ? sanitizeVideoCropPx(spec.intrinsicWidth, spec.intrinsicHeight, spec.cropPx)
@@ -74,8 +112,18 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
       crop: c,
       intrinsicWidth: spec.intrinsicWidth,
       intrinsicHeight: spec.intrinsicHeight,
-      onProgress: (r) => report(0.05 + r * 0.34, 'Encoding clip', `${Math.round(r * 100)}%`, 1),
+      onProgress: (r) =>
+        report(
+          0.05 + r * 0.34,
+          'Encoding…',
+          loungeVideoEncodingDetail(spec.sourceFile, r),
+          1,
+        ),
     })
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `done trim → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+    )
   }
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -117,6 +165,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
   skipManifestWait = false,
 }) {
   const report = (progress, status, detail, attempt) => {
+    debugComposerVideoProgress(status, detail)
     if (typeof onProgress !== 'function') return
     onProgress({
       progress: Math.max(0, Math.min(1, progress)),
@@ -124,6 +173,12 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       detail: detail ? String(detail) : '',
       attempt,
     })
+  }
+
+  const uploadDiagnostic = (detail) => {
+    const d = String(detail || '').trim()
+    if (d) maybeReportLoungeVideoUploadDebug('upload', d)
+    onUploadDiagnostic?.(d)
   }
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -145,7 +200,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       report(0.44, 'Starting resumable upload', '', attempt)
       const { uid } = await uploadVideoToCfStreamResumableTus(supabaseClient, uploadFile, {
         signal,
-        onUploadDiagnostic,
+        onUploadDiagnostic: uploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingUid = id
           onStreamUidAvailable?.(id)
@@ -174,7 +229,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       await waitForDocumentVisible(signal)
       await waitForCfStreamManifestReady(uid, {
         signal,
-        onUploadDiagnostic,
+        onUploadDiagnostic: uploadDiagnostic,
         onPoll: ({ elapsed }) => {
           const cap = 120_000
           const t = Math.min(1, elapsed / cap)

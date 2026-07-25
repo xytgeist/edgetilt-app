@@ -66,6 +66,10 @@ function eventKindClass(kind) {
       return 'text-rose-300'
     case 'hero':
       return 'text-amber-200'
+    case 'encode':
+      return 'text-fuchsia-300'
+    case 'upload':
+      return 'text-sky-300'
     default:
       return 'text-amber-200'
   }

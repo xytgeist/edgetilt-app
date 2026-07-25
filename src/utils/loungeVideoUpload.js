@@ -201,6 +201,76 @@ export function probeVideoFileDurationSeconds(file) {
 }
 
 /**
+ * Best-effort check whether a local file has an audio track (metadata only).
+ * When unknown, returns `true` so encode never silently drops audio via `-an` fallback.
+ * @returns {Promise<boolean>}
+ */
+export function probeVideoFileHasAudio(file) {
+  return new Promise((resolve) => {
+    if (!file || typeof URL === 'undefined' || typeof document === 'undefined') {
+      resolve(true)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    const v = document.createElement('video')
+    v.preload = 'metadata'
+    v.muted = true
+    v.playsInline = true
+    v.setAttribute('playsinline', '')
+    v.src = url
+    let settled = false
+    const cleanup = () => {
+      try {
+        URL.revokeObjectURL(url)
+      } catch {
+        // ignore
+      }
+      try {
+        v.removeAttribute('src')
+        v.load()
+      } catch {
+        // ignore
+      }
+    }
+    const finish = (hasAudio) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(tid)
+      cleanup()
+      resolve(hasAudio)
+    }
+    const readTracks = () => {
+      try {
+        if (typeof v.audioTracks !== 'undefined' && v.audioTracks) {
+          finish(v.audioTracks.length > 0)
+          return true
+        }
+      } catch {
+        // ignore
+      }
+      if (typeof v.mozHasAudio === 'boolean') {
+        finish(v.mozHasAudio)
+        return true
+      }
+      return false
+    }
+    const tid = window.setTimeout(() => finish(true), PROBE_DURATION_TIMEOUT_MS)
+    v.onloadedmetadata = () => {
+      if (!readTracks()) finish(true)
+    }
+    v.onloadeddata = () => {
+      if (!readTracks()) finish(true)
+    }
+    v.onerror = () => finish(true)
+    try {
+      v.load()
+    } catch {
+      finish(true)
+    }
+  })
+}
+
+/**
  * Read intrinsic display size from a local video file (`videoWidth` / `videoHeight` after metadata).
  * @returns {Promise<{ width: number, height: number } | null>}
  */

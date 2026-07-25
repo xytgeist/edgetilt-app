@@ -1,7 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
-import { probeVideoFileDurationSeconds } from './loungeVideoUpload.js'
+import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
 
 /** Must match the ESM build served for `ffmpeg.load` (see @ffmpeg/ffmpeg 0.12 docs). */
 const CORE_VERSION = '0.12.6'
@@ -134,16 +134,43 @@ function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
 
 /**
  * @param {string} vf scale/crop filter chain without leading format=
- * @param {boolean} videoOnly
+ * @param {{ videoOnly?: boolean, useMaps?: boolean, audioCopy?: boolean }} strategy
  * @param {string} outName
  */
-function buildOutputArgs(vf, videoOnly, outName) {
+function buildOutputArgs(vf, strategy, outName) {
   const vfChain = vf.includes('format=') ? vf : `format=yuv420p,${vf}`
+  const videoOnly = Boolean(strategy.videoOnly)
+  const maps =
+    strategy.useMaps && !videoOnly ? ['-map', '0:v:0', '-map', '0:a:0'] : []
   const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
   const videoFilters = ['-vf', vfChain]
-  const audio = videoOnly ? ['-an'] : ['-c:a', 'aac', '-b:a', '128k']
+  let audio
+  if (videoOnly) {
+    audio = ['-an']
+  } else if (strategy.audioCopy) {
+    audio = ['-c:a', 'copy']
+  } else {
+    audio = ['-c:a', 'aac', '-b:a', '128k']
+  }
   const mux = ['-movflags', '+faststart', '-y', outName]
-  return [...video, ...videoFilters, ...audio, ...mux]
+  return [...maps, ...video, ...videoFilters, ...audio, ...mux]
+}
+
+/** @param {boolean} sourceHasAudio */
+function buildEncodeStrategies(sourceHasAudio) {
+  if (sourceHasAudio) {
+    return [
+      { label: 'aac', videoOnly: false, forceSsBeforeInput: false, useMaps: false },
+      { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
+      { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
+      { label: 'aac-copy', videoOnly: false, forceSsBeforeInput: false, useMaps: true, audioCopy: true },
+    ]
+  }
+  return [
+    { label: 'aac', videoOnly: false, forceSsBeforeInput: false, useMaps: false },
+    { label: 'video-only', videoOnly: true, forceSsBeforeInput: false, useMaps: false },
+    { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: false },
+  ]
 }
 
 /**
@@ -204,6 +231,9 @@ async function wasmReencodeToMp4({
   const dur = end - start
   if (!(dur > 0)) throw new Error('Invalid trim range.')
 
+  const sourceHasAudio = await probeVideoFileHasAudio(file)
+  const strategies = buildEncodeStrategies(sourceHasAudio)
+
   const ffmpeg = await getFfmpeg()
 
   const onProg = ({ progress }) => {
@@ -229,15 +259,10 @@ async function wasmReencodeToMp4({
       // ignore
     }
 
-    const strategies = [
-      { label: 'aac', videoOnly: false, forceSsBeforeInput: false },
-      { label: 'video-only', videoOnly: true, forceSsBeforeInput: false },
-      { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true },
-    ]
-
     /** @type {string[]} */
     let lastLogs = []
     let lastCode = 1
+    let winningStrategy = ''
 
     for (const strategy of strategies) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -249,12 +274,15 @@ async function wasmReencodeToMp4({
       const inputPart = buildInputArgs(inputPath, start, dur, {
         forceSsBeforeInput: strategy.forceSsBeforeInput,
       })
-      const outputPart = buildOutputArgs(vf, strategy.videoOnly, outName)
+      const outputPart = buildOutputArgs(vf, strategy, outName)
       const args = [...DEMUX_LOGGING, ...inputPart, ...outputPart]
       const { code, logs } = await execFfmpegLogged(ffmpeg, args, signal)
       lastCode = code
       lastLogs = logs
-      if (code === 0) break
+      if (code === 0) {
+        winningStrategy = strategy.label
+        break
+      }
       console.warn('[lounge-video-encode]', strategy.label, 'exit', code, formatFfmpegLogTail(logs))
     }
 
@@ -262,6 +290,8 @@ async function wasmReencodeToMp4({
       const tail = formatFfmpegLogTail(lastLogs)
       throw new Error(tail ? `Video encoding failed. ${tail}` : `Video encoding failed (exit ${lastCode}).`)
     }
+
+    console.log('[lounge-video-encode]', 'success', { strategy: winningStrategy, sourceHasAudio })
 
     const data = await ffmpeg.readFile(outName)
     try {

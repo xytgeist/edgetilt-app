@@ -3,6 +3,7 @@ import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
   LOUNGE_VIDEO_FAST_PATH_MAX_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
+  canPassThroughLoungeVideoMp4OnEncodeFail,
   canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
@@ -201,8 +202,9 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
         if (
-          source.size <= LOUNGE_VIDEO_FAST_PATH_MAX_BYTES &&
-          source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+          canPassThroughLoungeVideoMp4OnEncodeFail(source) ||
+          (source.size <= LOUNGE_VIDEO_FAST_PATH_MAX_BYTES &&
+            source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES)
         ) {
           maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
           recordLoungeVideoPrepOutcome({

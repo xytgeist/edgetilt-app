@@ -3,9 +3,9 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
 import { extractBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
-import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
+import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLoungeVideoQuicktimeMov } from './loungeVideoUpload.js'
 
-const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic'
+const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic:in_range=full:out_range=mpeg'
 const LOUNGE_ENCODE_CRF = '30'
 
 /** Must match the ESM build served for `ffmpeg.load` (see @ffmpeg/ffmpeg 0.12 docs). */
@@ -266,9 +266,7 @@ function buildOutputArgs(vf, strategy, outName) {
  */
 
 function isLikelyIphoneSpatialMov(file) {
-  const name = String(file?.name || '').toLowerCase()
-  const type = String(file?.type || '').toLowerCase()
-  return name.endsWith('.mov') || type.includes('quicktime')
+  return isLoungeVideoQuicktimeMov(file)
 }
 
 /** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} probedStreams @param {{ allowVideoOnlyFallback?: boolean, forceIphoneSpatialGuess?: boolean }} [opts] */
@@ -309,53 +307,26 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
         requireOutputAudio: true,
       },
     )
-    pushStreamStrategy(2, false)
-    pushStreamStrategy(2, true)
+  } else if (audioStreamIndices.length === 1) {
+    pushStreamStrategy(audioStreamIndices[0], false)
+  } else if (audioStreamIndices.length > 1) {
+    for (const idx of audioStreamIndices) {
+      pushStreamStrategy(idx, false)
+    }
+  } else {
+    withAudio.push({
+      label: 'aac-mapped-default',
+      videoOnly: false,
+      forceSsBeforeInput: false,
+      useMaps: true,
+      requireOutputAudio: true,
+    })
   }
 
-  for (const idx of audioStreamIndices) {
-    pushStreamStrategy(idx, false)
-    pushStreamStrategy(idx, true)
-  }
-
-  withAudio.push(
-    {
-      label: 'aac-by-codec',
-      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac?'],
-      requireOutputAudio: true,
-    },
-    {
-      label: 'aac-by-mp4a',
-      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a?'],
-      requireOutputAudio: true,
-    },
-  )
-
-  if (audioStreamIndices.length > 0) {
-    withAudio.push(
-      {
-        label: 'aac-mapped',
-        videoOnly: false,
-        forceSsBeforeInput: false,
-        useMaps: true,
-        requireOutputAudio: true,
-      },
-      {
-        label: 'aac-mapped-ss',
-        videoOnly: false,
-        forceSsBeforeInput: true,
-        useMaps: true,
-        requireOutputAudio: true,
-      },
-      {
-        label: 'aac-copy-mapped',
-        videoOnly: false,
-        forceSsBeforeInput: false,
-        useMaps: true,
-        audioCopy: true,
-        requireOutputAudio: true,
-      },
-    )
+  if (audioStreamIndices.length > 0 && (spatialBlocked.includes(1) || forceIphoneSpatialGuess)) {
+    for (const idx of audioStreamIndices) {
+      pushStreamStrategy(idx, true)
+    }
   }
 
   if (allowVideoOnlyFallback || !sourceHasAudio) {
@@ -572,7 +543,9 @@ async function wasmReencodeToMp4({
 
   const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
   const forceIphoneSpatialGuess =
-    sourceHasAudio && audioStreamIndices.length === 0 && isLikelyIphoneSpatialMov(file)
+    sourceHasAudio
+    && audioStreamIndices.length === 0
+    && isLikelyIphoneSpatialMov(file)
   if (forceIphoneSpatialGuess) {
     maybeReportLoungeVideoUploadDebug('encode', 'iphone spatial mov guess (no decodable audio in probe)')
   }

@@ -138,6 +138,27 @@ const PROBE_DURATION_TIMEOUT_MS = 45000
 /** Direct picks at or below this size may skip wasm encode when already device MP4/MOV. */
 export const LOUNGE_VIDEO_FAST_PATH_MAX_BYTES = 20 * 1024 * 1024
 
+/** Already-clean MP4/M4V exports (e.g. pre-muxed AAC) may pass through without wasm up to this size. */
+export const LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES = 50 * 1024 * 1024
+
+/** @param {File | undefined} file */
+export function isLoungeVideoMp4Container(file) {
+  const type = String(file?.type || '').toLowerCase()
+  const name = String(file?.name || '').toLowerCase()
+  return (
+    (type.includes('mp4') && !type.includes('quicktime'))
+    || name.endsWith('.mp4')
+    || name.endsWith('.m4v')
+  )
+}
+
+/** @param {File | undefined} file */
+export function isLoungeVideoQuicktimeMov(file) {
+  const type = String(file?.type || '').toLowerCase()
+  const name = String(file?.name || '').toLowerCase()
+  return name.endsWith('.mov') || type.includes('quicktime')
+}
+
 /**
  * True when a direct pick is small enough to upload without on-device re-encode.
  * Trim/crop always runs through wasm.
@@ -149,10 +170,14 @@ export const LOUNGE_VIDEO_FAST_PATH_MAX_BYTES = 20 * 1024 * 1024
 export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   if (specKind !== 'direct') return false
   const size = typeof file?.size === 'number' ? file.size : 0
-  if (!Number.isFinite(size) || size <= 0 || size > LOUNGE_VIDEO_FAST_PATH_MAX_BYTES) return false
+  if (!Number.isFinite(size) || size <= 0) return false
   if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
     return false
   }
+  if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
+    return true
+  }
+  if (size > LOUNGE_VIDEO_FAST_PATH_MAX_BYTES) return false
   const type = String(file?.type || '').toLowerCase()
   const name = String(file?.name || '').toLowerCase()
   return (
@@ -161,6 +186,18 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
     || name.endsWith('.mp4')
     || name.endsWith('.m4v')
     || name.endsWith('.mov')
+  )
+}
+
+/** MP4 picks that may upload as-is when wasm encode fails (already muxed AAC). */
+export function canPassThroughLoungeVideoMp4OnEncodeFail(file) {
+  const size = typeof file?.size === 'number' ? file.size : 0
+  return (
+    isLoungeVideoMp4Container(file)
+    && Number.isFinite(size)
+    && size > 0
+    && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES
+    && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
   )
 }
 

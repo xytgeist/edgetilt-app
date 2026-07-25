@@ -170,6 +170,31 @@ export function isLoungeVideoQuicktimeMov(file) {
   return name.endsWith('.mov') || type.includes('quicktime')
 }
 
+/** User-facing copy when Android must not direct-upload iPhone spatial sources. */
+export function loungeAndroidIphoneSpatialDirectUploadMessage() {
+  return (
+    'This iPhone video cannot be posted directly on Android. ' +
+    'Open the trim editor (confirm the clip), or post from an iPhone.'
+  )
+}
+
+/**
+ * Android direct post (no trim) must not send iPhone spatial MOV/HEVC exports raw to Cloudflare.
+ * Client wasm does not work for these on Android; CF often rejects them as incompatible.
+ *
+ * @param {File | undefined} file
+ * @returns {boolean}
+ */
+export function isLoungeAndroidBlockedIphoneSpatialDirectUpload(file) {
+  if (!file || !isAndroidBrowser()) return false
+  if (isLoungeVideoQuicktimeMov(file)) return true
+  const size = typeof file.size === 'number' && Number.isFinite(file.size) ? file.size : 0
+  if (size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES && isLoungeVideoMp4Container(file)) {
+    return true
+  }
+  return false
+}
+
 /**
  * True when a direct pick can upload without on-device re-encode.
  * Android trim uses WebCodecs → MediaRecorder (no wasm). Direct Android skips wasm.
@@ -186,7 +211,12 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
     return false
   }
   // Android: skip client wasm encode entirely; CF Stream transcodes server-side.
-  if (isAndroidBrowser() && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+  // iPhone spatial sources are blocked from this path (see isLoungeAndroidBlockedIphoneSpatialDirectUpload).
+  if (
+    isAndroidBrowser() &&
+    size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES &&
+    !isLoungeAndroidBlockedIphoneSpatialDirectUpload(file)
+  ) {
     return true
   }
   if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
@@ -207,7 +237,9 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
 /** Ultimate fallback when client encode fails: upload original for CF Stream to transcode. */
 export function canPassThroughLoungeVideoOnEncodeFail(file) {
   const size = typeof file?.size === 'number' ? file.size : 0
-  return Number.isFinite(size) && size > 0 && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+  if (!Number.isFinite(size) || size <= 0 || size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) return false
+  if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(file)) return false
+  return true
 }
 
 /** @deprecated use {@link canPassThroughLoungeVideoOnEncodeFail} */

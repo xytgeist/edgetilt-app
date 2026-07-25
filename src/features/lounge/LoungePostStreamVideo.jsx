@@ -31,7 +31,9 @@ import LoungePostVideoInlineProgress, {
 } from './LoungePostVideoInlineProgress.jsx'
 import {
   getLoungePendingPostProgress,
+  LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
   subscribeLoungePendingPostProgress,
+  tryCompleteLoungeStagedFeedPostPublishFromPlayback,
 } from './loungePendingPostPublish.js'
 import {
   readLoungeFeedVideoDebugEnabled,
@@ -1795,6 +1797,9 @@ export default function LoungePostStreamVideo({
     let cancelled = false
     let tid = 0
     const started = Date.now()
+    const pollMaxMs = authorPendingPublish
+      ? LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS
+      : CF_HLS_TILE_POLL_MAX_MS
     setCfStreamPlaybackReady(false)
 
     const markReady = () => {
@@ -1805,7 +1810,7 @@ export default function LoungePostStreamVideo({
     const tick = async () => {
       if (cancelled) return
       const elapsed = Date.now() - started
-      if (elapsed >= CF_HLS_TILE_POLL_MAX_MS) {
+      if (elapsed >= pollMaxMs) {
         if (!cancelled) setShowStreamRetry(true)
         return
       }
@@ -1846,7 +1851,18 @@ export default function LoungePostStreamVideo({
       cancelled = true
       window.clearTimeout(tid)
     }
-  }, [id, bumpStreamAttach])
+  }, [id, bumpStreamAttach, authorPendingPublish])
+
+  useEffect(() => {
+    if (!cfStreamPlaybackReady || !authorPendingPublish || !pendingPublishKey) return undefined
+    let cancelled = false
+    void tryCompleteLoungeStagedFeedPostPublishFromPlayback(pendingPublishKey).catch((e) => {
+      if (!cancelled) console.warn('staged feed post finalize from playback:', e)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [cfStreamPlaybackReady, authorPendingPublish, pendingPublishKey])
 
   const prevIsActiveForPromoteRef = useRef(false)
   useEffect(() => {

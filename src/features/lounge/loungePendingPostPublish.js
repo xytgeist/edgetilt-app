@@ -11,9 +11,417 @@ export const LOUNGE_CF_PROCESSING_PROGRESS_FLOOR = 0.92
 /** Creep cap while polling CF (~+1% every 7s until ready or this cap). */
 export const LOUNGE_CF_PROCESSING_PROGRESS_CAP = 0.99
 export const LOUNGE_CF_PROCESSING_TICK_MS = 7000
+/** Default CF wait for staged publish background poll. */
+export const LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS = 300_000
+/** Large direct uploads (Android CF transcode) can exceed 5 minutes. */
+export const LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS = 900_000
+/** Source size above which staged publish uses the large timeout (~50 MB). */
+export const LOUNGE_CF_PROCESSING_LARGE_SOURCE_BYTES = 50 * 1024 * 1024
 
 const progressByKey = new Map()
 const listeners = new Set()
+
+/** @typedef {{
+ *   streamUid: string,
+ *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
+ *   timeoutMs: number,
+ *   abortController: AbortController | null,
+ *   running: boolean,
+ *   finalizeInFlight?: boolean,
+ * }} LoungeStagedFeedPostPublishJob */
+
+/** @type {Map<string, LoungeStagedFeedPostPublishJob>} */
+const stagedFeedPostPublishJobs = new Map()
+const stagedFeedPostPublishCompleteListeners = new Set()
+
+/** @typedef {{
+ *   streamUid: string,
+ *   timeoutMs: number,
+ *   abortController: AbortController | null,
+ *   running: boolean,
+ * }} LoungePendingCommentCfJob */
+
+/** @type {Map<string, LoungePendingCommentCfJob>} */
+const pendingCommentCfJobs = new Map()
+const pendingCommentCfCompleteListeners = new Set()
+
+async function runLoungeStagedFeedPostPublishLoop(postId) {
+  const id = String(postId || '').trim()
+  const job = stagedFeedPostPublishJobs.get(id)
+  if (!id || !job || job.running || job.finalizeInFlight) return
+
+  job.running = true
+  try {
+    job.abortController?.abort()
+  } catch {
+    // ignore
+  }
+  const ac = new AbortController()
+  job.abortController = ac
+
+  try {
+    setLoungePendingPostProgress(id, {
+      progress: 0.92,
+      status: 'Processing video…',
+      detail: '',
+      phase: 'processing',
+      processingStartedAt: Date.now(),
+    })
+    await publishLoungeFeedPostWhenStreamReady({
+      supabaseClient: job.supabaseClient,
+      postId: id,
+      streamUid: job.streamUid,
+      signal: ac.signal,
+      timeoutMs: job.timeoutMs,
+      onProgress: (info) => {
+        setLoungePendingPostProgress(id, {
+          progress: info.progress,
+          status: info.status,
+          detail: '',
+          phase: 'processing',
+        })
+      },
+    })
+  } catch (e) {
+    if (e?.name === 'AbortError') return
+    console.warn('staged video publish:', e)
+    setLoungePendingPostProgress(id, {
+      progress: 0.99,
+      status: 'Still processing…',
+      detail: 'Checking again when you return to EdgeTilt.',
+      phase: 'processing',
+    })
+  } finally {
+    if (job.abortController === ac) {
+      job.running = false
+      job.abortController = null
+    }
+  }
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.postId
+ * @param {string} opts.streamUid
+ * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
+ * @param {number} [opts.timeoutMs]
+ */
+export function startLoungeStagedFeedPostPublish({
+  postId,
+  streamUid,
+  supabaseClient,
+  timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+}) {
+  const id = String(postId || '').trim()
+  const uid = String(streamUid || '').trim()
+  if (!id || !uid || !supabaseClient) return
+
+  const prev = stagedFeedPostPublishJobs.get(id)
+  stagedFeedPostPublishJobs.set(id, {
+    streamUid: uid,
+    supabaseClient,
+    timeoutMs:
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
+        ? timeoutMs
+        : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+    abortController: prev?.abortController ?? null,
+    running: false,
+    finalizeInFlight: prev?.finalizeInFlight,
+  })
+  void runLoungeStagedFeedPostPublishLoop(id)
+}
+
+/** Restart CF polling for registered feed-post jobs (e.g. after app refocus). */
+export function resumeAllLoungeStagedFeedPostPublishJobs() {
+  for (const postId of stagedFeedPostPublishJobs.keys()) {
+    void runLoungeStagedFeedPostPublishLoop(postId)
+  }
+}
+
+async function runPendingCommentCfPollLoop(commentId) {
+  const id = String(commentId || '').trim()
+  const job = pendingCommentCfJobs.get(id)
+  if (!id || !job || job.running) return
+
+  job.running = true
+  try {
+    job.abortController?.abort()
+  } catch {
+    // ignore
+  }
+  const ac = new AbortController()
+  job.abortController = ac
+
+  try {
+    setLoungePendingPostProgress(id, {
+      progress: 0.92,
+      status: 'Processing video…',
+      detail: '',
+      phase: 'processing',
+      processingStartedAt: Date.now(),
+    })
+    await waitForCfStreamManifestReady(job.streamUid, {
+      signal: ac.signal,
+      timeoutMs: job.timeoutMs,
+    })
+    clearLoungePendingPostProgress(id)
+    unregisterLoungePendingCommentVideoProcessing(id)
+    notifyPendingCommentCfComplete({ commentId: id })
+  } catch (e) {
+    if (e?.name === 'AbortError') return
+    console.warn('pending comment video CF wait:', e)
+    setLoungePendingPostProgress(id, {
+      progress: 0.99,
+      status: 'Still processing…',
+      detail: 'Checking again when you return to EdgeTilt.',
+      phase: 'processing',
+    })
+  } finally {
+    if (job.abortController === ac) {
+      job.running = false
+      job.abortController = null
+    }
+  }
+}
+
+function notifyPendingCommentCfComplete(payload) {
+  for (const fn of pendingCommentCfCompleteListeners) {
+    try {
+      fn(payload)
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/** @param {(payload: { commentId: string }) => void} listener */
+export function subscribeLoungePendingCommentVideoProcessingComplete(listener) {
+  pendingCommentCfCompleteListeners.add(listener)
+  return () => pendingCommentCfCompleteListeners.delete(listener)
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.commentId
+ * @param {string} opts.streamUid
+ * @param {string} [opts.pendingKey]
+ * @param {number} [opts.timeoutMs]
+ */
+export function startLoungePendingCommentVideoProcessing({
+  commentId,
+  streamUid,
+  pendingKey,
+  timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+}) {
+  const id = String(commentId || '').trim()
+  const uid = String(streamUid || '').trim()
+  const key = String(pendingKey || id).trim()
+  if (!id || !uid) return
+
+  remitLoungePendingPostProgressKey(key, id)
+  const prev = pendingCommentCfJobs.get(id)
+  pendingCommentCfJobs.set(id, {
+    streamUid: uid,
+    timeoutMs:
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
+        ? timeoutMs
+        : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+    abortController: prev?.abortController ?? null,
+    running: false,
+  })
+  void runPendingCommentCfPollLoop(id)
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.commentId
+ * @param {string} opts.streamUid
+ * @param {number} [opts.timeoutMs]
+ */
+export function registerLoungePendingCommentVideoProcessingJob({
+  commentId,
+  streamUid,
+  timeoutMs,
+}) {
+  const id = String(commentId || '').trim()
+  const uid = String(streamUid || '').trim()
+  if (!id || !uid) return
+  const prev = pendingCommentCfJobs.get(id)
+  pendingCommentCfJobs.set(id, {
+    streamUid: uid,
+    timeoutMs:
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
+        ? timeoutMs
+        : prev?.timeoutMs ?? LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+    abortController: prev?.abortController ?? null,
+    running: prev?.running ?? false,
+  })
+}
+
+/** @param {string} commentId */
+export function unregisterLoungePendingCommentVideoProcessing(commentId) {
+  const id = String(commentId || '').trim()
+  if (!id) return
+  pendingCommentCfJobs.delete(id)
+}
+
+/** Stop in-flight CF polling for a pending comment (does not delete the comment). */
+export function abortLoungePendingCommentVideoProcessing(commentId) {
+  const id = String(commentId || '').trim()
+  if (!id) return
+  const job = pendingCommentCfJobs.get(id)
+  if (!job) return
+  try {
+    job.abortController?.abort()
+  } catch {
+    // ignore
+  }
+  job.abortController = null
+  job.running = false
+}
+
+/** Restart CF polling for feed posts and comment tiles (e.g. after app refocus). */
+export function resumeAllLoungePendingCfWaitJobs() {
+  resumeAllLoungeStagedFeedPostPublishJobs()
+  for (const commentId of pendingCommentCfJobs.keys()) {
+    void runPendingCommentCfPollLoop(commentId)
+  }
+}
+
+/** Stop CF polling for a staged post or pending comment by id / pending key. */
+export function abortLoungePendingCfWaitJob(targetId) {
+  const id = String(targetId || '').trim()
+  if (!id) return
+  abortLoungeStagedFeedPostPublish(id)
+  abortLoungePendingCommentVideoProcessing(id)
+}
+
+/** Client optimistic ids use a `pending-` prefix before the DB row exists. */
+export function loungePendingPublishIsOptimisticId(id) {
+  return String(id || '').trim().startsWith('pending-')
+}
+
+/** Stop in-flight CF polling for a staged post (does not delete the post). */
+export function abortLoungeStagedFeedPostPublish(postId) {
+  const id = String(postId || '').trim()
+  if (!id) return
+  const job = stagedFeedPostPublishJobs.get(id)
+  if (!job) return
+  try {
+    job.abortController?.abort()
+  } catch {
+    // ignore
+  }
+  job.abortController = null
+  job.running = false
+}
+
+/**
+ * @param {number | null | undefined} sourceBytes
+ * @returns {number}
+ */
+export function resolveLoungeCfStreamProcessingTimeoutMs(sourceBytes) {
+  const bytes = typeof sourceBytes === 'number' && Number.isFinite(sourceBytes) ? sourceBytes : 0
+  if (bytes >= LOUNGE_CF_PROCESSING_LARGE_SOURCE_BYTES) {
+    return LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS
+  }
+  return LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS
+}
+
+function notifyStagedFeedPostPublishComplete(payload) {
+  for (const fn of stagedFeedPostPublishCompleteListeners) {
+    try {
+      fn(payload)
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/** @param {(payload: { postId: string, visibleAt: string }) => void} listener */
+export function subscribeLoungeStagedFeedPostPublishComplete(listener) {
+  stagedFeedPostPublishCompleteListeners.add(listener)
+  return () => stagedFeedPostPublishCompleteListeners.delete(listener)
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.postId
+ * @param {string} opts.streamUid
+ * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
+ * @param {number} [opts.timeoutMs]
+ */
+export function registerLoungeStagedFeedPostPublishJob({
+  postId,
+  streamUid,
+  supabaseClient,
+  timeoutMs,
+}) {
+  const id = String(postId || '').trim()
+  const uid = String(streamUid || '').trim()
+  if (!id || !uid || !supabaseClient) return
+  const prev = stagedFeedPostPublishJobs.get(id)
+  stagedFeedPostPublishJobs.set(id, {
+    streamUid: uid,
+    supabaseClient,
+    timeoutMs:
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
+        ? timeoutMs
+        : prev?.timeoutMs ?? LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+    abortController: prev?.abortController ?? null,
+    running: prev?.running ?? false,
+    finalizeInFlight: prev?.finalizeInFlight,
+  })
+}
+
+/** @param {string} postId */
+export function unregisterLoungeStagedFeedPostPublishJob(postId) {
+  const id = String(postId || '').trim()
+  if (!id) return
+  stagedFeedPostPublishJobs.delete(id)
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} postId
+ * @returns {Promise<string>}
+ */
+export async function setLoungeFeedPostFeedVisible(supabaseClient, postId) {
+  const id = String(postId || '').trim()
+  if (!id) throw new Error('Missing post id.')
+  const visibleAt = new Date().toISOString()
+  const { error } = await supabaseClient
+    .from('community_feed_posts')
+    .update({ feed_visible_at: visibleAt })
+    .eq('id', id)
+    .is('feed_visible_at', null)
+  if (error) throw new Error(error.message || 'Could not publish video post.')
+  return visibleAt
+}
+
+/**
+ * Tile-side fallback: when HLS probe succeeds but the background staged publish
+ * poll already timed out, still set `feed_visible_at` once.
+ *
+ * @param {string} postId
+ * @returns {Promise<string | null>}
+ */
+export async function tryCompleteLoungeStagedFeedPostPublishFromPlayback(postId) {
+  const id = String(postId || '').trim()
+  if (!id) return null
+  const job = stagedFeedPostPublishJobs.get(id)
+  if (!job || job.finalizeInFlight) return null
+  job.finalizeInFlight = true
+  try {
+    const visibleAt = await setLoungeFeedPostFeedVisible(job.supabaseClient, id)
+    unregisterLoungeStagedFeedPostPublishJob(id)
+    notifyStagedFeedPostPublishComplete({ postId: id, visibleAt })
+    return visibleAt
+  } catch (e) {
+    job.finalizeInFlight = false
+    throw e
+  }
+}
 
 function notifyPendingPostProgress() {
   for (const fn of listeners) {
@@ -277,23 +685,20 @@ export function buildAuthorPendingVideoComment({
   }
 }
 
-/** Poll CF HLS then clear pending comment tile state (comments have no feed_visible_at). */
+/** @deprecated Use {@link startLoungePendingCommentVideoProcessing} for resumable CF wait. */
 export async function finishLoungePendingCommentVideoProcessing({
   commentId,
   streamUid,
   pendingKey,
-  signal,
+  timeoutMs,
   onProgress,
 }) {
   const id = String(commentId || '').trim()
   const uid = String(streamUid || '').trim()
   const key = String(pendingKey || id).trim()
   if (!id || !uid) return
-  remitLoungePendingPostProgressKey(key, id)
+  startLoungePendingCommentVideoProcessing({ commentId: id, streamUid: uid, pendingKey: key, timeoutMs })
   onProgress?.({ progress: 0.92, status: 'Processing video…' })
-  await waitForCfStreamManifestReady(uid, { signal })
-  onProgress?.({ progress: 1, status: 'Ready' })
-  clearLoungePendingPostProgress(id)
 }
 
 function feedPostStreamVideoUid(row) {
@@ -338,6 +743,7 @@ export function loungeFeedPostIsAuthorPendingPublish(row, viewerUserId) {
  * @param {string} opts.postId
  * @param {string} opts.streamUid
  * @param {AbortSignal} [opts.signal]
+ * @param {number} [opts.timeoutMs]
  * @param {(info: { progress: number, status: string }) => void} [opts.onProgress]
  */
 export async function publishLoungeFeedPostWhenStreamReady({
@@ -345,6 +751,7 @@ export async function publishLoungeFeedPostWhenStreamReady({
   postId,
   streamUid,
   signal,
+  timeoutMs,
   onProgress,
 }) {
   const id = String(postId || '').trim()
@@ -352,17 +759,18 @@ export async function publishLoungeFeedPostWhenStreamReady({
   if (!id || !uid) return
 
   onProgress?.({ progress: 0.92, status: 'Processing video…' })
-  await waitForCfStreamManifestReady(uid, { signal })
+  await waitForCfStreamManifestReady(uid, {
+    signal,
+    timeoutMs:
+      typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
+        ? timeoutMs
+        : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+  })
   onProgress?.({ progress: 0.98, status: 'Going live…' })
 
-  const visibleAt = new Date().toISOString()
-  const { error } = await supabaseClient
-    .from('community_feed_posts')
-    .update({ feed_visible_at: visibleAt })
-    .eq('id', id)
-    .is('feed_visible_at', null)
-
-  if (error) throw new Error(error.message || 'Could not publish video post.')
+  const visibleAt = await setLoungeFeedPostFeedVisible(supabaseClient, id)
+  unregisterLoungeStagedFeedPostPublishJob(id)
+  notifyStagedFeedPostPublishComplete({ postId: id, visibleAt })
   onProgress?.({ progress: 1, status: 'Live' })
   return visibleAt
 }

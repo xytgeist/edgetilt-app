@@ -69,6 +69,8 @@ import {
   captureVideoFilePosterObjectUrl,
   deleteCfStreamForCommunityFeedPost,
   deleteCfStreamOrphanAsset,
+  isLoungeAndroidBlockedIphoneSpatialDirectUpload,
+  loungeAndroidIphoneSpatialDirectUploadMessage,
   probeVideoFileDurationSeconds,
 } from '../../utils/loungeVideoUpload'
 import {
@@ -167,18 +169,29 @@ import {
   buildAuthorPendingVideoThreadRootPost,
   buildAuthorPendingVideoComment,
   authorPendingPublishPatchFromSubmit,
+  abortLoungePendingCfWaitJob,
   clearLoungePendingPostProgress,
   createLoungePendingPublishKey,
-  finishLoungePendingCommentVideoProcessing,
+  loungePendingPublishIsOptimisticId,
   loungeSubmissionUsesInlineVideoPostProgress,
   loungeSnapshotUsesInlineTileVideoProgress,
   loungeEditSnapshotHasIncomingVideoUpload,
   loungeSubmissionShouldUseBottomUploadBar,
-  publishLoungeFeedPostWhenStreamReady,
+  registerLoungePendingCommentVideoProcessingJob,
+  registerLoungeStagedFeedPostPublishJob,
   remitLoungePendingPostProgressKey,
+  resolveLoungeCfStreamProcessingTimeoutMs,
+  resumeAllLoungePendingCfWaitJobs,
   setLoungePendingPostProgress,
   getLoungePendingPostProgress,
+  startLoungePendingCommentVideoProcessing,
+  startLoungeStagedFeedPostPublish,
+  subscribeLoungePendingCommentVideoProcessingComplete,
+  subscribeLoungeStagedFeedPostPublishComplete,
+  unregisterLoungePendingCommentVideoProcessing,
+  unregisterLoungeStagedFeedPostPublishJob,
 } from './loungePendingPostPublish.js'
+import { LoungePendingPublishActionsProvider } from './LoungePendingPublishActionsContext.jsx'
 import {
   executeLoungeCommentSubmission,
   executeLoungeCommentUpdate,
@@ -3576,6 +3589,66 @@ export default function SocialFeed({
     [setCommunityPosts],
   )
 
+  useEffect(() => {
+    return subscribeLoungeStagedFeedPostPublishComplete(({ postId, visibleAt }) => {
+      const id = String(postId || '').trim()
+      if (!id) return
+      clearLoungePendingPostProgress(id)
+      patchAuthorPendingVideoPost(id, {
+        feed_visible_at: visibleAt,
+        _authorPendingPublish: false,
+        _pendingPublishRevert: undefined,
+      })
+    })
+  }, [patchAuthorPendingVideoPost])
+
+  useEffect(() => {
+    return subscribeLoungePendingCommentVideoProcessingComplete(({ commentId }) => {
+      const id = String(commentId || '').trim()
+      if (!id) return
+      setLoungeDetailComments((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, _authorPendingPublish: false, _pendingPublishKey: id, _pendingPublishRevert: undefined }
+            : r,
+        ),
+      )
+    })
+  }, [])
+
+  /** Re-register staged publish jobs after refresh; resume CF polling when the app refocuses. */
+  useEffect(() => {
+    if (!composerUserId || !supabaseClient) return
+    for (const row of communityPosts) {
+      if (!row || String(row.user_id || '') !== String(composerUserId)) continue
+      if (row.feed_visible_at != null) continue
+      const postId = String(row.id || '').trim()
+      const streamUid = String(row.stream_video_uid || '').trim()
+      if (!postId || !streamUid || loungePendingPublishIsOptimisticId(postId)) continue
+      registerLoungeStagedFeedPostPublishJob({ postId, streamUid, supabaseClient })
+    }
+    for (const row of loungeDetailComments) {
+      if (!row || String(row.user_id || '') !== String(composerUserId)) continue
+      if (row._authorPendingPublish !== true) continue
+      const commentId = String(row.id || '').trim()
+      const streamUid = String(row.stream_video_uid || '').trim()
+      if (!commentId || !streamUid || loungePendingPublishIsOptimisticId(commentId)) continue
+      registerLoungePendingCommentVideoProcessingJob({ commentId, streamUid })
+    }
+    resumeAllLoungePendingCfWaitJobs()
+  }, [communityPosts, composerUserId, loungeDetailComments, supabaseClient])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        resumeAllLoungePendingCfWaitJobs()
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+
   const removeAuthorPendingVideoPost = useCallback(
     (pendingKey) => {
       const key = String(pendingKey || '').trim()
@@ -3666,6 +3739,10 @@ export default function SocialFeed({
     const id = String(commentId || '').trim()
     if (!key || !id) return
     const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
+    const previousStreamUid = String(snapshot?.previousStreamUid || '').trim() || null
+    const pendingPublishRevert = previousStreamUid
+      ? { previousStreamUid, priorFeedVisibleAt: null }
+      : undefined
     setLoungeDetailComments((prev) =>
       prev.map((r) =>
         r.id === id
@@ -3674,6 +3751,7 @@ export default function SocialFeed({
               _authorPendingPublish: true,
               _pendingPublishKey: key,
               _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+              ...(pendingPublishRevert ? { _pendingPublishRevert: pendingPublishRevert } : {}),
             }
           : r,
       ),
@@ -3692,11 +3770,16 @@ export default function SocialFeed({
   }, [])
 
   const startStagedVideoPostPublish = useCallback(
-    (postId, streamUid, pendingKey) => {
+    (postId, streamUid, pendingKey, opts = {}) => {
       const id = String(postId || '').trim()
       const uid = String(streamUid || '').trim()
       const key = String(pendingKey || id).trim()
       if (!id || !uid) return
+      const sourceBytes =
+        typeof opts.sourceBytes === 'number' && Number.isFinite(opts.sourceBytes)
+          ? opts.sourceBytes
+          : 0
+      const timeoutMs = resolveLoungeCfStreamProcessingTimeoutMs(sourceBytes)
       remitLoungePendingPostProgressKey(key, id)
       patchAuthorPendingVideoPost(key, {
         id,
@@ -3705,41 +3788,193 @@ export default function SocialFeed({
         _authorPendingPublish: true,
         feed_visible_at: null,
       })
-      setLoungePendingPostProgress(id, {
-        progress: 0.92,
-        status: 'Processing video…',
-        detail: '',
-        phase: 'processing',
-        processingStartedAt: Date.now(),
-      })
-      const ac = new AbortController()
-      void publishLoungeFeedPostWhenStreamReady({
-        supabaseClient,
+      startLoungeStagedFeedPostPublish({
         postId: id,
         streamUid: uid,
-        signal: ac.signal,
-        onProgress: (info) => {
-          setLoungePendingPostProgress(id, {
-            progress: info.progress,
-            status: info.status,
-            detail: '',
-            phase: 'processing',
-          })
-        },
+        supabaseClient,
+        timeoutMs,
       })
-        .then((visibleAt) => {
-          clearLoungePendingPostProgress(id)
-          patchAuthorPendingVideoPost(id, {
-            feed_visible_at: visibleAt,
-            _authorPendingPublish: false,
-          })
-        })
-        .catch((e) => {
-          if (e?.name === 'AbortError') return
-          console.warn('staged video publish:', e)
-        })
     },
     [patchAuthorPendingVideoPost, supabaseClient],
+  )
+
+  const cancelAuthorPendingVideoPublish = useCallback(
+    async (targetId) => {
+      const key = String(targetId || '').trim()
+      if (!key || !composerUserId) return
+
+      const postRow =
+        communityPosts.find((p) => p.id === key || p._pendingPublishKey === key) ||
+        (loungePostDetail &&
+        (loungePostDetail.id === key || loungePostDetail._pendingPublishKey === key)
+          ? loungePostDetail
+          : null)
+      const commentRow = loungeDetailComments.find((c) => c.id === key || c._pendingPublishKey === key)
+      const isEdit = Boolean(postRow?._pendingPublishRevert || commentRow?._pendingPublishRevert)
+      const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+        title: isEdit ? 'Cancel video update?' : postRow ? 'Cancel this video post?' : 'Cancel this video reply?',
+        message: isEdit
+          ? postRow
+            ? 'Processing will stop. Your post will stay as it was before this edit.'
+            : 'Processing will stop. Your reply will stay as it was before this edit.'
+          : postRow
+            ? 'Upload and processing will stop. This post will be discarded.'
+            : 'Upload and processing will stop. This reply will be discarded.',
+        confirmLabel: 'Cancel upload',
+      })
+      if (!ok) return
+
+      const abortSubmitForKey = (snap, abortRef) => {
+        if (String(snap?._pendingPublishKey || '').trim() !== key) return
+        try {
+          abortRef.current?.abort()
+        } catch {
+          // ignore
+        }
+      }
+      abortSubmitForKey(loungePostSnapshotRef.current, loungePostAbortRef)
+      abortSubmitForKey(loungeDetailCommentSnapshotRef.current, loungeDetailCommentAbortRef)
+      abortSubmitForKey(loungeDetailEditSnapshotRef.current, loungeDetailEditAbortRef)
+      abortSubmitForKey(loungeDetailCommentEditSnapshotRef.current, loungeDetailCommentEditAbortRef)
+
+      abortLoungePendingCfWaitJob(key)
+      clearLoungePendingPostProgress(key)
+
+      const releasePosterForUid = (uid, row) => {
+        const streamUid = String(uid || '').trim()
+        if (
+          streamUid &&
+          row?._sessionStreamPosterBlob &&
+          typeof row._sessionStreamPosterBlob === 'string'
+        ) {
+          releaseLoungeStreamSessionPoster(streamUid)
+        }
+      }
+
+      if (postRow) {
+        const rowId = String(postRow.id || '').trim()
+        const streamUid = String(postRow.stream_video_uid || '').trim()
+        const revert = postRow._pendingPublishRevert
+        const isOptimistic = loungePendingPublishIsOptimisticId(rowId)
+
+        unregisterLoungeStagedFeedPostPublishJob(isOptimistic ? key : rowId)
+
+        try {
+          if (isOptimistic) {
+            if (streamUid) await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+          } else if (revert) {
+            if (streamUid && streamUid !== revert.previousStreamUid) {
+              await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+            }
+            await supabaseClient
+              .from('community_feed_posts')
+              .update({
+                stream_video_uid: revert.previousStreamUid,
+                feed_visible_at: revert.priorFeedVisibleAt,
+              })
+              .eq('id', rowId)
+              .eq('user_id', composerUserId)
+            patchAuthorPendingVideoPost(rowId, {
+              stream_video_uid: revert.previousStreamUid,
+              feed_visible_at: revert.priorFeedVisibleAt,
+              _authorPendingPublish: false,
+              _pendingPublishKey: undefined,
+              _pendingPublishRevert: undefined,
+            })
+          } else {
+            if (streamUid) {
+              try {
+                await deleteCfStreamForCommunityFeedPost(supabaseClient, rowId)
+              } catch {
+                await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+              }
+            }
+            for (const mediaUrl of collectLoungeFeedStoredMediaUrls(postRow)) {
+              await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+            }
+            await supabaseClient
+              .from('community_feed_posts')
+              .delete()
+              .eq('id', rowId)
+              .eq('user_id', composerUserId)
+          }
+        } catch (e) {
+          console.warn('cancel pending video post:', e)
+        }
+
+        if (!revert) {
+          removeAuthorPendingVideoPost(key)
+          if (rowId && rowId !== key) removeAuthorPendingVideoPost(rowId)
+        }
+        releasePosterForUid(streamUid, postRow)
+        return
+      }
+
+      if (commentRow) {
+        const rowId = String(commentRow.id || '').trim()
+        const streamUid = String(commentRow.stream_video_uid || '').trim()
+        const revert = commentRow._pendingPublishRevert
+        const isOptimistic = loungePendingPublishIsOptimisticId(rowId)
+
+        unregisterLoungePendingCommentVideoProcessing(isOptimistic ? key : rowId)
+
+        try {
+          if (isOptimistic) {
+            if (streamUid) await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+            setLoungeDetailComments((prev) =>
+              prev.filter((r) => r.id !== key && r._pendingPublishKey !== key && r.id !== rowId),
+            )
+          } else if (revert) {
+            if (streamUid && streamUid !== revert.previousStreamUid) {
+              await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+            }
+            await supabaseClient
+              .from('feed_comments')
+              .update({ stream_video_uid: revert.previousStreamUid })
+              .eq('id', rowId)
+              .eq('user_id', composerUserId)
+            setLoungeDetailComments((prev) =>
+              prev.map((r) =>
+                r.id === rowId
+                  ? {
+                      ...r,
+                      stream_video_uid: revert.previousStreamUid,
+                      _authorPendingPublish: false,
+                      _pendingPublishKey: undefined,
+                      _pendingPublishRevert: undefined,
+                    }
+                  : r,
+              ),
+            )
+          } else if (rowId) {
+            if (streamUid) await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+            for (const mediaUrl of collectLoungeFeedStoredMediaUrls(commentRow)) {
+              await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+            }
+            await supabaseClient
+              .from('feed_comments')
+              .delete()
+              .eq('id', rowId)
+              .eq('user_id', composerUserId)
+            setLoungeDetailComments((prev) => prev.filter((r) => r.id !== rowId))
+          }
+        } catch (e) {
+          console.warn('cancel pending video comment:', e)
+        }
+
+        releasePosterForUid(streamUid, commentRow)
+      }
+    },
+    [
+      communityPosts,
+      composerUserId,
+      loungeDetailComments,
+      loungePostDetail,
+      patchAuthorPendingVideoPost,
+      removeAuthorPendingVideoPost,
+      showGlobalConfirm,
+      supabaseClient,
+    ],
   )
 
   const clearComposerAfterDraftSaveQueued = useCallback(
@@ -4881,6 +5116,40 @@ export default function SocialFeed({
           } else setLoungeDetailEditErr('Could not read this video file.')
           return
         }
+        const spatialDirectBlocked =
+          isLoungeAndroidBlockedIphoneSpatialDirectUpload(vf) &&
+          dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35
+        if (spatialDirectBlocked) {
+          const spatialMsg = loungeAndroidIphoneSpatialDirectUploadMessage()
+          if (threadComposeOpenRef.current || mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
+            setThreadComposeErr(spatialMsg)
+            setLoungeVideoCrop({
+              file: vf,
+              mode: LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE,
+              partIdx: threadComposeActivePartIndexRef.current,
+              knownDurationSec: dur,
+            })
+            restoreLoungeComposerCaptionAfterMediaPick('composer')
+            return
+          }
+          if (mode === 'composer') setPostErr(spatialMsg)
+          else if (mode === 'quote') setQuoteRepostErr(spatialMsg)
+          else if (mode === 'detailComment') {
+            setLoungeDetailCommentErr(spatialMsg)
+            loungeDetailCommentMediaSessionRef.current = false
+          } else if (mode === 'detailCommentEdit') {
+            setLoungeDetailCommentErr(spatialMsg)
+          } else setLoungeDetailEditErr(spatialMsg)
+          if (mode === 'detailComment') {
+            focusLoungeComposerCaption(() => loungeDetailCommentFieldRef.current)
+          } else if (mode === 'detailEdit') {
+            focusLoungeComposerCaption(() => loungeDetailEditFieldRef.current)
+          } else if (mode === 'detailCommentEdit') {
+            focusLoungeComposerCaption(() => loungeDetailCommentEditFieldRef.current)
+          }
+          setLoungeVideoCrop({ file: vf, mode, knownDurationSec: dur })
+          return
+        }
         if (threadComposeOpenRef.current || mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
           const partIdx = threadComposeActivePartIndexRef.current
           if (dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
@@ -5108,11 +5377,19 @@ export default function SocialFeed({
       const id = String(postId || '').trim()
       if (!key || !id) return
       const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
+      const previousStreamUid = String(snapshot?.previousStreamUid || '').trim() || null
+      const priorFeedVisibleAt =
+        snapshot?._priorFeedVisibleAt != null ? snapshot._priorFeedVisibleAt : null
+      const pendingPublishRevert =
+        previousStreamUid || priorFeedVisibleAt != null
+          ? { previousStreamUid, priorFeedVisibleAt }
+          : undefined
       patchPostAggregate(id, {
         _authorPendingPublish: true,
         _pendingPublishKey: key,
         feed_visible_at: null,
         _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+        ...(pendingPublishRevert ? { _pendingPublishRevert: pendingPublishRevert } : {}),
       })
       setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
     },
@@ -10537,6 +10814,7 @@ export default function SocialFeed({
             submitResult.postId,
             submitResult.streamVideoUid,
             pendingPublishKey,
+            { sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size },
           )
           patchAuthorPendingVideoPost(
             pendingPublishKey,
@@ -10862,24 +11140,13 @@ export default function SocialFeed({
                 : r,
             ),
           )
-          void finishLoungePendingCommentVideoProcessing({
+          startLoungePendingCommentVideoProcessing({
             commentId: row.id,
             streamUid,
             pendingKey: pendingPublishKey,
-            onProgress: (info) => {
-              setLoungePendingPostProgress(row.id, {
-                progress: info.progress,
-                status: info.status,
-                detail: '',
-                phase: 'processing',
-              })
-            },
-          }).then(() => {
-            setLoungeDetailComments((prev) =>
-              prev.map((r) =>
-                r.id === row.id ? { ...r, _authorPendingPublish: false, _pendingPublishKey: row.id } : r,
-              ),
-            )
+            timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs(
+              snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+            ),
           })
         }
         if (row.id) {
@@ -11253,7 +11520,9 @@ export default function SocialFeed({
           data.postId &&
           data.streamVideoUid
         ) {
-          startStagedVideoPostPublish(data.postId, data.streamVideoUid, pendingPublishKey)
+          startStagedVideoPostPublish(data.postId, data.streamVideoUid, pendingPublishKey, {
+            sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+          })
         }
         persistLoungeComposerLastCategoryPillsFromSubmit(snap)
         setLoungePostUploadFailedOpen(false)
@@ -11526,24 +11795,13 @@ export default function SocialFeed({
                 : r,
             ),
           )
-          void finishLoungePendingCommentVideoProcessing({
+          startLoungePendingCommentVideoProcessing({
             commentId: data.id,
             streamUid,
             pendingKey: pendingPublishKey,
-            onProgress: (info) => {
-              setLoungePendingPostProgress(data.id, {
-                progress: info.progress,
-                status: info.status,
-                detail: '',
-                phase: 'processing',
-              })
-            },
-          }).then(() => {
-            setLoungeDetailComments((prev) =>
-              prev.map((r) =>
-                r.id === data.id ? { ...r, _authorPendingPublish: false, _pendingPublishKey: data.id } : r,
-              ),
-            )
+            timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs(
+              snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+            ),
           })
         }
         setLoungePostUploadFailedOpen(false)
@@ -14325,6 +14583,7 @@ export default function SocialFeed({
       className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))] pb-0`}
     >
       <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
+      <LoungePendingPublishActionsProvider cancelPendingPublish={cancelAuthorPendingVideoPublish}>
       <LoungeMarketFeedProvider
         supabaseClient={supabaseClient}
         posts={loungeMarketFeedPosts}
@@ -18195,6 +18454,7 @@ export default function SocialFeed({
         postAlertsEnabled={false}
       />
       </LoungeMarketFeedProvider>
+      </LoungePendingPublishActionsProvider>
       </LoungeStreamLightboxProvider>
     </div>
   )

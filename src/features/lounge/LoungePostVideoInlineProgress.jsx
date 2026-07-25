@@ -5,12 +5,18 @@ import {
   resolveLoungePendingPublishProgress,
   subscribeLoungePendingPostProgress,
 } from './loungePendingPostPublish.js'
+import { useLoungePendingPublishActions } from './LoungePendingPublishActionsContext.jsx'
 
 /** Max CSS blur on the poster at 0% publish progress. */
 export const LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX = 28
 
 export const LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG =
-  'Keep EdgeTilt open until processing finishes.'
+  'Keep EdgeTilt open until upload finishes.'
+
+export const LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG =
+  'You can switch apps. EdgeTilt will check again when you return.'
+
+export const LOUNGE_PENDING_PUBLISH_CANCEL_LABEL = 'Cancel'
 
 const LOUNGE_PENDING_PUBLISH_POSTER_TRANSITION =
   'filter 700ms ease-out, opacity 700ms ease-out'
@@ -151,6 +157,7 @@ export default function LoungePostVideoInlineProgress({
   cfPlaybackReady = false,
   fallbackProgress = 0,
 }) {
+  const { cancelPendingPublish } = useLoungePendingPublishActions()
   const { registryProgress, publishProgress, showOverlay } = useLoungePendingPublishDisplay(
     pendingKey,
     { cfPlaybackReady, fallbackProgress },
@@ -163,7 +170,20 @@ export default function LoungePostVideoInlineProgress({
     String(registryProgress?.status || '').trim() ||
     (publishProgress >= 0.9 ? 'Processing video…' : 'Preparing video…')
   const detail = String(registryProgress?.detail || '').trim()
+  const phase = String(registryProgress?.phase || '').trim()
+  const footnote =
+    phase === 'processing' || publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
+      ? LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG
+      : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
   const scrimOpacity = 0.18 + 0.32 * (1 - publishProgress)
+  const cancelKey = String(pendingKey || '').trim()
+
+  const onCancelClick = (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (!cancelKey) return
+    void cancelPendingPublish(cancelKey)
+  }
 
   if (variant === 'chip') {
     return (
@@ -204,9 +224,14 @@ export default function LoungePostVideoInlineProgress({
           />
         </div>
         <div className="text-[13px] font-bold tabular-nums text-cyan-200/95">{pct}%</div>
-        <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-amber-100/95">
-          {LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG}
-        </p>
+        <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-amber-100/95">{footnote}</p>
+        <button
+          type="button"
+          className="pointer-events-auto mt-2 touch-manipulation rounded-lg border border-zinc-500/70 bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-zinc-100 hover:border-zinc-400 hover:bg-black/70"
+          onClick={onCancelClick}
+        >
+          {LOUNGE_PENDING_PUBLISH_CANCEL_LABEL}
+        </button>
       </div>
     </div>
   )

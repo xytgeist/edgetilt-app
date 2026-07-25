@@ -6,6 +6,8 @@ import {
   canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
   isAndroidBrowser,
+  isLoungeAndroidBlockedIphoneSpatialDirectUpload,
+  loungeAndroidIphoneSpatialDirectUploadMessage,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
   waitForDocumentVisible,
@@ -52,6 +54,16 @@ export function loungeMediaPrepFailureDetails(message, lastStatus = '') {
   const msg = String(message || '').trim() || 'Video upload failed after multiple attempts.'
   const msgLower = msg.toLowerCase()
   const stLower = String(lastStatus || '').toLowerCase()
+  if (
+    msgLower.includes('trim editor') ||
+    msgLower.includes('cannot be posted directly on android')
+  ) {
+    return {
+      phase: 'Preparing video…',
+      dialogTitle: 'Use trim editor on Android',
+      message: msg,
+    }
+  }
   const encodeLike =
     msgLower.includes('encoding failed') ||
     msgLower.includes('ffmpeg') ||
@@ -166,6 +178,9 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
     }
     validatedDurSec = sourceDur
+    if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(source)) {
+      throw new Error(loungeAndroidIphoneSpatialDirectUploadMessage())
+    }
     if (canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
       const androidDirect = isAndroidBrowser()
       maybeReportLoungeVideoUploadDebug(

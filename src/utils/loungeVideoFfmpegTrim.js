@@ -2,7 +2,10 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
-import { extractBrowserVideoAudio } from './loungeVideoBrowserAudio.js'
+import {
+  extractBrowserVideoAudio,
+  hasBrowserVideoAudioUserActivation,
+} from './loungeVideoBrowserAudio.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLoungeVideoQuicktimeMov } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic:in_range=full:out_range=mpeg'
@@ -124,6 +127,19 @@ const DEMUX_LOGGING = [
   'ignore_err',
 ]
 
+/** Stream `#0:N` lines are INFO-level; `-loglevel warning` hides them and breaks output audio probes. */
+const PROBE_LOGGING = [
+  '-hide_banner',
+  '-loglevel',
+  'info',
+  '-analyzeduration',
+  '100M',
+  '-probesize',
+  '100M',
+  '-err_detect',
+  'ignore_err',
+]
+
 /**
  * @param {string} inputPath
  * @param {number} startSec
@@ -179,6 +195,13 @@ function decodableAudioStreamIndices(streams) {
     .map((s) => s.index)
 }
 
+/** Encoded MP4 output: accept any non-spatial audio track (wasm may label AAC differently). */
+function encodedOutputHasAudioStream(streams) {
+  return streams.some(
+    (s) => s.kind === 'audio' && s.codec !== 'none' && s.codec !== 'apac',
+  )
+}
+
 /** @param {{ index: number, kind: string, codec: string }[]} streams */
 function formatStreamProbeLog(streams) {
   if (!streams.length) return 'probe streams none'
@@ -205,7 +228,7 @@ function spatialBlockedAudioIndices(streams) {
 async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
   const { logs } = await execFfmpegLogged(
     ffmpeg,
-    [...DEMUX_LOGGING, '-i', inputPath],
+    [...PROBE_LOGGING, '-i', inputPath],
     signal,
   )
   return parseFfmpegInputStreams(logs)
@@ -218,7 +241,24 @@ async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
  */
 async function probeFfmpegOutputHasAudio(ffmpeg, outName, signal) {
   const streams = await probeFfmpegInputStreams(ffmpeg, outName, signal)
-  return decodableAudioStreamIndices(streams).length > 0
+  return encodedOutputHasAudioStream(streams)
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string} outName
+ * @param {AbortSignal | undefined} signal
+ */
+async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal) {
+  const streams = await probeFfmpegInputStreams(ffmpeg, outName, signal)
+  let bytes = 0
+  try {
+    const data = await ffmpeg.readFile(outName)
+    bytes = data instanceof Uint8Array ? data.byteLength : 0
+  } catch {
+    // ignore
+  }
+  return { streams, bytes }
 }
 
 /**
@@ -295,10 +335,13 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
   }
 
   if (spatialBlocked.includes(1) || forceIphoneSpatialGuess) {
+    // Explicit stream #2 first (Grok/native verified). Required maps — optional `?` silently drops audio.
+    pushStreamStrategy(2, false)
+    pushStreamStrategy(2, true)
     withAudio.push(
       {
         label: 'aac-second-audio-stream',
-        maps: ['-map', '0:v:0', '-map', '0:a:1?'],
+        maps: ['-map', '0:v:0', '-map', '0:a:1'],
         requireOutputAudio: true,
       },
       {
@@ -442,6 +485,8 @@ async function wasmReencodeToMp4({
     /** @type {string[]} */
     let lastLogs = []
     let lastCode = 1
+    /** @type {string} */
+    let lastFailureHint = ''
     /** @type {EncodeStrategy | null} */
     let winningStrategy = null
 
@@ -475,9 +520,17 @@ async function wasmReencodeToMp4({
             console.warn('[lounge-video-encode] output audio probe failed', probeOutErr)
           }
           if (!outHasAudio) {
+            let probeDetail = 'out probe none'
+            try {
+              const meta = await probeFfmpegOutputFileMeta(ffmpeg, outName, signal)
+              probeDetail = `${formatStreamProbeLog(meta.streams)} ${Math.round(meta.bytes / 1024)}KB`
+            } catch {
+              // ignore
+            }
+            lastFailureHint = `${strategy.label}: no output audio (${probeDetail})`
             maybeReportLoungeVideoUploadDebug(
               'encode',
-              `try ${strategy.label} no output audio track`,
+              `try ${strategy.label} no output audio track · ${probeDetail}`,
             )
             continue
           }
@@ -485,6 +538,7 @@ async function wasmReencodeToMp4({
         winningStrategy = strategy
         break
       }
+      lastFailureHint = `${strategy.label}: exit ${code}`
       console.warn('[lounge-video-encode]', strategy.label, 'exit', code, formatFfmpegLogTail(logs))
       maybeReportLoungeVideoUploadDebug(
         'encode',
@@ -492,11 +546,18 @@ async function wasmReencodeToMp4({
       )
     }
 
-    return { winningStrategy, lastCode, lastLogs }
+    return { winningStrategy, lastCode, lastLogs, lastFailureHint }
   }
 
   async function maybeExtractBrowserAudio() {
     if (!sourceHasAudio || browserAudioFile) return
+    if (isLikelyIphoneSpatialMov(file) && !hasBrowserVideoAudioUserActivation()) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        'browser audio skipped (activation=no on iOS MOV)',
+      )
+      return
+    }
     try {
       maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
       const extracted = await extractBrowserVideoAudio(
@@ -567,7 +628,7 @@ async function wasmReencodeToMp4({
       // ignore
     }
 
-    let { winningStrategy, lastCode, lastLogs } = await runEncodeStrategies(strategies)
+    let { winningStrategy, lastCode, lastLogs, lastFailureHint } = await runEncodeStrategies(strategies)
 
     if (!winningStrategy && sourceHasAudio) {
       await maybeExtractBrowserAudio()
@@ -579,26 +640,31 @@ async function wasmReencodeToMp4({
         strategies.unshift(
           {
             label: 'browser-audio-mux',
-            maps: ['-map', '0:v:0', '-map', '1:a:0?'],
+            maps: ['-map', '0:v:0', '-map', '1:a:0'],
             browserAudioFile,
             requireOutputAudio: true,
           },
           {
             label: 'browser-audio-copy-mux',
-            maps: ['-map', '0:v:0', '-map', '1:a:0?'],
+            maps: ['-map', '0:v:0', '-map', '1:a:0'],
             browserAudioFile,
             audioCopy: true,
             requireOutputAudio: true,
           },
         )
         encodeProgressBase = 0.12
-        ;({ winningStrategy, lastCode, lastLogs } = await runEncodeStrategies(strategies))
+        ;({ winningStrategy, lastCode, lastLogs, lastFailureHint } = await runEncodeStrategies(strategies))
       }
     }
 
     if (lastCode !== 0 || !winningStrategy) {
-      const tail = formatFfmpegLogTail(lastLogs)
-      throw new Error(tail ? `Video encoding failed. ${tail}` : `Video encoding failed (exit ${lastCode}).`)
+      const inputProbe = formatStreamProbeLog(probedStreams)
+      const hint = lastFailureHint || formatFfmpegLogTail(lastLogs)
+      throw new Error(
+        hint
+          ? `Video encoding failed (${inputProbe}). ${hint}`
+          : `Video encoding failed (exit ${lastCode}). ${inputProbe}`,
+      )
     }
 
     const outputHasAudio = winningStrategy.videoOnly

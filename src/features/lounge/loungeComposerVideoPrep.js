@@ -495,6 +495,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       await waitForDocumentVisible(signal)
       await waitForCfStreamManifestReady(uid, {
         signal,
+        supabaseClient,
         onUploadDiagnostic: uploadDiagnostic,
         onPoll: ({ elapsed }) => {
           const cap = 120_000

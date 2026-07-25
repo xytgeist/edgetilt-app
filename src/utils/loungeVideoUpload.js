@@ -1782,16 +1782,89 @@ export function probeCfStreamHlsReady(uid, signal) {
   })
 }
 
+/** Thrown when Cloudflare Stream reports `status.state: error` during publish polling. */
+export class LoungeCfStreamProcessingError extends Error {
+  /**
+   * @param {string} message
+   * @param {{ state?: string, errorReasonCode?: string, errorReasonText?: string } | null} [cfStatus]
+   */
+  constructor(message, cfStatus = null) {
+    super(message)
+    this.name = 'LoungeCfStreamProcessingError'
+    this.cfStatus = cfStatus
+  }
+}
+
+/** @param {unknown} err */
+export function isLoungeCfStreamProcessingError(err) {
+  return (
+    err instanceof LoungeCfStreamProcessingError ||
+    (err &&
+      typeof err === 'object' &&
+      /** @type {{ name?: string }} */ (err).name === 'LoungeCfStreamProcessingError')
+  )
+}
+
+/**
+ * @param {{ errorReasonText?: string, errorReasonCode?: string } | null | undefined} cfStatus
+ * @returns {string}
+ */
+export function loungeCfStreamProcessingErrorMessage(cfStatus) {
+  const reason = String(cfStatus?.errorReasonText || '').trim()
+  if (reason) {
+    return `Video couldn't be processed. ${reason}`
+  }
+  return "Video couldn't be processed. Cloudflare couldn't prepare this file for playback."
+}
+
+/**
+ * Poll Cloudflare Stream API for processing state (via Edge Function).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} uid
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<{ state: string, pctComplete: string, errorReasonCode: string, errorReasonText: string }>}
+ */
+export async function fetchCfStreamVideoProcessingStatus(supabaseClient, uid, signal) {
+  const id = String(uid || '').trim()
+  if (!id) throw new Error('Missing video id.')
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+
+  const { data, error, response: invokeResponse } = await supabaseClient.functions.invoke(
+    'lounge-cf-stream-video-status',
+    { body: { uid: id } },
+  )
+
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+
+  if (error) {
+    const msg = await messageFromFunctionsInvokeError(error, invokeResponse, {
+      functionName: 'lounge-cf-stream-video-status',
+      defaultUserMessage: 'Could not check video processing status.',
+    })
+    throw new Error(msg)
+  }
+
+  const state = String(data?.state || '').trim() || 'unknown'
+  return {
+    state,
+    pctComplete: String(data?.pctComplete || '').trim(),
+    errorReasonCode: String(data?.errorReasonCode || '').trim(),
+    errorReasonText: String(data?.errorReasonText || '').trim(),
+  }
+}
+
 /**
  * Poll until Stream HLS playback is ready (encoding finished).
- * Gates on real manifest parse / native HLS metadata — not thumbnail alone.
+ * When `supabaseClient` is set, also polls CF `status.state` and fails fast on `error`.
  * @param {string} uid
- * @param {{ timeoutMs?: number, intervalMs?: number, signal?: AbortSignal, onPoll?: (args: { elapsed: number }) => void, onUploadDiagnostic?: (detail: string) => void }} [options]
+ * @param {{ timeoutMs?: number, intervalMs?: number, signal?: AbortSignal, supabaseClient?: import('@supabase/supabase-js').SupabaseClient, onPoll?: (args: { elapsed: number }) => void, onUploadDiagnostic?: (detail: string) => void }} [options]
  */
 export async function waitForCfStreamManifestReady(uid, options = {}) {
   const timeoutMs = options.timeoutMs ?? 300_000
   const intervalMs = options.intervalMs ?? 1500
   const signal = options.signal
+  const supabaseClient = options.supabaseClient
   const onUploadDiagnostic =
     typeof options.onUploadDiagnostic === 'function' ? options.onUploadDiagnostic : undefined
   const id = String(uid || '').trim()
@@ -1818,6 +1891,36 @@ export async function waitForCfStreamManifestReady(uid, options = {}) {
       throw new Error('Video is still processing. Wait a bit and try posting again.')
     }
     options.onPoll?.({ elapsed })
+
+    if (supabaseClient) {
+      try {
+        const cfStatus = await fetchCfStreamVideoProcessingStatus(supabaseClient, id, signal)
+        if (cfStatus.state === 'error') {
+          logLoungeVideoUploadTelemetry(
+            {
+              phase: 'cf_stream_status_poll',
+              outcome: 'error',
+              cfState: cfStatus.state,
+              errorReasonCode: cfStatus.errorReasonCode,
+              errorReasonText: cfStatus.errorReasonText?.slice(0, 200),
+              videoUidPrefix: id.slice(0, 8),
+            },
+            onUploadDiagnostic,
+          )
+          throw new LoungeCfStreamProcessingError(
+            loungeCfStreamProcessingErrorMessage(cfStatus),
+            cfStatus,
+          )
+        }
+      } catch (e) {
+        if (isLoungeCfStreamProcessingError(e)) throw e
+        if (e && typeof e === 'object' && 'name' in e && /** @type {{ name?: string }} */ (e).name === 'AbortError') {
+          throw e
+        }
+        lastPollError = e instanceof Error ? e.message : String(e)
+      }
+    }
+
     try {
       if (await probeCfStreamHlsReady(id, signal)) return true
       lastPollError = ''

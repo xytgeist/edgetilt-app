@@ -172,9 +172,11 @@ export default function LoungePostVideoInlineProgress({
   const detail = String(registryProgress?.detail || '').trim()
   const phase = String(registryProgress?.phase || '').trim()
   const footnote =
-    phase === 'processing' || publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
-      ? LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG
-      : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
+    phase === 'error'
+      ? ''
+      : phase === 'processing' || publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
+        ? LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG
+        : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
   const scrimOpacity = 0.18 + 0.32 * (1 - publishProgress)
   const cancelKey = String(pendingKey || '').trim()
 
@@ -224,7 +226,9 @@ export default function LoungePostVideoInlineProgress({
           />
         </div>
         <div className="text-[13px] font-bold tabular-nums text-cyan-200/95">{pct}%</div>
-        <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-amber-100/95">{footnote}</p>
+        {footnote ? (
+          <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-amber-100/95">{footnote}</p>
+        ) : null}
         <button
           type="button"
           className="pointer-events-auto mt-2 touch-manipulation rounded-lg border border-zinc-500/70 bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-zinc-100 hover:border-zinc-400 hover:bg-black/70"

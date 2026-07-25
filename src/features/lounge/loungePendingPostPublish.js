@@ -1,4 +1,7 @@
-import { waitForCfStreamManifestReady } from '../../utils/loungeVideoUpload.js'
+import {
+  waitForCfStreamManifestReady,
+  isLoungeCfStreamProcessingError,
+} from '../../utils/loungeVideoUpload.js'
 import {
   loungeSubmissionSnapshotIncludesVideo,
   loungeSubmissionSnapshotThreadPartCount,
@@ -36,6 +39,7 @@ const stagedFeedPostPublishCompleteListeners = new Set()
 
 /** @typedef {{
  *   streamUid: string,
+ *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient,
  *   timeoutMs: number,
  *   abortController: AbortController | null,
  *   running: boolean,
@@ -84,6 +88,16 @@ async function runLoungeStagedFeedPostPublishLoop(postId) {
     })
   } catch (e) {
     if (e?.name === 'AbortError') return
+    if (isLoungeCfStreamProcessingError(e)) {
+      unregisterLoungeStagedFeedPostPublishJob(id)
+      setLoungePendingPostProgress(id, {
+        progress: 0.99,
+        status: "Video couldn't be processed",
+        detail: e instanceof Error ? e.message : String(e),
+        phase: 'error',
+      })
+      return
+    }
     console.warn('staged video publish:', e)
     setLoungePendingPostProgress(id, {
       progress: 0.99,
@@ -163,12 +177,23 @@ async function runPendingCommentCfPollLoop(commentId) {
     await waitForCfStreamManifestReady(job.streamUid, {
       signal: ac.signal,
       timeoutMs: job.timeoutMs,
+      supabaseClient: job.supabaseClient,
     })
     clearLoungePendingPostProgress(id)
     unregisterLoungePendingCommentVideoProcessing(id)
     notifyPendingCommentCfComplete({ commentId: id })
   } catch (e) {
     if (e?.name === 'AbortError') return
+    if (isLoungeCfStreamProcessingError(e)) {
+      unregisterLoungePendingCommentVideoProcessing(id)
+      setLoungePendingPostProgress(id, {
+        progress: 0.99,
+        status: "Video couldn't be processed",
+        detail: e instanceof Error ? e.message : String(e),
+        phase: 'error',
+      })
+      return
+    }
     console.warn('pending comment video CF wait:', e)
     setLoungePendingPostProgress(id, {
       progress: 0.99,
@@ -206,12 +231,14 @@ export function subscribeLoungePendingCommentVideoProcessingComplete(listener) {
  * @param {string} opts.streamUid
  * @param {string} [opts.pendingKey]
  * @param {number} [opts.timeoutMs]
+ * @param {import('@supabase/supabase-js').SupabaseClient} [opts.supabaseClient]
  */
 export function startLoungePendingCommentVideoProcessing({
   commentId,
   streamUid,
   pendingKey,
   timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+  supabaseClient,
 }) {
   const id = String(commentId || '').trim()
   const uid = String(streamUid || '').trim()
@@ -222,6 +249,7 @@ export function startLoungePendingCommentVideoProcessing({
   const prev = pendingCommentCfJobs.get(id)
   pendingCommentCfJobs.set(id, {
     streamUid: uid,
+    supabaseClient: supabaseClient ?? prev?.supabaseClient,
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
@@ -237,11 +265,13 @@ export function startLoungePendingCommentVideoProcessing({
  * @param {string} opts.commentId
  * @param {string} opts.streamUid
  * @param {number} [opts.timeoutMs]
+ * @param {import('@supabase/supabase-js').SupabaseClient} [opts.supabaseClient]
  */
 export function registerLoungePendingCommentVideoProcessingJob({
   commentId,
   streamUid,
   timeoutMs,
+  supabaseClient,
 }) {
   const id = String(commentId || '').trim()
   const uid = String(streamUid || '').trim()
@@ -249,6 +279,7 @@ export function registerLoungePendingCommentVideoProcessingJob({
   const prev = pendingCommentCfJobs.get(id)
   pendingCommentCfJobs.set(id, {
     streamUid: uid,
+    supabaseClient: supabaseClient ?? prev?.supabaseClient,
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
@@ -761,6 +792,7 @@ export async function publishLoungeFeedPostWhenStreamReady({
   onProgress?.({ progress: 0.92, status: 'Processing video…' })
   await waitForCfStreamManifestReady(uid, {
     signal,
+    supabaseClient,
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs

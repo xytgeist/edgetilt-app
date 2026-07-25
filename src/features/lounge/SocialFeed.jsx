@@ -3645,7 +3645,7 @@ export default function SocialFeed({
       const commentId = String(row.id || '').trim()
       const streamUid = String(row.stream_video_uid || '').trim()
       if (!commentId || !streamUid || loungePendingPublishIsOptimisticId(commentId)) continue
-      registerLoungePendingCommentVideoProcessingJob({ commentId, streamUid })
+      registerLoungePendingCommentVideoProcessingJob({ commentId, streamUid, supabaseClient })
     }
     resumeAllLoungePendingCfWaitJobs()
   }, [communityPosts, composerUserId, loungeDetailComments, supabaseClient])
@@ -11165,6 +11165,7 @@ export default function SocialFeed({
             commentId: row.id,
             streamUid,
             pendingKey: pendingPublishKey,
+            supabaseClient,
             timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs(
               snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
             ),
@@ -11820,6 +11821,7 @@ export default function SocialFeed({
             commentId: data.id,
             streamUid,
             pendingKey: pendingPublishKey,
+            supabaseClient,
             timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs(
               snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
             ),

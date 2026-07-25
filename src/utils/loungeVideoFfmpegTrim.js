@@ -158,6 +158,58 @@ function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
 
 const DECODABLE_AUDIO_CODECS = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'alac', 'mp4a'])
 
+/** @param {Uint8Array} haystack @param {string} needle */
+function indexOfAscii(haystack, needle) {
+  const n = needle.length
+  if (!n || haystack.length < n) return -1
+  outer: for (let i = 0; i <= haystack.length - n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (haystack[i + j] !== needle.charCodeAt(j)) continue outer
+    }
+    return i
+  }
+  return -1
+}
+
+/**
+ * faststart MP4 keeps `moov` near the front — scan there for AAC sample entry + sound handler.
+ * iOS wasm often emits no parseable `Stream #0:N` log lines, so atom scan is the reliable check.
+ * @param {Uint8Array | ArrayBuffer} data
+ */
+function mp4BytesLikelyHasAudio(data) {
+  const u8 = data instanceof Uint8Array ? data : new Uint8Array(data)
+  if (u8.byteLength < 64) return false
+  const head = u8.subarray(0, Math.min(u8.byteLength, 768 * 1024))
+  const hasMp4a = indexOfAscii(head, 'mp4a') >= 0
+  const hasSoun = indexOfAscii(head, 'soun') >= 0
+  const hasAacSample = indexOfAscii(head, 'aac ') >= 0
+  return hasMp4a && (hasSoun || hasAacSample)
+}
+
+/** @param {string[]} logs encode stderr from a completed ffmpeg exec */
+function encodeLogsIndicateAudioMux(logs) {
+  let inMapping = false
+  for (const raw of logs) {
+    const line = String(raw || '')
+    if (/^Stream mapping:/i.test(line)) {
+      inMapping = true
+      continue
+    }
+    if (inMapping) {
+      if (!line.trim()) {
+        inMapping = false
+        continue
+      }
+      if (/Stream #0:\d+ -> #0:\d+/i.test(line) && /\(aac|\(mp3|\(opus|\(flac|\(alac|\(mp4a/i.test(line)) {
+        return true
+      }
+      if (!line.startsWith('  Stream')) inMapping = false
+    }
+    if (/Output #0.*,\s*mp4/i.test(line) && /\baudio:/i.test(line)) return true
+  }
+  return false
+}
+
 /**
  * @param {string[]} logs ffmpeg `-i` demuxer lines
  * @returns {{ index: number, kind: string, codec: string }[]}
@@ -167,8 +219,13 @@ function parseFfmpegInputStreams(logs) {
   const streams = []
   for (const raw of logs) {
     const line = String(raw || '')
-    const m =
+      .replace(/^\[[^\]]+\]\s*/, '')
+      .trim()
+    let m =
       /Stream #0:(\d+)(?:\[\d+\])?(?:\([^)]*\))?: (Video|Audio|Data|Subtitle): (\S+)/i.exec(line)
+    if (!m) {
+      m = /Stream #0:(\d+)\([^)]*\):\s*(Video|Audio|Data|Subtitle):\s*(\S+)/i.exec(line)
+    }
     if (!m) continue
     streams.push({
       index: Number(m[1]),
@@ -238,10 +295,28 @@ async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
  * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
  * @param {string} outName
  * @param {AbortSignal | undefined} signal
+ * @param {{ encodeLogs?: string[] }} [opts]
+ * @returns {Promise<{ hasAudio: boolean, via: string }>}
  */
-async function probeFfmpegOutputHasAudio(ffmpeg, outName, signal) {
+async function probeEncodedOutputHasAudio(ffmpeg, outName, signal, opts = {}) {
   const streams = await probeFfmpegInputStreams(ffmpeg, outName, signal)
-  return encodedOutputHasAudioStream(streams)
+  if (encodedOutputHasAudioStream(streams)) {
+    return { hasAudio: true, via: 'ffprobe' }
+  }
+  let bytes = /** @type {Uint8Array | null} */ (null)
+  try {
+    const data = await ffmpeg.readFile(outName)
+    bytes = data instanceof Uint8Array ? data : new Uint8Array(data)
+    if (mp4BytesLikelyHasAudio(bytes)) {
+      return { hasAudio: true, via: 'mp4a-atom' }
+    }
+  } catch {
+    // ignore
+  }
+  if (Array.isArray(opts.encodeLogs) && encodeLogsIndicateAudioMux(opts.encodeLogs)) {
+    return { hasAudio: true, via: 'encode-log' }
+  }
+  return { hasAudio: false, via: 'none' }
 }
 
 /**
@@ -249,16 +324,36 @@ async function probeFfmpegOutputHasAudio(ffmpeg, outName, signal) {
  * @param {string} outName
  * @param {AbortSignal | undefined} signal
  */
-async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal) {
+async function probeFfmpegOutputHasAudio(ffmpeg, outName, signal) {
+  const { hasAudio } = await probeEncodedOutputHasAudio(ffmpeg, outName, signal)
+  return hasAudio
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string} outName
+ * @param {AbortSignal | undefined} signal
+ * @param {{ encodeLogs?: string[] }} [opts]
+ */
+async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal, opts = {}) {
   const streams = await probeFfmpegInputStreams(ffmpeg, outName, signal)
   let bytes = 0
+  let mp4a = false
+  let verifyVia = 'none'
   try {
     const data = await ffmpeg.readFile(outName)
-    bytes = data instanceof Uint8Array ? data.byteLength : 0
+    const u8 = data instanceof Uint8Array ? data : new Uint8Array(data)
+    bytes = u8.byteLength
+    mp4a = mp4BytesLikelyHasAudio(u8)
+    if (mp4a) verifyVia = 'mp4a-atom'
+    else if (encodedOutputHasAudioStream(streams)) verifyVia = 'ffprobe'
+    else if (Array.isArray(opts.encodeLogs) && encodeLogsIndicateAudioMux(opts.encodeLogs)) {
+      verifyVia = 'encode-log'
+    }
   } catch {
     // ignore
   }
-  return { streams, bytes }
+  return { streams, bytes, mp4a, verifyVia }
 }
 
 /**
@@ -335,9 +430,9 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
   }
 
   if (spatialBlocked.includes(1) || forceIphoneSpatialGuess) {
-    // Explicit stream #2 first (Grok/native verified). Required maps — optional `?` silently drops audio.
-    pushStreamStrategy(2, false)
+    // Copy AAC from stream #2 before re-encode (lighter; wasm AAC encoder can flake on iOS).
     pushStreamStrategy(2, true)
+    pushStreamStrategy(2, false)
     withAudio.push(
       {
         label: 'aac-second-audio-stream',
@@ -465,6 +560,12 @@ async function wasmReencodeToMp4({
     probedStreams = await probeFfmpegInputStreams(ffmpeg, inputPath, signal)
     audioStreamIndices = decodableAudioStreamIndices(probedStreams)
     maybeReportLoungeVideoUploadDebug('encode', formatStreamProbeLog(probedStreams))
+    if (probedStreams.length === 0 && isLikelyIphoneSpatialMov(file)) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        'input probe no ffmpeg stream lines (iOS wasm); assuming spatial+aac MOV',
+      )
+    }
     if (audioStreamIndices.length > 0) {
       maybeReportLoungeVideoUploadDebug(
         'encode',
@@ -514,16 +615,23 @@ async function wasmReencodeToMp4({
           sourceHasAudio && !strategy.videoOnly && strategy.requireOutputAudio !== false
         if (needsOutputAudio) {
           let outHasAudio = false
+          let verifyVia = 'none'
           try {
-            outHasAudio = await probeFfmpegOutputHasAudio(ffmpeg, outName, signal)
+            const verified = await probeEncodedOutputHasAudio(ffmpeg, outName, signal, {
+              encodeLogs: logs,
+            })
+            outHasAudio = verified.hasAudio
+            verifyVia = verified.via
           } catch (probeOutErr) {
             console.warn('[lounge-video-encode] output audio probe failed', probeOutErr)
           }
           if (!outHasAudio) {
             let probeDetail = 'out probe none'
             try {
-              const meta = await probeFfmpegOutputFileMeta(ffmpeg, outName, signal)
-              probeDetail = `${formatStreamProbeLog(meta.streams)} ${Math.round(meta.bytes / 1024)}KB`
+              const meta = await probeFfmpegOutputFileMeta(ffmpeg, outName, signal, {
+                encodeLogs: logs,
+              })
+              probeDetail = `${formatStreamProbeLog(meta.streams)} ${Math.round(meta.bytes / 1024)}KB mp4a=${meta.mp4a ? 'yes' : 'no'} via=${meta.verifyVia}`
             } catch {
               // ignore
             }
@@ -534,6 +642,10 @@ async function wasmReencodeToMp4({
             )
             continue
           }
+          maybeReportLoungeVideoUploadDebug(
+            'encode',
+            `try ${strategy.label} output audio ok via=${verifyVia}`,
+          )
         }
         winningStrategy = strategy
         break

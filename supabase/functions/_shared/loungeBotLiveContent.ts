@@ -591,6 +591,21 @@ export async function tryPublishLiveGameContent(
       const scoreLine = formatLiveScoreLine(home, away, scoreRow?.scores)
 
       const eventPicks = livePicks.filter((p) => p.eventId === eventId)
+      if (!eventPicks.length) {
+        if (!dryRun) {
+          await upsertPeriodState(
+            admin,
+            bot.user_id,
+            eventId,
+            sportKey,
+            milestone.key,
+            parseScoreValue(scoreRow?.scores, home),
+            parseScoreValue(scoreRow?.scores, away),
+          )
+        }
+        continue
+      }
+
       const contextNote = dryRun
         ? null
         : await fetchRundownContextNote('period_report', {

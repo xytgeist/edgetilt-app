@@ -143,6 +143,11 @@ export function prefetchFfmpegCore() {
   return getFfmpeg().then(() => {})
 }
 
+/** @returns {boolean} */
+function isAndroidBrowser() {
+  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+}
+
 const DEMUX_LOGGING = [
   '-hide_banner',
   '-loglevel',
@@ -330,12 +335,20 @@ function shouldSkipWasmInputProbe(file, sourceHasAudio) {
   return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
 }
 
-/** Scale per-strategy wasm encode wait with source size (working encodes usually finish well under this). */
-function encodeStrategyTimeoutMs(fileBytes) {
+/** No ffmpeg progress/log activity → strategy is wedged (iPhone emits ticks every few seconds when alive). */
+const ENCODE_STALL_MS = 12_000
+const ENCODE_STALL_MS_VIDEO_COPY = 8_000
+
+/** @param {number} fileBytes @param {EncodeStrategy | undefined} strategy @returns {{ stallMs: number, maxMs: number }} */
+function encodeStrategyWatchLimits(fileBytes, strategy) {
   const mb = typeof fileBytes === 'number' && Number.isFinite(fileBytes) ? fileBytes / (1024 * 1024) : 0
-  if (mb >= 50) return 180_000
-  if (mb >= 20) return 150_000
-  return 90_000
+  if (strategy?.videoCopy) {
+    return { stallMs: ENCODE_STALL_MS_VIDEO_COPY, maxMs: 60_000 }
+  }
+  let maxMs = 90_000
+  if (mb >= 50) maxMs = 180_000
+  else if (mb >= 20) maxMs = 150_000
+  return { stallMs: ENCODE_STALL_MS, maxMs }
 }
 
 /**
@@ -452,8 +465,8 @@ async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal, opts = {}) {
  * @param {string} outName
  */
 function buildOutputArgs(vf, strategy, outName) {
-  const vfChain = vf.includes('format=') ? vf : `format=yuv420p,${vf}`
   const videoOnly = Boolean(strategy.videoOnly)
+  const videoCopy = Boolean(strategy.videoCopy)
   /** @type {string[]} */
   let maps = []
   if (Array.isArray(strategy.maps) && strategy.maps.length > 0) {
@@ -463,8 +476,6 @@ function buildOutputArgs(vf, strategy, outName) {
   } else if (strategy.useMaps) {
     maps = ['-map', '0:v:0', '-map', '0:a:0?']
   }
-  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', LOUNGE_ENCODE_CRF, '-pix_fmt', 'yuv420p']
-  const videoFilters = ['-vf', vfChain]
   let audio
   if (videoOnly) {
     audio = ['-an']
@@ -474,6 +485,12 @@ function buildOutputArgs(vf, strategy, outName) {
     audio = ['-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100']
   }
   const mux = ['-movflags', '+faststart', '-y', outName]
+  if (videoCopy) {
+    return [...maps, '-c:v', 'copy', ...audio, ...mux]
+  }
+  const vfChain = vf.includes('format=') ? vf : `format=yuv420p,${vf}`
+  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', LOUNGE_ENCODE_CRF, '-pix_fmt', 'yuv420p']
+  const videoFilters = ['-vf', vfChain]
   return [...maps, ...video, ...videoFilters, ...audio, ...mux]
 }
 
@@ -484,6 +501,7 @@ function buildOutputArgs(vf, strategy, outName) {
  *   forceSsBeforeInput?: boolean,
  *   useMaps?: boolean,
  *   audioCopy?: boolean,
+ *   videoCopy?: boolean,
  *   maps?: string[],
  *   requireOutputAudio?: boolean,
  *   browserAudioFile?: string,
@@ -584,32 +602,104 @@ async function execFfmpegLogged(ffmpeg, args, signal) {
 }
 
 /**
+ * Run ffmpeg with a stall watchdog (no progress/log) plus an absolute max backstop.
  * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
  * @param {string[]} args
  * @param {AbortSignal | undefined} signal
- * @param {number} timeoutMs
+ * @param {{ stallMs: number, maxMs: number }} limits
  */
-async function execFfmpegLoggedWithTimeout(ffmpeg, args, signal, timeoutMs) {
+async function execFfmpegLoggedWithStallWatch(ffmpeg, args, signal, limits) {
+  const { stallMs, maxMs } = limits
   const execAbort = new AbortController()
   const onParentAbort = () => execAbort.abort()
   signal?.addEventListener('abort', onParentAbort, { once: true })
 
-  let timedOut = false
+  /** @type {string[]} */
+  const logs = []
+  let done = false
   /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let timer = setTimeout(() => {
-    timedOut = true
-    execAbort.abort()
-  }, timeoutMs)
-  try {
-    return await execFfmpegLogged(ffmpeg, args, execAbort.signal)
-  } catch (err) {
-    if (timedOut || execAbort.signal.aborted) {
-      return { code: -1, logs: [`strategy timed out after ${Math.round(timeoutMs / 1000)}s`], timedOut: true }
-    }
-    throw err
-  } finally {
-    if (timer) clearTimeout(timer)
+  let stallTimer
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let maxTimer
+  /** @type {((result: { code: number, logs: string[], stalled: boolean, timedOut: boolean }) => void) | null} */
+  let resolveEarly = null
+
+  /** @param {{ code: number, logs: string[], stalled: boolean, timedOut: boolean }} result */
+  const complete = (result) => {
+    if (done) return result
+    done = true
+    if (stallTimer) clearTimeout(stallTimer)
+    if (maxTimer) clearTimeout(maxTimer)
+    ffmpeg.off('log', onLog)
+    ffmpeg.off('progress', onActivity)
     signal?.removeEventListener('abort', onParentAbort)
+    return result
+  }
+
+  const armStall = () => {
+    if (done) return
+    if (stallTimer) clearTimeout(stallTimer)
+    stallTimer = setTimeout(() => {
+      execAbort.abort()
+      resolveEarly?.({
+        code: -1,
+        logs: [...logs, `strategy stalled (no ffmpeg activity ${Math.round(stallMs / 1000)}s)`],
+        stalled: true,
+        timedOut: false,
+      })
+    }, stallMs)
+  }
+
+  const onLog = ({ message }) => {
+    if (message) {
+      logs.push(String(message).trim())
+      armStall()
+    }
+  }
+  const onActivity = () => armStall()
+
+  ffmpeg.on('log', onLog)
+  ffmpeg.on('progress', onActivity)
+  armStall()
+
+  maxTimer = setTimeout(() => {
+    execAbort.abort()
+    resolveEarly?.({
+      code: -1,
+      logs: [...logs, `strategy max wait ${Math.round(maxMs / 1000)}s`],
+      stalled: false,
+      timedOut: true,
+    })
+  }, maxMs)
+
+  const watchPromise = new Promise((resolve) => {
+    resolveEarly = (result) => resolve(complete(result))
+  })
+
+  const execPromise = ffmpeg
+    .exec(args, undefined, { signal: execAbort.signal })
+    .then((code) => complete({ code, logs, stalled: false, timedOut: false }))
+    .catch((err) => {
+      if (done) {
+        return complete({
+          code: -1,
+          logs,
+          stalled: true,
+          timedOut: false,
+        })
+      }
+      throw err
+    })
+
+  try {
+    return await Promise.race([execPromise, watchPromise])
+  } catch (err) {
+    return complete({
+      code: -1,
+      logs: [...logs, err instanceof Error ? err.message : String(err)],
+      stalled: false,
+      timedOut: false,
+    })
   }
 }
 
@@ -743,10 +833,10 @@ async function wasmReencodeToMp4({
     let lastFailureHint = ''
     /** @type {EncodeStrategy | null} */
     let winningStrategy = null
-    const strategyTimeoutMs = encodeStrategyTimeoutMs(file.size)
 
     for (const strategy of strategies) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      const watchLimits = encodeStrategyWatchLimits(file.size, strategy)
       maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
       if (typeof onProgress === 'function') {
         onProgress(encodeProgressBase + 0.03)
@@ -765,20 +855,31 @@ async function wasmReencodeToMp4({
         args.push('-i', strategy.browserAudioFile)
       }
       args.push(...buildOutputArgs(vf, strategy, outName))
-      const { code, logs, timedOut } = await execFfmpegLoggedWithTimeout(
+      const { code, logs, timedOut, stalled } = await execFfmpegLoggedWithStallWatch(
         ffmpeg,
         args,
         signal,
-        strategyTimeoutMs,
+        watchLimits,
       )
       lastCode = code
       lastLogs = logs
-      if (timedOut) {
-        lastFailureHint = `${strategy.label}: timed out`
+      if (stalled || timedOut) {
+        lastFailureHint = stalled
+          ? `${strategy.label}: stalled (no ffmpeg activity)`
+          : `${strategy.label}: max wait`
         maybeReportLoungeVideoUploadDebug(
           'encode',
-          `try ${strategy.label} timed out after ${Math.round(strategyTimeoutMs / 1000)}s`,
+          stalled
+            ? `try ${strategy.label} stalled (no ffmpeg activity ${Math.round(watchLimits.stallMs / 1000)}s)`
+            : `try ${strategy.label} max wait ${Math.round(watchLimits.maxMs / 1000)}s`,
         )
+        try {
+          await remountInputAfterCoreReset(
+            stalled ? `strategy ${strategy.label} stall` : `strategy ${strategy.label} max wait`,
+          )
+        } catch (resetErr) {
+          console.warn('[lounge-video-encode] wasm reset after strategy watchdog failed', resetErr)
+        }
         continue
       }
       if (code === 0) {
@@ -912,6 +1013,25 @@ async function wasmReencodeToMp4({
       'encode',
       `spatial blocked audio [${spatialBlocked.join(',')}]`,
     )
+  }
+
+  if (isAndroidBrowser() && useSpatialAudioLadder && sourceHasAudio) {
+    maybeReportLoungeVideoUploadDebug('encode', 'android spatial: browser audio first')
+    await maybeExtractBrowserAudio()
+    if (browserAudioFile) {
+      strategies.unshift({
+        label: 'browser-audio-vcopy-mux',
+        maps: ['-map', '0:v:0', '-map', '1:a:0'],
+        browserAudioFile,
+        videoCopy: true,
+        audioCopy: true,
+        requireOutputAudio: true,
+      })
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `encode plan ${strategies.map((s) => s.label).join(', ') || 'none'}`,
+      )
+    }
   }
 
   try {

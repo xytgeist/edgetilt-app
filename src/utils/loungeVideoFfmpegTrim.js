@@ -6,7 +6,7 @@ import {
   extractBrowserVideoAudio,
   hasBrowserVideoAudioUserActivation,
 } from './loungeVideoBrowserAudio.js'
-import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLoungeVideoQuicktimeMov } from './loungeVideoUpload.js'
+import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLoungeVideoQuicktimeMov, isLoungeVideoMp4Container } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic:in_range=full:out_range=mpeg'
 const LOUNGE_ENCODE_CRF = '30'
@@ -740,12 +740,20 @@ function formatFfmpegLogTail(logs) {
   return tail.length > 240 ? `${tail.slice(0, 237)}…` : tail
 }
 
-/** Android + iPhone spatial MOV only (not native large MP4 — those skip wasm via canSkipLoungeVideoWasmEncode). */
+/** Android + iPhone spatial MOV only. */
 function shouldUseAndroidIphoneSpatialPath(file, sourceHasAudio) {
   if (!isAndroidBrowser() || !sourceHasAudio) return false
   const n = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0
   if (n < SKIP_WASM_INPUT_PROBE_MIN_BYTES) return false
   return isLikelyIphoneSpatialMov(file) || isLoungeVideoQuicktimeMov(file)
+}
+
+/** Android native large MP4: standard wasm + browser-audio reencode (not iPhone spatial ladder). */
+function shouldUseAndroidNativeLargeEncodePath(file, sourceHasAudio) {
+  if (!isAndroidBrowser() || !sourceHasAudio) return false
+  if (isLikelyIphoneSpatialMov(file) || isLoungeVideoQuicktimeMov(file)) return false
+  const n = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0
+  return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES && isLoungeVideoMp4Container(file)
 }
 
 /** iPhone spatial: AAC fallback usually on stream #2 (0:a:1); copy both tracks into MP4. */
@@ -858,7 +866,13 @@ async function runWasmEncodeStrategyLoop(ffmpeg, ctx) {
 
 /** @returns {EncodeStrategy[]} */
 function buildBrowserAudioMuxStrategies(browserAudioFile) {
-  return [
+  return buildBrowserAudioMuxStrategiesOrdered(browserAudioFile, 'vcopy-first')
+}
+
+/** @param {'vcopy-first' | 'reencode-first'} order */
+function buildBrowserAudioMuxStrategiesOrdered(browserAudioFile, order) {
+  /** @type {EncodeStrategy[]} */
+  const strategies = [
     {
       label: 'browser-audio-vcopy-mux',
       maps: ['-map', '0:v:0', '-map', '1:a:0'],
@@ -880,22 +894,24 @@ function buildBrowserAudioMuxStrategies(browserAudioFile) {
       requireOutputAudio: true,
     },
   ]
+  if (order === 'reencode-first') {
+    return [strategies[2], strategies[1], strategies[0]]
+  }
+  return strategies
 }
 
 /**
- * Android + iPhone spatial MOV: one wasm stream-copy attempt, then fail fast (edge case).
- *
- * @param {object} opts
- * @param {File} opts.file
- * @param {number} opts.startSec
- * @param {number} opts.endSec
- * @param {number} opts.dur
- * @param {string} opts.outName
- * @param {string} opts.inName
- * @param {AbortSignal | undefined} opts.signal
- * @param {(ratio01: number) => void} [opts.onProgress]
- * @param {string} opts.outBaseName
- * @param {string} opts.outSuffix
+ * @param {Uint8Array} buf
+ * @param {string} outBaseName
+ * @param {string} outSuffix
+ */
+function wasmOutputFileFromBuffer(buf, outBaseName, outSuffix) {
+  if (!buf.byteLength) throw new Error('Video encoding failed (empty output).')
+  return new File([buf], `${outBaseName || 'clip'}-${outSuffix}.mp4`, { type: 'video/mp4' })
+}
+
+/**
+ * Android + iPhone spatial MOV: wasm stream copy, then composer uploads raw on failure.
  */
 async function wasmAndroidLargePrimaryPath({
   file,
@@ -911,7 +927,7 @@ async function wasmAndroidLargePrimaryPath({
 }) {
   maybeReportLoungeVideoUploadDebug(
     'encode',
-    'android iPhone spatial: vcopy+acopy stream copy (fail fast)',
+    'android iPhone spatial: vcopy+acopy stream copy',
   )
 
   maybeReportLoungeVideoUploadDebug('encode', 'wasm core loading')
@@ -956,9 +972,160 @@ async function wasmAndroidLargePrimaryPath({
 
     if (!winningStrategy) {
       const hint = loopResult?.lastFailureHint || 'stream copy failed'
-      throw new Error(
-        `iPhone videos can't be processed on Android (${hint}). Export as MP4 on iPhone first.`,
+      throw new Error(`Video encoding failed (${hint}).`)
+    }
+
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `success ${winningStrategy.label} outAudio=yes`,
+    )
+
+    const data = await ffmpeg.readFile(outName)
+    try {
+      await ffmpeg.deleteFile(outName)
+    } catch {
+      // ignore
+    }
+
+    const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
+    const outFile = wasmOutputFileFromBuffer(buf, outBaseName, outSuffix)
+    if (typeof onProgress === 'function') onProgress(1)
+    return outFile
+  } finally {
+    ffmpeg.off('progress', onProg)
+    if (mode) await uninstallTrimInput(ffmpeg, mode, inName)
+  }
+}
+
+/**
+ * Android native large MP4: wasm reencode, then browser-audio mux (reencode-first).
+ *
+ * @param {object} opts
+ * @param {File} opts.file
+ * @param {number} opts.startSec
+ * @param {number} opts.endSec
+ * @param {number} opts.dur
+ * @param {string} opts.outName
+ * @param {string} opts.inName
+ * @param {string} opts.vf
+ * @param {AbortSignal | undefined} opts.signal
+ * @param {(ratio01: number) => void} [opts.onProgress]
+ * @param {string} opts.outBaseName
+ * @param {string} opts.outSuffix
+ */
+async function wasmAndroidNativeLargeEncodePath({
+  file,
+  startSec,
+  endSec,
+  dur,
+  outName,
+  inName,
+  vf,
+  signal,
+  onProgress,
+  outBaseName,
+  outSuffix,
+}) {
+  maybeReportLoungeVideoUploadDebug('encode', 'android native large: wasm reencode + browser audio fallback')
+
+  maybeReportLoungeVideoUploadDebug('encode', 'wasm core loading')
+  let ffmpeg = await getFfmpeg()
+  maybeReportLoungeVideoUploadDebug('encode', 'wasm core ready')
+
+  let mode
+  let inputPath
+  const onProg = ({ progress }) => {
+    if (typeof onProgress !== 'function') return
+    const p = typeof progress === 'number' ? progress : 0
+    const r = p <= 1 ? p : p / 100
+    onProgress(0.08 + r * 0.92)
+  }
+  ffmpeg.on('progress', onProg)
+
+  /** @type {string | null} */
+  let browserAudioFile = null
+
+  try {
+    ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))
+    maybeReportLoungeVideoUploadDebug('encode', `input mounted ${mode}`)
+
+    const wasmStrategies = /** @type {EncodeStrategy[]} */ ([
+      {
+        label: 'aac-mapped-default',
+        useMaps: true,
+        requireOutputAudio: true,
+      },
+    ])
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `encode plan ${wasmStrategies.map((s) => s.label).join(', ')}`,
+    )
+
+    let loopResult = await runWasmEncodeStrategyLoop(ffmpeg, {
+      file,
+      inputPath,
+      startSec,
+      dur,
+      outName,
+      vf,
+      strategies: wasmStrategies,
+      signal,
+    })
+
+    let winningStrategy = loopResult?.winningStrategy ?? null
+
+    if (!winningStrategy) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `wasm reencode failed (${loopResult?.lastFailureHint || 'unknown'}), browser audio`,
       )
+      let extracted
+      try {
+        maybeReportLoungeVideoUploadDebug('encode', 'browser audio extract start')
+        extracted = await extractBrowserVideoAudio(
+          file,
+          startSec,
+          endSec,
+          signal,
+          (r) => {
+            if (typeof onProgress !== 'function') return
+            onProgress(Math.min(0.4, Math.max(0, r) * 0.4))
+          },
+          (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
+        )
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `browser audio extract ok ${extracted.method} ${Math.round(extracted.blob.size / 1024)}KB`,
+        )
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        const hint = loopResult?.lastFailureHint || 'wasm reencode failed'
+        throw new Error(`Video encoding failed (${hint}; browser audio: ${msg}).`)
+      }
+
+      browserAudioFile = `browser_audio${extracted.ext}`
+      await ffmpeg.writeFile(browserAudioFile, await fetchFile(extracted.blob))
+
+      const browserStrategies = buildBrowserAudioMuxStrategiesOrdered(browserAudioFile, 'reencode-first')
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `browser mux plan ${browserStrategies.map((s) => s.label).join(', ')}`,
+      )
+      loopResult = await runWasmEncodeStrategyLoop(ffmpeg, {
+        file,
+        inputPath,
+        startSec,
+        dur,
+        outName,
+        vf,
+        strategies: browserStrategies,
+        signal,
+      })
+      winningStrategy = loopResult?.winningStrategy ?? null
+      if (!winningStrategy) {
+        const hint = loopResult?.lastFailureHint || 'browser mux failed'
+        throw new Error(`Video encoding failed (${hint}).`)
+      }
     }
 
     maybeReportLoungeVideoUploadDebug(
@@ -980,12 +1147,10 @@ async function wasmAndroidLargePrimaryPath({
       }
     }
 
-  const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
-    if (!buf.byteLength) throw new Error('Video encoding failed (empty output).')
-
-    const outFile = new File([buf], `${outBaseName || 'clip'}-${outSuffix}.mp4`, { type: 'video/mp4' })
-  if (typeof onProgress === 'function') onProgress(1)
-  return outFile
+    const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
+    const outFile = wasmOutputFileFromBuffer(buf, outBaseName, outSuffix)
+    if (typeof onProgress === 'function') onProgress(1)
+    return outFile
   } finally {
     ffmpeg.off('progress', onProg)
     if (mode) await uninstallTrimInput(ffmpeg, mode, inName)
@@ -1032,6 +1197,22 @@ async function wasmReencodeToMp4({
       dur,
       outName,
       inName,
+      signal,
+      onProgress,
+      outBaseName,
+      outSuffix,
+    })
+  }
+
+  if (shouldUseAndroidNativeLargeEncodePath(file, sourceHasAudio)) {
+    return wasmAndroidNativeLargeEncodePath({
+      file,
+      startSec: start,
+      endSec: end,
+      dur,
+      outName,
+      inName,
+      vf,
       signal,
       onProgress,
       outBaseName,

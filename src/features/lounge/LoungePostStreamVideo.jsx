@@ -672,6 +672,14 @@ export default function LoungePostStreamVideo({
   const posterRetryTimerRef = useRef(0)
   const posterAttemptRef = useRef(0)
   const id = String(uid || '').trim()
+  /** False until CF Stream HLS manifest probe succeeds (staged publish unblur). */
+  const [cfStreamPlaybackReady, setCfStreamPlaybackReady] = useState(false)
+  const pendingPublishBlocksStreamMount = Boolean(
+    authorPendingPublish && pendingPublishKey && !cfStreamPlaybackReady,
+  )
+  const effectiveFeedAutoplayClientId = pendingPublishBlocksStreamMount
+    ? undefined
+    : feedAutoplayClientId
   const src = cfStreamManifestUrl(id)
   const poster = cfStreamPosterUrl(id, 720)
   const posterDisplayUrl = useMemo(() => {
@@ -689,7 +697,7 @@ export default function LoungePostStreamVideo({
   const showOpen = enableLightbox && variant !== 'composer'
   const heroExpanded = lightboxOpen && heroPhase !== 'idle'
   /** Mid-scroll winner + lazy HLS when registered with `LoungeFeedVideoAutoplayProvider` (feed, embed, post-detail comments). */
-  const lazyStream = showOpen && Boolean(feedAutoplayClientId)
+  const lazyStream = showOpen && Boolean(effectiveFeedAutoplayClientId)
 
   useEffect(() => {
     let cancelled = false
@@ -806,7 +814,7 @@ export default function LoungePostStreamVideo({
     exitFeedHeroLock,
     registerFeedSoundGesture,
     isFeedSoundTouchActive,
-  } = useLoungeFeedVideoAutoplay(feedAutoplayClientId, getVideoContainer)
+  } = useLoungeFeedVideoAutoplay(effectiveFeedAutoplayClientId, getVideoContainer)
   const videoDebugEnabled = useSyncExternalStore(
     subscribeLoungeFeedVideoDebugEnabled,
     readLoungeFeedVideoDebugEnabled,
@@ -916,15 +924,18 @@ export default function LoungePostStreamVideo({
     heroExpanded || lightboxOpen
       ? Boolean(id)
       : lazyStream
-        ? feedAutoplayEnabled && (coordinatorActive ? inRing || ringHlsHeld : streamInView)
+        ? feedAutoplayEnabled &&
+          !pendingPublishBlocksStreamMount &&
+          (coordinatorActive ? inRing || ringHlsHeld : streamInView)
         : true
   /** iOS: ≤5 inline `<video>` nodes (ring + lookahead); HLS only on ring (≤3). */
-  const mountStreamVideo = Boolean(id) && (
-    (coordinatorActive && inDomBudget) ||
-    heroExpanded ||
-    lightboxOpen ||
-    (!coordinatorActive && lazyStream && streamInView)
-  )
+  const mountStreamVideo =
+    Boolean(id) &&
+    !pendingPublishBlocksStreamMount &&
+    ((coordinatorActive && inDomBudget) ||
+      heroExpanded ||
+      lightboxOpen ||
+      (!coordinatorActive && lazyStream && streamInView))
   const ringWarmPrefetch = coordinatorActive && inRing && !isActive && attachStream
   const hasDecodedStreamMetadata = Boolean(
     videoRef.current && videoRef.current.readyState >= HTMLMediaElement.HAVE_METADATA,
@@ -1761,8 +1772,6 @@ export default function LoungePostStreamVideo({
   const tryMseNativeFallbackRef = useRef(tryMseNativeFallback)
   tryMseNativeFallbackRef.current = tryMseNativeFallback
 
-  /** False until CF Stream HLS manifest probe succeeds (post went live with skipManifestWait). */
-  const [cfStreamPlaybackReady, setCfStreamPlaybackReady] = useState(false)
   const publishBlurProgress = resolveLoungePendingPublishProgress(
     pendingUploadProgress?.progress ?? (authorPendingPublish ? 0.86 : 0),
     cfStreamPlaybackReady,

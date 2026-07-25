@@ -166,6 +166,7 @@ import {
   buildAuthorPendingVideoQuoteRepost,
   buildAuthorPendingVideoThreadRootPost,
   buildAuthorPendingVideoComment,
+  authorPendingPublishPatchFromSubmit,
   clearLoungePendingPostProgress,
   createLoungePendingPublishKey,
   finishLoungePendingCommentVideoProcessing,
@@ -10522,16 +10523,25 @@ export default function SocialFeed({
                 }
               : undefined,
         })
-        if (
+        const stagedInlineVideoPublish =
           inlineVideoProgress &&
           submitResult?.stagedStreamPublish &&
           submitResult.postId &&
           submitResult.streamVideoUid
-        ) {
+        if (stagedInlineVideoPublish) {
           startStagedVideoPostPublish(
             submitResult.postId,
             submitResult.streamVideoUid,
             pendingPublishKey,
+          )
+          patchAuthorPendingVideoPost(
+            pendingPublishKey,
+            authorPendingPublishPatchFromSubmit({
+              postId: submitResult.postId,
+              streamVideoUid: submitResult.streamVideoUid,
+              pendingKey: pendingPublishKey,
+              sessionPosterBlobUrl: snap.sessionStreamPosterBlobUrl,
+            }),
           )
         }
         loungePostSnapshotRef.current = null
@@ -10544,7 +10554,9 @@ export default function SocialFeed({
           setLoungeComposerActiveDraftId(null)
           await refreshLoungeDraftCount()
         }
-        await loadCommunityFeed()
+        if (!stagedInlineVideoPublish) {
+          await loadCommunityFeed()
+        }
         const quoteOrigPostId = String(snapshot.quoteRepostOfPostId || '').trim()
         const quoteOrigCommentId = String(snapshot.quoteRepostOfCommentId || '').trim()
         if (quoteOrigPostId) {

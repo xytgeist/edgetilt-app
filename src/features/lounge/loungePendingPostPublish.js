@@ -227,6 +227,26 @@ function feedPostStreamVideoUid(row) {
   return u || ''
 }
 
+/** Client-only fields to re-apply after a feed reload during staged inline video publish. */
+export function authorPendingPublishPatchFromSubmit({
+  postId,
+  streamVideoUid,
+  pendingKey,
+  sessionPosterBlobUrl,
+}) {
+  const id = String(postId || '').trim()
+  const uid = String(streamVideoUid || '').trim()
+  const poster = String(sessionPosterBlobUrl || '').trim()
+  return {
+    id,
+    stream_video_uid: uid || null,
+    _pendingPublishKey: id,
+    _authorPendingPublish: true,
+    feed_visible_at: null,
+    ...(poster.startsWith('blob:') ? { _sessionStreamPosterBlob: poster } : {}),
+  }
+}
+
 /** True when the feed row is author-only staged publish (DB or optimistic). */
 export function loungeFeedPostIsAuthorPendingPublish(row, viewerUserId) {
   if (!row || !viewerUserId) return false

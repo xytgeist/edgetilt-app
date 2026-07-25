@@ -731,6 +731,28 @@ Deno.serve(async (req) => {
     return mem?.role === 'admin'
   }
 
+  /** Group owner/admin, or creator_fan creator/admin/moderator (mute + pin). */
+  async function canModerateRoomMembers(roomId: string, uid: string) {
+    const { data: room } = await admin
+      .from('chat_rooms')
+      .select('id, kind, created_by, creator_user_id')
+      .eq('id', roomId)
+      .maybeSingle()
+    if (!room) return false
+    if (room.kind === 'group') return isGroupAdmin(roomId, uid)
+    if (room.kind === 'creator_fan') {
+      if (room.creator_user_id === uid || room.created_by === uid) return true
+      const { data: mem } = await admin
+        .from('chat_room_members')
+        .select('role')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle()
+      return mem?.role === 'admin' || mem?.role === 'moderator'
+    }
+    return false
+  }
+
   async function requireGroupMember(roomId: string) {
     const { data: mem } = await admin
       .from('chat_room_members')
@@ -817,8 +839,8 @@ Deno.serve(async (req) => {
     const targetId = String(body?.target_user_id || '').trim()
     const minutes = Number(body?.mute_minutes ?? 0)
     if (!roomId || !targetId) return json(400, { error: 'room_id and target_user_id are required.' })
-    if (!(await isGroupAdmin(roomId, user.id))) {
-      return json(403, { error: 'Only the group owner can mute members.' })
+    if (!(await canModerateRoomMembers(roomId, user.id))) {
+      return json(403, { error: 'You do not have permission to mute members.' })
     }
     const until = minutes > 0
       ? new Date(Date.now() + minutes * 60 * 1000).toISOString()
@@ -836,8 +858,8 @@ Deno.serve(async (req) => {
     const roomId = String(body?.room_id || '').trim()
     const targetId = String(body?.target_user_id || '').trim()
     if (!roomId || !targetId) return json(400, { error: 'room_id and target_user_id are required.' })
-    if (!(await isGroupAdmin(roomId, user.id))) {
-      return json(403, { error: 'Only the group owner can unmute members.' })
+    if (!(await canModerateRoomMembers(roomId, user.id))) {
+      return json(403, { error: 'You do not have permission to unmute members.' })
     }
     const { error: uErr } = await admin
       .from('chat_room_members')
@@ -910,6 +932,10 @@ Deno.serve(async (req) => {
     } else if (pinRoom.kind === 'group') {
       if (!(await isGroupAdmin(roomId, user.id))) {
         return json(403, { error: 'Only the group owner can pin messages.' })
+      }
+    } else if (pinRoom.kind === 'creator_fan') {
+      if (!(await canModerateRoomMembers(roomId, user.id))) {
+        return json(403, { error: 'Only the room creator or moderators can pin messages.' })
       }
     } else {
       return json(403, { error: 'Cannot pin messages in this room.' })

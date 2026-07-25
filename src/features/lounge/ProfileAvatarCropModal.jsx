@@ -74,6 +74,20 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
     ctx.restore()
   }, [rotationDeg, zoom, pan])
 
+  /** Prevent parent scroll surfaces from moving while adjusting crop. */
+  useEffect(() => {
+    if (!open || !file) return undefined
+    const html = document.documentElement
+    const prevHtml = html.style.overflow
+    const prevBody = document.body.style.overflow
+    html.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prevHtml
+      document.body.style.overflow = prevBody
+    }
+  }, [open, file])
+
   useEffect(() => {
     if (!open || !file) {
       bitmapRef.current?.close?.()
@@ -208,7 +222,7 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[220] flex flex-col bg-black/88 backdrop-blur-[2px] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]"
+      className="fixed inset-0 z-[220] flex flex-col bg-black/88 backdrop-blur-[2px] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] overscroll-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="avatar-crop-title"

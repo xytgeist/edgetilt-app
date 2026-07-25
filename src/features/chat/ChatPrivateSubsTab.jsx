@@ -17,6 +17,7 @@ import {
  *   viewerUserId: string,
  *   onOpenRoom: (room: Record<string, unknown>, catalogRow: Record<string, unknown>) => void,
  *   onViewProfile?: ((userId: string) => void) | null,
+ *   onUnreadChange?: ((hasUnread: boolean) => void) | null,
  * }} props
  */
 export default function ChatPrivateSubsTab({
@@ -24,6 +25,7 @@ export default function ChatPrivateSubsTab({
   viewerUserId,
   onOpenRoom,
   onViewProfile = null,
+  onUnreadChange = null,
 }) {
   const [search, setSearch] = useState('')
   const [rows, setRows] = useState(/** @type {any[]} */ ([]))
@@ -122,6 +124,14 @@ export default function ChatPrivateSubsTab({
   }, [supabaseClient, viewerUserId, onOpenRoom, load, search])
 
   const sortedRows = useMemo(() => rows, [rows])
+  const hasAnyUnread = useMemo(
+    () => rows.some((r) => r.is_member && r.has_unread),
+    [rows],
+  )
+
+  useEffect(() => {
+    onUnreadChange?.(hasAnyUnread)
+  }, [hasAnyUnread, onUnreadChange])
 
   return (
     <div className="px-3 py-3" data-chat-private-subs>

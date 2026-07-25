@@ -501,8 +501,10 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 - [x] **SQL:** migration **`20260723200000_creator_fan_private_subs.sql`** — `topic_keywords`, **`list_creator_fan_private_subs`**, **`creator_fan_update_room`**, monetization JSON room fields; applied **test + prod** (**2026-07-23**).
 - [x] **Creator setup UI:** **`CreatorFanPrivateSubsRoomPanel`** in Settings fan monetization (name, description, keywords, avatar).
 - [x] **`ChatTab.jsx` + `ChatPrivateSubsTab.jsx`:** **Private Subs** tab, search, **Joined** / **Host** pills, enter gate via **`CreatorFanSubscribeModal`**; **`creator_fan` filtered out of Inbox list.
-- [x] **`ChatConversation.jsx`:** `creator_fan` uses group message UX; no group settings sheet (edit in Settings).
-- [ ] Smoke: non-member sees room in catalog, cannot read messages until sub; member row pinned/highlighted; room absent from Inbox; creator edits name/description/keywords/avatar; empty-sub room still listed for creator and in catalog.
+- [x] **`ChatConversation.jsx`:** `creator_fan` uses group message UX; header pill → **`ChatGroupSettingsSheet`** (same as groups; role-gated edit/mod tools).
+- [x] **Private Subs tab unread:** cyan dot on tab when any joined room has unread (**`ChatPrivateSubsTab`** → **`ChatTab`**).
+- [x] **Crop modal scroll lock:** **`ProfileAvatarCropModal`** locks `html`/`body` overflow (fixes settings screen shifting during photo adjust).
+- [ ] Smoke: non-member sees room in catalog, cannot read messages until sub; member row pinned/highlighted; room absent from Inbox; creator edits name/description/keywords/avatar from **in-chat settings**; mod mute + assign moderator; empty-sub room still listed for creator and in catalog.
 
 **Existing plumbing (no re-invent):** **`creator_fan_ensure_room`**, **`creator_fan_sub_sync_chat_member`** (webhook), **`fan_room_id`** on **`creator_monetization_profiles`**, member **`admin`** for creator.
 
@@ -512,10 +514,12 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 
 ### 5. Fan room moderation (creator + delegated mods)
 
-- [ ] **Creator (room owner):** mute, block, **cancel subscriber’s fan sub** (portal or admin action TBD), remove from room.
-- [ ] **Assign moderator** role to other **subscribers** in that room (**`chat_room_members.role`** / planned **`moderator`**).
-- [ ] Mod capabilities: delete messages, kick, mute (align **`docs/entitlements-matrix.md` §2.3**); audit log TBD.
-- [ ] RLS + Edge/RPC for owner-only cancel-sub and role assignment; never expose Stripe secrets client-side.
+- [ ] **Creator (room owner):** block, **cancel subscriber’s fan sub** (portal or admin action TBD), remove from room (subscription-driven membership … no manual kick v1).
+- [x] **Assign moderator** role to subscribers in that room — RPC **`creator_fan_set_member_role`**, UI in **`ChatGroupSettingsSheet`** (creator only).
+- [x] **Mute members** (creator + room mods) — Edge **`lounge-chat`** **`canModerateRoomMembers`** for **`creator_fan`**; settings sheet member actions.
+- [x] **Pin messages** (creator + room mods) — Edge pin path extended for **`creator_fan`**.
+- [ ] Mod capabilities: delete messages, kick, audit log TBD (align **`docs/entitlements-matrix.md` §2.3**).
+- [ ] RLS + Edge/RPC for owner-only cancel-sub; never expose Stripe secrets client-side.
 
 ### 6. Audio “hang out” (Spaces-style) — later track
 
@@ -879,6 +883,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-24: **Private Subs in-chat settings + mod v1 (code):** fan room header pill → **`ChatGroupSettingsSheet`** (search/pinned/media/starred/members; creator edit via **`creator_fan_update_room`**; creator assigns **`moderator`** via **`creator_fan_set_member_role`** migration **`20260724160000`**); mods/creator mute + pin (**`lounge-chat`** **`canModerateRoomMembers`**). **Private Subs** tab unread dot; **`ProfileAvatarCropModal`** scroll lock. Apply migration + redeploy **`lounge-chat`** on test before smoke.
 - 2026-07-24: **X editorial cron (8h):** migration **`20260724000000`** — **`invoke_lounge_x_ingest()`** + pg_cron **`lounge_x_ingest_editorial`** (`0 */8 * * *` UTC); one Edge POST polls all running **`pipeline=x`** bots. **`lounge-x-ingest`:** first poll per `@handle` seeds **`since_id` only** (no history backfill). Applied test + prod; Edge redeployed. Prod sources baselined **`since_id`** 2026-07-24.
 - 2026-07-24: **Lounge market logos on R2:** **`marketLogoR2.ts`** mirrors stock (Finnhub) + crypto (CoinGecko) PNGs to **`market-logos/{stocks|crypto}/…`** on R2; **`market_instruments.logo_url`** stores public R2 URL. Batches: **`stock_logo_batch`** / **`crypto_logo_batch`** (50/run). Prod backfill via **`scripts/lounge-market-stock-logo-backfill.mjs`**.
 - 2026-07-24: **Lounge crypto backfill (manual):** Edge **`syncMarketCryptoLookup`** — CoinGecko top **8×250** markets, batch upsert **500/chunk**; migration **`20260723300000`** **`invoke_lounge_market_crypto_backfill(8)`**. Ran on **test** + **prod** — **200**, ~**1858** upserted, **4** chunks, no **546**; prod crypto **~1895** rows / **~1893** with `logo_url`.

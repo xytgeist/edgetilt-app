@@ -71,6 +71,7 @@ export default function ChatTab({
   const [archivedRoomsLoading, setArchivedRoomsLoading] = useState(false)
   const [archivedRoomsErr, setArchivedRoomsErr] = useState('')
   const [archivedCount, setArchivedCount] = useState(0)
+  const [privateSubsHasUnread, setPrivateSubsHasUnread] = useState(false)
   const [actionErr, setActionErr] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
   const [openingConversation, setOpeningConversation] = useState(false)
@@ -900,13 +901,16 @@ export default function ChatTab({
           <button
             type="button"
             onClick={() => { setTab('privateSubs'); setShowArchivedList(false) }}
-            className={`min-h-10 rounded-t-xl px-3 text-[14px] font-bold touch-manipulation ${
+            className={`relative inline-flex min-h-10 items-center gap-1.5 rounded-t-xl px-3 text-[14px] font-bold touch-manipulation ${
               tab === 'privateSubs'
                 ? 'border-b-2 border-cyan-500 text-cyan-400'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
             Private Subs
+            {privateSubsHasUnread && tab !== 'privateSubs' ? (
+              <span className="h-2 w-2 shrink-0 rounded-full bg-cyan-400" aria-label="Unread in Private Subs" />
+            ) : null}
           </button>
           <button
             type="button"
@@ -964,6 +968,7 @@ export default function ChatTab({
           viewerUserId={viewerUserId}
           onOpenRoom={onOpenPrivateSubsRoom}
           onViewProfile={onViewProfile}
+          onUnreadChange={setPrivateSubsHasUnread}
         />
       ) : showArchivedList ? (
         archivedRoomsLoading ? (

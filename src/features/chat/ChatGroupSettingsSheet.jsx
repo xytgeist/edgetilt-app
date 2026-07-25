@@ -4,8 +4,11 @@ import { uploadProfileAvatar } from '../profiles/profileGate.js'
 import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal.jsx'
 import {
   chatAddGroupMembers,
+  chatCanModerateFanRoom,
   chatDeleteGroup,
   chatGroupMembersList,
+  chatIsFanRoom,
+  chatIsFanRoomOwner,
   chatIsGroupOwner,
   chatLeaveRoom,
   chatMuteGroupMember,
@@ -13,11 +16,13 @@ import {
   chatMuteRoomUntil,
   chatPinnedMessagesPage,
   chatRemoveGroupMember,
+  chatSetFanRoomMemberRole,
   chatStarredMessagesPage,
   chatUnmuteGroupMember,
   chatUnmuteRoom,
   chatUpdateGroup,
 } from './chatApi.js'
+import { saveCreatorFanPrivateSubsRoom } from '../creatorFanSubs/creatorFanSubsApi.js'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import {
   ChatGroupMediaSheet,
@@ -81,10 +86,18 @@ export default function ChatGroupSettingsSheet({
   onViewerReadReceiptsEnabledChange = null,
   readReceiptsBusy = false,
 }) {
-  const isOwner = chatIsGroupOwner(room, viewerUserId)
+  const isFanRoom = chatIsFanRoom(room)
+  const isOwner = isFanRoom
+    ? chatIsFanRoomOwner(room, viewerUserId)
+    : chatIsGroupOwner(room, viewerUserId)
+  const canModerateMembers = isFanRoom
+    ? chatCanModerateFanRoom(room, viewerUserId)
+    : isOwner
+  const canAssignMods = isFanRoom && isOwner
 
   const [title, setTitle] = useState(String(room.title || ''))
   const [description, setDescription] = useState(String(room.description || ''))
+  const [topicKeywords, setTopicKeywords] = useState(String(room.topic_keywords || ''))
   const [editMode, setEditMode] = useState(false)
 
   const [members, setMembers] = useState(/** @type {any[]} */ ([]))
@@ -106,7 +119,7 @@ export default function ChatGroupSettingsSheet({
 
   const [auxView, setAuxView] = useState(/** @type {null | 'search' | 'pinned' | 'media' | 'starred'} */ (null))
   const [memberProfile, setMemberProfile] = useState(/** @type {null | Record<string, unknown>} */ (null))
-  const [memberActionTarget, setMemberActionTarget] = useState(/** @type {null | { user_id: string, label: string, isMuted: boolean }} */ (null))
+  const [memberActionTarget, setMemberActionTarget] = useState(/** @type {null | { user_id: string, label: string, isMuted: boolean, role?: string }} */ (null))
   const [muteTarget, setMuteTarget] = useState(/** @type {null | { user_id: string, label: string }} */ (null))
 
   const avatarInputRef = useRef(null)
@@ -149,13 +162,25 @@ export default function ChatGroupSettingsSheet({
     if (!open) return
     setTitle(String(room.title || ''))
     setDescription(String(room.description || ''))
+    setTopicKeywords(String(room.topic_keywords || ''))
     setErr('')
     setEditMode(false)
     setAuxView(null)
     setAddExpanded(false)
     setAddSearch('')
     void reload()
-  }, [open, room.title, room.description, reload])
+  }, [open, room.title, room.description, room.topic_keywords, reload])
+
+  useEffect(() => {
+    if (!open || !avatarCropFile) return undefined
+    const el = scrollBodyRef.current
+    if (!el) return undefined
+    const prevOverflow = el.style.overflow
+    el.style.overflow = 'hidden'
+    return () => {
+      el.style.overflow = prevOverflow
+    }
+  }, [open, avatarCropFile])
 
   useEffect(() => {
     if (!open || !addExpanded) return undefined
@@ -178,12 +203,26 @@ export default function ChatGroupSettingsSheet({
     setBusy(true)
     setErr('')
     try {
-      await chatUpdateGroup(supabaseClient, {
-        roomId: room.id,
-        title: title.trim(),
-        description: description.trim(),
-      })
-      onRoomUpdated({ title: title.trim(), description: description.trim() })
+      if (isFanRoom) {
+        await saveCreatorFanPrivateSubsRoom(supabaseClient, {
+          title: title.trim(),
+          description: description.trim(),
+          topicKeywords: topicKeywords.trim(),
+          avatarUrl: room.avatar_url ?? null,
+        })
+        onRoomUpdated({
+          title: title.trim(),
+          description: description.trim(),
+          topic_keywords: topicKeywords.trim(),
+        })
+      } else {
+        await chatUpdateGroup(supabaseClient, {
+          roomId: room.id,
+          title: title.trim(),
+          description: description.trim(),
+        })
+        onRoomUpdated({ title: title.trim(), description: description.trim() })
+      }
       setEditMode(false)
     } catch (e) {
       setErr(e?.message || 'Could not save.')
@@ -203,18 +242,28 @@ export default function ChatGroupSettingsSheet({
       if (!url) throw new Error('Upload succeeded but no URL returned.')
       onRoomUpdated({ avatar_url: url })
       try {
-        await chatUpdateGroup(supabaseClient, { roomId: room.id, avatarUrl: url })
+        if (isFanRoom) {
+          await saveCreatorFanPrivateSubsRoom(supabaseClient, {
+            title: String(room.title || title || '').trim(),
+            description: String(room.description || description || '').trim(),
+            topicKeywords: String(room.topic_keywords || topicKeywords || '').trim(),
+            avatarUrl: url,
+          })
+        } else {
+          await chatUpdateGroup(supabaseClient, { roomId: room.id, avatarUrl: url })
+        }
       } catch (saveErr) {
-        setErr(`Photo uploaded but could not save to group: ${saveErr?.message || 'unknown error'}. Try again.`)
+        setErr(`Photo uploaded but could not save to ${isFanRoom ? 'room' : 'group'}: ${saveErr?.message || 'unknown error'}. Try again.`)
       }
     } catch (ex) {
       setErr(ex?.message || 'Could not update photo.')
     } finally {
       setBusy(false)
     }
-  }, [supabaseClient, room.id, onRoomUpdated])
+  }, [supabaseClient, room.id, room.title, room.description, room.topic_keywords, room.avatar_url, title, description, topicKeywords, isFanRoom, onRoomUpdated])
 
-  const groupDisplayName = String(room.title || title || 'Group chat').trim() || 'Group chat'
+  const groupDisplayName = String(room.title || title || (isFanRoom ? 'Private Sub' : 'Group chat')).trim()
+    || (isFanRoom ? 'Private Sub' : 'Group chat')
 
   const updateTitleBarReveal = useCallback(() => {
     if (editMode) {
@@ -336,6 +385,7 @@ export default function ChatGroupSettingsSheet({
                   setEditMode(false)
                   setTitle(String(room.title || ''))
                   setDescription(String(room.description || ''))
+                  setTopicKeywords(String(room.topic_keywords || ''))
                 }}
                 className="chat-header-glass rounded-full px-4 py-2 text-[14px] font-semibold text-zinc-100 touch-manipulation active:opacity-75"
               >
@@ -400,7 +450,7 @@ export default function ChatGroupSettingsSheet({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={80}
-                placeholder="Group name"
+                placeholder={isFanRoom ? 'Room name' : 'Group name'}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-center text-[16px] font-semibold text-zinc-100 placeholder:text-zinc-500 focus:border-cyan-500/60 focus:outline-none"
               />
               <textarea
@@ -411,6 +461,15 @@ export default function ChatGroupSettingsSheet({
                 placeholder="Description (optional)"
                 className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-center text-[14px] text-zinc-300 placeholder:text-zinc-500 focus:border-cyan-500/60 focus:outline-none"
               />
+              {isFanRoom ? (
+                <input
+                  value={topicKeywords}
+                  onChange={(e) => setTopicKeywords(e.target.value)}
+                  maxLength={500}
+                  placeholder="Topic keywords (comma-separated, optional)"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-center text-[14px] text-zinc-300 placeholder:text-zinc-500 focus:border-cyan-500/60 focus:outline-none"
+                />
+              ) : null}
               <button
                 type="button"
                 disabled={busy || !title.trim()}
@@ -431,6 +490,11 @@ export default function ChatGroupSettingsSheet({
               {(room.description || description) ? (
                 <p className="mt-1.5 text-[14px] leading-snug text-zinc-400">
                   {room.description || description}
+                </p>
+              ) : null}
+              {isFanRoom && (room.topic_keywords || topicKeywords) ? (
+                <p className="mt-1 text-[12px] leading-snug text-zinc-500">
+                  {room.topic_keywords || topicKeywords}
                 </p>
               ) : null}
               {!membersLoading && members.length > 0 ? (
@@ -483,6 +547,9 @@ export default function ChatGroupSettingsSheet({
           ) : members.map((m, i) => {
             const memberIsMuted = m.moderation_muted_until && new Date(m.moderation_muted_until) > new Date()
             const isMe = m.user_id === viewerUserId
+            const isCreator = isFanRoom && String(m.user_id) === String(room.creator_user_id || room.created_by)
+            const isMod = m.role === 'moderator' || m.role === 'admin'
+            const showMemberActions = canModerateMembers && !isMe && !isCreator
             return (
               <div
                 key={m.user_id}
@@ -506,6 +573,11 @@ export default function ChatGroupSettingsSheet({
                         {m.display_name || m.handle || 'Member'}
                       </span>
                       {isMe && <span className="shrink-0 text-[11px] text-zinc-500">you</span>}
+                      {isCreator ? (
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-cyan-400/90">Creator</span>
+                      ) : isMod ? (
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-amber-400/90">Mod</span>
+                      ) : null}
                     </div>
                     {m.handle && m.display_name ? (
                       <div className="truncate text-[12px] text-zinc-500">@{m.handle}</div>
@@ -515,7 +587,7 @@ export default function ChatGroupSettingsSheet({
                     ) : null}
                   </div>
                 </button>
-                {isOwner && !isMe ? (
+                {showMemberActions ? (
                   <button
                     type="button"
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:bg-zinc-800"
@@ -523,6 +595,7 @@ export default function ChatGroupSettingsSheet({
                       user_id: m.user_id,
                       label: m.display_name || m.handle || 'Member',
                       isMuted: !!memberIsMuted,
+                      role: m.role,
                     })}
                     aria-label="Member options"
                   >
@@ -537,8 +610,8 @@ export default function ChatGroupSettingsSheet({
             )
           })}
 
-          {/* Add member row */}
-          {!addExpanded ? (
+          {/* Add member row — classic groups only */}
+          {!isFanRoom && !addExpanded ? (
             <button
               type="button"
               onClick={() => setAddExpanded(true)}
@@ -552,7 +625,7 @@ export default function ChatGroupSettingsSheet({
               </div>
               <span className="text-[14px] font-semibold text-cyan-400">Add member</span>
             </button>
-          ) : (
+          ) : !isFanRoom && addExpanded ? (
             <div className={`px-3 pb-3 pt-2.5 ${members.length > 0 ? 'border-t border-zinc-800/50' : ''}`}>
               <div className="flex items-center gap-2">
                 <input
@@ -614,7 +687,7 @@ export default function ChatGroupSettingsSheet({
                 <p className="mt-2 px-1 text-[13px] text-zinc-500">No results for "{addSearch.trim()}"</p>
               ) : null}
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* ── Privacy ───────────────────────────────────────────── */}
@@ -641,7 +714,8 @@ export default function ChatGroupSettingsSheet({
           />
         </SettingsGroup>
 
-        {/* ── Delete / leave group ──────────────────────────────── */}
+        {/* ── Delete / leave group — classic groups only ──────── */}
+        {!isFanRoom ? (
         <div className="mx-4 mt-5 flex flex-col gap-3 pb-10">
           {isOwner ? (
             <button
@@ -682,6 +756,9 @@ export default function ChatGroupSettingsSheet({
             Leave Group
           </button>
         </div>
+        ) : (
+          <div className="pb-10" />
+        )}
       </div>
       </div>
     </div>,
@@ -755,6 +832,28 @@ export default function ChatGroupSettingsSheet({
       {memberActionTarget ? createPortal(
         <BottomSheet onDismiss={() => setMemberActionTarget(null)}>
           <SheetTitle>{memberActionTarget.label}</SheetTitle>
+          {canAssignMods && memberActionTarget.role === 'moderator' ? (
+            <SheetRow accent="amber" onClick={async () => {
+              try {
+                await chatSetFanRoomMemberRole(supabaseClient, room.id, memberActionTarget.user_id, 'member')
+                await reload()
+              } catch (ex) { setErr(ex?.message || 'Could not remove moderator.') }
+              setMemberActionTarget(null)
+            }}>
+              Remove as moderator
+            </SheetRow>
+          ) : null}
+          {canAssignMods && memberActionTarget.role !== 'moderator' ? (
+            <SheetRow onClick={async () => {
+              try {
+                await chatSetFanRoomMemberRole(supabaseClient, room.id, memberActionTarget.user_id, 'moderator')
+                await reload()
+              } catch (ex) { setErr(ex?.message || 'Could not assign moderator.') }
+              setMemberActionTarget(null)
+            }}>
+              Make moderator
+            </SheetRow>
+          ) : null}
           <SheetRow onClick={() => {
             setMuteTarget({ user_id: memberActionTarget.user_id, label: memberActionTarget.label })
             setMemberActionTarget(null)
@@ -772,16 +871,18 @@ export default function ChatGroupSettingsSheet({
               Remove mute
             </SheetRow>
           ) : null}
-          <SheetRow accent="rose" onClick={async () => {
-            if (!window.confirm(`Remove ${memberActionTarget.label} from the group?`)) return
-            try {
-              await chatRemoveGroupMember(supabaseClient, room.id, memberActionTarget.user_id)
-              await reload()
-            } catch (ex) { setErr(ex?.message || 'Remove failed.') }
-            setMemberActionTarget(null)
-          }}>
-            Remove from group
-          </SheetRow>
+          {!isFanRoom ? (
+            <SheetRow accent="rose" onClick={async () => {
+              if (!window.confirm(`Remove ${memberActionTarget.label} from the group?`)) return
+              try {
+                await chatRemoveGroupMember(supabaseClient, room.id, memberActionTarget.user_id)
+                await reload()
+              } catch (ex) { setErr(ex?.message || 'Remove failed.') }
+              setMemberActionTarget(null)
+            }}>
+              Remove from group
+            </SheetRow>
+          ) : null}
           <SheetCancel onClick={() => setMemberActionTarget(null)} />
         </BottomSheet>,
         document.body,

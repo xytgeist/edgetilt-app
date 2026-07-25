@@ -403,8 +403,9 @@ export function buildProvisionalFanRoom(row, viewerUserId) {
       title: row.title,
       description: row.description,
       avatar_url: row.avatar_url,
-      member_role: row.is_host ? 'admin' : 'member',
-      memberRole: row.is_host ? 'admin' : 'member',
+      member_role: row.is_host ? 'admin' : (row.member_role || 'member'),
+      memberRole: row.is_host ? 'admin' : (row.member_role || 'member'),
+      topic_keywords: row.topic_keywords,
       has_unread: row.has_unread,
       last_message_at: row.last_message_at,
       last_message_preview: preview,
@@ -627,10 +628,41 @@ export function chatIsGroupOwner(room, viewerUserId) {
   return room.memberRole === 'admin' || room.member_role === 'admin'
 }
 
+export function chatIsFanRoom(room) {
+  return room?.kind === 'creator_fan'
+}
+
+export function chatIsFanRoomOwner(room, viewerUserId) {
+  if (!room || room.kind !== 'creator_fan' || !viewerUserId) return false
+  if (room.creator_user_id === viewerUserId || room.created_by === viewerUserId) return true
+  return room.memberRole === 'admin' || room.member_role === 'admin'
+}
+
+export function chatIsFanRoomModerator(room, viewerUserId) {
+  if (!room || room.kind !== 'creator_fan' || !viewerUserId) return false
+  const role = room.memberRole || room.member_role
+  return role === 'moderator'
+}
+
+/** Creator/admin or assigned room moderator. */
+export function chatCanModerateFanRoom(room, viewerUserId) {
+  return chatIsFanRoomOwner(room, viewerUserId) || chatIsFanRoomModerator(room, viewerUserId)
+}
+
+export async function chatSetFanRoomMemberRole(supabase, roomId, targetUserId, role) {
+  const { error } = await supabase.rpc('creator_fan_set_member_role', {
+    p_room_id: roomId,
+    p_target_user_id: targetUserId,
+    p_role: role,
+  })
+  if (error) throw new Error(error.message)
+}
+
 /** Group owner/admin, or either participant in a DM. */
 export function chatCanPinMessages(room, viewerUserId) {
   if (!room || !viewerUserId) return false
   if (room.kind === 'dm') return true
+  if (room.kind === 'creator_fan') return chatCanModerateFanRoom(room, viewerUserId)
   return chatIsGroupOwner(room, viewerUserId)
 }
 

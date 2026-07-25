@@ -2152,9 +2152,15 @@ export default function ChatConversation({
                   <span className="text-[15px] font-normal text-zinc-300">›</span>
                 </button>
               ) : isFanRoom ? (
-                <div className="chat-header-glass -mt-1 max-w-full rounded-full px-4 py-1.5">
+                <button
+                  type="button"
+                  onClick={() => setGroupSettingsOpen(true)}
+                  className="chat-header-glass -mt-1 flex max-w-full items-center gap-1 rounded-full px-4 py-1.5 touch-manipulation transition-opacity active:opacity-75"
+                  aria-label="Room settings"
+                >
                   <span className="truncate text-[16px] font-bold text-zinc-50">{headerDisplayName}</span>
-                </div>
+                  <span className="text-[15px] font-normal text-zinc-300">›</span>
+                </button>
               ) : null}
               {groupHeaderErr ? (
                 <p className="mt-1 max-w-[300px] px-2 text-center text-[11px] leading-snug text-amber-400/90">
@@ -2204,10 +2210,10 @@ export default function ChatConversation({
               </>
             )}
 
-            {isClassicGroupRoom && (
+            {(isClassicGroupRoom || isFanRoom) && (
               <>
                 <OptionsRow
-                  label="Group settings"
+                  label={isFanRoom ? 'Room settings' : 'Group settings'}
                   icon={<GroupSettingsIcon />}
                   onClick={() => { setOptionsMenuOpen(false); setGroupSettingsOpen(true) }}
                 />
@@ -2501,7 +2507,7 @@ export default function ChatConversation({
         }}
       />
 
-      {isClassicGroupRoom ? (
+      {(isClassicGroupRoom || isFanRoom) ? (
         <ChatGroupSettingsSheet
           open={groupSettingsOpen}
           onClose={() => setGroupSettingsOpen(false)}

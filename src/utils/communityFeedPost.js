@@ -207,6 +207,8 @@ export function communityFeedPostInsertPayload({
   threadPartCount = 1,
   /** Creator fan subs: true = subscribers-only (requires live monetization). */
   creatorFanOnly = false,
+  /** When null, post stays author-only until staged publish sets a timestamp. */
+  feedVisibleAt,
 }) {
   const cap = normalizeFeedCaption(caption)
   const gt = String(gameTitle ?? '').trim()
@@ -223,6 +225,13 @@ export function communityFeedPostInsertPayload({
   const rootId = threadRootId != null ? String(threadRootId).trim() : ''
   if (rootId) out.thread_root_id = rootId
   if (pinned === true) out.pinned = true
+  if (feedVisibleAt === null) {
+    out.feed_visible_at = null
+  } else if (feedVisibleAt !== undefined) {
+    out.feed_visible_at = feedVisibleAt
+  } else {
+    out.feed_visible_at = new Date().toISOString()
+  }
   const sv = streamVideoUid != null ? String(streamVideoUid).trim() : ''
   if (sv) {
     out.stream_video_uid = sv
@@ -275,6 +284,7 @@ export function communityFeedQuoteRepostInsertPayload({
   streamVideoWidth,
   streamVideoHeight,
   categoryPills,
+  feedVisibleAt,
 }) {
   const cap = normalizeFeedCaption(caption)
   const out = attachCategoryPills(
@@ -287,6 +297,13 @@ export function communityFeedQuoteRepostInsertPayload({
     },
     categoryPills,
   )
+  if (feedVisibleAt === null) {
+    out.feed_visible_at = null
+  } else if (feedVisibleAt !== undefined) {
+    out.feed_visible_at = feedVisibleAt
+  } else {
+    out.feed_visible_at = new Date().toISOString()
+  }
   const sv = streamVideoUid != null ? String(streamVideoUid).trim() : ''
   if (sv) {
     out.stream_video_uid = sv

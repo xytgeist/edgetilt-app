@@ -25,6 +25,14 @@ import { pauseLoungeHeroStreamForDismiss } from '../../utils/loungeLightboxMedia
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD } from './LoungeStreamVideoLightboxChrome.jsx'
+import LoungePostVideoInlineProgress, {
+  loungePendingPublishBlurPx,
+  resolveLoungePendingPublishProgress,
+} from './LoungePostVideoInlineProgress.jsx'
+import {
+  getLoungePendingPostProgress,
+  subscribeLoungePendingPostProgress,
+} from './loungePendingPostPublish.js'
 import {
   readLoungeFeedVideoDebugEnabled,
   subscribeLoungeFeedVideoDebugEnabled,
@@ -93,8 +101,6 @@ const posterFallbackFrameClassByVariant = {
 
 /** CF Stream HLS poll after upload completes before manifest was waited on in prep. */
 const CF_HLS_TILE_POLL_INTERVAL_MS = 2000
-/** Hide the "Processing video…" chip after this even if HLS probe has not succeeded yet. */
-const CF_HLS_PROCESSING_LABEL_MAX_MS = 90_000
 /** Stop background HLS polling after this (tile falls back to existing retry UI). */
 const CF_HLS_TILE_POLL_MAX_MS = 300_000
 /** Wait before one active-tile HLS reattach when metadata never arrives (MSE cold start). */
@@ -524,6 +530,8 @@ export default function LoungePostStreamVideo({
   persistedStreamPosterUrl: persistedStreamPosterUrlProp = '',
   streamVideoDisplayWidth: streamDisplayWProp,
   streamVideoDisplayHeight: streamDisplayHProp,
+  pendingPublishKey: pendingPublishKeyProp = '',
+  authorPendingPublish = false,
   mediaLightboxFooter,
   renderMediaLightboxChrome,
   renderMediaLightboxMenu,
@@ -545,6 +553,12 @@ export default function LoungePostStreamVideo({
   const displayH = Number(streamDisplayHProp)
   const hasDisplayDims =
     Number.isFinite(displayW) && Number.isFinite(displayH) && displayW >= 2 && displayH >= 2
+  const pendingPublishKey = String(pendingPublishKeyProp || '').trim()
+  const pendingUploadProgress = useSyncExternalStore(
+    subscribeLoungePendingPostProgress,
+    () => (pendingPublishKey ? getLoungePendingPostProgress(pendingPublishKey) : null),
+    () => null,
+  )
   const containerRef = useRef(null)
   const videoRef = useRef(null)
   const videoFlyoutRef = useRef(null)
@@ -1747,36 +1761,45 @@ export default function LoungePostStreamVideo({
   const tryMseNativeFallbackRef = useRef(tryMseNativeFallback)
   tryMseNativeFallbackRef.current = tryMseNativeFallback
 
-  /** True while CF is still encoding HLS after a post went live without manifest wait in prep. */
-  const [cfHlsProcessing, setCfHlsProcessing] = useState(false)
+  /** False until CF Stream HLS manifest probe succeeds (post went live with skipManifestWait). */
+  const [cfStreamPlaybackReady, setCfStreamPlaybackReady] = useState(false)
+  const publishBlurProgress = resolveLoungePendingPublishProgress(
+    pendingUploadProgress?.progress ?? (authorPendingPublish ? 0.86 : 0),
+    cfStreamPlaybackReady,
+  )
+  const showPublishBlurOverlay = Boolean(
+    authorPendingPublish &&
+      pendingPublishKey &&
+      !cfStreamPlaybackReady &&
+      publishBlurProgress < 1,
+  )
+  const publishPosterBlurPx = loungePendingPublishBlurPx(publishBlurProgress)
 
   useEffect(() => {
     if (!id) {
-      setCfHlsProcessing(false)
+      setCfStreamPlaybackReady(false)
       return undefined
     }
     let cancelled = false
     let tid = 0
     const started = Date.now()
-    setCfHlsProcessing(true)
+    setCfStreamPlaybackReady(false)
 
-    const finishProcessingUi = () => {
-      if (!cancelled) setCfHlsProcessing(false)
+    const markReady = () => {
+      if (cancelled) return
+      setCfStreamPlaybackReady(true)
     }
 
     const tick = async () => {
       if (cancelled) return
       const elapsed = Date.now() - started
-      if (elapsed >= CF_HLS_PROCESSING_LABEL_MAX_MS) {
-        finishProcessingUi()
-      }
       if (elapsed >= CF_HLS_TILE_POLL_MAX_MS) {
-        finishProcessingUi()
+        if (!cancelled) setShowStreamRetry(true)
         return
       }
       try {
         if (await probeCfStreamHlsReady(id)) {
-          finishProcessingUi()
+          markReady()
           const v = videoRef.current
           const needsBump =
             !v ||
@@ -1810,13 +1833,8 @@ export default function LoungePostStreamVideo({
     return () => {
       cancelled = true
       window.clearTimeout(tid)
-      setCfHlsProcessing(false)
     }
   }, [id, bumpStreamAttach])
-
-  useEffect(() => {
-    if (streamFadeShowVideo) setCfHlsProcessing(false)
-  }, [streamFadeShowVideo])
 
   const prevIsActiveForPromoteRef = useRef(false)
   useEffect(() => {
@@ -1852,7 +1870,7 @@ export default function LoungePostStreamVideo({
       !feedAutoplayEnabled ||
       (!isActive && !activeHlsGraceHeld) ||
       !hlsAttachEnabled ||
-      cfHlsProcessing
+      !cfStreamPlaybackReady
     ) {
       return undefined
     }
@@ -1891,7 +1909,7 @@ export default function LoungePostStreamVideo({
   }, [
     activeHlsGraceHeld,
     bumpStreamAttach,
-    cfHlsProcessing,
+    cfStreamPlaybackReady,
     coordinatorActive,
     feedAutoplayEnabled,
     hlsAttachEnabled,
@@ -2056,9 +2074,13 @@ export default function LoungePostStreamVideo({
     )
   }, [inRing, inDomBudget, attachStream, ringWarmPrefetch, videoDebugEnabled, feedAutoplayClientId])
 
-  /** Fade HLS over CF thumbnail once playing (all variants with poster frame; when not `attachStream`, keep video hidden). */
+  /** Fade HLS over CF thumbnail once CF playback is ready and pixels decode (all variants with poster frame). */
   useEffect(() => {
     if (!poster) return undefined
+    if (!cfStreamPlaybackReady) {
+      setStreamFadeShowVideo(false)
+      return undefined
+    }
     let cleaned = false
     let disarm = () => {}
     let rafId = 0
@@ -2180,7 +2202,7 @@ export default function LoungePostStreamVideo({
       cancelAnimationFrame(rafId)
       disarm()
     }
-  }, [attachStream, poster, id, streamAttachKey])
+  }, [attachStream, poster, id, streamAttachKey, cfStreamPlaybackReady])
 
   /** Handoff pause: keep last decoded frame visible - do not flash poster over a warm ring tile. */
   useLayoutEffect(() => {
@@ -3335,10 +3357,10 @@ export default function LoungePostStreamVideo({
           }
           onClick={(e) => {
             e.stopPropagation()
-            if (showOpen && !heroExpanded) openLightbox()
+            if (showOpen && !showPublishBlurOverlay && !heroExpanded) openLightbox()
           }}
           onKeyDown={(e) => {
-            if (!showOpen || heroExpanded) return
+            if (!showOpen || showPublishBlurOverlay || heroExpanded) return
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               e.stopPropagation()
@@ -3367,7 +3389,15 @@ export default function LoungePostStreamVideo({
                   draggable={false}
                   loading="eager"
                   className={`pointer-events-none select-none ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`}
-                  style={heroExpanded ? { transition: 'none' } : streamFadeTransitionStyle}
+                  style={{
+                    ...(heroExpanded ? { transition: 'none' } : streamFadeTransitionStyle),
+                    ...(showPublishBlurOverlay && !heroExpanded
+                      ? {
+                          filter: `blur(${publishPosterBlurPx}px)`,
+                          transition: 'filter 400ms ease-out',
+                        }
+                      : null),
+                  }}
                   aria-hidden
                   onLoad={() => setPosterDecodeOk(true)}
                   onError={onPosterImgError}
@@ -3398,13 +3428,12 @@ export default function LoungePostStreamVideo({
               {streamVideoEl}
             </div>
           </div>
-          {cfHlsProcessing && attachStream && !effectiveStreamFadeShowVideo && !showStreamRetry && !heroExpanded ? (
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] bg-gradient-to-t from-black/75 via-black/35 to-transparent px-2 pb-2 pt-8 text-center text-[11px] font-medium text-zinc-100/95"
-              aria-hidden
-            >
-              Processing video…
-            </div>
+          {showPublishBlurOverlay && !heroExpanded ? (
+            <LoungePostVideoInlineProgress
+              pendingKey={pendingPublishKey}
+              cfPlaybackReady={cfStreamPlaybackReady}
+              fallbackProgress={authorPendingPublish ? 0.86 : 0}
+            />
           ) : null}
           {showStreamRetry ? (
             <div
@@ -3430,7 +3459,7 @@ export default function LoungePostStreamVideo({
               </button>
             </div>
           ) : null}
-          {showOpen && !showStreamRetry && !feedAutoplayEnabled && !heroExpanded ? (
+          {showOpen && !showPublishBlurOverlay && !showStreamRetry && !feedAutoplayEnabled && !heroExpanded ? (
             <button
               type="button"
               aria-label="Play video in full screen"
@@ -3452,7 +3481,7 @@ export default function LoungePostStreamVideo({
               </span>
             </button>
           ) : null}
-          {showOpen && !showStreamRetry && feedAutoplayEnabled && !heroExpanded ? (
+          {showOpen && !showPublishBlurOverlay && !showStreamRetry && feedAutoplayEnabled && !heroExpanded ? (
             <button
               type="button"
               aria-label={

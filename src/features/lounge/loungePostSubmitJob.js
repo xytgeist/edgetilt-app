@@ -728,6 +728,7 @@ export function loungeSubmissionSnapshotIncludesVideo(snapshot) {
  * @param {(info: { progress: number, status: string, detail?: string }) => void} [opts.onProgress]
  * @param {(msg: string) => string} opts.rateLimitMessage
  * @param {(detail: string) => void} [opts.onUploadDiagnostic] Mint / upload / manifest failures → upload bar detail
+ * @param {(uid: string) => void} [opts.onStreamUidAvailable] CF Stream uid minted during upload
  */
 export async function executeLoungeCommunityPostSubmission({
   supabaseClient,
@@ -736,6 +737,7 @@ export async function executeLoungeCommunityPostSubmission({
   onProgress,
   rateLimitMessage,
   onUploadDiagnostic,
+  onStreamUidAvailable,
 }) {
   const throwIfAborted = () => {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -953,6 +955,7 @@ export async function executeLoungeCommunityPostSubmission({
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingCfUploadUid = id
+          onStreamUidAvailable?.(id)
         },
         onProgress: ({ progress, status, detail }) => {
           report(0.08 + (progress || 0) * 0.8, status || 'Uploading video', detail || '')
@@ -1100,6 +1103,7 @@ export async function executeLoungeCommunityPostSubmission({
         })
       }
     } else if (quoteParentId) {
+      const stagedStreamPublish = Boolean(streamVideoUid)
       if (streamVideoUid) {
         insertPayload = communityFeedQuoteRepostInsertPayload({
           caption,
@@ -1109,6 +1113,7 @@ export async function executeLoungeCommunityPostSubmission({
           streamVideoWidth: streamVideoWidthOut || undefined,
           streamVideoHeight: streamVideoHeightOut || undefined,
           categoryPills,
+          feedVisibleAt: stagedStreamPublish ? null : undefined,
         })
       } else if (uploadedUrls.length > 0) {
         insertPayload = communityFeedQuoteRepostInsertPayload({
@@ -1134,6 +1139,7 @@ export async function executeLoungeCommunityPostSubmission({
         })
       }
     } else if (streamVideoUid) {
+      const stagedStreamPublish = Boolean(streamVideoUid)
       insertPayload = communityFeedPostInsertPayload({
         caption,
         pinned: isStaffPoster && wantsPin ? true : undefined,
@@ -1142,6 +1148,7 @@ export async function executeLoungeCommunityPostSubmission({
         streamVideoWidth: streamVideoWidthOut || undefined,
         streamVideoHeight: streamVideoHeightOut || undefined,
         categoryPills,
+        feedVisibleAt: stagedStreamPublish ? null : undefined,
         ...fanOnlyInsert,
       })
     } else if (uploadedUrls.length > 0) {
@@ -1250,6 +1257,12 @@ export async function executeLoungeCommunityPostSubmission({
         marketSymbols,
       })
     }
+    const stagedStreamPublish = Boolean(streamVideoUid) && !quoteCommentParentId
+    return {
+      postId: rootPostId,
+      streamVideoUid: String(streamVideoUid || '').trim() || null,
+      stagedStreamPublish,
+    }
   } catch (e) {
     if (!insertSucceeded && continuationPrepPromise) {
       try {
@@ -1284,7 +1297,7 @@ export async function executeLoungeCommunityPostSubmission({
 }
 
 const POST_UPDATE_SELECT =
-  'id,caption,edited_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,link_preview,market_embeds'
+  'id,caption,edited_at,feed_visible_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,link_preview,market_embeds'
 
 /**
  * Uploads new media and updates an existing `community_feed_posts` row (author edit).
@@ -1314,6 +1327,7 @@ export async function executeLoungeCommunityPostUpdate({
   onProgress,
   rateLimitMessage,
   onUploadDiagnostic,
+  onStreamUidAvailable,
 }) {
   const report = (progress, status, detail = '') => {
     if (typeof onProgress !== 'function') return
@@ -1395,6 +1409,7 @@ export async function executeLoungeCommunityPostUpdate({
         onUploadDiagnostic,
         onStreamUidAvailable: (id) => {
           pendingCfUploadUid = id
+          onStreamUidAvailable?.(id)
         },
         onProgress: ({ progress, status, detail }) => {
           report(0.08 + (progress || 0) * 0.8, status || 'Uploading video', detail || '')
@@ -1482,6 +1497,10 @@ export async function executeLoungeCommunityPostUpdate({
     throwIfAborted()
     report(0.9, 'Saving edit', 'Updating post…')
 
+    const stagedStreamPublish =
+      Boolean(streamVideoUid) &&
+      (Boolean(videoFile) || preUid !== previousStreamUid)
+
     const mergedImageUrls = [...remoteImageUrls, ...uploadedUrls]
     const gu = String(gifOnlyUrl || '').trim()
 
@@ -1528,6 +1547,7 @@ export async function executeLoungeCommunityPostUpdate({
       edited_at: new Date().toISOString(),
       ...mediaCols,
       category_pills: normalizeLoungePostCategoryPills(categoryPills),
+      ...(stagedStreamPublish ? { feed_visible_at: null } : {}),
     }
 
     const { data, error } = await supabaseClient
@@ -1581,6 +1601,9 @@ export async function executeLoungeCommunityPostUpdate({
       ...data,
       ...(linkPreview ? { link_preview: linkPreview } : {}),
       market_embeds: marketEmbeds ?? [],
+      stagedStreamPublish,
+      postId: data.id,
+      streamVideoUid: streamVideoUid || data.stream_video_uid || null,
     }
     return merged
   } catch (e) {

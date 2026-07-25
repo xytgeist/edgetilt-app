@@ -10,6 +10,11 @@ import {
 } from './loungeFeedImageAttachment.js'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
+import LoungePostVideoInlineProgress, {
+  loungePendingPublishBlurPx,
+  resolveLoungePendingPublishProgress,
+  useLoungePendingPublishProgress,
+} from './LoungePostVideoInlineProgress.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 
@@ -360,6 +365,43 @@ function loungeFeedAutoplayClientId({
   return undefined
 }
 
+function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMarginTopClass }) {
+  const registryProgress = useLoungePendingPublishProgress(pendingKey)
+  const publishProgress = resolveLoungePendingPublishProgress(registryProgress?.progress ?? 0, false)
+  const blurPx = loungePendingPublishBlurPx(publishProgress)
+  const showPublishOverlay = publishProgress < 1
+
+  return (
+    <div className={`${firstMarginTopClass} inline-flex w-fit max-w-full flex-col`}>
+      <div className="relative inline-flex w-fit max-w-[min(88vw,20rem)] overflow-hidden rounded-xl border border-zinc-700/60 bg-black sm:max-w-[min(72vw,17rem)]">
+        {posterSrc ? (
+          <img
+            src={posterSrc}
+            alt=""
+            decoding="async"
+            draggable={false}
+            className="block max-h-[312px] w-auto max-w-full h-auto object-contain"
+            style={
+              showPublishOverlay
+                ? {
+                    filter: `blur(${blurPx}px)`,
+                    transition: 'filter 400ms ease-out',
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <div
+            className="block min-h-[12rem] min-w-[10rem] max-h-[312px] bg-zinc-900"
+            aria-hidden
+          />
+        )}
+        {showPublishOverlay ? <LoungePostVideoInlineProgress pendingKey={pendingKey} /> : null}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Feed / detail: multi-image carousel when `image_urls` is non-empty; otherwise legacy `media_url` + `gif_url`.
  */
@@ -426,9 +468,25 @@ export function LoungePostFeedImagesAndGif({
       ? () => streamLightbox.buildTopBarExtra(lightboxHost, post, streamLightboxTileCtx, streamLightboxSurface)
       : null
   const streamUid = feedPostStreamVideoUid(post)
+  const pendingPublishKey = String(post?._pendingPublishKey || post?.id || '').trim()
+  const sessionPosterFromPost =
+    String(post?._sessionStreamPosterBlob || '').trim() ||
+    (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
+  if (post?._authorPendingPublish && pendingPublishKey && !streamUid) {
+    const posterSrc = sessionPosterFromPost.startsWith('blob:') ? sessionPosterFromPost : ''
+    return (
+      <LoungePostPendingStreamPublishTile
+        pendingKey={pendingPublishKey}
+        posterSrc={posterSrc}
+        firstMarginTopClass={firstMarginTopClass}
+      />
+    )
+  }
   const persistedStreamPoster = streamUid ? feedPostStreamPosterUrl(post) : ''
   const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null
-  const sessionStreamPosterUrl = streamUid ? peekLoungeStreamSessionPoster(streamUid) : ''
+  const sessionStreamPosterUrl =
+    sessionPosterFromPost ||
+    (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
   const feedAutoplayClientId = loungeFeedAutoplayClientId({
     enableLightbox,
     variant,
@@ -452,6 +510,10 @@ export function LoungePostFeedImagesAndGif({
         persistedStreamPosterUrl={persistedStreamPoster || undefined}
         streamVideoDisplayWidth={streamDims?.width}
         streamVideoDisplayHeight={streamDims?.height}
+        pendingPublishKey={
+          post?._authorPendingPublish || post?.feed_visible_at == null ? pendingPublishKey : undefined
+        }
+        authorPendingPublish={post?.feed_visible_at == null || post?._authorPendingPublish === true}
         renderMediaLightboxChrome={chromeRenderer}
         renderMediaLightboxMenu={menuRenderer}
         renderMediaLightboxTopBarExtra={topBarExtraRenderer}

@@ -162,6 +162,22 @@ import {
   sanitizeLoungeThreadSnapshotForVideoRetry,
 } from './loungePostSubmitJob'
 import {
+  buildAuthorPendingVideoFeedPost,
+  buildAuthorPendingVideoQuoteRepost,
+  buildAuthorPendingVideoThreadRootPost,
+  buildAuthorPendingVideoComment,
+  clearLoungePendingPostProgress,
+  createLoungePendingPublishKey,
+  finishLoungePendingCommentVideoProcessing,
+  loungeSubmissionUsesInlineVideoPostProgress,
+  loungeEditSnapshotHasIncomingVideoUpload,
+  loungeSubmissionShouldUseBottomUploadBar,
+  publishLoungeFeedPostWhenStreamReady,
+  remitLoungePendingPostProgressKey,
+  setLoungePendingPostProgress,
+  getLoungePendingPostProgress,
+} from './loungePendingPostPublish.js'
+import {
   executeLoungeCommentSubmission,
   executeLoungeCommentUpdate,
 } from './loungeCommentSubmitJob.js'
@@ -3498,9 +3514,20 @@ export default function SocialFeed({
   )
 
   const applyLoungePostSubmitUploadProgress = useCallback((info, snapshot, barBase = {}) => {
-    const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
+    const pendingKey = String(snapshot?._pendingPublishKey || '').trim()
+    const inlineTile = pendingKey && loungeSubmissionUsesInlineVideoPostProgress(snapshot)
     loungePostUploadLastPhaseRef.current = String(info?.status || '')
+    if (inlineTile) {
+      setLoungePendingPostProgress(pendingKey, {
+        progress: typeof info?.progress === 'number' ? info.progress : 0,
+        status: String(info?.status || ''),
+        detail: String(info?.detail || ''),
+        phase: 'upload',
+      })
+      return
+    }
     setLoungePostUploadBar((prev) => {
+      const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
       const d = String(info?.detail || '').trim()
       const threadPartPublished =
         typeof info?.threadPartPublished === 'number'
@@ -3526,6 +3553,200 @@ export default function SocialFeed({
       }
     })
   }, [])
+
+  const patchAuthorPendingVideoPost = useCallback(
+    (pendingKey, partial) => {
+      const key = String(pendingKey || '').trim()
+      if (!key) return
+      const patch = (p) =>
+        p.id === key || p._pendingPublishKey === key ? { ...p, ...partial } : p
+      setCommunityPosts((prev) => prev.map(patch))
+      setLoungePostDetail((d) => (d && (d.id === key || d._pendingPublishKey === key) ? { ...d, ...partial } : d))
+    },
+    [setCommunityPosts],
+  )
+
+  const removeAuthorPendingVideoPost = useCallback(
+    (pendingKey) => {
+      const key = String(pendingKey || '').trim()
+      if (!key) return
+      clearLoungePendingPostProgress(key)
+      setCommunityPosts((prev) => prev.filter((p) => p.id !== key && p._pendingPublishKey !== key))
+    },
+    [setCommunityPosts],
+  )
+
+  const prependAuthorPendingVideoPost = useCallback(
+    (snapshot, pendingKey) => {
+      const key = String(pendingKey || '').trim()
+      if (!key || !composerUserId) return
+      const row = buildAuthorPendingVideoFeedPost({
+        snapshot,
+        pendingKey: key,
+        userId: composerUserId,
+        authorProfile: composerUserProfile || null,
+      })
+      setCommunityPosts((prev) => [row, ...prev.filter((p) => p.id !== key && p._pendingPublishKey !== key)])
+      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+    },
+    [composerUserId, composerUserProfile, setCommunityPosts],
+  )
+
+  const prependAuthorPendingVideoQuoteRepost = useCallback(
+    (snapshot, pendingKey, original, originalKind) => {
+      const key = String(pendingKey || '').trim()
+      if (!key || !composerUserId) return
+      const row = buildAuthorPendingVideoQuoteRepost({
+        snapshot,
+        pendingKey: key,
+        userId: composerUserId,
+        authorProfile: composerUserProfile || null,
+        original,
+        originalKind,
+      })
+      setCommunityPosts((prev) => [row, ...prev.filter((p) => p.id !== key && p._pendingPublishKey !== key)])
+      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+    },
+    [composerUserId, composerUserProfile, setCommunityPosts],
+  )
+
+  const prependAuthorPendingVideoThreadRoot = useCallback(
+    (snapshot, pendingKey, threadPartCount) => {
+      const key = String(pendingKey || '').trim()
+      if (!key || !composerUserId) return
+      const row = buildAuthorPendingVideoThreadRootPost({
+        snapshot,
+        pendingKey: key,
+        userId: composerUserId,
+        authorProfile: composerUserProfile || null,
+        threadPartCount,
+      })
+      setCommunityPosts((prev) => [row, ...prev.filter((p) => p.id !== key && p._pendingPublishKey !== key)])
+      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+    },
+    [composerUserId, composerUserProfile, setCommunityPosts],
+  )
+
+  const prependAuthorPendingVideoComment = useCallback(
+    (snapshot, pendingKey) => {
+      const key = String(pendingKey || '').trim()
+      if (!key || !composerUserId) return
+      const row = buildAuthorPendingVideoComment({
+        snapshot,
+        pendingKey: key,
+        userId: composerUserId,
+        authorProfile: composerUserProfile || null,
+        postId: snapshot.postId,
+        parentId: snapshot.parentId,
+      })
+      setLoungeDetailComments((prev) => {
+        const filtered = prev.filter((r) => r.id !== key && r._pendingPublishKey !== key)
+        const withNew = [...filtered, row]
+        return snapshot.parentId
+          ? bumpFeedCommentAncestorCountsInList(withNew, snapshot.parentId, 1)
+          : withNew
+      })
+      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+    },
+    [composerUserId, composerUserProfile],
+  )
+
+  const markPostPendingVideoPublish = useCallback(
+    (postId, snapshot, pendingKey) => {
+      const key = String(pendingKey || '').trim()
+      const id = String(postId || '').trim()
+      if (!key || !id) return
+      const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
+      patchPostAggregate(id, {
+        _authorPendingPublish: true,
+        _pendingPublishKey: key,
+        feed_visible_at: null,
+        _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+      })
+      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+    },
+    [patchPostAggregate],
+  )
+
+  const markCommentPendingVideoPublish = useCallback((commentId, snapshot, pendingKey) => {
+    const key = String(pendingKey || '').trim()
+    const id = String(commentId || '').trim()
+    if (!key || !id) return
+    const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
+    setLoungeDetailComments((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              _authorPendingPublish: true,
+              _pendingPublishKey: key,
+              _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+            }
+          : r,
+      ),
+    )
+    setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+  }, [])
+
+  const removeAuthorPendingVideoComment = useCallback((pendingKey, parentId) => {
+    const key = String(pendingKey || '').trim()
+    if (!key) return
+    clearLoungePendingPostProgress(key)
+    setLoungeDetailComments((prev) => {
+      const filtered = prev.filter((r) => r.id !== key && r._pendingPublishKey !== key)
+      return parentId ? bumpFeedCommentAncestorCountsInList(filtered, parentId, -1) : filtered
+    })
+  }, [])
+
+  const startStagedVideoPostPublish = useCallback(
+    (postId, streamUid, pendingKey) => {
+      const id = String(postId || '').trim()
+      const uid = String(streamUid || '').trim()
+      const key = String(pendingKey || id).trim()
+      if (!id || !uid) return
+      remitLoungePendingPostProgressKey(key, id)
+      patchAuthorPendingVideoPost(key, {
+        id,
+        stream_video_uid: uid,
+        _pendingPublishKey: id,
+        _authorPendingPublish: true,
+        feed_visible_at: null,
+      })
+      setLoungePendingPostProgress(id, {
+        progress: 0.9,
+        status: 'Processing video…',
+        detail: '',
+        phase: 'processing',
+      })
+      const ac = new AbortController()
+      void publishLoungeFeedPostWhenStreamReady({
+        supabaseClient,
+        postId: id,
+        streamUid: uid,
+        signal: ac.signal,
+        onProgress: (info) => {
+          setLoungePendingPostProgress(id, {
+            progress: info.progress,
+            status: info.status,
+            detail: '',
+            phase: 'processing',
+          })
+        },
+      })
+        .then((visibleAt) => {
+          clearLoungePendingPostProgress(id)
+          patchAuthorPendingVideoPost(id, {
+            feed_visible_at: visibleAt,
+            _authorPendingPublish: false,
+          })
+        })
+        .catch((e) => {
+          if (e?.name === 'AbortError') return
+          console.warn('staged video publish:', e)
+        })
+    },
+    [patchAuthorPendingVideoPost, supabaseClient],
+  )
 
   const clearComposerAfterDraftSaveQueued = useCallback(
     (skipRevokeUrls) => {
@@ -5727,6 +5948,17 @@ export default function SocialFeed({
 
     if (!snapshot) return
 
+    if (loungeSubmissionUsesInlineVideoPostProgress(snapshot)) {
+      const pendingPublishKey = createLoungePendingPublishKey('pending-quote')
+      snapshot._pendingPublishKey = pendingPublishKey
+      prependAuthorPendingVideoQuoteRepost(
+        snapshot,
+        pendingPublishKey,
+        modal.original,
+        modal.originalKind === 'comment' ? 'comment' : 'post',
+      )
+    }
+
     const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungePostSnapshotRef.current = snapshot
@@ -6287,6 +6519,11 @@ export default function SocialFeed({
       preserveDetailCommentVideoPrep: preserveVideoPrep,
       pendingSnapshot: snapshot,
     })
+    if (loungeSubmissionUsesInlineVideoPostProgress(snapshot)) {
+      const pendingPublishKey = createLoungePendingPublishKey('pending-comment')
+      snapshot._pendingPublishKey = pendingPublishKey
+      prependAuthorPendingVideoComment(snapshot, pendingPublishKey)
+    }
     enqueueAndRunLoungeSubmitRef.current('comment', snapshot)
 
     const commentMediaOrPrepPending =
@@ -6471,6 +6708,11 @@ export default function SocialFeed({
       preserveDetailCommentEditVideoPrep: preserveVideoPrep,
       pendingSnapshot: snapshot,
     })
+    if (loungeEditSnapshotHasIncomingVideoUpload(snapshot)) {
+      const pendingPublishKey = createLoungePendingPublishKey('pending-comment-edit')
+      snapshot._pendingPublishKey = pendingPublishKey
+      markCommentPendingVideoPublish(loungeDetailCommentEditingId, snapshot, pendingPublishKey)
+    }
     setLoungeDetailCommentEditPendingCommentId(loungeDetailCommentEditingId)
     enqueueAndRunLoungeSubmitRef.current('commentEdit', snapshot)
     cancelLoungeDetailCommentEdit()
@@ -8150,6 +8392,7 @@ export default function SocialFeed({
       videoPrepSpec: specForSnap,
       _capturedPrepHandoff: handoffNow ?? null,
       marketSymbols: loungeDetailEditMarketSymbols,
+      _priorFeedVisibleAt: loungePostDetail.feed_visible_at ?? loungePostDetail.created_at ?? null,
     }
 
     const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
@@ -8166,6 +8409,11 @@ export default function SocialFeed({
     }
     if (loungePostEditSnapshotShowsFeedCardSpinner(snapshot)) {
       setLoungeFeedPostEditPendingPostId(loungePostDetail.id)
+    }
+    if (loungeEditSnapshotHasIncomingVideoUpload(snapshot)) {
+      const pendingPublishKey = createLoungePendingPublishKey('pending-post-edit')
+      snapshot._pendingPublishKey = pendingPublishKey
+      markPostPendingVideoPublish(loungePostDetail.id, snapshot, pendingPublishKey)
     }
     clearLoungeDetailEditForPostAttempt({
       preserveDetailEditVideoPrep: preserveVideoPrep,
@@ -10042,7 +10290,10 @@ export default function SocialFeed({
         prepSource === 'quote' ? quoteRepostVideoLastEncodedFileRef : composerVideoLastEncodedFileRef
       const submissionHasVideo = loungeSubmissionSnapshotIncludesVideo(snapshot)
       const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
-      const showSubmitBar = submissionHasVideo || threadTotal > 1
+      const inlineVideoProgress = loungeSubmissionUsesInlineVideoPostProgress(snapshot)
+      const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
+      const useBottomUploadBar = loungeSubmissionShouldUseBottomUploadBar(snapshot)
+      const showSubmitBar = useBottomUploadBar
       const uidBar = String(snapshot.streamVideoUid || '').trim()
       const mediaUploadBarSkin =
         submissionHasVideo &&
@@ -10093,7 +10344,7 @@ export default function SocialFeed({
       try {
         if (snapshotNeedsBackgroundVideoPrep(snap)) {
           loungePostUploadLastPhaseRef.current = 'Waiting for video'
-          if (submissionHasVideo) {
+          if (submissionHasVideo && useBottomUploadBar) {
             setLoungePostUploadBar((prev) => {
               const keepInFlightPrep =
                 mediaUploadBarSkin &&
@@ -10125,6 +10376,17 @@ export default function SocialFeed({
           let out
           const onPrepProgressWhilePosting = (info) => {
             if (ac.signal.aborted) return
+            if (inlineVideoProgress) {
+              applyLoungePostSubmitUploadProgress(
+                {
+                  progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                  status: String(info.status || ''),
+                  detail: String(info.detail || ''),
+                },
+                snap,
+              )
+              return
+            }
             setLoungePostUploadBar((prev) => {
               const d = String(info.detail || '').trim()
               return {
@@ -10142,6 +10404,15 @@ export default function SocialFeed({
             if (ac.signal.aborted) return
             const d = String(detail || '').trim()
             if (!d) return
+            if (inlineVideoProgress && pendingPublishKey) {
+              setLoungePendingPostProgress(pendingPublishKey, {
+                progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
+                status: 'Retrying…',
+                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                phase: 'upload',
+              })
+              return
+            }
             setLoungePostUploadBar((prev) =>
               prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
             )
@@ -10188,6 +10459,9 @@ export default function SocialFeed({
           if (nu && pend.startsWith('blob:')) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
+          if (inlineVideoProgress && pendingPublishKey && nu) {
+            patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: nu })
+          }
           if (snapshot.awaitingComposerVideoPrepJobId != null || snapshot._capturedPrepHandoff?.jobId != null) {
             const handoffJobId =
               snapshot.awaitingComposerVideoPrepJobId ?? snapshot._capturedPrepHandoff?.jobId
@@ -10199,11 +10473,11 @@ export default function SocialFeed({
           }
         }
 
-        await executeLoungeCommunityPostSubmission({
+        const submitResult = await executeLoungeCommunityPostSubmission({
           supabaseClient,
           snapshot: snap,
           signal: ac.signal,
-          onProgress: showSubmitBar
+          onProgress: showSubmitBar || inlineVideoProgress
             ? (info) =>
                 applyLoungePostSubmitUploadProgress(info, snap, {
                   ...(mediaUploadBarSkin || threadTotal > 1
@@ -10211,6 +10485,18 @@ export default function SocialFeed({
                     : { mode: 'post' }),
                 })
             : undefined,
+          onStreamUidAvailable:
+            inlineVideoProgress && pendingPublishKey
+              ? (uid) => {
+                  const id = String(uid || '').trim()
+                  if (!id) return
+                  patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: id })
+                  const poster = String(snap.sessionStreamPosterBlobUrl || '').trim()
+                  if (poster.startsWith('blob:')) {
+                    pinLoungeStreamSessionPoster(id, poster)
+                  }
+                }
+              : undefined,
           rateLimitMessage,
           onUploadDiagnostic: showSubmitBar
             ? (detail) => {
@@ -10221,8 +10507,32 @@ export default function SocialFeed({
                   prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
                 )
               }
-            : undefined,
+            : inlineVideoProgress
+              ? (detail) => {
+                  if (ac.signal.aborted) return
+                  const d = String(detail || '').trim()
+                  if (!d) return
+                  setLoungePendingPostProgress(pendingPublishKey, {
+                    progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
+                    status: 'Retrying…',
+                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    phase: 'upload',
+                  })
+                }
+              : undefined,
         })
+        if (
+          inlineVideoProgress &&
+          submitResult?.stagedStreamPublish &&
+          submitResult.postId &&
+          submitResult.streamVideoUid
+        ) {
+          startStagedVideoPostPublish(
+            submitResult.postId,
+            submitResult.streamVideoUid,
+            pendingPublishKey,
+          )
+        }
         loungePostSnapshotRef.current = null
         persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
         const publishedDraftId = String(
@@ -10261,6 +10571,9 @@ export default function SocialFeed({
           )
           setLoungePostUploadBar(null)
         } else {
+          if (inlineVideoProgress && pendingPublishKey) {
+            removeAuthorPendingVideoPost(pendingPublishKey)
+          }
           const failUid = String(snap.streamVideoUid || '').trim()
           const hadSessionPoster =
             typeof snap.sessionStreamPosterBlobUrl === 'string' &&
@@ -10283,7 +10596,7 @@ export default function SocialFeed({
         if (threadTotal > 1) setLoungePostUploadBar(null)
       }
     },
-    [bumpNotificationInteractionRefreshIfOpen, loadCommunityFeed, rateLimitMessage, refreshLoungeDraftCount, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight, applyLoungePostSubmitUploadProgress, persistThreadSubmissionSnapshotAsDraft, restoreThreadAfterUploadFailure],
+    [bumpNotificationInteractionRefreshIfOpen, loadCommunityFeed, rateLimitMessage, refreshLoungeDraftCount, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight, applyLoungePostSubmitUploadProgress, persistThreadSubmissionSnapshotAsDraft, restoreThreadAfterUploadFailure, patchAuthorPendingVideoPost, removeAuthorPendingVideoPost, startStagedVideoPostPublish],
   )
   runBackgroundLoungePostSubmissionRef.current = runBackgroundLoungePostSubmission
 
@@ -10298,6 +10611,8 @@ export default function SocialFeed({
       const snapshot = job.snapshot
       const isQueuedJob = Boolean(job?.id)
       const submissionHasVideo = loungeSubmissionSnapshotIncludesVideo(snapshot)
+      const inlineVideoProgress = loungeSubmissionUsesInlineVideoPostProgress(snapshot)
+      const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
       const uidBar = String(snapshot.streamVideoUid || '').trim()
       const mediaUploadBarSkin =
         submissionHasVideo &&
@@ -10312,7 +10627,7 @@ export default function SocialFeed({
       const ac = new AbortController()
       loungeDetailCommentAbortRef.current = ac
 
-      if (submissionHasVideo) {
+      if (submissionHasVideo && !inlineVideoProgress) {
         setLoungePostUploadBar((prev) => {
           if (mediaUploadBarSkin) {
             const p = typeof prev?.progress === 'number' ? prev.progress : 0
@@ -10335,7 +10650,7 @@ export default function SocialFeed({
       try {
         if (snapshotNeedsBackgroundVideoPrep(snap)) {
           loungePostUploadLastPhaseRef.current = 'Waiting for video'
-          if (submissionHasVideo) {
+          if (submissionHasVideo && !inlineVideoProgress) {
             setLoungePostUploadBar((prev) => ({
               ...(mediaUploadBarSkin
                 ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
@@ -10349,6 +10664,17 @@ export default function SocialFeed({
 
           const onPrepProgressWhilePosting = (info) => {
             if (ac.signal.aborted) return
+            if (inlineVideoProgress) {
+              applyLoungePostSubmitUploadProgress(
+                {
+                  progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                  status: String(info.status || ''),
+                  detail: String(info.detail || ''),
+                },
+                snap,
+              )
+              return
+            }
             setLoungePostUploadBar((prev) => {
               const d = String(info.detail || '').trim()
               return {
@@ -10366,6 +10692,15 @@ export default function SocialFeed({
             if (ac.signal.aborted) return
             const d = String(detail || '').trim()
             if (!d) return
+            if (inlineVideoProgress && pendingPublishKey) {
+              setLoungePendingPostProgress(pendingPublishKey, {
+                progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
+                status: 'Retrying…',
+                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                phase: 'upload',
+              })
+              return
+            }
             setLoungePostUploadBar((prev) =>
               prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
             )
@@ -10406,6 +10741,15 @@ export default function SocialFeed({
           const pend =
             typeof snap.sessionStreamPosterBlobUrl === 'string' ? snap.sessionStreamPosterBlobUrl.trim() : ''
           const nu = String(snap.streamVideoUid || '').trim()
+          if (inlineVideoProgress && pendingPublishKey && nu) {
+            setLoungeDetailComments((prev) =>
+              prev.map((r) =>
+                r.id === pendingPublishKey || r._pendingPublishKey === pendingPublishKey
+                  ? { ...r, stream_video_uid: nu }
+                  : r,
+              ),
+            )
+          }
           if (nu && pend.startsWith('blob:')) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
@@ -10436,27 +10780,21 @@ export default function SocialFeed({
             userId: snap.userId,
           },
           signal: ac.signal,
-          onProgress: submissionHasVideo
-            ? (info) => {
-                loungePostUploadLastPhaseRef.current = String(info?.status || '')
-                setLoungePostUploadBar((prev) => {
-                  const d = String(info?.detail || '').trim()
-                  return {
-                    ...(mediaUploadBarSkin
-                      ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
-                      : { mode: 'post' }),
-                    progress: typeof info?.progress === 'number' ? info.progress : 0,
-                    status: String(info?.status || ''),
-                    detail: d !== '' ? d : prev && typeof prev.detail === 'string' ? prev.detail : '',
-                  }
-                })
-              }
-            : undefined,
+          onProgress: submissionHasVideo ? (info) => applyLoungePostSubmitUploadProgress(info, snap) : undefined,
           onUploadDiagnostic: submissionHasVideo
             ? (detail) => {
                 if (ac.signal.aborted) return
                 const d = String(detail || '').trim()
                 if (!d) return
+                if (inlineVideoProgress && pendingPublishKey) {
+                  setLoungePendingPostProgress(pendingPublishKey, {
+                    progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
+                    status: 'Retrying…',
+                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    phase: 'upload',
+                  })
+                  return
+                }
                 setLoungePostUploadBar((prev) =>
                   prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
                 )
@@ -10471,17 +10809,66 @@ export default function SocialFeed({
           .eq('user_id', snap.userId)
           .maybeSingle()
         const row = { ...data, author_profile: pr.data || composerUserProfile || null }
+        if (inlineVideoProgress && pendingPublishKey) {
+          setLoungeDetailComments((prev) => {
+            const withoutPending = prev.filter(
+              (r) => r.id !== pendingPublishKey && r._pendingPublishKey !== pendingPublishKey,
+            )
+            const withNew = withoutPending.some((r) => r.id === row.id)
+              ? withoutPending.map((r) => (r.id === row.id ? { ...r, ...row } : r))
+              : [...withoutPending, row]
+            return snap.parentId
+              ? bumpFeedCommentAncestorCountsInList(withNew, snap.parentId, 0)
+              : withNew
+          })
+        } else if (row.id) {
+          setLoungeDetailComments((c) => {
+            const withNew = c.some((r) => r.id === row.id) ? c : [...c, row]
+            return snap.parentId
+              ? bumpFeedCommentAncestorCountsInList(withNew, snap.parentId, 1)
+              : withNew
+          })
+        }
+        const streamUid = String(snap.streamVideoUid || '').trim()
+        if (inlineVideoProgress && row.id && streamUid) {
+          remitLoungePendingPostProgressKey(pendingPublishKey, row.id)
+          setLoungeDetailComments((prev) =>
+            prev.map((r) =>
+              r.id === row.id
+                ? {
+                    ...r,
+                    _authorPendingPublish: true,
+                    _pendingPublishKey: row.id,
+                    stream_video_uid: streamUid,
+                  }
+                : r,
+            ),
+          )
+          void finishLoungePendingCommentVideoProcessing({
+            commentId: row.id,
+            streamUid,
+            pendingKey: pendingPublishKey,
+            onProgress: (info) => {
+              setLoungePendingPostProgress(row.id, {
+                progress: info.progress,
+                status: info.status,
+                detail: '',
+                phase: 'processing',
+              })
+            },
+          }).then(() => {
+            setLoungeDetailComments((prev) =>
+              prev.map((r) =>
+                r.id === row.id ? { ...r, _authorPendingPublish: false, _pendingPublishKey: row.id } : r,
+              ),
+            )
+          })
+        }
         if (row.id) {
           setLoungeDetailViewerPinnedCommentIds((ids) =>
             ids[0] === row.id ? ids : [row.id, ...ids.filter((id) => id !== row.id)],
           )
         }
-        setLoungeDetailComments((c) => {
-          const withNew = c.some((r) => r.id === row.id) ? c : [...c, row]
-          return snap.parentId
-            ? bumpFeedCommentAncestorCountsInList(withNew, snap.parentId, 1)
-            : withNew
-        })
         const { data: countRow } = await supabaseClient
           .from('community_feed_posts')
           .select('comment_count')
@@ -10512,6 +10899,9 @@ export default function SocialFeed({
         }
       } catch (e) {
         if (e?.name === 'AbortError') return
+        if (inlineVideoProgress && pendingPublishKey) {
+          removeAuthorPendingVideoComment(pendingPublishKey, snap.parentId)
+        }
         const failUid = String(snap.streamVideoUid || '').trim()
         const hadSessionPoster =
           typeof snap.sessionStreamPosterBlobUrl === 'string' &&
@@ -10576,6 +10966,7 @@ export default function SocialFeed({
                 stream_poster_url: data.stream_poster_url,
                 stream_video_width: data.stream_video_width,
                 stream_video_height: data.stream_video_height,
+                feed_visible_at: data.feed_visible_at,
                 link_preview: data.link_preview,
                 market_embeds: data.market_embeds,
               }
@@ -10596,6 +10987,7 @@ export default function SocialFeed({
               stream_poster_url: data.stream_poster_url,
               stream_video_width: data.stream_video_width,
               stream_video_height: data.stream_video_height,
+              feed_visible_at: data.feed_visible_at,
               link_preview: data.link_preview,
               market_embeds: data.market_embeds,
             }
@@ -10616,6 +11008,7 @@ export default function SocialFeed({
                 stream_poster_url: data.stream_poster_url,
                 stream_video_width: data.stream_video_width,
                 stream_video_height: data.stream_video_height,
+                feed_visible_at: data.feed_visible_at,
                 link_preview: data.link_preview,
                 market_embeds: data.market_embeds,
               }
@@ -10643,6 +11036,8 @@ export default function SocialFeed({
       const snapshot = job.snapshot
       const isQueuedJob = Boolean(job?.id)
       const submissionHasVideo = loungeSubmissionSnapshotIncludesVideo(snapshot)
+      const inlineVideoProgress = loungeEditSnapshotHasIncomingVideoUpload(snapshot)
+      const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
       const uidBar = String(snapshot.streamVideoUid || '').trim()
       const mediaUploadBarSkin =
         submissionHasVideo &&
@@ -10657,7 +11052,7 @@ export default function SocialFeed({
       const ac = new AbortController()
       loungeDetailEditAbortRef.current = ac
 
-      if (submissionHasVideo) {
+      if (submissionHasVideo && !inlineVideoProgress) {
         setLoungePostUploadBar((prev) => {
           if (mediaUploadBarSkin) {
             const p = typeof prev?.progress === 'number' ? prev.progress : 0
@@ -10681,7 +11076,7 @@ export default function SocialFeed({
       try {
         if (snapshotNeedsBackgroundVideoPrep(snap)) {
           loungePostUploadLastPhaseRef.current = 'Waiting for video'
-          if (submissionHasVideo) {
+          if (submissionHasVideo && !inlineVideoProgress) {
             setLoungePostUploadBar((prev) => ({
               ...(mediaUploadBarSkin
                 ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId, editSave: true }
@@ -10695,6 +11090,17 @@ export default function SocialFeed({
 
           const onPrepProgressWhilePosting = (info) => {
             if (ac.signal.aborted) return
+            if (inlineVideoProgress) {
+              applyLoungePostSubmitUploadProgress(
+                {
+                  progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                  status: String(info.status || ''),
+                  detail: String(info.detail || ''),
+                },
+                snap,
+              )
+              return
+            }
             setLoungePostUploadBar((prev) => {
               const d = String(info.detail || '').trim()
               return {
@@ -10712,6 +11118,15 @@ export default function SocialFeed({
             if (ac.signal.aborted) return
             const d = String(detail || '').trim()
             if (!d) return
+            if (inlineVideoProgress && pendingPublishKey) {
+              setLoungePendingPostProgress(pendingPublishKey, {
+                progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
+                status: 'Retrying…',
+                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                phase: 'upload',
+              })
+              return
+            }
             setLoungePostUploadBar((prev) =>
               prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
             )
@@ -10752,6 +11167,9 @@ export default function SocialFeed({
           const pend =
             typeof snap.sessionStreamPosterBlobUrl === 'string' ? snap.sessionStreamPosterBlobUrl.trim() : ''
           const nu = String(snap.streamVideoUid || '').trim()
+          if (inlineVideoProgress && pendingPublishKey && nu) {
+            patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: nu })
+          }
           if (nu && pend.startsWith('blob:')) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
@@ -10772,28 +11190,34 @@ export default function SocialFeed({
           supabaseClient,
           snapshot: snap,
           signal: ac.signal,
-          onProgress: submissionHasVideo
-            ? (info) => {
-                loungePostUploadLastPhaseRef.current = String(info?.status || '')
-                setLoungePostUploadBar((prev) => {
-                  const d = String(info?.detail || '').trim()
-                  return {
-                    ...(mediaUploadBarSkin
-                      ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId, editSave: true }
-                      : { mode: 'post', editSave: true }),
-                    progress: typeof info?.progress === 'number' ? info.progress : 0,
-                    status: String(info?.status || ''),
-                    detail: d !== '' ? d : prev && typeof prev.detail === 'string' ? prev.detail : '',
+          onProgress: submissionHasVideo ? (info) => applyLoungePostSubmitUploadProgress(info, snap, { editSave: true }) : undefined,
+          onStreamUidAvailable:
+            inlineVideoProgress && pendingPublishKey
+              ? (uid) => {
+                  const id = String(uid || '').trim()
+                  if (!id) return
+                  patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: id })
+                  const poster = String(snap.sessionStreamPosterBlobUrl || '').trim()
+                  if (poster.startsWith('blob:')) {
+                    pinLoungeStreamSessionPoster(id, poster)
                   }
-                })
-              }
-            : undefined,
+                }
+              : undefined,
           rateLimitMessage,
           onUploadDiagnostic: submissionHasVideo
             ? (detail) => {
                 if (ac.signal.aborted) return
                 const d = String(detail || '').trim()
                 if (!d) return
+                if (inlineVideoProgress && pendingPublishKey) {
+                  setLoungePendingPostProgress(pendingPublishKey, {
+                    progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
+                    status: 'Retrying…',
+                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    phase: 'upload',
+                  })
+                  return
+                }
                 setLoungePostUploadBar((prev) =>
                   prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
                 )
@@ -10802,11 +11226,26 @@ export default function SocialFeed({
         })
         loungeDetailEditSnapshotRef.current = null
         patchLoungePostEditResult(data)
+        if (
+          inlineVideoProgress &&
+          data?.stagedStreamPublish &&
+          data.postId &&
+          data.streamVideoUid
+        ) {
+          startStagedVideoPostPublish(data.postId, data.streamVideoUid, pendingPublishKey)
+        }
         persistLoungeComposerLastCategoryPillsFromSubmit(snap)
         setLoungePostUploadFailedOpen(false)
         setLoungePostUploadFailureDetails(null)
       } catch (e) {
         if (e?.name === 'AbortError') return
+        if (inlineVideoProgress && pendingPublishKey && snap.postId) {
+          clearLoungePendingPostProgress(pendingPublishKey)
+          patchAuthorPendingVideoPost(snap.postId, {
+            _authorPendingPublish: false,
+            ...(snap._priorFeedVisibleAt != null ? { feed_visible_at: snap._priorFeedVisibleAt } : {}),
+          })
+        }
         const failUid = String(snap.streamVideoUid || '').trim()
         const hadSessionPoster =
           typeof snap.sessionStreamPosterBlobUrl === 'string' &&
@@ -10837,7 +11276,16 @@ export default function SocialFeed({
         dismissLoungePostUploadBarIfIdle()
       }
     },
-    [bumpLoungeSubmitInFlight, dismissLoungePostUploadBarIfIdle, patchLoungePostEditResult, rateLimitMessage, supabaseClient],
+    [
+      applyLoungePostSubmitUploadProgress,
+      bumpLoungeSubmitInFlight,
+      dismissLoungePostUploadBarIfIdle,
+      patchAuthorPendingVideoPost,
+      patchLoungePostEditResult,
+      rateLimitMessage,
+      startStagedVideoPostPublish,
+      supabaseClient,
+    ],
   )
   runBackgroundLoungePostEditSubmissionRef.current = runBackgroundLoungePostEditSubmission
 
@@ -10852,6 +11300,8 @@ export default function SocialFeed({
       const snapshot = job.snapshot
       const isQueuedJob = Boolean(job?.id)
       const submissionHasVideo = loungeSubmissionSnapshotIncludesVideo(snapshot)
+      const inlineVideoProgress = loungeEditSnapshotHasIncomingVideoUpload(snapshot)
+      const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
       const uidBar = String(snapshot.streamVideoUid || '').trim()
       const mediaUploadBarSkin =
         submissionHasVideo &&
@@ -10866,7 +11316,7 @@ export default function SocialFeed({
       const ac = new AbortController()
       loungeDetailCommentEditAbortRef.current = ac
 
-      if (submissionHasVideo) {
+      if (submissionHasVideo && !inlineVideoProgress) {
         setLoungePostUploadBar((prev) => {
           if (mediaUploadBarSkin) {
             const p = typeof prev?.progress === 'number' ? prev.progress : 0
@@ -10890,7 +11340,7 @@ export default function SocialFeed({
       try {
         if (snapshotNeedsBackgroundVideoPrep(snap)) {
           loungePostUploadLastPhaseRef.current = 'Waiting for video'
-          if (submissionHasVideo) {
+          if (submissionHasVideo && !inlineVideoProgress) {
             setLoungePostUploadBar((prev) => ({
               ...(mediaUploadBarSkin
                 ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
@@ -10904,6 +11354,17 @@ export default function SocialFeed({
 
           const onPrepProgressWhilePosting = (info) => {
             if (ac.signal.aborted) return
+            if (inlineVideoProgress) {
+              applyLoungePostSubmitUploadProgress(
+                {
+                  progress: 0.06 + (typeof info.progress === 'number' ? info.progress : 0) * 0.38,
+                  status: String(info.status || ''),
+                  detail: String(info.detail || ''),
+                },
+                snap,
+              )
+              return
+            }
             setLoungePostUploadBar((prev) => {
               const d = String(info.detail || '').trim()
               return {
@@ -10921,6 +11382,15 @@ export default function SocialFeed({
             if (ac.signal.aborted) return
             const d = String(detail || '').trim()
             if (!d) return
+            if (inlineVideoProgress && pendingPublishKey) {
+              setLoungePendingPostProgress(pendingPublishKey, {
+                progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
+                status: 'Retrying…',
+                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                phase: 'upload',
+              })
+              return
+            }
             setLoungePostUploadBar((prev) =>
               prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
             )
@@ -10965,6 +11435,15 @@ export default function SocialFeed({
           const pend =
             typeof snap.sessionStreamPosterBlobUrl === 'string' ? snap.sessionStreamPosterBlobUrl.trim() : ''
           const nu = String(snap.streamVideoUid || '').trim()
+          if (inlineVideoProgress && pendingPublishKey && nu) {
+            setLoungeDetailComments((prev) =>
+              prev.map((r) =>
+                r.id === pendingPublishKey || r.id === snap.commentId || r._pendingPublishKey === pendingPublishKey
+                  ? { ...r, stream_video_uid: nu }
+                  : r,
+              ),
+            )
+          }
           if (nu && pend.startsWith('blob:')) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
@@ -10985,27 +11464,21 @@ export default function SocialFeed({
           supabaseClient,
           snapshot: snap,
           signal: ac.signal,
-          onProgress: submissionHasVideo
-            ? (info) => {
-                loungePostUploadLastPhaseRef.current = String(info?.status || '')
-                setLoungePostUploadBar((prev) => {
-                  const d = String(info?.detail || '').trim()
-                  return {
-                    ...(mediaUploadBarSkin
-                      ? { mode: 'mediaPrep', postSubmission: true, prepJobId: prepHudId }
-                      : { mode: 'post' }),
-                    progress: typeof info?.progress === 'number' ? info.progress : 0,
-                    status: String(info?.status || ''),
-                    detail: d !== '' ? d : prev && typeof prev.detail === 'string' ? prev.detail : '',
-                  }
-                })
-              }
-            : undefined,
+          onProgress: submissionHasVideo ? (info) => applyLoungePostSubmitUploadProgress(info, snap) : undefined,
           onUploadDiagnostic: submissionHasVideo
             ? (detail) => {
                 if (ac.signal.aborted) return
                 const d = String(detail || '').trim()
                 if (!d) return
+                if (inlineVideoProgress && pendingPublishKey) {
+                  setLoungePendingPostProgress(pendingPublishKey, {
+                    progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
+                    status: 'Retrying…',
+                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    phase: 'upload',
+                  })
+                  return
+                }
                 setLoungePostUploadBar((prev) =>
                   prev ? { ...prev, detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL } : prev,
                 )
@@ -11014,10 +11487,54 @@ export default function SocialFeed({
         })
         loungeDetailCommentEditSnapshotRef.current = null
         patchLoungeCommentEditResult(data)
+        const streamUid = String(snap.streamVideoUid || data?.stream_video_uid || '').trim()
+        if (inlineVideoProgress && data?.id && streamUid) {
+          remitLoungePendingPostProgressKey(pendingPublishKey, data.id)
+          setLoungeDetailComments((prev) =>
+            prev.map((r) =>
+              r.id === data.id
+                ? {
+                    ...r,
+                    ...data,
+                    _authorPendingPublish: true,
+                    _pendingPublishKey: data.id,
+                    stream_video_uid: streamUid,
+                  }
+                : r,
+            ),
+          )
+          void finishLoungePendingCommentVideoProcessing({
+            commentId: data.id,
+            streamUid,
+            pendingKey: pendingPublishKey,
+            onProgress: (info) => {
+              setLoungePendingPostProgress(data.id, {
+                progress: info.progress,
+                status: info.status,
+                detail: '',
+                phase: 'processing',
+              })
+            },
+          }).then(() => {
+            setLoungeDetailComments((prev) =>
+              prev.map((r) =>
+                r.id === data.id ? { ...r, _authorPendingPublish: false, _pendingPublishKey: data.id } : r,
+              ),
+            )
+          })
+        }
         setLoungePostUploadFailedOpen(false)
         setLoungePostUploadFailureDetails(null)
       } catch (e) {
         if (e?.name === 'AbortError') return
+        if (inlineVideoProgress && pendingPublishKey && snap.commentId) {
+          clearLoungePendingPostProgress(pendingPublishKey)
+          setLoungeDetailComments((prev) =>
+            prev.map((r) =>
+              r.id === snap.commentId ? { ...r, _authorPendingPublish: false, _pendingPublishKey: undefined } : r,
+            ),
+          )
+        }
         const failUid = String(snap.streamVideoUid || '').trim()
         const hadSessionPoster =
           typeof snap.sessionStreamPosterBlobUrl === 'string' &&
@@ -11052,7 +11569,13 @@ export default function SocialFeed({
         dismissLoungePostUploadBarIfIdle()
       }
     },
-    [bumpLoungeSubmitInFlight, dismissLoungePostUploadBarIfIdle, patchLoungeCommentEditResult, supabaseClient],
+    [
+      applyLoungePostSubmitUploadProgress,
+      bumpLoungeSubmitInFlight,
+      dismissLoungePostUploadBarIfIdle,
+      patchLoungeCommentEditResult,
+      supabaseClient,
+    ],
   )
   runBackgroundLoungeCommentEditSubmissionRef.current = runBackgroundLoungeCommentEditSubmission
 
@@ -12034,6 +12557,15 @@ export default function SocialFeed({
         pendingSnapshot: snapshot,
       })
       triggerTapHapticLight()
+      if (loungeSubmissionUsesInlineVideoPostProgress(snapshot)) {
+        const pendingPublishKey = createLoungePendingPublishKey('pending-thread')
+        snapshot._pendingPublishKey = pendingPublishKey
+        prependAuthorPendingVideoThreadRoot(
+          snapshot,
+          pendingPublishKey,
+          loungeSubmissionSnapshotThreadPartCount(snapshot) || 1,
+        )
+      }
       enqueueAndRunLoungeSubmitRef.current('post', snapshot)
     },
     [
@@ -12234,6 +12766,12 @@ export default function SocialFeed({
 
     if (!snapshot) return
 
+    const pendingPublishKey = createLoungePendingPublishKey('pending-post')
+    snapshot._pendingPublishKey = pendingPublishKey
+    if (loungeSubmissionUsesInlineVideoPostProgress(snapshot)) {
+      prependAuthorPendingVideoPost(snapshot, pendingPublishKey)
+    }
+
     const preserveVideoPrep = loungeSnapshotPreservesVideoPrep(snapshot)
     if (shouldAssignLoungePostSnapshotRef()) {
       loungePostSnapshotRef.current = snapshot
@@ -12260,8 +12798,9 @@ export default function SocialFeed({
     composerFanMonetizationLive,
     composerImageItems,
     composerMediaUrl,
-    composerUserProfile?.avatar_url,
-    composerUserProfile?.role,
+    composerUserId,
+    composerUserProfile,
+    prependAuthorPendingVideoPost,
     onRequireAuth,
     postText,
     supabaseClient,

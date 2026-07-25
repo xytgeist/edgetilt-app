@@ -634,6 +634,8 @@ export default function LoungePostStreamVideo({
   /** Survives brief ring exit / HLS detach so scroll handoffs pause instead of restart. */
   const savedStreamTimeRef = useRef(0)
   const [showStreamRetry, setShowStreamRetry] = useState(false)
+  /** Apple WebKit: fall back to native HLS when hls.js MSE never reaches metadata. */
+  const [streamNativeHlsFallback, setStreamNativeHlsFallback] = useState(false)
   const [streamInView, setStreamInView] = useState(false)
   /** After `playing` (or timeout): fade video in over poster; poster stays in-flow for layout (avoids Safari default video width flash). */
   const [streamFadeShowVideo, setStreamFadeShowVideo] = useState(false)
@@ -1726,7 +1728,18 @@ export default function LoungePostStreamVideo({
     activeHlsStallBurstRef.current = 0
     lastActiveHlsStallBumpKeyRef.current = -1
     setShowStreamRetry(false)
+    setStreamNativeHlsFallback(false)
   }, [id])
+
+  const tryMseNativeFallback = useCallback(() => {
+    if (!appleWebKitInlineStreamRef.current || streamNativeHlsFallback) return false
+    setStreamNativeHlsFallback(true)
+    activeHlsStallBurstRef.current = 0
+    lastActiveHlsStallBumpKeyRef.current = -1
+    setShowStreamRetry(false)
+    bumpStreamAttach('mse-native-fallback')
+    return true
+  }, [bumpStreamAttach, streamNativeHlsFallback])
 
   /** True while CF is still encoding HLS after a post went live without manifest wait in prep. */
   const [cfHlsProcessing, setCfHlsProcessing] = useState(false)
@@ -1809,7 +1822,10 @@ export default function LoungePostStreamVideo({
 
   /** Active tile stuck at rs=0 - retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
   useEffect(() => {
-    if (lastStreamAttachBumpReasonRef.current === 'active-hls-stall') {
+    if (
+      lastStreamAttachBumpReasonRef.current === 'active-hls-stall' ||
+      lastStreamAttachBumpReasonRef.current === 'mse-native-fallback'
+    ) {
       lastStreamAttachBumpReasonRef.current = ''
       return undefined
     }
@@ -1829,6 +1845,7 @@ export default function LoungePostStreamVideo({
     const attachKeyAtArm = streamAttachKeyRef.current
     if (lastActiveHlsStallBumpKeyRef.current === attachKeyAtArm) return undefined
     if (activeHlsStallBurstRef.current >= ACTIVE_HLS_STALL_MAX_BURST) {
+      if (tryMseNativeFallback()) return undefined
       setShowStreamRetry(true)
       return undefined
     }
@@ -1844,7 +1861,7 @@ export default function LoungePostStreamVideo({
       lastActiveHlsStallBumpKeyRef.current = keyNow
       activeHlsStallBurstRef.current += 1
       if (activeHlsStallBurstRef.current >= ACTIVE_HLS_STALL_MAX_BURST) {
-        setShowStreamRetry(true)
+        if (!tryMseNativeFallback()) setShowStreamRetry(true)
       }
       bumpStreamAttach('active-hls-stall')
     }, ACTIVE_HLS_STALL_DELAY_MS)
@@ -1864,6 +1881,7 @@ export default function LoungePostStreamVideo({
     lightboxOpen,
     streamAttachKey,
     tileRatio,
+    tryMseNativeFallback,
   ])
 
   const lastSoftResetEpochRef = useRef(0)
@@ -1890,7 +1908,7 @@ export default function LoungePostStreamVideo({
   useLoungeStreamHlsAttachment(videoRef, src, streamAttachKey, {
     enabled: hlsAttachEnabled,
     feedStyleAbr: feedStyleAbr,
-    preferMseHls: appleWebKitInlineStreamRef.current,
+    preferMseHls: appleWebKitInlineStreamRef.current && !streamNativeHlsFallback,
     ringWarmPrefetch: ringWarmPrefetch && hlsAttachEnabled,
     recoveryBurstRef,
     savedTimeRef: savedStreamTimeRef,
@@ -1924,6 +1942,7 @@ export default function LoungePostStreamVideo({
       coordinatorActive,
       feedAutoplayEnabled,
       streamAttachKey,
+      streamNativeHlsFallback,
       streamFadeShowVideo,
       savedStreamTime: savedStreamTimeRef.current,
       showStreamRetry,
@@ -1956,6 +1975,7 @@ export default function LoungePostStreamVideo({
       showStreamRetry,
       streamAttachKey,
       streamFadeShowVideo,
+      streamNativeHlsFallback,
       tileRatio,
       variant,
     ],
@@ -3373,8 +3393,9 @@ export default function LoungePostStreamVideo({
                   recoveryBurstRef.current = 0
                   activeHlsStallBurstRef.current = 0
                   lastActiveHlsStallBumpKeyRef.current = -1
+                  setStreamNativeHlsFallback(true)
                   setShowStreamRetry(false)
-                  bumpStreamAttach('retry')
+                  bumpStreamAttach('retry-native')
                 }}
               >
                 Retry

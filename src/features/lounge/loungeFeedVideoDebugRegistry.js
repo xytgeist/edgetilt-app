@@ -6,7 +6,10 @@ import { readLoungeFeedVideoDebugEnabled } from '../../utils/loungeFeedVideoDebu
 const tileGetters = new Map()
 /** @type {LoungeVideoDebugEvent[]} */
 const events = []
-const MAX_EVENTS = 64
+const MAX_EVENTS = 96
+/** Throttle tus percent spam so encode lines are not evicted from the HUD ring. */
+let lastUploadDebugLine = ''
+let lastUploadDebugPct = -1
 
 /** @type {Set<() => void>} */
 const listeners = new Set()
@@ -58,7 +61,20 @@ export function reportLoungeVideoDebugEvent(clientId, kind, detail) {
 /** Composer upload / encode progress (Settings → Video debug HUD). */
 export function maybeReportLoungeVideoUploadDebug(kind, detail) {
   if (!readLoungeFeedVideoDebugEnabled()) return
-  reportLoungeVideoDebugEvent(null, String(kind || 'upload'), String(detail || ''))
+  const line = String(detail || '')
+  const k = String(kind || 'upload')
+  if (k === 'upload' && line.includes('Uploading to Ether')) {
+    const m = /(\d+)%/.exec(line)
+    const pct = m ? Number(m[1]) : NaN
+    if (Number.isFinite(pct) && pct < 100 && pct % 10 !== 0) return
+    if (Number.isFinite(pct) && pct === lastUploadDebugPct && line === lastUploadDebugLine) return
+    lastUploadDebugPct = Number.isFinite(pct) ? pct : lastUploadDebugPct
+    lastUploadDebugLine = line
+  } else if (k === 'encode') {
+    lastUploadDebugLine = ''
+    lastUploadDebugPct = -1
+  }
+  reportLoungeVideoDebugEvent(null, k, line)
 }
 
 export function clearLoungeVideoDebugEvents() {

@@ -181,6 +181,39 @@ export function loungeAndroidIphoneSpatialDirectUploadTitle() {
 }
 
 /**
+ * Android in-app trim (WebCodecs → MediaRecorder) is unreliable above this source size.
+ * Matches {@link LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES}: trim failure cannot fall back to pass-through above it.
+ */
+export const LOUNGE_VIDEO_ANDROID_TRIM_MAX_SOURCE_BYTES = LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+
+/** @returns {number} megabyte cap for {@link loungeAndroidOversizedTrimSourceMessage}. */
+export function loungeAndroidTrimMaxSourceMegabytes() {
+  return Math.round(LOUNGE_VIDEO_ANDROID_TRIM_MAX_SOURCE_BYTES / (1024 * 1024))
+}
+
+/**
+ * @param {File | undefined} file
+ * @returns {boolean}
+ */
+export function isLoungeAndroidBlockedOversizedTrimSource(file) {
+  if (!file || !isAndroidBrowser()) return false
+  const size = typeof file.size === 'number' ? file.size : 0
+  if (!Number.isFinite(size) || size <= 0) return false
+  return size > LOUNGE_VIDEO_ANDROID_TRIM_MAX_SOURCE_BYTES
+}
+
+/** Alert title paired with {@link loungeAndroidOversizedTrimSourceMessage}. */
+export function loungeAndroidOversizedTrimSourceTitle() {
+  return 'Video too large to trim'
+}
+
+/** User-facing copy when Android cannot in-app trim an oversized long clip. */
+export function loungeAndroidOversizedTrimSourceMessage() {
+  const mb = loungeAndroidTrimMaxSourceMegabytes()
+  return `This video is over ${mb} MB. On Android, EdgeTilt can't trim large files in the app. Trim it to 60 seconds or less in your gallery or another app, then upload the shorter clip.`
+}
+
+/**
  * Android direct post must not send iPhone camera-roll MOV exports raw to Cloudflare.
  * Client wasm does not work for these on Android; CF often rejects them as incompatible.
  * Do not use file size on .mp4 ... Android camera recordings are often large MP4 and upload fine.

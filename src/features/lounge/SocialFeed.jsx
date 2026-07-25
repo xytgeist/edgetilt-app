@@ -70,8 +70,11 @@ import {
   deleteCfStreamForCommunityFeedPost,
   deleteCfStreamOrphanAsset,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
+  isLoungeAndroidBlockedOversizedTrimSource,
   loungeAndroidIphoneSpatialDirectUploadMessage,
   loungeAndroidIphoneSpatialDirectUploadTitle,
+  loungeAndroidOversizedTrimSourceMessage,
+  loungeAndroidOversizedTrimSourceTitle,
   probeVideoFileDurationSeconds,
 } from '../../utils/loungeVideoUpload'
 import {
@@ -5160,6 +5163,40 @@ export default function SocialFeed({
           await loungeAlert(showGlobalConfirm, {
             title: spatialTitle,
             message: spatialMsg,
+            confirmLabel: 'OK',
+          })
+          return
+        }
+        const needsInAppTrim = dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35
+        if (needsInAppTrim && isLoungeAndroidBlockedOversizedTrimSource(vf)) {
+          const trimTitle = loungeAndroidOversizedTrimSourceTitle()
+          const trimMsg = loungeAndroidOversizedTrimSourceMessage()
+          if (threadComposeOpenRef.current || mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
+            cancelThreadComposePartVideo(threadComposeActivePartIndexRef.current)
+            setThreadComposeErr('')
+            restoreLoungeComposerCaptionAfterMediaPick('composer')
+          } else if (mode === 'composer') {
+            cancelComposerMediaPrep()
+            setComposerMediaUrl('')
+            setPostErr('')
+          } else if (mode === 'quote') {
+            cancelQuoteRepostMediaPrep()
+            setQuoteRepostMediaUrl('')
+            setQuoteRepostErr('')
+          } else if (mode === 'detailComment') {
+            cancelLoungeDetailCommentMediaPrep()
+            loungeDetailCommentMediaSessionRef.current = false
+            setLoungeDetailCommentErr('')
+          } else if (mode === 'detailCommentEdit') {
+            cancelLoungeDetailCommentEditMediaPrep()
+            setLoungeDetailCommentErr('')
+          } else {
+            cancelLoungeDetailEditMediaPrep()
+            setLoungeDetailEditErr('')
+          }
+          await loungeAlert(showGlobalConfirm, {
+            title: trimTitle,
+            message: trimMsg,
             confirmLabel: 'OK',
           })
           return

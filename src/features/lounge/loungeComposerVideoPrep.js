@@ -7,7 +7,9 @@ import {
   deleteCfStreamOrphanAsset,
   isAndroidBrowser,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
+  isLoungeAndroidBlockedOversizedTrimSource,
   loungeAndroidIphoneSpatialDirectUploadMessage,
+  loungeAndroidOversizedTrimSourceMessage,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
   waitForDocumentVisible,
@@ -265,6 +267,10 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         ? sanitizeVideoCropPx(spec.intrinsicWidth, spec.intrinsicHeight, spec.cropPx)
         : null
     const trimSourceMb = Math.round((spec.sourceFile.size || 0) / (1024 * 1024))
+
+    if (isLoungeAndroidBlockedOversizedTrimSource(spec.sourceFile)) {
+      throw new Error(loungeAndroidOversizedTrimSourceMessage())
+    }
 
     if (isAndroidBrowser()) {
       maybeReportLoungeVideoUploadDebug('encode', `start android trim ${spec.sourceFile?.name || 'video'}`)

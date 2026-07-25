@@ -33,6 +33,8 @@ import {
   communityFeedCommentRepostInsertPayload,
   deleteLoungeFeedMediaFromPublicUrl,
   collectLoungeFeedStoredMediaUrls,
+  deleteLoungeCommunityFeedPostTreeHostedMedia,
+  deleteLoungeFeedRowHostedMedia,
   feedPostAuthorEditMediaSeed,
   feedPostDisplayCaption,
   feedPostMediaUpdatePayload,
@@ -7098,11 +7100,7 @@ export default function SocialFeed({
       try {
         for (const row of loungeDetailComments) {
           if (!removeIds.has(row.id)) continue
-          const suid = feedCommentStreamVideoUid(row)
-          if (suid) await deleteCfStreamOrphanAsset(supabaseClient, suid)
-          for (const mediaUrl of collectLoungeFeedStoredMediaUrls(row)) {
-            await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
-          }
+          await deleteLoungeFeedRowHostedMedia(supabaseClient, row)
         }
         const { error } = await supabaseClient
           .from('feed_comments')
@@ -8886,17 +8884,15 @@ export default function SocialFeed({
     setLoungeManageErr('')
     setLoungeDetailDeleteBusy(true)
     try {
-      if (feedPostStreamVideoUid(loungePostDetail)) {
-        try {
-          await deleteCfStreamForCommunityFeedPost(supabaseClient, postId)
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Could not remove hosted video.'
-          setLoungeManageErr(msg)
-          return
-        }
-      }
-      for (const mediaUrl of collectLoungeFeedStoredMediaUrls(loungePostDetail)) {
-        await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+      try {
+        await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
+          postId,
+          postRow: loungePostDetail,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Could not remove hosted media.'
+        setLoungeManageErr(msg)
+        return
       }
       const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', postId)
       if (error) {
@@ -8930,17 +8926,15 @@ export default function SocialFeed({
     setLoungeManageErr('')
     setLoungeDetailDeleteBusy(true)
     try {
-      if (feedPostStreamVideoUid(loungePostDetail)) {
-        try {
-          await deleteCfStreamForCommunityFeedPost(supabaseClient, postId)
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Could not remove hosted video.'
-          setLoungeManageErr(msg)
-          return
-        }
-      }
-      for (const mediaUrl of collectLoungeFeedStoredMediaUrls(loungePostDetail)) {
-        await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+      try {
+        await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
+          postId,
+          postRow: loungePostDetail,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Could not remove hosted media.'
+        setLoungeManageErr(msg)
+        return
       }
       const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', postId)
       if (error) {
@@ -8973,17 +8967,15 @@ export default function SocialFeed({
       setLoungeFeedDeleteBusyPostId(post.id)
       setLoungeManageErr('')
       try {
-        if (feedPostStreamVideoUid(post)) {
-          try {
-            await deleteCfStreamForCommunityFeedPost(supabaseClient, post.id)
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Could not remove hosted video.'
-            setLoungeManageErr(msg)
-            return
-          }
-        }
-        for (const mediaUrl of collectLoungeFeedStoredMediaUrls(post)) {
-          await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+        try {
+          await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
+            postId: post.id,
+            postRow: post,
+          })
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Could not remove hosted media.'
+          setLoungeManageErr(msg)
+          return
         }
         const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', post.id)
         if (error) {
@@ -9022,17 +9014,15 @@ export default function SocialFeed({
       setLoungeFeedDeleteBusyPostId(post.id)
       setLoungeManageErr('')
       try {
-        if (feedPostStreamVideoUid(post)) {
-          try {
-            await deleteCfStreamForCommunityFeedPost(supabaseClient, post.id)
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Could not remove hosted video.'
-            setLoungeManageErr(msg)
-            return
-          }
-        }
-        for (const mediaUrl of collectLoungeFeedStoredMediaUrls(post)) {
-          await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+        try {
+          await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
+            postId: post.id,
+            postRow: post,
+          })
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Could not remove hosted media.'
+          setLoungeManageErr(msg)
+          return
         }
         const { error } = await supabaseClient.from('community_feed_posts').delete().eq('id', post.id)
         if (error) {

@@ -13,6 +13,10 @@ import {
 import { LOUNGE_CAPTION_MAX } from './loungeCommentLimits.js'
 import { normalizeCashtagsInCaption } from './loungeMarketCaptionParse.js'
 import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
+import {
+  deleteCfStreamForCommunityFeedPost,
+  deleteCfStreamOrphanAsset,
+} from './loungeVideoUpload.js'
 
 export { isLoungeCfR2MediaUrl, isLoungeHostedFeedMediaUrl, isLoungeSupabaseFeedMediaUrl } from './loungeCfImageMedia.js'
 
@@ -484,6 +488,71 @@ export async function deleteLoungeFeedMediaFromPublicUrl(supabaseClient, publicU
     return
   }
   await deleteLoungeFeedSupabaseObjectFromPublicUrl(supabaseClient, u)
+}
+
+const LOUNGE_FEED_COMMENT_MEDIA_DELETE_SELECT =
+  'id, stream_video_uid, stream_poster_url, media_url, gif_url, image_urls'
+
+/**
+ * Best-effort Stream + hosted still cleanup for one feed post or comment row.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {object | null | undefined} row
+ * @param {{ usePostStreamDelete?: boolean, postId?: string }} [opts]
+ */
+export async function deleteLoungeFeedRowHostedMedia(supabaseClient, row, opts = {}) {
+  if (!row || !supabaseClient) return
+  const streamUid = feedPostStreamVideoUid(row)
+  if (streamUid) {
+    if (opts.usePostStreamDelete === true) {
+      const postId = String(opts.postId || row.id || '').trim()
+      if (postId) await deleteCfStreamForCommunityFeedPost(supabaseClient, postId)
+    } else {
+      await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+    }
+  }
+  for (const mediaUrl of collectLoungeFeedStoredMediaUrls(row)) {
+    await deleteLoungeFeedMediaFromPublicUrl(supabaseClient, mediaUrl)
+  }
+}
+
+/**
+ * Load reply rows on a post before delete (for hosted media cleanup).
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} postId
+ */
+export async function fetchLoungeFeedCommentMediaRowsForPostDelete(supabaseClient, postId) {
+  const id = String(postId || '').trim()
+  if (!id || !supabaseClient) return []
+  const { data, error } = await supabaseClient
+    .from('feed_comments')
+    .select(LOUNGE_FEED_COMMENT_MEDIA_DELETE_SELECT)
+    .eq('post_id', id)
+  if (error) throw new Error(error.message || 'Could not load replies for media cleanup.')
+  return data || []
+}
+
+/**
+ * Remove hosted media for a post and every reply on it before the DB cascade delete.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ postId: string, postRow?: object | null }} opts
+ */
+export async function deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, { postId, postRow }) {
+  const id = String(postId || postRow?.id || '').trim()
+  if (!id || !supabaseClient) return
+
+  const commentRows = await fetchLoungeFeedCommentMediaRowsForPostDelete(supabaseClient, id)
+  for (const commentRow of commentRows) {
+    await deleteLoungeFeedRowHostedMedia(supabaseClient, commentRow)
+  }
+
+  const row = postRow && typeof postRow === 'object' ? postRow : { id }
+  await deleteLoungeFeedRowHostedMedia(supabaseClient, row, {
+    usePostStreamDelete: true,
+    postId: id,
+  })
 }
 
 /** @deprecated Use {@link deleteLoungeFeedMediaFromPublicUrl} */

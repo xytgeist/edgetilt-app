@@ -353,9 +353,11 @@ function shouldSkipWasmInputProbe(file, sourceHasAudio) {
   return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
 }
 
-/** No ffmpeg progress/log activity → strategy is wedged (iPhone emits ticks every few seconds when alive). */
+/** No encode progress ratio increase → strategy is wedged (logs alone do not count). */
 const ENCODE_STALL_MS = 12_000
 const ENCODE_STALL_MS_VIDEO_COPY = 8_000
+const ENCODE_STALL_MS_ANDROID = 15_000
+const ENCODE_MAX_MS_ANDROID_LARGE = 60_000
 
 /** @param {number} fileBytes @param {EncodeStrategy | undefined} strategy @returns {{ stallMs: number, maxMs: number }} */
 function encodeStrategyWatchLimits(fileBytes, strategy) {
@@ -363,11 +365,8 @@ function encodeStrategyWatchLimits(fileBytes, strategy) {
   if (strategy?.videoCopy) {
     return { stallMs: ENCODE_STALL_MS_VIDEO_COPY, maxMs: 60_000 }
   }
-  if (isAndroidBrowser() && mb >= 50) {
-    return { stallMs: 45_000, maxMs: 180_000 }
-  }
   if (isAndroidBrowser() && mb >= 20) {
-    return { stallMs: 30_000, maxMs: 150_000 }
+    return { stallMs: ENCODE_STALL_MS_ANDROID, maxMs: ENCODE_MAX_MS_ANDROID_LARGE }
   }
   let maxMs = 90_000
   if (mb >= 50) maxMs = 180_000
@@ -655,7 +654,7 @@ async function execFfmpegLoggedWithStallWatch(ffmpeg, args, signal, limits) {
     if (stallTimer) clearTimeout(stallTimer)
     if (maxTimer) clearTimeout(maxTimer)
     ffmpeg.off('log', onLog)
-    ffmpeg.off('progress', onActivity)
+    ffmpeg.off('progress', onProgress)
     signal?.removeEventListener('abort', onParentAbort)
     return result
   }
@@ -667,7 +666,7 @@ async function execFfmpegLoggedWithStallWatch(ffmpeg, args, signal, limits) {
       execAbort.abort()
       resolveEarly?.({
         code: -1,
-        logs: [...logs, `strategy stalled (no ffmpeg activity ${Math.round(stallMs / 1000)}s)`],
+        logs: [...logs, `strategy stalled (no encode progress ${Math.round(stallMs / 1000)}s)`],
         stalled: true,
         timedOut: false,
       })
@@ -675,15 +674,21 @@ async function execFfmpegLoggedWithStallWatch(ffmpeg, args, signal, limits) {
   }
 
   const onLog = ({ message }) => {
-    if (message) {
-      logs.push(String(message).trim())
+    if (message) logs.push(String(message).trim())
+  }
+
+  let lastProgressRatio = -1
+  const onProgress = ({ progress }) => {
+    const p = typeof progress === 'number' ? progress : 0
+    const ratio = p <= 1 ? p : p / 100
+    if (ratio > lastProgressRatio + 0.002) {
+      lastProgressRatio = ratio
       armStall()
     }
   }
-  const onActivity = () => armStall()
 
   ffmpeg.on('log', onLog)
-  ffmpeg.on('progress', onActivity)
+  ffmpeg.on('progress', onProgress)
   armStall()
 
   maxTimer = setTimeout(() => {
@@ -889,12 +894,12 @@ async function wasmReencodeToMp4({
       lastLogs = logs
       if (stalled || timedOut) {
         lastFailureHint = stalled
-          ? `${strategy.label}: stalled (no ffmpeg activity)`
+          ? `${strategy.label}: stalled (no encode progress)`
           : `${strategy.label}: max wait`
         maybeReportLoungeVideoUploadDebug(
           'encode',
           stalled
-            ? `try ${strategy.label} stalled (no ffmpeg activity ${Math.round(watchLimits.stallMs / 1000)}s)`
+            ? `try ${strategy.label} stalled (no encode progress ${Math.round(watchLimits.stallMs / 1000)}s)`
             : `try ${strategy.label} max wait ${Math.round(watchLimits.maxMs / 1000)}s`,
         )
         try {
@@ -903,6 +908,15 @@ async function wasmReencodeToMp4({
           )
         } catch (resetErr) {
           console.warn('[lounge-video-encode] wasm reset after strategy watchdog failed', resetErr)
+        }
+        const isWasmReencode =
+          !strategy.videoCopy && !strategy.browserAudioFile && !strategy.videoOnly
+        if (isAndroidBrowser() && useSpatialAudioLadder && isWasmReencode) {
+          maybeReportLoungeVideoUploadDebug(
+            'encode',
+            'android bail wasm reencode after hang (browser audio next)',
+          )
+          break
         }
         continue
       }
@@ -1028,6 +1042,20 @@ async function wasmReencodeToMp4({
     allowVideoOnlyFallback: !sourceHasAudio,
     useSpatialAudioLadder,
   })
+  if (
+    isAndroidBrowser()
+    && useSpatialAudioLadder
+    && file.size >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
+  ) {
+    const singleTry = strategies.filter((s) => s.label === 'aac-copy-stream-2').slice(0, 1)
+    if (singleTry.length > 0) {
+      strategies = singleTry
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        'android spatial large: single wasm try (aac-copy-stream-2)',
+      )
+    }
+  }
   maybeReportLoungeVideoUploadDebug(
     'encode',
     `encode plan ${strategies.map((s) => s.label).join(', ') || 'none'}`,
@@ -1050,11 +1078,13 @@ async function wasmReencodeToMp4({
           allowVideoOnlyFallback: false,
           useSpatialAudioLadder,
         })
-        strategies.unshift(
+        /** @type {EncodeStrategy[]} */
+        const browserAudioStrategies = [
           {
-            label: 'browser-audio-mux',
+            label: 'browser-audio-vcopy-mux',
             maps: ['-map', '0:v:0', '-map', '1:a:0'],
             browserAudioFile,
+            videoCopy: true,
             requireOutputAudio: true,
           },
           {
@@ -1064,7 +1094,14 @@ async function wasmReencodeToMp4({
             audioCopy: true,
             requireOutputAudio: true,
           },
-        )
+          {
+            label: 'browser-audio-mux',
+            maps: ['-map', '0:v:0', '-map', '1:a:0'],
+            browserAudioFile,
+            requireOutputAudio: true,
+          },
+        ]
+        strategies.unshift(...browserAudioStrategies)
         encodeProgressBase = 0.12
         ;({ winningStrategy, lastCode, lastLogs, lastFailureHint } = await runEncodeStrategies(strategies))
       }

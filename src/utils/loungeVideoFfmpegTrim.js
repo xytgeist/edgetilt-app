@@ -139,9 +139,61 @@ function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
   return [...movHints, '-i', inputPath, '-t', String(dur)]
 }
 
+const DECODABLE_AUDIO_CODECS = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'alac', 'mp4a'])
+
+/**
+ * @param {string[]} logs ffmpeg `-i` demuxer lines
+ * @returns {{ index: number, kind: string, codec: string }[]}
+ */
+function parseFfmpegInputStreams(logs) {
+  /** @type {{ index: number, kind: string, codec: string }[]} */
+  const streams = []
+  for (const raw of logs) {
+    const line = String(raw || '')
+    const m =
+      /Stream #0:(\d+)(?:\[\d+\])?(?:\([^)]*\))?: (Video|Audio|Data|Subtitle): (\S+)/i.exec(line)
+    if (!m) continue
+    streams.push({
+      index: Number(m[1]),
+      kind: m[2].toLowerCase(),
+      codec: m[3].toLowerCase().replace(/[,(].*$/, ''),
+    })
+  }
+  return streams
+}
+
+/**
+ * @param {{ index: number, kind: string, codec: string }[]} streams
+ * @returns {number[]}
+ */
+function decodableAudioStreamIndices(streams) {
+  return streams
+    .filter(
+      (s) =>
+        s.kind === 'audio'
+        && s.codec !== 'none'
+        && (DECODABLE_AUDIO_CODECS.has(s.codec) || s.codec.startsWith('aac')),
+    )
+    .map((s) => s.index)
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string} inputPath
+ * @param {AbortSignal | undefined} signal
+ */
+async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
+  const { logs } = await execFfmpegLogged(
+    ffmpeg,
+    [...DEMUX_LOGGING, '-i', inputPath],
+    signal,
+  )
+  return parseFfmpegInputStreams(logs)
+}
+
 /**
  * @param {string} vf scale/crop filter chain without leading format=
- * @param {{ videoOnly?: boolean, useMaps?: boolean, audioCopy?: boolean }} strategy
+ * @param {{ videoOnly?: boolean, useMaps?: boolean, audioCopy?: boolean, maps?: string[] }} strategy
  * @param {string} outName
  */
 function buildOutputArgs(vf, strategy, outName) {
@@ -149,10 +201,11 @@ function buildOutputArgs(vf, strategy, outName) {
   const videoOnly = Boolean(strategy.videoOnly)
   /** @type {string[]} */
   let maps = []
-  if (videoOnly) {
+  if (Array.isArray(strategy.maps) && strategy.maps.length > 0) {
+    maps = strategy.maps
+  } else if (videoOnly) {
     maps = ['-map', '0:v:0']
   } else if (strategy.useMaps) {
-    // Optional audio map: iPhone MOV often has an undecodable spatial/metadata track as 0:a:0.
     maps = ['-map', '0:v:0', '-map', '0:a:0?']
   }
   const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', LOUNGE_ENCODE_CRF, '-pix_fmt', 'yuv420p']
@@ -169,24 +222,65 @@ function buildOutputArgs(vf, strategy, outName) {
   return [...maps, ...video, ...videoFilters, ...audio, ...mux]
 }
 
-/** @param {boolean} sourceHasAudio when false, only Firefox `mozHasAudio === false` (never iOS empty `audioTracks`). */
-function buildEncodeStrategies(sourceHasAudio) {
-  const videoOnlyFallback = [
+/**
+ * @typedef {{
+ *   label: string,
+ *   videoOnly?: boolean,
+ *   forceSsBeforeInput?: boolean,
+ *   useMaps?: boolean,
+ *   audioCopy?: boolean,
+ *   maps?: string[],
+ * }} EncodeStrategy
+ */
+
+/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices */
+function buildEncodeStrategies(sourceHasAudio, audioStreamIndices) {
+  const videoOnlyFallback = /** @type {EncodeStrategy[]} */ ([
     { label: 'video-only-mapped', videoOnly: true, forceSsBeforeInput: false, useMaps: true },
     { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: true },
+  ])
+
+  /** @type {EncodeStrategy[]} */
+  const withAudio = [
+    {
+      label: 'aac-by-codec',
+      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:aac?'],
+    },
+    {
+      label: 'aac-by-mp4a',
+      maps: ['-map', '0:v:0', '-map', '0:a:m:codec_name:mp4a?'],
+    },
   ]
-  if (sourceHasAudio) {
-    return [
-      { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
-      { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
-      { label: 'aac-copy-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true, audioCopy: true },
-      ...videoOnlyFallback,
-    ]
+
+  for (const idx of audioStreamIndices) {
+    withAudio.push({
+      label: `aac-stream-${idx}`,
+      maps: ['-map', '0:v:0', '-map', `0:${idx}`],
+    })
+    withAudio.push({
+      label: `aac-copy-stream-${idx}`,
+      maps: ['-map', '0:v:0', '-map', `0:${idx}`],
+      audioCopy: true,
+    })
   }
-  return [
+
+  withAudio.push(
     { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
-    ...videoOnlyFallback,
-  ]
+    { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
+    {
+      label: 'aac-copy-mapped',
+      videoOnly: false,
+      forceSsBeforeInput: false,
+      useMaps: true,
+      audioCopy: true,
+    },
+  )
+
+  if (sourceHasAudio) {
+    // Never silently strip audio when the source likely has it (iOS always reports unknown → true).
+    return withAudio
+  }
+  return [...withAudio, ...videoOnlyFallback]
 }
 
 /**
@@ -248,7 +342,6 @@ async function wasmReencodeToMp4({
   if (!(dur > 0)) throw new Error('Invalid trim range.')
 
   const sourceHasAudio = await probeVideoFileHasAudio(file)
-  const strategies = buildEncodeStrategies(sourceHasAudio)
 
   const ffmpeg = await getFfmpeg()
 
@@ -268,6 +361,24 @@ async function wasmReencodeToMp4({
     throw mountErr instanceof Error ? mountErr : new Error(String(mountErr))
   }
 
+  let audioStreamIndices = []
+  try {
+    const streams = await probeFfmpegInputStreams(ffmpeg, inputPath, signal)
+    audioStreamIndices = decodableAudioStreamIndices(streams)
+    if (audioStreamIndices.length > 0) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `probe audio streams [${audioStreamIndices.join(',')}]`,
+      )
+    } else {
+      maybeReportLoungeVideoUploadDebug('encode', 'probe no decodable audio stream index')
+    }
+  } catch (probeErr) {
+    console.warn('[lounge-video-encode] stream probe failed', probeErr)
+  }
+
+  const strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices)
+
   try {
     try {
       await ffmpeg.deleteFile(outName)
@@ -278,7 +389,8 @@ async function wasmReencodeToMp4({
     /** @type {string[]} */
     let lastLogs = []
     let lastCode = 1
-    let winningStrategy = ''
+    /** @type {EncodeStrategy | null} */
+    let winningStrategy = null
 
     for (const strategy of strategies) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -296,7 +408,7 @@ async function wasmReencodeToMp4({
       lastCode = code
       lastLogs = logs
       if (code === 0) {
-        winningStrategy = strategy.label
+        winningStrategy = strategy
         break
       }
       console.warn('[lounge-video-encode]', strategy.label, 'exit', code, formatFfmpegLogTail(logs))
@@ -306,15 +418,20 @@ async function wasmReencodeToMp4({
       )
     }
 
-    if (lastCode !== 0) {
+    if (lastCode !== 0 || !winningStrategy) {
       const tail = formatFfmpegLogTail(lastLogs)
       throw new Error(tail ? `Video encoding failed. ${tail}` : `Video encoding failed (exit ${lastCode}).`)
     }
 
-    console.log('[lounge-video-encode]', 'success', { strategy: winningStrategy, sourceHasAudio })
+    const outputHasAudio = !winningStrategy.videoOnly
+    console.log('[lounge-video-encode]', 'success', {
+      strategy: winningStrategy.label,
+      sourceHasAudio,
+      outputHasAudio,
+    })
     maybeReportLoungeVideoUploadDebug(
       'encode',
-      `success ${winningStrategy} audio=${sourceHasAudio ? 'yes' : 'no'}`,
+      `success ${winningStrategy.label} outAudio=${outputHasAudio ? 'yes' : 'no'}`,
     )
 
     const data = await ffmpeg.readFile(outName)

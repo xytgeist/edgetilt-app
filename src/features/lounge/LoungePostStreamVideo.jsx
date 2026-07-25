@@ -97,6 +97,10 @@ const CF_HLS_TILE_POLL_INTERVAL_MS = 2000
 const CF_HLS_PROCESSING_LABEL_MAX_MS = 90_000
 /** Stop background HLS polling after this (tile falls back to existing retry UI). */
 const CF_HLS_TILE_POLL_MAX_MS = 300_000
+/** Wait before one active-tile HLS reattach when metadata never arrives (MSE cold start). */
+const ACTIVE_HLS_STALL_DELAY_MS = 4200
+/** Max stall reattaches before surfacing inline retry (each attach key at most once). */
+const ACTIVE_HLS_STALL_MAX_BURST = 2
 
 /** CF `thumbnail.jpg` is often 404 until processing finishes - retry with cache-bust before giving up. */
 const CF_POSTER_RETRY_MAX = 32
@@ -619,6 +623,12 @@ export default function LoungePostStreamVideo({
   /** While true, shrink-back close runs on the flyout DOM node (React must not clear transform). */
   const [heroShrinkDomActive, setHeroShrinkDomActive] = useState(false)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
+  const streamAttachKeyRef = useRef(0)
+  /** Last attach key that received an active-hls-stall bump (prevents detach/attach loops). */
+  const lastActiveHlsStallBumpKeyRef = useRef(-1)
+  const activeHlsStallBurstRef = useRef(0)
+  /** Reason for the most recent attach bump — used to skip re-arming stall after our own bump. */
+  const lastStreamAttachBumpReasonRef = useRef('')
   /** Detect HLS reattach bumps - must reset poster-over-video fade (avoid black layer at opacity-100). */
   const prevFadeAttachKeyRef = useRef(0)
   /** Survives brief ring exit / HLS detach so scroll handoffs pause instead of restart. */
@@ -1699,6 +1709,7 @@ export default function LoungePostStreamVideo({
 
   const bumpStreamAttach = useCallback(
     (reason = 'hls-recovery') => {
+      lastStreamAttachBumpReasonRef.current = reason
       if (videoDebugEnabled && feedAutoplayClientId) {
         reportLoungeVideoDebugEvent(feedAutoplayClientId, 'attach', reason)
       }
@@ -1706,6 +1717,16 @@ export default function LoungePostStreamVideo({
     },
     [feedAutoplayClientId, videoDebugEnabled],
   )
+
+  useEffect(() => {
+    streamAttachKeyRef.current = streamAttachKey
+  }, [streamAttachKey])
+
+  useEffect(() => {
+    activeHlsStallBurstRef.current = 0
+    lastActiveHlsStallBumpKeyRef.current = -1
+    setShowStreamRetry(false)
+  }, [id])
 
   /** True while CF is still encoding HLS after a post went live without manifest wait in prep. */
   const [cfHlsProcessing, setCfHlsProcessing] = useState(false)
@@ -1788,26 +1809,45 @@ export default function LoungePostStreamVideo({
 
   /** Active tile stuck at rs=0 - retry HLS attach (iOS often starves when prefetch neighbors hold decoders). */
   useEffect(() => {
+    if (lastStreamAttachBumpReasonRef.current === 'active-hls-stall') {
+      lastStreamAttachBumpReasonRef.current = ''
+      return undefined
+    }
     if (
       !coordinatorActive ||
       !lazyStream ||
       !feedAutoplayEnabled ||
       (!isActive && !activeHlsGraceHeld) ||
-      !hlsAttachEnabled
+      !hlsAttachEnabled ||
+      cfHlsProcessing
     ) {
       return undefined
     }
     if (lightboxOpen || tileRatio <= 0) return undefined
     const v = videoRef.current
     if (!v || v.readyState >= HTMLMediaElement.HAVE_METADATA) return undefined
+    const attachKeyAtArm = streamAttachKeyRef.current
+    if (lastActiveHlsStallBumpKeyRef.current === attachKeyAtArm) return undefined
+    if (activeHlsStallBurstRef.current >= ACTIVE_HLS_STALL_MAX_BURST) {
+      setShowStreamRetry(true)
+      return undefined
+    }
     let cancelled = false
     const tid = window.setTimeout(() => {
       if (cancelled || lightboxOpenRef.current) return
       if (!isActiveRef.current && !activeHlsGraceHeld) return
       const el = videoRef.current
       if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
+      const keyNow = streamAttachKeyRef.current
+      if (keyNow !== attachKeyAtArm) return
+      if (lastActiveHlsStallBumpKeyRef.current === keyNow) return
+      lastActiveHlsStallBumpKeyRef.current = keyNow
+      activeHlsStallBurstRef.current += 1
+      if (activeHlsStallBurstRef.current >= ACTIVE_HLS_STALL_MAX_BURST) {
+        setShowStreamRetry(true)
+      }
       bumpStreamAttach('active-hls-stall')
-    }, 1400)
+    }, ACTIVE_HLS_STALL_DELAY_MS)
     return () => {
       cancelled = true
       window.clearTimeout(tid)
@@ -1815,6 +1855,7 @@ export default function LoungePostStreamVideo({
   }, [
     activeHlsGraceHeld,
     bumpStreamAttach,
+    cfHlsProcessing,
     coordinatorActive,
     feedAutoplayEnabled,
     hlsAttachEnabled,
@@ -3330,6 +3371,8 @@ export default function LoungePostStreamVideo({
                 onClick={(e) => {
                   e.stopPropagation()
                   recoveryBurstRef.current = 0
+                  activeHlsStallBurstRef.current = 0
+                  lastActiveHlsStallBumpKeyRef.current = -1
                   setShowStreamRetry(false)
                   bumpStreamAttach('retry')
                 }}

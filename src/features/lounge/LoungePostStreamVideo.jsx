@@ -26,7 +26,7 @@ import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD } from './LoungeStreamVideoLightboxChrome.jsx'
 import LoungePostVideoInlineProgress, {
-  LoungePendingPublishGrainOverlay,
+  LoungePendingPublishBlurredRevealLayer,
   useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import {
@@ -1774,11 +1774,7 @@ export default function LoungePostStreamVideo({
   const tryMseNativeFallbackRef = useRef(tryMseNativeFallback)
   tryMseNativeFallbackRef.current = tryMseNativeFallback
 
-  const {
-    publishProgress: publishBlurProgress,
-    blurPx: publishPosterBlurPx,
-    posterOpacity: publishPosterOpacity,
-  } = useLoungePendingPublishDisplay(pendingPublishKey, {
+  const { publishProgress: publishBlurProgress } = useLoungePendingPublishDisplay(pendingPublishKey, {
     cfPlaybackReady: cfStreamPlaybackReady,
     fallbackProgress: authorPendingPublish ? 0.86 : 0,
   })
@@ -3409,28 +3405,29 @@ export default function LoungePostStreamVideo({
           >
             {usePosterFrame ? (
               posterLayoutFailed ? null : (
-                <img
-                  key={visiblePosterSrc}
-                  src={visiblePosterSrc}
-                  alt=""
-                  decoding="async"
-                  draggable={false}
-                  loading="eager"
-                  className={`pointer-events-none select-none ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`}
-                  style={{
-                    ...(heroExpanded ? { transition: 'none' } : streamFadeTransitionStyle),
-                    ...(showPublishBlurOverlay && !heroExpanded
-                      ? {
-                          filter: `blur(${publishPosterBlurPx}px)`,
-                          opacity: publishPosterOpacity,
-                          transition: 'filter 700ms ease-out, opacity 700ms ease-out',
-                        }
-                      : null),
-                  }}
-                  aria-hidden
-                  onLoad={() => setPosterDecodeOk(true)}
-                  onError={onPosterImgError}
-                />
+                <>
+                  <img
+                    key={visiblePosterSrc}
+                    src={visiblePosterSrc}
+                    alt=""
+                    decoding="async"
+                    draggable={false}
+                    loading="eager"
+                    className={`pointer-events-none select-none ${heroExpanded ? '' : 'transition-opacity ease-out'} ${inlinePosterZClass} ${videoClass} ${inlinePosterOpacityClass}`}
+                    style={{
+                      ...(heroExpanded ? { transition: 'none' } : streamFadeTransitionStyle),
+                    }}
+                    aria-hidden
+                    onLoad={() => setPosterDecodeOk(true)}
+                    onError={onPosterImgError}
+                  />
+                  {showPublishBlurOverlay && !heroExpanded && visiblePosterSrc ? (
+                    <LoungePendingPublishBlurredRevealLayer
+                      posterSrc={visiblePosterSrc}
+                      progress={publishBlurProgress}
+                    />
+                  ) : null}
+                </>
               )
             ) : null}
             <div
@@ -3458,14 +3455,11 @@ export default function LoungePostStreamVideo({
             </div>
           </div>
           {showPublishBlurOverlay && !heroExpanded ? (
-            <>
-              <LoungePendingPublishGrainOverlay progress={publishBlurProgress} />
-              <LoungePostVideoInlineProgress
-                pendingKey={pendingPublishKey}
-                cfPlaybackReady={cfStreamPlaybackReady}
-                fallbackProgress={authorPendingPublish ? 0.86 : 0}
-              />
-            </>
+            <LoungePostVideoInlineProgress
+              pendingKey={pendingPublishKey}
+              cfPlaybackReady={cfStreamPlaybackReady}
+              fallbackProgress={authorPendingPublish ? 0.86 : 0}
+            />
           ) : null}
           {showStreamRetry ? (
             <div

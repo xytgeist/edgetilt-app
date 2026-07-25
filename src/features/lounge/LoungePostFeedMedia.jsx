@@ -11,8 +11,7 @@ import {
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
 import LoungePostVideoInlineProgress, {
-  LoungePendingPublishGrainOverlay,
-  loungePendingPublishPosterStyle,
+  LoungePendingPublishBlurredRevealLayer,
   useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
@@ -372,21 +371,27 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
     <div className={`${firstMarginTopClass} inline-flex w-fit max-w-full flex-col`}>
       <div className="relative inline-flex w-fit max-w-[min(88vw,20rem)] overflow-hidden rounded-xl border border-zinc-700/60 bg-black sm:max-w-[min(72vw,17rem)]">
         {posterSrc ? (
-          <img
-            src={posterSrc}
-            alt=""
-            decoding="async"
-            draggable={false}
-            className="block max-h-[312px] w-auto max-w-full h-auto object-contain"
-            style={showOverlay ? loungePendingPublishPosterStyle(publishProgress) : undefined}
-          />
+          <>
+            <img
+              src={posterSrc}
+              alt=""
+              decoding="async"
+              draggable={false}
+              className="block max-h-[312px] w-auto max-w-full h-auto object-contain"
+            />
+            {showOverlay ? (
+              <LoungePendingPublishBlurredRevealLayer
+                posterSrc={posterSrc}
+                progress={publishProgress}
+              />
+            ) : null}
+          </>
         ) : (
           <div
             className="block min-h-[12rem] min-w-[10rem] max-h-[312px] bg-zinc-900"
             aria-hidden
           />
         )}
-        {showOverlay ? <LoungePendingPublishGrainOverlay progress={publishProgress} /> : null}
         {showOverlay ? <LoungePostVideoInlineProgress pendingKey={pendingKey} /> : null}
       </div>
     </div>

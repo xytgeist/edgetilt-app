@@ -7,8 +7,10 @@ import {
 } from './loungePendingPostPublish.js'
 import { useLoungePendingPublishActions } from './LoungePendingPublishActionsContext.jsx'
 
-/** Max CSS blur on the poster at 0% publish progress. */
+/** Fixed blur on the reveal top layer (never animated — opacity only). */
 export const LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX = 28
+
+export const LOUNGE_PENDING_PUBLISH_BLURRED_REVEAL_TRANSITION = 'opacity 700ms ease-out'
 
 export const LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG =
   'Keep EdgeTilt open until upload finishes.'
@@ -18,47 +20,80 @@ export const LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG =
 
 export const LOUNGE_PENDING_PUBLISH_CANCEL_LABEL = 'Cancel'
 
-const LOUNGE_PENDING_PUBLISH_POSTER_TRANSITION =
-  'filter 700ms ease-out, opacity 700ms ease-out'
-
-/** SVG fractal noise — cheap film grain over the poster while pending. */
-const LOUNGE_PENDING_PUBLISH_GRAIN_BG =
-  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")"
-
 export { resolveLoungePendingPublishProgress }
 
 /**
+ * Top blurred duplicate fades out as publish progress rises (sharp poster stays underneath).
  * @param {number} progress 0..1
- * @returns {number} blur px for poster filter
+ * @returns {number} 1 at start → 0 when complete
  */
-export function loungePendingPublishBlurPx(progress) {
+export function loungePendingPublishBlurredRevealOpacity(progress) {
   const p = Math.max(0, Math.min(1, Number(progress) || 0))
-  return Math.round(LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX * (1 - p))
-}
-
-/** Poster starts ~50% opaque and eases to full clarity at 100%. */
-export function loungePendingPublishPosterOpacity(progress) {
-  const p = Math.max(0, Math.min(1, Number(progress) || 0))
-  return 0.5 + 0.5 * p
-}
-
-/** Grain strongest early, fades as the poster clears. */
-export function loungePendingPublishGrainOpacity(progress) {
-  const p = Math.max(0, Math.min(1, Number(progress) || 0))
-  return (1 - p) * 0.42 + 0.06
+  return 1 - p
 }
 
 /**
  * @param {number} progress 0..1
  * @returns {import('react').CSSProperties}
  */
-export function loungePendingPublishPosterStyle(progress) {
-  const p = Math.max(0, Math.min(1, Number(progress) || 0))
+export function loungePendingPublishBlurredRevealLayerStyle(progress) {
+  const opacity = loungePendingPublishBlurredRevealOpacity(progress)
+  if (opacity <= 0.01) return { opacity: 0, pointerEvents: 'none' }
   return {
-    filter: `blur(${loungePendingPublishBlurPx(p)}px)`,
-    opacity: loungePendingPublishPosterOpacity(p),
-    transition: LOUNGE_PENDING_PUBLISH_POSTER_TRANSITION,
+    filter: `blur(${LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX}px)`,
+    opacity,
+    transition: LOUNGE_PENDING_PUBLISH_BLURRED_REVEAL_TRANSITION,
+    pointerEvents: 'none',
   }
+}
+
+/** @deprecated use {@link loungePendingPublishBlurredRevealOpacity} */
+export function loungePendingPublishBlurPx(progress) {
+  void progress
+  return LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX
+}
+
+/** @deprecated sharp base layer stays at full opacity in two-layer reveal */
+export function loungePendingPublishPosterOpacity(progress) {
+  void progress
+  return 1
+}
+
+/** @deprecated use {@link loungePendingPublishBlurredRevealLayerStyle} on the top duplicate only */
+export function loungePendingPublishPosterStyle(progress) {
+  return loungePendingPublishBlurredRevealLayerStyle(progress)
+}
+
+/**
+ * Fixed-blur duplicate stacked on the sharp poster; opacity 1→0 with progress.
+ *
+ * @param {object} props
+ * @param {string} props.posterSrc
+ * @param {number} props.progress 0..1
+ * @param {string} [props.className]
+ * @param {string} [props.imageClassName]
+ */
+export function LoungePendingPublishBlurredRevealLayer({
+  posterSrc,
+  progress,
+  className = 'absolute inset-0 z-[3]',
+  imageClassName = 'block h-full w-full object-contain',
+}) {
+  const src = String(posterSrc || '').trim()
+  const opacity = loungePendingPublishBlurredRevealOpacity(progress)
+  if (!src || opacity <= 0.01) return null
+  return (
+    <div className={`pointer-events-none ${className}`} aria-hidden>
+      <img
+        src={src}
+        alt=""
+        decoding="async"
+        draggable={false}
+        className={imageClassName}
+        style={loungePendingPublishBlurredRevealLayerStyle(progress)}
+      />
+    </div>
+  )
 }
 
 /** @param {string} pendingKey */
@@ -112,34 +147,13 @@ export function useLoungePendingPublishDisplay(pendingKey, opts = {}) {
   return {
     registryProgress,
     publishProgress,
-    blurPx: loungePendingPublishBlurPx(publishProgress),
-    posterOpacity: loungePendingPublishPosterOpacity(publishProgress),
-    grainOpacity: loungePendingPublishGrainOpacity(publishProgress),
+    blurredRevealOpacity: loungePendingPublishBlurredRevealOpacity(publishProgress),
+    /** @deprecated */
+    blurPx: LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX,
+    /** @deprecated */
+    posterOpacity: 1,
     showOverlay: Boolean(key) && publishProgress < 1,
   }
-}
-
-/**
- * Film-grain layer over a pending publish poster.
- *
- * @param {{ progress: number, className?: string }} props
- */
-export function LoungePendingPublishGrainOverlay({ progress, className = 'z-[6]' }) {
-  const opacity = loungePendingPublishGrainOpacity(progress)
-  if (opacity <= 0.01) return null
-  return (
-    <div
-      className={`pointer-events-none absolute inset-0 ${className}`}
-      style={{
-        opacity,
-        backgroundImage: LOUNGE_PENDING_PUBLISH_GRAIN_BG,
-        backgroundSize: '180px 180px',
-        mixBlendMode: 'soft-light',
-        transition: 'opacity 700ms ease-out',
-      }}
-      aria-hidden
-    />
-  )
 }
 
 /**

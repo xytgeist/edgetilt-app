@@ -185,6 +185,16 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
     return false
   }
+  // Android native MP4: wasm WORKERFS demux/remux often hangs on large camera files; Stream ingests H.264/AAC directly.
+  if (
+    isAndroidBrowser()
+    && isLoungeVideoMp4Container(file)
+    && !isLoungeVideoQuicktimeMov(file)
+    && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES
+    && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+  ) {
+    return true
+  }
   if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
     return true
   }
@@ -203,9 +213,14 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
 /** MP4 picks that may upload as-is when wasm encode fails (already muxed AAC). */
 export function canPassThroughLoungeVideoMp4OnEncodeFail(file) {
   const size = typeof file?.size === 'number' ? file.size : 0
-  // Never pass through large Android sources on encode fail ... wasm/browser paths failed, raw spatial HEVC is unplayable.
   if (isAndroidBrowser() && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES) {
-    return false
+    // iPhone spatial MOV / renamed edge cases: never pass through broken raw uploads on Android.
+    if (isLoungeVideoQuicktimeMov(file)) return false
+    return (
+      isLoungeVideoMp4Container(file)
+      && Number.isFinite(size)
+      && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+    )
   }
   return (
     isLoungeVideoMp4Container(file)

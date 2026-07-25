@@ -70,6 +70,7 @@ Track **everything else** already used on test that production must also have ap
   - **`20260722210000_creator_fan_reconcile_cron.sql`** (daily **`invoke_creator_fan_reconcile_stripe`** → **`creator-fan-reconcile-stripe`**; redeploy that Edge + **`stripe-webhook`** for ops failure emails)
   Live **`STRIPE_PRICE_FAN_TIER_*`** Edge secrets (five tiers) + Connect-capable Prices; redeploy **`creator-fan-connect`**, **`creator-fan-checkout`**, **`creator-fan-resume-subscription`**, **`stripe-create-portal-session`**, **`stripe-webhook`** (§4). Smoke: Settings **Subscriptions**, profile **SUB** / subscribe modal, cancel + resume, **Creators I support** → profile; own-profile **Fan hub**, new-sub **Alerts**.
 - [x] **Fan-only Lounge feed UX + repost/quote (2026-07-22, `main` @ `970fc185`):** apply in order on **`jtjgtucumuoswnbauxry`** — **`20260722230000`**, **`20260722230100`**, **`20260722230200`**, **`20260722240000`**, **`20260722260000`** (masked feed RPCs, subs-only compose guard, comment SELECT for fan-only parents, post repost/quote allowed with comment-repost still blocked). **No Edge redeploy.** Frontend: Vercel **`edgetilt.com`**. Smoke: compose **Subs only**, locked blur + subscribe CTA, quote repost with locked embed inset, plain repost of subs-only source.
+- [x] **Lounge staged video publish (2026-07-25, `main` @ `3f48b328`):** **`20260725210000_lounge_feed_visible_at.sql`** — **`feed_visible_at`** column + feed RPC author-only pending filter. Redeploy **`lounge-cf-stream-video-status`** (§4). No other Edge redeploy for this promote.
 - [ ] **Lounge bots (Scott Share / Market Edge / portal)** — apply in order (skip any already applied): **`20260703140000`** through **`20260703160000`** (bot accounts, portal snapshot, odds config), **`20260704120000`**–**`20260704220000`** (sports tribe through reply on any post), **`20260704230000`**–**`20260704240000`** (odds poll pg_cron + 6–8am Coffee / 15-min `poll_edges`), **`20260704250000`**–**`20260704330000`** (line movement through coverage scope), **`20260705020000`**–**`20260705050000`** (Market Edge / Crypto Edge), **`20260705060000`**–**`20260710160000`** (portal async queue, slug fix, pg_net result, invoke `force`, Yahoo/MW RSS, **`poll_live`**, bot Post as images, **per-alert `p_alert_kind` queue**). Vault per project: **`lounge_odds_poll_*`**, **`lounge_news_poll_*`** (see Edge READMEs). Redeploy **`lounge-odds-ingest`** + **`lounge-odds-poll`** + **`lounge-news-poll`** + **`lounge-x-ingest`** after relevant migrations; set **`THE_ODDS_API_KEY`** / **`FINNHUB_API_KEY`** / **`OPENAI_API_KEY`** on prod Edge. **Jul 2026 verified on prod:** cron **200**, **`poll_edges`** fixed **`1d5d8fca`**, **`poll_live`** **`20260706190000`**, Market Edge Yahoo/MW, X manual transform + bot images **`30fa305e`**. **`schema_migrations`** on test + prod through **`20260707000000`** (Jul 7 batch); earlier July rows may predate table entries — verify via source rows / function bodies.
 - [ ] **Play Logbook (if prod ships Logbook):** apply test-validated chain through **`20260531540000_buffalo_calculator_slug_buffalo_link.sql`** — base **`20260529120000_play_logbook.sql`**, shared sessions **`20260531140000`**, manager/paid **`20260531190000`**, paid/unpaid notify repair order (**`20260531300000`** → **`20260531310000`**, repair **`20260531320000`** if needed), custom metrics **`20260531350000`**, admin primary templates **`20260531400000`**, MHB fields **`20260531500000`**, label migrations **`20260531330000`**–**`20260531360000`**, **`20260531510000`**–**`20260531530000`**, **`20260531540000`**. Redeploy **`lounge-send-activity-push`** after activity-event migrations.
 
@@ -137,6 +138,7 @@ supabase functions deploy lounge-cf-stream-direct-upload
 supabase functions deploy lounge-cf-stream-delete-video
 supabase functions deploy lounge-cf-stream-delete-orphan
 supabase functions deploy lounge-cf-stream-purge-pending-uploads
+supabase functions deploy lounge-cf-stream-video-status
 supabase functions deploy lounge-cf-r2-direct-upload
 supabase functions deploy lounge-cf-r2-delete-object
 supabase functions deploy lounge-cf-r2-delete-orphan
@@ -203,6 +205,8 @@ Secrets (secrets / env vault in Supabase) for push + web-push must exist on prod
 
 **Bot portal reply on any post (2026-07-04):** client **`48d739db`** + SQL **`20260704220000`**. **Ryan sign-off:** prod RPC verified **2026-07-04** on **`jtjgtucumuoswnbauxry`** (manual SQL editor; function comment + no bot-owner guard). Not recorded in **`schema_migrations`**. Residual portal errors → wrong env / UUID / stale tab.
 
+**Lounge staged video publish (2026-07-25):** **`main`** @ **`3f48b328`** — migration **`20260725210000`** (**`feed_visible_at`** + feed RPC author-only pending filter); deploy **`lounge-cf-stream-video-status`** (§4, reuses **`CLOUDFLARE_*`**). Client-only within bundle: inline tile progress, pixel poster reveal, post-delete reply media cleanup, encode/trim ladder. Prod smoke still open.
+
 ---
 
 ## 5. Post-deploy smoke (application)
@@ -246,4 +250,4 @@ Already planned for Slot Pro backlog; prod cutover reminders:
 
 ---
 
-_Last updated: **2026-07-21** — **`test` → `main` promote** (`c95c6109`): creator fan subs foundation + Settings track 1; prod still needs §2 migrations + §4 Edge before feature works on **`edgetilt.com`**. Prior **2026-07-10**: Scott per-alert invoke._
+_Last updated: **2026-07-25** — **`test` → `main` promote** (`3f48b328`): Lounge staged video publish + inline tile progress, encode ladder, post-delete reply media cleanup; prod SQL **`20260725210000`** + Edge **`lounge-cf-stream-video-status`**. Prior **2026-07-21**: creator fan subs foundation (`c95c6109`)._

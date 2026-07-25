@@ -745,6 +745,11 @@ html.light [data-lounge-badge-tip-tone="mod"] {
   mix-blend-mode: screen;
 }
 
+.lounge-pending-publish-pixel-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 /* ── Light mode overrides ─────────────────────────────────────────────────── */
 
 /* Remap lv-blue (cyan) → blue-500 everywhere in light mode via CSS variable */

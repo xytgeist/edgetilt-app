@@ -9,6 +9,7 @@ import { useLoungePendingPublishActions } from './LoungePendingPublishActionsCon
 import {
   LOUNGE_PENDING_PUBLISH_MAX_PIXEL_SCALE,
   loungePendingPublishRevealStrength,
+  loungePendingPublishPixelFactor,
   loungePendingPublishPixelBlockScale,
   LoungePendingPublishDevelopReveal,
   LoungePendingPublishPixelLayer,
@@ -23,6 +24,7 @@ export const LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX = 28
 export {
   LOUNGE_PENDING_PUBLISH_MAX_PIXEL_SCALE,
   loungePendingPublishRevealStrength,
+  loungePendingPublishPixelFactor,
   loungePendingPublishPixelBlockScale,
   LoungePendingPublishDevelopReveal,
   LoungePendingPublishPixelLayer,

@@ -293,6 +293,14 @@ async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
 
 const INPUT_PROBE_TIMEOUT_MS = 45_000
 
+/** Scale per-strategy wasm encode wait with source size (working encodes usually finish well under this). */
+function encodeStrategyTimeoutMs(fileBytes) {
+  const mb = typeof fileBytes === 'number' && Number.isFinite(fileBytes) ? fileBytes / (1024 * 1024) : 0
+  if (mb >= 50) return 180_000
+  if (mb >= 20) return 150_000
+  return 90_000
+}
+
 /**
  * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
  * @param {string} inputPath
@@ -306,23 +314,13 @@ async function probeFfmpegInputStreamsWithTimeout(ffmpeg, inputPath, signal) {
 
   let timedOut = false
   /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let timer
-  const timeoutPromise = new Promise<{ streams: [], timedOut: true }>((resolve) => {
-    timer = setTimeout(() => {
-      timedOut = true
-      probeAbort.abort()
-      resolve({ streams: [], timedOut: true })
-    }, INPUT_PROBE_TIMEOUT_MS)
-  })
+  let timer = setTimeout(() => {
+    timedOut = true
+    probeAbort.abort()
+  }, INPUT_PROBE_TIMEOUT_MS)
   try {
-    const streams = await Promise.race([
-      probeFfmpegInputStreams(ffmpeg, inputPath, probeAbort.signal).then((s) => ({
-        streams: s,
-        timedOut: false,
-      })),
-      timeoutPromise,
-    ])
-    return streams
+    const streams = await probeFfmpegInputStreams(ffmpeg, inputPath, probeAbort.signal)
+    return { streams, timedOut: false }
   } catch (err) {
     if (timedOut || probeAbort.signal.aborted) {
       return { streams: [], timedOut: true }
@@ -542,9 +540,39 @@ async function execFfmpegLogged(ffmpeg, args, signal) {
   ffmpeg.on('log', onLog)
   try {
     const code = await ffmpeg.exec(args, undefined, { signal })
-    return { code, logs }
+    return { code, logs, timedOut: false }
   } finally {
     ffmpeg.off('log', onLog)
+  }
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string[]} args
+ * @param {AbortSignal | undefined} signal
+ * @param {number} timeoutMs
+ */
+async function execFfmpegLoggedWithTimeout(ffmpeg, args, signal, timeoutMs) {
+  const execAbort = new AbortController()
+  const onParentAbort = () => execAbort.abort()
+  signal?.addEventListener('abort', onParentAbort, { once: true })
+
+  let timedOut = false
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer = setTimeout(() => {
+    timedOut = true
+    execAbort.abort()
+  }, timeoutMs)
+  try {
+    return await execFfmpegLogged(ffmpeg, args, execAbort.signal)
+  } catch (err) {
+    if (timedOut || execAbort.signal.aborted) {
+      return { code: -1, logs: [`strategy timed out after ${Math.round(timeoutMs / 1000)}s`], timedOut: true }
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+    signal?.removeEventListener('abort', onParentAbort)
   }
 }
 
@@ -656,10 +684,14 @@ async function wasmReencodeToMp4({
     let lastFailureHint = ''
     /** @type {EncodeStrategy | null} */
     let winningStrategy = null
+    const strategyTimeoutMs = encodeStrategyTimeoutMs(file.size)
 
     for (const strategy of strategies) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
       maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
+      if (typeof onProgress === 'function') {
+        onProgress(encodeProgressBase + 0.03)
+      }
       try {
         await ffmpeg.deleteFile(outName)
       } catch {
@@ -674,9 +706,22 @@ async function wasmReencodeToMp4({
         args.push('-i', strategy.browserAudioFile)
       }
       args.push(...buildOutputArgs(vf, strategy, outName))
-      const { code, logs } = await execFfmpegLogged(ffmpeg, args, signal)
+      const { code, logs, timedOut } = await execFfmpegLoggedWithTimeout(
+        ffmpeg,
+        args,
+        signal,
+        strategyTimeoutMs,
+      )
       lastCode = code
       lastLogs = logs
+      if (timedOut) {
+        lastFailureHint = `${strategy.label}: timed out`
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `try ${strategy.label} timed out after ${Math.round(strategyTimeoutMs / 1000)}s`,
+        )
+        continue
+      }
       if (code === 0) {
         const needsOutputAudio =
           sourceHasAudio && !strategy.videoOnly && strategy.requireOutputAudio !== false

@@ -11,7 +11,7 @@ import {
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
 import LoungePostVideoInlineProgress, {
-  LoungePendingPublishBlurredRevealLayer,
+  LoungePendingPublishFrostVeil,
   useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
@@ -380,10 +380,7 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
               className="block max-h-[312px] w-auto max-w-full h-auto object-contain"
             />
             {showOverlay ? (
-              <LoungePendingPublishBlurredRevealLayer
-                posterSrc={posterSrc}
-                progress={publishProgress}
-              />
+              <LoungePendingPublishFrostVeil progress={publishProgress} />
             ) : null}
           </>
         ) : (

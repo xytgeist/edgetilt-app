@@ -7,10 +7,8 @@ import {
 } from './loungePendingPostPublish.js'
 import { useLoungePendingPublishActions } from './LoungePendingPublishActionsContext.jsx'
 
-/** Fixed blur on the reveal top layer (never animated — opacity only). */
+/** Max frosted veil blur at 0% publish progress (dissipates to 0 by 100%). */
 export const LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX = 28
-
-export const LOUNGE_PENDING_PUBLISH_BLURRED_REVEAL_TRANSITION = 'opacity 700ms ease-out'
 
 export const LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG =
   'Keep EdgeTilt open until upload finishes.'
@@ -23,77 +21,80 @@ export const LOUNGE_PENDING_PUBLISH_CANCEL_LABEL = 'Cancel'
 export { resolveLoungePendingPublishProgress }
 
 /**
- * Top blurred duplicate fades out as publish progress rises (sharp poster stays underneath).
+ * Remaining frost at this progress (1 at 0% → 0 at 100%). Blur and veil opacity track this 1:1.
  * @param {number} progress 0..1
- * @returns {number} 1 at start → 0 when complete
  */
-export function loungePendingPublishBlurredRevealOpacity(progress) {
+export function loungePendingPublishFrostStrength(progress) {
   const p = Math.max(0, Math.min(1, Number(progress) || 0))
   return 1 - p
 }
 
+/** @param {number} progress 0..1 */
+export function loungePendingPublishFrostBlurPx(progress) {
+  return Math.round(LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX * loungePendingPublishFrostStrength(progress))
+}
+
 /**
+ * Frosted veil over a sharp poster — backdrop blur + tint dissipate with upload progress.
  * @param {number} progress 0..1
  * @returns {import('react').CSSProperties}
  */
-export function loungePendingPublishBlurredRevealLayerStyle(progress) {
-  const opacity = loungePendingPublishBlurredRevealOpacity(progress)
-  if (opacity <= 0.01) return { opacity: 0, pointerEvents: 'none' }
+export function loungePendingPublishFrostVeilStyle(progress) {
+  const strength = loungePendingPublishFrostStrength(progress)
+  if (strength <= 0.01) return { opacity: 0, pointerEvents: 'none' }
+  const blurPx = loungePendingPublishFrostBlurPx(progress)
   return {
-    filter: `blur(${LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX}px)`,
-    opacity,
-    transition: LOUNGE_PENDING_PUBLISH_BLURRED_REVEAL_TRANSITION,
+    opacity: strength,
+    backdropFilter: `blur(${blurPx}px)`,
+    WebkitBackdropFilter: `blur(${blurPx}px)`,
+    backgroundColor: `rgba(9, 9, 11, ${(0.32 * strength).toFixed(3)})`,
     pointerEvents: 'none',
   }
 }
 
-/** @deprecated use {@link loungePendingPublishBlurredRevealOpacity} */
-export function loungePendingPublishBlurPx(progress) {
-  void progress
-  return LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX
+/**
+ * Sharp poster underneath; frosted veil on top — blur and opacity fall as progress rises.
+ *
+ * @param {object} props
+ * @param {number} props.progress 0..1
+ * @param {string} [props.className]
+ */
+export function LoungePendingPublishFrostVeil({ progress, className = 'absolute inset-0 z-[3]' }) {
+  const strength = loungePendingPublishFrostStrength(progress)
+  if (strength <= 0.01) return null
+  return (
+    <div
+      className={`pointer-events-none ${className}`}
+      aria-hidden
+      style={loungePendingPublishFrostVeilStyle(progress)}
+    />
+  )
 }
 
-/** @deprecated sharp base layer stays at full opacity in two-layer reveal */
+/** @deprecated use {@link loungePendingPublishFrostBlurPx} */
+export function loungePendingPublishBlurPx(progress) {
+  return loungePendingPublishFrostBlurPx(progress)
+}
+
+/** @deprecated sharp base poster stays at full opacity */
 export function loungePendingPublishPosterOpacity(progress) {
   void progress
   return 1
 }
 
-/** @deprecated use {@link loungePendingPublishBlurredRevealLayerStyle} on the top duplicate only */
+/** @deprecated use {@link loungePendingPublishFrostVeilStyle} */
 export function loungePendingPublishPosterStyle(progress) {
-  return loungePendingPublishBlurredRevealLayerStyle(progress)
+  return loungePendingPublishFrostVeilStyle(progress)
 }
 
-/**
- * Fixed-blur duplicate stacked on the sharp poster; opacity 1→0 with progress.
- *
- * @param {object} props
- * @param {string} props.posterSrc
- * @param {number} props.progress 0..1
- * @param {string} [props.className]
- * @param {string} [props.imageClassName]
- */
-export function LoungePendingPublishBlurredRevealLayer({
-  posterSrc,
-  progress,
-  className = 'absolute inset-0 z-[3]',
-  imageClassName = 'block h-full w-full object-contain',
-}) {
-  const src = String(posterSrc || '').trim()
-  const opacity = loungePendingPublishBlurredRevealOpacity(progress)
-  if (!src || opacity <= 0.01) return null
-  return (
-    <div className={`pointer-events-none ${className}`} aria-hidden>
-      <img
-        src={src}
-        alt=""
-        decoding="async"
-        draggable={false}
-        className={imageClassName}
-        style={loungePendingPublishBlurredRevealLayerStyle(progress)}
-      />
-    </div>
-  )
+/** @deprecated use {@link loungePendingPublishFrostStrength} */
+export function loungePendingPublishBlurredRevealOpacity(progress) {
+  return loungePendingPublishFrostStrength(progress)
+}
+
+/** @deprecated use {@link LoungePendingPublishFrostVeil} */
+export function LoungePendingPublishBlurredRevealLayer({ progress, className }) {
+  return <LoungePendingPublishFrostVeil progress={progress} className={className} />
 }
 
 /** @param {string} pendingKey */
@@ -147,11 +148,8 @@ export function useLoungePendingPublishDisplay(pendingKey, opts = {}) {
   return {
     registryProgress,
     publishProgress,
-    blurredRevealOpacity: loungePendingPublishBlurredRevealOpacity(publishProgress),
-    /** @deprecated */
-    blurPx: LOUNGE_PENDING_PUBLISH_MAX_BLUR_PX,
-    /** @deprecated */
-    posterOpacity: 1,
+    frostStrength: loungePendingPublishFrostStrength(publishProgress),
+    frostBlurPx: loungePendingPublishFrostBlurPx(publishProgress),
     showOverlay: Boolean(key) && publishProgress < 1,
   }
 }

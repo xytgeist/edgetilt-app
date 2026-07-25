@@ -43,6 +43,20 @@ async function getFfmpeg() {
   return loadPromise
 }
 
+/** Kill a wedged wasm core (e.g. probe abort did not release ffmpeg.exec) and load a fresh instance. */
+async function resetFfmpegCore() {
+  if (ffmpegSingleton) {
+    try {
+      await ffmpegSingleton.terminate()
+    } catch {
+      // ignore
+    }
+    ffmpegSingleton = null
+  }
+  loadPromise = null
+  return getFfmpeg()
+}
+
 /**
  * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
  * @param {File} file
@@ -107,6 +121,20 @@ async function uninstallTrimInput(ffmpeg, mode, inName) {
     } catch {
       // ignore
     }
+  }
+}
+
+/** @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg @param {string} name @param {number} [timeoutMs] */
+async function deleteFfmpegFileSafe(ffmpeg, name, timeoutMs = 4000) {
+  try {
+    await Promise.race([
+      ffmpeg.deleteFile(name),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('deleteFile timeout')), timeoutMs)
+      }),
+    ])
+  } catch {
+    // ignore — output may not exist or core may be busy
   }
 }
 
@@ -292,6 +320,15 @@ async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
 }
 
 const INPUT_PROBE_TIMEOUT_MS = 45_000
+/** Wasm demux probe on large WORKERFS mounts often hangs on Android; spatial ladder does not need it. */
+const SKIP_WASM_INPUT_PROBE_MIN_BYTES = 20 * 1024 * 1024
+
+/** @param {File} file @param {boolean} sourceHasAudio */
+function shouldSkipWasmInputProbe(file, sourceHasAudio) {
+  if (!sourceHasAudio) return false
+  const n = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0
+  return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
+}
 
 /** Scale per-strategy wasm encode wait with source size (working encodes usually finish well under this). */
 function encodeStrategyTimeoutMs(fileBytes) {
@@ -617,7 +654,7 @@ async function wasmReencodeToMp4({
   const sourceHasAudio = await probeVideoFileHasAudio(file)
 
   maybeReportLoungeVideoUploadDebug('encode', 'wasm core loading')
-  const ffmpeg = await getFfmpeg()
+  let ffmpeg = await getFfmpeg()
   maybeReportLoungeVideoUploadDebug('encode', 'wasm core ready')
 
   const onProg = ({ progress }) => {
@@ -643,33 +680,55 @@ async function wasmReencodeToMp4({
   /** @type {{ index: number, kind: string, codec: string }[]} */
   let probedStreams = []
   let inputProbeTimedOut = false
-  try {
-    maybeReportLoungeVideoUploadDebug('encode', 'input probe start')
-    const probeResult = await probeFfmpegInputStreamsWithTimeout(ffmpeg, inputPath, signal)
-    probedStreams = probeResult.streams
-    inputProbeTimedOut = probeResult.timedOut
-    audioStreamIndices = decodableAudioStreamIndices(probedStreams)
-    maybeReportLoungeVideoUploadDebug('encode', formatStreamProbeLog(probedStreams))
-    if (inputProbeTimedOut) {
-      maybeReportLoungeVideoUploadDebug('encode', 'input probe timed out (using spatial ladder guess)')
-    } else if (probedStreams.length === 0) {
-      maybeReportLoungeVideoUploadDebug('encode', 'input probe no ffmpeg stream lines')
-    }
-    if (audioStreamIndices.length > 0) {
+
+  async function remountInputAfterCoreReset(reason) {
+    maybeReportLoungeVideoUploadDebug('encode', `wasm core reset (${reason})`)
+    ffmpeg.off('progress', onProg)
+    await uninstallTrimInput(ffmpeg, mode, inName)
+    ffmpeg = await resetFfmpegCore()
+    ffmpeg.on('progress', onProg)
+    ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))
+    maybeReportLoungeVideoUploadDebug('encode', `input remounted ${mode} after reset`)
+  }
+
+  if (shouldSkipWasmInputProbe(file, sourceHasAudio)) {
+    maybeReportLoungeVideoUploadDebug('encode', 'input probe skipped (large source)')
+    if (typeof onProgress === 'function') onProgress(encodeProgressBase + 0.02)
+  } else {
+    try {
+      maybeReportLoungeVideoUploadDebug('encode', 'input probe start')
+      const probeResult = await probeFfmpegInputStreamsWithTimeout(ffmpeg, inputPath, signal)
+      probedStreams = probeResult.streams
+      inputProbeTimedOut = probeResult.timedOut
+      audioStreamIndices = decodableAudioStreamIndices(probedStreams)
+      maybeReportLoungeVideoUploadDebug('encode', formatStreamProbeLog(probedStreams))
+      if (inputProbeTimedOut) {
+        maybeReportLoungeVideoUploadDebug('encode', 'input probe timed out (using spatial ladder guess)')
+        await remountInputAfterCoreReset('probe timeout')
+      } else if (probedStreams.length === 0) {
+        maybeReportLoungeVideoUploadDebug('encode', 'input probe no ffmpeg stream lines')
+      }
+      if (audioStreamIndices.length > 0) {
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `probe audio streams [${audioStreamIndices.join(',')}]`,
+        )
+      } else if (sourceHasAudio) {
+        maybeReportLoungeVideoUploadDebug('encode', 'probe no decodable audio stream index')
+      }
+      if (typeof onProgress === 'function') onProgress(encodeProgressBase + 0.02)
+    } catch (probeErr) {
+      console.warn('[lounge-video-encode] stream probe failed', probeErr)
       maybeReportLoungeVideoUploadDebug(
         'encode',
-        `probe audio streams [${audioStreamIndices.join(',')}]`,
+        `input probe failed: ${probeErr instanceof Error ? probeErr.message : String(probeErr)}`,
       )
-    } else if (sourceHasAudio) {
-      maybeReportLoungeVideoUploadDebug('encode', 'probe no decodable audio stream index')
+      try {
+        await remountInputAfterCoreReset('probe failed')
+      } catch (resetErr) {
+        console.warn('[lounge-video-encode] wasm reset after probe failed', resetErr)
+      }
     }
-    if (typeof onProgress === 'function') onProgress(encodeProgressBase + 0.02)
-  } catch (probeErr) {
-    console.warn('[lounge-video-encode] stream probe failed', probeErr)
-    maybeReportLoungeVideoUploadDebug(
-      'encode',
-      `input probe failed: ${probeErr instanceof Error ? probeErr.message : String(probeErr)}`,
-    )
   }
 
   /** @type {string | null} */
@@ -693,7 +752,7 @@ async function wasmReencodeToMp4({
         onProgress(encodeProgressBase + 0.03)
       }
       try {
-        await ffmpeg.deleteFile(outName)
+        await deleteFfmpegFileSafe(ffmpeg, outName)
       } catch {
         // ignore
       }
@@ -856,12 +915,7 @@ async function wasmReencodeToMp4({
   }
 
   try {
-    try {
-      await ffmpeg.deleteFile(outName)
-    } catch {
-      // ignore
-    }
-
+    maybeReportLoungeVideoUploadDebug('encode', 'encode strategies begin')
     let { winningStrategy, lastCode, lastLogs, lastFailureHint } = await runEncodeStrategies(strategies)
 
     if (!winningStrategy && sourceHasAudio) {

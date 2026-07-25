@@ -48,10 +48,8 @@ export const COFFEE_ON_TAP_NEAR_THRESHOLD_PCT = 1
 /** Min +EV % for below-bar Coffee fallback (still +EV only, never negative). */
 export const COFFEE_FALLBACK_MIN_EV_PCT = 0
 
-export const COFFEE_THIN_COVER_LINE =
-  'Nothing at the +4% cover bar ... top +EV spreads on the board:'
-export const COFFEE_THIN_ML_LINE =
-  'Nothing at the +3% ML bar ... best +EV moneylines on the board:'
+export const COFFEE_THIN_COVER_LINE = 'Top +EV spreads on the board:'
+export const COFFEE_THIN_ML_LINE = 'Top +EV moneylines on the board:'
 
 const CAPTION_MAX = 2000
 

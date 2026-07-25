@@ -136,8 +136,8 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`**, **`loung
 
 | Section | Threshold | Max per sport |
 | --- | --- | --- |
-| **Covers** (spread/handicap) | **+4%** EV on $1 (else best **+EV** on board, not a cover pick) | **3** per sport (merged in root) |
-| **ML spots** | **+3%** EV on $1 (else best **+EV** ML on board) | **3** per sport (merged in root) |
+| **Covers** (spread/handicap) | **+4%** EV on $1 (else best **+EV** spreads on board with *Top +EV spreads on the board:* intro) | **3** per sport (merged in root) |
+| **ML spots** | **+3%** EV on $1 (else best **+EV** ML on board with *Top +EV moneylines on the board:* intro) | **3** per sport (merged in root) |
 | **Dog of the Day** | Biggest **plus-money ML underdog** per sport on today's slate | **One per sport** (longest ML on board; not +EV gated) |
 | **On Tap (tomorrow)** | Tomorrow spread/ML at or within **1%** of bar | **Max 3** across all sports |
 | **Best Lines 👇** | Best ML + book per outcome | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`) |

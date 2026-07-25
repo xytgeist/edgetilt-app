@@ -2,10 +2,10 @@ import { sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
+  canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
-  waitForCfStreamManifestReady,
   waitForDocumentVisible,
 } from '../../utils/loungeVideoUpload'
 import { maybeReportLoungeVideoUploadDebug } from './loungeFeedVideoDebugRegistry.js'
@@ -75,6 +75,14 @@ function debugComposerVideoProgress(status, detail) {
   maybeReportLoungeVideoUploadDebug('upload', line)
 }
 
+function warmLoungeVideoUploadPipeline(supabaseClient) {
+  return Promise.all([
+    import('../../utils/loungeVideoFfmpegTrim').then((m) => m.prefetchFfmpegCore()),
+    supabaseClient ? supabaseClient.auth.getSession() : Promise.resolve(null),
+    import('tus-js-client').catch(() => null),
+  ])
+}
+
 function sleep(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms)
@@ -99,15 +107,16 @@ async function sleepWhileVisible(ms, signal) {
 }
 
 /**
- * On-device encode (trim or full clip) - once per logical clip. Always compresses before Stream upload.
+ * On-device encode (trim or full clip) - once per logical clip. Compresses before Stream upload when needed.
  *
  * @param {object} opts
  * @param {AbortSignal} opts.signal
  * @param {{ kind: 'direct', file: File } | { kind: 'trim', sourceFile: File, startSec: number, endSec: number, cropPx: { x: number, y: number, w: number, h: number } | null, intrinsicWidth: number, intrinsicHeight: number }} opts.spec
+ * @param {import('@supabase/supabase-js').SupabaseClient} [opts.supabaseClient] warms tus session while encoding
  * @param {(info: { progress: number, status: string, detail?: string, attempt: number }) => void} [opts.onProgress]
  * @returns {Promise<File>}
  */
-export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress }) {
+export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseClient, onProgress }) {
   const report = (progress, status, detail, attempt) => {
     debugComposerVideoProgress(status, detail)
     if (typeof onProgress !== 'function') return
@@ -121,11 +130,14 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
-  const { trimVideoFileToMp4, prefetchFfmpegCore } = await import('../../utils/loungeVideoFfmpegTrim')
-  void prefetchFfmpegCore()
+  void warmLoungeVideoUploadPipeline(supabaseClient)
+
+  const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
 
   /** @type {File} */
   let uploadFile
+  /** @type {number} */
+  let validatedDurSec
   if (spec.kind === 'direct') {
     const source = spec.file
     report(0.03, 'Reading video metadata', '', 1)
@@ -136,33 +148,44 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
     if (sourceDur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
       throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
     }
-    report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
-    maybeReportLoungeVideoUploadDebug(
-      'encode',
-      `start direct ${source.name || 'video'} ${Math.round((source.size || 0) / (1024 * 1024))}MB`,
-    )
-    try {
-      uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
-        signal,
-        onProgress: (r) =>
-          report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
-      })
+    validatedDurSec = sourceDur
+    if (canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
       maybeReportLoungeVideoUploadDebug(
         'encode',
-        `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+        `fast-path ${source.name || 'video'} ${Math.round((source.size || 0) / (1024 * 1024))}MB`,
       )
-    } catch (encodeErr) {
-      const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
-      maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
-      if (source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-        maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
-        report(0.39, 'Compress skipped', 'Uploading original…', 1)
-        uploadFile = source
-      } else {
-        throw encodeErr
+      report(0.39, 'Upload ready', 'Already optimized for upload…', 1)
+      uploadFile = source
+    } else {
+      report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `start direct ${source.name || 'video'} ${Math.round((source.size || 0) / (1024 * 1024))}MB`,
+      )
+      try {
+        uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
+          signal,
+          onProgress: (r) =>
+            report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
+        })
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+        )
+      } catch (encodeErr) {
+        const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
+        maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
+        if (source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+          maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
+          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          uploadFile = source
+        } else {
+          throw encodeErr
+        }
       }
     }
   } else {
+    validatedDurSec = Math.max(0, spec.endSec - spec.startSec)
     report(0.05, 'Encoding…', loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
     maybeReportLoungeVideoUploadDebug('encode', `start trim ${spec.sourceFile?.name || 'video'}`)
     const c =
@@ -192,9 +215,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
   if (uploadFile.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
     throw new Error('Video must be 200 MB or smaller for upload.')
   }
-  report(0.4, 'Reading video metadata', '', 1)
-  const dur = await probeVideoFileDurationSeconds(uploadFile)
-  if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+  if (!Number.isFinite(validatedDurSec) || validatedDurSec <= 0 || validatedDurSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
     throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
   }
 
@@ -213,8 +234,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
  * @param {(uid: string) => void} [opts.onStreamUidAvailable] Called as soon as the CF Stream uid is
  *   captured from the tus first-chunk header - before the rest of the file is uploaded.
  *   Fired on every attempt so callers should be idempotent (first call wins in most use-cases).
- * @param {boolean} [opts.skipManifestWait] When true, resolve immediately after upload without
- *   polling the HLS manifest. Use for chat where CF iframe handles the processing state gracefully.
+ * @param {boolean} [opts.skipManifestWait=true] When true, resolve after tus upload (feed tile handles CF processing).
  * @returns {Promise<{ streamVideoUid: string }>}
  */
 export async function uploadEncodedVideoToCfStreamWithRetries({
@@ -224,7 +244,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
   onProgress,
   onUploadDiagnostic,
   onStreamUidAvailable,
-  skipManifestWait = false,
+  skipManifestWait = true,
 }) {
   const report = (progress, status, detail, attempt) => {
     debugComposerVideoProgress(status, detail)
@@ -283,10 +303,12 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
       if (skipManifestWait) {
+        report(0.92, 'Upload complete', 'Preparing playback on Cloudflare…', attempt)
         report(1, 'Ready', '', attempt)
         return { streamVideoUid: uid }
       }
 
+      const { waitForCfStreamManifestReady } = await import('../../utils/loungeVideoUpload')
       report(0.92, 'Finishing upload', 'Waiting for playback…', attempt)
       await waitForDocumentVisible(signal)
       await waitForCfStreamManifestReady(uid, {
@@ -354,7 +376,7 @@ export async function runComposerStreamVideoPrepWithRetries({
   onEncodedFileReady,
   onUploadDiagnostic,
 }) {
-  const uploadFile = await encodeComposerVideoFileFromSpec({ signal, spec, onProgress })
+  const uploadFile = await encodeComposerVideoFileFromSpec({ signal, spec, supabaseClient, onProgress })
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
   onEncodedFileReady?.(uploadFile)
   const { streamVideoUid } = await uploadEncodedVideoToCfStreamWithRetries({

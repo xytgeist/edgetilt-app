@@ -1,7 +1,11 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
+import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
 import { probeVideoFileDurationSeconds, probeVideoFileHasAudio } from './loungeVideoUpload.js'
+
+const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic'
+const LOUNGE_ENCODE_CRF = '30'
 
 /** Must match the ESM build served for `ffmpeg.load` (see @ffmpeg/ffmpeg 0.12 docs). */
 const CORE_VERSION = '0.12.6'
@@ -142,7 +146,7 @@ function buildOutputArgs(vf, strategy, outName) {
   const videoOnly = Boolean(strategy.videoOnly)
   const maps =
     strategy.useMaps && !videoOnly ? ['-map', '0:v:0', '-map', '0:a:0'] : []
-  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
+  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', LOUNGE_ENCODE_CRF, '-pix_fmt', 'yuv420p']
   const videoFilters = ['-vf', vfChain]
   let audio
   if (videoOnly) {
@@ -150,20 +154,20 @@ function buildOutputArgs(vf, strategy, outName) {
   } else if (strategy.audioCopy) {
     audio = ['-c:a', 'copy']
   } else {
-    audio = ['-c:a', 'aac', '-b:a', '128k']
+    audio = ['-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100']
   }
   const mux = ['-movflags', '+faststart', '-y', outName]
   return [...maps, ...video, ...videoFilters, ...audio, ...mux]
 }
 
-/** @param {boolean} sourceHasAudio */
+/** @param {boolean} sourceHasAudio when false, only Firefox `mozHasAudio === false` (never iOS empty `audioTracks`). */
 function buildEncodeStrategies(sourceHasAudio) {
   if (sourceHasAudio) {
     return [
-      { label: 'aac', videoOnly: false, forceSsBeforeInput: false, useMaps: false },
       { label: 'aac-mapped', videoOnly: false, forceSsBeforeInput: false, useMaps: true },
-      { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
       { label: 'aac-copy', videoOnly: false, forceSsBeforeInput: false, useMaps: true, audioCopy: true },
+      { label: 'aac', videoOnly: false, forceSsBeforeInput: false, useMaps: false },
+      { label: 'aac-mapped-ss', videoOnly: false, forceSsBeforeInput: true, useMaps: true },
     ]
   }
   return [
@@ -292,6 +296,10 @@ async function wasmReencodeToMp4({
     }
 
     console.log('[lounge-video-encode]', 'success', { strategy: winningStrategy, sourceHasAudio })
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `success ${winningStrategy} audio=${sourceHasAudio ? 'yes' : 'no'}`,
+    )
 
     const data = await ffmpeg.readFile(outName)
     try {
@@ -348,7 +356,7 @@ export async function encodeVideoForChat(file, opts = {}) {
     endSec: dur,
     outName: 'chat_out.mp4',
     inName: `chat_in${ext}`,
-    vf: 'scale=1280:-2:flags=bicubic',
+    vf: LOUNGE_ENCODE_SCALE_VF,
     signal,
     onProgress,
     outBaseName: fileBaseName(file),
@@ -372,10 +380,10 @@ export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
   const dur = end - start
   if (!(dur > 0)) throw new Error('Invalid trim range.')
 
-  let vf = 'scale=1280:-2:flags=bicubic'
+  let vf = LOUNGE_ENCODE_SCALE_VF
   if (cropIn && cropIn.w > 0 && cropIn.h > 0 && iw > 0 && ih > 0) {
     const c = sanitizeVideoCropPx(iw, ih, cropIn)
-    if (c) vf = `crop=${c.w}:${c.h}:${c.x}:${c.y},scale=1280:-2:flags=bicubic`
+    if (c) vf = `crop=${c.w}:${c.h}:${c.x}:${c.y},${LOUNGE_ENCODE_SCALE_VF}`
   }
 
   const ext = inputExt(file)

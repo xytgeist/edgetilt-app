@@ -135,6 +135,35 @@ export function cfStreamPosterUrl(uid, height = 720) {
 /** Max wait for local file duration (iOS can delay `loadedmetadata` on long clips). */
 const PROBE_DURATION_TIMEOUT_MS = 45000
 
+/** Direct picks at or below this size may skip wasm encode when already device MP4/MOV. */
+export const LOUNGE_VIDEO_FAST_PATH_MAX_BYTES = 20 * 1024 * 1024
+
+/**
+ * True when a direct pick is small enough to upload without on-device re-encode.
+ * Trim/crop always runs through wasm.
+ *
+ * @param {File} file
+ * @param {number} durationSec
+ * @param {'direct' | 'trim'} specKind
+ */
+export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
+  if (specKind !== 'direct') return false
+  const size = typeof file?.size === 'number' ? file.size : 0
+  if (!Number.isFinite(size) || size <= 0 || size > LOUNGE_VIDEO_FAST_PATH_MAX_BYTES) return false
+  if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+    return false
+  }
+  const type = String(file?.type || '').toLowerCase()
+  const name = String(file?.name || '').toLowerCase()
+  return (
+    type.includes('mp4')
+    || type.includes('quicktime')
+    || name.endsWith('.mp4')
+    || name.endsWith('.m4v')
+    || name.endsWith('.mov')
+  )
+}
+
 /**
  * Read duration from a local video file (metadata only).
  * Safari/iOS often fires `durationchange` after (or instead of) `loadedmetadata` for camera MOV/HEVC.
@@ -240,18 +269,19 @@ export function probeVideoFileHasAudio(file) {
       resolve(hasAudio)
     }
     const readTracks = () => {
+      if (typeof v.mozHasAudio === 'boolean') {
+        finish(v.mozHasAudio)
+        return true
+      }
       try {
-        if (typeof v.audioTracks !== 'undefined' && v.audioTracks) {
-          finish(v.audioTracks.length > 0)
+        if (typeof v.audioTracks !== 'undefined' && v.audioTracks && v.audioTracks.length > 0) {
+          finish(true)
           return true
         }
       } catch {
         // ignore
       }
-      if (typeof v.mozHasAudio === 'boolean') {
-        finish(v.mozHasAudio)
-        return true
-      }
+      // Safari/iOS often reports `audioTracks.length === 0` for clips that do have audio.
       return false
     }
     const tid = window.setTimeout(() => finish(true), PROBE_DURATION_TIMEOUT_MS)

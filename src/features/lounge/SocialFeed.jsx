@@ -1322,6 +1322,10 @@ export default function SocialFeed({
   }, [])
 
   useEffect(() => {
+    void import('../../utils/loungeVideoFfmpegTrim.js').then((m) => m.prefetchFfmpegCore())
+  }, [])
+
+  useEffect(() => {
     const composerBusy =
       postText.trim().length > 0 ||
       composerImageItems.length > 0 ||

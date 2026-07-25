@@ -3238,6 +3238,14 @@ export default function LoungePostStreamVideo({
               {streamVideoEl}
             </div>
           </div>
+          {attachStream && !effectiveStreamFadeShowVideo && !showStreamRetry && !heroExpanded ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] bg-gradient-to-t from-black/75 via-black/35 to-transparent px-2 pb-2 pt-8 text-center text-[11px] font-medium text-zinc-100/95"
+              aria-hidden
+            >
+              Processing video…
+            </div>
+          ) : null}
           {showStreamRetry ? (
             <div
               className="pointer-events-auto absolute inset-0 z-[4] flex flex-col items-center justify-center gap-2 bg-black/55 px-3 text-center text-[12px] font-medium text-zinc-100"

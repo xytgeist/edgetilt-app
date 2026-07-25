@@ -171,6 +171,7 @@ import {
   createLoungePendingPublishKey,
   finishLoungePendingCommentVideoProcessing,
   loungeSubmissionUsesInlineVideoPostProgress,
+  loungeSnapshotUsesInlineTileVideoProgress,
   loungeEditSnapshotHasIncomingVideoUpload,
   loungeSubmissionShouldUseBottomUploadBar,
   publishLoungeFeedPostWhenStreamReady,
@@ -2524,6 +2525,21 @@ export default function SocialFeed({
     setLoungePostUploadBar(null)
   }, [])
 
+  /** Bottom upload bar is redundant once inline tile progress owns the submit. */
+  const dismissLoungeUploadBarForInlineTileSubmit = useCallback((snapshot) => {
+    if (!loungeSnapshotUsesInlineTileVideoProgress(snapshot)) return
+    setLoungePostUploadBar(null)
+  }, [])
+
+  /** After prep finishes: drop mediaPrep HUD for inline tile submits; keep bottom bar for thread/text-only paths. */
+  const dismissLoungeMediaPrepUploadBarAfterPrep = useCallback((prepJobId, snapshot) => {
+    setLoungePostUploadBar((bar) => {
+      if (!bar || bar.mode !== 'mediaPrep' || bar.prepJobId !== prepJobId) return bar
+      if (loungeSnapshotUsesInlineTileVideoProgress(snapshot)) return null
+      return bar.postSubmission ? bar : null
+    })
+  }, [])
+
   /** True while a video submit queue job may still own shared video prep / upload bar state. */
   const loungeBackgroundSubmitBusy = useCallback(
     () =>
@@ -2884,9 +2900,7 @@ export default function SocialFeed({
           handoff.resolve(result)
           composerVideoLastEncodedFileRef.current = null
           if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
-            setLoungePostUploadBar((bar) =>
-              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-            )
+            dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungePostSnapshotRef.current)
             return
           }
           const { encodedFile, streamVideoUid } = result
@@ -2927,9 +2941,7 @@ export default function SocialFeed({
               prepError: '',
             }
           })
-          setLoungePostUploadBar((bar) =>
-            bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-          )
+          dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) {
             handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -2963,7 +2975,7 @@ export default function SocialFeed({
         }
       })()
     },
-    [supabaseClient, loungeBackgroundSubmitBusy],
+    [dismissLoungeMediaPrepUploadBarAfterPrep, supabaseClient, loungeBackgroundSubmitBusy],
   )
 
   const startQuoteRepostVideoPrepFromSpec = useCallback(
@@ -3081,9 +3093,7 @@ export default function SocialFeed({
           handoff.resolve(result)
           quoteRepostVideoLastEncodedFileRef.current = null
           if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
-            setLoungePostUploadBar((bar) =>
-              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-            )
+            dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungePostSnapshotRef.current)
             return
           }
           const { encodedFile, streamVideoUid } = result
@@ -3124,9 +3134,7 @@ export default function SocialFeed({
               prepError: '',
             }
           })
-          setLoungePostUploadBar((bar) =>
-            bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-          )
+          dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) {
             handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -3163,7 +3171,7 @@ export default function SocialFeed({
         }
       })()
     },
-    [supabaseClient, loungeBackgroundSubmitBusy],
+    [dismissLoungeMediaPrepUploadBarAfterPrep, supabaseClient, loungeBackgroundSubmitBusy],
   )
 
   const cancelComposerMediaPrep = useCallback(
@@ -3525,6 +3533,7 @@ export default function SocialFeed({
         detail: String(info?.detail || ''),
         phase: 'upload',
       })
+      setLoungePostUploadBar(null)
       return
     }
     setLoungePostUploadBar((prev) => {
@@ -4133,7 +4142,8 @@ export default function SocialFeed({
     if (postUid && pendingPoster.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
-  }, [disposeComposerVideoMedia, endLoungeDetailCommentMediaSession])
+    dismissLoungeUploadBarForInlineTileSubmit(snap)
+  }, [disposeComposerVideoMedia, dismissLoungeUploadBarForInlineTileSubmit, endLoungeDetailCommentMediaSession])
 
   const clearLoungeDetailEditForPostAttempt = useCallback((opts = {}) => {
     const preserve = Boolean(opts.preserveDetailEditVideoPrep)
@@ -4212,7 +4222,8 @@ export default function SocialFeed({
     if (postUid && pendingPoster.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
-  }, [disposeComposerVideoMedia])
+    dismissLoungeUploadBarForInlineTileSubmit(snap)
+  }, [disposeComposerVideoMedia, dismissLoungeUploadBarForInlineTileSubmit])
 
   const clearLoungeDetailCommentEditForPostAttempt = useCallback((opts = {}) => {
     const preserve = Boolean(opts.preserveDetailCommentEditVideoPrep)
@@ -4292,7 +4303,8 @@ export default function SocialFeed({
     if (postUid && pendingPoster.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
-  }, [disposeComposerVideoMedia])
+    dismissLoungeUploadBarForInlineTileSubmit(snap)
+  }, [disposeComposerVideoMedia, dismissLoungeUploadBarForInlineTileSubmit])
 
   const requestDismissLoungeDetailCommentComposer = useCallback(() => {
     const hasContent =
@@ -4419,9 +4431,7 @@ export default function SocialFeed({
           handoff.resolve(result)
           loungeDetailCommentVideoLastEncodedFileRef.current = null
           if (loungeDetailCommentJobRunningRef.current || loungeDetailCommentSnapshotRef.current) {
-            setLoungePostUploadBar((bar) =>
-              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-            )
+            dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungeDetailCommentSnapshotRef.current)
             return
           }
           const { encodedFile, streamVideoUid } = result
@@ -4460,9 +4470,7 @@ export default function SocialFeed({
               prepError: '',
             }
           })
-          setLoungePostUploadBar((bar) =>
-            bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-          )
+          dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
           if (e?.name === 'AbortError') {
@@ -4489,7 +4497,7 @@ export default function SocialFeed({
         }
       })()
     },
-    [supabaseClient, loungeBackgroundSubmitBusy],
+    [dismissLoungeMediaPrepUploadBarAfterPrep, supabaseClient, loungeBackgroundSubmitBusy],
   )
 
   const startLoungeDetailEditVideoPrepFromSpec = useCallback(
@@ -4604,9 +4612,7 @@ export default function SocialFeed({
           handoff.resolve(result)
           loungeDetailEditVideoLastEncodedFileRef.current = null
           if (loungeDetailEditJobRunningRef.current || loungeDetailEditSnapshotRef.current) {
-            setLoungePostUploadBar((bar) =>
-              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-            )
+            dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungeDetailEditSnapshotRef.current)
             return
           }
           const { encodedFile, streamVideoUid } = result
@@ -4645,9 +4651,7 @@ export default function SocialFeed({
               prepError: '',
             }
           })
-          setLoungePostUploadBar((bar) =>
-            bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-          )
+          dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
           if (e?.name === 'AbortError') {
@@ -4674,7 +4678,7 @@ export default function SocialFeed({
         }
       })()
     },
-    [supabaseClient, loungeBackgroundSubmitBusy],
+    [dismissLoungeMediaPrepUploadBarAfterPrep, supabaseClient, loungeBackgroundSubmitBusy],
   )
 
   const startLoungeDetailCommentEditVideoPrepFromSpec = useCallback(
@@ -4789,9 +4793,7 @@ export default function SocialFeed({
           handoff.resolve(result)
           loungeDetailCommentEditVideoLastEncodedFileRef.current = null
           if (loungeDetailCommentEditJobRunningRef.current || loungeDetailCommentEditSnapshotRef.current) {
-            setLoungePostUploadBar((bar) =>
-              bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-            )
+            dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungeDetailCommentEditSnapshotRef.current)
             return
           }
           const { encodedFile, streamVideoUid } = result
@@ -4830,9 +4832,7 @@ export default function SocialFeed({
               prepError: '',
             }
           })
-          setLoungePostUploadBar((bar) =>
-            bar?.mode === 'mediaPrep' && bar.prepJobId === jobId && !bar.postSubmission ? null : bar,
-          )
+          dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
           if (e?.name === 'AbortError') {
@@ -4859,7 +4859,7 @@ export default function SocialFeed({
         }
       })()
     },
-    [supabaseClient, loungeBackgroundSubmitBusy],
+    [dismissLoungeMediaPrepUploadBarAfterPrep, supabaseClient, loungeBackgroundSubmitBusy],
   )
 
   const queueLoungeVideoOrCrop = useCallback(
@@ -9724,7 +9724,8 @@ export default function SocialFeed({
     if (postUid && pendingPoster.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
-  }, [])
+    dismissLoungeUploadBarForInlineTileSubmit(snap)
+  }, [dismissLoungeUploadBarForInlineTileSubmit])
 
   const restoreComposerFromSnapshot = useCallback(
     (snap, opts = {}) => {
@@ -10131,7 +10132,8 @@ export default function SocialFeed({
     if (postUid && pendingPoster.startsWith('blob:')) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
-  }, [])
+    dismissLoungeUploadBarForInlineTileSubmit(snap)
+  }, [dismissLoungeUploadBarForInlineTileSubmit])
   clearQuoteRepostForPostAttemptRef.current = clearQuoteRepostForPostAttempt
 
   const cancelLoungePostUpload = useCallback(() => {
@@ -10297,6 +10299,7 @@ export default function SocialFeed({
       const useBottomUploadBar = loungeSubmissionShouldUseBottomUploadBar(snapshot)
       const showSubmitBar = useBottomUploadBar
       const uidBar = String(snapshot.streamVideoUid || '').trim()
+      dismissLoungeUploadBarForInlineTileSubmit(snapshot)
       const mediaUploadBarSkin =
         submissionHasVideo &&
         !uidBar &&
@@ -10606,10 +10609,10 @@ export default function SocialFeed({
         loungePostAbortRef.current = null
         loungePostJobRunningRef.current = false
         bumpLoungeSubmitInFlight(-1)
-        if (threadTotal > 1) setLoungePostUploadBar(null)
+        if (threadTotal > 1 || inlineVideoProgress) setLoungePostUploadBar(null)
       }
     },
-    [bumpNotificationInteractionRefreshIfOpen, loadCommunityFeed, rateLimitMessage, refreshLoungeDraftCount, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight, applyLoungePostSubmitUploadProgress, persistThreadSubmissionSnapshotAsDraft, restoreThreadAfterUploadFailure, patchAuthorPendingVideoPost, removeAuthorPendingVideoPost, startStagedVideoPostPublish],
+    [bumpNotificationInteractionRefreshIfOpen, dismissLoungeUploadBarForInlineTileSubmit, loadCommunityFeed, rateLimitMessage, refreshLoungeDraftCount, refreshLoungePostInteractions, supabaseClient, bumpLoungeSubmitInFlight, applyLoungePostSubmitUploadProgress, persistThreadSubmissionSnapshotAsDraft, restoreThreadAfterUploadFailure, patchAuthorPendingVideoPost, removeAuthorPendingVideoPost, startStagedVideoPostPublish],
   )
   runBackgroundLoungePostSubmissionRef.current = runBackgroundLoungePostSubmission
 
@@ -10627,6 +10630,7 @@ export default function SocialFeed({
       const inlineVideoProgress = loungeSubmissionUsesInlineVideoPostProgress(snapshot)
       const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
       const uidBar = String(snapshot.streamVideoUid || '').trim()
+      dismissLoungeUploadBarForInlineTileSubmit(snapshot)
       const mediaUploadBarSkin =
         submissionHasVideo &&
         !uidBar &&
@@ -10949,8 +10953,10 @@ export default function SocialFeed({
       }
     },
     [
+      applyLoungePostSubmitUploadProgress,
       composerUserProfile,
       defaultInteraction,
+      dismissLoungeUploadBarForInlineTileSubmit,
       patchPostAggregate,
       scheduleLoungePostDetailTitleAfterReply,
       scrollLoungePostDetailToFocusedComment,
@@ -11052,6 +11058,7 @@ export default function SocialFeed({
       const inlineVideoProgress = loungeEditSnapshotHasIncomingVideoUpload(snapshot)
       const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
       const uidBar = String(snapshot.streamVideoUid || '').trim()
+      dismissLoungeUploadBarForInlineTileSubmit(snapshot)
       const mediaUploadBarSkin =
         submissionHasVideo &&
         !uidBar &&
@@ -11293,6 +11300,7 @@ export default function SocialFeed({
       applyLoungePostSubmitUploadProgress,
       bumpLoungeSubmitInFlight,
       dismissLoungePostUploadBarIfIdle,
+      dismissLoungeUploadBarForInlineTileSubmit,
       patchAuthorPendingVideoPost,
       patchLoungePostEditResult,
       rateLimitMessage,
@@ -11316,6 +11324,7 @@ export default function SocialFeed({
       const inlineVideoProgress = loungeEditSnapshotHasIncomingVideoUpload(snapshot)
       const pendingPublishKey = String(snapshot._pendingPublishKey || '').trim()
       const uidBar = String(snapshot.streamVideoUid || '').trim()
+      dismissLoungeUploadBarForInlineTileSubmit(snapshot)
       const mediaUploadBarSkin =
         submissionHasVideo &&
         !uidBar &&
@@ -11586,6 +11595,7 @@ export default function SocialFeed({
       applyLoungePostSubmitUploadProgress,
       bumpLoungeSubmitInFlight,
       dismissLoungePostUploadBarIfIdle,
+      dismissLoungeUploadBarForInlineTileSubmit,
       patchLoungeCommentEditResult,
       supabaseClient,
     ],

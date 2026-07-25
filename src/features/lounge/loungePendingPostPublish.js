@@ -78,6 +78,15 @@ export function loungeSubmissionUsesInlineVideoPostProgress(snapshot) {
   return loungeSubmissionSnapshotIncludesVideo(snapshot)
 }
 
+/** Composer submit or edit flows that show progress on the feed/comment tile (not the bottom bar). */
+export function loungeSnapshotUsesInlineTileVideoProgress(snapshot) {
+  if (!snapshot) return false
+  return (
+    loungeSubmissionUsesInlineVideoPostProgress(snapshot) ||
+    loungeEditSnapshotHasIncomingVideoUpload(snapshot)
+  )
+}
+
 /** Post/comment edit: inline tile only when a new Stream upload is in flight (not caption-only on existing video). */
 export function loungeEditSnapshotHasIncomingVideoUpload(snapshot) {
   if (!snapshot) return false

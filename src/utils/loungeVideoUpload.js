@@ -141,6 +141,17 @@ export const LOUNGE_VIDEO_FAST_PATH_MAX_BYTES = 20 * 1024 * 1024
 /** Already-clean MP4/M4V exports (e.g. pre-muxed AAC) may pass through without wasm up to this size. */
 export const LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES = 50 * 1024 * 1024
 
+/**
+ * Android wasm often hangs on large WORKERFS HEVC sources; upload as-is and let CF Stream transcode.
+ * Matches {@link SKIP_WASM_INPUT_PROBE_MIN_BYTES} in loungeVideoFfmpegTrim.js.
+ */
+export const LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES = 20 * 1024 * 1024
+
+/** @returns {boolean} */
+export function isAndroidBrowser() {
+  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+}
+
 /** @param {File | undefined} file */
 export function isLoungeVideoMp4Container(file) {
   const type = String(file?.type || '').toLowerCase()
@@ -177,6 +188,14 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
     return true
   }
+  if (
+    isAndroidBrowser()
+    && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES
+    && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+    && (isLoungeVideoMp4Container(file) || isLoungeVideoQuicktimeMov(file))
+  ) {
+    return true
+  }
   if (size > LOUNGE_VIDEO_FAST_PATH_MAX_BYTES) return false
   const type = String(file?.type || '').toLowerCase()
   const name = String(file?.name || '').toLowerCase()
@@ -192,6 +211,15 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
 /** MP4 picks that may upload as-is when wasm encode fails (already muxed AAC). */
 export function canPassThroughLoungeVideoMp4OnEncodeFail(file) {
   const size = typeof file?.size === 'number' ? file.size : 0
+  if (
+    isAndroidBrowser()
+    && isLoungeVideoMp4Container(file)
+    && Number.isFinite(size)
+    && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES
+    && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+  ) {
+    return true
+  }
   return (
     isLoungeVideoMp4Container(file)
     && Number.isFinite(size)

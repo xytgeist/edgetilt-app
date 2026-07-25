@@ -3651,23 +3651,6 @@ export default function SocialFeed({
     [composerUserId, composerUserProfile],
   )
 
-  const markPostPendingVideoPublish = useCallback(
-    (postId, snapshot, pendingKey) => {
-      const key = String(pendingKey || '').trim()
-      const id = String(postId || '').trim()
-      if (!key || !id) return
-      const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
-      patchPostAggregate(id, {
-        _authorPendingPublish: true,
-        _pendingPublishKey: key,
-        feed_visible_at: null,
-        _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
-      })
-      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
-    },
-    [patchPostAggregate],
-  )
-
   const markCommentPendingVideoPublish = useCallback((commentId, snapshot, pendingKey) => {
     const key = String(pendingKey || '').trim()
     const id = String(commentId || '').trim()
@@ -5116,6 +5099,23 @@ export default function SocialFeed({
     setLoungePostDetail((d) => (d && d.id === postId ? { ...d, ...partial } : d))
     setProfileModalPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...partial } : p)))
   }, [setCommunityPosts])
+
+  const markPostPendingVideoPublish = useCallback(
+    (postId, snapshot, pendingKey) => {
+      const key = String(pendingKey || '').trim()
+      const id = String(postId || '').trim()
+      if (!key || !id) return
+      const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
+      patchPostAggregate(id, {
+        _authorPendingPublish: true,
+        _pendingPublishKey: key,
+        feed_visible_at: null,
+        _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+      })
+      setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
+    },
+    [patchPostAggregate],
+  )
 
   const monoNow = useCallback(() => {
     if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now()
@@ -8435,6 +8435,7 @@ export default function SocialFeed({
     loungeDetailEditMediaUrl,
     loungeDetailEditVideoPostBlocked,
     loungePostDetail,
+    markPostPendingVideoPublish,
     shouldAssignLoungePostSnapshotRef,
   ])
 

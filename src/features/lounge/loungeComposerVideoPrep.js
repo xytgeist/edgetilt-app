@@ -5,6 +5,7 @@ import {
   canPassThroughLoungeVideoOnEncodeFail,
   canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
+  isAndroidBrowser,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
   waitForDocumentVisible,
@@ -158,18 +159,26 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     }
     validatedDurSec = sourceDur
     if (canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
+      const androidDirect = isAndroidBrowser()
       maybeReportLoungeVideoUploadDebug(
         'encode',
-        `fast-path ${source.name || 'video'} ${sourceMb}MB`,
+        androidDirect
+          ? `fast-path android direct ${sourceMb}MB (CF Stream transcode)`
+          : `fast-path ${source.name || 'video'} ${sourceMb}MB`,
       )
       recordLoungeVideoPrepOutcome({
         outcome: 'fast-path',
         sourceMb,
         outputMb: sourceMb,
         durSec: validatedDurSec,
-        detail: source.name || 'video',
+        detail: androidDirect ? 'android direct' : source.name || 'video',
       })
-      report(0.39, 'Upload ready', 'Already optimized for upload…', 1)
+      report(
+        0.39,
+        'Upload ready',
+        androidDirect ? 'Sending original… Cloudflare will optimize' : 'Already optimized for upload…',
+        1,
+      )
       uploadFile = source
     } else {
       const needsBrowserAudio = shouldPrefetchBrowserVideoAudio(source)

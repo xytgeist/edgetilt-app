@@ -171,8 +171,8 @@ export function isLoungeVideoQuicktimeMov(file) {
 }
 
 /**
- * True when a direct pick is small enough to upload without on-device re-encode.
- * Trim/crop always runs through wasm.
+ * True when a direct pick can upload without on-device re-encode.
+ * Trim/crop still runs through wasm (except Android falls through to pass-through on encode fail).
  *
  * @param {File} file
  * @param {number} durationSec
@@ -184,6 +184,10 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   if (!Number.isFinite(size) || size <= 0) return false
   if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
     return false
+  }
+  // Android: skip client wasm encode entirely; CF Stream transcodes server-side.
+  if (isAndroidBrowser() && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+    return true
   }
   if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
     return true

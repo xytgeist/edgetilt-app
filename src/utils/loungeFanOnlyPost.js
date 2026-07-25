@@ -108,7 +108,9 @@ export function isLoungeFanOnlyPostLocked(post, ctx = {}) {
  * @param {string[]} postIds
  */
 export async function fetchLoungeCommunityFeedPostsForViewer(supabaseClient, postIds) {
-  const ids = [...new Set(postIds.map((id) => String(id || '').trim()).filter(Boolean))]
+  const ids = [...new Set(postIds.map((id) => String(id || '').trim()).filter(Boolean))].filter(
+    (id) => !id.startsWith('pending-'),
+  )
   if (!ids.length) return []
   const { data, error } = await supabaseClient.rpc('lounge_community_feed_posts_for_viewer', {
     p_post_ids: ids,

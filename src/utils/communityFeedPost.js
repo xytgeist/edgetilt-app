@@ -48,7 +48,9 @@ export function collectLoungePostInteractionHydrateIds(posts) {
   const ids = new Set()
   if (!Array.isArray(posts)) return ids
   for (const p of posts) {
-    if (p?.id) ids.add(String(p.id))
+    const id = p?.id ? String(p.id) : ''
+    if (!id || id.startsWith('pending-')) continue
+    ids.add(id)
     if (p?.is_plain_repost === true) {
       const origId = p.reposted_post?.id ?? p.repost_of_post_id
       if (origId) ids.add(String(origId))

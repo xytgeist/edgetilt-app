@@ -469,6 +469,7 @@ function buildFeedCommentDrillPath(commentId, comments) {
 }
 
 async function fetchHydratedFeedCommentsForPost(supabaseClient, postId) {
+  if (loungePendingPublishIsOptimisticId(postId)) return []
   const { data, error } = await supabaseClient
     .from('feed_comments')
     .select(FEED_COMMENT_SELECT_COLS)
@@ -5495,7 +5496,9 @@ export default function SocialFeed({
 
   const refreshLoungePostInteractions = useCallback(
     async (postIds) => {
-      const ids = [...new Set((postIds || []).filter(Boolean))]
+      const ids = [...new Set((postIds || []).filter(Boolean))].filter(
+        (id) => !loungePendingPublishIsOptimisticId(id),
+      )
       if (!composerUserId || ids.length === 0) return
       const uid = composerUserId
       const [likesRes, quoteRepostRes, bookmarksRes, commentsRes, countsRes] = await Promise.all([
@@ -7206,6 +7209,17 @@ export default function SocialFeed({
 
     const postId = String(loungePostDetail.id)
 
+    if (loungePendingPublishIsOptimisticId(postId)) {
+      loungeDetailCommentsEffectPostIdRef.current = postId
+      setLoungeDetailComments([])
+      setLoungeDetailViewerPinnedCommentIds([])
+      setLoungeDetailFollowingUserIds([])
+      setLoungeDetailCommentErr('')
+      setLoungeDetailCommentsLoading(false)
+      loungeDetailCommentsLoadedPostIdRef.current = postId
+      return
+    }
+
     if (loungeDetailCommentsLoadedPostIdRef.current === postId) return
 
     const isNewPost = loungeDetailCommentsEffectPostIdRef.current !== postId
@@ -7594,7 +7608,7 @@ export default function SocialFeed({
       setLoungeDetailCommentDeleteBusyId(null)
       setLoungePostDetail(post)
       setLoungePostDetailAboveProfile(profileModalOpen || profileOverlayStack.length > 0)
-      if (composerUserId) {
+      if (composerUserId && !loungePendingPublishIsOptimisticId(post.id)) {
         void refreshLoungePostInteractions([post.id])
       }
       setLoungeDetailEditImageUrls([])

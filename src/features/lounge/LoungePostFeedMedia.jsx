@@ -469,6 +469,8 @@ export function LoungePostFeedImagesAndGif({
       : null
   const streamUid = feedPostStreamVideoUid(post)
   const pendingPublishKey = String(post?._pendingPublishKey || post?.id || '').trim()
+  const authorPendingPublish =
+    post?._authorPendingPublish === true || post?.feed_visible_at === null
   const sessionPosterFromPost =
     String(post?._sessionStreamPosterBlob || '').trim() ||
     (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
@@ -510,10 +512,8 @@ export function LoungePostFeedImagesAndGif({
         persistedStreamPosterUrl={persistedStreamPoster || undefined}
         streamVideoDisplayWidth={streamDims?.width}
         streamVideoDisplayHeight={streamDims?.height}
-        pendingPublishKey={
-          post?._authorPendingPublish || post?.feed_visible_at == null ? pendingPublishKey : undefined
-        }
-        authorPendingPublish={post?.feed_visible_at == null || post?._authorPendingPublish === true}
+        pendingPublishKey={authorPendingPublish ? pendingPublishKey : undefined}
+        authorPendingPublish={authorPendingPublish}
         renderMediaLightboxChrome={chromeRenderer}
         renderMediaLightboxMenu={menuRenderer}
         renderMediaLightboxTopBarExtra={topBarExtraRenderer}

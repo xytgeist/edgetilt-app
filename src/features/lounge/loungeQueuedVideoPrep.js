@@ -1,4 +1,4 @@
-import { loungeSubmissionSnapshotIncludesVideo } from './loungePostSubmitJob.js'
+import { loungeSubmissionSnapshotIncludesVideo } from './loungeSubmissionSnapshot.js'
 import {
   runComposerStreamVideoPrepWithRetries,
   uploadEncodedVideoToCfStreamWithRetries,

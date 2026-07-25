@@ -1,35 +1,8 @@
 import { waitForCfStreamManifestReady } from '../../utils/loungeVideoUpload.js'
-
-function snapshotThreadPartCount(snapshot) {
-  if (!snapshot) return 0
-  if (Array.isArray(snapshot.threadParts) && snapshot.threadParts.length > 1) {
-    return snapshot.threadParts.length
-  }
-  if (Array.isArray(snapshot.threadCaptions) && snapshot.threadCaptions.length > 1) {
-    return snapshot.threadCaptions.length
-  }
-  return 0
-}
-
-function snapshotIncludesVideo(snapshot) {
-  if (!snapshot) return false
-  if (String(snapshot.streamVideoUid || '').trim()) return true
-  if (snapshot.videoFile instanceof File) return true
-  if (snapshot.videoPrepSpec) return true
-  if (snapshot.awaitingComposerVideoPrepJobId != null) return true
-  if (Array.isArray(snapshot.threadParts) && snapshot.threadParts.some((part) => {
-    if (!part || typeof part !== 'object') return false
-    if (String(part.streamVideoUid ?? '').trim()) return true
-    if (part.videoFile instanceof File) return true
-    if (part.videoPrepSpec) return true
-    if (part.awaitingThreadPartVideoPrepJobId != null) return true
-    if (part._capturedPrepHandoff) return true
-    return false
-  })) {
-    return true
-  }
-  return false
-}
+import {
+  loungeSubmissionSnapshotIncludesVideo,
+  loungeSubmissionSnapshotThreadPartCount,
+} from './loungeSubmissionSnapshot.js'
 
 /** @typedef {{ progress: number, status: string, detail: string, phase?: string }} LoungePendingPostProgress */
 
@@ -102,7 +75,7 @@ export function remitLoungePendingPostProgressKey(fromKey, toKey) {
 
 /** Any Lounge submit snapshot with Stream video uses inline tile progress (not the bottom bar). */
 export function loungeSubmissionUsesInlineVideoPostProgress(snapshot) {
-  return snapshotIncludesVideo(snapshot)
+  return loungeSubmissionSnapshotIncludesVideo(snapshot)
 }
 
 /** Post/comment edit: inline tile only when a new Stream upload is in flight (not caption-only on existing video). */
@@ -120,8 +93,8 @@ export function loungeEditSnapshotHasIncomingVideoUpload(snapshot) {
 
 /** Bottom upload bar: text-only multi-part threads (no video anywhere in the snapshot). */
 export function loungeSubmissionShouldUseBottomUploadBar(snapshot) {
-  if (snapshotIncludesVideo(snapshot)) return false
-  return snapshotThreadPartCount(snapshot) > 1
+  if (loungeSubmissionSnapshotIncludesVideo(snapshot)) return false
+  return loungeSubmissionSnapshotThreadPartCount(snapshot) > 1
 }
 
 /** @param {string} [prefix] */
@@ -259,7 +232,7 @@ export function loungeFeedPostIsAuthorPendingPublish(row, viewerUserId) {
   if (!row || !viewerUserId) return false
   if (String(row.user_id || '') !== String(viewerUserId)) return false
   if (row._authorPendingPublish === true) return true
-  if (row.feed_visible_at == null && feedPostStreamVideoUid(row)) return true
+  if (row.feed_visible_at === null && feedPostStreamVideoUid(row)) return true
   return false
 }
 

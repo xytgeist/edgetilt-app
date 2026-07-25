@@ -21,6 +21,12 @@ import { feedCommentThreadPartInsertPayload } from '../../utils/communityFeedCom
 import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 import { attachMarketEmbedsToPost } from '../../utils/loungeMarketApi.js'
 import { resolveLoungeSubmissionVideoPrep } from './loungeQueuedVideoPrep.js'
+import {
+  loungeSubmissionSnapshotIncludesVideo,
+  loungeSubmissionSnapshotThreadPartCount,
+} from './loungeSubmissionSnapshot.js'
+
+export { loungeSubmissionSnapshotIncludesVideo, loungeSubmissionSnapshotThreadPartCount } from './loungeSubmissionSnapshot.js'
 
 async function uploadLoungeThreadPartImageFiles({
   supabaseClient,
@@ -656,44 +662,6 @@ export function sliceThreadSubmissionSnapshotForResume(snapshot, publishedPartCo
     threadResumePartOffset: published,
     threadOriginalPartTotal: originalTotal > 0 ? originalTotal : remaining.length,
   }
-}
-
-/** @returns {number} Multi-part thread size, or 0 when not a thread. */
-export function loungeSubmissionSnapshotThreadPartCount(snapshot) {
-  if (!snapshot) return 0
-  if (Array.isArray(snapshot.threadParts) && snapshot.threadParts.length > 1) {
-    return snapshot.threadParts.length
-  }
-  if (Array.isArray(snapshot.threadCaptions) && snapshot.threadCaptions.length > 1) {
-    return snapshot.threadCaptions.length
-  }
-  return 0
-}
-
-/** True when a background Lounge post/comment job includes Stream video (not images/GIF-only). */
-function loungeThreadPartSnapshotHasVideo(part) {
-  if (!part || typeof part !== 'object') return false
-  if (String(part.streamVideoUid ?? '').trim()) return true
-  if (part.videoFile instanceof File) return true
-  if (part.videoPrepSpec) return true
-  if (part.awaitingThreadPartVideoPrepJobId != null) return true
-  if (part._capturedPrepHandoff) return true
-  return false
-}
-
-export function loungeSubmissionSnapshotIncludesVideo(snapshot) {
-  if (!snapshot) return false
-  if (String(snapshot.streamVideoUid || '').trim()) return true
-  if (snapshot.videoFile instanceof File) return true
-  if (snapshot.videoPrepSpec) return true
-  if (snapshot.awaitingComposerVideoPrepJobId != null) return true
-  if (snapshot.awaitingDetailCommentVideoPrepJobId != null) return true
-  if (snapshot.awaitingDetailEditVideoPrepJobId != null) return true
-  if (snapshot.awaitingDetailCommentEditVideoPrepJobId != null) return true
-  if (Array.isArray(snapshot.threadParts) && snapshot.threadParts.some(loungeThreadPartSnapshotHasVideo)) {
-    return true
-  }
-  return false
 }
 
 /**

@@ -1615,7 +1615,7 @@ function loadHlsJsDefault() {
  * @param {AbortSignal} [signal]
  * @returns {Promise<boolean>}
  */
-function probeCfStreamHlsReady(uid, signal) {
+export function probeCfStreamHlsReady(uid, signal) {
   const id = String(uid || '').trim()
   if (!id || typeof document === 'undefined') return Promise.resolve(false)
   const manifest = `${cfStreamManifestUrl(id)}?poll=${Date.now()}`

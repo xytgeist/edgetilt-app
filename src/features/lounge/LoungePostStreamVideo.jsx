@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { cfStreamManifestUrl, cfStreamPosterUrl } from '../../utils/loungeVideoUpload'
+import { cfStreamManifestUrl, cfStreamPosterUrl, probeCfStreamHlsReady } from '../../utils/loungeVideoUpload'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
 import { useLoungeStreamHlsAttachment } from './useLoungeStreamHlsAttachment.js'
@@ -91,8 +91,16 @@ const posterFallbackFrameClassByVariant = {
   composer: 'relative flex max-h-40 w-fit max-w-[min(78vw,18rem)] items-center justify-center bg-black',
 }
 
+/** CF Stream HLS poll after upload completes before manifest was waited on in prep. */
+const CF_HLS_TILE_POLL_INTERVAL_MS = 2000
+/** Hide the "Processing video…" chip after this even if HLS probe has not succeeded yet. */
+const CF_HLS_PROCESSING_LABEL_MAX_MS = 90_000
+/** Stop background HLS polling after this (tile falls back to existing retry UI). */
+const CF_HLS_TILE_POLL_MAX_MS = 300_000
+
 /** CF `thumbnail.jpg` is often 404 until processing finishes - retry with cache-bust before giving up. */
 const CF_POSTER_RETRY_MAX = 32
+
 
 /** Hold HLS attach briefly after ring exit so flinger ring flicker does not reload media. */
 const RING_HLS_DETACH_HOLD_MS = 700
@@ -1699,6 +1707,69 @@ export default function LoungePostStreamVideo({
     [feedAutoplayClientId, videoDebugEnabled],
   )
 
+  /** True while CF is still encoding HLS after a post went live without manifest wait in prep. */
+  const [cfHlsProcessing, setCfHlsProcessing] = useState(false)
+
+  useEffect(() => {
+    if (!id) {
+      setCfHlsProcessing(false)
+      return undefined
+    }
+    let cancelled = false
+    let tid = 0
+    const started = Date.now()
+    setCfHlsProcessing(true)
+
+    const finishProcessingUi = () => {
+      if (!cancelled) setCfHlsProcessing(false)
+    }
+
+    const tick = async () => {
+      if (cancelled) return
+      const elapsed = Date.now() - started
+      if (elapsed >= CF_HLS_PROCESSING_LABEL_MAX_MS) {
+        finishProcessingUi()
+      }
+      if (elapsed >= CF_HLS_TILE_POLL_MAX_MS) {
+        finishProcessingUi()
+        return
+      }
+      try {
+        if (await probeCfStreamHlsReady(id)) {
+          finishProcessingUi()
+          const v = videoRef.current
+          const needsBump =
+            !v ||
+            v.readyState < HTMLMediaElement.HAVE_METADATA ||
+            Boolean(v.error)
+          if (needsBump) bumpStreamAttach('cf-hls-ready')
+          return
+        }
+      } catch {
+        // ignore
+      }
+      if (!cancelled) {
+        tid = window.setTimeout(() => {
+          void tick()
+        }, CF_HLS_TILE_POLL_INTERVAL_MS)
+      }
+    }
+
+    tid = window.setTimeout(() => {
+      void tick()
+    }, 600)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(tid)
+      setCfHlsProcessing(false)
+    }
+  }, [id, bumpStreamAttach])
+
+  useEffect(() => {
+    if (streamFadeShowVideo) setCfHlsProcessing(false)
+  }, [streamFadeShowVideo])
+
   const prevIsActiveForPromoteRef = useRef(false)
   useEffect(() => {
     if (!coordinatorActive || !lazyStream || !feedAutoplayEnabled) {
@@ -3238,7 +3309,7 @@ export default function LoungePostStreamVideo({
               {streamVideoEl}
             </div>
           </div>
-          {attachStream && !effectiveStreamFadeShowVideo && !showStreamRetry && !heroExpanded ? (
+          {cfHlsProcessing && attachStream && !effectiveStreamFadeShowVideo && !showStreamRetry && !heroExpanded ? (
             <div
               className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] bg-gradient-to-t from-black/75 via-black/35 to-transparent px-2 pb-2 pt-8 text-center text-[11px] font-medium text-zinc-100/95"
               aria-hidden

@@ -2,6 +2,7 @@ import { sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
+  canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
@@ -150,27 +151,36 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
     }
     validatedDurSec = sourceDur
-    report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
-    maybeReportLoungeVideoUploadDebug('encode', `start direct ${source.name || 'video'} ${sourceMb}MB`)
-    try {
-      uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
-        signal,
-        onProgress: (r) =>
-          report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
-      })
+    if (canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
       maybeReportLoungeVideoUploadDebug(
         'encode',
-        `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+        `fast-path ${source.name || 'video'} ${sourceMb}MB`,
       )
-    } catch (encodeErr) {
-      const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
-      maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
-      if (source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-        maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
-        report(0.39, 'Compress skipped', 'Uploading original…', 1)
-        uploadFile = source
-      } else {
-        throw encodeErr
+      report(0.39, 'Upload ready', 'Already optimized for upload…', 1)
+      uploadFile = source
+    } else {
+      report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
+      maybeReportLoungeVideoUploadDebug('encode', `start direct ${source.name || 'video'} ${sourceMb}MB`)
+      try {
+        uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
+          signal,
+          onProgress: (r) =>
+            report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
+        })
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+        )
+      } catch (encodeErr) {
+        const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
+        maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
+        if (source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+          maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
+          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          uploadFile = source
+        } else {
+          throw encodeErr
+        }
       }
     }
   } else {

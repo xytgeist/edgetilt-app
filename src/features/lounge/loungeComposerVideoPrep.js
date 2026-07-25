@@ -79,19 +79,27 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
-  const { trimVideoFileToMp4, encodeVideoForChat, prefetchFfmpegCore } = await import('../../utils/loungeVideoFfmpegTrim')
+  const { trimVideoFileToMp4, prefetchFfmpegCore } = await import('../../utils/loungeVideoFfmpegTrim')
   void prefetchFfmpegCore()
 
   /** @type {File} */
   let uploadFile
   if (spec.kind === 'direct') {
     const source = spec.file
+    report(0.03, 'Reading video metadata', '', 1)
+    const sourceDur = await probeVideoFileDurationSeconds(source)
+    if (!Number.isFinite(sourceDur) || sourceDur <= 0) {
+      throw new Error('Could not read this video file.')
+    }
+    if (sourceDur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+      throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+    }
     report(0.05, 'Encoding…', loungeVideoEncodingDetail(source, 0), 1)
     maybeReportLoungeVideoUploadDebug(
       'encode',
       `start direct ${source.name || 'video'} ${Math.round((source.size || 0) / (1024 * 1024))}MB`,
     )
-    uploadFile = await encodeVideoForChat(source, {
+    uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
       signal,
       onProgress: (r) =>
         report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),

@@ -166,19 +166,21 @@ export async function encodeVideoForChat(file, opts = {}) {
    */
   const demuxLogging = ['-hide_banner', '-loglevel', 'error', '-analyzeduration', '1500000', '-probesize', '5242880']
   const input = ['-i', inputPath]
+  /** Optional audio (`0:a:0?`) so video-only clips (screen recordings) do not fail encode. */
+  const streamMaps = ['-map', '0:v:0', '-map', '0:a:0?']
   const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
-  const videoFilters = ['-vf', 'scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2']
+  const videoFilters = ['-vf', 'scale=1280:-2:flags=bicubic']
   const audio = ['-c:a', 'aac', '-b:a', '128k']
   const mux = ['-movflags', '+faststart', '-y', outName]
 
-  const args = [...demuxLogging, ...input, ...video, ...videoFilters, ...audio, ...mux]
+  const args = [...demuxLogging, ...input, ...streamMaps, ...video, ...videoFilters, ...audio, ...mux]
   console.log(TAG, 'exec args', args.join(' '))
 
   let code
   try {
     code = await ffmpeg.exec(args, undefined, { signal })
     console.log(TAG, 'exec done', { code })
-    if (code !== 0) throw new Error(`Chat video encoding failed (exit ${code}).`)
+    if (code !== 0) throw new Error(`Video encoding failed (exit ${code}).`)
   } catch (execErr) {
     console.error(TAG, 'exec error', String(execErr))
     throw execErr
@@ -264,12 +266,13 @@ export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
     '5242880',
   ]
   const trim = ['-ss', String(start), '-i', inputPath, '-t', String(dur)]
+  const streamMaps = ['-map', '0:v:0', '-map', '0:a:0?']
   const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
   const videoFilters = ['-vf', vf]
   const audio = ['-c:a', 'aac', '-b:a', '128k']
   const mux = ['-movflags', '+faststart', '-y', outName]
 
-  const args = [...demuxLogging, ...trim, ...video, ...videoFilters, ...audio, ...mux]
+  const args = [...demuxLogging, ...trim, ...streamMaps, ...video, ...videoFilters, ...audio, ...mux]
 
   try {
     const code = await ffmpeg.exec(args, undefined, { signal })

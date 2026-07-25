@@ -12,9 +12,9 @@ import {
   loungePendingPublishPixelBlockScale,
   LoungePendingPublishDevelopReveal,
   LoungePendingPublishPixelLayer,
-  LoungePendingPublishSnowLayer,
   loungePendingPublishFrostStrength,
   LoungePendingPublishFrostVeil,
+  LoungePendingPublishSnowLayer,
 } from './LoungePendingPublishDevelopReveal.jsx'
 
 /** @deprecated pixel reveal uses {@link LOUNGE_PENDING_PUBLISH_MAX_PIXEL_SCALE} instead */
@@ -26,9 +26,9 @@ export {
   loungePendingPublishPixelBlockScale,
   LoungePendingPublishDevelopReveal,
   LoungePendingPublishPixelLayer,
-  LoungePendingPublishSnowLayer,
   loungePendingPublishFrostStrength,
   LoungePendingPublishFrostVeil,
+  LoungePendingPublishSnowLayer,
 }
 
 export const LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG =

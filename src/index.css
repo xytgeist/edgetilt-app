@@ -745,22 +745,6 @@ html.light [data-lounge-badge-tip-tone="mod"] {
   mix-blend-mode: screen;
 }
 
-/* Lounge pending video publish: TV snow + pixel dissolve over poster */
-.lounge-pending-publish-snow {
-  isolation: isolate;
-}
-
-.lounge-pending-publish-snow__canvas {
-  display: block;
-  mix-blend-mode: screen;
-  opacity: 0.92;
-}
-
-html.light .lounge-pending-publish-snow__canvas {
-  mix-blend-mode: multiply;
-  opacity: 0.78;
-}
-
 /* ── Light mode overrides ─────────────────────────────────────────────────── */
 
 /* Remap lv-blue (cyan) → blue-500 everywhere in light mode via CSS variable */

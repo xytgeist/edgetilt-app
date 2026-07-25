@@ -409,6 +409,38 @@ async function recordStreamSegment({
  * @param {number} opts.end
  * @param {number} opts.dur
  * @param {number} opts.playbackRate
+ * @param {AbortSignal | undefined} opts.signal
+ * @param {(ratio01: number) => void} [opts.onProgress]
+ */
+async function extractViaCaptureStream(opts) {
+  const { video, mimeType, start, end, dur, playbackRate, signal, onProgress } = opts
+  if (typeof video.captureStream !== 'function') {
+    throw new Error('captureStream unavailable')
+  }
+  video.muted = false
+  video.volume = 1
+  const stream = video.captureStream()
+  return recordStreamSegment({
+    video,
+    stream,
+    mimeType,
+    start,
+    end,
+    dur,
+    playbackRate,
+    signal,
+    onProgress,
+  })
+}
+
+/**
+ * @param {object} opts
+ * @param {HTMLVideoElement} opts.video
+ * @param {string} opts.mimeType
+ * @param {number} opts.start
+ * @param {number} opts.end
+ * @param {number} opts.dur
+ * @param {number} opts.playbackRate
  * @param {boolean} opts.muted
  * @param {boolean} [opts.silentMonitor]
  * @param {boolean} [opts.silentViaVolume]
@@ -475,12 +507,12 @@ async function extractViaWebAudio(opts) {
 
 /**
  * @param {boolean} isApple
- * @returns {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean }[]}
+ * @returns {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]}
  */
 function buildExtractAttempts(isApple) {
   const activation = hasUserActivation()
   if (isApple) {
-    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean }[]} */
+    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]} */
     const attempts = [
       {
         name: 'web-audio-volume0-8x',
@@ -506,8 +538,21 @@ function buildExtractAttempts(isApple) {
     }
     return attempts
   }
-  /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean }[]} */
+  /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]} */
   const attempts = [
+    {
+      name: 'capture-stream-4x',
+      muted: false,
+      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+      useCaptureStream: true,
+    },
+    {
+      name: 'web-audio-volume0-8x',
+      muted: false,
+      playbackRate: 8,
+      silentViaVolume: true,
+      silentMonitor: true,
+    },
     {
       name: 'web-audio-volume0-4x',
       muted: false,
@@ -517,6 +562,12 @@ function buildExtractAttempts(isApple) {
     },
   ]
   if (activation) {
+    attempts.unshift({
+      name: 'capture-stream-unmuted-4x',
+      muted: false,
+      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+      useCaptureStream: true,
+    })
     attempts.unshift({
       name: 'web-audio-unmuted-4x',
       muted: false,
@@ -587,23 +638,38 @@ export async function extractBrowserVideoAudio(
       if (start > 0.05) await seekMediaElement(video, start)
 
       let maxProgress = 0
+      const extractPromise = attempt.useCaptureStream
+        ? extractViaCaptureStream({
+            video,
+            mimeType,
+            start,
+            end,
+            dur,
+            playbackRate: attempt.playbackRate,
+            signal,
+            onProgress: (r) => {
+              maxProgress = Math.max(maxProgress, r)
+              onProgress?.(r)
+            },
+          })
+        : extractViaWebAudio({
+            video,
+            mimeType,
+            start,
+            end,
+            dur,
+            playbackRate: attempt.playbackRate,
+            muted: attempt.muted,
+            silentMonitor: attempt.silentMonitor,
+            silentViaVolume: attempt.silentViaVolume,
+            signal,
+            onProgress: (r) => {
+              maxProgress = Math.max(maxProgress, r)
+              onProgress?.(r)
+            },
+          })
       const result = await withTimeout(
-        extractViaWebAudio({
-          video,
-          mimeType,
-          start,
-          end,
-          dur,
-          playbackRate: attempt.playbackRate,
-          muted: attempt.muted,
-          silentMonitor: attempt.silentMonitor,
-          silentViaVolume: attempt.silentViaVolume,
-          signal,
-          onProgress: (r) => {
-            maxProgress = Math.max(maxProgress, r)
-            onProgress?.(r)
-          },
-        }),
+        extractPromise,
         MAX_ATTEMPT_MS,
         attempt.name,
       )

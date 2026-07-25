@@ -3,11 +3,8 @@ import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
   LOUNGE_VIDEO_FAST_PATH_MAX_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
-  LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES,
-  LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES,
   canPassThroughLoungeVideoMp4OnEncodeFail,
   canSkipLoungeVideoWasmEncode,
-  isAndroidBrowser,
   deleteCfStreamOrphanAsset,
   probeVideoFileDurationSeconds,
   uploadVideoToCfStreamResumableTus,
@@ -162,29 +159,18 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     }
     validatedDurSec = sourceDur
     if (canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
-      const androidStreamPass =
-        isAndroidBrowser()
-        && (source.size || 0) >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES
-        && (source.size || 0) > LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES
       maybeReportLoungeVideoUploadDebug(
         'encode',
-        androidStreamPass
-          ? `android stream pass-through ${source.name || 'video'} ${sourceMb}MB`
-          : `fast-path ${source.name || 'video'} ${sourceMb}MB`,
+        `fast-path ${source.name || 'video'} ${sourceMb}MB`,
       )
       recordLoungeVideoPrepOutcome({
-        outcome: androidStreamPass ? 'android-stream-pass-through' : 'fast-path',
+        outcome: 'fast-path',
         sourceMb,
         outputMb: sourceMb,
         durSec: validatedDurSec,
         detail: source.name || 'video',
       })
-      report(
-        0.39,
-        'Upload ready',
-        androidStreamPass ? 'Uploading original (Cloudflare transcode)…' : 'Already optimized for upload…',
-        1,
-      )
+      report(0.39, 'Upload ready', 'Already optimized for upload…', 1)
       uploadFile = source
     } else {
       const needsBrowserAudio = shouldPrefetchBrowserVideoAudio(source)

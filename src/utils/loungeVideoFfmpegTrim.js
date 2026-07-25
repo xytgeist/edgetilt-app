@@ -160,6 +160,24 @@ const DEMUX_LOGGING = [
   'ignore_err',
 ]
 
+/** Android wasm demux hangs on 100M probe scans over large WORKERFS mounts; keep scans tight. */
+function buildDemuxLogging() {
+  if (isAndroidBrowser()) {
+    return [
+      '-hide_banner',
+      '-loglevel',
+      'warning',
+      '-analyzeduration',
+      '5M',
+      '-probesize',
+      '5M',
+      '-err_detect',
+      'ignore_err',
+    ]
+  }
+  return DEMUX_LOGGING
+}
+
 /** Stream `#0:N` lines are INFO-level; `-loglevel warning` hides them and breaks output audio probes. */
 const PROBE_LOGGING = [
   '-hide_banner',
@@ -344,6 +362,12 @@ function encodeStrategyWatchLimits(fileBytes, strategy) {
   const mb = typeof fileBytes === 'number' && Number.isFinite(fileBytes) ? fileBytes / (1024 * 1024) : 0
   if (strategy?.videoCopy) {
     return { stallMs: ENCODE_STALL_MS_VIDEO_COPY, maxMs: 60_000 }
+  }
+  if (isAndroidBrowser() && mb >= 50) {
+    return { stallMs: 45_000, maxMs: 180_000 }
+  }
+  if (isAndroidBrowser() && mb >= 20) {
+    return { stallMs: 30_000, maxMs: 150_000 }
   }
   let maxMs = 90_000
   if (mb >= 50) maxMs = 180_000
@@ -850,7 +874,7 @@ async function wasmReencodeToMp4({
         forceSsBeforeInput: strategy.forceSsBeforeInput,
       })
       /** @type {string[]} */
-      const args = [...DEMUX_LOGGING, ...inputPart]
+      const args = [...buildDemuxLogging(), ...inputPart]
       if (strategy.browserAudioFile) {
         args.push('-i', strategy.browserAudioFile)
       }
@@ -1013,25 +1037,6 @@ async function wasmReencodeToMp4({
       'encode',
       `spatial blocked audio [${spatialBlocked.join(',')}]`,
     )
-  }
-
-  if (isAndroidBrowser() && useSpatialAudioLadder && sourceHasAudio) {
-    maybeReportLoungeVideoUploadDebug('encode', 'android spatial: browser audio first')
-    await maybeExtractBrowserAudio()
-    if (browserAudioFile) {
-      strategies.unshift({
-        label: 'browser-audio-vcopy-mux',
-        maps: ['-map', '0:v:0', '-map', '1:a:0'],
-        browserAudioFile,
-        videoCopy: true,
-        audioCopy: true,
-        requireOutputAudio: true,
-      })
-      maybeReportLoungeVideoUploadDebug(
-        'encode',
-        `encode plan ${strategies.map((s) => s.label).join(', ') || 'none'}`,
-      )
-    }
   }
 
   try {

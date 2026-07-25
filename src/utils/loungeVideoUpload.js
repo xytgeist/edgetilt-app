@@ -188,14 +188,6 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
     return true
   }
-  if (
-    isAndroidBrowser()
-    && size >= LOUNGE_VIDEO_ANDROID_STREAM_UPLOAD_MIN_BYTES
-    && size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
-    && (isLoungeVideoMp4Container(file) || isLoungeVideoQuicktimeMov(file))
-  ) {
-    return true
-  }
   if (size > LOUNGE_VIDEO_FAST_PATH_MAX_BYTES) return false
   const type = String(file?.type || '').toLowerCase()
   const name = String(file?.name || '').toLowerCase()

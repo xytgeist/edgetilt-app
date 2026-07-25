@@ -5,6 +5,7 @@ import {
   getLoungeVideoDebugEvents,
   getLoungeVideoDebugRevision,
   getLoungeVideoDebugTileSnapshots,
+  getLoungeVideoPrepOutcomes,
   subscribeLoungeVideoDebug,
 } from './loungeFeedVideoDebugRegistry.js'
 import {
@@ -68,6 +69,8 @@ function eventKindClass(kind) {
       return 'text-amber-200'
     case 'encode':
       return 'text-fuchsia-300'
+    case 'prep':
+      return 'text-fuchsia-200'
     case 'upload':
       return 'text-sky-300'
     default:
@@ -171,6 +174,7 @@ export default function LoungeFeedVideoAutoplayDebugHud({ store, scrollRootRef }
         ...row.snap,
       })),
       events: debugEvents,
+      videoPrepOutcomes: getLoungeVideoPrepOutcomes(),
       badgeTips: {
         live: badgeTipSnapshot,
         events: badgeTipEvents,

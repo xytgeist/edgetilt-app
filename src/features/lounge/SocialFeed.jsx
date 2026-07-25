@@ -2784,6 +2784,7 @@ export default function SocialFeed({
       const handoff = {
         jobId,
         settled: false,
+        progressListeners: new Set(),
         promise: prepPromise,
         resolve: (v) => {
           if (handoff.settled) return
@@ -2826,10 +2827,18 @@ export default function SocialFeed({
             },
             onProgress: (info) => {
               if (composerVideoPrepJobIdRef.current !== jobId) return
+              for (const fn of handoff.progressListeners) {
+                try {
+                  fn(info)
+                } catch {
+                  // ignore
+                }
+              }
               setLoungePostUploadBar((bar) => {
                 if (!bar || bar?.mode !== 'mediaPrep' || bar.prepJobId !== jobId) return bar
                 const d = String(info.detail || '').trim()
                 return {
+                  ...bar,
                   mode: 'mediaPrep',
                   prepJobId: jobId,
                   progress: typeof info.progress === 'number' ? info.progress : 0,

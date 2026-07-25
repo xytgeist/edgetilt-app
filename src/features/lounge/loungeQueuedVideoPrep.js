@@ -140,6 +140,11 @@ export async function resolveLoungeSubmissionVideoPrep({
     awaitingId = handoff.jobId
   }
   if (handoff && !handoff.settled && typeof handoff.jobId === 'number' && handoff.jobId === awaitingId) {
+    /** @param {Parameters<NonNullable<typeof onProgress>>[0]} info */
+    const relayHandoffProgress = (info) => {
+      onProgress?.(info)
+    }
+    handoff.progressListeners?.add?.(relayHandoffProgress)
     try {
       return await handoff.promise
     } catch (e) {
@@ -149,6 +154,8 @@ export async function resolveLoungeSubmissionVideoPrep({
       if (snapshot?.videoPrepSpec) return runFromSpec(snapshot.videoPrepSpec)
       if (snapshot?.videoFile instanceof File) return runFromFile(snapshot.videoFile)
       throw e
+    } finally {
+      handoff.progressListeners?.delete?.(relayHandoffProgress)
     }
   }
   if (snapshot?.videoPrepSpec) return runFromSpec(snapshot.videoPrepSpec)

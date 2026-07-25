@@ -101,6 +101,10 @@ const CF_HLS_TILE_POLL_MAX_MS = 300_000
 const ACTIVE_HLS_STALL_DELAY_MS = 4200
 /** Max stall reattaches before surfacing inline retry (each attach key at most once). */
 const ACTIVE_HLS_STALL_MAX_BURST = 2
+/** iOS: one MSE stall then native HLS (CF probe already succeeds via native). */
+const ACTIVE_HLS_STALL_MAX_BURST_IOS = 1
+/** After CF HLS probe passes, iOS MSE may still sit at rs=0. */
+const CF_HLS_READY_NATIVE_FALLBACK_MS = 2800
 
 /** CF `thumbnail.jpg` is often 404 until processing finishes - retry with cache-bust before giving up. */
 const CF_POSTER_RETRY_MAX = 32
@@ -1740,6 +1744,8 @@ export default function LoungePostStreamVideo({
     bumpStreamAttach('mse-native-fallback')
     return true
   }, [bumpStreamAttach, streamNativeHlsFallback])
+  const tryMseNativeFallbackRef = useRef(tryMseNativeFallback)
+  tryMseNativeFallbackRef.current = tryMseNativeFallback
 
   /** True while CF is still encoding HLS after a post went live without manifest wait in prep. */
   const [cfHlsProcessing, setCfHlsProcessing] = useState(false)
@@ -1777,6 +1783,14 @@ export default function LoungePostStreamVideo({
             v.readyState < HTMLMediaElement.HAVE_METADATA ||
             Boolean(v.error)
           if (needsBump) bumpStreamAttach('cf-hls-ready')
+          if (appleWebKitInlineStreamRef.current) {
+            window.setTimeout(() => {
+              if (cancelled) return
+              const el = videoRef.current
+              if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
+              tryMseNativeFallbackRef.current?.()
+            }, CF_HLS_READY_NATIVE_FALLBACK_MS)
+          }
           return
         }
       } catch {
@@ -1829,6 +1843,9 @@ export default function LoungePostStreamVideo({
       lastStreamAttachBumpReasonRef.current = ''
       return undefined
     }
+    const stallMaxBurst = appleWebKitInlineStreamRef.current
+      ? ACTIVE_HLS_STALL_MAX_BURST_IOS
+      : ACTIVE_HLS_STALL_MAX_BURST
     if (
       !coordinatorActive ||
       !lazyStream ||
@@ -1839,19 +1856,19 @@ export default function LoungePostStreamVideo({
     ) {
       return undefined
     }
-    if (lightboxOpen || tileRatio <= 0) return undefined
+    if (tileRatio <= 0) return undefined
     const v = videoRef.current
     if (!v || v.readyState >= HTMLMediaElement.HAVE_METADATA) return undefined
     const attachKeyAtArm = streamAttachKeyRef.current
     if (lastActiveHlsStallBumpKeyRef.current === attachKeyAtArm) return undefined
-    if (activeHlsStallBurstRef.current >= ACTIVE_HLS_STALL_MAX_BURST) {
+    if (activeHlsStallBurstRef.current >= stallMaxBurst) {
       if (tryMseNativeFallback()) return undefined
       setShowStreamRetry(true)
       return undefined
     }
     let cancelled = false
     const tid = window.setTimeout(() => {
-      if (cancelled || lightboxOpenRef.current) return
+      if (cancelled) return
       if (!isActiveRef.current && !activeHlsGraceHeld) return
       const el = videoRef.current
       if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
@@ -1860,8 +1877,10 @@ export default function LoungePostStreamVideo({
       if (lastActiveHlsStallBumpKeyRef.current === keyNow) return
       lastActiveHlsStallBumpKeyRef.current = keyNow
       activeHlsStallBurstRef.current += 1
-      if (activeHlsStallBurstRef.current >= ACTIVE_HLS_STALL_MAX_BURST) {
-        if (!tryMseNativeFallback()) setShowStreamRetry(true)
+      if (activeHlsStallBurstRef.current >= stallMaxBurst) {
+        if (tryMseNativeFallback()) return
+        setShowStreamRetry(true)
+        return
       }
       bumpStreamAttach('active-hls-stall')
     }, ACTIVE_HLS_STALL_DELAY_MS)
@@ -1878,7 +1897,6 @@ export default function LoungePostStreamVideo({
     hlsAttachEnabled,
     isActive,
     lazyStream,
-    lightboxOpen,
     streamAttachKey,
     tileRatio,
     tryMseNativeFallback,

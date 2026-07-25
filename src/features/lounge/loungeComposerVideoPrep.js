@@ -1,6 +1,7 @@
 import { sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
 import {
   LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
+  LOUNGE_VIDEO_FAST_PATH_MAX_BYTES,
   LOUNGE_VIDEO_MAX_SECONDS,
   canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
@@ -8,7 +9,11 @@ import {
   uploadVideoToCfStreamResumableTus,
   waitForDocumentVisible,
 } from '../../utils/loungeVideoUpload'
-import { maybeReportLoungeVideoUploadDebug } from './loungeFeedVideoDebugRegistry.js'
+import {
+  attachLoungeVideoPrepStreamUid,
+  maybeReportLoungeVideoUploadDebug,
+  recordLoungeVideoPrepOutcome,
+} from './loungeFeedVideoDebugRegistry.js'
 
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
 export const COMPOSER_VIDEO_PREP_MAX_ATTEMPTS = 5
@@ -156,6 +161,13 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         'encode',
         `fast-path ${source.name || 'video'} ${sourceMb}MB`,
       )
+      recordLoungeVideoPrepOutcome({
+        outcome: 'fast-path',
+        sourceMb,
+        outputMb: sourceMb,
+        durSec: validatedDurSec,
+        detail: source.name || 'video',
+      })
       report(0.39, 'Upload ready', 'Already optimized for upload…', 1)
       uploadFile = source
     } else {
@@ -167,18 +179,40 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
           onProgress: (r) =>
             report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
         })
-        maybeReportLoungeVideoUploadDebug(
-          'encode',
-          `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
-        )
+        const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
+        maybeReportLoungeVideoUploadDebug('encode', `done direct → ${outMb}MB`)
+        recordLoungeVideoPrepOutcome({
+          outcome: 'wasm',
+          sourceMb,
+          outputMb: outMb,
+          durSec: validatedDurSec,
+          detail: source.name || 'video',
+        })
       } catch (encodeErr) {
         const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
-        if (source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+        if (
+          source.size <= LOUNGE_VIDEO_FAST_PATH_MAX_BYTES &&
+          source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+        ) {
           maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
+          recordLoungeVideoPrepOutcome({
+            outcome: 'pass-through',
+            sourceMb,
+            outputMb: sourceMb,
+            durSec: validatedDurSec,
+            detail: msg.slice(0, 200),
+          })
           report(0.39, 'Compress skipped', 'Uploading original…', 1)
           uploadFile = source
         } else {
+          recordLoungeVideoPrepOutcome({
+            outcome: 'wasm-failed',
+            sourceMb,
+            outputMb: 0,
+            durSec: validatedDurSec,
+            detail: msg.slice(0, 200),
+          })
           throw encodeErr
         }
       }
@@ -204,10 +238,15 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
           1,
         ),
     })
-    maybeReportLoungeVideoUploadDebug(
-      'encode',
-      `done trim → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
-    )
+    const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
+    maybeReportLoungeVideoUploadDebug('encode', `done trim → ${outMb}MB`)
+    recordLoungeVideoPrepOutcome({
+      outcome: 'wasm',
+      sourceMb: Math.round((spec.sourceFile.size || 0) / (1024 * 1024)),
+      outputMb: outMb,
+      durSec: validatedDurSec,
+      detail: `trim ${spec.sourceFile?.name || 'video'}`,
+    })
   }
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
@@ -385,5 +424,6 @@ export async function runComposerStreamVideoPrepWithRetries({
     onProgress,
     onUploadDiagnostic,
   })
+  attachLoungeVideoPrepStreamUid(streamVideoUid, uploadFile)
   return { encodedFile: uploadFile, streamVideoUid }
 }

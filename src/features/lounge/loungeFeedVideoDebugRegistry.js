@@ -2,11 +2,29 @@ import { readLoungeFeedVideoDebugEnabled } from '../../utils/loungeFeedVideoDebu
 
 /** @typedef {{ ts: number, clientId: string | null, kind: string, detail: string }} LoungeVideoDebugEvent */
 
+/**
+ * Survives HUD event-ring eviction — included in debug JSON export so upload prep can be diagnosed
+ * after scrolling the feed (attach spam otherwise pushes out encode · lines).
+ *
+ * @typedef {{
+ *   ts: number,
+ *   outcome: string,
+ *   sourceMb: number,
+ *   outputMb: number,
+ *   durSec: number | null,
+ *   streamVideoUid: string | null,
+ *   detail: string,
+ * }} LoungeVideoPrepOutcomeRecord
+ */
+
 /** @type {Map<string, () => Record<string, unknown>>} */
 const tileGetters = new Map()
 /** @type {LoungeVideoDebugEvent[]} */
 const events = []
+/** @type {LoungeVideoPrepOutcomeRecord[]} */
+const prepOutcomes = []
 const MAX_EVENTS = 96
+const MAX_PREP_OUTCOMES = 12
 /** Throttle tus percent spam so encode lines are not evicted from the HUD ring. */
 let lastUploadDebugLine = ''
 let lastUploadDebugPct = -1
@@ -75,6 +93,56 @@ export function maybeReportLoungeVideoUploadDebug(kind, detail) {
     lastUploadDebugPct = -1
   }
   reportLoungeVideoDebugEvent(null, k, line)
+}
+
+/**
+ * Record a definitive composer video prep outcome (fast-path, wasm, pass-through, wasm-failed).
+ *
+ * @param {Omit<LoungeVideoPrepOutcomeRecord, 'ts' | 'streamVideoUid'> & { streamVideoUid?: string | null }} record
+ */
+export function recordLoungeVideoPrepOutcome(record) {
+  const sourceMb = Number(record.sourceMb) || 0
+  const outputMb = Number(record.outputMb) || 0
+  const durSec = record.durSec == null ? null : Number(record.durSec)
+  const outcome = String(record.outcome || 'unknown').trim() || 'unknown'
+  const detail = String(record.detail || '').trim().slice(0, 240)
+  const streamVideoUid = String(record.streamVideoUid || '').trim() || null
+  /** @type {LoungeVideoPrepOutcomeRecord} */
+  const row = {
+    ts: Date.now(),
+    outcome,
+    sourceMb,
+    outputMb,
+    durSec: Number.isFinite(durSec) ? durSec : null,
+    streamVideoUid,
+    detail,
+  }
+  prepOutcomes.unshift(row)
+  if (prepOutcomes.length > MAX_PREP_OUTCOMES) prepOutcomes.length = MAX_PREP_OUTCOMES
+  reportLoungeVideoDebugEvent(
+    null,
+    'prep',
+    `${outcome} src=${sourceMb}MB out=${outputMb}MB${streamVideoUid ? ` uid=${streamVideoUid.slice(0, 8)}` : ''}${detail ? ` · ${detail}` : ''}`,
+  )
+  emit()
+}
+
+/** Attach Stream uid to the most recent prep row (after tus mint). */
+export function attachLoungeVideoPrepStreamUid(streamVideoUid, outputFile) {
+  const uid = String(streamVideoUid || '').trim()
+  if (!uid || prepOutcomes.length === 0) return
+  const head = prepOutcomes[0]
+  if (head.streamVideoUid) return
+  head.streamVideoUid = uid
+  if (outputFile instanceof File && outputFile.size > 0) {
+    head.outputMb = Math.round(outputFile.size / (1024 * 1024))
+  }
+  emit()
+}
+
+/** @returns {LoungeVideoPrepOutcomeRecord[]} */
+export function getLoungeVideoPrepOutcomes() {
+  return prepOutcomes
 }
 
 export function clearLoungeVideoDebugEvents() {

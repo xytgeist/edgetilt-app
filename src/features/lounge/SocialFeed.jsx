@@ -10749,7 +10749,7 @@ export default function SocialFeed({
               setLoungePendingPostProgress(pendingPublishKey, {
                 progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
                 status: 'Retrying…',
-                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                detail: '',
                 phase: 'upload',
               })
               return
@@ -10856,7 +10856,7 @@ export default function SocialFeed({
                   setLoungePendingPostProgress(pendingPublishKey, {
                     progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
                     status: 'Retrying…',
-                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    detail: '',
                     phase: 'upload',
                   })
                 }
@@ -11050,7 +11050,7 @@ export default function SocialFeed({
               setLoungePendingPostProgress(pendingPublishKey, {
                 progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
                 status: 'Retrying…',
-                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                detail: '',
                 phase: 'upload',
               })
               return
@@ -11144,7 +11144,7 @@ export default function SocialFeed({
                   setLoungePendingPostProgress(pendingPublishKey, {
                     progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
                     status: 'Retrying…',
-                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    detail: '',
                     phase: 'upload',
                   })
                   return
@@ -11469,7 +11469,7 @@ export default function SocialFeed({
               setLoungePendingPostProgress(pendingPublishKey, {
                 progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
                 status: 'Retrying…',
-                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                detail: '',
                 phase: 'upload',
               })
               return
@@ -11560,7 +11560,7 @@ export default function SocialFeed({
                   setLoungePendingPostProgress(pendingPublishKey, {
                     progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
                     status: 'Retrying…',
-                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    detail: '',
                     phase: 'upload',
                   })
                   return
@@ -11737,7 +11737,7 @@ export default function SocialFeed({
               setLoungePendingPostProgress(pendingPublishKey, {
                 progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.2,
                 status: 'Retrying…',
-                detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                detail: '',
                 phase: 'upload',
               })
               return
@@ -11825,7 +11825,7 @@ export default function SocialFeed({
                   setLoungePendingPostProgress(pendingPublishKey, {
                     progress: getLoungePendingPostProgress(pendingPublishKey)?.progress ?? 0.5,
                     status: 'Retrying…',
-                    detail: LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL,
+                    detail: '',
                     phase: 'upload',
                   })
                   return

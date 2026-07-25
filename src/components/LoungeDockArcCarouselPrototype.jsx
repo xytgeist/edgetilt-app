@@ -13,6 +13,7 @@ import {
   loungeDockFabPositionFromPct,
   loungeDockLShapeOffsets,
   loungeDockFabCollisionBottomInsetPx,
+  loungeDockFabAndroidKeyboardLikelyOpen,
   loungeDockLayoutViewportSize,
   LOUNGE_FAB_OBSTACLE_SELECTOR,
   loungeDockCompactPipFabVisualCenter,
@@ -371,8 +372,10 @@ export default function LoungeDockArcCarouselPrototype({
   const fabDetailShellCompactPrevRef = useRef(false)
 
   const bottomObstaclePx = Math.max(0, Math.round(Number(bottomObstacleInsetPx) || 0))
-  /** Post/comment detail: FAB stays at saved position and stacks over the keyboard - no obstacle push. */
-  const fabObstacleCollisionEnabled = !fabDetailShellCompact
+  const androidFabKeyboardOpen = loungeDockFabAndroidKeyboardLikelyOpen(viewport.height)
+  /** Post/comment detail + Android IME: FAB stays put; keyboard covers it instead of yanking the menu up. */
+  const fabObstacleCollisionEnabled =
+    !fabDetailShellCompact && !androidFabKeyboardOpen
   const totalBottomObstaclePx = bottomObstaclePx + (fabObstacleCollisionEnabled ? collisionInsetPx : 0)
 
   const fabMoveBounds = useMemo(

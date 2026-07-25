@@ -492,14 +492,15 @@ export function setLoungePendingPostProgress(key, info) {
     info?.status != null ? info.status : prev.status,
     info?.detail != null ? info.detail : prev.detail,
   )
+  const phase = info?.phase != null ? String(info.phase) : prev.phase
   const enteringCfWait =
     nextProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR &&
     (typeof prev.progress !== 'number' || prev.progress < LOUNGE_CF_PROCESSING_PROGRESS_FLOOR)
   progressByKey.set(k, {
     progress: nextProgress,
     status: labels.status,
-    detail: labels.detail,
-    phase: info?.phase != null ? String(info.phase) : prev.phase,
+    detail: phase === 'error' ? labels.detail : '',
+    phase,
     processingStartedAt:
       typeof info?.processingStartedAt === 'number'
         ? info.processingStartedAt

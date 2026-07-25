@@ -169,8 +169,9 @@ export default function LoungePostVideoInlineProgress({
   const status =
     String(registryProgress?.status || '').trim() ||
     (publishProgress >= 0.9 ? 'Processing video…' : 'Preparing video…')
-  const detail = String(registryProgress?.detail || '').trim()
   const phase = String(registryProgress?.phase || '').trim()
+  const detail =
+    phase === 'error' ? String(registryProgress?.detail || '').trim() : ''
   const footnote =
     phase === 'error'
       ? ''

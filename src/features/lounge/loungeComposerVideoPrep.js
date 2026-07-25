@@ -24,28 +24,6 @@ import { shouldPrefetchBrowserVideoAudio } from '../../utils/loungeVideoBrowserA
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
 export const COMPOSER_VIDEO_PREP_MAX_ATTEMPTS = 5
 
-/** Shown under the upload bar while ffmpeg.wasm runs. */
-export function loungeVideoEncodingDetail(sourceFile, progressRatio) {
-  const bytes = sourceFile?.size
-  const mb = typeof bytes === 'number' && Number.isFinite(bytes) ? bytes / (1024 * 1024) : 0
-  const sizeHint =
-    mb >= 20
-      ? `Large source (~${Math.round(mb)} MB) … often 30–60s on this device`
-      : 'On-device … usually under a minute'
-  if (typeof progressRatio === 'number' && Number.isFinite(progressRatio)) {
-    return `${sizeHint} · ${Math.round(Math.max(0, Math.min(1, progressRatio)) * 100)}%`
-  }
-  return sizeHint
-}
-
-/** Upload bar detail while Android native trim runs. */
-function androidTrimPhaseDetail(sourceFile, progressRatio, status) {
-  if (status === 'Recording clip…') {
-    return `${Math.round(Math.max(0, Math.min(1, progressRatio)) * 100)}%`
-  }
-  return loungeVideoEncodingDetail(sourceFile, progressRatio)
-}
-
 /**
  * Classify a media-prep failure for the retry dialog (headline + last-step label).
  *
@@ -201,7 +179,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       report(
         0.39,
         'Upload ready',
-        androidDirect ? 'Sending original… Cloudflare will optimize' : 'Already optimized for upload…',
+        '',
         1,
       )
       uploadFile = source
@@ -209,18 +187,13 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       const needsBrowserAudio = shouldPrefetchBrowserVideoAudio(source)
       const encodePhaseLabel = (r) =>
         needsBrowserAudio && r < 0.12 ? 'Capturing audio…' : 'Encoding…'
-      report(0.05, encodePhaseLabel(0), loungeVideoEncodingDetail(source, 0), 1)
+      report(0.05, encodePhaseLabel(0), '', 1)
       maybeReportLoungeVideoUploadDebug('encode', `start direct ${source.name || 'video'} ${sourceMb}MB`)
       try {
         uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
           signal,
           onProgress: (r) =>
-            report(
-              0.05 + r * 0.34,
-              encodePhaseLabel(r),
-              loungeVideoEncodingDetail(source, r),
-              1,
-            ),
+            report(0.05 + r * 0.34, encodePhaseLabel(r), '', 1),
         })
         const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
         maybeReportLoungeVideoUploadDebug('encode', `done direct → ${outMb}MB`)
@@ -246,7 +219,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
-          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          report(0.39, 'Compress skipped', '', 1)
           uploadFile = source
         } else {
           recordLoungeVideoPrepOutcome({
@@ -275,7 +248,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     if (isAndroidBrowser()) {
       maybeReportLoungeVideoUploadDebug('encode', `start android trim ${spec.sourceFile?.name || 'video'}`)
       let androidTrimStatus = 'Encoding…'
-      report(0.05, androidTrimStatus, loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
+      report(0.05, androidTrimStatus, '', 1)
       try {
         const { prepAndroidChromeTrimUploadFile } = await import('../../utils/loungeVideoWebCodecsTrim.js')
         const androidTrim = await prepAndroidChromeTrimUploadFile(
@@ -288,12 +261,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             intrinsicWidth: spec.intrinsicWidth,
             intrinsicHeight: spec.intrinsicHeight,
             onProgress: (r) => {
-              report(
-                0.05 + r * 0.34,
-                androidTrimStatus,
-                androidTrimPhaseDetail(spec.sourceFile, r, androidTrimStatus),
-                1,
-              )
+              report(0.05 + r * 0.34, androidTrimStatus, '', 1)
             },
             onStatus: (status) => {
               androidTrimStatus = String(status || 'Encoding…')
@@ -329,7 +297,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
-          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          report(0.39, 'Compress skipped', '', 1)
           uploadFile = spec.sourceFile
         } else {
           recordLoungeVideoPrepOutcome({
@@ -343,7 +311,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         }
       }
     } else {
-      report(0.05, 'Encoding…', loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
+      report(0.05, 'Encoding…', '', 1)
       maybeReportLoungeVideoUploadDebug('encode', `start trim ${spec.sourceFile?.name || 'video'}`)
       try {
         uploadFile = await trimVideoFileToMp4(spec.sourceFile, spec.startSec, spec.endSec, {
@@ -352,12 +320,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
           intrinsicWidth: spec.intrinsicWidth,
           intrinsicHeight: spec.intrinsicHeight,
           onProgress: (r) =>
-            report(
-              0.05 + r * 0.34,
-              'Encoding…',
-              loungeVideoEncodingDetail(spec.sourceFile, r),
-              1,
-            ),
+            report(0.05 + r * 0.34, 'Encoding…', '', 1),
         })
         const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
         maybeReportLoungeVideoUploadDebug('encode', `done trim → ${outMb}MB`)
@@ -383,7 +346,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
-          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          report(0.39, 'Compress skipped', '', 1)
           uploadFile = spec.sourceFile
         } else {
           recordLoungeVideoPrepOutcome({
@@ -463,7 +426,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
       report(
         0.42,
         'Preparing upload',
-        `Ether attempt ${attempt} of ${COMPOSER_VIDEO_PREP_MAX_ATTEMPTS}`,
+        '',
         attempt,
       )
 
@@ -478,26 +441,20 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         onProgress: (r) =>
           report(0.44 + r * 0.46, 'Uploading to Ether', '', attempt),
         onVisibilityPause: () =>
-          report(
-            0.44,
-            'Waiting until you are back',
-            'Upload paused while EdgeTilt is in the background',
-            attempt,
-          ),
-        onVisibilityResume: () =>
-          report(0.44, 'Resuming upload', 'Picking up where you left off...', attempt),
+          report(0.44, 'Waiting until you are back', '', attempt),
+        onVisibilityResume: () => report(0.44, 'Resuming upload', '', attempt),
       })
       pendingUid = uid
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
       if (skipManifestWait) {
-        report(0.92, 'Upload complete', 'Preparing playback on Cloudflare…', attempt)
+        report(0.92, 'Upload complete', '', attempt)
         report(1, 'Ready', '', attempt)
         return { streamVideoUid: uid }
       }
 
       const { waitForCfStreamManifestReady } = await import('../../utils/loungeVideoUpload')
-      report(0.92, 'Finishing upload', 'Waiting for playback…', attempt)
+      report(0.92, 'Finishing upload', '', attempt)
       await waitForDocumentVisible(signal)
       await waitForCfStreamManifestReady(uid, {
         signal,
@@ -506,7 +463,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         onPoll: ({ elapsed }) => {
           const cap = 120_000
           const t = Math.min(1, elapsed / cap)
-          report(0.92 + t * 0.06, 'Finishing upload', `${Math.round(elapsed / 1000)}s`, attempt)
+          report(0.92 + t * 0.06, 'Finishing upload', '', attempt)
         },
       })
 
@@ -520,12 +477,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         throw e
       }
       lastErr = e instanceof Error ? e : new Error(String(e))
-      report(
-        0.42,
-        'Retrying',
-        'Ether goblins ate your shit...trying again...',
-        attempt,
-      )
+      report(0.42, 'Retrying…', '', attempt)
       // Do NOT delete the CF asset on intermediate failures.
       // Fingerprint resume (findPreviousUploads) continues from the last ACK'd byte.
       // Critical on iOS where background network drops can happen at 98%+.

@@ -297,15 +297,51 @@ export function loungeDockViewportSize() {
   }
 }
 
+const LOUNGE_DOCK_FAB_ANDROID =
+  typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+
+/** Android layout height baseline when `interactive-widget=resizes-content` shrinks `innerHeight` for the IME. */
+let loungeDockFabAndroidLayoutHeightPx = 0
+
+/** Minimum shrink from baseline before we treat Android IME as open for FAB layout. */
+const LOUNGE_DOCK_FAB_ANDROID_KEYBOARD_SHRINK_PX = 72
+
+/**
+ * True when Android layout viewport shrank for the software keyboard (FAB should stay at full layout bottom).
+ * @param {number} [layoutViewportHeightPx] from {@link loungeDockLayoutViewportSize}
+ */
+export function loungeDockFabAndroidKeyboardLikelyOpen(layoutViewportHeightPx) {
+  if (!LOUNGE_DOCK_FAB_ANDROID || typeof window === 'undefined') return false
+  const layoutH = Number(layoutViewportHeightPx)
+  if (!Number.isFinite(layoutH) || layoutH <= 0) return false
+  return layoutH - window.innerHeight > LOUNGE_DOCK_FAB_ANDROID_KEYBOARD_SHRINK_PX
+}
+
 /** FAB position + clamp bounds: layout viewport height (keyboard opening must not yank the menu). */
 export function loungeDockLayoutViewportSize() {
   if (typeof window === 'undefined') {
     return { width: 0, height: 0 }
   }
   const vv = window.visualViewport
+  const width = vv?.width ?? window.innerWidth
+  const innerH = window.innerHeight
+
+  if (LOUNGE_DOCK_FAB_ANDROID) {
+    if (loungeDockFabAndroidLayoutHeightPx <= 0) {
+      loungeDockFabAndroidLayoutHeightPx = innerH
+    }
+    const baseline = loungeDockFabAndroidLayoutHeightPx
+    const keyboardLikelyOpen = innerH < baseline - LOUNGE_DOCK_FAB_ANDROID_KEYBOARD_SHRINK_PX
+    if (keyboardLikelyOpen) {
+      return { width, height: baseline }
+    }
+    loungeDockFabAndroidLayoutHeightPx = innerH
+    return { width, height: innerH }
+  }
+
   return {
-    width: vv?.width ?? window.innerWidth,
-    height: window.innerHeight,
+    width,
+    height: innerH,
   }
 }
 

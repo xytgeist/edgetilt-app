@@ -166,6 +166,7 @@ import {
   executeLoungeCommentUpdate,
 } from './loungeCommentSubmitJob.js'
 import {
+  loungeMediaPrepFailureDetails,
   runComposerStreamVideoPrepWithRetries,
   uploadEncodedVideoToCfStreamWithRetries,
 } from './loungeComposerVideoPrep.js'
@@ -2931,10 +2932,12 @@ export default function SocialFeed({
           const slotStill = composerVideoSlotRef.current
           if (slotStill?.prepJobId === jobId) {
             setComposerVideoSlot((prev) => (prev?.prepJobId === jobId ? { ...prev, prepStatus: 'failed', prepError: msg } : prev))
+            const failMeta = loungeMediaPrepFailureDetails(msg)
             setLoungePostUploadFailureDetails({
               kind: 'mediaPrep',
-              phase: 'Uploading media…',
-              message: msg,
+              phase: failMeta.phase,
+              dialogTitle: failMeta.dialogTitle,
+              message: failMeta.message,
             })
             setLoungePostUploadFailedOpen(true)
           }
@@ -3128,11 +3131,13 @@ export default function SocialFeed({
             setQuoteRepostVideoSlot((prev) =>
               prev?.prepJobId === jobId ? { ...prev, prepStatus: 'failed', prepError: msg } : prev,
             )
+            const failMeta = loungeMediaPrepFailureDetails(msg)
             setLoungePostUploadFailureDetails({
               kind: 'mediaPrep',
               target: 'quote',
-              phase: 'Uploading media…',
-              message: msg,
+              phase: failMeta.phase,
+              dialogTitle: failMeta.dialogTitle,
+              message: failMeta.message,
             })
             setLoungePostUploadFailedOpen(true)
           }
@@ -17572,7 +17577,10 @@ export default function SocialFeed({
             className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-700/85 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md"
           >
             <h2 id="lounge-upload-failed-title" className="text-[17px] font-bold text-white">
-              {loungePostUploadFailureDetails?.kind === 'mediaPrep' ? 'Media upload failed' : 'Upload failed'}
+              {loungePostUploadFailureDetails?.dialogTitle ||
+                (loungePostUploadFailureDetails?.kind === 'mediaPrep'
+                  ? 'Media upload failed'
+                  : 'Upload failed')}
             </h2>
             {loungePostUploadFailureDetails ? (
               <div className="mt-3 space-y-2 rounded-xl border border-zinc-700/70 bg-zinc-900/80 px-3 py-2.5 text-left">

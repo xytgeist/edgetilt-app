@@ -27,6 +27,48 @@ export function loungeVideoEncodingDetail(sourceFile, progressRatio) {
   return sizeHint
 }
 
+/**
+ * Classify a media-prep failure for the retry dialog (headline + last-step label).
+ *
+ * @param {string} message
+ * @param {string} [lastStatus] last upload-bar `status` when available
+ */
+export function loungeMediaPrepFailureDetails(message, lastStatus = '') {
+  const msg = String(message || '').trim() || 'Video upload failed after multiple attempts.'
+  const msgLower = msg.toLowerCase()
+  const stLower = String(lastStatus || '').toLowerCase()
+  const encodeLike =
+    msgLower.includes('encoding failed') ||
+    msgLower.includes('ffmpeg') ||
+    msgLower.includes('invalid trim range') ||
+    msgLower.includes('could not read video') ||
+    msgLower.includes('could not read this video') ||
+    msgLower.includes('empty output') ||
+    stLower.includes('encoding') ||
+    stLower.includes('validating')
+  if (encodeLike) {
+    return { phase: 'Encoding video…', dialogTitle: 'Video encoding failed.', message: msg }
+  }
+  if (
+    stLower.includes('uploading') ||
+    stLower.includes('preparing upload') ||
+    stLower.includes('resuming') ||
+    msgLower.includes('upload') ||
+    msgLower.includes('tus') ||
+    msgLower.includes('stream')
+  ) {
+    return { phase: 'Uploading media…', dialogTitle: 'Media upload failed', message: msg }
+  }
+  if (
+    stLower.includes('finishing') ||
+    stLower.includes('waiting for playback') ||
+    stLower.includes('processing')
+  ) {
+    return { phase: 'Processing video…', dialogTitle: 'Video processing failed.', message: msg }
+  }
+  return { phase: 'Preparing video…', dialogTitle: 'Media upload failed', message: msg }
+}
+
 /** @param {string} status @param {string} detail */
 function debugComposerVideoProgress(status, detail) {
   const line = detail ? `${status} · ${detail}` : status
@@ -99,15 +141,27 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, onProgress
       'encode',
       `start direct ${source.name || 'video'} ${Math.round((source.size || 0) / (1024 * 1024))}MB`,
     )
-    uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
-      signal,
-      onProgress: (r) =>
-        report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
-    })
-    maybeReportLoungeVideoUploadDebug(
-      'encode',
-      `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
-    )
+    try {
+      uploadFile = await trimVideoFileToMp4(source, 0, sourceDur, {
+        signal,
+        onProgress: (r) =>
+          report(0.05 + r * 0.34, 'Encoding…', loungeVideoEncodingDetail(source, r), 1),
+      })
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `done direct → ${Math.round((uploadFile.size || 0) / (1024 * 1024))}MB`,
+      )
+    } catch (encodeErr) {
+      const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
+      maybeReportLoungeVideoUploadDebug('encode', `failed direct: ${msg}`)
+      if (source.size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
+        maybeReportLoungeVideoUploadDebug('encode', 'fallback pass-through original')
+        report(0.39, 'Compress skipped', 'Uploading original…', 1)
+        uploadFile = source
+      } else {
+        throw encodeErr
+      }
+    }
   } else {
     report(0.05, 'Encoding…', loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
     maybeReportLoungeVideoUploadDebug('encode', `start trim ${spec.sourceFile?.name || 'video'}`)

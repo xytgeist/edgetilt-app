@@ -1,6 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
+import { probeVideoFileDurationSeconds } from './loungeVideoUpload.js'
 
 /** Must match the ESM build served for `ffmpeg.load` (see @ffmpeg/ffmpeg 0.12 docs). */
 const CORE_VERSION = '0.12.6'
@@ -106,34 +107,104 @@ export function prefetchFfmpegCore() {
   return getFfmpeg().then(() => {})
 }
 
+const DEMUX_LOGGING = [
+  '-hide_banner',
+  '-loglevel',
+  'warning',
+  '-analyzeduration',
+  '100M',
+  '-probesize',
+  '100M',
+]
+
 /**
- * Re-encode a full video file to a chat-optimised MP4.
- * Targets ≤ 720p height, H.264 CRF 30, 900 kbps bitrate cap, 64 kbps AAC audio.
- * Produces roughly 5 MB for a 60-second 1080p source (vs 50-100 MB raw pass-through).
- *
- * @param {File} file
- * @param {{ onProgress?: (ratio01: number) => void, signal?: AbortSignal }} [opts]
- * @returns {Promise<File>}
+ * @param {string} inputPath
+ * @param {number} startSec
+ * @param {number} durSec
+ * @param {{ forceSsBeforeInput?: boolean }} [opts]
  */
-export async function encodeVideoForChat(file, opts = {}) {
-  const { onProgress, signal } = opts
-
-  const TAG = '[chat-video-encode]'
-  console.log(TAG, 'start', { name: file.name, sizeMb: +(file.size / 1e6).toFixed(2), type: file.type })
-
-  let ffmpeg
-  try {
-    ffmpeg = await getFfmpeg()
-    console.log(TAG, 'ffmpeg ready')
-  } catch (loadErr) {
-    console.error(TAG, 'ffmpeg load failed', String(loadErr))
-    throw loadErr
+function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
+  const start = Math.max(0, Number(startSec) || 0)
+  const dur = Math.max(0.001, Number(durSec) || 0)
+  if (opts.forceSsBeforeInput || start > 0.05) {
+    return ['-ss', String(start), '-i', inputPath, '-t', String(dur)]
   }
+  return ['-i', inputPath, '-t', String(dur)]
+}
 
-  const extMatch = /\.[a-z0-9]+$/i.exec(file.name || '')
-  const ext = extMatch ? extMatch[0].toLowerCase() : '.mp4'
-  const inName = `chat_in${ext}`
-  const outName = 'chat_out.mp4'
+/**
+ * @param {string} vf scale/crop filter chain without leading format=
+ * @param {boolean} videoOnly
+ * @param {string} outName
+ */
+function buildOutputArgs(vf, videoOnly, outName) {
+  const vfChain = vf.includes('format=') ? vf : `format=yuv420p,${vf}`
+  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
+  const videoFilters = ['-vf', vfChain]
+  const audio = videoOnly ? ['-an'] : ['-c:a', 'aac', '-b:a', '128k']
+  const mux = ['-movflags', '+faststart', '-y', outName]
+  return [...video, ...videoFilters, ...audio, ...mux]
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string[]} args
+ * @param {AbortSignal | undefined} signal
+ */
+async function execFfmpegLogged(ffmpeg, args, signal) {
+  /** @type {string[]} */
+  const logs = []
+  const onLog = ({ message }) => {
+    if (message) logs.push(String(message).trim())
+  }
+  ffmpeg.on('log', onLog)
+  try {
+    const code = await ffmpeg.exec(args, undefined, { signal })
+    return { code, logs }
+  } finally {
+    ffmpeg.off('log', onLog)
+  }
+}
+
+/**
+ * @param {string[]} logs
+ */
+function formatFfmpegLogTail(logs) {
+  const tail = logs.filter(Boolean).slice(-4).join(' | ')
+  return tail.length > 240 ? `${tail.slice(0, 237)}…` : tail
+}
+
+/**
+ * @param {object} opts
+ * @param {File} opts.file
+ * @param {number} opts.startSec
+ * @param {number} opts.endSec
+ * @param {string} opts.outName
+ * @param {string} opts.inName
+ * @param {string} opts.vf
+ * @param {AbortSignal | undefined} opts.signal
+ * @param {(ratio01: number) => void} [opts.onProgress]
+ * @param {string} opts.outBaseName
+ * @param {string} opts.outSuffix
+ */
+async function wasmReencodeToMp4({
+  file,
+  startSec,
+  endSec,
+  outName,
+  inName,
+  vf,
+  signal,
+  onProgress,
+  outBaseName,
+  outSuffix,
+}) {
+  const start = Math.max(0, Number(startSec) || 0)
+  const end = Math.max(start, Number(endSec) || 0)
+  const dur = end - start
+  if (!(dur > 0)) throw new Error('Invalid trim range.')
+
+  const ffmpeg = await getFfmpeg()
 
   const onProg = ({ progress }) => {
     if (typeof onProgress !== 'function') return
@@ -142,66 +213,117 @@ export async function encodeVideoForChat(file, opts = {}) {
   }
   ffmpeg.on('progress', onProg)
 
-  let mode, inputPath
+  let mode
+  let inputPath
   try {
     ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))
-    console.log(TAG, 'input mounted', { mode, inputPath })
   } catch (mountErr) {
     ffmpeg.off('progress', onProg)
-    console.error(TAG, 'input mount failed', String(mountErr))
-    throw mountErr
+    throw mountErr instanceof Error ? mountErr : new Error(String(mountErr))
   }
 
-  // Clean up any stale output from a previous failed run.
-  try { await ffmpeg.deleteFile(outName) } catch { /* ignore */ }
-
-  /**
-   * Chat encode groups:
-   * - Demux / logging: -hide_banner -loglevel error -analyzeduration 1500000 -probesize 5242880
-   * - Input: -i <path>
-   * - Video: H.264 ultrafast, CRF 27 (matches lounge post quality), no hard bitrate cap, yuv420p
-   * - Video filter: fit within 1280×720 box (handles portrait + landscape; no expression evaluator needed)
-   * - Audio: AAC 128 kbps
-   * - Mux: +faststart for instant web playback
-   */
-  const demuxLogging = ['-hide_banner', '-loglevel', 'error', '-analyzeduration', '1500000', '-probesize', '5242880']
-  const input = ['-i', inputPath]
-  /** Optional audio (`0:a:0?`) so video-only clips (screen recordings) do not fail encode. */
-  const streamMaps = ['-map', '0:v:0', '-map', '0:a:0?']
-  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
-  const videoFilters = ['-vf', 'scale=1280:-2:flags=bicubic']
-  const audio = ['-c:a', 'aac', '-b:a', '128k']
-  const mux = ['-movflags', '+faststart', '-y', outName]
-
-  const args = [...demuxLogging, ...input, ...streamMaps, ...video, ...videoFilters, ...audio, ...mux]
-  console.log(TAG, 'exec args', args.join(' '))
-
-  let code
   try {
-    code = await ffmpeg.exec(args, undefined, { signal })
-    console.log(TAG, 'exec done', { code })
-    if (code !== 0) throw new Error(`Video encoding failed (exit ${code}).`)
-  } catch (execErr) {
-    console.error(TAG, 'exec error', String(execErr))
-    throw execErr
+    try {
+      await ffmpeg.deleteFile(outName)
+    } catch {
+      // ignore
+    }
+
+    const strategies = [
+      { label: 'aac', videoOnly: false, forceSsBeforeInput: false },
+      { label: 'video-only', videoOnly: true, forceSsBeforeInput: false },
+      { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true },
+    ]
+
+    /** @type {string[]} */
+    let lastLogs = []
+    let lastCode = 1
+
+    for (const strategy of strategies) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      try {
+        await ffmpeg.deleteFile(outName)
+      } catch {
+        // ignore
+      }
+      const inputPart = buildInputArgs(inputPath, start, dur, {
+        forceSsBeforeInput: strategy.forceSsBeforeInput,
+      })
+      const outputPart = buildOutputArgs(vf, strategy.videoOnly, outName)
+      const args = [...DEMUX_LOGGING, ...inputPart, ...outputPart]
+      const { code, logs } = await execFfmpegLogged(ffmpeg, args, signal)
+      lastCode = code
+      lastLogs = logs
+      if (code === 0) break
+      console.warn('[lounge-video-encode]', strategy.label, 'exit', code, formatFfmpegLogTail(logs))
+    }
+
+    if (lastCode !== 0) {
+      const tail = formatFfmpegLogTail(lastLogs)
+      throw new Error(tail ? `Video encoding failed. ${tail}` : `Video encoding failed (exit ${lastCode}).`)
+    }
+
+    const data = await ffmpeg.readFile(outName)
+    try {
+      await ffmpeg.deleteFile(outName)
+    } catch {
+      // ignore
+    }
+
+    const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
+    if (!buf.byteLength) throw new Error('Video encoding failed (empty output).')
+
+    const outFile = new File([buf], `${outBaseName || 'clip'}-${outSuffix}.mp4`, { type: 'video/mp4' })
+    if (typeof onProgress === 'function') onProgress(1)
+    return outFile
   } finally {
     ffmpeg.off('progress', onProg)
     await uninstallTrimInput(ffmpeg, mode, inName)
   }
+}
 
-  const data = await ffmpeg.readFile(outName)
-  try { await ffmpeg.deleteFile(outName) } catch { /* ignore */ }
-
-  const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
-  console.log(TAG, 'encoded', { outSizeMb: +(buf.byteLength / 1e6).toFixed(2) })
-
-  const base = String(file.name || 'video')
+function fileBaseName(file) {
+  return String(file?.name || 'video')
     .replace(/\.[^.]+$/, '')
     .replace(/[^\w-]+/g, '_')
     .slice(0, 80)
-  const outFile = new File([buf], `${base || 'clip'}-chat.mp4`, { type: 'video/mp4' })
-  if (typeof onProgress === 'function') onProgress(1)
-  return outFile
+}
+
+function inputExt(file) {
+  const extMatch = /\.[a-z0-9]+$/i.exec(file?.name || '')
+  return extMatch ? extMatch[0].toLowerCase() : '.mp4'
+}
+
+/**
+ * Re-encode a full video file to a chat-optimised MP4.
+ *
+ * @param {File} file
+ * @param {{ onProgress?: (ratio01: number) => void, signal?: AbortSignal }} [opts]
+ * @returns {Promise<File>}
+ */
+export async function encodeVideoForChat(file, opts = {}) {
+  const { onProgress, signal } = opts
+  const TAG = '[chat-video-encode]'
+  console.log(TAG, 'start', { name: file.name, sizeMb: +(file.size / 1e6).toFixed(2), type: file.type })
+
+  const dur = await probeVideoFileDurationSeconds(file)
+  if (!Number.isFinite(dur) || dur <= 0) {
+    throw new Error('Could not read video duration.')
+  }
+
+  const ext = inputExt(file)
+  return wasmReencodeToMp4({
+    file,
+    startSec: 0,
+    endSec: dur,
+    outName: 'chat_out.mp4',
+    inName: `chat_in${ext}`,
+    vf: 'scale=1280:-2:flags=bicubic',
+    signal,
+    onProgress,
+    outBaseName: fileBaseName(file),
+    outSuffix: 'chat',
+  })
 }
 
 /**
@@ -211,7 +333,6 @@ export async function encodeVideoForChat(file, opts = {}) {
  * @param {number} startSec
  * @param {number} endSec
  * @param {{ onProgress?: (ratio01: number) => void, signal?: AbortSignal, crop?: { x: number, y: number, w: number, h: number } | null, intrinsicWidth?: number, intrinsicHeight?: number }} [opts]
- * `crop` - pixel rect on decoded source frames; requires `intrinsicWidth` / `intrinsicHeight` (element `videoWidth` / `videoHeight`).
  * @returns {Promise<File>}
  */
 export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
@@ -221,80 +342,23 @@ export async function trimVideoFileToMp4(file, startSec, endSec, opts = {}) {
   const dur = end - start
   if (!(dur > 0)) throw new Error('Invalid trim range.')
 
-  const ffmpeg = await getFfmpeg()
-  const extMatch = /\.[a-z0-9]+$/i.exec(file.name || '')
-  const ext = extMatch ? extMatch[0].toLowerCase() : '.mp4'
-  const inName = `in${ext}`
-  const outName = 'out.mp4'
-
-  const onProg = ({ progress }) => {
-    if (typeof onProgress !== 'function') return
-    const p = typeof progress === 'number' ? progress : 0
-    onProgress(p <= 1 ? p : p / 100)
-  }
-  ffmpeg.on('progress', onProg)
-
-  const { inputPath, mode } = await installTrimInput(ffmpeg, file, inName)
-
-  /**
-   * Optional crop (source pixels), then scale width to 1280 (height -2, bicubic).
-   * With crop: crop=w:h:x:y,scale=1280:-2:flags=bicubic
-   * No crop: scale=1280:-2:flags=bicubic
-   */
   let vf = 'scale=1280:-2:flags=bicubic'
   if (cropIn && cropIn.w > 0 && cropIn.h > 0 && iw > 0 && ih > 0) {
     const c = sanitizeVideoCropPx(iw, ih, cropIn)
     if (c) vf = `crop=${c.w}:${c.h}:${c.x}:${c.y},scale=1280:-2:flags=bicubic`
   }
 
-  /**
-   * Lounge trim (WASM intermediate). Groups:
-   * - Demux / logging: -hide_banner -loglevel error -analyzeduration 1500000 -probesize 5242880
-   * - Trim: -ss start -i input -t duration
-   * - Video: -c:v libx264 -preset ultrafast -crf 27 -pix_fmt yuv420p
-   * - Video filters: -vf (crop+,)scale=1280:-2:flags=bicubic
-   * - Audio: -c:a aac -b:a 128k
-   * - Mux: -movflags +faststart -y output.mp4
-   */
-  const demuxLogging = [
-    '-hide_banner',
-    '-loglevel',
-    'error',
-    '-analyzeduration',
-    '1500000',
-    '-probesize',
-    '5242880',
-  ]
-  const trim = ['-ss', String(start), '-i', inputPath, '-t', String(dur)]
-  const streamMaps = ['-map', '0:v:0', '-map', '0:a:0?']
-  const video = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '27', '-pix_fmt', 'yuv420p']
-  const videoFilters = ['-vf', vf]
-  const audio = ['-c:a', 'aac', '-b:a', '128k']
-  const mux = ['-movflags', '+faststart', '-y', outName]
-
-  const args = [...demuxLogging, ...trim, ...streamMaps, ...video, ...videoFilters, ...audio, ...mux]
-
-  try {
-    const code = await ffmpeg.exec(args, undefined, { signal })
-    if (code !== 0) throw new Error('Video encoding failed.')
-  } finally {
-    ffmpeg.off('progress', onProg)
-    await uninstallTrimInput(ffmpeg, mode, inName)
-  }
-
-  const data = await ffmpeg.readFile(outName)
-  try {
-    await ffmpeg.deleteFile(outName)
-  } catch {
-    // ignore
-  }
-
-  const buf = data instanceof Uint8Array ? data : new Uint8Array(data)
-  const base = String(file.name || 'video')
-    .replace(/\.[^.]+$/, '')
-    .replace(/[^\w-]+/g, '_')
-    .slice(0, 80)
-  const outFile = new File([buf], `${base || 'clip'}-trimmed.mp4`, { type: 'video/mp4' })
-  if (typeof onProgress === 'function') onProgress(1)
-  return outFile
+  const ext = inputExt(file)
+  return wasmReencodeToMp4({
+    file,
+    startSec: start,
+    endSec: end,
+    outName: 'out.mp4',
+    inName: `in${ext}`,
+    vf,
+    signal,
+    onProgress,
+    outBaseName: fileBaseName(file),
+    outSuffix: 'trimmed',
+  })
 }

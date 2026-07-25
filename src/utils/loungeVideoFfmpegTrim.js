@@ -265,8 +265,15 @@ function buildOutputArgs(vf, strategy, outName) {
  * }} EncodeStrategy
  */
 
-/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} probedStreams */
-function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams) {
+function isLikelyIphoneSpatialMov(file) {
+  const name = String(file?.name || '').toLowerCase()
+  const type = String(file?.type || '').toLowerCase()
+  return name.endsWith('.mov') || type.includes('quicktime')
+}
+
+/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} probedStreams @param {{ allowVideoOnlyFallback?: boolean, forceIphoneSpatialGuess?: boolean }} [opts] */
+function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, opts = {}) {
+  const { allowVideoOnlyFallback = false, forceIphoneSpatialGuess = false } = opts
   const videoOnlyFallback = /** @type {EncodeStrategy[]} */ ([
     { label: 'video-only-mapped', videoOnly: true, forceSsBeforeInput: false, useMaps: true },
     { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: true },
@@ -289,12 +296,19 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
     })
   }
 
-  if (spatialBlocked.includes(1)) {
-    withAudio.push({
-      label: 'exclude-spatial-a1',
-      maps: ['-map', '0:v:0', '-map', '0:a', '-map', '-0:1'],
-      requireOutputAudio: true,
-    })
+  if (spatialBlocked.includes(1) || forceIphoneSpatialGuess) {
+    withAudio.push(
+      {
+        label: 'aac-second-audio-stream',
+        maps: ['-map', '0:v:0', '-map', '0:a:1?'],
+        requireOutputAudio: true,
+      },
+      {
+        label: 'exclude-spatial-a1',
+        maps: ['-map', '0:v:0', '-map', '0:a', '-map', '-0:1'],
+        requireOutputAudio: true,
+      },
+    )
     pushStreamStrategy(2, false)
     pushStreamStrategy(2, true)
   }
@@ -344,10 +358,10 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
     )
   }
 
-  if (sourceHasAudio) {
+  if (allowVideoOnlyFallback || !sourceHasAudio) {
     return [...withAudio, ...videoOnlyFallback]
   }
-  return [...withAudio, ...videoOnlyFallback]
+  return withAudio
 }
 
 /**
@@ -557,7 +571,15 @@ async function wasmReencodeToMp4({
   }
 
   const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
-  let strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams)
+  const forceIphoneSpatialGuess =
+    sourceHasAudio && audioStreamIndices.length === 0 && isLikelyIphoneSpatialMov(file)
+  if (forceIphoneSpatialGuess) {
+    maybeReportLoungeVideoUploadDebug('encode', 'iphone spatial mov guess (no decodable audio in probe)')
+  }
+  let strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, {
+    allowVideoOnlyFallback: !sourceHasAudio,
+    forceIphoneSpatialGuess,
+  })
   if (spatialBlocked.length > 0) {
     maybeReportLoungeVideoUploadDebug(
       'encode',
@@ -577,7 +599,10 @@ async function wasmReencodeToMp4({
     if (!winningStrategy && sourceHasAudio) {
       await maybeExtractBrowserAudio()
       if (browserAudioFile) {
-        strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams)
+        strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, {
+          allowVideoOnlyFallback: false,
+          forceIphoneSpatialGuess,
+        })
         strategies.unshift(
           {
             label: 'browser-audio-mux',
@@ -615,6 +640,12 @@ async function wasmReencodeToMp4({
       'encode',
       `success ${winningStrategy.label} outAudio=${outputHasAudio ? 'yes' : 'no'}`,
     )
+
+    if (sourceHasAudio && !outputHasAudio) {
+      throw new Error(
+        `Video encoding finished without an audio track (${winningStrategy.label}).`,
+      )
+    }
 
     const data = await ffmpeg.readFile(outName)
     try {

@@ -14,6 +14,10 @@ const PLAYBACK_STALL_MS = 4500
 const MAX_ATTEMPT_MS = 55000
 const MIN_CAPTURE_BYTES_PER_SEC = 4000
 const MIN_CAPTURE_BYTES_FLOOR = 16000
+const MIN_TRIM_VIDEO_BYTES_PER_SEC = 45000
+const MIN_TRIM_VIDEO_BYTES_FLOOR = 180000
+const TRIM_VIDEO_PLAYBACK_RATE = 1
+const TRIM_VIDEO_FALLBACK_PLAYBACK_RATE = 4
 
 /**
  * @param {AbortSignal | undefined} signal
@@ -42,6 +46,21 @@ export function minBrowserVideoAudioCaptureBytes(durSec) {
   return Math.max(MIN_CAPTURE_BYTES_FLOOR, Math.round(dur * MIN_CAPTURE_BYTES_PER_SEC))
 }
 
+/** Minimum blob size for a browser-recorded trim segment (video + audio). */
+export function minBrowserVideoTrimCaptureBytes(durSec) {
+  const dur = Math.max(0.5, Number(durSec) || 0)
+  return Math.max(MIN_TRIM_VIDEO_BYTES_FLOOR, Math.round(dur * MIN_TRIM_VIDEO_BYTES_PER_SEC))
+}
+
+/**
+ * Keep decode/captureStream audio while staying silent to the user (speakers off).
+ * @param {HTMLVideoElement} video
+ */
+function applySilentPlayback(video) {
+  video.muted = false
+  video.volume = 0
+}
+
 /**
  * @param {Blob} blob
  * @param {number} durSec
@@ -50,6 +69,18 @@ export function minBrowserVideoAudioCaptureBytes(durSec) {
 export function isViableBrowserVideoAudioCapture(blob, durSec, progressRatio01 = 1) {
   if (!blob?.size) return false
   if (blob.size < minBrowserVideoAudioCaptureBytes(durSec)) return false
+  if (typeof progressRatio01 === 'number' && progressRatio01 < 0.75) return false
+  return true
+}
+
+/**
+ * @param {Blob} blob
+ * @param {number} durSec
+ * @param {number} [progressRatio01]
+ */
+export function isViableBrowserVideoTrimCapture(blob, durSec, progressRatio01 = 1) {
+  if (!blob?.size) return false
+  if (blob.size < minBrowserVideoTrimCaptureBytes(durSec)) return false
   if (typeof progressRatio01 === 'number' && progressRatio01 < 0.75) return false
   return true
 }
@@ -157,6 +188,36 @@ function browserAudioExt(blob, mimeType) {
 }
 
 /**
+ * @param {Blob} blob
+ * @param {string} mimeType
+ */
+function browserVideoExt(blob, mimeType) {
+  const type = String(mimeType || blob.type || '').toLowerCase()
+  if (type.includes('webm')) return '.webm'
+  if (type.includes('mp4') || type.includes('quicktime')) return '.mp4'
+  return '.webm'
+}
+
+/** @returns {string} */
+function pickVideoRecorderMimeType() {
+  if (typeof MediaRecorder === 'undefined') return ''
+  const candidates = [
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp9,opus',
+    'video/webm',
+    'video/mp4',
+  ]
+  for (const mime of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(mime)) return mime
+    } catch {
+      // ignore
+    }
+  }
+  return ''
+}
+
+/**
  * @param {File} file
  */
 function createHiddenVideoForExtract(file) {
@@ -166,7 +227,7 @@ function createHiddenVideoForExtract(file) {
   video.playsInline = true
   video.setAttribute('playsinline', '')
   video.setAttribute('webkit-playsinline', 'true')
-  video.volume = 1
+  video.volume = 0
   video.src = url
   video.style.cssText =
     'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none'
@@ -273,33 +334,49 @@ async function startVideoPlayback(video) {
 /**
  * @param {MediaStream} stream
  * @param {string} [preferredMime]
+ * @param {boolean} [includeVideo]
  * @returns {{ recorder: MediaRecorder, mimeType: string }}
  */
-function createMediaRecorderForStream(stream, preferredMime = '') {
+function createMediaRecorderForStream(stream, preferredMime = '', includeVideo = false) {
   if (typeof MediaRecorder === 'undefined') {
     throw new Error('MediaRecorder unavailable')
   }
   /** @type {string[]} */
-  const candidates = [
-    preferredMime,
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4',
-    '',
-  ].filter((mime, idx, arr) => mime !== undefined && arr.indexOf(mime) === idx)
+  const candidates = includeVideo
+    ? [
+        preferredMime,
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=vp9,opus',
+        'video/webm',
+        'video/mp4',
+        '',
+      ]
+    : [
+        preferredMime,
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4',
+        '',
+      ]
+  const uniqueCandidates = candidates.filter(
+    (mime, idx, arr) => mime !== undefined && arr.indexOf(mime) === idx,
+  )
   /** @type {Error | null} */
   let lastErr = null
-  for (const mime of candidates) {
+  for (const mime of uniqueCandidates) {
     if (mime && !MediaRecorder.isTypeSupported(mime)) continue
     try {
       /** @type {MediaRecorderOptions} */
-      const opts = { audioBitsPerSecond: 128000 }
+      const opts = includeVideo
+        ? { videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 }
+        : { audioBitsPerSecond: 128000 }
       if (mime) opts.mimeType = mime
       const recorder = new MediaRecorder(stream, opts)
-      return { recorder, mimeType: mime || recorder.mimeType || 'audio/webm' }
+      const fallbackMime = includeVideo ? 'video/webm' : 'audio/webm'
+      return { recorder, mimeType: mime || recorder.mimeType || fallbackMime }
     } catch (err) {
       lastErr = err instanceof Error ? err : new Error(String(err))
     }
@@ -328,6 +405,7 @@ function audioOnlyStream(stream) {
  * @param {number} opts.playbackRate
  * @param {AbortSignal | undefined} opts.signal
  * @param {(ratio01: number) => void} [opts.onProgress]
+ * @param {boolean} [opts.includeVideo]
  */
 async function recordStreamSegment({
   video,
@@ -339,9 +417,14 @@ async function recordStreamSegment({
   playbackRate,
   signal,
   onProgress,
+  includeVideo = false,
 }) {
-  const recordStream = audioOnlyStream(stream)
-  const { recorder, mimeType: recordMime } = createMediaRecorderForStream(recordStream, mimeType)
+  const recordStream = includeVideo ? stream : audioOnlyStream(stream)
+  const { recorder, mimeType: recordMime } = createMediaRecorderForStream(
+    recordStream,
+    mimeType,
+    includeVideo,
+  )
   /** @type {BlobPart[]} */
   const chunks = []
   recorder.ondataavailable = (ev) => {
@@ -433,12 +516,15 @@ async function recordStreamSegment({
   await recordDone
 
   const blob = new Blob(chunks, { type: recorder.mimeType || recordMime })
-  if (!blob.size) throw new Error('Browser audio capture was empty')
+  if (!blob.size) {
+    throw new Error(includeVideo ? 'Browser trim capture was empty' : 'Browser audio capture was empty')
+  }
 
+  const resolvedMime = recorder.mimeType || recordMime
   return {
     blob,
-    ext: browserAudioExt(blob, recorder.mimeType || recordMime),
-    mimeType: recorder.mimeType || recordMime,
+    ext: includeVideo ? browserVideoExt(blob, resolvedMime) : browserAudioExt(blob, resolvedMime),
+    mimeType: resolvedMime,
   }
 }
 
@@ -458,8 +544,7 @@ async function extractViaCaptureStream(opts) {
   if (typeof video.captureStream !== 'function') {
     throw new Error('captureStream unavailable')
   }
-  video.muted = false
-  video.volume = 1
+  applySilentPlayback(video)
   const stream = video.captureStream()
   return recordStreamSegment({
     video,
@@ -502,13 +587,10 @@ async function extractViaWebAudio(opts) {
     signal,
     onProgress,
   } = opts
-  // iOS Web Audio often receives no samples when the element is muted.
-  if (silentViaVolume) {
-    video.muted = false
-    video.volume = 0
-  } else {
-    video.muted = muted
-    video.volume = muted ? 0 : 1
+  // iOS Web Audio often receives no samples when the element is muted; volume 0 stays silent.
+  applySilentPlayback(video)
+  if (!silentViaVolume && muted) {
+    video.muted = true
   }
 
   const audioCtx = new AudioContext()
@@ -551,10 +633,8 @@ async function extractViaWebAudio(opts) {
  * @returns {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]}
  */
 function buildExtractAttempts(isApple) {
-  const activation = hasUserActivation()
   if (isApple) {
-    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]} */
-    const attempts = [
+    return [
       {
         name: 'web-audio-volume0-8x',
         muted: false,
@@ -570,26 +650,17 @@ function buildExtractAttempts(isApple) {
         silentMonitor: true,
       },
     ]
-    if (activation) {
-      attempts.push({
-        name: 'web-audio-unmuted-8x',
-        muted: false,
-        playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
-      })
-    }
-    return attempts
   }
   if (isAndroidBrowser()) {
-    /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]} */
-    const attempts = [
+    return [
       {
-        name: 'capture-stream-1x',
+        name: 'capture-stream-volume0-1x',
         muted: false,
         playbackRate: 1,
         useCaptureStream: true,
       },
       {
-        name: 'capture-stream-4x',
+        name: 'capture-stream-volume0-4x',
         muted: false,
         playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
         useCaptureStream: true,
@@ -602,20 +673,10 @@ function buildExtractAttempts(isApple) {
         silentMonitor: true,
       },
     ]
-    if (activation) {
-      attempts.unshift({
-        name: 'capture-stream-unmuted-1x',
-        muted: false,
-        playbackRate: 1,
-        useCaptureStream: true,
-      })
-    }
-    return attempts
   }
-  /** @type {{ name: string, muted: boolean, playbackRate: number, silentMonitor?: boolean, silentViaVolume?: boolean, useCaptureStream?: boolean }[]} */
-  const attempts = [
+  return [
     {
-      name: 'capture-stream-4x',
+      name: 'capture-stream-volume0-4x',
       muted: false,
       playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
       useCaptureStream: true,
@@ -635,20 +696,54 @@ function buildExtractAttempts(isApple) {
       silentMonitor: true,
     },
   ]
-  if (activation) {
-    attempts.unshift({
-      name: 'capture-stream-unmuted-4x',
-      muted: false,
-      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
-      useCaptureStream: true,
-    })
-    attempts.unshift({
-      name: 'web-audio-unmuted-4x',
-      muted: false,
-      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
-    })
+}
+
+/**
+ * @returns {{ name: string, playbackRate: number }[]}
+ */
+function buildTrimVideoCaptureAttempts() {
+  if (isAndroidBrowser()) {
+    return [{ name: 'capture-stream-volume0-1x', playbackRate: TRIM_VIDEO_PLAYBACK_RATE }]
   }
-  return attempts
+  return [
+    { name: 'capture-stream-volume0-1x', playbackRate: TRIM_VIDEO_PLAYBACK_RATE },
+    { name: 'capture-stream-volume0-4x', playbackRate: TRIM_VIDEO_FALLBACK_PLAYBACK_RATE },
+  ]
+}
+
+/**
+ * @param {object} opts
+ * @param {HTMLVideoElement} opts.video
+ * @param {string} opts.mimeType
+ * @param {number} opts.start
+ * @param {number} opts.end
+ * @param {number} opts.dur
+ * @param {number} opts.playbackRate
+ * @param {AbortSignal | undefined} opts.signal
+ * @param {(ratio01: number) => void} [opts.onProgress]
+ */
+async function extractVideoViaCaptureStream(opts) {
+  const { video, mimeType, start, end, dur, playbackRate, signal, onProgress } = opts
+  if (typeof video.captureStream !== 'function') {
+    throw new Error('captureStream unavailable')
+  }
+  applySilentPlayback(video)
+  const stream = video.captureStream()
+  if (!stream.getVideoTracks?.().length) {
+    throw new Error('No video tracks on capture stream')
+  }
+  return recordStreamSegment({
+    video,
+    stream,
+    mimeType,
+    start,
+    end,
+    dur,
+    playbackRate,
+    signal,
+    onProgress,
+    includeVideo: true,
+  })
 }
 
 /**
@@ -686,7 +781,7 @@ export async function extractBrowserVideoAudio(
   const isApple = detectAppleWebKitInlineStream()
   const attempts = buildExtractAttempts(isApple)
   onDebug?.(
-    `browser audio plan ${attempts.map((a) => a.name).join(', ')} activation=${hasUserActivation() ? 'yes' : 'no'}`,
+    `browser audio plan ${attempts.map((a) => a.name).join(', ')} silent=yes`,
   )
 
   /** @type {string[]} */
@@ -771,6 +866,109 @@ export async function extractBrowserVideoAudio(
     failures.length
       ? `Browser audio capture failed (${failures.slice(0, 2).join(' | ')})`
       : 'Browser audio capture failed',
+  )
+}
+
+/**
+ * Record a trim window (video + audio) via silent captureStream playback.
+ * Fallback when wasm trim encode fails ... uploads the selected segment, not the full source.
+ *
+ * @param {File} file
+ * @param {number} startSec
+ * @param {number} endSec
+ * @param {AbortSignal | undefined} [signal]
+ * @param {(ratio01: number) => void} [onProgress]
+ * @param {(detail: string) => void} [onDebug]
+ * @returns {Promise<{ blob: Blob, ext: string, mimeType: string, method: string }>}
+ */
+export async function captureBrowserVideoTrimSegment(
+  file,
+  startSec,
+  endSec,
+  signal,
+  onProgress,
+  onDebug,
+) {
+  if (!file || typeof URL === 'undefined' || typeof document === 'undefined') {
+    throw new Error('Browser trim capture unavailable')
+  }
+  const mimeType = pickVideoRecorderMimeType()
+  if (!mimeType) throw new Error('MediaRecorder not supported for trim capture')
+
+  const start = Math.max(0, Number(startSec) || 0)
+  const end = Math.max(start, Number(endSec) || 0)
+  const dur = end - start
+  if (!(dur > 0)) throw new Error('Invalid trim capture range')
+  if (dur > 60.35) {
+    throw new Error('Trim capture range must be 60 seconds or shorter.')
+  }
+
+  throwIfAborted(signal)
+
+  const attempts = buildTrimVideoCaptureAttempts()
+  onDebug?.(`browser trim plan ${attempts.map((a) => a.name).join(', ')} silent=yes`)
+
+  /** @type {string[]} */
+  const failures = []
+
+  for (const attempt of attempts) {
+    throwIfAborted(signal)
+    const { video, url } = createHiddenVideoForExtract(file)
+    const onAbort = () => {
+      try {
+        video.pause()
+      } catch {
+        // ignore
+      }
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+
+    try {
+      onDebug?.(`browser trim try ${attempt.name}`)
+      document.body?.appendChild(video)
+      await waitForVideoReady(video)
+      throwIfAborted(signal)
+      if (start > 0.05) await seekMediaElement(video, start)
+
+      let maxProgress = 0
+      const extractPromise = extractVideoViaCaptureStream({
+        video,
+        mimeType,
+        start,
+        end,
+        dur,
+        playbackRate: attempt.playbackRate,
+        signal,
+        onProgress: (r) => {
+          maxProgress = Math.max(maxProgress, r)
+          onProgress?.(r)
+        },
+      })
+      const result = await withTimeout(extractPromise, MAX_ATTEMPT_MS, attempt.name)
+
+      const minBytes = minBrowserVideoTrimCaptureBytes(dur)
+      if (!isViableBrowserVideoTrimCapture(result.blob, dur, maxProgress)) {
+        throw new Error(
+          `Capture too small (${Math.round(result.blob.size / 1024)}KB, need ~${Math.round(minBytes / 1024)}KB, progress ${Math.round(maxProgress * 100)}%)`,
+        )
+      }
+
+      onDebug?.(`browser trim ok ${attempt.name} ${Math.round(result.blob.size / 1024)}KB`)
+      return { ...result, method: attempt.name }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      failures.push(`${attempt.name}: ${msg}`)
+      onDebug?.(`browser trim ${attempt.name} failed: ${msg}`)
+    } finally {
+      signal?.removeEventListener('abort', onAbort)
+      disposeHiddenVideo(video, url)
+    }
+  }
+
+  throw new Error(
+    failures.length
+      ? `Browser trim capture failed (${failures.slice(0, 2).join(' | ')})`
+      : 'Browser trim capture failed',
   )
 }
 

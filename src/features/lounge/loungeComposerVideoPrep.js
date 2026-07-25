@@ -34,6 +34,14 @@ export function loungeVideoEncodingDetail(sourceFile, progressRatio) {
   return sizeHint
 }
 
+/** Upload bar detail while Android native trim runs. */
+function androidTrimPhaseDetail(sourceFile, progressRatio, status) {
+  if (status === 'Recording clip…') {
+    return `${Math.round(Math.max(0, Math.min(1, progressRatio)) * 100)}%`
+  }
+  return loungeVideoEncodingDetail(sourceFile, progressRatio)
+}
+
 /**
  * Classify a media-prep failure for the retry dialog (headline + last-step label).
  *
@@ -237,62 +245,135 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     }
   } else {
     validatedDurSec = Math.max(0, spec.endSec - spec.startSec)
-    report(0.05, 'Encoding…', loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
-    maybeReportLoungeVideoUploadDebug('encode', `start trim ${spec.sourceFile?.name || 'video'}`)
     const c =
       spec.cropPx && spec.intrinsicWidth > 0 && spec.intrinsicHeight > 0
         ? sanitizeVideoCropPx(spec.intrinsicWidth, spec.intrinsicHeight, spec.cropPx)
         : null
     const trimSourceMb = Math.round((spec.sourceFile.size || 0) / (1024 * 1024))
-    try {
-      uploadFile = await trimVideoFileToMp4(spec.sourceFile, spec.startSec, spec.endSec, {
-        signal,
-        crop: c,
-        intrinsicWidth: spec.intrinsicWidth,
-        intrinsicHeight: spec.intrinsicHeight,
-        onProgress: (r) =>
-          report(
-            0.05 + r * 0.34,
-            'Encoding…',
-            loungeVideoEncodingDetail(spec.sourceFile, r),
-            1,
-          ),
-      })
-      const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
-      maybeReportLoungeVideoUploadDebug('encode', `done trim → ${outMb}MB`)
-      recordLoungeVideoPrepOutcome({
-        outcome: 'wasm',
-        sourceMb: trimSourceMb,
-        outputMb: outMb,
-        durSec: validatedDurSec,
-        detail: `trim ${spec.sourceFile?.name || 'video'}`,
-      })
-    } catch (encodeErr) {
-      const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
-      maybeReportLoungeVideoUploadDebug('encode', `failed trim: ${msg}`)
-      if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile)) {
+
+    if (isAndroidBrowser()) {
+      maybeReportLoungeVideoUploadDebug('encode', `start android trim ${spec.sourceFile?.name || 'video'}`)
+      let androidTrimStatus = 'Encoding…'
+      report(0.05, androidTrimStatus, loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
+      try {
+        const { prepAndroidChromeTrimUploadFile } = await import('../../utils/loungeVideoWebCodecsTrim.js')
+        const androidTrim = await prepAndroidChromeTrimUploadFile(
+          spec.sourceFile,
+          spec.startSec,
+          spec.endSec,
+          {
+            signal,
+            crop: c,
+            intrinsicWidth: spec.intrinsicWidth,
+            intrinsicHeight: spec.intrinsicHeight,
+            onProgress: (r) => {
+              report(
+                0.05 + r * 0.34,
+                androidTrimStatus,
+                androidTrimPhaseDetail(spec.sourceFile, r, androidTrimStatus),
+                1,
+              )
+            },
+            onStatus: (status) => {
+              androidTrimStatus = String(status || 'Encoding…')
+            },
+            onDebug: (detail) => maybeReportLoungeVideoUploadDebug('encode', detail),
+          },
+        )
+        uploadFile = androidTrim.file
+        const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
         maybeReportLoungeVideoUploadDebug(
           'encode',
-          'fallback pass-through original (CF Stream transcode)',
+          `done android ${androidTrim.outcome} → ${outMb}MB`,
         )
         recordLoungeVideoPrepOutcome({
-          outcome: 'pass-through',
+          outcome: androidTrim.outcome,
           sourceMb: trimSourceMb,
-          outputMb: trimSourceMb,
+          outputMb: outMb,
           durSec: validatedDurSec,
-          detail: msg.slice(0, 200),
+          detail: androidTrim.detail,
         })
-        report(0.39, 'Compress skipped', 'Uploading original…', 1)
-        uploadFile = spec.sourceFile
-      } else {
+      } catch (trimErr) {
+        const msg = trimErr instanceof Error ? trimErr.message : String(trimErr)
+        maybeReportLoungeVideoUploadDebug('encode', `failed android trim: ${msg}`)
+        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile)) {
+          maybeReportLoungeVideoUploadDebug(
+            'encode',
+            'fallback pass-through original (CF Stream transcode)',
+          )
+          recordLoungeVideoPrepOutcome({
+            outcome: 'pass-through',
+            sourceMb: trimSourceMb,
+            outputMb: trimSourceMb,
+            durSec: validatedDurSec,
+            detail: msg.slice(0, 200),
+          })
+          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          uploadFile = spec.sourceFile
+        } else {
+          recordLoungeVideoPrepOutcome({
+            outcome: 'wasm-failed',
+            sourceMb: trimSourceMb,
+            outputMb: 0,
+            durSec: validatedDurSec,
+            detail: msg.slice(0, 200),
+          })
+          throw trimErr
+        }
+      }
+    } else {
+      report(0.05, 'Encoding…', loungeVideoEncodingDetail(spec.sourceFile, 0), 1)
+      maybeReportLoungeVideoUploadDebug('encode', `start trim ${spec.sourceFile?.name || 'video'}`)
+      try {
+        uploadFile = await trimVideoFileToMp4(spec.sourceFile, spec.startSec, spec.endSec, {
+          signal,
+          crop: c,
+          intrinsicWidth: spec.intrinsicWidth,
+          intrinsicHeight: spec.intrinsicHeight,
+          onProgress: (r) =>
+            report(
+              0.05 + r * 0.34,
+              'Encoding…',
+              loungeVideoEncodingDetail(spec.sourceFile, r),
+              1,
+            ),
+        })
+        const outMb = Math.round((uploadFile.size || 0) / (1024 * 1024))
+        maybeReportLoungeVideoUploadDebug('encode', `done trim → ${outMb}MB`)
         recordLoungeVideoPrepOutcome({
-          outcome: 'wasm-failed',
+          outcome: 'wasm',
           sourceMb: trimSourceMb,
-          outputMb: 0,
+          outputMb: outMb,
           durSec: validatedDurSec,
-          detail: msg.slice(0, 200),
+          detail: `trim ${spec.sourceFile?.name || 'video'}`,
         })
-        throw encodeErr
+      } catch (encodeErr) {
+        const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
+        maybeReportLoungeVideoUploadDebug('encode', `failed trim: ${msg}`)
+        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile)) {
+          maybeReportLoungeVideoUploadDebug(
+            'encode',
+            'fallback pass-through original (CF Stream transcode)',
+          )
+          recordLoungeVideoPrepOutcome({
+            outcome: 'pass-through',
+            sourceMb: trimSourceMb,
+            outputMb: trimSourceMb,
+            durSec: validatedDurSec,
+            detail: msg.slice(0, 200),
+          })
+          report(0.39, 'Compress skipped', 'Uploading original…', 1)
+          uploadFile = spec.sourceFile
+        } else {
+          recordLoungeVideoPrepOutcome({
+            outcome: 'wasm-failed',
+            sourceMb: trimSourceMb,
+            outputMb: 0,
+            durSec: validatedDurSec,
+            detail: msg.slice(0, 200),
+          })
+          throw encodeErr
+        }
       }
     }
   }

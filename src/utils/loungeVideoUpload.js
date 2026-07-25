@@ -172,7 +172,7 @@ export function isLoungeVideoQuicktimeMov(file) {
 
 /**
  * True when a direct pick can upload without on-device re-encode.
- * Trim/crop still runs through wasm (except Android falls through to pass-through on encode fail).
+ * Android trim uses WebCodecs → MediaRecorder (no wasm). Direct Android skips wasm.
  *
  * @param {File} file
  * @param {number} durationSec

@@ -291,6 +291,61 @@ async function probeFfmpegInputStreams(ffmpeg, inputPath, signal) {
   return parseFfmpegInputStreams(logs)
 }
 
+const INPUT_PROBE_TIMEOUT_MS = 45_000
+
+/**
+ * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
+ * @param {string} inputPath
+ * @param {AbortSignal | undefined} signal
+ * @returns {Promise<{ streams: ReturnType<typeof parseFfmpegInputStreams>, timedOut: boolean }>}
+ */
+async function probeFfmpegInputStreamsWithTimeout(ffmpeg, inputPath, signal) {
+  const probeAbort = new AbortController()
+  const onParentAbort = () => probeAbort.abort()
+  signal?.addEventListener('abort', onParentAbort, { once: true })
+
+  let timedOut = false
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer
+  const timeoutPromise = new Promise<{ streams: [], timedOut: true }>((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true
+      probeAbort.abort()
+      resolve({ streams: [], timedOut: true })
+    }, INPUT_PROBE_TIMEOUT_MS)
+  })
+  try {
+    const streams = await Promise.race([
+      probeFfmpegInputStreams(ffmpeg, inputPath, probeAbort.signal).then((s) => ({
+        streams: s,
+        timedOut: false,
+      })),
+      timeoutPromise,
+    ])
+    return streams
+  } catch (err) {
+    if (timedOut || probeAbort.signal.aborted) {
+      return { streams: [], timedOut: true }
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+    signal?.removeEventListener('abort', onParentAbort)
+  }
+}
+
+/**
+ * Use the iPhone spatial ladder when probe shows apac/none on #1, or when wasm demux
+ * reports no decodable audio (common on iOS; also hits renamed .mp4 exports of the same MOV).
+ * @param {boolean} sourceHasAudio
+ * @param {number[]} audioStreamIndices
+ * @param {{ index: number, kind: string, codec: string }[]} probedStreams
+ */
+function shouldUseSpatialAudioLadder(sourceHasAudio, audioStreamIndices, probedStreams) {
+  if (spatialBlockedAudioIndices(probedStreams).includes(1)) return true
+  return sourceHasAudio && audioStreamIndices.length === 0
+}
+
 /**
  * @param {Awaited<ReturnType<typeof getFfmpeg>>} ffmpeg
  * @param {string} outName
@@ -404,9 +459,9 @@ function isLikelyIphoneSpatialMov(file) {
   return isLoungeVideoQuicktimeMov(file)
 }
 
-/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} probedStreams @param {{ allowVideoOnlyFallback?: boolean, forceIphoneSpatialGuess?: boolean }} [opts] */
+/** @param {boolean} sourceHasAudio @param {number[]} audioStreamIndices @param {{ index: number, kind: string, codec: string }[]} probedStreams @param {{ allowVideoOnlyFallback?: boolean, useSpatialAudioLadder?: boolean }} [opts] */
 function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, opts = {}) {
-  const { allowVideoOnlyFallback = false, forceIphoneSpatialGuess = false } = opts
+  const { allowVideoOnlyFallback = false, useSpatialAudioLadder = false } = opts
   const videoOnlyFallback = /** @type {EncodeStrategy[]} */ ([
     { label: 'video-only-mapped', videoOnly: true, forceSsBeforeInput: false, useMaps: true },
     { label: 'video-only-ss', videoOnly: true, forceSsBeforeInput: true, useMaps: true },
@@ -429,7 +484,7 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
     })
   }
 
-  if (spatialBlocked.includes(1) || forceIphoneSpatialGuess) {
+  if (useSpatialAudioLadder) {
     // Copy AAC from stream #2 before re-encode (lighter; wasm AAC encoder can flake on iOS).
     pushStreamStrategy(2, true)
     pushStreamStrategy(2, false)
@@ -461,7 +516,7 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
     })
   }
 
-  if (audioStreamIndices.length > 0 && (spatialBlocked.includes(1) || forceIphoneSpatialGuess)) {
+  if (audioStreamIndices.length > 0 && useSpatialAudioLadder) {
     for (const idx of audioStreamIndices) {
       pushStreamStrategy(idx, true)
     }
@@ -533,7 +588,9 @@ async function wasmReencodeToMp4({
 
   const sourceHasAudio = await probeVideoFileHasAudio(file)
 
+  maybeReportLoungeVideoUploadDebug('encode', 'wasm core loading')
   const ffmpeg = await getFfmpeg()
+  maybeReportLoungeVideoUploadDebug('encode', 'wasm core ready')
 
   const onProg = ({ progress }) => {
     if (typeof onProgress !== 'function') return
@@ -548,6 +605,7 @@ async function wasmReencodeToMp4({
   let encodeProgressBase = 0
   try {
     ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))
+    maybeReportLoungeVideoUploadDebug('encode', `input mounted ${mode}`)
   } catch (mountErr) {
     ffmpeg.off('progress', onProg)
     throw mountErr instanceof Error ? mountErr : new Error(String(mountErr))
@@ -556,26 +614,34 @@ async function wasmReencodeToMp4({
   let audioStreamIndices = []
   /** @type {{ index: number, kind: string, codec: string }[]} */
   let probedStreams = []
+  let inputProbeTimedOut = false
   try {
-    probedStreams = await probeFfmpegInputStreams(ffmpeg, inputPath, signal)
+    maybeReportLoungeVideoUploadDebug('encode', 'input probe start')
+    const probeResult = await probeFfmpegInputStreamsWithTimeout(ffmpeg, inputPath, signal)
+    probedStreams = probeResult.streams
+    inputProbeTimedOut = probeResult.timedOut
     audioStreamIndices = decodableAudioStreamIndices(probedStreams)
     maybeReportLoungeVideoUploadDebug('encode', formatStreamProbeLog(probedStreams))
-    if (probedStreams.length === 0 && isLikelyIphoneSpatialMov(file)) {
-      maybeReportLoungeVideoUploadDebug(
-        'encode',
-        'input probe no ffmpeg stream lines (iOS wasm); assuming spatial+aac MOV',
-      )
+    if (inputProbeTimedOut) {
+      maybeReportLoungeVideoUploadDebug('encode', 'input probe timed out (using spatial ladder guess)')
+    } else if (probedStreams.length === 0) {
+      maybeReportLoungeVideoUploadDebug('encode', 'input probe no ffmpeg stream lines')
     }
     if (audioStreamIndices.length > 0) {
       maybeReportLoungeVideoUploadDebug(
         'encode',
         `probe audio streams [${audioStreamIndices.join(',')}]`,
       )
-    } else {
+    } else if (sourceHasAudio) {
       maybeReportLoungeVideoUploadDebug('encode', 'probe no decodable audio stream index')
     }
+    if (typeof onProgress === 'function') onProgress(encodeProgressBase + 0.02)
   } catch (probeErr) {
     console.warn('[lounge-video-encode] stream probe failed', probeErr)
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      `input probe failed: ${probeErr instanceof Error ? probeErr.message : String(probeErr)}`,
+    )
   }
 
   /** @type {string | null} */
@@ -593,6 +659,7 @@ async function wasmReencodeToMp4({
 
     for (const strategy of strategies) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
       try {
         await ffmpeg.deleteFile(outName)
       } catch {
@@ -715,17 +782,27 @@ async function wasmReencodeToMp4({
   }
 
   const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
-  const forceIphoneSpatialGuess =
-    sourceHasAudio
-    && audioStreamIndices.length === 0
-    && isLikelyIphoneSpatialMov(file)
-  if (forceIphoneSpatialGuess) {
-    maybeReportLoungeVideoUploadDebug('encode', 'iphone spatial mov guess (no decodable audio in probe)')
+  const useSpatialAudioLadder = shouldUseSpatialAudioLadder(
+    sourceHasAudio,
+    audioStreamIndices,
+    probedStreams,
+  )
+  if (useSpatialAudioLadder) {
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      inputProbeTimedOut || probedStreams.length === 0
+        ? 'spatial audio ladder (probe empty/timeout)'
+        : 'spatial audio ladder (apac/none on stream 1)',
+    )
   }
   let strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, {
     allowVideoOnlyFallback: !sourceHasAudio,
-    forceIphoneSpatialGuess,
+    useSpatialAudioLadder,
   })
+  maybeReportLoungeVideoUploadDebug(
+    'encode',
+    `encode plan ${strategies.map((s) => s.label).join(', ') || 'none'}`,
+  )
   if (spatialBlocked.length > 0) {
     maybeReportLoungeVideoUploadDebug(
       'encode',
@@ -747,7 +824,7 @@ async function wasmReencodeToMp4({
       if (browserAudioFile) {
         strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, {
           allowVideoOnlyFallback: false,
-          forceIphoneSpatialGuess,
+          useSpatialAudioLadder,
         })
         strategies.unshift(
           {

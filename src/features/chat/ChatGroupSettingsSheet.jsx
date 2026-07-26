@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { uploadProfileAvatar } from '../profiles/profileGate.js'
 import ProfileAvatarCropModal from '../lounge/ProfileAvatarCropModal.jsx'
@@ -94,6 +94,14 @@ export default function ChatGroupSettingsSheet({
     ? chatCanModerateFanRoom(room, viewerUserId)
     : isOwner
   const canAssignMods = isFanRoom && isOwner
+  const creatorUserId = String(room.creator_user_id || room.created_by || '')
+  /** Fan subs room: subscribers see creator only (not other members). Owner/mod keep full roster. */
+  const isFanRoomSubscriberView = isFanRoom && !canModerateMembers
+  const visibleMembers = useMemo(() => {
+    if (!isFanRoomSubscriberView) return members
+    if (!creatorUserId) return []
+    return members.filter((m) => String(m.user_id) === creatorUserId)
+  }, [members, isFanRoomSubscriberView, creatorUserId])
 
   const [title, setTitle] = useState(String(room.title || ''))
   const [description, setDescription] = useState(String(room.description || ''))
@@ -497,7 +505,7 @@ export default function ChatGroupSettingsSheet({
                   {room.topic_keywords || topicKeywords}
                 </p>
               ) : null}
-              {!membersLoading && members.length > 0 ? (
+              {!isFanRoomSubscriberView && !membersLoading && members.length > 0 ? (
                 <p className="mt-2 text-[12px] text-zinc-600">
                   {members.length} {members.length === 1 ? 'member' : 'members'}
                 </p>
@@ -535,16 +543,22 @@ export default function ChatGroupSettingsSheet({
 
         {/* ── Members ───────────────────────────────────────────── */}
         <SectionLabel>
-          {membersLoading ? 'Members' : members.length > 0 ? `${members.length} member${members.length === 1 ? '' : 's'}` : 'Members'}
+          {membersLoading
+            ? (isFanRoomSubscriberView ? 'Creator' : 'Members')
+            : visibleMembers.length > 0
+              ? (isFanRoomSubscriberView
+                ? 'Creator'
+                : `${members.length} member${members.length === 1 ? '' : 's'}`)
+              : (isFanRoomSubscriberView ? 'Creator' : 'Members')}
         </SectionLabel>
         <div className="mx-4 overflow-hidden rounded-2xl bg-zinc-900/60">
           {membersLoading ? (
             <div className="px-4 py-3.5 text-[13px] text-zinc-500">Loading…</div>
           ) : membersError ? (
             <div className="px-4 py-3.5 text-[13px] leading-snug text-amber-400/90">{membersError}</div>
-          ) : members.length === 0 ? (
-            <div className="px-4 py-3.5 text-[13px] text-zinc-500">No members found.</div>
-          ) : members.map((m, i) => {
+          ) : visibleMembers.length === 0 ? (
+            <div className="px-4 py-3.5 text-[13px] text-zinc-500">{isFanRoomSubscriberView ? 'Creator unavailable.' : 'No members found.'}</div>
+          ) : visibleMembers.map((m, i) => {
             const memberIsMuted = m.moderation_muted_until && new Date(m.moderation_muted_until) > new Date()
             const isMe = m.user_id === viewerUserId
             const isCreator = isFanRoom && String(m.user_id) === String(room.creator_user_id || room.created_by)
@@ -690,7 +704,9 @@ export default function ChatGroupSettingsSheet({
           ) : null}
         </div>
 
-        {/* ── Privacy ───────────────────────────────────────────── */}
+        {/* ── Privacy (classic groups only) ─────────────────────── */}
+        {!isFanRoom ? (
+        <>
         <SectionLabel>Privacy</SectionLabel>
         <SettingsGroup>
           <SettingsToggleRow
@@ -701,6 +717,8 @@ export default function ChatGroupSettingsSheet({
             onToggle={() => onViewerReadReceiptsEnabledChange?.(!viewerReadReceiptsEnabled)}
           />
         </SettingsGroup>
+        </>
+        ) : null}
 
         {/* ── Notifications ─────────────────────────────────────── */}
         <SectionLabel>Notifications</SectionLabel>

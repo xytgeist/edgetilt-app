@@ -306,8 +306,8 @@ import {
   applyLoungeProfilePinToPosts,
   fetchLoungeProfilePosts,
   fetchLoungeProfileRow,
-  loadLoungeProfileScreenPostsRemainder,
   LOUNGE_PROFILE_POST_INITIAL_LIMIT,
+  LOUNGE_PROFILE_POST_PAGE_SIZE,
   mergeLoungeProfilePosts,
 } from './loungeProfileScreenLoad.js'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
@@ -918,6 +918,8 @@ export default function SocialFeed({
   const [profileModalErr, setProfileModalErr] = useState('')
   const [profileModalData, setProfileModalData] = useState(null)
   const [profileModalPosts, setProfileModalPosts] = useState([])
+  const [profileModalPostsHasMore, setProfileModalPostsHasMore] = useState(false)
+  const [profileModalPostsLoadingMore, setProfileModalPostsLoadingMore] = useState(false)
   const [profileModalStartEditing, setProfileModalStartEditing] = useState(false)
   const [profileModalOpenFanPortal, setProfileModalOpenFanPortal] = useState(false)
   const [profileModalFollowListTab, setProfileModalFollowListTab] = useState(null)
@@ -13491,6 +13493,8 @@ export default function SocialFeed({
         ...profileStub,
       })
       setProfileModalPosts([])
+      setProfileModalPostsHasMore(false)
+      setProfileModalPostsLoadingMore(false)
       const reduce =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
@@ -13503,7 +13507,7 @@ export default function SocialFeed({
           setProfileModalErr(profileErr)
         }
 
-        const { posts, postsErr } = await fetchLoungeProfilePosts(
+        const { posts, postsErr, hasMore } = await fetchLoungeProfilePosts(
           supabaseClient,
           userId,
           hydrateCommunityPosts,
@@ -13514,25 +13518,7 @@ export default function SocialFeed({
           setProfileModalErr((prev) => prev || postsErr)
         }
         setProfileModalPosts(posts)
-
-        void (async () => {
-          const { posts: morePosts, postsErr: moreErr } = await loadLoungeProfileScreenPostsRemainder(
-            supabaseClient,
-            userId,
-            hydrateCommunityPosts,
-            posts.length,
-          )
-          if (loadGen !== profileModalLoadGenRef.current) return
-          if (moreErr) {
-            setProfileModalErr((prev) => prev || moreErr)
-            return
-          }
-          if (morePosts.length === 0) return
-          setProfileModalPosts((prev) => {
-            if (loadGen !== profileModalLoadGenRef.current) return prev
-            return mergeLoungeProfilePosts(prev, morePosts)
-          })
-        })()
+        setProfileModalPostsHasMore(hasMore)
       } catch (e) {
         if (loadGen !== profileModalLoadGenRef.current) return
         setProfileModalErr(e instanceof Error ? e.message : 'Could not load profile.')
@@ -13551,6 +13537,47 @@ export default function SocialFeed({
       supabaseClient,
     ]
   )
+
+  const loadMoreProfileModalPosts = useCallback(async () => {
+    const userId = String(profileModalData?.user_id || '').trim()
+    if (!userId || profileModalPostsLoadingMore || !profileModalPostsHasMore) return
+    const loadGen = profileModalLoadGenRef.current
+    let offset = 0
+    setProfileModalPosts((prev) => {
+      offset = prev.length
+      return prev
+    })
+    setProfileModalPostsLoadingMore(true)
+    try {
+      const { posts: morePosts, hasMore, postsErr } = await fetchLoungeProfilePosts(
+        supabaseClient,
+        userId,
+        hydrateCommunityPosts,
+        { limit: LOUNGE_PROFILE_POST_PAGE_SIZE, offset },
+      )
+      if (loadGen !== profileModalLoadGenRef.current) return
+      if (postsErr) {
+        setProfileModalErr((prev) => prev || postsErr)
+      }
+      setProfileModalPosts((prev) => mergeLoungeProfilePosts(prev, morePosts))
+      setProfileModalPostsHasMore(hasMore)
+    } catch (e) {
+      if (loadGen !== profileModalLoadGenRef.current) return
+      setProfileModalErr((prev) =>
+        prev || (e instanceof Error ? e.message : 'Could not load more posts.'),
+      )
+    } finally {
+      if (loadGen === profileModalLoadGenRef.current) {
+        setProfileModalPostsLoadingMore(false)
+      }
+    }
+  }, [
+    hydrateCommunityPosts,
+    profileModalData?.user_id,
+    profileModalPostsHasMore,
+    profileModalPostsLoadingMore,
+    supabaseClient,
+  ])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !composerUserId || !composerAuthResolved || loungeReadOnly) return
@@ -13600,6 +13627,8 @@ export default function SocialFeed({
             userId,
             profile: stub,
             posts: [],
+            postsHasMore: false,
+            postsLoadingMore: false,
             loading: true,
             error: '',
           },
@@ -13620,7 +13649,7 @@ export default function SocialFeed({
             ),
           )
 
-          const { posts, postsErr } = await fetchLoungeProfilePosts(
+          const { posts, postsErr, hasMore } = await fetchLoungeProfilePosts(
             supabaseClient,
             userId,
             hydrateCommunityPosts,
@@ -13633,28 +13662,13 @@ export default function SocialFeed({
                     ...layer,
                     profile: profile || layer.profile,
                     posts,
+                    postsHasMore: hasMore,
                     loading: false,
                     error: postsErr || profileErr || '',
                   }
                 : layer,
             ),
           )
-
-          void (async () => {
-            const { posts: morePosts, postsErr: moreErr } = await loadLoungeProfileScreenPostsRemainder(
-              supabaseClient,
-              userId,
-              hydrateCommunityPosts,
-              posts.length,
-            )
-            if (moreErr || morePosts.length === 0) return
-            setProfileOverlayStack((prev) =>
-              prev.map((layer) => {
-                if (layer.userId !== userId) return layer
-                return { ...layer, posts: mergeLoungeProfilePosts(layer.posts, morePosts) }
-              }),
-            )
-          })()
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Could not load profile.'
           setProfileOverlayStack((prev) =>
@@ -13666,6 +13680,56 @@ export default function SocialFeed({
       })()
     },
     [hydrateCommunityPosts, profileEntityStub, profileModalData?.user_id, supabaseClient],
+  )
+
+  const loadMoreProfileOverlayPosts = useCallback(
+    async (uid) => {
+      const targetId = String(uid || '').trim()
+      if (!targetId) return
+      let snapshot = null
+      setProfileOverlayStack((prev) => {
+        const layer = prev.find((l) => l.userId === targetId)
+        if (!layer || layer.postsLoadingMore || !layer.postsHasMore) return prev
+        snapshot = layer
+        return prev.map((l) =>
+          l.userId === targetId ? { ...l, postsLoadingMore: true } : l,
+        )
+      })
+      if (!snapshot) return
+      try {
+        const { posts: morePosts, hasMore, postsErr } = await fetchLoungeProfilePosts(
+          supabaseClient,
+          targetId,
+          hydrateCommunityPosts,
+          {
+            limit: LOUNGE_PROFILE_POST_PAGE_SIZE,
+            offset: snapshot.posts.length,
+          },
+        )
+        setProfileOverlayStack((prev) =>
+          prev.map((layer) => {
+            if (layer.userId !== targetId) return layer
+            return {
+              ...layer,
+              posts: mergeLoungeProfilePosts(layer.posts, morePosts),
+              postsHasMore: hasMore,
+              postsLoadingMore: false,
+              error: postsErr || layer.error,
+            }
+          }),
+        )
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Could not load more posts.'
+        setProfileOverlayStack((prev) =>
+          prev.map((layer) =>
+            layer.userId === targetId
+              ? { ...layer, postsLoadingMore: false, error: msg || layer.error }
+              : layer,
+          ),
+        )
+      }
+    },
+    [hydrateCommunityPosts, supabaseClient],
   )
 
   const popProfileOverlay = useCallback(() => {
@@ -17321,6 +17385,9 @@ export default function SocialFeed({
           supabaseClient={supabaseClient}
           profile={profileModalData}
           posts={profileModalPosts}
+          postsHasMore={profileModalPostsHasMore}
+          postsLoadingMore={profileModalPostsLoadingMore}
+          onLoadMorePosts={loadMoreProfileModalPosts}
           loading={profileModalLoading}
           error={profileModalErr}
           isOwnProfile={Boolean(composerUserId && profileModalData.user_id === composerUserId)}
@@ -17381,6 +17448,9 @@ export default function SocialFeed({
               supabaseClient={supabaseClient}
               profile={layer.profile}
               posts={layer.posts}
+              postsHasMore={layer.postsHasMore}
+              postsLoadingMore={layer.postsLoadingMore}
+              onLoadMorePosts={() => loadMoreProfileOverlayPosts(layer.userId)}
               loading={layer.loading}
               error={layer.error}
               isOwnProfile={Boolean(composerUserId && layer.userId === composerUserId)}

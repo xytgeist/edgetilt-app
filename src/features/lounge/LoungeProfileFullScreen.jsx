@@ -64,8 +64,9 @@ import {
   applyLoungeProfilePinToPosts,
   fetchLoungeProfilePosts,
   fetchLoungeProfileRow,
-  loadLoungeProfileScreenPostsRemainder,
   LOUNGE_PROFILE_POST_INITIAL_LIMIT,
+  LOUNGE_PROFILE_POST_PAGE_SIZE,
+  LOUNGE_PROFILE_TAB_PAGE_SIZE,
   mergeLoungeProfilePosts,
 } from './loungeProfileScreenLoad.js'
 import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
@@ -192,6 +193,138 @@ function feedCommentPathIds(comment, commentById) {
     cur = pid ? commentById.get(pid) : null
   }
   return chain
+}
+
+async function fetchProfileRepliesPage(
+  supabaseClient,
+  {
+    profileUserId,
+    profile,
+    offset,
+    limit,
+    hydratePosts,
+    viewerUserId,
+    loungeViewerIsStaff,
+    fanEntitlements,
+  },
+) {
+  const { data: commentRows, error: ce } = await supabaseClient
+    .from('feed_comments')
+    .select(PROFILE_COMMENT_SELECT)
+    .eq('user_id', profileUserId)
+    .is('hidden_at', null)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+  if (ce) throw ce
+  const comments = commentRows || []
+  if (comments.length === 0) {
+    return { items: [], hasMore: false }
+  }
+  const postIds = []
+  const seenPostIds = new Set()
+  for (const row of comments) {
+    const pid = row.post_id
+    if (pid == null || pid === '') continue
+    const key = String(pid)
+    if (seenPostIds.has(key)) continue
+    seenPostIds.add(key)
+    postIds.push(pid)
+  }
+  if (postIds.length === 0) {
+    return { items: [], hasMore: comments.length >= limit }
+  }
+  const postRows = await fetchLoungeCommunityFeedPostsForViewer(supabaseClient, postIds)
+  const hydratedPosts = await hydratePosts(postRows || [])
+  const postById = new Map((hydratedPosts || []).map((p) => [String(p.id), p]))
+  const expandedRows = await expandFeedCommentsWithAncestors(supabaseClient, comments)
+  const hydratedComments = await hydrateFeedCommentsWithProfiles(supabaseClient, expandedRows)
+  const commentById = new Map(hydratedComments.map((c) => [String(c.id), c]))
+  const authorProfile =
+    profile && typeof profile === 'object'
+      ? {
+          user_id: profile.user_id,
+          display_name: profile.display_name,
+          handle: profile.handle,
+          avatar_url: profile.avatar_url,
+          role: profile.role,
+          is_og: profile.is_og,
+        }
+      : null
+  const items = []
+  for (const comment of comments) {
+    const post = postById.get(String(comment.post_id))
+    if (!post?.id) continue
+    const focusComment = authorProfile
+      ? { ...(commentById.get(String(comment.id)) || comment), author_profile: authorProfile }
+      : commentById.get(String(comment.id)) || comment
+    const pathIds = feedCommentPathIds(focusComment, commentById)
+    const threadComments = pathIds
+      .map((id) => commentById.get(String(id)))
+      .filter(Boolean)
+      .map((row) =>
+        String(row.id) === String(focusComment.id) && authorProfile
+          ? { ...row, author_profile: authorProfile }
+          : row,
+      )
+    items.push({
+      comment: focusComment,
+      post,
+      pathIds,
+      threadComments,
+    })
+  }
+  const replyCtx = {
+    viewerUserId,
+    viewerIsStaff: loungeViewerIsStaff,
+    fanEntitlements,
+  }
+  const visibleItems = items.filter((it) => loungeProfileReplyItemVisible(it, profileUserId, replyCtx))
+  return { items: visibleItems, hasMore: comments.length >= limit, fetchedCount: comments.length }
+}
+
+async function fetchProfileInteractionPostsPage(
+  supabaseClient,
+  { profileUserId, tab, offset, limit, hydratePosts },
+) {
+  const linkTable = tab === 'likes' ? 'post_likes' : 'post_bookmarks'
+  const { data: links, error: le } = await supabaseClient
+    .from(linkTable)
+    .select('post_id, created_at')
+    .eq('user_id', profileUserId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+  if (le) throw le
+  const linkRows = links || []
+  if (linkRows.length === 0) {
+    return { posts: [], hasMore: false }
+  }
+  const orderedIds = []
+  const seen = new Set()
+  for (const row of linkRows) {
+    const pid = row.post_id
+    if (pid == null || pid === '') continue
+    const key = String(pid)
+    if (seen.has(key)) continue
+    seen.add(key)
+    orderedIds.push(pid)
+  }
+  if (orderedIds.length === 0) {
+    return { posts: [], hasMore: linkRows.length >= limit }
+  }
+  const { data: postRows, error: pe } = await supabaseClient
+    .from('community_feed_posts')
+    .select(PROFILE_LIKED_POST_SELECT)
+    .in('id', orderedIds)
+    .is('hidden_at', null)
+  if (pe) throw pe
+  const rank = new Map(orderedIds.map((id, i) => [String(id), i]))
+  const sorted = (postRows || []).slice().sort((a, b) => {
+    const ia = rank.get(String(a.id)) ?? 9999
+    const ib = rank.get(String(b.id)) ?? 9999
+    return ia - ib
+  })
+  const hydrated = await hydratePosts(sorted)
+  return { posts: hydrated || [], hasMore: linkRows.length >= limit, fetchedCount: linkRows.length }
 }
 
 const PROFILE_HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
@@ -529,6 +662,11 @@ export default function LoungeProfileFullScreen({
   onOpenFanSubscriptionSettings = null,
   /** One-shot: open Fan hub modal when own profile is visible (e.g. `?fanPortal=1`). */
   requestOpenFanPortal = false,
+  /** Posts tab: more pages available (parent-owned list). */
+  postsHasMore = false,
+  postsLoadingMore = false,
+  /** Load next Posts page when sentinel intersects. */
+  onLoadMorePosts = null,
 }) {
   const [tab, setTab] = useState('posts')
   const [adminRoleBusy, setAdminRoleBusy] = useState(false)
@@ -538,10 +676,17 @@ export default function LoungeProfileFullScreen({
   const [targetSlotsEntitlements, setTargetSlotsEntitlements] = useState(/** @type {Record<string, boolean> | null} */ (null))
   const [interactionPosts, setInteractionPosts] = useState([])
   const [interactionLoading, setInteractionLoading] = useState(false)
+  const [interactionLoadingMore, setInteractionLoadingMore] = useState(false)
+  const [interactionHasMore, setInteractionHasMore] = useState(false)
   const [interactionErr, setInteractionErr] = useState('')
   const [profileReplies, setProfileReplies] = useState([])
   const [profileRepliesLoading, setProfileRepliesLoading] = useState(false)
+  const [profileRepliesLoadingMore, setProfileRepliesLoadingMore] = useState(false)
+  const [profileRepliesHasMore, setProfileRepliesHasMore] = useState(false)
   const [profileRepliesErr, setProfileRepliesErr] = useState('')
+  const profileRepliesFetchOffsetRef = useRef(0)
+  const interactionFetchOffsetRef = useRef(0)
+  const profileLoadMoreSentinelRef = useRef(null)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -888,9 +1033,15 @@ export default function LoungeProfileFullScreen({
     setInteractionPosts([])
     setInteractionErr('')
     setInteractionLoading(false)
+    setInteractionLoadingMore(false)
+    setInteractionHasMore(false)
     setProfileReplies([])
     setProfileRepliesErr('')
     setProfileRepliesLoading(false)
+    setProfileRepliesLoadingMore(false)
+    setProfileRepliesHasMore(false)
+    profileRepliesFetchOffsetRef.current = 0
+    interactionFetchOffsetRef.current = 0
   }, [open, profileUserId])
 
   useEffect(() => {
@@ -926,63 +1077,44 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) {
       setInteractionLoading(false)
+      setInteractionLoadingMore(false)
       return
     }
     if (typeof hydratePosts !== 'function') {
       setInteractionErr('Could not load saved posts.')
       setInteractionPosts([])
+      setInteractionHasMore(false)
       setInteractionLoading(false)
       return
     }
     let cancelled = false
     setInteractionLoading(true)
+    setInteractionLoadingMore(false)
     setInteractionErr('')
+    setInteractionHasMore(false)
+    interactionFetchOffsetRef.current = 0
     ;(async () => {
       try {
-        const linkTable = tab === 'likes' ? 'post_likes' : 'post_bookmarks'
-        const { data: links, error: le } = await supabaseClient
-          .from(linkTable)
-          .select('post_id, created_at')
-          .eq('user_id', profileUserId)
-          .order('created_at', { ascending: false })
-          .limit(80)
-        if (le) throw le
-        const orderedIds = []
-        const seen = new Set()
-        for (const row of links || []) {
-          const pid = row.post_id
-          if (pid == null || pid === '') continue
-          const key = String(pid)
-          if (seen.has(key)) continue
-          seen.add(key)
-          orderedIds.push(pid)
-        }
-        if (orderedIds.length === 0) {
-          if (!cancelled) setInteractionPosts([])
-          return
-        }
-        const { data: postRows, error: pe } = await supabaseClient
-          .from('community_feed_posts')
-          .select(PROFILE_LIKED_POST_SELECT)
-          .in('id', orderedIds)
-          .is('hidden_at', null)
-        if (pe) throw pe
-        const rank = new Map(orderedIds.map((id, i) => [String(id), i]))
-        const sorted = (postRows || []).slice().sort((a, b) => {
-          const ia = rank.get(String(a.id)) ?? 9999
-          const ib = rank.get(String(b.id)) ?? 9999
-          return ia - ib
+        const { posts: pagePosts, hasMore, fetchedCount } = await fetchProfileInteractionPostsPage(supabaseClient, {
+          profileUserId,
+          tab,
+          offset: 0,
+          limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
+          hydratePosts,
         })
-        const hydrated = await hydratePosts(sorted)
-        if (!cancelled) setInteractionPosts(hydrated || [])
+        if (cancelled) return
+        setInteractionPosts(pagePosts)
+        setInteractionHasMore(hasMore)
+        interactionFetchOffsetRef.current = fetchedCount || 0
         const refreshFn = postCardProps?.refreshPostInteractions
-        if (!cancelled && typeof refreshFn === 'function' && hydrated?.length) {
-          void refreshFn([...collectLoungePostInteractionHydrateIds(hydrated)])
+        if (typeof refreshFn === 'function' && pagePosts?.length) {
+          void refreshFn([...collectLoungePostInteractionHydrateIds(pagePosts)])
         }
       } catch (e) {
         if (!cancelled) {
           setInteractionErr(e?.message || 'Could not load.')
           setInteractionPosts([])
+          setInteractionHasMore(false)
         }
       } finally {
         if (!cancelled) setInteractionLoading(false)
@@ -993,100 +1125,95 @@ export default function LoungeProfileFullScreen({
     }
   }, [open, tab, isOwnProfile, profileUserId, supabaseClient, hydratePosts, postCardProps?.refreshPostInteractions])
 
+  const loadMoreInteractionPosts = useCallback(async () => {
+    if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) return
+    if (!interactionHasMore || interactionLoading || interactionLoadingMore) return
+    if (typeof hydratePosts !== 'function') return
+    setInteractionLoadingMore(true)
+    try {
+      const offset = interactionFetchOffsetRef.current
+      const { posts: pagePosts, hasMore, fetchedCount } = await fetchProfileInteractionPostsPage(supabaseClient, {
+        profileUserId,
+        tab,
+        offset,
+        limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
+        hydratePosts,
+      })
+      interactionFetchOffsetRef.current = offset + (fetchedCount || 0)
+      setInteractionPosts((prev) => {
+        const seen = new Set(prev.map((p) => String(p.id)))
+        const merged = [...prev]
+        for (const row of pagePosts || []) {
+          if (!row?.id || seen.has(String(row.id))) continue
+          seen.add(String(row.id))
+          merged.push(row)
+        }
+        return merged
+      })
+      setInteractionHasMore(hasMore)
+      const refreshFn = postCardProps?.refreshPostInteractions
+      if (typeof refreshFn === 'function' && pagePosts?.length) {
+        void refreshFn([...collectLoungePostInteractionHydrateIds(pagePosts)])
+      }
+    } catch (e) {
+      setInteractionErr(e?.message || 'Could not load more.')
+    } finally {
+      setInteractionLoadingMore(false)
+    }
+  }, [
+    open,
+    tab,
+    isOwnProfile,
+    profileUserId,
+    interactionHasMore,
+    interactionLoading,
+    interactionLoadingMore,
+    supabaseClient,
+    hydratePosts,
+    postCardProps?.refreshPostInteractions,
+  ])
+
   useEffect(() => {
     if (!open || !profileUserId || tab !== 'replies') {
       setProfileRepliesLoading(false)
+      setProfileRepliesLoadingMore(false)
       return
     }
     if (typeof hydratePosts !== 'function') {
       setProfileRepliesErr('Could not load replies.')
       setProfileReplies([])
+      setProfileRepliesHasMore(false)
       setProfileRepliesLoading(false)
       return
     }
     let cancelled = false
     setProfileRepliesLoading(true)
+    setProfileRepliesLoadingMore(false)
     setProfileRepliesErr('')
+    setProfileRepliesHasMore(false)
+    profileRepliesFetchOffsetRef.current = 0
     ;(async () => {
       try {
-        const { data: commentRows, error: ce } = await supabaseClient
-          .from('feed_comments')
-          .select(PROFILE_COMMENT_SELECT)
-          .eq('user_id', profileUserId)
-          .is('hidden_at', null)
-          .order('created_at', { ascending: false })
-          .limit(50)
-        if (ce) throw ce
-        const comments = commentRows || []
-        if (comments.length === 0) {
-          if (!cancelled) setProfileReplies([])
-          return
-        }
-        const postIds = []
-        const seenPostIds = new Set()
-        for (const row of comments) {
-          const pid = row.post_id
-          if (pid == null || pid === '') continue
-          const key = String(pid)
-          if (seenPostIds.has(key)) continue
-          seenPostIds.add(key)
-          postIds.push(pid)
-        }
-        if (postIds.length === 0) {
-          if (!cancelled) setProfileReplies([])
-          return
-        }
-        const postRows = await fetchLoungeCommunityFeedPostsForViewer(supabaseClient, postIds)
-        const hydratedPosts = await hydratePosts(postRows || [])
-        const postById = new Map((hydratedPosts || []).map((p) => [String(p.id), p]))
-        const expandedRows = await expandFeedCommentsWithAncestors(supabaseClient, comments)
-        const hydratedComments = await hydrateFeedCommentsWithProfiles(supabaseClient, expandedRows)
-        const commentById = new Map(hydratedComments.map((c) => [String(c.id), c]))
-        const authorProfile =
-          profile && typeof profile === 'object'
-            ? {
-                user_id: profile.user_id,
-                display_name: profile.display_name,
-                handle: profile.handle,
-                avatar_url: profile.avatar_url,
-                role: profile.role,
-                is_og: profile.is_og,
-              }
-            : null
-        const items = []
-        for (const comment of comments) {
-          const post = postById.get(String(comment.post_id))
-          if (!post?.id) continue
-          const focusComment = authorProfile
-            ? { ...(commentById.get(String(comment.id)) || comment), author_profile: authorProfile }
-            : commentById.get(String(comment.id)) || comment
-          const pathIds = feedCommentPathIds(focusComment, commentById)
-          const threadComments = pathIds
-            .map((id) => commentById.get(String(id)))
-            .filter(Boolean)
-            .map((row) =>
-              String(row.id) === String(focusComment.id) && authorProfile
-                ? { ...row, author_profile: authorProfile }
-                : row,
-            )
-          items.push({
-            comment: focusComment,
-            post,
-            pathIds,
-            threadComments,
-          })
-        }
-        const replyCtx = {
+        const { items, hasMore, fetchedCount } = await fetchProfileRepliesPage(supabaseClient, {
+          profileUserId,
+          profile,
+          offset: 0,
+          limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
+          hydratePosts,
           viewerUserId: viewerUserId || postCardProps?.viewerUserId,
-          viewerIsStaff: postCardProps?.loungeViewerIsStaff,
+          loungeViewerIsStaff: postCardProps?.loungeViewerIsStaff,
           fanEntitlements: postCardProps?.fanEntitlements,
+        })
+        if (!cancelled) {
+          setProfileReplies(items)
+          setProfileRepliesHasMore(hasMore)
+          profileRepliesFetchOffsetRef.current = fetchedCount || 0
         }
-        const visibleItems = items.filter((it) => loungeProfileReplyItemVisible(it, profileUserId, replyCtx))
-        if (!cancelled) setProfileReplies(visibleItems)
       } catch (e) {
         if (!cancelled) {
           setProfileRepliesErr(e?.message || 'Could not load replies.')
           setProfileReplies([])
+          setProfileRepliesHasMore(false)
         }
       } finally {
         if (!cancelled) setProfileRepliesLoading(false)
@@ -1095,7 +1222,117 @@ export default function LoungeProfileFullScreen({
     return () => {
       cancelled = true
     }
-  }, [open, tab, profileUserId, supabaseClient, hydratePosts, profile, viewerUserId, postCardProps?.viewerUserId, postCardProps?.loungeViewerIsStaff, postCardProps?.fanEntitlements])
+  }, [
+    open,
+    tab,
+    profileUserId,
+    supabaseClient,
+    hydratePosts,
+    profile,
+    viewerUserId,
+    postCardProps?.viewerUserId,
+    postCardProps?.loungeViewerIsStaff,
+    postCardProps?.fanEntitlements,
+  ])
+
+  const loadMoreProfileReplies = useCallback(async () => {
+    if (!open || !profileUserId || tab !== 'replies') return
+    if (!profileRepliesHasMore || profileRepliesLoading || profileRepliesLoadingMore) return
+    if (typeof hydratePosts !== 'function') return
+    setProfileRepliesLoadingMore(true)
+    try {
+      const offset = profileRepliesFetchOffsetRef.current
+      const { items, hasMore, fetchedCount } = await fetchProfileRepliesPage(supabaseClient, {
+        profileUserId,
+        profile,
+        offset,
+        limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
+        hydratePosts,
+        viewerUserId: viewerUserId || postCardProps?.viewerUserId,
+        loungeViewerIsStaff: postCardProps?.loungeViewerIsStaff,
+        fanEntitlements: postCardProps?.fanEntitlements,
+      })
+      profileRepliesFetchOffsetRef.current = offset + (fetchedCount || 0)
+      setProfileReplies((prev) => {
+        const seen = new Set(prev.map((it) => String(it.comment?.id)))
+        const merged = [...prev]
+        for (const row of items || []) {
+          const cid = row?.comment?.id ? String(row.comment.id) : ''
+          if (!cid || seen.has(cid)) continue
+          seen.add(cid)
+          merged.push(row)
+        }
+        return merged
+      })
+      setProfileRepliesHasMore(hasMore)
+    } catch (e) {
+      setProfileRepliesErr(e?.message || 'Could not load more replies.')
+    } finally {
+      setProfileRepliesLoadingMore(false)
+    }
+  }, [
+    open,
+    tab,
+    profileUserId,
+    profile,
+    profileRepliesHasMore,
+    profileRepliesLoading,
+    profileRepliesLoadingMore,
+    supabaseClient,
+    hydratePosts,
+    viewerUserId,
+    postCardProps?.viewerUserId,
+    postCardProps?.loungeViewerIsStaff,
+    postCardProps?.fanEntitlements,
+  ])
+
+  const profileTabHasMore =
+    tab === 'posts'
+      ? postsHasMore
+      : tab === 'replies'
+        ? profileRepliesHasMore
+        : tab === 'likes' || tab === 'bookmarks'
+          ? interactionHasMore
+          : false
+
+  const profileTabLoadingMore =
+    tab === 'posts'
+      ? postsLoadingMore
+      : tab === 'replies'
+        ? profileRepliesLoadingMore
+        : tab === 'likes' || tab === 'bookmarks'
+          ? interactionLoadingMore
+          : false
+
+  const loadMoreActiveProfileTab = useCallback(() => {
+    if (tab === 'posts') {
+      if (typeof onLoadMorePosts === 'function') void onLoadMorePosts()
+      return
+    }
+    if (tab === 'replies') {
+      void loadMoreProfileReplies()
+      return
+    }
+    if (tab === 'likes' || tab === 'bookmarks') {
+      void loadMoreInteractionPosts()
+    }
+  }, [tab, onLoadMorePosts, loadMoreProfileReplies, loadMoreInteractionPosts])
+
+  useEffect(() => {
+    if (!open || !profileTabHasMore || profileTabLoadingMore) return
+    const root = profileBodyScrollRef.current
+    const node = profileLoadMoreSentinelRef.current
+    if (!root || !node || typeof window === 'undefined' || !('IntersectionObserver' in window)) return
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        const first = entries?.[0]
+        if (first?.isIntersecting) loadMoreActiveProfileTab()
+      },
+      { root, rootMargin: '300px 0px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [open, tab, profileTabHasMore, profileTabLoadingMore, loadMoreActiveProfileTab])
 
   useEffect(() => {
     if (!open) {
@@ -1917,6 +2154,8 @@ export default function LoungeProfileFullScreen({
           userId: uid,
           profile: { user_id: uid, ...stub },
           posts: [],
+          postsHasMore: false,
+          postsLoadingMore: false,
           loading: true,
           error: '',
         },
@@ -1936,7 +2175,7 @@ export default function LoungeProfileFullScreen({
             ),
           )
 
-          const { posts, postsErr } = await fetchLoungeProfilePosts(supabaseClient, uid, hydratePosts, {
+          const { posts, postsErr, hasMore } = await fetchLoungeProfilePosts(supabaseClient, uid, hydratePosts, {
             limit: LOUNGE_PROFILE_POST_INITIAL_LIMIT,
           })
           setNestedProfileStack((prev) =>
@@ -1946,28 +2185,13 @@ export default function LoungeProfileFullScreen({
                     ...layer,
                     profile: profile || layer.profile,
                     posts,
+                    postsHasMore: hasMore,
                     loading: false,
                     error: postsErr || profileErr || '',
                   }
                 : layer,
             ),
           )
-
-          void (async () => {
-            const { posts: morePosts, postsErr: moreErr } = await loadLoungeProfileScreenPostsRemainder(
-              supabaseClient,
-              uid,
-              hydratePosts,
-              posts.length,
-            )
-            if (moreErr || morePosts.length === 0) return
-            setNestedProfileStack((prev) =>
-              prev.map((layer) => {
-                if (layer.userId !== uid) return layer
-                return { ...layer, posts: mergeLoungeProfilePosts(layer.posts, morePosts) }
-              }),
-            )
-          })()
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Could not load profile.'
           setNestedProfileStack((prev) =>
@@ -1977,6 +2201,56 @@ export default function LoungeProfileFullScreen({
           )
         }
       })()
+    },
+    [hydratePosts, supabaseClient],
+  )
+
+  const loadMoreNestedProfilePosts = useCallback(
+    async (uid) => {
+      const targetId = String(uid || '').trim()
+      if (!targetId || !hydratePosts) return
+      let snapshot = null
+      setNestedProfileStack((prev) => {
+        const layer = prev.find((l) => l.userId === targetId)
+        if (!layer || layer.postsLoadingMore || !layer.postsHasMore) return prev
+        snapshot = layer
+        return prev.map((l) =>
+          l.userId === targetId ? { ...l, postsLoadingMore: true } : l,
+        )
+      })
+      if (!snapshot) return
+      try {
+        const { posts: morePosts, hasMore, postsErr } = await fetchLoungeProfilePosts(
+          supabaseClient,
+          targetId,
+          hydratePosts,
+          {
+            limit: LOUNGE_PROFILE_POST_PAGE_SIZE,
+            offset: snapshot.posts.length,
+          },
+        )
+        setNestedProfileStack((prev) =>
+          prev.map((layer) => {
+            if (layer.userId !== targetId) return layer
+            return {
+              ...layer,
+              posts: mergeLoungeProfilePosts(layer.posts, morePosts),
+              postsHasMore: hasMore,
+              postsLoadingMore: false,
+              error: postsErr || layer.error,
+            }
+          }),
+        )
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Could not load more posts.'
+        setNestedProfileStack((prev) =>
+          prev.map((layer) =>
+            layer.userId === targetId
+              ? { ...layer, postsLoadingMore: false, error: msg || layer.error }
+              : layer,
+          ),
+        )
+      }
     },
     [hydratePosts, supabaseClient],
   )
@@ -2690,6 +2964,12 @@ export default function LoungeProfileFullScreen({
                   })
                 )
               ) : null}
+              {profileTabHasMore ? (
+                <div ref={profileLoadMoreSentinelRef} className="h-2 w-full" aria-hidden />
+              ) : null}
+              {profileTabLoadingMore ? (
+                <div className="px-3 py-4 text-center text-[13px] text-zinc-500">Loading more…</div>
+              ) : null}
               </LoungeFeedVideoAutoplayProvider>
             </div>
           </div>
@@ -2752,6 +3032,9 @@ export default function LoungeProfileFullScreen({
               supabaseClient={supabaseClient}
               profile={layer.profile}
               posts={layer.posts}
+              postsHasMore={layer.postsHasMore}
+              postsLoadingMore={layer.postsLoadingMore}
+              onLoadMorePosts={() => loadMoreNestedProfilePosts(layer.userId)}
               loading={layer.loading}
               error={layer.error}
               isOwnProfile={Boolean(viewerUserId && layer.userId === viewerUserId)}

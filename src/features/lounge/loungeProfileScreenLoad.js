@@ -1,8 +1,14 @@
 /** First paint: fewer posts to hydrate before the tab feels ready. */
 export const LOUNGE_PROFILE_POST_INITIAL_LIMIT = 10
 
-/** Max posts kept on the profile Posts tab after background fill. */
-export const LOUNGE_PROFILE_POST_MAX_LIMIT = 30
+/** Page size for profile Posts tab infinite scroll (server RPC caps at 60). */
+export const LOUNGE_PROFILE_POST_PAGE_SIZE = 20
+
+/** Max rows per `lounge_profile_feed_posts_for_viewer` call (Postgres RPC). */
+export const LOUNGE_PROFILE_POST_RPC_MAX = 60
+
+/** Page size for profile Replies / Likes / Bookmarks tabs. */
+export const LOUNGE_PROFILE_TAB_PAGE_SIZE = 20
 
 const PROFILE_SELECT_FULL =
   'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og'
@@ -103,18 +109,14 @@ export async function fetchLoungeProfilePosts(
   supabaseClient,
   userId,
   hydratePosts,
-  { limit = LOUNGE_PROFILE_POST_INITIAL_LIMIT, offset = 0 } = {},
+  { limit = LOUNGE_PROFILE_POST_PAGE_SIZE, offset = 0 } = {},
 ) {
   const uid = String(userId || '').trim()
   if (!uid) {
-    return { posts: [], postsErr: 'Missing profile id.' }
+    return { posts: [], postsErr: 'Missing profile id.', hasMore: false }
   }
 
-  const safeLimit = Math.max(0, Math.min(limit, LOUNGE_PROFILE_POST_MAX_LIMIT))
-  if (safeLimit === 0) {
-    return { posts: [], postsErr: '' }
-  }
-
+  const safeLimit = Math.max(1, Math.min(limit, LOUNGE_PROFILE_POST_RPC_MAX))
   const from = Math.max(0, offset)
 
   const { data: postRows, error: postsErr } = await supabaseClient.rpc(
@@ -126,36 +128,15 @@ export async function fetchLoungeProfilePosts(
     },
   )
 
+  const rows = postRows || []
   const hydrated =
-    typeof hydratePosts === 'function' ? await hydratePosts(postRows || []) : postRows || []
+    typeof hydratePosts === 'function' ? await hydratePosts(rows) : rows
 
   return {
     posts: sortLoungeProfilePosts(hydrated),
     postsErr: postsErr?.message || '',
+    hasMore: rows.length >= safeLimit,
   }
-}
-
-/**
- * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {string} userId
- * @param {(rows: object[]) => Promise<object[]>} hydratePosts
- * @param {number} alreadyLoaded
- */
-export async function loadLoungeProfileScreenPostsRemainder(
-  supabaseClient,
-  userId,
-  hydratePosts,
-  alreadyLoaded,
-) {
-  const loaded = Math.max(0, alreadyLoaded)
-  const remaining = LOUNGE_PROFILE_POST_MAX_LIMIT - loaded
-  if (remaining <= 0) {
-    return { posts: [], postsErr: '' }
-  }
-  return fetchLoungeProfilePosts(supabaseClient, userId, hydratePosts, {
-    limit: remaining,
-    offset: loaded,
-  })
 }
 
 /** Merge extra profile posts without losing pin-first order. */
@@ -172,7 +153,6 @@ export function mergeLoungeProfilePosts(existing, more) {
 
 /**
  * Profile row + first post page (for nested / overlay loaders that update once).
- * Prefer {@link fetchLoungeProfileRow} + {@link fetchLoungeProfilePosts} when the sheet is already visible.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} userId
@@ -188,13 +168,15 @@ export async function loadLoungeProfileScreenData(
   { initialPostLimit = LOUNGE_PROFILE_POST_INITIAL_LIMIT } = {},
 ) {
   const { profile, profileErr } = await fetchLoungeProfileRow(supabaseClient, userId, profileStub)
-  const { posts, postsErr } = await fetchLoungeProfilePosts(supabaseClient, userId, hydratePosts, {
+  const { posts, postsErr, hasMore } = await fetchLoungeProfilePosts(supabaseClient, userId, hydratePosts, {
     limit: initialPostLimit,
+    offset: 0,
   })
 
   return {
     profile,
     posts,
+    postsHasMore: hasMore,
     postsErr: postsErr || profileErr || '',
   }
 }

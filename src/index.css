@@ -4457,6 +4457,15 @@ html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
   color: rgb(180 83 9) !important;
 }
 
+/* Log Play sheet body — scroll when needed, no visible scrollbar gutter */
+[data-log-play-sheet-scroll] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-log-play-sheet-scroll]::-webkit-scrollbar {
+  display: none;
+}
+
 /* Play Logbook page - light mode (Log Play sheet uses data-bankroll-sheet rules above) */
 html.light [data-play-logbook-card] {
   box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);

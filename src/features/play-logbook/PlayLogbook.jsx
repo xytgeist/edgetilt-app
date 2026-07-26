@@ -1287,7 +1287,10 @@ export default function PlayLogbook({
                 <div className="shrink-0">
                   <SheetHeader title={editingEntryId ? 'Edit Play' : 'Log Play'} onClose={closeSheet} />
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+                <div
+                  data-log-play-sheet-scroll
+                  className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+                >
                   <div className="space-y-3 pb-3">
                     <div>
                       <label className="block text-zinc-400 text-xs mb-1.5">Game</label>

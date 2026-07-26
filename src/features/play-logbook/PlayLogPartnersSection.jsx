@@ -20,9 +20,9 @@ import {
 } from './playLogPartners.js'
 import { addSavedGuestLabel } from './playLogSavedGuests.js'
 
-/** Partner row numeric columns — wide enough for seven-digit whole dollars (e.g. $999,999). */
+/** Partner row numeric columns — P/L fits seven-digit dollars; Share $ stays tighter (bet-size slice). */
 const PARTNER_NUMERIC_GRID =
-  'grid shrink-0 grid-cols-[2.75rem_5.75rem_6.25rem] items-center gap-x-1'
+  'grid shrink-0 grid-cols-[2.25rem_3.75rem_5rem] items-center gap-x-0.5'
 const PARTNER_COL_SHARE_PCT = 'min-w-0 text-right'
 const PARTNER_COL_SHARE_USD = 'min-w-0 text-right'
 const PARTNER_COL_PL = 'min-w-0 text-right'
@@ -288,24 +288,28 @@ export default function PlayLogPartnersSection({
     </p>
   ) : null
 
+  const partnerNameCellClass = readOnly
+    ? 'min-w-0 flex-1 text-sm leading-snug line-clamp-2 break-words'
+    : 'min-w-0 flex-1 text-sm truncate'
+
   const renderPartnerRow = row => (
-    <li key={row.key} className="flex items-center gap-1.5">
+    <li key={row.key} className={`flex gap-1 ${readOnly ? 'items-start' : 'items-center gap-1.5'}`}>
       {!readOnly && canEditManager && row.kind === 'user' ? (
         <button
           type="button"
           onClick={() => setManager(row.key)}
-          className={`min-w-0 flex-1 text-left text-sm truncate touch-manipulation active:opacity-80 ${partnerNameClass(row)}`}
+          className={`text-left touch-manipulation active:opacity-80 ${partnerNameCellClass} ${partnerNameClass(row)}`}
           aria-label={`${row.isManager ? 'Play manager' : 'Set as play manager'}: ${playLogPartnerLabel(row)}`}
           aria-pressed={Boolean(row.isManager)}
         >
           {partnerNameContent(row)}
         </button>
       ) : (
-        <div className={`min-w-0 flex-1 text-sm truncate ${partnerNameClass(row)}`}>
+        <div className={`${partnerNameCellClass} ${partnerNameClass(row)}`}>
           {partnerNameContent(row)}
         </div>
       )}
-      <div className={`${PARTNER_NUMERIC_GRID}`}>
+      <div className={`${PARTNER_NUMERIC_GRID} ${readOnly ? 'self-center' : ''}`}>
         {readOnly ? (
           <span
             className={`flex h-4 items-center justify-end text-cyan-300 text-xs font-semibold tabular-nums leading-none ${PARTNER_COL_SHARE_PCT}`}

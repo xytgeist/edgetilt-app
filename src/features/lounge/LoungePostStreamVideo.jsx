@@ -2471,23 +2471,6 @@ export default function LoungePostStreamVideo({
     [feedAutoplayClientId, videoDebugEnabled],
   )
 
-  const landHeroOpen = useCallback(() => {
-    if (heroPhaseRef.current !== 'opening') return
-    clearHeroFrameShield(videoFlyoutRef.current)
-    heroFrameShieldRef.current = null
-    heroExpandAnimRef.current = null
-    heroExpandInFlightRef.current = false
-    if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
-    setHeroExpandDomActive(false)
-    heroExpandFlyoutStyleRef.current = null
-    clearFlyoutHeroMotionStyles(videoFlyoutRef.current)
-    setHeroTransitionArmed(false)
-    heroPhaseRef.current = 'open'
-    setHeroPhase('open')
-    setHeroBackdropArmed(true)
-    bumpHeroChrome()
-  }, [bumpHeroChrome])
-
   const closeLightbox = useCallback(() => {
     if (!lightboxOpenRef.current || heroShrinkInFlightRef.current) return
     pauseLoungeHeroStreamForDismiss(videoRef.current)
@@ -2610,6 +2593,23 @@ export default function LoungePostStreamVideo({
       setHeroChromeVisible(false)
     }, HERO_CHROME_AUTO_HIDE_MS)
   }, [clearHeroChromeHideTimer])
+
+  const landHeroOpen = useCallback(() => {
+    if (heroPhaseRef.current !== 'opening') return
+    clearHeroFrameShield(videoFlyoutRef.current)
+    heroFrameShieldRef.current = null
+    heroExpandAnimRef.current = null
+    heroExpandInFlightRef.current = false
+    if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
+    setHeroExpandDomActive(false)
+    heroExpandFlyoutStyleRef.current = null
+    clearFlyoutHeroMotionStyles(videoFlyoutRef.current)
+    setHeroTransitionArmed(false)
+    heroPhaseRef.current = 'open'
+    setHeroPhase('open')
+    setHeroBackdropArmed(true)
+    bumpHeroChrome()
+  }, [bumpHeroChrome])
 
   const onHeroChromeScrubbingChange = useCallback(
     (scrubbing) => {

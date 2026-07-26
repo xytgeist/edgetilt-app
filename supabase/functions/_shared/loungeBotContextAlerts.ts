@@ -49,6 +49,8 @@ const CONTEXT_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 
 const SITUATIONAL_LEAN_HEADER = '📐 Situational Lean'
 /** Combined daily cap for injury_impact + rest_travel_edge (Grok Path A). */
 export const MAX_SITUATIONAL_LEANS_PER_DAY = 2
+/** Lower EV floor for situational leans only (+EV Edge stays at min_edge_pct, default 4%). */
+export const MIN_SITUATIONAL_LEAN_EV_PCT = 2.5
 
 export type ContextAlertKind =
   | 'starter_spotlight'
@@ -91,6 +93,10 @@ function formatPickInlineLine(pick: OddsPick): string {
 
 function isSituationalLeanKind(kind: ContextAlertKind): boolean {
   return SITUATIONAL_LEAN_KINDS.includes(kind)
+}
+
+function situationalMinEvPct(minEvPct: number): number {
+  return Math.min(minEvPct, MIN_SITUATIONAL_LEAN_EV_PCT)
 }
 
 function sortContextPool(pool: ContextAlertCandidate[]): void {
@@ -388,6 +394,7 @@ async function collectContextCandidates(
 ): Promise<ContextAlertCandidate[]> {
   const out: ContextAlertCandidate[] = []
   const ptDay = ptTodayDate()
+  const situationalEv = situationalMinEvPct(minEvPct)
 
   for (const ev of events) {
     const eventId = String(ev.id || '').trim()
@@ -396,50 +403,53 @@ async function collectContextCandidates(
     const commenceTime = String(ev.commence_time || '').trim()
     if (!eventId || !homeTeam || !awayTeam || !commenceTime) continue
 
-    const pick = bestPickForEvent(events, sportKey, eventId, minEvPct)
-    if (!pick) continue
-
     const rundown = await resolveRundownEvent({ sportKey, homeTeam, awayTeam, commenceTime })
     if (!rundown) continue
 
     if (hasStarterInfo(rundown, sportKey)) {
-      const starters = confirmedStartersFromRundown(rundown, sportKey)!
-      out.push({
-        kind: 'starter_spotlight',
-        eventId,
-        sportKey,
-        awayTeam,
-        homeTeam,
-        commenceTime,
-        pick,
-        rundown,
-        starters,
-      })
-      out.push({
-        kind: 'confirmed_starters',
-        eventId,
-        sportKey,
-        awayTeam,
-        homeTeam,
-        commenceTime,
-        pick,
-        rundown,
-        starters,
-      })
+      const starterPick = bestPickForEvent(events, sportKey, eventId, minEvPct)
+      if (starterPick) {
+        const starters = confirmedStartersFromRundown(rundown, sportKey)!
+        out.push({
+          kind: 'starter_spotlight',
+          eventId,
+          sportKey,
+          awayTeam,
+          homeTeam,
+          commenceTime,
+          pick: starterPick,
+          rundown,
+          starters,
+        })
+        out.push({
+          kind: 'confirmed_starters',
+          eventId,
+          sportKey,
+          awayTeam,
+          homeTeam,
+          commenceTime,
+          pick: starterPick,
+          rundown,
+          starters,
+        })
+      }
     }
 
-    for (const player of injuryImpactPlayers(rundown)) {
-      out.push({
-        kind: 'injury_impact',
-        eventId,
-        sportKey,
-        awayTeam,
-        homeTeam,
-        commenceTime,
-        pick,
-        rundown,
-        injuryPlayer: { name: player.name, status: player.status },
-      })
+    const injuryPick = bestPickForEvent(events, sportKey, eventId, situationalEv)
+    if (injuryPick) {
+      for (const player of injuryImpactPlayers(rundown)) {
+        out.push({
+          kind: 'injury_impact',
+          eventId,
+          sportKey,
+          awayTeam,
+          homeTeam,
+          commenceTime,
+          pick: injuryPick,
+          rundown,
+          injuryPlayer: { name: player.name, status: player.status },
+        })
+      }
     }
 
     if (schedulePack && rundown.awayTeamId && rundown.homeTeamId) {
@@ -483,7 +493,7 @@ async function collectContextCandidates(
           events,
           sportKey,
           eventId,
-          minEvPct,
+          situationalEv,
           matchup.restedTeam,
         )
         if (restedPick) {

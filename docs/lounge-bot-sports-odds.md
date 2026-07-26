@@ -301,7 +301,7 @@ Disable via **`value_bet_radar_enabled = false`**. Default audience **`all`** (s
 | **`rest_travel_edge`** | 📐 Situational Lean | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) — same voice |
 | **`fade_the_public`** | 🚫 Fade the Public | **Off by default** — needs public betting % feed (not in Rundown OpenAPI) |
 
-**Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). Tie-break among candidates: highest EV, then later tipoff.
+**Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). EV floor **`MIN_SITUATIONAL_LEAN_EV_PCT` = 2.5%** for these two kinds only (regular ⚡ Edge stays **`min_edge_pct`**, default **4%**). Tie-break among candidates: highest EV, then later tipoff.
 
 Priority when multiple qualify: injury → starter spotlight → rest → confirmed starters. Overall daily cap **`max_context_alerts_per_day`** (default **6**). Toggle per kind via **`starter_spotlight_enabled`**, **`confirmed_starters_enabled`**, **`injury_impact_enabled`**, **`rest_travel_edge_enabled`**, **`fade_the_public_enabled`**. Default audience **Subs**.
 

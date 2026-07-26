@@ -9,6 +9,31 @@ const MOMENTUM_FRICTION = 0.965
 const MIN_VELOCITY_PX_MS = 0.012
 const SLOW_DRAG_VELOCITY_PX_MS = 0.06
 const VELOCITY_SAMPLE_MS = 100
+/** Max rubber-band travel past scroll limits (px). */
+const RUBBER_BAND_LIMIT_PX = 80
+const SPRING_BACK_MS = 320
+
+/**
+ * Diminishing resistance past scroll limits (iOS-style).
+ * @param {number} overscroll
+ * @param {number} [limit]
+ */
+function rubberBandDistance(overscroll, limit = RUBBER_BAND_LIMIT_PX) {
+  const o = Math.max(0, overscroll)
+  if (o <= 0) return 0
+  return limit * (1 - 1 / (o / limit + 1))
+}
+
+/**
+ * @param {number} rawLeft
+ * @param {number} min
+ * @param {number} max
+ */
+function rubberBandScrollLeft(rawLeft, min, max) {
+  if (rawLeft < min) return min - rubberBandDistance(min - rawLeft)
+  if (rawLeft > max) return max + rubberBandDistance(rawLeft - max)
+  return rawLeft
+}
 
 /**
  * Feed carousel axis lock with optional momentum glide on release.
@@ -28,6 +53,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
     if (!el) return undefined
 
     let momentumRaf = 0
+    let springRaf = 0
     /** @type {{ v: number, t: number }[]} */
     let velocitySamples = []
     /** @type {number | null} */
@@ -52,20 +78,73 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       axis: null,
     }
 
+    const getTrack = () => el.querySelector('[data-lounge-feed-carousel-track]')
+
     const maxScrollLeft = () => Math.max(0, el.scrollWidth - el.clientWidth)
 
     const clampScroll = (left) => Math.max(0, Math.min(maxScrollLeft(), left))
+
+    const readTrackTranslateX = () => {
+      const track = getTrack()
+      if (!track) return 0
+      const raw = track.style.transform
+      if (!raw) return 0
+      const match = raw.match(/translate3d\(([-\d.]+)px/)
+      return match ? parseFloat(match[1]) || 0 : 0
+    }
+
+    const setTrackTranslateX = (x) => {
+      const track = getTrack()
+      if (!track) return
+      if (!x || Math.abs(x) < 0.5) {
+        track.style.transform = ''
+        return
+      }
+      track.style.transform = `translate3d(${x}px,0,0)`
+    }
 
     const cancelAnimations = () => {
       if (momentumRaf) {
         cancelAnimationFrame(momentumRaf)
         momentumRaf = 0
       }
+      if (springRaf) {
+        cancelAnimationFrame(springRaf)
+        springRaf = 0
+      }
     }
 
     const clearInteractionStyles = () => {
       el.style.touchAction = ''
       el.removeAttribute('data-lounge-carousel-dragging')
+      setTrackTranslateX(0)
+    }
+
+    /**
+     * @param {(() => void) | undefined} [onComplete]
+     */
+    const springBackTrack = (onComplete) => {
+      const from = readTrackTranslateX()
+      if (Math.abs(from) < 0.5) {
+        setTrackTranslateX(0)
+        onComplete?.()
+        return
+      }
+      const start = performance.now()
+      const step = (now) => {
+        const t = Math.min(1, (now - start) / SPRING_BACK_MS)
+        const eased = 1 - (1 - t) ** 3
+        const x = from * (1 - eased)
+        if (t >= 1 || Math.abs(x) < 0.5) {
+          setTrackTranslateX(0)
+          springRaf = 0
+          onComplete?.()
+          return
+        }
+        setTrackTranslateX(x)
+        springRaf = requestAnimationFrame(step)
+      }
+      springRaf = requestAnimationFrame(step)
     }
 
     const finalizeGesture = () => {
@@ -78,7 +157,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       } catch {
         // ignore
       }
-      clearInteractionStyles()
+      springBackTrack(clearInteractionStyles)
     }
 
     const resetGesture = () => {
@@ -101,14 +180,45 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       return recent.reduce((sum, s) => sum + s.v, 0) / recent.length
     }
 
+    const applyRubberBandScroll = (rawLeft) => {
+      const max = maxScrollLeft()
+      const visualLeft = rubberBandScrollLeft(rawLeft, 0, max)
+      const clamped = Math.max(0, Math.min(max, visualLeft))
+      const overscroll = visualLeft - clamped
+      el.scrollLeft = clamped
+      setTrackTranslateX(-overscroll)
+    }
+
     const runMomentum = (initialVelocity) => {
       let velocity = initialVelocity
       let lastT = performance.now()
 
+      const finishMomentum = () => {
+        momentumRaf = 0
+        el.scrollLeft = clampScroll(el.scrollLeft)
+        springBackTrack(clearInteractionStyles)
+      }
+
       const step = (now) => {
         const dt = Math.min(Math.max(now - lastT, 1), 24)
         lastT = now
-        el.scrollLeft = clampScroll(el.scrollLeft + velocity * dt)
+        const max = maxScrollLeft()
+        const next = el.scrollLeft + velocity * dt
+
+        if (next < 0) {
+          el.scrollLeft = 0
+          setTrackTranslateX(rubberBandDistance(-next))
+          finishMomentum()
+          return
+        }
+        if (next > max) {
+          el.scrollLeft = max
+          setTrackTranslateX(-rubberBandDistance(next - max))
+          finishMomentum()
+          return
+        }
+
+        el.scrollLeft = next
         velocity *= MOMENTUM_FRICTION ** (dt / 16)
 
         if (Math.abs(velocity) > MIN_VELOCITY_PX_MS) {
@@ -116,8 +226,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
           return
         }
 
-        momentumRaf = 0
-        finalizeGesture()
+        finishMomentum()
       }
 
       momentumRaf = requestAnimationFrame(step)
@@ -126,6 +235,14 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
     const finishHorizontalGesture = () => {
       el.setAttribute('data-lounge-carousel-dragging', 'true')
       const releaseVel = releaseVelocity()
+      const hasOverscroll = Math.abs(readTrackTranslateX()) >= 0.5
+
+      if (hasOverscroll) {
+        cancelAnimations()
+        el.scrollLeft = clampScroll(el.scrollLeft)
+        springBackTrack(clearInteractionStyles)
+        return
+      }
 
       if (Math.abs(releaseVel) >= SLOW_DRAG_VELOCITY_PX_MS) {
         runMomentum(releaseVel)
@@ -147,7 +264,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
 
     const applyHorizontalScroll = (clientX) => {
       el.scrollTop = 0
-      el.scrollLeft = clampScroll(gesture.startScrollLeft + (gesture.startX - clientX))
+      applyRubberBandScroll(gesture.startScrollLeft + (gesture.startX - clientX))
     }
 
     const lockHorizontalAxis = (pointerId) => {
@@ -167,6 +284,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       if (e.pointerType === 'mouse' && e.button !== 0) return
       if (activePointerId != null && e.pointerId !== activePointerId) return
       cancelAnimations()
+      setTrackTranslateX(0)
       clearInteractionStyles()
       const now = e.timeStamp || performance.now()
       gesture = {

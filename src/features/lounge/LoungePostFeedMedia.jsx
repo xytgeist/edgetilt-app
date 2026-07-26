@@ -265,15 +265,12 @@ export function LoungeImageCarousel({
 
   const carouselTouchClass = multiSlideCarousel ? '[touch-action:pan-x_pan-y]' : ''
 
-  const carouselTrack = (
-    <div
-      ref={carouselScrollRef}
-      {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-      className={`flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`}
-      role="region"
-      aria-label={regionAriaLabel}
-    >
-      {list.map((url, i) => {
+  const carouselScrollerClass = multiSlideCarousel
+    ? `max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`
+    : `flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`
+  const carouselInnerTrackClass = 'flex flex-nowrap items-stretch gap-2'
+
+  const carouselSlides = list.map((url, i) => {
         const displaySrc = loungeFeedImageDeliveryUrl(url, deliveryVariant)
         const tier = tierForSlide(i)
         const slideClass = isFeedVariant
@@ -387,7 +384,23 @@ export function LoungeImageCarousel({
             ) : null}
           </div>
           )
-        })}
+        })
+
+  const carouselTrack = (
+    <div
+      ref={carouselScrollRef}
+      {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
+      className={carouselScrollerClass}
+      role="region"
+      aria-label={regionAriaLabel}
+    >
+      {multiSlideCarousel ? (
+        <div data-lounge-feed-carousel-track className={carouselInnerTrackClass}>
+          {carouselSlides}
+        </div>
+      ) : (
+        carouselSlides
+      )}
     </div>
   )
 

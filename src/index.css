@@ -1333,6 +1333,10 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
   overflow-y: hidden;
 }
 
+[data-lounge-feed-carousel-track] {
+  min-width: min-content;
+}
+
 /*
  * GIF picker sheet - hardcoded dark bg won't flip with the zinc scale,
  * so override it explicitly in light mode.

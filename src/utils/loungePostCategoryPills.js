@@ -1,4 +1,9 @@
-import { isQuoteRepostPost } from './communityFeedPost.js'
+/** Quote repost feed row (mirrors `communityFeedPost.isQuoteRepostPost` — kept local to avoid import cycle). */
+function feedPostIsQuoteRepost(post) {
+  if (!post || post.is_plain_repost === true) return false
+  if (post.repost_of_comment_id) return true
+  return Boolean(post.repost_of_post_id || post.repost_target_unavailable === true)
+}
 
 /** Staff-seeded category slugs stored on `community_feed_posts.category_pills`. */
 export const LOUNGE_POST_CATEGORY_PILL_SLUGS = Object.freeze([
@@ -209,7 +214,7 @@ export function displayPostCategoryPills(post) {
 /** Quote repost compose: inherit pills from the original post (OP), not an intermediate quote shell. */
 export function resolveQuoteRepostSourcePost(post) {
   if (!post) return null
-  if (post.reposted_post && (post.repost_of_post_id || isQuoteRepostPost(post))) {
+  if (post.reposted_post && (post.repost_of_post_id || feedPostIsQuoteRepost(post))) {
     return post.reposted_post
   }
   return post

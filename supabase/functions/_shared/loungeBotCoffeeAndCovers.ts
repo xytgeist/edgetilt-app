@@ -31,14 +31,37 @@ export const COFFEE_SPREAD_EV_THRESHOLD_PCT = 4
 export const COFFEE_MAX_PICKS_PER_SPORT = 3
 
 export const COFFEE_COVERS_HEADER = '☕ Coffee & Covers 💵'
-export const COFFEE_NO_COVERS_LINE =
-  'No strong covers today - sitting on hands until we see better value.'
+/** Min +EV % for a spread/total to qualify as the featured lean (Option 1). */
+export const COFFEE_FEATURED_SPREAD_MIN_EV_PCT = COFFEE_SPREAD_EV_THRESHOLD_PCT
+/** Min +EV % for ML to count as a "real" board (not thin) for voice selection. */
+export const COFFEE_FEATURED_ML_MIN_EV_PCT = 3.5
+/** PT hour (0–23) before which a tip counts as "early morning" for featured spread tie-break. */
+export const COFFEE_EARLY_MORNING_PT_HOUR = 11
+export const COFFEE_FEATURED_SECTION = '🎯 Best cover on the board today:'
+export const COFFEE_FEATURED_ML_SECTION = '🎯 Best lean on the board today:'
+export const COFFEE_RADAR_SECTION = '👀 Other spots on my radar:'
+export const COFFEE_DOG_SECTION = '🐕 Dog of the Day:'
+export const COFFEE_THREAD_TEASER = 'Full board breakdown by sport below 👇'
+export const COFFEE_THREAD_TEASER_THIN = 'Full lines by sport below 👇'
+export const COFFEE_THIN_BOARD_LEAD = 'Rest of the board is pretty thin.'
+export const COFFEE_NO_LEAN_LINE =
+  'Board\'s thin today ... sitting on my hands until we see better value.'
+/** @deprecated parent post no longer lists ML section */
+export const COFFEE_NO_COVERS_LINE = COFFEE_NO_LEAN_LINE
+/** @deprecated parent post uses radar section */
 export const COFFEE_ML_SECTION = '- Best ML Spots Right Now -'
-export const COFFEE_DOG_SECTION = '- Dog of the Day -'
-/** @deprecated use COFFEE_DOG_SECTION */
+/** @deprecated */
 export const COFFEE_DOGS_SECTION = COFFEE_DOG_SECTION
+/** @deprecated On Tap removed from parent post */
 export const COFFEE_ON_TAP_SECTION = '- 🍺 On Tap Tomorrow -'
-export const COFFEE_BEST_LINES_TEASER = 'Best lines 👇'
+/** @deprecated */
+export const COFFEE_BEST_LINES_TEASER = COFFEE_THREAD_TEASER
+/** Max radar spots in the structured (Option 1) parent post. */
+export const COFFEE_RADAR_MAX_SPOTS = 3
+/** @deprecated */
+export const COFFEE_THIN_COVER_LINE = 'Top +EV spreads on the board:'
+/** @deprecated */
+export const COFFEE_THIN_ML_LINE = 'Top +EV moneylines on the board:'
 /** Max ML spots listed in the combined morning post (global, sorted by EV). */
 export const COFFEE_ML_SPOTS_MAX_TOTAL = 8
 /** Max tomorrow lookahead calls in the morning post. */
@@ -47,9 +70,6 @@ export const COFFEE_ON_TAP_MAX_PICKS = 3
 export const COFFEE_ON_TAP_NEAR_THRESHOLD_PCT = 1
 /** Min +EV % for below-bar Coffee fallback (still +EV only, never negative). */
 export const COFFEE_FALLBACK_MIN_EV_PCT = 0
-
-export const COFFEE_THIN_COVER_LINE = 'Top +EV spreads on the board:'
-export const COFFEE_THIN_ML_LINE = 'Top +EV moneylines on the board:'
 
 const CAPTION_MAX = 2000
 
@@ -578,73 +598,309 @@ function coffeeEventsForInput(input: CoffeeAndCoversOptions): {
   )
 }
 
+function spreadPickKey(pick: SpreadPick): string {
+  return `${pick.eventId}|spread|${pick.pickName}|${pick.pickPoint.toFixed(1)}`
+}
+
+function oddsPickKey(pick: OddsPick): string {
+  const point = pick.linePoint != null ? pick.linePoint.toFixed(1) : ''
+  return `${pick.eventId}|${pick.marketKey}|${pick.pickName}|${point}`
+}
+
+function isEarlyMorningPt(iso: string): boolean {
+  const t = Date.parse(String(iso || ''))
+  if (!Number.isFinite(t)) return false
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date(t)),
+  )
+  return Number.isFinite(hour) && hour < COFFEE_EARLY_MORNING_PT_HOUR
+}
+
+function compareSpreadFeatured(a: SpreadPick, b: SpreadPick): number {
+  if (b.edgePct !== a.edgePct) return b.edgePct - a.edgePct
+  if (b.bookCount !== a.bookCount) return b.bookCount - a.bookCount
+  const aEarly = isEarlyMorningPt(a.commenceTime) ? 1 : 0
+  const bEarly = isEarlyMorningPt(b.commenceTime) ? 1 : 0
+  if (aEarly !== bEarly) return aEarly - bEarly
+  return Date.parse(b.commenceTime) - Date.parse(a.commenceTime)
+}
+
+function compareOddsPickFeatured(a: OddsPick, b: OddsPick): number {
+  const spreadPref = (p: OddsPick) => (p.marketKey === 'spreads' || p.marketKey === 'totals' ? 0 : 1)
+  const prefA = spreadPref(a)
+  const prefB = spreadPref(b)
+  if (prefA !== prefB) return prefA - prefB
+  if (b.edgePct !== a.edgePct) return b.edgePct - a.edgePct
+  if (b.bookCount !== a.bookCount) return b.bookCount - a.bookCount
+  const aEarly = isEarlyMorningPt(a.commenceTime) ? 1 : 0
+  const bEarly = isEarlyMorningPt(b.commenceTime) ? 1 : 0
+  if (aEarly !== bEarly) return aEarly - bEarly
+  return Date.parse(b.commenceTime) - Date.parse(a.commenceTime)
+}
+
+function isCoffeeBoardThin(coverPicks: SpreadPick[], mlPicks: OddsPick[]): boolean {
+  const hasFeaturedSpread = coverPicks.some((p) => p.edgePct >= COFFEE_FEATURED_SPREAD_MIN_EV_PCT)
+  const hasFeaturedMl = mlPicks.some((p) => p.edgePct >= COFFEE_FEATURED_ML_MIN_EV_PCT)
+  return !hasFeaturedSpread && !hasFeaturedMl
+}
+
+type FeaturedLean =
+  | { kind: 'spread'; pick: SpreadPick }
+  | { kind: 'ml'; pick: OddsPick }
+
+function selectFeaturedLean(coverPicks: SpreadPick[], mlPicks: OddsPick[]): FeaturedLean | null {
+  const qualifiedSpreads = coverPicks
+    .filter((p) => p.edgePct >= COFFEE_FEATURED_SPREAD_MIN_EV_PCT)
+    .sort(compareSpreadFeatured)
+  if (qualifiedSpreads.length) {
+    return { kind: 'spread', pick: qualifiedSpreads[0]! }
+  }
+
+  const qualifiedMl = mlPicks
+    .filter((p) => p.edgePct >= COFFEE_ML_EV_THRESHOLD_PCT)
+    .sort(compareOddsPickFeatured)
+  if (qualifiedMl.length) {
+    return { kind: 'ml', pick: qualifiedMl[0]! }
+  }
+
+  const fallbackSpread = [...coverPicks].filter((p) => p.edgePct > 0).sort(compareSpreadFeatured)[0]
+  if (fallbackSpread) return { kind: 'spread', pick: fallbackSpread }
+
+  const fallbackMl = [...mlPicks].filter((p) => p.edgePct > 0).sort(compareOddsPickFeatured)[0]
+  if (fallbackMl) return { kind: 'ml', pick: fallbackMl }
+
+  return null
+}
+
+function formatFeaturedLeanLine(lean: FeaturedLean): string {
+  if (lean.kind === 'spread') {
+    const team = formatPickNameLabel(lean.pick.pickName)
+    const spread = formatSpreadPoint(lean.pick.pickPoint)
+    const juice = formatAmericanOdds(lean.pick.pickPrice)
+    return `${team} ${spread} (${juice}) @ ${lean.pick.bookTitle}`
+  }
+  const team = formatPickNameLabel(lean.pick.pickName)
+  if (lean.pick.marketKey === 'totals' && lean.pick.linePoint != null) {
+    const side = /^over$/i.test(lean.pick.pickName)
+      ? 'Over'
+      : /^under$/i.test(lean.pick.pickName)
+        ? 'Under'
+        : lean.pick.pickName
+    const odds = formatAmericanOdds(lean.pick.pickPrice)
+    return `${side} ${lean.pick.linePoint} (${odds}) @ ${lean.pick.bookTitle}`
+  }
+  if (lean.pick.marketKey === 'spreads' && lean.pick.linePoint != null) {
+    const pt = formatSpreadPoint(lean.pick.linePoint)
+    const odds = formatAmericanOdds(lean.pick.pickPrice)
+    return `${team} ${pt} (${odds}) @ ${lean.pick.bookTitle}`
+  }
+  const odds = formatAmericanOdds(lean.pick.pickPrice)
+  return `${team} ML ${odds} @ ${lean.pick.bookTitle}`
+}
+
+function formatCompactPickLabel(candidate: RadarCandidate | FeaturedLean): string {
+  if (candidate.kind === 'spread') {
+    const pick = candidate.pick
+    const team = formatPickNameLabel(pick.pickName)
+    const spread = formatSpreadPoint(pick.pickPoint)
+    const juice = formatAmericanOdds(pick.pickPrice)
+    return `${team} ${spread} (${juice})`
+  }
+  const pick = candidate.pick
+  const team = formatPickNameLabel(pick.pickName)
+  if (pick.marketKey === 'totals' && pick.linePoint != null) {
+    const side = /^over$/i.test(pick.pickName) ? 'Over' : /^under$/i.test(pick.pickName) ? 'Under' : pick.pickName
+    return `${side} ${pick.linePoint} (${formatAmericanOdds(pick.pickPrice)})`
+  }
+  if (pick.marketKey === 'spreads' && pick.linePoint != null) {
+    return `${team} ${formatSpreadPoint(pick.linePoint)} (${formatAmericanOdds(pick.pickPrice)})`
+  }
+  return `${team} ML ${formatAmericanOdds(pick.pickPrice)}`
+}
+
+function defaultFeaturedReasoning(edgePct: number, isSpread: boolean): string {
+  if (edgePct >= 7) return 'This is the sharpest edge on the board this morning.'
+  if (isSpread) {
+    return "It's not a huge edge, but it's the cleanest number I'm seeing relative to everything else out there this morning."
+  }
+  return "It's the best price I'm seeing on the board this morning."
+}
+
+type RadarCandidate =
+  | { kind: 'spread'; pick: SpreadPick; edgePct: number }
+  | { kind: 'ml'; pick: OddsPick; edgePct: number }
+
+function selectRadarSpots(
+  coverPicks: SpreadPick[],
+  mlPicks: OddsPick[],
+  featured: FeaturedLean | null,
+  max = COFFEE_RADAR_MAX_SPOTS,
+): RadarCandidate[] {
+  const featuredKey =
+    featured?.kind === 'spread'
+      ? spreadPickKey(featured.pick)
+      : featured?.kind === 'ml'
+        ? oddsPickKey(featured.pick)
+        : null
+
+  const candidates: RadarCandidate[] = [
+    ...coverPicks.map((pick) => ({ kind: 'spread' as const, pick, edgePct: pick.edgePct })),
+    ...mlPicks.map((pick) => ({ kind: 'ml' as const, pick, edgePct: pick.edgePct })),
+  ]
+    .filter((c) => c.edgePct > 0)
+    .filter((c) => {
+      const key = c.kind === 'spread' ? spreadPickKey(c.pick) : oddsPickKey(c.pick)
+      return key !== featuredKey
+    })
+    .sort((a, b) => {
+      if (b.edgePct !== a.edgePct) return b.edgePct - a.edgePct
+      const spreadPref = (c: RadarCandidate) => (c.kind === 'spread' ? 0 : c.pick.marketKey === 'totals' ? 1 : 2)
+      return spreadPref(a) - spreadPref(b)
+    })
+
+  return candidates.slice(0, max)
+}
+
+function formatRadarBullet(candidate: RadarCandidate, label?: string): string {
+  const ev = formatEvSuffix(candidate.edgePct)
+  if (candidate.kind === 'spread') {
+    const team = formatPickNameLabel(candidate.pick.pickName)
+    const spread = formatSpreadPoint(candidate.pick.pickPoint)
+    const juice = formatAmericanOdds(candidate.pick.pickPrice)
+    const prefix = label ? `${label} · ` : ''
+    return `• ${prefix}${team} ${spread} (${juice}) @ ${candidate.pick.bookTitle} ${ev}`
+  }
+  const pick = candidate.pick
+  const team = formatPickNameLabel(pick.pickName)
+  const prefix = label ? `${label} · ` : ''
+  if (pick.marketKey === 'totals' && pick.linePoint != null) {
+    const side = /^over$/i.test(pick.pickName) ? 'Over' : /^under$/i.test(pick.pickName) ? 'Under' : pick.pickName
+    return `• ${prefix}${side} ${pick.linePoint} (${formatAmericanOdds(pick.pickPrice)}) @ ${pick.bookTitle} ${ev}`
+  }
+  if (pick.marketKey === 'spreads' && pick.linePoint != null) {
+    return `• ${prefix}${team} ${formatSpreadPoint(pick.linePoint)} (${formatAmericanOdds(pick.pickPrice)}) @ ${pick.bookTitle} ${ev}`
+  }
+  return `• ${prefix}${team} ML ${formatAmericanOdds(pick.pickPrice)} @ ${pick.bookTitle} ${ev}`
+}
+
+function selectDogOfTheDay(dogs: BiggestDog[]): BiggestDog | null {
+  if (!dogs.length) return null
+  return [...dogs].sort((a, b) => b.pickPrice - a.pickPrice)[0]!
+}
+
+function formatDogOfTheDayLines(dog: BiggestDog, contextNote?: string): string[] {
+  const pickLabel = formatPickNameLabel(dog.pickName)
+  const odds = formatAmericanOdds(dog.pickPrice)
+  const when = formatOddsCommenceTimeShort(dog.commenceTime)
+  const lines = [
+    `${pickLabel} ML ${odds} @ ${dog.bookTitle}`,
+    `${formatMatchupTeams(dog.awayTeam, dog.homeTeam)}${when ? ` (${when})` : ''}`,
+  ]
+  if (contextNote?.trim()) lines.push(contextNote.trim())
+  return lines
+}
+
 function buildMainCaption(
   coverPicks: SpreadPick[],
   mlPicks: OddsPick[],
   biggestDogs: BiggestDog[],
-  onTapPicks: OnTapPick[],
   sportLabelByPick?: (pick: SpreadPick | OddsPick) => string | undefined,
   contextByEventKey?: Map<string, string>,
-  barFlags: { coversMetBar?: boolean; mlMetBar?: boolean } = {},
 ): string {
   const lines: string[] = [COFFEE_COVERS_HEADER, '']
+  const thin = isCoffeeBoardThin(coverPicks, mlPicks)
+  const featured = selectFeaturedLean(coverPicks, mlPicks)
+  const radar = selectRadarSpots(coverPicks, mlPicks, featured)
+  const dog = selectDogOfTheDay(biggestDogs)
 
-  const coverSorted = [...coverPicks].sort((a, b) => b.edgePct - a.edgePct).slice(0, 3)
-  if (coverSorted.length) {
-    if (barFlags.coversMetBar === false) {
-      lines.push(COFFEE_THIN_COVER_LINE)
-    }
-    for (const pick of coverSorted) {
-      const label = sportLabelByPick?.(pick) ?? ''
-      const note = contextByEventKey?.get(rundownEventKey(pick))
-      lines.push(...formatCoverBulletLines(pick, label, note))
+  if (!featured) {
+    lines.push(COFFEE_NO_LEAN_LINE)
+  } else if (thin) {
+    lines.push(`If I'm playing one side today, it's ${formatFeaturedLeanLine(featured)}.`)
+    lines.push('')
+    const featuredKey = rundownEventKey(
+      featured.kind === 'spread'
+        ? featured.pick
+        : featured.pick,
+    )
+    const featuredNote = contextByEventKey?.get(featuredKey)
+    if (featuredNote?.trim()) lines.push(featuredNote.trim())
+
+    const longshotLabels = radar
+      .filter((c) => c.kind === 'ml' && c.pick.marketKey === 'h2h' && c.pick.pickPrice > 0)
+      .slice(0, 4)
+      .map((c) => formatCompactPickLabel(c))
+    if (longshotLabels.length) {
+      lines.push('')
+      lines.push(
+        `${COFFEE_THIN_BOARD_LEAD} A few longshot MLs have some juice (${longshotLabels.join(', ')}), but nothing else is really jumping out.`,
+      )
+    } else if (radar.length) {
+      lines.push('')
+      lines.push(`${COFFEE_THIN_BOARD_LEAD} Nothing else is really jumping out beyond that one spot.`)
+    } else {
+      lines.push('')
+      lines.push(`${COFFEE_THIN_BOARD_LEAD} Nothing else is really jumping out.`)
     }
   } else {
-    lines.push(COFFEE_NO_COVERS_LINE)
+    const isSpreadFeatured = featured.kind === 'spread'
+    lines.push(isSpreadFeatured ? COFFEE_FEATURED_SECTION : COFFEE_FEATURED_ML_SECTION)
+    lines.push(formatFeaturedLeanLine(featured))
+    lines.push('')
+    const featuredKey = rundownEventKey(
+      featured.kind === 'spread'
+        ? featured.pick
+        : featured.pick,
+    )
+    const featuredNote = contextByEventKey?.get(featuredKey)
+    const reasoning =
+      featuredNote?.trim()
+      || defaultFeaturedReasoning(
+        featured.kind === 'spread' ? featured.pick.edgePct : featured.pick.edgePct,
+        isSpreadFeatured,
+      )
+    lines.push(reasoning)
+
+    if (radar.length) {
+      lines.push('')
+      lines.push(COFFEE_RADAR_SECTION)
+      for (const candidate of radar) {
+        const label =
+          candidate.kind === 'spread'
+            ? sportLabelByPick?.(candidate.pick)
+            : sportLabelByPick?.(candidate.pick)
+        lines.push(formatRadarBullet(candidate, label))
+        const noteKey = rundownEventKey(
+          candidate.kind === 'spread'
+            ? candidate.pick
+            : candidate.pick,
+        )
+        const note = contextByEventKey?.get(noteKey)
+        if (note?.trim()) lines.push(note.trim())
+      }
+    }
   }
 
-  lines.push('', COFFEE_ML_SECTION)
-  const mlSorted = [...mlPicks].sort((a, b) => b.edgePct - a.edgePct)
-    .slice(0, COFFEE_ML_SPOTS_MAX_TOTAL)
-  if (mlSorted.length) {
-    if (barFlags.mlMetBar === false) {
-      lines.push(COFFEE_THIN_ML_LINE)
-    }
-    for (const pick of mlSorted) {
-      const label = sportLabelByPick?.(pick) ?? ''
-      const note = contextByEventKey?.get(rundownEventKey(pick))
-      lines.push(...formatMlSpotBulletLines(pick, label, note))
-    }
-  } else {
-    lines.push('Nothing clearing +EV on ML right now.')
-  }
-
-  lines.push('', COFFEE_DOG_SECTION)
-  const dogsSorted = [...biggestDogs].sort((a, b) => b.pickPrice - a.pickPrice)
-  if (dogsSorted.length) {
-    for (const dog of dogsSorted) {
-      const dogKey = rundownEventKey({
-        homeTeam: dog.homeTeam,
-        awayTeam: dog.awayTeam,
-        commenceTime: dog.commenceTime,
-      })
-      const dogNote = contextByEventKey?.get(dogKey)
-      lines.push(...formatBiggestDogBulletLines(dog, dogNote))
-    }
+  lines.push('')
+  lines.push(COFFEE_DOG_SECTION)
+  if (dog) {
+    const dogKey = rundownEventKey({
+      homeTeam: dog.homeTeam,
+      awayTeam: dog.awayTeam,
+      commenceTime: dog.commenceTime,
+    })
+    const dogNote = contextByEventKey?.get(dogKey)
+    lines.push(...formatDogOfTheDayLines(dog, dogNote))
   } else {
     lines.push('No big dogs on today\'s slate.')
   }
 
-  lines.push('', COFFEE_ON_TAP_SECTION)
-  if (onTapPicks.length) {
-    for (const entry of onTapPicks) {
-      lines.push(formatOnTapBulletLine(entry))
-    }
-  } else {
-    lines.push('Nothing on tap for tomorrow yet.')
-  }
-
-  lines.push('', COFFEE_BEST_LINES_TEASER)
+  lines.push('')
+  lines.push(thin ? COFFEE_THREAD_TEASER_THIN : COFFEE_THREAD_TEASER)
   return joinCaptionLines(lines)
 }
 
@@ -762,7 +1018,7 @@ export function generateCoffeeAndCovers(input: CoffeeAndCoversOptions): CoffeeAn
   const games = extractSlateGameBestLines(events)
   const biggestDog = findBiggestDog(categoryLabel, events, sportKey)
   const biggestDogs = biggestDog ? [biggestDog] : []
-  const onTapPicks = findOnTapPicks(input).slice(0, input.onTapMaxPicks ?? COFFEE_ON_TAP_MAX_PICKS)
+  const onTapPicks: OnTapPick[] = []
   const threadBody = buildSportLinesThreadBody(categoryLabel, events, sportKey, totalBefore)
   const threadParts: CoffeeThreadPart[] = threadBody
     ? [{ categoryLabel, body: threadBody }]
@@ -773,13 +1029,7 @@ export function generateCoffeeAndCovers(input: CoffeeAndCoversOptions): CoffeeAn
       coverResult.picks,
       mlResult.picks,
       biggestDogs,
-      onTapPicks,
       () => categoryLabel,
-      undefined,
-      {
-        coversMetBar: coverResult.metBar,
-        mlMetBar: mlResult.metBar,
-      },
     ),
     threadParts,
     coverPicks: coverResult.picks,
@@ -857,7 +1107,6 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
 
   const threadParts: CoffeeThreadPart[] = []
   const biggestDogs: BiggestDog[] = []
-  const onTapSlices: OnTapPick[][] = []
   for (const slice of slices) {
     if (slice.gameCount <= 0 || !slice.categoryLabel) continue
     const body = buildSportLinesThreadBody(
@@ -870,25 +1119,13 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
     const dog = findBiggestDog(slice.categoryLabel, slice.events, slice.sportKey)
     if (dog) biggestDogs.push(dog)
   }
-  for (const input of inputs) {
-    const tomorrow = coffeeEventsForInput({
-      ...input,
-      events: Array.isArray(input.eventsTomorrow) ? input.eventsTomorrow : [],
-      previousEventLines: [],
-    }).events
-    onTapSlices.push(findOnTapPicks({ ...input, eventsTomorrow: tomorrow }))
-  }
-  const onTapPicks = mergeOnTapPicks(onTapSlices)
+  const onTapPicks: OnTapPick[] = []
   const coversMetBar = slices.some((s) => s.coversMetBar && s.coverPicks.length > 0)
-  const mlMetBar = slices.some((s) => s.mlMetBar && s.mlPicks.length > 0)
 
   return {
-    caption: buildMainCaption(coverPicks, mlPicks, biggestDogs, onTapPicks, (pick) => {
+    caption: buildMainCaption(coverPicks, mlPicks, biggestDogs, (pick) => {
       if ('pickPoint' in pick) return sportLabelForSpread(pick as SpreadPick)
       return sportLabelForMl(pick as OddsPick)
-    }, undefined, {
-      coversMetBar,
-      mlMetBar,
     }),
     threadParts,
     coverPicks,
@@ -994,7 +1231,6 @@ export async function enrichCoffeeAndCoversCaption(
     generated.coverPicks,
     generated.mlPicks,
     generated.biggestDogs,
-    generated.onTapPicks,
     sportLabelByPick,
     contextByEventKey,
   )

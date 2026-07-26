@@ -39,20 +39,24 @@ Fair +652 (9 books)
 **Coffee & Covers example:**
 ```text
 ☕ Coffee & Covers 💵
-No strong covers today - sitting on hands until we see better value.
-- Best ML Spots Right Now -
-• World Cup - France vs Paraguay (Sat 2PM PT)
-Draw ML +718 @ MyBookie (+9.6% EV)
-• World Cup - Morocco vs Canada (Sat 10AM PT)
-Canada ML +490 @ BetUS (+3.1% EV)
-- Dog of the Day -
-• World Cup - France vs Paraguay (Sat 2PM PT)
-Paraguay ML +718 @ MyBookie
-- 🍺 On Tap Tomorrow -
-• Wimbledon - Mochizuki vs Sinner: Mochizuki ML +1600 @ DraftKings (+8.1% EV)
-• World Cup - Norway vs Brazil: Norway ML +367 @ FanDuel (+2.8% EV)
-Best lines 👇
+
+🎯 Best cover on the board today:
+Pirates -1.5 (+172) @ FanDuel
+
+It's not a huge edge, but it's the cleanest number I'm seeing relative to everything else out there this morning.
+
+👀 Other spots on my radar:
+• World Cup · Actis ML +1400 @ DraftKings (+8.1% EV)
+• World Cup · Meza ML +600 @ BetUS (+5.2% EV)
+
+🐕 Dog of the Day:
+Diaz ML +2000 @ MyBookie
+France vs Paraguay (Sat 2PM PT)
+
+Full board breakdown by sport below 👇
 ```
+
+When no spread or ML clears **~3.5-4%** EV, Scott switches to the tighter voice (*"If I'm playing one side today…"*) and lists longshot ML juice inline. **On Tap Tomorrow** was removed from the parent post. **Dog of the Day** stays the biggest plus-money longshot (not +EV gated). Thread parts unchanged.
 
 **Thread part (one per calendar sport today), e.g. MLB:**
 ```text
@@ -138,15 +142,17 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`**, **`loung
 
 **`generateCoffeeAndCovers()`** in **`loungeBotCoffeeAndCovers.ts`**:
 
-| Section | Threshold | Max per sport |
-| --- | --- | --- |
-| **Covers** (spread/handicap) | **+4%** EV on $1 (else best **+EV** spreads on board with *Top +EV spreads on the board:* intro) | **3** per sport (merged in root) |
-| **ML spots** | **+3%** EV on $1 (else best **+EV** ML on board with *Top +EV moneylines on the board:* intro) | **3** per sport (merged in root) |
-| **Dog of the Day** | Biggest **plus-money ML underdog** per sport on today's slate | **One per sport** (longest ML on board; not +EV gated) |
-| **On Tap (tomorrow)** | Tomorrow spread/ML at or within **1%** of bar | **Max 3** across all sports |
-| **Best Lines 👇** | Best ML + book per outcome | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`) |
+| Section | Logic |
+| --- | --- |
+| **Featured lean** | Best **+4%** spread (tie-break: books → not early AM PT → later tip); else best **+3%** ML/total. Option 1 voice when board clears **~3.5-4%**; Option 2 (*If I'm playing one side…*) when thin. |
+| **Radar spots** | Up to **3** next-best +EV plays (excludes featured). |
+| **Dog of the Day** | Single slate-wide biggest **plus-money ML underdog** (not +EV gated). |
+| **Thread teaser** | `Full board breakdown by sport below 👇` (thin board: `Full lines by sport below 👇`). |
+| **Best lines thread** | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`). **Unchanged.** |
 
-**NCAAB / March Madness slate cap:** On `basketball_ncaab`, Coffee & Covers filters today's board to **~20-40 high-interest games** (max **40**) before covers, ML spots, Dog of the Day, On Tap, and the best-lines thread. Priority waterfall:
+**On Tap Tomorrow** removed from the parent post (Jul 2026).
+
+**NCAAB / March Madness slate cap:** On `basketball_ncaab`, Coffee & Covers filters today's board to **~20-40 high-interest games** (max **40**) before featured lean, radar, Dog of the Day, and the best-lines thread. Priority waterfall:
 
 1. Any game with an **AP Top 25** team (`ncaab-ap-top25-keys.json` ... update weekly in season)
 2. **Power-conference** matchups (ACC, Big Ten, Big 12, SEC, Big East)
@@ -155,7 +161,7 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`**, **`loung
 
 Thread footer shows `+N more games today` against the full unfiltered slate count.
 
-Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consensus average, EV at best juice. Dedupe key: **`coffee:daily:{ptDay}`** (one live post per bot per PT day; deleting the feed post clears dedupe via **`lounge_bot_publish_log.post_id`** `ON DELETE SET NULL`). Log **`post_kind: coffee_covers`**. Root post ends with **`Best Lines 👇`**; lines board lives in author thread parts (`feed_comments.is_thread_part`).
+Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consensus average, EV at best juice. Dedupe key: **`coffee:daily:{ptDay}`** (one live post per bot per PT day; deleting the feed post clears dedupe via **`lounge_bot_publish_log.post_id`** `ON DELETE SET NULL`). Log **`post_kind: coffee_covers`**. Lines board lives in author thread parts (`feed_comments.is_thread_part`).
 
 Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall back to legacy slate check-ins.
 

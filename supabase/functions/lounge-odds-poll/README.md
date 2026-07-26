@@ -16,7 +16,7 @@ Background odds poller for sports bots.
 
 `daily_slates` only publishes between **6:00am and 8:00am PT** (random minute per bot/day). Each bot gets a **stable random minute** in that window per day (derived from `bot_user_id` + PT date) so posts do not land at the same time every morning.
 
-Each post opens with **☕ Coffee & Covers 💵**. If no spread clears **+4%** EV, Scott opens with *"No strong covers today - sitting on hands until we see better value."* Then **- Best ML Spots Right Now -**, **- Dog of the Day -**, **- 🍺 On Tap Tomorrow -**, and **`Best lines 👇`**. Today's lines live in **thread parts** (one per calendar sport with games).
+Each post opens with **☕ Coffee & Covers 💵**. Parent post leads with one **featured lean** (🎯), up to **3 radar spots** (👀), **Dog of the Day** (🐕), then **`Full board breakdown by sport below 👇`**. Today's lines live in **thread parts** (one per calendar sport with games).
 
 **Cron (pg_cron):** migrations **`20260704230000`** + **`20260704240000`**
 

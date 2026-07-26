@@ -226,7 +226,7 @@ export function customTemplateFormStateFromTemplate(template, defsMap) {
   }
 }
 
-/** Always last on Log Play form (immediately above notes) — compact single row in UI. */
+/** Always last on Log Play form: Partners, then fee row, spin/bonus row, then Notes. */
 export const LOG_PLAY_TAIL_FIELD_SLUGS = ['acquisition_fee', 'spin_count', 'bonus_count']
 
 const LOG_PLAY_TAIL_FIELD_SLUG_SET = new Set(LOG_PLAY_TAIL_FIELD_SLUGS)

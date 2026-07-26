@@ -274,6 +274,19 @@ export default function PlayLogbook({
     return orderedLogPlayFormFields(selectedTemplate.metric_slugs || [], selectedDefsMap)
   }, [selectedTemplate, selectedDefsMap])
 
+  const logPlayTailFieldSlugSet = useMemo(() => new Set(LOG_PLAY_TAIL_FIELD_SLUGS), [])
+
+  const logPlayBodyFormFields = useMemo(
+    () => logPlayFormFields.filter(f => !logPlayTailFieldSlugSet.has(f.slug)),
+    [logPlayFormFields, logPlayTailFieldSlugSet],
+  )
+
+  const logPlayTailFormFields = useMemo(
+    () =>
+      LOG_PLAY_TAIL_FIELD_SLUGS.map(slug => logPlayFormFields.find(f => f.slug === slug)).filter(Boolean),
+    [logPlayFormFields],
+  )
+
   const logPlayNetOutcome = useMemo(
     () => playLogWinLoss(formFields.money_in, formFields.money_out, formFields.acquisition_fee),
     [formFields.money_in, formFields.money_out, formFields.acquisition_fee],
@@ -1315,20 +1328,10 @@ export default function PlayLogbook({
                       />
                     </div>
                     <LogPlayMetricFieldsList
-                      fields={logPlayFormFields}
+                      fields={logPlayBodyFormFields}
                       formFields={formFields}
                       setFormFields={setFormFields}
                     />
-                    <div>
-                      <label className="block text-zinc-400 text-xs mb-1.5">Notes</label>
-                      <textarea
-                        value={captureNotes}
-                        onChange={e => setCaptureNotes(e.target.value)}
-                        rows={2}
-                        placeholder="Machine bank, observations…"
-                        className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
-                      />
-                    </div>
                     {userId ? (
                       <PlayLogPartnersSection
                         supabaseClient={supabaseClient}
@@ -1362,6 +1365,21 @@ export default function PlayLogbook({
                         onPaidPersistError={handlePaidPersistError}
                       />
                     ) : null}
+                    <LogPlayTailMetricFields
+                      fields={logPlayTailFormFields}
+                      formFields={formFields}
+                      setFormFields={setFormFields}
+                    />
+                    <div>
+                      <label className="block text-zinc-400 text-xs mb-1.5">Notes</label>
+                      <textarea
+                        value={captureNotes}
+                        onChange={e => setCaptureNotes(e.target.value)}
+                        rows={2}
+                        placeholder="Machine bank, observations…"
+                        className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
+                      />
+                    </div>
                   </div>
                   {error ? <p className="text-red-400 text-sm pb-3">{error}</p> : null}
                 </div>
@@ -1923,31 +1941,10 @@ function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
     [formFields.money_in, formFields.money_out, formFields.acquisition_fee],
   )
   const winLossLabel = parseAcquisitionFee(formFields.acquisition_fee) != null ? 'Net win / loss' : 'Win / loss'
-  const compactTailSlugs = useMemo(() => new Set(LOG_PLAY_TAIL_FIELD_SLUGS), [])
 
   const nodes = []
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i]
-    if (compactTailSlugs.has(field.slug)) {
-      const group = []
-      let j = i
-      while (j < fields.length && compactTailSlugs.has(fields[j].slug)) {
-        group.push(fields[j])
-        j += 1
-      }
-      if (group.length >= 2) {
-        nodes.push(
-          <LogPlayMetricCompactRow
-            key={`compact-${group.map(f => f.slug).join('-')}`}
-            fields={group}
-            formFields={formFields}
-            setFormFields={setFormFields}
-          />,
-        )
-        i = j - 1
-        continue
-      }
-    }
     if (field.slug === 'mhb_meter') {
       const mhbField = fields[i + 1]?.slug === 'must_hit_by' ? fields[i + 1] : null
       nodes.push(
@@ -2140,35 +2137,34 @@ function LogPlayMetricPairRow({ left, right, formFields, setFormFields, footer =
   )
 }
 
-const LOG_PLAY_COMPACT_FIELD_LABEL = {
-  acquisition_fee: 'Acq. fee',
-  spin_count: '# Spins',
-  bonus_count: '# Bonuses',
-}
+/** Below Partners: acquisition fee solo, then spin + bonus counts paired. */
+function LogPlayTailMetricFields({ fields, formFields, setFormFields }) {
+  if (!fields?.length) return null
+  const acquisitionFee = fields.find(f => f.slug === 'acquisition_fee') ?? null
+  const spinCount = fields.find(f => f.slug === 'spin_count') ?? null
+  const bonusCount = fields.find(f => f.slug === 'bonus_count') ?? null
 
-/** Acquisition fee + spin/bonus counts share one row above notes. */
-function LogPlayMetricCompactRow({ fields, formFields, setFormFields }) {
   return (
-    <div
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${fields.length}, minmax(0, 1fr))` }}
-    >
-      {fields.map(field => (
-        <div key={field.slug} className="min-w-0">
-          <label
-            className="block text-zinc-400 text-[10px] leading-tight mb-1.5"
-            title={field.label}
-          >
-            {LOG_PLAY_COMPACT_FIELD_LABEL[field.slug] || field.label}
-          </label>
+    <>
+      {acquisitionFee ? (
+        <div>
+          <label className="block text-zinc-400 text-xs mb-1.5">{acquisitionFee.label}</label>
           <LogPlayFormMetricControl
-            field={field}
-            value={formFields[field.slug] ?? ''}
-            onChange={v => setFormFields(p => ({ ...p, [field.slug]: v }))}
+            field={acquisitionFee}
+            value={formFields[acquisitionFee.slug] ?? ''}
+            onChange={v => setFormFields(p => ({ ...p, [acquisitionFee.slug]: v }))}
           />
         </div>
-      ))}
-    </div>
+      ) : null}
+      {spinCount || bonusCount ? (
+        <LogPlayMetricPairRow
+          left={spinCount}
+          right={bonusCount}
+          formFields={formFields}
+          setFormFields={setFormFields}
+        />
+      ) : null}
+    </>
   )
 }
 

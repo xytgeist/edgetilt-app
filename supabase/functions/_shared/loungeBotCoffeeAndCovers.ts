@@ -22,6 +22,24 @@ import {
 } from './loungeBotRundownContext.ts'
 import { type EventLineRow } from './loungeBotLineMovement.ts'
 import { maybeFilterNcaabCoffeeEvents } from './loungeBotNcaabCoffeeFilter.ts'
+import {
+  compareByCoverageThenEv,
+} from './loungeBotCoverageScope.ts'
+import {
+  COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
+  COFFEE_TOP_SOCCER_THREAD_HEADER,
+  aggregateCoffeeBestLinesSliceStats,
+  buildCoffeeBestLinesThreadCandidateMeta,
+  coffeeBestLinesRankForSport,
+  coffeeSecondarySoccerSortOrder,
+  coffeeTopTierSoccerSortOrder,
+  isCoffeeLowerSoccerKey,
+  isCoffeeSecondarySoccerKey,
+  isCoffeeTopTierSoccerKey,
+  selectCoffeeBestLinesThreadCandidates,
+  shouldIncludeCoffeeBestLinesThreadPart,
+  type CoffeeBestLinesThreadCandidateMeta,
+} from './loungeBotCoffeeBestLinesPriority.ts'
 
 /** Min +EV % on $1 for ML spots in the morning post. */
 export const COFFEE_ML_EV_THRESHOLD_PCT = 3
@@ -41,8 +59,8 @@ export const COFFEE_FEATURED_SECTION = '🎯 Best cover on the board today:'
 export const COFFEE_FEATURED_ML_SECTION = '🎯 Best lean on the board today:'
 export const COFFEE_RADAR_SECTION = '👀 Other spots on my radar:'
 export const COFFEE_DOG_SECTION = '🐕 Dog of the Day:'
-export const COFFEE_THREAD_TEASER = 'Full board breakdown by sport below 👇'
-export const COFFEE_THREAD_TEASER_THIN = 'Full lines by sport below 👇'
+export const COFFEE_THREAD_TEASER = 'Best lines by sport below 👇'
+export const COFFEE_THREAD_TEASER_THIN = COFFEE_THREAD_TEASER
 export const COFFEE_THIN_BOARD_LEAD = 'Rest of the board is pretty thin.'
 export const COFFEE_NO_LEAN_LINE =
   'Board\'s thin today ... sitting on my hands until we see better value.'
@@ -72,6 +90,9 @@ export const COFFEE_ON_TAP_NEAR_THRESHOLD_PCT = 1
 export const COFFEE_FALLBACK_MIN_EV_PCT = 0
 
 const CAPTION_MAX = 2000
+
+/** @deprecated use COFFEE_TOP_TIER_SOCCER_KEYS from loungeBotCoffeeBestLinesPriority.ts */
+export { COFFEE_TOP_TIER_SOCCER_KEYS } from './loungeBotCoffeeBestLinesPriority.ts'
 
 /** Calendar label → thread part header emoji (Coffee & Covers best-lines threads). */
 const SPORT_THREAD_EMOJI_BY_LABEL: Record<string, string> = {
@@ -584,6 +605,69 @@ export function buildSportLinesThreadBody(
   return joinCaptionLines(lines)
 }
 
+/** One thread part for a bucket of soccer leagues (top tier or secondary). */
+function buildCombinedSoccerThreadBody(
+  slices: SportCoffeeSlice[],
+  header: string,
+  sortOrder: (sportKey: string) => number,
+  omittedLabel = 'soccer',
+): string {
+  const sorted = [...slices]
+    .filter((s) => s.gameCount > 0 && s.categoryLabel)
+    .sort((a, b) => sortOrder(a.sportKey) - sortOrder(b.sportKey))
+
+  if (!sorted.length) return ''
+
+  const leagueSections = sorted.map((slice) => ({
+    label: slice.categoryLabel,
+    games: extractSlateGameBestLines(slice.events),
+    slateTotal: slice.totalBefore ?? extractSlateGameBestLines(slice.events).length,
+  }))
+
+  const lines: string[] = [header, '']
+  let omittedGames = 0
+
+  for (const section of leagueSections) {
+    if (!section.games.length) continue
+
+    const sectionHeader = [section.label, '']
+    let includedInSection = 0
+
+    for (let i = 0; i < section.games.length; i++) {
+      const trial = [...lines, ...sectionHeader]
+      for (let j = 0; j <= i; j++) {
+        trial.push(formatSlateGameBlock(section.games[j]!))
+        trial.push('')
+      }
+      const remaining = section.slateTotal - (i + 1)
+      if (remaining > 0) trial.push(`+${remaining} more ${section.label} games today.`)
+      if (joinCaptionLines(trial).length <= CAPTION_MAX) {
+        includedInSection = i + 1
+      } else if (includedInSection === 0 && i === 0) {
+        includedInSection = 1
+        break
+      } else {
+        break
+      }
+    }
+
+    if (includedInSection <= 0) {
+      omittedGames += section.games.length
+      continue
+    }
+
+    lines.push(section.label, '')
+    for (let i = 0; i < includedInSection; i++) {
+      lines.push(formatSlateGameBlock(section.games[i]!))
+      lines.push('')
+    }
+    omittedGames += section.games.length - includedInSection
+  }
+
+  if (omittedGames > 0) lines.push(`+${omittedGames} more ${omittedLabel} games today.`)
+  return joinCaptionLines(lines)
+}
+
 function coffeeEventsForInput(input: CoffeeAndCoversOptions): {
   events: OddsEvent[]
   totalBefore: number
@@ -620,8 +704,7 @@ function isEarlyMorningPt(iso: string): boolean {
   return Number.isFinite(hour) && hour < COFFEE_EARLY_MORNING_PT_HOUR
 }
 
-function compareSpreadFeatured(a: SpreadPick, b: SpreadPick): number {
-  if (b.edgePct !== a.edgePct) return b.edgePct - a.edgePct
+function compareSpreadFeaturedTiebreak(a: SpreadPick, b: SpreadPick): number {
   if (b.bookCount !== a.bookCount) return b.bookCount - a.bookCount
   const aEarly = isEarlyMorningPt(a.commenceTime) ? 1 : 0
   const bEarly = isEarlyMorningPt(b.commenceTime) ? 1 : 0
@@ -629,17 +712,50 @@ function compareSpreadFeatured(a: SpreadPick, b: SpreadPick): number {
   return Date.parse(b.commenceTime) - Date.parse(a.commenceTime)
 }
 
-function compareOddsPickFeatured(a: OddsPick, b: OddsPick): number {
-  const spreadPref = (p: OddsPick) => (p.marketKey === 'spreads' || p.marketKey === 'totals' ? 0 : 1)
-  const prefA = spreadPref(a)
-  const prefB = spreadPref(b)
-  if (prefA !== prefB) return prefA - prefB
-  if (b.edgePct !== a.edgePct) return b.edgePct - a.edgePct
+function compareSpreadFeaturedWithCoverage(a: SpreadPick, b: SpreadPick): number {
+  const cov = compareByCoverageThenEv(
+    {
+      edgePct: a.edgePct,
+      coverageRank: coffeeBestLinesRankForSport(a.sportKey),
+      bookCount: a.bookCount,
+    },
+    {
+      edgePct: b.edgePct,
+      coverageRank: coffeeBestLinesRankForSport(b.sportKey),
+      bookCount: b.bookCount,
+    },
+  )
+  if (cov !== 0) return cov
+  return compareSpreadFeaturedTiebreak(a, b)
+}
+
+function compareOddsPickFeaturedTiebreak(a: OddsPick, b: OddsPick): number {
   if (b.bookCount !== a.bookCount) return b.bookCount - a.bookCount
   const aEarly = isEarlyMorningPt(a.commenceTime) ? 1 : 0
   const bEarly = isEarlyMorningPt(b.commenceTime) ? 1 : 0
   if (aEarly !== bEarly) return aEarly - bEarly
   return Date.parse(b.commenceTime) - Date.parse(a.commenceTime)
+}
+
+function compareOddsPickFeaturedWithCoverage(a: OddsPick, b: OddsPick): number {
+  const spreadPref = (p: OddsPick) => (p.marketKey === 'spreads' || p.marketKey === 'totals' ? 0 : 1)
+  const prefA = spreadPref(a)
+  const prefB = spreadPref(b)
+  if (prefA !== prefB) return prefA - prefB
+  const cov = compareByCoverageThenEv(
+    {
+      edgePct: a.edgePct,
+      coverageRank: coffeeBestLinesRankForSport(a.sportKey),
+      bookCount: a.bookCount,
+    },
+    {
+      edgePct: b.edgePct,
+      coverageRank: coffeeBestLinesRankForSport(b.sportKey),
+      bookCount: b.bookCount,
+    },
+  )
+  if (cov !== 0) return cov
+  return compareOddsPickFeaturedTiebreak(a, b)
 }
 
 function isCoffeeBoardThin(coverPicks: SpreadPick[], mlPicks: OddsPick[]): boolean {
@@ -655,22 +771,26 @@ type FeaturedLean =
 function selectFeaturedLean(coverPicks: SpreadPick[], mlPicks: OddsPick[]): FeaturedLean | null {
   const qualifiedSpreads = coverPicks
     .filter((p) => p.edgePct >= COFFEE_FEATURED_SPREAD_MIN_EV_PCT)
-    .sort(compareSpreadFeatured)
+    .sort(compareSpreadFeaturedWithCoverage)
   if (qualifiedSpreads.length) {
     return { kind: 'spread', pick: qualifiedSpreads[0]! }
   }
 
   const qualifiedMl = mlPicks
     .filter((p) => p.edgePct >= COFFEE_ML_EV_THRESHOLD_PCT)
-    .sort(compareOddsPickFeatured)
+    .sort(compareOddsPickFeaturedWithCoverage)
   if (qualifiedMl.length) {
     return { kind: 'ml', pick: qualifiedMl[0]! }
   }
 
-  const fallbackSpread = [...coverPicks].filter((p) => p.edgePct > 0).sort(compareSpreadFeatured)[0]
+  const fallbackSpread = [...coverPicks]
+    .filter((p) => p.edgePct > 0)
+    .sort(compareSpreadFeaturedWithCoverage)[0]
   if (fallbackSpread) return { kind: 'spread', pick: fallbackSpread }
 
-  const fallbackMl = [...mlPicks].filter((p) => p.edgePct > 0).sort(compareOddsPickFeatured)[0]
+  const fallbackMl = [...mlPicks]
+    .filter((p) => p.edgePct > 0)
+    .sort(compareOddsPickFeaturedWithCoverage)[0]
   if (fallbackMl) return { kind: 'ml', pick: fallbackMl }
 
   return null
@@ -723,11 +843,11 @@ function formatCompactPickLabel(candidate: RadarCandidate | FeaturedLean): strin
 }
 
 function defaultFeaturedReasoning(edgePct: number, isSpread: boolean): string {
-  if (edgePct >= 7) return 'This is the sharpest edge on the board this morning.'
+  if (edgePct >= 7) return 'This is the sharpest edge I\'ve got this morning.'
   if (isSpread) {
     return "It's not a huge edge, but it's the cleanest number I'm seeing relative to everything else out there this morning."
   }
-  return "It's the best price I'm seeing on the board this morning."
+  return "It's the best price I'm seeing this morning."
 }
 
 type RadarCandidate =
@@ -757,7 +877,17 @@ function selectRadarSpots(
       return key !== featuredKey
     })
     .sort((a, b) => {
-      if (b.edgePct !== a.edgePct) return b.edgePct - a.edgePct
+      const cov = compareByCoverageThenEv(
+        {
+          edgePct: a.edgePct,
+          coverageRank: coffeeBestLinesRankForSport(a.pick.sportKey),
+        },
+        {
+          edgePct: b.edgePct,
+          coverageRank: coffeeBestLinesRankForSport(b.pick.sportKey),
+        },
+      )
+      if (cov !== 0) return cov
       const spreadPref = (c: RadarCandidate) => (c.kind === 'spread' ? 0 : c.pick.marketKey === 'totals' ? 1 : 2)
       return spreadPref(a) - spreadPref(b)
     })
@@ -900,7 +1030,7 @@ function buildMainCaption(
   }
 
   lines.push('')
-  lines.push(thin ? COFFEE_THREAD_TEASER_THIN : COFFEE_THREAD_TEASER)
+  lines.push(COFFEE_THREAD_TEASER)
   return joinCaptionLines(lines)
 }
 
@@ -1105,20 +1235,98 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
   const sportLabelForMl = (pick: OddsPick) =>
     slices.find((s) => s.sportKey === pick.sportKey)?.categoryLabel
 
-  const threadParts: CoffeeThreadPart[] = []
+  const threadPartCandidates: Array<{
+    part: CoffeeThreadPart
+    meta: CoffeeBestLinesThreadCandidateMeta
+  }> = []
+  const topTierSoccerSlices: SportCoffeeSlice[] = []
+  const secondarySoccerSlices: SportCoffeeSlice[] = []
   const biggestDogs: BiggestDog[] = []
+
   for (const slice of slices) {
     if (slice.gameCount <= 0 || !slice.categoryLabel) continue
-    const body = buildSportLinesThreadBody(
-      slice.categoryLabel,
-      slice.events,
-      slice.sportKey,
-      slice.totalBefore,
-    )
-    if (body) threadParts.push({ categoryLabel: slice.categoryLabel, body })
+
+    if (isCoffeeTopTierSoccerKey(slice.sportKey)) {
+      topTierSoccerSlices.push(slice)
+    } else if (isCoffeeSecondarySoccerKey(slice.sportKey)) {
+      secondarySoccerSlices.push(slice)
+    } else if (isCoffeeLowerSoccerKey(slice.sportKey)) {
+      if (shouldIncludeCoffeeBestLinesThreadPart(slice.sportKey, slice)) {
+        const body = buildSportLinesThreadBody(
+          slice.categoryLabel,
+          slice.events,
+          slice.sportKey,
+          slice.totalBefore,
+        )
+        if (body) {
+          threadPartCandidates.push({
+            part: { categoryLabel: slice.categoryLabel, body },
+            meta: buildCoffeeBestLinesThreadCandidateMeta(slice.sportKey, slice),
+          })
+        }
+      }
+    } else if (shouldIncludeCoffeeBestLinesThreadPart(slice.sportKey, slice)) {
+      const body = buildSportLinesThreadBody(
+        slice.categoryLabel,
+        slice.events,
+        slice.sportKey,
+        slice.totalBefore,
+      )
+      if (body) {
+        threadPartCandidates.push({
+          part: { categoryLabel: slice.categoryLabel, body },
+          meta: buildCoffeeBestLinesThreadCandidateMeta(slice.sportKey, slice),
+        })
+      }
+    }
+
     const dog = findBiggestDog(slice.categoryLabel, slice.events, slice.sportKey)
     if (dog) biggestDogs.push(dog)
   }
+
+  if (topTierSoccerSlices.length) {
+    const body = buildCombinedSoccerThreadBody(
+      topTierSoccerSlices,
+      COFFEE_TOP_SOCCER_THREAD_HEADER,
+      coffeeTopTierSoccerSortOrder,
+    )
+    if (body) {
+      threadPartCandidates.push({
+        part: { categoryLabel: 'Top Soccer Leagues', body },
+        meta: buildCoffeeBestLinesThreadCandidateMeta(
+          'soccer_top_leagues',
+          aggregateCoffeeBestLinesSliceStats(topTierSoccerSlices),
+        ),
+      })
+    }
+  }
+
+  if (secondarySoccerSlices.length) {
+    const body = buildCombinedSoccerThreadBody(
+      secondarySoccerSlices,
+      COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
+      coffeeSecondarySoccerSortOrder,
+    )
+    if (body) {
+      threadPartCandidates.push({
+        part: { categoryLabel: 'Secondary Soccer Leagues', body },
+        meta: buildCoffeeBestLinesThreadCandidateMeta(
+          'soccer_secondary_leagues',
+          aggregateCoffeeBestLinesSliceStats(secondarySoccerSlices),
+        ),
+      })
+    }
+  }
+
+  const selectedMeta = selectCoffeeBestLinesThreadCandidates(
+    threadPartCandidates.map((row) => row.meta),
+  )
+  const partBySortKey = new Map(
+    threadPartCandidates.map((row) => [row.meta.sortKey, row.part]),
+  )
+  const threadParts = selectedMeta
+    .map((meta) => partBySortKey.get(meta.sortKey))
+    .filter((part): part is CoffeeThreadPart => Boolean(part))
   const onTapPicks: OnTapPick[] = []
   const coversMetBar = slices.some((s) => s.coversMetBar && s.coverPicks.length > 0)
 

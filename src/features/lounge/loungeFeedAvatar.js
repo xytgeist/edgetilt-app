@@ -35,6 +35,10 @@ export const LOUNGE_FEED_TITLE_BAR_ROW_CLASS = 'px-3 py-2'
 /** Title bar back / menu / balance slot - matches AppShell `titleBarNavSlot` (`h-10 w-10`). */
 export const LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS = 'h-10 w-10 shrink-0'
 
+/** Quote-repost inset card ... compact avatar beside meta row (X-style). */
+export const LOUNGE_QUOTE_EMBED_AVATAR_CLASS =
+  'h-5 w-5 shrink-0 overflow-hidden rounded-full bg-zinc-900 text-[10px] font-bold text-zinc-200'
+
 /** Feed / profile / search post row - same rule gaps as post-detail comment `<li>` items. */
 export const LOUNGE_FEED_POST_ROW_CLASS =
   'border-t border-zinc-800/70 bg-zinc-950/35 px-3 pt-2 pb-2 [-webkit-tap-highlight-color:transparent]'

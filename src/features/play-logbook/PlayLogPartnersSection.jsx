@@ -22,7 +22,9 @@ import { addSavedGuestLabel } from './playLogSavedGuests.js'
 
 /** Partner row numeric columns — P/L fits seven-digit dollars; Share $ stays tighter (bet-size slice). */
 const PARTNER_NUMERIC_GRID =
-  'grid shrink-0 grid-cols-[2.25rem_3.75rem_5rem] items-center gap-x-0.5'
+  'grid shrink-0 grid-cols-[2.75rem_3.75rem_5rem] items-center gap-x-0.5'
+const PARTNER_COL_HEADER = 'whitespace-nowrap leading-none text-right'
+
 const PARTNER_COL_SHARE_PCT = 'min-w-0 text-right'
 const PARTNER_COL_SHARE_USD = 'min-w-0 text-right'
 const PARTNER_COL_PL = 'min-w-0 text-right'
@@ -258,13 +260,13 @@ export default function PlayLogPartnersSection({
         Partner
       </span>
       <div className={`${PARTNER_NUMERIC_GRID} text-[10px] font-semibold uppercase tracking-wide text-zinc-500`}>
-        <span className={PARTNER_COL_SHARE_PCT} title="Percent of the play">
+        <span className={PARTNER_COL_HEADER} title="Percent of the play">
           Share %
         </span>
-        <span className={PARTNER_COL_SHARE_USD} title="Dollar share of bet size">
+        <span className={PARTNER_COL_HEADER} title="Dollar share of bet size">
           Share $
         </span>
-        <span className={PARTNER_COL_PL} title="Share of session net win/loss">
+        <span className={PARTNER_COL_HEADER} title="Share of session net win/loss">
           P/L
         </span>
       </div>

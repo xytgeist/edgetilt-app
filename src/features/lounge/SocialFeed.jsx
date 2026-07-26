@@ -15909,7 +15909,7 @@ export default function SocialFeed({
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <div
               ref={loungePostDetailScrollRef}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
+              className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain [-webkit-overflow-scrolling:touch]"
               style={
                 loungeReadOnly
                   ? undefined

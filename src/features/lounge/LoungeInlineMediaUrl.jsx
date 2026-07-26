@@ -6,7 +6,7 @@ import {
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
-import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
+import { useLoungeLightboxCarouselSnap } from './useLoungeLightboxCarouselSnap.js'
 import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
@@ -116,21 +116,29 @@ export function LoungeImageLightbox({
 
   const carouselMode = multi && !isZoomed && !isPinching
 
-  useLoungeFeedCarouselAxisLock(carouselScrollRef, carouselMode)
+  const onCarouselIndexChange = useCallback(
+    (i) => {
+      setIdx((prev) => (prev === i ? prev : i))
+    },
+    [],
+  )
+
+  useLoungeLightboxCarouselSnap(carouselScrollRef, carouselMode, list.length, onCarouselIndexChange)
 
   useLayoutEffect(() => {
     if (!multi) return
     const el = carouselScrollRef.current
     if (!el) return
+    const alignIndex = Math.max(0, Math.min(initialIndex, list.length - 1))
     const apply = () => {
       const w = el.clientWidth
       if (!w) return
-      el.scrollLeft = idx * w
+      el.scrollLeft = alignIndex * w
     }
     apply()
     const id = requestAnimationFrame(apply)
     return () => cancelAnimationFrame(id)
-  }, [multi, list])
+  }, [multi, list, initialIndex])
 
   useLayoutEffect(() => {
     if (!carouselMode) return
@@ -140,29 +148,6 @@ export function LoungeImageLightbox({
     if (!w) return
     el.scrollLeft = idx * w
   }, [carouselMode])
-
-  useEffect(() => {
-    if (!carouselMode) return undefined
-    const el = carouselScrollRef.current
-    if (!el) return undefined
-    let raf = 0
-    const syncIdx = () => {
-      const w = el.clientWidth
-      if (!w) return
-      const i = Math.round(el.scrollLeft / w)
-      const clamped = Math.max(0, Math.min(i, list.length - 1))
-      setIdx((prev) => (prev === clamped ? prev : clamped))
-    }
-    const onScroll = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(syncIdx)
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      el.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(raf)
-    }
-  }, [carouselMode, list.length])
 
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
     onClose,
@@ -350,14 +335,13 @@ export function LoungeImageLightbox({
           {carouselMode ? (
             <div
               ref={carouselScrollRef}
-              data-lounge-feed-horizontal-scroll
               data-lounge-lightbox-carousel
-              className="flex h-full w-full overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+              className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto scroll-smooth [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
               {list.map((slideUrl, i) => (
                 <div
                   key={`${slideUrl}-${i}`}
-                  className="flex h-full w-full shrink-0 items-center justify-center"
+                  className="flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
                 >
                   <img
                     ref={i === idx ? mediaImageRef : undefined}

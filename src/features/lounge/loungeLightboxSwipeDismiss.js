@@ -45,6 +45,13 @@ export function useLoungeLightboxSwipeDismiss({
     if (!enabled) return
     if (e.button !== 0 && e.pointerType === 'mouse') return
     if (shouldIgnoreSwipeTarget(e.target, { allowSwipeOnVideo })) return
+    if (
+      verticalDismissOnly &&
+      e.target instanceof Element &&
+      e.target.closest('[data-lounge-lightbox-carousel]')
+    ) {
+      return
+    }
     dragRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,

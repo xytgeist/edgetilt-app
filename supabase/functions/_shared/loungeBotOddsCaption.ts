@@ -6,6 +6,8 @@ import {
   compareSportPicks,
   resolvePlusEvPickOptions,
 } from './loungeBotSportAnalysis.ts'
+import { isMmaSportKey, mmaEventCategoryLabel } from './loungeBotSportLabels.ts'
+import { resolveRundownEvent } from './loungeBotRundownContext.ts'
 
 const CAPTION_MAX = 2000
 
@@ -501,6 +503,24 @@ export function formatScottSportContextLines(
   return lines
 }
 
+/** Alert header → league + matchup → body (standard Scott feed layout). */
+export function joinScottAlertCaption(
+  header: string,
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
+  categoryLabel: string | undefined,
+  bodyLines: string[],
+): string {
+  return joinCaptionLines([
+    header,
+    '',
+    ...formatScottSportContextLines(awayTeam, homeTeam, commenceTime, categoryLabel),
+    '',
+    ...bodyLines,
+  ])
+}
+
 /** Compact sport · time suffix for snackable list lines (e.g. Value Radar). */
 export function formatScottPickContextSuffix(
   pick: { awayTeam: string; homeTeam: string; commenceTime: string; categoryLabel?: string },
@@ -515,20 +535,39 @@ export function formatScottPickContextSuffix(
   return parts.length ? ` · ${parts.join(' · ')}` : ` · ${away} vs ${home}`
 }
 
+/** Refine scan-target label for per-event cases (MMA: UFC vs other promotions via Rundown headline). */
+export async function resolveScottCategoryLabel(
+  sportKey: string,
+  baseLabel: string,
+  match: { awayTeam: string; homeTeam: string; commenceTime: string },
+): Promise<string> {
+  if (!isMmaSportKey(sportKey)) return baseLabel
+  const ctx = await resolveRundownEvent({
+    sportKey,
+    awayTeam: match.awayTeam,
+    homeTeam: match.homeTeam,
+    commenceTime: match.commenceTime,
+  })
+  return mmaEventCategoryLabel(sportKey, ctx?.headline) || baseLabel || 'MMA'
+}
+
 export function buildOddsEdgeAlertCaption(pick: OddsPick, opts?: { categoryLabel?: string }): string {
   const pickLabel = shortDisplayName(pick.pickName)
   const odds = formatAmericanOdds(pick.pickPrice)
   const fair = formatAmericanOdds(pick.consensusPrice)
   const ev = Math.round(pick.edgePct * 10) / 10
 
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '⚡ +EV Edge',
-    '',
-    ...formatScottSportContextLines(pick.awayTeam, pick.homeTeam, pick.commenceTime, opts?.categoryLabel),
-    '',
-    `${pickLabel} ML ${odds} @ ${pick.bookTitle}`,
-    `+${ev}% EV on ML · fair ${fair} (${pick.bookCount} books)`,
-  ])
+    pick.awayTeam,
+    pick.homeTeam,
+    pick.commenceTime,
+    opts?.categoryLabel,
+    [
+      `${pickLabel} ML ${odds} @ ${pick.bookTitle}`,
+      `+${ev}% EV on ML · fair ${fair} (${pick.bookCount} books)`,
+    ],
+  )
 }
 
 export type SlateCaptionInput = {

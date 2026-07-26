@@ -12,7 +12,7 @@ import {
   type LineMovementAlert,
   type LineMovementConfig,
 } from './loungeBotLineMovement.ts'
-import { formatAmericanOdds, formatScottSportContextLines, type OddsEvent } from './loungeBotOddsCaption.ts'
+import { formatAmericanOdds, joinScottAlertCaption, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { hasDedupePublishedToday, ptTodayDate, type OddsBotRow, type OddsCfgRow } from './loungeBotOddsRun.ts'
 import {
   countScheduledKindToday,
@@ -22,7 +22,6 @@ import {
 } from './loungeBotPublishSchedule.ts'
 import { fetchRundownContextNote } from './loungeBotRundownContext.ts'
 
-const CAPTION_MAX = 2000
 /** Wider than per-tick line alerts (8–22 min) — report uses 10–60 min snapshot age. */
 export const SHARP_REPORT_SNAPSHOT_MIN_MS = 10 * 60 * 1000
 export const SHARP_REPORT_SNAPSHOT_MAX_MS = 60 * 60 * 1000
@@ -42,11 +41,6 @@ function shortName(name: string): string {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
   if (parts.length <= 1) return parts[0] || ''
   return parts[parts.length - 1]!
-}
-
-function joinCaptionLines(lines: string[]): string {
-  const cap = lines.join('\n').trim()
-  return cap.length <= CAPTION_MAX ? cap : `${cap.slice(0, CAPTION_MAX - 3)}...`
 }
 
 function formatSpreadPoint(point: number): string {
@@ -159,15 +153,18 @@ export function buildSharpReportCaption(
   const { alert, snapshotAgeMs, categoryLabel } = candidate
   const analysis = opts?.contextNote?.trim() || buildSharpReportAnalysis(alert, snapshotAgeMs)
 
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '📊 Sharp Report Card',
-    '',
-    buildSharpReportMovementLine(alert),
-    '',
-    analysis,
-    '',
-    ...formatScottSportContextLines(alert.awayTeam, alert.homeTeam, alert.commenceTime, categoryLabel),
-  ])
+    alert.awayTeam,
+    alert.homeTeam,
+    alert.commenceTime,
+    categoryLabel,
+    [
+      buildSharpReportMovementLine(alert),
+      '',
+      analysis,
+    ],
+  )
 }
 
 export function sharpReportDedupeKey(alert: LineMovementAlert, ptDay = ptTodayDate()): string {

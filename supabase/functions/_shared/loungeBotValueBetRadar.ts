@@ -15,11 +15,12 @@ import {
   findPlusEvOpportunities,
   formatOddsPickLine,
   formatScottPickContextSuffix,
+  resolveScottCategoryLabel,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import {
-  fetchActiveSportKeys,
+  fetchActiveSportsCatalog,
   fetchSportOdds,
   ptMinutesSinceMidnightPt,
   type OddsBotRow,
@@ -231,8 +232,8 @@ export async function runValueBetRadarPoll(
     return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'outside_peak_window' }
   }
 
-  const activeSports = await fetchActiveSportKeys()
-  const scanTargets = await resolveScottScanTargets(admin, activeSports)
+  const activeCatalog = await fetchActiveSportsCatalog()
+  const scanTargets = await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles)
   if (!scanTargets.length) {
     return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'no_coverage_sports_active' }
   }
@@ -319,8 +320,13 @@ export async function runValueBetRadarPoll(
     if (note) inlineNotes.set(key, note)
   }
 
-  const caption = buildValueBetRadarCaption(selected, inlineNotes)
-  const pickMeta = selected.map((p) => ({
+  const labeledSelected = await Promise.all(selected.map(async (pick) => ({
+    ...pick,
+    categoryLabel: await resolveScottCategoryLabel(pick.sportKey, pick.categoryLabel, pick),
+  })))
+
+  const caption = buildValueBetRadarCaption(labeledSelected, inlineNotes)
+  const pickMeta = labeledSelected.map((p) => ({
     edgePct: p.edgePct,
     sportKey: p.sportKey,
     marketKey: p.marketKey,

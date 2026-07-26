@@ -526,6 +526,14 @@ Canonical logic: **`supabase/functions/_shared/loungeBotSportAnalysis.ts`**.
 - **Best Bet of the Hour**, **Value Bet Radar**, **live in-game edge** ... inherit WNBA bump via `effectiveMinEvPct`
 - **Coffee & Covers** spread covers + Dog of the Day ... WNBA bump on spread thresholds too
 
+**Baseball league labels:** Scott captions use **`sportDisplayLabel`** (`loungeBotSportLabels.ts`) so American MLB is not the default for every Odds API `baseball_*` key. **`baseball_mlb`** → **MLB**; **`baseball_npb`** → **NPB**; **`baseball_kbo`** → **KBO**; **`baseball_milb`** → **MiLB**; **`baseball_ncaa`** → **NCAA Baseball**. Unknown baseball keys title-case the key tail, never **MLB**.
+
+**Ice hockey labels:** only **`icehockey_nhl`** (+ preseason / championship winner keys) map to **NHL**. AHL, SHL, and other `icehockey_*` leagues use title-cased key tails, not **NHL**.
+
+**Soccer league labels:** each active `soccer_*` Odds API key gets its own header from the API **`title`** (e.g. **MLS**, **A-League**, **Denmark Superliga**) with editorial overrides for majors (**Premier League**, **La Liga**, **Bundesliga**, **Champions League**, etc.). No generic **Soccer** bucket.
+
+**MMA / UFC labels:** Odds API uses one key (`mma_mixed_martial_arts`) for all promotions. Default scan label is **MMA** until publish. When **`THERUNDOWN_API_KEY`** returns an event headline, captions use the promotion name when detected: **UFC**, **Bellator**, **PFL**, **ONE Championship**, **Cage Warriors**, **Invicta**, **LFA**, **Rizin**, etc. Generic **MMA** only when the headline has no recognizable promotion.
+
 **Still deferred without verified Rundown (or other) feed data:** player props, fight method narratives. Injury/headline copy is appended **only** when **`THERUNDOWN_API_KEY`** returns a matching status or `event_headline`.
 
 ### Target voice per sport (caption examples)

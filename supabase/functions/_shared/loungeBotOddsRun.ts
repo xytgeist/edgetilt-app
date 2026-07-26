@@ -4,6 +4,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
   buildOddsEdgeAlertCaption,
+  resolveScottCategoryLabel,
   buildOddsSlateCaption,
   DEFAULT_MAX_EV_PCT,
   DEFAULT_MIN_BOOKS,
@@ -237,19 +238,34 @@ export function isOddsApiAuthOrQuotaError(message: string): boolean {
     || /DEACTIVATED_KEY/i.test(m)
 }
 
-export async function fetchActiveSportKeys(): Promise<Set<string>> {
+export type ActiveSportsCatalog = {
+  keys: Set<string>
+  titles: Map<string, string>
+}
+
+export async function fetchActiveSportsCatalog(): Promise<ActiveSportsCatalog> {
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
   const res = await fetch(`${ODDS_BASE}/sports/?apiKey=${encodeURIComponent(key)}`)
   if (!res.ok) throw new Error(await readOddsApiError(res, 'sports list'))
   const sports = await res.json()
-  const active = new Set<string>()
+  const keys = new Set<string>()
+  const titles = new Map<string, string>()
   if (Array.isArray(sports)) {
     for (const row of sports) {
-      if (row?.active === true && typeof row.key === 'string') active.add(row.key)
+      if (row?.active !== true || typeof row.key !== 'string') continue
+      const sk = row.key.trim().toLowerCase()
+      keys.add(sk)
+      const title = String(row.title || '').trim()
+      if (title) titles.set(sk, title)
     }
   }
-  return active
+  return { keys, titles }
+}
+
+export async function fetchActiveSportKeys(): Promise<Set<string>> {
+  const catalog = await fetchActiveSportsCatalog()
+  return catalog.keys
 }
 
 export async function fetchSportOdds(sport: string, regions: string[], markets: string[]) {
@@ -428,7 +444,8 @@ export async function tryPublishEdgeAlert(
     return { published: false, pick, skipped: 'edge_already_scheduled' }
   }
 
-  const caption = buildOddsEdgeAlertCaption(pick, { categoryLabel: ctx.categoryLabel })
+  const categoryLabel = await resolveScottCategoryLabel(ctx.sportKey, ctx.categoryLabel, pick)
+  const caption = buildOddsEdgeAlertCaption(pick, { categoryLabel })
   if (dryRun) return { published: false, pick }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
@@ -864,8 +881,9 @@ export async function tryPublishLineMovementAlerts(
       commenceTime: alert.commenceTime,
       movedTeamName: movedTeam,
     })
+    const categoryLabel = await resolveScottCategoryLabel(alert.sportKey, ctx.categoryLabel, alert)
     const caption = buildLineMovementCaption(alert, {
-      categoryLabel: ctx.categoryLabel,
+      categoryLabel,
       contextNote: contextNote || undefined,
     })
     const alertRoute = resolveAlertRoute(alert.kind, oddsCfg.alert_audience)

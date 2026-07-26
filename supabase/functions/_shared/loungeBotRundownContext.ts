@@ -4,6 +4,8 @@
  */
 import type { LineMovementAlert } from './loungeBotLineMovement.ts'
 
+export { sportContextLabelFromKey } from './loungeBotSportLabels.ts'
+
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
 const PT_OFFSET_MIN = 420
 const CACHE_MS = 45 * 60 * 1000
@@ -615,25 +617,7 @@ export type ConfirmedStarters = {
   home: string
 }
 
-/** Short sport label for context alert headers (e.g. NFL, MLB). */
-export function sportContextLabelFromKey(sportKey: string): string {
-  const sk = String(sportKey || '').trim().toLowerCase()
-  if (!sk) return ''
-  if (sk === 'americanfootball_nfl') return 'NFL'
-  if (sk === 'americanfootball_nfl_preseason') return 'NFL Preseason'
-  if (sk === 'americanfootball_ncaaf') return 'NCAAF'
-  if (sk.startsWith('baseball')) return 'MLB'
-  if (sk === 'basketball_nba') return 'NBA'
-  if (sk === 'basketball_ncaab') return 'NCAAB'
-  if (sk === 'basketball_wnba') return 'WNBA'
-  if (sk.startsWith('icehockey')) return 'NHL'
-  if (sk.startsWith('mma')) return 'UFC'
-  if (sk.startsWith('soccer')) return 'Soccer'
-  if (sk.startsWith('tennis')) return 'Tennis'
-  if (sk.startsWith('golf')) return 'Golf'
-  if (sk.startsWith('boxing')) return 'Boxing'
-  return ''
-}
+// sportContextLabelFromKey lives in loungeBotSportLabels.ts (re-exported above).
 
 export function supportsRundownSchedule(sportKey: string): boolean {
   return oddsSportKeyToRundownSportId(sportKey) != null

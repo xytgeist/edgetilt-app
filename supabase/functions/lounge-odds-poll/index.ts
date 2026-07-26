@@ -14,7 +14,7 @@ import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import {
   countPublishedKindToday,
-  fetchActiveSportKeys,
+  fetchActiveSportsCatalog,
   formatPtMinuteAsClock,
   isOddsApiAuthOrQuotaError,
   loadSportOddsContext,
@@ -155,9 +155,9 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, result)
     }
 
-    const activeSports = await fetchActiveSportKeys()
+    const { keys: activeSports, titles: sportTitles } = await fetchActiveSportsCatalog()
     const scanTargetsModule = await loadScanTargetsModules()
-    const scanTargets = await scanTargetsModule.resolveScottScanTargets(admin, activeSports)
+    const scanTargets = await scanTargetsModule.resolveScottScanTargets(admin, activeSports, sportTitles)
     const calendarPickFromTarget = scanTargetsModule.calendarPickFromTarget
     if (!scanTargets.length) {
       return adminOpsJson(200, { ok: true, skipped: 'no_coverage_sports_active', slug, action })

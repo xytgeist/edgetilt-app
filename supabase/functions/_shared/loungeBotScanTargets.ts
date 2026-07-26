@@ -12,7 +12,7 @@ import {
   type CalendarRowForCoverage,
 } from './loungeBotCoverageScope.ts'
 import { ptTodayDate } from './loungeBotOddsRun.ts'
-import { sportContextLabelFromKey } from './loungeBotRundownContext.ts'
+import { sportDisplayLabel } from './loungeBotSportLabels.ts'
 
 export type CalendarRow = {
   slug: string
@@ -51,16 +51,23 @@ function slugFromSportKey(sportKey: string): string {
   return String(sportKey || '').trim().toLowerCase().replace(/_/g, '-')
 }
 
-function defaultLabelForSportKey(sportKey: string): string {
-  const fromRundown = sportContextLabelFromKey(sportKey)
-  if (fromRundown) return fromRundown
+function defaultLabelForSportKey(sportKey: string, sportTitles?: Map<string, string>): string {
   const sk = String(sportKey || '').trim().toLowerCase()
+  const apiTitle = sportTitles?.get(sk)
+  const fromLabels = sportDisplayLabel(sportKey, apiTitle)
+  if (fromLabels) return fromLabels
+  if (apiTitle) return apiTitle
   if (!sk) return 'Sport'
   const tail = sk.includes('_') ? sk.split('_').slice(1).join(' ') : sk
   return tail.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function synthesizeTarget(sportKey: string, tier: number, calendarRow?: CalendarRow | null): ScottScanTarget {
+function synthesizeTarget(
+  sportKey: string,
+  tier: number,
+  calendarRow?: CalendarRow | null,
+  sportTitles?: Map<string, string>,
+): ScottScanTarget {
   if (calendarRow) {
     return {
       ...calendarRow,
@@ -70,7 +77,7 @@ function synthesizeTarget(sportKey: string, tier: number, calendarRow?: Calendar
         : [sportKey],
     }
   }
-  const label = defaultLabelForSportKey(sportKey)
+  const label = defaultLabelForSportKey(sportKey, sportTitles)
   return {
     slug: slugFromSportKey(sportKey),
     label_short: label,
@@ -108,6 +115,7 @@ function pickBestCalendarRowForKey(
 export async function resolveScottScanTargets(
   admin: SupabaseClient,
   activeSports: Set<string>,
+  sportTitles?: Map<string, string>,
 ): Promise<ScottScanTarget[]> {
   const calendarRows = await loadTodayCalendarRows(admin)
   const calendarByKey = new Map<string, CalendarRow>()
@@ -135,7 +143,7 @@ export async function resolveScottScanTargets(
     if (!inTierScope && !calendarBoost) continue
 
     const effectiveTier = tier ?? Number(calendarRow?.coverage_tier) ?? 3
-    targets.set(sk, synthesizeTarget(sk, effectiveTier, calendarRow))
+    targets.set(sk, synthesizeTarget(sk, effectiveTier, calendarRow, sportTitles))
   }
 
   return sortCalendarRowsByCoverage([...targets.values()]) as ScottScanTarget[]

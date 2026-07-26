@@ -4,7 +4,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
-  fetchActiveSportKeys,
+  fetchActiveSportsCatalog,
   loadSportOddsContext,
   marketsForOddsPoll,
   ptDayStartIso,
@@ -66,8 +66,8 @@ export async function runPollLive(
     return { ok: true, skipped: 'live_content_disabled', slug: bot.slug, action: 'poll_live' }
   }
 
-  const activeSports = await fetchActiveSportKeys()
-  const scanTargets = await resolveScottScanTargets(admin, activeSports)
+  const activeCatalog = await fetchActiveSportsCatalog()
+  const scanTargets = await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles)
   if (!scanTargets.length) {
     return { ok: true, skipped: 'no_coverage_sports_active', slug: bot.slug, action: 'poll_live' }
   }

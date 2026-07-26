@@ -12,13 +12,14 @@ import {
   findPlusEvOpportunities,
   formatAmericanOdds,
   formatOddsPickLine,
-  formatScottSportContextLines,
+  joinScottAlertCaption,
+  resolveScottCategoryLabel,
   marketLabel,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import {
-  fetchActiveSportKeys,
+  fetchActiveSportsCatalog,
   fetchSportOdds,
   filterLiveOddsEvents,
   ptTodayDate,
@@ -187,21 +188,19 @@ export function buildBestBetHourCaption(
   const ev = Math.round(pick.edgePct * 10) / 10
   const footer = opts?.contextNote?.trim() || buildBestBetHourReason(pick)
 
-  return joinCaptionLines([
+  return joinScottAlertCaption(
     '🔥 Best Bet of the Hour',
-    '',
-    ...formatScottSportContextLines(
-      pick.awayTeam,
-      pick.homeTeam,
-      pick.commenceTime,
-      pick.categoryLabel,
-    ),
-    '',
-    `${pickLine} @ ${pick.bookTitle}`,
-    `+${ev}% EV`,
-    '',
-    footer,
-  ])
+    pick.awayTeam,
+    pick.homeTeam,
+    pick.commenceTime,
+    pick.categoryLabel,
+    [
+      `${pickLine} @ ${pick.bookTitle}`,
+      `+${ev}% EV`,
+      '',
+      footer,
+    ],
+  )
 }
 
 async function hasDedupePublished(
@@ -320,8 +319,8 @@ export async function runBestBetHourPoll(
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'best_bet_hour_disabled' }
   }
 
-  const activeSports = await fetchActiveSportKeys()
-  const scanTargets = await resolveScottScanTargets(admin, activeSports)
+  const activeCatalog = await fetchActiveSportsCatalog()
+  const scanTargets = await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles)
   if (!scanTargets.length) {
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'no_coverage_sports_active' }
   }
@@ -410,7 +409,8 @@ export async function runBestBetHourPoll(
     commenceTime: best.commenceTime,
     pickTeamName: best.pickName,
   })
-  const caption = buildBestBetHourCaption(best, {
+  const categoryLabel = await resolveScottCategoryLabel(best.sportKey, best.categoryLabel, best)
+  const caption = buildBestBetHourCaption({ ...best, categoryLabel }, {
     displayName: bot.display_name || 'Scott Sharpe',
     contextNote: contextNote || undefined,
   })

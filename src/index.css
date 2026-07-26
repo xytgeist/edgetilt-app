@@ -1295,14 +1295,6 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
   pointer-events: none;
 }
 
-/* Feed multi-image carousel - block scroll-anchoring nudges when later slides finish layout. */
-[data-lounge-feed-horizontal-scroll] {
-  overflow-anchor: none;
-}
-[data-lounge-feed-horizontal-scroll] > * {
-  overflow-anchor: none;
-}
-
 /*
  * GIF picker sheet - hardcoded dark bg won't flip with the zinc scale,
  * so override it explicitly in light mode.

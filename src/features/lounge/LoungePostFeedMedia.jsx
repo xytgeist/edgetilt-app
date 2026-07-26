@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
@@ -194,86 +194,27 @@ export function LoungeImageCarousel({
     setFeedAttachmentTiers((prev) => (prev[index] === tier ? prev : { ...prev, [index]: tier }))
   }
 
-  const resyncCarouselSnap = useCallback(() => {
+  const nudgeScrollStart = () => {
     const el = carouselScrollRef.current
-    if (!el || el.hasAttribute('data-lounge-carousel-dragging')) return
-    const children = el.children
-    if (!children.length) return
-    /** @type {number[]} */
-    const offsets = []
-    for (let i = 0; i < children.length; i += 1) {
-      offsets.push(/** @type {HTMLElement} */ (children[i]).offsetLeft)
-    }
-    let idx = 0
-    for (let i = 0; i < offsets.length; i += 1) {
-      if (offsets[i] <= el.scrollLeft + 0.5) idx = i
-    }
-    const target = offsets[idx] ?? 0
-    if (Math.abs(el.scrollLeft - target) <= 0.5) return
-    el.scrollLeft = target
+    if (!el) return
+    el.scrollLeft = 0
     try {
-      el.scrollTo({ left: target, behavior: 'instant' })
+      el.scrollTo({ left: 0, behavior: 'instant' })
     } catch {
       // ignore
     }
-  }, [])
-
-  /** Re-pin after lazy slide layout / scroll-anchoring nudges the strip while idle. */
-  useEffect(() => {
-    if (!multiSlideCarousel) return undefined
-    const el = carouselScrollRef.current
-    if (!el) return undefined
-
-    let raf = 0
-    const scheduleResync = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(() => {
-        raf = requestAnimationFrame(resyncCarouselSnap)
-      })
-    }
-
-    let ro = null
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(scheduleResync)
-      ro.observe(el)
-      for (let i = 0; i < el.children.length; i += 1) {
-        ro.observe(el.children[i])
-      }
-    }
-
-    let scrollRaf = 0
-    const onScroll = () => {
-      if (el.hasAttribute('data-lounge-carousel-dragging')) return
-      cancelAnimationFrame(scrollRaf)
-      scrollRaf = requestAnimationFrame(scheduleResync)
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-
-    return () => {
-      if (ro) ro.disconnect()
-      el.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(raf)
-      cancelAnimationFrame(scrollRaf)
-    }
-  }, [urlsKey, multiSlideCarousel, resyncCarouselSnap])
-
-  useLayoutEffect(() => {
-    if (!multiSlideCarousel || isComposer) return
-    resyncCarouselSnap()
-  }, [feedAttachmentTiers, multiSlideCarousel, isComposer, resyncCarouselSnap])
+  }
 
   const notifySlideMediaLayout = () => {
     if (typeof onSlideMediaLayout === 'function') onSlideMediaLayout()
   }
-
-  const eagerMultiCarousel = multiSlideCarousel && !isComposer
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
         ref={carouselScrollRef}
         {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${multiSlideCarousel ? '' : 'snap-x snap-mandatory'} ${isComposer ? 'scroll-smooth' : ''}`}
+        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${isComposer ? 'scroll-smooth' : ''}`}
         role="region"
         aria-label={regionAriaLabel}
       >
@@ -299,15 +240,13 @@ export function LoungeImageCarousel({
             : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
           const onImgLoad = (e) => {
             noteFeedAttachmentTier(i, e.currentTarget)
-            requestAnimationFrame(() => {
-              requestAnimationFrame(resyncCarouselSnap)
-            })
+            if (i === 0) nudgeScrollStart()
             notifySlideMediaLayout()
           }
           return (
           <div
             key={`${url}-${i}`}
-            className={`${slideClass}${multiSlideCarousel ? ' [overflow-anchor:none]' : ''}`}
+            className={slideClass}
           >
             {canOpenLightbox ? (
               <div
@@ -334,7 +273,7 @@ export function LoungeImageCarousel({
                     src={displaySrc}
                     alt=""
                     className={slideImgClass}
-                    loading={eagerMultiCarousel || i === 0 ? 'eager' : 'lazy'}
+                    loading={i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
                     onLoad={onImgLoad}
@@ -347,7 +286,7 @@ export function LoungeImageCarousel({
                   src={displaySrc}
                   alt=""
                   className={slideImgClass}
-                  loading={eagerMultiCarousel || i === 0 ? 'eager' : 'lazy'}
+                  loading={i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}
                   onLoad={onImgLoad}

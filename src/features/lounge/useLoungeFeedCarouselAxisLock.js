@@ -15,6 +15,9 @@ const VELOCITY_SAMPLE_MS = 100
  * Horizontal swipes move the carousel; vertical swipes scroll the feed.
  * Rest position is wherever the user leaves the strip (no snap-to-slide).
  *
+ * Uses pointer events + coalesced move samples so scroll tracks the finger
+ * at ~1px steps (touchmove-only scrollLeft updates feel chunky on mobile).
+ *
  * @param {React.RefObject<HTMLElement|null>} scrollerRef
  * @param {boolean} enabled
  */
@@ -27,6 +30,8 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
     let momentumRaf = 0
     /** @type {{ v: number, t: number }[]} */
     let velocitySamples = []
+    /** @type {number | null} */
+    let activePointerId = null
 
     /** @type {{
      *   startX: number,
@@ -66,6 +71,13 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
     const finalizeGesture = () => {
       cancelAnimations()
       el.scrollLeft = clampScroll(el.scrollLeft)
+      const pointerId = activePointerId
+      activePointerId = null
+      try {
+        if (pointerId != null) el.releasePointerCapture(pointerId)
+      } catch {
+        // ignore
+      }
       clearInteractionStyles()
     }
 
@@ -123,46 +135,67 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       finalizeGesture()
     }
 
-    const onTouchStart = (e) => {
-      if (e.touches.length !== 1) {
-        resetGesture()
-        return
+    const noteVelocity = (clientX, t) => {
+      const dt = Math.max(t - gesture.lastT, 1)
+      const sampleV = (gesture.lastX - clientX) / dt
+      gesture.velocityX = sampleV
+      velocitySamples.push({ v: sampleV, t })
+      if (velocitySamples.length > 8) velocitySamples.shift()
+      gesture.lastX = clientX
+      gesture.lastT = t
+    }
+
+    const applyHorizontalScroll = (clientX) => {
+      el.scrollLeft = clampScroll(gesture.startScrollLeft + (gesture.startX - clientX))
+    }
+
+    const lockHorizontalAxis = (pointerId) => {
+      gesture.axis = 'x'
+      gesture.startScrollLeft = el.scrollLeft
+      activePointerId = pointerId
+      el.setAttribute('data-lounge-carousel-dragging', 'true')
+      el.style.touchAction = 'none'
+      try {
+        el.setPointerCapture(pointerId)
+      } catch {
+        // ignore
       }
+    }
+
+    const onPointerDown = (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      if (activePointerId != null && e.pointerId !== activePointerId) return
       cancelAnimations()
       clearInteractionStyles()
-      const t = e.touches[0]
-      const now = performance.now()
+      const now = e.timeStamp || performance.now()
       gesture = {
-        startX: t.clientX,
-        startY: t.clientY,
-        lastX: t.clientX,
+        startX: e.clientX,
+        startY: e.clientY,
+        lastX: e.clientX,
         lastT: now,
         velocityX: 0,
         startScrollLeft: el.scrollLeft,
         axis: null,
       }
       velocitySamples = []
+      activePointerId = e.pointerId
     }
 
-    const onTouchMove = (e) => {
-      if (e.touches.length !== 1) return
-      const t = e.touches[0]
-      const now = performance.now()
-      const dx = t.clientX - gesture.startX
-      const dy = t.clientY - gesture.startY
+    const onPointerMove = (e) => {
+      if (activePointerId == null || e.pointerId !== activePointerId) return
+      const dx = e.clientX - gesture.startX
+      const dy = e.clientY - gesture.startY
 
       if (!gesture.axis) {
         if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return
         if (Math.abs(dx) >= AXIS_LOCK_PX && Math.abs(dx) >= Math.abs(dy) * HORIZONTAL_VS_VERTICAL) {
-          gesture.axis = 'x'
-          gesture.startScrollLeft = el.scrollLeft
-          el.setAttribute('data-lounge-carousel-dragging', 'true')
-          el.style.touchAction = 'none'
+          lockHorizontalAxis(e.pointerId)
         } else if (
           Math.abs(dy) >= VERTICAL_MIN_PX &&
           Math.abs(dy) >= Math.abs(dx) * VERTICAL_VS_HORIZONTAL
         ) {
           gesture.axis = 'y'
+          activePointerId = null
           return
         } else {
           return
@@ -172,37 +205,47 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       if (gesture.axis === 'y') return
 
       e.preventDefault()
-      const dt = Math.max(now - gesture.lastT, 1)
-      const sampleV = (gesture.lastX - t.clientX) / dt
-      gesture.velocityX = sampleV
-      velocitySamples.push({ v: sampleV, t: now })
-      if (velocitySamples.length > 8) velocitySamples.shift()
-
-      el.scrollLeft = clampScroll(el.scrollLeft - (t.clientX - gesture.lastX))
-      gesture.lastX = t.clientX
-      gesture.lastT = now
+      const coalesced =
+        typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e]
+      for (const pe of coalesced) {
+        if (pe.pointerId !== activePointerId) continue
+        applyHorizontalScroll(pe.clientX)
+        noteVelocity(pe.clientX, pe.timeStamp || performance.now())
+      }
     }
 
-    const onTouchEnd = () => {
-      if (gesture.axis === 'x') {
-        finishHorizontalGesture()
+    const onPointerUp = (e) => {
+      if (activePointerId == null || e.pointerId !== activePointerId) return
+      const wasHorizontal = gesture.axis === 'x'
+      try {
+        el.releasePointerCapture(e.pointerId)
+      } catch {
+        // ignore
       }
+      if (wasHorizontal) {
+        applyHorizontalScroll(e.clientX)
+        finishHorizontalGesture()
+      } else {
+        clearInteractionStyles()
+      }
+      activePointerId = null
       resetGesture()
     }
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
-    el.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
-    el.addEventListener('touchend', onTouchEnd, { passive: true })
-    el.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    el.addEventListener('pointerdown', onPointerDown, { passive: true })
+    el.addEventListener('pointermove', onPointerMove, { passive: false })
+    el.addEventListener('pointerup', onPointerUp, { passive: true })
+    el.addEventListener('pointercancel', onPointerUp, { passive: true })
 
     return () => {
-      el.removeEventListener('touchstart', onTouchStart)
-      el.removeEventListener('touchmove', onTouchMove, { capture: true })
-      el.removeEventListener('touchend', onTouchEnd)
-      el.removeEventListener('touchcancel', onTouchEnd)
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', onPointerUp)
+      el.removeEventListener('pointercancel', onPointerUp)
       cancelAnimations()
       resetGesture()
       clearInteractionStyles()
+      activePointerId = null
     }
   }, [enabled, scrollerRef])
 

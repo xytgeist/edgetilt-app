@@ -75,6 +75,10 @@ const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
   americanfootball_usfl: 880,
   americanfootball_xfl: 879,
   americanfootball_ufl: 878,
+  baseball_milb: 520,
+  baseball_npb: 520,
+  baseball_kbo: 520,
+  baseball_ncaa: 520,
 }
 
 const COFFEE_BEST_LINES_FAMILY_RANK: Array<{ test: (sk: string) => boolean; rank: number }> = [
@@ -83,6 +87,7 @@ const COFFEE_BEST_LINES_FAMILY_RANK: Array<{ test: (sk: string) => boolean; rank
   { test: (sk) => sk === 'basketball_nba', rank: 980 },
   { test: (sk) => sk === 'basketball_ncaab', rank: 970 },
   { test: (sk) => sk.startsWith('baseball_mlb'), rank: 960 },
+  { test: (sk) => sk === 'baseball_milb' || sk === 'baseball_npb' || sk === 'baseball_kbo' || sk === 'baseball_ncaa', rank: 520 },
   { test: (sk) => sk.startsWith('icehockey_nhl'), rank: 950 },
   { test: (sk) => COFFEE_TOP_TIER_SOCCER_KEYS.has(sk), rank: 940 },
   { test: (sk) => sk.startsWith('boxing_'), rank: 930 },
@@ -108,7 +113,7 @@ const COFFEE_BEST_LINES_FAMILY_RANK: Array<{ test: (sk: string) => boolean; rank
   },
   { test: (sk) => sk.startsWith('americanfootball_'), rank: 880 },
   { test: (sk) => sk.startsWith('basketball_'), rank: 890 },
-  { test: (sk) => sk.startsWith('baseball_'), rank: 960 },
+  { test: (sk) => sk.startsWith('baseball_'), rank: 520 },
   { test: (sk) => sk.startsWith('icehockey_'), rank: 950 },
   { test: (sk) => sk.startsWith('soccer_'), rank: 850 },
 ]
@@ -198,7 +203,7 @@ export function resolveCoffeeBestLinesTier(sportKey: string): CoffeeBestLinesTie
 
   if (sk.startsWith('americanfootball_')) return 3
   if (sk.startsWith('basketball_')) return 3
-  if (sk.startsWith('baseball_')) return 2
+  if (sk.startsWith('baseball_')) return 3
   if (sk.startsWith('icehockey_')) return 2
 
   return null
@@ -343,6 +348,7 @@ function compareCoffeeBestLinesThreadCandidates(
   a: CoffeeBestLinesThreadCandidateMeta,
   b: CoffeeBestLinesThreadCandidateMeta,
 ): number {
+  if (a.tier !== b.tier) return a.tier - b.tier
   if (b.sortRank !== a.sortRank) return b.sortRank - a.sortRank
   if (b.strengthScore !== a.strengthScore) return b.strengthScore - a.strengthScore
   return a.sortKey.localeCompare(b.sortKey)
@@ -416,6 +422,9 @@ export function shouldIncludeCoffeeBestLinesThreadPart(
   sportKey: string,
   slice: CoffeeBestLinesSliceStrength,
 ): boolean {
+  const sk = normalizeSportKey(sportKey)
+  if (sk === 'baseball_milb') return false
+
   if (slice.gameCount <= 0) return false
 
   const tier = resolveCoffeeBestLinesTier(sportKey)

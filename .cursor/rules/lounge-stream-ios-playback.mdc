@@ -1,0 +1,37 @@
+---
+description: Lounge Stream iOS MSE playback + hero invariants — read before editing LoungePostStreamVideo or HLS recovery timers
+globs:
+  - src/features/lounge/LoungePostStreamVideo.jsx
+  - src/features/lounge/useLoungeStreamHlsAttachment.js
+  - src/features/lounge/LoungeFeedIosSharedStreamHost.jsx
+---
+
+# Lounge Stream — Apple WebKit playback (do not regress)
+
+**Canonical doc:** **`docs/lounge-stream-ios-playback.md`** — read it before changing playback, hero expand/shrink, or HLS attach on iOS.
+
+## Invariant 1 — `readyState=0` can mean playing
+
+On iPhone/iPad **hls.js MSE**, `video.readyState` may stay **`0`** while `!paused` and **`currentTime` advances**. That is normal.
+
+**Never** use `readyState < HAVE_METADATA` alone to bump attach, call `play()` again, or swap to native HLS on Apple WebKit.
+
+Use **`appleWebKitInlineStreamPlaybackLooksLive(el, minSec)`** in **`LoungePostStreamVideo.jsx`**.
+
+## Invariant 2 — Hero session keeps MSE on iOS
+
+**`iosHeroMotionKeepMse`:** `lightboxOpen && heroPhase !== 'idle'`. Do not swap MSE → native when hero lands at `'open'`.
+
+## Invariant 3 — Hero expand land
+
+WAAPI expand finishes at tile box + transform. **`landHeroOpen`** must **`snapFlyoutToHeroOpen`** (cancel anim, snap to target rect) before phase `'open'`.
+
+## Invariant 4 — Callback order
+
+**`bumpHeroChrome`** must be defined **before** **`landHeroOpen`** (TDZ crash on load).
+
+## Before merge
+
+Grep your diff for bare `readyState` checks. iPhone smoke: feed 10s no restart; hero fly-in/land/play/fly-away.
+
+`AGENT_RULE_LOUNGE_STREAM_IOS_PLAYBACK`

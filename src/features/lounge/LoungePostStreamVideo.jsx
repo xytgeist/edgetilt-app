@@ -121,6 +121,9 @@ const ACTIVE_HLS_STALL_MAX_BURST_IOS = 1
 const CF_HLS_READY_NATIVE_FALLBACK_MS = 2800
 
 /**
+ * Apple WebKit + hls.js MSE invariants — read before editing recovery timers or hero land:
+ * docs/lounge-stream-ios-playback.md
+ *
  * iOS hls.js MSE often advances `currentTime` while `readyState` stays 0.
  * Treat that as live playback so we do not call play() again or bump HLS attach (both restart from 0).
  */

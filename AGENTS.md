@@ -138,6 +138,7 @@ Do this **in the same change or PR** as the code (or immediately after), not “
 | --- | --- |
 | File layout, new feature folder, imports/barrels | `docs/frontend-architecture.md`; if top-level story changes, first paragraph of `README.md` |
 | Lounge/feed behavior, phases, or scope | `docs/social-feed-roadmap.md` and, if it affects test validation, `docs/test-buildout-backlog.md` |
+| Lounge Stream **iOS playback / hero / HLS recovery** | **`docs/lounge-stream-ios-playback.md`** (+ backlog Update log); Cursor rule **`.cursor/rules/lounge-stream-ios-playback.mdc`** |
 | Something shipped or verified on **test** | `docs/test-buildout-backlog.md` (correct section + **Update log** at bottom with date and fact) |
 | Production promotion steps or post-deploy smoke | `docs/production-rollout-checklist.md` |
 | **DB capability** (e.g. moderator `UPDATE` including `pinned`) **without** matching UI | `docs/test-buildout-backlog.md`: open checkbox + how to test (seed SQL, SQL editor, future UI). Do not assume the next agent reads chat exports. |
@@ -174,6 +175,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 | --- | --- |
 | App entry, auth vs shell, feature folders, lazy chunks | **`docs/frontend-architecture.md`** (`App.jsx`, `AppShell`, `src/features/*`) |
 | Lounge (feed, Stream/R2, dock FAB, threads, profiles, **market charts**, smoke §11–§21) | **`docs/frontend-architecture.md`** → **`lounge/`** row; backlog **Lounge market** Update log lines |
+| Lounge Stream **iPhone/PWA playback + hero** (rs=0 while playing, MSE hero lock, WAAPI land) | **`docs/lounge-stream-ios-playback.md`** — **read before** `LoungePostStreamVideo.jsx` HLS timers or hero motion; Cursor rule **`.cursor/rules/lounge-stream-ios-playback.mdc`** |
 | Chat (DM, groups, video prep, link previews, glass CSS blast radius) | **`docs/frontend-architecture.md`** → **`chat/`** row; backlog **Chat** section |
 | Play Logbook, calculators, bankroll, offers, guides | Matching **`docs/frontend-architecture.md`** feature rows; backlog sections |
 | **Lounge bots (Scott Share / odds, wire, X editorial)** | **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-crypto-news.md`**, **`docs/lounge-bot-editorial-queue.md`**; portal **`/?tab=bots`** (**`BotReplyOnPostPanel`**, **`BotProfileEditor`**, **`BotComposeImagePicker`**, X **Transform a post**); Edge **`lounge-odds-ingest`**, **`lounge-odds-poll`**, **`lounge-news-poll`**, **`lounge-x-ingest`**; migrations through **`20260707000000`** on test + prod (**`schema_migrations`** tracked Jul 7); X manual transform works without bearer |

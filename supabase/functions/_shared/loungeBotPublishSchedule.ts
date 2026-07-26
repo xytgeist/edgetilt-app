@@ -4,17 +4,15 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
   type AlertRouteConfig,
-  parseAlertRouteConfig,
   resolvePublishTargetsFromRoute,
 } from './loungeBotAlertAudience.ts'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotPublishInput, type BotThreadPart } from './loungeBotPublish.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { validateLiveScheduledPost } from './loungeBotLiveGuards.ts'
+import { DEFAULT_MIN_POST_GAP_MINUTES } from './loungeBotPublishConstants.ts'
 
 export type BotPostPriority = 'urgent' | 'normal' | 'low'
 
-/** Min minutes between Scott feed posts (portal override via min_post_gap_minutes). */
-export const DEFAULT_MIN_POST_GAP_MINUTES = 2
+export { DEFAULT_MIN_POST_GAP_MINUTES } from './loungeBotPublishConstants.ts'
 
 export type SubmitBotAlertPostInput = BotPublishInput & {
   postKind: string
@@ -170,6 +168,7 @@ async function publishSubChatIfNeeded(
   admin: SupabaseClient,
   input: SubmitBotAlertPostInput,
 ): Promise<{ ok: boolean; error: string | null }> {
+  const { publishBotSubChatMessage } = await import('./loungeBotSubChatPublish.ts')
   const result = await publishBotSubChatMessage(admin, {
     botUserId: input.botUserId,
     caption: input.caption,

@@ -41,14 +41,20 @@ import {
 import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundownContext.ts'
 import { isNcaabCoffeeSport } from './loungeBotNcaabCoffeeFilter.ts'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
-import {
-  DEFAULT_MIN_POST_GAP_MINUTES,
-  hasPendingScheduleDedupe,
-  publishRoutedBotThreadPost,
-  submitLoungeBotAlertPost,
-} from './loungeBotPublishSchedule.ts'
+import { DEFAULT_MIN_POST_GAP_MINUTES } from './loungeBotPublishConstants.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
+
+type PublishScheduleModule = typeof import('./loungeBotPublishSchedule.ts')
+
+let publishSchedulePromise: Promise<PublishScheduleModule> | null = null
+
+function loadPublishSchedule(): Promise<PublishScheduleModule> {
+  if (!publishSchedulePromise) {
+    publishSchedulePromise = import('./loungeBotPublishSchedule.ts')
+  }
+  return publishSchedulePromise
+}
 
 export type CalendarRow = {
   slug: string
@@ -417,7 +423,8 @@ export async function tryPublishEdgeAlert(
   if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) {
     return { published: false, pick, skipped: 'edge_already_posted' }
   }
-  if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
+  const schedule = await loadPublishSchedule()
+  if (!dryRun && await schedule.hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
     return { published: false, pick, skipped: 'edge_already_scheduled' }
   }
 
@@ -426,7 +433,7 @@ export async function tryPublishEdgeAlert(
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const alertRoute = resolveAlertRoute('edge', alertAudience)
-  const result = await submitLoungeBotAlertPost(admin, {
+  const result = await schedule.submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
@@ -535,7 +542,8 @@ export async function tryPublishCoffeeAndCovers(
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const alertRoute = resolveAlertRoute('coffee_covers', alertAudience)
-  const result = await publishRoutedBotThreadPost(admin, {
+  const schedule = await loadPublishSchedule()
+  const result = await schedule.publishRoutedBotThreadPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
@@ -661,7 +669,8 @@ export async function tryPublishCombinedCoffeeAndCovers(
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const alertRoute = resolveAlertRoute('coffee_covers', alertAudience)
-  const result = await publishRoutedBotThreadPost(admin, {
+  const schedule = await loadPublishSchedule()
+  const result = await schedule.publishRoutedBotThreadPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
@@ -738,7 +747,8 @@ export async function tryPublishSlateCheckIn(
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const alertRoute = resolveAlertRoute('coffee_covers', alertAudience)
-  const result = await submitLoungeBotAlertPost(admin, {
+  const schedule = await loadPublishSchedule()
+  const result = await schedule.submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
@@ -836,6 +846,7 @@ export async function tryPublishLineMovementAlerts(
   let publishedToday = await countLineAlertsToday(admin, bot.user_id, dayStart)
   let published = 0
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
+  const schedule = await loadPublishSchedule()
 
   for (const alert of movements) {
     if (publishedToday >= maxPerDay) break
@@ -843,7 +854,7 @@ export async function tryPublishLineMovementAlerts(
 
     const dedupeKey = lineMovementDedupeKey(alert)
     if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
-    if (await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
+    if (await schedule.hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
 
     const movedTeam = lineMovementMovedTeam(alert)
     const contextNote = await fetchRundownContextNote(alert.kind, {
@@ -859,7 +870,7 @@ export async function tryPublishLineMovementAlerts(
     })
     const alertRoute = resolveAlertRoute(alert.kind, oddsCfg.alert_audience)
     const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
-    const result = await submitLoungeBotAlertPost(admin, {
+    const result = await schedule.submitLoungeBotAlertPost(admin, {
       botUserId: bot.user_id,
       caption,
       categoryPills: pills,

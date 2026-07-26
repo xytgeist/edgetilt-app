@@ -11,7 +11,7 @@ import {
   sortCalendarRowsByCoverage,
   type CalendarRowForCoverage,
 } from './loungeBotCoverageScope.ts'
-import { ptTodayDate } from './loungeBotOddsCaption.ts'
+import { ptTodayDate } from './loungeBotOddsRun.ts'
 import { sportContextLabelFromKey } from './loungeBotRundownContext.ts'
 
 export type CalendarRow = {

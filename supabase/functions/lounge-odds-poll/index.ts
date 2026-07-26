@@ -28,11 +28,7 @@ import {
   type OddsCfgRow,
   type SportOddsContext,
 } from '../_shared/loungeBotOddsRun.ts'
-import {
-  calendarPickFromTarget,
-  resolveScottScanTargets,
-} from '../_shared/loungeBotScanTargets.ts'
-import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishSchedule.ts'
+import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishConstants.ts'
 import { DEFAULT_MIN_EV_PCT } from '../_shared/loungeBotOddsCaption.ts'
 import type { SharpReportCandidate } from '../_shared/loungeBotSharpReport.ts'
 
@@ -46,6 +42,10 @@ const CONTEXT_ALERT_KINDS = new Set([
 
 function wantsAlertKind(alertKind: string | null, kind: string): boolean {
   return !alertKind || alertKind === kind
+}
+
+async function loadScanTargetsModules() {
+  return import('../_shared/loungeBotScanTargets.ts')
 }
 
 async function authorize(req: Request): Promise<SupabaseClient> {
@@ -156,7 +156,9 @@ Deno.serve(async (req) => {
     }
 
     const activeSports = await fetchActiveSportKeys()
-    const scanTargets = await resolveScottScanTargets(admin, activeSports)
+    const scanTargetsModule = await loadScanTargetsModules()
+    const scanTargets = await scanTargetsModule.resolveScottScanTargets(admin, activeSports)
+    const calendarPickFromTarget = scanTargetsModule.calendarPickFromTarget
     if (!scanTargets.length) {
       return adminOpsJson(200, { ok: true, skipped: 'no_coverage_sports_active', slug, action })
     }

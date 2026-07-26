@@ -27,6 +27,7 @@ import {
 } from './chatApi.js'
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants.js'
 import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
+import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.js'
 
 /**
  * @param {{
@@ -279,15 +280,29 @@ export default function ChatTab({
     }
   }, [supabaseClient, viewerUserId])
 
+  const refreshPrivateSubsUnread = useCallback(async () => {
+    if (!viewerUserId || !supabaseClient) {
+      setPrivateSubsHasUnread(false)
+      return
+    }
+    try {
+      const rows = await listCreatorFanPrivateSubs(supabaseClient, '')
+      setPrivateSubsHasUnread(rows.some((r) => r.is_member && r.has_unread))
+    } catch {
+      // Keep prior badge on transient errors.
+    }
+  }, [supabaseClient, viewerUserId])
+
   const refreshInboxLists = useCallback(async () => {
-    await Promise.all([loadRooms(), loadArchivedCount()])
+    await Promise.all([loadRooms(), loadArchivedCount(), refreshPrivateSubsUnread()])
     if (showArchivedList) await loadArchivedRooms()
-  }, [loadRooms, loadArchivedCount, loadArchivedRooms, showArchivedList])
+  }, [loadRooms, loadArchivedCount, loadArchivedRooms, refreshPrivateSubsUnread, showArchivedList])
 
   useEffect(() => {
     void loadRooms()
     void loadArchivedCount()
-  }, [loadRooms, loadArchivedCount])
+    void refreshPrivateSubsUnread()
+  }, [loadRooms, loadArchivedCount, refreshPrivateSubsUnread])
 
   useEffect(() => {
     if (showArchivedList) void loadArchivedRooms()

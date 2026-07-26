@@ -87,6 +87,8 @@ export async function publishLoungeBotPost(
     subscriber_only: input.subscriberOnly === true,
     image_urls: imageUrls,
     media_url: imageUrls[0] ?? null,
+    // Text/image bot posts are live immediately (NULL is reserved for staged Stream uploads).
+    feed_visible_at: new Date().toISOString(),
   }
 
   const { data, error } = await admin

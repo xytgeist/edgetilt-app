@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
@@ -7,6 +7,7 @@ import {
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
+import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
 import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
@@ -61,18 +62,50 @@ export function LoungeImageLightbox({
   const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
   const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
 
-  const goPrev = useCallback(() => {
-    setIdx((i) => (list.length <= 1 ? i : i <= 0 ? list.length - 1 : i - 1))
-  }, [list.length])
-
-  const goNext = useCallback(() => {
-    setIdx((i) => (list.length <= 1 ? i : i >= list.length - 1 ? 0 : i + 1))
-  }, [list.length])
-
   const multi = list.length > 1
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
+  const carouselScrollRef = useRef(null)
+
+  const scrollToSlide = useCallback(
+    (targetIdx, behavior = 'smooth') => {
+      if (list.length <= 1) {
+        setIdx(targetIdx)
+        return
+      }
+      const el = carouselScrollRef.current
+      if (!el) {
+        setIdx(targetIdx)
+        return
+      }
+      const w = el.clientWidth
+      if (!w) {
+        setIdx(targetIdx)
+        return
+      }
+      const left = targetIdx * w
+      try {
+        el.scrollTo({ left, behavior })
+      } catch {
+        el.scrollLeft = left
+      }
+      setIdx(targetIdx)
+    },
+    [list.length],
+  )
+
+  const goPrev = useCallback(() => {
+    if (list.length <= 1) return
+    const next = idx <= 0 ? list.length - 1 : idx - 1
+    scrollToSlide(next)
+  }, [idx, list.length, scrollToSlide])
+
+  const goNext = useCallback(() => {
+    if (list.length <= 1) return
+    const next = idx >= list.length - 1 ? 0 : idx + 1
+    scrollToSlide(next)
+  }, [idx, list.length, scrollToSlide])
 
   const { isZoomed, isPinching, zoomPointerHandlers, mediaTransformStyle } = useLoungeLightboxImageZoom({
     containerRef: mediaContainerRef,
@@ -80,20 +113,61 @@ export function LoungeImageLightbox({
     resetKey: current,
   })
 
-  const onSwipeHorizontal = useCallback(
-    (dir) => {
-      if (isZoomed || isPinching) return
-      if (dir > 0) goNext()
-      else goPrev()
-    },
-    [goNext, goPrev, isPinching, isZoomed],
-  )
+  const carouselMode = multi && !isZoomed && !isPinching
+
+  useLoungeFeedCarouselAxisLock(carouselScrollRef, carouselMode)
+
+  useLayoutEffect(() => {
+    if (!multi) return
+    const el = carouselScrollRef.current
+    if (!el) return
+    const apply = () => {
+      const w = el.clientWidth
+      if (!w) return
+      el.scrollLeft = idx * w
+    }
+    apply()
+    const id = requestAnimationFrame(apply)
+    return () => cancelAnimationFrame(id)
+  }, [multi, list])
+
+  useLayoutEffect(() => {
+    if (!carouselMode) return
+    const el = carouselScrollRef.current
+    if (!el) return
+    const w = el.clientWidth
+    if (!w) return
+    el.scrollLeft = idx * w
+  }, [carouselMode])
+
+  useEffect(() => {
+    if (!carouselMode) return undefined
+    const el = carouselScrollRef.current
+    if (!el) return undefined
+    let raf = 0
+    const syncIdx = () => {
+      const w = el.clientWidth
+      if (!w) return
+      const i = Math.round(el.scrollLeft / w)
+      const clamped = Math.max(0, Math.min(i, list.length - 1))
+      setIdx((prev) => (prev === clamped ? prev : clamped))
+    }
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(syncIdx)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(raf)
+    }
+  }, [carouselMode, list.length])
 
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
     onClose,
-    onSwipeHorizontal: multi ? onSwipeHorizontal : undefined,
     allowSwipeOnVideo: true,
     enabled: !isZoomed && !isPinching,
+    verticalDismissOnly: multi,
     className: 'relative flex min-h-0 flex-1 flex-col',
   })
 
@@ -248,6 +322,48 @@ export function LoungeImageLightbox({
           </div>
         ) : null}
       </div>
+      {multi && carouselMode ? (
+        <div
+          className={`pointer-events-none absolute inset-0 z-[2] flex items-center justify-between ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD}`}
+          data-lounge-lightbox-carousel-nav
+          data-lounge-lightbox-no-swipe
+        >
+          <button
+            type="button"
+            aria-label="Previous image"
+            onClick={(e) => {
+              e.stopPropagation()
+              goPrev()
+            }}
+            className={`pointer-events-auto ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
+          >
+            <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+              <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Next image"
+            onClick={(e) => {
+              e.stopPropagation()
+              goNext()
+            }}
+            className={`pointer-events-auto ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
+          >
+            <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+              <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {!lightboxInteractionBarContent ? (
+            <div
+              data-lounge-lightbox-image-pager
+              className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
+            >
+              {idx + 1} / {list.length}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div
         onClick={(e) => e.stopPropagation()}
         onPointerDown={onMediaPointerDown}
@@ -264,58 +380,44 @@ export function LoungeImageLightbox({
           className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2"
         >
           <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
-          {multi ? (
-            <div data-lounge-lightbox-carousel className="pointer-events-none absolute inset-0 z-[2]">
-              <button
-                type="button"
-                aria-label="Previous image"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  goPrev()
-                }}
-                className={`pointer-events-auto absolute left-1 top-1/2 z-[1] -translate-y-1/2 sm:left-2 ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
-                data-lounge-lightbox-no-swipe
-              >
-                <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-                  <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                aria-label="Next image"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  goNext()
-                }}
-                className={`pointer-events-auto absolute right-1 top-1/2 z-[1] -translate-y-1/2 sm:right-2 ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
-                data-lounge-lightbox-no-swipe
-              >
-                <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-                  <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-              {!lightboxInteractionBarContent ? (
+          {carouselMode ? (
+            <div
+              ref={carouselScrollRef}
+              data-lounge-feed-horizontal-scroll
+              data-lounge-lightbox-carousel
+              className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+            >
+              {list.map((slideUrl, i) => (
                 <div
-                  data-lounge-lightbox-image-pager
-                  className="pointer-events-none absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
+                  key={`${slideUrl}-${i}`}
+                  className="flex h-full w-full shrink-0 snap-center items-center justify-center"
                 >
-                  {idx + 1} / {list.length}
+                  <img
+                    ref={i === idx ? mediaImageRef : undefined}
+                    src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
+                    alt=""
+                    className="max-h-full max-w-full select-none object-contain"
+                    loading={i === idx ? 'eager' : 'lazy'}
+                    decoding="async"
+                    draggable={false}
+                  />
                 </div>
-              ) : null}
+              ))}
             </div>
-          ) : null}
-          <div className="relative z-[1] inline-flex max-h-full max-w-full origin-center" style={mediaTransformStyle}>
-            <img
-              ref={mediaImageRef}
-              key={current}
-              src={currentDisplaySrc}
-              alt=""
-              className="max-h-full max-w-full select-none object-contain"
-              loading="eager"
-              decoding="async"
-              draggable={false}
-            />
-          </div>
+          ) : (
+            <div className="relative z-[1] inline-flex max-h-full max-w-full origin-center" style={mediaTransformStyle}>
+              <img
+                ref={mediaImageRef}
+                key={current}
+                src={currentDisplaySrc}
+                alt=""
+                className="max-h-full max-w-full select-none object-contain"
+                loading="eager"
+                decoding="async"
+                draggable={false}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>,

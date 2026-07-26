@@ -194,12 +194,25 @@ export function LoungeImageCarousel({
     setFeedAttachmentTiers((prev) => (prev[index] === tier ? prev : { ...prev, [index]: tier }))
   }
 
-  const nudgeScrollStart = () => {
+  const resyncCarouselSnap = () => {
     const el = carouselScrollRef.current
-    if (!el) return
-    el.scrollLeft = 0
+    if (!el || el.hasAttribute('data-lounge-carousel-dragging')) return
+    const children = el.children
+    if (!children.length) return
+    /** @type {number[]} */
+    const offsets = []
+    for (let i = 0; i < children.length; i += 1) {
+      offsets.push(/** @type {HTMLElement} */ (children[i]).offsetLeft)
+    }
+    let idx = 0
+    for (let i = 0; i < offsets.length; i += 1) {
+      if (offsets[i] <= el.scrollLeft + 0.5) idx = i
+    }
+    const target = offsets[idx] ?? 0
+    if (Math.abs(el.scrollLeft - target) <= 1) return
+    el.scrollLeft = target
     try {
-      el.scrollTo({ left: 0, behavior: 'instant' })
+      el.scrollTo({ left: target, behavior: 'instant' })
     } catch {
       // ignore
     }
@@ -214,7 +227,7 @@ export function LoungeImageCarousel({
       <div
         ref={carouselScrollRef}
         {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${isComposer ? 'scroll-smooth' : ''}`}
+        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${multiSlideCarousel ? '' : 'snap-x snap-mandatory'} ${isComposer ? 'scroll-smooth' : ''}`}
         role="region"
         aria-label={regionAriaLabel}
       >
@@ -240,7 +253,9 @@ export function LoungeImageCarousel({
             : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
           const onImgLoad = (e) => {
             noteFeedAttachmentTier(i, e.currentTarget)
-            if (i === 0) nudgeScrollStart()
+            requestAnimationFrame(() => {
+              requestAnimationFrame(resyncCarouselSnap)
+            })
             notifySlideMediaLayout()
           }
           return (

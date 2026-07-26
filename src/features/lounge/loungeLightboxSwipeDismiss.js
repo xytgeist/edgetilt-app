@@ -24,6 +24,8 @@ export function useLoungeLightboxSwipeDismiss({
   allowSwipeOnVideo = false,
   /** When false, pointer handlers no-op (e.g. image lightbox while pinch-zoomed). */
   enabled = true,
+  /** When true, horizontal drags are ignored (carousel handles them elsewhere). */
+  verticalDismissOnly = false,
 }) {
   const dragRef = useRef(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -59,6 +61,14 @@ export function useLoungeLightboxSwipeDismiss({
     if (!drag || drag.pointerId !== e.pointerId) return
     const dx = e.clientX - drag.startX
     const dy = e.clientY - drag.startY
+    if (verticalDismissOnly) {
+      if (Math.abs(dy) >= Math.abs(dx)) {
+        setOffset({ x: 0, y: dy })
+      } else {
+        setOffset({ x: 0, y: 0 })
+      }
+      return
+    }
     if (Math.abs(dy) >= Math.abs(dx)) {
       setOffset({ x: 0, y: dy })
     } else if (onSwipeHorizontal) {
@@ -66,7 +76,7 @@ export function useLoungeLightboxSwipeDismiss({
     } else {
       setOffset({ x: 0, y: dy })
     }
-  }, [onSwipeHorizontal, enabled])
+  }, [onSwipeHorizontal, enabled, verticalDismissOnly])
 
   const finishDrag = useCallback(
     (e) => {
@@ -87,7 +97,12 @@ export function useLoungeLightboxSwipeDismiss({
         return
       }
       resetDrag()
-      if (onSwipeHorizontal && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) >= DISMISS_DRAG_PX) {
+      if (
+        !verticalDismissOnly &&
+        onSwipeHorizontal &&
+        Math.abs(dx) > Math.abs(dy) &&
+        Math.abs(dx) >= DISMISS_DRAG_PX
+      ) {
         onSwipeHorizontal(dx < 0 ? 1 : -1)
         return
       }
@@ -95,7 +110,7 @@ export function useLoungeLightboxSwipeDismiss({
         onTap(e)
       }
     },
-    [onClose, onSwipeHorizontal, onTap, resetDrag, enabled],
+    [onClose, onSwipeHorizontal, onTap, resetDrag, enabled, verticalDismissOnly],
   )
 
   const onPointerUp = useCallback(

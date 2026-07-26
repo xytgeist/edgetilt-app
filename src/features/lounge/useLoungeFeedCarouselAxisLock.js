@@ -83,7 +83,6 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
     }
 
     const clearInteractionStyles = () => {
-      el.style.scrollSnapType = ''
       el.style.touchAction = ''
       el.removeAttribute('data-lounge-carousel-dragging')
     }
@@ -217,7 +216,6 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
 
     const finishHorizontalGesture = (startScrollLeft) => {
       const releaseVel = releaseVelocity()
-      el.style.scrollSnapType = 'none'
       el.setAttribute('data-lounge-carousel-dragging', 'true')
 
       if (Math.abs(releaseVel) >= SLOW_DRAG_VELOCITY_PX_MS) {
@@ -229,6 +227,9 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       const target = resolveTargetFromDrag(el.scrollLeft, releaseVel, startScrollLeft, offsets)
       animateScrollTo(target, SNAP_ANIM_MS * 0.85, finalizeAt)
     }
+
+    // JS owns snap while this hook is active; native snap-x fights post-load layout + scroll anchoring.
+    el.style.scrollSnapType = 'none'
 
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) {
@@ -264,7 +265,6 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
           gesture.axis = 'x'
           gesture.startScrollLeft = el.scrollLeft
           el.setAttribute('data-lounge-carousel-dragging', 'true')
-          el.style.scrollSnapType = 'none'
           el.style.touchAction = 'none'
         } else if (
           Math.abs(dy) >= VERTICAL_MIN_PX &&
@@ -311,6 +311,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
       cancelAnimations()
       resetGesture()
       clearInteractionStyles()
+      el.style.scrollSnapType = ''
     }
   }, [enabled, scrollerRef])
 

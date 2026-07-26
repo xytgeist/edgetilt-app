@@ -10,7 +10,7 @@ const SLOTS_TOOLS = [
     label: 'AP Guides',
     Icon: BookOpen,
     color: '#fb923c',
-    description: 'Advantage-play guides and community Q&A',
+    description: 'Guide cards and community Q&A',
     subscriberGated: (gatesMap) => guidesTabFullyGated(gatesMap),
   },
   {

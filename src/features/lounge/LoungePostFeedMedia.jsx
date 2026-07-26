@@ -199,12 +199,16 @@ export function LoungeImageCarousel({
   }
 
   const feedMultiBleed = isFeedVariant && multiSlideCarousel
+  const feedCarouselLayout = {
+    multiCarousel: isFeedVariant && multiSlideCarousel,
+    fullBleed: feedMultiBleed,
+  }
 
   const carouselTrack = (
     <div
       ref={carouselScrollRef}
       {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-      className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${isComposer ? 'scroll-smooth' : ''}`}
+      className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${feedCarouselLayout.multiCarousel ? 'items-center' : ''} ${isComposer ? 'scroll-smooth' : ''}`}
       role="region"
       aria-label={regionAriaLabel}
     >
@@ -214,8 +218,7 @@ export function LoungeImageCarousel({
         const slideClass = isFeedVariant
           ? loungeFeedAttachmentSlideClassName(tier, {
               singleInPost: singleFeedSlide,
-              multiCarousel: list.length > 1,
-              fullBleed: feedMultiBleed,
+              multiCarousel: feedCarouselLayout.multiCarousel,
             })
           : `relative w-auto shrink-0 ${!isComposer ? 'min-w-[3rem]' : ''} ${
               isComposer
@@ -223,13 +226,14 @@ export function LoungeImageCarousel({
                 : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
             }`
         const frameClass = isFeedVariant
-          ? loungeFeedAttachmentFrameClassName(tier, frameOpts)
+          ? loungeFeedAttachmentFrameClassName(tier, frameOpts, feedCarouselLayout)
           : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
-        const slideImgClass = isFeedVariant ? loungeFeedAttachmentImgClassName(tier) : imgClass
+        const slideImgClass = isFeedVariant
+          ? loungeFeedAttachmentImgClassName(tier, feedCarouselLayout)
+          : imgClass
         const tapClass = isFeedVariant
           ? loungeFeedAttachmentTapTargetClassName(tier, {
-              fullBleed: feedMultiBleed,
-              multiCarousel: list.length > 1,
+              multiCarousel: feedCarouselLayout.multiCarousel,
             })
           : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
         const onImgLoad = (e) => {

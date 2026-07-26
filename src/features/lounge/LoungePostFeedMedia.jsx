@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
@@ -194,7 +194,7 @@ export function LoungeImageCarousel({
     setFeedAttachmentTiers((prev) => (prev[index] === tier ? prev : { ...prev, [index]: tier }))
   }
 
-  const resyncCarouselSnap = () => {
+  const resyncCarouselSnap = useCallback(() => {
     const el = carouselScrollRef.current
     if (!el || el.hasAttribute('data-lounge-carousel-dragging')) return
     const children = el.children
@@ -209,18 +209,64 @@ export function LoungeImageCarousel({
       if (offsets[i] <= el.scrollLeft + 0.5) idx = i
     }
     const target = offsets[idx] ?? 0
-    if (Math.abs(el.scrollLeft - target) <= 1) return
+    if (Math.abs(el.scrollLeft - target) <= 0.5) return
     el.scrollLeft = target
     try {
       el.scrollTo({ left: target, behavior: 'instant' })
     } catch {
       // ignore
     }
-  }
+  }, [])
+
+  /** Re-pin after lazy slide layout / scroll-anchoring nudges the strip while idle. */
+  useEffect(() => {
+    if (!multiSlideCarousel) return undefined
+    const el = carouselScrollRef.current
+    if (!el) return undefined
+
+    let raf = 0
+    const scheduleResync = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(resyncCarouselSnap)
+      })
+    }
+
+    let ro = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(scheduleResync)
+      ro.observe(el)
+      for (let i = 0; i < el.children.length; i += 1) {
+        ro.observe(el.children[i])
+      }
+    }
+
+    let scrollRaf = 0
+    const onScroll = () => {
+      if (el.hasAttribute('data-lounge-carousel-dragging')) return
+      cancelAnimationFrame(scrollRaf)
+      scrollRaf = requestAnimationFrame(scheduleResync)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      if (ro) ro.disconnect()
+      el.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(raf)
+      cancelAnimationFrame(scrollRaf)
+    }
+  }, [urlsKey, multiSlideCarousel, resyncCarouselSnap])
+
+  useLayoutEffect(() => {
+    if (!multiSlideCarousel || isComposer) return
+    resyncCarouselSnap()
+  }, [feedAttachmentTiers, multiSlideCarousel, isComposer, resyncCarouselSnap])
 
   const notifySlideMediaLayout = () => {
     if (typeof onSlideMediaLayout === 'function') onSlideMediaLayout()
   }
+
+  const eagerMultiCarousel = multiSlideCarousel && !isComposer
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
@@ -261,7 +307,7 @@ export function LoungeImageCarousel({
           return (
           <div
             key={`${url}-${i}`}
-            className={slideClass}
+            className={`${slideClass}${multiSlideCarousel ? ' [overflow-anchor:none]' : ''}`}
           >
             {canOpenLightbox ? (
               <div
@@ -288,7 +334,7 @@ export function LoungeImageCarousel({
                     src={displaySrc}
                     alt=""
                     className={slideImgClass}
-                    loading={i === 0 ? 'eager' : 'lazy'}
+                    loading={eagerMultiCarousel || i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
                     onLoad={onImgLoad}
@@ -301,7 +347,7 @@ export function LoungeImageCarousel({
                   src={displaySrc}
                   alt=""
                   className={slideImgClass}
-                  loading={i === 0 ? 'eager' : 'lazy'}
+                  loading={eagerMultiCarousel || i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}
                   onLoad={onImgLoad}

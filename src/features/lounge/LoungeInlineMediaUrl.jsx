@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import {
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
   LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS,
-  LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS,
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
@@ -322,46 +321,12 @@ export function LoungeImageLightbox({
           </div>
         ) : null}
       </div>
-      {multi && carouselMode ? (
+      {multi && !lightboxInteractionBarContent ? (
         <div
-          className={`pointer-events-none absolute inset-0 z-[2] flex items-center justify-between ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD}`}
-          data-lounge-lightbox-carousel-nav
-          data-lounge-lightbox-no-swipe
+          data-lounge-lightbox-image-pager
+          className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
         >
-          <button
-            type="button"
-            aria-label="Previous image"
-            onClick={(e) => {
-              e.stopPropagation()
-              goPrev()
-            }}
-            className={`pointer-events-auto ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
-          >
-            <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-              <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            aria-label="Next image"
-            onClick={(e) => {
-              e.stopPropagation()
-              goNext()
-            }}
-            className={`pointer-events-auto ${LOUNGE_IMAGE_LIGHTBOX_CAROUSEL_BTN_CLASS} [-webkit-tap-highlight-color:transparent]`}
-          >
-            <svg className="relative z-[1] h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-              <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {!lightboxInteractionBarContent ? (
-            <div
-              data-lounge-lightbox-image-pager
-              className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
-            >
-              {idx + 1} / {list.length}
-            </div>
-          ) : null}
+          {idx + 1} / {list.length}
         </div>
       ) : null}
       <div

@@ -24,6 +24,10 @@ import {
 } from '../../constants/inAppToastLayout.js'
 import { adminSetProfileRole } from '../profiles/adminSetProfileRole.js'
 import {
+  adminCompSlotsEdgeLifetime,
+  adminRevokeCompSlotsEdgeLifetime,
+} from '../profiles/adminCompSlotsEdgeLifetime.js'
+import {
   BOT_IMPERSONATE_OPEN_DOCK_KEY,
   BOT_IMPERSONATE_SETTINGS_FOCUS_KEY,
 } from '../bots/botPortalApi.js'
@@ -14301,6 +14305,23 @@ export default function SocialFeed({
     [loungeViewerIsAdmin, patchMemberRoleInFeed, supabaseClient],
   )
 
+  const handleAdminCompLifetime = useCallback(
+    async (targetUserId, grant) => {
+      const uid = String(targetUserId || '').trim()
+      if (!uid || !loungeViewerIsAdmin) {
+        return { ok: false, error: 'Admin access required.' }
+      }
+      const { data, error } = grant
+        ? await adminCompSlotsEdgeLifetime(supabaseClient, uid)
+        : await adminRevokeCompSlotsEdgeLifetime(supabaseClient, uid)
+      if (error) {
+        return { ok: false, error: error.message || String(error) }
+      }
+      return { ok: true, entitlements: data || null }
+    },
+    [loungeViewerIsAdmin, supabaseClient],
+  )
+
   const profilePostCardProps = useMemo(
     () => ({
       loungeReadOnly,
@@ -17328,6 +17349,7 @@ export default function SocialFeed({
           showVideoDebugHud={loungeProfileVideoDebugHud}
           viewerIsAdmin={loungeViewerIsAdmin}
           onAdminSetProfileRole={handleAdminSetProfileRole}
+          onAdminCompLifetime={handleAdminCompLifetime}
           onViewerFollowChange={syncLoungeViewerFollowState}
           stackAboveStreamLightbox={profileStackAboveStreamLightbox}
           requestOwnProfileEditing={profileModalStartEditing}
@@ -17374,6 +17396,7 @@ export default function SocialFeed({
               showVideoDebugHud={loungeProfileVideoDebugHud && isTop}
               viewerIsAdmin={loungeViewerIsAdmin}
               onAdminSetProfileRole={handleAdminSetProfileRole}
+              onAdminCompLifetime={handleAdminCompLifetime}
               onViewerFollowChange={syncLoungeViewerFollowState}
               onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
             />

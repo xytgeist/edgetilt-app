@@ -47,6 +47,8 @@ from auth.users u
 where p.user_id = u.id and lower(u.email) = lower('moderator-test@example.com');
 ```
 
+**Comp Slots Edge Lifetime in app (admin only):** open their Lounge profile → **⋯** menu → **Comp Slots Edge Lifetime** (same surface as **Promote to moderator**). Requires migration **`20260726210000_admin_comp_slots_edge_lifetime.sql`**. Grants full Pro via `user_subscriptions` (`slots-edge-lifetime` with `admin_comp_lifetime_*` id) — **does not** change `profiles.role`. **Revoke comp Lifetime** appears when the row is admin-comped only (not Stripe-paid Lifetime).
+
 **Mark a test account as subscriber:**
 
 ```sql

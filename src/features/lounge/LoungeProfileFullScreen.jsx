@@ -83,6 +83,7 @@ import CreatorFanPortalModal from '../creatorFanSubs/CreatorFanPortalModal.jsx'
 import OwnProfileFanMonetizationCta from '../creatorFanSubs/OwnProfileFanMonetizationCta.jsx'
 import { formatFanTierLabel } from '../creatorFanSubs/fanSubTiers.js'
 import LoungeProfileOverflowMenu from './LoungeProfileOverflowMenu.jsx'
+import { adminMemberSlotsEntitlements } from '../profiles/adminCompSlotsEdgeLifetime.js'
 import {
   profileSocialActionButtonClass,
   ProfileSocialAlertsIcon,
@@ -509,6 +510,8 @@ export default function LoungeProfileFullScreen({
   viewerIsAdmin = false,
   /** `(targetUserId, nextRole) => Promise<{ ok: boolean, error?: string }>` */
   onAdminSetProfileRole = null,
+  /** `(targetUserId, grant) => Promise<{ ok: boolean, error?: string, entitlements?: object }>` */
+  onAdminCompLifetime = null,
   /** `(userId, isFollowing) => void` - sync feed session when follow toggles on profile / follow list. */
   onViewerFollowChange = null,
   /** Settings → Edit profile: open own sheet already in edit mode. */
@@ -530,6 +533,9 @@ export default function LoungeProfileFullScreen({
   const [tab, setTab] = useState('posts')
   const [adminRoleBusy, setAdminRoleBusy] = useState(false)
   const [adminRoleErr, setAdminRoleErr] = useState('')
+  const [adminCompBusy, setAdminCompBusy] = useState(false)
+  const [adminCompErr, setAdminCompErr] = useState('')
+  const [targetSlotsEntitlements, setTargetSlotsEntitlements] = useState(/** @type {Record<string, boolean> | null} */ (null))
   const [interactionPosts, setInteractionPosts] = useState([])
   const [interactionLoading, setInteractionLoading] = useState(false)
   const [interactionErr, setInteractionErr] = useState('')
@@ -646,10 +652,43 @@ export default function LoungeProfileFullScreen({
     Boolean(viewerIsAdmin && !isOwnProfile && onAdminSetProfileRole && targetProfileRole === 'user')
   const canAdminDemoteModerator =
     Boolean(viewerIsAdmin && !isOwnProfile && onAdminSetProfileRole && targetProfileRole === 'moderator')
+  const canAdminCompLifetime = Boolean(
+    viewerIsAdmin
+    && !isOwnProfile
+    && onAdminCompLifetime
+    && targetSlotsEntitlements
+    && !targetSlotsEntitlements.slots_edge_lifetime_active,
+  )
+  const canAdminRevokeCompLifetime = Boolean(
+    viewerIsAdmin
+    && !isOwnProfile
+    && onAdminCompLifetime
+    && targetSlotsEntitlements?.admin_comp_lifetime,
+  )
+
+  const refreshTargetSlotsEntitlements = useCallback(async () => {
+    if (!viewerIsAdmin || !profileUserId || isOwnProfile || !supabaseClient) {
+      setTargetSlotsEntitlements(null)
+      return
+    }
+    const { data, error } = await adminMemberSlotsEntitlements(supabaseClient, profileUserId)
+    if (error || !data) {
+      setTargetSlotsEntitlements(null)
+      return
+    }
+    setTargetSlotsEntitlements(data)
+  }, [viewerIsAdmin, profileUserId, isOwnProfile, supabaseClient])
+
+  useEffect(() => {
+    if (!open) return
+    void refreshTargetSlotsEntitlements()
+  }, [open, refreshTargetSlotsEntitlements])
 
   useEffect(() => {
     setAdminRoleErr('')
     setAdminRoleBusy(false)
+    setAdminCompErr('')
+    setAdminCompBusy(false)
   }, [profileUserId])
 
   const runAdminProfileRoleChange = useCallback(
@@ -675,6 +714,42 @@ export default function LoungeProfileFullScreen({
       }
     },
     [adminRoleBusy, displayName, onAdminSetProfileRole, profileUserId],
+  )
+
+  const runAdminCompLifetimeChange = useCallback(
+    async (grant) => {
+      if (!onAdminCompLifetime || !profileUserId || adminCompBusy) return
+      const label = grant
+        ? `Comp Slots Edge Lifetime for ${displayName}? Full Pro access, no moderator powers.`
+        : `Revoke admin-comped Lifetime from ${displayName}?`
+      if (!window.confirm(label)) return
+      setAdminCompBusy(true)
+      setAdminCompErr('')
+      setOtherProfileMenuOpen(false)
+      try {
+        const result = await onAdminCompLifetime(profileUserId, grant)
+        if (!result?.ok) {
+          setAdminCompErr(result?.error || 'Could not update Lifetime access.')
+          return
+        }
+        if (result.entitlements && typeof result.entitlements === 'object') {
+          setTargetSlotsEntitlements(result.entitlements)
+        } else {
+          await refreshTargetSlotsEntitlements()
+        }
+      } catch (e) {
+        setAdminCompErr(e instanceof Error ? e.message : 'Could not update Lifetime access.')
+      } finally {
+        setAdminCompBusy(false)
+      }
+    },
+    [
+      adminCompBusy,
+      displayName,
+      onAdminCompLifetime,
+      profileUserId,
+      refreshTargetSlotsEntitlements,
+    ],
   )
   const profileTabBtnClass =
     profileTabsVisible.length > 2 ? 'min-h-11 px-1 text-[13px]' : 'min-h-11 px-2 text-[15px]'
@@ -2058,6 +2133,17 @@ export default function LoungeProfileFullScreen({
                             setOtherProfileMenuOpen(false)
                             void runAdminProfileRoleChange('user')
                           }}
+                          canAdminCompLifetime={canAdminCompLifetime}
+                          canAdminRevokeCompLifetime={canAdminRevokeCompLifetime}
+                          adminCompBusy={adminCompBusy}
+                          onAdminCompLifetime={() => {
+                            setOtherProfileMenuOpen(false)
+                            void runAdminCompLifetimeChange(true)
+                          }}
+                          onAdminRevokeCompLifetime={() => {
+                            setOtherProfileMenuOpen(false)
+                            void runAdminCompLifetimeChange(false)
+                          }}
                           onToggleMute={() => {
                             setOtherProfileMenuOpen(false)
                             void toggleProfileFeedMute()
@@ -2439,6 +2525,11 @@ export default function LoungeProfileFullScreen({
                   {adminRoleErr}
                 </div>
               ) : null}
+              {adminCompErr ? (
+                <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
+                  {adminCompErr}
+                </div>
+              ) : null}
               <LoungeFeedVideoAutoplayProvider
                 scrollRootRef={profileBodyScrollRef}
                 showDebugHud={showVideoDebugHud}
@@ -2681,6 +2772,7 @@ export default function LoungeProfileFullScreen({
               showVideoDebugHud={showVideoDebugHud}
               viewerIsAdmin={viewerIsAdmin}
               onAdminSetProfileRole={onAdminSetProfileRole}
+              onAdminCompLifetime={onAdminCompLifetime}
             />
           )
         })}

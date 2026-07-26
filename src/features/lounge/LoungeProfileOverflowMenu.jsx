@@ -19,6 +19,11 @@ const MENU_ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-zinc-300'
  *   adminRoleBusy?: boolean,
  *   onAdminPromote?: () => void,
  *   onAdminDemote?: () => void,
+ *   canAdminCompLifetime?: boolean,
+ *   canAdminRevokeCompLifetime?: boolean,
+ *   adminCompBusy?: boolean,
+ *   onAdminCompLifetime?: () => void,
+ *   onAdminRevokeCompLifetime?: () => void,
  * }} props
  */
 export default function LoungeProfileOverflowMenu({
@@ -35,6 +40,11 @@ export default function LoungeProfileOverflowMenu({
   adminRoleBusy = false,
   onAdminPromote,
   onAdminDemote,
+  canAdminCompLifetime = false,
+  canAdminRevokeCompLifetime = false,
+  adminCompBusy = false,
+  onAdminCompLifetime,
+  onAdminRevokeCompLifetime,
 }) {
   const handleAt = profileHandle ? `@${String(profileHandle).replace(/^@/, '')}` : 'this member'
 
@@ -66,6 +76,28 @@ export default function LoungeProfileOverflowMenu({
           onClick={onAdminDemote}
         >
           Remove moderator role
+        </button>
+      ) : null}
+      {canAdminCompLifetime ? (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={adminCompBusy}
+          className={`${MENU_ITEM_CLASS} text-cyan-200`}
+          onClick={onAdminCompLifetime}
+        >
+          Comp Slots Edge Lifetime
+        </button>
+      ) : null}
+      {canAdminRevokeCompLifetime ? (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={adminCompBusy}
+          className={`${MENU_ITEM_CLASS} text-cyan-200`}
+          onClick={onAdminRevokeCompLifetime}
+        >
+          Revoke comp Lifetime
         </button>
       ) : null}
       {typeof onToggleMute === 'function' ? (

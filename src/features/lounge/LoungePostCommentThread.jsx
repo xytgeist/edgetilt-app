@@ -260,6 +260,7 @@ export function LoungeCommentCard({
       <LoungePostFeedImagesAndGif
         post={comment}
         variant={mediaFeedVariant}
+        captionColumnMedia
         firstMarginTopClass={
           String(comment.body || '').trim()
             ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS

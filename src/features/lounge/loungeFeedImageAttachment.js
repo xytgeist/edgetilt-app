@@ -142,6 +142,28 @@ export const LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS = 'max-h-[min(55vh,420px)
 
 /** @typedef {'column' | 'tall'} LoungeFeedAttachmentTier */
 
+/** Variants that use feed-style carousel (peek, rubber-band, unified row height). */
+export const LOUNGE_FEED_CAROUSEL_LAYOUT_VARIANTS = new Set(['feed', 'detail', 'commentInline'])
+
+/**
+ * @param {string} [variant]
+ */
+export function loungeFeedUsesCarouselLayout(variant) {
+  return LOUNGE_FEED_CAROUSEL_LAYOUT_VARIANTS.has(String(variant || ''))
+}
+
+/**
+ * Viewport full-bleed breakout (avatar-caption column rows only).
+ * @param {string} [variant]
+ * @param {{ captionColumn?: boolean }} [opts]
+ */
+export function loungeFeedCarouselFullBleed(variant, opts = {}) {
+  const v = String(variant || '')
+  if (v === 'feed' || v === 'commentInline') return true
+  if (v === 'detail' && opts.captionColumn) return true
+  return false
+}
+
 /**
  * @param {number} naturalWidth
  * @param {number} naturalHeight

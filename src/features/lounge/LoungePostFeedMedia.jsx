@@ -7,10 +7,12 @@ import {
   loungeFeedAttachmentSlideClassName,
   loungeFeedAttachmentTapTargetClassName,
   loungeFeedCarouselCapSlideWidthPx,
+  loungeFeedCarouselFullBleed,
   loungeFeedCarouselMeasureLayout,
   loungeFeedCarouselSlideWidthPx,
   loungeFeedCarouselRowHeightFromFirstSlide,
   loungeFeedImageAttachmentTier,
+  loungeFeedUsesCarouselLayout,
   LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
   LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS,
 } from './loungeFeedImageAttachment.js'
@@ -60,6 +62,8 @@ export function LoungeImageCarousel({
   visibilityResetRootRef,
   /** Composer: parent scroll tail-follow when a slide image finishes layout. */
   onSlideMediaLayout,
+  /** When true, `detail` multi-image carousels break out like feed rows (comment avatar column). */
+  captionColumnMedia = false,
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
@@ -187,20 +191,20 @@ export function LoungeImageCarousel({
   }, [urlsKey, isComposer, list.length, visibilityResetRootRef])
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const canOpenLightbox = enableLightbox && !isComposer && typeof onRemoveIndex !== 'function'
-  const isFeedVariant = !isComposer && variant === 'feed'
-  const singleFeedSlide = isFeedVariant && list.length === 1
+  const usesCarouselLayout = !isComposer && loungeFeedUsesCarouselLayout(variant)
+  const singleCarouselSlide = usesCarouselLayout && list.length === 1
   const rounding = variant === 'embed' ? 'rounded-lg' : 'rounded-xl'
   const border =
     variant === 'embed' ? 'border-zinc-600/40' : variant === 'commentInline' ? 'border-zinc-700/50' : 'border-zinc-700/60'
   const frameOpts = { rounding, border }
 
   const tierForSlide = (index) => {
-    if (!isFeedVariant) return 'column'
+    if (!usesCarouselLayout) return 'column'
     return feedAttachmentTiers[index] ?? 'column'
   }
 
   const noteFeedAttachmentTier = (index, img) => {
-    if (!isFeedVariant || !img) return
+    if (!usesCarouselLayout || !img) return
     const tier = loungeFeedImageAttachmentTier(img.naturalWidth, img.naturalHeight)
     setFeedAttachmentTiers((prev) => (prev[index] === tier ? prev : { ...prev, [index]: tier }))
   }
@@ -209,16 +213,17 @@ export function LoungeImageCarousel({
     if (typeof onSlideMediaLayout === 'function') onSlideMediaLayout()
   }
 
-  const feedMultiBleed = isFeedVariant && multiSlideCarousel
-  const feedCarouselLayout = {
-    multiCarousel: isFeedVariant && multiSlideCarousel,
-    fullBleed: feedMultiBleed,
+  const carouselFullBleed =
+    usesCarouselLayout && multiSlideCarousel && loungeFeedCarouselFullBleed(variant, { captionColumn: captionColumnMedia })
+  const carouselLayout = {
+    multiCarousel: usesCarouselLayout && multiSlideCarousel,
+    fullBleed: carouselFullBleed,
   }
 
   useLayoutEffect(() => {
-    if (!feedCarouselLayout.multiCarousel) return undefined
+    if (!carouselLayout.multiCarousel) return undefined
     const syncViewport = () => {
-      setCarouselViewport(loungeFeedCarouselMeasureLayout(carouselScrollRef.current, feedMultiBleed))
+      setCarouselViewport(loungeFeedCarouselMeasureLayout(carouselScrollRef.current, carouselFullBleed))
     }
     syncViewport()
     const id = requestAnimationFrame(syncViewport)
@@ -227,10 +232,10 @@ export function LoungeImageCarousel({
       cancelAnimationFrame(id)
       window.removeEventListener('resize', syncViewport)
     }
-  }, [feedCarouselLayout.multiCarousel, feedMultiBleed, urlsKey])
+  }, [carouselLayout.multiCarousel, carouselFullBleed, urlsKey])
 
   const carouselUnifiedRowHeightPx = useMemo(() => {
-    if (!feedCarouselLayout.multiCarousel) return 0
+    if (!carouselLayout.multiCarousel) return 0
     return loungeFeedCarouselRowHeightFromFirstSlide(
       carouselSlideDims[0],
       carouselViewport.maxRowPx,
@@ -240,11 +245,11 @@ export function LoungeImageCarousel({
     carouselSlideDims,
     carouselViewport.maxRowPx,
     carouselViewport.firstSlideMaxWidthPx,
-    feedCarouselLayout.multiCarousel,
+    carouselLayout.multiCarousel,
   ])
 
   useEffect(() => {
-    if (!feedCarouselLayout.multiCarousel) return undefined
+    if (!carouselLayout.multiCarousel) return undefined
     const scroller = carouselScrollRef.current
     if (!scroller) return undefined
     const lockVerticalScroll = () => {
@@ -253,10 +258,10 @@ export function LoungeImageCarousel({
     scroller.addEventListener('scroll', lockVerticalScroll, { passive: true })
     lockVerticalScroll()
     return () => scroller.removeEventListener('scroll', lockVerticalScroll)
-  }, [feedCarouselLayout.multiCarousel, urlsKey, carouselUnifiedRowHeightPx])
+  }, [carouselLayout.multiCarousel, urlsKey, carouselUnifiedRowHeightPx])
 
   const noteCarouselSlideDims = (index, img) => {
-    if (!feedCarouselLayout.multiCarousel || !img) return
+    if (!carouselLayout.multiCarousel || !img) return
     const w = img.naturalWidth
     const h = img.naturalHeight
     if (!w || !h) return
@@ -273,25 +278,25 @@ export function LoungeImageCarousel({
   const carouselSlides = list.map((url, i) => {
         const displaySrc = loungeFeedImageDeliveryUrl(url, deliveryVariant)
         const tier = tierForSlide(i)
-        const slideClass = isFeedVariant
+        const slideClass = usesCarouselLayout
           ? loungeFeedAttachmentSlideClassName(tier, {
-              singleInPost: singleFeedSlide,
-              multiCarousel: feedCarouselLayout.multiCarousel,
+              singleInPost: singleCarouselSlide,
+              multiCarousel: carouselLayout.multiCarousel,
             })
           : `relative w-auto shrink-0 ${!isComposer ? 'min-w-[3rem]' : ''} ${
               isComposer
                 ? 'max-w-[min(78vw,18rem)]'
                 : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
             }`
-        const frameClass = isFeedVariant
-          ? loungeFeedAttachmentFrameClassName(tier, frameOpts, feedCarouselLayout)
+        const frameClass = usesCarouselLayout
+          ? loungeFeedAttachmentFrameClassName(tier, frameOpts, carouselLayout)
           : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
-        const slideImgClass = isFeedVariant
-          ? loungeFeedAttachmentImgClassName(tier, feedCarouselLayout)
+        const slideImgClass = usesCarouselLayout
+          ? loungeFeedAttachmentImgClassName(tier, carouselLayout)
           : imgClass
-        const tapClass = isFeedVariant
+        const tapClass = usesCarouselLayout
           ? loungeFeedAttachmentTapTargetClassName(tier, {
-              multiCarousel: feedCarouselLayout.multiCarousel,
+              multiCarousel: carouselLayout.multiCarousel,
             })
           : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
         const onImgLoad = (e) => {
@@ -301,7 +306,7 @@ export function LoungeImageCarousel({
         }
         const slideDims = carouselSlideDims[i]
         const slideSizeStyle =
-          feedCarouselLayout.multiCarousel && carouselUnifiedRowHeightPx > 0 && slideDims
+          carouselLayout.multiCarousel && carouselUnifiedRowHeightPx > 0 && slideDims
             ? {
                 height: carouselUnifiedRowHeightPx,
                 width: loungeFeedCarouselCapSlideWidthPx(
@@ -319,7 +324,7 @@ export function LoungeImageCarousel({
           key={`${url}-${i}`}
           className={slideClass}
           style={slideSizeStyle}
-          {...(feedMultiBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
+          {...(carouselFullBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
         >
             {canOpenLightbox ? (
               <div
@@ -389,7 +394,7 @@ export function LoungeImageCarousel({
   const carouselTrack = (
     <div
       ref={carouselScrollRef}
-      {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
+      {...(carouselLayout.multiCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
       className={carouselScrollerClass}
       role="region"
       aria-label={regionAriaLabel}
@@ -406,7 +411,7 @@ export function LoungeImageCarousel({
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
-      {feedMultiBleed ? <div data-lounge-feed-carousel-bleed>{carouselTrack}</div> : carouselTrack}
+      {carouselFullBleed ? <div data-lounge-feed-carousel-bleed>{carouselTrack}</div> : carouselTrack}
       {lightbox ? (
         <LoungeImageLightbox
           urls={lightbox.urls}
@@ -516,6 +521,8 @@ export function LoungePostFeedImagesAndGif({
   feedAutoplaySlot,
   /** Prefix coordinator ids in post detail (`detail:…`) while using feed/embed variant tiles. */
   feedAutoplayScope,
+  /** Comment / reply rows beside avatar — enables full-bleed carousel for `detail` variant. */
+  captionColumnMedia = false,
 }) {
   const streamLightbox = useLoungeStreamLightbox()
   const lightboxHost = streamLightboxHost ?? post
@@ -631,6 +638,7 @@ export function LoungePostFeedImagesAndGif({
         regionAriaLabel={gif ? 'Post images and GIF' : 'Post images'}
         enableLightbox={enableLightbox}
         visibilityResetRootRef={visibilityResetRootRef}
+        captionColumnMedia={captionColumnMedia}
         {...imageLightboxProps}
       />
     )

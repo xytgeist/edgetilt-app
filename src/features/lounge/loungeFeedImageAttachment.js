@@ -8,6 +8,16 @@ export const LOUNGE_FEED_ATTACHMENT_TALL_HW_RATIO = 1.35
 /** Shared row height for multi-image feed carousels (width follows aspect ratio). */
 export const LOUNGE_FEED_CAROUSEL_ROW_HEIGHT_CLASS = 'h-[min(55vh,420px)]'
 
+/** Full caption-column width (link preview card, landscape photo/video). */
+export const LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS = 'w-full min-w-0 max-w-full'
+
+/** Tall phone screenshot / portrait clip — stay narrow inside the column. */
+export const LOUNGE_FEED_ATTACHMENT_TALL_SHELL_CLASS =
+  'inline-flex w-auto max-w-[min(72vw,20rem)] shrink-0 self-start'
+
+/** Max rendered height for single column-fill feed stills and inline Stream tiles. */
+export const LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS = 'max-h-[min(55vh,420px)]'
+
 /** @typedef {'column' | 'tall'} LoungeFeedAttachmentTier */
 
 /**
@@ -20,6 +30,36 @@ export function loungeFeedImageAttachmentTier(naturalWidth, naturalHeight) {
   const h = Number(naturalHeight)
   if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return 'column'
   return h / w > LOUNGE_FEED_ATTACHMENT_TALL_HW_RATIO ? 'tall' : 'column'
+}
+
+/**
+ * @param {LoungeFeedAttachmentTier} tier
+ * @param {{ variant?: string }} [opts]
+ */
+export function loungeFeedAttachmentOuterShellClassName(tier, opts = {}) {
+  const { variant = 'feed' } = opts
+  if (variant === 'composer') {
+    return 'inline-flex w-auto max-w-[min(78vw,18rem)] shrink-0 self-start'
+  }
+  if (variant === 'detail' || variant === 'commentInline') {
+    return LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS
+  }
+  if (tier === 'tall') {
+    return LOUNGE_FEED_ATTACHMENT_TALL_SHELL_CLASS
+  }
+  return LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS
+}
+
+/**
+ * @param {LoungeFeedAttachmentTier} tier
+ * @param {{ variant?: string }} [opts]
+ */
+export function loungeFeedAttachmentTileWidthClassName(tier, opts = {}) {
+  const { variant = 'feed' } = opts
+  if (variant === 'composer' || tier === 'tall') {
+    return 'relative block w-fit max-w-full'
+  }
+  return 'relative block w-full max-w-full'
 }
 
 /**
@@ -72,8 +112,8 @@ export function loungeFeedAttachmentImgClassName(tier, layout = {}) {
   if (tier === 'tall') {
     return 'block w-full h-auto max-w-full max-h-[min(55vh,420px)] object-contain'
   }
-  // h/w <= 1.35: width-first at full column — no max-h that shrinks width inward.
-  return 'block w-full h-auto max-w-full object-contain'
+  // h/w <= 1.35: fill caption column width; height follows aspect ratio.
+  return `block w-full h-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`
 }
 
 /** @param {LoungeFeedAttachmentTier} tier */

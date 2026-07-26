@@ -12,8 +12,10 @@ import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
   loungeFeedAttachmentFrameClassName,
   loungeFeedAttachmentImgClassName,
+  loungeFeedAttachmentOuterShellClassName,
   loungeFeedAttachmentTapTargetClassName,
   loungeFeedImageAttachmentTier,
+  LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
 } from './loungeFeedImageAttachment.js'
 import MediaLightboxAmbientBackdrop from '../../components/MediaLightboxAmbientBackdrop.jsx'
 
@@ -425,16 +427,19 @@ export function LoungeInlineMediaUrl({
 
   const displayUrl = loungeFeedImageDeliveryUrl(url, variant === 'detail' ? 'detail' : variant === 'commentInline' ? 'commentInline' : variant === 'embed' ? 'embed' : 'feed')
 
-  const isFeedInline = !isEmbed && !isDetail && !isCommentInline
-  const frameClass = isFeedInline
+  const usesFeedAttachmentLayout = variant === 'feed' || variant === 'embed'
+  const frameClass = usesFeedAttachmentLayout
     ? loungeFeedAttachmentFrameClassName(feedAttachmentTier, { rounding, border })
     : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
-  const resolvedImgClass = isFeedInline
-    ? loungeFeedAttachmentImgClassName(feedAttachmentTier)
+  const resolvedImgClass = usesFeedAttachmentLayout
+    ? loungeFeedAttachmentImgClassName(feedAttachmentTier, { variant })
     : imgClass
-  const tapTargetClass = isFeedInline
+  const tapTargetClass = usesFeedAttachmentLayout
     ? loungeFeedAttachmentTapTargetClassName(feedAttachmentTier)
     : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
+  const outerShellClass = usesFeedAttachmentLayout
+    ? loungeFeedAttachmentOuterShellClassName(feedAttachmentTier, { variant })
+    : 'w-full min-w-0 max-w-full'
 
   const framed = (
     <div className={frameClass}>
@@ -445,7 +450,7 @@ export function LoungeInlineMediaUrl({
         loading="lazy"
         decoding="async"
         onLoad={(e) => {
-          if (!isFeedInline) return
+          if (!usesFeedAttachmentLayout) return
           const tier = loungeFeedImageAttachmentTier(
             e.currentTarget.naturalWidth,
             e.currentTarget.naturalHeight,
@@ -457,7 +462,7 @@ export function LoungeInlineMediaUrl({
   )
 
   return (
-    <div className={`${marginTopClass} flex justify-start w-full min-w-0 max-w-full`}>
+    <div className={`${marginTopClass} ${outerShellClass}`}>
       {enableLightbox ? (
         <div
           role="button"

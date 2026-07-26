@@ -7,6 +7,8 @@ import {
   loungeFeedAttachmentSlideClassName,
   loungeFeedAttachmentTapTargetClassName,
   loungeFeedImageAttachmentTier,
+  LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
+  LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS,
 } from './loungeFeedImageAttachment.js'
 import { LoungePostMediaPair, LoungeImageLightbox } from './LoungeInlineMediaUrl.jsx'
 import LoungePostStreamVideo from './LoungePostStreamVideo.jsx'
@@ -376,8 +378,8 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
   const { publishProgress, showOverlay } = useLoungePendingPublishDisplay(pendingKey)
 
   return (
-    <div className={`${firstMarginTopClass} inline-flex w-fit max-w-full flex-col`}>
-      <div className="relative inline-flex w-fit max-w-[min(88vw,20rem)] overflow-hidden rounded-xl border border-zinc-700/60 bg-black sm:max-w-[min(72vw,17rem)]">
+    <div className={`${firstMarginTopClass} ${LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS}`}>
+      <div className="relative block w-full max-w-full overflow-hidden rounded-xl border border-zinc-700/60 bg-black">
         {posterSrc ? (
           <>
             <img
@@ -385,7 +387,7 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
               alt=""
               decoding="async"
               draggable={false}
-              className="block max-h-[312px] w-auto max-w-full h-auto object-contain"
+              className={`block w-full h-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`}
             />
             {showOverlay ? (
               <LoungePendingPublishDevelopReveal progress={publishProgress} posterSrc={posterSrc} />

@@ -2,6 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { createPortal, flushSync } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl, probeCfStreamHlsReady } from '../../utils/loungeVideoUpload'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
+import {
+  loungeFeedAttachmentOuterShellClassName,
+  loungeFeedAttachmentTileWidthClassName,
+  loungeFeedImageAttachmentTier,
+  LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
+} from './loungeFeedImageAttachment.js'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
 import { useLoungeStreamHlsAttachment } from './useLoungeStreamHlsAttachment.js'
 import { detectAppleWebKitInlineStream } from '../../utils/loungeAppleWebKit.js'
@@ -3199,7 +3205,23 @@ export default function LoungePostStreamVideo({
 
   if (!id) return null
 
-  const videoClass = videoClassByVariant[variant] || videoClassByVariant.feed
+  const feedLikeVariant = variant === 'feed' || variant === 'embed'
+  const attachmentTier = hasDisplayDims
+    ? loungeFeedImageAttachmentTier(displayW, displayH)
+    : 'column'
+  const columnFill = !feedLikeVariant || attachmentTier === 'column'
+  const outerShellClass = loungeFeedAttachmentOuterShellClassName(
+    feedLikeVariant ? attachmentTier : 'column',
+    { variant },
+  )
+  const tileWidthClass = loungeFeedAttachmentTileWidthClassName(
+    feedLikeVariant ? attachmentTier : 'column',
+    { variant },
+  )
+  const videoClass =
+    columnFill && feedLikeVariant
+      ? `block w-full h-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`
+      : videoClassByVariant[variant] || videoClassByVariant.feed
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
   const border = borderByVariant[variant] || borderByVariant.feed
@@ -3215,6 +3237,18 @@ export default function LoungePostStreamVideo({
       : undefined
   const posterShellMinHClass =
     posterDecodeOk ? 'min-h-0' : hasDisplayDims ? 'min-h-0' : posterFrameMinH
+  const columnFillPosterFallbackClass = feedLikeVariant
+    ? `relative flex w-full max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} items-center justify-center bg-black`
+    : posterFallbackFrameClass
+  const posterSlotFrameClass = usePosterFrame
+    ? posterLayoutFailed
+      ? columnFill && feedLikeVariant
+        ? columnFillPosterFallbackClass
+        : posterFallbackFrameClass
+      : `${columnFill && feedLikeVariant ? 'relative block w-full' : 'relative block w-fit max-w-full'} overflow-hidden bg-black ${posterShellMinHClass}`
+    : columnFill && feedLikeVariant
+      ? 'relative block w-full max-w-full'
+      : 'relative block w-fit max-w-full'
   const heroTapShowVideo = heroTapSnapshotRef.current?.showVideo
   const pausedInlineFrameVisible =
     attachStream &&
@@ -3343,7 +3377,9 @@ export default function LoungePostStreamVideo({
   ) : null
 
   return (
-    <div className={`${firstMarginTopClass} inline-flex shrink-0 self-start ${slideMaxW}`}>
+    <div
+      className={`${firstMarginTopClass} ${feedLikeVariant ? outerShellClass : `inline-flex shrink-0 self-start ${slideMaxW}`}`}
+    >
       <div
         ref={containerRef}
         role="button"
@@ -3352,7 +3388,7 @@ export default function LoungePostStreamVideo({
         {...(videoDebugEnabled && feedAutoplayClientId
           ? { 'data-lounge-autoplay-id': feedAutoplayClientId }
           : {})}
-        className={`relative block w-fit max-w-full cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+        className={`${tileWidthClass} cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? !feedAutoplayEnabled
@@ -3394,13 +3430,7 @@ export default function LoungePostStreamVideo({
         >
           <div
             ref={heroInlineSlotRef}
-            className={
-              usePosterFrame
-                ? posterLayoutFailed
-                  ? posterFallbackFrameClass
-                  : `relative block w-fit max-w-full overflow-hidden bg-black ${posterShellMinHClass}`
-                : 'relative block w-fit max-w-full'
-            }
+            className={posterSlotFrameClass}
             style={posterFrameAspectStyle}
           >
             {usePosterFrame ? (

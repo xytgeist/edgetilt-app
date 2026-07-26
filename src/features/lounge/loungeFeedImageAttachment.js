@@ -50,6 +50,66 @@ export function loungeFeedCarouselRowHeightFromFirstSlide(firstSlide, maxHeightP
 }
 
 /**
+ * Parse a `:root` CSS length variable (`px` or `rem`).
+ * @param {string} varName
+ * @param {number} fallbackPx
+ */
+export function loungeFeedReadCssLengthPx(varName, fallbackPx = 0) {
+  if (typeof document === 'undefined') return fallbackPx
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+  if (!raw) return fallbackPx
+  if (raw.endsWith('px')) {
+    const n = parseFloat(raw)
+    return Number.isFinite(n) ? n : fallbackPx
+  }
+  if (raw.endsWith('rem')) {
+    const n = parseFloat(raw)
+    const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    return Number.isFinite(n) ? n * rootPx : fallbackPx
+  }
+  const n = parseFloat(raw)
+  return Number.isFinite(n) ? n : fallbackPx
+}
+
+/**
+ * Feed carousel layout numbers from the live horizontal scroller (padding + peek).
+ * @param {HTMLElement | null | undefined} scroller
+ * @param {boolean} fullBleed
+ */
+export function loungeFeedCarouselMeasureLayout(scroller, fullBleed) {
+  const maxRowPx = loungeFeedCarouselMaxRowHeightPx()
+  const peekPx = loungeFeedReadCssLengthPx('--lounge-feed-carousel-peek', 48)
+  const slideGapPx = loungeFeedReadCssLengthPx('--lounge-feed-carousel-slide-gap', 8)
+
+  if (fullBleed && scroller) {
+    const s = getComputedStyle(scroller)
+    const padL = parseFloat(s.paddingLeft) || 0
+    const padR = parseFloat(s.paddingRight) || 0
+    const contentWidthPx = Math.max(96, scroller.clientWidth - padL - padR)
+    const firstSlideMaxWidthPx = Math.max(96, contentWidthPx - peekPx - slideGapPx)
+    return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }
+  }
+
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 390
+  const contentWidthPx = Math.min(vw * 0.88, 320)
+  const firstSlideMaxWidthPx = Math.max(96, contentWidthPx - peekPx - slideGapPx)
+  return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }
+}
+
+/**
+ * Cap slide width at row height (same aspect box as height).
+ * @param {number | undefined} widthPx
+ * @param {number | undefined} maxWidthPx
+ */
+export function loungeFeedCarouselCapSlideWidthPx(widthPx, maxWidthPx) {
+  const width = Number(widthPx)
+  const maxW = Number(maxWidthPx)
+  if (!Number.isFinite(width) || width <= 0) return undefined
+  if (!Number.isFinite(maxW) || maxW <= 0) return width
+  return Math.min(width, maxW)
+}
+
+/**
  * Slide width when every image is scaled to the same row height.
  * @param {number} naturalWidth
  * @param {number} naturalHeight
@@ -63,21 +123,11 @@ export function loungeFeedCarouselSlideWidthPx(naturalWidth, naturalHeight, rowH
   return (rowH / h) * w
 }
 
-/**
- * Read carousel max slide width from CSS vars (full-bleed feed strip).
- * @param {boolean} fullBleed
- */
+/** @deprecated Prefer {@link loungeFeedCarouselMeasureLayout}. */
 export function loungeFeedCarouselMaxSlideWidthPx(fullBleed, viewportWidthPx = typeof window !== 'undefined' ? window.innerWidth : 390) {
-  const vw = Number(viewportWidthPx)
-  if (!Number.isFinite(vw) || vw <= 0) return 320
-  if (fullBleed && typeof document !== 'undefined') {
-    const root = document.documentElement
-    const styles = getComputedStyle(root)
-    const insetStart = parseFloat(styles.getPropertyValue('--lounge-feed-carousel-inset-start')) || 72
-    const peek = parseFloat(styles.getPropertyValue('--lounge-feed-carousel-peek')) || 48
-    return Math.max(96, vw - insetStart - peek)
-  }
-  return Math.min(vw * 0.88, 320)
+  void fullBleed
+  void viewportWidthPx
+  return loungeFeedCarouselMeasureLayout(null, false).firstSlideMaxWidthPx
 }
 
 /** Full caption-column width (link preview card, landscape photo/video). */

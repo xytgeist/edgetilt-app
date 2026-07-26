@@ -1308,6 +1308,7 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
   );
   --lounge-feed-carousel-inset-end: var(--lounge-feed-carousel-edge-pad);
   --lounge-feed-carousel-peek: 3rem;
+  --lounge-feed-carousel-slide-gap: 0.5rem;
 }
 @media (min-width: 640px) {
   :root {

@@ -6,8 +6,8 @@ import {
   loungeFeedAttachmentImgClassName,
   loungeFeedAttachmentSlideClassName,
   loungeFeedAttachmentTapTargetClassName,
-  loungeFeedCarouselMaxRowHeightPx,
-  loungeFeedCarouselMaxSlideWidthPx,
+  loungeFeedCarouselCapSlideWidthPx,
+  loungeFeedCarouselMeasureLayout,
   loungeFeedCarouselSlideWidthPx,
   loungeFeedCarouselRowHeightFromFirstSlide,
   loungeFeedImageAttachmentTier,
@@ -66,10 +66,9 @@ export function LoungeImageCarousel({
   const [lightbox, setLightbox] = useState(null)
   const [feedAttachmentTiers, setFeedAttachmentTiers] = useState(/** @type {Record<number, import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier>} */ ({}))
   const [carouselSlideDims, setCarouselSlideDims] = useState(/** @type {Record<number, { w: number, h: number }>} */ ({}))
-  const [carouselViewport, setCarouselViewport] = useState(() => ({
-    maxRowPx: loungeFeedCarouselMaxRowHeightPx(),
-    maxSlideWidthPx: loungeFeedCarouselMaxSlideWidthPx(false),
-  }))
+  const [carouselViewport, setCarouselViewport] = useState(() =>
+    loungeFeedCarouselMeasureLayout(null, false),
+  )
   const carouselScrollRef = useRef(null)
   const multiSlideCarousel = list.length > 1
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multiSlideCarousel)
@@ -216,17 +215,18 @@ export function LoungeImageCarousel({
     fullBleed: feedMultiBleed,
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!feedCarouselLayout.multiCarousel) return undefined
     const syncViewport = () => {
-      setCarouselViewport({
-        maxRowPx: loungeFeedCarouselMaxRowHeightPx(),
-        maxSlideWidthPx: loungeFeedCarouselMaxSlideWidthPx(feedMultiBleed),
-      })
+      setCarouselViewport(loungeFeedCarouselMeasureLayout(carouselScrollRef.current, feedMultiBleed))
     }
     syncViewport()
+    const id = requestAnimationFrame(syncViewport)
     window.addEventListener('resize', syncViewport, { passive: true })
-    return () => window.removeEventListener('resize', syncViewport)
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener('resize', syncViewport)
+    }
   }, [feedCarouselLayout.multiCarousel, feedMultiBleed, urlsKey])
 
   const carouselUnifiedRowHeightPx = useMemo(() => {
@@ -234,9 +234,14 @@ export function LoungeImageCarousel({
     return loungeFeedCarouselRowHeightFromFirstSlide(
       carouselSlideDims[0],
       carouselViewport.maxRowPx,
-      carouselViewport.maxSlideWidthPx,
+      carouselViewport.firstSlideMaxWidthPx,
     )
-  }, [carouselSlideDims, carouselViewport.maxRowPx, carouselViewport.maxSlideWidthPx, feedCarouselLayout.multiCarousel])
+  }, [
+    carouselSlideDims,
+    carouselViewport.maxRowPx,
+    carouselViewport.firstSlideMaxWidthPx,
+    feedCarouselLayout.multiCarousel,
+  ])
 
   useEffect(() => {
     if (!feedCarouselLayout.multiCarousel) return undefined
@@ -300,10 +305,13 @@ export function LoungeImageCarousel({
           feedCarouselLayout.multiCarousel && carouselUnifiedRowHeightPx > 0 && slideDims
             ? {
                 height: carouselUnifiedRowHeightPx,
-                width: loungeFeedCarouselSlideWidthPx(
-                  slideDims.w,
-                  slideDims.h,
-                  carouselUnifiedRowHeightPx,
+                width: loungeFeedCarouselCapSlideWidthPx(
+                  loungeFeedCarouselSlideWidthPx(
+                    slideDims.w,
+                    slideDims.h,
+                    carouselUnifiedRowHeightPx,
+                  ),
+                  i === 0 ? carouselViewport.firstSlideMaxWidthPx : undefined,
                 ),
               }
             : undefined

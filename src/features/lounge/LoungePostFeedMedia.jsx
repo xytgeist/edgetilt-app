@@ -214,7 +214,7 @@ export function LoungeImageCarousel({
       <div
         ref={carouselScrollRef}
         {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${multiSlideCarousel ? '[touch-action:pan-x_pan-y]' : ''} ${isComposer ? 'scroll-smooth' : ''}`}
+        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${multiSlideCarousel ? 'touch-pan-x [touch-action:pan-x]' : ''} ${isComposer ? 'scroll-smooth' : ''}`}
         role="region"
         aria-label={regionAriaLabel}
       >

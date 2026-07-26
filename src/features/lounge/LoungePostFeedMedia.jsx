@@ -98,6 +98,7 @@ export function LoungeImageCarousel({
     const scrollRoot = visibilityResetRootRef?.current ?? null
 
     const resetToStart = () => {
+      if (scroller.hasAttribute('data-lounge-carousel-dragging')) return
       scroller.scrollLeft = 0
       try {
         scroller.scrollTo({ left: 0, behavior: 'instant' })

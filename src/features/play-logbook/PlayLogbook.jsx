@@ -25,6 +25,7 @@ import {
   orderedLogPlayFormFields,
   parseAcquisitionFee,
   playLogWinLoss,
+  LOG_PLAY_TAIL_FIELD_SLUGS,
   PLAY_LOG_REAL_RTP_INFO_INTRO,
   formatPlayLogRealRtp,
   recentEntryDisplayChips,
@@ -1260,9 +1261,11 @@ export default function PlayLogbook({
           <div
             data-bankroll-sheet
             className={
-              sheet === 'logPlay' || sheet === 'entryDetail'
-                ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0`
-                : APP_MODAL_SHEET_PANEL_CLASS
+              sheet === 'logPlay'
+                ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0 !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-3rem))]`
+                : sheet === 'entryDetail'
+                  ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0`
+                  : APP_MODAL_SHEET_PANEL_CLASS
             }
             onClick={e => e.stopPropagation()}
           >
@@ -1920,10 +1923,31 @@ function LogPlayMetricFieldsList({ fields, formFields, setFormFields }) {
     [formFields.money_in, formFields.money_out, formFields.acquisition_fee],
   )
   const winLossLabel = parseAcquisitionFee(formFields.acquisition_fee) != null ? 'Net win / loss' : 'Win / loss'
+  const compactTailSlugs = useMemo(() => new Set(LOG_PLAY_TAIL_FIELD_SLUGS), [])
 
   const nodes = []
   for (let i = 0; i < fields.length; i++) {
     const field = fields[i]
+    if (compactTailSlugs.has(field.slug)) {
+      const group = []
+      let j = i
+      while (j < fields.length && compactTailSlugs.has(fields[j].slug)) {
+        group.push(fields[j])
+        j += 1
+      }
+      if (group.length >= 2) {
+        nodes.push(
+          <LogPlayMetricCompactRow
+            key={`compact-${group.map(f => f.slug).join('-')}`}
+            fields={group}
+            formFields={formFields}
+            setFormFields={setFormFields}
+          />,
+        )
+        i = j - 1
+        continue
+      }
+    }
     if (field.slug === 'mhb_meter') {
       const mhbField = fields[i + 1]?.slug === 'must_hit_by' ? fields[i + 1] : null
       nodes.push(
@@ -2112,6 +2136,38 @@ function LogPlayMetricPairRow({ left, right, formFields, setFormFields, footer =
         ) : null}
       </div>
       {footer}
+    </div>
+  )
+}
+
+const LOG_PLAY_COMPACT_FIELD_LABEL = {
+  acquisition_fee: 'Acq. fee',
+  spin_count: '# Spins',
+  bonus_count: '# Bonuses',
+}
+
+/** Acquisition fee + spin/bonus counts share one row above notes. */
+function LogPlayMetricCompactRow({ fields, formFields, setFormFields }) {
+  return (
+    <div
+      className="grid gap-2"
+      style={{ gridTemplateColumns: `repeat(${fields.length}, minmax(0, 1fr))` }}
+    >
+      {fields.map(field => (
+        <div key={field.slug} className="min-w-0">
+          <label
+            className="block text-zinc-400 text-[10px] leading-tight mb-1.5"
+            title={field.label}
+          >
+            {LOG_PLAY_COMPACT_FIELD_LABEL[field.slug] || field.label}
+          </label>
+          <LogPlayFormMetricControl
+            field={field}
+            value={formFields[field.slug] ?? ''}
+            onChange={v => setFormFields(p => ({ ...p, [field.slug]: v }))}
+          />
+        </div>
+      ))}
     </div>
   )
 }

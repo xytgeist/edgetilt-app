@@ -173,6 +173,57 @@ function BotFanSubscriptionsAdminBlock({ bot, supabaseClient, busy, setBusy, set
   )
 }
 
+function MaxPostsField({
+  label,
+  value,
+  min,
+  max,
+  noLimit,
+  onChange,
+  onNoLimitChange,
+  hint = '',
+}) {
+  const inputClassName =
+    'mt-1 w-full min-w-0 rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm tabular-nums focus:border-cyan-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-45'
+
+  return (
+    <div className="block min-w-0">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={1}
+          value={noLimit ? '' : value === '' ? '' : value}
+          disabled={noLimit}
+          placeholder={noLimit ? 'No limit' : undefined}
+          onChange={(e) => {
+            const raw = e.target.value
+            if (raw === '') {
+              onChange('')
+              return
+            }
+            const n = Number(raw)
+            if (!Number.isNaN(n)) onChange(n)
+          }}
+          className={inputClassName}
+        />
+        <label className="flex shrink-0 items-center gap-1.5 text-zinc-400 text-[11px] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={noLimit}
+            onChange={(e) => onNoLimitChange(e.target.checked)}
+            className="rounded border-zinc-600 bg-zinc-950 text-cyan-500 focus:ring-cyan-500/40"
+          />
+          No limit
+        </label>
+      </div>
+      {hint ? <div className="text-zinc-600 text-[10px] mt-1">{hint}</div> : null}
+    </div>
+  )
+}
+
 function NumberField({ label, value, min, max, step, onChange, hint = '', decimal = false }) {
   const inputClassName =
     'mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm tabular-nums focus:border-cyan-500/50 focus:outline-none'
@@ -345,6 +396,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     setDraft({
       maxPostsDay: bot.max_posts_per_day ?? 12,
       maxPostsHour: bot.max_posts_per_hour ?? 4,
+      maxPostsDayUnlimited: bot.max_posts_per_day == null,
+      maxPostsHourUnlimited: bot.max_posts_per_hour == null,
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
       minEdgePct: String(bot.odds_config?.min_edge_pct ?? 2),
       alertAudience: Object.fromEntries(
@@ -423,6 +476,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       }
     }
 
+    if (!draft.maxPostsDayUnlimited) {
+      const day = Number(draft.maxPostsDay)
+      if (!Number.isFinite(day) || day < 1 || day > 100) {
+        setToast('Max posts / day must be 1–100, or check No limit.')
+        return
+      }
+    }
+    if (!draft.maxPostsHourUnlimited) {
+      const hour = Number(draft.maxPostsHour)
+      if (!Number.isFinite(hour) || hour < 1 || hour > 30) {
+        setToast('Max posts / hour must be 1–30, or check No limit.')
+        return
+      }
+    }
+
     setBusy('save')
     const tickers = draft.watchlistText
       .split(/[,\s]+/)
@@ -430,8 +498,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       .filter(Boolean)
     const patch = {
       display_name: draft.displayName.trim() || null,
-      max_posts_per_day: draft.maxPostsDay,
-      max_posts_per_hour: draft.maxPostsHour,
+      max_posts_per_day: draft.maxPostsDayUnlimited ? null : draft.maxPostsDay,
+      max_posts_per_hour: draft.maxPostsHourUnlimited ? null : draft.maxPostsHour,
       publish_score_threshold: draft.scoreThreshold,
       category_pills_default: draft.categoryPills,
     }
@@ -1146,19 +1214,37 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
               className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm focus:border-cyan-500/50 focus:outline-none"
             />
           </label>
-          <NumberField
+          <MaxPostsField
             label="Max posts / day"
             value={draft.maxPostsDay}
             min={1}
             max={100}
+            noLimit={draft.maxPostsDayUnlimited}
+            hint={
+              bot.pipeline === 'odds_api'
+                ? 'News bots enforce this cap. Scott uses per-alert daily limits instead.'
+                : 'Total automated posts this bot may publish per day.'
+            }
             onChange={(v) => setDraft((d) => ({ ...d, maxPostsDay: v }))}
+            onNoLimitChange={(checked) =>
+              setDraft((d) => ({ ...d, maxPostsDayUnlimited: checked }))
+            }
           />
-          <NumberField
+          <MaxPostsField
             label="Max posts / hour"
             value={draft.maxPostsHour}
             min={1}
             max={30}
+            noLimit={draft.maxPostsHourUnlimited}
+            hint={
+              bot.pipeline === 'odds_api'
+                ? 'News bots enforce this cap. Scott ignores account-level hourly limits.'
+                : 'Total automated posts this bot may publish per hour.'
+            }
             onChange={(v) => setDraft((d) => ({ ...d, maxPostsHour: v }))}
+            onNoLimitChange={(checked) =>
+              setDraft((d) => ({ ...d, maxPostsHourUnlimited: checked }))
+            }
           />
           {isAutomatic && bot.pipeline === 'odds_api' ? (
             <NumberField

@@ -318,8 +318,18 @@ Deno.serve(async (req) => {
       display_name: displayName,
       run_state: runState,
       category_pills_default: body.category_pills_default || [],
-      max_posts_per_day: body.max_posts_per_day ?? (pipeline === 'odds_api' ? 2 : 12),
-      max_posts_per_hour: body.max_posts_per_hour ?? (pipeline === 'odds_api' ? 1 : 4),
+      max_posts_per_day:
+        'max_posts_per_day' in body
+          ? body.max_posts_per_day ?? null
+          : pipeline === 'odds_api'
+            ? 2
+            : 12,
+      max_posts_per_hour:
+        'max_posts_per_hour' in body
+          ? body.max_posts_per_hour ?? null
+          : pipeline === 'odds_api'
+            ? 1
+            : 4,
       publish_score_threshold: body.publish_score_threshold ?? 55,
       config: body.config || {},
     })

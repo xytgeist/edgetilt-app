@@ -32,8 +32,8 @@ type BotAccount = {
   slug: string
   run_state: string
   category_pills_default: string[] | null
-  max_posts_per_day: number
-  max_posts_per_hour: number
+  max_posts_per_day: number | null
+  max_posts_per_hour: number | null
   publish_score_threshold: number
   config: Record<string, unknown> | null
 }
@@ -305,10 +305,12 @@ Deno.serve(async (req) => {
     const publishedHour = await countPublished(admin, account.user_id, hourStart)
     const publishedDay = await countPublished(admin, account.user_id, dayStart)
 
-    const hourCap = Number(account.max_posts_per_hour) || 4
-    const dayCap = Number(account.max_posts_per_day) || 12
-    const roomHour = Math.max(0, hourCap - publishedHour)
-    const roomDay = Math.max(0, dayCap - publishedDay)
+    const hourCapRaw = account.max_posts_per_hour
+    const dayCapRaw = account.max_posts_per_day
+    const hourCap = hourCapRaw == null ? null : Number(hourCapRaw) || 4
+    const dayCap = dayCapRaw == null ? null : Number(dayCapRaw) || 12
+    const roomHour = hourCap == null ? Number.POSITIVE_INFINITY : Math.max(0, hourCap - publishedHour)
+    const roomDay = dayCap == null ? Number.POSITIVE_INFINITY : Math.max(0, dayCap - publishedDay)
     const publishBudget = Math.min(roomHour, roomDay)
 
     const { data: allSources, error: allSrcErr } = await admin
@@ -491,7 +493,7 @@ Deno.serve(async (req) => {
       ingested,
       published,
       skipped,
-      publishBudget,
+      publishBudget: Number.isFinite(publishBudget) ? publishBudget : null,
       publishedHour,
       publishedDay,
       candidateCount: candidates.length,

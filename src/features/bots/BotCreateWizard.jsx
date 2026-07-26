@@ -79,6 +79,8 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
   const [bio, setBio] = useState('24/7 Breaking News headlines for professional day traders.')
   const [maxDay, setMaxDay] = useState(12)
   const [maxHour, setMaxHour] = useState(4)
+  const [maxDayUnlimited, setMaxDayUnlimited] = useState(false)
+  const [maxHourUnlimited, setMaxHourUnlimited] = useState(false)
   const [scoreMin, setScoreMin] = useState(55)
   const [pills, setPills] = useState(['stocks', 'trading'])
   const [xHandles, setXHandles] = useState('')
@@ -103,6 +105,8 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
     setPills([...meta.defaultPills])
     setMaxDay(meta.maxDay)
     setMaxHour(id === 'odds_api' ? 1 : 4)
+    setMaxDayUnlimited(false)
+    setMaxHourUnlimited(false)
     if (isMarketNewsWire(meta)) setWatchlist(DEFAULT_WATCHLIST_TEXT)
   }
 
@@ -119,8 +123,8 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
       handle: handleFromSlug(handle || slug),
       display_name: displayName.trim() || slug,
       bio: bio.trim(),
-      max_posts_per_day: maxDay,
-      max_posts_per_hour: maxHour,
+      max_posts_per_day: maxDayUnlimited ? null : maxDay,
+      max_posts_per_hour: maxHourUnlimited ? null : maxHour,
       publish_score_threshold: scoreMin,
       category_pills_default: pills,
       run_state: 'stopped',
@@ -258,29 +262,55 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
 
         {step === 2 ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="block">
                 <div className="text-[11px] font-semibold uppercase text-zinc-500">Max / day</div>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={maxDay}
-                  onChange={(e) => setMaxDay(Number(e.target.value))}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
-                />
-              </label>
-              <label className="block">
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={maxDayUnlimited ? '' : maxDay}
+                    disabled={maxDayUnlimited}
+                    placeholder={maxDayUnlimited ? 'No limit' : undefined}
+                    onChange={(e) => setMaxDay(Number(e.target.value))}
+                    className="w-full min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm disabled:opacity-45"
+                  />
+                  <label className="flex shrink-0 items-center gap-1.5 text-zinc-400 text-[11px] cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={maxDayUnlimited}
+                      onChange={(e) => setMaxDayUnlimited(e.target.checked)}
+                      className="rounded border-zinc-600 bg-zinc-950 text-cyan-500"
+                    />
+                    No limit
+                  </label>
+                </div>
+              </div>
+              <div className="block">
                 <div className="text-[11px] font-semibold uppercase text-zinc-500">Max / hour</div>
-                <input
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={maxHour}
-                  onChange={(e) => setMaxHour(Number(e.target.value))}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm"
-                />
-              </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={maxHourUnlimited ? '' : maxHour}
+                    disabled={maxHourUnlimited}
+                    placeholder={maxHourUnlimited ? 'No limit' : undefined}
+                    onChange={(e) => setMaxHour(Number(e.target.value))}
+                    className="w-full min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-sm disabled:opacity-45"
+                  />
+                  <label className="flex shrink-0 items-center gap-1.5 text-zinc-400 text-[11px] cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={maxHourUnlimited}
+                      onChange={(e) => setMaxHourUnlimited(e.target.checked)}
+                      className="rounded border-zinc-600 bg-zinc-950 text-cyan-500"
+                    />
+                    No limit
+                  </label>
+                </div>
+              </div>
             </div>
             {pipeline !== 'x' ? (
               <label className="block">

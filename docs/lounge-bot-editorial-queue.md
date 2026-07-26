@@ -62,7 +62,8 @@ Each bot = **one** `auth.users` + **`profiles`** row + **one ingest pipeline** +
 | `voice_prompt_id` | LLM system prompt key (X bots; optional for self-contained templates) |
 | `config.voice_prompt` | **Shipped:** full LLM instruction for X ingest rewrite (portal **Settings** on X bots) |
 | `category_pills_default` | Per-account defaults |
-| `max_posts_per_day` | Per-account cap |
+| `max_posts_per_day` | Per-account daily cap (news bots). **Null = no limit** (portal checkbox). Scott uses per-alert caps in `lounge_bot_odds_config`. |
+| `max_posts_per_hour` | Per-account hourly cap (news bots). **Null = no limit**. |
 | `enabled` | Kill switch |
 
 X sources: **`lounge_bot_x_sources`** with **`bot_account_id`** (FK) ... each handle maps to exactly one niche X bot.

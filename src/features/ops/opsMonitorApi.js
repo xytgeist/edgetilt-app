@@ -94,6 +94,12 @@ export function formatOpsMonitorCount(value) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
+/** Account-level bot post cap; null = no limit. */
+export function formatBotPostCap(value) {
+  if (value == null) return 'No limit'
+  return formatOpsMonitorCount(value)
+}
+
 /**
  * @param {Array<{ product_slug?: string, status?: string, kind?: string, count?: number }> | null | undefined} rows
  * @param {string} key

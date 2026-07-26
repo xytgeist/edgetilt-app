@@ -1,4 +1,4 @@
-import { formatOpsMonitorCount } from './opsMonitorApi.js'
+import { formatBotPostCap, formatOpsMonitorCount } from './opsMonitorApi.js'
 
 /**
  * Compact Edge Monitor card linking to full Bot Portal.
@@ -48,7 +48,7 @@ export default function EdgeMonitorBotOpsPanel({ botOps, loading, error, onOpenP
           </div>
           <div className="rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-2">
             <div className="text-zinc-500 text-[10px] uppercase">Cap / day</div>
-            <div className="text-white font-bold tabular-nums mt-0.5">{formatOpsMonitorCount(marketNews.max_posts_per_day)}</div>
+            <div className="text-white font-bold tabular-nums mt-0.5">{formatBotPostCap(marketNews.max_posts_per_day)}</div>
           </div>
           <div className="rounded-xl bg-zinc-950 border border-zinc-800 px-3 py-2">
             <div className="text-zinc-500 text-[10px] uppercase">Sources on</div>

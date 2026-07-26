@@ -350,12 +350,12 @@ export function LoungeImageLightbox({
               ref={carouselScrollRef}
               data-lounge-feed-horizontal-scroll
               data-lounge-lightbox-carousel
-              className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+              className="flex h-full w-full overflow-x-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
             >
               {list.map((slideUrl, i) => (
                 <div
                   key={`${slideUrl}-${i}`}
-                  className="flex h-full w-full shrink-0 snap-center items-center justify-center"
+                  className="flex h-full w-full shrink-0 items-center justify-center"
                 >
                   <img
                     ref={i === idx ? mediaImageRef : undefined}

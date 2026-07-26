@@ -29,7 +29,7 @@ const imgClassByVariant = {
 }
 
 /**
- * Horizontal swipe row of images (scroll-snap). Used in composer and feed/detail when `image_urls` is set.
+ * Horizontal swipe row of images. Used in composer and feed/detail when `image_urls` is set.
  */
 export function LoungeImageCarousel({
   urls,
@@ -59,18 +59,13 @@ export function LoungeImageCarousel({
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
   const [lightbox, setLightbox] = useState(null)
   const [feedAttachmentTiers, setFeedAttachmentTiers] = useState(/** @type {Record<number, import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier>} */ ({}))
-  /** Native snap animates when later slides finish layout; enable only after all slides have loaded. */
-  const [carouselSnapReady, setCarouselSnapReady] = useState(() => list.length <= 1)
-  const loadedSlideIndexesRef = useRef(/** @type {Set<number>} */ (new Set()))
   const carouselScrollRef = useRef(null)
   const multiSlideCarousel = list.length > 1
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multiSlideCarousel)
   const urlsKey = list.join('\0')
   useLayoutEffect(() => {
     setFeedAttachmentTiers({})
-    loadedSlideIndexesRef.current = new Set()
-    setCarouselSnapReady(list.length <= 1)
-  }, [urlsKey, list.length])
+  }, [urlsKey])
   useLayoutEffect(() => {
     const el = carouselScrollRef.current
     if (!el) return
@@ -199,46 +194,16 @@ export function LoungeImageCarousel({
     setFeedAttachmentTiers((prev) => (prev[index] === tier ? prev : { ...prev, [index]: tier }))
   }
 
-  const nudgeScrollStart = () => {
-    const el = carouselScrollRef.current
-    if (!el || el.hasAttribute('data-lounge-carousel-dragging')) return
-    el.scrollLeft = 0
-    try {
-      el.scrollTo({ left: 0, behavior: 'instant' })
-    } catch {
-      // ignore
-    }
-  }
-
-  const pinCarouselStartIfIdle = () => {
-    const el = carouselScrollRef.current
-    if (!el || el.hasAttribute('data-lounge-carousel-dragging')) return
-    if (el.scrollLeft > 12) return
-    nudgeScrollStart()
-  }
-
-  useLayoutEffect(() => {
-    if (!multiSlideCarousel || isComposer) return
-    pinCarouselStartIfIdle()
-  }, [feedAttachmentTiers, multiSlideCarousel, isComposer])
-
-  useLayoutEffect(() => {
-    if (!carouselSnapReady || !multiSlideCarousel) return
-    pinCarouselStartIfIdle()
-  }, [carouselSnapReady, multiSlideCarousel])
-
   const notifySlideMediaLayout = () => {
     if (typeof onSlideMediaLayout === 'function') onSlideMediaLayout()
   }
-
-  const eagerMultiCarousel = multiSlideCarousel && !isComposer
 
   return (
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
         ref={carouselScrollRef}
         {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselSnapReady ? 'snap-x snap-mandatory' : ''} ${isComposer ? 'scroll-smooth' : ''}`}
+        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${isComposer ? 'scroll-smooth' : ''}`}
         role="region"
         aria-label={regionAriaLabel}
       >
@@ -264,11 +229,6 @@ export function LoungeImageCarousel({
             : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
           const onImgLoad = (e) => {
             noteFeedAttachmentTier(i, e.currentTarget)
-            loadedSlideIndexesRef.current.add(i)
-            if (loadedSlideIndexesRef.current.size >= list.length) {
-              setCarouselSnapReady(true)
-            }
-            pinCarouselStartIfIdle()
             notifySlideMediaLayout()
           }
           return (
@@ -301,7 +261,7 @@ export function LoungeImageCarousel({
                     src={displaySrc}
                     alt=""
                     className={slideImgClass}
-                    loading={eagerMultiCarousel || i === 0 ? 'eager' : 'lazy'}
+                    loading={i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
                     onLoad={onImgLoad}
@@ -314,7 +274,7 @@ export function LoungeImageCarousel({
                   src={displaySrc}
                   alt=""
                   className={slideImgClass}
-                  loading={eagerMultiCarousel || i === 0 ? 'eager' : 'lazy'}
+                  loading={i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}
                   onLoad={onImgLoad}

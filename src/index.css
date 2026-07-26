@@ -1296,6 +1296,36 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
 }
 
 /*
+ * Feed multi-image carousel — X-style full-bleed strip.
+ * Start inset aligns slide 1 with caption column; end pad lets the last slide reach the screen edge.
+ */
+:root {
+  --lounge-feed-carousel-edge-pad: 0.75rem;
+  --lounge-feed-carousel-avatar: 3rem;
+  --lounge-feed-carousel-gap: 0.75rem;
+  --lounge-feed-carousel-inset-start: calc(
+    var(--lounge-feed-carousel-edge-pad) + var(--lounge-feed-carousel-avatar) + var(--lounge-feed-carousel-gap)
+  );
+  --lounge-feed-carousel-inset-end: var(--lounge-feed-carousel-edge-pad);
+  --lounge-feed-carousel-peek: 3rem;
+}
+@media (min-width: 640px) {
+  :root {
+    --lounge-feed-carousel-avatar: 3.3rem;
+  }
+}
+[data-lounge-feed-carousel-bleed] {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+[data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
+  padding-left: var(--lounge-feed-carousel-inset-start);
+  padding-right: var(--lounge-feed-carousel-inset-end);
+}
+
+/*
  * GIF picker sheet - hardcoded dark bg won't flip with the zinc scale,
  * so override it explicitly in light mode.
  */

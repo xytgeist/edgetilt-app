@@ -198,44 +198,50 @@ export function LoungeImageCarousel({
     if (typeof onSlideMediaLayout === 'function') onSlideMediaLayout()
   }
 
-  return (
-    <div className={`${firstMarginTopClass} w-full min-w-0`}>
-      <div
-        ref={carouselScrollRef}
-        {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${isComposer ? 'scroll-smooth' : ''}`}
-        role="region"
-        aria-label={regionAriaLabel}
-      >
-        {list.map((url, i) => {
-          const displaySrc = loungeFeedImageDeliveryUrl(url, deliveryVariant)
-          const tier = tierForSlide(i)
-          const slideClass = isFeedVariant
-            ? loungeFeedAttachmentSlideClassName(tier, {
-                singleInPost: singleFeedSlide,
-                multiCarousel: list.length > 1,
-              })
-            : `relative w-auto shrink-0 snap-start ${!isComposer ? 'min-w-[3rem]' : ''} ${
-                isComposer
-                  ? 'max-w-[min(78vw,18rem)]'
-                  : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
-              }`
-          const frameClass = isFeedVariant
-            ? loungeFeedAttachmentFrameClassName(tier, frameOpts)
-            : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
-          const slideImgClass = isFeedVariant ? loungeFeedAttachmentImgClassName(tier) : imgClass
-          const tapClass = isFeedVariant
-            ? loungeFeedAttachmentTapTargetClassName(tier)
-            : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
-          const onImgLoad = (e) => {
-            noteFeedAttachmentTier(i, e.currentTarget)
-            notifySlideMediaLayout()
-          }
-          return (
-          <div
-            key={`${url}-${i}`}
-            className={slideClass}
-          >
+  const feedMultiBleed = isFeedVariant && multiSlideCarousel
+
+  const carouselTrack = (
+    <div
+      ref={carouselScrollRef}
+      {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
+      className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${isComposer ? 'scroll-smooth' : ''}`}
+      role="region"
+      aria-label={regionAriaLabel}
+    >
+      {list.map((url, i) => {
+        const displaySrc = loungeFeedImageDeliveryUrl(url, deliveryVariant)
+        const tier = tierForSlide(i)
+        const slideClass = isFeedVariant
+          ? loungeFeedAttachmentSlideClassName(tier, {
+              singleInPost: singleFeedSlide,
+              multiCarousel: list.length > 1,
+              fullBleed: feedMultiBleed,
+            })
+          : `relative w-auto shrink-0 ${!isComposer ? 'min-w-[3rem]' : ''} ${
+              isComposer
+                ? 'max-w-[min(78vw,18rem)]'
+                : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
+            }`
+        const frameClass = isFeedVariant
+          ? loungeFeedAttachmentFrameClassName(tier, frameOpts)
+          : `inline-block max-w-full overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
+        const slideImgClass = isFeedVariant ? loungeFeedAttachmentImgClassName(tier) : imgClass
+        const tapClass = isFeedVariant
+          ? loungeFeedAttachmentTapTargetClassName(tier, {
+              fullBleed: feedMultiBleed,
+              multiCarousel: list.length > 1,
+            })
+          : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
+        const onImgLoad = (e) => {
+          noteFeedAttachmentTier(i, e.currentTarget)
+          notifySlideMediaLayout()
+        }
+        return (
+        <div
+          key={`${url}-${i}`}
+          className={slideClass}
+          {...(feedMultiBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
+        >
             {canOpenLightbox ? (
               <div
                 role="button"
@@ -300,7 +306,12 @@ export function LoungeImageCarousel({
           </div>
           )
         })}
-      </div>
+    </div>
+  )
+
+  return (
+    <div className={`${firstMarginTopClass} w-full min-w-0`}>
+      {feedMultiBleed ? <div data-lounge-feed-carousel-bleed>{carouselTrack}</div> : carouselTrack}
       {lightbox ? (
         <LoungeImageLightbox
           urls={lightbox.urls}

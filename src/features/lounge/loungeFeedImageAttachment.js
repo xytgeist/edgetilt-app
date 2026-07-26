@@ -21,18 +21,26 @@ export function loungeFeedImageAttachmentTier(naturalWidth, naturalHeight) {
 
 /**
  * @param {LoungeFeedAttachmentTier} tier
- * @param {{ singleInPost?: boolean, multiCarousel?: boolean }} [opts]
+ * @param {{ singleInPost?: boolean, multiCarousel?: boolean, fullBleed?: boolean }} [opts]
  */
 export function loungeFeedAttachmentSlideClassName(tier, opts = {}) {
-  const { singleInPost = false, multiCarousel = false } = opts
+  const { singleInPost = false, multiCarousel = false, fullBleed = false } = opts
+  const fullBleedSlideMax =
+    'max-w-[calc(100vw-var(--lounge-feed-carousel-inset-start)-var(--lounge-feed-carousel-peek))]'
   if (tier === 'tall') {
+    if (fullBleed && multiCarousel) {
+      return `relative w-auto shrink-0 min-w-[3rem] ${fullBleedSlideMax}`
+    }
     return 'relative w-auto max-w-[min(72vw,20rem)] shrink-0 snap-start'
   }
   if (singleInPost) {
     return 'relative w-full min-w-0 max-w-full shrink-0 snap-start'
   }
   if (multiCarousel) {
-    return 'relative w-auto shrink-0 snap-start min-w-[3rem] max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
+    if (fullBleed) {
+      return `relative w-auto shrink-0 min-w-[3rem] ${fullBleedSlideMax}`
+    }
+    return 'relative w-auto shrink-0 min-w-[3rem] max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
   }
   return 'relative w-full min-w-0 max-w-full shrink-0 snap-start'
 }
@@ -56,9 +64,13 @@ export function loungeFeedAttachmentImgClassName(tier) {
 }
 
 /** @param {LoungeFeedAttachmentTier} tier */
-export function loungeFeedAttachmentTapTargetClassName(tier) {
+export function loungeFeedAttachmentTapTargetClassName(tier, opts = {}) {
+  const { fullBleed = false, multiCarousel = false } = opts
   const tap =
     'cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
+  if (fullBleed && multiCarousel) {
+    return `block w-auto ${tap}`
+  }
   if (tier === 'tall') {
     return `block w-auto max-w-[min(72vw,20rem)] ${tap}`
   }

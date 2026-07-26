@@ -1,17 +1,16 @@
 /**
- * Scott Sharpe coverage scope — priority tiers for calendar sports and alert tie-breaks.
+ * Scott Sharpe coverage scope — Ryan's tier 1–4 sport priority (Jul 2026).
  *
- * Tier 1 (cover heavily): NFL, NBA, MLB, NCAAF, top European soccer, World Cup, NHL
- * Tier 2 (medium): Grand Slam tennis, PGA majors, UFC/MMA, WNBA, NCAA basketball
- * Tier 3 (opportunistic): Olympics, F1, boxing, esports
+ * Tier 1 — Must cover: NFL, NBA, NCAAF, MLB, NCAAB
+ * Tier 2 — High priority: UFC/MMA, NHL, soccer, tennis, golf
+ * Tier 3 — Strong secondary: boxing, horse racing, motorsport, WNBA, esports
+ * Tier 4 — Completeness / arb: cricket, table tennis, rugby, AFL, volleyball
  *
- * Rules:
- * - Prefer higher coverage rank when picking across sports.
- * - Lower tier wins only on exceptional +EV (default +2% gap) or exceptional line movement.
- * - Tournament / marquee calendar rows get an event boost via priority + kind.
+ * Poll loops scan every active Odds API sport in tiers 1–4.
+ * Calendar rows boost priority + captions for special events (not the allowlist).
  */
 
-export type CoverageTier = 1 | 2 | 3
+export type CoverageTier = 1 | 2 | 3 | 4
 
 export const EXCEPTIONAL_EV_GAP_PCT = 2
 export const EXCEPTIONAL_MOVEMENT_GAP = 15
@@ -26,90 +25,77 @@ export type CalendarCoverageInput = {
   odds_sport_keys?: string[] | null
 }
 
-const TIER1_KEYS = new Set([
+const TIER1_EXACT = new Set([
   'americanfootball_nfl',
-  'americanfootball_ncaaf',
   'basketball_nba',
+  'americanfootball_ncaaf',
   'baseball_mlb',
-  'icehockey_nhl',
-  'soccer_epl',
-  'soccer_spain_la_liga',
-  'soccer_germany_bundesliga',
-  'soccer_italy_serie_a',
-  'soccer_france_ligue_one',
-  'soccer_uefa_champs_league',
-  'soccer_uefa_europa_league',
-  'soccer_fifa_world_cup',
-])
-
-const TIER2_KEYS = new Set([
-  'basketball_wnba',
   'basketball_ncaab',
-  'basketball_euroleague',
-  'mma_mixed_martial_arts',
-  'tennis_atp_wimbledon',
-  'tennis_atp_us_open',
-  'tennis_atp_french_open',
-  'tennis_atp_australian_open',
-  'golf_masters_tournament_winner',
-  'golf_pga_championship_winner',
-  'golf_us_open_winner',
-  'golf_the_open_championship_winner',
-])
-
-const TIER3_KEYS = new Set([
-  'boxing_boxing',
+  'soccer_fifa_world_cup',
 ])
 
 function normalizeSportKey(sportKey: string): string {
   return String(sportKey || '').trim().toLowerCase()
 }
 
-/** Default tier from The Odds API sport key (prefix / exact match). */
-export function resolveSportKeyTier(sportKey: string): CoverageTier {
+/**
+ * Ryan's coverage tier for an Odds API sport key.
+ * Returns null when the sport is outside Scott's scope (unless boosted by calendar today).
+ */
+export function resolveSportKeyTier(sportKey: string): CoverageTier | null {
   const sk = normalizeSportKey(sportKey)
-  if (!sk) return 3
-  if (TIER1_KEYS.has(sk)) return 1
-  if (TIER2_KEYS.has(sk)) return 2
-  if (TIER3_KEYS.has(sk)) return 3
+  if (!sk) return null
 
-  if (sk.startsWith('americanfootball_')) {
-    return sk.includes('preseason') ? 2 : 1
-  }
-  if (sk.startsWith('basketball_')) {
-    if (sk === 'basketball_nba') return 1
-    if (sk === 'basketball_ncaab') return 2
-    return 2
-  }
-  if (sk.startsWith('baseball_')) return 1
-  if (sk.startsWith('icehockey_')) return sk.includes('nhl') ? 1 : 2
-  if (sk.startsWith('soccer_')) {
-    if (sk.includes('world_cup') || sk.includes('fifa')) return 1
-    if (sk.includes('epl') || sk.includes('la_liga') || sk.includes('bundesliga')
-      || sk.includes('serie_a') || sk.includes('ligue_one') || sk.includes('uefa')) {
-      return 1
-    }
-    return 2
-  }
+  if (TIER1_EXACT.has(sk)) return 1
+  if (sk.includes('world_cup') || sk.includes('fifa_world_cup')) return 1
+
+  // Tier 2 — high priority
+  if (sk.startsWith('mma_')) return 2
+  if (sk === 'icehockey_nhl') return 2
+  if (sk.startsWith('soccer_')) return 2
   if (sk.startsWith('tennis_')) return 2
   if (sk.startsWith('golf_')) return 2
-  if (sk.startsWith('mma_')) return 2
-  if (sk.startsWith('boxing_')) return 3
-  if (sk.startsWith('motorsport_') || sk.startsWith('formula')) return 3
-  if (sk.startsWith('esports_')) return 3
-  if (sk.includes('olympic')) return 3
 
-  return 3
+  // Tier 3 — strong secondary
+  if (sk.startsWith('boxing_')) return 3
+  if (sk.startsWith('horse') || sk.includes('horse_racing')) return 3
+  if (sk.startsWith('motorsport_') || sk.startsWith('formula') || sk.includes('nascar') || sk.includes('indy')) {
+    return 3
+  }
+  if (sk === 'basketball_wnba') return 3
+  if (sk.startsWith('esports_')) return 3
+  if (sk === 'americanfootball_nfl_preseason') return 3
+
+  // Tier 4 — completeness / arb
+  if (sk.startsWith('cricket_')) return 4
+  if (sk.includes('table_tennis') || sk.includes('ping_pong')) return 4
+  if (sk.startsWith('rugby_')) return 4
+  if (sk.startsWith('aussierules_') || sk.includes('_afl') || sk.startsWith('afl_')) return 4
+  if (sk.startsWith('volleyball_')) return 4
+
+  // Residual league keys in major families
+  if (sk.startsWith('americanfootball_')) return 3
+  if (sk.startsWith('basketball_')) return 3
+  if (sk.startsWith('baseball_')) return 3
+  if (sk.startsWith('icehockey_')) return 3
+
+  return null
+}
+
+export function isScottCoverageSportKey(sportKey: string): boolean {
+  return resolveSportKeyTier(sportKey) != null
 }
 
 export function resolveCalendarCoverageTier(input?: CalendarCoverageInput | null): CoverageTier {
   const explicit = Number(input?.coverage_tier)
-  if (explicit === 1 || explicit === 2 || explicit === 3) return explicit
+  if (explicit === 1 || explicit === 2 || explicit === 3 || explicit === 4) return explicit
 
   const keys = Array.isArray(input?.odds_sport_keys) ? input.odds_sport_keys : []
   if (keys.length) {
-    const tiers = keys.map((k) => resolveSportKeyTier(k))
-    return Math.min(...tiers) as CoverageTier
+    const tiers = keys
+      .map((k) => resolveSportKeyTier(k))
+      .filter((t): t is CoverageTier => t != null)
+    if (tiers.length) return Math.min(...tiers) as CoverageTier
   }
 
   return 2
@@ -121,12 +107,12 @@ export function coverageRankForSport(
   calendarRow?: CalendarCoverageInput | null,
 ): number {
   const tier = resolveCalendarCoverageTier({
-    coverage_tier: calendarRow?.coverage_tier,
+    coverage_tier: calendarRow?.coverage_tier ?? resolveSportKeyTier(sportKey),
     odds_sport_keys: calendarRow?.odds_sport_keys ?? [sportKey],
     kind: calendarRow?.kind,
     priority: calendarRow?.priority,
   })
-  const tierBase = (4 - tier) * 100
+  const tierBase = (5 - tier) * 100
   const priority = Math.max(0, Math.min(100, Number(calendarRow?.priority) || 0))
   const kind = String(calendarRow?.kind || '').toLowerCase()
   const eventBoost = kind === 'tournament' || kind === 'marquee' ? 25 : 0

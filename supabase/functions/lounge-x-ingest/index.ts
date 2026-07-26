@@ -3,8 +3,8 @@
  * Body: { "slug": "x-crypto", "dryRun": false }
  * Body (single post): { "slug": "x-crypto", "tweetUrl": "https://x.com/handle/status/123", "sourceText"?: "..." }
  */
-import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { adminOpsCorsHeaders, adminOpsJson, requireAdminUser } from '../_shared/adminAuth.ts'
+import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import { rewriteTweetForBot } from '../_shared/loungeBotXRewrite.ts'
 import { resolveXBotVoicePrompt } from '../_shared/loungeBotXVoice.ts'
 import { canonicalXTweetUrl, parseXTweetUrl } from '../_shared/loungeBotXTweetUrl.ts'
@@ -14,14 +14,7 @@ import { resolveTweetForManualIngest, expandTweetTextUrls } from '../_shared/lou
 const X_API = 'https://api.x.com/2'
 
 async function authorize(req: Request): Promise<SupabaseClient> {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()
-  if (!supabaseUrl || !serviceRoleKey) throw adminOpsJson(503, { error: 'Missing env.' })
-
-  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim()
-  if (bearer === serviceRoleKey) return createClient(supabaseUrl, serviceRoleKey)
-  await requireAdminUser(req)
-  return createClient(supabaseUrl, serviceRoleKey)
+  return authorizeServiceRoleOrAdmin(req)
 }
 
 function xToken(): string {

@@ -18,7 +18,6 @@ import {
   formatPtMinuteAsClock,
   isOddsApiAuthOrQuotaError,
   loadSportOddsContext,
-  loadTodayCalendarRows,
   marketsForOddsPoll,
   morningSlateShouldRunNow,
   ptDayStartIso,
@@ -29,6 +28,11 @@ import {
   type OddsCfgRow,
   type SportOddsContext,
 } from '../_shared/loungeBotOddsRun.ts'
+import {
+  calendarPickFromTarget,
+  resolveScottScanTargets,
+} from '../_shared/loungeBotScanTargets.ts'
+import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishSchedule.ts'
 import { DEFAULT_MIN_EV_PCT } from '../_shared/loungeBotOddsCaption.ts'
 import type { SharpReportCandidate } from '../_shared/loungeBotSharpReport.ts'
 
@@ -151,9 +155,10 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, result)
     }
 
-    const calendarRows = await loadTodayCalendarRows(admin)
-    if (!calendarRows.length) {
-      return adminOpsJson(200, { ok: true, skipped: 'no_calendar_today', slug, action })
+    const activeSports = await fetchActiveSportKeys()
+    const scanTargets = await resolveScottScanTargets(admin, activeSports)
+    if (!scanTargets.length) {
+      return adminOpsJson(200, { ok: true, skipped: 'no_coverage_sports_active', slug, action })
     }
 
     const regions = oddsCfg.regions || ['us']
@@ -188,29 +193,19 @@ Deno.serve(async (req) => {
     if (action === 'daily_slates' && morningEnabled && coffeeCoversEnabled) {
       const dayStart = ptDayStartIso()
       let morningCount = await countPublishedKindToday(admin, bot.user_id, 'coffee_covers', dayStart)
-      const activeSports = await fetchActiveSportKeys()
       const coffeeMarkets = ['h2h', 'spreads']
       const details: Record<string, unknown>[] = []
       let requestsRemaining: string | null = null
 
       const rowResults = await Promise.all(
-        calendarRows.map(async (row) => {
-          const sportKey = row.odds_sport_keys?.[0]
-          if (!sportKey) {
-            return { calendarSlug: row.slug, sportKey: null, skipped: 'no_sport_key' as const }
-          }
-          if (!activeSports.has(sportKey)) {
-            return { calendarSlug: row.slug, sportKey, skipped: 'sport_not_active' as const }
-          }
+        scanTargets.map(async (row) => {
+          const sportKey = row.sportKey
           try {
             const ctx = await loadSportOddsContext(
               admin,
               bot.user_id,
               sportKey,
-              {
-                calendarSlug: row.slug,
-                categoryLabel: String(row.caption_prefix || row.label_short || '').trim(),
-              },
+              calendarPickFromTarget(row),
               regions,
               coffeeMarkets,
               dryRun,
@@ -319,7 +314,7 @@ Deno.serve(async (req) => {
       : null
 
     const dayStart = ptDayStartIso()
-    const minPostGap = Number(oddsCfg.min_post_gap_minutes) || 8
+    const minPostGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
     let edgeCount = await countPublishedKindToday(admin, bot.user_id, 'edge', dayStart)
     if (pollEdgesModules) {
       edgeCount += await pollEdgesModules.countScheduledKindToday(admin, bot.user_id, 'edge', dayStart)
@@ -327,7 +322,6 @@ Deno.serve(async (req) => {
     const morningPostKind = coffeeCoversEnabled ? 'coffee_covers' : 'slate'
     let morningCount = await countPublishedKindToday(admin, bot.user_id, morningPostKind, dayStart)
 
-    const activeSports = await fetchActiveSportKeys()
     let publishedEdges = 0
     let publishedLineMoves = 0
     let publishedArbWatch = 0
@@ -345,18 +339,9 @@ Deno.serve(async (req) => {
       minMlMovePts: Number(oddsCfg.min_ml_move_pts) || 20,
     }
 
-    for (const row of calendarRows) {
-      const sportKey = row.odds_sport_keys?.[0]
-      if (!sportKey) continue
-      if (!activeSports.has(sportKey)) {
-        details.push({ calendarSlug: row.slug, sportKey, skipped: 'sport_not_active' })
-        continue
-      }
-
-      const calendarPick = {
-        calendarSlug: row.slug,
-        categoryLabel: String(row.caption_prefix || row.label_short || '').trim(),
-      }
+    for (const row of scanTargets) {
+      const sportKey = row.sportKey
+      const calendarPick = calendarPickFromTarget(row)
 
       try {
         const ctx = await loadSportOddsContext(

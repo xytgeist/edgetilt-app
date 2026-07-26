@@ -12,10 +12,13 @@ import {
   BOT_RUN_STATES,
   DEFAULT_ODDS_ALERT_AUDIENCE,
   ODDS_ALERT_AUDIENCE_ROWS,
+  ODDS_ALERT_DESTINATION_OPTIONS,
   ODDS_ALERT_INVOKE_ROWS,
+  SCOTT_FALLBACK_SPORT_PICKS,
   botPollActionLabel,
   botRunStateBadgeClass,
   formatBotPortalWhen,
+  normalizeAlertDestinationValue,
 } from './botPortalConstants.js'
 import {
   deleteBotPost,
@@ -286,23 +289,28 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     }
   }, [bot?.pipeline, bot?.user_id, supabaseClient])
 
+  const sportPickerRows = useMemo(
+    () => (calendarToday.length ? calendarToday : [...SCOTT_FALLBACK_SPORT_PICKS]),
+    [calendarToday],
+  )
+
   useEffect(() => {
-    if (bot?.pipeline !== 'odds_api' || !calendarToday.length) {
+    if (bot?.pipeline !== 'odds_api' || !sportPickerRows.length) {
       setSelectedCalendarSlug('')
       return
     }
     const storageKey = `bot-odds-calendar-${bot.user_id}`
     const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null
-    if (stored && calendarToday.some((row) => row.slug === stored)) {
+    if (stored && sportPickerRows.some((row) => row.slug === stored)) {
       setSelectedCalendarSlug(stored)
       return
     }
-    setSelectedCalendarSlug(calendarToday[0]?.slug || '')
-  }, [bot?.pipeline, bot?.user_id, calendarToday])
+    setSelectedCalendarSlug(sportPickerRows[0]?.slug || '')
+  }, [bot?.pipeline, bot?.user_id, sportPickerRows])
 
   const selectedCalendarEntry = useMemo(
-    () => calendarToday.find((row) => row.slug === selectedCalendarSlug) || null,
-    [calendarToday, selectedCalendarSlug],
+    () => sportPickerRows.find((row) => row.slug === selectedCalendarSlug) || null,
+    [sportPickerRows, selectedCalendarSlug],
   )
   const selectedSportKey = selectedCalendarEntry?.odds_sport_keys?.[0] || ''
 
@@ -335,10 +343,13 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       maxPostsHour: bot.max_posts_per_hour ?? 4,
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
       minEdgePct: String(bot.odds_config?.min_edge_pct ?? 2),
-      alertAudience: {
-        ...DEFAULT_ODDS_ALERT_AUDIENCE,
-        ...(bot.odds_config?.alert_audience || {}),
-      },
+      alertAudience: Object.fromEntries(
+        ODDS_ALERT_AUDIENCE_ROWS.map((row) => {
+          const raw = bot.odds_config?.alert_audience?.[row.key]
+            ?? DEFAULT_ODDS_ALERT_AUDIENCE[row.key]
+          return [row.key, normalizeAlertDestinationValue(raw) || DEFAULT_ODDS_ALERT_AUDIENCE[row.key]]
+        }),
+      ),
       displayName: bot.display_name || '',
       categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
       watchlistText: watchlist,
@@ -671,7 +682,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
 
   const publishAllExamplePosts = async () => {
     const ok = window.confirm(
-      `Post ${SCOTT_EXAMPLE_POST_COUNT} example captions to the Lounge feed as @${bot.handle || bot.slug}? Each post is prefixed with 🧪 Example and uses your Alert audience (All | Subs) settings.`,
+      `Post ${SCOTT_EXAMPLE_POST_COUNT} example captions as @${bot.handle || bot.slug}? Each post is prefixed with 🧪 Example and uses your alert destination settings (lounge vs sub chat).`,
     )
     if (!ok) return
 
@@ -950,14 +961,14 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
               <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300/90">
                 Today&apos;s major sporting events
               </div>
-              {calendarToday.length ? (
+              {sportPickerRows.length ? (
                 <>
                   <select
                     value={selectedCalendarSlug}
                     onChange={(e) => handleCalendarChange(e.target.value)}
                     className="mt-1.5 w-full max-w-md rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm focus:border-cyan-500/50 focus:outline-none"
                   >
-                    {calendarToday.map((row) => (
+                    {sportPickerRows.map((row) => (
                       <option key={row.slug} value={row.slug}>
                         {row.label_short}
                         {row.title && row.title !== row.label_short ? ` · ${row.title}` : ''}
@@ -965,14 +976,13 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
                     ))}
                   </select>
                   <div className="text-zinc-500 text-[10px] mt-1.5">
-                    Calendar rows active today (date window). Fetch odds posts a ⚡ +EV alert for the selected sport only. Coffee &amp; Covers scans every row here but only includes sports with unplayed games on today&apos;s PT slate (Odds API).{' '}
+                    Scott auto-scans every tier 1–4 sport when Odds API has lines (UFC, NFL, NBA, etc.). Calendar rows boost priority and captions. Manual Fetch odds uses the selection below.{' '}
                     <span className="font-mono text-zinc-400">{selectedSportKey || '…'}</span>
                   </div>
                 </>
               ) : (
-                <div className="text-amber-200/80 text-xs mt-2">
-                  No major events on the calendar today. Add or extend rows in{' '}
-                  <span className="font-mono text-[10px]">lounge_sports_betting_calendar</span>.
+                <div className="text-zinc-400 text-xs mt-2">
+                  Sport picker unavailable — reload the page.
                 </div>
               )}
             </label>
@@ -1064,7 +1074,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
               </div>
               <div className="text-zinc-500 text-[10px] mt-1 mb-2">
                 One 🧪 Example feed post per alert type ({SCOTT_EXAMPLE_POST_COUNT} total), including Coffee & Covers thread part.
-                Respects Alert audience All | Subs. Works while paused.
+                Respects alert destination settings. Works while paused.
               </div>
               <button
                 type="button"
@@ -1162,18 +1172,25 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         {isAutomatic && bot.pipeline === 'odds_api' ? (
           <div className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">
-              Alert audience
+              Alert destination
             </div>
             <div className="text-zinc-600 text-[10px] mb-3">
-              Choose whether each alert type posts to the public feed (All) or subscribers only (Subs).
+              Per alert type: public lounge feed, creator fan sub chat only, or sub chat with a random lounge teaser (10% or 30%).
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[520px]">
                 <thead>
                   <tr className="text-zinc-500 border-b border-zinc-800/80">
                     <th className="py-2 pr-3 font-semibold">Alert type</th>
-                    <th className="py-2 px-2 font-semibold text-center w-16">All</th>
-                    <th className="py-2 pl-2 font-semibold text-center w-16">Subs</th>
+                    {ODDS_ALERT_DESTINATION_OPTIONS.map((opt) => (
+                      <th
+                        key={opt.value}
+                        className="py-2 px-1 font-semibold text-center w-[72px]"
+                        title={opt.title}
+                      >
+                        {opt.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -1182,30 +1199,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
                     return (
                       <tr key={row.key} className="border-b border-zinc-800/50 last:border-0">
                         <td className="py-2 pr-3 text-zinc-200">{row.label}</td>
-                        <td className="py-2 px-2 text-center">
-                          <input
-                            type="radio"
-                            name={`alert-audience-${row.key}`}
-                            checked={value === 'all'}
-                            onChange={() => setDraft((d) => ({
-                              ...d,
-                              alertAudience: { ...d.alertAudience, [row.key]: 'all' },
-                            }))}
-                            className="accent-cyan-500"
-                          />
-                        </td>
-                        <td className="py-2 pl-2 text-center">
-                          <input
-                            type="radio"
-                            name={`alert-audience-${row.key}`}
-                            checked={value === 'subscribers'}
-                            onChange={() => setDraft((d) => ({
-                              ...d,
-                              alertAudience: { ...d.alertAudience, [row.key]: 'subscribers' },
-                            }))}
-                            className="accent-cyan-500"
-                          />
-                        </td>
+                        {ODDS_ALERT_DESTINATION_OPTIONS.map((opt) => (
+                          <td key={opt.value} className="py-2 px-1 text-center">
+                            <input
+                              type="radio"
+                              name={`alert-destination-${row.key}`}
+                              checked={value === opt.value}
+                              title={opt.title}
+                              onChange={() => setDraft((d) => ({
+                                ...d,
+                                alertAudience: { ...d.alertAudience, [row.key]: opt.value },
+                              }))}
+                              className="accent-cyan-500"
+                            />
+                          </td>
+                        ))}
                       </tr>
                     )
                   })}

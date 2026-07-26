@@ -2,7 +2,7 @@
  * Value Bet Radar — 2–3 strongest +EV plays across today's slate (snackable feed post).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
+import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
 import { eventsForBestBetHourScan } from './loungeBotBestBetHour.ts'
 import {
   compareByCoverageThenEv,
@@ -21,11 +21,11 @@ import {
 import {
   fetchActiveSportKeys,
   fetchSportOdds,
-  loadTodayCalendarRows,
   ptMinutesSinceMidnightPt,
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
+import { resolveScottScanTargets } from './loungeBotScanTargets.ts'
 import {
   countScheduledKindToday,
   DEFAULT_MIN_POST_GAP_MINUTES,
@@ -231,16 +231,16 @@ export async function runValueBetRadarPoll(
     return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'outside_peak_window' }
   }
 
-  const calendarRows = await loadTodayCalendarRows(admin)
-  if (!calendarRows.length) {
-    return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'no_calendar_today' }
+  const activeSports = await fetchActiveSportKeys()
+  const scanTargets = await resolveScottScanTargets(admin, activeSports)
+  if (!scanTargets.length) {
+    return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'no_coverage_sports_active' }
   }
 
   const minEv = Number(oddsCfg.min_value_bet_radar_ev_pct) || DEFAULT_MIN_RADAR_EV_PCT
   const maxPerDay = Number(oddsCfg.max_value_bet_radar_posts_per_day) || 20
   const regions = oddsCfg.regions || ['us']
   const markets = [...new Set([...(oddsCfg.markets || ['h2h', 'spreads']), 'totals'])]
-  const activeSports = await fetchActiveSportKeys()
   const halfHourBucket = ptHalfHourBucket()
   const dedupeKey = valueBetRadarDedupeKey(halfHourBucket)
 
@@ -275,9 +275,8 @@ export async function runValueBetRadarPoll(
   const allCandidates: RadarPick[] = []
   let requestsRemaining: string | null = null
 
-  for (const row of calendarRows) {
-    const sportKey = row.odds_sport_keys?.[0]
-    if (!sportKey || !activeSports.has(sportKey)) continue
+  for (const row of scanTargets) {
+    const sportKey = row.sportKey
     const categoryLabel = String(row.caption_prefix || row.label_short || '').trim()
 
     try {
@@ -299,7 +298,7 @@ export async function runValueBetRadarPoll(
       dryRun,
       skipped: 'no_qualifying_edges',
       halfHourBucket,
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: allCandidates.length,
       minEv,
       requestsRemaining,
@@ -339,21 +338,21 @@ export async function runValueBetRadarPoll(
       pickCount: selected.length,
       picks: pickMeta,
       captionPreview: caption.slice(0, 500),
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: allCandidates.length,
       requestsRemaining,
     }
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly('value_bet_radar', oddsCfg.alert_audience)
+  const alertDestination = resolveAlertDestination('value_bet_radar', oddsCfg.alert_audience)
   const topEv = selected[0]?.edgePct ?? 0
   const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    subscriberOnly,
+    alertDestination,
     postKind: 'value_bet_radar',
     dedupeKey,
     score: topEv,
@@ -376,7 +375,7 @@ export async function runValueBetRadarPoll(
       halfHourBucket,
       pickCount: selected.length,
       picks: pickMeta,
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: allCandidates.length,
       requestsRemaining,
     }

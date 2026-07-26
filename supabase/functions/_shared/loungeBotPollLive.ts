@@ -6,12 +6,12 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
   fetchActiveSportKeys,
   loadSportOddsContext,
-  loadTodayCalendarRows,
   marketsForOddsPoll,
   ptDayStartIso,
   ptMinutesSinceMidnightPt,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
+import { calendarPickFromTarget, resolveScottScanTargets } from './loungeBotScanTargets.ts'
 import {
   fetchSportScores,
   filterInProgressOddsEvents,
@@ -66,12 +66,12 @@ export async function runPollLive(
     return { ok: true, skipped: 'live_content_disabled', slug: bot.slug, action: 'poll_live' }
   }
 
-  const calendarRows = await loadTodayCalendarRows(admin)
-  if (!calendarRows.length) {
-    return { ok: true, skipped: 'no_calendar_today', slug: bot.slug, action: 'poll_live' }
+  const activeSports = await fetchActiveSportKeys()
+  const scanTargets = await resolveScottScanTargets(admin, activeSports)
+  if (!scanTargets.length) {
+    return { ok: true, skipped: 'no_coverage_sports_active', slug: bot.slug, action: 'poll_live' }
   }
 
-  const activeSports = await fetchActiveSportKeys()
   const regions = oddsCfg.regions || ['us']
   const lineMovementEnabled = oddsCfg.line_movement_enabled !== false
   const markets = marketsForOddsPoll(oddsCfg, lineMovementEnabled)
@@ -83,15 +83,9 @@ export async function runPollLive(
   let oddsFetches = 0
   const details: Record<string, unknown>[] = []
 
-  for (const row of calendarRows) {
-    const sportKey = row.odds_sport_keys?.[0]
-    if (!sportKey) continue
-    if (!activeSports.has(sportKey)) {
-      details.push({ calendarSlug: row.slug, sportKey, skipped: 'sport_not_active' })
-      continue
-    }
-
-    const categoryLabel = String(row.caption_prefix || row.label_short || '').trim()
+  for (const row of scanTargets) {
+    const sportKey = row.sportKey
+    const categoryLabel = calendarPickFromTarget(row).categoryLabel
 
     try {
       let scores: Awaited<ReturnType<typeof fetchSportScores>> = []
@@ -126,7 +120,7 @@ export async function runPollLive(
         admin,
         bot.user_id,
         sportKey,
-        { calendarSlug: row.slug, categoryLabel },
+        calendarPickFromTarget(row),
         regions,
         markets,
         dryRun,

@@ -2,7 +2,7 @@
  * Best Bet of the Hour — single strongest +EV play across all calendar sports.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
+import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MAX_EV_PCT,
   DEFAULT_MIN_BOOKS,
@@ -21,11 +21,11 @@ import {
   fetchActiveSportKeys,
   fetchSportOdds,
   filterLiveOddsEvents,
-  loadTodayCalendarRows,
   ptTodayDate,
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
+import { resolveScottScanTargets } from './loungeBotScanTargets.ts'
 import {
   DEFAULT_MIN_POST_GAP_MINUTES,
   hasPendingScheduleDedupe,
@@ -320,15 +320,15 @@ export async function runBestBetHourPoll(
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'best_bet_hour_disabled' }
   }
 
-  const calendarRows = await loadTodayCalendarRows(admin)
-  if (!calendarRows.length) {
-    return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'no_calendar_today' }
+  const activeSports = await fetchActiveSportKeys()
+  const scanTargets = await resolveScottScanTargets(admin, activeSports)
+  if (!scanTargets.length) {
+    return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'no_coverage_sports_active' }
   }
 
   const minEv = Number(oddsCfg.min_best_bet_hour_ev_pct) || 4
   const regions = oddsCfg.regions || ['us']
   const markets = [...new Set([...(oddsCfg.markets || ['h2h', 'spreads']), 'totals'])]
-  const activeSports = await fetchActiveSportKeys()
   const hourBucket = ptHourBucket()
   const force = opts.force === true
 
@@ -339,9 +339,8 @@ export async function runBestBetHourPoll(
   const candidates: HourlyBestPick[] = []
   let requestsRemaining: string | null = null
 
-  for (const row of calendarRows) {
-    const sportKey = row.odds_sport_keys?.[0]
-    if (!sportKey || !activeSports.has(sportKey)) continue
+  for (const row of scanTargets) {
+    const sportKey = row.sportKey
     const categoryLabel = String(row.caption_prefix || row.label_short || '').trim()
     const calendarPriority = Number(row.priority) || 50
 
@@ -366,7 +365,7 @@ export async function runBestBetHourPoll(
       dryRun,
       skipped: 'no_qualifying_edge',
       hourBucket,
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: candidates.length,
       requestsRemaining,
     }
@@ -389,7 +388,7 @@ export async function runBestBetHourPoll(
         pickName: best.pickName,
         eventId: best.eventId,
       },
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: candidates.length,
       requestsRemaining,
     }
@@ -433,20 +432,20 @@ export async function runBestBetHourPoll(
         eventId: best.eventId,
       },
       captionPreview: caption.slice(0, 400),
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: candidates.length,
       requestsRemaining,
     }
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly('best_bet_hour', oddsCfg.alert_audience)
+  const alertDestination = resolveAlertDestination('best_bet_hour', oddsCfg.alert_audience)
   const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    subscriberOnly,
+    alertDestination,
     postKind: 'best_bet_hour',
     dedupeKey,
     score: best.edgePct,
@@ -475,7 +474,7 @@ export async function runBestBetHourPoll(
         pickName: best.pickName,
         eventId: best.eventId,
       },
-      sportsScanned: calendarRows.length,
+      sportsScanned: scanTargets.length,
       candidatesFound: candidates.length,
       requestsRemaining,
     }

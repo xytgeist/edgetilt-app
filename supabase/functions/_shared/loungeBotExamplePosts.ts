@@ -2,8 +2,8 @@
  * Scott Sharpe portal smoke pack: canonical example caption per post kind.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
-import { publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
+import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { publishRoutedBotThreadPost } from './loungeBotPublishSchedule.ts'
 
 export type ScottExamplePostSpec = {
   postKind: string
@@ -289,18 +289,18 @@ export async function publishScottExamplePosts(
   let failed = 0
 
   for (const spec of SCOTT_EXAMPLE_POST_SPECS) {
-    const subscriberOnly = resolveAlertSubscriberOnly(spec.postKind, alertAudience)
+    const alertDestination = resolveAlertDestination(spec.postKind, alertAudience)
     const dedupeKey = `example_pack:${spec.postKind}:${packId}`
 
-    const result = await publishLoungeBotPostWithThread(admin, {
+    const result = await publishRoutedBotThreadPost(admin, {
       botUserId: bot.user_id,
       caption: spec.caption,
       categoryPills: pills,
-      subscriberOnly,
+      alertDestination,
       threadParts: spec.threadParts?.map((body) => ({ body })),
     })
 
-    if (!result.postId) {
+    if (!result.postId && !result.subChatPublished) {
       failed += 1
       details.push({ postKind: spec.postKind, label: spec.label, error: result.error || 'publish failed' })
       await admin.from('lounge_bot_publish_log').insert({
@@ -315,8 +315,8 @@ export async function publishScottExamplePosts(
     }
 
     published += 1
-    postIds.push(result.postId)
-    details.push({ postKind: spec.postKind, label: spec.label, postId: result.postId })
+    if (result.postId) postIds.push(result.postId)
+    details.push({ postKind: spec.postKind, label: spec.label, postId: result.postId || undefined })
 
     await admin.from('lounge_bot_publish_log').insert({
       bot_user_id: bot.user_id,

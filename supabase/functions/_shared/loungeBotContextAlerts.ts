@@ -3,7 +3,7 @@
  * Data-only captions — no interpretive commentary.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
+import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
 import {
   findPlusEvOpportunities,
   formatOddsCommenceTimeShort,
@@ -531,13 +531,13 @@ export async function tryPublishContextAlert(
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly(best.kind, oddsCfg.alert_audience)
+  const alertDestination = resolveAlertDestination(best.kind, oddsCfg.alert_audience)
   const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    subscriberOnly,
+    alertDestination,
     postKind: best.kind,
     dedupeKey,
     score: best.pick.edgePct,

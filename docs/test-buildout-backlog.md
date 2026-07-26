@@ -59,7 +59,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Deploy `lounge-news-poll` + `lounge-bot-admin` on test + prod** (requires **`FINNHUB_API_KEY`**)
 - [x] **Market news bot v1 (code):** Finnhub general + M&A + watchlist company feeds → score → auto-publish; migration + Edge fn + Bot Portal. **`docs/lounge-bot-market-news.md`**
 - [x] **Market Edge persona + cron (code):** migration **`20260705020000`** (`invoke_lounge_news_poll`, pg_cron every 3 min, watchlist seed); wizard defaults **Market Edge** / `@marketedge`.
-- [x] **Bot ops UI (code):** **`/?tab=bots`** Bot Portal — all bots, run/pause/stop, caps, score threshold, watchlist, source toggles, edit/delete posts, **manual post + reply as bot**, automation log, **Scott Share odds controls** (calendar picker, Fetch odds, Scan all · edge, **Post Coffee & Covers**, **Min +EV %**, **Alert audience All | Subs**). Edge Monitor links here.
+- [x] **Bot ops UI (code):** **`/?tab=bots`** Bot Portal — all bots, run/pause/stop, caps, score threshold, watchlist, source toggles, edit/delete posts, **manual post + reply as bot**, automation log, **Scott Share odds controls** (calendar picker, Fetch odds, Scan all · edge, **Post Coffee & Covers**, **Min +EV %**, **Alert destination** lounge / sub chat / sub+10% / sub+30%). Edge Monitor links here.
 - [ ] **Market news smoke (test + prod):** dry run → enable bot → poll now → confirm Lounge post; Yahoo/MW RSS live after **`20260706180000`**.
 - [ ] **Sports odds bot smoke (test + prod):** **`docs/lounge-bot-sports-odds.md`**
   - [x] Apply migrations **`20260704120000`** through **`20260706180000`** on test + prod (manual SQL; skip any already applied)

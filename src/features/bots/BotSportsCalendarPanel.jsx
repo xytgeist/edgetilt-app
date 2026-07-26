@@ -443,7 +443,7 @@ export default function BotSportsCalendarPanel({
               Today
             </button>
             <div className="text-zinc-600 text-[10px] pb-1">
-              Scott cron + manual fetch use this day&apos;s enabled windows.
+              Boost priority and captions for special events. Scott always scans tier 1–4 sports when Odds API has lines.
             </div>
           </div>
 

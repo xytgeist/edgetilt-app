@@ -1,8 +1,11 @@
 /**
- * Per-alert audience routing for Scott Share (freemium feed gating).
+ * Per-alert destination routing for Scott Share (lounge feed vs creator fan sub chat).
  */
 
-export type AlertAudience = 'all' | 'subscribers'
+export type AlertDestination = 'lounge' | 'sub_chat' | 'sub_chat_10' | 'sub_chat_30'
+
+/** @deprecated Legacy feed-only audience values (normalized on read). */
+export type LegacyAlertAudience = 'all' | 'subscribers'
 
 export type OddsAlertAudienceKey =
   | 'coffee_covers'
@@ -37,21 +40,28 @@ export const ODDS_ALERT_AUDIENCE_KEYS: OddsAlertAudienceKey[] = [
   'fade_the_public',
 ]
 
-export const DEFAULT_ALERT_AUDIENCE: Record<OddsAlertAudienceKey, AlertAudience> = {
-  coffee_covers: 'all',
-  edge: 'subscribers',
-  line_movement: 'subscribers',
-  in_game_edge: 'subscribers',
-  period_report: 'subscribers',
-  best_bet_hour: 'subscribers',
-  arb_watch: 'subscribers',
-  sharp_report: 'subscribers',
-  value_bet_radar: 'all',
-  starter_spotlight: 'subscribers',
-  confirmed_starters: 'subscribers',
-  injury_impact: 'subscribers',
-  rest_travel_edge: 'subscribers',
-  fade_the_public: 'subscribers',
+export const ALERT_DESTINATION_VALUES: AlertDestination[] = [
+  'lounge',
+  'sub_chat',
+  'sub_chat_10',
+  'sub_chat_30',
+]
+
+export const DEFAULT_ALERT_AUDIENCE: Record<OddsAlertAudienceKey, AlertDestination> = {
+  coffee_covers: 'lounge',
+  edge: 'sub_chat',
+  line_movement: 'sub_chat',
+  in_game_edge: 'sub_chat',
+  period_report: 'sub_chat',
+  best_bet_hour: 'sub_chat',
+  arb_watch: 'sub_chat',
+  sharp_report: 'sub_chat',
+  value_bet_radar: 'lounge',
+  starter_spotlight: 'sub_chat',
+  confirmed_starters: 'sub_chat',
+  injury_impact: 'sub_chat',
+  rest_travel_edge: 'sub_chat',
+  fade_the_public: 'sub_chat',
 }
 
 export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {
@@ -91,24 +101,69 @@ export function audienceKeyForPostKind(postKind: string): OddsAlertAudienceKey {
   return 'edge'
 }
 
+export function normalizeAlertDestinationValue(raw: unknown): AlertDestination | null {
+  const val = String(raw || '').trim()
+  if (val === 'all') return 'lounge'
+  if (val === 'subscribers') return 'sub_chat'
+  if (ALERT_DESTINATION_VALUES.includes(val as AlertDestination)) return val as AlertDestination
+  return null
+}
+
 export function normalizeAlertAudience(
   raw: Record<string, unknown> | null | undefined,
-): Record<OddsAlertAudienceKey, AlertAudience> {
+): Record<OddsAlertAudienceKey, AlertDestination> {
   const out = { ...DEFAULT_ALERT_AUDIENCE }
   if (!raw || typeof raw !== 'object') return out
   for (const key of ODDS_ALERT_AUDIENCE_KEYS) {
-    const val = String(raw[key] || '').trim()
-    if (val === 'all' || val === 'subscribers') out[key] = val
+    const normalized = normalizeAlertDestinationValue(raw[key])
+    if (normalized) out[key] = normalized
   }
   return out
 }
 
-/** True when the post should be subscriber_only on community_feed_posts. */
-export function resolveAlertSubscriberOnly(
+export function resolveAlertDestinationForKey(
+  key: OddsAlertAudienceKey,
+  alertAudience?: Record<string, unknown> | null,
+): AlertDestination {
+  const normalized = normalizeAlertAudience(alertAudience)
+  return normalized[key]
+}
+
+export function resolveAlertDestination(
   postKind: string,
   alertAudience?: Record<string, unknown> | null,
+): AlertDestination {
+  return resolveAlertDestinationForKey(audienceKeyForPostKind(postKind), alertAudience)
+}
+
+export type AlertPublishTargets = {
+  subChat: boolean
+  loungeFeed: boolean
+}
+
+/** Resolve whether this alert posts to sub chat and/or the public lounge feed. */
+export function resolvePublishTargets(
+  destination: AlertDestination,
+  roll = Math.random(),
+): AlertPublishTargets {
+  switch (destination) {
+    case 'lounge':
+      return { subChat: false, loungeFeed: true }
+    case 'sub_chat':
+      return { subChat: true, loungeFeed: false }
+    case 'sub_chat_10':
+      return { subChat: true, loungeFeed: roll < 0.10 }
+    case 'sub_chat_30':
+      return { subChat: true, loungeFeed: roll < 0.30 }
+    default:
+      return { subChat: false, loungeFeed: true }
+  }
+}
+
+/** Lounge feed posts from Scott routing are always public (fan gating is sub chat). */
+export function resolveAlertSubscriberOnly(
+  _postKind: string,
+  _alertAudience?: Record<string, unknown> | null,
 ): boolean {
-  const key = audienceKeyForPostKind(postKind)
-  const normalized = normalizeAlertAudience(alertAudience)
-  return normalized[key] === 'subscribers'
+  return false
 }

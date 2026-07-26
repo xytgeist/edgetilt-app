@@ -103,17 +103,17 @@ Long posts may still truncate with `+N more games today.` at the **2000-char** c
 | **Best bet · hour** | Manual smoke for hourly strongest +EV post (same logic as cron) |
 | **Post all examples** | One feed post per alert type (**17** total, incl. Coffee & Covers thread part); captions match live format |
 | **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** |
-| **Alert audience** | Per alert type: **All** (public feed) or **Subs** (subscriber-only post). Matrix in Settings → **`lounge_bot_odds_config.alert_audience`**. Code defaults: Coffee & Covers + Value Radar **All**; most other kinds **Subs**. **Ryan prod (Jul 2026):** all types set **All** in portal. |
+| **Alert destination** | Per alert type: **Everyone** (public lounge feed), **Sub chat** (creator fan room only), **Sub + 10%**, or **Sub + 30%** (always fan room; random lounge teaser). Portal matrix → **`lounge_bot_odds_config.alert_audience`**. Migration **`20260725230000`**. Scott must have **`creator_monetization_profiles.fan_room_id`** for sub chat routes. |
 | **Sign in as bot** | Admin-only (**`lounge-bot-admin`** `staff_sign_in_as_bot`): swaps browser session to the bot and opens Lounge Settings → **Fan subscriptions** (offer copy, go live). **Do not use for Stripe Connect** … use **Connect payouts (Stripe)** below instead (admin session, return to Bot Portal). |
 | **Connect payouts (Stripe)** | Admin-only **`staff_bot_fan_connect`**: Stripe Express onboarding for the bot without leaving your admin login; return URL **`/?tab=bots&bot={slug}&fan_connect=return`**. Then **Sign in as bot** only if you need the in-app offer editor / **Turn on fan subscriptions**. |
 
 ---
 
-## Freemium feed gating
+## Freemium feed gating (legacy)
 
-Migration **`20260704260000`**: **`community_feed_posts.subscriber_only`**. RLS + **`lounge_viewer_is_subscriber_or_staff()`** hides subscriber-only posts from anon and signed-in free users; active **`has_active_subscription`** or staff see them.
+Migration **`20260704260000`**: **`community_feed_posts.subscriber_only`**. RLS + **`lounge_viewer_is_subscriber_or_staff()`** hides subscriber-only posts from anon and signed-in free users.
 
-Each publish path sets **`subscriber_only`** from **`alert_audience`** (see portal matrix above).
+**Scott Share (Jul 2026):** alert routing uses **`alert_audience`** destination values (**`lounge`**, **`sub_chat`**, **`sub_chat_10`**, **`sub_chat_30`**) — see **`loungeBotAlertAudience.ts`** + **`loungeBotSubChatPublish.ts`**. Lounge feed posts from Scott are **public**; fan-gated content goes to the creator fan room. Legacy **`all`/`subscribers`** portal values normalize on read/write.
 
 ---
 
@@ -250,17 +250,17 @@ Disable via **`best_bet_hour_enabled = false`**. Audience key **`best_bet_hour`*
 
 Runs **before** line-movement snapshot upsert so both read the same prior lines. Disable via **`sharp_report_enabled = false`**.
 
-### Human-paced publishing (scheduled queue)
+### Feed post spacing (short queue)
 
-Odds alerts no longer burst-post when several qualify in one **`poll_edges`** tick. **`loungeBotPublishSchedule.ts`** queues captions with randomized delay:
+Alerts publish **immediately** when **`min_post_gap_minutes`** has elapsed since Scott's last feed post. Otherwise they queue for the **next gap window only** (never stacked hours deep):
 
-| Priority | Alert kinds | Typical delay after spacing gate |
+| Priority | Alert kinds | Extra jitter after gap |
 | --- | --- | --- |
-| **Urgent** | Arb Watch | ~15s–2min after min gap |
-| **Normal** | +EV edge, Best Bet, Value Radar, in-game edge, Starter Spotlight, Injury Impact | ~2–10min after min gap |
-| **Low** | Line movement, Sharp Report, period reports, Confirmed Starters, Rest + Travel | ~6–20min after min gap |
+| **Urgent** | Arb Watch, in-game edge, period report | 0–30s |
+| **Normal** | +EV edge, Best Bet, Value Radar, context alerts | 15s–1min |
+| **Low** | Line movement, Sharp Report | 30s–90s |
 
-**`min_post_gap_minutes`** (default **8**) enforces minimum spacing between any Scott posts. **`lounge_bot_scheduled_posts`** is drained every minute by pg_cron **`lounge_bot_publish_scheduled_odds`** → **`lounge-bot-publish-due`** (`publishScheduledOdds: true`). Stale pending rows (**> 3h**) cancel automatically. **Coffee & Covers** still posts immediately (threaded morning post).
+**`min_post_gap_minutes`** (default **2**) enforces minimum spacing between Scott feed posts. Alerts **publish immediately** when the gap allows; otherwise they queue for the next gap window (typically **under 2 minutes**, never hours). **`lounge_bot_scheduled_posts`** is drained every minute by pg_cron **`lounge_bot_publish_scheduled_odds`** → **`lounge-bot-publish-due`**. **Coffee & Covers** still posts immediately (threaded morning post).
 
 ### Value Bet Radar (peak hours, ~30 min)
 
@@ -463,7 +463,7 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `rest_travel_edge_enabled` | Default **true** — Rest + Travel (7-day schedule, venue table, +EV on rested team) |
 | `fade_the_public_enabled` | Default **false** — needs public betting % feed |
 | `max_context_alerts_per_day` | Default **8** — cap across all context kinds |
-| `min_post_gap_minutes` | Default **8** — min minutes between Scott feed posts (queue spacing) |
+| `min_post_gap_minutes` | Default **2** — min minutes between Scott feed posts |
 
 Publish log: **`post_kind`** (… `value_bet_radar`, `starter_spotlight`, `injury_impact`, …), **`dedupe_key`** — through **`20260705010000`**. Pending queue: **`lounge_bot_scheduled_posts`**.
 
@@ -483,17 +483,20 @@ Captions prefix category label from calendar row (e.g. `Wimbledon: ...`).
 
 ## Scott coverage scope (priority tiers)
 
-Canonical logic: **`supabase/functions/_shared/loungeBotCoverageScope.ts`**.
+Canonical logic: **`supabase/functions/_shared/loungeBotCoverageScope.ts`** + scan union **`loungeBotScanTargets.ts`**.
+
+**Poll loops (Jul 2026):** Scott scans every **active** Odds API sport in **tiers 1–4** below. **`lounge_sports_betting_calendar`** only **boosts** priority + captions for special events (fight night, March Madness window, etc.) ... it is **not** the allowlist.
 
 | Tier | Cover | Examples |
 | --- | --- | --- |
-| **1 · Heavy** | Always prioritize | NFL, NBA, MLB, NCAAF, NHL, Premier League / top European soccer, World Cup |
-| **2 · Medium** | Regular rotation | Grand Slam tennis, PGA majors, UFC/MMA, WNBA, NCAA basketball (incl. March Madness) |
-| **3 · Opportunistic** | When signal is strong | Olympics, F1, boxing, esports |
+| **1 · Must cover** | Core handle | NFL, NBA, NCAAF, MLB, NCAAB |
+| **2 · High priority** | Strong engagement | UFC/MMA, NHL, soccer, tennis, golf |
+| **3 · Strong secondary** | Regular rotation | Boxing, horse racing, motorsport, WNBA, esports |
+| **4 · Completeness / arb** | When lines exist | Cricket, table tennis, rugby, AFL, volleyball |
 
 **Rules (Edge + portal):**
 
-- **`poll_edges`** scans calendar rows sorted by coverage rank (tier + priority + tournament/marquee boost).
+- **`poll_edges`** scans **active tier 1–4** sports (calendar boosts priority/captions).
 - **Best Bet of the Hour**, **Value Bet Radar**, and **Sharp Report** compare candidates by **coverage rank first**.
 - A lower tier wins only on **exceptional +EV** (default **+2%** gap vs the other pick) or **exceptional line movement** (movement score gap **≥ 15**).
 - Big events: set **`kind`** = `tournament` or `marquee` and raise **`priority`** (e.g. World Cup **100**, UFC 329 **95**) for a temporary boost on active dates.
@@ -630,6 +633,7 @@ Player props and deep injury narratives may still need a dedicated injuries feed
 | **`20260704230000`** | pg_cron **`daily_slates`** + **`poll_edges`** → **`lounge-odds-poll`** (Vault secrets) |
 | **`20260704240000`** | Reschedule: Coffee & Covers **6-8am PT**; **`poll_edges`** every **15 min** **24/7** |
 | **`20260704250000`** | Line movement snapshots + alert post kinds (**`lounge_odds_event_lines`**) |
+| **`20260725230000`** | Alert **destinations** (lounge / sub chat / sub+10% / sub+30%) + portal matrix |
 | **`20260704260000`** | **`subscriber_only`** feed + **`alert_audience`** + live in-game / period reports |
 | **`20260704270000`** | **Best Bet of the Hour** (`best_bet_hour` post kind, hourly cron, portal audience row) |
 | **`20260704280000`** | **Arb Watch** (`arb_watch` on `poll_edges`, min 3% guaranteed profit) |

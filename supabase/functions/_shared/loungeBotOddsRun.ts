@@ -40,14 +40,13 @@ import {
 } from './loungeBotLineMovement.ts'
 import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundownContext.ts'
 import { isNcaabCoffeeSport } from './loungeBotNcaabCoffeeFilter.ts'
-import { resolveAlertSubscriberOnly } from './loungeBotAlertAudience.ts'
-import { publishLoungeBotPost, publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
+import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MIN_POST_GAP_MINUTES,
   hasPendingScheduleDedupe,
+  publishRoutedBotThreadPost,
   submitLoungeBotAlertPost,
 } from './loungeBotPublishSchedule.ts'
-import { sortCalendarRowsByCoverage } from './loungeBotCoverageScope.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -265,45 +264,6 @@ export async function fetchSportOdds(sport: string, regions: string[], markets: 
   }
 }
 
-export async function loadTodayCalendarRows(admin: SupabaseClient): Promise<CalendarRow[]> {
-  const today = ptTodayDate()
-  const { data, error } = await admin
-    .from('lounge_sports_betting_calendar')
-    .select('slug, label_short, caption_prefix, odds_sport_keys, priority, coverage_tier, kind')
-    .eq('enabled', true)
-    .lte('start_date', today)
-    .gte('end_date', today)
-
-  if (error) throw new Error(error.message)
-  return sortCalendarRowsByCoverage((data || []) as CalendarRow[])
-}
-
-export function resolveCalendarSelection(
-  rows: CalendarRow[],
-  sportKey: string,
-  calendarSlug: string,
-): { ok: true; categoryLabel: string; calendarSlug: string } | { ok: false; error: string } {
-  const matches = rows.filter((row) => (row.odds_sport_keys || []).includes(sportKey))
-  if (!matches.length) {
-    return { ok: false, error: 'Selected sport is not on today\'s major events calendar.' }
-  }
-
-  let row = matches[0]
-  if (calendarSlug) {
-    const picked = matches.find((r) => r.slug === calendarSlug)
-    if (!picked) {
-      return { ok: false, error: 'Calendar selection does not match the sport key.' }
-    }
-    row = picked
-  }
-
-  return {
-    ok: true,
-    calendarSlug: row.slug,
-    categoryLabel: String(row.caption_prefix || row.label_short || '').trim(),
-  }
-}
-
 export async function countPublishedKindToday(
   admin: SupabaseClient,
   botUserId: string,
@@ -465,12 +425,12 @@ export async function tryPublishEdgeAlert(
   if (dryRun) return { published: false, pick }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly('edge', alertAudience)
+  const alertDestination = resolveAlertDestination('edge', alertAudience)
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    subscriberOnly,
+    alertDestination,
     postKind: 'edge',
     dedupeKey,
     score: pick.edgePct,
@@ -574,20 +534,20 @@ export async function tryPublishCoffeeAndCovers(
   )
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly('coffee_covers', alertAudience)
-  const result = await publishLoungeBotPostWithThread(admin, {
+  const alertDestination = resolveAlertDestination('coffee_covers', alertAudience)
+  const result = await publishRoutedBotThreadPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     threadParts: generated.threadParts.map((part) => ({ body: part.body })),
-    subscriberOnly,
+    alertDestination,
   })
 
   const topScore = generated.coverPicks[0]?.edgePct
     ?? generated.mlPicks[0]?.edgePct
     ?? null
 
-  if (result.postId) {
+  if (result.postId || result.subChatPublished) {
     await admin.from('lounge_bot_publish_log').insert({
       bot_user_id: bot.user_id,
       post_id: result.postId,
@@ -700,20 +660,20 @@ export async function tryPublishCombinedCoffeeAndCovers(
   )
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly('coffee_covers', alertAudience)
-  const result = await publishLoungeBotPostWithThread(admin, {
+  const alertDestination = resolveAlertDestination('coffee_covers', alertAudience)
+  const result = await publishRoutedBotThreadPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     threadParts: generated.threadParts.map((part) => ({ body: part.body })),
-    subscriberOnly,
+    alertDestination,
   })
 
   const topScore = generated.coverPicks[0]?.edgePct
     ?? generated.mlPicks[0]?.edgePct
     ?? null
 
-  if (result.postId) {
+  if (result.postId || result.subChatPublished) {
     await admin.from('lounge_bot_publish_log').insert({
       bot_user_id: bot.user_id,
       post_id: result.postId,
@@ -777,15 +737,18 @@ export async function tryPublishSlateCheckIn(
   if (dryRun) return { published: false, gamesToday: ctx.eventsInWindow }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const subscriberOnly = resolveAlertSubscriberOnly('coffee_covers', alertAudience)
-  const result = await publishLoungeBotPost(admin, {
+  const alertDestination = resolveAlertDestination('coffee_covers', alertAudience)
+  const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    subscriberOnly,
+    alertDestination,
+    postKind: 'slate',
+    dedupeKey,
+    score: ctx.eventsInWindow,
   })
 
-  if (result.postId) {
+  if (result.accepted) {
     await admin.from('lounge_bot_publish_log').insert({
       bot_user_id: bot.user_id,
       post_id: result.postId,
@@ -894,13 +857,13 @@ export async function tryPublishLineMovementAlerts(
       categoryLabel: ctx.categoryLabel,
       contextNote: contextNote || undefined,
     })
-    const subscriberOnly = resolveAlertSubscriberOnly(alert.kind, oddsCfg.alert_audience)
+    const alertDestination = resolveAlertDestination(alert.kind, oddsCfg.alert_audience)
     const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
     const result = await submitLoungeBotAlertPost(admin, {
       botUserId: bot.user_id,
       caption,
       categoryPills: pills,
-      subscriberOnly,
+      alertDestination,
       postKind: alert.kind,
       dedupeKey,
       score: lineAlertMovementScore(alert),

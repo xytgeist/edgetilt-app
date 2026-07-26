@@ -16,14 +16,16 @@ import {
   countPublishedKindToday,
   fetchActiveSportKeys,
   loadSportOddsContext,
-  loadTodayCalendarRows,
   ptDayStartIso,
-  resolveCalendarSelection,
   tryPublishCoffeeAndCovers,
   tryPublishEdgeAlert,
   tryPublishSlateCheckIn,
   type OddsCfgRow,
 } from '../_shared/loungeBotOddsRun.ts'
+import {
+  loadTodayCalendarRows,
+  resolveCalendarSelection,
+} from '../_shared/loungeBotScanTargets.ts'
 
 async function authorize(req: Request): Promise<SupabaseClient> {
   return authorizeServiceRoleOrAdmin(req)
@@ -86,12 +88,6 @@ Deno.serve(async (req) => {
     }
 
     const calendarRows = await loadTodayCalendarRows(admin)
-    if (!calendarRows.length) {
-      return adminOpsJson(200, { ok: true, skipped: 'no_calendar_today', slug })
-    }
-
-    const calendarPick = resolveCalendarSelection(calendarRows, sportKey, calendarSlug)
-    if (!calendarPick.ok) return adminOpsJson(400, { error: calendarPick.error })
 
     const activeSports = await fetchActiveSportKeys()
     if (!activeSports.has(sportKey)) {
@@ -100,10 +96,11 @@ Deno.serve(async (req) => {
         skipped: 'sport_not_active',
         slug,
         sportKey,
-        calendarSlug: calendarPick.calendarSlug,
-        categoryLabel: calendarPick.categoryLabel,
       })
     }
+
+    const calendarPick = resolveCalendarSelection(calendarRows, sportKey, calendarSlug)
+    if (!calendarPick.ok) return adminOpsJson(400, { error: calendarPick.error })
 
     const { data: oddsCfgRaw } = await admin
       .from('lounge_bot_odds_config')

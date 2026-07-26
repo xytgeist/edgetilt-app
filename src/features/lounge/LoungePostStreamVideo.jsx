@@ -459,6 +459,20 @@ function snapFlyoutToHeroTile(flyout, host, fromRect, flyoutZIndex = HERO_STACK_
   flyout.style.willChange = 'transform'
 }
 
+/** Imperative snap at hero target - WAAPI expand leaves tile box + transform; React owns layout after land. */
+function snapFlyoutToHeroOpen(flyout, targetRect, flyoutZIndex = HERO_STACK_BASE_Z_INDEX) {
+  if (!flyout || !targetRect) return
+  clearFlyoutHeroInlineStyles(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${targetRect.top}px`
+  flyout.style.left = `${targetRect.left}px`
+  flyout.style.width = `${targetRect.width}px`
+  flyout.style.height = `${targetRect.height}px`
+  flyout.style.zIndex = String(flyoutZIndex)
+  flyout.style.transform = 'none'
+  flyout.style.borderRadius = '0'
+}
+
 function clearFlyoutHeroInlineStyles(flyout) {
   if (!flyout) return
   flyout.style.position = ''
@@ -2092,14 +2106,11 @@ export default function LoungePostStreamVideo({
   }, [attachStream])
 
   /**
-   * iOS hls.js MSE often plays video without audio; native HLS when sound is wanted.
-   * Keep MSE during hero open/close motion so lightboxOpen does not detach mid-FLIP.
+   * iOS hls.js MSE often plays video without audio; native HLS when sound is wanted in feed.
+   * Keep MSE for the whole hero session so landing does not swap to native and stall playback.
    */
   const iosHeroMotionKeepMse =
-    appleWebKitInlineStreamRef.current &&
-    lightboxOpen &&
-    heroPhase !== 'open' &&
-    heroPhase !== 'idle'
+    appleWebKitInlineStreamRef.current && lightboxOpen && heroPhase !== 'idle'
   const iosWantsNativeHls =
     appleWebKitInlineStreamRef.current &&
     !iosHeroMotionKeepMse &&
@@ -2596,20 +2607,25 @@ export default function LoungePostStreamVideo({
 
   const landHeroOpen = useCallback(() => {
     if (heroPhaseRef.current !== 'opening') return
-    clearHeroFrameShield(videoFlyoutRef.current)
-    heroFrameShieldRef.current = null
+    const flyout = videoFlyoutRef.current
+    const target = heroTargetRectRef.current
+    heroExpandAnimRef.current?.cancel()
     heroExpandAnimRef.current = null
     heroExpandInFlightRef.current = false
-    if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
+    clearHeroFrameShield(flyout)
+    heroFrameShieldRef.current = null
+    if (flyout && target) snapFlyoutToHeroOpen(flyout, target, heroFlyoutZIndex)
+    if (target) setHeroLayout(target)
     setHeroExpandDomActive(false)
     heroExpandFlyoutStyleRef.current = null
-    clearFlyoutHeroMotionStyles(videoFlyoutRef.current)
     setHeroTransitionArmed(false)
     heroPhaseRef.current = 'open'
     setHeroPhase('open')
     setHeroBackdropArmed(true)
     bumpHeroChrome()
-  }, [bumpHeroChrome])
+    const v = videoRef.current
+    if (v) tryHeroPlayback(v)
+  }, [bumpHeroChrome, heroFlyoutZIndex, tryHeroPlayback])
 
   const onHeroChromeScrubbingChange = useCallback(
     (scrubbing) => {
@@ -3106,20 +3122,11 @@ export default function LoungePostStreamVideo({
     if (!flyout) return undefined
     const onTransitionEnd = (e) => {
       if (e.target !== flyout || e.propertyName !== 'transform') return
-      const phase = heroPhaseRef.current
-      if (phase === 'opening') {
-        clearHeroFrameShield(videoFlyoutRef.current)
-        heroFrameShieldRef.current = null
-        if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
-        setHeroTransitionArmed(false)
-        heroPhaseRef.current = 'open'
-        setHeroPhase('open')
-        requestAnimationFrame(() => bumpHeroChrome())
-      }
+      if (heroPhaseRef.current === 'opening') landHeroOpen()
     }
     flyout.addEventListener('transitionend', onTransitionEnd)
     return () => flyout.removeEventListener('transitionend', onTransitionEnd)
-  }, [bumpHeroChrome])
+  }, [landHeroOpen])
 
   /** Coordinated: track in-view locally. Scroll root drives coordinator recompute (avoid per-tile IO storms). */
   useEffect(() => {

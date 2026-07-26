@@ -8,7 +8,6 @@ import {
   buildOddsSlateCaption,
   DEFAULT_MAX_EV_PCT,
   DEFAULT_MIN_EV_PCT,
-  EDGE_ALERT_MIN_BOOKS,
   DEFAULT_ODDS_WINDOW_HOURS,
   edgeAlertDedupeKey,
   filterOddsEventsByWindow,
@@ -18,7 +17,10 @@ import {
   type OddsPick,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
-import { effectiveMinEvPct } from './loungeBotSportAnalysis.ts'
+import {
+  edgeAlertPickQualifies,
+  edgeAlertScanOptions,
+} from './loungeBotEdgeAlertThresholds.ts'
 import {
   coffeeDailyDedupeKey,
   enrichCoffeeAndCoversCaption,
@@ -405,45 +407,54 @@ export async function loadSportOddsContext(
   }
 }
 
-export async function tryPublishEdgeAlert(
+export function findEdgeAlertPick(ctx: SportOddsContext): OddsPick | null {
+  const pick = pickBestOddsCandidate(ctx.upcoming, ctx.sportKey, edgeAlertScanOptions(ctx.sportKey))
+  if (!pick || !edgeAlertPickQualifies(ctx.sportKey, pick)) return null
+  return pick
+}
+
+export async function evaluateEdgeAlertCandidate(
   admin: SupabaseClient,
   bot: OddsBotRow,
   ctx: SportOddsContext,
-  minEdge: number,
   dayStart: string,
   dryRun: boolean,
-  alertAudience?: Record<string, unknown> | null,
-  minPostGapMinutes = DEFAULT_MIN_POST_GAP_MINUTES,
-): Promise<{ published: boolean; scheduled?: boolean; pick: OddsPick | null; skipped?: string }> {
-  const pick = pickBestOddsCandidate(ctx.upcoming, ctx.sportKey, {
-    minBooks: EDGE_ALERT_MIN_BOOKS,
-    minEvPct: minEdge,
-    maxEvPct: DEFAULT_MAX_EV_PCT,
-  })
-
-  const minEvForSport = effectiveMinEvPct(ctx.sportKey, minEdge)
-  if (!pick || pick.edgePct < minEvForSport) {
-    return { published: false, pick: pick && pick.edgePct < minEvForSport ? pick : null }
-  }
+): Promise<{ pick: OddsPick | null; skipped?: string }> {
+  const pick = findEdgeAlertPick(ctx)
+  if (!pick) return { pick: null }
 
   const dedupeKey = edgeAlertDedupeKey(pick, ptTodayDate())
   if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) {
-    return { published: false, pick, skipped: 'edge_already_posted' }
+    return { pick, skipped: 'edge_already_posted' }
   }
   if (!dryRun && await hasRecentEventPickAlert(admin, bot.user_id, pick.sportKey, pick.eventId)) {
-    return { published: false, pick, skipped: 'event_recently_alerted' }
+    return { pick, skipped: 'event_recently_alerted' }
   }
   const schedule = await loadPublishSchedule()
   if (!dryRun && await schedule.hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
-    return { published: false, pick, skipped: 'edge_already_scheduled' }
+    return { pick, skipped: 'edge_already_scheduled' }
   }
 
+  return { pick }
+}
+
+export async function publishEdgeAlertPick(
+  admin: SupabaseClient,
+  bot: OddsBotRow,
+  ctx: SportOddsContext,
+  pick: OddsPick,
+  dryRun: boolean,
+  alertAudience?: Record<string, unknown> | null,
+  minPostGapMinutes = DEFAULT_MIN_POST_GAP_MINUTES,
+): Promise<{ published: boolean; scheduled?: boolean; pick: OddsPick; skipped?: string }> {
   const categoryLabel = await resolveScottCategoryLabel(ctx.sportKey, ctx.categoryLabel, pick)
   const caption = buildOddsEdgeAlertCaption(pick, { categoryLabel })
   if (dryRun) return { published: false, pick }
 
+  const dedupeKey = edgeAlertDedupeKey(pick, ptTodayDate())
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
   const alertRoute = resolveAlertRoute('edge', alertAudience)
+  const schedule = await loadPublishSchedule()
   const result = await schedule.submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
@@ -473,6 +484,35 @@ export async function tryPublishEdgeAlert(
     error_message: result.error?.slice(0, 400),
   })
   return { published: false, pick, skipped: 'schedule_failed' }
+}
+
+export async function tryPublishEdgeAlert(
+  admin: SupabaseClient,
+  bot: OddsBotRow,
+  ctx: SportOddsContext,
+  _minEdge: number,
+  dayStart: string,
+  dryRun: boolean,
+  alertAudience?: Record<string, unknown> | null,
+  minPostGapMinutes = DEFAULT_MIN_POST_GAP_MINUTES,
+): Promise<{ published: boolean; scheduled?: boolean; pick: OddsPick | null; skipped?: string }> {
+  const evaluated = await evaluateEdgeAlertCandidate(admin, bot, ctx, dayStart, dryRun)
+  if (!evaluated.pick) {
+    return { published: false, pick: null, skipped: evaluated.skipped }
+  }
+  if (evaluated.skipped) {
+    return { published: false, pick: evaluated.pick, skipped: evaluated.skipped }
+  }
+
+  return publishEdgeAlertPick(
+    admin,
+    bot,
+    ctx,
+    evaluated.pick,
+    dryRun,
+    alertAudience,
+    minPostGapMinutes,
+  )
 }
 
 async function loadNcaabCoffeePreviousLines(

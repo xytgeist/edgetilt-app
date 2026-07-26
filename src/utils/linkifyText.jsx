@@ -1,7 +1,10 @@
 import { Fragment } from 'react'
 
-/** Trailing punctuation unlikely to be part of the URL. */
+/** Strip trailing punctuation unlikely to be part of the URL. */
 const TRAILING_PUNCT_RE = /[.,;:!?)'\]}>]+$/
+
+const HTTP_URL_RE = /https?:\/\/[^\s<>"']+/gi
+const WWW_URL_RE = /\bwww\.[^\s<>"']+/gi
 
 /** http(s)://…, www.…, or bare domains (e.g. lvslotpro.com). */
 const URL_RE =
@@ -38,18 +41,47 @@ function safeHttpHref(raw) {
  * @param {string} text
  * @returns {{ type: 'text' | 'link', value: string, href?: string }[]}
  */
-/** Removes URL segments; collapses extra horizontal whitespace left behind. */
-export function textWithoutUrls(text) {
-  const out = splitTextWithLinks(String(text || ''))
-    .filter((seg) => seg.type === 'text')
-    .map((seg) => seg.value)
-    .join('')
+function collapseUrlStripWhitespace(text) {
+  return String(text || '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n[ \t]+/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
-  return out
+}
+
+function previewHostPattern(previewUrl) {
+  try {
+    const host = new URL(String(previewUrl || '').trim()).hostname.replace(/^www\./i, '')
+    if (!host) return null
+    return host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Removes URL segments from prose.
+ * When previewUrl is set, only strips http(s)/www links and the preview host ...
+ * not unrelated bare domains in wire copy (e.g. Crypto.com in a headline).
+ */
+export function textWithoutUrls(text, { previewUrl = null } = {}) {
+  let out = String(text || '')
+  out = out.replace(HTTP_URL_RE, ' ')
+  out = out.replace(WWW_URL_RE, ' ')
+
+  const hostPattern = previewUrl ? previewHostPattern(previewUrl) : null
+  if (hostPattern) {
+    out = out.replace(new RegExp(`\\b${hostPattern}\\b`, 'gi'), ' ')
+  } else {
+    const re = new RegExp(URL_RE.source, URL_RE.flags)
+    out = out.replace(re, (match, offset, whole) => {
+      if (isEmailLocalPart(whole, offset)) return match
+      return ' '
+    })
+  }
+
+  return collapseUrlStripWhitespace(out)
 }
 
 /**
@@ -60,7 +92,8 @@ export function bodyTextWithLinkPreview(text, linkPreview) {
   const raw = String(text ?? '').trim()
   if (!raw) return ''
   if (!linkPreview) return raw
-  return textWithoutUrls(raw)
+  const previewUrl = String(linkPreview?.url || linkPreview?.canonicalUrl || '').trim()
+  return textWithoutUrls(raw, { previewUrl: previewUrl || null })
 }
 
 /** True when the string is only URL(s) and whitespace (hide duplicate text when showing a card). */

@@ -263,7 +263,8 @@ export async function buildFinancialWirePostAsync(
 
   return {
     caption: shorten(sanitizeWireProse(composed.caption || headlineLine), CAPTION_MAX),
-    includeLink: composed.includeLink && Boolean(item.url),
+    includeLink: Boolean(item.url)
+      && (opts.newsProfile === 'crypto' ? true : composed.includeLink),
   }
 }
 

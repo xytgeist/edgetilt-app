@@ -14,22 +14,24 @@ import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import {
   countPublishedKindToday,
+  evaluateEdgeAlertCandidate,
   fetchActiveSportsCatalog,
   formatPtMinuteAsClock,
   isOddsApiAuthOrQuotaError,
   loadSportOddsContext,
   marketsForOddsPoll,
   morningSlateShouldRunNow,
+  publishEdgeAlertPick,
   ptDayStartIso,
   tryPublishCombinedCoffeeAndCovers,
-  tryPublishEdgeAlert,
   tryPublishLineMovementAlerts,
   tryPublishSlateCheckIn,
   type OddsCfgRow,
   type SportOddsContext,
 } from '../_shared/loungeBotOddsRun.ts'
+import { MAX_EDGE_ALERTS_PER_POLL_TICK } from '../_shared/loungeBotEdgeAlertThresholds.ts'
 import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishConstants.ts'
-import { DEFAULT_MIN_EV_PCT } from '../_shared/loungeBotOddsCaption.ts'
+import { type OddsPick } from '../_shared/loungeBotOddsCaption.ts'
 import type { SharpReportCandidate } from '../_shared/loungeBotSharpReport.ts'
 
 const CONTEXT_ALERT_KINDS = new Set([
@@ -166,7 +168,6 @@ Deno.serve(async (req) => {
     const regions = oddsCfg.regions || ['us']
     const lineMovementEnabled = oddsCfg.line_movement_enabled !== false
     const markets = marketsForOddsPoll(oddsCfg, lineMovementEnabled)
-    const minEdge = Number(oddsCfg.min_edge_pct) ?? DEFAULT_MIN_EV_PCT
     const maxEdgeAlerts = Number(oddsCfg.max_edge_alerts_per_day) || 8
     const maxMorningPosts = Number(oddsCfg.max_slate_posts_per_day) || 10
     const morningEnabled = oddsCfg.daily_slate_enabled !== false
@@ -333,6 +334,11 @@ Deno.serve(async (req) => {
     let publishedSlates = 0
     let requestsRemaining: string | null = null
     const details: Record<string, unknown>[] = []
+    const edgeCandidates: Array<{
+      ctx: SportOddsContext
+      pick: OddsPick
+      calendarSlug: string
+    }> = []
     const coffeeSportContexts: SportOddsContext[] = []
     const sharpReportCandidates: SharpReportCandidate[] = []
     const lineMovementCfg = {
@@ -372,25 +378,29 @@ Deno.serve(async (req) => {
             if (!runLine && !runArb && !runSharp && !runContext) continue
           }
 
-          let edgeResult: Awaited<ReturnType<typeof tryPublishEdgeAlert>> = {
+          let edgeResult: {
+            published: boolean
+            scheduled?: boolean
+            pick: OddsPick | null
+            skipped?: string
+          } = {
             published: false,
             pick: null,
             skipped: runEdge ? undefined : 'alert_kind_filtered',
           }
           if (runEdge && edgeCount < maxEdgeAlerts) {
-            edgeResult = await tryPublishEdgeAlert(
-              admin,
-              bot,
-              ctx,
-              minEdge,
-              dayStart,
-              dryRun,
-              oddsCfg.alert_audience,
-              minPostGap,
-            )
-            if (edgeResult.published || edgeResult.scheduled) {
-              publishedEdges += edgeResult.scheduled ? 0 : 1
-              edgeCount += 1
+            const evaluated = await evaluateEdgeAlertCandidate(admin, bot, ctx, dayStart, dryRun)
+            edgeResult = {
+              published: false,
+              pick: evaluated.pick,
+              skipped: evaluated.skipped,
+            }
+            if (evaluated.pick && !evaluated.skipped) {
+              edgeCandidates.push({
+                ctx,
+                pick: evaluated.pick,
+                calendarSlug: row.slug,
+              })
             }
           }
 
@@ -571,6 +581,47 @@ Deno.serve(async (req) => {
           skipped: coffeeResult.skipped,
         })
       }
+    }
+
+    if (action === 'poll_edges' && edgeCandidates.length > 0) {
+      const publishSlots = Math.min(
+        MAX_EDGE_ALERTS_PER_POLL_TICK,
+        Math.max(0, maxEdgeAlerts - edgeCount),
+      )
+      const rankedEdges = [...edgeCandidates].sort((a, b) => b.pick.edgePct - a.pick.edgePct)
+      const edgesToPublish = rankedEdges.slice(0, publishSlots)
+      const publishedSlugs = new Set<string>()
+
+      for (const candidate of edgesToPublish) {
+        const pubResult = await publishEdgeAlertPick(
+          admin,
+          bot,
+          candidate.ctx,
+          candidate.pick,
+          dryRun,
+          oddsCfg.alert_audience,
+          minPostGap,
+        )
+        if (pubResult.published || pubResult.scheduled) {
+          publishedEdges += pubResult.scheduled ? 0 : 1
+          edgeCount += 1
+          publishedSlugs.add(candidate.calendarSlug)
+        }
+      }
+
+      details.push({
+        edgeBatch: true,
+        edgeCandidates: edgeCandidates.length,
+        edgePublishedThisTick: edgesToPublish.length,
+        edgePublishedSlugs: [...publishedSlugs],
+        edgeTopEv: edgesToPublish.map((c) => ({
+          calendarSlug: c.calendarSlug,
+          sportKey: c.ctx.sportKey,
+          edgePct: c.pick.edgePct,
+          bookCount: c.pick.bookCount,
+        })),
+        edgeDeferredCount: Math.max(0, rankedEdges.length - edgesToPublish.length),
+      })
     }
 
     if (action === 'poll_edges' && pollEdgesModules && wantsAlertKind(alertKind, 'sharp_report')) {

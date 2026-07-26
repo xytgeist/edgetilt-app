@@ -42,6 +42,18 @@ function sanitizeWireProseLine(text: string): string {
     .trim()
 }
 
+/** Strip URLs / bare domains from RSS excerpts before synopsis compose (headlines keep Crypto.com, etc.). */
+export function cleanWireFeedExcerpt(text: string): string {
+  let s = String(text || '')
+  s = s.replace(/https?:\/\/[^\s<>"']+/gi, ' ')
+  s = s.replace(/\bwww\.[^\s<>"']+/gi, ' ')
+  s = s.replace(
+    /\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+\.(?:com|org|net|io|co|uk|edu|gov|info|xyz|app)\b/gi,
+    ' ',
+  )
+  return s.replace(/\s+/g, ' ').trim()
+}
+
 /** Sanitize one line or multi-paragraph caption (preserves blank lines between headline + synopsis). */
 export function sanitizeWireProse(text: string): string {
   const raw = String(text || '')

@@ -4,7 +4,7 @@
  */
 
 import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
-import { sanitizeWireProse, splitWireSentences } from './wireBotProse.ts'
+import { sanitizeWireProse, splitWireSentences, cleanWireFeedExcerpt } from './wireBotProse.ts'
 import type { NewsProfile } from './loungeBotNewsProfile.ts'
 
 const SYNOPSIS_MAX = 380
@@ -20,6 +20,7 @@ const PERSONA: Record<NewsProfile, string> = {
 const CRYPTO_VOICE_RULES =
   `Crypto voice extras:\n` +
   `- Headline is fixed and already shown; synopsis must add new detail only (never restate the headline).\n` +
+  `- Synopsis must be standalone sentences. Never start with a comma or continue the headline mid-sentence.\n` +
   `- Liquidations, depegs, exchange halts, ETF/reg enforcement = straight wire, no jokes.\n` +
   `- Never sound like a shill account or paid promo.\n\n`
 
@@ -36,6 +37,20 @@ export type WirePostComposeResult = {
   caption: string
   /** Attach source URL + link preview card when true. */
   includeLink: boolean
+}
+
+function normalizeSynopsisLead(synopsis: string): string {
+  let s = String(synopsis || '').trim()
+  if (!s) return ''
+  // Orphan continuation after headline overlap (model/RSS often returns ", restricting …").
+  s = s.replace(/^[,;:\-–—]\s+/, '')
+  // Orphan TLD tail when a domain was stripped from the excerpt (cointelegraph.com → com).
+  s = s.replace(/^(com|org|net|io|co|uk|edu|gov|info|xyz|app)\b\s+/i, '')
+  if (!s) return ''
+  if (/^[a-z]/.test(s)) {
+    s = s.charAt(0).toUpperCase() + s.slice(1)
+  }
+  return s
 }
 
 function normalizeCompareText(text: string): string {
@@ -93,23 +108,24 @@ function filterSynopsisRedundancy(
   const refs = headlineBodiesForCompare(headline, originalTitle)
   const parts = splitWireSentences(raw)
   if (!parts.length) {
-    return sentenceRedundantWithHeadline(raw, refs) ? '' : sanitizeWireProse(raw)
+    const lone = normalizeSynopsisLead(raw)
+    return sentenceRedundantWithHeadline(lone, refs) ? '' : sanitizeWireProse(lone)
   }
 
   const kept: string[] = []
   for (const part of parts) {
-    const s = part.trim()
+    const s = normalizeSynopsisLead(part.trim())
     if (!s || sentenceRedundantWithHeadline(s, refs)) continue
     kept.push(s)
   }
-  return sanitizeWireProse(kept.join(' ').trim())
+  return normalizeSynopsisLead(sanitizeWireProse(kept.join(' ').trim()))
 }
 
 function splitSummarySentences(summary: string): string[] {
   const t = sanitizeWireProse(
-    decodeHtmlEntities(String(summary || ''))
-      .replace(/\s+/g, ' ')
-      .trim(),
+    cleanWireFeedExcerpt(
+      decodeHtmlEntities(String(summary || '')),
+    ),
   )
   if (!t || t.length < 48) return []
   if (/^(read more|click here|view article)/i.test(t)) return []
@@ -131,7 +147,8 @@ function clipFeedSummary(
     if (kept.length >= maxSentences) break
   }
   const joined = kept.join(' ').trim()
-  return joined ? joined.slice(0, SYNOPSIS_MAX) : ''
+  const normalized = normalizeSynopsisLead(joined)
+  return normalized ? normalized.slice(0, SYNOPSIS_MAX) : ''
 }
 
 function headlineLooksSelfContained(headline: string): boolean {
@@ -146,7 +163,7 @@ function headlineLooksSelfContained(headline: string): boolean {
 
 function fallbackCompose(input: WirePostComposeInput): WirePostComposeResult {
   const headline = String(input.headline || '').trim()
-  const summary = String(input.summary || '').trim()
+  const summary = cleanWireFeedExcerpt(String(input.summary || '').trim())
   const selfContained = headlineLooksSelfContained(headline)
 
   if (selfContained && summary.length < 80) {
@@ -175,7 +192,7 @@ function parseComposeJson(raw: string): { includeLink: boolean; synopsis: string
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, SYNOPSIS_MAX)
-    return { includeLink, synopsis: sanitizeWireProse(synopsis) }
+    return { includeLink, synopsis: normalizeSynopsisLead(sanitizeWireProse(synopsis)) }
   } catch {
     return null
   }
@@ -190,7 +207,7 @@ export async function generateWireSynopsis(opts: WirePostComposeInput): Promise<
 
 export async function composeWirePost(opts: WirePostComposeInput): Promise<WirePostComposeResult> {
   const headline = String(opts.headline || '').trim()
-  const summary = String(opts.summary || '').trim()
+  const summary = cleanWireFeedExcerpt(String(opts.summary || '').trim())
   const source = String(opts.sourceLabel || 'Report').trim()
   const profile = opts.newsProfile === 'crypto' ? 'crypto' : 'market'
   const voiceExtras = profile === 'crypto' ? CRYPTO_VOICE_RULES : ''
@@ -235,6 +252,7 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
                 `- ONE short sentence when a little context helps.\n` +
                 `- TWO sentences when the story needs more setup (use the minimum that works).\n` +
                 `- Must ADD facts not already in the headline (who, how, impact, next step). Never restate or lightly rephrase the headline.\n` +
+                `- Standalone sentences only. Never start synopsis with a comma or mid-sentence continuation of the headline.\n` +
                 `- If the feed excerpt only repeats the headline, skip it and pull a later detail or return "".\n` +
                 `- Third person only ... no we/our/us/I. No investment advice.\n` +
                 `- NEVER use em dashes or en dashes. Use commas, " · ", or "-" for breaks.\n` +
@@ -259,7 +277,7 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
         const parsed = parseComposeJson(String(json?.choices?.[0]?.message?.content || ''))
         if (parsed) {
           const synopsis = filterSynopsisRedundancy(
-            sanitizeWireProse(parsed.synopsis),
+            normalizeSynopsisLead(sanitizeWireProse(parsed.synopsis)),
             headline,
             opts.originalTitle,
           )

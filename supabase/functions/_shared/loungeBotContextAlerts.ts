@@ -49,7 +49,7 @@ const CONTEXT_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 
 const SITUATIONAL_LEAN_HEADER = '📐 Situational Lean'
 /** Combined daily cap for injury_impact + rest_travel_edge (Grok Path A). */
 export const MAX_SITUATIONAL_LEANS_PER_DAY = 2
-/** Lower EV floor for situational leans only (+EV Edge stays at min_edge_pct, default 4%). */
+/** Lower EV floor for situational leans only (+EV Edge uses sport-aware thresholds in loungeBotEdgeAlertThresholds.ts). */
 export const MIN_SITUATIONAL_LEAN_EV_PCT = 2.5
 
 export type ContextAlertKind =

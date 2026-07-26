@@ -93,6 +93,7 @@ export function LoungeCommentCard({
   commentEditHasRemoteMedia = false,
   commentEditMediaSlot = null,
   commentEditFieldRef = null,
+  onCommentEditPasteImageFiles = null,
   commentEditVideoPostBlocked = false,
   mediaFeedVariant: mediaFeedVariantProp = 'commentInline',
   resolveMediaFeedVariant,
@@ -185,6 +186,7 @@ export function LoungeCommentCard({
           placeholder="Edit reply"
           ariaLabel="Edit reply"
           disabled={commentEditBusy}
+          onPasteImageFiles={onCommentEditPasteImageFiles}
         />
       ) : (
         <textarea
@@ -479,6 +481,7 @@ export default function LoungePostCommentThread({
   commentEditHasRemoteMedia = false,
   commentEditMediaSlot = null,
   commentEditFieldRef = null,
+  onCommentEditPasteImageFiles = null,
   commentEditVideoPostBlocked = false,
   /** Comment ids the signed-in viewer just posted - shown at top of their list only (chronological for others). */
   viewerPinnedCommentIds = [],
@@ -649,6 +652,7 @@ export default function LoungePostCommentThread({
     commentEditHasRemoteMedia,
     commentEditMediaSlot,
     commentEditFieldRef,
+    onCommentEditPasteImageFiles,
     commentEditVideoPostBlocked,
     lightboxPortalClass,
     avatarText,

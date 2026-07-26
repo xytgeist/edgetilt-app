@@ -17,7 +17,7 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 
 | **Post kind** | When | Example tone |
 | --- | --- | --- |
-| **Edge** | Best +EV line (ML / spread / total) clears **`min_edge_pct`** | See example below |
+| **Edge** | Best +EV line (ML / spread / total) clears **sport-aware** thresholds | See example below |
 | **Coffee & Covers** | No edge on manual fetch, or **`daily_slates`** morning poll | See example below |
 | **Best Bet of the Hour** | Hourly cron **`best_bet_hour`** (or portal button) | See example below |
 | **Arb Watch** | **`poll_edges`** finds **≥ 2%** guaranteed cross-book arb | See example below |
@@ -90,7 +90,7 @@ Germany -110 (FanDuel), Portugal +105 (DraftKings)
 
 Long posts may still truncate with `+N more games today.` at the **2000-char** caption cap (subscriber/bot tier). **+EV alerts and morning posts** only consider games **kicking off today (PT)** that have not started yet.
 
-**Morning automation:** pg_cron **`daily_slates`** every **5 min**, **6-8am PT** (random post minute per bot). **`poll_edges`** every **15 min**, **24/7** ... posts ⚡ when a line clears **`min_edge_pct`** on **today's unplayed** games (no time-of-day gate). Migrations **`20260704230000`** + **`20260704240000`** + Vault — see **`lounge-odds-poll/README.md`**.
+**Morning automation:** pg_cron **`daily_slates`** every **5 min**, **6-8am PT** (random post minute per bot). **`poll_edges`** every **15 min**, **24/7** ... posts ⚡ when a line clears **sport-aware +EV gates** on **today's unplayed** games (max **2 edges per tick**). Migrations **`20260704230000`** + **`20260704240000`** + Vault — see **`lounge-odds-poll/README.md`**.
 
 **`review_mode`:** `automatic`. Target volume: **~2 posts/day** + optional edge alerts when lines misprice (caps below).
 
@@ -106,7 +106,7 @@ Long posts may still truncate with `+N more games today.` at the **2000-char** c
 | **Post Coffee & Covers** | One morning post/day (dedupe) with thread parts per sport |
 | **Best bet · hour** | Manual smoke for hourly strongest +EV post (same logic as cron) |
 | **Post all examples** | One feed post per alert type (**17** total, incl. Coffee & Covers thread part); captions match live format |
-| **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** |
+| **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** (context alerts / starter spotlight; pre-match ⚡ Edge uses sport-aware code gates) |
 | **Alert destination** | Per alert type **checkboxes**: **Everyone** (lounge), **Sub chat**, optional **+10% / +30% lounge** teaser when Everyone is off. Check both Everyone + Sub chat to post to **both**. Stored as route objects in **`alert_audience`**. Migration **`20260726000000`**. |
 | **Sign in as bot** | Admin-only (**`lounge-bot-admin`** `staff_sign_in_as_bot`): swaps browser session to the bot and opens Lounge Settings → **Fan subscriptions** (offer copy, go live). **Do not use for Stripe Connect** … use **Connect payouts (Stripe)** below instead (admin session, return to Bot Portal). |
 | **Connect payouts (Stripe)** | Admin-only **`staff_bot_fan_connect`**: Stripe Express onboarding for the bot without leaving your admin login; return URL **`/?tab=bots&bot={slug}&fan_connect=return`**. Then **Sign in as bot** only if you need the in-app offer editor / **Turn on fan subscriptions**. |
@@ -136,7 +136,7 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`**, **`loung
 3. Per book: devig outcomes → fair implied prob per side
 4. **Consensus:** average fair probs across books
 5. **EV on $1** at best available American price vs consensus
-6. Publish if **`evPct >= min_edge_pct`** (WNBA **+0.5%** bump) and **`evPct <= 15`** (stale-data filter)
+6. Publish if pick clears **sport-aware +EV gates** (`loungeBotEdgeAlertThresholds.ts`) and **`evPct <= 15`** (stale-data filter). **`poll_edges`** takes the **top 2 EV** picks per tick across all sports.
 
 ### Coffee & Covers (morning)
 
@@ -165,7 +165,15 @@ Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consen
 
 Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall back to legacy slate check-ins.
 
-**`min_edge_pct`:** minimum **+EV percent on $1 stake** (default **4%**). Pre-match edge scans require **≥ 4 books** for consensus (`EDGE_ALERT_MIN_BOOKS`).
+**Pre-match ⚡ +EV Edge thresholds (`loungeBotEdgeAlertThresholds.ts`):** sport-aware gates (portal **`min_edge_pct`** does **not** apply to Edge ... it still drives context alerts / starter spotlight). **`poll_edges`** publishes at most **`MAX_EDGE_ALERTS_PER_POLL_TICK` = 2** edges per tick (highest EV across all sports).
+
+| Sport group | Min EV | Min books | Extra |
+| --- | --- | --- | --- |
+| **Soccer** (all `soccer_*`) | **7%** | **6** | Lower-tier league (not top-5 EU + MLS + Liga MX) with **≤ 5** books → **8%** EV (5 books OK) |
+| **Major US** (NFL, NBA, MLB, NHL, CFB, CBB) | **5%** | **5** | — |
+| **Everything else** | **5.5%** | **5** | — |
+
+**`min_edge_pct` (portal):** minimum **+EV percent on $1 stake** (default **4%**) for **context alerts** (starter spotlight, injury/rest situational lean pick scan uses **`MIN_SITUATIONAL_LEAN_EV_PCT` = 2.5%** for injury/rest only). Legacy constant **`EDGE_ALERT_MIN_BOOKS = 4`** in caption module is superseded for Edge by the table above.
 
 ### Line movement alerts (poll_edges)
 
@@ -194,7 +202,7 @@ Dedupe: **one alert per event/market/kind per ~60 min** (`line_evt:{kind}:{event
 | **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **7.5%**) on **ML, spreads, or totals**; **≥ 6 books** for consensus; **no live soccer draw ML**; block live ML **> +800** unless **≥ 8 books**; footer **Live · verify quickly** on flagged longshots |
 | **`period_report`** | **TheRundown** `event_status` / `game_period` when key set; else elapsed-time fallback | Best **+EV** lines for remainder of game (same live gates as **`in_game_edge`**) — **skipped** when none clear **`min_live_edge_pct`** |
 
-**Live pick guards (`loungeBotLivePickGuards.ts`):** pre-match **edge** uses **`EDGE_ALERT_MIN_BOOKS = 4`**; Coffee & context still use **`DEFAULT_MIN_BOOKS = 3`**. Live-only: min **6** books, default **7.5%** EV (`min_live_edge_pct`), suppress **soccer draw ML** in-play, block live ML longer than **+800** unless **≥ 8** books, optional **Live · verify quickly** / **Live · extreme number** footer.
+**Live pick guards (`loungeBotLivePickGuards.ts`):** pre-match **edge** uses **`loungeBotEdgeAlertThresholds.ts`** (see table above); Coffee & context still use **`DEFAULT_MIN_BOOKS = 3`**. Live-only: min **6** books, default **7.5%** EV (`min_live_edge_pct`), suppress **soccer draw ML** in-play, block live ML longer than **+800** unless **≥ 8** books, optional **Live · verify quickly** / **Live · extreme number** footer.
 
 **Caption format (all +EV alert types):** pick line, then **`+X% EV · Fair {american} ({N} books)`** via **`formatScottEvDetailLine`**.
 
@@ -301,7 +309,7 @@ Disable via **`value_bet_radar_enabled = false`**. Default audience **`all`** (s
 | **`rest_travel_edge`** | 📐 Situational Lean | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) — same voice |
 | **`fade_the_public`** | 🚫 Fade the Public | **Off by default** — needs public betting % feed (not in Rundown OpenAPI) |
 
-**Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). EV floor **`MIN_SITUATIONAL_LEAN_EV_PCT` = 2.5%** for these two kinds only (regular ⚡ Edge stays **`min_edge_pct`**, default **4%**). Tie-break among candidates: highest EV, then later tipoff.
+**Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). EV floor **`MIN_SITUATIONAL_LEAN_EV_PCT` = 2.5%** for these two kinds only (regular ⚡ Edge uses **`loungeBotEdgeAlertThresholds.ts`**). Tie-break among candidates: highest EV, then later tipoff.
 
 Priority when multiple qualify: injury → starter spotlight → rest → confirmed starters. Overall daily cap **`max_context_alerts_per_day`** (default **6**). Toggle per kind via **`starter_spotlight_enabled`**, **`confirmed_starters_enabled`**, **`injury_impact_enabled`**, **`rest_travel_edge_enabled`**, **`fade_the_public_enabled`**. Default audience **Subs**.
 
@@ -462,7 +470,7 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 
 | Column | Notes |
 | --- | --- |
-| `min_edge_pct` | Min +EV % on $1 (default **4**); editable in portal; edge scan **≥ 4 books** |
+| `min_edge_pct` | Min +EV % for **context alerts** (default **4**); editable in portal; pre-match ⚡ Edge uses **`loungeBotEdgeAlertThresholds.ts`** |
 | `max_edge_alerts_per_day` | Default **8** |
 | `max_slate_posts_per_day` | Default **10** |
 | `daily_slate_enabled` | Default **true** — gates **`daily_slates`** poll |
@@ -689,7 +697,7 @@ Player props and deep injury narratives may still need a dedicated injuries feed
 | **`20260726250000`** | Sub chat publish dedupe via **`lounge_bot_publish_log.sub_chat_message_id`** |
 | **`20260726260000`** | Alert thresholds v1: higher EV floors, per-alert min books in code, tighter daily caps, arb **2%** |
 
-**Edge code (no migration):** **`loungeBotSportAnalysis.ts`** — sport market weights, WNBA +0.5% min EV, multi-market edge alerts. Redeploy **`lounge-odds-poll`** after pull. **`lounge-x-ingest`** — redeploy after X manual-transform changes (**`loungeBotXTweetFetch.ts`**).
+**Edge code (no migration):** **`loungeBotEdgeAlertThresholds.ts`** — sport-aware +EV / book gates + **2/tick** cap; **`loungeBotSportAnalysis.ts`** — sport market weights + ranking. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`** after pull. **`lounge-x-ingest`** — redeploy after X manual-transform changes (**`loungeBotXTweetFetch.ts`**).
 
 ---
 

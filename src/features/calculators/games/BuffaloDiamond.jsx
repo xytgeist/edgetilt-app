@@ -582,16 +582,17 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
 
       {showInfoModal ? (
         <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="buffalo-diamond-calc-info-title"
           onClick={() => setShowInfoModal(false)}
         >
           <div
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-gray-900 p-5 text-sm leading-relaxed text-gray-300 shadow-xl ring-1 ring-gray-700"
+            className="flex max-h-[min(70vh,540px)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-gray-900 shadow-xl ring-1 ring-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="flex-1 overflow-y-auto p-5 text-sm leading-relaxed text-gray-300">
             <h2 id="buffalo-diamond-calc-info-title" className="mb-3 text-lg font-bold text-violet-300">
               How this calculator works
             </h2>
@@ -688,13 +689,16 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
                 </p>
               </section>
             </div>
+            </div>
+            <div className="shrink-0 border-t border-gray-800 p-4 pt-3">
             <button
               type="button"
               onClick={() => setShowInfoModal(false)}
-              className="mt-2 w-full rounded-xl bg-violet-700 py-3 font-semibold text-white hover:bg-violet-600"
+              className="w-full rounded-xl bg-violet-700 py-3 font-semibold text-white hover:bg-violet-600"
             >
               Close
             </button>
+            </div>
           </div>
         </div>
       ) : null}

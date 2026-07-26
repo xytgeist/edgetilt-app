@@ -9979,6 +9979,166 @@ export default function SocialFeed({
     ],
   )
 
+  const enqueueComposerPastedImages = useCallback(
+    (rawFiles) => {
+      const files = loungeFilteredMediaFiles('image', rawFiles)
+      if (!files.length) {
+        if (Array.from(rawFiles || []).length) {
+          const msg = loungeMediaPickErrorMessage('image')
+          if (threadComposeOpenRef.current) setThreadComposeErr(msg)
+          else setPostErr(msg)
+        }
+        return
+      }
+      if (threadComposeOpenRef.current) setThreadComposeErr('')
+      else setPostErr('')
+
+      if (threadComposeOpenRef.current) {
+        const activeIdx = threadComposeActivePartIndexRef.current
+        cancelComposerMediaPrep()
+        if (threadComposePartMediaRef.current[activeIdx]?.videoSlot) {
+          cancelThreadComposePartVideo(activeIdx)
+        }
+        const prevImgs = threadComposePartMediaRef.current[activeIdx]?.imageItems || []
+        const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+        restoreLoungeComposerCaptionAfterMediaPick('composer', () => {
+          removeThreadPartDraftMediaMarkers(
+            activeIdx,
+            files.map((f) => String(f.name || '').trim()).filter(Boolean),
+          )
+          setThreadComposePartMedia((prev) =>
+            prev.map((row, j) => (j === activeIdx ? { ...row, imageItems: next } : row)),
+          )
+          if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+        })
+        return
+      }
+
+      cancelComposerMediaPrep()
+      const prevImgs = composerImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      composerImageItemsRef.current = next
+      restoreLoungeComposerCaptionAfterMediaPick('composer', () => {
+        setComposerImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelComposerMediaPrep,
+      cancelThreadComposePartVideo,
+      removeThreadPartDraftMediaMarkers,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const enqueueDetailCommentPastedImages = useCallback(
+    (rawFiles) => {
+      const files = loungeFilteredMediaFiles('image', rawFiles)
+      if (!files.length) {
+        if (Array.from(rawFiles || []).length) {
+          setLoungeDetailCommentErr(loungeMediaPickErrorMessage('image'))
+        }
+        return
+      }
+      setLoungeDetailCommentErr('')
+      cancelLoungeDetailCommentMediaPrep()
+      const prevImgs = loungeDetailCommentImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      loungeDetailCommentImageItemsRef.current = next
+      restoreLoungeComposerCaptionAfterMediaPick('detailComment', () => {
+        setLoungeDetailCommentImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelLoungeDetailCommentMediaPrep,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const enqueueDetailCommentEditPastedImages = useCallback(
+    (rawFiles) => {
+      const files = loungeFilteredMediaFiles('image', rawFiles)
+      if (!files.length) {
+        if (Array.from(rawFiles || []).length) {
+          setLoungeDetailCommentErr(loungeMediaPickErrorMessage('image'))
+        }
+        return
+      }
+      setLoungeDetailCommentErr('')
+      cancelLoungeDetailCommentEditMediaPrep()
+      setLoungeDetailCommentEditKeepStreamUid(null)
+      const prevImgs = loungeDetailCommentEditImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      loungeDetailCommentEditImageItemsRef.current = next
+      restoreLoungeComposerCaptionAfterMediaPick('detailCommentEdit', () => {
+        setLoungeDetailCommentEditImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelLoungeDetailCommentEditMediaPrep,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const enqueueDetailEditPastedImages = useCallback(
+    (rawFiles) => {
+      const files = loungeFilteredMediaFiles('image', rawFiles)
+      if (!files.length) {
+        if (Array.from(rawFiles || []).length) {
+          setLoungeDetailEditErr(loungeMediaPickErrorMessage('image'))
+        }
+        return
+      }
+      setLoungeDetailEditErr('')
+      cancelLoungeDetailEditMediaPrep()
+      setLoungeDetailEditKeepStreamUid(null)
+      const prevImgs = loungeDetailEditImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      loungeDetailEditImageItemsRef.current = next
+      restoreLoungeComposerCaptionAfterMediaPick('detailEdit', () => {
+        setLoungeDetailEditImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelLoungeDetailEditMediaPrep,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
+  const enqueueQuoteRepostPastedImages = useCallback(
+    (rawFiles) => {
+      const files = loungeFilteredMediaFiles('image', rawFiles)
+      if (!files.length) {
+        if (Array.from(rawFiles || []).length) {
+          setQuoteRepostErr(loungeMediaPickErrorMessage('image'))
+        }
+        return
+      }
+      setQuoteRepostErr('')
+      cancelQuoteRepostMediaPrep()
+      setQuoteRepostMediaUrl('')
+      const prevImgs = quoteRepostImageItemsRef.current
+      const { next, limitDialog } = mergeLoungePickedImageItems(prevImgs, files, newComposerImageId)
+      quoteRepostImageItemsRef.current = next
+      restoreLoungeComposerCaptionAfterMediaPick('quote', () => {
+        setQuoteRepostImageItems(next)
+        if (limitDialog) setLoungeImageLimitDialog(limitDialog)
+      })
+    },
+    [
+      cancelQuoteRepostMediaPrep,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      setLoungeImageLimitDialog,
+    ],
+  )
+
   const clearComposerMediaInputs = useCallback(() => {
     for (const el of [composerImageInputRef.current, composerVideoInputRef.current]) {
       try {
@@ -15000,6 +15160,7 @@ export default function SocialFeed({
                       placeholder="Are ya winning, son?"
                       ariaLabel="Lounge post caption"
                       cashtagStyleContext={composerCashtagStyleContext}
+                      onPasteImageFiles={enqueueComposerPastedImages}
                       onKeyDown={(e) => {
                         if (cashtagComposer.onCashtagKeyDown(e, setPostText, composerFieldRef.current)) return
                         mentionComposer.onMentionKeyDown(e, setPostText, composerFieldRef.current)
@@ -15927,6 +16088,7 @@ export default function SocialFeed({
                       ariaLabel="Edit caption"
                       disabled={loungeDetailEditBusy}
                       cashtagStyleContext={detailEditCashtagStyleContext}
+                      onPasteImageFiles={enqueueDetailEditPastedImages}
                       onKeyDown={(e) => {
                         if (
                           cashtagDetailEdit.onCashtagKeyDown(
@@ -16715,6 +16877,7 @@ export default function SocialFeed({
                     commentEditHasRemoteMedia: loungeDetailCommentEditHasMedia,
                     commentEditMediaSlot: loungeDetailCommentEditMediaSlot,
                     commentEditFieldRef: loungeDetailCommentEditFieldRef,
+                    onCommentEditPasteImageFiles: enqueueDetailCommentEditPastedImages,
                     commentEditVideoPostBlocked: loungeDetailCommentEditVideoPostBlocked,
                     onMentionClick: openProfileByHandle,
                     onHashtagClick: openSearchByHashtag,
@@ -16797,6 +16960,7 @@ export default function SocialFeed({
                     commentEditHasRemoteMedia: loungeDetailCommentEditHasMedia,
                     commentEditMediaSlot: loungeDetailCommentEditMediaSlot,
                     commentEditFieldRef: loungeDetailCommentEditFieldRef,
+                    onCommentEditPasteImageFiles: enqueueDetailCommentEditPastedImages,
                     resolveMediaFeedVariant: (c) =>
                       c?.id === loungeDetailCommentHierarchyFocusId ? 'detail' : 'commentInline',
                     onMentionClick: openProfileByHandle,
@@ -16896,6 +17060,7 @@ export default function SocialFeed({
                           commentEditHasRemoteMedia={loungeDetailCommentEditHasMedia}
                           commentEditMediaSlot={loungeDetailCommentEditMediaSlot}
                           commentEditFieldRef={loungeDetailCommentEditFieldRef}
+                          onCommentEditPasteImageFiles={enqueueDetailCommentEditPastedImages}
                           commentEditVideoPostBlocked={loungeDetailCommentEditVideoPostBlocked}
                           interactionStateFor={interactionStateForComment}
                           toggleInteraction={noopLoungeBarPostToggle}
@@ -17034,6 +17199,7 @@ export default function SocialFeed({
                           maxLength={loungeComposerCaptionMax}
                           placeholder={LOUNGE_DETAIL_COMMENT_PLACEHOLDER}
                           ariaLabel="Write a reply"
+                          onPasteImageFiles={enqueueDetailCommentPastedImages}
                           onKeyDown={(e) =>
                             mentionDetailComment.onMentionKeyDown(
                               e,
@@ -17649,6 +17815,7 @@ export default function SocialFeed({
                               maxLength={loungeComposerCaptionMax}
                               placeholder="Add a comment"
                               ariaLabel="Quote for repost"
+                              onPasteImageFiles={enqueueQuoteRepostPastedImages}
                               onKeyDown={(e) =>
                                 mentionQuoteRepost.onMentionKeyDown(
                                   e,
@@ -18434,6 +18601,7 @@ export default function SocialFeed({
         onOpenGifPicker={() => openKlipyPicker('composer')}
         onImageInputChange={handleComposerImageInputChange}
         onVideoInputChange={handleComposerVideoInputChange}
+        onPasteImageFiles={enqueueComposerPastedImages}
         onRemovePartImageIndex={(partIdx, imageIdx) => {
           setThreadComposePartMedia((prev) =>
             prev.map((row, j) => {

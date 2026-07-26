@@ -13,6 +13,11 @@ import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
 import { normalizeCashtagsInCaption } from '../../utils/loungeMarketCaptionParse.js'
 import { detectCashtagAtCursor } from './loungeCashtagAutocomplete.js'
 import { LOUNGE_RICH_COMPOSER_VARIANTS } from './loungeRichComposerVariants.js'
+import {
+  clipboardEventHasHtml,
+  imageFilesFromClipboardEvent,
+  imageFilesFromNavigatorClipboardRead,
+} from '../../utils/clipboardImagePaste.js'
 
 function isEnterKeyEvent(e) {
   if (!e) return false
@@ -43,6 +48,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     autoGrow = false,
     enterInsertsNewline = true,
     cashtagStyleContext = null,
+    /** When set, pasted clipboard images are routed here instead of inserting text. */
+    onPasteImageFiles = null,
   },
   ref,
 ) {
@@ -55,6 +62,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const skipRichSyncRef = useRef(false)
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
+  const onPasteImageFilesRef = useRef(onPasteImageFiles)
+  onPasteImageFilesRef.current = onPasteImageFiles
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
   /** iOS nested composers: native textarea avoids WebKit caret paint bugs in fixed/transformed footers. */
   const iosNativeTextarea = LOUNGE_IOS && variant !== 'feed'
@@ -289,15 +298,67 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     readAndEmit()
   }, [readAndEmit])
 
-  const handlePaste = useCallback(
-    (e) => {
-      e.preventDefault()
-      const text = e.clipboardData?.getData('text/plain') ?? ''
+  const insertPlainTextIntoField = useCallback(
+    (text) => {
       if (!text) return
-      insertPlainTextAtSelection(rootRef.current, text)
+      const el = rootRef.current
+      if (!el) return
+      if (iosNativeTextarea) {
+        const start = el.selectionStart ?? el.value.length
+        const end = el.selectionEnd ?? start
+        let next = el.value.slice(0, start) + text + el.value.slice(end)
+        next = normalizeCashtagsInCaption(next)
+        if (maxLength != null && next.length > maxLength) {
+          next = next.slice(0, maxLength)
+        }
+        const caret =
+          maxLength != null ? Math.min(start + text.length, maxLength) : start + text.length
+        el.value = next
+        el.setSelectionRange(caret, caret)
+        lastValueRef.current = next
+        caretRef.current = caret
+        notifyComposerInput(el, next, caret, { sync: true })
+        if (next !== value) onChange?.(next)
+        setDomHasText(next.length > 0)
+        requestAnimationFrame(() => syncComposerFieldAutoHeight(el))
+        return
+      }
+      insertPlainTextAtSelection(el, text)
       readAndEmit()
     },
-    [readAndEmit],
+    [iosNativeTextarea, maxLength, notifyComposerInput, onChange, readAndEmit, value],
+  )
+
+  const handlePaste = useCallback(
+    async (e) => {
+      const imageFiles = imageFilesFromClipboardEvent(e)
+      if (imageFiles.length && onPasteImageFilesRef.current) {
+        e.preventDefault()
+        onPasteImageFilesRef.current(imageFiles)
+        return
+      }
+
+      if (clipboardEventHasHtml(e)) {
+        e.preventDefault()
+        const text = e.clipboardData?.getData('text/plain') ?? ''
+        if (text) insertPlainTextIntoField(text)
+        return
+      }
+
+      if (onPasteImageFilesRef.current && navigator.clipboard?.read) {
+        const asyncFiles = await imageFilesFromNavigatorClipboardRead()
+        if (asyncFiles.length) {
+          e.preventDefault()
+          onPasteImageFilesRef.current(asyncFiles)
+          return
+        }
+      }
+
+      e.preventDefault()
+      const text = e.clipboardData?.getData('text/plain') ?? ''
+      if (text) insertPlainTextIntoField(text)
+    },
+    [insertPlainTextIntoField],
   )
 
   const handleKeyDown = useCallback(
@@ -335,6 +396,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
           onKeyDown={handleTextareaKeyDown}
           onKeyUp={onKeyUp}
           onSelect={handleTextareaSelect}
+          onPaste={handlePaste}
           onBlur={onBlur}
           onFocus={onFocus}
           className={`w-full resize-none border-0 bg-transparent touch-manipulation whitespace-pre-wrap break-words px-0 text-left text-zinc-100 outline-none selection:bg-cyan-500/25 [-webkit-tap-highlight-color:transparent] ${preset.fieldClass} ${manageFieldHeight ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}

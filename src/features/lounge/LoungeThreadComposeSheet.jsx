@@ -121,6 +121,7 @@ export default function LoungeThreadComposeSheet({
   onOpenGifPicker,
   onImageInputChange,
   onVideoInputChange,
+  onPasteImageFiles,
   onRemovePartImageIndex,
   onRemovePartGif,
   onRemovePartVideo,
@@ -619,6 +620,7 @@ export default function LoungeThreadComposeSheet({
                         ariaLabel="Thread post 1"
                         disabled={submitting}
                         className={mutedFieldClass}
+                        onPasteImageFiles={onPasteImageFiles}
                         onKeyDown={(e) =>
                           mentionComposer?.onMentionKeyDown?.(
                             e,
@@ -667,6 +669,7 @@ export default function LoungeThreadComposeSheet({
                       ariaLabel={`Thread post ${partIdx + 1}`}
                       disabled={submitting}
                       className={mutedFieldClass}
+                      onPasteImageFiles={onPasteImageFiles}
                     />
                   )}
 

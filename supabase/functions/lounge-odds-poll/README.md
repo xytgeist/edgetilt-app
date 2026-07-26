@@ -6,7 +6,7 @@ Background odds poller for sports bots.
 
 | `action` | Behavior |
 | --- | --- |
-| `poll_edges` | Fetch each **active tier 1–4** sport on Odds API (calendar boosts priority/captions); publish **⚡ +EV** alerts when EV clears `min_edge_pct` (devig h2h). Also **line movement**, **Arb Watch** (only when a **≥ 2%** cross-book arb exists), **Sharp Report Card** (meaningful sharp/steam/RLM move), and context alerts. |
+| `poll_edges` | Fetch each **active tier 1–4** sport on Odds API (calendar boosts priority/captions); publish up to **2 ⚡ +EV** alerts per tick (best EV across sports; sport-aware thresholds in **`loungeBotEdgeAlertThresholds.ts`**). Also **line movement**, **Arb Watch** (only when a **≥ 2%** cross-book arb exists), **Sharp Report Card** (meaningful sharp/steam/RLM move), and context alerts. |
 | `poll_live` | Lightweight **5 min** live tick: **in-game edge** + **period/halftime reports** using **TheRundown** game state (`game_period`, `STATUS_HALFTIME`, etc.) with elapsed-time fallback. Pre-checks scores; only fetches odds for sports with live games. |
 | `daily_slates` | Post **one Coffee & Covers thread** per bot/day (covers in root, best lines in thread parts per sport). Legacy slate check-ins when `coffee_covers_enabled = false`. |
 | `best_bet_hour` | Post **one Best Bet of the Hour** per bot per PT hour — strongest +EV across ML, spreads, and totals (min **6%** default, **≥ 5 books**). Tie-break NFL > NBA > MLB. |

@@ -16,6 +16,7 @@ import LoungePostVideoInlineProgress, {
 } from './LoungePostVideoInlineProgress.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
+import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
 
 /** Match `LoungeInlineMediaUrl`: border wraps intrinsic image size (`w-auto`), not a fixed slide width. */
 const imgClassByVariant = {
@@ -59,6 +60,8 @@ export function LoungeImageCarousel({
   const [lightbox, setLightbox] = useState(null)
   const [feedAttachmentTiers, setFeedAttachmentTiers] = useState(/** @type {Record<number, import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier>} */ ({}))
   const carouselScrollRef = useRef(null)
+  const multiSlideCarousel = list.length > 1
+  const carouselAxisLockHandlers = useLoungeFeedCarouselAxisLock(carouselScrollRef, multiSlideCarousel)
   const urlsKey = list.join('\0')
   useLayoutEffect(() => {
     setFeedAttachmentTiers({})
@@ -209,7 +212,9 @@ export function LoungeImageCarousel({
     <div className={`${firstMarginTopClass} w-full min-w-0`}>
       <div
         ref={carouselScrollRef}
-        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${isComposer ? 'scroll-smooth' : ''}`}
+        {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
+        {...carouselAxisLockHandlers}
+        className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin] snap-x snap-mandatory [-webkit-overflow-scrolling:touch] ${multiSlideCarousel ? 'touch-pan-x [touch-action:pan-x_pan-y]' : ''} ${isComposer ? 'scroll-smooth' : ''}`}
         role="region"
         aria-label={regionAriaLabel}
       >

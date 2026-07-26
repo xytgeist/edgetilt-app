@@ -18001,36 +18001,54 @@ export default function SocialFeed({
                               quoteComment ? String(orig.body || '').trim() : feedPostDisplayCaption(orig),
                               orig.link_preview,
                             )
+                            if (quoteComment) {
+                              return (
+                                <div
+                                  role="figure"
+                                  aria-label="Quoted comment preview"
+                                  className={LOUNGE_QUOTE_EMBED_SHELL_PREVIEW}
+                                >
+                                  <LoungeQuoteRepostEmbedAuthorMeta
+                                    post={orig}
+                                    displayNameFor={displayNameFor}
+                                    handleFor={handleFor}
+                                    postAgeLabel={postAgeLabel}
+                                  />
+                                  {embedCaption ? (
+                                    <div className={`mt-1 text-left ${LOUNGE_QUOTE_EMBED_CAPTION_CLASS}`}>
+                                      <LoungeExpandableRichCaption
+                                        text={embedCaption}
+                                        captionOpts={loungePostDetailRichCaptionOpts}
+                                      />
+                                    </div>
+                                  ) : null}
+                                </div>
+                              )
+                            }
                             return (
-                              <div
-                                role="figure"
-                                aria-label={quoteComment ? 'Quoted comment preview' : 'Quoted post preview'}
-                                className={LOUNGE_QUOTE_EMBED_SHELL_PREVIEW}
-                              >
-                                <LoungeQuoteRepostEmbedAuthorMeta
-                                  post={orig}
-                                  displayNameFor={displayNameFor}
-                                  handleFor={handleFor}
-                                  postAgeLabel={postAgeLabel}
-                                />
-                                {embedCaption ? (
-                                  <div className={`mt-1 text-left ${LOUNGE_QUOTE_EMBED_CAPTION_CLASS}`}>
-                                    <LoungeExpandableRichCaption
-                                      text={embedCaption}
-                                      captionOpts={loungePostDetailRichCaptionOpts}
-                                    />
-                                  </div>
-                                ) : null}
-                                <LoungePostFeedImagesAndGif
-                                  post={orig}
-                                  variant="embed"
-                                  firstMarginTopClass="mt-2"
-                                  lightboxPortalClass="z-[110]"
-                                  visibilityResetRootRef={quoteRepostScrollRef}
-                                  streamLightboxHost={orig}
-                                  streamLightboxSurface={quoteRepostStreamLightboxSurface}
-                                />
-                              </div>
+                              <LoungeQuoteRepostEmbeddedOriginal
+                                variant="preview"
+                                previewAriaLabel="Quoted post preview"
+                                hostPost={null}
+                                repostedPost={orig}
+                                fanLockCtx={loungeFanLockCtx}
+                                captionText={embedCaption}
+                                captionOpts={loungePostDetailRichCaptionOpts}
+                                showCaption={Boolean(embedCaption)}
+                                displayNameFor={displayNameFor}
+                                handleFor={handleFor}
+                                postAgeLabel={postAgeLabel}
+                                mediaLightboxProps={{
+                                  lightboxPortalClass: 'z-[110]',
+                                  visibilityResetRootRef: quoteRepostScrollRef,
+                                  streamLightboxHost: orig,
+                                  streamLightboxSurface: quoteRepostStreamLightboxSurface,
+                                }}
+                                fanSubscribeBusy={feedFanSubscribeBusy}
+                                onSubscribeToCreatorFan={
+                                  loungeReadOnly ? undefined : openFeedFanSubscribe
+                                }
+                              />
                             )
                           })()}
                         </div>

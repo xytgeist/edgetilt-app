@@ -9,6 +9,7 @@ import {
   LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
   LOUNGE_QUOTE_EMBED_SHELL_BASE,
   LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
+  LOUNGE_QUOTE_EMBED_SHELL_PREVIEW,
 } from './loungeFeedAvatar.js'
 
 /**
@@ -33,9 +34,14 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
   fanSubscribeBusy = false,
   onSubscribeToCreatorFan,
   captionStartExpanded = false,
+  /** `embed` = feed/detail inset; `preview` = quote-repost composer (non-interactive). */
+  variant = 'embed',
+  previewAriaLabel = 'Quoted post preview',
 }) {
   if (!repostedPost) return null
 
+  const isPreview = variant === 'preview'
+  const shellClass = isPreview ? LOUNGE_QUOTE_EMBED_SHELL_PREVIEW : LOUNGE_QUOTE_EMBED_SHELL_BASE
   const locked = isLoungeFanOnlyPostLocked(repostedPost, fanLockCtx)
   const embedFanOnlyTint = showLoungeFanOnlyPostUnlockedTint(repostedPost, fanLockCtx)
   const embedShellTintClass = embedFanOnlyTint ? ' relative overflow-hidden' : ''
@@ -134,8 +140,21 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
   if (locked) {
     return (
       <div
-        className={`${LOUNGE_QUOTE_EMBED_SHELL_BASE}${embedShellTintClass}`}
+        className={`${shellClass}${embedShellTintClass}`}
         data-lounge-quote-embed-locked
+      >
+        {embedFanOnlyTint ? <LoungeFanOnlyPostRowTint /> : null}
+        {embedBody}
+      </div>
+    )
+  }
+
+  if (isPreview) {
+    return (
+      <div
+        role="figure"
+        aria-label={previewAriaLabel}
+        className={`${shellClass}${embedShellTintClass}`}
       >
         {embedFanOnlyTint ? <LoungeFanOnlyPostRowTint /> : null}
         {embedBody}

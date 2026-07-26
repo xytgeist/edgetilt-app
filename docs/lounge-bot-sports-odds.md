@@ -289,19 +289,21 @@ Alerts publish **immediately** when **`min_post_gap_minutes`** has elapsed since
 
 Disable via **`value_bet_radar_enabled = false`**. Default audience **`all`** (snackable feed content).
 
-### Context alerts (factual Rundown + odds, `poll_edges`)
+### Context alerts (Rundown + odds, `poll_edges`)
 
-**`loungeBotContextAlerts.ts`** — up to **one** context post per sport per **`poll_edges`** tick when data qualifies. Captions are **data-only** (no interpretive commentary). Requires **`THERUNDOWN_API_KEY`** for starters, injuries, and rest/B2B; each kind also needs a qualifying **+EV** pick on the same game (**`min_edge_pct`**).
+**`loungeBotContextAlerts.ts`** — up to **one** context post per sport per **`poll_edges`** tick when data qualifies. Requires **`THERUNDOWN_API_KEY`** for starters, injuries, and rest/B2B; each kind also needs a qualifying **+EV** pick on the same game (**`min_edge_pct`**).
 
 | `post_kind` | Header | Data source |
 | --- | --- | --- |
 | **`starter_spotlight`** | 🔦 Starter Spotlight | Confirmed starters (pitchers, QBs, etc. when Rundown has data) + best +EV pick |
 | **`confirmed_starters`** | ✅ Confirmed Starters | Compact starter list + pick (skipped if Starter Spotlight already posted/scheduled that day for same game) |
-| **`injury_impact`** | ⚠️ Injury Impact | Hard injury status (OUT, IR, etc.) + pick |
-| **`rest_travel_edge`** | 🛫 Rest + Travel Advantage | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) |
+| **`injury_impact`** | 📐 Situational Lean | Hard injury status (OUT, IR, etc.) + pick — opinionated handicapper voice |
+| **`rest_travel_edge`** | 📐 Situational Lean | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) — same voice |
 | **`fade_the_public`** | 🚫 Fade the Public | **Off by default** — needs public betting % feed (not in Rundown OpenAPI) |
 
-Priority when multiple qualify: injury → starter spotlight → rest → confirmed starters. Daily cap **`max_context_alerts_per_day`** (default **6**). Toggle per kind via **`starter_spotlight_enabled`**, **`confirmed_starters_enabled`**, **`injury_impact_enabled`**, **`rest_travel_edge_enabled`**, **`fade_the_public_enabled`**. Default audience **Subs**.
+**Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). Tie-break among candidates: highest EV, then later tipoff.
+
+Priority when multiple qualify: injury → starter spotlight → rest → confirmed starters. Overall daily cap **`max_context_alerts_per_day`** (default **6**). Toggle per kind via **`starter_spotlight_enabled`**, **`confirmed_starters_enabled`**, **`injury_impact_enabled`**, **`rest_travel_edge_enabled`**, **`fade_the_public_enabled`**. Default audience **Subs**.
 
 **Rest + Travel logic (`loungeBotRestTravel.ts` + `loungeSportsVenues.ts`):**
 
@@ -314,16 +316,14 @@ Priority when multiple qualify: injury → starter spotlight → rest → confir
 
 **Venue seed (Phase 2):** `loungeSportsVenues.ts` — NBA (30), MLB (30), NFL (32), WNBA (13), NHL (32), NCAAF FBS (80), NCAAB (153 rows: full Pac-12/WCC/MWC/American/A-10/MVC + power conferences). Seed: **`scripts/lib/ncaab-venues-seed.mjs`**, **`scripts/lib/college-sports-venues-seed.mjs`**. Re-sync: **`scripts/sync-college-venues-to-ts.mjs`**; coord refresh: **`scripts/geocode-sports-venues.mjs`** (no runtime Maps calls).
 
-Example:
+Example Situational Lean (rest/travel):
 ```text
-🛫 Rest + Travel Advantage
+📐 Situational Lean
 
-Lakers vs Warriors (Sat 7:30 PM PT)
+Warriors -4.5 (-110) @ DraftKings (+3.9% EV)
 
-Lakers on back-to-back + cross-time-zone travel (East to West)
-Warriors had 2 days of rest at home
-
-→ Warriors -4.5 @ DraftKings (+3.9% EV)
+Lakers on the 2nd night of a back-to-back after cross-time-zone travel (East to West).
+Prefer the rested home side here.
 ```
 
 Example Starter Spotlight:
@@ -339,15 +339,14 @@ Confirmed Starters:
 Padres ML +219 @ lowvig (+7.8% EV)
 ```
 
-Example Injury Impact:
+Example Situational Lean (injury):
 ```text
-⚠️ Injury Impact
+📐 Situational Lean
 
-Chiefs vs Raiders (Sun 1:25 PM PT)
+Chiefs -4 (-110) @ DraftKings (+4.1% EV)
 
-Rashee Rice listed as OUT.
-
-→ Chiefs -4 @ DraftKings (+4.1% EV)
+Rashee Rice has been ruled out and the market hasn't fully adjusted.
+Still see value on Chiefs.
 ```
 
 Example:
@@ -455,7 +454,7 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | 15-min poll, ~4 calendar sports, 24h/day | ~23k (monitor `x-requests-remaining`) |
 | Hourly best bet, ~4 sports × 3 markets | ~12 credits/hour (~288/day extra) |
 
-**Plan:** Ryan on **$30 / 20k credits**. Monitor `x-requests-remaining` header.
+**Plan:** Ryan on **$119 / 5M credits per month** (The Odds API paid tier). Tiers differ by **credit volume only** ... same sports, bookmakers, and markets as the free plan; **no public betting % / splits** at any tier. Monitor `x-requests-remaining` header (Scott typically uses a small fraction of 5M; headroom avoids mid-month **401 / OUT_OF_USAGE_CREDITS** mute).
 
 ---
 
@@ -488,8 +487,8 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `max_value_bet_radar_posts_per_day` | Default **12** |
 | `starter_spotlight_enabled` | Default **true** — starter spotlight on **`poll_edges`** when Rundown confirms starters |
 | `confirmed_starters_enabled` | Default **true** — compact confirmed-starters list |
-| `injury_impact_enabled` | Default **true** — hard injury status + pick |
-| `rest_travel_edge_enabled` | Default **true** — Rest + Travel (7-day schedule, venue table, +EV on rested team) |
+| `injury_impact_enabled` | Default **true** — Situational Lean injury (hard OUT/IR + pick) |
+| `rest_travel_edge_enabled` | Default **true** — Situational Lean rest/travel (7-day schedule, venue table, +EV on rested team) |
 | `fade_the_public_enabled` | Default **false** — needs public betting % feed |
 | `max_context_alerts_per_day` | Default **6** — cap across all context kinds |
 | `min_post_gap_minutes` | Default **2** — min minutes between Scott feed posts |

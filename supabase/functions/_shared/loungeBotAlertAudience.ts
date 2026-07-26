@@ -75,8 +75,8 @@ export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {
   value_bet_radar: 'Value Bet Radar',
   starter_spotlight: 'Starter Spotlight',
   confirmed_starters: 'Confirmed Starters',
-  injury_impact: 'Injury Impact',
-  rest_travel_edge: 'Rest + Travel Advantage',
+  injury_impact: 'Situational Lean',
+  rest_travel_edge: 'Situational Lean',
   fade_the_public: 'Fade the Public',
 }
 

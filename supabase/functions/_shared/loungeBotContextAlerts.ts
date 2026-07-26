@@ -1,6 +1,6 @@
 /**
- * Factual context alert posts (starters, injuries, rest/travel).
- * Data-only captions — no interpretive commentary.
+ * Context alert posts (starters, injuries, rest/travel).
+ * Injury + rest/travel use opinionated "Situational Lean" voice; starters stay factual.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
@@ -46,6 +46,9 @@ import {
 
 const CAPTION_MAX = 2000
 const CONTEXT_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
+const SITUATIONAL_LEAN_HEADER = '📐 Situational Lean'
+/** Combined daily cap for injury_impact + rest_travel_edge (Grok Path A). */
+export const MAX_SITUATIONAL_LEANS_PER_DAY = 2
 
 export type ContextAlertKind =
   | 'starter_spotlight'
@@ -53,6 +56,8 @@ export type ContextAlertKind =
   | 'injury_impact'
   | 'rest_travel_edge'
   | 'fade_the_public'
+
+const SITUATIONAL_LEAN_KINDS: ContextAlertKind[] = ['injury_impact', 'rest_travel_edge']
 
 export type ContextAlertCandidate = {
   kind: ContextAlertKind
@@ -79,20 +84,68 @@ function formatMatchupParen(awayTeam: string, homeTeam: string, commenceTime: st
   return when ? `${matchup} (${when})` : matchup
 }
 
-function formatPickArrowLine(pick: OddsPick): string {
-  const ev = Math.round(pick.edgePct * 10) / 10
-  return `→ ${formatOddsPickLine(pick)} @ ${pick.bookTitle} (+${ev}% EV)`
-}
-
 function formatPickInlineLine(pick: OddsPick): string {
   const ev = Math.round(pick.edgePct * 10) / 10
   return `${formatOddsPickLine(pick)} @ ${pick.bookTitle} (+${ev}% EV)`
 }
 
-function formatInjuryStatusLabel(status: string): string {
-  const s = String(status || '').trim()
-  if (/^out$/i.test(s)) return 'OUT'
-  return s || 'OUT'
+function isSituationalLeanKind(kind: ContextAlertKind): boolean {
+  return SITUATIONAL_LEAN_KINDS.includes(kind)
+}
+
+function sortContextPool(pool: ContextAlertCandidate[]): void {
+  pool.sort((a, b) => {
+    const evDiff = b.pick.edgePct - a.pick.edgePct
+    if (Math.abs(evDiff) > 0.05) return evDiff
+    const aMs = Date.parse(a.commenceTime) || 0
+    const bMs = Date.parse(b.commenceTime) || 0
+    return bMs - aMs
+  })
+}
+
+function buildRestTravelSituationLine(restTravel: RestTravelMatchup): string {
+  const fatigued = shortDisplayName(restTravel.fatiguedTeam)
+  const isB2b = restTravel.fatiguedLine.includes('back-to-back')
+  const hasTravel = restTravel.travelFatigue
+
+  if (isB2b && hasTravel) {
+    if (restTravel.travelTzNote) {
+      return `${fatigued} on the 2nd night of a back-to-back after cross-time-zone travel (${restTravel.travelTzNote}).`
+    }
+    return `${fatigued} on the 2nd night of a back-to-back after a long road trip.`
+  }
+  if (isB2b) {
+    return `${fatigued} on the 2nd night of a back-to-back.`
+  }
+  if (hasTravel && restTravel.travelTzNote) {
+    return `${fatigued} in a tough spot with cross-time-zone travel on a short turnaround.`
+  }
+  if (restTravel.fatiguedLine.includes('short week')) {
+    return `${fatigued} in a tough spot on a short week.`
+  }
+  return `${fatigued} on a short rest turnaround while the other side is rested.`
+}
+
+function buildRestTravelLeanLine(restTravel: RestTravelMatchup, pick: OddsPick): string {
+  if (restTravel.restedAtHome && pickMatchesTeamName(pick.pickName, restTravel.restedTeam)) {
+    return 'Prefer the rested home side here.'
+  }
+  if (pickMatchesTeamName(pick.pickName, restTravel.restedTeam)) {
+    return `Leaning toward ${shortDisplayName(restTravel.restedTeam)} while the number is still soft.`
+  }
+  return 'Slight lean to the rested side.'
+}
+
+function buildInjurySituationLine(player: { name: string }): string {
+  return `${player.name} has been ruled out and the market hasn't fully adjusted.`
+}
+
+function buildInjuryLeanLine(pick: OddsPick): string {
+  const side = shortDisplayName(pick.pickName)
+  if (pick.marketKey === 'spreads' && pick.linePoint != null && pick.linePoint > 0) {
+    return 'Prefer the plus side here.'
+  }
+  return `Still see value on ${side}.`
 }
 
 export function buildStarterSpotlightCaption(
@@ -139,40 +192,36 @@ export function buildConfirmedStartersCaption(
 }
 
 export function buildInjuryImpactCaption(
-  awayTeam: string,
-  homeTeam: string,
-  commenceTime: string,
+  _awayTeam: string,
+  _homeTeam: string,
+  _commenceTime: string,
   player: { name: string; status: string },
   pick: OddsPick,
 ): string {
-  const label = formatInjuryStatusLabel(player.status)
   return joinCaptionLines([
-    '⚠️ Injury Impact',
+    SITUATIONAL_LEAN_HEADER,
     '',
-    formatMatchupParen(awayTeam, homeTeam, commenceTime),
+    formatPickInlineLine(pick),
     '',
-    `${player.name} listed as ${label}.`,
-    '',
-    formatPickArrowLine(pick),
+    buildInjurySituationLine(player),
+    buildInjuryLeanLine(pick),
   ])
 }
 
 export function buildRestTravelEdgeCaption(
-  awayTeam: string,
-  homeTeam: string,
-  commenceTime: string,
+  _awayTeam: string,
+  _homeTeam: string,
+  _commenceTime: string,
   restTravel: RestTravelMatchup,
   pick: OddsPick,
 ): string {
   return joinCaptionLines([
-    '🛫 Rest + Travel Advantage',
+    SITUATIONAL_LEAN_HEADER,
     '',
-    formatMatchupParen(awayTeam, homeTeam, commenceTime),
+    formatPickInlineLine(pick),
     '',
-    restTravel.fatiguedLine,
-    restTravel.restedLine,
-    '',
-    formatPickArrowLine(pick),
+    buildRestTravelSituationLine(restTravel),
+    buildRestTravelLeanLine(restTravel, pick),
   ])
 }
 
@@ -288,18 +337,12 @@ function contextKindEnabled(kind: ContextAlertKind, oddsCfg: OddsCfgRow): boolea
   }
 }
 
-async function countContextAlertsToday(
+async function countKindAlertsToday(
   admin: SupabaseClient,
   botUserId: string,
   dayStart: string,
+  kinds: ContextAlertKind[],
 ): Promise<number> {
-  const kinds: ContextAlertKind[] = [
-    'starter_spotlight',
-    'confirmed_starters',
-    'injury_impact',
-    'rest_travel_edge',
-    'fade_the_public',
-  ]
   let total = 0
   for (const kind of kinds) {
     const { count } = await admin
@@ -313,6 +356,28 @@ async function countContextAlertsToday(
     total += await countScheduledKindToday(admin, botUserId, kind, dayStart)
   }
   return total
+}
+
+async function countContextAlertsToday(
+  admin: SupabaseClient,
+  botUserId: string,
+  dayStart: string,
+): Promise<number> {
+  return countKindAlertsToday(admin, botUserId, dayStart, [
+    'starter_spotlight',
+    'confirmed_starters',
+    'injury_impact',
+    'rest_travel_edge',
+    'fade_the_public',
+  ])
+}
+
+async function countSituationalLeansToday(
+  admin: SupabaseClient,
+  botUserId: string,
+  dayStart: string,
+): Promise<number> {
+  return countKindAlertsToday(admin, botUserId, dayStart, [...SITUATIONAL_LEAN_KINDS])
 }
 
 async function collectContextCandidates(
@@ -463,7 +528,7 @@ function pickBestCandidate(
   for (const kind of priority) {
     const pool = enabled.filter((c) => c.kind === kind)
     if (!pool.length) continue
-    pool.sort((a, b) => b.pick.edgePct - a.pick.edgePct)
+    sortContextPool(pool)
     return pool[0]!
   }
   return null
@@ -496,7 +561,12 @@ export async function tryPublishContextAlert(
     ? await loadRestTravelSchedule(sportKey, ptTodayDate())
     : null
 
-  const candidates = await collectContextCandidates(events, sportKey, minEv, schedulePack)
+  let candidates = await collectContextCandidates(events, sportKey, minEv, schedulePack)
+  const situationalToday = await countSituationalLeansToday(admin, bot.user_id, dayStart)
+  if (situationalToday >= MAX_SITUATIONAL_LEANS_PER_DAY) {
+    candidates = candidates.filter((c) => !isSituationalLeanKind(c.kind))
+  }
+
   const best = pickBestCandidate(candidates, oddsCfg, opts.onlyKind ?? null)
   if (!best) return { published: false, skipped: 'no_qualifying_context' }
 

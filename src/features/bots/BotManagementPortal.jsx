@@ -1177,15 +1177,14 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
             <div className="text-zinc-600 text-[10px] mb-3">
               Per alert type: public lounge feed, creator fan sub chat only, or sub chat with a random lounge teaser (10% or 30%).
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[520px]">
+            <table className="w-full table-fixed text-left text-xs">
                 <thead>
                   <tr className="text-zinc-500 border-b border-zinc-800/80">
-                    <th className="py-2 pr-3 font-semibold">Alert type</th>
+                    <th className="py-2 pr-3 font-semibold w-[38%]">Alert type</th>
                     {ODDS_ALERT_DESTINATION_OPTIONS.map((opt) => (
                       <th
                         key={opt.value}
-                        className="py-2 px-1 font-semibold text-center w-[72px]"
+                        className="py-2 px-1 font-semibold text-center"
                         title={opt.title}
                       >
                         {opt.label}
@@ -1219,7 +1218,6 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
                   })}
                 </tbody>
               </table>
-            </div>
           </div>
         ) : null}
 
@@ -1739,36 +1737,35 @@ export default function BotManagementPortal({
       ) : null}
 
       {portalTab === 'manage' && bots.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-4">
-          <aside className="rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-2 lg:sticky lg:top-4 lg:self-start">
-            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Bots</div>
-            <ul className="space-y-1">
+        <div className="flex flex-col gap-4">
+          <section className="rounded-2xl border border-zinc-800/80 bg-zinc-900/90 p-3">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-zinc-500">Bots</div>
+            <div className="flex flex-wrap gap-2">
               {bots.map((bot) => {
                 const active = bot.user_id === selectedId
                 return (
-                  <li key={bot.user_id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(bot.user_id)}
-                      className={`w-full text-left rounded-xl px-3 py-2.5 transition-colors ${
-                        active ? 'bg-cyan-950/50 ring-1 ring-cyan-500/30' : 'hover:bg-zinc-800/60'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-white text-sm font-semibold truncate">
-                          {bot.display_name || bot.slug}
-                        </span>
-                        <RunStateBadge runState={bot.run_state} />
-                      </div>
-                      <div className="text-zinc-500 text-[10px] mt-0.5 truncate">
-                        {BOT_PIPELINE_LABELS[bot.pipeline] || bot.pipeline}
-                      </div>
-                    </button>
-                  </li>
+                  <button
+                    key={bot.user_id}
+                    type="button"
+                    onClick={() => setSelectedId(bot.user_id)}
+                    className={`min-w-[148px] flex-1 sm:flex-none rounded-xl px-3 py-2.5 text-left transition-colors ${
+                      active ? 'bg-cyan-950/50 ring-1 ring-cyan-500/30' : 'bg-zinc-950/40 ring-1 ring-zinc-800/80 hover:bg-zinc-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white text-sm font-semibold truncate">
+                        {bot.display_name || bot.slug}
+                      </span>
+                      <RunStateBadge runState={bot.run_state} />
+                    </div>
+                    <div className="text-zinc-500 text-[10px] mt-0.5 truncate">
+                      {BOT_PIPELINE_LABELS[bot.pipeline] || bot.pipeline}
+                    </div>
+                  </button>
                 )
               })}
-            </ul>
-          </aside>
+            </div>
+          </section>
 
           <BotDetailPanel
             bot={selectedBot}

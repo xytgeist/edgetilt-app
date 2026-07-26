@@ -4,11 +4,11 @@ import LoungeExpandableRichCaption from './LoungeExpandableRichCaption.jsx'
 import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFanOnlyLockedPostInset from './LoungeFanOnlyLockedPostInset.jsx'
-import { LOUNGE_QUOTE_EMBED_CAPTION_CLASS } from './loungeFeedAvatar.js'
-
-const EMBED_SHELL_BASE =
-  'mt-2 w-full rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit'
-const EMBED_SHELL_INTERACTIVE = `${EMBED_SHELL_BASE} cursor-pointer touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50`
+import {
+  LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
+  LOUNGE_QUOTE_EMBED_SHELL_BASE,
+  LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
+} from './loungeFeedAvatar.js'
 
 /**
  * Quote-repost card inset: original post body, or locked blur + subscribe for fan-only sources.
@@ -56,7 +56,7 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
 
   if (locked) {
     return (
-      <div className={EMBED_SHELL_BASE} data-lounge-quote-embed-locked>
+      <div className={LOUNGE_QUOTE_EMBED_SHELL_BASE} data-lounge-quote-embed-locked>
         {authorMeta}
         {typeof onSubscribeToCreatorFan === 'function' ? (
           <LoungeFanOnlyLockedPostInset
@@ -86,7 +86,7 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
       tabIndex={0}
       data-lounge-original-embed
       aria-label="View original post"
-      className={EMBED_SHELL_INTERACTIVE}
+      className={LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE}
       onClick={openOriginal}
       onKeyDown={(e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return

@@ -32,6 +32,7 @@ import {
   LOUNGE_FEED_POST_ROW_INNER_CLASS,
   LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS,
   LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
+  LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
   loungeFeedAuthorHasStaffBadge,
 } from './loungeFeedAvatar.js'
 
@@ -656,7 +657,7 @@ export default function LoungePostArticle({
               tabIndex={0}
               data-lounge-original-embed
               aria-label="View original comment"
-              className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
+              className={LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE}
             >
               <LoungeQuoteRepostEmbedAuthorMeta
                 post={post.reposted_comment}

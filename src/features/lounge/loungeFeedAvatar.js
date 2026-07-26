@@ -137,6 +137,20 @@ export const LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS =
 export const LOUNGE_QUOTE_EMBED_CAPTION_CLASS =
   'text-[15px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-zinc-200'
 
+/** Quote-repost inset shell ... transparent fill so row bg shows through; border defines the card. */
+export const LOUNGE_QUOTE_EMBED_SHELL_BASE =
+  'mt-2 w-full rounded-xl border border-zinc-700/80 bg-transparent px-2.5 py-2 text-left font-inherit'
+
+export const LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE = `${LOUNGE_QUOTE_EMBED_SHELL_BASE} cursor-pointer touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/35 active:bg-zinc-900/50`
+
+/** Composer sheet preview (no top margin). */
+export const LOUNGE_QUOTE_EMBED_SHELL_PREVIEW =
+  'w-full rounded-xl border border-zinc-700/80 bg-transparent px-2.5 py-2 text-left font-inherit'
+
+/** Unavailable/deleted original placeholder inset. */
+export const LOUNGE_QUOTE_EMBED_SHELL_UNAVAILABLE =
+  'w-full rounded-xl border border-zinc-700/80 bg-transparent px-3 py-3 text-left'
+
 /** Post detail OP - stacked header (name + badges, then handle · time). */
 export const LOUNGE_FEED_POST_DETAIL_AUTHOR_BLOCK_CLASS =
   'flex min-w-0 flex-col items-start leading-none translate-y-1'

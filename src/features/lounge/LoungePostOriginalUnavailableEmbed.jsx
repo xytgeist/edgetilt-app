@@ -1,3 +1,5 @@
+import { LOUNGE_QUOTE_EMBED_SHELL_UNAVAILABLE } from './loungeFeedAvatar.js'
+
 /**
  * Placeholder when a quote repost's embedded original post was deleted or is hidden.
  */
@@ -11,7 +13,7 @@ export default function LoungePostOriginalUnavailableEmbed({
 
   return (
     <div
-      className={`w-full rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-3 py-3 text-left ${className}`}
+      className={`${LOUNGE_QUOTE_EMBED_SHELL_UNAVAILABLE} ${className}`}
       data-lounge-original-unavailable
       aria-live="polite"
     >

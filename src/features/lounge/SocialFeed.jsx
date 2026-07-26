@@ -379,6 +379,7 @@ import {
   LOUNGE_FEED_TITLE_BAR_ROW_CLASS,
   LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
   LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
+  LOUNGE_QUOTE_EMBED_SHELL_PREVIEW,
 } from './loungeFeedAvatar.js'
 import { useQuickLinkIds } from '../shell/quickLinksStore.js'
 import { edgeLogoTitleBarClassName } from '../shell/titleBarLayout.js'
@@ -18004,7 +18005,7 @@ export default function SocialFeed({
                               <div
                                 role="figure"
                                 aria-label={quoteComment ? 'Quoted comment preview' : 'Quoted post preview'}
-                                className="w-full rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit"
+                                className={LOUNGE_QUOTE_EMBED_SHELL_PREVIEW}
                               >
                                 <LoungeQuoteRepostEmbedAuthorMeta
                                   post={orig}

@@ -2439,10 +2439,6 @@ html.light [data-lounge-quote-repost-sheet] .bg-zinc-800\/90 {
   background-color: #e4e4e7 !important;
 }
 
-html.light [data-lounge-quote-repost-sheet] .bg-zinc-900\/55 {
-  background-color: #ffffff !important;
-}
-
 html.light [data-lounge-quote-repost-sheet] .hover\:bg-zinc-800\/90:hover {
   background-color: rgba(0, 0, 0, 0.06) !important;
 }
@@ -2480,10 +2476,11 @@ html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-scroll {
   mask-image: none !important;
 }
 
-html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'] {
-  background-color: #ffffff !important;
+html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'],
+html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted comment preview'] {
+  background-color: transparent !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'] .text-zinc-200,

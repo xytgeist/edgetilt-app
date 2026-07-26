@@ -22,6 +22,7 @@ import {
 } from './loungeBotRundownContext.ts'
 import { type EventLineRow } from './loungeBotLineMovement.ts'
 import { maybeFilterNcaabCoffeeEvents } from './loungeBotNcaabCoffeeFilter.ts'
+import { filterBoxingCoffeeMainCardEvents, isBoxingCoffeeSport } from './loungeBotBoxingCoffeeFilter.ts'
 import {
   compareByCoverageThenEv,
 } from './loungeBotCoverageScope.ts'
@@ -577,14 +578,22 @@ export function buildSportLinesThreadBody(
   const games = extractSlateGameBestLines(events)
   if (!games.length || !label) return ''
 
+  const isBoxing = isBoxingCoffeeSport(String(sportKey || ''), label)
+  const omittedLine = (slateTotal: number, includedCount: number) => {
+    const omitted = slateTotal - includedCount
+    if (omitted <= 0) return ''
+    if (isBoxing) return boxingThreadOmittedLabel(slateTotal, includedCount)
+    return `+${omitted} more games today.`
+  }
+
   const lines: string[] = [formatSportThreadHeader(label, sportKey), '']
   let included = 0
 
   for (let i = 0; i < games.length; i++) {
     const trialLines = [...lines, formatSlateGameBlock(games[i]), '']
     const slateTotal = totalUnfiltered ?? games.length
-    const omitted = slateTotal - i - 1
-    if (omitted > 0) trialLines.push(`+${omitted} more games today.`)
+    const tail = omittedLine(slateTotal, i + 1)
+    if (tail) trialLines.push(tail)
     if (joinCaptionLines(trialLines).length <= CAPTION_MAX) {
       included = i + 1
     } else if (included === 0 && i === 0) {
@@ -600,10 +609,16 @@ export function buildSportLinesThreadBody(
     lines.push('')
   }
 
-  const omitted = (totalUnfiltered ?? games.length) - included
-  if (omitted > 0) lines.push(`+${omitted} more games today.`)
+  const tail = omittedLine(totalUnfiltered ?? games.length, included)
+  if (tail) lines.push(tail)
 
   return joinCaptionLines(lines)
+}
+
+function boxingThreadOmittedLabel(totalBefore: number, included: number): string {
+  const omitted = totalBefore - included
+  if (omitted <= 0) return ''
+  return `+${omitted} more undercard fight${omitted === 1 ? '' : 's'} today.`
 }
 
 /** One thread part for a bucket of soccer leagues (top tier or secondary). */
@@ -675,11 +690,16 @@ function coffeeEventsForInput(input: CoffeeAndCoversOptions): {
 } {
   const raw = Array.isArray(input.events) ? input.events : []
   const previous = input.previousEventLines ?? []
-  return maybeFilterNcaabCoffeeEvents(
+  const ncaabFiltered = maybeFilterNcaabCoffeeEvents(
     raw,
     input.sportKey,
     input.categoryLabel,
     previous,
+  )
+  return filterBoxingCoffeeMainCardEvents(
+    ncaabFiltered.events,
+    input.sportKey,
+    input.categoryLabel,
   )
 }
 

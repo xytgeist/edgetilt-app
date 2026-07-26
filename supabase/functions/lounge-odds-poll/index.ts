@@ -30,6 +30,7 @@ import {
   type SportOddsContext,
 } from '../_shared/loungeBotOddsRun.ts'
 import { MAX_EDGE_ALERTS_PER_POLL_TICK } from '../_shared/loungeBotEdgeAlertThresholds.ts'
+import { coffeeBestLinesRankForSport } from '../_shared/loungeBotCoffeeBestLinesPriority.ts'
 import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishConstants.ts'
 import { type OddsPick } from '../_shared/loungeBotOddsCaption.ts'
 import type { SharpReportCandidate } from '../_shared/loungeBotSharpReport.ts'
@@ -200,35 +201,53 @@ Deno.serve(async (req) => {
       const details: Record<string, unknown>[] = []
       let requestsRemaining: string | null = null
 
-      const rowResults = await Promise.all(
-        scanTargets.map(async (row) => {
-          const sportKey = row.sportKey
-          try {
-            const ctx = await loadSportOddsContext(
-              admin,
-              bot.user_id,
-              sportKey,
-              calendarPickFromTarget(row),
-              regions,
-              coffeeMarkets,
-              dryRun,
-            )
-            return {
-              calendarSlug: row.slug,
-              sportKey,
-              ctx,
-              gamesToday: ctx.eventsInWindow,
-              requestsRemaining: ctx.requestsRemaining,
-            }
-          } catch (err) {
-            return {
-              calendarSlug: row.slug,
-              sportKey,
-              error: err instanceof Error ? err.message : 'fetch failed',
-            }
-          }
-        }),
+      const coffeeTargets = [...scanTargets].sort(
+        (a, b) => coffeeBestLinesRankForSport(b.sportKey) - coffeeBestLinesRankForSport(a.sportKey),
       )
+
+      const rowResults: Array<
+        | {
+          calendarSlug: string
+          sportKey: string
+          ctx: SportOddsContext
+          gamesToday: number
+          requestsRemaining: string | null
+        }
+        | {
+          calendarSlug: string
+          sportKey: string
+          error: string
+        }
+      > = []
+
+      for (const row of coffeeTargets) {
+        const sportKey = row.sportKey
+        try {
+          const ctx = await loadSportOddsContext(
+            admin,
+            bot.user_id,
+            sportKey,
+            calendarPickFromTarget(row),
+            regions,
+            coffeeMarkets,
+            dryRun,
+          )
+          rowResults.push({
+            calendarSlug: row.slug,
+            sportKey,
+            ctx,
+            gamesToday: ctx.eventsInWindow,
+            requestsRemaining: ctx.requestsRemaining,
+          })
+          requestsRemaining = ctx.requestsRemaining ?? requestsRemaining
+        } catch (err) {
+          rowResults.push({
+            calendarSlug: row.slug,
+            sportKey,
+            error: err instanceof Error ? err.message : 'fetch failed',
+          })
+        }
+      }
 
       const coffeeSportContexts: SportOddsContext[] = []
       for (const row of rowResults) {

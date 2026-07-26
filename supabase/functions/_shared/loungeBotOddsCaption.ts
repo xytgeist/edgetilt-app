@@ -92,18 +92,28 @@ export function marketLabel(marketKey: OddsPick['marketKey']): string {
   return 'ML'
 }
 
+/** Standard Scott +EV detail: `+13.5% EV · Fair -151 (11 books)`. */
+export function formatScottEvDetailLine(pick: OddsPick): string {
+  const ev = Math.round(pick.edgePct * 10) / 10
+  const fair = formatAmericanOdds(pick.consensusPrice)
+  const books = Math.max(0, Number(pick.bookCount) || 0)
+  const bookLabel = books === 1 ? '1 book' : `${books} books`
+  return `+${ev}% EV · Fair ${fair} (${bookLabel})`
+}
+
+/** Compact bullet suffix for period reports and lists. */
+export function formatScottEvDetailBullet(pick: OddsPick): string {
+  return `(${formatScottEvDetailLine(pick)})`
+}
+
 /** +EV line clarifying edge is vs devigged multi-book consensus (e.g. live in-game edge). */
 export function formatPlusEvConsensusLine(pick: OddsPick): string {
-  const ev = Math.round(pick.edgePct * 10) / 10
-  const mk = marketLabel(pick.marketKey)
-  const books = pick.bookCount >= 2 ? ` · ${pick.bookCount} books` : ''
-  return `+${ev}% EV vs market consensus on the ${mk}${books}`
+  return formatScottEvDetailLine(pick)
 }
 
 /** Compact +EV suffix for period-report bullets. */
 export function formatPlusEvConsensusBullet(pick: OddsPick): string {
-  const ev = Math.round(pick.edgePct * 10) / 10
-  return `(+${ev}% EV vs consensus)`
+  return formatScottEvDetailBullet(pick)
 }
 
 /** American odds → implied probability (with vig). */
@@ -552,11 +562,6 @@ export async function resolveScottCategoryLabel(
 }
 
 export function buildOddsEdgeAlertCaption(pick: OddsPick, opts?: { categoryLabel?: string }): string {
-  const pickLabel = shortDisplayName(pick.pickName)
-  const odds = formatAmericanOdds(pick.pickPrice)
-  const fair = formatAmericanOdds(pick.consensusPrice)
-  const ev = Math.round(pick.edgePct * 10) / 10
-
   return joinScottAlertCaption(
     '⚡ +EV Edge',
     pick.awayTeam,
@@ -564,8 +569,8 @@ export function buildOddsEdgeAlertCaption(pick: OddsPick, opts?: { categoryLabel
     pick.commenceTime,
     opts?.categoryLabel,
     [
-      `${pickLabel} ML ${odds} @ ${pick.bookTitle}`,
-      `+${ev}% EV on ML · fair ${fair} (${pick.bookCount} books)`,
+      `${formatOddsPickLine(pick)} @ ${pick.bookTitle}`,
+      formatScottEvDetailLine(pick),
     ],
   )
 }

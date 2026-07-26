@@ -14,6 +14,7 @@ import {
   DEFAULT_MIN_BOOKS,
   findPlusEvOpportunities,
   formatOddsPickLine,
+  formatScottEvDetailLine,
   formatScottPickContextSuffix,
   resolveScottCategoryLabel,
   type OddsEvent,
@@ -157,7 +158,6 @@ export function selectValueBetRadarPicks(
 }
 
 function formatRadarPickLine(pick: RadarPick, inlineNote?: string): string {
-  const ev = Math.round(pick.edgePct * 10) / 10
   const ctx = formatScottPickContextSuffix({
     awayTeam: pick.awayTeam,
     homeTeam: pick.homeTeam,
@@ -166,7 +166,7 @@ function formatRadarPickLine(pick: RadarPick, inlineNote?: string): string {
   })
   const note = inlineNote?.trim()
   const suffix = note ? ` · ${note}` : ''
-  return `• ${formatOddsPickLine(pick)} @ ${pick.bookTitle} (+${ev}% EV)${ctx}${suffix}`
+  return `• ${formatOddsPickLine(pick)} @ ${pick.bookTitle}${ctx}\n  ${formatScottEvDetailLine(pick)}${suffix}`
 }
 
 export function buildValueBetRadarCaption(

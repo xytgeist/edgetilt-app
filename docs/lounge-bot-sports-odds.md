@@ -180,8 +180,12 @@ Dedupe: one alert per movement direction per game/market/outcome per PT day. Cap
 
 | Post kind | Trigger | Threshold |
 | --- | --- | --- |
-| **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **4%**) on **ML, spreads, or totals** |
-| **`period_report`** | **TheRundown** `event_status` / `game_period` when key set; else elapsed-time fallback | Best **+EV** lines for remainder of game — **skipped** when none clear **`min_live_edge_pct`** |
+| **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **6%**) on **ML, spreads, or totals**; **≥ 6 books** for consensus; **no live soccer draw ML**; block live ML **> +800** unless **≥ 8 books**; footer **Live · verify quickly** on flagged longshots |
+| **`period_report`** | **TheRundown** `event_status` / `game_period` when key set; else elapsed-time fallback | Best **+EV** lines for remainder of game (same live gates as **`in_game_edge`**) — **skipped** when none clear **`min_live_edge_pct`** |
+
+**Live pick guards (`loungeBotLivePickGuards.ts`):** pre-match alerts still use **`DEFAULT_MIN_BOOKS = 3`**. Live-only: min **6** books, default **6%** EV (`min_live_edge_pct`), suppress **soccer draw ML** in-play, block live ML longer than **+800** unless **≥ 8** books, optional **Live · verify quickly** / **Live · extreme number** footer.
+
+**Caption format (all +EV alert types):** pick line, then **`+X% EV · Fair {american} ({N} books)`** via **`formatScottEvDetailLine`**.
 
 **Rundown milestones (preferred):** `STATUS_HALFTIME` (basketball/football), `STATUS_END_PERIOD` + `game_period` (NHL), `game_period >= 5` (MLB). In-game headers use `event_status_detail` when present.
 

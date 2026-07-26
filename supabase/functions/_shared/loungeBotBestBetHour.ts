@@ -12,6 +12,7 @@ import {
   findPlusEvOpportunities,
   formatAmericanOdds,
   formatOddsPickLine,
+  formatScottEvDetailLine,
   joinScottAlertCaption,
   resolveScottCategoryLabel,
   marketLabel,
@@ -185,7 +186,6 @@ export function buildBestBetHourCaption(
   opts?: { displayName?: string; contextNote?: string },
 ): string {
   const pickLine = formatOddsPickLine(pick)
-  const ev = Math.round(pick.edgePct * 10) / 10
   const footer = opts?.contextNote?.trim() || buildBestBetHourReason(pick)
 
   return joinScottAlertCaption(
@@ -196,7 +196,7 @@ export function buildBestBetHourCaption(
     pick.categoryLabel,
     [
       `${pickLine} @ ${pick.bookTitle}`,
-      `+${ev}% EV`,
+      formatScottEvDetailLine(pick),
       '',
       footer,
     ],

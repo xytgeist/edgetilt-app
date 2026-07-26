@@ -5,14 +5,19 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MAX_EV_PCT,
-  DEFAULT_MIN_BOOKS,
   findPlusEvOpportunities,
   formatOddsPickLine,
   formatPlusEvConsensusBullet,
-  formatPlusEvConsensusLine,
+  formatScottEvDetailLine,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
+import {
+  filterLiveEligiblePicks,
+  LIVE_DEFAULT_MIN_EV_PCT,
+  LIVE_MIN_BOOKS,
+  liveVerifyFooterLine,
+} from './loungeBotLivePickGuards.ts'
 import { ptTodayDate, readOddsApiError } from './loungeBotOddsRun.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import {
@@ -283,8 +288,12 @@ export function buildInGameEdgeCaption(
     ...contextLines,
     '',
     `${pickLine} @ ${pick.bookTitle}`,
-    formatPlusEvConsensusLine(pick),
+    formatScottEvDetailLine(pick),
   ]
+  const verifyFooter = liveVerifyFooterLine(pick)
+  if (verifyFooter) {
+    lines.push('', verifyFooter)
+  }
   if (opts.contextNote?.trim()) {
     lines.push('', opts.contextNote.trim())
   }
@@ -457,7 +466,7 @@ export async function tryPublishLiveGameContent(
     return { publishedLiveEdges: 0, publishedPeriodReports: 0, skipped: 'no_live_games' }
   }
 
-  const minLiveEv = Number(oddsCfg.min_live_edge_pct) || 4
+  const minLiveEv = Number(oddsCfg.min_live_edge_pct) || LIVE_DEFAULT_MIN_EV_PCT
   const maxLive = Number(oddsCfg.max_live_alerts_per_day) || 8
   const maxPeriod = Number(oddsCfg.max_period_reports_per_day) || 6
   let liveCount = await countPublishedKindToday(admin, bot.user_id, 'in_game_edge', dayStart)
@@ -492,12 +501,13 @@ export async function tryPublishLiveGameContent(
   let publishedPeriodReports = 0
   let topLivePick: OddsPick | null = null
 
-  const livePicks = findPlusEvOpportunities(activeEvents, sportKey, {
-    minBooks: DEFAULT_MIN_BOOKS,
+  const livePicksRaw = findPlusEvOpportunities(activeEvents, sportKey, {
+    minBooks: LIVE_MIN_BOOKS,
     minEvPct: minLiveEv,
     maxEvPct: DEFAULT_MAX_EV_PCT,
     marketKeys: LIVE_MARKETS,
   })
+  const livePicks = filterLiveEligiblePicks(livePicksRaw, minLiveEv)
 
   if (liveEnabled && liveCount < maxLive) {
     for (const pick of livePicks) {

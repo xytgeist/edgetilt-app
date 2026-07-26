@@ -159,8 +159,10 @@ export function loungeFeedUsesCarouselLayout(variant) {
  */
 export function loungeFeedCarouselFullBleed(variant, opts = {}) {
   const v = String(variant || '')
-  if (v === 'feed' || v === 'commentInline') return true
-  if (v === 'detail' && opts.captionColumn) return true
+  const captionColumn = Boolean(opts.captionColumn)
+  if (v === 'feed') return true
+  if (v === 'commentInline') return captionColumn
+  if (v === 'detail' && captionColumn) return true
   return false
 }
 

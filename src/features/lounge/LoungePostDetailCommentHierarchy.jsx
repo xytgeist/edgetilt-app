@@ -116,6 +116,7 @@ function HierarchyCommentRow({
             isFocus && comment.created_at ? formatLoungePostDetailWhen(comment.created_at) : ''
           }
           {...cardProps}
+          captionColumnMedia={isFocus}
           navigable={canNavigate}
           onOpenCommentThread={
             canNavigate ? () => onNavigateToPathIndex(pathIndex) : undefined

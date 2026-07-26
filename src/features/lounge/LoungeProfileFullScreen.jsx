@@ -543,7 +543,8 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
               {feedCommentRowHasMedia(post) ? (
                 <LoungePostFeedImagesAndGif
                   post={post}
-                  variant="feed"
+                  variant={pathIds.length > 0 && threadComments.length > 0 ? 'detail' : 'feed'}
+                  captionColumnMedia={false}
                   enableLightbox
                   lightboxPortalClass={pp.mediaLightboxPortalClass || 'z-[103]'}
                   firstMarginTopClass={

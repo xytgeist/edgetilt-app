@@ -97,6 +97,7 @@ function ThreadPartRow({
           avatarButtonRef={avatarRef}
           descendantFallback={descendantFallback}
           {...cardProps}
+          captionColumnMedia={isLast}
           navigable={Boolean(onOpenCommentThread)}
           onOpenCommentThread={
             onOpenCommentThread ? () => onOpenCommentThread(comment) : undefined

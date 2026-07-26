@@ -119,6 +119,8 @@ export function LoungeCommentCard({
   onFeedVideoAutoplayChange,
   onStreamLightboxOpenDetail,
   onSharePost,
+  /** Viewport full-bleed carousel (caption-column rows only; off for thread ancestors). */
+  captionColumnMedia = true,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -260,7 +262,7 @@ export function LoungeCommentCard({
       <LoungePostFeedImagesAndGif
         post={comment}
         variant={mediaFeedVariant}
-        captionColumnMedia
+        captionColumnMedia={captionColumnMedia}
         firstMarginTopClass={
           String(comment.body || '').trim()
             ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS

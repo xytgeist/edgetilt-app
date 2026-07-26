@@ -97,11 +97,6 @@ export default function ChatGroupSettingsSheet({
   const creatorUserId = String(room.creator_user_id || room.created_by || '')
   /** Fan subs room: subscribers see creator only (not other members). Owner/mod keep full roster. */
   const isFanRoomSubscriberView = isFanRoom && !canModerateMembers
-  const visibleMembers = useMemo(() => {
-    if (!isFanRoomSubscriberView) return members
-    if (!creatorUserId) return []
-    return members.filter((m) => String(m.user_id) === creatorUserId)
-  }, [members, isFanRoomSubscriberView, creatorUserId])
 
   const [title, setTitle] = useState(String(room.title || ''))
   const [description, setDescription] = useState(String(room.description || ''))
@@ -111,6 +106,12 @@ export default function ChatGroupSettingsSheet({
   const [members, setMembers] = useState(/** @type {any[]} */ ([]))
   const [membersLoading, setMembersLoading] = useState(false)
   const [membersError, setMembersError] = useState('')
+
+  const visibleMembers = useMemo(() => {
+    if (!isFanRoomSubscriberView) return members
+    if (!creatorUserId) return []
+    return members.filter((m) => String(m.user_id) === creatorUserId)
+  }, [members, isFanRoomSubscriberView, creatorUserId])
 
   const [starred, setStarred] = useState(/** @type {any[]} */ ([]))
   const [pinnedCount, setPinnedCount] = useState(0)

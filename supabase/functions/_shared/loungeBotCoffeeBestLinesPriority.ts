@@ -29,11 +29,13 @@ export const COFFEE_TOP_TIER_SOCCER_KEY_ORDER = [
 
 export const COFFEE_TOP_TIER_SOCCER_KEYS = new Set<string>(COFFEE_TOP_TIER_SOCCER_KEY_ORDER)
 
-/** Tier 2 secondary soccer — one combined thread part. */
+/** Tier 2 soccer lump — MLS, Liga MX, Brasileirão, Americas, Eredivisie, etc. */
 export const COFFEE_SECONDARY_SOCCER_KEY_ORDER = [
   'soccer_mexico_ligamx',
   'soccer_usa_mls',
   'soccer_brazil_campeonato',
+  'soccer_argentina_primera_division',
+  'soccer_chile_campeonato',
   'soccer_netherlands_eredivisie',
   'soccer_portugal_primeira_liga',
   'soccer_uefa_europa_conference_league',
@@ -42,7 +44,9 @@ export const COFFEE_SECONDARY_SOCCER_KEY_ORDER = [
 export const COFFEE_SECONDARY_SOCCER_KEYS = new Set<string>(COFFEE_SECONDARY_SOCCER_KEY_ORDER)
 
 export const COFFEE_TOP_SOCCER_THREAD_HEADER = '⚽ Top Soccer Leagues'
-export const COFFEE_SECONDARY_SOCCER_THREAD_HEADER = '⚽ Secondary Soccer Leagues'
+/** Fan-facing label for the tier-2 soccer lump (not "secondary"). */
+export const COFFEE_MORE_SOCCER_THREAD_LABEL = 'More Soccer Today'
+export const COFFEE_SECONDARY_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_MORE_SOCCER_THREAD_LABEL}`
 
 /** Daily Best Lines thread sort — higher rank = earlier in thread. */
 const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {

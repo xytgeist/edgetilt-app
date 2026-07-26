@@ -26,6 +26,7 @@ import {
   compareByCoverageThenEv,
 } from './loungeBotCoverageScope.ts'
 import {
+  COFFEE_MORE_SOCCER_THREAD_LABEL,
   COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
   COFFEE_TOP_SOCCER_THREAD_HEADER,
   aggregateCoffeeBestLinesSliceStats,
@@ -1309,7 +1310,7 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
     )
     if (body) {
       threadPartCandidates.push({
-        part: { categoryLabel: 'Secondary Soccer Leagues', body },
+        part: { categoryLabel: COFFEE_MORE_SOCCER_THREAD_LABEL, body },
         meta: buildCoffeeBestLinesThreadCandidateMeta(
           'soccer_secondary_leagues',
           aggregateCoffeeBestLinesSliceStats(secondarySoccerSlices),

@@ -1331,10 +1331,23 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
 
 [data-lounge-feed-horizontal-scroll] {
   overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-lounge-feed-horizontal-scroll]::-webkit-scrollbar {
+  display: none;
 }
 
 [data-lounge-feed-carousel-track] {
   min-width: min-content;
+}
+
+[data-lounge-lightbox-carousel] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-lounge-lightbox-carousel]::-webkit-scrollbar {
+  display: none;
 }
 
 /*

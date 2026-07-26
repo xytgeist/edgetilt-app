@@ -271,8 +271,8 @@ export function LoungeImageCarousel({
   const carouselTouchClass = multiSlideCarousel ? '[touch-action:pan-x_pan-y]' : ''
 
   const carouselScrollerClass = multiSlideCarousel
-    ? `max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`
-    : `flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`
+    ? `max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`
+    : `flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`
   const carouselInnerTrackClass = 'flex flex-nowrap items-stretch gap-2'
 
   const carouselSlides = list.map((url, i) => {

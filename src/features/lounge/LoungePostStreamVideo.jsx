@@ -120,6 +120,20 @@ const ACTIVE_HLS_STALL_MAX_BURST_IOS = 1
 /** After CF HLS probe passes, iOS MSE may still sit at rs=0. */
 const CF_HLS_READY_NATIVE_FALLBACK_MS = 2800
 
+/**
+ * iOS hls.js MSE often advances `currentTime` while `readyState` stays 0.
+ * Treat that as live playback so we do not call play() again or bump HLS attach (both restart from 0).
+ */
+function appleWebKitInlineStreamPlaybackLooksLive(el, minSec = 0.05) {
+  return (
+    Boolean(el) &&
+    !el.paused &&
+    !el.ended &&
+    Number.isFinite(el.currentTime) &&
+    el.currentTime > minSec
+  )
+}
+
 /** CF `thumbnail.jpg` is often 404 until processing finishes - retry with cache-bust before giving up. */
 const CF_POSTER_RETRY_MAX = 32
 
@@ -1383,6 +1397,12 @@ export default function LoungePostStreamVideo({
     if (heroLocked && !lightboxOpenRef.current) return false
     if (coordinatorActive && !isActiveRef.current) return false
     if (coordinatorActive && tileRatio <= 0) return false
+    if (
+      appleWebKitInlineStreamRef.current &&
+      appleWebKitInlineStreamPlaybackLooksLive(v)
+    ) {
+      return true
+    }
     if (lazyStream && v.readyState < HTMLMediaElement.HAVE_METADATA) return false
     if (inlinePlayInFlightRef.current) return false
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -1820,16 +1840,19 @@ export default function LoungePostStreamVideo({
         if (await probeCfStreamHlsReady(id)) {
           markReady()
           const v = videoRef.current
+          const iosPlaybackLive =
+            appleWebKitInlineStreamRef.current && appleWebKitInlineStreamPlaybackLooksLive(v, 0.25)
           const needsBump =
             !v ||
-            v.readyState < HTMLMediaElement.HAVE_METADATA ||
-            Boolean(v.error)
+            Boolean(v.error) ||
+            (v.readyState < HTMLMediaElement.HAVE_METADATA && !iosPlaybackLive)
           if (needsBump) bumpStreamAttach('cf-hls-ready')
           if (appleWebKitInlineStreamRef.current) {
             window.setTimeout(() => {
               if (cancelled) return
               const el = videoRef.current
               if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
+              if (appleWebKitInlineStreamPlaybackLooksLive(el, 0.25)) return
               tryMseNativeFallbackRef.current?.()
             }, CF_HLS_READY_NATIVE_FALLBACK_MS)
           }
@@ -1876,7 +1899,11 @@ export default function LoungePostStreamVideo({
     prevIsActiveForPromoteRef.current = isActive
     if (!rose || lightboxOpenRef.current) return undefined
     const v = videoRef.current
-    if (v && v.readyState < HTMLMediaElement.HAVE_METADATA) {
+    if (
+      v &&
+      v.readyState < HTMLMediaElement.HAVE_METADATA &&
+      !appleWebKitInlineStreamPlaybackLooksLive(v, 0.25)
+    ) {
       bumpStreamAttach('active-promote')
     }
     return undefined
@@ -1907,6 +1934,7 @@ export default function LoungePostStreamVideo({
     if (tileRatio <= 0) return undefined
     const v = videoRef.current
     if (!v || v.readyState >= HTMLMediaElement.HAVE_METADATA) return undefined
+    if (appleWebKitInlineStreamPlaybackLooksLive(v, 0.25)) return undefined
     const attachKeyAtArm = streamAttachKeyRef.current
     if (lastActiveHlsStallBumpKeyRef.current === attachKeyAtArm) return undefined
     if (activeHlsStallBurstRef.current >= stallMaxBurst) {
@@ -1920,6 +1948,7 @@ export default function LoungePostStreamVideo({
       if (!isActiveRef.current && !activeHlsGraceHeld) return
       const el = videoRef.current
       if (!el || el.readyState >= HTMLMediaElement.HAVE_METADATA) return
+      if (appleWebKitInlineStreamPlaybackLooksLive(el, 0.25)) return
       const keyNow = streamAttachKeyRef.current
       if (keyNow !== attachKeyAtArm) return
       if (lastActiveHlsStallBumpKeyRef.current === keyNow) return

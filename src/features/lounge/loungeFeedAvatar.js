@@ -37,7 +37,7 @@ export const LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS = 'h-10 w-10 shrink-0'
 
 /** Feed / profile / search post row - same rule gaps as post-detail comment `<li>` items. */
 export const LOUNGE_FEED_POST_ROW_CLASS =
-  'border-t border-zinc-800/70 bg-zinc-950/35 px-3 pt-2 pb-2 transition-colors active:bg-zinc-900/55 [-webkit-tap-highlight-color:transparent]'
+  'border-t border-zinc-800/70 bg-zinc-950/35 px-3 pt-2 pb-2 [-webkit-tap-highlight-color:transparent]'
 
 /** `LoungePostArticle` root - `pt-1` below rule (pairs with row `pt-2`). */
 export const LOUNGE_FEED_POST_ROW_INNER_CLASS = 'min-w-0 pt-1 pb-0'

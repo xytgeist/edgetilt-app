@@ -2443,7 +2443,7 @@ export default function LoungeProfileFullScreen({
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
         <div
           ref={profileBodyScrollRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain [-webkit-overflow-scrolling:touch]"
           style={{
             paddingBottom: `max(${
               !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'

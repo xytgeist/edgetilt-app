@@ -9,7 +9,7 @@ import {
   loungeFeedCarouselMaxRowHeightPx,
   loungeFeedCarouselMaxSlideWidthPx,
   loungeFeedCarouselSlideWidthPx,
-  loungeFeedCarouselUnifiedRowHeight,
+  loungeFeedCarouselRowHeightFromFirstSlide,
   loungeFeedImageAttachmentTier,
   LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
   LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS,
@@ -231,9 +231,8 @@ export function LoungeImageCarousel({
 
   const carouselUnifiedRowHeightPx = useMemo(() => {
     if (!feedCarouselLayout.multiCarousel) return 0
-    const slides = Object.values(carouselSlideDims)
-    return loungeFeedCarouselUnifiedRowHeight(
-      slides,
+    return loungeFeedCarouselRowHeightFromFirstSlide(
+      carouselSlideDims[0],
       carouselViewport.maxRowPx,
       carouselViewport.maxSlideWidthPx,
     )

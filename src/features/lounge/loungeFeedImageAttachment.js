@@ -40,16 +40,13 @@ export function loungeFeedCarouselFittedHeight(naturalWidth, naturalHeight, maxH
 }
 
 /**
- * Row height shared by every carousel slide: tallest fitted height across loaded slides.
- * @param {{ w: number, h: number }[]} slides
+ * Row height for every carousel slide: fit to the **first** slide's fitted height.
+ * Later slides scale to this height (taller ones shrink; landscape ones won't balloon wide).
+ * @param {{ w: number, h: number } | undefined} firstSlide
  */
-export function loungeFeedCarouselUnifiedRowHeight(slides, maxHeightPx, maxWidthPx) {
-  let maxH = 0
-  for (const slide of slides) {
-    if (!slide) continue
-    maxH = Math.max(maxH, loungeFeedCarouselFittedHeight(slide.w, slide.h, maxHeightPx, maxWidthPx))
-  }
-  return maxH
+export function loungeFeedCarouselRowHeightFromFirstSlide(firstSlide, maxHeightPx, maxWidthPx) {
+  if (!firstSlide) return 0
+  return loungeFeedCarouselFittedHeight(firstSlide.w, firstSlide.h, maxHeightPx, maxWidthPx)
 }
 
 /**

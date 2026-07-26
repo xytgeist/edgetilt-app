@@ -4,6 +4,7 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import PlayLogPartnerPickerModal from './PlayLogPartnerPickerModal.jsx'
 import {
   formatPlayLogPartnerOutcomeShare,
+  formatPlayLogPartnerPlayShareUsd,
   parsePlayLogBetSize,
   playLogPartnerPlayUsdEditSeed,
   playLogPartnerSharePercentFromPlayUsd,
@@ -18,6 +19,13 @@ import {
   playLogPartnersWithManager,
 } from './playLogPartners.js'
 import { addSavedGuestLabel } from './playLogSavedGuests.js'
+
+/** Partner row numeric columns — wide enough for seven-digit whole dollars (e.g. $999,999). */
+const PARTNER_NUMERIC_GRID =
+  'grid shrink-0 grid-cols-[2.75rem_5.75rem_6.25rem] items-center gap-x-1'
+const PARTNER_COL_SHARE_PCT = 'min-w-0 text-right'
+const PARTNER_COL_SHARE_USD = 'min-w-0 text-right'
+const PARTNER_COL_PL = 'min-w-0 text-right'
 
 /**
  * @param {{
@@ -249,18 +257,22 @@ export default function PlayLogPartnersSection({
       <span className="min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
         Partner
       </span>
-      <div className="flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-        <span className="w-[3.25rem] text-right" title="Percent of the play">
+      <div className={`${PARTNER_NUMERIC_GRID} text-[10px] font-semibold uppercase tracking-wide text-zinc-500`}>
+        <span className={PARTNER_COL_SHARE_PCT} title="Percent of the play">
           Share %
         </span>
-        <span className="w-[3.25rem] text-right" title="Dollar share of bet size">
+        <span className={PARTNER_COL_SHARE_USD} title="Dollar share of bet size">
           Share $
         </span>
-        <span className="w-11 text-right" title="Share of session net win/loss">
+        <span className={PARTNER_COL_PL} title="Share of session net win/loss">
           P/L
         </span>
-        {showPaidColumn ? <span className="w-5 text-center">Paid</span> : null}
       </div>
+      {showPaidColumn ? (
+        <span className="w-5 shrink-0 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+          Paid
+        </span>
+      ) : null}
       {!readOnly ? <span className="w-4 shrink-0" aria-hidden /> : null}
     </div>
   )
@@ -293,9 +305,11 @@ export default function PlayLogPartnersSection({
           {partnerNameContent(row)}
         </div>
       )}
-      <div className="flex shrink-0 items-center gap-1">
+      <div className={`${PARTNER_NUMERIC_GRID}`}>
         {readOnly ? (
-          <span className="flex h-4 w-[3.25rem] items-center justify-end text-cyan-300 text-xs font-semibold tabular-nums leading-none">
+          <span
+            className={`flex h-4 items-center justify-end text-cyan-300 text-xs font-semibold tabular-nums leading-none ${PARTNER_COL_SHARE_PCT}`}
+          >
             {row.sharePercent}%
           </span>
         ) : (
@@ -305,11 +319,11 @@ export default function PlayLogPartnersSection({
             value={row.sharePercent}
             onChange={e => updateSharePercent(row.key, e.target.value)}
             placeholder="0"
-            className="w-[3.25rem] min-h-8 rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
+            className={`min-h-8 w-full rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40 ${PARTNER_COL_SHARE_PCT}`}
             aria-label="Share percent of the play"
           />
         )}
-        <div className={`flex w-[3.25rem] items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}>
+        <div className={`flex items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'} ${PARTNER_COL_SHARE_USD}`}>
           <PartnerPlayShareUsd
             betSize={betSize}
             sharePercent={row.sharePercent}
@@ -329,19 +343,19 @@ export default function PlayLogPartnersSection({
             onEditBlur={() => setPlayUsdEdit(null)}
           />
         </div>
-        <div className={`flex w-11 items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'}`}>
+        <div className={`flex items-center justify-end ${readOnly ? 'h-4' : 'min-h-8'} ${PARTNER_COL_PL}`}>
           <PartnerShareAmount netOutcome={netOutcome} sharePercent={row.sharePercent} />
         </div>
-        {showPaidColumn ? (
-          <div className={`flex w-5 items-center justify-center ${readOnly ? 'h-4' : 'min-h-8'}`}>
-            <PaidCheckbox
-              checked={Boolean(row.paid)}
-              disabled={!canEditPaid || paidSaving}
-              onChange={next => void togglePaid(row.key, next)}
-            />
-          </div>
-        ) : null}
       </div>
+      {showPaidColumn ? (
+        <div className={`flex w-5 shrink-0 items-center justify-center ${readOnly ? 'h-4' : 'min-h-8'}`}>
+          <PaidCheckbox
+            checked={Boolean(row.paid)}
+            disabled={!canEditPaid || paidSaving}
+            onChange={next => void togglePaid(row.key, next)}
+          />
+        </div>
+      ) : null}
       {!readOnly && canRemoveRow(row) ? (
         <button
           type="button"
@@ -607,7 +621,8 @@ function PartnerPlayShareUsd({
   const canConvert = betSize != null && Number.isFinite(betSize) && betSize > 0
 
   if (readOnly) {
-    if (!displayValue) {
+    const formatted = formatPlayLogPartnerPlayShareUsd(betSize, sharePercent)
+    if (!formatted) {
       return <span className="text-zinc-600 text-xs font-semibold tabular-nums">-</span>
     }
     return (
@@ -615,7 +630,7 @@ function PartnerPlayShareUsd({
         className="text-xs font-semibold tabular-nums whitespace-nowrap text-zinc-200"
         title="Dollar share of bet size"
       >
-        {displayValue}
+        {formatted}
       </span>
     )
   }
@@ -623,7 +638,7 @@ function PartnerPlayShareUsd({
   if (!canConvert) {
     return (
       <span
-        className="w-[3.25rem] text-center text-zinc-600 text-xs font-semibold tabular-nums"
+        className="w-full text-center text-zinc-600 text-xs font-semibold tabular-nums"
         title="Enter bet size to use Share $"
       >
         -
@@ -640,7 +655,7 @@ function PartnerPlayShareUsd({
       onChange={e => onEditChange?.(e.target.value)}
       onBlur={onEditBlur}
       placeholder="0"
-      className="w-[3.25rem] min-h-8 rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
+      className="min-h-8 w-full rounded-md bg-zinc-900 px-0.5 text-right text-xs text-white font-semibold tabular-nums outline-none focus:ring-2 focus:ring-cyan-500/40"
       aria-label="Dollar share of the play (bet size)"
       title="Edit dollar share of bet size; percent updates to match"
     />

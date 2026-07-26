@@ -10,15 +10,19 @@ import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
   BOT_RUN_STATES,
-  DEFAULT_ODDS_ALERT_AUDIENCE,
+  DEFAULT_ODDS_ALERT_ROUTES,
   ODDS_ALERT_AUDIENCE_ROWS,
-  ODDS_ALERT_DESTINATION_OPTIONS,
+  ODDS_ALERT_ROUTE_COLUMNS,
   ODDS_ALERT_INVOKE_ROWS,
   SCOTT_FALLBACK_SPORT_PICKS,
   botPollActionLabel,
   botRunStateBadgeClass,
   formatBotPortalWhen,
-  normalizeAlertDestinationValue,
+  isValidAlertRoute,
+  parseAlertRoute,
+  toggleAlertRouteLounge,
+  toggleAlertRouteSubChat,
+  toggleAlertRouteTeaser,
 } from './botPortalConstants.js'
 import {
   deleteBotPost,
@@ -344,11 +348,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
       minEdgePct: String(bot.odds_config?.min_edge_pct ?? 2),
       alertAudience: Object.fromEntries(
-        ODDS_ALERT_AUDIENCE_ROWS.map((row) => {
-          const raw = bot.odds_config?.alert_audience?.[row.key]
-            ?? DEFAULT_ODDS_ALERT_AUDIENCE[row.key]
-          return [row.key, normalizeAlertDestinationValue(raw) || DEFAULT_ODDS_ALERT_AUDIENCE[row.key]]
-        }),
+        ODDS_ALERT_AUDIENCE_ROWS.map((row) => [
+          row.key,
+          parseAlertRoute(bot.odds_config?.alert_audience?.[row.key], row.key),
+        ]),
       ),
       displayName: bot.display_name || '',
       categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
@@ -408,6 +411,15 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       if (!Number.isFinite(minEdge) || minEdge < 0.5 || minEdge > 15) {
         setToast('Min +EV % must be between 0.5 and 15.')
         return
+      }
+    }
+
+    if (bot.pipeline === 'odds_api') {
+      for (const row of ODDS_ALERT_AUDIENCE_ROWS) {
+        if (!isValidAlertRoute(draft.alertAudience?.[row.key])) {
+          setToast(`Pick at least Everyone or Sub chat for ${row.label}.`)
+          return
+        }
       }
     }
 
@@ -1175,44 +1187,92 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
               Alert destination
             </div>
             <div className="text-zinc-600 text-[10px] mb-3">
-              Per alert type: public lounge feed, creator fan sub chat only, or sub chat with a random lounge teaser (10% or 30%).
+              Check each destination independently. Everyone = lounge feed; Sub chat = fan room. +10% / +30% add a random lounge teaser when Sub chat is on and Everyone is off.
             </div>
             <table className="w-full table-fixed text-left text-xs">
                 <thead>
                   <tr className="text-zinc-500 border-b border-zinc-800/80">
-                    <th className="py-2 pr-3 font-semibold w-[38%]">Alert type</th>
-                    {ODDS_ALERT_DESTINATION_OPTIONS.map((opt) => (
+                    <th className="py-2 pr-3 font-semibold w-[34%]">Alert type</th>
+                    {ODDS_ALERT_ROUTE_COLUMNS.map((col) => (
                       <th
-                        key={opt.value}
+                        key={col.key}
                         className="py-2 px-1 font-semibold text-center"
-                        title={opt.title}
+                        title={col.title}
                       >
-                        {opt.label}
+                        {col.label}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {ODDS_ALERT_AUDIENCE_ROWS.map((row) => {
-                    const value = draft.alertAudience?.[row.key] || DEFAULT_ODDS_ALERT_AUDIENCE[row.key]
+                    const route = draft.alertAudience?.[row.key] || DEFAULT_ODDS_ALERT_ROUTES[row.key]
+                    const teaserDisabled = route.lounge === true
                     return (
                       <tr key={row.key} className="border-b border-zinc-800/50 last:border-0">
                         <td className="py-2 pr-3 text-zinc-200">{row.label}</td>
-                        {ODDS_ALERT_DESTINATION_OPTIONS.map((opt) => (
-                          <td key={opt.value} className="py-2 px-1 text-center">
-                            <input
-                              type="radio"
-                              name={`alert-destination-${row.key}`}
-                              checked={value === opt.value}
-                              title={opt.title}
-                              onChange={() => setDraft((d) => ({
-                                ...d,
-                                alertAudience: { ...d.alertAudience, [row.key]: opt.value },
-                              }))}
-                              className="accent-cyan-500"
-                            />
-                          </td>
-                        ))}
+                        <td className="py-2 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={route.lounge === true}
+                            title={ODDS_ALERT_ROUTE_COLUMNS[0].title}
+                            onChange={() => setDraft((d) => ({
+                              ...d,
+                              alertAudience: {
+                                ...d.alertAudience,
+                                [row.key]: toggleAlertRouteLounge(d.alertAudience?.[row.key] || route),
+                              },
+                            }))}
+                            className="accent-cyan-500"
+                          />
+                        </td>
+                        <td className="py-2 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={route.sub_chat === true}
+                            title={ODDS_ALERT_ROUTE_COLUMNS[1].title}
+                            onChange={() => setDraft((d) => ({
+                              ...d,
+                              alertAudience: {
+                                ...d.alertAudience,
+                                [row.key]: toggleAlertRouteSubChat(d.alertAudience?.[row.key] || route),
+                              },
+                            }))}
+                            className="accent-cyan-500"
+                          />
+                        </td>
+                        <td className="py-2 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!teaserDisabled && route.lounge_teaser_pct === 10}
+                            disabled={teaserDisabled}
+                            title={ODDS_ALERT_ROUTE_COLUMNS[2].title}
+                            onChange={() => setDraft((d) => ({
+                              ...d,
+                              alertAudience: {
+                                ...d.alertAudience,
+                                [row.key]: toggleAlertRouteTeaser(d.alertAudience?.[row.key] || route, 10),
+                              },
+                            }))}
+                            className="accent-cyan-500 disabled:opacity-30"
+                          />
+                        </td>
+                        <td className="py-2 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!teaserDisabled && route.lounge_teaser_pct === 30}
+                            disabled={teaserDisabled}
+                            title={ODDS_ALERT_ROUTE_COLUMNS[3].title}
+                            onChange={() => setDraft((d) => ({
+                              ...d,
+                              alertAudience: {
+                                ...d.alertAudience,
+                                [row.key]: toggleAlertRouteTeaser(d.alertAudience?.[row.key] || route, 30),
+                              },
+                            }))}
+                            className="accent-cyan-500 disabled:opacity-30"
+                          />
+                        </td>
                       </tr>
                     )
                   })}

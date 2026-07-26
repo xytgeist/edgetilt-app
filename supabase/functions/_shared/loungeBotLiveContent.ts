@@ -2,7 +2,7 @@
  * Live in-game edge + period/halftime reports (Scott Share poll_edges).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MAX_EV_PCT,
   DEFAULT_MIN_BOOKS,
@@ -539,12 +539,12 @@ export async function tryPublishLiveGameContent(
         continue
       }
 
-      const alertDestination = resolveAlertDestination('in_game_edge', oddsCfg.alert_audience)
+      const alertRoute = resolveAlertRoute('in_game_edge', oddsCfg.alert_audience)
       const result = await submitLoungeBotAlertPost(admin, {
         botUserId: bot.user_id,
         caption,
         categoryPills: pills,
-        alertDestination,
+        alertRoute,
         postKind: 'in_game_edge',
         dedupeKey,
         score: pick.edgePct,
@@ -655,12 +655,12 @@ export async function tryPublishLiveGameContent(
         continue
       }
 
-      const alertDestination = resolveAlertDestination('period_report', oddsCfg.alert_audience)
+      const alertRoute = resolveAlertRoute('period_report', oddsCfg.alert_audience)
       const result = await submitLoungeBotAlertPost(admin, {
         botUserId: bot.user_id,
         caption,
         categoryPills: pills,
-        alertDestination,
+        alertRoute,
         postKind: 'period_report',
         dedupeKey,
         score: eventPicks[0]?.edgePct ?? null,

@@ -3,7 +3,7 @@
  * Only publishes when a clean arb clears the min profit threshold (no empty posts).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   americanToImplied,
   formatAmericanOdds,
@@ -487,12 +487,12 @@ export async function tryPublishArbWatchAlerts(
       displayName: bot.display_name || 'Scott Sharpe',
       categoryLabel,
     })
-    const alertDestination = resolveAlertDestination('arb_watch', oddsCfg.alert_audience)
+    const alertRoute = resolveAlertRoute('arb_watch', oddsCfg.alert_audience)
     const result = await submitLoungeBotAlertPost(admin, {
       botUserId: bot.user_id,
       caption,
       categoryPills: pills,
-      alertDestination,
+      alertRoute,
       postKind: 'arb_watch',
       dedupeKey,
       score: arb.profitPct,

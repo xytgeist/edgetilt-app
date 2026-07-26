@@ -103,7 +103,7 @@ Long posts may still truncate with `+N more games today.` at the **2000-char** c
 | **Best bet · hour** | Manual smoke for hourly strongest +EV post (same logic as cron) |
 | **Post all examples** | One feed post per alert type (**17** total, incl. Coffee & Covers thread part); captions match live format |
 | **Min +EV %** | Settings field **0.5–15** → **`lounge_bot_odds_config.min_edge_pct`** |
-| **Alert destination** | Per alert type: **Everyone** (public lounge feed), **Sub chat** (creator fan room only), **Sub + 10%**, or **Sub + 30%** (always fan room; random lounge teaser). Portal matrix → **`lounge_bot_odds_config.alert_audience`**. Migration **`20260725230000`**. Scott must have **`creator_monetization_profiles.fan_room_id`** for sub chat routes. |
+| **Alert destination** | Per alert type **checkboxes**: **Everyone** (lounge), **Sub chat**, optional **+10% / +30% lounge** teaser when Everyone is off. Check both Everyone + Sub chat to post to **both**. Stored as route objects in **`alert_audience`**. Migration **`20260726000000`**. |
 | **Sign in as bot** | Admin-only (**`lounge-bot-admin`** `staff_sign_in_as_bot`): swaps browser session to the bot and opens Lounge Settings → **Fan subscriptions** (offer copy, go live). **Do not use for Stripe Connect** … use **Connect payouts (Stripe)** below instead (admin session, return to Bot Portal). |
 | **Connect payouts (Stripe)** | Admin-only **`staff_bot_fan_connect`**: Stripe Express onboarding for the bot without leaving your admin login; return URL **`/?tab=bots&bot={slug}&fan_connect=return`**. Then **Sign in as bot** only if you need the in-app offer editor / **Turn on fan subscriptions**. |
 

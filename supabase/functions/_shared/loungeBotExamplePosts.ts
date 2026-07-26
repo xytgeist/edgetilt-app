@@ -2,7 +2,7 @@
  * Scott Sharpe portal smoke pack: canonical example caption per post kind.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import { publishRoutedBotThreadPost } from './loungeBotPublishSchedule.ts'
 
 export type ScottExamplePostSpec = {
@@ -289,14 +289,14 @@ export async function publishScottExamplePosts(
   let failed = 0
 
   for (const spec of SCOTT_EXAMPLE_POST_SPECS) {
-    const alertDestination = resolveAlertDestination(spec.postKind, alertAudience)
+    const alertRoute = resolveAlertRoute(spec.postKind, alertAudience)
     const dedupeKey = `example_pack:${spec.postKind}:${packId}`
 
     const result = await publishRoutedBotThreadPost(admin, {
       botUserId: bot.user_id,
       caption: spec.caption,
       categoryPills: pills,
-      alertDestination,
+      alertRoute,
       threadParts: spec.threadParts?.map((body) => ({ body })),
     })
 

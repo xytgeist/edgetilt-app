@@ -2,7 +2,7 @@
  * Value Bet Radar — 2–3 strongest +EV plays across today's slate (snackable feed post).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import { eventsForBestBetHourScan } from './loungeBotBestBetHour.ts'
 import {
   compareByCoverageThenEv,
@@ -345,14 +345,14 @@ export async function runValueBetRadarPoll(
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertDestination = resolveAlertDestination('value_bet_radar', oddsCfg.alert_audience)
+  const alertRoute = resolveAlertRoute('value_bet_radar', oddsCfg.alert_audience)
   const topEv = selected[0]?.edgePct ?? 0
   const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    alertDestination,
+    alertRoute,
     postKind: 'value_bet_radar',
     dedupeKey,
     score: topEv,

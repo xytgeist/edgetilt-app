@@ -2,10 +2,16 @@
  * Per-alert destination routing for Scott Share (lounge feed vs creator fan sub chat).
  */
 
-export type AlertDestination = 'lounge' | 'sub_chat' | 'sub_chat_10' | 'sub_chat_30'
+export type LoungeTeaserPct = 0 | 10 | 30
 
-/** @deprecated Legacy feed-only audience values (normalized on read). */
-export type LegacyAlertAudience = 'all' | 'subscribers'
+export type AlertRouteConfig = {
+  lounge: boolean
+  sub_chat: boolean
+  lounge_teaser_pct: LoungeTeaserPct
+}
+
+/** @deprecated Legacy single-value routing (normalized on read). */
+export type AlertDestination = 'lounge' | 'sub_chat' | 'sub_chat_10' | 'sub_chat_30'
 
 export type OddsAlertAudienceKey =
   | 'coffee_covers'
@@ -40,28 +46,21 @@ export const ODDS_ALERT_AUDIENCE_KEYS: OddsAlertAudienceKey[] = [
   'fade_the_public',
 ]
 
-export const ALERT_DESTINATION_VALUES: AlertDestination[] = [
-  'lounge',
-  'sub_chat',
-  'sub_chat_10',
-  'sub_chat_30',
-]
-
-export const DEFAULT_ALERT_AUDIENCE: Record<OddsAlertAudienceKey, AlertDestination> = {
-  coffee_covers: 'lounge',
-  edge: 'sub_chat',
-  line_movement: 'sub_chat',
-  in_game_edge: 'sub_chat',
-  period_report: 'sub_chat',
-  best_bet_hour: 'sub_chat',
-  arb_watch: 'sub_chat',
-  sharp_report: 'sub_chat',
-  value_bet_radar: 'lounge',
-  starter_spotlight: 'sub_chat',
-  confirmed_starters: 'sub_chat',
-  injury_impact: 'sub_chat',
-  rest_travel_edge: 'sub_chat',
-  fade_the_public: 'sub_chat',
+export const DEFAULT_ALERT_ROUTES: Record<OddsAlertAudienceKey, AlertRouteConfig> = {
+  coffee_covers: { lounge: true, sub_chat: false, lounge_teaser_pct: 0 },
+  edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  line_movement: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  in_game_edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  period_report: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  best_bet_hour: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  arb_watch: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  sharp_report: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  value_bet_radar: { lounge: true, sub_chat: false, lounge_teaser_pct: 0 },
+  starter_spotlight: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  confirmed_starters: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  injury_impact: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  rest_travel_edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  fade_the_public: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
 }
 
 export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {
@@ -83,6 +82,67 @@ export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {
 
 const LINE_KINDS = new Set(['line_movement', 'sharp_move', 'steam', 'rlm'])
 
+function legacyStringToRoute(val: string): AlertRouteConfig | null {
+  switch (val) {
+    case 'all':
+    case 'lounge':
+      return { lounge: true, sub_chat: false, lounge_teaser_pct: 0 }
+    case 'subscribers':
+    case 'sub_chat':
+      return { lounge: false, sub_chat: true, lounge_teaser_pct: 0 }
+    case 'sub_chat_10':
+      return { lounge: false, sub_chat: true, lounge_teaser_pct: 10 }
+    case 'sub_chat_30':
+      return { lounge: false, sub_chat: true, lounge_teaser_pct: 30 }
+    default:
+      return null
+  }
+}
+
+function normalizeTeaserPct(raw: unknown): LoungeTeaserPct {
+  const n = Number(raw)
+  if (n === 10) return 10
+  if (n === 30) return 30
+  return 0
+}
+
+/** Parse one alert_audience value (legacy string or route object). */
+export function parseAlertRouteConfig(raw: unknown): AlertRouteConfig | null {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>
+    const lounge = obj.lounge === true
+    const sub_chat = obj.sub_chat === true
+    let lounge_teaser_pct = normalizeTeaserPct(obj.lounge_teaser_pct)
+    if (lounge) lounge_teaser_pct = 0
+    if (!lounge && !sub_chat && lounge_teaser_pct === 0) return null
+    if (lounge_teaser_pct > 0 && !sub_chat) {
+      return { lounge: false, sub_chat: true, lounge_teaser_pct }
+    }
+    return { lounge, sub_chat, lounge_teaser_pct }
+  }
+  const legacy = legacyStringToRoute(String(raw || '').trim())
+  return legacy
+}
+
+export function normalizeAlertRouteForKey(
+  key: OddsAlertAudienceKey,
+  raw: unknown,
+): AlertRouteConfig {
+  return parseAlertRouteConfig(raw) ?? { ...DEFAULT_ALERT_ROUTES[key] }
+}
+
+export function normalizeAlertRoutes(
+  raw: Record<string, unknown> | null | undefined,
+): Record<OddsAlertAudienceKey, AlertRouteConfig> {
+  const out = { ...DEFAULT_ALERT_ROUTES }
+  if (!raw || typeof raw !== 'object') return out
+  for (const key of ODDS_ALERT_AUDIENCE_KEYS) {
+    const parsed = parseAlertRouteConfig(raw[key])
+    if (parsed) out[key] = parsed
+  }
+  return out
+}
+
 /** Map publish_log post_kind to alert_audience config key. */
 export function audienceKeyForPostKind(postKind: string): OddsAlertAudienceKey {
   if (LINE_KINDS.has(postKind)) return 'line_movement'
@@ -101,39 +161,19 @@ export function audienceKeyForPostKind(postKind: string): OddsAlertAudienceKey {
   return 'edge'
 }
 
-export function normalizeAlertDestinationValue(raw: unknown): AlertDestination | null {
-  const val = String(raw || '').trim()
-  if (val === 'all') return 'lounge'
-  if (val === 'subscribers') return 'sub_chat'
-  if (ALERT_DESTINATION_VALUES.includes(val as AlertDestination)) return val as AlertDestination
-  return null
-}
-
-export function normalizeAlertAudience(
-  raw: Record<string, unknown> | null | undefined,
-): Record<OddsAlertAudienceKey, AlertDestination> {
-  const out = { ...DEFAULT_ALERT_AUDIENCE }
-  if (!raw || typeof raw !== 'object') return out
-  for (const key of ODDS_ALERT_AUDIENCE_KEYS) {
-    const normalized = normalizeAlertDestinationValue(raw[key])
-    if (normalized) out[key] = normalized
-  }
-  return out
-}
-
-export function resolveAlertDestinationForKey(
+export function resolveAlertRouteForKey(
   key: OddsAlertAudienceKey,
   alertAudience?: Record<string, unknown> | null,
-): AlertDestination {
-  const normalized = normalizeAlertAudience(alertAudience)
+): AlertRouteConfig {
+  const normalized = normalizeAlertRoutes(alertAudience)
   return normalized[key]
 }
 
-export function resolveAlertDestination(
+export function resolveAlertRoute(
   postKind: string,
   alertAudience?: Record<string, unknown> | null,
-): AlertDestination {
-  return resolveAlertDestinationForKey(audienceKeyForPostKind(postKind), alertAudience)
+): AlertRouteConfig {
+  return resolveAlertRouteForKey(audienceKeyForPostKind(postKind), alertAudience)
 }
 
 export type AlertPublishTargets = {
@@ -142,22 +182,50 @@ export type AlertPublishTargets = {
 }
 
 /** Resolve whether this alert posts to sub chat and/or the public lounge feed. */
+export function resolvePublishTargetsFromRoute(
+  route: AlertRouteConfig,
+  roll = Math.random(),
+): AlertPublishTargets {
+  const subChat = route.sub_chat === true
+  let loungeFeed = route.lounge === true
+  if (!loungeFeed && subChat && route.lounge_teaser_pct > 0) {
+    loungeFeed = roll < route.lounge_teaser_pct / 100
+  }
+  return { subChat, loungeFeed }
+}
+
+export function resolvePublishTargetsForPostKind(
+  postKind: string,
+  alertAudience?: Record<string, unknown> | null,
+  roll = Math.random(),
+): AlertPublishTargets {
+  return resolvePublishTargetsFromRoute(resolveAlertRoute(postKind, alertAudience), roll)
+}
+
+/** @deprecated Use resolveAlertRoute + resolvePublishTargetsFromRoute. */
+export function resolveAlertDestination(
+  postKind: string,
+  alertAudience?: Record<string, unknown> | null,
+): AlertDestination {
+  const route = resolveAlertRoute(postKind, alertAudience)
+  if (route.lounge && route.sub_chat) return 'lounge'
+  if (route.lounge) return 'lounge'
+  if (route.sub_chat && route.lounge_teaser_pct === 10) return 'sub_chat_10'
+  if (route.sub_chat && route.lounge_teaser_pct === 30) return 'sub_chat_30'
+  if (route.sub_chat) return 'sub_chat'
+  return 'lounge'
+}
+
+/** @deprecated Use resolvePublishTargetsFromRoute. */
 export function resolvePublishTargets(
   destination: AlertDestination,
   roll = Math.random(),
 ): AlertPublishTargets {
-  switch (destination) {
-    case 'lounge':
-      return { subChat: false, loungeFeed: true }
-    case 'sub_chat':
-      return { subChat: true, loungeFeed: false }
-    case 'sub_chat_10':
-      return { subChat: true, loungeFeed: roll < 0.10 }
-    case 'sub_chat_30':
-      return { subChat: true, loungeFeed: roll < 0.30 }
-    default:
-      return { subChat: false, loungeFeed: true }
-  }
+  return resolvePublishTargetsFromRoute(parseAlertRouteConfig(destination) ?? {
+    lounge: true,
+    sub_chat: false,
+    lounge_teaser_pct: 0,
+  }, roll)
 }
 
 /** Lounge feed posts from Scott routing are always public (fan gating is sub chat). */

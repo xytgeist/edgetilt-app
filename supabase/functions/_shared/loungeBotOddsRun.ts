@@ -40,7 +40,7 @@ import {
 } from './loungeBotLineMovement.ts'
 import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundownContext.ts'
 import { isNcaabCoffeeSport } from './loungeBotNcaabCoffeeFilter.ts'
-import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MIN_POST_GAP_MINUTES,
   hasPendingScheduleDedupe,
@@ -425,12 +425,12 @@ export async function tryPublishEdgeAlert(
   if (dryRun) return { published: false, pick }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertDestination = resolveAlertDestination('edge', alertAudience)
+  const alertRoute = resolveAlertRoute('edge', alertAudience)
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    alertDestination,
+    alertRoute,
     postKind: 'edge',
     dedupeKey,
     score: pick.edgePct,
@@ -534,13 +534,13 @@ export async function tryPublishCoffeeAndCovers(
   )
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertDestination = resolveAlertDestination('coffee_covers', alertAudience)
+  const alertRoute = resolveAlertRoute('coffee_covers', alertAudience)
   const result = await publishRoutedBotThreadPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     threadParts: generated.threadParts.map((part) => ({ body: part.body })),
-    alertDestination,
+    alertRoute,
   })
 
   const topScore = generated.coverPicks[0]?.edgePct
@@ -660,13 +660,13 @@ export async function tryPublishCombinedCoffeeAndCovers(
   )
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertDestination = resolveAlertDestination('coffee_covers', alertAudience)
+  const alertRoute = resolveAlertRoute('coffee_covers', alertAudience)
   const result = await publishRoutedBotThreadPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
     threadParts: generated.threadParts.map((part) => ({ body: part.body })),
-    alertDestination,
+    alertRoute,
   })
 
   const topScore = generated.coverPicks[0]?.edgePct
@@ -737,12 +737,12 @@ export async function tryPublishSlateCheckIn(
   if (dryRun) return { published: false, gamesToday: ctx.eventsInWindow }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertDestination = resolveAlertDestination('coffee_covers', alertAudience)
+  const alertRoute = resolveAlertRoute('coffee_covers', alertAudience)
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    alertDestination,
+    alertRoute,
     postKind: 'slate',
     dedupeKey,
     score: ctx.eventsInWindow,
@@ -857,13 +857,13 @@ export async function tryPublishLineMovementAlerts(
       categoryLabel: ctx.categoryLabel,
       contextNote: contextNote || undefined,
     })
-    const alertDestination = resolveAlertDestination(alert.kind, oddsCfg.alert_audience)
+    const alertRoute = resolveAlertRoute(alert.kind, oddsCfg.alert_audience)
     const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
     const result = await submitLoungeBotAlertPost(admin, {
       botUserId: bot.user_id,
       caption,
       categoryPills: pills,
-      alertDestination,
+      alertRoute,
       postKind: alert.kind,
       dedupeKey,
       score: lineAlertMovementScore(alert),

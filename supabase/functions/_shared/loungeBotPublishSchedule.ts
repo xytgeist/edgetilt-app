@@ -3,8 +3,9 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
-  type AlertDestination,
-  resolvePublishTargets,
+  type AlertRouteConfig,
+  parseAlertRouteConfig,
+  resolvePublishTargetsFromRoute,
 } from './loungeBotAlertAudience.ts'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotPublishInput, type BotThreadPart } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
@@ -22,8 +23,8 @@ export type SubmitBotAlertPostInput = BotPublishInput & {
   priority?: BotPostPriority
   minGapMinutes?: number
   dryRun?: boolean
-  /** Lounge vs sub chat routing (preferred over legacy subscriberOnly). */
-  alertDestination?: AlertDestination
+  /** Lounge vs sub chat routing (checkbox model). */
+  alertRoute?: AlertRouteConfig
 }
 
 export type SubmitBotAlertPostResult = {
@@ -157,9 +158,12 @@ async function recordSuccessfulPublish(
   })
 }
 
-function resolveInputAlertDestination(input: SubmitBotAlertPostInput): AlertDestination {
-  if (input.alertDestination) return input.alertDestination
-  return input.subscriberOnly === true ? 'sub_chat' : 'lounge'
+function resolveInputAlertRoute(input: SubmitBotAlertPostInput): AlertRouteConfig {
+  if (input.alertRoute) return input.alertRoute
+  if (input.subscriberOnly === true) {
+    return { lounge: false, sub_chat: true, lounge_teaser_pct: 0 }
+  }
+  return { lounge: true, sub_chat: false, lounge_teaser_pct: 0 }
 }
 
 async function publishSubChatIfNeeded(
@@ -222,8 +226,8 @@ export async function submitLoungeBotAlertPost(
     return { accepted: false, published: false, scheduled: false, postId: null, error: null }
   }
 
-  const alertDestination = resolveInputAlertDestination(input)
-  const targets = resolvePublishTargets(alertDestination)
+  const alertRoute = resolveInputAlertRoute(input)
+  const targets = resolvePublishTargetsFromRoute(alertRoute)
 
   let subChatPublished = false
   if (targets.subChat) {
@@ -475,7 +479,7 @@ export async function drainDueScheduledBotPosts(
 }
 
 export type RoutedThreadPublishInput = BotPublishInput & {
-  alertDestination: AlertDestination
+  alertRoute: AlertRouteConfig
   threadParts?: BotThreadPart[]
 }
 
@@ -491,7 +495,7 @@ export async function publishRoutedBotThreadPost(
   admin: SupabaseClient,
   input: RoutedThreadPublishInput,
 ): Promise<RoutedThreadPublishResult> {
-  const targets = resolvePublishTargets(input.alertDestination)
+  const targets = resolvePublishTargetsFromRoute(input.alertRoute)
   const threadBodies = (input.threadParts || []).map((part) => String(part?.body || '').trim()).filter(Boolean)
 
   let subChatPublished = false

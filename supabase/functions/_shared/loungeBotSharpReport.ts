@@ -3,7 +3,7 @@
  * Runs on poll_edges; posts only when quality movement is detected (one pick per poll).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertDestination } from './loungeBotAlertAudience.ts'
+import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import { compareMovementWithCoverage, coverageRankForSport, type CalendarCoverageInput } from './loungeBotCoverageScope.ts'
 import {
   americanOddsMoveDistance,
@@ -279,13 +279,13 @@ export async function tryPublishSharpReport(
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertDestination = resolveAlertDestination('sharp_report', oddsCfg.alert_audience)
+  const alertRoute = resolveAlertRoute('sharp_report', oddsCfg.alert_audience)
   const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,
     caption,
     categoryPills: pills,
-    alertDestination,
+    alertRoute,
     postKind: 'sharp_report',
     dedupeKey,
     score: best.movementScore,

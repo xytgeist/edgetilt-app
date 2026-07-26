@@ -57,21 +57,88 @@ export const ODDS_ALERT_AUDIENCE_ROWS = Object.freeze([
   { key: 'fade_the_public', label: 'Fade the Public' },
 ])
 
-export const ODDS_ALERT_DESTINATION_OPTIONS = Object.freeze([
-  { value: 'lounge', label: 'Everyone', title: 'Public lounge feed' },
-  { value: 'sub_chat', label: 'Sub chat', title: 'Creator fan room only' },
-  { value: 'sub_chat_10', label: 'Sub + 10%', title: 'Always sub chat; 10% chance also posts to lounge' },
-  { value: 'sub_chat_30', label: 'Sub + 30%', title: 'Always sub chat; 30% chance also posts to lounge' },
+export const ODDS_ALERT_ROUTE_COLUMNS = Object.freeze([
+  { key: 'lounge', label: 'Everyone', title: 'Public lounge feed (always when checked)' },
+  { key: 'sub_chat', label: 'Sub chat', title: 'Creator fan room (always when checked)' },
+  { key: 'teaser_10', label: '+10% lounge', title: 'Sub chat always; 10% chance also posts to lounge (only when Everyone is off)' },
+  { key: 'teaser_30', label: '+30% lounge', title: 'Sub chat always; 30% chance also posts to lounge (only when Everyone is off)' },
 ])
 
-/** @param {string | undefined | null} raw */
-export function normalizeAlertDestinationValue(raw) {
+/** @typedef {{ lounge: boolean, sub_chat: boolean, lounge_teaser_pct: 0 | 10 | 30 }} AlertRoute */
+
+/** @type {Record<string, AlertRoute>} */
+export const DEFAULT_ODDS_ALERT_ROUTES = Object.freeze({
+  coffee_covers: { lounge: true, sub_chat: false, lounge_teaser_pct: 0 },
+  edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  line_movement: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  in_game_edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  period_report: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  best_bet_hour: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  arb_watch: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  sharp_report: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  value_bet_radar: { lounge: true, sub_chat: false, lounge_teaser_pct: 0 },
+  starter_spotlight: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  confirmed_starters: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  injury_impact: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  rest_travel_edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+  fade_the_public: { lounge: false, sub_chat: true, lounge_teaser_pct: 10 },
+})
+
+/** @param {unknown} raw @param {string} fallbackKey */
+export function parseAlertRoute(raw, fallbackKey) {
+  const fallback = DEFAULT_ODDS_ALERT_ROUTES[fallbackKey] || DEFAULT_ODDS_ALERT_ROUTES.edge
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const lounge = raw.lounge === true
+    const sub_chat = raw.sub_chat === true
+    let lounge_teaser_pct = Number(raw.lounge_teaser_pct) === 30 ? 30 : Number(raw.lounge_teaser_pct) === 10 ? 10 : 0
+    if (lounge) lounge_teaser_pct = 0
+    if (lounge_teaser_pct > 0 && !sub_chat) {
+      return { lounge: false, sub_chat: true, lounge_teaser_pct }
+    }
+    return { lounge, sub_chat, lounge_teaser_pct }
+  }
   const val = String(raw || '').trim()
-  if (val === 'all') return 'lounge'
-  if (val === 'subscribers') return 'sub_chat'
-  if (ODDS_ALERT_DESTINATION_OPTIONS.some((opt) => opt.value === val)) return val
-  return null
+  if (val === 'all' || val === 'lounge') return { lounge: true, sub_chat: false, lounge_teaser_pct: 0 }
+  if (val === 'subscribers' || val === 'sub_chat') return { lounge: false, sub_chat: true, lounge_teaser_pct: 0 }
+  if (val === 'sub_chat_10') return { lounge: false, sub_chat: true, lounge_teaser_pct: 10 }
+  if (val === 'sub_chat_30') return { lounge: false, sub_chat: true, lounge_teaser_pct: 30 }
+  return { ...fallback }
 }
+
+/** @param {AlertRoute | null | undefined} route */
+export function isValidAlertRoute(route) {
+  return Boolean(route && (route.lounge || route.sub_chat))
+}
+
+/** @param {AlertRoute} route */
+export function toggleAlertRouteLounge(route) {
+  const lounge = !route.lounge
+  return { ...route, lounge, lounge_teaser_pct: lounge ? 0 : route.lounge_teaser_pct }
+}
+
+/** @param {AlertRoute} route */
+export function toggleAlertRouteSubChat(route) {
+  const sub_chat = !route.sub_chat
+  return {
+    ...route,
+    sub_chat,
+    lounge_teaser_pct: sub_chat ? route.lounge_teaser_pct : 0,
+  }
+}
+
+/** @param {AlertRoute} route @param {10 | 30} pct */
+export function toggleAlertRouteTeaser(route, pct) {
+  if (route.lounge) return route
+  const on = route.lounge_teaser_pct === pct
+  return {
+    ...route,
+    sub_chat: true,
+    lounge_teaser_pct: on ? 0 : pct,
+  }
+}
+
+/** @deprecated use DEFAULT_ODDS_ALERT_ROUTES */
+export const DEFAULT_ODDS_ALERT_AUDIENCE = DEFAULT_ODDS_ALERT_ROUTES
 
 /**
  * Portal "Run now" buttons — one invoke per alert type.
@@ -93,23 +160,6 @@ export const ODDS_ALERT_INVOKE_ROWS = Object.freeze([
   { key: 'rest_travel_edge', label: 'Rest + Travel', action: 'poll_edges', alertKind: 'rest_travel_edge', force: true },
   { key: 'fade_the_public', label: 'Fade the Public', action: 'poll_edges', alertKind: 'fade_the_public', force: true },
 ])
-
-export const DEFAULT_ODDS_ALERT_AUDIENCE = Object.freeze({
-  coffee_covers: 'lounge',
-  edge: 'sub_chat',
-  line_movement: 'sub_chat',
-  in_game_edge: 'sub_chat',
-  period_report: 'sub_chat',
-  best_bet_hour: 'sub_chat',
-  arb_watch: 'sub_chat',
-  sharp_report: 'sub_chat',
-  value_bet_radar: 'lounge',
-  starter_spotlight: 'sub_chat',
-  confirmed_starters: 'sub_chat',
-  injury_impact: 'sub_chat',
-  rest_travel_edge: 'sub_chat',
-  fade_the_public: 'sub_chat',
-})
 
 /** @param {string} tone */
 export function botRunStateBadgeClass(tone) {

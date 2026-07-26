@@ -2486,8 +2486,9 @@ html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted p
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'] .text-zinc-400 {
-  color: #3f3f46 !important;
+html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'] .text-zinc-200,
+html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted comment preview'] .text-zinc-200 {
+  color: #27272a !important;
 }
 
 /*

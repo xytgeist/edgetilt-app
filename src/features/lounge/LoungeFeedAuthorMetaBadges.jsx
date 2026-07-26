@@ -5,6 +5,8 @@ import {
   loungeFeedAuthorIdentityClusterClass,
   LOUNGE_FEED_META_BADGE_WRAP_CLASS,
   LOUNGE_FEED_OG_AFTER_STAFF_CLASS,
+  LOUNGE_QUOTE_EMBED_META_BADGE_WRAP_CLASS,
+  LOUNGE_QUOTE_EMBED_OG_AFTER_STAFF_CLASS,
 } from './loungeFeedAvatar.js'
 
 /**
@@ -17,9 +19,16 @@ export default function LoungeFeedAuthorMetaBadges({
   displayName,
   displayNameClassName,
   onDisplayNameClick,
+  /** @type {'feed' | 'quoteEmbed'} */
+  metaVariant = 'feed',
 }) {
   const hasStaffBadge = loungeFeedAuthorHasStaffBadge(role)
   const showOgBadge = isOg === true
+  const quoteEmbed = metaVariant === 'quoteEmbed'
+  const badgeSize = quoteEmbed ? 'embed' : 'feed'
+  const badgeWrapClass = quoteEmbed ? LOUNGE_QUOTE_EMBED_META_BADGE_WRAP_CLASS : LOUNGE_FEED_META_BADGE_WRAP_CLASS
+  const ogAfterStaffClass = quoteEmbed ? LOUNGE_QUOTE_EMBED_OG_AFTER_STAFF_CLASS : LOUNGE_FEED_OG_AFTER_STAFF_CLASS
+  const clusterClass = loungeFeedAuthorIdentityClusterClass(hasStaffBadge, showOgBadge, { quoteEmbed })
 
   const displayNameNode =
     typeof onDisplayNameClick === 'function' ? (
@@ -37,25 +46,35 @@ export default function LoungeFeedAuthorMetaBadges({
       <span className={displayNameClassName}>{displayName}</span>
     )
 
-  return (
+  const identityBlock = (
     <>
-      <span className={loungeFeedAuthorIdentityClusterClass(hasStaffBadge, showOgBadge)}>
+      <span className={clusterClass}>
         {displayNameNode}
         {hasStaffBadge ? (
-          <span className={LOUNGE_FEED_META_BADGE_WRAP_CLASS}>
-            <LoungeStaffRoleBadge role={role} />
+          <span className={badgeWrapClass}>
+            <LoungeStaffRoleBadge role={role} size={badgeSize} />
           </span>
         ) : showOgBadge ? (
-          <span className={LOUNGE_FEED_META_BADGE_WRAP_CLASS}>
-            <LoungeOgBadge isOg />
+          <span className={badgeWrapClass}>
+            <LoungeOgBadge isOg size={badgeSize} />
           </span>
         ) : null}
       </span>
       {hasStaffBadge && showOgBadge ? (
-        <span className={LOUNGE_FEED_OG_AFTER_STAFF_CLASS}>
-          <LoungeOgBadge isOg />
+        <span className={ogAfterStaffClass}>
+          <LoungeOgBadge isOg size={badgeSize} />
         </span>
       ) : null}
     </>
   )
+
+  if (quoteEmbed) {
+    return (
+      <span className="inline-flex min-w-0 max-w-full flex-nowrap items-center gap-x-1">
+        {identityBlock}
+      </span>
+    )
+  }
+
+  return identityBlock
 }

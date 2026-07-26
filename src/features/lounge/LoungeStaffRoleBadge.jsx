@@ -3,7 +3,7 @@ import LoungeBadgeHoverTip from './LoungeBadgeHoverTip.jsx'
 /**
  * Staff icons from `profiles.role` (Lounge; public profile read).
  *
- * @param {{ role?: string | null, size?: 'feed' | 'detail' | 'modal' }} props
+ * @param {{ role?: string | null, size?: 'feed' | 'detail' | 'modal' | 'embed' }} props
  */
 function CrownIcon({ className }) {  return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
@@ -22,7 +22,7 @@ function ShieldIcon({ className }) {
   )
 }
 
-/** @type {Record<'feed' | 'detail' | 'modal', { wrap: string, crown: string, shield: string, modInner: string }>} */
+/** @type {Record<'feed' | 'detail' | 'modal' | 'embed', { wrap: string, crown: string, shield: string, modInner: string }>} */
 const STAFF_BADGE_LAYOUT = {
   feed: {
     wrap: 'translate-y-[1.5px]',
@@ -42,6 +42,12 @@ const STAFF_BADGE_LAYOUT = {
     shield: 'translate-y-0',
     modInner: 'translate-y-0',
   },
+  embed: {
+    wrap: 'inline-flex items-center',
+    crown: 'inline-flex items-center',
+    shield: 'inline-flex items-center',
+    modInner: 'inline-flex items-center',
+  },
 }
 
 export default function LoungeStaffRoleBadge({ role, size = 'feed' }) {
@@ -53,15 +59,29 @@ export default function LoungeStaffRoleBadge({ role, size = 'feed' }) {
 
   const layout = STAFF_BADGE_LAYOUT[size] ?? STAFF_BADGE_LAYOUT.feed
   const shieldClass =
-    size === 'modal' ? 'h-5 w-5' : size === 'detail' ? 'h-4 w-4' : 'h-[16px] w-[16px]'
+    size === 'modal'
+      ? 'h-5 w-5'
+      : size === 'embed'
+        ? 'h-[14px] w-[14px]'
+        : size === 'detail'
+          ? 'h-4 w-4'
+          : 'h-[16px] w-[16px]'
 
   const crownClass =
-    size === 'modal' ? 'h-5 w-5' : size === 'detail' ? 'h-4 w-4' : 'h-[18px] w-[18px]'
+    size === 'modal'
+      ? 'h-5 w-5'
+      : size === 'embed'
+        ? 'h-[14px] w-[14px]'
+        : size === 'detail'
+          ? 'h-4 w-4'
+          : 'h-[18px] w-[18px]'
+
+  const adminIconRowClass = size === 'embed' ? 'inline-flex items-center gap-x-0.5' : 'inline-flex items-baseline gap-x-0.5'
 
   if (r === 'admin') {
     return (
       <LoungeBadgeHoverTip tip="Admin" tone="admin" className={`inline-flex items-center ${layout.wrap}`}>
-        <span className="inline-flex items-baseline gap-x-0.5" role="img" aria-label="Admin">
+        <span className={adminIconRowClass} role="img" aria-label="Admin">
           <span className={`inline-flex ${layout.crown}`}>
             <CrownIcon className={`${crownClass} text-amber-400`} />
           </span>

@@ -394,7 +394,7 @@ export function LoungeImageCarousel({
   const carouselTrack = (
     <div
       ref={carouselScrollRef}
-      {...(carouselLayout.multiCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
+      {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
       className={carouselScrollerClass}
       role="region"
       aria-label={regionAriaLabel}

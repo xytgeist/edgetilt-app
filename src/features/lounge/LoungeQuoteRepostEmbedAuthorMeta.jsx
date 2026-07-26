@@ -1,11 +1,11 @@
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import {
-  LOUNGE_FEED_DISPLAY_NAME_CLASS,
-  LOUNGE_FEED_META_HANDLE_TIME_CLASS,
-  LOUNGE_FEED_META_ROW_CLASS,
   LOUNGE_FEED_META_TEXT_COLUMN_CLASS,
   LOUNGE_QUOTE_EMBED_AVATAR_CLASS,
+  LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS,
+  LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS,
+  LOUNGE_QUOTE_EMBED_META_ROW_CLASS,
 } from './loungeFeedAvatar.js'
 
 /** Quote-repost OP inset ... X-style avatar + meta row. */
@@ -28,7 +28,7 @@ export default function LoungeQuoteRepostEmbedAuthorMeta({
       : undefined
 
   return (
-    <div className="flex min-w-0 items-start gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {onAvatarClick ? (
         <button
           type="button"
@@ -76,15 +76,16 @@ export default function LoungeQuoteRepostEmbedAuthorMeta({
         </div>
       )}
       <div className={`min-w-0 flex-1 ${LOUNGE_FEED_META_TEXT_COLUMN_CLASS}`}>
-        <div className={LOUNGE_FEED_META_ROW_CLASS}>
+        <div className={LOUNGE_QUOTE_EMBED_META_ROW_CLASS}>
           <LoungeFeedAuthorMetaBadges
             role={profile?.role}
             isOg={profile?.is_og === true}
             displayName={displayNameFor(post)}
-            displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
+            displayNameClassName={LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS}
             onDisplayNameClick={onDisplayNameClick}
+            metaVariant="quoteEmbed"
           />
-          <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+          <span className={LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS}>
             <span className="min-w-0 truncate">{handleFor(post)}</span>
             <span className="shrink-0 text-zinc-600">·</span>
             <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">

@@ -31,6 +31,7 @@ import {
   LOUNGE_FEED_POST_INTERACTIONS_CLASS,
   LOUNGE_FEED_POST_ROW_INNER_CLASS,
   LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS,
+  LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
   loungeFeedAuthorHasStaffBadge,
 } from './loungeFeedAvatar.js'
 
@@ -655,7 +656,7 @@ export default function LoungePostArticle({
               tabIndex={0}
               data-lounge-original-embed
               aria-label="View original comment"
-              className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit text-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
+              className="mt-2 w-full cursor-pointer rounded-xl border border-zinc-700/80 bg-zinc-900/55 px-2.5 py-2 text-left font-inherit touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/80 active:bg-zinc-800/50"
             >
               <LoungeQuoteRepostEmbedAuthorMeta
                 post={post.reposted_comment}
@@ -664,7 +665,7 @@ export default function LoungePostArticle({
                 postAgeLabel={postAgeLabel}
               />
               {showCaptionText(post.reposted_comment.body, post.reposted_comment.link_preview) ? (
-                <div className="mt-1 text-left text-[15px] leading-snug text-zinc-400 whitespace-pre-wrap break-words">
+                <div className={`mt-1 text-left ${LOUNGE_QUOTE_EMBED_CAPTION_CLASS}`}>
                   <LoungeExpandableRichCaption
                     text={captionDisplayText(post.reposted_comment.body, post.reposted_comment.link_preview)}
                     captionOpts={richCaptionOpts}

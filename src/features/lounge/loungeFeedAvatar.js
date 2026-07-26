@@ -35,9 +35,17 @@ export const LOUNGE_FEED_TITLE_BAR_ROW_CLASS = 'px-3 py-2'
 /** Title bar back / menu / balance slot - matches AppShell `titleBarNavSlot` (`h-10 w-10`). */
 export const LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS = 'h-10 w-10 shrink-0'
 
-/** Quote-repost inset card ... compact avatar beside meta row (X-style). */
+/** Quote-repost inset card ... compact avatar beside meta row (X-style). No fill — embed shell border is enough. */
 export const LOUNGE_QUOTE_EMBED_AVATAR_CLASS =
-  'h-5 w-5 shrink-0 overflow-hidden rounded-full bg-zinc-900 text-[10px] font-bold text-zinc-200'
+  'h-5 w-5 shrink-0 overflow-hidden rounded-full text-[10px] font-bold'
+
+/** Quote-repost inset meta row ... baseline-align name/handle (compact avatar row). */
+export const LOUNGE_QUOTE_EMBED_META_ROW_CLASS =
+  'flex min-w-0 flex-nowrap items-baseline justify-start gap-x-1.5 text-[15px] leading-none'
+
+/** Quote-repost inset ... badge wraps centered to 15px meta line. */
+export const LOUNGE_QUOTE_EMBED_META_BADGE_WRAP_CLASS = 'inline-flex shrink-0 items-center translate-y-px'
+export const LOUNGE_QUOTE_EMBED_OG_AFTER_STAFF_CLASS = 'inline-flex shrink-0 items-center -ml-0.5 translate-y-px'
 
 /** Feed / profile / search post row - same rule gaps as post-detail comment `<li>` items. */
 export const LOUNGE_FEED_POST_ROW_CLASS =
@@ -89,10 +97,11 @@ export const LOUNGE_FEED_CAPTION_TEXT_CLASS =
   'text-[17px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere]'
 
 /** Display name + in-cluster badge(s): gap-x-1 (staff crown or OG-only). */
-export function loungeFeedAuthorIdentityClusterClass(hasStaffBadge, showOgBadge) {
+export function loungeFeedAuthorIdentityClusterClass(hasStaffBadge, showOgBadge, opts = {}) {
   const gap =
     hasStaffBadge || (showOgBadge && !hasStaffBadge) ? 'gap-x-1' : 'gap-x-0.5'
-  return `inline-flex min-w-0 max-w-full flex-nowrap items-start ${gap}`
+  const align = opts.quoteEmbed ? 'items-center' : 'items-start'
+  return `inline-flex min-w-0 max-w-full flex-nowrap ${align} ${gap}`
 }
 
 export function loungeFeedAuthorHasStaffBadge(role) {
@@ -114,9 +123,19 @@ export const LOUNGE_FEED_META_BADGE_WRAP_CLASS = 'shrink-0 -translate-y-px'
 /** OG after staff icons on the meta row (pulls toward shield; meta row still gap-x-1.5). */
 export const LOUNGE_FEED_OG_AFTER_STAFF_CLASS = 'shrink-0 -ml-0.5 -translate-y-px'
 
-/** Handle · time on the meta row - cap-align with name/badges (feed cards + comments). */
+/** Handle · time on the meta row - slightly below display name (feed cards + comments). */
 export const LOUNGE_FEED_META_HANDLE_TIME_CLASS =
-  'inline-flex min-w-0 max-w-[min(11rem,52vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[17px] leading-none text-zinc-500 sm:max-w-[13rem]'
+  'inline-flex min-w-0 max-w-[min(11rem,52vw)] shrink-[3] items-center gap-x-1 overflow-hidden text-[16px] leading-none text-zinc-500 sm:max-w-[13rem]'
+
+/** Quote-repost inset author line ... one step below feed post row (reposter meta). */
+export const LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS =
+  'min-w-0 truncate font-semibold text-[15px] leading-none text-zinc-100'
+export const LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS =
+  'inline-flex min-w-0 max-w-[min(11rem,52vw)] shrink-[3] items-baseline gap-x-1 overflow-hidden text-[14px] leading-none text-zinc-500 sm:max-w-[13rem]'
+
+/** Quote-repost inset body ... smaller than quoting caption, same color. */
+export const LOUNGE_QUOTE_EMBED_CAPTION_CLASS =
+  'text-[15px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-zinc-200'
 
 /** Post detail OP - stacked header (name + badges, then handle · time). */
 export const LOUNGE_FEED_POST_DETAIL_AUTHOR_BLOCK_CLASS =
@@ -126,7 +145,7 @@ export const LOUNGE_FEED_POST_DETAIL_NAME_BADGE_ROW_CLASS =
   'flex min-w-0 max-w-full flex-wrap items-start gap-x-1.5'
 
 export const LOUNGE_FEED_POST_DETAIL_HANDLE_TIME_CLASS =
-  'mt-1 -translate-y-px inline-flex min-w-0 max-w-full items-center gap-x-1 overflow-hidden text-[17px] leading-none text-zinc-500'
+  'mt-1 -translate-y-px inline-flex min-w-0 max-w-full items-center gap-x-1 overflow-hidden text-[16px] leading-none text-zinc-500'
 
 /** Space between meta row and caption - no transform (Android mis-hit-tests transformed caption text). */
 export const LOUNGE_FEED_CAPTION_TOP_CLASS = 'mt-0.5'

@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — verify Scott morning Coffee on prod.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — smoke quote repost avatar on iPhone PWA.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -29,7 +29,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`30fa305e`** (2026-07-07)
+**Branch:** `main` / `test` aligned at **`bf469ec3`** (2026-07-26)
 
 **Supabase (do not swap these):**
 
@@ -38,15 +38,15 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Scott portal **Run alert now** (per-type invoke) + Best Bet same-game skip live on test/prod Edge._
+**Goal:** _Lounge feed UX polish batch shipped (carousel bleed, lightbox snap, quote inset avatar). Ryan smoke on iPhone PWA; Scott/bot work may continue in parallel._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-10**). Scott: **`docs/lounge-bot-sports-odds.md`**. Bot portal: **`/?tab=bots`**.
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-26** feed UX + Scott rows). Lounge media: **`docs/frontend-architecture.md`** → **`lounge/`** row.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. unschedule leftover Coffee force-test cron on prod, Market Edge smoke]_
+- Session focus: _[e.g. smoke multi-image carousel on post detail + thread hierarchy; verify quote repost inset avatar]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see backlog Planned → Lounge bots"]_
+- Context: _[e.g. "see backlog Update log Jul 26 feed carousel batch"]_
 
 ---
 
@@ -96,67 +96,76 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ---
 
-## Pick up here (Jul 2026 — session 2026-07-07)
+## Pick up here (Jul 2026 ... session 2026-07-26)
 
-### Latest commits (`main` / `test`)
+### Latest commits (`main` / `test` @ **`bf469ec3`**)
 
 | Commit | What |
 | --- | --- |
-| **`30fa305e`** | Backlog sign-off: bot Post as images migration applied test + prod |
-| **`c10ee337`** | Bot portal **Post as** image attachments (up to 6; R2/lounge-feed upload) |
-| **`35942f61`** | X manual **Transform a post** bypasses bearer (oEmbed / pasted `sourceText`) |
-| **`017c772e`** | Actionable X API errors from **`lounge-x-ingest`** |
-| **`6bbdc72c`** | Scott **`poll_live`** + Rundown period/halftime milestones |
-| **`7344d09c`** | Market Edge Yahoo/MW applied test + prod |
+| **`bf469ec3`** | Quote repost inset: author avatar beside meta row (X-style) |
+| **`b6e6914a`** | Feed post row: remove `active:` background flash during scroll (iOS) |
+| **`6a2b67c0`** | Thread hierarchy: carousel full-bleed only on **focus** row, not ancestors |
+| **`a0972b9a`** | Profile sheet: fix horizontal pan from carousel `100vw` bleed overflow |
+| **`2a246548`** | Hide scrollbars on feed carousels + lightbox pager (`index.css`) |
+| **`64c6f5ea`** | Image lightbox: snap paging (not feed free-scroll); **`useLoungeLightboxCarouselSnap.js`** |
+| **`fc929dc1`** | Post/comment detail: remove separator under title bar |
+| **`23594dd8`** | Post detail: fix horizontal pan from carousel bleed (`overflow-x-hidden`) |
+| **`f8483129`** | Extend horizontal image carousel to detail + comment media |
+| **`dedc699f`** | PWA auth restore hardening on cold boot / resume |
+| **`7c90f91a`** | Feed carousel rubber-band bounce at scroll limits |
+| **`ab823f86`** | Restore vertical feed scroll over lounge media (axis lock) |
 
-### X editorial bots — **status (2026-07-07)**
+### Lounge feed carousel + bleed (shipped Jul 26)
 
-| Area | Status |
+| Area | Detail |
 | --- | --- |
-| **Portal** | **`/?tab=bots`** — per-bot **LLM voice** (`config.voice_prompt`), **Transform a post** (URL + optional tweet text), **Editorial inbox** tab |
-| **Manual transform** | **`lounge-x-ingest`** `{ slug, tweetUrl, sourceText? }` — no **`X_API_BEARER_TOKEN`** required; resolution: pasted text → X API (if bearer) → oEmbed → syndication |
-| **Timeline poll** | Still needs valid **`X_API_BEARER_TOKEN`** + paid X read; Ryan fixing X Developer app setup |
-| **Edge** | **`lounge-x-ingest`** redeployed test + prod (**`35942f61`** chain) |
-| **Bot example** | **vitalik.meth** tracking **@VitalikButerin** — voice is manual per bot, not auto-assigned |
+| **Surfaces** | Multi-image horizontal carousels on feed posts, post detail, comment rows, profile replies |
+| **Axis lock** | **`useLoungeFeedCarouselAxisLock`** ... vertical feed scroll wins except on carousel strip |
+| **Full bleed** | **`loungeFeedImageAttachment.js`** → **`loungeFeedCarouselFullBleed()`** ... feed posts + comment rows with **`captionColumnMedia={true}`** only |
+| **Hierarchy** | **`LoungePostDetailCommentHierarchy`** / **`LoungePostThreadPartsHierarchy`**: ancestors **`captionColumnMedia={false}`**; focus/last row **`true`** |
+| **Profile replies** | **`ProfileReplyRow`**: OP media in thread uses **`variant="detail"`** + **`captionColumnMedia={false}`** |
+| **Horizontal pan bug** | **`overflow-y-auto`** scroll roots implicitly allow horizontal overflow from **`100vw`** bleed children ... fixed on post detail scroll ref + profile body scroll ref |
 
-### Bot portal **Post as** — **shipped (2026-07-07)**
+### Lightbox vs feed carousel (shipped Jul 26)
 
-| Area | Status |
+| Area | Detail |
 | --- | --- |
-| **UI** | **`BotComposeImagePicker`** — up to 6 images on **Post as @handle** compose |
-| **SQL** | **`20260707000000`** — **`admin_lounge_bot_publish_post(..., p_image_urls)`**; caption **or** image required |
-| **Upload** | Same R2 / **`lounge-feed`** path as Lounge composer; attributed to bot **`user_id`** |
+| **Feed carousel** | Free horizontal scroll + axis lock + hidden scrollbar |
+| **Lightbox pager** | **`useLoungeLightboxCarouselSnap.js`** + CSS **`snap-x snap-mandatory`** ... page between images, not free-scroll |
+| **Swipe dismiss** | **`loungeLightboxSwipeDismiss.js`** skips pointer capture when touch starts on **`[data-lounge-lightbox-carousel]`** |
 
-### Scott Share / sports odds — **prod status (carry-forward)**
+### Quote repost inset avatar (shipped Jul 26 @ **`bf469ec3`**)
 
-| Area | Status |
+| Area | Detail |
 | --- | --- |
-| **`poll_live`** | Every **5 min** **10am–2am PT** — period/halftime reports + live edge (**`20260706190000`**) |
-| **`poll_edges`** | Every **15 min** 24/7 — fixed **`1d5d8fca`** Jul 6 |
-| **Coffee & Covers** | **6–8am PT** cron; +EV-only picks; morning smoke ongoing |
-| **Portal** | Async pg_net queue + outcome polling through **`20260706160000`** |
+| **Component** | **`LoungeQuoteRepostEmbedAuthorMeta.jsx`** ... 20px avatar left of name/badges/handle/time |
+| **Constant** | **`LOUNGE_QUOTE_EMBED_AVATAR_CLASS`** in **`loungeFeedAvatar.js`** |
+| **Blast radius** | Feed quote embeds, post detail, quote composer preview, comment quote insets, locked fan-only embed shell |
+| **Smoke** | Quote repost with inset OP ... avatar visible + tappable to profile (where **`onDisplayNameClick`** wired) |
 
-### Prod SQL / `schema_migrations` (Jul 7)
+### Scott / bots (parallel Jul 26 backlog ... not this chat's commits)
 
-**`schema_migrations` on both test + prod now through **`20260707000000`** (batch apply Jul 7). Earlier July rows (Market Edge **`20260705020000`**, bot portal chain, etc.) were applied manually before tracking caught up — verify via function/cron rows, not only migration table.
-
-Jul 7 batch reapplied + recorded: **`20260706150000`**–**`20260707000000`**.
-
-### Agent / CLI tooling
-
-- **`npm run db:query:test`** / **`db:query:production`** — serialized Supabase SQL (`scripts/supabase-db-query.mjs`).
+Heavy Jul 26 **`test-buildout-backlog.md`** rows: Scott alert thresholds, Situational Lean, Coffee voice, sub-chat dedupe, live pick quality, sport labels, bot **`feed_visible_at`** hotfix, **`lounge-odds-poll`** BOOT_ERROR fix. See backlog Update log **2026-07-26** Scott rows. Edge redeploys may still need Ryan smoke.
 
 ### Shipped client (Vercel `main` → **edgetilt.com**)
 
-Through **`30fa305e`**: bot Post as images, X transform tweet-text field, X ingest error surfacing in portal.
+Through **`bf469ec3`**: full feed UX polish batch above. **No new SQL** in this batch. **No Edge redeploy** required for carousel/lightbox/avatar fixes.
 
 ### Next priorities (ordered)
 
-1. **X transform smoke** — paste Vitalik tweet URL (+ optional text) → editorial inbox draft with LLM voice
-2. **Bot Post as images smoke** — photo post as bot on prod Lounge feed
-3. **X Developer app** — fix bearer for timeline polling when ready
-4. **Scott morning Coffee** — prod **~6–8am PT** unattended check
-5. **Unschedule** leftover one-shot Coffee force-test crons if still scheduled
+1. **Ryan smoke (iPhone PWA):** multi-image post on feed → swipe carousel → open detail → no horizontal page pan; thread hierarchy ancestors stay inset, focus row bleeds; profile sheet same; lightbox snap between images; quote repost inset shows avatar
+2. **Scott alert smoke** ... if continuing bot work: portal **Run alert now** + Coffee morning check (see backlog Jul 26 Scott rows)
+3. **Staged video publish** ... prod smoke still open from **2026-07-25** backlog row if not yet signed off
+
+### Key files (grep anchors)
+
+| Topic | Files |
+| --- | --- |
+| Carousel bleed | **`loungeFeedImageAttachment.js`**, **`LoungePostFeedMedia.jsx`**, **`LoungeCommentCard.jsx`** |
+| Horizontal pan | **`SocialFeed.jsx`** (`loungePostDetailScrollRef`), **`LoungeProfileFullScreen.jsx`** (`profileBodyScrollRef`) |
+| Lightbox snap | **`useLoungeLightboxCarouselSnap.js`**, **`LoungeInlineMediaUrl.jsx`**, **`index.css`** |
+| Quote avatar | **`LoungeQuoteRepostEmbedAuthorMeta.jsx`**, **`LoungeQuoteRepostEmbeddedOriginal.jsx`** |
+| Feed row flash | **`loungeFeedAvatar.js`** (`LOUNGE_FEED_POST_ROW_CLASS`) |
 
 ### AP guides (ongoing workflow)
 
@@ -168,4 +177,5 @@ Through **`30fa305e`**: bot Post as images, X transform tweet-text field, X inge
 
 - Thread compose iOS keyboard / options bar overlap after media pick
 - Feed UI +EV badge (caption prefix only today)
-- Reuters wire (needs LSEG/API license — no free RSS)
+- Stream + still images in one carousel (upload order) ... **not scheduled**
+- Reuters wire (needs LSEG/API license)

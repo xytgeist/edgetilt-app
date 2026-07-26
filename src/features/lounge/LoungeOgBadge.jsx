@@ -16,12 +16,13 @@ function subscribeLightTheme(onStoreChange) {
   return () => obs.disconnect()
 }
 
-/** @type {Record<'feed' | 'detail' | 'modal', { cls: string, px: number, yClass?: string }>} */
+/** @type {Record<'feed' | 'detail' | 'modal' | 'embed', { cls: string, px: number, yClass?: string }>} */
 const OG_BADGE_SIZE = {
   feed: { cls: 'h-4 w-4', px: 16, yClass: 'translate-y-[2px]' },
   detail: { cls: 'h-[17px] w-[17px]', px: 17, yClass: 'translate-y-[3px]' },
   /** Profile full-screen header - between feed (+3px) and cap-align. */
   modal: { cls: 'h-5 w-5', px: 20, yClass: 'translate-y-[2px]' },
+  embed: { cls: 'h-[14px] w-[14px]', px: 14, yClass: 'inline-flex items-center' },
 }
 
 /**
@@ -30,7 +31,7 @@ const OG_BADGE_SIZE = {
  * Dark mode: all gold (`og-cohort-badge-dark.svg`).
  * Hover tip in `LoungeBadgeHoverTip`.
  *
- * @param {{ isOg?: boolean | null, size?: 'feed' | 'detail' | 'modal' }} props
+ * @param {{ isOg?: boolean | null, size?: 'feed' | 'detail' | 'modal' | 'embed' }} props
  */
 export default function LoungeOgBadge({ isOg, size = 'feed' }) {
   const isLight = useSyncExternalStore(subscribeLightTheme, readIsLightTheme, () => false)

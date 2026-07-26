@@ -146,6 +146,7 @@ export function useLoungeFeedCarouselAxisLock(scrollerRef, enabled) {
     }
 
     const applyHorizontalScroll = (clientX) => {
+      el.scrollTop = 0
       el.scrollLeft = clampScroll(gesture.startScrollLeft + (gesture.startX - clientX))
     }
 

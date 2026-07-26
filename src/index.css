@@ -1324,6 +1324,12 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
   width: 100%;
   padding-left: var(--lounge-feed-carousel-inset-start);
   padding-right: var(--lounge-feed-carousel-inset-end);
+  overflow-y: hidden;
+  touch-action: pan-x pinch-zoom;
+}
+
+[data-lounge-feed-horizontal-scroll] {
+  overflow-y: hidden;
 }
 
 /*

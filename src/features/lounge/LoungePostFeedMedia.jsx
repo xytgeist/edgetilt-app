@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
@@ -6,6 +6,10 @@ import {
   loungeFeedAttachmentImgClassName,
   loungeFeedAttachmentSlideClassName,
   loungeFeedAttachmentTapTargetClassName,
+  loungeFeedCarouselMaxRowHeightPx,
+  loungeFeedCarouselMaxSlideWidthPx,
+  loungeFeedCarouselSlideWidthPx,
+  loungeFeedCarouselUnifiedRowHeight,
   loungeFeedImageAttachmentTier,
   LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
   LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS,
@@ -61,12 +65,18 @@ export function LoungeImageCarousel({
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
   const [lightbox, setLightbox] = useState(null)
   const [feedAttachmentTiers, setFeedAttachmentTiers] = useState(/** @type {Record<number, import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier>} */ ({}))
+  const [carouselSlideDims, setCarouselSlideDims] = useState(/** @type {Record<number, { w: number, h: number }>} */ ({}))
+  const [carouselViewport, setCarouselViewport] = useState(() => ({
+    maxRowPx: loungeFeedCarouselMaxRowHeightPx(),
+    maxSlideWidthPx: loungeFeedCarouselMaxSlideWidthPx(false),
+  }))
   const carouselScrollRef = useRef(null)
   const multiSlideCarousel = list.length > 1
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multiSlideCarousel)
   const urlsKey = list.join('\0')
   useLayoutEffect(() => {
     setFeedAttachmentTiers({})
+    setCarouselSlideDims({})
   }, [urlsKey])
   useLayoutEffect(() => {
     const el = carouselScrollRef.current
@@ -206,11 +216,54 @@ export function LoungeImageCarousel({
     fullBleed: feedMultiBleed,
   }
 
+  useEffect(() => {
+    if (!feedCarouselLayout.multiCarousel) return undefined
+    const syncViewport = () => {
+      setCarouselViewport({
+        maxRowPx: loungeFeedCarouselMaxRowHeightPx(),
+        maxSlideWidthPx: loungeFeedCarouselMaxSlideWidthPx(feedMultiBleed),
+      })
+    }
+    syncViewport()
+    window.addEventListener('resize', syncViewport, { passive: true })
+    return () => window.removeEventListener('resize', syncViewport)
+  }, [feedCarouselLayout.multiCarousel, feedMultiBleed, urlsKey])
+
+  const carouselUnifiedRowHeightPx = useMemo(() => {
+    if (!feedCarouselLayout.multiCarousel) return 0
+    const slides = Object.values(carouselSlideDims)
+    return loungeFeedCarouselUnifiedRowHeight(
+      slides,
+      carouselViewport.maxRowPx,
+      carouselViewport.maxSlideWidthPx,
+    )
+  }, [carouselSlideDims, carouselViewport.maxRowPx, carouselViewport.maxSlideWidthPx, feedCarouselLayout.multiCarousel])
+
+  useEffect(() => {
+    if (!feedCarouselLayout.multiCarousel) return undefined
+    const scroller = carouselScrollRef.current
+    if (!scroller) return undefined
+    const lockVerticalScroll = () => {
+      if (scroller.scrollTop !== 0) scroller.scrollTop = 0
+    }
+    scroller.addEventListener('scroll', lockVerticalScroll, { passive: true })
+    lockVerticalScroll()
+    return () => scroller.removeEventListener('scroll', lockVerticalScroll)
+  }, [feedCarouselLayout.multiCarousel, urlsKey, carouselUnifiedRowHeightPx])
+
+  const noteCarouselSlideDims = (index, img) => {
+    if (!feedCarouselLayout.multiCarousel || !img) return
+    const w = img.naturalWidth
+    const h = img.naturalHeight
+    if (!w || !h) return
+    setCarouselSlideDims((prev) => (prev[index]?.w === w && prev[index]?.h === h ? prev : { ...prev, [index]: { w, h } }))
+  }
+
   const carouselTrack = (
     <div
       ref={carouselScrollRef}
       {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-      className={`flex max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${feedCarouselLayout.multiCarousel ? 'items-center' : ''} ${isComposer ? 'scroll-smooth' : ''}`}
+      className={`flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${isComposer ? 'scroll-smooth' : ''}`}
       role="region"
       aria-label={regionAriaLabel}
     >
@@ -240,12 +293,26 @@ export function LoungeImageCarousel({
           : 'block max-w-full cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
         const onImgLoad = (e) => {
           noteFeedAttachmentTier(i, e.currentTarget)
+          noteCarouselSlideDims(i, e.currentTarget)
           notifySlideMediaLayout()
         }
+        const slideDims = carouselSlideDims[i]
+        const slideSizeStyle =
+          feedCarouselLayout.multiCarousel && carouselUnifiedRowHeightPx > 0 && slideDims
+            ? {
+                height: carouselUnifiedRowHeightPx,
+                width: loungeFeedCarouselSlideWidthPx(
+                  slideDims.w,
+                  slideDims.h,
+                  carouselUnifiedRowHeightPx,
+                ),
+              }
+            : undefined
         return (
         <div
           key={`${url}-${i}`}
           className={slideClass}
+          style={slideSizeStyle}
           {...(feedMultiBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
         >
             {canOpenLightbox ? (

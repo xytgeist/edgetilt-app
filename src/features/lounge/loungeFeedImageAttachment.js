@@ -8,6 +8,81 @@ export const LOUNGE_FEED_ATTACHMENT_TALL_HW_RATIO = 1.35
 /** Shared row height for multi-image feed carousels (width follows aspect ratio). */
 export const LOUNGE_FEED_CAROUSEL_ROW_HEIGHT_CLASS = 'h-[min(55vh,420px)]'
 
+/** Hard cap for carousel row height — keep in sync with `min(55vh, 420px)`. */
+export const LOUNGE_FEED_CAROUSEL_MAX_ROW_HEIGHT_PX = 420
+
+/**
+ * Max row height from viewport (pairs with {@link LOUNGE_FEED_CAROUSEL_MAX_ROW_HEIGHT_PX}).
+ * @param {number} [viewportHeightPx]
+ */
+export function loungeFeedCarouselMaxRowHeightPx(viewportHeightPx = typeof window !== 'undefined' ? window.innerHeight : 800) {
+  const vh = Number(viewportHeightPx)
+  if (!Number.isFinite(vh) || vh <= 0) return LOUNGE_FEED_CAROUSEL_MAX_ROW_HEIGHT_PX
+  return Math.min(LOUNGE_FEED_CAROUSEL_MAX_ROW_HEIGHT_PX, vh * 0.55)
+}
+
+/**
+ * Height for one slide when fit inside the feed carousel max box (preserve aspect, no upscaling).
+ * @param {number} naturalWidth
+ * @param {number} naturalHeight
+ * @param {number} maxHeightPx
+ * @param {number} maxWidthPx
+ */
+export function loungeFeedCarouselFittedHeight(naturalWidth, naturalHeight, maxHeightPx, maxWidthPx) {
+  const w = Number(naturalWidth)
+  const h = Number(naturalHeight)
+  const maxH = Number(maxHeightPx)
+  const maxW = Number(maxWidthPx)
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return 0
+  if (!Number.isFinite(maxH) || !Number.isFinite(maxW) || maxH <= 0 || maxW <= 0) return 0
+  const scale = Math.min(1, maxH / h, maxW / w)
+  return h * scale
+}
+
+/**
+ * Row height shared by every carousel slide: tallest fitted height across loaded slides.
+ * @param {{ w: number, h: number }[]} slides
+ */
+export function loungeFeedCarouselUnifiedRowHeight(slides, maxHeightPx, maxWidthPx) {
+  let maxH = 0
+  for (const slide of slides) {
+    if (!slide) continue
+    maxH = Math.max(maxH, loungeFeedCarouselFittedHeight(slide.w, slide.h, maxHeightPx, maxWidthPx))
+  }
+  return maxH
+}
+
+/**
+ * Slide width when every image is scaled to the same row height.
+ * @param {number} naturalWidth
+ * @param {number} naturalHeight
+ * @param {number} rowHeightPx
+ */
+export function loungeFeedCarouselSlideWidthPx(naturalWidth, naturalHeight, rowHeightPx) {
+  const w = Number(naturalWidth)
+  const h = Number(naturalHeight)
+  const rowH = Number(rowHeightPx)
+  if (!Number.isFinite(w) || !Number.isFinite(h) || h <= 0 || !Number.isFinite(rowH) || rowH <= 0) return undefined
+  return (rowH / h) * w
+}
+
+/**
+ * Read carousel max slide width from CSS vars (full-bleed feed strip).
+ * @param {boolean} fullBleed
+ */
+export function loungeFeedCarouselMaxSlideWidthPx(fullBleed, viewportWidthPx = typeof window !== 'undefined' ? window.innerWidth : 390) {
+  const vw = Number(viewportWidthPx)
+  if (!Number.isFinite(vw) || vw <= 0) return 320
+  if (fullBleed && typeof document !== 'undefined') {
+    const root = document.documentElement
+    const styles = getComputedStyle(root)
+    const insetStart = parseFloat(styles.getPropertyValue('--lounge-feed-carousel-inset-start')) || 72
+    const peek = parseFloat(styles.getPropertyValue('--lounge-feed-carousel-peek')) || 48
+    return Math.max(96, vw - insetStart - peek)
+  }
+  return Math.min(vw * 0.88, 320)
+}
+
 /** Full caption-column width (link preview card, landscape photo/video). */
 export const LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS = 'w-full min-w-0 max-w-full'
 
@@ -69,7 +144,7 @@ export function loungeFeedAttachmentTileWidthClassName(tier, opts = {}) {
 export function loungeFeedAttachmentSlideClassName(tier, opts = {}) {
   const { singleInPost = false, multiCarousel = false } = opts
   if (multiCarousel) {
-    return `relative w-auto shrink-0 min-w-[3rem] ${LOUNGE_FEED_CAROUSEL_ROW_HEIGHT_CLASS}`
+    return 'relative shrink-0 min-w-[3rem]'
   }
   if (tier === 'tall') {
     return 'relative w-auto max-w-[min(72vw,20rem)] shrink-0 snap-start'
@@ -90,7 +165,7 @@ export function loungeFeedAttachmentFrameClassName(tier, { rounding, border }, l
   const { multiCarousel = false } = layout
   const shell = `overflow-hidden ${rounding} border ${border} bg-zinc-950/40`
   if (multiCarousel) {
-    return `inline-flex h-full max-w-full items-center justify-center ${shell}`
+    return `block h-full w-full ${shell}`
   }
   return `block w-full max-w-full ${shell}`
 }
@@ -100,14 +175,9 @@ export function loungeFeedAttachmentFrameClassName(tier, { rounding, border }, l
  * @param {{ multiCarousel?: boolean, fullBleed?: boolean }} [layout]
  */
 export function loungeFeedAttachmentImgClassName(tier, layout = {}) {
-  const { multiCarousel = false, fullBleed = false } = layout
-  const fullBleedSlideMax =
-    'max-w-[calc(100vw-var(--lounge-feed-carousel-inset-start)-var(--lounge-feed-carousel-peek))]'
+  const { multiCarousel = false } = layout
   if (multiCarousel) {
-    const widthCap = fullBleed
-      ? fullBleedSlideMax
-      : 'max-w-[min(88vw,20rem)] sm:max-w-[min(72vw,17rem)]'
-    return `block h-full w-auto ${widthCap} object-contain`
+    return 'block h-full w-full object-contain'
   }
   if (tier === 'tall') {
     return 'block w-full h-auto max-w-full max-h-[min(55vh,420px)] object-contain'
@@ -122,7 +192,7 @@ export function loungeFeedAttachmentTapTargetClassName(tier, opts = {}) {
   const tap =
     'cursor-zoom-in touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50'
   if (multiCarousel) {
-    return `block h-full w-auto ${tap}`
+    return `block h-full w-full ${tap}`
   }
   if (tier === 'tall') {
     return `block w-auto max-w-[min(72vw,20rem)] ${tap}`

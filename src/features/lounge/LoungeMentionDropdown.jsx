@@ -3,11 +3,55 @@ import { createPortal } from 'react-dom'
 import { profileAvatarToneClass, profileAvatarInitials } from '../profiles/profileGate'
 import { getComposerCaretClientRect, isRichComposerElement } from './loungeRichComposerDom.js'
 
+const GAP_PX = 4
+const VIEWPORT_PAD_PX = 10
+const MIN_DROPDOWN_WIDTH_PX = 240
+const MAX_DROPDOWN_WIDTH_PX = 360
+
+/** Keep dropdown fully on-screen horizontally and vertically (visualViewport-aware on mobile). */
+function measureMentionDropdownPos(anchorEl, caretFieldEl, dropdownEl) {
+  const anchor = anchorEl.getBoundingClientRect()
+  const caret =
+    caretFieldEl && isRichComposerElement(caretFieldEl)
+      ? getComposerCaretClientRect(caretFieldEl)
+      : null
+
+  const anchorTop = caret ? caret.bottom : anchor.bottom
+  const flipTop = caret ? caret.top : anchor.top
+  const anchorLeft = caret ? caret.left : anchor.left
+
+  const vv = window.visualViewport
+  const vTop = (vv?.offsetTop ?? 0) + VIEWPORT_PAD_PX
+  const vBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - VIEWPORT_PAD_PX
+  const vWidth = vv?.width ?? window.innerWidth
+
+  const dropH = dropdownEl?.offsetHeight ?? 0
+  const spaceBelow = Math.max(0, vBottom - anchorTop - GAP_PX)
+  const spaceAbove = Math.max(0, flipTop - vTop - GAP_PX)
+  const openUp = dropH > 0 && spaceBelow < dropH && spaceAbove > spaceBelow
+
+  let top = openUp ? flipTop - dropH - GAP_PX : anchorTop + GAP_PX
+  if (top < vTop) top = vTop
+  if (dropH > 0 && top + dropH > vBottom) top = Math.max(vTop, vBottom - dropH)
+
+  const maxWidth = Math.max(MIN_DROPDOWN_WIDTH_PX, vWidth - VIEWPORT_PAD_PX * 2)
+  const width = Math.min(
+    Math.max(anchor.width, MIN_DROPDOWN_WIDTH_PX),
+    maxWidth,
+    MAX_DROPDOWN_WIDTH_PX,
+  )
+
+  let left = Math.max(anchor.left, Math.min(anchorLeft, anchor.right - 120))
+  left = Math.max(VIEWPORT_PAD_PX, Math.min(left, vWidth - VIEWPORT_PAD_PX - width))
+
+  return { top, left, width }
+}
+
 /**
  * Autocomplete dropdown for @mention suggestions.
  * Renders into document.body via portal (escapes any overflow:hidden ancestor).
  * Opens below the caret when `caretFieldRef` is set; otherwise below the anchor.
- * Flips above if it would overflow the viewport bottom.
+ * Flips above if it would overflow the viewport bottom; clamps horizontally to stay on-screen.
  *
  * Props:
  *   suggestions  – array of profile rows { user_id, handle, display_name, avatar_url }
@@ -36,28 +80,18 @@ export default function LoungeMentionDropdown({
 
     const updatePos = () => {
       if (!anchorRef?.current || !ref.current) return
-      const anchor = anchorRef.current.getBoundingClientRect()
-      const field = caretFieldRef?.current
-      const caret =
-        field && isRichComposerElement(field) ? getComposerCaretClientRect(field) : null
-      const dropH = ref.current.offsetHeight
-      const gap = 4
-      const anchorTop = caret ? caret.bottom : anchor.bottom
-      const anchorLeft = caret ? caret.left : anchor.left
-      const flipTop = caret ? caret.top : anchor.top
-      const spaceBelow = window.innerHeight - anchorTop - gap
-      const openUp = spaceBelow < dropH && flipTop > dropH + gap
-      setPos({
-        left: Math.max(anchor.left, Math.min(anchorLeft, anchor.right - 120)),
-        width: anchor.width,
-        top: openUp ? flipTop - dropH - gap : anchorTop + gap,
-      })
+      setPos(measureMentionDropdownPos(anchorRef.current, caretFieldRef?.current, ref.current))
     }
 
     updatePos()
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', updatePos)
+    vv?.addEventListener('scroll', updatePos)
     window.addEventListener('resize', updatePos)
     window.addEventListener('scroll', updatePos, true)
     return () => {
+      vv?.removeEventListener('resize', updatePos)
+      vv?.removeEventListener('scroll', updatePos)
       window.removeEventListener('resize', updatePos)
       window.removeEventListener('scroll', updatePos, true)
     }

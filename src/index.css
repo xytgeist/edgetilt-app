@@ -1317,10 +1317,11 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg::after {
 [data-lounge-feed-carousel-bleed] {
   width: 100vw;
   max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  /* Media sits in the caption column — pull back to the viewport left edge. */
+  margin-left: calc(-1 * var(--lounge-feed-carousel-inset-start));
 }
 [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
+  width: 100%;
   padding-left: var(--lounge-feed-carousel-inset-start);
   padding-right: var(--lounge-feed-carousel-inset-end);
 }

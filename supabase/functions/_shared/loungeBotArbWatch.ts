@@ -25,7 +25,7 @@ import {
 } from './loungeBotPublishSchedule.ts'
 
 const CAPTION_MAX = 2000
-const DEFAULT_MIN_ARB_PROFIT_PCT = 3
+const DEFAULT_MIN_ARB_PROFIT_PCT = 2
 /** Reject arbs above this (stale / bad line data). */
 const DEFAULT_MAX_ARB_PROFIT_PCT = 12
 const REFERENCE_TOTAL_STAKE = 100

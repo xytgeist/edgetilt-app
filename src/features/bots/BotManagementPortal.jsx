@@ -399,7 +399,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       maxPostsDayUnlimited: bot.max_posts_per_day == null,
       maxPostsHourUnlimited: bot.max_posts_per_hour == null,
       scoreThreshold: Number(bot.publish_score_threshold) || 55,
-      minEdgePct: String(bot.odds_config?.min_edge_pct ?? 2),
+      minEdgePct: String(bot.odds_config?.min_edge_pct ?? 4),
       alertAudience: Object.fromEntries(
         ODDS_ALERT_AUDIENCE_ROWS.map((row) => [
           row.key,

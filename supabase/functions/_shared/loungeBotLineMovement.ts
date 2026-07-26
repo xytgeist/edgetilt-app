@@ -14,15 +14,6 @@ export type LineMovementKind = 'sharp_move' | 'steam' | 'line_movement' | 'rlm'
 /** Feed posts only for meaningful moves — minor `line_movement` stays internal (Sharp Report input). */
 export const LINE_MOVEMENT_PUBLISH_KINDS = new Set<LineMovementKind>(['sharp_move', 'steam', 'rlm'])
 
-function ptTodayDate(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
-
 export type EventLineRow = {
   eventId: string
   sportKey: string
@@ -43,6 +34,11 @@ export type EventLineRow = {
 export const SNAPSHOT_COMPARE_MIN_MS = 8 * 60 * 1000
 export const SNAPSHOT_COMPARE_MAX_MS = 22 * 60 * 1000
 
+/** Rolling window: one line alert per event/market/kind (blocks mirror-side double posts). */
+export const LINE_MOVEMENT_EVENT_LOOKBACK_MS = 60 * 60 * 1000
+/** Skip dog-only ML lengthening below this unless paired with another side in the same move. */
+export const H2H_DOG_LEN_MIN_ML_PTS = 300
+
 export type LineMovementAlert = {
   kind: LineMovementKind
   eventId: string
@@ -60,6 +56,8 @@ export type LineMovementAlert = {
   priceDelta: number
   leadingBooks: string[]
   meaning: string
+  /** Other h2h outcomes on the same event/kind merged into one feed post. */
+  pairedMoves?: LineMovementAlert[]
 }
 
 export type LineMovementConfig = {
@@ -404,24 +402,120 @@ export function detectLineMovements(
   return alerts
 }
 
-export function lineMovementDedupeKey(alert: LineMovementAlert, ptDate = ptTodayDate()): string {
-  const dir = alert.marketKey === 'h2h'
-    ? (alert.priceDelta >= 0 ? 'up' : 'down')
-    : (alert.pointDelta >= 0 ? 'up' : 'down')
-  return `line:${alert.kind}:${alert.eventId}:${alert.marketKey}:${alert.outcomeName}:${dir}:${ptDate}`
+export function lineMovementEventScopeKey(
+  alert: Pick<LineMovementAlert, 'kind' | 'eventId' | 'marketKey'>,
+): string {
+  return `line_evt:${alert.kind}:${alert.eventId}:${alert.marketKey}`
+}
+
+function shouldSkipWeakH2hDogLengthening(alert: LineMovementAlert): boolean {
+  if (alert.marketKey !== 'h2h') return false
+  const mlPts = americanOddsMoveDistance(alert.oldPrice, alert.newPrice)
+  return alert.priceDelta > 0 && mlPts < H2H_DOG_LEN_MIN_ML_PTS
+}
+
+function combinedH2hMeaning(alerts: LineMovementAlert[]): string {
+  const shortening = alerts.find((a) => a.priceDelta < 0)
+  if (shortening) {
+    return `Favorite shortening hard — sharp money on ${shortName(shortening.outcomeName)}.`
+  }
+  if (alerts.length >= 2) {
+    const [a, b] = alerts
+    return `Multi-sided ML steam — ${shortName(a!.outcomeName)} and ${shortName(b!.outcomeName)} both adjusting.`
+  }
+  return alerts[0]?.meaning || 'Significant ML move across books.'
+}
+
+/** Merge two-way h2h moves into one alert; drop weak dog-only lengthening noise. */
+export function consolidateLineMovementAlerts(alerts: LineMovementAlert[]): LineMovementAlert[] {
+  const out: LineMovementAlert[] = []
+  const h2hGroups = new Map<string, LineMovementAlert[]>()
+
+  for (const alert of alerts) {
+    if (alert.marketKey !== 'h2h') {
+      out.push(alert)
+      continue
+    }
+    const key = `${alert.kind}:${alert.eventId}`
+    if (!h2hGroups.has(key)) h2hGroups.set(key, [])
+    h2hGroups.get(key)!.push(alert)
+  }
+
+  for (const group of h2hGroups.values()) {
+    if (group.length === 1) {
+      const sole = group[0]!
+      if (!shouldSkipWeakH2hDogLengthening(sole)) out.push(sole)
+      continue
+    }
+
+    const sorted = [...group].sort((a, b) => lineAlertMovementScore(b) - lineAlertMovementScore(a))
+    const primary: LineMovementAlert = {
+      ...sorted[0]!,
+      pairedMoves: sorted.slice(1),
+      meaning: combinedH2hMeaning(sorted),
+      leadingBooks: [...new Set(sorted.flatMap((g) => g.leadingBooks))].slice(0, 5),
+    }
+    out.push(primary)
+  }
+
+  out.sort((a, b) => lineAlertMovementScore(b) - lineAlertMovementScore(a))
+  return out
+}
+
+export async function hasRecentLineMovementForEvent(
+  admin: SupabaseClient,
+  botUserId: string,
+  alert: LineMovementAlert,
+  lookbackMs = LINE_MOVEMENT_EVENT_LOOKBACK_MS,
+): Promise<boolean> {
+  const since = new Date(Date.now() - lookbackMs).toISOString()
+  const legacyPrefix = `line:${alert.kind}:${alert.eventId}:${alert.marketKey}:`
+  const eventPrefix = `${lineMovementEventScopeKey(alert)}:`
+
+  const { data: published } = await admin
+    .from('lounge_bot_publish_log')
+    .select('id, post_id, sub_chat_message_id')
+    .eq('bot_user_id', botUserId)
+    .eq('status', 'published')
+    .in('post_kind', ['sharp_move', 'steam', 'rlm'])
+    .gte('created_at', since)
+    .or(`dedupe_key.like.${eventPrefix}%,dedupe_key.like.${legacyPrefix}%`)
+    .limit(8)
+
+  if ((published ?? []).some((row) => row.post_id || row.sub_chat_message_id)) return true
+
+  const { data: pending } = await admin
+    .from('lounge_bot_scheduled_posts')
+    .select('id')
+    .eq('bot_user_id', botUserId)
+    .eq('status', 'pending')
+    .in('post_kind', ['sharp_move', 'steam', 'rlm'])
+    .gte('created_at', since)
+    .or(`dedupe_key.like.${eventPrefix}%,dedupe_key.like.${legacyPrefix}%`)
+    .limit(1)
+
+  return Boolean(pending?.length)
+}
+
+export function lineMovementDedupeKey(alert: LineMovementAlert): string {
+  const bucket = Math.floor(Date.now() / LINE_MOVEMENT_EVENT_LOOKBACK_MS)
+  return `${lineMovementEventScopeKey(alert)}:${bucket}`
 }
 
 export function buildLineMovementCaption(
   alert: LineMovementAlert,
   opts?: { categoryLabel?: string; contextNote?: string },
 ): string {
-  const moveLine = formatMarketMoveLabel(
-    alert.marketKey,
-    alert.outcomeName,
-    alert.oldPoint,
-    alert.newPoint,
-    alert.oldPrice,
-    alert.newPrice,
+  const legs = alert.pairedMoves?.length ? [alert, ...alert.pairedMoves] : [alert]
+  const moveLines = legs.map((leg) =>
+    formatMarketMoveLabel(
+      leg.marketKey,
+      leg.outcomeName,
+      leg.oldPoint,
+      leg.newPoint,
+      leg.oldPrice,
+      leg.newPrice,
+    ),
   )
   const books = alert.leadingBooks.length
     ? alert.leadingBooks.join(', ')
@@ -440,7 +534,7 @@ export function buildLineMovementCaption(
     '',
     ...contextLines,
     '',
-    moveLine,
+    ...moveLines,
     `Books: ${books}`,
     '',
     alert.meaning,

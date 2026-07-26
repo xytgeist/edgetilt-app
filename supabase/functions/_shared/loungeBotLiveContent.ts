@@ -26,6 +26,10 @@ import {
   submitLoungeBotAlertPost,
 } from './loungeBotPublishSchedule.ts'
 import {
+  hasDedupePublishedToday,
+  hasRecentEventPickAlert,
+} from './loungeBotPublishDedupe.ts'
+import {
   elapsedMinutesSinceCommence,
   isEventStillLive,
 } from './loungeBotLiveGuards.ts'
@@ -374,25 +378,6 @@ async function countPublishedKindToday(
   return count || 0
 }
 
-async function hasDedupePublishedToday(
-  admin: SupabaseClient,
-  botUserId: string,
-  dedupeKey: string,
-  dayStart: string,
-): Promise<boolean> {
-  const { data } = await admin
-    .from('lounge_bot_publish_log')
-    .select('id')
-    .eq('bot_user_id', botUserId)
-    .eq('status', 'published')
-    .eq('dedupe_key', dedupeKey)
-    .gte('created_at', dayStart)
-    .not('post_id', 'is', null)
-    .limit(1)
-    .maybeSingle()
-  return Boolean(data?.id)
-}
-
 type PeriodStateRow = {
   last_period_key: string
   home_score: number | null
@@ -467,8 +452,8 @@ export async function tryPublishLiveGameContent(
   }
 
   const minLiveEv = Number(oddsCfg.min_live_edge_pct) || LIVE_DEFAULT_MIN_EV_PCT
-  const maxLive = Number(oddsCfg.max_live_alerts_per_day) || 8
-  const maxPeriod = Number(oddsCfg.max_period_reports_per_day) || 6
+  const maxLive = Number(oddsCfg.max_live_alerts_per_day) || 6
+  const maxPeriod = Number(oddsCfg.max_period_reports_per_day) || 4
   let liveCount = await countPublishedKindToday(admin, bot.user_id, 'in_game_edge', dayStart)
   let periodCount = await countPublishedKindToday(admin, bot.user_id, 'period_report', dayStart)
 
@@ -515,6 +500,7 @@ export async function tryPublishLiveGameContent(
       if (!isEventStillLive(sportKey, pick.commenceTime, scoreById.get(pick.eventId))) continue
       const dedupeKey = inGameEdgeDedupeKey(pick, ptDay)
       if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
+      if (!dryRun && await hasRecentEventPickAlert(admin, bot.user_id, pick.sportKey, pick.eventId)) continue
       if (!dryRun && await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
 
       const scoreRow = scoreById.get(pick.eventId)

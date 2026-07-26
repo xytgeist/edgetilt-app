@@ -13,10 +13,18 @@ const CAPTION_MAX = 2000
 
 export const DEFAULT_ODDS_WINDOW_HOURS = 48
 export const DEFAULT_MIN_BOOKS = 3
+/** Pre-match +EV edge alerts require stronger book consensus (v1). */
+export const EDGE_ALERT_MIN_BOOKS = 4
+/** Best Bet of the Hour requires strongest consensus. */
+export const BEST_BET_MIN_BOOKS = 5
+/** Value Bet Radar minimum books per pick. */
+export const VALUE_RADAR_MIN_BOOKS = 4
 /** Reject +EV above this (bad/stale data filter). */
 export const DEFAULT_MAX_EV_PCT = 15
-/** Default min +EV on $1 stake when config missing (2%). */
-export const DEFAULT_MIN_EV_PCT = 2
+/** Default min +EV on $1 stake when config missing (4%). */
+export const DEFAULT_MIN_EV_PCT = 4
+/** Default min +EV for Best Bet of the Hour when config missing (6%). */
+export const DEFAULT_MIN_BEST_BET_HOUR_EV_PCT = 6
 
 type Outcome = { name?: string; price?: number }
 type Market = { key?: string; outcomes?: Outcome[] }

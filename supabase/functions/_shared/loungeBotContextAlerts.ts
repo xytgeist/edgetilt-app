@@ -9,6 +9,7 @@ import {
   formatOddsCommenceTimeShort,
   formatOddsPickLine,
   shortDisplayName,
+  DEFAULT_MIN_EV_PCT,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
@@ -484,13 +485,13 @@ export async function tryPublishContextAlert(
   kind?: ContextAlertKind
   captionPreview?: string
 }> {
-  const maxPerDay = Number(oddsCfg.max_context_alerts_per_day) || 8
+  const maxPerDay = Number(oddsCfg.max_context_alerts_per_day) || 6
   const acceptedToday = await countContextAlertsToday(admin, bot.user_id, dayStart)
   if (acceptedToday >= maxPerDay) {
     return { published: false, skipped: 'daily_cap' }
   }
 
-  const minEv = Number(oddsCfg.min_edge_pct) || 2
+  const minEv = Number(oddsCfg.min_edge_pct) || DEFAULT_MIN_EV_PCT
   const schedulePack = supportsRundownSchedule(sportKey)
     ? await loadRestTravelSchedule(sportKey, ptTodayDate())
     : null

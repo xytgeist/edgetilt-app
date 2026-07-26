@@ -11,7 +11,7 @@ import {
 } from './loungeBotCoverageScope.ts'
 import {
   DEFAULT_MAX_EV_PCT,
-  DEFAULT_MIN_BOOKS,
+  VALUE_RADAR_MIN_BOOKS,
   findPlusEvOpportunities,
   formatOddsPickLine,
   formatScottEvDetailLine,
@@ -35,10 +35,12 @@ import {
   submitLoungeBotAlertPost,
 } from './loungeBotPublishSchedule.ts'
 import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundownContext.ts'
+import { hasRecentEventPickAlert } from './loungeBotPublishDedupe.ts'
 
 const RADAR_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
 const CAPTION_MAX = 2000
-const DEFAULT_MIN_RADAR_EV_PCT = 3.5
+const DEFAULT_MIN_RADAR_EV_PCT = 5
+const DEFAULT_MAX_RADAR_POSTS_PER_DAY = 12
 const MIN_RADAR_PICKS = 2
 const MAX_RADAR_PICKS = 3
 const PEAK_START_MIN_PT = 8 * 60
@@ -101,7 +103,7 @@ export function collectRadarPicksFromEvents(
   if (!scanEvents.length) return []
 
   const picks = findPlusEvOpportunities(scanEvents, sportKey, {
-    minBooks: DEFAULT_MIN_BOOKS,
+    minBooks: VALUE_RADAR_MIN_BOOKS,
     minEvPct,
     maxEvPct: DEFAULT_MAX_EV_PCT,
     marketKeys: RADAR_MARKETS,
@@ -239,7 +241,7 @@ export async function runValueBetRadarPoll(
   }
 
   const minEv = Number(oddsCfg.min_value_bet_radar_ev_pct) || DEFAULT_MIN_RADAR_EV_PCT
-  const maxPerDay = Number(oddsCfg.max_value_bet_radar_posts_per_day) || 20
+  const maxPerDay = Number(oddsCfg.max_value_bet_radar_posts_per_day) || DEFAULT_MAX_RADAR_POSTS_PER_DAY
   const regions = oddsCfg.regions || ['us']
   const markets = [...new Set([...(oddsCfg.markets || ['h2h', 'spreads']), 'totals'])]
   const halfHourBucket = ptHalfHourBucket()
@@ -290,7 +292,15 @@ export async function runValueBetRadarPoll(
     }
   }
 
-  const selected = selectValueBetRadarPicks(allCandidates)
+  let selected = selectValueBetRadarPicks(allCandidates)
+  if (!dryRun && selected.length) {
+    const filtered: typeof selected = []
+    for (const pick of selected) {
+      if (await hasRecentEventPickAlert(admin, bot.user_id, pick.sportKey, pick.eventId)) continue
+      filtered.push(pick)
+    }
+    selected = filtered
+  }
   if (!selected.length) {
     return {
       ok: true,

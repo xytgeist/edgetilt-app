@@ -5,7 +5,8 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MAX_EV_PCT,
-  DEFAULT_MIN_BOOKS,
+  BEST_BET_MIN_BOOKS,
+  DEFAULT_MIN_BEST_BET_HOUR_EV_PCT,
   DEFAULT_ODDS_WINDOW_HOURS,
   filterOddsEventsByWindow,
   filterOddsEventsForPtCalendarDay,
@@ -40,6 +41,10 @@ import {
 } from './loungeBotCoverageScope.ts'
 import { effectiveMinEvPct } from './loungeBotSportAnalysis.ts'
 import { fetchRundownContextNote } from './loungeBotRundownContext.ts'
+import {
+  hasActiveDedupePublished,
+  hasRecentEventPickAlert,
+} from './loungeBotPublishDedupe.ts'
 
 const HOURLY_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
 const CAPTION_MAX = 2000
@@ -132,7 +137,7 @@ export function findBestBetOfHour(
   if (!scanEvents.length) return null
 
   const picks = findPlusEvOpportunities(scanEvents, sportKey, {
-    minBooks: DEFAULT_MIN_BOOKS,
+    minBooks: BEST_BET_MIN_BOOKS,
     minEvPct,
     maxEvPct: DEFAULT_MAX_EV_PCT,
     marketKeys: HOURLY_MARKETS,
@@ -210,15 +215,7 @@ async function hasDedupePublished(
 ): Promise<boolean> {
   const hourStart = new Date()
   hourStart.setMinutes(0, 0, 0)
-  const { data } = await admin
-    .from('lounge_bot_publish_log')
-    .select('id')
-    .eq('bot_user_id', botUserId)
-    .eq('status', 'published')
-    .eq('dedupe_key', dedupeKey)
-    .gte('created_at', hourStart.toISOString())
-    .maybeSingle()
-  return Boolean(data?.id)
+  return hasActiveDedupePublished(admin, botUserId, dedupeKey, hourStart.toISOString())
 }
 
 async function hasBestBetPostedThisHour(
@@ -325,7 +322,7 @@ export async function runBestBetHourPoll(
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'no_coverage_sports_active' }
   }
 
-  const minEv = Number(oddsCfg.min_best_bet_hour_ev_pct) || 4
+  const minEv = Number(oddsCfg.min_best_bet_hour_ev_pct) || DEFAULT_MIN_BEST_BET_HOUR_EV_PCT
   const regions = oddsCfg.regions || ['us']
   const markets = [...new Set([...(oddsCfg.markets || ['h2h', 'spreads']), 'totals'])]
   const hourBucket = ptHourBucket()
@@ -395,6 +392,9 @@ export async function runBestBetHourPoll(
 
   const dedupeKey = bestBetHourDedupeKey(hourBucket, best.eventId)
 
+  if (!dryRun && await hasRecentEventPickAlert(admin, bot.user_id, best.sportKey, best.eventId)) {
+    return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'event_recently_alerted', hourBucket }
+  }
   if (!dryRun && await hasDedupePublished(admin, bot.user_id, dedupeKey)) {
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'already_posted_this_hour', hourBucket }
   }

@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     const lineMovementEnabled = oddsCfg.line_movement_enabled !== false
     const markets = marketsForOddsPoll(oddsCfg, lineMovementEnabled)
     const minEdge = Number(oddsCfg.min_edge_pct) ?? DEFAULT_MIN_EV_PCT
-    const maxEdgeAlerts = Number(oddsCfg.max_edge_alerts_per_day) || 6
+    const maxEdgeAlerts = Number(oddsCfg.max_edge_alerts_per_day) || 8
     const maxMorningPosts = Number(oddsCfg.max_slate_posts_per_day) || 10
     const morningEnabled = oddsCfg.daily_slate_enabled !== false
     const coffeeCoversEnabled = oddsCfg.coffee_covers_enabled !== false

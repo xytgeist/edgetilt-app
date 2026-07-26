@@ -4,7 +4,7 @@
 import type { OddsPick } from './loungeBotOddsCaption.ts'
 
 export const LIVE_MIN_BOOKS = 6
-export const LIVE_DEFAULT_MIN_EV_PCT = 6
+export const LIVE_DEFAULT_MIN_EV_PCT = 7.5
 export const LIVE_ML_LONGSHOT_WARN_PRICE = 700
 export const LIVE_ML_LONGSHOT_BLOCK_PRICE = 800
 export const LIVE_ML_LONGSHOT_ESCAPE_BOOKS = 8

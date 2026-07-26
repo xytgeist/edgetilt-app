@@ -231,7 +231,7 @@ export async function tryPublishSharpReport(
     return { published: false, skipped: 'no_qualifying_movement', candidate: null }
   }
 
-  const maxPerDay = Number(oddsCfg.max_sharp_reports_per_day) || 4
+  const maxPerDay = Number(oddsCfg.max_sharp_reports_per_day) || 3
   const { count } = await admin
     .from('lounge_bot_publish_log')
     .select('id', { count: 'exact', head: true })

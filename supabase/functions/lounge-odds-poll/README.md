@@ -6,11 +6,11 @@ Background odds poller for sports bots.
 
 | `action` | Behavior |
 | --- | --- |
-| `poll_edges` | Fetch each **active tier 1–4** sport on Odds API (calendar boosts priority/captions); publish **⚡ +EV** alerts when EV clears `min_edge_pct` (devig h2h). Also **line movement**, **Arb Watch** (only when a **≥ 3%** cross-book arb exists), **Sharp Report Card** (meaningful sharp/steam/RLM move), and context alerts. |
+| `poll_edges` | Fetch each **active tier 1–4** sport on Odds API (calendar boosts priority/captions); publish **⚡ +EV** alerts when EV clears `min_edge_pct` (devig h2h). Also **line movement**, **Arb Watch** (only when a **≥ 2%** cross-book arb exists), **Sharp Report Card** (meaningful sharp/steam/RLM move), and context alerts. |
 | `poll_live` | Lightweight **5 min** live tick: **in-game edge** + **period/halftime reports** using **TheRundown** game state (`game_period`, `STATUS_HALFTIME`, etc.) with elapsed-time fallback. Pre-checks scores; only fetches odds for sports with live games. |
 | `daily_slates` | Post **one Coffee & Covers thread** per bot/day (covers in root, best lines in thread parts per sport). Legacy slate check-ins when `coffee_covers_enabled = false`. |
-| `best_bet_hour` | Post **one Best Bet of the Hour** per bot per PT hour — strongest +EV across ML, spreads, and totals (min **4%** default). Tie-break NFL > NBA > MLB. |
-| `value_bet_radar` | Post **2–3 strongest +EV plays** per PT half-hour during **8am–10pm PT** (min **3.5%** default). Sport variety when possible. Silent if fewer than 2 qualify. |
+| `best_bet_hour` | Post **one Best Bet of the Hour** per bot per PT hour — strongest +EV across ML, spreads, and totals (min **6%** default, **≥ 5 books**). Tie-break NFL > NBA > MLB. |
+| `value_bet_radar` | Post **2–3 strongest +EV plays** per PT half-hour during **8am–10pm PT** (min **5%** default, **≥ 4 books**). Sport variety when possible. Silent if fewer than 2 qualify. |
 
 ### Coffee & Covers (morning cron)
 

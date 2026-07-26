@@ -9,6 +9,7 @@ import {
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotPublishInput, type BotThreadPart } from './loungeBotPublish.ts'
 import { validateLiveScheduledPost } from './loungeBotLiveGuards.ts'
 import { DEFAULT_MIN_POST_GAP_MINUTES } from './loungeBotPublishConstants.ts'
+import { recordAlertDelivery, type AlertDeliveryMeta } from './loungeBotPublishDedupe.ts'
 
 export type BotPostPriority = 'urgent' | 'normal' | 'low'
 
@@ -125,35 +126,18 @@ export async function computeScheduledPublishAt(
   return new Date(base + jitterMsForPriority(priority))
 }
 
-type PublishMeta = {
-  botUserId: string
-  caption: string
+type PublishMeta = AlertDeliveryMeta & {
   categoryPills: string[]
   subscriberOnly: boolean
-  postKind: string
-  dedupeKey: string | null
-  score: number | null
 }
 
 async function recordSuccessfulPublish(
   admin: SupabaseClient,
   meta: PublishMeta,
   postId: string,
+  subChatMessageId?: string | null,
 ): Promise<void> {
-  await admin.from('lounge_bot_accounts').update({
-    last_publish_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }).eq('user_id', meta.botUserId)
-
-  await admin.from('lounge_bot_publish_log').insert({
-    bot_user_id: meta.botUserId,
-    post_id: postId,
-    caption: meta.caption,
-    score: meta.score,
-    status: 'published',
-    post_kind: meta.postKind,
-    dedupe_key: meta.dedupeKey,
-  })
+  await recordAlertDelivery(admin, meta, { postId, subChatMessageId })
 }
 
 function resolveInputAlertRoute(input: SubmitBotAlertPostInput): AlertRouteConfig {
@@ -167,7 +151,7 @@ function resolveInputAlertRoute(input: SubmitBotAlertPostInput): AlertRouteConfi
 async function publishSubChatIfNeeded(
   admin: SupabaseClient,
   input: SubmitBotAlertPostInput,
-): Promise<{ ok: boolean; error: string | null }> {
+): Promise<{ ok: boolean; messageId: string | null; error: string | null }> {
   const { publishBotSubChatMessage } = await import('./loungeBotSubChatPublish.ts')
   const result = await publishBotSubChatMessage(admin, {
     botUserId: input.botUserId,
@@ -175,15 +159,31 @@ async function publishSubChatIfNeeded(
     imageUrls: input.imageUrls,
   })
   if (!result.messageId) {
-    return { ok: false, error: result.error || 'sub chat publish failed' }
+    return { ok: false, messageId: null, error: result.error || 'sub chat publish failed' }
   }
-  return { ok: true, error: null }
+  return { ok: true, messageId: result.messageId, error: null }
+}
+
+function buildPublishMeta(input: SubmitBotAlertPostInput, caption: string): PublishMeta {
+  const pills = Array.isArray(input.categoryPills)
+    ? input.categoryPills.map((p) => String(p || '').trim()).filter(Boolean).slice(0, 3)
+    : []
+  return {
+    botUserId: input.botUserId,
+    caption,
+    categoryPills: pills,
+    subscriberOnly: false,
+    postKind: input.postKind,
+    dedupeKey: input.dedupeKey,
+    score: input.score ?? null,
+  }
 }
 
 async function tryPublishAlertNow(
   admin: SupabaseClient,
   input: SubmitBotAlertPostInput,
   meta: PublishMeta,
+  subChatMessageId?: string | null,
   scoreCache?: Map<string, import('./loungeBotLiveGuards.ts').LiveScoreRow[]>,
 ): Promise<{ postId: string | null; error: string | null; skipped?: string; subChatPublished?: boolean }> {
   const liveCheck = await validateLiveScheduledPost(
@@ -210,7 +210,7 @@ async function tryPublishAlertNow(
     return { postId: null, error: result.error || 'publish failed' }
   }
 
-  await recordSuccessfulPublish(admin, meta, result.postId)
+  await recordSuccessfulPublish(admin, meta, result.postId, subChatMessageId)
   return { postId: result.postId, error: null }
 }
 
@@ -227,8 +227,9 @@ export async function submitLoungeBotAlertPost(
 
   const alertRoute = resolveInputAlertRoute(input)
   const targets = resolvePublishTargetsFromRoute(alertRoute)
+  const meta = buildPublishMeta(input, caption)
 
-  let subChatPublished = false
+  let subChatMessageId: string | null = null
   if (targets.subChat) {
     const subChat = await publishSubChatIfNeeded(admin, input)
     if (!subChat.ok) {
@@ -240,13 +241,16 @@ export async function submitLoungeBotAlertPost(
         error: subChat.error,
       }
     }
-    subChatPublished = true
+    subChatMessageId = subChat.messageId
   }
 
   if (!targets.loungeFeed) {
+    if (subChatMessageId) {
+      await recordAlertDelivery(admin, meta, { subChatMessageId })
+    }
     return {
       accepted: true,
-      published: subChatPublished,
+      published: Boolean(subChatMessageId),
       scheduled: false,
       postId: null,
       error: null,
@@ -267,25 +271,12 @@ export async function submitLoungeBotAlertPost(
   const priority = input.priority ?? priorityForPostKind(input.postKind)
   const minGap = input.minGapMinutes ?? DEFAULT_MIN_POST_GAP_MINUTES
   const minGapMs = Math.max(1, minGap) * 60 * 1000
-  const pills = Array.isArray(input.categoryPills)
-    ? input.categoryPills.map((p) => String(p || '').trim()).filter(Boolean).slice(0, 3)
-    : []
-
-  const meta: PublishMeta = {
-    botUserId: input.botUserId,
-    caption,
-    categoryPills: pills,
-    subscriberOnly: false,
-    postKind: input.postKind,
-    dedupeKey: input.dedupeKey,
-    score: input.score ?? null,
-  }
 
   const lastPublish = await getLastPublishAt(admin, input.botUserId)
   const canPublishNow = !lastPublish || Date.now() >= lastPublish.getTime() + minGapMs
 
   if (canPublishNow) {
-    const immediate = await tryPublishAlertNow(admin, input, meta)
+    const immediate = await tryPublishAlertNow(admin, input, meta, subChatMessageId)
     if (immediate.skipped) {
       return {
         accepted: false,
@@ -305,7 +296,8 @@ export async function submitLoungeBotAlertPost(
         error: null,
       }
     }
-    if (subChatPublished && immediate.error) {
+    if (subChatMessageId && immediate.error) {
+      await recordAlertDelivery(admin, meta, { subChatMessageId })
       return {
         accepted: true,
         published: true,
@@ -327,12 +319,16 @@ export async function submitLoungeBotAlertPost(
 
   const publishAt = await computeScheduledPublishAt(admin, input.botUserId, priority, minGap)
 
+  if (subChatMessageId) {
+    await recordAlertDelivery(admin, meta, { subChatMessageId })
+  }
+
   const { data, error } = await admin
     .from('lounge_bot_scheduled_posts')
     .insert({
       bot_user_id: input.botUserId,
       caption,
-      category_pills: pills,
+      category_pills: meta.categoryPills,
       subscriber_only: false,
       post_kind: input.postKind,
       dedupe_key: input.dedupeKey,
@@ -486,6 +482,7 @@ export type RoutedThreadPublishResult = {
   postId: string | null
   error: string | null
   subChatPublished: boolean
+  subChatMessageId?: string | null
   threadPartCount?: number
 }
 
@@ -498,7 +495,9 @@ export async function publishRoutedBotThreadPost(
   const threadBodies = (input.threadParts || []).map((part) => String(part?.body || '').trim()).filter(Boolean)
 
   let subChatPublished = false
+  let subChatMessageId: string | null = null
   if (targets.subChat) {
+    const { publishBotSubChatMessage } = await import('./loungeBotSubChatPublish.ts')
     const subChat = await publishBotSubChatMessage(admin, {
       botUserId: input.botUserId,
       caption: input.caption,
@@ -509,10 +508,17 @@ export async function publishRoutedBotThreadPost(
       return { postId: null, error: subChat.error || 'sub chat publish failed', subChatPublished: false }
     }
     subChatPublished = true
+    subChatMessageId = subChat.messageId
   }
 
   if (!targets.loungeFeed) {
-    return { postId: null, error: null, subChatPublished, threadPartCount: 1 + threadBodies.length }
+    return {
+      postId: null,
+      error: null,
+      subChatPublished,
+      subChatMessageId,
+      threadPartCount: 1 + threadBodies.length,
+    }
   }
 
   const result = await publishLoungeBotPostWithThread(admin, {
@@ -525,6 +531,7 @@ export async function publishRoutedBotThreadPost(
     postId: result.postId,
     error: result.error,
     subChatPublished,
+    subChatMessageId,
     threadPartCount: result.threadPartCount,
   }
 }

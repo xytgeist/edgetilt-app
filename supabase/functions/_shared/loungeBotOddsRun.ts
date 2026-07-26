@@ -7,8 +7,8 @@ import {
   resolveScottCategoryLabel,
   buildOddsSlateCaption,
   DEFAULT_MAX_EV_PCT,
-  DEFAULT_MIN_BOOKS,
   DEFAULT_MIN_EV_PCT,
+  EDGE_ALERT_MIN_BOOKS,
   DEFAULT_ODDS_WINDOW_HOURS,
   edgeAlertDedupeKey,
   filterOddsEventsByWindow,
@@ -28,8 +28,10 @@ import {
 } from './loungeBotCoffeeAndCovers.ts'
 import {
   buildLineMovementCaption,
+  consolidateLineMovementAlerts,
   detectLineMovements,
   extractEventLines,
+  hasRecentLineMovementForEvent,
   LINE_MOVEMENT_PUBLISH_KINDS,
   lineMovementDedupeKey,
   lineAlertMovementScore,
@@ -43,6 +45,12 @@ import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundo
 import { isNcaabCoffeeSport } from './loungeBotNcaabCoffeeFilter.ts'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import { DEFAULT_MIN_POST_GAP_MINUTES } from './loungeBotPublishConstants.ts'
+import {
+  hasDedupePublishedToday,
+  hasRecentEventPickAlert,
+  PUBLISH_LOG_ACTIVE_DELIVERY_OR,
+  recordAlertDelivery,
+} from './loungeBotPublishDedupe.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -299,7 +307,7 @@ export async function countPublishedKindToday(
     .eq('status', 'published')
     .eq('post_kind', postKind)
     .gte('created_at', dayStart)
-    .not('post_id', 'is', null)
+    .or(PUBLISH_LOG_ACTIVE_DELIVERY_OR)
   return count || 0
 }
 
@@ -326,24 +334,7 @@ export function marketsForOddsPoll(cfg: OddsCfgRow, lineMovementEnabled: boolean
   return [...new Set([...base, 'totals'])]
 }
 
-export async function hasDedupePublishedToday(
-  admin: SupabaseClient,
-  botUserId: string,
-  dedupeKey: string,
-  dayStart: string,
-): Promise<boolean> {
-  const { data } = await admin
-    .from('lounge_bot_publish_log')
-    .select('id')
-    .eq('bot_user_id', botUserId)
-    .eq('status', 'published')
-    .eq('dedupe_key', dedupeKey)
-    .gte('created_at', dayStart)
-    .not('post_id', 'is', null)
-    .limit(1)
-    .maybeSingle()
-  return Boolean(data?.id)
-}
+export { hasDedupePublishedToday } from './loungeBotPublishDedupe.ts'
 
 export type SportOddsContext = {
   sportKey: string
@@ -425,7 +416,7 @@ export async function tryPublishEdgeAlert(
   minPostGapMinutes = DEFAULT_MIN_POST_GAP_MINUTES,
 ): Promise<{ published: boolean; scheduled?: boolean; pick: OddsPick | null; skipped?: string }> {
   const pick = pickBestOddsCandidate(ctx.upcoming, ctx.sportKey, {
-    minBooks: DEFAULT_MIN_BOOKS,
+    minBooks: EDGE_ALERT_MIN_BOOKS,
     minEvPct: minEdge,
     maxEvPct: DEFAULT_MAX_EV_PCT,
   })
@@ -438,6 +429,9 @@ export async function tryPublishEdgeAlert(
   const dedupeKey = edgeAlertDedupeKey(pick, ptTodayDate())
   if (!dryRun && await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) {
     return { published: false, pick, skipped: 'edge_already_posted' }
+  }
+  if (!dryRun && await hasRecentEventPickAlert(admin, bot.user_id, pick.sportKey, pick.eventId)) {
+    return { published: false, pick, skipped: 'event_recently_alerted' }
   }
   const schedule = await loadPublishSchedule()
   if (!dryRun && await schedule.hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) {
@@ -573,14 +567,15 @@ export async function tryPublishCoffeeAndCovers(
     ?? null
 
   if (result.postId || result.subChatPublished) {
-    await admin.from('lounge_bot_publish_log').insert({
-      bot_user_id: bot.user_id,
-      post_id: result.postId,
+    await recordAlertDelivery(admin, {
+      botUserId: bot.user_id,
       caption,
+      postKind: 'coffee_covers',
+      dedupeKey,
       score: topScore,
-      status: 'published',
-      post_kind: 'coffee_covers',
-      dedupe_key: dedupeKey,
+    }, {
+      postId: result.postId,
+      subChatMessageId: result.subChatMessageId,
     })
     return {
       published: true,
@@ -700,14 +695,15 @@ export async function tryPublishCombinedCoffeeAndCovers(
     ?? null
 
   if (result.postId || result.subChatPublished) {
-    await admin.from('lounge_bot_publish_log').insert({
-      bot_user_id: bot.user_id,
-      post_id: result.postId,
+    await recordAlertDelivery(admin, {
+      botUserId: bot.user_id,
       caption,
+      postKind: 'coffee_covers',
+      dedupeKey,
       score: topScore,
-      status: 'published',
-      post_kind: 'coffee_covers',
-      dedupe_key: dedupeKey,
+    }, {
+      postId: result.postId,
+      subChatMessageId: result.subChatMessageId,
     })
     return {
       published: true,
@@ -833,7 +829,9 @@ export async function tryPublishLineMovementAlerts(
 
   if (dryRun) {
     const movements = previous.length
-      ? detectLineMovements(ctx.upcoming, ctx.sportKey, previous, cfg)
+      ? consolidateLineMovementAlerts(
+        detectLineMovements(ctx.upcoming, ctx.sportKey, previous, cfg),
+      )
       : []
     return {
       published: 0,
@@ -857,9 +855,11 @@ export async function tryPublishLineMovementAlerts(
     return { published: 0, detected: 0, skipped: 'snapshot_stale_rebaseline' }
   }
 
-  const movements = detectLineMovements(ctx.upcoming, ctx.sportKey, previous, cfg)
+  const movements = consolidateLineMovementAlerts(
+    detectLineMovements(ctx.upcoming, ctx.sportKey, previous, cfg),
+  )
 
-  const maxPerDay = Number(oddsCfg.max_line_alerts_per_day) || 12
+  const maxPerDay = Number(oddsCfg.max_line_alerts_per_day) || 8
   let publishedToday = await countLineAlertsToday(admin, bot.user_id, dayStart)
   let published = 0
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
@@ -868,6 +868,8 @@ export async function tryPublishLineMovementAlerts(
   for (const alert of movements) {
     if (publishedToday >= maxPerDay) break
     if (!LINE_MOVEMENT_PUBLISH_KINDS.has(alert.kind)) continue
+
+    if (await hasRecentLineMovementForEvent(admin, bot.user_id, alert)) continue
 
     const dedupeKey = lineMovementDedupeKey(alert)
     if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue

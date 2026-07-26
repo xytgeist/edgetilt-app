@@ -20,7 +20,7 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 | **Edge** | Best +EV line (ML / spread / total) clears **`min_edge_pct`** | See example below |
 | **Coffee & Covers** | No edge on manual fetch, or **`daily_slates`** morning poll | See example below |
 | **Best Bet of the Hour** | Hourly cron **`best_bet_hour`** (or portal button) | See example below |
-| **Arb Watch** | **`poll_edges`** finds **≥ 3%** guaranteed cross-book arb | See example below |
+| **Arb Watch** | **`poll_edges`** finds **≥ 2%** guaranteed cross-book arb | See example below |
 | **Sharp Report Card** | **`poll_edges`** when meaningful sharp/steam/RLM move (10–60 min snapshot) | See example below |
 | **Value Bet Radar** | **`value_bet_radar`** cron every ~30 min during peak hours (or portal button) | See example below |
 | **Slate** (legacy) | When **`coffee_covers_enabled = false`** | See legacy example below |
@@ -115,6 +115,10 @@ Migration **`20260704260000`**: **`community_feed_posts.subscriber_only`**. RLS 
 
 **Scott Share (Jul 2026):** alert routing uses **`alert_audience`** destination values (**`lounge`**, **`sub_chat`**, **`sub_chat_10`**, **`sub_chat_30`**) — see **`loungeBotAlertAudience.ts`** + **`loungeBotSubChatPublish.ts`**. Lounge feed posts from Scott are **public**; fan-gated content goes to the creator fan room. Legacy **`all`/`subscribers`** portal values normalize on read/write.
 
+**Sub chat dedupe (Jul 2026):** sub-chat-only deliveries log **`lounge_bot_publish_log.sub_chat_message_id`** (migration **`20260726250000`**) so per-pick dedupe works when **`post_id`** is null. Deleting a **feed** post still clears dedupe via **`post_id`** `ON DELETE SET NULL` only.
+
+**Event pick cooldown (60 min):** **`edge`**, **`in_game_edge`**, and **`best_bet_hour`** share a per-game lookback — one alert family per event per hour even across markets (Marines ML then Marines +0.5 live). Value Bet Radar skips games already alerted in the window. See **`loungeBotPublishDedupe.ts`**.
+
 ---
 
 ## +EV engine
@@ -155,7 +159,7 @@ Spread devig mirrors h2h: per-book no-vig fair probs on each spread side, consen
 
 Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall back to legacy slate check-ins.
 
-**`min_edge_pct`:** minimum **+EV percent on $1 stake** (default **2**). Column default + new bots use **2**; existing rows may still be **4** until saved in portal.
+**`min_edge_pct`:** minimum **+EV percent on $1 stake** (default **4%**). Pre-match edge scans require **≥ 4 books** for consensus (`EDGE_ALERT_MIN_BOOKS`).
 
 ### Line movement alerts (poll_edges)
 
@@ -170,9 +174,10 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
    - ML moves **≥ 20** juice cents in the interval (even-money normalized: +150 → +130 = **20**; -101 → +100 = **1**, not 201; config **`min_ml_move_pts`**, default **20**)
 4. Classify: **`sharp_move`** (≥ 1 pt or large ML), **`steam`** (fast multi-book sync), **`rlm`** (spread vs ML diverge), **`line_movement`** (minor — internal only, no feed post)
 5. Post feed alert for **`sharp_move`**, **`steam`**, and **`rlm`** only (minor **`line_movement`** feeds **Sharp Report Card** but not standalone alerts)
-6. Upsert new snapshot (first poll = baseline only, no alerts)
+6. **Consolidate two-way ML moves** on the same event into one caption (both lines + “favorite shortening” meaning); skip weak dog-only lengthening (**&lt; 300** ML pts) unless paired with the other side in the same interval
+7. Upsert new snapshot (first poll = baseline only, no alerts)
 
-Dedupe: one alert per movement direction per game/market/outcome per PT day. Cap: **`max_line_alerts_per_day`** (default **12**). Disable via **`line_movement_enabled = false`**.
+Dedupe: **one alert per event/market/kind per ~60 min** (`line_evt:{kind}:{eventId}:{marketKey}` + rolling bucket). **60 min lookback** also blocks mirror-side reposts (legacy per-outcome keys included). Cap: **`max_line_alerts_per_day`** (default **8**). Disable via **`line_movement_enabled = false`**.
 
 ### Live in-game edge + period reports (`poll_live`)
 
@@ -180,10 +185,10 @@ Dedupe: one alert per movement direction per game/market/outcome per PT day. Cap
 
 | Post kind | Trigger | Threshold |
 | --- | --- | --- |
-| **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **6%**) on **ML, spreads, or totals**; **≥ 6 books** for consensus; **no live soccer draw ML**; block live ML **> +800** unless **≥ 8 books**; footer **Live · verify quickly** on flagged longshots |
+| **`in_game_edge`** | Live game (commenced, not completed per scores API) | **+EV ≥ `min_live_edge_pct`** (default **7.5%**) on **ML, spreads, or totals**; **≥ 6 books** for consensus; **no live soccer draw ML**; block live ML **> +800** unless **≥ 8 books**; footer **Live · verify quickly** on flagged longshots |
 | **`period_report`** | **TheRundown** `event_status` / `game_period` when key set; else elapsed-time fallback | Best **+EV** lines for remainder of game (same live gates as **`in_game_edge`**) — **skipped** when none clear **`min_live_edge_pct`** |
 
-**Live pick guards (`loungeBotLivePickGuards.ts`):** pre-match alerts still use **`DEFAULT_MIN_BOOKS = 3`**. Live-only: min **6** books, default **6%** EV (`min_live_edge_pct`), suppress **soccer draw ML** in-play, block live ML longer than **+800** unless **≥ 8** books, optional **Live · verify quickly** / **Live · extreme number** footer.
+**Live pick guards (`loungeBotLivePickGuards.ts`):** pre-match **edge** uses **`EDGE_ALERT_MIN_BOOKS = 4`**; Coffee & context still use **`DEFAULT_MIN_BOOKS = 3`**. Live-only: min **6** books, default **7.5%** EV (`min_live_edge_pct`), suppress **soccer draw ML** in-play, block live ML longer than **+800** unless **≥ 8** books, optional **Live · verify quickly** / **Live · extreme number** footer.
 
 **Caption format (all +EV alert types):** pick line, then **`+X% EV · Fair {american} ({N} books)`** via **`formatScottEvDetailLine`**.
 
@@ -195,7 +200,7 @@ Dedupe: one alert per movement direction per game/market/outcome per PT day. Cap
 
 ### Arb Watch (poll_edges)
 
-**`loungeBotArbWatch.ts`** — runs on every **`poll_edges`** tick (reuses the same odds fetch; **no extra API credits**). **Posts only when** a clean cross-book arb clears **`min_arb_profit_pct`** (default **3%**). Silent otherwise.
+**`loungeBotArbWatch.ts`** — runs on every **`poll_edges`** tick (reuses the same odds fetch; **no extra API credits**). **Posts only when** a clean cross-book arb clears **`min_arb_profit_pct`** (default **2%**). Silent otherwise.
 
 1. For each today's unplayed game, find the **best price per outcome** across all books (ML, spreads at matched lines, totals at matched numbers)
 2. Arb when sum of implied probs **&lt; 100%** (combined &lt; 1.0)
@@ -233,7 +238,7 @@ NFL: Chiefs vs Raiders (Sun 1:25 PM PT). This is one to watch closely.
 1. Scan every calendar sport today via fresh Odds API fetch (**`h2h`**, **`spreads`**, **`totals`**)
 2. Include **today's unplayed** kickoffs plus **live** in-progress games
 3. **`findPlusEvOpportunities`** across all three markets; keep highest **+EV** play slate-wide
-4. Minimum **`min_best_bet_hour_ev_pct`** (default **4%**); stale cap **15%**
+4. Minimum **`min_best_bet_hour_ev_pct`** (default **6%**); **≥ 5 books**; stale cap **15%**
 5. Tie-break: higher **+EV** → sport popularity (**NFL > NBA > MLB**, etc.) → calendar **`priority`** → more books
 6. Dedupe **`best_bet_hour:{PT hour bucket}:{eventId}`** — one post per bot per PT hour
 7. **Same-game skip:** if the top pick's **`eventId`** matches the last published/queued Best Bet, skip (`same_game_as_last_best_bet`) ... need a different game
@@ -274,7 +279,7 @@ Alerts publish **immediately** when **`min_post_gap_minutes`** has elapsed since
 2. Include **today's unplayed** kickoffs plus **live** in-progress games (same window as Best Bet)
 3. **`findPlusEvOpportunities`** slate-wide; keep **2–3** highest **+EV** plays (min **3.5%** default)
 4. **Variety:** prefer one pick per sport first, then fill remaining slots; one play per game
-5. Dedupe **`value_bet_radar:{PT half-hour bucket}`** — one post per bot per 30-min window; cap **`max_value_bet_radar_posts_per_day`** (default **20**)
+5. Dedupe **`value_bet_radar:{PT half-hour bucket}`** — one post per bot per 30-min window; cap **`max_value_bet_radar_posts_per_day`** (default **12**); **≥ 4 books** per pick; min **5%** EV
 
 Disable via **`value_bet_radar_enabled = false`**. Default audience **`all`** (snackable feed content).
 
@@ -290,7 +295,7 @@ Disable via **`value_bet_radar_enabled = false`**. Default audience **`all`** (s
 | **`rest_travel_edge`** | 🛫 Rest + Travel Advantage | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) |
 | **`fade_the_public`** | 🚫 Fade the Public | **Off by default** — needs public betting % feed (not in Rundown OpenAPI) |
 
-Priority when multiple qualify: injury → starter spotlight → rest → confirmed starters. Daily cap **`max_context_alerts_per_day`** (default **8**). Toggle per kind via **`starter_spotlight_enabled`**, **`confirmed_starters_enabled`**, **`injury_impact_enabled`**, **`rest_travel_edge_enabled`**, **`fade_the_public_enabled`**. Default audience **Subs**.
+Priority when multiple qualify: injury → starter spotlight → rest → confirmed starters. Daily cap **`max_context_alerts_per_day`** (default **6**). Toggle per kind via **`starter_spotlight_enabled`**, **`confirmed_starters_enabled`**, **`injury_impact_enabled`**, **`rest_travel_edge_enabled`**, **`fade_the_public_enabled`**. Default audience **Subs**.
 
 **Rest + Travel logic (`loungeBotRestTravel.ts` + `loungeSportsVenues.ts`):**
 
@@ -367,7 +372,21 @@ Lakers -4.5 (+105) @ DraftKings
 +5.2% EV vs market consensus on the spread · 9 books
 ```
 
-Example line movement (sharp money):
+Example line movement (sharp money, two-sided ML):
+```text
+🔥 Sharp Money Move
+
+Boxing
+August vs Bank · Sat 11AM PT
+
+Bank ML -1500 → -2500
+August ML +800 → +1000
+Books: LowVig, BetOnline, BetUS
+
+Favorite shortening hard — sharp money on Bank.
+```
+
+Example line movement (spread):
 ```text
 🔥 Sharp Money Move
 
@@ -438,13 +457,13 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 
 | Column | Notes |
 | --- | --- |
-| `min_edge_pct` | Min +EV % on $1 (default **2**); editable in portal |
-| `max_edge_alerts_per_day` | Default **6** |
+| `min_edge_pct` | Min +EV % on $1 (default **4**); editable in portal; edge scan **≥ 4 books** |
+| `max_edge_alerts_per_day` | Default **8** |
 | `max_slate_posts_per_day` | Default **10** |
 | `daily_slate_enabled` | Default **true** — gates **`daily_slates`** poll |
 | `coffee_covers_enabled` | Default **true** — Coffee & Covers vs legacy slate |
 | `line_movement_enabled` | Default **true** — line movement alerts on **`poll_edges`** |
-| `max_line_alerts_per_day` | Default **12** |
+| `max_line_alerts_per_day` | Default **8** |
 | `min_spread_move_pts` | Default **0.5** |
 | `min_total_move_pts` | Default **0.5** |
 | `min_ml_move_pts` | Default **20** (American odds points) |
@@ -452,21 +471,21 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `regions` | `['us']` |
 | `markets` | `['h2h','spreads']` |
 | `best_bet_hour_enabled` | Default **true** — hourly strongest +EV post |
-| `min_best_bet_hour_ev_pct` | Default **4** — min +EV % for Best Bet of the Hour |
+| `min_best_bet_hour_ev_pct` | Default **6** — min +EV % for Best Bet of the Hour (**≥ 5 books**) |
 | `arb_watch_enabled` | Default **true** — arb scan on poll_edges (post only when arb found) |
-| `min_arb_profit_pct` | Default **3** — min guaranteed arb profit % |
+| `min_arb_profit_pct` | Default **2** — min guaranteed arb profit % |
 | `max_arb_alerts_per_day` | Default **6** |
 | `sharp_report_enabled` | Default **true** — narrative sharp report on poll_edges |
-| `max_sharp_reports_per_day` | Default **4** |
+| `max_sharp_reports_per_day` | Default **3** |
 | `value_bet_radar_enabled` | Default **true** — 2–3 strongest +EV plays during peak hours |
-| `min_value_bet_radar_ev_pct` | Default **3.5** — min +EV % per Radar pick |
-| `max_value_bet_radar_posts_per_day` | Default **20** |
+| `min_value_bet_radar_ev_pct` | Default **5** — min +EV % per Radar pick (**≥ 4 books**) |
+| `max_value_bet_radar_posts_per_day` | Default **12** |
 | `starter_spotlight_enabled` | Default **true** — starter spotlight on **`poll_edges`** when Rundown confirms starters |
 | `confirmed_starters_enabled` | Default **true** — compact confirmed-starters list |
 | `injury_impact_enabled` | Default **true** — hard injury status + pick |
 | `rest_travel_edge_enabled` | Default **true** — Rest + Travel (7-day schedule, venue table, +EV on rested team) |
 | `fade_the_public_enabled` | Default **false** — needs public betting % feed |
-| `max_context_alerts_per_day` | Default **8** — cap across all context kinds |
+| `max_context_alerts_per_day` | Default **6** — cap across all context kinds |
 | `min_post_gap_minutes` | Default **2** — min minutes between Scott feed posts |
 
 Publish log: **`post_kind`** (… `value_bet_radar`, `starter_spotlight`, `injury_impact`, …), **`dedupe_key`** — through **`20260705010000`**. Pending queue: **`lounge_bot_scheduled_posts`**.
@@ -661,6 +680,9 @@ Player props and deep injury narratives may still need a dedicated injuries feed
 | **`20260706180000`** | Market Edge Yahoo Finance + MarketWatch RSS |
 | **`20260706190000`** | Scott **`poll_live`** cron + Rundown period/halftime live content |
 | **`20260707000000`** | Bot portal **Post as** optional **`image_urls`** (up to 6) |
+| **`20260726240000`** | Live pick quality: default **`min_live_edge_pct`** 6% (superseded by v1 thresholds) |
+| **`20260726250000`** | Sub chat publish dedupe via **`lounge_bot_publish_log.sub_chat_message_id`** |
+| **`20260726260000`** | Alert thresholds v1: higher EV floors, per-alert min books in code, tighter daily caps, arb **2%** |
 
 **Edge code (no migration):** **`loungeBotSportAnalysis.ts`** — sport market weights, WNBA +0.5% min EV, multi-market edge alerts. Redeploy **`lounge-odds-poll`** after pull. **`lounge-x-ingest`** — redeploy after X manual-transform changes (**`loungeBotXTweetFetch.ts`**).
 

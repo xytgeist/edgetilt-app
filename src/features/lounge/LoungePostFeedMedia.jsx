@@ -263,11 +263,13 @@ export function LoungeImageCarousel({
     setCarouselSlideDims((prev) => (prev[index]?.w === w && prev[index]?.h === h ? prev : { ...prev, [index]: { w, h } }))
   }
 
+  const carouselTouchClass = multiSlideCarousel ? '[touch-action:pan-x_pan-y]' : ''
+
   const carouselTrack = (
     <div
       ref={carouselScrollRef}
       {...(multiSlideCarousel ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
-      className={`flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${isComposer ? 'scroll-smooth' : ''}`}
+      className={`flex max-w-full flex-nowrap items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [overflow-anchor:none] ${carouselTouchClass} ${isComposer ? 'scroll-smooth' : ''}`}
       role="region"
       aria-label={regionAriaLabel}
     >

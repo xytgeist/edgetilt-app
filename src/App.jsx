@@ -43,6 +43,7 @@ import {
   shouldShowLoungeColdBootSplash,
 } from './utils/loungeColdBootSplash.js'
 import { clearAccountClientState } from './utils/clearAccountClientState.js'
+import { restoreSupabaseSession } from './utils/supabaseSessionRestore.js'
 import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
@@ -237,18 +238,58 @@ function App() {
         window.history.replaceState({}, document.title, '/reset-password')
       }
     })
+  }, [])
 
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+  useEffect(() => {
+    let cancelled = false
+    let bootstrapDone = false
+
+    const syncUser = (session) => {
+      if (cancelled) return
       setUser(session?.user ?? null)
+    }
+
+    const finishAuthCheck = () => {
+      if (cancelled || bootstrapDone) return
+      bootstrapDone = true
       setIsChecking(false)
+    }
+
+    const bootstrap = async () => {
+      try {
+        const session = await restoreSupabaseSession(supabase)
+        syncUser(session)
+      } catch {
+        syncUser(null)
+      } finally {
+        finishAuthCheck()
+      }
+    }
+
+    void bootstrap()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(session)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (!session?.user) setIsChecking(false)
-    })
+    const onResume = () => {
+      if (cancelled || document.visibilityState !== 'visible') return
+      void restoreSupabaseSession(supabase).then((session) => {
+        if (!cancelled && session?.user) syncUser(session)
+      })
+    }
 
-    return () => subscription.unsubscribe()
+    document.addEventListener('visibilitychange', onResume)
+    window.addEventListener('pageshow', onResume)
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', onResume)
+      window.removeEventListener('pageshow', onResume)
+    }
   }, [])
 
   /** Seeds `profiles` when missing (avoids Lounge composer UUID hex initials like “65”) - OAuth and session restore, not only password login. */

@@ -27,6 +27,7 @@ import {
 } from './loungeBotCoverageScope.ts'
 import {
   COFFEE_MORE_SOCCER_THREAD_LABEL,
+  COFFEE_SOCCER_THREAD_HEADER,
   COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
   COFFEE_TOP_SOCCER_THREAD_HEADER,
   aggregateCoffeeBestLinesSliceStats,
@@ -34,7 +35,6 @@ import {
   coffeeBestLinesRankForSport,
   coffeeSecondarySoccerSortOrder,
   coffeeTopTierSoccerSortOrder,
-  isCoffeeLowerSoccerKey,
   isCoffeeSecondarySoccerKey,
   isCoffeeTopTierSoccerKey,
   selectCoffeeBestLinesThreadCandidates,
@@ -1251,21 +1251,6 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
       topTierSoccerSlices.push(slice)
     } else if (isCoffeeSecondarySoccerKey(slice.sportKey)) {
       secondarySoccerSlices.push(slice)
-    } else if (isCoffeeLowerSoccerKey(slice.sportKey)) {
-      if (shouldIncludeCoffeeBestLinesThreadPart(slice.sportKey, slice)) {
-        const body = buildSportLinesThreadBody(
-          slice.categoryLabel,
-          slice.events,
-          slice.sportKey,
-          slice.totalBefore,
-        )
-        if (body) {
-          threadPartCandidates.push({
-            part: { categoryLabel: slice.categoryLabel, body },
-            meta: buildCoffeeBestLinesThreadCandidateMeta(slice.sportKey, slice),
-          })
-        }
-      }
     } else if (shouldIncludeCoffeeBestLinesThreadPart(slice.sportKey, slice)) {
       const body = buildSportLinesThreadBody(
         slice.categoryLabel,
@@ -1303,14 +1288,20 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
   }
 
   if (secondarySoccerSlices.length) {
+    const soccerHeader = topTierSoccerSlices.length
+      ? COFFEE_SECONDARY_SOCCER_THREAD_HEADER
+      : COFFEE_SOCCER_THREAD_HEADER
+    const soccerLabel = topTierSoccerSlices.length
+      ? COFFEE_MORE_SOCCER_THREAD_LABEL
+      : 'Soccer'
     const body = buildCombinedSoccerThreadBody(
       secondarySoccerSlices,
-      COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
+      soccerHeader,
       coffeeSecondarySoccerSortOrder,
     )
     if (body) {
       threadPartCandidates.push({
-        part: { categoryLabel: COFFEE_MORE_SOCCER_THREAD_LABEL, body },
+        part: { categoryLabel: soccerLabel, body },
         meta: buildCoffeeBestLinesThreadCandidateMeta(
           'soccer_secondary_leagues',
           aggregateCoffeeBestLinesSliceStats(secondarySoccerSlices),

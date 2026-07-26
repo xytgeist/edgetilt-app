@@ -44,9 +44,16 @@ export const COFFEE_SECONDARY_SOCCER_KEY_ORDER = [
 export const COFFEE_SECONDARY_SOCCER_KEYS = new Set<string>(COFFEE_SECONDARY_SOCCER_KEY_ORDER)
 
 export const COFFEE_TOP_SOCCER_THREAD_HEADER = '⚽ Top Soccer Leagues'
+/** When top European games are sparse, this block carries Brasileirão / MLS / etc. */
+export const COFFEE_SOCCER_THREAD_HEADER = '⚽ Soccer'
 /** Fan-facing label for the tier-2 soccer lump (not "secondary"). */
 export const COFFEE_MORE_SOCCER_THREAD_LABEL = 'More Soccer Today'
 export const COFFEE_SECONDARY_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_MORE_SOCCER_THREAD_LABEL}`
+
+const COFFEE_SOCCER_LUMP_SORT_KEYS = new Set([
+  'soccer_top_leagues',
+  'soccer_secondary_leagues',
+])
 
 /** Daily Best Lines thread sort — higher rank = earlier in thread. */
 const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
@@ -164,6 +171,7 @@ export function resolveCoffeeBestLinesTier(sportKey: string): CoffeeBestLinesTie
 
   if (
     sk === 'basketball_wnba'
+    || sk === 'baseball_milb'
     || sk.includes('usfl')
     || sk.includes('xfl')
     || sk.includes('ufl')
@@ -235,6 +243,14 @@ export function resolveCoffeeBestLinesThreadTier(sortKey: string): CoffeeBestLin
 
 export function isCoffeeHeavyBestLinesTier2Key(sortKey: string): boolean {
   const sk = normalizeSportKey(sortKey)
+  if (COFFEE_SOCCER_LUMP_SORT_KEYS.has(sk)) return true
+  return sk.startsWith('boxing_') || sk.startsWith('mma_')
+}
+
+/** Soccer lumps + boxing stay in the thread on busy days (MLB → Boxing → Soccer). */
+export function isCoffeePinnedBestLinesThreadKey(sortKey: string): boolean {
+  const sk = normalizeSportKey(sortKey)
+  if (COFFEE_SOCCER_LUMP_SORT_KEYS.has(sk)) return true
   return sk.startsWith('boxing_') || sk.startsWith('mma_')
 }
 
@@ -293,14 +309,14 @@ export function aggregateCoffeeBestLinesSliceStats(
   }
 }
 
+/** NFL Sunday-style overload — not generic high game volume (MLB Saturdays hit 40+ easily). */
 export function isCoffeeHeavyBestLinesSlate(candidates: CoffeeBestLinesThreadCandidateMeta[]): boolean {
   const hasNfl = candidates.some((c) => {
     const sk = normalizeSportKey(c.sortKey)
     return sk === 'americanfootball_nfl'
   })
   const tier1Count = candidates.filter((c) => c.tier === 1).length
-  const totalGames = candidates.reduce((sum, c) => sum + c.gameCount, 0)
-  return (hasNfl && tier1Count >= 4) || tier1Count >= 6 || totalGames >= 40
+  return (hasNfl && tier1Count >= 4) || tier1Count >= 6
 }
 
 export function isCoffeeLightBestLinesSlate(candidates: CoffeeBestLinesThreadCandidateMeta[]): boolean {
@@ -360,7 +376,15 @@ export function selectCoffeeBestLinesThreadCandidates<T extends CoffeeBestLinesT
 
   const selected: T[] = [...tier1]
 
-  for (const candidate of [...tier2].sort((a, b) => b.strengthScore - a.strengthScore)) {
+  const pinnedTier2 = tier2.filter((c) => isCoffeePinnedBestLinesThreadKey(c.sortKey))
+  const otherTier2 = tier2.filter((c) => !isCoffeePinnedBestLinesThreadKey(c.sortKey))
+
+  for (const candidate of [...pinnedTier2].sort((a, b) => b.strengthScore - a.strengthScore)) {
+    if (selected.length >= maxSports) break
+    selected.push(candidate)
+  }
+
+  for (const candidate of [...otherTier2].sort((a, b) => b.strengthScore - a.strengthScore)) {
     if (selected.length >= maxSports) break
     selected.push(candidate)
   }

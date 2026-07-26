@@ -15774,7 +15774,7 @@ export default function SocialFeed({
           >
             <div
               ref={loungePostDetailTitleBarRef}
-              className="absolute inset-x-0 top-0 z-30 border-b border-zinc-800/70 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 shadow-[0_1px_0_rgba(0,0,0,0.18)] will-change-transform"
+              className="absolute inset-x-0 top-0 z-30 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform"
               style={{
                 transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
                 pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',

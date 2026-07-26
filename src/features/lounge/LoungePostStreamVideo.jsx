@@ -134,6 +134,17 @@ function appleWebKitInlineStreamPlaybackLooksLive(el, minSec = 0.05) {
   )
 }
 
+/** Inline Stream has paintable frames (includes iOS MSE playing at rs=0). */
+function streamInlineVideoHasDecodedFrame(v, savedStreamTime = 0) {
+  return Boolean(
+    v &&
+      (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
+        (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
+          ((Number.isFinite(v.currentTime) && v.currentTime > 0) || savedStreamTime > 0.05)) ||
+        appleWebKitInlineStreamPlaybackLooksLive(v)),
+  )
+}
+
 /** CF `thumbnail.jpg` is often 404 until processing finishes - retry with cache-bust before giving up. */
 const CF_POSTER_RETRY_MAX = 32
 
@@ -357,6 +368,78 @@ function runHeroShrinkAnimation(
     if (!finished) onDebug?.('shrink waapi cancelled')
   }
   finishTimerRef.current = window.setTimeout(() => finish('timeout'), HERO_SHRINK_MS + 150)
+}
+
+/** Imperative hero expand - WAAPI avoids iOS skipping CSS transform transitions on reparent. */
+function runHeroExpandAnimation(
+  flyout,
+  fromRect,
+  toRect,
+  { animRef, finishTimerRef, onDone, onDebug, flyoutZIndex = HERO_STACK_BASE_Z_INDEX },
+) {
+  if (!flyout || !fromRect || !toRect) {
+    onDebug?.('expand missing node or rect')
+    onDone('missing')
+    return
+  }
+
+  animRef.current?.cancel()
+  if (finishTimerRef.current) {
+    window.clearTimeout(finishTimerRef.current)
+    finishTimerRef.current = 0
+  }
+
+  clearFlyoutHeroMotionStyles(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${fromRect.top}px`
+  flyout.style.left = `${fromRect.left}px`
+  flyout.style.width = `${fromRect.width}px`
+  flyout.style.height = `${fromRect.height}px`
+  flyout.style.zIndex = String(flyoutZIndex)
+  flyout.style.transformOrigin = '0 0'
+  flyout.style.transition = 'none'
+  flyout.style.borderRadius = '12px'
+
+  const toTransform = computeHeroExpandTransform(fromRect, toRect)
+  void flyout.offsetWidth
+
+  if (typeof flyout.animate !== 'function') {
+    onDebug?.('expand no waapi')
+    onDone('no-waapi')
+    return
+  }
+
+  let finished = false
+  const finish = (reason) => {
+    if (finished) return
+    finished = true
+    if (finishTimerRef.current) {
+      window.clearTimeout(finishTimerRef.current)
+      finishTimerRef.current = 0
+    }
+    onDebug?.(`expand done ${reason}`)
+    onDone(reason)
+  }
+
+  const anim = flyout.animate(
+    [
+      { transform: 'none', borderRadius: '12px' },
+      { transform: toTransform, borderRadius: '12px' },
+    ],
+    {
+      duration: HERO_EXPAND_MS,
+      easing: HERO_MOTION_CURVE,
+      fill: 'forwards',
+    },
+  )
+  animRef.current = anim
+  onDebug?.(`expand waapi play ${HERO_EXPAND_MS}ms`)
+
+  anim.onfinish = () => finish('waapi')
+  anim.oncancel = () => {
+    if (!finished) onDebug?.('expand waapi cancelled')
+  }
+  finishTimerRef.current = window.setTimeout(() => finish('timeout'), HERO_EXPAND_MS + 150)
 }
 
 /** Imperative snap before React paint - flyout on body at feed tile size (transform identity). */
@@ -662,6 +745,13 @@ export default function LoungePostStreamVideo({
   const [heroBackdropArmed, setHeroBackdropArmed] = useState(false)
   /** While true, shrink-back close runs on the flyout DOM node (React must not clear transform). */
   const [heroShrinkDomActive, setHeroShrinkDomActive] = useState(false)
+  /** While true, iOS WAAPI expand owns flyout inline styles (React must not clear transform). */
+  const [heroExpandDomActive, setHeroExpandDomActive] = useState(false)
+  const heroExpandFlyoutStyleRef = useRef(
+    /** @type {Record<string, string | number> | null} */ (null),
+  )
+  const heroExpandAnimRef = useRef(/** @type {Animation | null} */ (null))
+  const heroExpandFinishTimerRef = useRef(0)
   const [streamAttachKey, setStreamAttachKey] = useState(0)
   const streamAttachKeyRef = useRef(0)
   /** Last attach key that received an active-hls-stall bump (prevents detach/attach loops). */
@@ -2145,12 +2235,7 @@ export default function LoungePostStreamVideo({
     let rafId = 0
 
     const videoHasDecodedFrame = (v) =>
-      Boolean(
-        v &&
-          (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
-            (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
-              ((Number.isFinite(v.currentTime) && v.currentTime > 0) || savedStreamTimeRef.current > 0.05))),
-      )
+      streamInlineVideoHasDecodedFrame(v, savedStreamTimeRef.current)
 
     queueMicrotask(() => {
       if (cleaned) return
@@ -2292,6 +2377,13 @@ export default function LoungePostStreamVideo({
 
   const finalizeHeroClose = useCallback(() => {
     heroShrinkInFlightRef.current = false
+    heroExpandAnimRef.current?.cancel()
+    heroExpandAnimRef.current = null
+    if (heroExpandFinishTimerRef.current) {
+      window.clearTimeout(heroExpandFinishTimerRef.current)
+      heroExpandFinishTimerRef.current = 0
+    }
+    heroExpandFlyoutStyleRef.current = null
     heroShrinkFlyoutStyleRef.current = null
     heroShrinkAnimRef.current?.cancel()
     heroShrinkAnimRef.current = null
@@ -2319,6 +2411,7 @@ export default function LoungePostStreamVideo({
     setHeroTransitionArmed(false)
     setHeroBackdropArmed(false)
     setHeroShrinkDomActive(false)
+    setHeroExpandDomActive(false)
     heroFromRectRef.current = null
     heroTargetRectRef.current = null
   }, [exitFeedHeroLock])
@@ -2577,10 +2670,13 @@ export default function LoungePostStreamVideo({
     flushSync(() => {
       setLightboxOpen(true)
       setHeroPhase('opening')
+      const iosPlaybackLive =
+        appleWebKitInlineStreamRef.current &&
+        appleWebKitInlineStreamPlaybackLooksLive(vBeforeOpen, 0.25)
       if (
         !feedAutoplayEnabled ||
         !vBeforeOpen ||
-        vBeforeOpen.readyState < HTMLMediaElement.HAVE_METADATA
+        (vBeforeOpen.readyState < HTMLMediaElement.HAVE_METADATA && !iosPlaybackLive)
       ) {
         setStreamAttachKey((k) => k + 1)
       }
@@ -2599,9 +2695,7 @@ export default function LoungePostStreamVideo({
 
     const hadDecodedVideo = Boolean(
       v &&
-        (streamFadeShowVideo ||
-          v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
-          (v.readyState >= HTMLMediaElement.HAVE_METADATA && v.currentTime > 0)),
+        (streamFadeShowVideo || streamInlineVideoHasDecodedFrame(v, savedStreamTimeRef.current)),
     )
     const tapShowVideo = streamFadeShowVideo || hadDecodedVideo
     heroColdMountRef.current = !v
@@ -2621,7 +2715,7 @@ export default function LoungePostStreamVideo({
     snapFlyoutToHeroTile(flyout, host, from, heroFlyoutZIndex)
 
     heroFrameShieldRef.current = null
-    if (tapShowVideo && v && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    if (tapShowVideo && v && streamInlineVideoHasDecodedFrame(v, savedStreamTimeRef.current)) {
       heroFrameShieldRef.current = mountHeroFrameShield(flyout, v, from.width, from.height)
     }
 
@@ -2629,6 +2723,8 @@ export default function LoungePostStreamVideo({
     setHeroChromeVisible(false)
     setHeroTransitionArmed(false)
     setHeroBackdropArmed(false)
+    setHeroExpandDomActive(false)
+    heroExpandFlyoutStyleRef.current = null
 
     heroWantsSoundRef.current = true
     setHeroSoundUnmuted(true)
@@ -2882,7 +2978,7 @@ export default function LoungePostStreamVideo({
     }
   }, [lightboxOpen, closeLightbox])
 
-  /** Hero open: FLIP invert (no transition), then one rAF later animate transform to identity. */
+  /** Hero open: CSS FLIP on desktop/Android; WAAPI on Apple WebKit (CSS transitions often snap after reparent). */
   useLayoutEffect(() => {
     if (!lightboxOpen) return undefined
     if (heroPhase !== 'opening') return undefined
@@ -2891,6 +2987,21 @@ export default function LoungePostStreamVideo({
     setHeroBackdropArmed(false)
 
     let cancelled = false
+
+    const landHeroOpen = () => {
+      if (cancelled || heroPhaseRef.current !== 'opening') return
+      clearHeroFrameShield(videoFlyoutRef.current)
+      heroFrameShieldRef.current = null
+      if (heroTargetRectRef.current) setHeroLayout(heroTargetRectRef.current)
+      setHeroExpandDomActive(false)
+      heroExpandFlyoutStyleRef.current = null
+      clearFlyoutHeroMotionStyles(videoFlyoutRef.current)
+      setHeroTransitionArmed(false)
+      heroPhaseRef.current = 'open'
+      setHeroPhase('open')
+      setHeroBackdropArmed(true)
+      bumpHeroChrome()
+    }
 
     const armBackdrop = () => {
       if (!cancelled && heroPhaseRef.current === 'opening') setHeroBackdropArmed(true)
@@ -2909,6 +3020,51 @@ export default function LoungePostStreamVideo({
       afterHeroFlyoutPainted(v, onPainted)
     }
 
+    if (appleWebKitInlineStreamRef.current) {
+      const from = heroFromRectRef.current
+      const to = heroTargetRectRef.current
+      if (!from || !to) return undefined
+
+      heroExpandFlyoutStyleRef.current = {
+        position: 'fixed',
+        top: from.top,
+        left: from.left,
+        width: from.width,
+        height: from.height,
+        zIndex: heroFlyoutZIndex,
+        transformOrigin: '0 0',
+        borderRadius: 12,
+      }
+      setHeroExpandDomActive(true)
+
+      let raf1 = 0
+      let raf2 = 0
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => {
+          if (cancelled || heroPhaseRef.current !== 'opening') return
+          const flyout = videoFlyoutRef.current
+          if (!flyout) {
+            landHeroOpen()
+            return
+          }
+          runHeroExpandAnimation(flyout, from, to, {
+            animRef: heroExpandAnimRef,
+            finishTimerRef: heroExpandFinishTimerRef,
+            flyoutZIndex: heroFlyoutZIndex,
+            onDebug: reportHeroShrinkDebug,
+            onDone: landHeroOpen,
+          })
+          armBackdropAfterFlyoutPaint()
+        })
+      })
+      return () => {
+        cancelled = true
+        if (raf1) cancelAnimationFrame(raf1)
+        if (raf2) cancelAnimationFrame(raf2)
+        heroExpandAnimRef.current?.cancel()
+      }
+    }
+
     const raf = requestAnimationFrame(() => {
       if (cancelled || heroPhaseRef.current !== 'opening') return
       setHeroTransitionArmed(true)
@@ -2920,7 +3076,7 @@ export default function LoungePostStreamVideo({
       cancelled = true
       cancelAnimationFrame(raf)
     }
-  }, [lightboxOpen, heroPhase])
+  }, [lightboxOpen, heroPhase, heroFlyoutZIndex, bumpHeroChrome, reportHeroShrinkDebug])
 
   /** iOS sometimes skips `transitionend` on transform - ensure chrome still appears after land. */
   useEffect(() => {
@@ -3282,16 +3438,7 @@ export default function LoungePostStreamVideo({
   const pausedInlineFrameVisible =
     attachStream &&
     !heroExpanded &&
-    (() => {
-      const v = videoRef.current
-      return Boolean(
-        v &&
-          (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA ||
-            (v.readyState >= HTMLMediaElement.HAVE_METADATA &&
-              ((Number.isFinite(v.currentTime) && v.currentTime > 0) ||
-                savedStreamTimeRef.current > 0.05))),
-      )
-    })()
+    streamInlineVideoHasDecodedFrame(videoRef.current, savedStreamTimeRef.current)
   const effectiveStreamFadeShowVideo =
     heroExpanded && heroTapSnapshotRef.current
       ? heroTapShowVideo || streamFadeShowVideo
@@ -3305,7 +3452,10 @@ export default function LoungePostStreamVideo({
         }
       : undefined
   const heroAnimating =
-    !heroShrinkDomActive && heroTransitionArmed && heroPhase === 'opening'
+    !heroShrinkDomActive &&
+    !heroExpandDomActive &&
+    heroTransitionArmed &&
+    heroPhase === 'opening'
   const heroTransformTransition = heroAnimating
     ? `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
     : 'none'
@@ -3492,9 +3642,11 @@ export default function LoungePostStreamVideo({
             <div
               ref={videoFlyoutRef}
               style={
-                heroShrinkDomActive && heroShrinkFlyoutStyleRef.current
-                  ? heroShrinkFlyoutStyleRef.current
-                  : heroFlyoutStyle
+                heroExpandDomActive && heroExpandFlyoutStyleRef.current
+                  ? heroExpandFlyoutStyleRef.current
+                  : heroShrinkDomActive && heroShrinkFlyoutStyleRef.current
+                    ? heroShrinkFlyoutStyleRef.current
+                    : heroFlyoutStyle
               }
               className={heroFlyoutShellClass}
               {...heroFlyoutPointerProps}

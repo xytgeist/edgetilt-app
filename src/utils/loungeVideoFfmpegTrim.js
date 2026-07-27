@@ -244,6 +244,19 @@ function mp4BytesLikelyHasAudio(data) {
   return hasMp4a && (hasSoun || hasAacSample)
 }
 
+/** faststart MP4 atom scan when wasm ffprobe emits no Stream lines (common on iOS WORKERFS output). */
+function mp4BytesLikelyHasVideo(data) {
+  const u8 = data instanceof Uint8Array ? data : new Uint8Array(data)
+  if (u8.byteLength < 64) return false
+  const head = u8.subarray(0, Math.min(u8.byteLength, 768 * 1024))
+  const hasVide = indexOfAscii(head, 'vide') >= 0
+  const hasCodec =
+    indexOfAscii(head, 'avc1') >= 0
+    || indexOfAscii(head, 'hvc1') >= 0
+    || indexOfAscii(head, 'hev1') >= 0
+  return hasVide && hasCodec
+}
+
 /** @param {string[]} logs encode stderr from a completed ffmpeg exec */
 function encodeLogsIndicateAudioMux(logs) {
   let inMapping = false
@@ -359,8 +372,8 @@ const SKIP_WASM_INPUT_PROBE_MIN_BYTES = 20 * 1024 * 1024
 
 /** @param {File} file @param {boolean} sourceHasAudio */
 function shouldSkipWasmInputProbe(file, sourceHasAudio) {
+  if (shouldUseScreenRecordingEncodeLadder(file)) return true
   if (!sourceHasAudio) return false
-  if (shouldUseScreenRecordingEncodeLadder(file)) return false
   const n = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0
   return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
 }
@@ -376,6 +389,11 @@ function encodeStrategyWatchLimits(fileBytes, strategy) {
   const mb = typeof fileBytes === 'number' && Number.isFinite(fileBytes) ? fileBytes / (1024 * 1024) : 0
   if (strategy?.videoCopy) {
     return { stallMs: ENCODE_STALL_MS_VIDEO_COPY, maxMs: 60_000 }
+  }
+  if (strategy?.label?.startsWith('screen-rec-')) {
+    let maxMs = 180_000
+    if (mb >= 30) maxMs = 240_000
+    return { stallMs: 45_000, maxMs }
   }
   if (isAndroidBrowser() && mb >= 20) {
     return { stallMs: ENCODE_STALL_MS_ANDROID, maxMs: ENCODE_MAX_MS_ANDROID_LARGE }
@@ -486,6 +504,7 @@ async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal, opts = {}) {
     const data = await ffmpeg.readFile(outName)
     const u8 = data instanceof Uint8Array ? data : new Uint8Array(data)
     bytes = u8.byteLength
+    if (!hasVideo) hasVideo = mp4BytesLikelyHasVideo(u8)
     mp4a = mp4BytesLikelyHasAudio(u8)
     if (mp4a) verifyVia = 'mp4a-atom'
     else if (encodedOutputHasAudioStream(streams)) verifyVia = 'ffprobe'
@@ -620,14 +639,39 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
   return withAudio
 }
 
-/** ReplayKit screen caps: single AAC + HEVC — never use the camera spatial ladder. */
+/** ReplayKit screen caps: remux HEVC+AAC to MP4 first (fast on WORKERFS); re-encode is fallback. */
 function buildScreenRecordingEncodeStrategies(sourceHasAudio) {
+  /** @type {EncodeStrategy[]} */
+  const copyFirst = [
+    {
+      label: 'screen-rec-vcopy-acopy',
+      maps: ['-map', '0:v:0', '-map', '0:a:0?'],
+      videoCopy: true,
+      audioCopy: true,
+      requireOutputAudio: sourceHasAudio,
+    },
+    {
+      label: 'screen-rec-vcopy-aac',
+      maps: ['-map', '0:v:0', '-map', '0:a:0?'],
+      videoCopy: true,
+      requireOutputAudio: sourceHasAudio,
+    },
+  ]
   if (!sourceHasAudio) {
     return [
+      ...copyFirst,
+      {
+        label: 'screen-rec-vcopy-video',
+        maps: ['-map', '0:v:0'],
+        videoCopy: true,
+        videoOnly: true,
+        requireOutputAudio: false,
+      },
       { label: 'screen-rec-video-only', videoOnly: true, useMaps: true, requireOutputAudio: false },
     ]
   }
   return [
+    ...copyFirst,
     {
       label: 'screen-rec-a0',
       maps: ['-map', '0:v:0', '-map', '0:a:0?'],
@@ -1305,7 +1349,12 @@ async function wasmReencodeToMp4({
   }
 
   if (shouldSkipWasmInputProbe(file, sourceHasAudio)) {
-    maybeReportLoungeVideoUploadDebug('encode', 'input probe skipped (large source)')
+    maybeReportLoungeVideoUploadDebug(
+      'encode',
+      shouldUseScreenRecordingEncodeLadder(file)
+        ? 'input probe skipped (screen recording WORKERFS)'
+        : 'input probe skipped (large source)',
+    )
     if (typeof onProgress === 'function') onProgress(encodeProgressBase + 0.02)
   } else {
     try {

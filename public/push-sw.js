@@ -94,12 +94,45 @@ async function deliverLoungeActivityInApp(clients, content) {
   }
 }
 
+function parseRoomIdFromPushUrl(url) {
+  try {
+    return new URL(String(url || ''), self.location.origin).searchParams.get('room') || null
+  } catch {
+    return null
+  }
+}
+
+/** Deliver ringing invite into an open Edge tab (Realtime backup). */
+async function deliverChatCallInviteInApp(clients, content) {
+  const roomId = parseRoomIdFromPushUrl(content.url)
+  const message = {
+    type: 'chat-call-invite-inapp',
+    chatCallId: content.chatCallId || null,
+    roomId,
+    eventType: content.eventType || null,
+    url: content.url,
+    title: content.title,
+    body: content.body,
+  }
+  for (const client of clients) {
+    if (typeof client.postMessage === 'function') {
+      try {
+        client.postMessage(message)
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
 /**
- * iOS PWA often keeps client.focused=true while backgrounded. Ask the page whether
- * document.visibilityState is visible before suppressing the OS call notification.
+ * Prefer WindowClient.visibilityState when the browser exposes it.
+ * Else ask the page via MessageChannel (iOS focused≠visible trap).
  * Default = show OS push (safe when no reply / hung client).
  */
 async function pageIsVisiblyHandlingCalls(clients) {
+  if (clients.some((client) => client.visibilityState === 'visible')) return true
+
   const candidates = clients.filter((client) => typeof client.postMessage === 'function')
   if (candidates.length === 0) return false
 
@@ -112,7 +145,6 @@ async function pageIsVisiblyHandlingCalls(clients) {
           settled = true
           resolve(Boolean(value))
         }
-        // Prod cold pages were missing the AppShell listener within 280ms → false OS banners.
         const timer = setTimeout(() => finish(false), 800)
         try {
           const channel = new MessageChannel()
@@ -153,11 +185,17 @@ self.addEventListener('push', (event) => {
       })
       const hasFocusedClient = clients.some((client) => client.focused)
 
-      // Call pushes: suppress OS only when a page confirms it is actually visible.
+      // Call pushes: suppress OS only when a page is actually visible.
       // Never trust client.focused alone on iPhone PWA (silent drop regression).
       if (chatCallPush) {
         const suppressOs = await pageIsVisiblyHandlingCalls(clients)
-        if (suppressOs) return
+        if (suppressOs) {
+          // Realtime can miss on prod; push-deliver the ring into the open tab.
+          if (content.eventType === 'chat_call_invite' || (!chatCallMissed && content.chatCallId)) {
+            await deliverChatCallInviteInApp(clients, content)
+          }
+          return
+        }
       } else if (loungeActivity && hasFocusedClient) {
         await deliverLoungeActivityInApp(clients, content)
         return

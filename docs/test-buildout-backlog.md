@@ -938,6 +938,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-27: **Chat calling in-app ring + OS suppress harden:** SW uses `WindowClient.visibilityState` + push-delivers `chat-call-invite-inapp` into open tabs (Realtime backup); migration **`20260728040000`** `chat_calls` **replica identity full** (test + prod). Force-close PWA for SW.
 - 2026-07-27: **Chat calling promoted to production:** SQL **`20260728000000`–`20260728030000`** applied on **`jtjgtucumuoswnbauxry`**; Edge **`chat-calls`** + **`lounge-send-activity-push`** redeployed; frontend via **`main`** merge from **`test`**. Confirm **`LIVEKIT_*`** Edge secrets on prod match the LiveKit Cloud project before smoke.
 - 2026-07-27: **Chat calling missed calls in Lounge notifications:** migration **`20260728030000`** includes **`chat_call_missed`** in unread + page RPCs (still excludes invite/DM/group invite); returns `chat_room_id` / `chat_call_id` (+ restores play_log columns). Panel copy “called you”, amber phone badge, tap → `/?tab=chat&room=&missedCall=`. Apply on test before smoke.
 - 2026-07-27: **Chat calling missed-call Call back iOS handoff:** Android worked; iPhone still opened DM only (postMessage / query often dropped on PWA wake). SW stashes navigate payload in Cache **`edge-pending-app-navigate-v1`**; AppShell drains on pageshow/visibility/provider mount; deep-link clears stash only after prompt/accept UI opens + visibility retry. Client + SW only.

@@ -246,6 +246,31 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, viewerUserId, presentIncoming])
 
+  // SW push backup when Edge is visible (Realtime RLS can miss on some projects).
+  useEffect(() => {
+    if (!supabaseClient || !viewerUserId) return undefined
+    const onSwInvite = (event) => {
+      const detail = event?.detail || {}
+      if (detail.eventType === 'chat_call_missed') return
+      const callId = String(detail.chatCallId || '').trim()
+      if (!callId) return
+      if (activeCallRef.current || incomingRef.current?.callId === callId) return
+      void (async () => {
+        try {
+          const res = await chatGetCall(supabaseClient, callId)
+          const call = res?.call
+          if (!call?.id || call.started_by === viewerUserId) return
+          if (!['ringing', 'active'].includes(call.status)) return
+          presentIncoming(call)
+        } catch {
+          /* ignore transient */
+        }
+      })()
+    }
+    window.addEventListener('edge-chat-call-invite', onSwInvite)
+    return () => window.removeEventListener('edge-chat-call-invite', onSwInvite)
+  }, [supabaseClient, viewerUserId, presentIncoming])
+
   const onOpenRoomRef = useRef(onOpenRoom)
   onOpenRoomRef.current = onOpenRoom
   const onInitialCallConsumedRef = useRef(onInitialCallConsumed)

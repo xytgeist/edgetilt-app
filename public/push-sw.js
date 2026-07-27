@@ -112,7 +112,8 @@ async function pageIsVisiblyHandlingCalls(clients) {
           settled = true
           resolve(Boolean(value))
         }
-        const timer = setTimeout(() => finish(false), 280)
+        // Prod cold pages were missing the AppShell listener within 280ms → false OS banners.
+        const timer = setTimeout(() => finish(false), 800)
         try {
           const channel = new MessageChannel()
           channel.port1.onmessage = (event) => {

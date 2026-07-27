@@ -17,9 +17,13 @@ import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.
 import { installAppDebugLog } from './utils/appDebugLog.js'
 import { installGlobalTapHaptic } from './utils/tapHaptic.js'
 import { initGoogleAnalytics } from './utils/googleAnalytics.js'
+import { installChatCallPushProbeListener } from './utils/chatCallPushProbeListener.js'
 
 // Capture console output for in-app debug log (staff only)
 installAppDebugLog()
+
+// SW call-push suppress probe must be ready before AppShell (prod was timing out → OS banner in-app).
+installChatCallPushProbeListener()
 
 // Apply theme before first paint to prevent flash
 applyTheme()

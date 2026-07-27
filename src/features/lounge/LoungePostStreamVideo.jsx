@@ -3,6 +3,7 @@ import { createPortal, flushSync } from 'react-dom'
 import { cfStreamManifestUrl, cfStreamPosterUrl, probeCfStreamHlsReady } from '../../utils/loungeVideoUpload'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
+  loungeFeedAttachmentImgClassName,
   loungeFeedAttachmentOuterShellClassName,
   loungeFeedAttachmentTileWidthClassName,
   loungeFeedImageAttachmentTier,
@@ -99,8 +100,8 @@ const posterFrameMinHByVariant = {
  * aspect (avoids a forced 16:9 “letterbox” that looks like a broken poster for portrait clips).
  */
 const posterFallbackFrameClassByVariant = {
-  feed: 'relative flex max-h-[312px] w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-w-[min(72vw,17rem)]',
-  embed: 'relative flex max-h-44 w-fit max-w-[min(88vw,20rem)] items-center justify-center bg-black sm:max-h-44 sm:max-w-[min(72vw,17rem)]',
+  feed: `relative flex w-fit max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} items-center justify-center bg-black`,
+  embed: 'relative flex max-h-44 w-fit max-w-full items-center justify-center bg-black',
   detail: 'relative flex max-h-[min(70vh,520px)] w-fit max-w-full items-center justify-center bg-black',
   commentInline:
     'relative flex max-h-36 w-fit max-w-full items-center justify-center bg-black sm:max-h-40',
@@ -3411,7 +3412,6 @@ export default function LoungePostStreamVideo({
   const attachmentTier = hasDisplayDims
     ? loungeFeedImageAttachmentTier(displayW, displayH)
     : 'column'
-  const columnFill = !feedLikeVariant || attachmentTier === 'column'
   const outerShellClass = loungeFeedAttachmentOuterShellClassName(
     feedLikeVariant ? attachmentTier : 'column',
     { variant },
@@ -3420,10 +3420,9 @@ export default function LoungePostStreamVideo({
     feedLikeVariant ? attachmentTier : 'column',
     { variant },
   )
-  const videoClass =
-    columnFill && feedLikeVariant
-      ? `block w-full h-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`
-      : videoClassByVariant[variant] || videoClassByVariant.feed
+  const videoClass = feedLikeVariant
+    ? loungeFeedAttachmentImgClassName(attachmentTier)
+    : videoClassByVariant[variant] || videoClassByVariant.feed
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
   const border = borderByVariant[variant] || borderByVariant.feed
@@ -3432,25 +3431,31 @@ export default function LoungePostStreamVideo({
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
   const posterFallbackFrameClass =
     posterFallbackFrameClassByVariant[variant] || posterFallbackFrameClassByVariant.feed
-  /** Until the in-flow poster decodes, optional aspect-ratio reserves footprint; after decode the `<img>` is the only size authority (avoids letterbox gap under object-contain). */
+  /**
+   * Until the in-flow poster decodes, reserve the fitted box (caption width × max-h), not a full-width
+   * pillarbox. After decode the `<img>` is the only size authority.
+   */
   const posterFrameAspectStyle =
     hasDisplayDims && !posterLayoutFailed && !posterDecodeOk
-      ? { aspectRatio: `${Math.round(displayW)} / ${Math.round(displayH)}` }
+      ? {
+          aspectRatio: `${Math.round(displayW)} / ${Math.round(displayH)}`,
+          width: `min(100%, calc(min(55vh, 420px) * ${displayW} / ${displayH}))`,
+          maxHeight: 'min(55vh, 420px)',
+        }
       : undefined
   const posterShellMinHClass =
     posterDecodeOk ? 'min-h-0' : hasDisplayDims ? 'min-h-0' : posterFrameMinH
-  const columnFillPosterFallbackClass = feedLikeVariant
-    ? `relative flex w-full max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} items-center justify-center bg-black`
+  /** Feed/embed: hug fitted media; never stretch a black frame to full caption width. */
+  const feedHugPosterFallbackClass = feedLikeVariant
+    ? `relative flex w-fit max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} items-center justify-center bg-black`
     : posterFallbackFrameClass
   const posterSlotFrameClass = usePosterFrame
     ? posterLayoutFailed
-      ? columnFill && feedLikeVariant
-        ? columnFillPosterFallbackClass
+      ? feedLikeVariant
+        ? feedHugPosterFallbackClass
         : posterFallbackFrameClass
-      : `${columnFill && feedLikeVariant ? 'relative block w-full' : 'relative block w-fit max-w-full'} overflow-hidden bg-black ${posterShellMinHClass}`
-    : columnFill && feedLikeVariant
-      ? 'relative block w-full max-w-full'
-      : 'relative block w-fit max-w-full'
+      : `relative block w-fit max-w-full overflow-hidden bg-black ${posterShellMinHClass}`
+    : 'relative block w-fit max-w-full'
   const heroTapShowVideo = heroTapSnapshotRef.current?.showVideo
   const pausedInlineFrameVisible =
     attachStream &&

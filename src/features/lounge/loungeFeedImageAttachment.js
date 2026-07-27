@@ -1,5 +1,7 @@
 /**
- * Feed post still/GIF attachment layout: full column vs tall narrow (phone screenshots).
+ * Feed post still/GIF/Stream attachment layout.
+ * Single media hugs its fitted size inside caption width × max-h (landscape fills width;
+ * portrait shrinks when height binds). Multi-image carousels keep a shared row height.
  */
 
 /** Height / width above this → tall attachment (narrow frame, not full post width). */
@@ -130,12 +132,16 @@ export function loungeFeedCarouselMaxSlideWidthPx(fullBleed, viewportWidthPx = t
   return loungeFeedCarouselMeasureLayout(null, false).firstSlideMaxWidthPx
 }
 
-/** Full caption-column width (link preview card, landscape photo/video). */
-export const LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS = 'w-full min-w-0 max-w-full'
+/**
+ * Hug media inside the caption column.
+ * Landscape fills column width; portrait/tall shrinks when max-height binds (no pillarbox bars).
+ */
+export const LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS =
+  'inline-flex w-auto max-w-full min-w-0 shrink-0 self-start'
 
-/** Tall phone screenshot / portrait clip — stay narrow inside the column. */
+/** Tall phone screenshot / portrait clip — same hug rules, capped below full column on wide viewports. */
 export const LOUNGE_FEED_ATTACHMENT_TALL_SHELL_CLASS =
-  'inline-flex w-auto max-w-[min(72vw,20rem)] shrink-0 self-start'
+  'inline-flex w-auto max-w-[min(100%,20rem)] min-w-0 shrink-0 self-start'
 
 /** Max rendered height for single column-fill feed stills and inline Stream tiles. */
 export const LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS = 'max-h-[min(55vh,420px)]'
@@ -201,11 +207,13 @@ export function loungeFeedAttachmentOuterShellClassName(tier, opts = {}) {
  * @param {{ variant?: string }} [opts]
  */
 export function loungeFeedAttachmentTileWidthClassName(tier, opts = {}) {
+  void tier
   const { variant = 'feed' } = opts
-  if (variant === 'composer' || tier === 'tall') {
+  if (variant === 'composer') {
     return 'relative block w-fit max-w-full'
   }
-  return 'relative block w-full max-w-full'
+  // Frame hugs poster/video used size (max-w/max-h constrained); never stretch to column.
+  return 'relative block w-fit max-w-full'
 }
 
 /**
@@ -218,12 +226,13 @@ export function loungeFeedAttachmentSlideClassName(tier, opts = {}) {
     return 'relative shrink-0 min-w-[3rem]'
   }
   if (tier === 'tall') {
-    return 'relative w-auto max-w-[min(72vw,20rem)] shrink-0 snap-start'
+    return 'relative w-auto max-w-[min(100%,20rem)] shrink-0 snap-start'
   }
+  // Single still/video: hug used width so max-h cannot leave empty side bars.
   if (singleInPost) {
-    return 'relative w-full min-w-0 max-w-full shrink-0 snap-start'
+    return 'relative w-auto max-w-full min-w-0 shrink-0 snap-start'
   }
-  return 'relative w-full min-w-0 max-w-full shrink-0 snap-start'
+  return 'relative w-auto max-w-full min-w-0 shrink-0 snap-start'
 }
 
 /**
@@ -238,7 +247,7 @@ export function loungeFeedAttachmentFrameClassName(tier, { rounding, border }, l
   if (multiCarousel) {
     return `block h-full w-full ${shell}`
   }
-  return `block w-full max-w-full ${shell}`
+  return `block w-fit max-w-full ${shell}`
 }
 
 /**
@@ -250,11 +259,9 @@ export function loungeFeedAttachmentImgClassName(tier, layout = {}) {
   if (multiCarousel) {
     return 'block h-full w-full object-contain'
   }
-  if (tier === 'tall') {
-    return 'block w-full h-auto max-w-full max-h-[min(55vh,420px)] object-contain'
-  }
-  // h/w <= 1.35: fill caption column width; height follows aspect ratio.
-  return `block w-full h-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`
+  void tier
+  // Fit inside caption width × max-h; used size drives the frame (no w-full + object-contain pillarbox).
+  return `block h-auto w-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`
 }
 
 /** @param {LoungeFeedAttachmentTier} tier */
@@ -266,7 +273,7 @@ export function loungeFeedAttachmentTapTargetClassName(tier, opts = {}) {
     return `block h-full w-full ${tap}`
   }
   if (tier === 'tall') {
-    return `block w-auto max-w-[min(72vw,20rem)] ${tap}`
+    return `block w-auto max-w-[min(100%,20rem)] ${tap}`
   }
-  return `block w-full max-w-full ${tap}`
+  return `block w-auto max-w-full ${tap}`
 }

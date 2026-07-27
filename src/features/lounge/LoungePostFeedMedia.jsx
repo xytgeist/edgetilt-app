@@ -473,7 +473,7 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
 
   return (
     <div className={`${firstMarginTopClass} ${LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS}`}>
-      <div className="relative block w-full max-w-full overflow-hidden rounded-xl border border-zinc-700/60 bg-black">
+      <div className="relative block w-fit max-w-full overflow-hidden rounded-xl border border-zinc-700/60 bg-black">
         {posterSrc ? (
           <>
             <img
@@ -481,7 +481,7 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
               alt=""
               decoding="async"
               draggable={false}
-              className={`block w-full h-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`}
+              className={`block h-auto w-auto max-w-full ${LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS} object-contain`}
             />
             {showOverlay ? (
               <LoungePendingPublishDevelopReveal progress={publishProgress} posterSrc={posterSrc} />

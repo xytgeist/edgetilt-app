@@ -397,8 +397,15 @@ export default function AppShell({
   const openLoungeActivityInAppToast = useCallback(
     (payload) => {
       dismissLoungeActivityInAppToast()
-      const { activityEventId, activityBatchId, tab: targetTab, roomId, callId, playLogEntryId } =
-        navigateFromLoungeActivityPayload(payload)
+      const {
+        activityEventId,
+        activityBatchId,
+        tab: targetTab,
+        roomId,
+        callId,
+        missedCallId,
+        playLogEntryId,
+      } = navigateFromLoungeActivityPayload(payload)
 
       if (targetTab === 'chat') {
         if (browseMode === 'anonymous') {
@@ -407,7 +414,11 @@ export default function AppShell({
           setTab('chat')
           setMenuOpen(false)
           if (roomId) setPendingChatRoomId(roomId)
-          if (callId) {
+          if (missedCallId) {
+            stashPendingChatCallDeepLink(missedCallId, roomId, 'callback')
+            setPendingChatCallIntent('callback')
+            setPendingChatCallId(missedCallId)
+          } else if (callId) {
             stashPendingChatCallDeepLink(callId, roomId, 'ring')
             setPendingChatCallIntent('ring')
             setPendingChatCallId(callId)

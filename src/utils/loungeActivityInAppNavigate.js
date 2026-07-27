@@ -6,6 +6,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     tab: 'home',
     roomId: null,
     callId: null,
+    missedCallId: null,
     playLogEntryId: null,
     urlChanged: false,
   }
@@ -32,6 +33,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     tab: parsed.searchParams.get('tab') || 'home',
     roomId: (parsed.searchParams.get('room') || '').trim() || null,
     callId: (parsed.searchParams.get('call') || '').trim() || null,
+    missedCallId: (parsed.searchParams.get('missedCall') || '').trim() || null,
     playLogEntryId: (parsed.searchParams.get('playLogEntry') || '').trim() || null,
     urlChanged,
   }

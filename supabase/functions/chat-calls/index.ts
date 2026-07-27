@@ -3,7 +3,7 @@
  * Membership source of truth: chat_rooms + chat_room_members.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { AccessToken, RoomServiceClient } from 'npm:livekit-server-sdk@2'
+import { AccessToken, RoomServiceClient, TrackSource } from 'npm:livekit-server-sdk@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,7 +45,8 @@ async function mintToken(args: {
   displayName: string
   roomName: string
   canPublish: boolean
-  canPublishSources?: Array<'camera' | 'microphone' | 'screen_share' | 'screen_share_audio'>
+  /** LiveKit TrackSource enums (not string labels). */
+  canPublishSources?: TrackSource[]
 }) {
   const at = new AccessToken(args.apiKey, args.apiSecret, {
     identity: args.identity,
@@ -59,7 +60,7 @@ async function mintToken(args: {
     canPublish: args.canPublish,
     canSubscribe: true,
     canPublishData: true,
-    ...(args.canPublishSources ? { canPublishSources: args.canPublishSources } : {}),
+    ...(args.canPublishSources?.length ? { canPublishSources: args.canPublishSources } : {}),
   })
   return await at.toJwt()
 }
@@ -242,11 +243,11 @@ async function endCallRow(
   return { status, ended_reason: endedReason, body }
 }
 
-function publishSourcesForCall(kind: string, mediaMode: string) {
+function publishSourcesForCall(kind: string, mediaMode: string): TrackSource[] {
   if (kind === 'group_audio' || mediaMode === 'audio') {
-    return ['microphone'] as Array<'microphone'>
+    return [TrackSource.MICROPHONE]
   }
-  return ['microphone', 'camera'] as Array<'microphone' | 'camera'>
+  return [TrackSource.MICROPHONE, TrackSource.CAMERA]
 }
 
 Deno.serve(async (req) => {

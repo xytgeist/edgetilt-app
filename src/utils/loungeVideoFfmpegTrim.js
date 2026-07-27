@@ -6,7 +6,7 @@ import {
   extractBrowserVideoAudio,
   hasBrowserVideoAudioUserActivation,
 } from './loungeVideoBrowserAudio.js'
-import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLoungeVideoQuicktimeMov, isLoungeVideoMp4Container } from './loungeVideoUpload.js'
+import { probeVideoFileDurationSeconds, probeVideoFileHasAudio, isLikelyIphoneScreenRecording, isIOSBrowser, isLoungeVideoQuicktimeMov, isLoungeVideoMp4Container } from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_SCALE_VF = 'scale=720:-2:flags=bicubic:in_range=full:out_range=mpeg'
 const LOUNGE_ENCODE_CRF = '30'
@@ -146,6 +146,13 @@ export function prefetchFfmpegCore() {
 /** @returns {boolean} */
 function isAndroidBrowser() {
   return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+}
+
+/** ReplayKit caps and raw iOS `.mov` exports ... not iPhone camera spatial MOVs. */
+function shouldUseScreenRecordingEncodeLadder(file) {
+  if (isLikelyIphoneScreenRecording(file)) return true
+  if (isIOSBrowser() && isLoungeVideoQuicktimeMov(file)) return true
+  return false
 }
 
 const DEMUX_LOGGING = [
@@ -310,6 +317,10 @@ function encodedOutputHasAudioStream(streams) {
   )
 }
 
+function encodedOutputHasVideoStream(streams) {
+  return streams.some((s) => s.kind === 'video' && s.codec !== 'none')
+}
+
 /** @param {{ index: number, kind: string, codec: string }[]} streams */
 function formatStreamProbeLog(streams) {
   if (!streams.length) return 'probe streams none'
@@ -349,6 +360,7 @@ const SKIP_WASM_INPUT_PROBE_MIN_BYTES = 20 * 1024 * 1024
 /** @param {File} file @param {boolean} sourceHasAudio */
 function shouldSkipWasmInputProbe(file, sourceHasAudio) {
   if (!sourceHasAudio) return false
+  if (shouldUseScreenRecordingEncodeLadder(file)) return false
   const n = typeof file?.size === 'number' && Number.isFinite(file.size) ? file.size : 0
   return n >= SKIP_WASM_INPUT_PROBE_MIN_BYTES
 }
@@ -407,12 +419,15 @@ async function probeFfmpegInputStreamsWithTimeout(ffmpeg, inputPath, signal) {
 
 /**
  * Use the iPhone spatial ladder when probe shows apac/none on #1, or when wasm demux
- * reports no decodable audio (common on iOS; also hits renamed .mp4 exports of the same MOV).
+ * reports no decodable audio (common on iOS camera MOV). ReplayKit screen caps are not spatial.
+ *
+ * @param {File} file
  * @param {boolean} sourceHasAudio
  * @param {number[]} audioStreamIndices
  * @param {{ index: number, kind: string, codec: string }[]} probedStreams
  */
-function shouldUseSpatialAudioLadder(sourceHasAudio, audioStreamIndices, probedStreams) {
+function shouldUseSpatialAudioLadder(file, sourceHasAudio, audioStreamIndices, probedStreams) {
+  if (shouldUseScreenRecordingEncodeLadder(file)) return false
   if (spatialBlockedAudioIndices(probedStreams).includes(1)) return true
   return sourceHasAudio && audioStreamIndices.length === 0
 }
@@ -466,6 +481,7 @@ async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal, opts = {}) {
   let bytes = 0
   let mp4a = false
   let verifyVia = 'none'
+  let hasVideo = encodedOutputHasVideoStream(streams)
   try {
     const data = await ffmpeg.readFile(outName)
     const u8 = data instanceof Uint8Array ? data : new Uint8Array(data)
@@ -479,7 +495,7 @@ async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal, opts = {}) {
   } catch {
     // ignore
   }
-  return { streams, bytes, mp4a, verifyVia }
+  return { streams, bytes, mp4a, verifyVia, hasVideo }
 }
 
 /**
@@ -602,6 +618,28 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
     return [...withAudio, ...videoOnlyFallback]
   }
   return withAudio
+}
+
+/** ReplayKit screen caps: single AAC + HEVC — never use the camera spatial ladder. */
+function buildScreenRecordingEncodeStrategies(sourceHasAudio) {
+  if (!sourceHasAudio) {
+    return [
+      { label: 'screen-rec-video-only', videoOnly: true, useMaps: true, requireOutputAudio: false },
+    ]
+  }
+  return [
+    {
+      label: 'screen-rec-a0',
+      maps: ['-map', '0:v:0', '-map', '0:a:0?'],
+      requireOutputAudio: true,
+    },
+    {
+      label: 'screen-rec-mapped',
+      useMaps: true,
+      requireOutputAudio: true,
+    },
+    { label: 'screen-rec-video-only', videoOnly: true, useMaps: true, requireOutputAudio: false },
+  ]
 }
 
 /**
@@ -1278,7 +1316,12 @@ async function wasmReencodeToMp4({
       audioStreamIndices = decodableAudioStreamIndices(probedStreams)
       maybeReportLoungeVideoUploadDebug('encode', formatStreamProbeLog(probedStreams))
       if (inputProbeTimedOut) {
-        maybeReportLoungeVideoUploadDebug('encode', 'input probe timed out (using spatial ladder guess)')
+        maybeReportLoungeVideoUploadDebug(
+          'encode',
+          shouldUseScreenRecordingEncodeLadder(file)
+            ? 'input probe timed out (screen recording ladder)'
+            : 'input probe timed out (using spatial ladder guess)',
+        )
         await remountInputAfterCoreReset('probe timeout')
       } else if (probedStreams.length === 0) {
         maybeReportLoungeVideoUploadDebug('encode', 'input probe no ffmpeg stream lines')
@@ -1368,6 +1411,25 @@ async function wasmReencodeToMp4({
         continue
       }
       if (code === 0) {
+        let outHasVideo = false
+        let outBytes = 0
+        try {
+          const outMeta = await probeFfmpegOutputFileMeta(ffmpeg, outName, signal, {
+            encodeLogs: logs,
+          })
+          outHasVideo = outMeta.hasVideo
+          outBytes = outMeta.bytes
+        } catch (probeOutErr) {
+          console.warn('[lounge-video-encode] output video probe failed', probeOutErr)
+        }
+        if (!outHasVideo) {
+          lastFailureHint = `${strategy.label}: no output video (${Math.round(outBytes / 1024)}KB)`
+          maybeReportLoungeVideoUploadDebug(
+            'encode',
+            `try ${strategy.label} no output video track · ${Math.round(outBytes / 1024)}KB`,
+          )
+          continue
+        }
         const needsOutputAudio =
           sourceHasAudio && !strategy.videoOnly && strategy.requireOutputAudio !== false
         if (needsOutputAudio) {
@@ -1473,22 +1535,30 @@ async function wasmReencodeToMp4({
 
   const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
   const useSpatialAudioLadder = shouldUseSpatialAudioLadder(
+    file,
     sourceHasAudio,
     audioStreamIndices,
     probedStreams,
   )
-  if (useSpatialAudioLadder) {
-    maybeReportLoungeVideoUploadDebug(
-      'encode',
-      inputProbeTimedOut || probedStreams.length === 0
-        ? 'spatial audio ladder (probe empty/timeout)'
-        : 'spatial audio ladder (apac/none on stream 1)',
-    )
+  /** @type {EncodeStrategy[]} */
+  let strategies
+  if (shouldUseScreenRecordingEncodeLadder(file)) {
+    maybeReportLoungeVideoUploadDebug('encode', 'screen recording encode ladder')
+    strategies = buildScreenRecordingEncodeStrategies(sourceHasAudio)
+  } else {
+    if (useSpatialAudioLadder) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        inputProbeTimedOut || probedStreams.length === 0
+          ? 'spatial audio ladder (probe empty/timeout)'
+          : 'spatial audio ladder (apac/none on stream 1)',
+      )
+    }
+    strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, {
+      allowVideoOnlyFallback: !sourceHasAudio,
+      useSpatialAudioLadder,
+    })
   }
-  let strategies = buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams, {
-    allowVideoOnlyFallback: !sourceHasAudio,
-    useSpatialAudioLadder,
-  })
   maybeReportLoungeVideoUploadDebug(
     'encode',
     `encode plan ${strategies.map((s) => s.label).join(', ') || 'none'}`,

@@ -10,7 +10,7 @@ export const BOXING_COFFEE_MAX_FIGHTS_PER_CARD = 2
 /** Skip extreme undercard mismatches (e.g. -2500 vs +1200). */
 export const BOXING_COFFEE_MAIN_CARD_MAX_ABS_ML = 900
 /** Fights on the same card usually start within this window (ms). */
-export const BOXING_COFFEE_CARD_CLUSTER_GAP_MS = 6 * 60 * 60 * 1000
+export const BOXING_COFFEE_CARD_CLUSTER_GAP_MS = 2 * 60 * 60 * 1000
 
 export function isBoxingCoffeeSport(sportKey: string, categoryLabel?: string): boolean {
   const sk = String(sportKey || '').trim().toLowerCase()
@@ -39,6 +39,23 @@ function bookCountWithH2h(ev: OddsEvent): number {
     if (market?.outcomes?.length) count += 1
   }
   return count
+}
+
+function scoreLooseMainCardFight(ev: OddsEvent): number {
+  const home = String(ev.home_team || '').trim()
+  const away = String(ev.away_team || '').trim()
+  if (!home || !away) return -1
+
+  const books = bookCountWithH2h(ev)
+  if (books <= 0) return -1
+
+  const prices = h2hPrices(ev)
+  if (prices.length < 2) return -1
+
+  const maxAbs = Math.max(...prices.map((p) => Math.abs(p)))
+  if (maxAbs > 2500) return -1
+
+  return books * 10 + (maxAbs <= 900 ? 20 : 0)
 }
 
 function scoreMainCardFight(ev: OddsEvent): number {
@@ -118,10 +135,18 @@ export function filterBoxingCoffeeMainCardEvents(
     return { events: Array.isArray(events) ? events : [], totalBefore }
   }
 
-  const cards = clusterBoxingCards(events)
-  const picked = cards.flat()
+  let cards = clusterBoxingCards(events)
+  let picked = cards.flat()
   if (!picked.length) {
-    return { events: [], totalBefore }
+    picked = [...events]
+      .map((ev) => ({ ev, score: scoreLooseMainCardFight(ev) }))
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, BOXING_COFFEE_MAX_CARDS * BOXING_COFFEE_MAX_FIGHTS_PER_CARD)
+      .map((row) => row.ev)
+    if (!picked.length) {
+      return { events: [], totalBefore }
+    }
   }
 
   const order = new Map(picked.map((ev, idx) => [String(ev.id || `${ev.home_team}-${ev.away_team}-${ev.commence_time}`), idx]))

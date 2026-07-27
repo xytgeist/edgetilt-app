@@ -28,15 +28,18 @@ import {
 } from './loungeBotCoverageScope.ts'
 import {
   COFFEE_MORE_SOCCER_THREAD_LABEL,
+  COFFEE_OTHER_SOCCER_THREAD_HEADER,
   COFFEE_SOCCER_THREAD_HEADER,
   COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
   COFFEE_TOP_SOCCER_THREAD_HEADER,
   aggregateCoffeeBestLinesSliceStats,
   buildCoffeeBestLinesThreadCandidateMeta,
   coffeeBestLinesRankForSport,
-  coffeeSecondarySoccerSortOrder,
+  coffeeCoreSecondarySoccerSortOrder,
+  coffeeOtherSoccerSortOrder,
   coffeeTopTierSoccerSortOrder,
-  isCoffeeSecondarySoccerKey,
+  isCoffeeCoreSecondarySoccerKey,
+  isCoffeeOtherSoccerKey,
   isCoffeeTopTierSoccerKey,
   selectCoffeeBestLinesThreadCandidates,
   shouldIncludeCoffeeBestLinesThreadPart,
@@ -563,7 +566,7 @@ function formatSlateGameBlock(game: ReturnType<typeof extractSlateGameBestLines>
   const head = when ? `${away} vs ${home} (${when})` : `${away} vs ${home}`
   const oddsLine = game.picks
     .map((p) => `${p.label} ${formatAmericanOdds(p.price)} (${p.book})`)
-    .join(', ')
+    .join('\n')
   return `${head}\n${oddsLine}`
 }
 
@@ -818,11 +821,12 @@ function selectFeaturedLean(coverPicks: SpreadPick[], mlPicks: OddsPick[]): Feat
 }
 
 function formatFeaturedLeanLine(lean: FeaturedLean): string {
+  const ev = formatEvSuffix(lean.pick.edgePct)
   if (lean.kind === 'spread') {
     const team = formatPickNameLabel(lean.pick.pickName)
     const spread = formatSpreadPoint(lean.pick.pickPoint)
     const juice = formatAmericanOdds(lean.pick.pickPrice)
-    return `${team} ${spread} (${juice}) @ ${lean.pick.bookTitle}`
+    return `${team} ${spread} (${juice}) @ ${lean.pick.bookTitle} ${ev}`
   }
   const team = formatPickNameLabel(lean.pick.pickName)
   if (lean.pick.marketKey === 'totals' && lean.pick.linePoint != null) {
@@ -832,15 +836,15 @@ function formatFeaturedLeanLine(lean: FeaturedLean): string {
         ? 'Under'
         : lean.pick.pickName
     const odds = formatAmericanOdds(lean.pick.pickPrice)
-    return `${side} ${lean.pick.linePoint} (${odds}) @ ${lean.pick.bookTitle}`
+    return `${side} ${lean.pick.linePoint} (${odds}) @ ${lean.pick.bookTitle} ${ev}`
   }
   if (lean.pick.marketKey === 'spreads' && lean.pick.linePoint != null) {
     const pt = formatSpreadPoint(lean.pick.linePoint)
     const odds = formatAmericanOdds(lean.pick.pickPrice)
-    return `${team} ${pt} (${odds}) @ ${lean.pick.bookTitle}`
+    return `${team} ${pt} (${odds}) @ ${lean.pick.bookTitle} ${ev}`
   }
   const odds = formatAmericanOdds(lean.pick.pickPrice)
-  return `${team} ML ${odds} @ ${lean.pick.bookTitle}`
+  return `${team} ML ${odds} @ ${lean.pick.bookTitle} ${ev}`
 }
 
 function formatCompactPickLabel(candidate: RadarCandidate | FeaturedLean): string {
@@ -1261,7 +1265,8 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
     meta: CoffeeBestLinesThreadCandidateMeta
   }> = []
   const topTierSoccerSlices: SportCoffeeSlice[] = []
-  const secondarySoccerSlices: SportCoffeeSlice[] = []
+  const coreSecondarySoccerSlices: SportCoffeeSlice[] = []
+  const otherSoccerSlices: SportCoffeeSlice[] = []
   const biggestDogs: BiggestDog[] = []
 
   for (const slice of slices) {
@@ -1269,8 +1274,10 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
 
     if (isCoffeeTopTierSoccerKey(slice.sportKey)) {
       topTierSoccerSlices.push(slice)
-    } else if (isCoffeeSecondarySoccerKey(slice.sportKey)) {
-      secondarySoccerSlices.push(slice)
+    } else if (isCoffeeCoreSecondarySoccerKey(slice.sportKey)) {
+      coreSecondarySoccerSlices.push(slice)
+    } else if (isCoffeeOtherSoccerKey(slice.sportKey)) {
+      otherSoccerSlices.push(slice)
     } else if (shouldIncludeCoffeeBestLinesThreadPart(slice.sportKey, slice)) {
       const body = buildSportLinesThreadBody(
         slice.categoryLabel,
@@ -1307,7 +1314,7 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
     }
   }
 
-  if (secondarySoccerSlices.length) {
+  if (coreSecondarySoccerSlices.length) {
     const soccerHeader = topTierSoccerSlices.length
       ? COFFEE_SECONDARY_SOCCER_THREAD_HEADER
       : COFFEE_SOCCER_THREAD_HEADER
@@ -1315,16 +1322,34 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
       ? COFFEE_MORE_SOCCER_THREAD_LABEL
       : 'Soccer'
     const body = buildCombinedSoccerThreadBody(
-      secondarySoccerSlices,
+      coreSecondarySoccerSlices,
       soccerHeader,
-      coffeeSecondarySoccerSortOrder,
+      coffeeCoreSecondarySoccerSortOrder,
     )
     if (body) {
       threadPartCandidates.push({
         part: { categoryLabel: soccerLabel, body },
         meta: buildCoffeeBestLinesThreadCandidateMeta(
-          'soccer_secondary_leagues',
-          aggregateCoffeeBestLinesSliceStats(secondarySoccerSlices),
+          'soccer_core_secondary_leagues',
+          aggregateCoffeeBestLinesSliceStats(coreSecondarySoccerSlices),
+        ),
+      })
+    }
+  }
+
+  if (otherSoccerSlices.length) {
+    const body = buildCombinedSoccerThreadBody(
+      otherSoccerSlices,
+      COFFEE_OTHER_SOCCER_THREAD_HEADER,
+      coffeeOtherSoccerSortOrder,
+      'other soccer',
+    )
+    if (body) {
+      threadPartCandidates.push({
+        part: { categoryLabel: 'Other Soccer', body },
+        meta: buildCoffeeBestLinesThreadCandidateMeta(
+          'soccer_other_leagues',
+          aggregateCoffeeBestLinesSliceStats(otherSoccerSlices),
         ),
       })
     }

@@ -29,11 +29,15 @@ export const COFFEE_TOP_TIER_SOCCER_KEY_ORDER = [
 
 export const COFFEE_TOP_TIER_SOCCER_KEYS = new Set<string>(COFFEE_TOP_TIER_SOCCER_KEY_ORDER)
 
-/** Tier 2 soccer lump — MLS, Liga MX, Brasileirão, Americas, Eredivisie, etc. */
-export const COFFEE_SECONDARY_SOCCER_KEY_ORDER = [
+/** Tier 2 core — More Soccer Today (Liga MX, MLS, Brasileirão). */
+export const COFFEE_CORE_SECONDARY_SOCCER_KEY_ORDER = [
   'soccer_mexico_ligamx',
   'soccer_usa_mls',
   'soccer_brazil_campeonato',
+] as const
+
+/** Tier 2 overflow — separate thread part; dropped on light days unless board is strong. */
+export const COFFEE_OTHER_SOCCER_KEY_ORDER = [
   'soccer_argentina_primera_division',
   'soccer_chile_campeonato',
   'soccer_netherlands_eredivisie',
@@ -41,6 +45,13 @@ export const COFFEE_SECONDARY_SOCCER_KEY_ORDER = [
   'soccer_uefa_europa_conference_league',
 ] as const
 
+export const COFFEE_SECONDARY_SOCCER_KEY_ORDER = [
+  ...COFFEE_CORE_SECONDARY_SOCCER_KEY_ORDER,
+  ...COFFEE_OTHER_SOCCER_KEY_ORDER,
+] as const
+
+export const COFFEE_CORE_SECONDARY_SOCCER_KEYS = new Set<string>(COFFEE_CORE_SECONDARY_SOCCER_KEY_ORDER)
+export const COFFEE_OTHER_SOCCER_KEYS = new Set<string>(COFFEE_OTHER_SOCCER_KEY_ORDER)
 export const COFFEE_SECONDARY_SOCCER_KEYS = new Set<string>(COFFEE_SECONDARY_SOCCER_KEY_ORDER)
 
 export const COFFEE_TOP_SOCCER_THREAD_HEADER = '⚽ Top Soccer Leagues'
@@ -49,10 +60,12 @@ export const COFFEE_SOCCER_THREAD_HEADER = '⚽ Soccer'
 /** Fan-facing label for the tier-2 soccer lump (not "secondary"). */
 export const COFFEE_MORE_SOCCER_THREAD_LABEL = 'More Soccer Today'
 export const COFFEE_SECONDARY_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_MORE_SOCCER_THREAD_LABEL}`
+export const COFFEE_OTHER_SOCCER_THREAD_LABEL = 'Other Soccer'
+export const COFFEE_OTHER_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_OTHER_SOCCER_THREAD_LABEL}`
 
 const COFFEE_SOCCER_LUMP_SORT_KEYS = new Set([
   'soccer_top_leagues',
-  'soccer_secondary_leagues',
+  'soccer_core_secondary_leagues',
 ])
 
 /** Daily Best Lines thread sort — higher rank = earlier in thread. */
@@ -68,7 +81,8 @@ const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
   mma_mixed_martial_arts: 925,
   tennis_atp: 920,
   tennis_wta: 919,
-  soccer_secondary_leagues: 910,
+  soccer_core_secondary_leagues: 910,
+  soccer_other_leagues: 905,
   golf_pga: 900,
   golf_masters_tournament_winner: 899,
   basketball_wnba: 890,
@@ -126,6 +140,14 @@ export function isCoffeeSecondarySoccerKey(sportKey: string): boolean {
   return COFFEE_SECONDARY_SOCCER_KEYS.has(normalizeSportKey(sportKey))
 }
 
+export function isCoffeeCoreSecondarySoccerKey(sportKey: string): boolean {
+  return COFFEE_CORE_SECONDARY_SOCCER_KEYS.has(normalizeSportKey(sportKey))
+}
+
+export function isCoffeeOtherSoccerKey(sportKey: string): boolean {
+  return COFFEE_OTHER_SOCCER_KEYS.has(normalizeSportKey(sportKey))
+}
+
 export function isCoffeeLowerSoccerKey(sportKey: string): boolean {
   const sk = normalizeSportKey(sportKey)
   return sk.startsWith('soccer_')
@@ -145,6 +167,22 @@ export function coffeeSecondarySoccerSortOrder(sportKey: string): number {
     sk as (typeof COFFEE_SECONDARY_SOCCER_KEY_ORDER)[number],
   )
   return idx >= 0 ? idx : COFFEE_SECONDARY_SOCCER_KEY_ORDER.length
+}
+
+export function coffeeCoreSecondarySoccerSortOrder(sportKey: string): number {
+  const sk = normalizeSportKey(sportKey)
+  const idx = COFFEE_CORE_SECONDARY_SOCCER_KEY_ORDER.indexOf(
+    sk as (typeof COFFEE_CORE_SECONDARY_SOCCER_KEY_ORDER)[number],
+  )
+  return idx >= 0 ? idx : COFFEE_CORE_SECONDARY_SOCCER_KEY_ORDER.length
+}
+
+export function coffeeOtherSoccerSortOrder(sportKey: string): number {
+  const sk = normalizeSportKey(sportKey)
+  const idx = COFFEE_OTHER_SOCCER_KEY_ORDER.indexOf(
+    sk as (typeof COFFEE_OTHER_SOCCER_KEY_ORDER)[number],
+  )
+  return idx >= 0 ? idx : COFFEE_OTHER_SOCCER_KEY_ORDER.length
 }
 
 export function resolveCoffeeBestLinesTier(sportKey: string): CoffeeBestLinesTier | null {
@@ -232,17 +270,18 @@ export function coffeeBestLinesThreadSortRank(sportKey: string): number {
   return coffeeBestLinesRankForSport(sportKey)
 }
 
-/** Hard cap on Best Lines thread parts (each lump = one sport). */
+/** Hard cap on Best Lines sport line reply parts (each lump = one sport). Root Coffee post is separate — does not consume a slot. */
 export const COFFEE_BEST_LINES_MAX_SPORTS = 7
-/** Heavy slate (e.g. NFL Sunday): Tier 1 + boxing/UFC only. */
+/** Heavy slate (e.g. NFL Sunday): Tier 1 + boxing/UFC only. Sport line parts only. */
 export const COFFEE_BEST_LINES_HEAVY_SLATE_MAX = 6
-/** Light day: only sports with a decent board. */
+/** Light day: only sports with a decent board. Sport line parts only. */
 export const COFFEE_BEST_LINES_LIGHT_SLATE_MAX = 5
 
 export function resolveCoffeeBestLinesThreadTier(sortKey: string): CoffeeBestLinesTier | null {
   const sk = normalizeSportKey(sortKey)
   if (sk === 'soccer_top_leagues') return 1
-  if (sk === 'soccer_secondary_leagues') return 2
+  if (sk === 'soccer_core_secondary_leagues') return 2
+  if (sk === 'soccer_other_leagues') return 2
   return resolveCoffeeBestLinesTier(sk)
 }
 
@@ -344,6 +383,14 @@ function hasDecentCoffeeBestLinesBoard(candidate: CoffeeBestLinesThreadCandidate
   return Boolean(candidate.coversMetBar || candidate.mlMetBar)
 }
 
+/** Pinned thread parts (soccer lumps, boxing/UFC) stay on light days when they have lines. */
+function passesCoffeeLightSlateBoardFilter(candidate: CoffeeBestLinesThreadCandidateMeta): boolean {
+  if (isCoffeePinnedBestLinesThreadKey(candidate.sortKey) && candidate.gameCount > 0) {
+    return true
+  }
+  return hasDecentCoffeeBestLinesBoard(candidate)
+}
+
 function compareCoffeeBestLinesThreadCandidates(
   a: CoffeeBestLinesThreadCandidateMeta,
   b: CoffeeBestLinesThreadCandidateMeta,
@@ -354,14 +401,14 @@ function compareCoffeeBestLinesThreadCandidates(
   return a.sortKey.localeCompare(b.sortKey)
 }
 
-/** Cap Best Lines thread parts: always Tier 1, then best Tier 2, drop lowest when over cap. */
+/** Cap Best Lines sport line reply parts: always Tier 1, then best Tier 2, drop lowest when over cap. Root post is extra. */
 export function selectCoffeeBestLinesThreadCandidates<T extends CoffeeBestLinesThreadCandidateMeta>(
   candidates: T[],
 ): T[] {
   if (!candidates.length) return []
 
   const sorted = [...candidates].sort(compareCoffeeBestLinesThreadCandidates)
-  const maxSports = resolveCoffeeBestLinesMaxSports(sorted)
+  const maxSportLineParts = resolveCoffeeBestLinesMaxSports(sorted)
   const heavy = isCoffeeHeavyBestLinesSlate(sorted)
   const light = isCoffeeLightBestLinesSlate(sorted)
 
@@ -375,8 +422,8 @@ export function selectCoffeeBestLinesThreadCandidates<T extends CoffeeBestLinesT
   }
 
   if (light) {
-    tier1 = tier1.filter(hasDecentCoffeeBestLinesBoard)
-    tier2 = tier2.filter(hasDecentCoffeeBestLinesBoard)
+    tier1 = tier1.filter(passesCoffeeLightSlateBoardFilter)
+    tier2 = tier2.filter(passesCoffeeLightSlateBoardFilter)
     tier3 = tier3.filter((c) => c.bestEvPct >= 4 || c.coversMetBar || c.mlMetBar)
   }
 
@@ -386,24 +433,24 @@ export function selectCoffeeBestLinesThreadCandidates<T extends CoffeeBestLinesT
   const otherTier2 = tier2.filter((c) => !isCoffeePinnedBestLinesThreadKey(c.sortKey))
 
   for (const candidate of [...pinnedTier2].sort((a, b) => b.strengthScore - a.strengthScore)) {
-    if (selected.length >= maxSports) break
+    if (selected.length >= maxSportLineParts) break
     selected.push(candidate)
   }
 
   for (const candidate of [...otherTier2].sort((a, b) => b.strengthScore - a.strengthScore)) {
-    if (selected.length >= maxSports) break
+    if (selected.length >= maxSportLineParts) break
     selected.push(candidate)
   }
 
   for (const candidate of [...tier3].sort((a, b) => b.strengthScore - a.strengthScore)) {
-    if (selected.length >= maxSports) break
+    if (selected.length >= maxSportLineParts) break
     selected.push(candidate)
   }
 
-  if (selected.length > maxSports) {
+  if (selected.length > maxSportLineParts) {
     return [...selected]
       .sort(compareCoffeeBestLinesThreadCandidates)
-      .slice(0, maxSports)
+      .slice(0, maxSportLineParts)
   }
 
   return selected.sort(compareCoffeeBestLinesThreadCandidates)

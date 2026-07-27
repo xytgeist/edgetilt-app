@@ -726,15 +726,17 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       }
     } else if (action === 'daily_slates') {
       const combined = (d.details || []).find((row) => row?.combinedCoffee)
-      const threadParts = combined?.threadPartCount != null
-        ? Math.max(0, Number(combined.threadPartCount) - 1)
-        : null
+      const sportLineParts = combined?.sportLinePartCount != null
+        ? Number(combined.sportLinePartCount)
+        : combined?.threadPartCount != null
+          ? Math.max(0, Number(combined.threadPartCount) - 1)
+          : null
       const sportsIncluded = combined?.sportsIncluded ?? d.sportsChecked ?? 0
       setToast(
         dryRun
-          ? `Dry run · would post one Coffee & Covers thread (${sportsIncluded} sport${sportsIncluded === 1 ? '' : 's'}${threadParts != null ? ` · ${threadParts} line part${threadParts === 1 ? '' : 's'}` : ''})${d.scheduledPt ? ` · cron opens ${d.scheduledPt} PT` : ''}`
+          ? `Dry run · would post one Coffee & Covers thread (${sportsIncluded} sport${sportsIncluded === 1 ? '' : 's'}${sportLineParts != null ? ` · ${sportLineParts} line part${sportLineParts === 1 ? '' : 's'}` : ''} + root)${d.scheduledPt ? ` · cron opens ${d.scheduledPt} PT` : ''}`
           : combined?.publishedCoffeeCovers
-            ? `Coffee & Covers posted · ${combined.coverCount ?? 0} cover${combined.coverCount === 1 ? '' : 's'} · ${threadParts ?? '?'} thread part${threadParts === 1 ? '' : 's'} (${sportsIncluded} sport${sportsIncluded === 1 ? '' : 's'})`
+            ? `Coffee & Covers posted · ${combined.coverCount ?? 0} cover${combined.coverCount === 1 ? '' : 's'} · ${sportLineParts ?? '?'} line part${sportLineParts === 1 ? '' : 's'} + root (${sportsIncluded} sport${sportsIncluded === 1 ? '' : 's'})`
             : combined?.skipped === 'coffee_already_posted'
               ? 'Coffee & Covers already posted today.'
               : `No Coffee & Covers posted (${combined?.skipped || 'no games'}) · ${sportsIncluded} sport${sportsIncluded === 1 ? '' : 's'} checked`,

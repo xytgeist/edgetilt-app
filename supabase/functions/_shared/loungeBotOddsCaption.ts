@@ -602,7 +602,7 @@ function formatSlateGameBlock(game: SlateGameBestLine): string {
   const head = formatEventMatchupLine(undefined, away, home, when)
   const oddsLine = game.picks
     .map((p) => `${p.label} ${formatAmericanOdds(p.price)} (${p.book})`)
-    .join(', ')
+    .join('\n')
   return `${head}\n${oddsLine}`
 }
 

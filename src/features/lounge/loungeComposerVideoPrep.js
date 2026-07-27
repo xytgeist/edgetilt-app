@@ -10,7 +10,9 @@ import {
   isLoungeAndroidBlockedOversizedTrimSource,
   loungeAndroidIphoneSpatialDirectUploadMessage,
   loungeAndroidOversizedTrimSourceMessage,
+  loungeIphoneScreenRecordingEncodeFailMessage,
   probeVideoFileDurationSeconds,
+  resolveLoungeVideoForceWasmEncode,
   uploadVideoToCfStreamResumableTus,
   waitForDocumentVisible,
 } from '../../utils/loungeVideoUpload'
@@ -161,7 +163,14 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(source)) {
       throw new Error(loungeAndroidIphoneSpatialDirectUploadMessage())
     }
-    if (canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
+    const forceWasmEncode = await resolveLoungeVideoForceWasmEncode(source)
+    if (forceWasmEncode) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `screen-recording → force wasm (${source.name || 'video'} ${sourceMb}MB)`,
+      )
+    }
+    if (!forceWasmEncode && canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
       const androidDirect = isAndroidBrowser()
       maybeReportLoungeVideoUploadDebug(
         'encode',
@@ -229,6 +238,9 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
+          if (forceWasmEncode) {
+            throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
+          }
           throw encodeErr
         }
       }
@@ -240,6 +252,13 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         ? sanitizeVideoCropPx(spec.intrinsicWidth, spec.intrinsicHeight, spec.cropPx)
         : null
     const trimSourceMb = Math.round((spec.sourceFile.size || 0) / (1024 * 1024))
+    const trimForceWasmEncode = await resolveLoungeVideoForceWasmEncode(spec.sourceFile)
+    if (trimForceWasmEncode) {
+      maybeReportLoungeVideoUploadDebug(
+        'encode',
+        `screen-recording trim → force wasm (${spec.sourceFile?.name || 'video'} ${trimSourceMb}MB)`,
+      )
+    }
 
     if (isLoungeAndroidBlockedOversizedTrimSource(spec.sourceFile)) {
       throw new Error(loungeAndroidOversizedTrimSourceMessage())
@@ -285,7 +304,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       } catch (trimErr) {
         const msg = trimErr instanceof Error ? trimErr.message : String(trimErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed android trim: ${msg}`)
-        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile)) {
+        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile) && !trimForceWasmEncode) {
           maybeReportLoungeVideoUploadDebug(
             'encode',
             'fallback pass-through original (CF Stream transcode)',
@@ -307,6 +326,9 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
+          if (trimForceWasmEncode) {
+            throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
+          }
           throw trimErr
         }
       }
@@ -334,7 +356,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       } catch (encodeErr) {
         const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed trim: ${msg}`)
-        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile)) {
+        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile) && !trimForceWasmEncode) {
           maybeReportLoungeVideoUploadDebug(
             'encode',
             'fallback pass-through original (CF Stream transcode)',
@@ -356,6 +378,9 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
             durSec: validatedDurSec,
             detail: msg.slice(0, 200),
           })
+          if (trimForceWasmEncode) {
+            throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
+          }
           throw encodeErr
         }
       }

@@ -163,11 +163,81 @@ export function isLoungeVideoMp4Container(file) {
   )
 }
 
+/** @returns {boolean} */
+export function isIOSBrowser() {
+  return typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+}
+
 /** @param {File | undefined} file */
 export function isLoungeVideoQuicktimeMov(file) {
   const type = String(file?.type || '').toLowerCase()
   const name = String(file?.name || '').toLowerCase()
   return name.endsWith('.mov') || type.includes('quicktime')
+}
+
+/** iOS Photos export name for ReplayKit captures. */
+const IPHONE_SCREEN_RECORDING_NAME_RE = /screen\s*recording/i
+
+/** Native pixel sizes common for iPhone screen caps (portrait + landscape). */
+const IPHONE_SCREEN_RECORDING_DIMENSION_KEYS = new Set([
+  '1170x2532',
+  '2532x1170',
+  '1179x2556',
+  '2556x1179',
+  '1284x2778',
+  '2778x1284',
+  '1290x2796',
+  '2796x1290',
+  '1320x2868',
+  '2868x1320',
+  '1080x2340',
+  '2340x1080',
+  '1125x2436',
+  '2436x1125',
+  '1242x2688',
+  '2688x1242',
+])
+
+/**
+ * Best-effort ReplayKit / screen cap detection from picker metadata.
+ * Raw iPhone screen .mov files often fail Cloudflare Stream unless wasm-encoded first.
+ *
+ * @param {File | undefined} file
+ */
+export function isLikelyIphoneScreenRecording(file) {
+  if (!file) return false
+  const name = String(file.name || '').trim()
+  if (IPHONE_SCREEN_RECORDING_NAME_RE.test(name)) return true
+  return false
+}
+
+function isLikelyIphoneScreenRecordingDimensions(width, height) {
+  const w = Math.round(Number(width) || 0)
+  const h = Math.round(Number(height) || 0)
+  if (w <= 0 || h <= 0) return false
+  return IPHONE_SCREEN_RECORDING_DIMENSION_KEYS.has(`${w}x${h}`)
+}
+
+/**
+ * Async screen-cap detection: filename, or iOS .mov with exact device screen dimensions.
+ *
+ * @param {File} file
+ * @returns {Promise<boolean>}
+ */
+export async function resolveLoungeVideoForceWasmEncode(file) {
+  if (isLikelyIphoneScreenRecording(file)) return true
+  if (!isIOSBrowser() || !isLoungeVideoQuicktimeMov(file)) return false
+  try {
+    const dims = await probeVideoFileDisplaySize(file)
+    return isLikelyIphoneScreenRecordingDimensions(dims.width, dims.height)
+  } catch {
+    return false
+  }
+}
+
+/** User-facing copy when a screen recording cannot be wasm-encoded for Stream upload. */
+export function loungeIphoneScreenRecordingEncodeFailMessage() {
+  return 'This screen recording could not be converted for upload. Trim it to 60 seconds or less in Photos, then try again.'
 }
 
 /** User-facing copy when Android must not direct-upload iPhone camera-roll MOV sources. */
@@ -236,6 +306,7 @@ export function isLoungeAndroidBlockedIphoneSpatialDirectUpload(file) {
  */
 export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   if (specKind !== 'direct') return false
+  if (isLikelyIphoneScreenRecording(file)) return false
   const size = typeof file?.size === 'number' ? file.size : 0
   if (!Number.isFinite(size) || size <= 0) return false
   if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
@@ -267,6 +338,7 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
 
 /** Ultimate fallback when client encode fails: upload original for CF Stream to transcode. */
 export function canPassThroughLoungeVideoOnEncodeFail(file) {
+  if (isLikelyIphoneScreenRecording(file)) return false
   const size = typeof file?.size === 'number' ? file.size : 0
   if (!Number.isFinite(size) || size <= 0 || size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) return false
   if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(file)) return false

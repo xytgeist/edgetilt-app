@@ -656,6 +656,8 @@ export async function tryPublishCombinedCoffeeAndCovers(
   onTapCount?: number
   hasCovers?: boolean
   threadPartCount?: number
+  /** Best Lines sport line reply parts only (excludes root Coffee post). */
+  sportLinePartCount?: number
   sportsIncluded?: number
 }> {
   const withGames = sportContexts.filter((ctx) => ctx.eventsInWindow > 0)
@@ -698,6 +700,9 @@ export async function tryPublishCombinedCoffeeAndCovers(
     }))
   const generated = generateCombinedCoffeeAndCovers(inputs)
 
+  const sportLinePartCount = generated.threadParts.length
+  const threadPartCount = 1 + sportLinePartCount
+
   if (dryRun) {
     return {
       published: false,
@@ -706,7 +711,8 @@ export async function tryPublishCombinedCoffeeAndCovers(
       mlCount: generated.mlPicks.length,
       onTapCount: generated.onTapPicks.length,
       hasCovers: generated.hasCovers,
-      threadPartCount: generated.threadParts.length,
+      sportLinePartCount,
+      threadPartCount,
       sportsIncluded: withGames.length,
     }
   }
@@ -752,7 +758,8 @@ export async function tryPublishCombinedCoffeeAndCovers(
       mlCount: generated.mlPicks.length,
       onTapCount: generated.onTapPicks.length,
       hasCovers: generated.hasCovers,
-      threadPartCount: result.threadPartCount ?? (1 + generated.threadParts.length),
+      sportLinePartCount,
+      threadPartCount: result.threadPartCount ?? threadPartCount,
       sportsIncluded: withGames.length,
     }
   }

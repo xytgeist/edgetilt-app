@@ -126,10 +126,11 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **DM audio + video** ring/accept/decline/hangup (`ChatCallProvider`, header Phone/Video).
 - [x] **Group audio** start/join (audio-only grants; multi-participant list UI).
+- [x] **App-wide in-app ring:** `ChatCallProvider` in **`AppShell`** (any tab while signed in); accept opens Chat room.
 - [x] **Offline ring:** `activity_events.chat_call_invite` immediate push; deep link `/?tab=chat&room=&call=`.
 - [x] **Call summary chips** in thread (`content_encoding = call_summary`).
-- [ ] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan).
-- [ ] **Smoke (test):** DM video both devices; group voice 2+ members; push tap while backgrounded on iPhone PWA; missed-call chip after decline/timeout.
+- [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
+- [ ] **Smoke (test):** DM video both devices; ring while on Lounge/Guides (not Chat); group voice 2+ members; push tap while backgrounded / locked on iPhone PWA; missed-call chip after decline/timeout.
 - [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; recording; screen share.
 
 ### Planned (Spaces / fan hangouts — later)
@@ -930,7 +931,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-07-27: **Chat calling + group voice (LiveKit, code):** migration **`20260728000000_chat_calls`**; Edge **`chat-calls`**; client **`src/features/chat/calls/`**; push **`chat_call_invite`** + `?call=` deep link; docs **`docs/chat-calling.md`**. Needs LiveKit Cloud secrets + SQL/Edge deploy on test before smoke. Topics/fan Spaces still deferred.
+- 2026-07-27: **Chat calling app-wide ring:** `ChatCallProvider` lifted from `ChatTab` → **`AppShell`** so incoming overlay works on any tab while signed in; caller title fetch when inbox profiles aren’t loaded; accept/deep link still opens Chat via `pendingChatRoomId`. Docs **`docs/chat-calling.md`**. Client only.
+- 2026-07-27: **Chat calling + group voice (LiveKit):** migration **`20260728000000_chat_calls`**; Edge **`chat-calls`**; client **`src/features/chat/calls/`**; push **`chat_call_invite`** + `?call=` deep link; LiveKit secrets + DM voice connect smoked on test. Topics/fan Spaces still deferred.
 - 2026-07-27: **Lounge feed media frame hug (client):** single Stream/still tiles size to fitted media inside caption width × **`max-h-[min(55vh,420px)]`** — landscape still fills column; portrait no longer pillarboxes in a full-width black frame (`loungeFeedImageAttachment.js`, **`LoungePostStreamVideo`**). Multi-image carousels unchanged. Client only.
 - 2026-07-26: **Lounge Stream iOS playback invariants (doc + Ryan sign-off):** **`docs/lounge-stream-ios-playback.md`** + **`.cursor/rules/lounge-stream-ios-playback.mdc`** — Apple WebKit MSE may play at **`readyState=0`**; hero MSE lock for full lightbox; WAAPI expand land via **`snapFlyoutToHeroOpen`**. Hotfixes **`e333601b`** (feed ~2–3s restart), **`6440854a`** / **`d1f6fdca`** / **`e4dd6f19`** (hero fly-in/land/play). Backlog shipped row + smoke §11 iPhone checks. Client only.
 - 2026-07-26: **Quote repost inset polish (client):** inset meta **15px** / handle **14px** (feed handle **16px** vs **17px** name); caption **`text-zinc-200`** at **15px**; compact avatar alignment + no chip background; embed multi-image carousel scrollbar hidden (`data-lounge-feed-horizontal-scroll` on all multi-slide carousels); staff/OG **`embed`** badge sizing via **`metaVariant="quoteEmbed"`**. Client only; no SQL/Edge.

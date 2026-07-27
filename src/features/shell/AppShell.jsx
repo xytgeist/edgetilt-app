@@ -85,6 +85,7 @@ import {
   importRoute,
   lazyRoute,
 } from '../../utils/lazyImportWithChunkReload.js'
+import { ChatCallProvider } from '../chat/calls/ChatCallProvider.jsx'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
@@ -281,6 +282,8 @@ export default function AppShell({
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
   const [pendingChatCallId, setPendingChatCallId] = useState(null)
+  /** Signed-in uid for app-wide call ring (ChatCallProvider lives above ChatTab). */
+  const [chatCallViewerUserId, setChatCallViewerUserId] = useState('')
   const [pendingLoungeProfileUserId, setPendingLoungeProfileUserId] = useState(null)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
@@ -1340,6 +1343,27 @@ export default function AppShell({
     browseMode,
   })
 
+  /** Keep call invite listener alive on every tab (not only while Chat is mounted). */
+  useEffect(() => {
+    if (!supabaseClient || browseMode !== 'member') {
+      setChatCallViewerUserId('')
+      return undefined
+    }
+    let cancelled = false
+    void supabaseClient.auth.getSession().then(({ data }) => {
+      if (!cancelled) setChatCallViewerUserId(data.session?.user?.id || '')
+    })
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setChatCallViewerUserId(session?.user?.id || '')
+    })
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [supabaseClient, browseMode])
+
   /** Queue installed PWA notification opt-in on first auth — iOS + Android Home Screen / Install app. */
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1705,8 +1729,6 @@ export default function AppShell({
           onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
           initialRoomId={pendingChatRoomId}
           onInitialRoomConsumed={() => setPendingChatRoomId(null)}
-          initialCallId={pendingChatCallId}
-          onInitialCallConsumed={() => setPendingChatCallId(null)}
           onViewProfile={(userId) => {
             if (!userId) return
             setPendingLoungeProfileUserId(userId)
@@ -1810,7 +1832,7 @@ export default function AppShell({
     )
   }
 
-  return (
+  const shellTree = (
     <div className="min-h-dvh bg-zinc-950">
       {accessNotice ? (
         <div
@@ -1908,4 +1930,25 @@ export default function AppShell({
 
     </div>
   )
+
+  if (browseMode === 'member' && supabaseClient && chatCallViewerUserId) {
+    return (
+      <ChatCallProvider
+        supabaseClient={supabaseClient}
+        viewerUserId={chatCallViewerUserId}
+        initialCallId={pendingChatCallId}
+        onInitialCallConsumed={() => setPendingChatCallId(null)}
+        onOpenRoom={(roomId) => {
+          if (!roomId) return
+          setPendingChatRoomId(roomId)
+          setTab('chat')
+          setMenuOpen(false)
+        }}
+      >
+        {shellTree}
+      </ChatCallProvider>
+    )
+  }
+
+  return shellTree
 }

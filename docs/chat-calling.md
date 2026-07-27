@@ -18,7 +18,7 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 - **Call state:** `chat_calls` + `chat_call_participants` (migration `20260728000000_chat_calls.sql`).
 - **Media:** LiveKit room name `edge-call:{call_id}` (never client-chosen).
 - **Tokens:** Edge Function **`chat-calls`** mints JWTs (`LIVEKIT_*` secrets).
-- **In-app ring:** Realtime `postgres_changes` on `chat_calls` + broadcast channel `chat-call-{roomId}`.
+- **In-app ring (any screen):** `ChatCallProvider` mounts in **`AppShell`** while signed in (not only inside `ChatTab`), so Lounge/Guides/etc. still get the overlay. Realtime `postgres_changes` on `chat_calls` + broadcast `chat-call-{roomId}`. Accept/deep link opens Chat via `pendingChatRoomId`.
 - **Offline ring:** `activity_events.event_type = chat_call_invite` → immediate push (not DM 60s batch). Deep link `/?tab=chat&room={uuid}&call={callId}`. Pref: `push_messages`.
 
 ## Edge actions
@@ -42,7 +42,7 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 - **No CallKit** ... incoming = web push + in-app overlay only.
 - `getUserMedia` only after user tap (Start / Accept).
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).
-- Call UI is owned at Chat tab level so room switches inside Chat do not tear down media.
+- Call provider + overlay live at **AppShell** so tab switches do not tear down ringing/active media.
 
 ## Setup checklist
 

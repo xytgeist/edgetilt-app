@@ -80,11 +80,15 @@ export function ChatCallProvider({
   const activeCallRef = useRef(activeCall)
   const incomingRef = useRef(incoming)
   const endingRef = useRef(false)
+  const titleCacheRef = useRef(/** @type {Map<string, string>} */ (new Map()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
 
   const resolveTitle = useCallback(
     (roomId, fromUserId) => {
+      if (fromUserId && titleCacheRef.current.has(fromUserId)) {
+        return titleCacheRef.current.get(fromUserId) || 'Chat call'
+      }
       if (fromUserId && profilesById[fromUserId]) {
         const p = profilesById[fromUserId]
         return String(p.display_name || p.handle || 'Member').trim() || 'Member'
@@ -93,10 +97,34 @@ export function ChatCallProvider({
         const t = roomTitleById(roomId)
         if (t) return t
       }
-      return 'Chat call'
+      return 'Incoming call'
     },
     [profilesById, roomTitleById],
   )
+
+  /** When provider lives above ChatTab, profilesById is often empty... fetch caller name. */
+  const resolveTitleAsync = useCallback(
+    async (roomId, fromUserId) => {
+      const sync = resolveTitle(roomId, fromUserId)
+      if (!supabaseClient || !fromUserId) return sync
+      if (profilesById[fromUserId] || titleCacheRef.current.has(fromUserId)) return sync
+      try {
+        const { data } = await supabaseClient
+          .from('profiles')
+          .select('display_name, handle')
+          .eq('user_id', fromUserId)
+          .maybeSingle()
+        const t = String(data?.display_name || data?.handle || sync).trim() || sync
+        titleCacheRef.current.set(fromUserId, t)
+        return t
+      } catch {
+        return sync
+      }
+    },
+    [supabaseClient, profilesById, resolveTitle],
+  )
+
+  const presentIncomingRef = useRef(/** @type {(row: Record<string, unknown>) => void} */ (() => {}))
 
   const ensureBroadcast = useCallback(
     (roomId) => {
@@ -109,17 +137,12 @@ export function ChatCallProvider({
         if (!callId) return
 
         if (event === 'invite') {
-          if (activeCallRef.current?.callId === callId) return
-          if (incomingRef.current?.callId === callId) return
-          const kind = payload.kind === 'group_audio' ? 'group_audio' : 'dm_av'
-          const mediaMode = payload.mediaMode === 'video' ? 'video' : 'audio'
-          setIncoming({
-            callId,
-            roomId,
-            kind,
-            mediaMode,
-            fromUserId,
-            title: resolveTitle(roomId, fromUserId),
+          presentIncomingRef.current({
+            id: callId,
+            chat_room_id: roomId,
+            started_by: fromUserId,
+            kind: payload.kind,
+            media_mode: payload.mediaMode,
           })
           return
         }
@@ -134,8 +157,33 @@ export function ChatCallProvider({
       broadcastByRoomRef.current.set(roomId, sub)
       return sub
     },
-    [supabaseClient, viewerUserId, resolveTitle],
+    [supabaseClient, viewerUserId],
   )
+
+  const presentIncoming = useCallback(
+    (row) => {
+      if (!row?.id) return
+      if (activeCallRef.current || incomingRef.current?.callId === row.id) return
+      const roomId = String(row.chat_room_id || row.roomId || '')
+      const fromUserId = String(row.started_by || row.fromUserId || '')
+      const kind = row.kind === 'group_audio' ? 'group_audio' : 'dm_av'
+      const mediaMode = (row.media_mode || row.mediaMode) === 'video' ? 'video' : 'audio'
+      if (roomId) ensureBroadcast(roomId)
+      setIncoming({
+        callId: row.id,
+        roomId,
+        kind,
+        mediaMode,
+        fromUserId,
+        title: resolveTitle(roomId, fromUserId),
+      })
+      void resolveTitleAsync(roomId, fromUserId).then((title) => {
+        setIncoming((prev) => (prev?.callId === row.id ? { ...prev, title } : prev))
+      })
+    },
+    [ensureBroadcast, resolveTitle, resolveTitleAsync],
+  )
+  presentIncomingRef.current = presentIncoming
 
   const releaseBroadcast = useCallback((roomId) => {
     const sub = broadcastByRoomRef.current.get(roomId)
@@ -151,7 +199,7 @@ export function ChatCallProvider({
     }
   }, [])
 
-  // Realtime postgres_changes for invites while browsing inbox / other rooms.
+  // App-wide Realtime invites (provider should live above ChatTab so any screen rings).
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return undefined
     const channel = supabaseClient
@@ -163,17 +211,7 @@ export function ChatCallProvider({
           const row = payload.new
           if (!row?.id || row.started_by === viewerUserId) return
           if (!['ringing', 'active'].includes(row.status)) return
-          if (activeCallRef.current || incomingRef.current?.callId === row.id) return
-          const roomId = String(row.chat_room_id || '')
-          ensureBroadcast(roomId)
-          setIncoming({
-            callId: row.id,
-            roomId,
-            kind: row.kind === 'group_audio' ? 'group_audio' : 'dm_av',
-            mediaMode: row.media_mode === 'video' ? 'video' : 'audio',
-            fromUserId: row.started_by,
-            title: resolveTitle(roomId, row.started_by),
-          })
+          presentIncoming(row)
         },
       )
       .on(
@@ -193,7 +231,7 @@ export function ChatCallProvider({
     return () => {
       supabaseClient.removeChannel(channel)
     }
-  }, [supabaseClient, viewerUserId, ensureBroadcast, resolveTitle])
+  }, [supabaseClient, viewerUserId, presentIncoming])
 
   // Deep link ?call=
   useEffect(() => {
@@ -212,14 +250,7 @@ export function ChatCallProvider({
           onInitialCallConsumed?.()
           return
         }
-        setIncoming({
-          callId: call.id,
-          roomId: call.chat_room_id,
-          kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
-          mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
-          fromUserId: call.started_by,
-          title: resolveTitle(call.chat_room_id, call.started_by),
-        })
+        presentIncoming(call)
         onOpenRoom?.(call.chat_room_id)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not open call')
@@ -236,7 +267,7 @@ export function ChatCallProvider({
     viewerUserId,
     onInitialCallConsumed,
     onOpenRoom,
-    resolveTitle,
+    presentIncoming,
   ])
 
   const startCall = useCallback(

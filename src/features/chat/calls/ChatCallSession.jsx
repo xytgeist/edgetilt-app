@@ -109,7 +109,11 @@ function CallChrome({ title, videoEnabled, isGroup, isOutgoing, onHangup }) {
   const [elapsed, setElapsed] = useState(0)
 
   const remoteCount = participants.filter((p) => !p.isLocal).length
-  const awaitingAnswer = Boolean(isOutgoing) && remoteCount === 0
+  const hadRemoteRef = useRef(false)
+  if (remoteCount > 0) hadRemoteRef.current = true
+  // Only ringback while waiting for first answer... never again after a remote joined
+  // (callee hangup briefly drops remoteCount to 0 before we tear down).
+  const awaitingAnswer = Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
 
   useEffect(() => {
     const t0 = Date.now()

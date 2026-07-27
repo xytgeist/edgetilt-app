@@ -939,6 +939,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-27: **Chat calling missed-call push replace:** unanswered hangup inserts **`chat_call_missed`** (same `chat_call_id` tag as invite) → “Missed call from {name}”; migration **`20260728020000`**; redeploy **`chat-calls`** + **`lounge-send-activity-push`**.
 - 2026-07-27: **Chat calling in-app ringtone + ringback:** Web Audio tones in **`chatCallRingTone.js`** — incoming overlay loops ringtone (+ vibrate when supported); outgoing session plays ringback until a remote participant joins. Client only.
 - 2026-07-27: **Chat calling phase 2 + Android push RLS:** notificationclick postMessage carries `callId`/`roomId` and skips `client.navigate` for call invites (iOS was opening DM only); session stash **`edge_pending_chat_call_v1`**. Migration **`20260728010000_upsert_my_push_subscription`** + client RPC for Settings enable (endpoint reclaim). **Phase 2 smoke PASSED** (Ryan).
 - 2026-07-27: **Chat calling phase 1 (OS push):** `lounge-send-activity-push` payload adds `eventType` + `chatCallId`; **`push-sw.js`** always shows OS notification for `chat_call_invite` (no focused-client divert to Lounge in-app toast). Redeploy Edge + hard-refresh PWA so SW updates. Smoke: background/lock callee → system “is calling you”. **iPhone PASSED** (Ryan).

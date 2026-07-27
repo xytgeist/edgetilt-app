@@ -62,7 +62,8 @@ function pushTitleForEventType(eventType: string): string {
   if (
     eventType === 'chat_dm' ||
     eventType === 'chat_group_invite' ||
-    eventType === 'chat_call_invite'
+    eventType === 'chat_call_invite' ||
+    eventType === 'chat_call_missed'
   ) {
     return PUSH_TITLE_CHAT
   }
@@ -131,6 +132,7 @@ function prefAllows(prefs: NotificationPrefs | null, eventType: string): boolean
     case 'chat_dm':
     case 'chat_group_invite':
     case 'chat_call_invite':
+    case 'chat_call_missed':
       return prefs.push_messages
     default:
       return true
@@ -180,6 +182,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'added you to a group'
     case 'chat_call_invite':
       return 'is calling you'
+    case 'chat_call_missed':
+      return 'Missed call'
     case 'starter_weekly_guide_drop':
       return 'Weekly guide drop ready — scratch to reveal'
     default:
@@ -217,11 +221,13 @@ function buildTargetUrl(
   if (
     (event.event_type === 'chat_dm' ||
       event.event_type === 'chat_group_invite' ||
-      event.event_type === 'chat_call_invite') &&
+      event.event_type === 'chat_call_invite' ||
+      event.event_type === 'chat_call_missed') &&
     event.chat_room_id
   ) {
     params.set('tab', 'chat')
     params.set('room', event.chat_room_id)
+    // Invite only: include call= for accept UI. Missed opens the room (same tag replaces invite).
     if (event.event_type === 'chat_call_invite' && event.chat_call_id) {
       params.set('call', event.chat_call_id)
     }
@@ -307,6 +313,16 @@ function buildSingleNotification(
     }
   }
   const who = actorDisplayName(actor)
+  if (event.event_type === 'chat_call_missed') {
+    return {
+      title: pushTitleForEventType(event.event_type),
+      body: `Missed call from ${who}`,
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      activityEventId: event.id,
+      eventType: event.event_type,
+      ...(event.chat_call_id ? { chatCallId: event.chat_call_id } : {}),
+    }
+  }
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
   return {
     title: pushTitleForEventType(event.event_type),
@@ -314,7 +330,8 @@ function buildSingleNotification(
     url: buildTargetUrl(event, actor, { activityEventId: event.id }),
     activityEventId: event.id,
     eventType: event.event_type,
-    ...(event.event_type === 'chat_call_invite' && event.chat_call_id
+    ...((event.event_type === 'chat_call_invite' || event.event_type === 'chat_call_missed') &&
+    event.chat_call_id
       ? { chatCallId: event.chat_call_id }
       : {}),
   }

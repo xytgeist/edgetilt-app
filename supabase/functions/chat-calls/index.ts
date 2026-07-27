@@ -135,12 +135,13 @@ async function loadRoom(admin: Admin, roomId: string) {
   return data as { id: string; kind: string; dm_key: string | null; title: string | null }
 }
 
-async function enqueueCallInvitePush(
+async function enqueueCallActivityPush(
   admin: Admin,
   roomId: string,
   callId: string,
   actorId: string,
   recipientIds: string[],
+  eventType: 'chat_call_invite' | 'chat_call_missed',
 ) {
   if (recipientIds.length === 0) return
   const { data: members } = await admin
@@ -164,12 +165,32 @@ async function enqueueCallInvitePush(
   const rows = deliverTo.map((uid) => ({
     recipient_user_id: uid,
     actor_user_id: actorId,
-    event_type: 'chat_call_invite',
+    event_type: eventType,
     chat_room_id: roomId,
     chat_call_id: callId,
   }))
   const { error } = await admin.from('activity_events').insert(rows)
-  if (error) console.warn('chat-calls: invite push insert failed', error.message)
+  if (error) console.warn(`chat-calls: ${eventType} push insert failed`, error.message)
+}
+
+async function enqueueCallInvitePush(
+  admin: Admin,
+  roomId: string,
+  callId: string,
+  actorId: string,
+  recipientIds: string[],
+) {
+  return enqueueCallActivityPush(admin, roomId, callId, actorId, recipientIds, 'chat_call_invite')
+}
+
+async function enqueueCallMissedPush(
+  admin: Admin,
+  roomId: string,
+  callId: string,
+  actorId: string,
+  recipientIds: string[],
+) {
+  return enqueueCallActivityPush(admin, roomId, callId, actorId, recipientIds, 'chat_call_missed')
 }
 
 async function listMemberIds(admin: Admin, roomId: string, excludeUserId: string) {
@@ -256,6 +277,16 @@ async function endCallRow(
     body,
     content_encoding: 'call_summary',
   })
+
+  // Replace ringing OS notification with "Missed call" (same push tag via chat_call_id).
+  if (status === 'missed') {
+    try {
+      const recipients = await listMemberIds(admin, call.chat_room_id, call.started_by)
+      await enqueueCallMissedPush(admin, call.chat_room_id, call.id, call.started_by, recipients)
+    } catch (err) {
+      console.warn('chat-calls: missed push failed', err)
+    }
+  }
 
   return { status, ended_reason: endedReason, body }
 }

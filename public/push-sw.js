@@ -16,8 +16,10 @@ function isLoungeActivityPushPayload(payload) {
   )
 }
 
-function isChatCallInvitePayload(payload, contentUrl) {
-  if (payload?.eventType === 'chat_call_invite') return true
+function isChatCallPushPayload(payload, contentUrl) {
+  if (payload?.eventType === 'chat_call_invite' || payload?.eventType === 'chat_call_missed') {
+    return true
+  }
   if (payload?.chatCallId) return true
   try {
     const url = new URL(String(contentUrl || payload?.url || ''), self.location.origin)
@@ -84,7 +86,8 @@ self.addEventListener('push', (event) => {
 
   const content = buildPushNotificationContent(payload)
   const loungeActivity = isLoungeActivityPushPayload(payload)
-  const chatCallInvite = isChatCallInvitePayload(payload, content.url)
+  const chatCallPush = isChatCallPushPayload(payload, content.url)
+  const chatCallMissed = content.eventType === 'chat_call_missed'
 
   event.waitUntil(
     (async () => {
@@ -94,20 +97,19 @@ self.addEventListener('push', (event) => {
       })
       const hasFocusedClient = clients.some((client) => client.focused)
 
-      // Foreground: Realtime call overlay owns the ring. Do not also fire OS push
-      // (or a Lounge toast) or iPhone gets double UI.
-      if (chatCallInvite && hasFocusedClient) {
+      // Foreground: Realtime overlay owns invite UI; skip OS call pushes (invite + missed).
+      if (chatCallPush && hasFocusedClient) {
         return
       }
 
-      if (loungeActivity && !chatCallInvite && hasFocusedClient) {
+      if (loungeActivity && !chatCallPush && hasFocusedClient) {
         await deliverLoungeActivityInApp(clients, content)
         return
       }
 
       const callTag = content.chatCallId
         ? `chat-call-${content.chatCallId}`
-        : chatCallInvite
+        : chatCallPush
           ? 'chat-call-invite'
           : undefined
 
@@ -116,8 +118,10 @@ self.addEventListener('push', (event) => {
         icon: content.icon,
         badge: content.badge,
         tag: callTag,
-        renotify: Boolean(chatCallInvite),
-        requireInteraction: Boolean(chatCallInvite),
+        // Same tag as invite → Android replaces "is calling you" with missed.
+        renotify: Boolean(chatCallPush),
+        // Sticky only while ringing; missed can be dismissed normally.
+        requireInteraction: Boolean(chatCallPush) && !chatCallMissed,
         data: {
           url: content.url,
           activityEventId: content.activityEventId,
@@ -163,9 +167,7 @@ self.addEventListener('notificationclick', (event) => {
     chatCallId: data.chatCallId,
   })
   const isCallInvite =
-    data.eventType === 'chat_call_invite' ||
-    Boolean(data.chatCallId) ||
-    Boolean(navigateMessage.callId)
+    data.eventType === 'chat_call_invite' || Boolean(navigateMessage.callId)
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {

@@ -125,12 +125,34 @@ async function deliverChatCallInviteInApp(clients, content) {
   }
 }
 
+const APP_VISIBLE_CACHE = 'edge-app-visibility-v1'
+const APP_VISIBLE_URL = '/__edge_app_visible__'
+const APP_VISIBLE_MAX_AGE_MS = 45_000
+
+/** Page writes this Cache while document.visibilityState === 'visible' (see edgeAppVisibilityBeacon.js). */
+async function appVisibilityBeaconSaysVisible() {
+  try {
+    const cache = await caches.open(APP_VISIBLE_CACHE)
+    const res = await cache.match(new Request(APP_VISIBLE_URL))
+    if (!res) return false
+    const data = await res.json()
+    if (!data?.visible) return false
+    const at = Number(data.at || 0)
+    if (!at || Date.now() - at > APP_VISIBLE_MAX_AGE_MS) return false
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
- * Prefer WindowClient.visibilityState when the browser exposes it.
- * Else ask the page via MessageChannel (iOS focused≠visible trap).
- * Default = show OS push (safe when no reply / hung client).
+ * Suppress OS call banner only when Edge is actually visible.
+ * 1) Shared Cache beacon (reliable on iPhone PWA)
+ * 2) WindowClient.visibilityState when exposed
+ * 3) MessageChannel probe fallback
  */
 async function pageIsVisiblyHandlingCalls(clients) {
+  if (await appVisibilityBeaconSaysVisible()) return true
   if (clients.some((client) => client.visibilityState === 'visible')) return true
 
   const candidates = clients.filter((client) => typeof client.postMessage === 'function')

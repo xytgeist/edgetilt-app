@@ -7623,10 +7623,6 @@ export default function SocialFeed({
       if (cfStreamProcessingFailureHandledRef.current.has(dedupeKey)) return
       cfStreamProcessingFailureHandledRef.current.add(dedupeKey)
 
-      const failMessage =
-        String(message || '').trim() ||
-        "Video couldn't be processed. Cloudflare couldn't prepare this file for playback."
-
       if (target === 'comment') {
         const commentRow =
           loungeDetailCommentsRef.current.find(
@@ -7661,8 +7657,9 @@ export default function SocialFeed({
           kind: 'cfProcessingFailed',
           target: 'comment',
           dialogTitle: "Video couldn't be processed",
-          phase: 'Processing video',
-          message: `${failMessage} Your reply text was restored in the composer.`,
+          message:
+            "We couldn't prepare this video for playback. Your reply text is back in the composer.",
+          canSaveDraft: false,
         })
         setLoungePostUploadFailedOpen(true)
         return
@@ -7672,19 +7669,6 @@ export default function SocialFeed({
         communityPostsRef.current.find((p) => p.id === key || p._pendingPublishKey === key) || null
 
       const draftPayload = postRow ? loungePostDraftPayloadFromFailedVideoFeedPost(postRow) : null
-      if (draftPayload) {
-        try {
-          const { data, error } = await upsertLoungePostDraft(supabaseClient, draftPayload)
-          if (error) {
-            console.warn('CF failure draft save:', error.message)
-          } else if (data?.id) {
-            setLoungeComposerActiveDraftId(data.id)
-            await refreshLoungeDraftCount()
-          }
-        } catch (e) {
-          console.warn('CF failure draft save:', e)
-        }
-      }
 
       await discardOptimisticVideoFeedPost(postRow, key)
 
@@ -7692,17 +7676,17 @@ export default function SocialFeed({
         kind: 'cfProcessingFailed',
         target: 'post',
         dialogTitle: "Video couldn't be processed",
-        phase: 'Processing video',
-        message: draftPayload
-          ? `${failMessage} Your caption was saved to Drafts without the video.`
-          : failMessage,
+        message:
+          "We couldn't prepare this video for playback. Save your caption and photos to Drafts without the video, or discard them.",
+        canSaveDraft: Boolean(draftPayload),
+        draftPayload: draftPayload || null,
+        savedDraftId: null,
       })
       setLoungePostUploadFailedOpen(true)
     },
     [
       composerUserId,
       discardOptimisticVideoFeedPost,
-      refreshLoungeDraftCount,
       removeAuthorPendingVideoComment,
       supabaseClient,
     ],
@@ -12895,11 +12879,54 @@ export default function SocialFeed({
     supabaseClient,
   ])
 
+  const closeCfProcessingFailedModal = useCallback(() => {
+    setLoungePostUploadFailedOpen(false)
+    setLoungePostUploadFailureDetails(null)
+  }, [])
+
+  const onCfProcessingFailedSaveDraft = useCallback(async () => {
+    const fail = loungePostUploadFailureDetailsRef.current
+    if (fail?.kind !== 'cfProcessingFailed' || fail.target !== 'post' || !fail.draftPayload) {
+      closeCfProcessingFailedModal()
+      return
+    }
+    try {
+      const { data, error } = await upsertLoungePostDraft(supabaseClient, fail.draftPayload)
+      if (error) {
+        console.warn('CF failure draft save:', error.message)
+      } else if (data?.id) {
+        setLoungeComposerActiveDraftId(data.id)
+        await refreshLoungeDraftCount()
+      }
+    } catch (e) {
+      console.warn('CF failure draft save:', e)
+    }
+    closeCfProcessingFailedModal()
+  }, [closeCfProcessingFailedModal, refreshLoungeDraftCount, supabaseClient])
+
+  const onCfProcessingFailedDiscard = useCallback(async () => {
+    const fail = loungePostUploadFailureDetailsRef.current
+    if (fail?.kind !== 'cfProcessingFailed') {
+      closeCfProcessingFailedModal()
+      return
+    }
+    const savedDraftId = String(fail.savedDraftId || '').trim()
+    if (savedDraftId) {
+      try {
+        await deleteLoungePostDraft(supabaseClient, savedDraftId)
+        setLoungeComposerActiveDraftId((cur) => (cur === savedDraftId ? null : cur))
+        await refreshLoungeDraftCount()
+      } catch (e) {
+        console.warn('CF failure draft discard:', e)
+      }
+    }
+    closeCfProcessingFailedModal()
+  }, [closeCfProcessingFailedModal, refreshLoungeDraftCount, supabaseClient])
+
   const onLoungePostUploadFailureCancel = useCallback(() => {
     const fail = loungePostUploadFailureDetailsRef.current
     if (fail?.kind === 'cfProcessingFailed') {
-      setLoungePostUploadFailedOpen(false)
-      setLoungePostUploadFailureDetails(null)
+      void onCfProcessingFailedDiscard()
       return
     }
     if (fail?.kind === 'commentEdit') {
@@ -12950,7 +12977,7 @@ export default function SocialFeed({
     loungePostJobRunningRef.current = false
     setLoungePostUploadFailedOpen(false)
     setLoungePostUploadFailureDetails(null)
-  }, [disposeComposerVideoMedia, restoreComposerFromSnapshot, restoreQuoteFromSnapshot])
+  }, [disposeComposerVideoMedia, onCfProcessingFailedDiscard, restoreComposerFromSnapshot, restoreQuoteFromSnapshot])
 
   const closeThreadComposeImmediate = useCallback((opts = {}) => {
     setThreadComposeOpen(false)
@@ -18961,33 +18988,57 @@ export default function SocialFeed({
                   ? 'Media upload failed'
                   : 'Upload failed')}
             </h2>
-            {loungePostUploadFailureDetails ? (
-              <div className="mt-3 space-y-2 rounded-xl border border-zinc-700/70 bg-zinc-900/80 px-3 py-2.5 text-left">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Last step</div>
-                  <div className="mt-0.5 text-[13px] leading-snug text-zinc-200 break-words">
-                    {loungePostUploadFailureDetails.phase}
+            {loungePostUploadFailureDetails?.kind === 'cfProcessingFailed' ? (
+              <>
+                <p className="mt-2 text-[14px] leading-relaxed text-zinc-400">
+                  {loungePostUploadFailureDetails.message}
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                  {loungePostUploadFailureDetails.canSaveDraft ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void onCfProcessingFailedDiscard()}
+                        className="order-2 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-1"
+                      >
+                        Discard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onCfProcessingFailedSaveDraft()}
+                        className="order-1 min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-2"
+                      >
+                        Save to Drafts
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => closeCfProcessingFailedModal()}
+                      className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation"
+                    >
+                      OK
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : loungePostUploadFailureDetails ? (
+              <>
+                <div className="mt-3 space-y-2 rounded-xl border border-zinc-700/70 bg-zinc-900/80 px-3 py-2.5 text-left">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Last step</div>
+                    <div className="mt-0.5 text-[13px] leading-snug text-zinc-200 break-words">
+                      {loungePostUploadFailureDetails.phase}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">What failed</div>
+                    <div className="mt-0.5 text-[12px] leading-snug text-rose-200 break-words whitespace-pre-wrap">
+                      {loungePostUploadFailureDetails.message}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">What failed</div>
-                  <div className="mt-0.5 text-[12px] leading-snug text-rose-200 break-words whitespace-pre-wrap">
-                    {loungePostUploadFailureDetails.message}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-              {loungePostUploadFailureDetails?.kind === 'cfProcessingFailed' ? (
-                <button
-                  type="button"
-                  onClick={() => onLoungePostUploadFailureCancel()}
-                  className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation"
-                >
-                  OK
-                </button>
-              ) : (
-                <>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                   <button
                     type="button"
                     onClick={() => retryLoungePostUpload()}
@@ -19009,9 +19060,9 @@ export default function SocialFeed({
                   >
                     Cancel
                   </button>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

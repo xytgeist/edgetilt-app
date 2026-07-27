@@ -1022,6 +1022,17 @@ export default function AppShell({
     if (typeof window === 'undefined' || !navigator?.serviceWorker) return
     const handleServiceWorkerMessage = (event) => {
       const type = event?.data?.type
+      // Call push SW asks whether Edge is actually visible (iOS focused≠visible).
+      if (type === 'chat-call-push-probe') {
+        const visible =
+          typeof document !== 'undefined' && document.visibilityState === 'visible'
+        try {
+          event.ports?.[0]?.postMessage({ suppressCallPush: visible })
+        } catch {
+          /* ignore */
+        }
+        return
+      }
       if (type === 'offers-open-tab') {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()

@@ -76,6 +76,43 @@ async function deliverLoungeActivityInApp(clients, content) {
   }
 }
 
+/**
+ * iOS PWA often keeps client.focused=true while backgrounded. Ask the page whether
+ * document.visibilityState is visible before suppressing the OS call notification.
+ * Default = show OS push (safe when no reply / hung client).
+ */
+async function pageIsVisiblyHandlingCalls(clients) {
+  const candidates = clients.filter((client) => typeof client.postMessage === 'function')
+  if (candidates.length === 0) return false
+
+  const probes = candidates.map(
+    (client) =>
+      new Promise((resolve) => {
+        let settled = false
+        const finish = (value) => {
+          if (settled) return
+          settled = true
+          resolve(Boolean(value))
+        }
+        const timer = setTimeout(() => finish(false), 280)
+        try {
+          const channel = new MessageChannel()
+          channel.port1.onmessage = (event) => {
+            clearTimeout(timer)
+            finish(Boolean(event?.data?.suppressCallPush))
+          }
+          client.postMessage({ type: 'chat-call-push-probe' }, [channel.port2])
+        } catch {
+          clearTimeout(timer)
+          finish(false)
+        }
+      }),
+  )
+
+  const results = await Promise.all(probes)
+  return results.some(Boolean)
+}
+
 self.addEventListener('push', (event) => {
   let payload = {}
   try {
@@ -97,12 +134,12 @@ self.addEventListener('push', (event) => {
       })
       const hasFocusedClient = clients.some((client) => client.focused)
 
-      // Foreground: Realtime overlay owns invite UI; skip OS call pushes (invite + missed).
-      if (chatCallPush && hasFocusedClient) {
-        return
-      }
-
-      if (loungeActivity && !chatCallPush && hasFocusedClient) {
+      // Call pushes: suppress OS only when a page confirms it is actually visible.
+      // Never trust client.focused alone on iPhone PWA (silent drop regression).
+      if (chatCallPush) {
+        const suppressOs = await pageIsVisiblyHandlingCalls(clients)
+        if (suppressOs) return
+      } else if (loungeActivity && hasFocusedClient) {
         await deliverLoungeActivityInApp(clients, content)
         return
       }

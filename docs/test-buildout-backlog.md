@@ -129,8 +129,10 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [x] **App-wide in-app ring:** `ChatCallProvider` in **`AppShell`** (any tab while signed in); accept opens Chat room.
 - [x] **Offline ring (wire):** `activity_events.chat_call_invite` immediate push; deep link `/?tab=chat&room=&call=`.
 - [x] **Phase 1 smoke — OS push when backgrounded/locked:** iPhone received system call push (Ryan 2026-07-27).
-- [ ] **Phase 2 — push tap deep link** opens accept/decline overlay (not room-only). SW skips `navigate` for call invites; stash `edge_pending_chat_call_v1`.
-- [ ] **Android push enable:** apply **`20260728010000_upsert_my_push_subscription`**; Settings enable must not RLS-error.
+- [x] **Phase 2 smoke — push tap deep link** opens accept/decline overlay (Ryan 2026-07-27).
+- [x] **Android push enable RPC:** **`20260728010000_upsert_my_push_subscription`** on test.
+- [ ] **In-app ring / ringback smoke:** callee hears ringtone on overlay; caller hears ringback until answer; both stop on connect/decline/hangup.
+- [ ] **Phase 3 — stale call** after hangup/timeout (no ghost UI).
 - [ ] **Phase 3 — stale call** after hangup/timeout (no ghost UI).
 - [ ] **Phase 4 — missed/declined/timeout + summary chip.**
 - [ ] **Phase 5 — group voice** multi-join push behavior.
@@ -937,7 +939,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-07-27: **Chat calling phase 2 + Android push RLS:** notificationclick postMessage carries `callId`/`roomId` and skips `client.navigate` for call invites (iOS was opening DM only); session stash **`edge_pending_chat_call_v1`**. Migration **`20260728010000_upsert_my_push_subscription`** + client RPC for Settings enable (endpoint reclaim). Apply SQL on test before Android smoke.
+- 2026-07-27: **Chat calling in-app ringtone + ringback:** Web Audio tones in **`chatCallRingTone.js`** — incoming overlay loops ringtone (+ vibrate when supported); outgoing session plays ringback until a remote participant joins. Client only.
+- 2026-07-27: **Chat calling phase 2 + Android push RLS:** notificationclick postMessage carries `callId`/`roomId` and skips `client.navigate` for call invites (iOS was opening DM only); session stash **`edge_pending_chat_call_v1`**. Migration **`20260728010000_upsert_my_push_subscription`** + client RPC for Settings enable (endpoint reclaim). **Phase 2 smoke PASSED** (Ryan).
 - 2026-07-27: **Chat calling phase 1 (OS push):** `lounge-send-activity-push` payload adds `eventType` + `chatCallId`; **`push-sw.js`** always shows OS notification for `chat_call_invite` (no focused-client divert to Lounge in-app toast). Redeploy Edge + hard-refresh PWA so SW updates. Smoke: background/lock callee → system “is calling you”. **iPhone PASSED** (Ryan).
 - 2026-07-27: **Chat calling PWA mic first-open prompt:** installed PWA only; after splash / after push opt-in; Enable → `getUserMedia` then stop track; seen **`edge_pwa_mic_prompt_v2:`** (v1 skipped the sheet when site mic was already granted from call testing). Util **`pwaMicrophonePrompt.js`**. Client only.
 - 2026-07-27: **Chat calling app-wide ring:** `ChatCallProvider` lifted from `ChatTab` → **`AppShell`** so incoming overlay works on any tab while signed in; caller title fetch when inbox profiles aren’t loaded; accept/deep link still opens Chat via `pendingChatRoomId`. Docs **`docs/chat-calling.md`**. Client only.

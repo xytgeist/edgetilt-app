@@ -10,6 +10,7 @@ import {
 } from '@livekit/components-react'
 import { Track } from 'livekit-client'
 import '@livekit/components-styles'
+import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 
 /**
  * @param {{
@@ -18,6 +19,7 @@ import '@livekit/components-styles'
  *   mediaMode: 'audio' | 'video',
  *   kind: 'dm_av' | 'group_audio',
  *   title: string,
+ *   isOutgoing?: boolean,
  *   onDisconnected: () => void,
  *   onHangup: () => void,
  * }} props
@@ -28,6 +30,7 @@ export default function ChatCallSession({
   mediaMode,
   kind,
   title,
+  isOutgoing = false,
   onDisconnected,
   onHangup,
   onError,
@@ -52,6 +55,7 @@ export default function ChatCallSession({
         onConnected={() => {
           didConnectRef.current = true
           setConnectError('')
+          unlockChatCallAudio()
         }}
         onDisconnected={() => {
           // Only auto-end after a real session. Failed connects stay on the error UI.
@@ -81,7 +85,13 @@ export default function ChatCallSession({
           </div>
         ) : (
           <>
-            <CallChrome title={title} videoEnabled={videoEnabled} isGroup={kind === 'group_audio'} onHangup={onHangup} />
+            <CallChrome
+              title={title}
+              videoEnabled={videoEnabled}
+              isGroup={kind === 'group_audio'}
+              isOutgoing={isOutgoing}
+              onHangup={onHangup}
+            />
             <RoomAudioRenderer />
           </>
         )}
@@ -90,7 +100,7 @@ export default function ChatCallSession({
   )
 }
 
-function CallChrome({ title, videoEnabled, isGroup, onHangup }) {
+function CallChrome({ title, videoEnabled, isGroup, isOutgoing, onHangup }) {
   const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
   const participants = useParticipants()
@@ -98,11 +108,21 @@ function CallChrome({ title, videoEnabled, isGroup, onHangup }) {
   const [camOn, setCamOn] = useState(videoEnabled)
   const [elapsed, setElapsed] = useState(0)
 
+  const remoteCount = participants.filter((p) => !p.isLocal).length
+  const awaitingAnswer = Boolean(isOutgoing) && remoteCount === 0
+
   useEffect(() => {
     const t0 = Date.now()
     const id = window.setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000)
     return () => window.clearInterval(id)
   }, [])
+
+  useEffect(() => {
+    if (!awaitingAnswer) return undefined
+    unlockChatCallAudio()
+    const tone = startChatCallTone('ringback')
+    return () => stopChatCallTone(tone)
+  }, [awaitingAnswer])
 
   const tracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
@@ -126,8 +146,8 @@ function CallChrome({ title, videoEnabled, isGroup, onHangup }) {
         <div className="min-w-0">
           <p className="truncate text-[17px] font-bold text-zinc-50">{title}</p>
           <p className="text-[12px] text-zinc-400">
-            {mm}:{ss}
-            {isGroup ? ` · ${participants.length} in call` : ''}
+            {awaitingAnswer ? 'Ringing…' : `${mm}:${ss}`}
+            {!awaitingAnswer && isGroup ? ` · ${participants.length} in call` : ''}
           </p>
         </div>
       </div>
@@ -151,7 +171,13 @@ function CallChrome({ title, videoEnabled, isGroup, onHangup }) {
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4">
-            <p className="text-[14px] text-zinc-400">{isGroup ? 'Group voice call' : 'Voice call'}</p>
+            <p className="text-[14px] text-zinc-400">
+              {awaitingAnswer
+                ? 'Calling…'
+                : isGroup
+                  ? 'Group voice call'
+                  : 'Voice call'}
+            </p>
             <ul className="flex max-h-[50vh] w-full max-w-sm flex-col gap-2 overflow-y-auto">
               {participants.map((p) => (
                 <li

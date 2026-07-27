@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { startChatCallTone, stopChatCallTone } from './chatCallRingTone.js'
 
 /**
  * Full-screen incoming call UI (DM ring or group voice invite).
@@ -21,6 +23,12 @@ export default function ChatIncomingCallOverlay({
   onAccept,
   onDecline,
 }) {
+  useEffect(() => {
+    if (!open) return undefined
+    const tone = startChatCallTone('incoming')
+    return () => stopChatCallTone(tone)
+  }, [open])
+
   if (!open || typeof document === 'undefined') return null
 
   return createPortal(

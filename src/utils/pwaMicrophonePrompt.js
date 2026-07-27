@@ -63,6 +63,17 @@ export async function requestPwaMicrophoneAccess() {
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
     throw new Error('Microphone is not available in this browser.')
   }
+  // Unlock Web Audio for later in-app ring/ringback on the same gesture path.
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext
+    if (AC) {
+      const ctx = new AC()
+      void ctx.resume().catch(() => {})
+      void ctx.close().catch(() => {})
+    }
+  } catch {
+    /* ignore */
+  }
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
   try {
     for (const track of stream.getTracks()) {

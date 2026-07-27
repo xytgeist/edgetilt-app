@@ -23,6 +23,7 @@ import {
   clearPendingChatCallDeepLink,
   peekPendingChatCallDeepLink,
 } from '../../../utils/pendingChatCallDeepLink.js'
+import { unlockChatCallAudio } from './chatCallRingTone.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
 
@@ -38,6 +39,7 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
  *   token: string,
  *   livekitUrl: string,
  *   title: string,
+ *   isOutgoing?: boolean,
  * }} ActiveChatCall
  */
 
@@ -283,6 +285,7 @@ export function ChatCallProvider({
     async (roomId, mediaMode = 'audio', title = 'Chat call') => {
       if (!supabaseClient || !viewerUserId) throw new Error('Sign in to call.')
       if (activeCallRef.current) throw new Error('Already in a call.')
+      unlockChatCallAudio()
       setBusy(true)
       setError('')
       try {
@@ -304,6 +307,7 @@ export function ChatCallProvider({
           token: res.token,
           livekitUrl: res.livekit_url,
           title,
+          isOutgoing: true,
         })
         return call
       } catch (err) {
@@ -319,6 +323,7 @@ export function ChatCallProvider({
 
   const acceptIncoming = useCallback(async () => {
     if (!supabaseClient || !incoming) return
+    unlockChatCallAudio()
     setBusy(true)
     setError('')
     try {
@@ -334,6 +339,7 @@ export function ChatCallProvider({
         token: res.token,
         livekitUrl: res.livekit_url,
         title: incoming.title,
+        isOutgoing: false,
       })
       setIncoming(null)
     } catch (err) {
@@ -458,6 +464,7 @@ export function ChatCallProvider({
             mediaMode={activeCall.mediaMode}
             kind={activeCall.kind}
             title={activeCall.title}
+            isOutgoing={Boolean(activeCall.isOutgoing)}
             onError={(msg) => setError(msg || 'Call connection failed')}
             onDisconnected={() => {
               // End DB call so a drop/disconnect cannot leave a stuck ringing row.

@@ -246,6 +246,15 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, viewerUserId, presentIncoming])
 
+  const onOpenRoomRef = useRef(onOpenRoom)
+  onOpenRoomRef.current = onOpenRoom
+  const onInitialCallConsumedRef = useRef(onInitialCallConsumed)
+  onInitialCallConsumedRef.current = onInitialCallConsumed
+  const presentIncomingRef = useRef(presentIncoming)
+  presentIncomingRef.current = presentIncoming
+  const resolveTitleAsyncRef = useRef(resolveTitleAsync)
+  resolveTitleAsyncRef.current = resolveTitleAsync
+
   // Deep link ?call= / ?missedCall= (prop and/or sessionStorage stash).
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return
@@ -265,23 +274,23 @@ export function ChatCallProvider({
           return
         }
         const roomId = String(call.chat_room_id || stashed?.roomId || '')
-        const title = await resolveTitleAsync(roomId, call.started_by)
+        const title = await resolveTitleAsyncRef.current(roomId, call.started_by)
         if (cancelled) return
 
         // Live invite → accept UI (unless this was an explicit missed-call tap).
         if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
           if (call.started_by === viewerUserId) return
-          presentIncoming(call)
-          onOpenRoom?.(roomId)
+          presentIncomingRef.current(call)
+          onOpenRoomRef.current?.(roomId)
           return
         }
 
         // Missed / ended / declined (or missedCall= deep link) → DM + call-back prompt.
         if (call.started_by === viewerUserId) {
-          onOpenRoom?.(roomId)
+          onOpenRoomRef.current?.(roomId)
           return
         }
-        onOpenRoom?.(roomId)
+        onOpenRoomRef.current?.(roomId)
         const mediaMode = call.media_mode === 'video' ? 'video' : 'audio'
         setCallbackPrompt({
           roomId,
@@ -290,25 +299,21 @@ export function ChatCallProvider({
           isVideo: call.kind === 'dm_av' && mediaMode === 'video',
         })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not open call')
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not open call')
+        }
       } finally {
-        clearPendingChatCallDeepLink()
-        onInitialCallConsumed?.()
+        // Never clear pending while cancelled... parent re-renders were wiping missedCall.
+        if (!cancelled) {
+          clearPendingChatCallDeepLink()
+          onInitialCallConsumedRef.current?.()
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [
-    initialCallId,
-    initialCallIntent,
-    supabaseClient,
-    viewerUserId,
-    onInitialCallConsumed,
-    onOpenRoom,
-    presentIncoming,
-    resolveTitleAsync,
-  ])
+  }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId])
 
   const startCall = useCallback(
     async (roomId, mediaMode = 'audio', title = 'Chat call') => {

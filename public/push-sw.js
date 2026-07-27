@@ -210,8 +210,11 @@ self.addEventListener('notificationclick', (event) => {
     chatCallId: data.chatCallId,
     eventType: data.eventType,
   })
-  const isCallInvite =
-    data.eventType === 'chat_call_invite' || Boolean(navigateMessage.callId)
+  const skipNavigateAfterPostMessage =
+    data.eventType === 'chat_call_invite' ||
+    data.eventType === 'chat_call_missed' ||
+    Boolean(navigateMessage.callId) ||
+    Boolean(navigateMessage.missedCallId)
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
@@ -222,9 +225,9 @@ self.addEventListener('notificationclick', (event) => {
           if (typeof client.postMessage === 'function') {
             client.postMessage(navigateMessage)
           }
-          // Call invites: do NOT client.navigate after postMessage. On iOS PWA that
-          // reload can wipe React state and only leave the room deep link.
-          if (isCallInvite) return
+          // Call invite + missed callback: do NOT client.navigate after postMessage.
+          // On iOS/Android PWA that reload wipes React state (DM opens, prompt never shows).
+          if (skipNavigateAfterPostMessage) return
           if ('navigate' in client && typeof client.navigate === 'function') {
             try {
               await client.navigate(fullUrl)

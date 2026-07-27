@@ -14,9 +14,6 @@ import {
   chatAddReaction,
   chatRemoveReaction,
   chatUpdateLastRead,
-  chatMuteRoom,
-  chatUnmuteRoom,
-  chatRoomIsMuted,
   chatGroupHeaderMembersResolved,
   chatStarredMessageIds,
   chatStarMessage,
@@ -177,9 +174,6 @@ export default function ChatConversation({
   const [error, setError] = useState('')
   const [replyTarget, setReplyTarget] = useState(/** @type {any | null} */ (null))
   const [typingUsers, setTypingUsers] = useState(/** @type {{ userId: string, displayName: string }[]} */ ([]))
-  const [muted, setMuted] = useState(() => chatRoomIsMuted(room.muted_until))
-  const [muteMenuOpen, setMuteMenuOpen] = useState(false)
-  const [optionsMenuOpen, setOptionsMenuOpen] = useState(false)
   const [roomMeta, setRoomMeta] = useState(() => ({ ...room }))
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false)
   const [groupHeaderMembers, setGroupHeaderMembers] = useState(/** @type {any[]} */ ([]))
@@ -1631,22 +1625,6 @@ export default function ChatConversation({
     }
   }, [reactions, handleAddReaction, handleRemoveReaction, reactionsDetailMessageId])
 
-  const handleToggleMute = useCallback(async () => {
-    if (muted) {
-      setMuted(false)
-      setMuteMenuOpen(false)
-      await chatUnmuteRoom(supabaseClient, room.id).catch(() => setMuted(true))
-    } else {
-      setMuteMenuOpen(true)
-    }
-  }, [muted, supabaseClient, room.id])
-
-  const handleMuteFor = useCallback(async (hours) => {
-    setMuted(true)
-    setMuteMenuOpen(false)
-    await chatMuteRoom(supabaseClient, room.id, hours).catch(() => setMuted(false))
-  }, [supabaseClient, room.id])
-
   // ── Sender label helpers ──────────────────────────────────────────────────
 
   const senderLabel = useCallback((senderId) => {
@@ -2096,9 +2074,9 @@ export default function ChatConversation({
     >
 
       {/* ── Floating overlay header ─────────────────────────────────────────── */}
-      {/* Single flex row - items-start so button tops align with avatar top */}
+      {/* Absolute side controls so avatar/title stay true screen-center. */}
       <div
-        className="absolute inset-x-0 top-0 z-20 flex items-start gap-2 px-3 pb-4 pt-2"
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 px-3 pb-4 pt-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
       >
         {/* Back button */}
@@ -2106,7 +2084,7 @@ export default function ChatConversation({
           type="button"
           onClick={onBack}
           aria-label="Back to conversations"
-          className="chat-header-glass relative shrink-0 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
+          className="chat-header-glass pointer-events-auto absolute left-3 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-10 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
@@ -2119,7 +2097,7 @@ export default function ChatConversation({
         </button>
 
         {/* Center - avatar + pill (DM + group); compact title (channels) */}
-        <div className="flex min-w-0 flex-1 flex-col items-center">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-[min(100%,280px)] flex-col items-center">
           {useRichHeader ? (
             <>
               {isGroupRoom ? (
@@ -2181,17 +2159,49 @@ export default function ChatConversation({
           )}
         </div>
 
-        {/* Call controls + options */}
-        <div className="flex shrink-0 items-center gap-1.5">
-          {chatCall && isDmRoom ? (
-            <>
+        {/* Call controls (right) — overlay so they do not shift the centered avatar */}
+        {(chatCall && (isDmRoom || isClassicGroupRoom)) ? (
+          <div className="pointer-events-auto absolute right-3 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-10 flex items-center gap-1.5">
+            {isDmRoom ? (
+              <>
+                <button
+                  type="button"
+                  disabled={chatCall.busy || Boolean(chatCall.activeCall)}
+                  onClick={() => {
+                    void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
+                  }}
+                  aria-label="Start voice call"
+                  title="Voice call"
+                  className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  disabled={chatCall.busy || Boolean(chatCall.activeCall)}
+                  onClick={() => {
+                    void chatCall.startCall(activeRoom.id, 'video', headerDisplayName)
+                  }}
+                  aria-label="Start video call"
+                  title="Video call"
+                  className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+                    <rect x="2" y="6" width="14" height="12" rx="2" />
+                  </svg>
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
                 disabled={chatCall.busy || Boolean(chatCall.activeCall)}
                 onClick={() => {
                   void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
                 }}
-                aria-label="Start voice call"
+                aria-label="Start group voice call"
                 title="Voice call"
                 className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
               >
@@ -2199,146 +2209,13 @@ export default function ChatConversation({
                   <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
                 </svg>
               </button>
-              <button
-                type="button"
-                disabled={chatCall.busy || Boolean(chatCall.activeCall)}
-                onClick={() => {
-                  void chatCall.startCall(activeRoom.id, 'video', headerDisplayName)
-                }}
-                aria-label="Start video call"
-                title="Video call"
-                className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
-                  <rect x="2" y="6" width="14" height="12" rx="2" />
-                </svg>
-              </button>
-            </>
-          ) : null}
-          {chatCall && isClassicGroupRoom ? (
-            <button
-              type="button"
-              disabled={chatCall.busy || Boolean(chatCall.activeCall)}
-              onClick={() => {
-                void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
-              }}
-              aria-label="Start group voice call"
-              title="Voice call"
-              className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
-              </svg>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setOptionsMenuOpen(true)}
-            aria-label="Chat options"
-            className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <circle cx="5" cy="12" r="1.8" />
-              <circle cx="12" cy="12" r="1.8" />
-              <circle cx="19" cy="12" r="1.8" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Options menu (portal so it escapes stacking context) ───────────── */}
-      {optionsMenuOpen && createPortal(
-        <>
-          <div className="fixed inset-0 z-[118]" onClick={() => setOptionsMenuOpen(false)} />
-          <div
-            className="chat-menu-glass fixed z-[119] w-[220px] overflow-hidden rounded-2xl"
-            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 60px)', right: '16px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* View profile - DMs only */}
-            {peerUserId && onViewProfile && (
-              <>
-                <OptionsRow
-                  label="View Profile"
-                  icon={<PersonIcon />}
-                  onClick={() => { setOptionsMenuOpen(false); onViewProfile(peerUserId) }}
-                />
-                <OptionsDivider />
-              </>
             )}
-
-            {(isClassicGroupRoom || isFanRoom) && (
-              <>
-                <OptionsRow
-                  label={isFanRoom ? 'Room settings' : 'Group settings'}
-                  icon={<GroupSettingsIcon />}
-                  onClick={() => { setOptionsMenuOpen(false); setGroupSettingsOpen(true) }}
-                />
-                <OptionsDivider />
-              </>
-            )}
-
-            {/* Mute / Unmute */}
-            <OptionsRow
-              label={muted ? 'Unmute' : 'Mute'}
-              icon={muted ? <UnmuteIcon /> : <MuteIcon />}
-              onClick={() => { setOptionsMenuOpen(false); handleToggleMute() }}
-            />
-
-            <OptionsDivider />
-
-            {/* Report (stub) */}
-            <OptionsRow
-              label="Report"
-              icon={<FlagOptionsIcon />}
-              dim
-              onClick={() => setOptionsMenuOpen(false)}
-            />
           </div>
-        </>,
-        document.body
-      )}
+        ) : null}
+      </div>
 
       {/* ── Body + composer (post-detail flex column - footer host owns kb overlap) ── */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-
-      {/* Mute duration picker */}
-      {muteMenuOpen && (
-        <div
-          className="fixed inset-0 z-[110] flex items-end justify-center pb-6"
-          onClick={() => setMuteMenuOpen(false)}
-        >
-          <div
-            className="mx-4 w-full max-w-sm rounded-2xl border border-zinc-700/50 bg-zinc-900 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pb-1 pt-4 text-[13px] font-semibold text-zinc-500">Mute notifications for</div>
-            {[
-              { label: '1 hour', hours: 1 },
-              { label: '8 hours', hours: 8 },
-              { label: '24 hours', hours: 24 },
-              { label: 'Indefinitely', hours: 0 },
-            ].map(({ label, hours }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => void handleMuteFor(hours)}
-                className="flex w-full items-center px-5 py-4 text-[15px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800/60"
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setMuteMenuOpen(false)}
-              className="flex w-full items-center justify-center rounded-b-2xl border-t border-zinc-800 px-5 py-4 text-[15px] text-zinc-400 touch-manipulation hover:bg-zinc-800/60"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
@@ -2594,40 +2471,3 @@ export default function ChatConversation({
   )
 }
 
-// ── Options menu helpers ────────────────────────────────────────────────────
-
-function OptionsRow({ label, icon, onClick, dim = false, danger = false }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold touch-manipulation transition-colors active:bg-white/10 ${
-        danger ? 'text-rose-400' : dim ? 'text-zinc-500' : 'text-zinc-100'
-      }`}
-    >
-      <span className="shrink-0 opacity-75">{icon}</span>
-      {label}
-    </button>
-  )
-}
-
-function OptionsDivider() {
-  return <div className="mx-4 h-px bg-white/10" />
-}
-
-const OS = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.8', strokeLinecap: 'round', strokeLinejoin: 'round' }
-
-function PersonIcon()    { return <svg {...OS}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> }
-function MuteIcon()      { return <svg {...OS}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> }
-function UnmuteIcon()    { return <svg {...OS}><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> }
-function FlagOptionsIcon() { return <svg {...OS}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> }
-function GroupSettingsIcon() {
-  return (
-    <svg {...OS}>
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  )
-}

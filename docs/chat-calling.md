@@ -19,8 +19,8 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 - **Media:** LiveKit room name `edge-call:{call_id}` (never client-chosen).
 - **Tokens:** Edge Function **`chat-calls`** mints JWTs (`LIVEKIT_*` secrets).
 - **In-app ring (any screen):** `ChatCallProvider` mounts in **`AppShell`** while signed in (not only inside `ChatTab`), so Lounge/Guides/etc. still get the overlay. Realtime `postgres_changes` on `chat_calls` + broadcast `chat-call-{roomId}`. Accept/deep link opens Chat via `pendingChatRoomId`.
-- **Offline ring:** `activity_events.event_type = chat_call_invite` → immediate Edge push (not DM 60s batch). Payload includes `eventType` + `chatCallId`. Service worker suppresses OS call push only after a **visibility probe** (`document.visibilityState === 'visible'`)... never trust `client.focused` alone on iPhone PWA. Deep link `/?tab=chat&room={uuid}&call={callId}`; notificationclick **postMessage** includes `callId`/`roomId` and **skips** `client.navigate` for call invites (iOS reload was wiping the accept UI). Session stash: `edge_pending_chat_call_v1`. Pref: `push_messages`.
-- **Missed replace:** unanswered hangup / timeout → status `missed` + `chat_call_missed` activity push with the **same** `chatCallId` tag → OS notification becomes “Missed call from {name}” (Android replaces; iOS best-effort). Tap opens `/?tab=chat&room=&missedCall=` → DM + **Call back?** prompt (matches original voice/video).
+- **Offline ring:** `activity_events.event_type = chat_call_invite` → immediate Edge push (not DM 60s batch). Payload includes `eventType` + `chatCallId`. Service worker suppresses OS call push only after a **visibility probe** (`document.visibilityState === 'visible'`)... never trust `client.focused` alone on iPhone PWA. Deep link `/?tab=chat&room={uuid}&call={callId}`; notificationclick **postMessage** includes `callId`/`roomId` and **skips** `client.navigate` for call invites **and** missed callbacks (PWA reload was wiping accept / Call back UI). Session stash: `edge_pending_chat_call_v1`. Pref: `push_messages`.
+- **Missed replace:** unanswered hangup / timeout → status `missed` + `chat_call_missed` activity push with the **same** `chatCallId` tag → OS notification becomes “Missed call from {name}” (Android replaces; iOS best-effort). Tap opens `/?tab=chat&room=&missedCall=` → DM + **Call back?** prompt (matches original voice/video). Deep-link effect must not clear pending on cancelled effect runs (unstable parent callbacks were wiping the prompt before it painted).
 - **Push subscribe:** client uses RPC **`upsert_my_push_subscription`** (reclaim endpoint) so Android enable does not fail RLS when the endpoint row belonged to another user.
 
 ## Edge actions
@@ -30,7 +30,7 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 ## Client
 
 - `src/features/chat/calls/` — session UI, incoming overlay, API, controller.
-- Header: DM Phone + Video; group Voice; options menu uses ⋯ (not the old camera glyph).
+- Header: DM Phone + Video; group Voice (absolute right). Avatar/title stay screen-centered; room options live in the name › sheet (no ⋯ menu).
 
 ## Guardrails
 

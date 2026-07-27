@@ -372,18 +372,33 @@ Deno.serve(async (req) => {
       )
 
       const recipients = await listMemberIds(admin, roomId, user.id)
-      await enqueueCallInvitePush(admin, roomId, callId, user.id, recipients)
 
-      const sources = publishSourcesForCall(kind, inserted.media_mode)
-      const token = await mintToken({
-        apiKey: lk.apiKey,
-        apiSecret: lk.apiSecret,
-        identity: user.id,
-        displayName,
-        roomName: livekitRoomName,
-        canPublish: true,
-        canPublishSources: sources,
-      })
+      let token: string
+      try {
+        const sources = publishSourcesForCall(kind, inserted.media_mode)
+        token = await mintToken({
+          apiKey: lk.apiKey,
+          apiSecret: lk.apiSecret,
+          identity: user.id,
+          displayName,
+          roomName: livekitRoomName,
+          canPublish: true,
+          canPublishSources: sources,
+        })
+      } catch (mintErr) {
+        // Don't leave a stuck ringing row if token mint fails (blocks new calls in room).
+        await admin
+          .from('chat_calls')
+          .update({
+            status: 'ended',
+            ended_at: new Date().toISOString(),
+            ended_reason: 'token_mint_failed',
+          })
+          .eq('id', callId)
+        throw mintErr
+      }
+
+      await enqueueCallInvitePush(admin, roomId, callId, user.id, recipients)
 
       return json(200, {
         ok: true,

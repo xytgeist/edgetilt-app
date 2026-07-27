@@ -375,6 +375,58 @@ export function subscribeLoungeCfStreamProcessingFailed(listener) {
   return () => cfStreamProcessingFailedListeners.delete(listener)
 }
 
+/** TEMP smoke hook ... remove before shipping broadly. Enabled on localhost, Vite dev, and lvslotpro sandbox only. */
+export function loungeCfStreamProcessingFailureTestEnabled() {
+  if (typeof window === 'undefined') return false
+  const host = String(window.location.hostname || '').toLowerCase()
+  if (import.meta.env.DEV) return true
+  if (host === 'localhost' || host === '127.0.0.1') return true
+  if (host.includes('lvslotpro')) return true
+  return false
+}
+
+/**
+ * TEMP: simulate Cloudflare Stream `status.state: error` for staged post publish UX smoke.
+ * @param {string} pendingKey post id or optimistic pending key
+ * @returns {boolean} whether a failure was dispatched
+ */
+export function simulateLoungeCfStreamProcessingFailedForTest(pendingKey) {
+  if (!loungeCfStreamProcessingFailureTestEnabled()) return false
+  const id = String(pendingKey || '').trim()
+  if (!id) return false
+
+  const job = stagedFeedPostPublishJobs.get(id)
+  const streamUid = String(job?.streamUid || '').trim() || 'cf-test-simulated-uid'
+
+  try {
+    job?.abortController?.abort()
+  } catch {
+    // ignore
+  }
+  if (job) {
+    job.running = false
+    job.abortController = null
+  }
+  unregisterLoungeStagedFeedPostPublishJob(id)
+
+  const message =
+    "Video couldn't be processed. Simulated Cloudflare error (test button)."
+  setLoungePendingPostProgress(id, {
+    progress: 1,
+    status: "Video couldn't be processed",
+    detail: message,
+    phase: 'error',
+  })
+  notifyCfStreamProcessingFailed({
+    target: 'post',
+    postId: id,
+    streamUid,
+    message,
+    cfStatus: { state: 'error', errorReasonText: 'Simulated test failure' },
+  })
+  return true
+}
+
 /** Stop in-flight CF polling for a staged post (does not delete the post). */
 export function abortLoungeStagedFeedPostPublish(postId) {
   const id = String(postId || '').trim()

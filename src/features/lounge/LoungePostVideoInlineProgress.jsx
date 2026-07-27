@@ -2,7 +2,9 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import {
   getLoungePendingPostProgress,
   LOUNGE_CF_PROCESSING_PROGRESS_FLOOR,
+  loungeCfStreamProcessingFailureTestEnabled,
   resolveLoungePendingPublishProgress,
+  simulateLoungeCfStreamProcessingFailedForTest,
   subscribeLoungePendingPostProgress,
 } from './loungePendingPostPublish.js'
 import { useLoungePendingPublishActions } from './LoungePendingPublishActionsContext.jsx'
@@ -40,6 +42,9 @@ export const LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG =
   'You can switch apps. EdgeTilt will check again when you return.'
 
 export const LOUNGE_PENDING_PUBLISH_CANCEL_LABEL = 'Cancel'
+
+/** TEMP CF failure smoke button (see {@link loungeCfStreamProcessingFailureTestEnabled}). */
+export const LOUNGE_CF_PROCESSING_FAIL_TEST_LABEL = 'Invoke failure for test'
 
 export { resolveLoungePendingPublishProgress }
 
@@ -187,6 +192,18 @@ export default function LoungePostVideoInlineProgress({
     void cancelPendingPublish(cancelKey)
   }
 
+  const showCfFailTestButton =
+    loungeCfStreamProcessingFailureTestEnabled() &&
+    phase === 'processing' &&
+    publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
+
+  const onCfFailTestClick = (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (!cancelKey) return
+    simulateLoungeCfStreamProcessingFailedForTest(cancelKey)
+  }
+
   if (variant === 'chip') {
     return (
       <div
@@ -229,13 +246,24 @@ export default function LoungePostVideoInlineProgress({
         {footnote ? (
           <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-amber-100/95">{footnote}</p>
         ) : null}
-        <button
-          type="button"
-          className="pointer-events-auto mt-2 touch-manipulation rounded-lg border border-zinc-500/70 bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-zinc-100 hover:border-zinc-400 hover:bg-black/70"
-          onClick={onCancelClick}
-        >
-          {LOUNGE_PENDING_PUBLISH_CANCEL_LABEL}
-        </button>
+        <div className="pointer-events-auto mt-2 flex max-w-[14rem] flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            className="touch-manipulation rounded-lg border border-zinc-500/70 bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-zinc-100 hover:border-zinc-400 hover:bg-black/70"
+            onClick={onCancelClick}
+          >
+            {LOUNGE_PENDING_PUBLISH_CANCEL_LABEL}
+          </button>
+          {showCfFailTestButton ? (
+            <button
+              type="button"
+              className="touch-manipulation rounded-lg border border-rose-500/60 bg-rose-950/60 px-2.5 py-1.5 text-[10px] font-semibold leading-snug text-rose-100 hover:border-rose-400 hover:bg-rose-950/80"
+              onClick={onCfFailTestClick}
+            >
+              {LOUNGE_CF_PROCESSING_FAIL_TEST_LABEL}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   )

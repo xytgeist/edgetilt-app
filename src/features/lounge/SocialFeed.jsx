@@ -154,6 +154,7 @@ import {
   loungePostDraftHasContent,
   loungePostDraftIsThread,
   loungePostDraftPayloadFromSubmissionSnapshot,
+  loungePostDraftPayloadFromFailedVideoFeedPost,
   loungePostDraftThreadComposePartMedia,
   loungePostDraftThreadPartMediaInputFromCompose,
   loungePostDraftThreadParts,
@@ -183,6 +184,7 @@ import {
   clearLoungePendingPostProgress,
   createLoungePendingPublishKey,
   loungePendingPublishIsOptimisticId,
+  loungeFeedPostHasPersistedId,
   loungeSubmissionUsesInlineVideoPostProgress,
   loungeSnapshotUsesInlineTileVideoProgress,
   loungeEditSnapshotHasIncomingVideoUpload,
@@ -198,6 +200,7 @@ import {
   startLoungeStagedFeedPostPublish,
   subscribeLoungePendingCommentVideoProcessingComplete,
   subscribeLoungeStagedFeedPostPublishComplete,
+  subscribeLoungeCfStreamProcessingFailed,
   unregisterLoungePendingCommentVideoProcessing,
   unregisterLoungeStagedFeedPostPublishJob,
 } from './loungePendingPostPublish.js'
@@ -870,6 +873,12 @@ export default function SocialFeed({
   const composerVideoPrepHandoffRef = useRef(null)
   /** Latest failure payload for Retry (ref avoids stale closure). */
   const loungePostUploadFailureDetailsRef = useRef(null)
+  /** Mirrors `communityPosts` for CF processing-failure cleanup without stale closures. */
+  const communityPostsRef = useRef(/** @type {object[]} */ ([]))
+  /** Mirrors detail comments for CF processing-failure cleanup on video replies. */
+  const loungeDetailCommentsRef = useRef(/** @type {object[]} */ ([]))
+  /** Dedupe CF error recovery when progress + tile both observe the same failure. */
+  const cfStreamProcessingFailureHandledRef = useRef(/** @type {Set<string>} */ (new Set()))
   /** When set, user is trimming a long video before it enters the composer or detail editor. */
   const [loungeVideoCrop, setLoungeVideoCrop] = useState(null)
   /** Non-empty while showing the “too many images” alert (composer + quote repost uploads). */
@@ -3641,6 +3650,14 @@ export default function SocialFeed({
       )
     })
   }, [])
+
+  useEffect(() => {
+    communityPostsRef.current = communityPosts
+  }, [communityPosts])
+
+  useEffect(() => {
+    loungeDetailCommentsRef.current = loungeDetailComments
+  }, [loungeDetailComments])
 
   /** Re-register staged publish jobs after refresh; resume CF polling when the app refocuses. */
   useEffect(() => {
@@ -7530,6 +7547,173 @@ export default function SocialFeed({
     }, 400)
   }, [finalizeLoungePostDetailClose])
 
+  const discardOptimisticVideoFeedPost = useCallback(
+    async (postRow, targetKey) => {
+      const key = String(targetKey || postRow?.id || postRow?._pendingPublishKey || '').trim()
+      if (!key) return
+      abortLoungePendingCfWaitJob(key)
+      clearLoungePendingPostProgress(key)
+      unregisterLoungeStagedFeedPostPublishJob(key)
+
+      const streamUid = String(postRow?.stream_video_uid || '').trim()
+      if (streamUid) {
+        try {
+          if (postRow && loungeFeedPostHasPersistedId(postRow.id)) {
+            await deleteCfStreamForCommunityFeedPost(supabaseClient, postRow.id)
+          } else {
+            await deleteCfStreamOrphanAsset(supabaseClient, streamUid)
+          }
+        } catch (e) {
+          console.warn('discard optimistic video post stream cleanup:', e)
+        }
+      }
+
+      if (postRow && loungeFeedPostHasPersistedId(postRow.id)) {
+        try {
+          await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
+            postId: postRow.id,
+            postRow,
+          })
+          await supabaseClient
+            .from('community_feed_posts')
+            .delete()
+            .eq('id', postRow.id)
+            .eq('user_id', composerUserId)
+        } catch (e) {
+          console.warn('discard persisted video post after CF error:', e)
+        }
+      } else if (postRow) {
+        try {
+          await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
+            postId: key,
+            postRow,
+          })
+        } catch (e) {
+          console.warn('discard optimistic video post media cleanup:', e)
+        }
+      }
+
+      removeAuthorPendingVideoPost(key)
+      const rowId = String(postRow?.id || '').trim()
+      if (rowId && rowId !== key) removeAuthorPendingVideoPost(rowId)
+
+      if (
+        loungePostDetail &&
+        (loungePostDetail.id === key ||
+          loungePostDetail._pendingPublishKey === key ||
+          (rowId && loungePostDetail.id === rowId))
+      ) {
+        closeLoungePostDetail()
+      }
+    },
+    [
+      closeLoungePostDetail,
+      composerUserId,
+      loungePostDetail,
+      removeAuthorPendingVideoPost,
+      supabaseClient,
+    ],
+  )
+
+  const handleCfStreamVideoProcessingFailed = useCallback(
+    async ({ target, postId, streamUid, message }) => {
+      const key = String(postId || '').trim()
+      if (!key) return
+      const dedupeKey = `${String(target || 'post')}:${key}:${String(streamUid || '').trim()}`
+      if (cfStreamProcessingFailureHandledRef.current.has(dedupeKey)) return
+      cfStreamProcessingFailureHandledRef.current.add(dedupeKey)
+
+      const failMessage =
+        String(message || '').trim() ||
+        "Video couldn't be processed. Cloudflare couldn't prepare this file for playback."
+
+      if (target === 'comment') {
+        const commentRow =
+          loungeDetailCommentsRef.current.find(
+            (r) => r.id === key || r._pendingPublishKey === key,
+          ) || null
+        abortLoungePendingCfWaitJob(key)
+        clearLoungePendingPostProgress(key)
+        unregisterLoungePendingCommentVideoProcessing(key)
+        const uid = String(streamUid || commentRow?.stream_video_uid || '').trim()
+        if (uid) {
+          try {
+            await deleteCfStreamOrphanAsset(supabaseClient, uid)
+          } catch (e) {
+            console.warn('CF comment stream cleanup:', e)
+          }
+        }
+        if (commentRow) {
+          const body = String(commentRow.body || '').trim()
+          if (body) setLoungeDetailCommentDraft(body)
+          const parentId = commentRow.parent_id ?? null
+          removeAuthorPendingVideoComment(key, parentId)
+          const rowId = String(commentRow.id || '').trim()
+          if (rowId && loungeFeedPostHasPersistedId(rowId)) {
+            try {
+              await supabaseClient.from('feed_comments').delete().eq('id', rowId).eq('user_id', composerUserId)
+            } catch (e) {
+              console.warn('delete failed CF comment row:', e)
+            }
+          }
+        }
+        setLoungePostUploadFailureDetails({
+          kind: 'cfProcessingFailed',
+          target: 'comment',
+          dialogTitle: "Video couldn't be processed",
+          phase: 'Processing video',
+          message: `${failMessage} Your reply text was restored in the composer.`,
+        })
+        setLoungePostUploadFailedOpen(true)
+        return
+      }
+
+      const postRow =
+        communityPostsRef.current.find((p) => p.id === key || p._pendingPublishKey === key) || null
+
+      const draftPayload = postRow ? loungePostDraftPayloadFromFailedVideoFeedPost(postRow) : null
+      if (draftPayload) {
+        try {
+          const { data, error } = await upsertLoungePostDraft(supabaseClient, draftPayload)
+          if (error) {
+            console.warn('CF failure draft save:', error.message)
+          } else if (data?.id) {
+            setLoungeComposerActiveDraftId(data.id)
+            await refreshLoungeDraftCount()
+          }
+        } catch (e) {
+          console.warn('CF failure draft save:', e)
+        }
+      }
+
+      await discardOptimisticVideoFeedPost(postRow, key)
+
+      setLoungePostUploadFailureDetails({
+        kind: 'cfProcessingFailed',
+        target: 'post',
+        dialogTitle: "Video couldn't be processed",
+        phase: 'Processing video',
+        message: draftPayload
+          ? `${failMessage} Your caption was saved to Drafts without the video.`
+          : failMessage,
+      })
+      setLoungePostUploadFailedOpen(true)
+    },
+    [
+      composerUserId,
+      discardOptimisticVideoFeedPost,
+      refreshLoungeDraftCount,
+      removeAuthorPendingVideoComment,
+      supabaseClient,
+    ],
+  )
+
+  useEffect(() => {
+    return subscribeLoungeCfStreamProcessingFailed((payload) => {
+      void handleCfStreamVideoProcessingFailed(payload)
+    })
+  }, [handleCfStreamVideoProcessingFailed])
+
   const openLoungePostDetail = useCallback(
     (post, opts) => {
       if (!post?.id) return
@@ -8892,6 +9076,10 @@ export default function SocialFeed({
     setLoungeManageErr('')
     setLoungeDetailDeleteBusy(true)
     try {
+      if (!loungeFeedPostHasPersistedId(postId)) {
+        await discardOptimisticVideoFeedPost(loungePostDetail, postId)
+        return
+      }
       try {
         await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
           postId,
@@ -8918,7 +9106,15 @@ export default function SocialFeed({
       loungePostDeleteInflightRef.current = false
       setLoungeDetailDeleteBusy(false)
     }
-  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, showGlobalConfirm, supabaseClient])
+  }, [
+    closeLoungePostDetail,
+    composerUserId,
+    discardOptimisticVideoFeedPost,
+    loadCommunityFeed,
+    loungePostDetail,
+    showGlobalConfirm,
+    supabaseClient,
+  ])
 
   const performLoungeStaffDeleteFromDetail = useCallback(async () => {
     if (!loungePostDetail?.id || !loungeViewerIsStaff) return
@@ -8975,6 +9171,10 @@ export default function SocialFeed({
       setLoungeFeedDeleteBusyPostId(post.id)
       setLoungeManageErr('')
       try {
+        if (!loungeFeedPostHasPersistedId(post.id)) {
+          await discardOptimisticVideoFeedPost(post, post.id)
+          return
+        }
         try {
           await deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, {
             postId: post.id,
@@ -9002,7 +9202,15 @@ export default function SocialFeed({
         setLoungeFeedDeleteBusyPostId(null)
       }
     },
-    [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, showGlobalConfirm, supabaseClient]
+    [
+      closeLoungePostDetail,
+      composerUserId,
+      discardOptimisticVideoFeedPost,
+      loadCommunityFeed,
+      loungePostDetail,
+      showGlobalConfirm,
+      supabaseClient,
+    ],
   )
 
   const deleteStaffLoungePostFromFeed = useCallback(
@@ -12689,6 +12897,11 @@ export default function SocialFeed({
 
   const onLoungePostUploadFailureCancel = useCallback(() => {
     const fail = loungePostUploadFailureDetailsRef.current
+    if (fail?.kind === 'cfProcessingFailed') {
+      setLoungePostUploadFailedOpen(false)
+      setLoungePostUploadFailureDetails(null)
+      return
+    }
     if (fail?.kind === 'commentEdit') {
       loungeDetailCommentEditSnapshotRef.current = null
       loungeDetailCommentEditJobRunningRef.current = false
@@ -18765,27 +18978,39 @@ export default function SocialFeed({
               </div>
             ) : null}
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-              <button
-                type="button"
-                onClick={() => retryLoungePostUpload()}
-                className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-1"
-              >
-                Retry
-              </button>
-              <button
-                type="button"
-                onClick={() => void onLoungePostUploadSaveDraft()}
-                className="min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-2"
-              >
-                Save as draft
-              </button>
-              <button
-                type="button"
-                onClick={() => onLoungePostUploadFailureCancel()}
-                className="min-h-11 rounded-xl bg-zinc-800 px-4 text-[15px] font-semibold text-zinc-100 hover:bg-zinc-700 touch-manipulation sm:order-3"
-              >
-                Cancel
-              </button>
+              {loungePostUploadFailureDetails?.kind === 'cfProcessingFailed' ? (
+                <button
+                  type="button"
+                  onClick={() => onLoungePostUploadFailureCancel()}
+                  className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation"
+                >
+                  OK
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => retryLoungePostUpload()}
+                    className="min-h-11 rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white hover:bg-cyan-500 touch-manipulation sm:order-1"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onLoungePostUploadSaveDraft()}
+                    className="min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-2"
+                  >
+                    Save as draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLoungePostUploadFailureCancel()}
+                    className="min-h-11 rounded-xl bg-zinc-800 px-4 text-[15px] font-semibold text-zinc-100 hover:bg-zinc-700 touch-manipulation sm:order-3"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

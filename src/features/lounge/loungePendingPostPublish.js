@@ -36,6 +36,7 @@ const listeners = new Set()
 /** @type {Map<string, LoungeStagedFeedPostPublishJob>} */
 const stagedFeedPostPublishJobs = new Map()
 const stagedFeedPostPublishCompleteListeners = new Set()
+const cfStreamProcessingFailedListeners = new Set()
 
 /** @typedef {{
  *   streamUid: string,
@@ -90,11 +91,19 @@ async function runLoungeStagedFeedPostPublishLoop(postId) {
     if (e?.name === 'AbortError') return
     if (isLoungeCfStreamProcessingError(e)) {
       unregisterLoungeStagedFeedPostPublishJob(id)
+      const message = e instanceof Error ? e.message : String(e)
       setLoungePendingPostProgress(id, {
-        progress: 0.99,
+        progress: 1,
         status: "Video couldn't be processed",
-        detail: e instanceof Error ? e.message : String(e),
+        detail: message,
         phase: 'error',
+      })
+      notifyCfStreamProcessingFailed({
+        target: 'post',
+        postId: id,
+        streamUid: job.streamUid,
+        message,
+        cfStatus: e.cfStatus ?? null,
       })
       return
     }
@@ -186,11 +195,19 @@ async function runPendingCommentCfPollLoop(commentId) {
     if (e?.name === 'AbortError') return
     if (isLoungeCfStreamProcessingError(e)) {
       unregisterLoungePendingCommentVideoProcessing(id)
+      const message = e instanceof Error ? e.message : String(e)
       setLoungePendingPostProgress(id, {
-        progress: 0.99,
+        progress: 1,
         status: "Video couldn't be processed",
-        detail: e instanceof Error ? e.message : String(e),
+        detail: message,
         phase: 'error',
+      })
+      notifyCfStreamProcessingFailed({
+        target: 'comment',
+        postId: id,
+        streamUid: job.streamUid,
+        message,
+        cfStatus: e.cfStatus ?? null,
       })
       return
     }
@@ -330,6 +347,32 @@ export function abortLoungePendingCfWaitJob(targetId) {
 /** Client optimistic ids use a `pending-` prefix before the DB row exists. */
 export function loungePendingPublishIsOptimisticId(id) {
   return String(id || '').trim().startsWith('pending-')
+}
+
+const LOUNGE_FEED_POST_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/** True when a feed post / comment id is a persisted Supabase UUID (not an optimistic pending key). */
+export function loungeFeedPostHasPersistedId(id) {
+  const s = String(id || '').trim()
+  if (!s || loungePendingPublishIsOptimisticId(s)) return false
+  return LOUNGE_FEED_POST_UUID_RE.test(s)
+}
+
+function notifyCfStreamProcessingFailed(payload) {
+  for (const fn of cfStreamProcessingFailedListeners) {
+    try {
+      fn(payload)
+    } catch {
+      // ignore UI hook failures
+    }
+  }
+}
+
+/** Fires when Cloudflare Stream reports `status.state: error` during staged publish / comment CF wait. */
+export function subscribeLoungeCfStreamProcessingFailed(listener) {
+  cfStreamProcessingFailedListeners.add(listener)
+  return () => cfStreamProcessingFailedListeners.delete(listener)
 }
 
 /** Stop in-flight CF polling for a staged post (does not delete the post). */
@@ -535,10 +578,12 @@ export function resolveLoungePendingPublishProgress(
   progress,
   cfPlaybackReady = false,
   processingStartedAt = null,
+  phase = '',
 ) {
   if (cfPlaybackReady) return 1
   let p = typeof progress === 'number' && Number.isFinite(progress) ? progress : 0
   p = Math.max(0, Math.min(1, p))
+  if (String(phase || '').trim() === 'error') return p
   if (
     typeof processingStartedAt === 'number' &&
     Number.isFinite(processingStartedAt) &&

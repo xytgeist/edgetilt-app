@@ -1,5 +1,6 @@
 import { prepareLoungeFeedImageForUpload } from './compressImageForUpload.js'
-import { uploadLoungeFeedPostImage } from './communityFeedPost.js'
+import { uploadLoungeFeedPostImage, feedPostImageUrls } from './communityFeedPost.js'
+import { loungeFeedPostHasPersistedId } from '../features/lounge/loungePendingPostPublish.js'
 import { LOUNGE_CAPTION_SUBSCRIBER_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from './loungeCommentLimits.js'
 import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
 import { buildThreadDraftCaptionsWithSnapshotMediaMarkers } from './loungeThreadComposeDraftMediaMarkers.js'
@@ -477,6 +478,28 @@ function composePartImagePayload(part) {
     existingImageUrls: items.map((it) => String(it.remoteUrl || '').trim()).filter(Boolean),
     imageFiles: items.map((it) => it.file).filter((f) => f instanceof File),
     gifUrl: String(part?.gifUrl || '').trim(),
+  }
+}
+
+/**
+ * Text-only draft payload after a staged video post fails Cloudflare processing.
+ *
+ * @param {object | null | undefined} post
+ */
+export function loungePostDraftPayloadFromFailedVideoFeedPost(post) {
+  if (!post || typeof post !== 'object') return null
+  const caption = String(post.caption ?? '')
+  const gifUrl = String(post.gif_url ?? '').trim()
+  const existingImageUrls = feedPostImageUrls(post)
+    .map((u) => String(u ?? '').trim())
+    .filter(Boolean)
+  if (!caption.trim() && !gifUrl && existingImageUrls.length === 0) return null
+  return {
+    caption,
+    categoryPills: Array.isArray(post.category_pills) ? post.category_pills : [],
+    gifUrl,
+    existingImageUrls,
+    imageFiles: [],
   }
 }
 

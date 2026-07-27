@@ -13,6 +13,7 @@ import {
 import { LOUNGE_CAPTION_MAX } from './loungeCommentLimits.js'
 import { normalizeCashtagsInCaption } from './loungeMarketCaptionParse.js'
 import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
+import { loungeFeedPostHasPersistedId } from '../features/lounge/loungePendingPostPublish.js'
 import {
   deleteCfStreamForCommunityFeedPost,
   deleteCfStreamOrphanAsset,
@@ -542,6 +543,15 @@ export async function fetchLoungeFeedCommentMediaRowsForPostDelete(supabaseClien
 export async function deleteLoungeCommunityFeedPostTreeHostedMedia(supabaseClient, { postId, postRow }) {
   const id = String(postId || postRow?.id || '').trim()
   if (!id || !supabaseClient) return
+
+  if (!loungeFeedPostHasPersistedId(id)) {
+    const row = postRow && typeof postRow === 'object' ? postRow : { id }
+    await deleteLoungeFeedRowHostedMedia(supabaseClient, row, {
+      usePostStreamDelete: false,
+      postId: id,
+    })
+    return
+  }
 
   const commentRows = await fetchLoungeFeedCommentMediaRowsForPostDelete(supabaseClient, id)
   for (const commentRow of commentRows) {

@@ -128,6 +128,7 @@ export function useLoungePendingPublishDisplay(pendingKey, opts = {}) {
     rawProgress,
     cfPlaybackReady,
     processingStartedAt,
+    String(registryProgress?.phase || ''),
   )
 
   return {
@@ -162,11 +163,12 @@ export default function LoungePostVideoInlineProgress({
 
   if (!showOverlay) return null
 
-  const pct = Math.round(publishProgress * 100)
+  const phase = String(registryProgress?.phase || '').trim()
+  const isErrorPhase = phase === 'error'
+  const pct = isErrorPhase ? 100 : Math.round(publishProgress * 100)
   const status =
     String(registryProgress?.status || '').trim() ||
     (publishProgress >= 0.9 ? 'Processing video…' : 'Preparing video…')
-  const phase = String(registryProgress?.phase || '').trim()
   const detail =
     phase === 'error' ? String(registryProgress?.detail || '').trim() : ''
   const footnote =

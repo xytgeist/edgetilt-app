@@ -39,10 +39,11 @@ export function startChatCallTone(kind) {
   /** @type {OscillatorNode[]} */
   let liveOsc = []
 
+  // Soft classic dual-tone (US-ish). Incoming is a bit brighter; both stay gentle.
   const cadence =
     kind === 'incoming'
-      ? { onMs: 1000, offMs: 2000, freqs: [880, 988], gain: 0.09 }
-      : { onMs: 2000, offMs: 4000, freqs: [440, 480], gain: 0.07 }
+      ? { onMs: 1800, offMs: 2200, freqs: [440, 480], gain: 0.035 }
+      : { onMs: 2000, offMs: 4000, freqs: [440, 480], gain: 0.028 }
 
   const clearLive = () => {
     for (const osc of liveOsc) {
@@ -65,20 +66,25 @@ export function startChatCallTone(kind) {
     void ctx.resume().catch(() => {})
     clearLive()
     const now = ctx.currentTime
+    const dur = cadence.onMs / 1000
     const master = ctx.createGain()
+    // Soft attack / release so it doesn't slam like an alert siren.
     master.gain.setValueAtTime(0, now)
-    master.gain.linearRampToValueAtTime(cadence.gain, now + 0.02)
-    master.gain.setValueAtTime(cadence.gain, now + cadence.onMs / 1000 - 0.05)
-    master.gain.linearRampToValueAtTime(0, now + cadence.onMs / 1000)
+    master.gain.linearRampToValueAtTime(cadence.gain, now + 0.08)
+    master.gain.setValueAtTime(cadence.gain, now + dur - 0.12)
+    master.gain.linearRampToValueAtTime(0, now + dur)
     master.connect(ctx.destination)
 
     for (const freq of cadence.freqs) {
       const osc = ctx.createOscillator()
       osc.type = 'sine'
       osc.frequency.value = freq
-      osc.connect(master)
+      const voice = ctx.createGain()
+      voice.gain.value = 0.5
+      osc.connect(voice)
+      voice.connect(master)
       osc.start(now)
-      osc.stop(now + cadence.onMs / 1000 + 0.02)
+      osc.stop(now + dur + 0.02)
       liveOsc.push(osc)
     }
 

@@ -88,18 +88,21 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     (async () => {
-      // Call rings must always surface as an OS notification. In-app Lounge toasts
-      // are not the call UI (Realtime overlay handles foreground separately).
-      if (loungeActivity && !chatCallInvite) {
-        const clients = await self.clients.matchAll({
-          type: 'window',
-          includeUncontrolled: true,
-        })
-        const hasFocusedClient = clients.some((client) => client.focused)
-        if (hasFocusedClient) {
-          await deliverLoungeActivityInApp(clients, content)
-          return
-        }
+      const clients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+      const hasFocusedClient = clients.some((client) => client.focused)
+
+      // Foreground: Realtime call overlay owns the ring. Do not also fire OS push
+      // (or a Lounge toast) or iPhone gets double UI.
+      if (chatCallInvite && hasFocusedClient) {
+        return
+      }
+
+      if (loungeActivity && !chatCallInvite && hasFocusedClient) {
+        await deliverLoungeActivityInApp(clients, content)
+        return
       }
 
       const callTag = content.chatCallId

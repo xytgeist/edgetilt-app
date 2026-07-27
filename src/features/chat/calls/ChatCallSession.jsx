@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -34,6 +34,7 @@ export default function ChatCallSession({
 }) {
   const videoEnabled = kind === 'dm_av' && mediaMode === 'video'
   const [connectError, setConnectError] = useState('')
+  const didConnectRef = useRef(false)
 
   return (
     <div
@@ -41,41 +42,50 @@ export default function ChatCallSession({
       data-chat-feature
       data-lk-theme="default"
     >
-      {connectError ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="text-[15px] font-semibold text-rose-300">Could not connect to call</p>
-          <p className="max-w-sm text-[13px] text-zinc-400">{connectError}</p>
-          <p className="max-w-sm text-[12px] text-zinc-500">
-            Allow microphone access if prompted. Keep Edge open during calls.
-          </p>
-          <button
-            type="button"
-            className="rounded-xl bg-zinc-100 px-4 py-2 text-[14px] font-semibold text-zinc-950 touch-manipulation"
-            onClick={onHangup}
-          >
-            Close
-          </button>
-        </div>
-      ) : (
-        <LiveKitRoom
-          token={token}
-          serverUrl={serverUrl}
-          connect
-          audio
-          video={videoEnabled}
-          onConnected={() => setConnectError('')}
-          onDisconnected={onDisconnected}
-          onError={(err) => {
-            const msg = err instanceof Error ? err.message : String(err || 'LiveKit error')
-            setConnectError(msg)
-            onError?.(msg)
-          }}
-          className="flex h-full min-h-0 flex-col"
-        >
-          <CallChrome title={title} videoEnabled={videoEnabled} isGroup={kind === 'group_audio'} onHangup={onHangup} />
-          <RoomAudioRenderer />
-        </LiveKitRoom>
-      )}
+      {/* Keep LiveKitRoom mounted on error so we do not unmount→disconnect→silent hangup. */}
+      <LiveKitRoom
+        token={token}
+        serverUrl={serverUrl}
+        connect={!connectError}
+        audio
+        video={videoEnabled}
+        onConnected={() => {
+          didConnectRef.current = true
+          setConnectError('')
+        }}
+        onDisconnected={() => {
+          // Only auto-end after a real session. Failed connects stay on the error UI.
+          if (didConnectRef.current) onDisconnected?.()
+        }}
+        onError={(err) => {
+          const msg = err instanceof Error ? err.message : String(err || 'LiveKit error')
+          setConnectError(msg)
+          onError?.(msg)
+        }}
+        className="flex h-full min-h-0 flex-col"
+      >
+        {connectError ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+            <p className="text-[15px] font-semibold text-rose-300">Could not connect to call</p>
+            <p className="max-w-sm text-[13px] text-zinc-400">{connectError}</p>
+            <p className="max-w-sm text-[12px] text-zinc-500">
+              Allow microphone access if prompted. Keep Edge open during calls.
+            </p>
+            <button
+              type="button"
+              className="rounded-xl bg-zinc-100 px-4 py-2 text-[14px] font-semibold text-zinc-950 touch-manipulation"
+              onClick={onHangup}
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <>
+            <CallChrome title={title} videoEnabled={videoEnabled} isGroup={kind === 'group_audio'} onHangup={onHangup} />
+            <RoomAudioRenderer />
+          </>
+        )}
+      </LiveKitRoom>
     </div>
   )
 }

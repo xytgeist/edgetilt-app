@@ -131,10 +131,9 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [x] **Phase 1 smoke — OS push when backgrounded/locked:** iPhone received system call push (Ryan 2026-07-27).
 - [x] **Phase 2 smoke — push tap deep link** opens accept/decline overlay (Ryan 2026-07-27).
 - [x] **Android push enable RPC:** **`20260728010000_upsert_my_push_subscription`** on test.
-- [ ] **In-app ring / ringback smoke:** callee hears ringtone on overlay; caller hears ringback until answer; both stop on connect/decline/hangup.
-- [ ] **Phase 3 — stale call** after hangup/timeout (no ghost UI).
-- [ ] **Phase 3 — stale call** after hangup/timeout (no ghost UI).
-- [ ] **Phase 4 — missed/declined/timeout + summary chip.**
+- [x] **In-app ring / ringback** (tones softened; hangup no longer restarts ringback).
+- [ ] **Phase 3 smoke — missed push replace:** caller hangs up unanswered while callee backgrounded → invite becomes “Missed call from …” (`chat_call_missed`, **`20260728020000`**).
+- [ ] **Phase 4 — declined/timeout edge cases + summary chip polish.**
 - [ ] **Phase 5 — group voice** multi-join push behavior.
 - [x] **First-open PWA mic prompt:** after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`; v2 always shows in-app sheet once).
 - [x] **Call summary chips** in thread (`content_encoding = call_summary`).

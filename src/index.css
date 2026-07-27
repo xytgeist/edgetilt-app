@@ -3232,6 +3232,30 @@ html.light [data-settings-memberships] .text-fuchsia-200 {
   color: #a21caf !important;
 }
 
+/* Settings → Account info sub-screen */
+html.light [data-settings-account-info] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-settings-account-info] .text-zinc-300 {
+  color: #52525b !important;
+}
+html.light [data-settings-account-info] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-settings-account-info] .border-zinc-700\/90,
+html.light [data-settings-account-info] .border-zinc-800\/90 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-settings-account-info] .bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+}
+html.light [data-settings-account-info] .text-red-400 {
+  color: #dc2626 !important;
+}
+html.light [data-settings-account-info] .hover\:text-red-300:hover {
+  color: #b91c1c !important;
+}
+
 /* Settings → Sign out / delete account */
 html.light [data-settings-session] {
   background-color: #fafafa !important;

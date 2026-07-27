@@ -71,6 +71,16 @@ function toTitleCase(value) {
     .join(' ')
 }
 
+/** Optional contact phone for Settings → Account info (7–20 chars after normalize). */
+export function normalizePhoneNumber(rawValue) {
+  const raw = String(rawValue || '').replace(ZERO_WIDTH_RE, '').trim()
+  if (!raw) return ''
+  const hasPlus = raw.startsWith('+')
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length < 7 || digits.length > 15) return ''
+  return hasPlus ? `+${digits}` : digits
+}
+
 export function normalizeHandle(rawValue) {
   const raw = String(rawValue || '').replace(ZERO_WIDTH_RE, '').toLowerCase()
   const compact = raw
@@ -135,7 +145,7 @@ export function profileSeedFromUser(user) {
 export async function fetchOwnProfile(supabaseClient, userId) {
   const { data, error } = await supabaseClient
     .from('profiles')
-    .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og')
+    .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og,phone_number')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) return { data: null, error }
@@ -251,7 +261,26 @@ export function isProfileHandleUniqueViolation(error) {
 }
 
 const PROFILE_SAVE_SELECT =
-  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og'
+  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og,phone_number'
+
+export async function saveProfilePhoneNumber({ supabaseClient, userId, phoneNumber }) {
+  const normalized = normalizePhoneNumber(phoneNumber)
+  const payload = {
+    phone_number: normalized || null,
+    updated_at: new Date().toISOString(),
+  }
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .update(payload)
+    .eq('user_id', userId)
+    .select(PROFILE_SAVE_SELECT)
+    .maybeSingle()
+  if (error) return { data: null, error }
+  if (!data) {
+    return { data: null, error: new Error('Could not update phone number (profile missing).') }
+  }
+  return { data, error: null }
+}
 
 export async function saveProfileWithHandleFallback({
   supabaseClient,

@@ -29,6 +29,7 @@ import {
 import SettingsFanMonetizationSection from '../features/creatorFanSubs/SettingsFanMonetizationSection.jsx'
 import CreatorFanSupportedCreatorsPanel from '../features/creatorFanSubs/CreatorFanSupportedCreatorsPanel.jsx'
 import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembershipPanel.jsx'
+import SettingsAccountInfoScreen from '../features/profiles/SettingsAccountInfoScreen.jsx'
 import {
   formatLoungeSearchError,
   LOUNGE_SEARCH_MIN_CHARS,
@@ -201,6 +202,9 @@ export default function LoungeDockSlidePanels({
   deleteAccountBusy = false,
   /** Signed-in login email (read-only). */
   settingsAccountEmail = '',
+  /** Signed-in auth user (id + email) for Account info screen. */
+  settingsAuthUser = null,
+  onAccountInfoUpdated,
   settingsHasActiveSubscription = false,
   settingsHasSlotsEdgeStarter = false,
   settingsHasSlotsEdgePro = false,
@@ -257,6 +261,7 @@ export default function LoungeDockSlidePanels({
 
   const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
+  const [accountInfoScreenOpen, setAccountInfoScreenOpen] = useState(false)
   const [appearanceSettingsOpen, setAppearanceSettingsOpen] = useState(false)
   const [autoplaySettingsOpen, setAutoplaySettingsOpen] = useState(false)
   const [helpSupportSettingsOpen, setHelpSupportSettingsOpen] = useState(false)
@@ -316,6 +321,7 @@ export default function LoungeDockSlidePanels({
     if (openPanel !== 'settings') {
       setNotificationsSettingsOpen(false)
       setAccountSettingsOpen(false)
+      setAccountInfoScreenOpen(false)
       setAppearanceSettingsOpen(false)
       setAutoplaySettingsOpen(false)
       setHelpSupportSettingsOpen(false)
@@ -1399,6 +1405,17 @@ export default function LoungeDockSlidePanels({
             />
           </div>
         ) : openPanel === 'settings' ? (
+          accountInfoScreenOpen ? (
+            <SettingsAccountInfoScreen
+              supabaseClient={settingsSupabaseClient}
+              authUser={settingsAuthUser}
+              initialEmail={settingsAccountEmail}
+              onBack={() => setAccountInfoScreenOpen(false)}
+              onUpdated={onAccountInfoUpdated}
+              onDeleteAccount={onDeleteAccount}
+              deleteAccountBusy={deleteAccountBusy}
+            />
+          ) : (
           <div className="px-3 py-4">
             <h2 className="text-[17px] font-semibold text-zinc-100">Settings</h2>
             <p className="mt-1 text-[14px] leading-relaxed text-zinc-500">
@@ -1500,7 +1517,7 @@ export default function LoungeDockSlidePanels({
                   <span className="min-w-0">
                     <span className="block text-[15px] font-semibold text-zinc-100">Account</span>
                     <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-                      Profile, sign-in email, password, and legal.
+                      Profile, password, account info, and legal.
                     </span>
                   </span>
                   <span
@@ -1556,15 +1573,33 @@ export default function LoungeDockSlidePanels({
                       </button>
                     ) : null}
 
-                    <div className="px-3.5 py-3">
-                      <div className="text-[15px] font-semibold text-zinc-100">Email</div>
-                      <div className="mt-1 break-all text-[14px] text-zinc-300">
-                        {settingsAccountEmail || '-'}
-                      </div>
-                      <p className="mt-1 text-[12px] leading-snug text-zinc-500">
-                        Login address for this account. Contact support to change it for now.
-                      </p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAccountInfoScreenOpen(true)}
+                      className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/50"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold text-zinc-100">Account info</span>
+                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                          Handle, email, phone, and delete account.
+                        </span>
+                      </span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5 shrink-0 text-zinc-500"
+                        fill="none"
+                        aria-hidden
+                      >
+                        <path
+                          d="M9 6l6 6-6 6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
 
                     <div className="px-3.5 py-3">
                       <button
@@ -2078,7 +2113,7 @@ export default function LoungeDockSlidePanels({
                 <div className="px-1">
                   <div className="text-[15px] font-semibold text-zinc-100">Sign out</div>
                   <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
-                    Log out on this device or permanently delete your account.
+                    Log out on this device.
                   </p>
                 </div>
                 <div
@@ -2092,25 +2127,11 @@ export default function LoungeDockSlidePanels({
                   >
                     Log out
                   </button>
-                  {typeof onDeleteAccount === 'function' ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={deleteAccountBusy}
-                        onClick={() => void onDeleteAccount()}
-                        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-lg border border-red-900/75 bg-red-950/30 px-4 text-[14px] font-semibold text-red-300 touch-manipulation transition-colors hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
-                      >
-                        {deleteAccountBusy ? 'Deleting account…' : 'Delete account'}
-                      </button>
-                      <p className="mt-2 text-[12px] leading-snug text-zinc-500">
-                        Permanently removes your login and cascaded profile data. This cannot be undone.
-                      </p>
-                    </>
-                  ) : null}
                 </div>
               </div>
             ) : null}
           </div>
+          )
         ) : (
           <div className="px-3 py-4">
             <p className="text-[15px] leading-relaxed text-zinc-400">

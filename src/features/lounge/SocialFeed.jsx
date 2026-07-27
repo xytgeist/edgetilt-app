@@ -14714,6 +14714,7 @@ export default function SocialFeed({
         'role',
         'handle_changed_at',
         'is_og',
+        'phone_number',
       ]) {
         if (Object.prototype.hasOwnProperty.call(next, k)) authorPatch[k] = next[k]
       }
@@ -17768,6 +17769,8 @@ export default function SocialFeed({
           notificationPrefsError={loungeNotificationPrefsError}
           onNotificationPrefToggle={onLoungeNotificationPrefToggle}
           settingsAccountEmail={String(composerAuthUser?.email || '').trim()}
+          settingsAuthUser={composerAuthUser}
+          onAccountInfoUpdated={onProfileScreenUpdated}
           settingsHasActiveSubscription={hasActiveSubscription}
           settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
           settingsHasSlotsEdgePro={hasSlotsEdgePro}

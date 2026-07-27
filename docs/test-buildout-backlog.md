@@ -120,10 +120,39 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Group settings** — Owner: rename, description, add/remove member, mute member (5m–permanent). Member: leave, mute group (presets + mute-until datetime), add member, starred list.
 - [ ] **Star message** — Long-press a group message → Star; appears under Starred messages in settings.
 
+### Planned (audio & video calling — research)
+
+- [ ] **Research — 1:1 calls:** audio + video in **DMs** (WebRTC vs managed SFU: LiveKit, Daily.co, Twilio Video, 100ms, Agora); signaling (Supabase Realtime vs vendor); **mobile Safari / iOS PWA** constraints (background audio, permissions, CallKit).
+- [ ] **Research — Spaces-style live audio in group chats:** speaker queue, listener-only mode, raise hand, max participants, recording policy, moderation (mute/kick/report) for **DM groups**, **topic channels**, and **Private Subs** fan rooms.
+- [ ] **Cost model:** per-participant-minute at 5 / 25 / 100 concurrent users; self-host vs managed.
+- [ ] **Product spec draft:** who can start a call or space; subscriber gates for fan rooms; abuse/reporting; overlap with **`docs/access-tiers.md`** verified badge.
+- [ ] **Deliverable:** short decision doc (vendor pick + v1 scope) linked from this section before build.
+- [ ] **Depends on:** chat membership + moderation baseline (**§ Creator fan subs — product backlog** §4–§5 for fan rooms).
+
 ### Production replay
 - Replay migration `20260601120000_chat_phase2.sql` on production Supabase.
 - Redeploy `lounge-chat` Edge on production.
 - See `docs/production-rollout-checklist.md` §2 + §4.
+
+---
+
+## Planned (Account & identity verification)
+
+**Goal:** **Verified user** badge (see **`docs/access-tiers.md`** §2) gated on **phone OTP**, not “signed in” alone. Account info screen ships a placeholder phone field today; verification track is separate.
+
+**Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, optional `profiles.phone_number`; delete account text link. Migration **`20260727210000`** on test. **Not verified yet.**
+
+### Phone verification (Twilio + Supabase Phone Auth)
+
+- [ ] **Vendor setup:** Twilio account; enable **Phone** provider on Supabase **test + prod**; US **A2P 10DLC** brand/campaign registration for reliable prod SMS (~$0.0083/msg US + ~$1.15/mo number).
+- [ ] **Schema:** `profiles.phone_verified_at` (or trusted sync from `auth.users.phone_confirmed_at`); RLS/trigger so clients cannot self-stamp verified.
+- [ ] **Account info UX:** replace free-text phone **Save** with **Send code → Enter OTP → Resend cooldown** (`SettingsAccountInfoScreen.jsx` + Supabase `updateUser` / `verifyOtp`).
+- [ ] **Verified badge UI:** `LoungeVerifiedBadge` on feed, profile, composer meta (pattern: **`LoungeOgBadge.jsx`**).
+- [ ] **Product rules:** badge = phone verified only; optional gate on post/comment until verified; prompt existing email-only users (no hard block v1 TBD).
+- [ ] **Abuse:** rate-limit OTP sends per user/IP; cap resends.
+- [ ] **Smoke (test):** complete OTP → badge visible; change phone → re-verify; unverified user has no badge.
+
+**Rough effort:** ~3–5 focused days after Twilio/10DLC setup (see chat 2026-07-26).
 
 ---
 
@@ -524,7 +553,9 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 ### 6. Audio “hang out” (Spaces-style) — later track
 
 - [ ] **Product spec:** creator-started **live audio room** for subscribers (X Spaces–like): who can speak, listener cap, recording policy, abuse/reporting.
-- [ ] **Tech spike:** WebRTC vs third-party (Daily, LiveKit, etc.), cost, mobile/PWA constraints.
+- [ ] **Scope:** **Private Subs** fan rooms first; extend to **group chats** (DM groups, topic channels) per research below.
+- [ ] **Tech spike:** WebRTC vs third-party (Daily, LiveKit, Twilio Video, 100ms, etc.), cost, mobile/PWA constraints — shared checklist **Chat → Planned (audio & video calling — research)**.
+- [ ] **1:1 audio/video calls:** research tracked under same Chat section (DM call button, ring/accept UI TBD).
 - [ ] **Depends on:** fan room membership (§4) + moderation tooling (§5) at minimum.
 - [ ] **Not blocking** §1–§5; track as **Phase 2b** or separate roadmap row once §4 ships.
 
@@ -895,6 +926,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-07-26: **Lounge Stream iOS playback invariants (doc + Ryan sign-off):** **`docs/lounge-stream-ios-playback.md`** + **`.cursor/rules/lounge-stream-ios-playback.mdc`** — Apple WebKit MSE may play at **`readyState=0`**; hero MSE lock for full lightbox; WAAPI expand land via **`snapFlyoutToHeroOpen`**. Hotfixes **`e333601b`** (feed ~2–3s restart), **`6440854a`** / **`d1f6fdca`** / **`e4dd6f19`** (hero fly-in/land/play). Backlog shipped row + smoke §11 iPhone checks. Client only.
 - 2026-07-26: **Quote repost inset polish (client):** inset meta **15px** / handle **14px** (feed handle **16px** vs **17px** name); caption **`text-zinc-200`** at **15px**; compact avatar alignment + no chip background; embed multi-image carousel scrollbar hidden (`data-lounge-feed-horizontal-scroll` on all multi-slide carousels); staff/OG **`embed`** badge sizing via **`metaVariant="quoteEmbed"`**. Client only; no SQL/Edge.
+- 2026-07-26: **Backlog — phone Verified badge + chat AV research:** new **Planned (Account & identity verification)** (Twilio + Supabase Phone OTP, Verified badge UI); **Chat → Planned (audio & video calling — research)** (1:1 calls + Spaces-style live audio in group chats); fan subs §6 cross-links both tracks.
+- 2026-07-26: **Settings Account info (test @ `fe1402a0`):** sub-screen for handle, email, optional phone; delete account text link; logout centered link at bottom of Settings. Migration **`20260727210000`** on test. Phone field is **not** OTP-verified yet.
 - 2026-07-26: **Lounge feed UX polish batch (client, test + main @ `bf469ec3`):** horizontal image carousels extended to post detail + comments (**`f8483129`**); axis lock restores vertical feed scroll (**`ab823f86`**, **`useLoungeFeedCarouselAxisLock`**); rubber-band at carousel limits (**`7c90f91a`**). **Horizontal pan fixes:** post detail + profile sheet scroll roots get **`overflow-x-hidden overscroll-x-none`** (**`23594dd8`**, **`a0972b9a`**) — cause was **`100vw`** carousel bleed under **`overflow-y-auto`**. **Thread hierarchy bleed:** **`loungeFeedCarouselFullBleed()`** only when **`captionColumnMedia`** true — ancestors inset, focus/last row full bleed (**`6a2b67c0`**; **`LoungePostDetailCommentHierarchy`**, **`LoungePostThreadPartsHierarchy`**, **`ProfileReplyRow`**). **Lightbox:** snap paging via **`useLoungeLightboxCarouselSnap.js`** (**`64c6f5ea`**); hidden scrollbars on **`[data-lounge-feed-horizontal-scroll]`** + lightbox carousel (**`2a246548`**). **Detail chrome:** title bar bottom separator removed (**`fc929dc1`**). **Feed row:** removed **`active:bg-zinc-900/55`** flash during iOS scroll (**`b6e6914a`**). **Quote repost inset:** X-style compact avatar on **`LoungeQuoteRepostEmbedAuthorMeta`** (**`bf469ec3`**). **PWA auth:** cold boot / resume restore hardening (**`dedc699f`**). No SQL/Edge. Ryan iPhone PWA smoke open.
 - 2026-07-26: **Crypto Edge (Degentics) compose + display fix:** strip comma/TLD synopsis orphans; clean domains from RSS excerpts before compose; **`bodyTextWithLinkPreview`** no longer strips unrelated bare domains (fixes **Crypto.com** vanishing from headlines when link preview shows). Redeploy **`lounge-news-poll`** + frontend.
 - 2026-07-26: **Crypto Edge (Degentics) compose fix:** strip comma-led synopsis fragments (`normalizeSynopsisLead`); crypto always attaches source URL when RSS provides one. Redeploy **`lounge-news-poll`** test + prod.

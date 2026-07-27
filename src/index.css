@@ -3256,7 +3256,15 @@ html.light [data-settings-account-info] .hover\:text-red-300:hover {
   color: #b91c1c !important;
 }
 
-/* Settings → Sign out / delete account */
+/* Settings → Log out link */
+html.light [data-settings-logout] .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-settings-logout] .hover\:text-zinc-200:hover {
+  color: #18181b !important;
+}
+
+/* Settings → Sign out / delete account (legacy session card — unused) */
 html.light [data-settings-session] {
   background-color: #fafafa !important;
   border-color: #e4e4e7 !important;

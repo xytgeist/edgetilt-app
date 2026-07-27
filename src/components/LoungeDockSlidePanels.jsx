@@ -2109,25 +2109,14 @@ export default function LoungeDockSlidePanels({
             ) : null}
 
             {typeof onLogout === 'function' ? (
-              <div className="mt-6 border-t border-zinc-800 pt-5">
-                <div className="px-1">
-                  <div className="text-[15px] font-semibold text-zinc-100">Sign out</div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-zinc-500">
-                    Log out on this device.
-                  </p>
-                </div>
-                <div
-                  data-settings-session
-                  className="mt-3 rounded-xl border border-zinc-800/90 bg-zinc-950/40 px-3.5 py-3.5"
+              <div className="mt-10 pb-3 text-center" data-settings-logout>
+                <button
+                  type="button"
+                  onClick={() => void onLogout()}
+                  className="text-[14px] font-semibold text-zinc-400 underline underline-offset-2 touch-manipulation hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
                 >
-                  <button
-                    type="button"
-                    onClick={() => void onLogout()}
-                    className="flex min-h-11 w-full items-center justify-center rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-4 text-[14px] font-semibold text-zinc-100 touch-manipulation transition-colors hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
-                  >
-                    Log out
-                  </button>
-                </div>
+                  Log out
+                </button>
               </div>
             ) : null}
           </div>

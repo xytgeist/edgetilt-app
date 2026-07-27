@@ -1,7 +1,8 @@
-import { isStandalonePwa } from './pwaNotificationPrompt.js'
+import { isAndroidDevice, isStandalonePwa } from './pwaNotificationPrompt.js'
 
 /**
  * One-time installed-PWA mic opt-in for chat calling (localStorage).
+ * Android only... iOS PWA mic priming is flaky and not worth the sheet.
  * v2: do not skip the in-app sheet when Permissions API already says granted/denied
  * (v1 silently marked seen after call testing and never showed Enable Microphone).
  */
@@ -11,9 +12,9 @@ export function getPwaMicPromptStorageKey(userId) {
   return `${PWA_MIC_PROMPT_KEY_PREFIX}${userId}`
 }
 
-/** Same surface as push opt-in: installed Home Screen / Install app only. */
+/** Installed Android PWA only (positive platform gate... never `!iOS`). */
 export function isInstalledPwaMicPromptEligible() {
-  return isStandalonePwa()
+  return isStandalonePwa() && isAndroidDevice()
 }
 
 export function hasSeenPwaMicPrompt(userId) {

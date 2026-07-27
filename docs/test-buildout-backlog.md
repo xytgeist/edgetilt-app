@@ -135,7 +135,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [ ] **Phase 3 smoke — missed push replace:** caller hangs up unanswered while callee backgrounded → invite becomes “Missed call from …” (`chat_call_missed`, **`20260728020000`**).
 - [ ] **Phase 4 — declined/timeout edge cases + summary chip polish.**
 - [ ] **Phase 5 — group voice** multi-join push behavior.
-- [x] **First-open PWA mic prompt:** after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`; v2 always shows in-app sheet once).
+- [x] **First-open PWA mic prompt:** **Android PWA only**; after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`). iOS skipped.
 - [x] **Call summary chips** in thread (`content_encoding = call_summary`).
 - [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
 - [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; recording; screen share.

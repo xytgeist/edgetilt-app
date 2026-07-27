@@ -43,7 +43,7 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
 - `getUserMedia` only after user tap (Start / Accept, or first-open PWA mic opt-in).
-- **First-open PWA mic prompt:** installed Home Screen / Install app only (`isStandalonePwa`). After splash (and after the push opt-in if that also shows), Edge asks once to Enable microphone, then calls `getUserMedia` and immediately stops the track. Seen flag: `edge_pwa_mic_prompt_v2:{userId}` (`src/utils/pwaMicrophonePrompt.js`). In-app sheet is not skipped when the Permissions API already says granted. Does **not** force iOS “Allow forever” ... OS may still re-ask later.
+- **First-open PWA mic prompt:** **Android installed PWA only** (`isStandalonePwa` + `isAndroidDevice`). After splash (and after the push opt-in if that also shows), Edge asks once to Enable microphone, then calls `getUserMedia` and immediately stops the track. Seen flag: `edge_pwa_mic_prompt_v2:{userId}` (`src/utils/pwaMicrophonePrompt.js`). iPhone / iPad: no sheet (OS prompt on Accept / Start call is enough).
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).
 - Call provider + overlay live at **AppShell** so tab switches do not tear down ringing/active media.
 - **In-app tones:** Web Audio ringtone on incoming overlay; ringback while outgoing caller awaits a remote participant (`chatCallRingTone.js`). Stops on accept/decline/answer/hangup. Not a substitute for OS notification sound when backgrounded.

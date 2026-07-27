@@ -250,8 +250,7 @@ export function ChatCallProvider({
   onOpenRoomRef.current = onOpenRoom
   const onInitialCallConsumedRef = useRef(onInitialCallConsumed)
   onInitialCallConsumedRef.current = onInitialCallConsumed
-  const presentIncomingRef = useRef(presentIncoming)
-  presentIncomingRef.current = presentIncoming
+  // presentIncomingRef already declared above (realtime + deep link share it).
   const resolveTitleAsyncRef = useRef(resolveTitleAsync)
   resolveTitleAsyncRef.current = resolveTitleAsync
 

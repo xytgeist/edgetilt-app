@@ -26,14 +26,31 @@ function minProfile(p: { handle?: string | null; display_name?: string | null } 
   return String(p?.handle || '').trim().length >= 2 && String(p?.display_name || '').trim().length >= 1
 }
 
+/** Normalize dashboard / secret URL into browser (wss) + API (https) hosts. */
+function normalizeLiveKitUrls(raw: string) {
+  const trimmed = String(raw || '').trim().replace(/\/+$/, '')
+  const host = trimmed
+    .replace(/^wss?:\/\//i, '')
+    .replace(/^https?:\/\//i, '')
+    .trim()
+  if (!host) throw new Error('LIVEKIT_URL is empty or invalid.')
+  return {
+    /** Browser LiveKitRoom serverUrl */
+    url: `wss://${host}`,
+    /** RoomServiceClient host */
+    httpUrl: `https://${host}`,
+  }
+}
+
 function requireLiveKitEnv() {
-  const url = Deno.env.get('LIVEKIT_URL')?.trim() || ''
+  const rawUrl = Deno.env.get('LIVEKIT_URL')?.trim() || ''
   const apiKey = Deno.env.get('LIVEKIT_API_KEY')?.trim() || ''
   const apiSecret = Deno.env.get('LIVEKIT_API_SECRET')?.trim() || ''
-  if (!url || !apiKey || !apiSecret) {
+  if (!rawUrl || !apiKey || !apiSecret) {
     throw new Error('Missing LIVEKIT_URL, LIVEKIT_API_KEY, or LIVEKIT_API_SECRET Edge secrets.')
   }
-  return { url, apiKey, apiSecret }
+  const { url, httpUrl } = normalizeLiveKitUrls(rawUrl)
+  return { url, httpUrl, apiKey, apiSecret }
 }
 
 type Admin = ReturnType<typeof createClient>
@@ -65,9 +82,9 @@ async function mintToken(args: {
   return await at.toJwt()
 }
 
-async function deleteLiveKitRoom(url: string, apiKey: string, apiSecret: string, roomName: string) {
+async function deleteLiveKitRoom(httpUrl: string, apiKey: string, apiSecret: string, roomName: string) {
   try {
-    const svc = new RoomServiceClient(url, apiKey, apiSecret)
+    const svc = new RoomServiceClient(httpUrl, apiKey, apiSecret)
     await svc.deleteRoom(roomName)
   } catch (err) {
     console.warn('chat-calls: deleteRoom failed', roomName, err)
@@ -250,6 +267,61 @@ function publishSourcesForCall(kind: string, mediaMode: string): TrackSource[] {
   return [TrackSource.MICROPHONE, TrackSource.CAMERA]
 }
 
+async function finalizeOutgoingCall(args: {
+  admin: Admin
+  lk: { url: string; httpUrl: string; apiKey: string; apiSecret: string }
+  call: {
+    id: string
+    chat_room_id: string
+    kind: string
+    media_mode: string
+    livekit_room_name: string
+  }
+  userId: string
+  displayName: string
+  roomId: string
+}) {
+  const { admin, lk, call, userId, displayName, roomId } = args
+  await admin.from('chat_call_participants').upsert(
+    {
+      call_id: call.id,
+      user_id: userId,
+      role: 'caller',
+      joined_at: new Date().toISOString(),
+      left_at: null,
+    },
+    { onConflict: 'call_id,user_id' },
+  )
+
+  let token: string
+  try {
+    const sources = publishSourcesForCall(call.kind, call.media_mode)
+    token = await mintToken({
+      apiKey: lk.apiKey,
+      apiSecret: lk.apiSecret,
+      identity: userId,
+      displayName,
+      roomName: call.livekit_room_name,
+      canPublish: true,
+      canPublishSources: sources,
+    })
+  } catch (mintErr) {
+    await admin
+      .from('chat_calls')
+      .update({
+        status: 'ended',
+        ended_at: new Date().toISOString(),
+        ended_reason: 'token_mint_failed',
+      })
+      .eq('id', call.id)
+    throw mintErr
+  }
+
+  const recipients = await listMemberIds(admin, roomId, userId)
+  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients)
+  return { ok: true, call, livekit_url: lk.url, token }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -334,24 +406,43 @@ Deno.serve(async (req) => {
       }
 
       const kind = room.kind === 'dm' ? 'dm_av' : 'group_audio'
-      const callId = crypto.randomUUID()
-      const livekitRoomName = `edge-call:${callId}`
+      const insertCallRow = async () => {
+        const newId = crypto.randomUUID()
+        return await admin
+          .from('chat_calls')
+          .insert({
+            id: newId,
+            chat_room_id: roomId,
+            kind,
+            media_mode: kind === 'group_audio' ? 'audio' : mediaMode,
+            status: 'ringing',
+            started_by: user.id,
+            livekit_room_name: `edge-call:${newId}`,
+          })
+          .select(
+            'id, chat_room_id, kind, media_mode, status, started_by, started_at, livekit_room_name',
+          )
+          .single()
+      }
 
-      const { data: inserted, error: insertErr } = await admin
-        .from('chat_calls')
-        .insert({
-          id: callId,
-          chat_room_id: roomId,
-          kind,
-          media_mode: kind === 'group_audio' ? 'audio' : mediaMode,
-          status: 'ringing',
-          started_by: user.id,
-          livekit_room_name: livekitRoomName,
-        })
-        .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, livekit_room_name',
-        )
-        .single()
+      let { data: inserted, error: insertErr } = await insertCallRow()
+
+      if (insertErr?.code === '23505') {
+        // Reclaim own stuck ringing call (failed connect / abandoned start).
+        const { data: existing } = await admin
+          .from('chat_calls')
+          .select(
+            'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          )
+          .eq('chat_room_id', roomId)
+          .in('status', ['ringing', 'active'])
+          .maybeSingle()
+        if (existing && existing.started_by === user.id && existing.status === 'ringing') {
+          await endCallRow(admin, existing, 'reclaim')
+          await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, existing.livekit_room_name)
+          ;({ data: inserted, error: insertErr } = await insertCallRow())
+        }
+      }
 
       if (insertErr) {
         if (insertErr.code === '23505') {
@@ -359,53 +450,17 @@ Deno.serve(async (req) => {
         }
         throw new Error(insertErr.message)
       }
+      if (!inserted) throw new Error('Could not create call.')
 
-      await admin.from('chat_call_participants').upsert(
-        {
-          call_id: callId,
-          user_id: user.id,
-          role: 'caller',
-          joined_at: new Date().toISOString(),
-          left_at: null,
-        },
-        { onConflict: 'call_id,user_id' },
-      )
-
-      const recipients = await listMemberIds(admin, roomId, user.id)
-
-      let token: string
-      try {
-        const sources = publishSourcesForCall(kind, inserted.media_mode)
-        token = await mintToken({
-          apiKey: lk.apiKey,
-          apiSecret: lk.apiSecret,
-          identity: user.id,
-          displayName,
-          roomName: livekitRoomName,
-          canPublish: true,
-          canPublishSources: sources,
-        })
-      } catch (mintErr) {
-        // Don't leave a stuck ringing row if token mint fails (blocks new calls in room).
-        await admin
-          .from('chat_calls')
-          .update({
-            status: 'ended',
-            ended_at: new Date().toISOString(),
-            ended_reason: 'token_mint_failed',
-          })
-          .eq('id', callId)
-        throw mintErr
-      }
-
-      await enqueueCallInvitePush(admin, roomId, callId, user.id, recipients)
-
-      return json(200, {
-        ok: true,
+      const started = await finalizeOutgoingCall({
+        admin,
+        lk,
         call: inserted,
-        livekit_url: lk.url,
-        token,
+        userId: user.id,
+        displayName,
+        roomId,
       })
+      return json(200, started)
     }
 
     if (action === 'accept_call' || action === 'join_call') {
@@ -531,7 +586,7 @@ Deno.serve(async (req) => {
       }
 
       const result = await endCallRow(admin, call, 'declined', 'declined')
-      await deleteLiveKitRoom(lk.url, lk.apiKey, lk.apiSecret, call.livekit_room_name)
+      await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
       return json(200, { ok: true, ...result })
     }
 
@@ -551,7 +606,7 @@ Deno.serve(async (req) => {
       await assertMember(admin, call.chat_room_id, user.id)
 
       const result = await endCallRow(admin, call, 'hangup')
-      await deleteLiveKitRoom(lk.url, lk.apiKey, lk.apiSecret, call.livekit_room_name)
+      await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
       return json(200, { ok: true, ...result })
     }
 
@@ -575,7 +630,7 @@ Deno.serve(async (req) => {
       }
       if (callTimedOut(call.started_at)) {
         await endCallRow(admin, call, 'max_duration')
-        await deleteLiveKitRoom(lk.url, lk.apiKey, lk.apiSecret, call.livekit_room_name)
+        await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
         return json(410, { error: 'This call has expired.' })
       }
 

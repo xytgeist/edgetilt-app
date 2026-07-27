@@ -79,6 +79,7 @@ export function ChatCallProvider({
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
   const activeCallRef = useRef(activeCall)
   const incomingRef = useRef(incoming)
+  const endingRef = useRef(false)
   activeCallRef.current = activeCall
   incomingRef.current = incoming
 
@@ -254,6 +255,7 @@ export function ChatCallProvider({
           mediaMode: call.media_mode,
         })
         setIncoming(null)
+        endingRef.current = false
         setActiveCall({
           callId: call.id,
           roomId,
@@ -267,7 +269,7 @@ export function ChatCallProvider({
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not start call'
         setError(msg)
-        throw err
+        return null
       } finally {
         setBusy(false)
       }
@@ -320,19 +322,27 @@ export function ChatCallProvider({
 
   const hangup = useCallback(async () => {
     const current = activeCallRef.current
-    if (!supabaseClient || !current) {
+    if (!current) {
       setActiveCall(null)
       return
     }
+    if (endingRef.current) {
+      setActiveCall(null)
+      return
+    }
+    endingRef.current = true
     setBusy(true)
     try {
-      await chatEndCall(supabaseClient, current.callId)
-      ensureBroadcast(current.roomId)?.emit('end', { callId: current.callId })
+      if (supabaseClient) {
+        await chatEndCall(supabaseClient, current.callId)
+        ensureBroadcast(current.roomId)?.emit('end', { callId: current.callId })
+      }
     } catch {
       /* still clear local */
     } finally {
       setActiveCall(null)
       setBusy(false)
+      endingRef.current = false
     }
   }, [supabaseClient, ensureBroadcast])
 
@@ -408,8 +418,10 @@ export function ChatCallProvider({
             mediaMode={activeCall.mediaMode}
             kind={activeCall.kind}
             title={activeCall.title}
+            onError={(msg) => setError(msg || 'Call connection failed')}
             onDisconnected={() => {
-              setActiveCall(null)
+              // End DB call so a drop/disconnect cannot leave a stuck ringing row.
+              void hangup()
             }}
             onHangup={() => void hangup()}
           />

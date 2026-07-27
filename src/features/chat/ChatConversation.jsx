@@ -2189,9 +2189,7 @@ export default function ChatConversation({
                 type="button"
                 disabled={chatCall.busy || Boolean(chatCall.activeCall)}
                 onClick={() => {
-                  void chatCall
-                    .startCall(activeRoom.id, 'audio', headerDisplayName)
-                    .catch(() => {})
+                  void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
                 }}
                 aria-label="Start voice call"
                 title="Voice call"
@@ -2205,9 +2203,7 @@ export default function ChatConversation({
                 type="button"
                 disabled={chatCall.busy || Boolean(chatCall.activeCall)}
                 onClick={() => {
-                  void chatCall
-                    .startCall(activeRoom.id, 'video', headerDisplayName)
-                    .catch(() => {})
+                  void chatCall.startCall(activeRoom.id, 'video', headerDisplayName)
                 }}
                 aria-label="Start video call"
                 title="Video call"
@@ -2225,9 +2221,7 @@ export default function ChatConversation({
               type="button"
               disabled={chatCall.busy || Boolean(chatCall.activeCall)}
               onClick={() => {
-                void chatCall
-                  .startCall(activeRoom.id, 'audio', headerDisplayName)
-                  .catch(() => {})
+                void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
               }}
               aria-label="Start group voice call"
               title="Voice call"

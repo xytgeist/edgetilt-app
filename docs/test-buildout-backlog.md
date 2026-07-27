@@ -128,7 +128,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [x] **Group audio** start/join (audio-only grants; multi-participant list UI).
 - [x] **App-wide in-app ring:** `ChatCallProvider` in **`AppShell`** (any tab while signed in); accept opens Chat room.
 - [x] **Offline ring:** `activity_events.chat_call_invite` immediate push; deep link `/?tab=chat&room=&call=`.
-- [x] **First-open PWA mic prompt:** after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v1:` (`pwaMicrophonePrompt.js`).
+- [x] **First-open PWA mic prompt:** after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`; v2 always shows in-app sheet once).
 - [x] **Call summary chips** in thread (`content_encoding = call_summary`).
 - [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
 - [ ] **Smoke (test):** DM video both devices; ring while on Lounge/Guides (not Chat); first-open PWA mic Enable sheet; group voice 2+ members; push tap while backgrounded / locked on iPhone PWA; missed-call chip after decline/timeout.
@@ -932,7 +932,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-07-27: **Chat calling PWA mic first-open prompt:** installed PWA only; after splash / after push opt-in; Enable → `getUserMedia` then stop track; seen `edge_pwa_mic_prompt_v1:`. Util **`pwaMicrophonePrompt.js`**. Client only.
+- 2026-07-27: **Chat calling PWA mic first-open prompt:** installed PWA only; after splash / after push opt-in; Enable → `getUserMedia` then stop track; seen **`edge_pwa_mic_prompt_v2:`** (v1 skipped the sheet when site mic was already granted from call testing). Util **`pwaMicrophonePrompt.js`**. Client only.
 - 2026-07-27: **Chat calling app-wide ring:** `ChatCallProvider` lifted from `ChatTab` → **`AppShell`** so incoming overlay works on any tab while signed in; caller title fetch when inbox profiles aren’t loaded; accept/deep link still opens Chat via `pendingChatRoomId`. Docs **`docs/chat-calling.md`**. Client only.
 - 2026-07-27: **Chat calling + group voice (LiveKit):** migration **`20260728000000_chat_calls`**; Edge **`chat-calls`**; client **`src/features/chat/calls/`**; push **`chat_call_invite`** + `?call=` deep link; LiveKit secrets + DM voice connect smoked on test. Topics/fan Spaces still deferred.
 - 2026-07-27: **Lounge feed media frame hug (client):** single Stream/still tiles size to fitted media inside caption width × **`max-h-[min(55vh,420px)]`** — landscape still fills column; portrait no longer pillarboxes in a full-width black frame (`loungeFeedImageAttachment.js`, **`LoungePostStreamVideo`**). Multi-image carousels unchanged. Client only.

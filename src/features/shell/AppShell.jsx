@@ -1405,27 +1405,32 @@ export default function AppShell({
   /** Queue installed PWA mic opt-in for chat calls (same first-open window as push). */
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!isInstalledPwaMicPromptEligible()) return
+    if (!isInstalledPwaMicPromptEligible() || browseMode !== 'member') return undefined
+
+    const queueMicPrompt = (userId) => {
+      if (!userId || hasSeenPwaMicPrompt(userId) || pwaMicPromptInFlightRef.current) return
+      setPwaMicPromptUserId(userId)
+    }
+
+    // Don't rely only on INITIAL_SESSION (can race with effect mount after session restore).
+    let cancelled = false
+    void supabaseClient.auth.getSession().then(({ data }) => {
+      if (cancelled) return
+      queueMicPrompt(data.session?.user?.id || '')
+    })
 
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((event, session) => {
       if (!isPwaMicPromptAuthEvent(event)) return
-      const userId = session?.user?.id
-      if (!userId || hasSeenPwaMicPrompt(userId) || pwaMicPromptInFlightRef.current) return
-      void (async () => {
-        const micState = await queryMicrophonePermissionState()
-        if (micState === 'granted' || micState === 'denied') {
-          markPwaMicPromptSeen(userId)
-          return
-        }
-        if (hasSeenPwaMicPrompt(userId) || pwaMicPromptInFlightRef.current) return
-        setPwaMicPromptUserId(userId)
-      })()
+      queueMicPrompt(session?.user?.id || '')
     })
 
-    return () => subscription.unsubscribe()
-  }, [supabaseClient])
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [supabaseClient, browseMode])
 
   /** Show queued PWA notification prompt only after signed-in member UI + cold-boot splash finish. */
   useEffect(() => {
@@ -1472,22 +1477,23 @@ export default function AppShell({
     if (browseMode !== 'member' || !authSessionReady || splashVisible) return
     if (pwaNotifPromptUserId || pwaNotifPromptInFlightRef.current) return
     if (pwaMicPromptInFlightRef.current) return
+    if (hasSeenPwaMicPrompt(pwaMicPromptUserId)) {
+      setPwaMicPromptUserId(null)
+      return
+    }
 
     const userId = pwaMicPromptUserId
     const settleMs = 450
     const timer = window.setTimeout(() => {
       if (pwaMicPromptInFlightRef.current) return
-      if (pwaNotifPromptUserId || pwaNotifPromptInFlightRef.current) return
+      if (pwaNotifPromptInFlightRef.current) return
       pwaMicPromptInFlightRef.current = true
       setPwaMicPromptUserId(null)
 
       void (async () => {
         try {
-          const micState = await queryMicrophonePermissionState()
-          if (micState === 'granted' || micState === 'denied') {
-            markPwaMicPromptSeen(userId)
-            return
-          }
+          // Always show our sheet once. Do not skip when Permissions API says granted
+          // (common after call testing on the same origin)... Enable may then no-op OS dialog.
           const shouldEnable = await showGlobalConfirm({
             title: 'Enable Microphone',
             message:
@@ -1497,6 +1503,8 @@ export default function AppShell({
           })
           markPwaMicPromptSeen(userId)
           if (!shouldEnable) return
+          const micState = await queryMicrophonePermissionState()
+          if (micState === 'denied') return
           await requestPwaMicrophoneAccess()
         } catch {
           markPwaMicPromptSeen(userId)

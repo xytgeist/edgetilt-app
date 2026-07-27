@@ -1,7 +1,11 @@
 import { isStandalonePwa } from './pwaNotificationPrompt.js'
 
-/** One-time installed-PWA mic opt-in for chat calling (localStorage). */
-export const PWA_MIC_PROMPT_KEY_PREFIX = 'edge_pwa_mic_prompt_v1:'
+/**
+ * One-time installed-PWA mic opt-in for chat calling (localStorage).
+ * v2: do not skip the in-app sheet when Permissions API already says granted/denied
+ * (v1 silently marked seen after call testing and never showed Enable Microphone).
+ */
+export const PWA_MIC_PROMPT_KEY_PREFIX = 'edge_pwa_mic_prompt_v2:'
 
 export function getPwaMicPromptStorageKey(userId) {
   return `${PWA_MIC_PROMPT_KEY_PREFIX}${userId}`

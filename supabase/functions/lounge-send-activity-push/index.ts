@@ -198,6 +198,9 @@ type PushNotificationPayload = {
   url: string
   activityEventId?: string
   activityBatchId?: string
+  /** Lets the service worker treat call rings differently from Lounge toasts. */
+  eventType?: string
+  chatCallId?: string
 }
 
 function buildTargetUrl(
@@ -310,6 +313,10 @@ function buildSingleNotification(
     body: `${who} ${phrase}`,
     url: buildTargetUrl(event, actor, { activityEventId: event.id }),
     activityEventId: event.id,
+    eventType: event.event_type,
+    ...(event.event_type === 'chat_call_invite' && event.chat_call_id
+      ? { chatCallId: event.chat_call_id }
+      : {}),
   }
 }
 

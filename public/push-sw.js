@@ -16,6 +16,17 @@ function isLoungeActivityPushPayload(payload) {
   )
 }
 
+function isChatCallInvitePayload(payload, contentUrl) {
+  if (payload?.eventType === 'chat_call_invite') return true
+  if (payload?.chatCallId) return true
+  try {
+    const url = new URL(String(contentUrl || payload?.url || ''), self.location.origin)
+    return Boolean(url.searchParams.get('call'))
+  } catch {
+    return false
+  }
+}
+
 function buildPushNotificationContent(payload) {
   const title = payload.title || 'Edge'
   let body = payload.body || 'You have a new notification.'
@@ -39,6 +50,8 @@ function buildPushNotificationContent(payload) {
     url: payload.url || '/?tab=home',
     activityEventId: payload.activityEventId || null,
     activityBatchId: payload.activityBatchId || null,
+    eventType: payload.eventType || null,
+    chatCallId: payload.chatCallId || null,
   }
 }
 
@@ -71,10 +84,13 @@ self.addEventListener('push', (event) => {
 
   const content = buildPushNotificationContent(payload)
   const loungeActivity = isLoungeActivityPushPayload(payload)
+  const chatCallInvite = isChatCallInvitePayload(payload, content.url)
 
   event.waitUntil(
     (async () => {
-      if (loungeActivity) {
+      // Call rings must always surface as an OS notification. In-app Lounge toasts
+      // are not the call UI (Realtime overlay handles foreground separately).
+      if (loungeActivity && !chatCallInvite) {
         const clients = await self.clients.matchAll({
           type: 'window',
           includeUncontrolled: true,
@@ -86,14 +102,25 @@ self.addEventListener('push', (event) => {
         }
       }
 
+      const callTag = content.chatCallId
+        ? `chat-call-${content.chatCallId}`
+        : chatCallInvite
+          ? 'chat-call-invite'
+          : undefined
+
       await self.registration.showNotification(content.title, {
         body: content.body,
         icon: content.icon,
         badge: content.badge,
+        tag: callTag,
+        renotify: Boolean(chatCallInvite),
+        requireInteraction: Boolean(chatCallInvite),
         data: {
           url: content.url,
           activityEventId: content.activityEventId,
           activityBatchId: content.activityBatchId,
+          eventType: content.eventType,
+          chatCallId: content.chatCallId,
         },
       })
     })(),

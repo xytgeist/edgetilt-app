@@ -938,6 +938,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-27: **Push opt-in intent + quiet repair:** **`pushOptInIntent.js`** (`edge_push_opt_in_intent_v1:`) set on Enable / Settings on, cleared on Settings off; app open quiet-resubscribes when intent on + `Notification.permission === 'granted'` but PushManager/`push_subscriptions` missing; AppShell re-enable / blocked sheets only when silent repair fails or permission is denied (7-day cooldown). Client only.
 - 2026-07-27: **Chat calling in-app ring + OS suppress harden:** SW uses `WindowClient.visibilityState` + push-delivers `chat-call-invite-inapp` into open tabs (Realtime backup); migration **`20260728040000`** `chat_calls` **replica identity full** (test + prod). Force-close PWA for SW.
 - 2026-07-27: **Chat calling promoted to production:** SQL **`20260728000000`–`20260728030000`** applied on **`jtjgtucumuoswnbauxry`**; Edge **`chat-calls`** + **`lounge-send-activity-push`** redeployed; frontend via **`main`** merge from **`test`**. Confirm **`LIVEKIT_*`** Edge secrets on prod match the LiveKit Cloud project before smoke.
 - 2026-07-27: **Chat calling missed calls in Lounge notifications:** migration **`20260728030000`** includes **`chat_call_missed`** in unread + page RPCs (still excludes invite/DM/group invite); returns `chat_room_id` / `chat_call_id` (+ restores play_log columns). Panel copy “called you”, amber phone badge, tap → `/?tab=chat&room=&missedCall=`. Apply on test before smoke.

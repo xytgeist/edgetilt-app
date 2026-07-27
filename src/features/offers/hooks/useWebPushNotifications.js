@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { writePushOptInIntent } from '../../../utils/pushOptInIntent.js'
 
 /** Registration that owns our push-sw.js worker (avoid mixing with unrelated SW registrations). */
 async function getPushServiceWorkerRegistration() {
@@ -203,7 +204,12 @@ export default function useWebPushNotifications({ supabaseClient }) {
     return key
   }, [supabaseClient, fetchedPublicKey])
 
-  const enable = useCallback(async () => {
+  /**
+   * @param {{ silent?: boolean }} [opts]
+   * silent: do not prompt the OS if permission is not already granted (for quiet repair).
+   */
+  const enable = useCallback(async (opts = {}) => {
+    const silent = opts?.silent === true
     if (!isSupported) return false
     setIsBusy(true)
     setStatusMessage('')
@@ -219,7 +225,15 @@ export default function useWebPushNotifications({ supabaseClient }) {
       return false
     }
     try {
-      const permissionResult = await Notification.requestPermission()
+      let permissionResult = Notification.permission
+      if (permissionResult !== 'granted') {
+        if (silent) {
+          setStatusMessage('Notification permission is not granted.')
+          setIsSubscribed(false)
+          return false
+        }
+        permissionResult = await Notification.requestPermission()
+      }
       setPermission(permissionResult)
       if (permissionResult !== 'granted') {
         setStatusMessage('Notification permission was not granted.')
@@ -239,6 +253,14 @@ export default function useWebPushNotifications({ supabaseClient }) {
       setIsSubscribed(true)
       setIsServerRegistered(true)
       setStatusMessage('Push notifications enabled on this device.')
+      try {
+        const {
+          data: { user },
+        } = await supabaseClient.auth.getUser()
+        if (user?.id) writePushOptInIntent(user.id, true)
+      } catch {
+        // intent is best-effort
+      }
       return true
     } catch (error) {
       setStatusMessage(error?.message || 'Could not enable push notifications.')
@@ -246,13 +268,21 @@ export default function useWebPushNotifications({ supabaseClient }) {
     } finally {
       setIsBusy(false)
     }
-  }, [isSupported, resolveVapidPublicKey, upsertSubscriptionRow])
+  }, [isSupported, resolveVapidPublicKey, upsertSubscriptionRow, supabaseClient])
 
   const disable = useCallback(async () => {
     if (!isSupported) return
     setIsBusy(true)
     setStatusMessage('')
     try {
+      try {
+        const {
+          data: { user },
+        } = await supabaseClient.auth.getUser()
+        if (user?.id) writePushOptInIntent(user.id, false)
+      } catch {
+        // intent is best-effort
+      }
       const registration = await getPushServiceWorkerRegistration()
       if (!registration) {
         setIsSubscribed(false)
@@ -278,7 +308,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
     } finally {
       setIsBusy(false)
     }
-  }, [isSupported, removeSubscriptionRow])
+  }, [isSupported, removeSubscriptionRow, supabaseClient])
 
   const isRegistered = isSubscribed && isServerRegistered === true
 

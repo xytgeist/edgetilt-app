@@ -36,6 +36,15 @@ import {
   setPwaNotifEnablePending,
 } from '../../utils/pwaNotificationPrompt'
 import {
+  bootstrapPushOptInIntentIfNeeded,
+  canShowPushReenablePrompt,
+  consumePushReenablePromptPending,
+  markPushReenablePromptDismissed,
+  readPushOptInIntent,
+  requestPushReenableFromUi,
+  writePushOptInIntent,
+} from '../../utils/pushOptInIntent'
+import {
   hasSeenPwaMicPrompt,
   isInstalledPwaMicPromptEligible,
   isPwaMicPromptAuthEvent,
@@ -1509,6 +1518,7 @@ export default function AppShell({
       if (permission === 'granted' || permission === 'denied') {
         markPwaNotifPromptSeen(userId)
         if (permission === 'granted') {
+          writePushOptInIntent(userId, true)
           setPwaNotifEnablePending(userId)
         }
         return
@@ -1574,6 +1584,7 @@ export default function AppShell({
           if (!shouldEnable) return
           const nextPermission = await window.Notification?.requestPermission?.()
           if (nextPermission === 'granted') {
+            writePushOptInIntent(userId, true)
             setPwaNotifEnablePending(userId)
           }
         } catch {
@@ -1587,6 +1598,93 @@ export default function AppShell({
 
     return () => window.clearTimeout(timer)
   }, [pwaNotifPromptUserId, browseMode, authSessionReady, splashVisible, showGlobalConfirm])
+
+  /**
+   * Push repair UI: quiet resubscribe lives in useLoungePushNotifications.
+   * Only show a sheet when silent repair needs a gesture / failed, or OS permission is denied.
+   */
+  useEffect(() => {
+    if (browseMode !== 'member' || !authSessionReady || splashVisible) return
+    if (pwaNotifPromptUserId || pwaNotifPromptInFlightRef.current) return
+    const userId = chatCallViewerUserId
+    if (!userId || typeof window === 'undefined' || !('Notification' in window)) return
+
+    let cancelled = false
+
+    const runDeniedOrReenableSheet = async () => {
+      if (cancelled) return
+      bootstrapPushOptInIntentIfNeeded(userId, { permission: window.Notification.permission })
+      const intent = readPushOptInIntent(userId)
+      if (intent !== 'on') return
+      if (!canShowPushReenablePrompt(userId)) return
+
+      if (window.Notification.permission === 'denied') {
+        pwaNotifPromptInFlightRef.current = true
+        try {
+          await showGlobalConfirm({
+            title: 'Notifications blocked',
+            message:
+              'Edge notifications are blocked in system Settings. Open Settings → Notifications → Edge and allow alerts, then turn Push on again in the app.',
+            confirmLabel: 'Got it',
+            cancelLabel: '',
+          })
+        } catch {
+          // ignore
+        } finally {
+          markPushReenablePromptDismissed(userId)
+          pwaNotifPromptInFlightRef.current = false
+        }
+        return
+      }
+
+      if (!consumePushReenablePromptPending(userId)) return
+
+      pwaNotifPromptInFlightRef.current = true
+      try {
+        const shouldEnable = await showGlobalConfirm({
+          title: 'Re-enable notifications',
+          message:
+            'Your device cleared Edge push registration (common on iPhone). Tap Enable to restore alerts for messages and calls.',
+          confirmLabel: 'Enable',
+          cancelLabel: 'Not now',
+        })
+        if (shouldEnable) {
+          writePushOptInIntent(userId, true)
+          requestPushReenableFromUi()
+        } else {
+          markPushReenablePromptDismissed(userId)
+        }
+      } catch {
+        markPushReenablePromptDismissed(userId)
+      } finally {
+        pwaNotifPromptInFlightRef.current = false
+      }
+    }
+
+    const settleMs = 700
+    const timer = window.setTimeout(() => {
+      void runDeniedOrReenableSheet()
+    }, settleMs)
+
+    const onPending = (event) => {
+      if (event?.detail?.userId && event.detail.userId !== userId) return
+      void runDeniedOrReenableSheet()
+    }
+    window.addEventListener('edge-push-reenable-pending', onPending)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      window.removeEventListener('edge-push-reenable-pending', onPending)
+    }
+  }, [
+    browseMode,
+    authSessionReady,
+    splashVisible,
+    pwaNotifPromptUserId,
+    chatCallViewerUserId,
+    showGlobalConfirm,
+  ])
 
   /** Show mic prompt after splash (and after notif prompt if that was also queued). */
   useEffect(() => {

@@ -19,7 +19,8 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 - **Media:** LiveKit room name `edge-call:{call_id}` (never client-chosen).
 - **Tokens:** Edge Function **`chat-calls`** mints JWTs (`LIVEKIT_*` secrets).
 - **In-app ring (any screen):** `ChatCallProvider` mounts in **`AppShell`** while signed in (not only inside `ChatTab`), so Lounge/Guides/etc. still get the overlay. Realtime `postgres_changes` on `chat_calls` + broadcast `chat-call-{roomId}`. Accept/deep link opens Chat via `pendingChatRoomId`.
-- **Offline ring:** `activity_events.event_type = chat_call_invite` → immediate Edge push (not DM 60s batch). Payload includes `eventType` + `chatCallId`. Service worker **always** shows an OS notification for call invites (does not divert to in-app Lounge toast when focused). Deep link `/?tab=chat&room={uuid}&call={callId}`. Pref: `push_messages`.
+- **Offline ring:** `activity_events.event_type = chat_call_invite` → immediate Edge push (not DM 60s batch). Payload includes `eventType` + `chatCallId`. Service worker **always** shows an OS notification for call invites (does not divert to in-app Lounge toast when focused). Deep link `/?tab=chat&room={uuid}&call={callId}`; notificationclick **postMessage** includes `callId`/`roomId` and **skips** `client.navigate` for call invites (iOS reload was wiping the accept UI). Session stash: `edge_pending_chat_call_v1`. Pref: `push_messages`.
+- **Push subscribe:** client uses RPC **`upsert_my_push_subscription`** (reclaim endpoint) so Android enable does not fail RLS when the endpoint row belonged to another user.
 
 ## Edge actions
 

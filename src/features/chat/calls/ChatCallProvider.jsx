@@ -19,6 +19,10 @@ import {
 } from '../../../utils/chatCallsApi.js'
 import { subscribeToChatCallBroadcast } from './chatCallBroadcast.js'
 import ChatIncomingCallOverlay from './ChatIncomingCallOverlay.jsx'
+import {
+  clearPendingChatCallDeepLink,
+  peekPendingChatCallDeepLink,
+} from '../../../utils/pendingChatCallDeepLink.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
 
@@ -233,28 +237,33 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, viewerUserId, presentIncoming])
 
-  // Deep link ?call=
+  // Deep link ?call= (prop and/or sessionStorage stash from notificationclick).
   useEffect(() => {
-    if (!initialCallId || !supabaseClient || !viewerUserId) return
+    if (!supabaseClient || !viewerUserId) return
+    const stashed = peekPendingChatCallDeepLink()
+    const callId = String(initialCallId || stashed?.callId || '').trim()
+    if (!callId) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await chatGetCall(supabaseClient, initialCallId)
+        const res = await chatGetCall(supabaseClient, callId)
         if (cancelled) return
         const call = res?.call
         if (!call?.id || !['ringing', 'active'].includes(call.status)) {
-          onInitialCallConsumed?.()
+          setError(
+            call?.status === 'missed' || call?.status === 'ended' || call?.status === 'declined'
+              ? 'That call has already ended.'
+              : 'That call is no longer available.',
+          )
           return
         }
-        if (call.started_by === viewerUserId) {
-          onInitialCallConsumed?.()
-          return
-        }
+        if (call.started_by === viewerUserId) return
         presentIncoming(call)
-        onOpenRoom?.(call.chat_room_id)
+        onOpenRoom?.(call.chat_room_id || stashed?.roomId || '')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not open call')
       } finally {
+        clearPendingChatCallDeepLink()
         onInitialCallConsumed?.()
       }
     })()

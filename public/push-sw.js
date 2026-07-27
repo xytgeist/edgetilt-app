@@ -135,12 +135,16 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     extra.activityEventId || params.get('activityEvent') || null
   const activityBatchId =
     extra.activityBatchId || params.get('activityBatch') || null
+  const callId = extra.chatCallId || params.get('call') || null
+  const roomId = params.get('room') || null
   return {
     type: 'app-navigate',
     url: relativeUrl,
     tab,
     activityEventId,
     activityBatchId,
+    callId,
+    roomId,
     markActivityRead: Boolean(activityEventId || activityBatchId),
   }
 }
@@ -153,7 +157,13 @@ self.addEventListener('notificationclick', (event) => {
   const navigateMessage = parseAppNavigateMessage(relative, {
     activityEventId: data.activityEventId,
     activityBatchId: data.activityBatchId,
+    chatCallId: data.chatCallId,
   })
+  const isCallInvite =
+    data.eventType === 'chat_call_invite' ||
+    Boolean(data.chatCallId) ||
+    Boolean(navigateMessage.callId)
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       for (const client of clients) {
@@ -163,6 +173,9 @@ self.addEventListener('notificationclick', (event) => {
           if (typeof client.postMessage === 'function') {
             client.postMessage(navigateMessage)
           }
+          // Call invites: do NOT client.navigate after postMessage. On iOS PWA that
+          // reload can wipe React state and only leave the room deep link.
+          if (isCallInvite) return
           if ('navigate' in client && typeof client.navigate === 'function') {
             try {
               await client.navigate(fullUrl)

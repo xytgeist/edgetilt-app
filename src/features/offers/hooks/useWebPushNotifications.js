@@ -67,15 +67,15 @@ export default function useWebPushNotifications({ supabaseClient }) {
         throw new Error('Sign in is required before enabling push notifications.')
       }
       const keys = readSubscriptionKeys(subscription)
-      const payload = {
-        user_id: user.id,
-        endpoint: subscription.endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        expiration_time: subscription.expirationTime,
-        user_agent: navigator.userAgent,
-      }
-      const { error } = await supabaseClient.from('push_subscriptions').upsert(payload, { onConflict: 'endpoint' })
+      // RPC reclaim-by-endpoint: direct upsert fails RLS when Android reuses an
+      // endpoint row still owned by another user_id (unique on endpoint).
+      const { error } = await supabaseClient.rpc('upsert_my_push_subscription', {
+        p_endpoint: subscription.endpoint,
+        p_p256dh: keys.p256dh,
+        p_auth: keys.auth,
+        p_expiration_time: subscription.expirationTime ?? null,
+        p_user_agent: navigator.userAgent,
+      })
       if (error) throw error
     },
     [supabaseClient],

@@ -43,6 +43,7 @@ import {
   queryMicrophonePermissionState,
   requestPwaMicrophoneAccess,
 } from '../../utils/pwaMicrophonePrompt'
+import { stashPendingChatCallDeepLink } from '../../utils/pendingChatCallDeepLink.js'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 import AppConsoleLogDebugHud from '../../components/AppConsoleLogDebugHud.jsx'
 import {
@@ -404,7 +405,10 @@ export default function AppShell({
           setTab('chat')
           setMenuOpen(false)
           if (roomId) setPendingChatRoomId(roomId)
-          if (callId) setPendingChatCallId(callId)
+          if (callId) {
+            stashPendingChatCallDeepLink(callId, roomId)
+            setPendingChatCallId(callId)
+          }
         }
       } else if (targetTab === 'logbook') {
         if (browseMode === 'anonymous') {
@@ -905,7 +909,10 @@ export default function AppShell({
           const roomId = (params.get('room') || '').trim()
           const callId = (params.get('call') || '').trim()
           if (roomId) setPendingChatRoomId(roomId)
-          if (callId) setPendingChatCallId(callId)
+          if (callId) {
+            stashPendingChatCallDeepLink(callId, roomId)
+            setPendingChatCallId(callId)
+          }
         }
       }
       if (targetTab === 'monitor') {
@@ -1027,10 +1034,13 @@ export default function AppShell({
         setMenuOpen(false)
         try {
           const msgUrl = new URL(event?.data?.url || '', window.location.origin)
-          const roomId = (msgUrl.searchParams.get('room') || '').trim()
-          const callId = (msgUrl.searchParams.get('call') || '').trim()
+          const roomId = String(event?.data?.roomId || msgUrl.searchParams.get('room') || '').trim()
+          const callId = String(event?.data?.callId || msgUrl.searchParams.get('call') || '').trim()
           if (roomId) setPendingChatRoomId(roomId)
-          if (callId) setPendingChatCallId(callId)
+          if (callId) {
+            stashPendingChatCallDeepLink(callId, roomId)
+            setPendingChatCallId(callId)
+          }
         } catch {
           // ignore malformed url
         }

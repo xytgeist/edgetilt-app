@@ -254,6 +254,27 @@ export function ChatCallProvider({
   const resolveTitleAsyncRef = useRef(resolveTitleAsync)
   resolveTitleAsyncRef.current = resolveTitleAsync
 
+  const [deepLinkRetry, setDeepLinkRetry] = useState(0)
+
+  // iOS PWA: notificationclick often lands before auth/provider is ready, or drops
+  // postMessage... re-peek session stash when the page becomes visible again.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const onResume = () => {
+      if (document.visibilityState === 'hidden') return
+      if (callbackPrompt || incoming || activeCall) return
+      const stashed = peekPendingChatCallDeepLink()
+      if (!stashed?.callId) return
+      setDeepLinkRetry((n) => n + 1)
+    }
+    document.addEventListener('visibilitychange', onResume)
+    window.addEventListener('pageshow', onResume)
+    return () => {
+      document.removeEventListener('visibilitychange', onResume)
+      window.removeEventListener('pageshow', onResume)
+    }
+  }, [callbackPrompt, incoming, activeCall])
+
   // Deep link ?call= / ?missedCall= (prop and/or sessionStorage stash).
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return
@@ -264,12 +285,15 @@ export function ChatCallProvider({
       initialCallIntent === 'callback' || stashed?.intent === 'callback' ? 'callback' : 'ring'
     let cancelled = false
     ;(async () => {
+      /** Only clear pending after UI actually opened (or call is gone). Keeps iOS retries alive. */
+      let shouldClear = false
       try {
         const res = await chatGetCall(supabaseClient, callId)
         if (cancelled) return
         const call = res?.call
         if (!call?.id) {
           setError('That call is no longer available.')
+          shouldClear = true
           return
         }
         const roomId = String(call.chat_room_id || stashed?.roomId || '')
@@ -278,15 +302,20 @@ export function ChatCallProvider({
 
         // Live invite → accept UI (unless this was an explicit missed-call tap).
         if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
-          if (call.started_by === viewerUserId) return
+          if (call.started_by === viewerUserId) {
+            shouldClear = true
+            return
+          }
           presentIncomingRef.current(call)
           onOpenRoomRef.current?.(roomId)
+          shouldClear = true
           return
         }
 
         // Missed / ended / declined (or missedCall= deep link) → DM + call-back prompt.
         if (call.started_by === viewerUserId) {
           onOpenRoomRef.current?.(roomId)
+          shouldClear = true
           return
         }
         onOpenRoomRef.current?.(roomId)
@@ -297,13 +326,14 @@ export function ChatCallProvider({
           title,
           isVideo: call.kind === 'dm_av' && mediaMode === 'video',
         })
+        shouldClear = true
       } catch (err) {
+        // Leave stash for visibility retry (common on iOS wake before session is ready).
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Could not open call')
         }
       } finally {
-        // Never clear pending while cancelled... parent re-renders were wiping missedCall.
-        if (!cancelled) {
+        if (!cancelled && shouldClear) {
           clearPendingChatCallDeepLink()
           onInitialCallConsumedRef.current?.()
         }
@@ -312,7 +342,7 @@ export function ChatCallProvider({
     return () => {
       cancelled = true
     }
-  }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId])
+  }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId, deepLinkRetry])
 
   const startCall = useCallback(
     async (roomId, mediaMode = 'audio', title = 'Chat call') => {

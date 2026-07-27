@@ -44,6 +44,7 @@ import {
   requestPwaMicrophoneAccess,
 } from '../../utils/pwaMicrophonePrompt'
 import { stashPendingChatCallDeepLink } from '../../utils/pendingChatCallDeepLink.js'
+import { takePendingAppNavigateFromSw } from '../../utils/pendingAppNavigateFromSw.js'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 import AppConsoleLogDebugHud from '../../components/AppConsoleLogDebugHud.jsx'
 import {
@@ -1020,6 +1021,74 @@ export default function AppShell({
 
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator?.serviceWorker) return
+
+    const applyAppNavigate = (data) => {
+      if (!data || data.type !== 'app-navigate') return
+      const targetTab = data.tab
+      if (targetTab === 'offers') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setTab('offers')
+        return
+      }
+      if (targetTab === 'chat') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setTab('chat')
+        setMenuOpen(false)
+        try {
+          const msgUrl = new URL(data.url || '', window.location.origin)
+          const roomId = String(data.roomId || msgUrl.searchParams.get('room') || '').trim()
+          const callId = String(data.callId || msgUrl.searchParams.get('call') || '').trim()
+          const missedFromEvent =
+            data.eventType === 'chat_call_missed'
+              ? String(data.chatCallId || data.missedCallId || '').trim()
+              : ''
+          const missedCallId = String(
+            data.missedCallId || msgUrl.searchParams.get('missedCall') || missedFromEvent || '',
+          ).trim()
+          if (roomId) setPendingChatRoomId(roomId)
+          if (missedCallId) {
+            stashPendingChatCallDeepLink(missedCallId, roomId, 'callback')
+            setPendingChatCallIntent('callback')
+            setPendingChatCallId(missedCallId)
+          } else if (callId) {
+            stashPendingChatCallDeepLink(callId, roomId, 'ring')
+            setPendingChatCallIntent('ring')
+            setPendingChatCallId(callId)
+          }
+        } catch {
+          // ignore malformed url
+        }
+        return
+      }
+      if (targetTab === 'home' || !targetTab) {
+        setTab('home')
+        setMenuOpen(false)
+        const activityEventId = data.activityEventId || null
+        const activityBatchId = data.activityBatchId || null
+        if (data.markActivityRead || activityEventId || activityBatchId) {
+          queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
+          window.dispatchEvent(
+            new CustomEvent('lounge-push-opened', {
+              detail: { activityEventId, activityBatchId },
+            }),
+          )
+        }
+      }
+    }
+
+    const drainSwPendingNavigate = () => {
+      void takePendingAppNavigateFromSw().then((pending) => {
+        if (!pending) return
+        applyAppNavigate({ ...pending, type: 'app-navigate' })
+      })
+    }
+
     const handleServiceWorkerMessage = (event) => {
       const type = event?.data?.type
       // Call push SW asks whether Edge is actually visible (iOS focused≠visible).
@@ -1047,62 +1116,61 @@ export default function AppShell({
         return
       }
       if (type !== 'app-navigate') return
-      const targetTab = event?.data?.tab
-      if (targetTab === 'offers') {
-        if (browseMode === 'anonymous') {
-          onRequireAuthRef.current?.()
-          return
-        }
-        setTab('offers')
-        return
+      applyAppNavigate(event.data)
+    }
+
+    const onResume = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      drainSwPendingNavigate()
+    }
+
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
+    document.addEventListener('visibilitychange', onResume)
+    window.addEventListener('pageshow', onResume)
+    // Cold start after openWindow (iOS may open without query string).
+    drainSwPendingNavigate()
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
+      document.removeEventListener('visibilitychange', onResume)
+      window.removeEventListener('pageshow', onResume)
+    }
+  }, [browseMode, showLoungeActivityInAppToast])
+
+  // After sign-in / provider mount, drain any SW stash left from a notification tap.
+  useEffect(() => {
+    if (!chatCallViewerUserId || browseMode === 'anonymous') return
+    void takePendingAppNavigateFromSw().then((pending) => {
+      if (!pending) return
+      let roomId = String(pending.roomId || '').trim()
+      let missedCallId = String(pending.missedCallId || '').trim()
+      let callId = String(pending.callId || '').trim()
+      if (pending.eventType === 'chat_call_missed' && !missedCallId) {
+        missedCallId = String(pending.chatCallId || '').trim()
       }
-      if (targetTab === 'chat') {
-        if (browseMode === 'anonymous') {
-          onRequireAuthRef.current?.()
-          return
-        }
+      try {
+        const msgUrl = new URL(pending.url || '', window.location.origin)
+        if (!roomId) roomId = (msgUrl.searchParams.get('room') || '').trim()
+        if (!missedCallId) missedCallId = (msgUrl.searchParams.get('missedCall') || '').trim()
+        if (!callId) callId = (msgUrl.searchParams.get('call') || '').trim()
+      } catch {
+        /* ignore */
+      }
+      if (pending.tab === 'chat' || roomId || missedCallId || callId) {
         setTab('chat')
         setMenuOpen(false)
-        try {
-          const msgUrl = new URL(event?.data?.url || '', window.location.origin)
-          const roomId = String(event?.data?.roomId || msgUrl.searchParams.get('room') || '').trim()
-          const callId = String(event?.data?.callId || msgUrl.searchParams.get('call') || '').trim()
-          const missedCallId = String(
-            event?.data?.missedCallId || msgUrl.searchParams.get('missedCall') || '',
-          ).trim()
-          if (roomId) setPendingChatRoomId(roomId)
-          if (missedCallId) {
-            stashPendingChatCallDeepLink(missedCallId, roomId, 'callback')
-            setPendingChatCallIntent('callback')
-            setPendingChatCallId(missedCallId)
-          } else if (callId) {
-            stashPendingChatCallDeepLink(callId, roomId, 'ring')
-            setPendingChatCallIntent('ring')
-            setPendingChatCallId(callId)
-          }
-        } catch {
-          // ignore malformed url
-        }
-        return
       }
-      if (targetTab === 'home' || !targetTab) {
-        setTab('home')
-        setMenuOpen(false)
-        const activityEventId = event?.data?.activityEventId || null
-        const activityBatchId = event?.data?.activityBatchId || null
-        if (event?.data?.markActivityRead || activityEventId || activityBatchId) {
-          queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
-          window.dispatchEvent(
-            new CustomEvent('lounge-push-opened', {
-              detail: { activityEventId, activityBatchId },
-            }),
-          )
-        }
+      if (roomId) setPendingChatRoomId(roomId)
+      if (missedCallId) {
+        stashPendingChatCallDeepLink(missedCallId, roomId, 'callback')
+        setPendingChatCallIntent('callback')
+        setPendingChatCallId(missedCallId)
+      } else if (callId) {
+        stashPendingChatCallDeepLink(callId, roomId, 'ring')
+        setPendingChatCallIntent('ring')
+        setPendingChatCallId(callId)
       }
-    }
-    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
-    return () => navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
-  }, [browseMode, showLoungeActivityInAppToast])
+    })
+  }, [chatCallViewerUserId, browseMode])
 
   const openCalculator = (key) => {
     if (browseMode === 'anonymous') {

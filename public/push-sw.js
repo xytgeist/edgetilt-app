@@ -23,9 +23,27 @@ function isChatCallPushPayload(payload, contentUrl) {
   if (payload?.chatCallId) return true
   try {
     const url = new URL(String(contentUrl || payload?.url || ''), self.location.origin)
-    return Boolean(url.searchParams.get('call'))
+    return Boolean(url.searchParams.get('call') || url.searchParams.get('missedCall'))
   } catch {
     return false
+  }
+}
+
+const PENDING_APP_NAVIGATE_CACHE = 'edge-pending-app-navigate-v1'
+const PENDING_APP_NAVIGATE_URL = '/__edge_pending_app_navigate__'
+
+/** Survive iOS PWA focus races where postMessage / openWindow query are dropped. */
+async function stashPendingAppNavigate(message) {
+  try {
+    const cache = await caches.open(PENDING_APP_NAVIGATE_CACHE)
+    await cache.put(
+      new Request(PENDING_APP_NAVIGATE_URL),
+      new Response(JSON.stringify({ ...message, at: Date.now() }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+  } catch {
+    /* ignore quota / private mode */
   }
 }
 
@@ -195,6 +213,8 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     callId,
     missedCallId,
     roomId,
+    eventType: extra.eventType || null,
+    chatCallId: extra.chatCallId || null,
     markActivityRead: Boolean(activityEventId || activityBatchId),
   }
 }
@@ -217,7 +237,11 @@ self.addEventListener('notificationclick', (event) => {
     Boolean(navigateMessage.missedCallId)
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+    (async () => {
+      // Write before focus/openWindow... iOS often drops postMessage on wake.
+      await stashPendingAppNavigate(navigateMessage)
+
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       for (const client of clients) {
         if (!('focus' in client)) continue
         try {
@@ -245,6 +269,6 @@ self.addEventListener('notificationclick', (event) => {
         return self.clients.openWindow(fullUrl)
       }
       return undefined
-    })
+    })(),
   )
 })

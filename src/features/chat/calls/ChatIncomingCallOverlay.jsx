@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { startChatCallTone, stopChatCallTone } from './chatCallRingTone.js'
+import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 
 /**
  * Full-screen incoming call UI (DM ring or group voice invite).
@@ -23,11 +23,39 @@ export default function ChatIncomingCallOverlay({
   onAccept,
   onDecline,
 }) {
+  const toneRef = useRef(/** @type {{ stop: () => void } | null} */ (null))
+
   useEffect(() => {
-    if (!open) return undefined
-    const tone = startChatCallTone('incoming')
-    return () => stopChatCallTone(tone)
+    if (!open) {
+      stopChatCallTone(toneRef.current)
+      toneRef.current = null
+      return undefined
+    }
+
+    stopChatCallTone(toneRef.current)
+    toneRef.current = startChatCallTone('incoming')
+
+    // If audio was still locked, a later unlock (app tap / mic) should restart the tone.
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      unlockChatCallAudio()
+      if (!toneRef.current) {
+        toneRef.current = startChatCallTone('incoming')
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      stopChatCallTone(toneRef.current)
+      toneRef.current = null
+    }
   }, [open])
+
+  const stopToneNow = () => {
+    stopChatCallTone(toneRef.current)
+    toneRef.current = null
+  }
 
   if (!open || typeof document === 'undefined') return null
 
@@ -38,6 +66,13 @@ export default function ChatIncomingCallOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Incoming call"
+      onPointerDown={(event) => {
+        // Unlock autoplay. Restart tone only for non-button taps (Accept/Decline stop their own tone).
+        unlockChatCallAudio()
+        if (event.target instanceof Element && event.target.closest('button')) return
+        stopChatCallTone(toneRef.current)
+        toneRef.current = startChatCallTone('incoming')
+      }}
     >
       <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-cyan-400/90">
         {isVideo ? 'Video call' : 'Voice call'}
@@ -51,7 +86,10 @@ export default function ChatIncomingCallOverlay({
         <button
           type="button"
           disabled={busy}
-          onClick={onDecline}
+          onClick={() => {
+            stopToneNow()
+            onDecline()
+          }}
           className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-600 text-white touch-manipulation active:opacity-80 disabled:opacity-50"
           aria-label="Decline call"
         >
@@ -62,7 +100,11 @@ export default function ChatIncomingCallOverlay({
         <button
           type="button"
           disabled={busy}
-          onClick={onAccept}
+          onClick={() => {
+            // Stop before Accept unlocks audio... otherwise you get a half-second ring blip.
+            stopToneNow()
+            onAccept()
+          }}
           className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-zinc-950 touch-manipulation active:opacity-80 disabled:opacity-50"
           aria-label="Accept call"
         >

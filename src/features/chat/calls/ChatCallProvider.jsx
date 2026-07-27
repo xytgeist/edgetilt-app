@@ -24,7 +24,7 @@ import {
   clearPendingChatCallDeepLink,
   peekPendingChatCallDeepLink,
 } from '../../../utils/pendingChatCallDeepLink.js'
-import { unlockChatCallAudio } from './chatCallRingTone.js'
+import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
 
@@ -210,6 +210,11 @@ export function ChatCallProvider({
       for (const sub of broadcastByRoomRef.current.values()) sub.cleanup()
       broadcastByRoomRef.current.clear()
     }
+  }, [])
+
+  // Prime Web Audio from normal taps so incoming ringtone isn't stuck until Accept.
+  useEffect(() => {
+    installChatCallAudioUnlock()
   }, [])
 
   // App-wide Realtime invites (provider should live above ChatTab so any screen rings).
@@ -411,14 +416,17 @@ export function ChatCallProvider({
 
   const acceptIncoming = useCallback(async () => {
     if (!supabaseClient || !incoming) return
+    const snap = incoming
+    // Clear overlay (stops ringtone) before unlocking audio for LiveKit.
+    setIncoming(null)
     unlockChatCallAudio()
     setBusy(true)
     setError('')
     try {
-      const action = incoming.kind === 'group_audio' ? chatJoinCall : chatAcceptCall
-      const res = await action(supabaseClient, incoming.callId)
-      ensureBroadcast(incoming.roomId)?.emit('accept', { callId: incoming.callId })
-      onOpenRoom?.(incoming.roomId)
+      const action = snap.kind === 'group_audio' ? chatJoinCall : chatAcceptCall
+      const res = await action(supabaseClient, snap.callId)
+      ensureBroadcast(snap.roomId)?.emit('accept', { callId: snap.callId })
+      onOpenRoom?.(snap.roomId)
       setActiveCall({
         callId: res.call.id,
         roomId: res.call.chat_room_id,
@@ -426,10 +434,9 @@ export function ChatCallProvider({
         mediaMode: res.call.media_mode,
         token: res.token,
         livekitUrl: res.livekit_url,
-        title: incoming.title,
+        title: snap.title,
         isOutgoing: false,
       })
-      setIncoming(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not join call')
     } finally {

@@ -1,28 +1,60 @@
 /**
  * In-app call tones via Web Audio (no asset files).
  * Incoming ringtone for callee overlay; ringback while caller waits for answer.
+ *
+ * iOS/Android: AudioContext stays suspended until a user gesture. We prime on
+ * pointer/key interaction so incoming can ring without tapping Answer first.
  */
 
 /** @typedef {{ stop: () => void }} ChatCallToneHandle */
 
 let sharedCtx = /** @type {AudioContext | null} */ (null)
+let unlockInstalled = false
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null
   const AC = window.AudioContext || window.webkitAudioContext
   if (!AC) return null
   if (!sharedCtx) sharedCtx = new AC()
-  if (sharedCtx.state === 'suspended') {
-    void sharedCtx.resume().catch(() => {})
-  }
   return sharedCtx
+}
+
+async function resumeAudioContext() {
+  const ctx = getAudioContext()
+  if (!ctx) return null
+  if (ctx.state === 'suspended') {
+    try {
+      await ctx.resume()
+    } catch {
+      /* still locked */
+    }
+  }
+  return ctx
 }
 
 /** Best-effort unlock after a user gesture (Start call / Accept / mic prompt). */
 export function unlockChatCallAudio() {
-  const ctx = getAudioContext()
-  if (!ctx) return
-  void ctx.resume().catch(() => {})
+  void resumeAudioContext()
+}
+
+/**
+ * Keep the shared AudioContext primed from normal app taps so incoming can ring
+ * without waiting for Accept (autoplay policy).
+ */
+export function installChatCallAudioUnlock() {
+  if (typeof window === 'undefined' || unlockInstalled) return
+  unlockInstalled = true
+
+  const onGesture = () => {
+    void resumeAudioContext()
+  }
+
+  window.addEventListener('pointerdown', onGesture, { capture: true, passive: true })
+  window.addEventListener('keydown', onGesture, { capture: true })
+  window.addEventListener('touchend', onGesture, { capture: true, passive: true })
+
+  // If something already unlocked us (mic prompt), stay warm.
+  void resumeAudioContext()
 }
 
 /**
@@ -63,7 +95,19 @@ export function startChatCallTone(kind) {
 
   const playBurst = () => {
     if (stopped) return
-    void ctx.resume().catch(() => {})
+    if (ctx.state !== 'running') {
+      // Still locked... retry shortly after a gesture unlocks the context.
+      timeoutId = window.setTimeout(() => {
+        timeoutId = null
+        if (!stopped) {
+          void resumeAudioContext().then(() => {
+            if (!stopped) playBurst()
+          })
+        }
+      }, 400)
+      return
+    }
+
     clearLive()
     const now = ctx.currentTime
     const dur = cadence.onMs / 1000
@@ -94,7 +138,9 @@ export function startChatCallTone(kind) {
     }, cadence.onMs + cadence.offMs)
   }
 
-  playBurst()
+  void resumeAudioContext().then(() => {
+    if (!stopped) playBurst()
+  })
 
   if (kind === 'incoming' && typeof navigator !== 'undefined' && navigator.vibrate) {
     try {

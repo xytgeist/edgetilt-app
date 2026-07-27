@@ -5,6 +5,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     activityBatchId: null,
     tab: 'home',
     roomId: null,
+    callId: null,
     playLogEntryId: null,
     urlChanged: false,
   }
@@ -30,6 +31,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     activityBatchId: activityBatchId ? String(activityBatchId) : null,
     tab: parsed.searchParams.get('tab') || 'home',
     roomId: (parsed.searchParams.get('room') || '').trim() || null,
+    callId: (parsed.searchParams.get('call') || '').trim() || null,
     playLogEntryId: (parsed.searchParams.get('playLogEntry') || '').trim() || null,
     urlChanged,
   }

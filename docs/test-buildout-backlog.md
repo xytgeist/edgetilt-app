@@ -120,14 +120,21 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Group settings** — Owner: rename, description, add/remove member, mute member (5m–permanent). Member: leave, mute group (presets + mute-until datetime), add member, starred list.
 - [ ] **Star message** — Long-press a group message → Star; appears under Starred messages in settings.
 
-### Planned (audio & video calling — research)
+### Chat calling (LiveKit) — v1 shipped in code
 
-- [ ] **Research — 1:1 calls:** audio + video in **DMs** (WebRTC vs managed SFU: LiveKit, Daily.co, Twilio Video, 100ms, Agora); signaling (Supabase Realtime vs vendor); **mobile Safari / iOS PWA** constraints (background audio, permissions, CallKit).
-- [ ] **Research — Spaces-style live audio in group chats:** speaker queue, listener-only mode, raise hand, max participants, recording policy, moderation (mute/kick/report) for **DM groups**, **topic channels**, and **Private Subs** fan rooms.
-- [ ] **Cost model:** per-participant-minute at 5 / 25 / 100 concurrent users; self-host vs managed.
-- [ ] **Product spec draft:** who can start a call or space; subscriber gates for fan rooms; abuse/reporting; overlap with **`docs/access-tiers.md`** verified badge.
-- [ ] **Deliverable:** short decision doc (vendor pick + v1 scope) linked from this section before build.
-- [ ] **Depends on:** chat membership + moderation baseline (**§ Creator fan subs — product backlog** §4–§5 for fan rooms).
+Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`20260728000000_chat_calls.sql`**. Edge **`chat-calls`** (+ redeploy **`lounge-send-activity-push`** for `chat_call_invite`).
+
+- [x] **DM audio + video** ring/accept/decline/hangup (`ChatCallProvider`, header Phone/Video).
+- [x] **Group audio** start/join (audio-only grants; multi-participant list UI).
+- [x] **Offline ring:** `activity_events.chat_call_invite` immediate push; deep link `/?tab=chat&room=&call=`.
+- [x] **Call summary chips** in thread (`content_encoding = call_summary`).
+- [ ] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan).
+- [ ] **Smoke (test):** DM video both devices; group voice 2+ members; push tap while backgrounded on iPhone PWA; missed-call chip after decline/timeout.
+- [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; recording; screen share.
+
+### Planned (Spaces / fan hangouts — later)
+
+- [ ] **Spaces-style live audio** for **Private Subs** / topic channels after fan-room mods (speaker queue, listener-only). Shares LiveKit stack when ready.
 
 ### Production replay
 - Replay migration `20260601120000_chat_phase2.sql` on production Supabase.
@@ -554,10 +561,9 @@ Shipped foundation is on **test** (`docs/test-buildout-backlog.md` Update log **
 
 - [ ] **Product spec:** creator-started **live audio room** for subscribers (X Spaces–like): who can speak, listener cap, recording policy, abuse/reporting.
 - [ ] **Scope:** **Private Subs** fan rooms first; extend to **group chats** (DM groups, topic channels) per research below.
-- [ ] **Tech spike:** WebRTC vs third-party (Daily, LiveKit, Twilio Video, 100ms, etc.), cost, mobile/PWA constraints — shared checklist **Chat → Planned (audio & video calling — research)**.
-- [ ] **1:1 audio/video calls:** research tracked under same Chat section (DM call button, ring/accept UI TBD).
+- [ ] **Spaces hangout UX** on LiveKit (raise-hand / listener-only) for fan rooms ... core DM/group calling v1 is under **Chat calling (LiveKit)**.
 - [ ] **Depends on:** fan room membership (§4) + moderation tooling (§5) at minimum.
-- [ ] **Not blocking** §1–§5; track as **Phase 2b** or separate roadmap row once §4 ships.
+- [ ] **Not blocking** §1–§5; track as **Phase 2b** once §4 ships.
 
 ### 7. Creator experience — new subscriber awareness (Ryan 2026-07-21)
 
@@ -924,6 +930,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-27: **Chat calling + group voice (LiveKit, code):** migration **`20260728000000_chat_calls`**; Edge **`chat-calls`**; client **`src/features/chat/calls/`**; push **`chat_call_invite`** + `?call=` deep link; docs **`docs/chat-calling.md`**. Needs LiveKit Cloud secrets + SQL/Edge deploy on test before smoke. Topics/fan Spaces still deferred.
 - 2026-07-27: **Lounge feed media frame hug (client):** single Stream/still tiles size to fitted media inside caption width × **`max-h-[min(55vh,420px)]`** — landscape still fills column; portrait no longer pillarboxes in a full-width black frame (`loungeFeedImageAttachment.js`, **`LoungePostStreamVideo`**). Multi-image carousels unchanged. Client only.
 - 2026-07-26: **Lounge Stream iOS playback invariants (doc + Ryan sign-off):** **`docs/lounge-stream-ios-playback.md`** + **`.cursor/rules/lounge-stream-ios-playback.mdc`** — Apple WebKit MSE may play at **`readyState=0`**; hero MSE lock for full lightbox; WAAPI expand land via **`snapFlyoutToHeroOpen`**. Hotfixes **`e333601b`** (feed ~2–3s restart), **`6440854a`** / **`d1f6fdca`** / **`e4dd6f19`** (hero fly-in/land/play). Backlog shipped row + smoke §11 iPhone checks. Client only.
 - 2026-07-26: **Quote repost inset polish (client):** inset meta **15px** / handle **14px** (feed handle **16px** vs **17px** name); caption **`text-zinc-200`** at **15px**; compact avatar alignment + no chip background; embed multi-image carousel scrollbar hidden (`data-lounge-feed-horizontal-scroll` on all multi-slide carousels); staff/OG **`embed`** badge sizing via **`metaVariant="quoteEmbed"`**. Client only; no SQL/Edge.

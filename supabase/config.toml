@@ -14,6 +14,9 @@ verify_jwt = false
 [functions.lounge-chat]
 verify_jwt = true
 
+[functions.chat-calls]
+verify_jwt = true
+
 [functions.lounge-link-unfurl]
 verify_jwt = true
 

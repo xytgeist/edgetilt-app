@@ -21,6 +21,7 @@ type ActivityEventRow = {
   comment_id: string | null
   play_log_entry_id: string | null
   chat_room_id: string | null
+  chat_call_id?: string | null
   starter_weekly_unlock_id?: string | null
   created_at: string
 }
@@ -58,7 +59,11 @@ const PUSH_TITLE_LOUNGE = 'Edge Lounge'
 const PUSH_TITLE_CHAT = 'Edge Chat'
 
 function pushTitleForEventType(eventType: string): string {
-  if (eventType === 'chat_dm' || eventType === 'chat_group_invite') {
+  if (
+    eventType === 'chat_dm' ||
+    eventType === 'chat_group_invite' ||
+    eventType === 'chat_call_invite'
+  ) {
     return PUSH_TITLE_CHAT
   }
   return PUSH_TITLE_LOUNGE
@@ -125,6 +130,7 @@ function prefAllows(prefs: NotificationPrefs | null, eventType: string): boolean
       return prefs.push_bookmarks
     case 'chat_dm':
     case 'chat_group_invite':
+    case 'chat_call_invite':
       return prefs.push_messages
     default:
       return true
@@ -172,6 +178,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'sent you a message'
     case 'chat_group_invite':
       return 'added you to a group'
+    case 'chat_call_invite':
+      return 'is calling you'
     case 'starter_weekly_guide_drop':
       return 'Weekly guide drop ready — scratch to reveal'
     default:
@@ -195,7 +203,7 @@ type PushNotificationPayload = {
 function buildTargetUrl(
   event: Pick<
     ActivityEventRow,
-    'event_type' | 'post_id' | 'comment_id' | 'play_log_entry_id' | 'chat_room_id'
+    'event_type' | 'post_id' | 'comment_id' | 'play_log_entry_id' | 'chat_room_id' | 'chat_call_id'
   >,
   actor: ActorProfile | null | undefined,
   markRead?: PushMarkReadIds,
@@ -203,9 +211,17 @@ function buildTargetUrl(
   const params = new URLSearchParams()
   params.set('tab', 'home')
 
-  if ((event.event_type === 'chat_dm' || event.event_type === 'chat_group_invite') && event.chat_room_id) {
+  if (
+    (event.event_type === 'chat_dm' ||
+      event.event_type === 'chat_group_invite' ||
+      event.event_type === 'chat_call_invite') &&
+    event.chat_room_id
+  ) {
     params.set('tab', 'chat')
     params.set('room', event.chat_room_id)
+    if (event.event_type === 'chat_call_invite' && event.chat_call_id) {
+      params.set('call', event.chat_call_id)
+    }
   } else if (
     (event.event_type === 'play_log_shared' ||
       event.event_type === 'play_log_partner_paid' ||
@@ -383,7 +399,7 @@ async function handleImmediatePush(
   const { data: eventRow, error: eventError } = await admin
     .from('activity_events')
     .select(
-      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, created_at',
+      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, created_at',
     )
     .eq('id', activityEventId)
     .maybeSingle()

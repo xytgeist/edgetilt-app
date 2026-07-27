@@ -280,6 +280,7 @@ export default function AppShell({
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
+  const [pendingChatCallId, setPendingChatCallId] = useState(null)
   const [pendingLoungeProfileUserId, setPendingLoungeProfileUserId] = useState(null)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
@@ -379,7 +380,7 @@ export default function AppShell({
   const openLoungeActivityInAppToast = useCallback(
     (payload) => {
       dismissLoungeActivityInAppToast()
-      const { activityEventId, activityBatchId, tab: targetTab, roomId, playLogEntryId } =
+      const { activityEventId, activityBatchId, tab: targetTab, roomId, callId, playLogEntryId } =
         navigateFromLoungeActivityPayload(payload)
 
       if (targetTab === 'chat') {
@@ -389,6 +390,7 @@ export default function AppShell({
           setTab('chat')
           setMenuOpen(false)
           if (roomId) setPendingChatRoomId(roomId)
+          if (callId) setPendingChatCallId(callId)
         }
       } else if (targetTab === 'logbook') {
         if (browseMode === 'anonymous') {
@@ -885,7 +887,9 @@ export default function AppShell({
           setTab('chat')
           setMenuOpen(false)
           const roomId = (params.get('room') || '').trim()
+          const callId = (params.get('call') || '').trim()
           if (roomId) setPendingChatRoomId(roomId)
+          if (callId) setPendingChatCallId(callId)
         }
       }
       if (targetTab === 'monitor') {
@@ -1008,7 +1012,9 @@ export default function AppShell({
         try {
           const msgUrl = new URL(event?.data?.url || '', window.location.origin)
           const roomId = (msgUrl.searchParams.get('room') || '').trim()
+          const callId = (msgUrl.searchParams.get('call') || '').trim()
           if (roomId) setPendingChatRoomId(roomId)
+          if (callId) setPendingChatCallId(callId)
         } catch {
           // ignore malformed url
         }
@@ -1699,6 +1705,8 @@ export default function AppShell({
           onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
           initialRoomId={pendingChatRoomId}
           onInitialRoomConsumed={() => setPendingChatRoomId(null)}
+          initialCallId={pendingChatCallId}
+          onInitialCallConsumed={() => setPendingChatCallId(null)}
           onViewProfile={(userId) => {
             if (!userId) return
             setPendingLoungeProfileUserId(userId)

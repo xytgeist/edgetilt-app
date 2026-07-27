@@ -509,6 +509,23 @@ export default function ChatBubble({
   const openViewer = useCallback((idx) => setMediaViewerIndex(idx), [])
   const closeViewer = useCallback(() => setMediaViewerIndex(null), [])
 
+  const callSummaryBody = String(message.body || '').trim()
+  const isCallSummary =
+    String(message.content_encoding || '') === 'call_summary' ||
+    /^(Missed call|Call declined|Call ended|Call ·)/.test(callSummaryBody)
+  if (isCallSummary) {
+    return (
+      <div
+        data-chat-message-id={message.id}
+        className="flex justify-center px-4 py-2"
+      >
+        <span className="rounded-full border border-zinc-700/70 bg-zinc-900/80 px-3 py-1 text-[12px] font-medium text-zinc-400">
+          {callSummaryBody || 'Call'}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div
       data-chat-message-id={message.id}

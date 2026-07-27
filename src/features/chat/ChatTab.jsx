@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ChatConversation from './ChatConversation.jsx'
+import { ChatCallProvider } from './calls/ChatCallProvider.jsx'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import ChatPrivateSubsTab from './ChatPrivateSubsTab.jsx'
 import {
@@ -41,6 +42,8 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
  *   onInitialRoomConsumed?: () => void,
+ *   initialCallId?: string | null,
+ *   onInitialCallConsumed?: () => void,
  *   onViewProfile?: ((userId: string) => void) | null,
  * }} props
  */
@@ -55,6 +58,8 @@ export default function ChatTab({
   onInitialPeerConsumed,
   initialRoomId = null,
   onInitialRoomConsumed,
+  initialCallId = null,
+  onInitialCallConsumed,
   onViewProfile = null,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
@@ -602,6 +607,33 @@ export default function ChatTab({
 
   const profilesById = profilesCacheRef.current
 
+  const withChatCalls = (node) => (
+    <ChatCallProvider
+      supabaseClient={supabaseClient}
+      viewerUserId={viewerUserId}
+      profilesById={profilesById}
+      roomTitleById={(roomId) => {
+        const r =
+          rooms.find((x) => x.id === roomId) ||
+          archivedRooms.find((x) => x.id === roomId) ||
+          (hydratedOpenRoom?.id === roomId ? hydratedOpenRoom : null)
+        if (!r) return 'Chat call'
+        if (r.kind === 'dm') {
+          const peer = r.peer_user_id ? profilesById[r.peer_user_id] : null
+          return String(peer?.display_name || peer?.handle || r.title || 'Voice call').trim()
+        }
+        return String(r.title || 'Group call').trim() || 'Group call'
+      }}
+      initialCallId={initialCallId}
+      onInitialCallConsumed={onInitialCallConsumed}
+      onOpenRoom={(roomId) => {
+        if (roomId) setActiveRoomId(roomId)
+      }}
+    >
+      {node}
+    </ChatCallProvider>
+  )
+
   // ── Anon gate ─────────────────────────────────────────────────────────────
 
   if (browseMode === 'anonymous') {
@@ -656,7 +688,7 @@ export default function ChatTab({
     }
     const otherUnreadCount = rooms.filter((r) => r.id !== activeRoomId && r.hasUnread).length
     const openedFromArchived = archivedRooms.some((r) => r.id === activeRoomId)
-    return (
+    return withChatCalls(
       <ChatConversation
         key={`${activeRoomId}-${iosResumeCount}`}
         supabaseClient={supabaseClient}
@@ -689,13 +721,13 @@ export default function ChatTab({
         viewerReadReceiptsEnabled={viewerReadReceiptsEnabled}
         onViewerReadReceiptsEnabledChange={handleViewerReadReceiptsChange}
         readReceiptsBusy={readReceiptsToggleBusy}
-      />
+      />,
     )
   }
 
   // ── Conversation list ─────────────────────────────────────────────────────
 
-  return (
+  return withChatCalls(
     <>
     <div ref={inboxRootRef} data-chat-feature className="select-none">
     <ScrollLinkedEdgeTitleBarShell
@@ -1098,7 +1130,7 @@ export default function ChatTab({
           document.body,
         )
       : null}
-    </>
+    </>,
   )
 }
 

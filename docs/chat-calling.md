@@ -51,7 +51,9 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 ## Setup checklist
 
 1. Create LiveKit Cloud project; copy URL + API key/secret.
-2. Apply SQL `20260728000000_chat_calls.sql` on test (then prod when promoting).
-3. Set Edge secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` on the project.
+2. Apply SQL `20260728000000`–`20260728030000` on test (then prod when promoting).
+3. Set Edge secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` on the project (**both** test + prod).
 4. Deploy `chat-calls` + redeploy `lounge-send-activity-push`.
 5. Smoke: DM video ring both devices; group audio join; push tap with `?call=` while app backgrounded on iPhone PWA.
+
+**Prod promote (2026-07-27):** SQL through **`20260728030000`** + Edge **`chat-calls`** / **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`**. Frontend shipped via **`main`**. Re-check **`LIVEKIT_*`** secrets on prod if calls fail to connect.

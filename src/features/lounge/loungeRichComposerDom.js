@@ -11,6 +11,9 @@ const LINK_CLASS =
 
 const CASHTAG_RE = /\$([A-Za-z][A-Za-z0-9.-]{0,14})\b/g
 
+/** Style committed @handles in composer; partial @queries stay plain for autocomplete/caret. */
+const COMPOSER_MENTION_COMMIT_RE = /@([\w]+)(?=[\s,.!?;:'")\]])/g
+
 function escapeHtml(text) {
   return String(text)
     .replace(/&/g, '&amp;')
@@ -43,9 +46,10 @@ function appendCashtagHtml(out, fragment, styleCtx) {
 function appendMentionHtml(out, fragment, { committedOnly = false } = {}, styleCtx = null) {
   if (!fragment) return
   let last = 0
-  // Composer: only style @handles followed by whitespace so partial @queries stay
+  // Composer: only style @handles followed by whitespace or punctuation so partial @queries stay
   // plain text (Android caret + mention autocomplete rely on a stable DOM).
-  const re = committedOnly ? /@([\w]+)(?=\s)/g : /@([\w]+)/g
+  const re = committedOnly ? COMPOSER_MENTION_COMMIT_RE : /@([\w]+)/g
+  re.lastIndex = 0
   let m
   while ((m = re.exec(fragment)) !== null) {
     if (m.index > last) appendCashtagHtml(out, fragment.slice(last, m.index), styleCtx)

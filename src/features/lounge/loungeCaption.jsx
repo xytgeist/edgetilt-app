@@ -54,6 +54,31 @@ export function hrefForUrlDisplay(display) {
   return ''
 }
 
+/** Punctuation glued to @mentions / #tags / $cashtags (no orphan line breaks). */
+const ATTACHED_PUNCT_RE = /^\s*([)\]},.!?;:'"]+)/
+
+function peelLeadingAttachedPunctuation(fragment) {
+  const s = String(fragment ?? '')
+  const m = ATTACHED_PUNCT_RE.exec(s)
+  if (!m) return { punct: '', rest: s }
+  return { punct: m[1], rest: s.slice(m[0].length) }
+}
+
+/** Collapse errant space before punctuation in plain caption text. */
+function normalizePlainCaptionTypography(fragment) {
+  return String(fragment ?? '').replace(/(\S)\s+([,.!?;:'")])/g, '$1$2')
+}
+
+function wrapRichTokenWithAttachedPunctuation(tokenEl, punct, key) {
+  if (!punct) return tokenEl
+  return (
+    <span key={key} className="inline whitespace-nowrap">
+      {tokenEl}
+      {punct}
+    </span>
+  )
+}
+
 /**
  * Lounge caption: `http(s)://…` and `www.…` links (opens new tab), Unicode `#tags`, and `@handles`.
  * @param {{ hashtagClassName?: string, linkClassName?: string, mentionClassName?: string, cashtagQuotesByTicker?: Record<string, { change_pct?: number }>, highlightQuery?: string, highlightClassName?: string, onMentionClick?: (handle: string, e: MouseEvent) => void, onHashtagClick?: (tag: string, e: MouseEvent) => void, onLinkClick?: (href: string, e: MouseEvent) => void, onCashtagClick?: (ticker: string, e: MouseEvent) => void }} [opts]
@@ -81,13 +106,14 @@ export function renderRichCaption(
 
   const pushPlain = (fragment) => {
     if (!fragment) return
+    const normalized = normalizePlainCaptionTypography(fragment)
     if (highlightTerms.length) {
-      appendHighlightedPlainText(out, rkRef, fragment, highlightTerms, {
+      appendHighlightedPlainText(out, rkRef, normalized, highlightTerms, {
         keyPrefix: 'rk-p',
         highlightClassName,
       })
     } else {
-      out.push(fragment)
+      out.push(normalized)
     }
   }
 
@@ -99,29 +125,31 @@ export function renderRichCaption(
     while ((m = re.exec(fragment)) !== null) {
       if (m.index > last) pushPlain(fragment.slice(last, m.index))
       const handle = m[1]
-      if (onMentionClick) {
-        out.push(
-          <button
-            key={`rk-m-${rkRef.current++}`}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onMentionClick(handle, e)
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className={`${mentionClassName} touch-manipulation [-webkit-tap-highlight-color:transparent]`}
-          >
-            @{handle}
-          </button>
-        )
-      } else {
-        out.push(
-          <span key={`rk-m-${rkRef.current++}`} className={mentionClassName}>
-            @{handle}
-          </span>
-        )
-      }
-      last = m.index + m[0].length
+      const mentionEnd = m.index + m[0].length
+      const tail = fragment.slice(mentionEnd)
+      const { punct, rest: afterPunct } = peelLeadingAttachedPunctuation(tail)
+      const mentionEl = onMentionClick ? (
+        <button
+          key={`rk-m-${rkRef.current++}`}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onMentionClick(handle, e)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`${mentionClassName} inline touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+        >
+          @{handle}
+        </button>
+      ) : (
+        <span key={`rk-m-${rkRef.current++}`} className={mentionClassName}>
+          @{handle}
+        </span>
+      )
+      out.push(
+        wrapRichTokenWithAttachedPunctuation(mentionEl, punct, `rk-mg-${rkRef.current++}`),
+      )
+      last = mentionEnd + tail.length - afterPunct.length
     }
     if (last < fragment.length) pushPlain(fragment.slice(last))
   }
@@ -139,29 +167,31 @@ export function renderRichCaption(
       const assetClass = guessCashtagAssetClass(tickerKey)
       const cashtagClassName = marketCashtagColorClass(changePct, { assetClass })
       const label = `$${tickerKey}`
-      if (onCashtagClick) {
-        out.push(
-          <button
-            key={`rk-c-${rkRef.current++}`}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onCashtagClick(tickerKey, e)
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className={`${cashtagClassName} touch-manipulation [-webkit-tap-highlight-color:transparent]`}
-          >
-            {label}
-          </button>,
-        )
-      } else {
-        out.push(
-          <span key={`rk-c-${rkRef.current++}`} className={cashtagClassName}>
-            {label}
-          </span>,
-        )
-      }
-      last = m.index + m[0].length
+      const cashtagEnd = m.index + m[0].length
+      const tail = fragment.slice(cashtagEnd)
+      const { punct, rest: afterPunct } = peelLeadingAttachedPunctuation(tail)
+      const cashtagEl = onCashtagClick ? (
+        <button
+          key={`rk-c-${rkRef.current++}`}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onCashtagClick(tickerKey, e)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`${cashtagClassName} inline touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+        >
+          {label}
+        </button>
+      ) : (
+        <span key={`rk-c-${rkRef.current++}`} className={cashtagClassName}>
+          {label}
+        </span>
+      )
+      out.push(
+        wrapRichTokenWithAttachedPunctuation(cashtagEl, punct, `rk-cg-${rkRef.current++}`),
+      )
+      last = cashtagEnd + tail.length - afterPunct.length
     }
     if (last < fragment.length) pushMentionParsed(fragment.slice(last))
   }
@@ -174,29 +204,31 @@ export function renderRichCaption(
     while ((m = re.exec(fragment)) !== null) {
       if (m.index > last) pushCashtagParsed(fragment.slice(last, m.index))
       const tag = m[0]
-      if (onHashtagClick) {
-        out.push(
-          <button
-            key={`rk-h-${rkRef.current++}`}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onHashtagClick(tag, e)
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className={`${hashtagClassName} touch-manipulation [-webkit-tap-highlight-color:transparent]`}
-          >
-            {tag}
-          </button>
-        )
-      } else {
-        out.push(
-          <span key={`rk-h-${rkRef.current++}`} className={hashtagClassName}>
-            {tag}
-          </span>
-        )
-      }
-      last = m.index + m[0].length
+      const tagEnd = m.index + m[0].length
+      const tail = fragment.slice(tagEnd)
+      const { punct, rest: afterPunct } = peelLeadingAttachedPunctuation(tail)
+      const tagEl = onHashtagClick ? (
+        <button
+          key={`rk-h-${rkRef.current++}`}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onHashtagClick(tag, e)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`${hashtagClassName} inline touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+        >
+          {tag}
+        </button>
+      ) : (
+        <span key={`rk-h-${rkRef.current++}`} className={hashtagClassName}>
+          {tag}
+        </span>
+      )
+      out.push(
+        wrapRichTokenWithAttachedPunctuation(tagEl, punct, `rk-hg-${rkRef.current++}`),
+      )
+      last = tagEnd + tail.length - afterPunct.length
     }
     if (last < fragment.length) pushCashtagParsed(fragment.slice(last))
   }

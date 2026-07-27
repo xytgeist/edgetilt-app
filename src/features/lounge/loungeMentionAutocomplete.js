@@ -243,7 +243,7 @@ export function applyMentionSuggestion(value, mention, handle) {
   if (!mention) return { value, cursorPos: value.length }
   const before = value.slice(0, mention.start)
   const after = value.slice(mention.end)
-  const inserted = `@${handle} `
+  const inserted = `@${handle}`
   const newValue = before + inserted + after
   const newCursor = mention.start + inserted.length
   return { value: newValue, cursorPos: newCursor }

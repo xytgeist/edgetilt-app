@@ -6,8 +6,11 @@ import {
   canSkipLoungeVideoWasmEncode,
   deleteCfStreamOrphanAsset,
   isAndroidBrowser,
+  isIOSBrowser,
+  isLikelyIphoneScreenRecording,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
   isLoungeAndroidBlockedOversizedTrimSource,
+  isLoungeVideoQuicktimeMov,
   loungeAndroidIphoneSpatialDirectUploadMessage,
   loungeAndroidOversizedTrimSourceMessage,
   loungeIphoneScreenRecordingEncodeFailMessage,
@@ -165,9 +168,14 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     }
     const forceWasmEncode = await resolveLoungeVideoForceWasmEncode(source)
     if (forceWasmEncode) {
+      const forceReason = isLikelyIphoneScreenRecording(source)
+        ? 'screen-recording name'
+        : isIOSBrowser() && isLoungeVideoQuicktimeMov(source)
+          ? 'ios mov'
+          : 'ios screen dimensions'
       maybeReportLoungeVideoUploadDebug(
         'encode',
-        `screen-recording → force wasm (${source.name || 'video'} ${sourceMb}MB)`,
+        `force wasm (${forceReason}) ${source.name || 'video'} ${sourceMb}MB`,
       )
     }
     if (!forceWasmEncode && canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {

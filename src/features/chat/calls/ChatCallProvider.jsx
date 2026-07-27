@@ -19,6 +19,7 @@ import {
 } from '../../../utils/chatCallsApi.js'
 import { subscribeToChatCallBroadcast } from './chatCallBroadcast.js'
 import ChatIncomingCallOverlay from './ChatIncomingCallOverlay.jsx'
+import ChatMissedCallCallbackOverlay from './ChatMissedCallCallbackOverlay.jsx'
 import {
   clearPendingChatCallDeepLink,
   peekPendingChatCallDeepLink,
@@ -63,6 +64,7 @@ const ChatCallContext = createContext(null)
  *   profilesById?: Record<string, { display_name?: string, handle?: string }>,
  *   roomTitleById?: (roomId: string) => string,
  *   initialCallId?: string | null,
+ *   initialCallIntent?: 'ring' | 'callback',
  *   onInitialCallConsumed?: () => void,
  *   onOpenRoom?: (roomId: string) => void,
  *   children: import('react').ReactNode,
@@ -74,12 +76,17 @@ export function ChatCallProvider({
   profilesById = {},
   roomTitleById,
   initialCallId = null,
+  initialCallIntent = 'ring',
   onInitialCallConsumed,
   onOpenRoom,
   children,
 }) {
   const [activeCall, setActiveCall] = useState(/** @type {ActiveChatCall | null} */ (null))
   const [incoming, setIncoming] = useState(/** @type {IncomingChatCall | null} */ (null))
+  /** @type {[{ roomId: string, mediaMode: ChatCallMediaMode, title: string, isVideo: boolean } | null, Function]} */
+  const [callbackPrompt, setCallbackPrompt] = useState(
+    /** @type {{ roomId: string, mediaMode: ChatCallMediaMode, title: string, isVideo: boolean } | null} */ (null),
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
@@ -239,29 +246,49 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, viewerUserId, presentIncoming])
 
-  // Deep link ?call= (prop and/or sessionStorage stash from notificationclick).
+  // Deep link ?call= / ?missedCall= (prop and/or sessionStorage stash).
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return
     const stashed = peekPendingChatCallDeepLink()
     const callId = String(initialCallId || stashed?.callId || '').trim()
     if (!callId) return
+    const intent =
+      initialCallIntent === 'callback' || stashed?.intent === 'callback' ? 'callback' : 'ring'
     let cancelled = false
     ;(async () => {
       try {
         const res = await chatGetCall(supabaseClient, callId)
         if (cancelled) return
         const call = res?.call
-        if (!call?.id || !['ringing', 'active'].includes(call.status)) {
-          setError(
-            call?.status === 'missed' || call?.status === 'ended' || call?.status === 'declined'
-              ? 'That call has already ended.'
-              : 'That call is no longer available.',
-          )
+        if (!call?.id) {
+          setError('That call is no longer available.')
           return
         }
-        if (call.started_by === viewerUserId) return
-        presentIncoming(call)
-        onOpenRoom?.(call.chat_room_id || stashed?.roomId || '')
+        const roomId = String(call.chat_room_id || stashed?.roomId || '')
+        const title = await resolveTitleAsync(roomId, call.started_by)
+        if (cancelled) return
+
+        // Live invite → accept UI (unless this was an explicit missed-call tap).
+        if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
+          if (call.started_by === viewerUserId) return
+          presentIncoming(call)
+          onOpenRoom?.(roomId)
+          return
+        }
+
+        // Missed / ended / declined (or missedCall= deep link) → DM + call-back prompt.
+        if (call.started_by === viewerUserId) {
+          onOpenRoom?.(roomId)
+          return
+        }
+        onOpenRoom?.(roomId)
+        const mediaMode = call.media_mode === 'video' ? 'video' : 'audio'
+        setCallbackPrompt({
+          roomId,
+          mediaMode,
+          title,
+          isVideo: call.kind === 'dm_av' && mediaMode === 'video',
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not open call')
       } finally {
@@ -274,11 +301,13 @@ export function ChatCallProvider({
     }
   }, [
     initialCallId,
+    initialCallIntent,
     supabaseClient,
     viewerUserId,
     onInitialCallConsumed,
     onOpenRoom,
     presentIncoming,
+    resolveTitleAsync,
   ])
 
   const startCall = useCallback(
@@ -435,7 +464,7 @@ export function ChatCallProvider({
     <ChatCallContext.Provider value={value}>
       {children}
       <ChatIncomingCallOverlay
-        open={Boolean(incoming) && !activeCall}
+        open={Boolean(incoming) && !activeCall && !callbackPrompt}
         title={incoming?.title || 'Incoming call'}
         subtitle={
           incoming?.kind === 'group_audio'
@@ -448,6 +477,19 @@ export function ChatCallProvider({
         busy={busy}
         onAccept={() => void acceptIncoming()}
         onDecline={() => void declineIncoming()}
+      />
+      <ChatMissedCallCallbackOverlay
+        open={Boolean(callbackPrompt) && !activeCall && !incoming}
+        title={callbackPrompt?.title || 'Missed call'}
+        isVideo={Boolean(callbackPrompt?.isVideo)}
+        busy={busy}
+        onDismiss={() => setCallbackPrompt(null)}
+        onCallBack={() => {
+          const prompt = callbackPrompt
+          if (!prompt?.roomId) return
+          setCallbackPrompt(null)
+          void startCall(prompt.roomId, prompt.mediaMode, prompt.title)
+        }}
       />
       {activeCall ? (
         <Suspense

@@ -227,9 +227,12 @@ function buildTargetUrl(
   ) {
     params.set('tab', 'chat')
     params.set('room', event.chat_room_id)
-    // Invite only: include call= for accept UI. Missed opens the room (same tag replaces invite).
+    // Invite: call= accept UI. Missed: missedCall= opens DM + call-back prompt (same tag).
     if (event.event_type === 'chat_call_invite' && event.chat_call_id) {
       params.set('call', event.chat_call_id)
+    }
+    if (event.event_type === 'chat_call_missed' && event.chat_call_id) {
+      params.set('missedCall', event.chat_call_id)
     }
   } else if (
     (event.event_type === 'play_log_shared' ||

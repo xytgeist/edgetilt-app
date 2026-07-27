@@ -142,7 +142,12 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     extra.activityEventId || params.get('activityEvent') || null
   const activityBatchId =
     extra.activityBatchId || params.get('activityBatch') || null
-  const callId = extra.chatCallId || params.get('call') || null
+  const missedCallId =
+    params.get('missedCall') ||
+    (extra.eventType === 'chat_call_missed' ? extra.chatCallId || null : null)
+  const callId =
+    params.get('call') ||
+    (!missedCallId && extra.chatCallId ? extra.chatCallId : null)
   const roomId = params.get('room') || null
   return {
     type: 'app-navigate',
@@ -151,6 +156,7 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     activityEventId,
     activityBatchId,
     callId,
+    missedCallId,
     roomId,
     markActivityRead: Boolean(activityEventId || activityBatchId),
   }
@@ -165,6 +171,7 @@ self.addEventListener('notificationclick', (event) => {
     activityEventId: data.activityEventId,
     activityBatchId: data.activityBatchId,
     chatCallId: data.chatCallId,
+    eventType: data.eventType,
   })
   const isCallInvite =
     data.eventType === 'chat_call_invite' || Boolean(navigateMessage.callId)

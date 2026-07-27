@@ -1,4 +1,4 @@
-/** Survive PWA notificationclick navigate/reload races for ?call= deep links. */
+/** Survive PWA notificationclick navigate/reload races for ?call= / ?missedCall= deep links. */
 
 const STORAGE_KEY = 'edge_pending_chat_call_v1'
 const MAX_AGE_MS = 5 * 60 * 1000
@@ -6,8 +6,9 @@ const MAX_AGE_MS = 5 * 60 * 1000
 /**
  * @param {string} callId
  * @param {string} [roomId]
+ * @param {'ring' | 'callback'} [intent]
  */
-export function stashPendingChatCallDeepLink(callId, roomId = '') {
+export function stashPendingChatCallDeepLink(callId, roomId = '', intent = 'ring') {
   if (typeof window === 'undefined') return
   const id = String(callId || '').trim()
   if (!id) return
@@ -17,6 +18,7 @@ export function stashPendingChatCallDeepLink(callId, roomId = '') {
       JSON.stringify({
         callId: id,
         roomId: String(roomId || '').trim(),
+        intent: intent === 'callback' ? 'callback' : 'ring',
         at: Date.now(),
       }),
     )
@@ -25,7 +27,7 @@ export function stashPendingChatCallDeepLink(callId, roomId = '') {
   }
 }
 
-/** @returns {{ callId: string, roomId: string } | null} */
+/** @returns {{ callId: string, roomId: string, intent: 'ring' | 'callback' } | null} */
 export function peekPendingChatCallDeepLink() {
   if (typeof window === 'undefined') return null
   try {
@@ -38,7 +40,11 @@ export function peekPendingChatCallDeepLink() {
       window.sessionStorage.removeItem(STORAGE_KEY)
       return null
     }
-    return { callId, roomId: String(parsed?.roomId || '').trim() }
+    return {
+      callId,
+      roomId: String(parsed?.roomId || '').trim(),
+      intent: parsed?.intent === 'callback' ? 'callback' : 'ring',
+    }
   } catch {
     return null
   }

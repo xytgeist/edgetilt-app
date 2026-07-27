@@ -291,6 +291,8 @@ export default function AppShell({
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
   const [pendingChatCallId, setPendingChatCallId] = useState(null)
+  /** When set, deep link should open call-back prompt (missedCall=) not accept UI. */
+  const [pendingChatCallIntent, setPendingChatCallIntent] = useState(/** @type {'ring' | 'callback'} */ ('ring'))
   /** Signed-in uid for app-wide call ring (ChatCallProvider lives above ChatTab). */
   const [chatCallViewerUserId, setChatCallViewerUserId] = useState('')
   const [pendingLoungeProfileUserId, setPendingLoungeProfileUserId] = useState(null)
@@ -406,7 +408,8 @@ export default function AppShell({
           setMenuOpen(false)
           if (roomId) setPendingChatRoomId(roomId)
           if (callId) {
-            stashPendingChatCallDeepLink(callId, roomId)
+            stashPendingChatCallDeepLink(callId, roomId, 'ring')
+            setPendingChatCallIntent('ring')
             setPendingChatCallId(callId)
           }
         }
@@ -908,9 +911,15 @@ export default function AppShell({
           setMenuOpen(false)
           const roomId = (params.get('room') || '').trim()
           const callId = (params.get('call') || '').trim()
+          const missedCallId = (params.get('missedCall') || '').trim()
           if (roomId) setPendingChatRoomId(roomId)
-          if (callId) {
-            stashPendingChatCallDeepLink(callId, roomId)
+          if (missedCallId) {
+            stashPendingChatCallDeepLink(missedCallId, roomId, 'callback')
+            setPendingChatCallIntent('callback')
+            setPendingChatCallId(missedCallId)
+          } else if (callId) {
+            stashPendingChatCallDeepLink(callId, roomId, 'ring')
+            setPendingChatCallIntent('ring')
             setPendingChatCallId(callId)
           }
         }
@@ -1036,9 +1045,17 @@ export default function AppShell({
           const msgUrl = new URL(event?.data?.url || '', window.location.origin)
           const roomId = String(event?.data?.roomId || msgUrl.searchParams.get('room') || '').trim()
           const callId = String(event?.data?.callId || msgUrl.searchParams.get('call') || '').trim()
+          const missedCallId = String(
+            event?.data?.missedCallId || msgUrl.searchParams.get('missedCall') || '',
+          ).trim()
           if (roomId) setPendingChatRoomId(roomId)
-          if (callId) {
-            stashPendingChatCallDeepLink(callId, roomId)
+          if (missedCallId) {
+            stashPendingChatCallDeepLink(missedCallId, roomId, 'callback')
+            setPendingChatCallIntent('callback')
+            setPendingChatCallId(missedCallId)
+          } else if (callId) {
+            stashPendingChatCallDeepLink(callId, roomId, 'ring')
+            setPendingChatCallIntent('ring')
             setPendingChatCallId(callId)
           }
         } catch {
@@ -2045,7 +2062,11 @@ export default function AppShell({
         supabaseClient={supabaseClient}
         viewerUserId={chatCallViewerUserId}
         initialCallId={pendingChatCallId}
-        onInitialCallConsumed={() => setPendingChatCallId(null)}
+        initialCallIntent={pendingChatCallIntent}
+        onInitialCallConsumed={() => {
+          setPendingChatCallId(null)
+          setPendingChatCallIntent('ring')
+        }}
         onOpenRoom={(roomId) => {
           if (!roomId) return
           setPendingChatRoomId(roomId)

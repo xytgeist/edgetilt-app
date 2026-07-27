@@ -416,6 +416,22 @@ export default function LoungeNotificationsPanel({
       }
 
       if (
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED &&
+        (event.chat_room_id || event.chat_call_id)
+      ) {
+        const params = new URLSearchParams()
+        params.set('tab', 'chat')
+        if (event.chat_room_id) params.set('room', String(event.chat_room_id))
+        if (event.chat_call_id) params.set('missedCall', String(event.chat_call_id))
+        const nextPath = `/?${params.toString()}`
+        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
+          window.history.pushState({}, '', nextPath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
+        }
+        return
+      }
+
+      if (
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.FOLLOW ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.CREATOR_FAN_SUB
       ) {

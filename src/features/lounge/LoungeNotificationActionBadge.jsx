@@ -190,6 +190,17 @@ function IconPlayLog({ slot }) {
   )
 }
 
+function IconMissedCall({ slot }) {
+  const cls = glyphClass(slot)
+  return (
+    <IconShell slot={slot}>
+      <svg className={`${cls} text-amber-400`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+        <path d="M5.5 9c1.15 2.3 3.2 4.35 5.5 5.5l1.85-1.85c.25-.25.6-.35.9-.25 1 .35 2.1.5 3.2.5.5 0 .85.35.85.85V16c0 .5-.35.85-.85.85C9.55 16.85 3.15 10.45 3.15 3.35c0-.5.35-.85.85-.85H7c.5 0 .85.35.85.85 0 1.1.15 2.2.5 3.2.1.3 0 .65-.25.9L5.5 9z" />
+      </svg>
+    </IconShell>
+  )
+}
+
 const ICON_BY_KIND = {
   comment: IconComment,
   reply: IconReply,
@@ -200,6 +211,7 @@ const ICON_BY_KIND = {
   quote_repost: IconQuoteRepost,
   bookmark: IconBookmark,
   play_log: IconPlayLog,
+  missed_call: IconMissedCall,
 }
 
 /**

@@ -35,6 +35,14 @@ import {
   markPwaNotifPromptSeen,
   setPwaNotifEnablePending,
 } from '../../utils/pwaNotificationPrompt'
+import {
+  hasSeenPwaMicPrompt,
+  isInstalledPwaMicPromptEligible,
+  isPwaMicPromptAuthEvent,
+  markPwaMicPromptSeen,
+  queryMicrophonePermissionState,
+  requestPwaMicrophoneAccess,
+} from '../../utils/pwaMicrophonePrompt'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 import AppConsoleLogDebugHud from '../../components/AppConsoleLogDebugHud.jsx'
 import {
@@ -339,6 +347,9 @@ export default function AppShell({
   const communityFeedHeadReloadingRef = useRef(false)
   const feedMutedUserIdsRef = useRef(new Set())
   const pwaNotifPromptInFlightRef = useRef(false)
+  const pwaMicPromptInFlightRef = useRef(false)
+  /** Bumps when notif prompt finishes so mic prompt can run next without stacking. */
+  const [pwaOnboardingGate, setPwaOnboardingGate] = useState(0)
   const [globalConfirmState, setGlobalConfirmState] = useState({
     open: false,
     title: '',
@@ -460,6 +471,8 @@ export default function AppShell({
 
   /** User id queued for one-time installed-PWA notification opt-in (shown after member UI + splash settle). */
   const [pwaNotifPromptUserId, setPwaNotifPromptUserId] = useState(null)
+  /** User id queued for one-time installed-PWA microphone opt-in (after notif prompt, if any). */
+  const [pwaMicPromptUserId, setPwaMicPromptUserId] = useState(null)
 
   const hydrateCommunityPosts = useCallback(
     async (rows, depth = 0) => {
@@ -1389,6 +1402,31 @@ export default function AppShell({
     return () => subscription.unsubscribe()
   }, [supabaseClient])
 
+  /** Queue installed PWA mic opt-in for chat calls (same first-open window as push). */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!isInstalledPwaMicPromptEligible()) return
+
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (!isPwaMicPromptAuthEvent(event)) return
+      const userId = session?.user?.id
+      if (!userId || hasSeenPwaMicPrompt(userId) || pwaMicPromptInFlightRef.current) return
+      void (async () => {
+        const micState = await queryMicrophonePermissionState()
+        if (micState === 'granted' || micState === 'denied') {
+          markPwaMicPromptSeen(userId)
+          return
+        }
+        if (hasSeenPwaMicPrompt(userId) || pwaMicPromptInFlightRef.current) return
+        setPwaMicPromptUserId(userId)
+      })()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabaseClient])
+
   /** Show queued PWA notification prompt only after signed-in member UI + cold-boot splash finish. */
   useEffect(() => {
     if (!pwaNotifPromptUserId) return
@@ -1420,12 +1458,64 @@ export default function AppShell({
           markPwaNotifPromptSeen(userId)
         } finally {
           pwaNotifPromptInFlightRef.current = false
+          setPwaOnboardingGate((n) => n + 1)
         }
       })()
     }, settleMs)
 
     return () => window.clearTimeout(timer)
   }, [pwaNotifPromptUserId, browseMode, authSessionReady, splashVisible, showGlobalConfirm])
+
+  /** Show mic prompt after splash (and after notif prompt if that was also queued). */
+  useEffect(() => {
+    if (!pwaMicPromptUserId) return
+    if (browseMode !== 'member' || !authSessionReady || splashVisible) return
+    if (pwaNotifPromptUserId || pwaNotifPromptInFlightRef.current) return
+    if (pwaMicPromptInFlightRef.current) return
+
+    const userId = pwaMicPromptUserId
+    const settleMs = 450
+    const timer = window.setTimeout(() => {
+      if (pwaMicPromptInFlightRef.current) return
+      if (pwaNotifPromptUserId || pwaNotifPromptInFlightRef.current) return
+      pwaMicPromptInFlightRef.current = true
+      setPwaMicPromptUserId(null)
+
+      void (async () => {
+        try {
+          const micState = await queryMicrophonePermissionState()
+          if (micState === 'granted' || micState === 'denied') {
+            markPwaMicPromptSeen(userId)
+            return
+          }
+          const shouldEnable = await showGlobalConfirm({
+            title: 'Enable Microphone',
+            message:
+              'Chat calls need the microphone. Tap Enable, then Allow when your phone asks. You can change this later in system settings.',
+            confirmLabel: 'Enable',
+            cancelLabel: 'Not now',
+          })
+          markPwaMicPromptSeen(userId)
+          if (!shouldEnable) return
+          await requestPwaMicrophoneAccess()
+        } catch {
+          markPwaMicPromptSeen(userId)
+        } finally {
+          pwaMicPromptInFlightRef.current = false
+        }
+      })()
+    }, settleMs)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    pwaMicPromptUserId,
+    pwaNotifPromptUserId,
+    pwaOnboardingGate,
+    browseMode,
+    authSessionReady,
+    splashVisible,
+    showGlobalConfirm,
+  ])
 
   const homeSuspenseFallback =
     tab === 'home' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null

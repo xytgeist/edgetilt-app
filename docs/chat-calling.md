@@ -40,7 +40,8 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 ## iOS / PWA limits
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
-- `getUserMedia` only after user tap (Start / Accept).
+- `getUserMedia` only after user tap (Start / Accept, or first-open PWA mic opt-in).
+- **First-open PWA mic prompt:** installed Home Screen / Install app only (`isStandalonePwa`). After splash (and after the push opt-in if that also shows), Edge asks once to Enable microphone, then calls `getUserMedia` and immediately stops the track. Seen flag: `edge_pwa_mic_prompt_v1:{userId}` (`src/utils/pwaMicrophonePrompt.js`). Does **not** force iOS “Allow forever” ... OS may still re-ask later.
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).
 - Call provider + overlay live at **AppShell** so tab switches do not tear down ringing/active media.
 

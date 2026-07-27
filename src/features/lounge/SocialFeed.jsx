@@ -18967,7 +18967,7 @@ export default function SocialFeed({
 
       {loungePostUploadFailedOpen ? (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px] sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-upload-failed-title"

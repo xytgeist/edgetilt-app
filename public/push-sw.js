@@ -102,18 +102,7 @@ function parseRoomIdFromPushUrl(url) {
   }
 }
 
-/** Deliver ringing invite into an open Edge tab (Realtime backup). */
-async function deliverChatCallInviteInApp(clients, content) {
-  const roomId = parseRoomIdFromPushUrl(content.url)
-  const message = {
-    type: 'chat-call-invite-inapp',
-    chatCallId: content.chatCallId || null,
-    roomId,
-    eventType: content.eventType || null,
-    url: content.url,
-    title: content.title,
-    body: content.body,
-  }
+async function postCallPushToClients(clients, message) {
   for (const client of clients) {
     if (typeof client.postMessage === 'function') {
       try {
@@ -123,6 +112,34 @@ async function deliverChatCallInviteInApp(clients, content) {
       }
     }
   }
+}
+
+/** Deliver ringing invite into an open Edge tab (Realtime backup). */
+async function deliverChatCallInviteInApp(clients, content) {
+  const roomId = parseRoomIdFromPushUrl(content.url)
+  await postCallPushToClients(clients, {
+    type: 'chat-call-invite-inapp',
+    chatCallId: content.chatCallId || null,
+    roomId,
+    eventType: content.eventType || null,
+    url: content.url,
+    title: content.title,
+    body: content.body,
+  })
+}
+
+/** Deliver missed-call into an open Edge tab → Call back prompt (do not silent-drop). */
+async function deliverChatCallMissedInApp(clients, content) {
+  const roomId = parseRoomIdFromPushUrl(content.url)
+  await postCallPushToClients(clients, {
+    type: 'chat-call-missed-inapp',
+    chatCallId: content.chatCallId || null,
+    roomId,
+    eventType: 'chat_call_missed',
+    url: content.url,
+    title: content.title,
+    body: content.body,
+  })
 }
 
 const APP_VISIBLE_CACHE = 'edge-app-visibility-v1'
@@ -212,8 +229,11 @@ self.addEventListener('push', (event) => {
       if (chatCallPush) {
         const suppressOs = await pageIsVisiblyHandlingCalls(clients)
         if (suppressOs) {
-          // Realtime can miss on prod; push-deliver the ring into the open tab.
-          if (content.eventType === 'chat_call_invite' || (!chatCallMissed && content.chatCallId)) {
+          // Must hand the event to the open tab... never drop. Invite → ring overlay;
+          // missed → Call back prompt (same payloads as notificationclick).
+          if (chatCallMissed) {
+            await deliverChatCallMissedInApp(clients, content)
+          } else if (content.eventType === 'chat_call_invite' || content.chatCallId) {
             await deliverChatCallInviteInApp(clients, content)
           }
           return

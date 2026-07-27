@@ -1,7 +1,8 @@
 /**
  * Early SW message handlers for chat calling (before AppShell mounts).
  * - chat-call-push-probe → suppress OS banner while Edge is visible
- * - chat-call-invite-inapp → CustomEvent so ChatCallProvider can show the ring overlay
+ * - chat-call-invite-inapp → ring overlay
+ * - chat-call-missed-inapp → Call back prompt (must not silent-drop when OS suppressed)
  */
 
 export function installChatCallPushProbeListener() {
@@ -25,6 +26,16 @@ export function installChatCallPushProbeListener() {
       try {
         window.dispatchEvent(
           new CustomEvent('edge-chat-call-invite', { detail: event.data || {} }),
+        )
+      } catch {
+        /* ignore */
+      }
+      return
+    }
+    if (type === 'chat-call-missed-inapp') {
+      try {
+        window.dispatchEvent(
+          new CustomEvent('edge-chat-call-missed', { detail: event.data || {} }),
         )
       } catch {
         /* ignore */

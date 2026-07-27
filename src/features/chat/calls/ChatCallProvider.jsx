@@ -251,6 +251,14 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, viewerUserId, presentIncoming])
 
+  const onOpenRoomRef = useRef(onOpenRoom)
+  onOpenRoomRef.current = onOpenRoom
+  const onInitialCallConsumedRef = useRef(onInitialCallConsumed)
+  onInitialCallConsumedRef.current = onInitialCallConsumed
+  // presentIncomingRef already declared above (realtime + deep link share it).
+  const resolveTitleAsyncRef = useRef(resolveTitleAsync)
+  resolveTitleAsyncRef.current = resolveTitleAsync
+
   // SW push backup when Edge is visible (Realtime RLS can miss on some projects).
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return undefined
@@ -272,17 +280,43 @@ export function ChatCallProvider({
         }
       })()
     }
+    const onSwMissed = (event) => {
+      const detail = event?.detail || {}
+      const callId = String(detail.chatCallId || '').trim()
+      if (!callId) return
+      // Clear ringing UI; open Call back (same as missedCall= deep link).
+      setIncoming((prev) => (prev?.callId === callId ? null : prev))
+      const roomFromPush = String(detail.roomId || '').trim()
+      void (async () => {
+        try {
+          const res = await chatGetCall(supabaseClient, callId)
+          const call = res?.call
+          if (!call?.id || call.started_by === viewerUserId) {
+            if (roomFromPush) onOpenRoomRef.current?.(roomFromPush)
+            return
+          }
+          const roomId = String(call.chat_room_id || roomFromPush || '')
+          const title = await resolveTitleAsyncRef.current(roomId, call.started_by)
+          onOpenRoomRef.current?.(roomId)
+          const mediaMode = call.media_mode === 'video' ? 'video' : 'audio'
+          setCallbackPrompt({
+            roomId,
+            mediaMode,
+            title,
+            isVideo: call.kind === 'dm_av' && mediaMode === 'video',
+          })
+        } catch {
+          if (roomFromPush) onOpenRoomRef.current?.(roomFromPush)
+        }
+      })()
+    }
     window.addEventListener('edge-chat-call-invite', onSwInvite)
-    return () => window.removeEventListener('edge-chat-call-invite', onSwInvite)
+    window.addEventListener('edge-chat-call-missed', onSwMissed)
+    return () => {
+      window.removeEventListener('edge-chat-call-invite', onSwInvite)
+      window.removeEventListener('edge-chat-call-missed', onSwMissed)
+    }
   }, [supabaseClient, viewerUserId, presentIncoming])
-
-  const onOpenRoomRef = useRef(onOpenRoom)
-  onOpenRoomRef.current = onOpenRoom
-  const onInitialCallConsumedRef = useRef(onInitialCallConsumed)
-  onInitialCallConsumedRef.current = onInitialCallConsumed
-  // presentIncomingRef already declared above (realtime + deep link share it).
-  const resolveTitleAsyncRef = useRef(resolveTitleAsync)
-  resolveTitleAsyncRef.current = resolveTitleAsync
 
   const [deepLinkRetry, setDeepLinkRetry] = useState(0)
 

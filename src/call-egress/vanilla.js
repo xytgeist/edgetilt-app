@@ -1,15 +1,34 @@
 /**
  * Minimal LiveKit RoomComposite template (no React).
- * Featured identity from layout=focus:<userId>; others as bottom PiPs.
- * Fires START_RECORDING early — LiveKit Chrome aborts with no MP4 if it never sees that signal.
+ * Layout `edge` (or anything without focus:<id>): screen share or first camera large, rest PiPs + brand.
+ * Optional later: layout=focus:<userId> pins that identity as main.
+ *
+ * Classic <head> script already logs START_RECORDING so LiveKit can save even if this module fails.
  */
-import EgressHelper from '@livekit/egress-sdk'
-import { ConnectionState, Room, RoomEvent, Track } from 'livekit-client'
+import EgressHelperMod from '@livekit/egress-sdk'
+import { Room, RoomEvent, Track } from 'livekit-client'
+
+const EgressHelper = EgressHelperMod?.default ?? EgressHelperMod
+
+function qp(name) {
+  try {
+    return new URLSearchParams(window.location.search).get(name) || ''
+  } catch {
+    return ''
+  }
+}
 
 function parseFeatured(layout) {
   const raw = String(layout || '').trim()
   if (raw.startsWith('focus:')) return raw.slice('focus:'.length).trim() || null
   return null
+}
+
+function showStatus(msg) {
+  const waiting = document.getElementById('waiting')
+  if (!waiting) return
+  waiting.textContent = String(msg || '')
+  waiting.style.display = 'grid'
 }
 
 function ensureDom() {
@@ -71,13 +90,17 @@ function render(room, featuredId) {
 
   const pubs = videoPubs(room)
   const want = String(featuredId || '').trim()
-  const screen = want
-    ? pubs.find((x) => x.identity === want && x.source === Track.Source.ScreenShare)
-    : null
-  const cam = want
-    ? pubs.find((x) => x.identity === want && x.source === Track.Source.Camera)
-    : null
-  const featured = screen || cam || pubs[0] || null
+  let featured = null
+  if (want) {
+    featured =
+      pubs.find((x) => x.identity === want && x.source === Track.Source.ScreenShare) ||
+      pubs.find((x) => x.identity === want && x.source === Track.Source.Camera) ||
+      null
+  }
+  if (!featured) {
+    featured =
+      pubs.find((x) => x.source === Track.Source.ScreenShare) || pubs[0] || null
+  }
   const others = pubs.filter((x) => x !== featured).slice(0, 6)
 
   if (featured) {
@@ -105,42 +128,68 @@ function render(room, featuredId) {
   attachRemoteAudio(room)
 }
 
+function signalStart(reason) {
+  try {
+    EgressHelper.startRecording()
+  } catch {
+    console.log('START_RECORDING')
+  }
+  console.log('edge_egress_started', reason || '')
+}
+
 async function main() {
   ensureDom()
-  const url = EgressHelper.getLiveKitURL()
-  const token = EgressHelper.getAccessToken()
-  let featuredId = parseFeatured(EgressHelper.getLayout())
-  if (!url || !token) {
-    document.body.innerHTML = '<div class="waiting">Missing LiveKit egress url/token.</div>'
-    // Still signal so LiveKit does not hang forever on a dead page.
+
+  // Prefer raw query params — EgressHelper.getLiveKitURL() throws if missing, which
+  // previously produced a blank "Template error" frame with only the logo.
+  const url = qp('url') || (() => {
     try {
-      EgressHelper.startRecording()
+      return EgressHelper.getLiveKitURL()
     } catch {
-      console.log('START_RECORDING')
+      return ''
     }
+  })()
+  const token = qp('token') || (() => {
+    try {
+      return EgressHelper.getAccessToken()
+    } catch {
+      return ''
+    }
+  })()
+  let featuredId = parseFeatured(qp('layout') || (() => {
+    try {
+      return EgressHelper.getLayout()
+    } catch {
+      return ''
+    }
+  })())
+
+  if (!url || !token) {
+    showStatus(`Missing url/token (qs=${window.location.search.length})`)
+    signalStart('missing_params')
     return
   }
 
   const room = new Room({
     adaptiveStream: false,
     dynacast: false,
-    // Egress is subscribe-only; keep WebRTC simple for headless Chrome.
   })
-  EgressHelper.setRoom(room)
 
   let started = false
   const start = (reason) => {
     if (started) return
     started = true
-    try {
-      EgressHelper.startRecording()
-    } catch {
-      console.log('START_RECORDING')
-    }
-    console.log('edge_egress_started', reason || '')
+    signalStart(reason)
   }
 
-  const refresh = () => render(room, featuredId)
+  const refresh = () => {
+    try {
+      render(room, featuredId)
+    } catch (err) {
+      console.error('render', err)
+    }
+  }
+
   room.on(RoomEvent.TrackSubscribed, () => {
     refresh()
     start('track_subscribed')
@@ -155,37 +204,38 @@ async function main() {
     window.setTimeout(() => start('connected'), 300)
   })
 
-  EgressHelper.onLayoutChanged((next) => {
-    featuredId = parseFeatured(next)
-    refresh()
-  })
+  try {
+    EgressHelper.onLayoutChanged((next) => {
+      featuredId = parseFeatured(next)
+      refresh()
+    })
+  } catch (err) {
+    console.warn('onLayoutChanged', err)
+  }
 
-  // Absolute failsafe — never leave AwaitStartSignal hanging.
   window.setTimeout(() => start('failsafe'), 2000)
 
+  await room.connect(url, token)
+
+  // setRoom after connect — SDK reads localParticipant metadata / disconnect hooks.
   try {
-    await room.connect(url, token)
-    refresh()
-    // If remote pubs already exist, start immediately (matches LiveKit default template).
-    for (const p of room.remoteParticipants.values()) {
-      if (p.trackPublications.size > 0) {
-        start('existing_pubs')
-        break
-      }
-    }
+    EgressHelper.setRoom(room)
   } catch (err) {
-    console.error(err)
-    document.body.innerHTML = `<div class="waiting">${String(err?.message || err || 'connect failed')}</div>`
-    start('connect_error')
+    console.warn('setRoom', err)
+  }
+
+  refresh()
+  for (const p of room.remoteParticipants.values()) {
+    if (p.trackPublications.size > 0) {
+      start('existing_pubs')
+      break
+    }
   }
 }
 
 main().catch((err) => {
   console.error(err)
-  document.body.textContent = String(err?.message || err || 'egress template error')
-  try {
-    EgressHelper.startRecording()
-  } catch {
-    console.log('START_RECORDING')
-  }
+  const msg = err?.message || String(err || 'template error')
+  showStatus(`${msg} (qs=${window.location.search.length})`)
+  signalStart('main_catch')
 })

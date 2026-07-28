@@ -1028,10 +1028,31 @@ function VideoCallStage({
 
   const showDuoPip = Boolean(duoPipParticipant)
   const showStrip = !showDuoPip && stripParticipants.length > 0
+  // Explicit pin only (not auto active-speaker fullscreen)... recording uses this.
+  const mainPinned = Boolean(pinnedIdentity && pinnedIdentity === fullId)
+  const pipPinned = Boolean(
+    showDuoPip && pinnedIdentity && pinnedIdentity === duoPipParticipant.identity,
+  )
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden rounded-2xl bg-[#111b21]">
-      <div className="absolute inset-0 overflow-hidden" data-chat-call-main-video="">
+    <div
+      className={`relative h-full min-h-0 overflow-hidden rounded-2xl bg-[#111b21] ${
+        mainPinned ? 'ring-2 ring-inset ring-[#25d366]' : ''
+      }`}
+    >
+      <button
+        type="button"
+        className="absolute inset-0 z-[1] overflow-hidden touch-manipulation"
+        data-chat-call-main-video=""
+        aria-label={
+          mainPinned
+            ? 'Unpin this video for recording'
+            : 'Pin this video for recording'
+        }
+        onClick={() => {
+          if (fullId) onPinIdentity(fullId)
+        }}
+      >
         {fullHasCam && fullTrack ? (
           <VideoTrack
             trackRef={fullTrack}
@@ -1049,13 +1070,21 @@ function VideoCallStage({
             />
           </div>
         )}
-      </div>
+      </button>
+
+      {mainPinned ? (
+        <div className="pointer-events-none absolute left-3 top-3 z-[3] rounded-full bg-[#25d366] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#052e16] shadow">
+          Pinned
+        </div>
+      ) : null}
 
       {showDuoPip ? (
         <button
           type="button"
           data-chat-call-round-video=""
-          className="absolute bottom-3 right-3 z-[2] h-[7.5rem] w-[7.5rem] overflow-hidden rounded-full border-2 border-white/35 bg-[#1f2c34] shadow-lg touch-manipulation active:opacity-90"
+          className={`absolute bottom-3 right-3 z-[2] h-[7.5rem] w-[7.5rem] overflow-hidden rounded-full border-2 bg-[#1f2c34] shadow-lg touch-manipulation active:opacity-90 ${
+            pipPinned ? 'border-[#25d366]' : 'border-white/35'
+          }`}
           aria-label={
             duoPipParticipant.isLocal
               ? 'Show your video fullscreen'
@@ -1085,7 +1114,7 @@ function VideoCallStage({
         <div className="absolute bottom-3 left-0 right-0 z-[2] flex justify-center px-3">
           <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {stripParticipants.map((p) => {
-              const active = pinnedIdentity === p.identity || (!pinnedIdentity && fullId === p.identity)
+              const pinned = pinnedIdentity === p.identity
               const track = cameraByIdentity.get(p.identity)
               const hasCam = participantHasLiveCamera(p)
               const label = p.isLocal ? 'You' : p.name || p.identity.slice(0, 8)
@@ -1095,9 +1124,9 @@ function VideoCallStage({
                   type="button"
                   data-chat-call-round-video=""
                   className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 bg-[#1f2c34] touch-manipulation ${
-                    active ? 'border-[#25d366]' : 'border-white/25'
+                    pinned ? 'border-[#25d366]' : 'border-white/25'
                   }`}
-                  aria-label={`Show ${label} fullscreen`}
+                  aria-label={pinned ? `${label} pinned` : `Pin ${label} fullscreen`}
                   onClick={() => onPinIdentity(p.identity)}
                 >
                   {hasCam && track ? (

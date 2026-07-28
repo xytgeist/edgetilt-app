@@ -1,6 +1,9 @@
 /**
- * After vite.call-egress build: inline JS into dist/call-egress.html
- * so LiveKit Chrome has zero extra module fetches / CORS surface.
+ * Prepare dist/call-egress.html for LiveKit:
+ * - Keep JS as an external /assets/callEgress-*.js file (do NOT inline).
+ *   Inlining broke the HTML parser (~29KB into the bundle) and painted raw JS on screen.
+ * - Guarantee classic START_RECORDING is the first executable in <head>.
+ * - Strip crossorigin from script/link tags (unnecessary same-origin friction).
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -14,13 +17,13 @@ if (!fs.existsSync(htmlPath)) {
 }
 
 let html = fs.readFileSync(htmlPath, 'utf8')
+
 const scriptRe = /<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/
 const m = html.match(scriptRe)
 if (!m) {
-  console.error('No module script tag found in dist/call-egress.html')
+  console.error('No external module script tag found in dist/call-egress.html')
   process.exit(1)
 }
-
 const src = m[1]
 const abs = src.startsWith('/')
   ? path.join(root, 'dist', src.replace(/^\//, ''))
@@ -30,10 +33,23 @@ if (!fs.existsSync(abs)) {
   process.exit(1)
 }
 
-const js = fs.readFileSync(abs, 'utf8')
-const inlined = `<script type="module">\n${js}\n</script>`
-html = html.replace(scriptRe, inlined)
-// Drop stylesheet link if any (styles are already in <style> in source HTML).
+// Drop any Vite-injected crossorigin; keep external src.
+html = html.replace(
+  /<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/,
+  `<script type="module" src="$1"></script>`,
+)
+html = html.replace(/\s*crossorigin(?:="[^"]*")?/gi, '')
 html = html.replace(/<link rel="stylesheet"[^>]*>\s*/g, '')
+
+const startTag = `<script>\n      console.log('START_RECORDING')\n    </script>`
+html = html.replace(/<script>\s*console\.log\(['"]START_RECORDING['"]\)\s*<\/script>/g, '')
+html = html.replace(/<head([^>]*)>/i, `<head$1>\n    ${startTag}`)
+
 fs.writeFileSync(htmlPath, html)
-console.log('Inlined', path.basename(abs), 'into dist/call-egress.html (' + html.length + ' bytes)')
+console.log(
+  'Prepared',
+  path.basename(htmlPath),
+  'with external',
+  path.basename(abs),
+  '(' + html.length + ' html bytes, JS left external)',
+)

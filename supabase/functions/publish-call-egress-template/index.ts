@@ -5,7 +5,11 @@
  * Auth: service role bearer only.
  * Body:
  *   { source_origin?: "https://lvslotpro.com" }
- *   OR { html: "<!doctype...>", logo_base64?: "..." }  // direct upload (preferred for vanilla)
+ *   OR {
+ *        html: "<!doctype...>",
+ *        assets?: [{ path, fileName, content_base64, content_type }],
+ *        logo_base64?: "..."
+ *      }
  */
 import {
   loungeCfR2PublicUrl,
@@ -67,11 +71,14 @@ function assertEgressHtml(html: string, label: string) {
   if (!/Edge call recording/i.test(html)) {
     throw new Error(`${label} does not look like call-egress.html (missing title).`)
   }
-  // External asset OR inlined module (vanilla single-file).
   const hasAsset = /callEgress-/i.test(html)
   const inlined = /<script type="module">[\s\S]*livekit/i.test(html) || /START_RECORDING/i.test(html)
   if (!hasAsset && !inlined) {
     throw new Error(`${label} is missing callEgress assets / inlined LiveKit template.`)
+  }
+  // Prefer external assets — inlined 1MB modules have been breaking HTML parse in Chrome.
+  if (!hasAsset && /<script type="module">/.test(html)) {
+    console.warn('publish-call-egress-template: inlined module detected; prefer external assets')
   }
 }
 
@@ -80,6 +87,13 @@ function b64ToBytes(b64: string): Uint8Array {
   const out = new Uint8Array(bin.length)
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
   return out
+}
+
+type DirectAsset = {
+  path?: string
+  fileName?: string
+  content_base64?: string
+  content_type?: string
 }
 
 Deno.serve(async (req) => {
@@ -112,7 +126,6 @@ Deno.serve(async (req) => {
     : 'https://lvslotpro.com'
   const origin = String(body.source_origin || defaultOrigin).replace(/\/+$/, '')
   const prefix = 'call-egress'
-  // HTML is overwritten in place — short cache so LiveKit Chrome picks up fixes.
   const htmlCache = 'public, max-age=60'
 
   try {
@@ -122,6 +135,27 @@ Deno.serve(async (req) => {
     if (typeof body.html === 'string' && body.html.length > 500) {
       html = body.html
       assertEgressHtml(html, 'Direct html body')
+
+      const directAssets = Array.isArray(body.assets) ? (body.assets as DirectAsset[]) : []
+      for (const asset of directAssets) {
+        const fileName = String(asset.fileName || asset.path?.split('/').pop() || '').trim()
+        const b64 = String(asset.content_base64 || '')
+        if (!fileName || !b64) continue
+        const key = `${prefix}/${fileName}`
+        const bytes = b64ToBytes(b64)
+        const ct =
+          String(asset.content_type || '').trim() ||
+          (fileName.endsWith('.css')
+            ? 'text/css; charset=utf-8'
+            : 'application/javascript; charset=utf-8')
+        await loungeCfR2PutObject(r2, key, bytes, ct)
+        const publicUrl = loungeCfR2PublicUrl(r2, key)
+        const rel = String(asset.path || `/assets/${fileName}`)
+        html = html.split(`"${rel}"`).join(`"${publicUrl}"`)
+        // Also rewrite bare filename refs if present.
+        html = html.split(`"/assets/${fileName}"`).join(`"${publicUrl}"`)
+        uploaded.push(publicUrl)
+      }
     } else {
       const htmlUrl = `${origin}/call-egress.html`
       const htmlRes = await fetchBytes(htmlUrl)
@@ -177,7 +211,7 @@ Deno.serve(async (req) => {
       uploaded,
       inlined: !/src="[^"]*callEgress-/i.test(html),
       hint:
-        'Pin template is on R2. chat-calls currently forces speaker until custom is re-enabled after a successful smoke.',
+        'Template is on R2. chat-calls defaults to layout=edge with this URL (CHAT_CALL_EGRESS_USE_CUSTOM=0 for speaker).',
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

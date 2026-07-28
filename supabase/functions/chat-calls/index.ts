@@ -545,6 +545,57 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
 
   try {
+    let body: Record<string, unknown> = {}
+    try {
+      body = (await req.json()) as Record<string, unknown>
+    } catch {
+      return json(400, { error: 'Invalid JSON body.' })
+    }
+
+    const action = String(body.action || '').trim()
+    if (!action) return json(400, { error: 'Missing action.' })
+
+    const lk = requireLiveKitEnv()
+
+    // Service-role only: pull LiveKit egress status/error for a failed recording smoke.
+    if (action === 'debug_egress') {
+      let serviceOk = jwt === serviceKey
+      if (!serviceOk && jwt.startsWith('eyJ')) {
+        try {
+          const payload = JSON.parse(atob(jwt.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/') || ''))
+          serviceOk = payload?.role === 'service_role'
+        } catch {
+          serviceOk = false
+        }
+      }
+      if (!serviceOk) return json(401, { error: 'Service role required.' })
+      const egressId = String(body.egress_id || '').trim()
+      if (!egressId) return json(400, { error: 'Missing egress_id.' })
+      const listed = await egressClientFor(lk).listEgress({ egressId })
+      const info = Array.isArray(listed) ? listed[0] : listed
+      const safe = (v: unknown) =>
+        JSON.parse(
+          JSON.stringify(v, (_k, val) => (typeof val === 'bigint' ? val.toString() : val)),
+        )
+      return json(200, {
+        ok: true,
+        egress_id: egressId,
+        info: info
+          ? safe({
+              egressId: (info as { egressId?: string }).egressId,
+              status: (info as { status?: unknown }).status,
+              error: (info as { error?: string }).error || null,
+              details: (info as { details?: string }).details || null,
+              roomName: (info as { roomName?: string }).roomName || null,
+              startedAt: (info as { startedAt?: unknown }).startedAt ?? null,
+              endedAt: (info as { endedAt?: unknown }).endedAt ?? null,
+              file: (info as { file?: unknown }).file ?? (info as { fileResults?: unknown }).fileResults ?? null,
+              request: (info as { request?: unknown }).request ?? null,
+            })
+          : null,
+      })
+    }
+
     const {
       data: { user },
       error: userErr,
@@ -566,18 +617,6 @@ Deno.serve(async (req) => {
       String(actorProfile?.display_name || '').trim() ||
       String(actorProfile?.handle || '').trim() ||
       'Member'
-
-    let body: Record<string, unknown> = {}
-    try {
-      body = (await req.json()) as Record<string, unknown>
-    } catch {
-      return json(400, { error: 'Invalid JSON body.' })
-    }
-
-    const action = String(body.action || '').trim()
-    if (!action) return json(400, { error: 'Missing action.' })
-
-    const lk = requireLiveKitEnv()
 
     if (action === 'start_call') {
       const roomId = String(body.room_id || '').trim()
@@ -963,11 +1002,12 @@ Deno.serve(async (req) => {
 
       const startedAt = new Date().toISOString()
       const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
-      // Custom pin template still failing in LiveKit Chrome (React + R2). Force speaker until
-      // the single-file vanilla template is proven. Ignore CHAT_CALL_EGRESS_USE_CUSTOM for now.
-      const useCustomTemplate = false
-      const egressLayout = 'speaker'
-      void templateBaseUrl
+      // Custom R2 template: pin (or recorder) as main via layout=focus:<identity>.
+      // Set CHAT_CALL_EGRESS_USE_CUSTOM=0 for LiveKit built-in speaker.
+      const customDisabled =
+        String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '0'
+      const useCustomTemplate = Boolean(templateBaseUrl) && !customDisabled
+      const egressLayout = useCustomTemplate ? `focus:${featuredIdentity}` : 'speaker'
 
       const { data: claimed, error: claimErr } = await admin
         .from('chat_calls')

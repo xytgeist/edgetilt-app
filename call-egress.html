@@ -2,6 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Must be first executable: LiveKit waits for this console line before writing any MP4.
+         Keep it classic (not type=module) and ABOVE the big bundle so it runs immediately. -->
+    <script>
+      console.log('START_RECORDING')
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Edge call recording</title>
     <meta name="robots" content="noindex, nofollow" />

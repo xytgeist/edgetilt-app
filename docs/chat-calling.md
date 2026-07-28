@@ -61,4 +61,6 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 4. Deploy `chat-calls` + redeploy `lounge-send-activity-push`.
 5. Smoke: DM video ring both devices; group audio join; push tap with `?call=` while app backgrounded on iPhone PWA.
 
-**Prod promote (2026-07-27):** SQL through **`20260728030000`** + Edge **`chat-calls`** / **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`**. Frontend shipped via **`main`**. Re-check **`LIVEKIT_*`** secrets on prod if calls fail to connect.
+**Prod promote (2026-07-27):** SQL through **`20260728030000`** (+ **`20260728040000`** replica identity) + Edge **`chat-calls`** / **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`**. Frontend via **`main`**.
+
+**Prod promote (2026-07-27, UX batch):** WhatsApp in-call polish, group leave semantics, earpiece/speaker, late-join Join bar + avatars → **`main`**; redeploy **`chat-calls`** on prod for **`leave_call`** / end-when-≤1-remains. No new SQL.

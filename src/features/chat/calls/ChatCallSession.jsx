@@ -1016,9 +1016,13 @@ function VideoCallStage({
 
   return (
     <div className="relative h-full min-h-0 overflow-hidden rounded-2xl bg-[#111b21]">
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 overflow-hidden" data-chat-call-main-video="">
         {fullHasCam && fullTrack ? (
-          <VideoTrack trackRef={fullTrack} className="h-full w-full object-cover" />
+          <VideoTrack
+            trackRef={fullTrack}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+          />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#111b21]">
             <CallAvatarCircle

@@ -101,9 +101,15 @@ export default function ChatIncomingCallOverlay({
       </div>
       <h2 className="mt-4 max-w-sm text-[28px] font-black tracking-tight text-[#fafafa]">{title}</h2>
       <p className="mt-2 text-[15px] text-[#a1a1aa]">{subtitle}</p>
-      <p className="mt-8 max-w-xs text-[12px] leading-relaxed text-[#71717a]">
-        Keep Edge open during calls.
-      </p>
+      {busy ? (
+        <p className="mt-6 text-[13px] font-semibold text-[#67e8f9]" role="status">
+          Connecting…
+        </p>
+      ) : (
+        <p className="mt-8 max-w-xs text-[12px] leading-relaxed text-[#71717a]">
+          Keep Edge open during calls.
+        </p>
+      )}
 
       {showDeclineQuickReplies ? (
         <div className="mt-8 w-full max-w-sm text-left">

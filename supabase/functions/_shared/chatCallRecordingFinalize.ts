@@ -15,8 +15,28 @@ export type ChatCallRecordingRow = {
   recording_egress_id?: string | null
 }
 
-export function egressInfoLooksFailed(status: string, error?: unknown): boolean {
-  const s = String(status || '')
+/**
+ * LiveKit may return EgressStatus as a string name or a numeric protobuf enum:
+ * 0 STARTING, 1 ACTIVE, 2 ENDING, 3 COMPLETE, 4 FAILED, 5 ABORTED, 6 LIMIT_REACHED
+ */
+export function normalizeEgressStatus(status: unknown): string {
+  if (typeof status === 'number' && Number.isFinite(status)) {
+    const map: Record<number, string> = {
+      0: 'EGRESS_STARTING',
+      1: 'EGRESS_ACTIVE',
+      2: 'EGRESS_ENDING',
+      3: 'EGRESS_COMPLETE',
+      4: 'EGRESS_FAILED',
+      5: 'EGRESS_ABORTED',
+      6: 'EGRESS_LIMIT_REACHED',
+    }
+    return map[status] || String(status)
+  }
+  return String(status || '')
+}
+
+export function egressInfoLooksFailed(status: unknown, error?: unknown): boolean {
+  const s = normalizeEgressStatus(status)
   return (
     s.includes('FAILED') ||
     s.includes('ABORTED') ||
@@ -25,9 +45,24 @@ export function egressInfoLooksFailed(status: string, error?: unknown): boolean 
   )
 }
 
-export function egressInfoLooksComplete(status: string): boolean {
-  const s = String(status || '')
-  return s.includes('COMPLETE') || s === 'EGRESS_COMPLETE'
+export function egressInfoLooksComplete(status: unknown): boolean {
+  const s = normalizeEgressStatus(status)
+  return s.includes('COMPLETE') && !s.includes('INCOMPLETE')
+}
+
+/** Public R2 object exists → safe to post the chat card even if webhook/listEgress status is odd. */
+export async function recordingObjectExists(videoUrl: string): Promise<boolean> {
+  const url = String(videoUrl || '').trim()
+  if (!url) return false
+  try {
+    const head = await fetch(url, { method: 'HEAD' })
+    if (head.ok) return true
+    // Some CDNs dislike HEAD; try a tiny ranged GET.
+    const get = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-0' } })
+    return get.ok || get.status === 206
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -37,7 +72,7 @@ export function egressInfoLooksComplete(status: string): boolean {
 export async function finalizeChatCallRecording(
   admin: SupabaseClient,
   call: ChatCallRecordingRow,
-  opts: { failed?: boolean; errorDetail?: string | null } = {},
+  opts: { failed?: boolean; errorDetail?: string | null; requireObject?: boolean } = {},
 ): Promise<{ recording_status: string; video_url?: string | null; skipped?: boolean }> {
   const current = String(call.recording_status || '')
   if (current === 'ready' || current === 'failed') {
@@ -64,6 +99,13 @@ export async function finalizeChatCallRecording(
   }
 
   const videoUrl = loungeCfR2PublicUrl(r2, r2Key)
+  if (opts.requireObject) {
+    const exists = await recordingObjectExists(videoUrl)
+    if (!exists) {
+      return { recording_status: current || 'stopping', skipped: true }
+    }
+  }
+
   const senderId = String(call.recording_started_by || call.started_by || '').trim()
   if (!senderId) {
     await admin.from('chat_calls').update({ recording_status: 'failed' }).eq('id', call.id)
@@ -95,7 +137,7 @@ export async function finalizeChatCallRecording(
     .from('chat_calls')
     .update({ recording_status: 'ready' })
     .eq('id', call.id)
-    .in('recording_status', ['recording', 'stopping', 'ready'])
+    .in('recording_status', ['recording', 'stopping', 'ready', 'failed'])
 
   return { recording_status: 'ready', video_url: videoUrl }
 }

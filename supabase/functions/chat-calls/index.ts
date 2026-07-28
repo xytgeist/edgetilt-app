@@ -16,6 +16,7 @@ import {
   egressInfoLooksComplete,
   egressInfoLooksFailed,
   finalizeChatCallRecording,
+  normalizeEgressStatus,
 } from '../_shared/chatCallRecordingFinalize.ts'
 import { loungeCfR2PublicUrl, readLoungeCfR2Config } from '../_shared/loungeCfR2.ts'
 
@@ -413,21 +414,29 @@ async function reconcileRecordingFromLiveKit(
   try {
     const listed = await egressClientFor(lk).listEgress({ egressId })
     const info = Array.isArray(listed) ? listed[0] : listed
-    if (!info) return null
-    const egStatus = String((info as { status?: string }).status || '')
-    if (egressInfoLooksFailed(egStatus, (info as { error?: string }).error)) {
-      return await finalizeChatCallRecording(admin, call, {
-        failed: true,
-        errorDetail: String((info as { error?: string }).error || egStatus),
-      })
-    }
-    if (egressInfoLooksComplete(egStatus)) {
-      return await finalizeChatCallRecording(admin, call)
+    if (info) {
+      const rawStatus = (info as { status?: unknown }).status
+      const egStatus = normalizeEgressStatus(rawStatus)
+      if (egressInfoLooksFailed(rawStatus, (info as { error?: string }).error)) {
+        // File may still have landed on R2 before LiveKit marked failed... prefer card if object exists.
+        const recovered = await finalizeChatCallRecording(admin, call, { requireObject: true })
+        if (recovered.recording_status === 'ready') return recovered
+        return await finalizeChatCallRecording(admin, call, {
+          failed: true,
+          errorDetail: String((info as { error?: string }).error || egStatus),
+        })
+      }
+      if (egressInfoLooksComplete(rawStatus)) {
+        return await finalizeChatCallRecording(admin, call)
+      }
     }
   } catch (err) {
     console.warn('chat-calls: listEgress reconcile failed', call.id, egressId, egressErrorMessage(err))
   }
-  return null
+
+  // Webhook/listEgress status can lag or arrive as a numeric enum we used to miss.
+  // If the MP4 is already public on R2, post the card.
+  return await finalizeChatCallRecording(admin, call, { requireObject: true })
 }
 
 function recordingPublicFields(call: Record<string, unknown>) {
@@ -1034,10 +1043,10 @@ Deno.serve(async (req) => {
 
       await stopActiveRecordingEgress(admin, lk, call, { throwOnError: true })
 
-      // Webhook may take a bit; poll LiveKit once so we can finalize without waiting on it.
+      // Webhook may take a bit; poll LiveKit + R2 until the MP4 is public (or failed).
       let working = { ...call, recording_status: 'stopping' as string }
-      for (let i = 0; i < 4; i++) {
-        await new Promise((r) => setTimeout(r, i === 0 ? 800 : 1500))
+      for (let i = 0; i < 8; i++) {
+        await new Promise((r) => setTimeout(r, i === 0 ? 1000 : 2000))
         const reconciled = await reconcileRecordingFromLiveKit(admin, lk, working)
         const { data: refreshed } = await admin
           .from('chat_calls')
@@ -1045,7 +1054,12 @@ Deno.serve(async (req) => {
           .eq('id', callId)
           .maybeSingle()
         if (refreshed) working = refreshed
-        if (reconciled || working.recording_status === 'ready' || working.recording_status === 'failed') {
+        if (
+          reconciled?.recording_status === 'ready' ||
+          reconciled?.recording_status === 'failed' ||
+          working.recording_status === 'ready' ||
+          working.recording_status === 'failed'
+        ) {
           break
         }
       }

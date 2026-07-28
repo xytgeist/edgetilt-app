@@ -71,11 +71,12 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, ignored: true, reason: 'unknown_egress' })
     }
 
-    const status = String(egressInfo?.status || '')
-    const failed = egressInfoLooksFailed(status, egressInfo?.error)
+    const failed = egressInfoLooksFailed(egressInfo?.status, egressInfo?.error)
     const result = await finalizeChatCallRecording(admin, call, {
       failed,
-      errorDetail: failed ? String(egressInfo?.error || status || 'egress failed') : null,
+      errorDetail: failed
+        ? String(egressInfo?.error || egressInfo?.status || 'egress failed')
+        : null,
     })
 
     return json(200, {

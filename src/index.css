@@ -4643,6 +4643,18 @@ html.light .reaction-pill {
   background: #1f2c34;
 }
 
+/* Call main / fullscreen stage: same cover crop (no letterbox). */
+[data-chat-call-session] [data-chat-call-main-video] video {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover !important;
+  object-position: center center;
+  background: #111b21;
+}
+
 [data-chat-composer-host] {
   background: transparent !important;
 }

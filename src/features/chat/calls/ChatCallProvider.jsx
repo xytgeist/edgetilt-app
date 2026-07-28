@@ -579,7 +579,6 @@ export function ChatCallProvider({
         const call = res.call
         const roomId = String(call.chat_room_id || '')
         ensureBroadcast(roomId)?.emit('accept', { callId: call.id })
-        if (opts.openRoom !== false) onOpenRoom?.(roomId)
         let viewerAvatarUrl =
           typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
             ? opts.viewerAvatarUrl.trim()
@@ -595,7 +594,7 @@ export function ChatCallProvider({
         const avatarUrl =
           typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim() ? opts.avatarUrl.trim() : null
         endingRef.current = false
-        setIncoming(null)
+        // Mount call UI before room navigation so Accept never flashes the underlying tab.
         setActiveCall({
           callId: call.id,
           roomId,
@@ -613,6 +612,8 @@ export function ChatCallProvider({
               : null,
           ...recordingFieldsFromCall(call),
         })
+        setIncoming(null)
+        if (opts.openRoom !== false) onOpenRoom?.(roomId)
         return call
       } catch (err) {
         showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
@@ -730,8 +731,8 @@ export function ChatCallProvider({
   const acceptIncoming = useCallback(async () => {
     if (!incoming) return
     const snap = incoming
-    // Clear overlay (stops ringtone) before join unlocks LiveKit audio.
-    setIncoming(null)
+    // Keep the incoming chrome up until joinCall mounts ChatCallSession...
+    // clearing early flashes whatever app screen was underneath.
     await joinCall(snap.callId, {
       title: snap.title,
       avatarUrl: snap.avatarUrl || null,
@@ -965,13 +966,15 @@ export function ChatCallProvider({
         title={incoming?.title || 'Incoming call'}
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={
-          incoming?.kind === 'group_audio'
-            ? incoming?.mediaMode === 'video'
-              ? 'Group video call'
-              : 'Group voice call'
-            : incoming?.mediaMode === 'video'
-              ? 'Incoming video call'
-              : 'Incoming voice call'
+          busy
+            ? 'Connecting…'
+            : incoming?.kind === 'group_audio'
+              ? incoming?.mediaMode === 'video'
+                ? 'Group video call'
+                : 'Group voice call'
+              : incoming?.mediaMode === 'video'
+                ? 'Incoming video call'
+                : 'Incoming voice call'
         }
         isVideo={incoming?.mediaMode === 'video'}
         busy={busy}

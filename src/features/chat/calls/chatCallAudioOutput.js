@@ -1,44 +1,105 @@
 /**
- * Route call playback to phone earpiece vs speakerphone when the browser exposes
- * audiooutput devices (Chrome Android; some newer Safari). iOS Safari/PWA often
- * cannot switch... UI still toggles, OS may keep media/speaker routing.
+ * Route call audio between earpiece and speakerphone.
+ *
+ * Chrome Android does **not** support HTMLMediaElement.setSinkId. Instead it exposes
+ * phantom `audioinput` devices labeled "Headset earpiece" / "Speakerphone" (from
+ * Chromium AudioManagerAndroid). Switching the LiveKit mic to that deviceId also
+ * routes remote playback to the matching path.
+ *
+ * Desktop / iOS: best-effort setSinkId / audiooutput when available; often no-op.
  */
-import { Room } from 'livekit-client'
+import { Room, Track } from 'livekit-client'
+
+/**
+ * @param {MediaDeviceInfo | { label?: string, kind?: string, deviceId?: string }} d
+ */
+function labelOf(d) {
+  return String(d?.label || '').toLowerCase()
+}
+
+/**
+ * @param {MediaDeviceInfo | { label?: string }} d
+ */
+export function isEarpieceLabel(d) {
+  const label = labelOf(d)
+  return /headset earpiece|earpiece|ear piece|phone ear|receiver/.test(label)
+}
+
+/**
+ * @param {MediaDeviceInfo | { label?: string }} d
+ */
+export function isSpeakerphoneLabel(d) {
+  const label = labelOf(d)
+  if (isEarpieceLabel(d)) return false
+  return label === 'speakerphone' || /speakerphone|speaker phone/.test(label) || label === 'speaker'
+}
 
 /**
  * @param {MediaDeviceInfo[]} devices
  * @param {'earpiece' | 'speakerphone'} prefer
- * @returns {string | null} deviceId
+ * @returns {{ deviceId: string, kind: 'audioinput' | 'audiooutput' } | null}
  */
-export function pickCallAudioOutputDeviceId(devices, prefer) {
-  const pool = (devices || []).filter((d) => d?.kind === 'audiooutput')
-  if (!pool.length) return null
+export function pickCallAudioRoute(devices, prefer) {
+  const list = devices || []
+  const inputs = list.filter((d) => d?.kind === 'audioinput' && d.deviceId)
+  const outputs = list.filter((d) => d?.kind === 'audiooutput' && d.deviceId)
 
-  const labelOf = (d) => String(d.label || '').toLowerCase()
-  const isEarpiece = (d) =>
-    /earpiece|ear piece|receiver|phone ear|headset earpiece/.test(labelOf(d))
-  const isSpeakerphone = (d) =>
-    (/speakerphone|speaker phone|\bspeaker\b/.test(labelOf(d)) || labelOf(d) === 'speaker') &&
-    !isEarpiece(d)
-
-  if (prefer === 'earpiece') {
-    const hit = pool.find(isEarpiece)
-    if (hit?.deviceId) return hit.deviceId
-    // Prefer non-speakerphone default when labels exist.
-    const nonSpeaker = pool.find((d) => labelOf(d) && !isSpeakerphone(d))
-    if (nonSpeaker?.deviceId && pool.some(isSpeakerphone)) return nonSpeaker.deviceId
+  if (prefer === 'speakerphone') {
+    const inHit = inputs.find(isSpeakerphoneLabel)
+    if (inHit?.deviceId) return { deviceId: inHit.deviceId, kind: 'audioinput' }
+    const outHit = outputs.find(isSpeakerphoneLabel)
+    if (outHit?.deviceId) return { deviceId: outHit.deviceId, kind: 'audiooutput' }
     return null
   }
 
-  const hit = pool.find(isSpeakerphone)
-  if (hit?.deviceId) return hit.deviceId
-  const nonEar = pool.find((d) => !isEarpiece(d))
-  return nonEar?.deviceId || pool[0]?.deviceId || null
+  // Ear / private: prefer real headset if connected, else phantom earpiece.
+  const bluetooth = inputs.find((d) => /bluetooth/.test(labelOf(d)))
+  if (bluetooth?.deviceId) return { deviceId: bluetooth.deviceId, kind: 'audioinput' }
+  const wired = inputs.find((d) => /wired headset|wired headphone|headphones/.test(labelOf(d)))
+  if (wired?.deviceId) return { deviceId: wired.deviceId, kind: 'audioinput' }
+
+  const inHit = inputs.find(isEarpieceLabel)
+  if (inHit?.deviceId) return { deviceId: inHit.deviceId, kind: 'audioinput' }
+  const outHit = outputs.find(isEarpieceLabel)
+  if (outHit?.deviceId) return { deviceId: outHit.deviceId, kind: 'audiooutput' }
+  return null
+}
+
+/**
+ * @returns {Promise<MediaDeviceInfo[]>}
+ */
+async function listAudioDevices() {
+  /** @type {MediaDeviceInfo[]} */
+  let devices = []
+  try {
+    const inputs = await Room.getLocalDevices('audioinput', true)
+    devices = devices.concat(inputs || [])
+  } catch {
+    /* ignore */
+  }
+  try {
+    const outputs = await Room.getLocalDevices('audiooutput', true)
+    devices = devices.concat(outputs || [])
+  } catch {
+    /* ignore */
+  }
+  if (devices.length) return devices
+  try {
+    return await navigator.mediaDevices.enumerateDevices()
+  } catch {
+    return []
+  }
 }
 
 /**
  * @param {{
- *   room?: { switchActiveDevice?: (kind: string, deviceId: string) => Promise<unknown> } | null
+ *   room?: {
+ *     getActiveDevice?: (kind: string) => string | undefined
+ *     switchActiveDevice?: (kind: string, deviceId: string, exact?: boolean) => Promise<unknown>
+ *     localParticipant?: {
+ *       getTrackPublication?: (source: unknown) => { track?: { restartTrack?: (opts: unknown) => Promise<void> } } | undefined
+ *     }
+ *   } | null
  *   speakerphoneOn: boolean
  *   rootSelector?: string
  * }} args
@@ -49,45 +110,97 @@ export async function applyCallAudioOutput({
   rootSelector = '[data-chat-call-session]',
 }) {
   const prefer = speakerphoneOn ? 'speakerphone' : 'earpiece'
-  let deviceId = null
+  const devices = await listAudioDevices()
+  const route = pickCallAudioRoute(devices, prefer)
 
-  try {
-    // requestPermissions so Android Chrome fills "Headset earpiece" / "Speakerphone" labels.
-    const listed = await Room.getLocalDevices('audiooutput', true)
-    deviceId = pickCallAudioOutputDeviceId(listed, prefer)
-  } catch {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      deviceId = pickCallAudioOutputDeviceId(devices, prefer)
-    } catch {
-      deviceId = null
+  let routed = false
+  let method = 'none'
+
+  const alreadyActive =
+    route &&
+    room &&
+    typeof room.getActiveDevice === 'function' &&
+    room.getActiveDevice(route.kind) === route.deviceId
+
+  if (alreadyActive) {
+    return {
+      preferred: prefer,
+      routed: true,
+      method: 'already',
+      deviceId: route.deviceId,
+      canRoute: true,
     }
   }
 
-  // Empty string = browser default (often loudspeaker for web media). Only use when
-  // we could not resolve a labeled earpiece/speakerphone device.
-  const sinkId = deviceId || ''
-
-  if (room && typeof room.switchActiveDevice === 'function' && sinkId) {
+  if (route && room && typeof room.switchActiveDevice === 'function') {
     try {
-      await room.switchActiveDevice('audiooutput', sinkId)
+      await room.switchActiveDevice(route.kind, route.deviceId, true)
+      routed = true
+      method = route.kind
     } catch {
-      /* Safari / denied */
+      /* try restartTrack / setSinkId below */
     }
   }
 
-  const root = typeof document !== 'undefined' ? document.querySelector(rootSelector) : null
-  const audios = root ? root.querySelectorAll('audio') : []
-
-  for (const el of audios) {
-    if (el && typeof el.setSinkId === 'function') {
+  // Fallback: restart local mic onto phantom Speakerphone / Headset earpiece.
+  if (!routed && route?.kind === 'audioinput' && room?.localParticipant) {
+    const pub = room.localParticipant.getTrackPublication?.(Track.Source.Microphone)
+    const track = pub?.track
+    if (track && typeof track.restartTrack === 'function') {
       try {
-        await el.setSinkId(sinkId)
+        await track.restartTrack({ deviceId: { exact: route.deviceId } })
+        routed = true
+        method = 'audioinput-restart'
       } catch {
-        /* iOS / unsupported */
+        try {
+          await track.restartTrack({ deviceId: route.deviceId })
+          routed = true
+          method = 'audioinput-restart'
+        } catch {
+          /* ignore */
+        }
       }
     }
   }
 
-  return { sinkId, preferred: prefer }
+  // Desktop / newer Safari: setSinkId on RoomAudioRenderer <audio> elements.
+  if (route?.kind === 'audiooutput' || (!routed && route?.deviceId)) {
+    const sinkId = route.deviceId
+    const root = typeof document !== 'undefined' ? document.querySelector(rootSelector) : null
+    const audios = root ? root.querySelectorAll('audio') : []
+    for (const el of audios) {
+      if (el && typeof el.setSinkId === 'function') {
+        try {
+          await el.setSinkId(sinkId)
+          routed = true
+          if (method === 'none') method = 'setSinkId'
+        } catch {
+          /* Chrome Android: setSinkId unsupported */
+        }
+      }
+    }
+  }
+
+  return {
+    preferred: prefer,
+    routed,
+    method,
+    deviceId: route?.deviceId || null,
+    canRoute: Boolean(route),
+  }
+}
+
+/**
+ * True when the browser exposes earpiece/speakerphone route devices (typical Android Chrome).
+ * @returns {Promise<boolean>}
+ */
+export async function canToggleCallAudioRoute() {
+  try {
+    const devices = await listAudioDevices()
+    const ear = pickCallAudioRoute(devices, 'earpiece')
+    const speaker = pickCallAudioRoute(devices, 'speakerphone')
+    return Boolean(ear?.deviceId && speaker?.deviceId && ear.deviceId !== speaker.deviceId)
+  } catch {
+    return false
+  }
 }

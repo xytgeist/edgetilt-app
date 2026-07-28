@@ -11,7 +11,7 @@ import {
 } from '@livekit/components-react'
 import { Track, Room, facingModeFromLocalTrack } from 'livekit-client'
 import '@livekit/components-styles'
-import { applyCallAudioOutput } from './chatCallAudioOutput.js'
+import { applyCallAudioOutput, canToggleCallAudioRoute } from './chatCallAudioOutput.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
@@ -342,6 +342,7 @@ function CallChrome({
   const [camOn, setCamOn] = useState(videoEnabled)
   /** false = earpiece (default); true = speakerphone */
   const [speakerOn, setSpeakerOn] = useState(false)
+  const [audioRouteSupported, setAudioRouteSupported] = useState(false)
   const [cameraBusy, setCameraBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
@@ -450,18 +451,32 @@ function CallChrome({
   const applySpeakerSink = async (nextOn) => {
     setSpeakerOn(nextOn)
     try {
-      await applyCallAudioOutput({ room, speakerphoneOn: nextOn })
+      const result = await applyCallAudioOutput({ room, speakerphoneOn: nextOn })
+      if (result?.canRoute) setAudioRouteSupported(true)
     } catch {
       /* iOS / unsupported — UI state still toggles */
     }
   }
 
-  // Default earpiece; re-apply when remotes/audio elements appear (RoomAudioRenderer mounts late).
+  // Probe Android phantom routes (Speakerphone / Headset earpiece as audioinput).
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const ok = await canToggleCallAudioRoute()
+      if (!cancelled) setAudioRouteSupported(ok)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [room, remoteCount, micOn])
+
+  // Default earpiece via Android audioinput route; retry as mic/remotes come up.
   useEffect(() => {
     let cancelled = false
     const run = async () => {
       try {
-        await applyCallAudioOutput({ room, speakerphoneOn: speakerOn })
+        const result = await applyCallAudioOutput({ room, speakerphoneOn: speakerOn })
+        if (!cancelled && result?.canRoute) setAudioRouteSupported(true)
       } catch {
         /* ignore */
       }
@@ -478,7 +493,7 @@ function CallChrome({
       window.clearTimeout(t1)
       window.clearTimeout(t2)
     }
-  }, [room, speakerOn, remoteCount])
+  }, [room, speakerOn, remoteCount, micOn])
 
   const flipCamera = async () => {
     if (!localParticipant || !camOn || cameraBusy) return
@@ -577,8 +592,19 @@ function CallChrome({
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
           speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
         }`}
-        aria-label={speakerOn ? 'Speakerphone on, tap for earpiece' : 'Earpiece, tap for speakerphone'}
+        aria-label={
+          speakerOn
+            ? 'Speakerphone on, tap for earpiece'
+            : audioRouteSupported
+              ? 'Earpiece, tap for speakerphone'
+              : 'Speaker (routing may be limited on this device)'
+        }
         aria-pressed={speakerOn}
+        title={
+          audioRouteSupported
+            ? undefined
+            : 'This browser may not support earpiece vs speakerphone switching'
+        }
         onClick={() => void applySpeakerSink(!speakerOn)}
       >
         <SpeakerIcon on={speakerOn} />

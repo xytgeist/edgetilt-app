@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import EgressHelper from '@livekit/egress-sdk'
 import {
@@ -11,6 +11,10 @@ import {
 import { ConnectionState, Track } from 'livekit-client'
 import '@livekit/components-styles'
 import './callEgress.css'
+
+/** Match LiveKit default template; hard-start so Stop never races an endless wait. */
+const FRAME_DECODE_TIMEOUT_MS = 5000
+const HARD_START_MS = 4000
 
 function parseFeaturedIdentity(layout) {
   const raw = String(layout || '').trim()
@@ -96,8 +100,8 @@ function FocusComposite({ featuredIdentity }) {
   }, [room])
 
   useEffect(() => {
+    if (!room) return undefined
     if (startedRef.current) return undefined
-    if (!room || room.state === ConnectionState.Disconnected) return undefined
 
     const startTime = Date.now()
     const interval = window.setInterval(async () => {
@@ -105,6 +109,7 @@ function FocusComposite({ featuredIdentity }) {
         window.clearInterval(interval)
         return
       }
+      if (room.state === ConnectionState.Disconnected) return
 
       let hasSubscribed = false
       let hasVideo = false
@@ -130,10 +135,12 @@ function FocusComposite({ featuredIdentity }) {
       }
 
       const elapsed = Date.now() - startTime
+      // Official template logic + hard start so short Record→Stop still finalizes an MP4.
       const ready =
         hasDecoded ||
         (!hasVideo && hasSubscribed && elapsed > 500) ||
-        (hasSubscribed && elapsed > 10000)
+        (hasSubscribed && elapsed > FRAME_DECODE_TIMEOUT_MS) ||
+        elapsed > HARD_START_MS
 
       if (ready) {
         startedRef.current = true
@@ -143,7 +150,8 @@ function FocusComposite({ featuredIdentity }) {
     }, 100)
 
     return () => window.clearInterval(interval)
-  }, [room, featured?.participant?.identity])
+    // Only re-bind when the Room instance changes... not when featured tile swaps.
+  }, [room])
 
   if (room.state === ConnectionState.Disconnected) {
     return <div className="ce-fallback">Disconnected</div>
@@ -193,8 +201,5 @@ function FocusComposite({ featuredIdentity }) {
   )
 }
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <CallEgressApp />
-  </StrictMode>,
-)
+// No StrictMode: LiveKit egress waits on a single START_RECORDING console signal.
+createRoot(document.getElementById('root')).render(<CallEgressApp />)

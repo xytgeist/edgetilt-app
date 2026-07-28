@@ -255,16 +255,16 @@ export default function ChatCallRecordingCard({
             onOpen()
           }}
           disabled={!videoUrl}
-          className={`relative mx-auto block overflow-hidden touch-manipulation active:opacity-90 disabled:opacity-60 ${
-            isPortrait ? 'aspect-[9/16] w-[min(100%,12rem)]' : 'aspect-[16/10] w-full'
-          }`}
+          className="relative block w-full aspect-[16/10] overflow-hidden touch-manipulation active:opacity-90 disabled:opacity-60"
           aria-label="Play call recording"
         >
           {posterUrl ? (
             <img
               src={posterUrl}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover object-center"
+              className={`absolute inset-0 h-full w-full object-cover object-center ${
+                isPortrait ? 'scale-125' : ''
+              }`}
             />
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />

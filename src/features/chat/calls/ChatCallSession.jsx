@@ -16,6 +16,7 @@ import { applyCallAudioOutput, canToggleCallAudioRoute } from './chatCallAudioOu
 import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
+import LiveVoiceCallStt from './LiveVoiceCallStt.jsx'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -217,6 +218,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   serverUrl: string,
  *   mediaMode: 'audio' | 'video',
  *   kind: 'dm_av' | 'group_audio',
+ *   callId?: string | null,
  *   title: string,
  *   isOutgoing?: boolean,
  *   avatarUrl?: string | null,
@@ -241,6 +243,7 @@ export default function ChatCallSession({
   serverUrl,
   mediaMode,
   kind,
+  callId = null,
   title,
   isOutgoing = false,
   avatarUrl = null,
@@ -322,6 +325,7 @@ export default function ChatCallSession({
           <>
             <CallChrome
               title={title}
+              callId={callId}
               videoEnabled={videoEnabled}
               isGroup={kind === 'group_audio'}
               isOutgoing={isOutgoing}
@@ -368,6 +372,7 @@ function CallStartAudioGate() {
 
 function CallChrome({
   title,
+  callId = null,
   videoEnabled,
   isGroup,
   isOutgoing,
@@ -422,6 +427,9 @@ function CallChrome({
   // Only ringback while waiting for first answer... never again after a remote joined
   // (callee hangup briefly drops remoteCount to 0 before we tear down).
   const awaitingAnswer = Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
+
+  // Voice only: live STT after answer (no recording card).
+  const liveSttEnabled = !videoEnabled && Boolean(callId) && Boolean(supabaseClient)
 
   const participantIds = useMemo(
     () => participants.map((p) => p.identity).filter(Boolean),
@@ -813,15 +821,27 @@ function CallChrome({
     </>
   )
 
+  const liveSttNode = liveSttEnabled ? (
+    <LiveVoiceCallStt
+      enabled
+      callId={callId}
+      supabaseClient={supabaseClient}
+      awaitingAnswer={awaitingAnswer}
+    />
+  ) : null
+
   if (minimized) {
     return (
-      <DraggableMinimizedCallPill
-        avatarUrl={avatarUrl}
-        title={title}
-        onExpand={onExpand}
-      >
-        {controlButtons}
-      </DraggableMinimizedCallPill>
+      <>
+        {liveSttNode}
+        <DraggableMinimizedCallPill
+          avatarUrl={avatarUrl}
+          title={title}
+          onExpand={onExpand}
+        >
+          {controlButtons}
+        </DraggableMinimizedCallPill>
+      </>
     )
   }
 
@@ -833,6 +853,7 @@ function CallChrome({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
+      {liveSttNode}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{

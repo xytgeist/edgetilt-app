@@ -15,6 +15,7 @@ import {
  *   },
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   onPreviewUpdated?: (messageId: string, preview: object) => void,
+ *   liveSummary?: boolean,
  * }} props
  */
 export default function ChatCallTranscriptModal({
@@ -23,6 +24,7 @@ export default function ChatCallTranscriptModal({
   message,
   supabaseClient,
   onPreviewUpdated,
+  liveSummary = false,
 }) {
   const [preview, setPreview] = useState(/** @type {any} */ (message?.link_preview || null))
   const [loading, setLoading] = useState(false)
@@ -73,6 +75,17 @@ export default function ChatCallTranscriptModal({
   const runTranscribe = useCallback(
     async (force = false) => {
       if (!supabaseClient || !message?.id) return
+      // Voice call summaries are filled by live STT... no post-hoc Deepgram URL job.
+      if (liveSummary) {
+        setPreview(message?.link_preview || null)
+        if (!hasLiveLines(message?.link_preview)) {
+          setError(
+            String(message?.link_preview?.transcript_error || '') ||
+              'No transcript lines yet. Live transcription only captures speech while connected.',
+          )
+        }
+        return
+      }
       setLoading(true)
       setError('')
       try {
@@ -103,17 +116,17 @@ export default function ChatCallTranscriptModal({
         setLoading(false)
       }
     },
-    [supabaseClient, message?.id, applyPreview],
+    [supabaseClient, message?.id, message?.link_preview, applyPreview, liveSummary],
   )
 
   useEffect(() => {
     if (!open || !supabaseClient || !message?.id) return
     const st = String(message?.link_preview?.transcript_status || '')
-    const hasUtterances = Array.isArray(message?.link_preview?.transcript?.utterances)
-      && message.link_preview.transcript.utterances.length > 0
+    const hasUtterances = hasLiveLines(message?.link_preview)
     if (st === 'ready' && hasUtterances) return
+    if (liveSummary) return
     void runTranscribe(false)
-  }, [open, supabaseClient, message?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- run once on open
+  }, [open, supabaseClient, message?.id, liveSummary]) // eslint-disable-line react-hooks/exhaustive-deps -- run once on open
 
   const assignSpeakerToUser = useCallback(
     async (speaker, userId) => {
@@ -154,14 +167,16 @@ export default function ChatCallTranscriptModal({
                   : `${utterances.length} line${utterances.length === 1 ? '' : 's'}`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void runTranscribe(true)}
-            disabled={loading}
-            className="rounded-full border border-zinc-600 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800 disabled:opacity-50"
-          >
-            Retry
-          </button>
+          {liveSummary ? null : (
+            <button
+              type="button"
+              onClick={() => void runTranscribe(true)}
+              disabled={loading}
+              className="rounded-full border border-zinc-600 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800 disabled:opacity-50"
+            >
+              Retry
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -280,6 +295,11 @@ export default function ChatCallTranscriptModal({
     </div>,
     document.body,
   )
+}
+
+/** @param {any} preview */
+function hasLiveLines(preview) {
+  return Array.isArray(preview?.transcript?.utterances) && preview.transcript.utterances.length > 0
 }
 
 /** @param {{ participant?: any, speaker?: number }} props */

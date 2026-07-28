@@ -69,3 +69,31 @@ export function chatRemapCallTranscriptSpeakers(supabase, messageId, speakerMap)
     speaker_map: speakerMap,
   })
 }
+
+/**
+ * Short-lived Deepgram JWT for browser live listen (voice calls).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} callId
+ */
+export function chatMintLiveCallSttGrant(supabase, callId) {
+  return chatCallTranscribeInvoke(supabase, {
+    action: 'mint_live_stt_grant',
+    call_id: callId,
+  })
+}
+
+/**
+ * Append finalized live utterances for the signed-in participant.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} callId
+ * @param {Array<{ id?: string, start_ms: number, end_ms: number, text: string }>} utterances
+ * @param {{ language?: string | null }} [opts]
+ */
+export function chatAppendLiveCallTranscript(supabase, callId, utterances, opts = {}) {
+  return chatCallTranscribeInvoke(supabase, {
+    action: 'append_live_transcript',
+    call_id: callId,
+    utterances,
+    language: opts.language ?? null,
+  })
+}

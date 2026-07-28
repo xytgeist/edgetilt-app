@@ -51,16 +51,47 @@ export function poolerUrlWithPassword(poolerUrl, password) {
   return u.toString();
 }
 
+/**
+ * Resolve a runnable Supabase CLI invocation.
+ * Bare `spawnSync("supabase")` is ENOENT on Windows (needs .cmd / PATH shell resolve).
+ * Prefer `npx supabase` so local and CI behave the same.
+ */
+function supabaseCliInvocation(args) {
+  if (process.platform === "win32") {
+    return {
+      command: "npx.cmd",
+      argv: ["--yes", "supabase", ...args],
+      shell: true,
+    };
+  }
+  return {
+    command: "npx",
+    argv: ["--yes", "supabase", ...args],
+    shell: false,
+  };
+}
+
 function runSupabaseCli(args, { env = process.env } = {}) {
-  const result = spawnSync("supabase", args, {
+  const { command, argv, shell } = supabaseCliInvocation(args);
+  const result = spawnSync(command, argv, {
     cwd: repoRoot,
     env,
     encoding: "utf8",
     maxBuffer: 50 * 1024 * 1024,
+    shell,
   });
   const stdout = result.stdout ?? "";
   const stderr = result.stderr ?? "";
   const combined = `${stdout}\n${stderr}`.trim();
+  if (result.error) {
+    const err = new Error(
+      `${result.error.message}\n(command: ${command} ${argv.join(" ")})`,
+    );
+    err.exitCode = 1;
+    err.stdout = stdout;
+    err.stderr = stderr;
+    throw err;
+  }
   if (result.status !== 0) {
     const err = new Error(combined || `supabase ${args.join(" ")} failed`);
     err.exitCode = result.status ?? 1;
@@ -238,7 +269,8 @@ export async function runSupabaseDbQuery(opts) {
 
         const args = ["db", "query", "-o", output];
         if (dbUrl) {
-          args.push("--db-url", encodeURIComponent(dbUrl));
+          // Pass the URL literally... encodeURIComponent breaks userinfo / breaks auth.
+          args.push("--db-url", dbUrl);
         } else {
           args.push("--linked");
         }

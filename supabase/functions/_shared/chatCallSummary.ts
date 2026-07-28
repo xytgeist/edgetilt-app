@@ -2,6 +2,11 @@
  * Insert a durable in-thread call_summary card when a chat call ends.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import {
+  transcriptFromLiveDraft,
+  type CallTranscriptPayload,
+  type LiveCallTranscriptDraft,
+} from './chatCallTranscript.ts'
 
 export type ChatCallSummaryRow = {
   id: string
@@ -12,6 +17,7 @@ export type ChatCallSummaryRow = {
   answered_at?: string | null
   ended_at?: string | null
   status?: string | null
+  live_transcript?: LiveCallTranscriptDraft | null
 }
 
 export type CallSummaryParticipantMeta = {
@@ -33,6 +39,9 @@ export type CallSummaryLinkPreview = {
   ended_at: string
   started_by: string | null
   participants: CallSummaryParticipantMeta[]
+  transcript_status?: 'pending' | 'ready' | 'failed'
+  transcript_error?: string | null
+  transcript?: CallTranscriptPayload | null
 }
 
 function formatDurationLabel(totalSec: number): string {
@@ -100,7 +109,7 @@ async function buildCallSummaryPreview(
     })
   }
 
-  return {
+  const preview: CallSummaryLinkPreview = {
     kind: 'call_summary',
     call_id: call.id,
     media_mode: call.media_mode === 'video' ? 'video' : 'audio',
@@ -112,6 +121,28 @@ async function buildCallSummaryPreview(
     started_by: call.started_by ? String(call.started_by) : null,
     participants,
   }
+
+  // Voice calls: attach live STT draft (no recording card).
+  if (preview.media_mode === 'audio' && status === 'ended') {
+    const draft =
+      call.live_transcript && typeof call.live_transcript === 'object'
+        ? call.live_transcript
+        : null
+    const transcript = transcriptFromLiveDraft(draft, participants)
+    if (transcript && transcript.utterances.length > 0) {
+      preview.transcript_status = 'ready'
+      preview.transcript_error = null
+      preview.transcript = transcript
+    } else if (draft?.status === 'failed') {
+      preview.transcript_status = 'failed'
+      preview.transcript_error = draft.error ? String(draft.error).slice(0, 500) : 'Live transcription failed.'
+    } else if (draft?.status === 'pending') {
+      preview.transcript_status = 'pending'
+      preview.transcript_error = null
+    }
+  }
+
+  return preview
 }
 
 /**

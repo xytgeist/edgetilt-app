@@ -18,10 +18,26 @@ export type CallTranscriptUtterance = {
 }
 
 export type CallTranscriptPayload = {
-  provider: 'deepgram'
+  provider: 'deepgram' | 'deepgram_live'
   language: string | null
   utterances: CallTranscriptUtterance[]
   speaker_map: Record<string, string>
+}
+
+/** Draft stored on chat_calls.live_transcript during / after a voice call. */
+export type LiveCallTranscriptDraft = {
+  status?: 'pending' | 'ready' | 'failed' | string
+  language?: string | null
+  error?: string | null
+  updated_at?: string
+  utterances?: Array<{
+    id?: string
+    start_ms?: number
+    end_ms?: number
+    text?: string
+    user_id?: string
+    speaker?: number
+  }>
 }
 
 export type CallRecordingPreviewWithTranscript = {
@@ -169,5 +185,142 @@ export function transcriptFromDeepgram(
     language,
     utterances,
     speaker_map: speakerMap,
+  }
+}
+
+/**
+ * Build the durable transcript payload from a live STT draft.
+ * Speakers are allocated by first-appearance of each user_id (identity known from LiveKit).
+ */
+export function transcriptFromLiveDraft(
+  draft: LiveCallTranscriptDraft | null | undefined,
+  participants: CallTranscriptParticipant[],
+  existingMap?: Record<string, string> | null,
+): CallTranscriptPayload | null {
+  const raw = Array.isArray(draft?.utterances) ? draft!.utterances! : []
+  const cleaned = raw
+    .map((u) => {
+      const text = String(u?.text || '').trim()
+      const userId = String(u?.user_id || '').trim()
+      if (!text || !userId) return null
+      const startMs = Number(u.start_ms)
+      const endMs = Number(u.end_ms)
+      return {
+        start_ms: Number.isFinite(startMs) ? Math.max(0, Math.round(startMs)) : 0,
+        end_ms: Number.isFinite(endMs) ? Math.max(0, Math.round(endMs)) : 0,
+        text,
+        user_id: userId,
+        speaker: Number.isFinite(Number(u.speaker)) ? Math.max(0, Math.floor(Number(u.speaker))) : -1,
+      }
+    })
+    .filter(Boolean) as Array<CallTranscriptUtterance & { speaker: number }>
+
+  if (cleaned.length === 0) return null
+
+  cleaned.sort((a, b) => a.start_ms - b.start_ms || a.end_ms - b.end_ms)
+
+  const speakerMap: Record<string, string> = {}
+  if (existingMap && typeof existingMap === 'object') {
+    for (const [k, v] of Object.entries(existingMap)) {
+      const uid = String(v || '').trim()
+      if (uid && participants.some((p) => p.user_id === uid)) speakerMap[String(k)] = uid
+    }
+  }
+
+  const userToSpeaker = new Map<string, number>()
+  for (const [k, uid] of Object.entries(speakerMap)) {
+    if (!userToSpeaker.has(uid)) userToSpeaker.set(uid, Number(k))
+  }
+
+  let nextSpeaker = 0
+  for (const n of Object.keys(speakerMap).map(Number)) {
+    if (Number.isFinite(n) && n >= nextSpeaker) nextSpeaker = n + 1
+  }
+
+  const utterances: CallTranscriptUtterance[] = cleaned.map((u) => {
+    let speaker = userToSpeaker.get(u.user_id || '')
+    if (speaker == null) {
+      if (u.speaker >= 0 && !Object.values(speakerMap).includes(u.user_id || '')) {
+        // Prefer client-provided index when free.
+        const key = String(u.speaker)
+        if (!speakerMap[key] || speakerMap[key] === u.user_id) {
+          speaker = u.speaker
+        }
+      }
+      if (speaker == null) {
+        speaker = nextSpeaker
+        nextSpeaker += 1
+      }
+      userToSpeaker.set(u.user_id || '', speaker)
+      speakerMap[String(speaker)] = u.user_id || ''
+    }
+    return {
+      start_ms: u.start_ms,
+      end_ms: u.end_ms,
+      text: u.text,
+      speaker,
+      user_id: u.user_id,
+    }
+  })
+
+  // Ensure map covers every speaker and stays within known participants when possible.
+  const finalMap = buildSpeakerMap(
+    utterances.map((u) => u.speaker),
+    participants,
+    speakerMap,
+  )
+
+  return {
+    provider: 'deepgram_live',
+    language: draft?.language ? String(draft.language) : null,
+    speaker_map: finalMap,
+    utterances: applySpeakerMapToUtterances(utterances, finalMap),
+  }
+}
+
+/** Merge new live utterances into a draft (dedupe by id). */
+export function mergeLiveTranscriptUtterances(
+  draft: LiveCallTranscriptDraft | null | undefined,
+  incoming: Array<{
+    id?: string
+    start_ms: number
+    end_ms: number
+    text: string
+    user_id: string
+    speaker?: number
+  }>,
+  language?: string | null,
+): LiveCallTranscriptDraft {
+  const prev = draft && typeof draft === 'object' ? draft : {}
+  const byId = new Map<string, NonNullable<LiveCallTranscriptDraft['utterances']>[number]>()
+  for (const u of Array.isArray(prev.utterances) ? prev.utterances : []) {
+    const id = String(u?.id || '').trim()
+    if (id) byId.set(id, u)
+  }
+  for (const u of incoming) {
+    const text = String(u.text || '').trim()
+    const userId = String(u.user_id || '').trim()
+    if (!text || !userId) continue
+    const startMs = Math.max(0, Math.round(Number(u.start_ms) || 0))
+    const endMs = Math.max(startMs, Math.round(Number(u.end_ms) || startMs))
+    const id = String(u.id || `${userId}:${startMs}:${endMs}:${text.slice(0, 32)}`).trim()
+    byId.set(id, {
+      id,
+      start_ms: startMs,
+      end_ms: endMs,
+      text,
+      user_id: userId,
+      speaker: Number.isFinite(Number(u.speaker)) ? Math.max(0, Math.floor(Number(u.speaker))) : undefined,
+    })
+  }
+  const utterances = Array.from(byId.values()).sort(
+    (a, b) => Number(a.start_ms || 0) - Number(b.start_ms || 0),
+  )
+  return {
+    status: utterances.length ? 'ready' : String(prev.status || 'pending'),
+    language: language != null ? language : prev.language ?? null,
+    error: null,
+    updated_at: new Date().toISOString(),
+    utterances,
   }
 }

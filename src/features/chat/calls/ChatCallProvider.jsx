@@ -1021,6 +1021,7 @@ export function ChatCallProvider({
         >
           <ChatCallSession
             key={activeCall.callId}
+            callId={activeCall.callId}
             token={activeCall.token}
             serverUrl={activeCall.livekitUrl}
             mediaMode={activeCall.mediaMode}

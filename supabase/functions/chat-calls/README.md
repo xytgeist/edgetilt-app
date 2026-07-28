@@ -48,6 +48,7 @@ Apply before deploy:
 - `supabase/migrations/20260728050000_chat_calls_group_video.sql`
 - `supabase/migrations/20260728060000_chat_calls_recording.sql`
 - `supabase/migrations/20260728090000_chat_calls_recording_featured_identity.sql`
+- `supabase/migrations/20260728110000_chat_calls_live_transcript.sql` (voice live STT draft on `chat_calls.live_transcript`)
 
 ## Product docs
 

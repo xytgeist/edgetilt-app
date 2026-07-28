@@ -142,7 +142,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [x] **First-open PWA mic prompt:** **Android PWA only**; after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`). iOS skipped.
 - [x] **Call summary cards** in thread (`content_encoding = call_summary` + rich `link_preview`; was chips).
 - [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
-- [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; screen share; auto-record; audio-only recording.
+- [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; screen share; auto-record; audio-only **playable** recording (voice uses live STT → summary transcript instead).
 
 ### Planned (Spaces / fan hangouts — later)
 
@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Voice call live transcripts (no recording):** each participant streams local mic → Deepgram live (`nova-3`) via **`mint_live_stt_grant`** / **`append_live_transcript`**; draft on **`chat_calls.live_transcript`** (`20260728110000`) → **`call_summary` View transcript**. No LiveKit egress for voice. Apply SQL + redeploy **`chat-call-transcribe`** + **`chat-calls`** on test (`DEEPGRAM_API_KEY` already required).
 - 2026-07-28: **Call recording transcripts (speaker labels):** Edge **`chat-call-transcribe`** (Deepgram diarization) → `link_preview.transcript` + auto map to participants; long-press **View transcript** modal with avatar/name + tap-to-reassign. Finalize enqueues best-effort; client Retry. Redeploy **`chat-call-transcribe`**, **`livekit-egress-webhook`**, **`chat-calls`**; set **`DEEPGRAM_API_KEY`** on test.
 - 2026-07-28: **Chat room Calls tab (Media / links / docs):** RPC **`chat_room_shared_calls`** (`20260728100000`) + **Calls** tab in **`ChatGroupMediaSheet`** (recordings + summaries → jump to message). Also restored Docs tab render path. Apply SQL on test.
 - 2026-07-28: **Call recording delete for room owners:** long-press recording card → **Delete** for recorder, group owner/admin, fan moderators, or either DM participant; **`lounge-chat` `delete_message`** allows the same for `content_encoding = call_recording` (+ existing R2 cleanup). Redeploy **`lounge-chat`** on test.

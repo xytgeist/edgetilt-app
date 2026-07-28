@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
+import ChatCallTranscriptModal from './ChatCallTranscriptModal.jsx'
 
 /**
  * @typedef {{
@@ -19,6 +21,9 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
  *   ended_at?: string | null,
  *   started_by?: string | null,
  *   participants?: CallSummaryParticipant[],
+ *   transcript_status?: string,
+ *   transcript_error?: string | null,
+ *   transcript?: object | null,
  * }} CallSummaryMeta
  */
 
@@ -29,11 +34,19 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
  *     id: string,
  *     body?: string | null,
  *     created_at?: string | null,
+ *     content_encoding?: string | null,
  *     link_preview?: CallSummaryMeta | null,
  *   },
+ *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
+ *   onTranscriptUpdated?: (messageId: string, preview: object) => void,
  * }} props
  */
-export default function ChatCallSummaryCard({ message }) {
+export default function ChatCallSummaryCard({
+  message,
+  supabaseClient = null,
+  onTranscriptUpdated = null,
+}) {
+  const [transcriptOpen, setTranscriptOpen] = useState(false)
   const meta = parseCallSummaryMeta(message.link_preview)
   const fallback = parseCallSummaryBody(message.body)
   const status = meta?.status || fallback.status
@@ -61,6 +74,14 @@ export default function ChatCallSummaryCard({ message }) {
   const iconClass = isMissedOrDeclined
     ? 'bg-amber-500/15 text-amber-300'
     : 'bg-[#25d366]/15 text-[#25d366]'
+
+  const transcriptStatus = String(meta?.transcript_status || '')
+  const hasTranscriptLines = Array.isArray(meta?.transcript?.utterances)
+    && meta.transcript.utterances.length > 0
+  const showTranscriptCta =
+    mediaMode === 'audio' &&
+    status === 'ended' &&
+    (hasTranscriptLines || transcriptStatus === 'ready' || transcriptStatus === 'pending' || transcriptStatus === 'failed')
 
   return (
     <div className="flex justify-center px-3 py-2">
@@ -111,7 +132,32 @@ export default function ChatCallSummaryCard({ message }) {
             </p>
           </div>
         ) : null}
+
+        {showTranscriptCta ? (
+          <button
+            type="button"
+            className="mt-2.5 w-full rounded-xl border border-zinc-700/80 bg-zinc-900/80 px-3 py-2 text-[12px] font-semibold text-zinc-100 touch-manipulation active:bg-zinc-800"
+            onClick={() => setTranscriptOpen(true)}
+          >
+            {transcriptStatus === 'pending' && !hasTranscriptLines
+              ? 'Transcript pending…'
+              : transcriptStatus === 'failed' && !hasTranscriptLines
+                ? 'Transcript unavailable'
+                : 'View transcript'}
+          </button>
+        ) : null}
       </div>
+
+      {transcriptOpen && supabaseClient ? (
+        <ChatCallTranscriptModal
+          open={transcriptOpen}
+          onClose={() => setTranscriptOpen(false)}
+          message={message}
+          supabaseClient={supabaseClient}
+          onPreviewUpdated={onTranscriptUpdated || undefined}
+          liveSummary
+        />
+      ) : null}
     </div>
   )
 }
@@ -137,52 +183,44 @@ function parseCallSummaryBody(body) {
   return { status, mediaMode, durationSeconds }
 }
 
-/** @param {number} totalSec */
 function formatDuration(totalSec) {
-  const s = Math.max(0, Math.floor(totalSec))
+  const s = Math.max(0, Math.floor(Number(totalSec) || 0))
   const m = Math.floor(s / 60)
   const r = s % 60
   return `${m}:${String(r).padStart(2, '0')}`
 }
 
-/** @param {string | null | undefined} iso */
 function formatWhen(iso) {
   if (!iso) return ''
   const d = new Date(iso)
-  if (!Number.isFinite(d.getTime())) return ''
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
-/** @param {CallSummaryParticipant | null | undefined} p */
 function participantLabel(p) {
-  if (!p) return ''
-  const name = String(p.display_name || '').trim()
+  const name = String(p?.display_name || '').trim()
   if (name) return name
-  const handle = String(p.handle || '').trim().replace(/^@/, '')
-  return handle ? `@${handle}` : ''
+  const handle = String(p?.handle || '').trim()
+  if (handle) return handle.startsWith('@') ? handle : `@${handle}`
+  return 'Participant'
 }
 
-/** @param {{ participant: CallSummaryParticipant }} props */
 function ParticipantAvatar({ participant }) {
-  const label = participantLabel(participant) || '?'
-  const initial = label.replace(/^@/, '').charAt(0).toUpperCase() || '?'
+  const label = participantLabel(participant)
+  const url = String(participant?.avatar_url || '').trim()
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt=""
+        className="h-7 w-7 rounded-full border-2 border-zinc-950 object-cover"
+      />
+    )
+  }
+  const initial = label.replace(/^@/, '').slice(0, 1).toUpperCase() || '?'
   return (
-    <div
-      className="h-7 w-7 overflow-hidden rounded-full border-2 border-zinc-950 bg-zinc-700"
-      title={label}
-    >
-      {participant.avatar_url ? (
-        <img src={participant.avatar_url} alt="" className="h-full w-full object-cover" />
-      ) : (
-        <div className="grid h-full w-full place-items-center text-[11px] font-bold text-zinc-200">
-          {initial}
-        </div>
-      )}
+    <div className="grid h-7 w-7 place-items-center rounded-full border-2 border-zinc-950 bg-zinc-700 text-[10px] font-bold text-zinc-100">
+      {initial}
     </div>
   )
 }

@@ -559,7 +559,11 @@ export default function ChatBubble({
   if (isCallSummary) {
     return (
       <div data-chat-message-id={message.id}>
-        <ChatCallSummaryCard message={message} />
+        <ChatCallSummaryCard
+          message={message}
+          supabaseClient={supabaseClient}
+          onTranscriptUpdated={onLinkPreviewReady}
+        />
       </div>
     )
   }

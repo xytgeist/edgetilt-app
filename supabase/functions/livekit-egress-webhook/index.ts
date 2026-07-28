@@ -4,7 +4,10 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { WebhookReceiver } from 'npm:livekit-server-sdk@2'
-import { loungeCfR2PublicUrl, readLoungeCfR2Config } from '../_shared/loungeCfR2.ts'
+import {
+  egressInfoLooksFailed,
+  finalizeChatCallRecording,
+} from '../_shared/chatCallRecordingFinalize.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,57 +72,23 @@ Deno.serve(async (req) => {
     }
 
     const status = String(egressInfo?.status || '')
-    const failed =
-      status.includes('FAILED') ||
-      status.includes('ABORTED') ||
-      status.includes('LIMIT_REACHED') ||
-      Boolean(egressInfo?.error)
-
-    if (failed) {
-      await admin
-        .from('chat_calls')
-        .update({ recording_status: 'failed' })
-        .eq('id', call.id)
-        .in('recording_status', ['recording', 'stopping'])
-      return json(200, { ok: true, call_id: call.id, recording_status: 'failed' })
-    }
-
-    const r2 = readLoungeCfR2Config()
-    const r2Key = String(call.recording_r2_key || '').trim()
-    if (!r2 || !r2Key) {
-      await admin
-        .from('chat_calls')
-        .update({ recording_status: 'failed' })
-        .eq('id', call.id)
-      return json(500, { error: 'Missing R2 config or recording key.' })
-    }
-
-    const videoUrl = loungeCfR2PublicUrl(r2, r2Key)
-    const senderId = String(call.recording_started_by || call.started_by || '').trim()
-    if (!senderId) {
-      await admin.from('chat_calls').update({ recording_status: 'failed' }).eq('id', call.id)
-      return json(500, { error: 'Missing recording starter.' })
-    }
-
-    const { error: msgErr } = await admin.from('chat_messages').insert({
-      room_id: call.chat_room_id,
-      sender_id: senderId,
-      body: '[call recording]',
-      content_encoding: 'call_recording',
-      video_url: videoUrl,
+    const failed = egressInfoLooksFailed(status, egressInfo?.error)
+    const result = await finalizeChatCallRecording(admin, call, {
+      failed,
+      errorDetail: failed ? String(egressInfo?.error || status || 'egress failed') : null,
     })
-    if (msgErr) throw new Error(msgErr.message)
 
-    await admin
-      .from('chat_calls')
-      .update({ recording_status: 'ready' })
-      .eq('id', call.id)
-      .in('recording_status', ['recording', 'stopping', 'ready'])
-
-    return json(200, { ok: true, call_id: call.id, recording_status: 'ready', video_url: videoUrl })
+    return json(200, {
+      ok: true,
+      call_id: call.id,
+      recording_status: result.recording_status,
+      video_url: result.video_url || null,
+      skipped: result.skipped || false,
+    })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('livekit-egress-webhook error', msg)
+    // 200 on verify failures would hide misconfig; keep 400 so LiveKit retries briefly.
     return json(400, { error: msg || 'Webhook error' })
   }
 })

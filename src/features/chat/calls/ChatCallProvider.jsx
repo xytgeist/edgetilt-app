@@ -832,22 +832,85 @@ export function ChatCallProvider({
   const stopRecording = useCallback(async () => {
     const current = activeCallRef.current
     if (!supabaseClient || !current) return null
+    // Optimistic: clear the red REC state immediately so Stop feels instant.
+    setActiveCall((prev) =>
+      patchActiveRecording(prev, {
+        recordingStatus: 'stopping',
+      }),
+    )
+    ensureBroadcast(current.roomId)?.emit('recording_stopping', {
+      callId: current.callId,
+    })
     try {
       const res = await chatStopRecording(supabaseClient, current.callId)
-      setActiveCall((prev) =>
-        patchActiveRecording(prev, {
-          recordingStatus: 'stopping',
-        }),
-      )
-      ensureBroadcast(current.roomId)?.emit('recording_stopping', {
-        callId: current.callId,
-      })
+      const call = res?.call || res
+      const fields = recordingFieldsFromCall(call)
+      setActiveCall((prev) => patchActiveRecording(prev, fields))
+      if (fields.recordingStatus === 'ready' || fields.recordingStatus === 'failed') {
+        playChatCallRecordingCue('stopped')
+        ensureBroadcast(current.roomId)?.emit(
+          fields.recordingStatus === 'ready' ? 'recording_ready' : 'recording_failed',
+          { callId: current.callId },
+        )
+        showCallStatusToast(
+          fields.recordingStatus === 'ready'
+            ? 'Recording saved to chat.'
+            : 'Recording failed to save.',
+        )
+      } else {
+        showCallStatusToast('Stopping recording… it will appear in chat shortly.')
+      }
       return res
     } catch (err) {
+      // Roll back to recording so the starter can tap Stop again.
+      setActiveCall((prev) =>
+        patchActiveRecording(prev, {
+          recordingStatus: 'recording',
+        }),
+      )
       showCallStatusToast(err instanceof Error ? err.message : 'Could not stop recording')
       return null
     }
   }, [supabaseClient, ensureBroadcast, showCallStatusToast])
+
+  // Webhook / finalize backup while LiveKit is uploading the MP4.
+  useEffect(() => {
+    if (!supabaseClient || activeCall?.recordingStatus !== 'stopping' || !activeCall?.callId) {
+      return undefined
+    }
+    const callId = activeCall.callId
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const res = await chatGetCall(supabaseClient, callId)
+        if (cancelled) return
+        const call = res?.call || res
+        const fields = recordingFieldsFromCall(call)
+        setActiveCall((prev) => {
+          if (!prev || prev.callId !== callId) return prev
+          return patchActiveRecording(prev, fields)
+        })
+        if (fields.recordingStatus === 'ready' || fields.recordingStatus === 'failed') {
+          playChatCallRecordingCue('stopped')
+          showCallStatusToast(
+            fields.recordingStatus === 'ready'
+              ? 'Recording saved to chat.'
+              : 'Recording failed to save.',
+          )
+        }
+      } catch {
+        /* ignore transient poll errors */
+      }
+    }
+    void tick()
+    const id = window.setInterval(() => {
+      void tick()
+    }, 3000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [supabaseClient, activeCall?.recordingStatus, activeCall?.callId, showCallStatusToast])
 
   const watchRoom = useCallback(
     (roomId) => {

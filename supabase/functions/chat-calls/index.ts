@@ -12,6 +12,11 @@ import {
   S3Upload,
   TrackSource,
 } from 'npm:livekit-server-sdk@2'
+import {
+  egressInfoLooksComplete,
+  egressInfoLooksFailed,
+  finalizeChatCallRecording,
+} from '../_shared/chatCallRecordingFinalize.ts'
 import { loungeCfR2PublicUrl, readLoungeCfR2Config } from '../_shared/loungeCfR2.ts'
 
 const corsHeaders = {
@@ -331,6 +336,19 @@ function egressClientFor(lk: { httpUrl: string; apiKey: string; apiSecret: strin
   return new EgressClient(lk.httpUrl, lk.apiKey, lk.apiSecret)
 }
 
+function egressErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message || String(err)
+  return String(err || 'stopEgress failed')
+}
+
+function isBenignStopEgressError(msg: string): boolean {
+  return /not found|already|EGRESS_COMPLETE|EGRESS_ENDING|EGRESS_ABORTED|does not exist/i.test(msg)
+}
+
+/**
+ * Ask LiveKit to stop composite egress and mark chat_calls.recording_status = stopping.
+ * @param opts.throwOnError when true (explicit Stop), surface real stopEgress failures to the client.
+ */
 async function stopActiveRecordingEgress(
   admin: Admin,
   lk: { httpUrl: string; apiKey: string; apiSecret: string },
@@ -339,21 +357,77 @@ async function stopActiveRecordingEgress(
     recording_status?: string | null
     recording_egress_id?: string | null
   },
+  opts: { throwOnError?: boolean } = {},
 ) {
-  if (call.recording_status !== 'recording' && call.recording_status !== 'stopping') return
+  if (call.recording_status !== 'recording' && call.recording_status !== 'stopping') return null
   const egressId = String(call.recording_egress_id || '').trim()
+  let stopInfo: unknown = null
   if (egressId) {
     try {
-      await egressClientFor(lk).stopEgress(egressId)
+      stopInfo = await egressClientFor(lk).stopEgress(egressId)
     } catch (err) {
-      console.warn('chat-calls: stopEgress failed', call.id, egressId, err)
+      const msg = egressErrorMessage(err)
+      if (!isBenignStopEgressError(msg)) {
+        console.error('chat-calls: stopEgress failed', call.id, egressId, msg)
+        if (opts.throwOnError) {
+          const e = new Error(`Could not stop recording: ${msg}`)
+          ;(e as Error & { status?: number }).status = 502
+          throw e
+        }
+      } else {
+        console.warn('chat-calls: stopEgress benign', call.id, egressId, msg)
+      }
     }
+  } else if (opts.throwOnError && call.recording_status === 'recording') {
+    const e = new Error('Recording has no LiveKit egress id yet. Wait a second and try Stop again.')
+    ;(e as Error & { status?: number }).status = 409
+    throw e
   }
   await admin
     .from('chat_calls')
     .update({ recording_status: 'stopping' })
     .eq('id', call.id)
     .in('recording_status', ['recording', 'stopping'])
+  return stopInfo
+}
+
+/** If LiveKit already finished the egress, insert the chat card (webhook backup). */
+async function reconcileRecordingFromLiveKit(
+  admin: Admin,
+  lk: { httpUrl: string; apiKey: string; apiSecret: string },
+  call: {
+    id: string
+    chat_room_id: string
+    started_by?: string | null
+    recording_status?: string | null
+    recording_started_by?: string | null
+    recording_r2_key?: string | null
+    recording_egress_id?: string | null
+  },
+) {
+  const status = String(call.recording_status || '')
+  if (status !== 'recording' && status !== 'stopping') return null
+  const egressId = String(call.recording_egress_id || '').trim()
+  if (!egressId) return null
+
+  try {
+    const listed = await egressClientFor(lk).listEgress({ egressId })
+    const info = Array.isArray(listed) ? listed[0] : listed
+    if (!info) return null
+    const egStatus = String((info as { status?: string }).status || '')
+    if (egressInfoLooksFailed(egStatus, (info as { error?: string }).error)) {
+      return await finalizeChatCallRecording(admin, call, {
+        failed: true,
+        errorDetail: String((info as { error?: string }).error || egStatus),
+      })
+    }
+    if (egressInfoLooksComplete(egStatus)) {
+      return await finalizeChatCallRecording(admin, call)
+    }
+  } catch (err) {
+    console.warn('chat-calls: listEgress reconcile failed', call.id, egressId, egressErrorMessage(err))
+  }
+  return null
 }
 
 function recordingPublicFields(call: Record<string, unknown>) {
@@ -958,13 +1032,34 @@ Deno.serve(async (req) => {
         }
       }
 
-      await stopActiveRecordingEgress(admin, lk, call)
+      await stopActiveRecordingEgress(admin, lk, call, { throwOnError: true })
+
+      // Webhook may take a bit; poll LiveKit once so we can finalize without waiting on it.
+      let working = { ...call, recording_status: 'stopping' as string }
+      for (let i = 0; i < 4; i++) {
+        await new Promise((r) => setTimeout(r, i === 0 ? 800 : 1500))
+        const reconciled = await reconcileRecordingFromLiveKit(admin, lk, working)
+        const { data: refreshed } = await admin
+          .from('chat_calls')
+          .select(CALL_SELECT_BASE)
+          .eq('id', callId)
+          .maybeSingle()
+        if (refreshed) working = refreshed
+        if (reconciled || working.recording_status === 'ready' || working.recording_status === 'failed') {
+          break
+        }
+      }
+
       const { data: updated } = await admin
         .from('chat_calls')
         .select(CALL_SELECT_BASE)
         .eq('id', callId)
         .maybeSingle()
-      return json(200, { ok: true, ...recordingPublicFields(updated || { ...call, recording_status: 'stopping' }) })
+      return json(200, {
+        ok: true,
+        call: updated || working,
+        ...recordingPublicFields(updated || working),
+      })
     }
 
     if (action === 'get_call') {
@@ -988,6 +1083,17 @@ Deno.serve(async (req) => {
         Date.now() - new Date(call.recording_started_at).getTime() >= MAX_RECORDING_SECONDS * 1000
       ) {
         await stopActiveRecordingEgress(admin, lk, call)
+        const { data: refreshed } = await admin
+          .from('chat_calls')
+          .select(`${CALL_SELECT_BASE}, ended_at, ended_reason`)
+          .eq('id', callId)
+          .maybeSingle()
+        return json(200, { ok: true, call: refreshed || call, ...recordingPublicFields(refreshed || call) })
+      }
+
+      // Webhook backup: if Stop already ran, try to finalize from LiveKit listEgress.
+      if (call.recording_status === 'stopping') {
+        await reconcileRecordingFromLiveKit(admin, lk, call)
         const { data: refreshed } = await admin
           .from('chat_calls')
           .select(`${CALL_SELECT_BASE}, ended_at, ended_reason`)

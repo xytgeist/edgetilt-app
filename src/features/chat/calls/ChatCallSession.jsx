@@ -401,7 +401,8 @@ function CallChrome({
   const recWarn15Ref = useRef(false)
   const recAutoStopRef = useRef(false)
 
-  const recordingActive = recordingStatus === 'recording' || recordingStatus === 'stopping'
+  const recordingActive = recordingStatus === 'recording'
+  const recordingSaving = recordingStatus === 'stopping'
   const isRecordingStarter =
     Boolean(viewerUserId) && Boolean(recordingStartedBy) && viewerUserId === recordingStartedBy
 
@@ -507,7 +508,7 @@ function CallChrome({
   const statusLabel = awaitingAnswer
     ? 'Ringing…'
     : `${mm}:${ss}${!awaitingAnswer && isGroup ? ` · ${participants.length} in call` : ''}${
-        recordingActive ? ' · REC' : ''
+        recordingActive ? ' · REC' : recordingSaving ? ' · Saving recording…' : ''
       }`
 
   const resolveAvatarForParticipant = (participant) => {
@@ -706,11 +707,10 @@ function CallChrome({
 
       {videoEnabled && !awaitingAnswer ? (
         recordingActive ? (
-          isRecordingStarter || recordingStatus === 'stopping' ? (
+          isRecordingStarter ? (
             <button
               type="button"
-              disabled={recordingStatus === 'stopping'}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80 disabled:opacity-50"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
               aria-label="Stop recording"
               title="Stop recording"
               onClick={() => onStopRecording?.()}
@@ -726,6 +726,14 @@ function CallChrome({
               <RecordDotIcon dimmed />
             </div>
           )
+        ) : recordingSaving ? (
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/50 text-[#fbbf24]"
+            aria-label="Saving recording"
+            title="Saving recording"
+          >
+            <RecordStopIcon />
+          </div>
         ) : (
           <button
             type="button"
@@ -822,6 +830,11 @@ function CallChrome({
             <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#ea4335]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fca5a5]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ea4335]" aria-hidden />
               Recording
+            </p>
+          ) : null}
+          {recordingSaving ? (
+            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fbbf24]">
+              Saving recording…
             </p>
           ) : null}
           {recCountdownLabel ? (

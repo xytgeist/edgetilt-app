@@ -58,6 +58,14 @@ export default function ChatCallRecordingCard({
   const storedPoster = String(message.stream_poster_url || '').trim()
   const meta = parseCallRecordingMeta(message.link_preview)
   const [posterUrl, setPosterUrl] = useState(storedPoster)
+  const [frameSize, setFrameSize] = useState(() => ({
+    w: Number(message.stream_video_width) || 0,
+    h: Number(message.stream_video_height) || 0,
+  }))
+  const videoW = Number(message.stream_video_width) || frameSize.w || 0
+  const videoH = Number(message.stream_video_height) || frameSize.h || 0
+  // New call recordings are portrait; fall back to 9:16 when dims are not on the row yet.
+  const isPortrait = !(videoW > 0 && videoH > 0) || videoH >= videoW
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState(/** @type {{ top: number, left: number } | null} */ (null))
   const [linkCopied, setLinkCopied] = useState(false)
@@ -71,6 +79,13 @@ export default function ChatCallRecordingCard({
   }, [storedPoster])
 
   useEffect(() => {
+    setFrameSize({
+      w: Number(message.stream_video_width) || 0,
+      h: Number(message.stream_video_height) || 0,
+    })
+  }, [message.stream_video_width, message.stream_video_height])
+
+  useEffect(() => {
     if (storedPoster || !videoUrl || !supabaseClient || !message?.id) return undefined
     let cancelled = false
     void (async () => {
@@ -81,6 +96,9 @@ export default function ChatCallRecordingCard({
       })
       if (cancelled || !saved?.posterUrl) return
       setPosterUrl(saved.posterUrl)
+      if (saved.width && saved.height) {
+        setFrameSize({ w: saved.width, h: saved.height })
+      }
     })()
     return () => {
       cancelled = true
@@ -237,9 +255,10 @@ export default function ChatCallRecordingCard({
             onOpen()
           }}
           disabled={!videoUrl}
-          className="relative mx-auto block w-full max-h-[22rem] touch-manipulation active:opacity-90 disabled:opacity-60"
+          className={`relative mx-auto block overflow-hidden touch-manipulation active:opacity-90 disabled:opacity-60 ${
+            isPortrait ? 'aspect-[9/16] w-[min(100%,12rem)]' : 'aspect-[16/10] w-full'
+          }`}
           aria-label="Play call recording"
-          style={{ aspectRatio: '9 / 16' }}
         >
           {posterUrl ? (
             <img src={posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />

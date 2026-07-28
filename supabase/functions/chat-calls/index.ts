@@ -1053,12 +1053,20 @@ Deno.serve(async (req) => {
             }),
           },
         })
+        // Phone calls are portrait. Use explicit 720×1280 (not only a preset) so custom
+        // templates get a real portrait Chrome viewport instead of landscape 1280×720.
         const info = await egressClientFor(lk).startRoomCompositeEgress(
           call.livekit_room_name,
           { file: fileOutput },
           {
             layout: egressLayout,
             audioOnly: false,
+            encodingOptions: {
+              width: 720,
+              height: 1280,
+              framerate: 30,
+              videoBitrate: 3000,
+            },
             ...(useCustomTemplate ? { customBaseUrl: templateBaseUrl } : {}),
           },
         )

@@ -20,7 +20,7 @@ DM **audio/video**, classic group **audio/video**, and manual **call recording**
 | Cap | **10 minutes** (`CHAT_CALL_RECORDING_MAX_SECONDS = 600`) |
 | Warnings | Visual + audible at **1:00** and **0:15** left |
 | Stop | Stop Egress + post chat card; **call stays live** |
-| Pipeline | LiveKit **RoomComposite** (custom template [`call-egress.html`](../call-egress.html)) → R2 → `content_encoding = call_recording` + `video_url` |
+| Pipeline | LiveKit **RoomComposite** (custom template [`call-egress.html`](../call-egress.html), **720×1280 portrait**) → R2 → `content_encoding = call_recording` + `video_url` |
 | Hangup while recording | Edge stops active egress so the file can finalize |
 
 **Vendor:** LiveKit Cloud (managed SFU). Do not peer-mesh WebRTC.

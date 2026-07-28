@@ -237,9 +237,9 @@ export default function ChatCallRecordingCard({
             onOpen()
           }}
           disabled={!videoUrl}
-          className="relative block w-full touch-manipulation active:opacity-90 disabled:opacity-60"
+          className="relative mx-auto block w-full max-h-[22rem] touch-manipulation active:opacity-90 disabled:opacity-60"
           aria-label="Play call recording"
-          style={{ aspectRatio: '16 / 10' }}
+          style={{ aspectRatio: '9 / 16' }}
         >
           {posterUrl ? (
             <img src={posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />

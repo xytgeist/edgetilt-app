@@ -776,6 +776,43 @@ function CallChrome({
     void applySpeakerSink(Boolean(next), { manual: false })
   }
 
+  /**
+   * Mute without tearing down the capture device when Android speaker routing
+   * depends on the phantom Speakerphone / Headset earpiece audioinput staying open.
+   * setMicrophoneEnabled(false) was forcing earpiece even with speaker UI still on.
+   */
+  const setMicEnabled = async (next) => {
+    setMicOn(next)
+    if (!localParticipant) return
+    try {
+      if (audioRouteSupported) {
+        const pub = localParticipant.getTrackPublication?.(Track.Source.Microphone)
+        const track = pub?.track
+        if (track && typeof track.mute === 'function' && typeof track.unmute === 'function') {
+          if (next) await track.unmute()
+          else await track.mute()
+        } else if (pub && typeof pub.mute === 'function' && typeof pub.unmute === 'function') {
+          if (next) await pub.unmute()
+          else await pub.mute()
+        } else {
+          await localParticipant.setMicrophoneEnabled(next)
+        }
+        // Re-assert route after mute/unmute... Chrome drops Speakerphone when capture blips.
+        if (speakerOn) {
+          await applyCallAudioOutput({ room, speakerphoneOn: true })
+        }
+        return
+      }
+      await localParticipant.setMicrophoneEnabled(next)
+    } catch {
+      try {
+        await localParticipant.setMicrophoneEnabled(next)
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   const controlButtons = (
     <>
       <button
@@ -784,11 +821,7 @@ function CallChrome({
           micOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
         }`}
         aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
-        onClick={() => {
-          const next = !micOn
-          setMicOn(next)
-          void localParticipant.setMicrophoneEnabled(next)
-        }}
+        onClick={() => void setMicEnabled(!micOn)}
       >
         <MicIcon muted={!micOn} />
       </button>

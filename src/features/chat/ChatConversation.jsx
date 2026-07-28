@@ -35,7 +35,7 @@ import {
 import { uploadChatVideoToR2, uploadChatPosterToR2 } from '../../utils/chatVideoR2Upload.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { useChatCallOptional } from './calls/ChatCallProvider.jsx'
-import { chatFetchActiveRoomCall } from '../../utils/chatCallsApi.js'
+import { chatFetchActiveRoomCall, chatFetchRoomCallRecap } from '../../utils/chatCallsApi.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
@@ -318,6 +318,12 @@ export default function ChatConversation({
   const [roomOpenCall, setRoomOpenCall] = useState(
     /** @type {{ id: string, kind?: string, status?: string, media_mode?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null} */ (null),
   )
+  /** Post-hangup composer card (same chrome as live Join card, no Join, final duration). */
+  const [roomCallRecap, setRoomCallRecap] = useState(
+    /** @type {{ id: string, media_mode?: string, status?: string, duration_seconds?: number, participant_ids?: string[] } | null} */ (null),
+  )
+  const roomOpenCallRef = useRef(roomOpenCall)
+  roomOpenCallRef.current = roomOpenCall
   /** @type {[{ userId: string, avatarUrl: string | null, initial: string }[], Function]} */
   const [roomCallParticipantAvatars, setRoomCallParticipantAvatars] = useState(
     /** @type {{ userId: string, avatarUrl: string | null, initial: string }[]} */ ([]),
@@ -331,13 +337,30 @@ export default function ChatConversation({
   useEffect(() => {
     if (!isClassicGroupRoom || !supabaseClient || !activeRoom?.id) {
       setRoomOpenCall(null)
+      setRoomCallRecap(null)
       return undefined
     }
     let cancelled = false
+    const loadRecap = async (callId) => {
+      try {
+        const recap = await chatFetchRoomCallRecap(supabaseClient, callId)
+        if (!cancelled && recap) setRoomCallRecap(recap)
+      } catch {
+        /* keep prior avatars if recap fetch fails */
+      }
+    }
     const refresh = async () => {
       try {
         const row = await chatFetchActiveRoomCall(supabaseClient, activeRoom.id)
-        if (!cancelled) setRoomOpenCall(row)
+        if (cancelled) return
+        const prev = roomOpenCallRef.current
+        if (row) {
+          setRoomOpenCall(row)
+          setRoomCallRecap(null)
+        } else {
+          setRoomOpenCall(null)
+          if (prev?.id) void loadRecap(prev.id)
+        }
       } catch {
         if (!cancelled) setRoomOpenCall(null)
       }
@@ -357,7 +380,14 @@ export default function ChatConversation({
           table: 'chat_calls',
           filter: `chat_room_id=eq.${activeRoom.id}`,
         },
-        () => {
+        (payload) => {
+          const nextStatus = String(payload?.new?.status || '')
+          const callId = String(payload?.new?.id || payload?.old?.id || '')
+          if (['ended', 'missed', 'declined'].includes(nextStatus) && callId) {
+            setRoomOpenCall(null)
+            void loadRecap(callId)
+            return
+          }
           void refresh()
         },
       )
@@ -366,16 +396,19 @@ export default function ChatConversation({
       cancelled = true
       window.clearInterval(pollId)
       supabaseClient.removeChannel(channel)
+      setRoomCallRecap(null)
     }
   }, [isClassicGroupRoom, supabaseClient, activeRoom?.id])
 
-  // Resolve avatars for open-call participant strip (Join card).
+  // Resolve avatars for open-call / recap participant strip (Join card).
   useEffect(() => {
     const ids = Array.isArray(roomOpenCall?.active_participant_ids)
       ? roomOpenCall.active_participant_ids.filter(Boolean)
-      : []
+      : Array.isArray(roomCallRecap?.participant_ids)
+        ? roomCallRecap.participant_ids.filter(Boolean)
+        : []
     if (!ids.length) {
-      setRoomCallParticipantAvatars([])
+      if (roomOpenCall) setRoomCallParticipantAvatars([])
       return undefined
     }
     let cancelled = false
@@ -425,6 +458,7 @@ export default function ChatConversation({
     }
   }, [
     roomOpenCall?.active_participant_ids,
+    roomCallRecap?.participant_ids,
     supabaseClient,
     viewerUserId,
     viewerProfile,
@@ -2182,16 +2216,34 @@ export default function ChatConversation({
   const alreadyInRoomCall = Boolean(
     roomOpenCall?.id && chatCall?.activeCall?.callId === roomOpenCall.id,
   )
-  const showGroupCallJoinBanner = Boolean(
+  const showLiveGroupCallBanner = Boolean(
     isClassicGroupRoom && roomOpenCall?.id && chatCall && !alreadyInRoomCall && !chatCall.activeCall,
   )
+  const showEndedGroupCallBanner = Boolean(
+    isClassicGroupRoom && roomCallRecap?.id && !roomOpenCall?.id && !chatCall?.activeCall,
+  )
+  const showGroupCallJoinBanner = showLiveGroupCallBanner || showEndedGroupCallBanner
 
   const listPaddingTop = useRichHeader
     ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
-  const roomCallStatusLabel =
-    roomOpenCall?.status === 'ringing'
+  const roomCallDurationLabel = (() => {
+    const sec = Number(roomCallRecap?.duration_seconds) || 0
+    if (sec <= 0) return null
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    return `${m}:${String(s).padStart(2, '0')}`
+  })()
+  const roomCallStatusLabel = showEndedGroupCallBanner
+    ? roomCallRecap?.status === 'missed'
+      ? 'Missed call'
+      : roomCallRecap?.status === 'declined'
+        ? 'Call declined'
+        : roomCallRecap?.media_mode === 'video'
+          ? `Video call${roomCallDurationLabel ? ` · ${roomCallDurationLabel}` : ''}`
+          : `Voice call${roomCallDurationLabel ? ` · ${roomCallDurationLabel}` : ''}`
+    : roomOpenCall?.status === 'ringing'
       ? 'Ringing…'
       : roomOpenCall?.media_mode === 'video'
         ? 'Video call in progress'
@@ -2565,7 +2617,13 @@ export default function ChatConversation({
           <div className="mb-2.5 flex justify-center">
             <div className="chat-header-glass flex w-[15.5rem] flex-col gap-2 rounded-2xl px-3 py-2.5 shadow-lg">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25d366]/15 text-[#25d366]">
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    showEndedGroupCallBanner
+                      ? 'bg-zinc-500/20 text-zinc-300'
+                      : 'bg-[#25d366]/15 text-[#25d366]'
+                  }`}
+                >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                     <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
                   </svg>
@@ -2573,26 +2631,36 @@ export default function ChatConversation({
                 <p className="min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-zinc-50">
                   {roomCallStatusLabel}
                 </p>
-                <button
-                  type="button"
-                  disabled={chatCall.busy}
-                  onClick={() => {
-                    void chatCall.joinCall(roomOpenCall.id, {
-                      title: headerDisplayName,
-                      avatarUrl: activeRoom.avatar_url || null,
-                      viewerAvatarUrl: viewerProfile?.avatar_url || null,
-                      openRoom: false,
-                    })
-                  }}
-                  className="shrink-0 rounded-full bg-[#25d366] px-3 py-2 text-[12px] font-bold text-white touch-manipulation active:opacity-80 disabled:opacity-40"
-                >
-                  Join
-                </button>
+                {showLiveGroupCallBanner ? (
+                  <button
+                    type="button"
+                    disabled={chatCall.busy}
+                    onClick={() => {
+                      void chatCall.joinCall(roomOpenCall.id, {
+                        title: headerDisplayName,
+                        avatarUrl: activeRoom.avatar_url || null,
+                        viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                        openRoom: false,
+                      })
+                    }}
+                    className="shrink-0 rounded-full bg-[#25d366] px-3 py-2 text-[12px] font-bold text-white touch-manipulation active:opacity-80 disabled:opacity-40"
+                  >
+                    Join
+                  </button>
+                ) : roomCallDurationLabel ? (
+                  <span className="shrink-0 rounded-full border border-zinc-600/80 bg-zinc-900/80 px-2.5 py-1 text-[11px] font-bold tabular-nums text-zinc-200">
+                    {roomCallDurationLabel}
+                  </span>
+                ) : null}
               </div>
               {roomCallAvatarTotal > 0 ? (
                 <div
                   className="flex items-center"
-                  aria-label={`${roomCallAvatarTotal} on the call`}
+                  aria-label={
+                    showEndedGroupCallBanner
+                      ? `${roomCallAvatarTotal} were on the call`
+                      : `${roomCallAvatarTotal} on the call`
+                  }
                 >
                   {roomCallAvatarsShown.map((p, idx) => (
                     p.avatarUrl ? (

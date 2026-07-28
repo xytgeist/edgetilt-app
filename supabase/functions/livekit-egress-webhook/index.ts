@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const { data: call, error: callErr } = await admin
       .from('chat_calls')
       .select(
-        'id, chat_room_id, started_by, recording_status, recording_started_by, recording_r2_key, recording_egress_id',
+        'id, chat_room_id, kind, media_mode, started_by, recording_status, recording_started_by, recording_started_at, recording_r2_key, recording_egress_id',
       )
       .eq('recording_egress_id', egressId)
       .maybeSingle()

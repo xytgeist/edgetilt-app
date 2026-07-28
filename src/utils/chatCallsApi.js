@@ -112,7 +112,7 @@ export async function chatFetchActiveRoomCall(supabase, roomId) {
   const { data, error } = await supabase
     .from('chat_calls')
     .select(
-      'id, chat_room_id, kind, status, started_by, started_at, media_mode, chat_call_participants(user_id, left_at, joined_at)',
+      'id, chat_room_id, kind, status, started_by, started_at, answered_at, media_mode, chat_call_participants(user_id, left_at, joined_at)',
     )
     .eq('chat_room_id', id)
     .in('status', ['ringing', 'active'])
@@ -133,5 +133,54 @@ export async function chatFetchActiveRoomCall(supabase, roomId) {
     ...row,
     active_participant_count: activeParts.length,
     active_participant_ids: activeParts.map((p) => String(p.user_id)),
+  }
+}
+
+/**
+ * Final snapshot for the composer call card after hangup (avatars + duration).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} callId
+ */
+export async function chatFetchRoomCallRecap(supabase, callId) {
+  const id = String(callId || '').trim()
+  if (!id) return null
+  const { data, error } = await supabase
+    .from('chat_calls')
+    .select(
+      'id, chat_room_id, kind, status, started_by, started_at, answered_at, ended_at, media_mode, chat_call_participants(user_id, left_at, joined_at)',
+    )
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw new Error(error.message || 'Could not load call recap.')
+  if (!data) return null
+  const parts = Array.isArray(data.chat_call_participants) ? data.chat_call_participants : []
+  const allParts = parts
+    .filter((p) => p?.user_id)
+    .slice()
+    .sort((a, b) => {
+      const ta = Date.parse(String(a.joined_at || '')) || 0
+      const tb = Date.parse(String(b.joined_at || '')) || 0
+      return ta - tb
+    })
+  const participantIds = []
+  const seen = new Set()
+  for (const p of allParts) {
+    const uid = String(p.user_id)
+    if (seen.has(uid)) continue
+    seen.add(uid)
+    participantIds.push(uid)
+  }
+  const startIso = data.answered_at || data.started_at || null
+  const endIso = data.ended_at || null
+  let durationSeconds = 0
+  if (startIso && endIso) {
+    const ms = Date.parse(endIso) - Date.parse(startIso)
+    if (Number.isFinite(ms) && ms > 0) durationSeconds = Math.max(1, Math.round(ms / 1000))
+  }
+  const { chat_call_participants: _parts, ...row } = data
+  return {
+    ...row,
+    participant_ids: participantIds,
+    duration_seconds: durationSeconds,
   }
 }

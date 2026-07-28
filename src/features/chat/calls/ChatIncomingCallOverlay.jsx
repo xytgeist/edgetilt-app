@@ -144,7 +144,7 @@ export default function ChatIncomingCallOverlay({
         </div>
       ) : null}
 
-      <div className={`flex w-full max-w-xs items-center justify-between${showDeclineQuickReplies ? ' mt-10' : ' mt-12'}`}>
+      <div className={`flex items-center justify-center gap-14${showDeclineQuickReplies ? ' mt-10' : ' mt-12'}`}>
         <button
           type="button"
           disabled={busy}

@@ -6,6 +6,59 @@ export function loungeMarketChartIsLight() {
   return typeof document !== 'undefined' && document.documentElement.classList.contains('light')
 }
 
+/**
+ * Custom LWC color parser. Newer Chromium returns `color(srgb …)` from
+ * getComputedStyle, so the library's built-in rgb()/rgba() match fails and
+ * throws `Failed to parse color: #a1a1aa` (and similar hex). Parsers receive
+ * the original color string.
+ *
+ * @param {string} color
+ * @returns {[number, number, number, number] | null}
+ */
+export function loungeMarketChartColorParser(color) {
+  if (typeof color !== 'string') return null
+  const value = color.trim()
+  if (!value || value === 'transparent') return null
+
+  const hex8 = /^#([0-9a-f]{8})$/i.exec(value)
+  if (hex8) {
+    const n = parseInt(hex8[1], 16)
+    return [(n >> 24) & 255, (n >> 16) & 255, (n >> 8) & 255, ((n & 255) / 255)]
+  }
+  const hex6 = /^#([0-9a-f]{6})$/i.exec(value)
+  if (hex6) {
+    const n = parseInt(hex6[1], 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1]
+  }
+  const hex3 = /^#([0-9a-f]{3})$/i.exec(value)
+  if (hex3) {
+    const [r, g, b] = hex3[1].split('')
+    return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16), 1]
+  }
+
+  const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(value)
+  if (rgb) {
+    return [
+      Math.round(Number(rgb[1])),
+      Math.round(Number(rgb[2])),
+      Math.round(Number(rgb[3])),
+      rgb[4] != null ? Number(rgb[4]) : 1,
+    ]
+  }
+
+  const srgb = /^color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)$/i.exec(value)
+  if (srgb) {
+    return [
+      Math.round(Number(srgb[1]) * 255),
+      Math.round(Number(srgb[2]) * 255),
+      Math.round(Number(srgb[3]) * 255),
+      srgb[4] != null ? Number(srgb[4]) : 1,
+    ]
+  }
+
+  return null
+}
+
 /** @param {boolean} [isLight] @param {{ attributionLogo?: boolean }} [opts] */
 export function loungeMarketChartTheme(isLight = loungeMarketChartIsLight(), { attributionLogo = false } = {}) {
   // Tailwind zinc-* is remapped under html.light (see index.css). Use the same
@@ -15,6 +68,7 @@ export function loungeMarketChartTheme(isLight = loungeMarketChartIsLight(), { a
       background: { type: ColorType.Solid, color: 'transparent' },
       textColor: isLight ? '#71717a' : '#a1a1aa',
       attributionLogo,
+      colorParsers: [loungeMarketChartColorParser],
     },
     grid: {
       vertLines: { visible: false },

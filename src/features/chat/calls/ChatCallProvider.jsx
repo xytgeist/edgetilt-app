@@ -63,6 +63,17 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
 
 const ChatCallContext = createContext(null)
 
+/** Bottom toast for call status / soft errors (no dismiss button). */
+const CALL_STATUS_TOAST_MS = 3500
+
+/** LiveKit hangup noise... not worth a toast. */
+function shouldShowCallStatusToast(message) {
+  const text = String(message || '').trim()
+  if (!text) return false
+  if (/^client initiated disconnect$/i.test(text)) return false
+  return true
+}
+
 /**
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient | null,
@@ -96,6 +107,18 @@ export function ChatCallProvider({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
+
+  const showCallStatusToast = useCallback((message) => {
+    const text = String(message || '').trim()
+    if (!shouldShowCallStatusToast(text)) return
+    setError(text)
+  }, [])
+
+  useEffect(() => {
+    if (!error) return undefined
+    const timer = window.setTimeout(() => setError(''), CALL_STATUS_TOAST_MS)
+    return () => window.clearTimeout(timer)
+  }, [error])
   const activeCallRef = useRef(activeCall)
   const incomingRef = useRef(incoming)
   const endingRef = useRef(false)
@@ -388,7 +411,7 @@ export function ChatCallProvider({
         if (cancelled) return
         const call = res?.call
         if (!call?.id) {
-          setError('That call is no longer available.')
+          showCallStatusToast('That call is no longer available.')
           shouldClear = true
           return
         }
@@ -426,7 +449,7 @@ export function ChatCallProvider({
       } catch (err) {
         // Leave stash for visibility retry (common on iOS wake before session is ready).
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not open call')
+          showCallStatusToast(err instanceof Error ? err.message : 'Could not open call')
         }
       } finally {
         if (!cancelled && shouldClear) {
@@ -438,7 +461,7 @@ export function ChatCallProvider({
     return () => {
       cancelled = true
     }
-  }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId, deepLinkRetry])
+  }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId, deepLinkRetry, showCallStatusToast])
 
   const startCall = useCallback(
     async (roomId, mediaMode = 'audio', title = 'Chat call') => {
@@ -471,13 +494,13 @@ export function ChatCallProvider({
         return call
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not start call'
-        setError(msg)
+        showCallStatusToast(msg)
         return null
       } finally {
         setBusy(false)
       }
     },
-    [supabaseClient, viewerUserId, ensureBroadcast],
+    [supabaseClient, viewerUserId, ensureBroadcast, showCallStatusToast],
   )
 
   const acceptIncoming = useCallback(async () => {
@@ -504,11 +527,11 @@ export function ChatCallProvider({
         isOutgoing: false,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not join call')
+      showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
     } finally {
       setBusy(false)
     }
-  }, [supabaseClient, incoming, ensureBroadcast, onOpenRoom])
+  }, [supabaseClient, incoming, ensureBroadcast, onOpenRoom, showCallStatusToast])
 
   /**
    * @param {{ message?: string }} [opts]
@@ -536,12 +559,12 @@ export function ChatCallProvider({
       }
       setIncoming(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not decline')
+      showCallStatusToast(err instanceof Error ? err.message : 'Could not decline')
       setIncoming(null)
     } finally {
       setBusy(false)
     }
-  }, [supabaseClient, incoming, ensureBroadcast])
+  }, [supabaseClient, incoming, ensureBroadcast, showCallStatusToast])
 
   const hangup = useCallback(async () => {
     const current = activeCallRef.current
@@ -658,7 +681,7 @@ export function ChatCallProvider({
             kind={activeCall.kind}
             title={activeCall.title}
             isOutgoing={Boolean(activeCall.isOutgoing)}
-            onError={(msg) => setError(msg || 'Call connection failed')}
+            onError={(msg) => showCallStatusToast(msg || 'Call connection failed')}
             onDisconnected={() => {
               // End DB call so a drop/disconnect cannot leave a stuck ringing row.
               void hangup()
@@ -669,15 +692,11 @@ export function ChatCallProvider({
       ) : null}
       {error ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)] z-[131] flex justify-center px-4">
-          <div className="pointer-events-auto max-w-sm rounded-xl border border-rose-500/40 bg-zinc-950/95 px-3 py-2 text-[13px] text-rose-200 shadow-lg">
+          <div
+            className="max-w-sm rounded-xl border border-rose-500/40 bg-zinc-950/95 px-3 py-2 text-center text-[13px] text-rose-200 shadow-lg"
+            role="status"
+          >
             {error}
-            <button
-              type="button"
-              className="ml-2 font-semibold text-zinc-100 underline"
-              onClick={() => setError('')}
-            >
-              Dismiss
-            </button>
           </div>
         </div>
       ) : null}

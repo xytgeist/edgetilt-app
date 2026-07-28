@@ -73,8 +73,9 @@ export default function ChatIncomingCallOverlay({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-zinc-950/95 px-6 text-center"
+      className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-[#09090b]/96 px-6 text-center"
       data-chat-feature
+      data-chat-call-incoming
       role="dialog"
       aria-modal="true"
       aria-label="Incoming call"
@@ -86,35 +87,33 @@ export default function ChatIncomingCallOverlay({
         toneRef.current = startChatCallTone('incoming')
       }}
     >
-      <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-cyan-400/90">
+      <p className="text-[13px] font-bold uppercase tracking-[0.16em] text-[#67e8f9]">
         {isVideo ? 'Video call' : 'Voice call'}
       </p>
-      <div className="mt-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-800 shadow-[0_0_0_4px_rgba(24,24,27,0.65)]">
+      <div className="mt-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-[#3f3f46] bg-[#27272a]">
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="text-[36px] font-black uppercase tracking-tight text-zinc-300" aria-hidden>
+          <span className="text-[36px] font-black uppercase tracking-tight text-[#d4d4d8]" aria-hidden>
             {(title || '?').trim().charAt(0) || '?'}
           </span>
         )}
       </div>
-      <h2 className="mt-4 max-w-sm text-[28px] font-black tracking-tight text-zinc-50">{title}</h2>
-      <p className="mt-2 text-[15px] text-zinc-400">{subtitle}</p>
-      <p className="mt-8 max-w-xs text-[12px] leading-relaxed text-zinc-500">
-        Keep Edge open during calls. Background audio on iPhone is best-effort.
+      <h2 className="mt-4 max-w-sm text-[28px] font-black tracking-tight text-[#fafafa]">{title}</h2>
+      <p className="mt-2 text-[15px] text-[#a1a1aa]">{subtitle}</p>
+      <p className="mt-8 max-w-xs text-[12px] leading-relaxed text-[#71717a]">
+        Keep Edge open during calls.
       </p>
 
       {showDeclineQuickReplies ? (
         <div className="mt-8 w-full max-w-sm text-left">
-          <label htmlFor="chat-call-decline-quick-reply" className="block text-[12px] font-semibold text-zinc-400">
-            Quick reply (optional)
-          </label>
           <select
             id="chat-call-decline-quick-reply"
+            aria-label="Quick reply"
             value={quickReply}
             disabled={busy}
             onChange={(event) => setQuickReply(event.target.value)}
-            className="mt-2 w-full min-h-12 appearance-none rounded-2xl border border-zinc-700 bg-zinc-900 px-4 pr-10 text-[15px] font-medium text-zinc-100 touch-manipulation disabled:opacity-50"
+            className="w-full min-h-12 appearance-none rounded-2xl border border-[#3f3f46] bg-[#18181b] px-4 pr-10 text-[15px] font-medium text-[#f4f4f5] touch-manipulation disabled:opacity-50"
             style={{
               backgroundImage:
                 "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
@@ -145,7 +144,7 @@ export default function ChatIncomingCallOverlay({
         </div>
       ) : null}
 
-      <div className={`flex items-center gap-10${showDeclineQuickReplies ? ' mt-10' : ' mt-12'}`}>
+      <div className={`flex w-full max-w-xs items-center justify-between${showDeclineQuickReplies ? ' mt-10' : ' mt-12'}`}>
         <button
           type="button"
           disabled={busy}
@@ -168,7 +167,7 @@ export default function ChatIncomingCallOverlay({
             stopToneNow()
             onAccept()
           }}
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-zinc-950 touch-manipulation active:opacity-80 disabled:opacity-50"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-[#09090b] touch-manipulation active:opacity-80 disabled:opacity-50"
           aria-label="Accept call"
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden>

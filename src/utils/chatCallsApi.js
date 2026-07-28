@@ -89,6 +89,7 @@ export function chatGetCall(supabase, callId) {
 
 /**
  * Open ringing/active call for a room (member RLS on `chat_calls`).
+ * Includes active participant ids/count (rows with `left_at` null).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} roomId
  */
@@ -97,10 +98,27 @@ export async function chatFetchActiveRoomCall(supabase, roomId) {
   if (!id) return null
   const { data, error } = await supabase
     .from('chat_calls')
-    .select('id, chat_room_id, kind, status, started_by, started_at, media_mode')
+    .select(
+      'id, chat_room_id, kind, status, started_by, started_at, media_mode, chat_call_participants(user_id, left_at, joined_at)',
+    )
     .eq('chat_room_id', id)
     .in('status', ['ringing', 'active'])
     .maybeSingle()
   if (error) throw new Error(error.message || 'Could not load active call.')
-  return data || null
+  if (!data) return null
+  const parts = Array.isArray(data.chat_call_participants) ? data.chat_call_participants : []
+  const activeParts = parts
+    .filter((p) => !p?.left_at && p?.user_id)
+    .slice()
+    .sort((a, b) => {
+      const ta = Date.parse(String(a.joined_at || '')) || 0
+      const tb = Date.parse(String(b.joined_at || '')) || 0
+      return ta - tb
+    })
+  const { chat_call_participants: _parts, ...row } = data
+  return {
+    ...row,
+    active_participant_count: activeParts.length,
+    active_participant_ids: activeParts.map((p) => String(p.user_id)),
+  }
 }

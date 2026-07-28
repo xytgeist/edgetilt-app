@@ -939,7 +939,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-07-27: **Chat calling group late join:** classic group conversation queries open `chat_calls` + Realtime; Join banner + header Join → `joinCall` / Edge `join_call`. Start Voice on 409 joins the open call. Client only (RLS SELECT).
+- 2026-07-27: **Chat calling group late join:** classic group conversation queries open `chat_calls` + Realtime; Join bar above composer (status + participant avatars / `+N`, polled) + header Join → `joinCall` / Edge `join_call`. Start Voice on 409 joins the open call. Client only (RLS SELECT).
 - 2026-07-27: **Chat calling group avatar grid:** in-call group voice shows all LiveKit participants as avatars (profiles fetch); active speaker gets green ring (`useSpeakingParticipants`). Client only.
 - 2026-07-27: **Chat calling group hangup leave:** hangup → **`leave_call`**; group continues only if **2+** remain after leave (two left → one hangup ends for both). Redeploy **`chat-calls`** (test then prod).
 - 2026-07-27: **Chat calling WhatsApp-style in-call UI:** ringing/active screens use large avatar + control pill; minimize → floating pill with avatar expand; DM video = remote fullscreen + local circle PiP, camera-off → avatar, multi-remote strip + tap-to-pin. Client only.

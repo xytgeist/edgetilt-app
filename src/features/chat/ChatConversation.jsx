@@ -312,8 +312,14 @@ export default function ChatConversation({
   const isClassicGroupRoom = activeRoom.kind === 'group'
   const isDmRoom = activeRoom.kind === 'dm'
   const chatCall = useChatCallOptional()
-  /** @type {[{ id: string, kind?: string, status?: string } | null, Function]} */
-  const [roomOpenCall, setRoomOpenCall] = useState(/** @type {{ id: string, kind?: string, status?: string } | null} */ (null))
+  /** @type {[{ id: string, kind?: string, status?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null, Function]} */
+  const [roomOpenCall, setRoomOpenCall] = useState(
+    /** @type {{ id: string, kind?: string, status?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null} */ (null),
+  )
+  /** @type {[{ userId: string, avatarUrl: string | null, initial: string }[], Function]} */
+  const [roomCallParticipantAvatars, setRoomCallParticipantAvatars] = useState(
+    /** @type {{ userId: string, avatarUrl: string | null, initial: string }[]} */ ([]),
+  )
   useEffect(() => {
     if (!chatCall || !activeRoom?.id) return undefined
     return chatCall.watchRoom(activeRoom.id)
@@ -335,6 +341,10 @@ export default function ChatConversation({
       }
     }
     void refresh()
+    // Participants join/leave without always updating chat_calls; poll while open.
+    const pollId = window.setInterval(() => {
+      void refresh()
+    }, 4000)
     const channel = supabaseClient
       .channel(`chat-room-open-call-${activeRoom.id}`)
       .on(
@@ -352,9 +362,74 @@ export default function ChatConversation({
       .subscribe()
     return () => {
       cancelled = true
+      window.clearInterval(pollId)
       supabaseClient.removeChannel(channel)
     }
   }, [isClassicGroupRoom, supabaseClient, activeRoom?.id])
+
+  // Resolve avatars for open-call participant strip (Join card).
+  useEffect(() => {
+    const ids = Array.isArray(roomOpenCall?.active_participant_ids)
+      ? roomOpenCall.active_participant_ids.filter(Boolean)
+      : []
+    if (!ids.length) {
+      setRoomCallParticipantAvatars([])
+      return undefined
+    }
+    let cancelled = false
+    const resolveOne = (userId, profile) => {
+      const name = String(profile?.display_name || profile?.handle || '').trim()
+      const initial = (name[0] || '?').toUpperCase()
+      const avatarUrl =
+        typeof profile?.avatar_url === 'string' && profile.avatar_url.trim()
+          ? profile.avatar_url.trim()
+          : null
+      return { userId, avatarUrl, initial }
+    }
+    const fromCache = (userId) => {
+      if (userId === viewerUserId) {
+        return resolveOne(userId, viewerProfile)
+      }
+      return resolveOne(userId, profilesById[userId] || localProfiles[userId] || null)
+    }
+    const cached = ids.map((id) => fromCache(id))
+    setRoomCallParticipantAvatars(cached)
+    const missing = ids.filter((id) => {
+      if (id === viewerUserId) return false
+      return !(profilesById[id] || localProfiles[id])
+    })
+    if (!missing.length || !supabaseClient) return undefined
+    ;(async () => {
+      const { data } = await supabaseClient
+        .from('profiles')
+        .select('user_id, handle, display_name, avatar_url')
+        .in('user_id', [...new Set(missing)])
+      if (cancelled || !data?.length) return
+      setLocalProfiles((prev) => {
+        const next = { ...prev }
+        for (const p of data) next[p.user_id] = p
+        return next
+      })
+      setRoomCallParticipantAvatars(ids.map((id) => {
+        const p =
+          id === viewerUserId
+            ? viewerProfile
+            : profilesById[id] || data.find((row) => row.user_id === id) || localProfiles[id] || null
+        return resolveOne(id, p)
+      }))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    roomOpenCall?.active_participant_ids,
+    supabaseClient,
+    viewerUserId,
+    viewerProfile,
+    profilesById,
+    localProfiles,
+  ])
+
   const isGroupOwner = chatIsGroupOwner(activeRoom, viewerUserId)
   const canPinMessages = chatCanPinMessages(activeRoom, viewerUserId)
   const showStarPinActions = isGroupRoom || isDmRoom
@@ -2110,13 +2185,22 @@ export default function ChatConversation({
   )
 
   const listPaddingTop = useRichHeader
-    ? showGroupCallJoinBanner
-      ? 'calc(env(safe-area-inset-top, 0px) + 14.5rem)'
-      : 'calc(env(safe-area-inset-top, 0px) + 11rem)'
-    : showGroupCallJoinBanner
-      ? 'calc(env(safe-area-inset-top, 0px) + 8rem)'
-      : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
+    ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
+    : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
+  const roomCallStatusLabel =
+    roomOpenCall?.status === 'ringing' ? 'Ringing…' : 'Voice call in progress'
+  const ROOM_CALL_AVATAR_MAX = 5
+  const roomCallAvatarTotal = roomCallParticipantAvatars.length
+  // When overflowing, reserve the last slot for +N.
+  const roomCallAvatarsShown =
+    roomCallAvatarTotal > ROOM_CALL_AVATAR_MAX
+      ? roomCallParticipantAvatars.slice(0, ROOM_CALL_AVATAR_MAX - 1)
+      : roomCallParticipantAvatars
+  const roomCallOverflowCount =
+    roomCallAvatarTotal > ROOM_CALL_AVATAR_MAX
+      ? roomCallAvatarTotal - (ROOM_CALL_AVATAR_MAX - 1)
+      : 0
 
   return (
     <div
@@ -2294,35 +2378,6 @@ export default function ChatConversation({
         ) : null}
       </div>
 
-      {showGroupCallJoinBanner ? (
-        <div
-          className="pointer-events-none absolute inset-x-0 z-[19] px-3"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7.75rem)' }}
-        >
-          <div className="chat-header-glass pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl px-3 py-2.5 shadow-lg">
-            <div className="min-w-0 text-left">
-              <p className="truncate text-[13px] font-semibold text-zinc-50">Voice call in progress</p>
-              <p className="truncate text-[12px] text-zinc-400">Join anytime from this group</p>
-            </div>
-            <button
-              type="button"
-              disabled={chatCall.busy}
-              onClick={() => {
-                void chatCall.joinCall(roomOpenCall.id, {
-                  title: headerDisplayName,
-                  avatarUrl: activeRoom.avatar_url || null,
-                  viewerAvatarUrl: viewerProfile?.avatar_url || null,
-                  openRoom: false,
-                })
-              }}
-              className="shrink-0 rounded-full bg-[#25d366] px-4 py-2 text-[13px] font-bold text-white touch-manipulation active:opacity-80 disabled:opacity-40"
-            >
-              Join
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       {/* ── Body + composer (post-detail flex column - footer host owns kb overlap) ── */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 
@@ -2480,6 +2535,70 @@ export default function ChatConversation({
           background: 'transparent',
         }}
       >
+        {showGroupCallJoinBanner ? (
+          <div className="mb-2.5 flex justify-center">
+            <div className="chat-header-glass flex w-[15.5rem] flex-col gap-2 rounded-2xl px-3 py-2.5 shadow-lg">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25d366]/15 text-[#25d366]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
+                  </svg>
+                </div>
+                <p className="min-w-0 flex-1 truncate text-[12px] font-semibold leading-snug text-zinc-50">
+                  {roomCallStatusLabel}
+                </p>
+                <button
+                  type="button"
+                  disabled={chatCall.busy}
+                  onClick={() => {
+                    void chatCall.joinCall(roomOpenCall.id, {
+                      title: headerDisplayName,
+                      avatarUrl: activeRoom.avatar_url || null,
+                      viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                      openRoom: false,
+                    })
+                  }}
+                  className="shrink-0 rounded-full bg-[#25d366] px-3 py-2 text-[12px] font-bold text-white touch-manipulation active:opacity-80 disabled:opacity-40"
+                >
+                  Join
+                </button>
+              </div>
+              {roomCallAvatarTotal > 0 ? (
+                <div
+                  className="flex items-center"
+                  aria-label={`${roomCallAvatarTotal} on the call`}
+                >
+                  {roomCallAvatarsShown.map((p, idx) => (
+                    p.avatarUrl ? (
+                      <img
+                        key={p.userId}
+                        src={p.avatarUrl}
+                        alt=""
+                        className={`h-6 w-6 rounded-full object-cover ring-2 ring-zinc-900 ${idx > 0 ? '-ml-1.5' : ''}`}
+                      />
+                    ) : (
+                      <div
+                        key={p.userId}
+                        className={`flex h-6 w-6 items-center justify-center rounded-full bg-zinc-700 text-[9px] font-bold text-zinc-100 ring-2 ring-zinc-900 ${idx > 0 ? '-ml-1.5' : ''}`}
+                        aria-hidden
+                      >
+                        {p.initial}
+                      </div>
+                    )
+                  ))}
+                  {roomCallOverflowCount > 0 ? (
+                    <div
+                      className={`flex h-6 min-w-6 items-center justify-center rounded-full bg-zinc-700 px-1 text-[9px] font-bold text-zinc-100 ring-2 ring-zinc-900 ${roomCallAvatarsShown.length > 0 ? '-ml-1.5' : ''}`}
+                      aria-hidden
+                    >
+                      +{roomCallOverflowCount}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <div
           ref={composerTouchRef}
         >

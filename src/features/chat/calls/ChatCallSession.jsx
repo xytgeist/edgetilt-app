@@ -6,6 +6,7 @@ import {
   useLocalParticipant,
   useParticipants,
   useSpeakingParticipants,
+  useStartAudio,
   VideoTrack,
   useRoomContext,
 } from '@livekit/components-react'
@@ -265,6 +266,9 @@ export default function ChatCallSession({
         connect={!connectError}
         audio
         video={videoEnabled}
+        // Mix remote mics in one AudioContext... avoids multi-<audio> autoplay where
+        // some group participants stay silent until someone leaves.
+        options={{ webAudioMix: true }}
         onConnected={() => {
           didConnectRef.current = true
           setConnectError('')
@@ -313,11 +317,27 @@ export default function ChatCallSession({
               onHangup={onHangup}
             />
             <RoomAudioRenderer />
+            <CallStartAudioGate />
           </>
         )}
       </LiveKitRoom>
     </div>
   )
+}
+
+/** Visible only while the browser blocks remote call audio (autoplay). */
+function CallStartAudioGate() {
+  const room = useRoomContext()
+  const { mergedProps, canPlayAudio } = useStartAudio({
+    room,
+    props: {
+      className:
+        'pointer-events-auto fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[132] mx-auto block max-w-xs rounded-full bg-[#25d366] px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg touch-manipulation',
+      type: 'button',
+    },
+  })
+  if (canPlayAudio) return null
+  return <button {...mergedProps}>Tap for call audio</button>
 }
 
 function CallChrome({
@@ -410,12 +430,12 @@ function CallChrome({
 
   const resolveAvatarForParticipant = (participant) => {
     if (!participant) return null
-    if (participant.isLocal) return viewerAvatarUrl
-    if (peerUserId && participant.identity === peerUserId) return avatarUrl
+    const fromProfile = profileById.get(participant.identity)?.avatarUrl || null
+    if (participant.isLocal) return viewerAvatarUrl || fromProfile
+    if (peerUserId && participant.identity === peerUserId) return avatarUrl || fromProfile
     // DM: any remote uses the peer avatar we already resolved.
-    if (!isGroup) return avatarUrl
-    const fromProfile = profileById.get(participant.identity)?.avatarUrl
-    return fromProfile || null
+    if (!isGroup) return avatarUrl || fromProfile
+    return fromProfile
   }
 
   const resolveNameForParticipant = (participant) => {
@@ -460,8 +480,21 @@ function CallChrome({
     }
   }
 
-  // Probe Android phantom routes (Speakerphone / Headset earpiece as audioinput).
+  // Unlock remote playback after connect / when roster changes (autoplay policies).
   useEffect(() => {
+    if (!room) return undefined
+    const kick = () => {
+      unlockChatCallAudio()
+      void room.startAudio?.().catch(() => {})
+    }
+    kick()
+    const t = window.setTimeout(kick, 250)
+    return () => window.clearTimeout(t)
+  }, [room, remoteCount])
+
+  // Probe Android phantom routes once the room is up (not on every join/leave).
+  useEffect(() => {
+    if (!room) return undefined
     let cancelled = false
     ;(async () => {
       const ok = await canToggleCallAudioRoute()
@@ -470,10 +503,13 @@ function CallChrome({
     return () => {
       cancelled = true
     }
-  }, [room, remoteCount, micOn])
+  }, [room])
 
-  // Default earpiece via Android audioinput route; retry as mic/remotes come up.
+  // Apply earpiece/speakerphone only on connect + speaker toggle.
+  // Do NOT re-run when remotes join/leave... that was restarting the mic mid-call
+  // and made group audio flaky (silent until someone dropped).
   useEffect(() => {
+    if (!room) return undefined
     let cancelled = false
     const run = async () => {
       try {
@@ -484,18 +520,15 @@ function CallChrome({
       }
     }
     void run()
+    // One short retry after local mic publish settles... not a join/leave loop.
     const t1 = window.setTimeout(() => {
       if (!cancelled) void run()
-    }, 400)
-    const t2 = window.setTimeout(() => {
-      if (!cancelled) void run()
-    }, 1200)
+    }, 500)
     return () => {
       cancelled = true
       window.clearTimeout(t1)
-      window.clearTimeout(t2)
     }
-  }, [room, speakerOn, remoteCount, micOn])
+  }, [room, speakerOn])
 
   const flipCamera = async () => {
     if (!localParticipant || !camOn || cameraBusy) return
@@ -732,18 +765,21 @@ function useCallParticipantProfiles(supabaseClient, identities) {
     const ids = idsKey.split(',').filter(Boolean)
     let cancelled = false
     ;(async () => {
+      // LiveKit identity = auth uid = profiles.user_id (not profiles.id).
       const { data, error } = await supabaseClient
         .from('profiles')
-        .select('id, display_name, handle, avatar_url')
-        .in('id', ids)
+        .select('user_id, display_name, handle, avatar_url')
+        .in('user_id', ids)
       if (cancelled || error || !data) return
       setMap((prev) => {
         const next = new Map(prev)
         for (const row of data) {
+          const key = String(row.user_id || '').trim()
+          if (!key) continue
           const title = String(row.display_name || row.handle || '').trim() || null
           const avatarUrl =
             typeof row.avatar_url === 'string' && row.avatar_url.trim() ? row.avatar_url.trim() : null
-          next.set(row.id, { title, avatarUrl })
+          next.set(key, { title, avatarUrl })
         }
         return next
       })

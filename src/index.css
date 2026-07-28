@@ -4629,10 +4629,9 @@ html.light .reaction-pill {
   user-select: none;
 }
 
-/* Call round PiP / strip: crop video to fill the circle (no letterbox bars). */
-[data-chat-call-session] [data-chat-call-round-video] {
-  position: relative;
-}
+/* Call round PiP / strip: crop video to fill the circle (no letterbox bars).
+   Do not set position on [data-chat-call-round-video] itself... that overrides
+   Tailwind absolute bottom-right on the 1:1 PiP and dumps it top-left. */
 [data-chat-call-session] [data-chat-call-round-video] video {
   position: absolute;
   inset: 0;

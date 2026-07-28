@@ -7,7 +7,7 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 | Surface | Media | UX |
 | --- | --- | --- |
 | DM (`chat_rooms.kind = dm`) | Audio or video | Ring / accept / decline / hangup; decline can optionally send a quick reply chat message |
-| Classic group (`kind = group`) | Audio only | Start voice call; members join/leave (one hangup does **not** end the call for everyone). In-call: avatar grid for all LiveKit participants; **green ring** on active speaker |
+| Classic group (`kind = group`) | Audio only | Start voice call; members join/leave (one hangup does **not** end the call for everyone). In-call: avatar grid for all LiveKit participants (profiles by **`user_id`** = LiveKit identity); **green ring** on active speaker |
 | Topics / Private Subs | Out of scope | Fan Spaces later |
 
 **Vendor:** LiveKit Cloud (managed SFU). Do not peer-mesh WebRTC.
@@ -51,6 +51,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).
 - Call provider + overlay live at **AppShell** so tab switches do not tear down ringing/active media.
 - **In-app tones:** Web Audio ringtone on incoming overlay; ringback while outgoing caller awaits a remote participant (`chatCallRingTone.js`). Stops on accept/decline/answer/hangup. Not a substitute for OS notification sound when backgrounded.
+- **Group remote audio:** LiveKitRoom uses **`webAudioMix: true`** (one AudioContext for all remotes) + `room.startAudio()` on connect/roster change; “Tap for call audio” if autoplay still blocks. Speaker/earpiece route applies on connect + toggle only... not on every join/leave (mic restart thrash was silencing people).
 
 ## Setup checklist
 

@@ -510,6 +510,15 @@ export function ChatCallProvider({
           const profile = await resolveCallerProfileAsync(roomId, peerUserId)
           avatarUrl = profile.avatarUrl
         }
+        let viewerAvatarUrl = viewerAvatarFromOpts
+        if (!viewerAvatarUrl && viewerUserId) {
+          try {
+            const viewerSnap = await resolveCallerProfileAsync(roomId, viewerUserId)
+            viewerAvatarUrl = viewerSnap.avatarUrl
+          } catch {
+            /* optional */
+          }
+        }
         setActiveCall({
           callId: call.id,
           roomId,
@@ -520,7 +529,7 @@ export function ChatCallProvider({
           title,
           isOutgoing: true,
           avatarUrl,
-          viewerAvatarUrl: viewerAvatarFromOpts,
+          viewerAvatarUrl,
           peerUserId,
         })
         return call

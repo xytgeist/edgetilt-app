@@ -1052,13 +1052,19 @@ export default function AppShell({
         try {
           const msgUrl = new URL(data.url || '', window.location.origin)
           const roomId = String(data.roomId || msgUrl.searchParams.get('room') || '').trim()
-          const callId = String(data.callId || msgUrl.searchParams.get('call') || '').trim()
           const missedFromEvent =
             data.eventType === 'chat_call_missed'
               ? String(data.chatCallId || data.missedCallId || '').trim()
               : ''
           const missedCallId = String(
             data.missedCallId || msgUrl.searchParams.get('missedCall') || missedFromEvent || '',
+          ).trim()
+          const callId = String(
+            data.callId ||
+              msgUrl.searchParams.get('call') ||
+              (!missedCallId && data.eventType === 'chat_call_invite' ? data.chatCallId : '') ||
+              (!missedCallId ? data.chatCallId : '') ||
+              '',
           ).trim()
           if (roomId) setPendingChatRoomId(roomId)
           if (missedCallId) {
@@ -1163,6 +1169,9 @@ export default function AppShell({
         if (!callId) callId = (msgUrl.searchParams.get('call') || '').trim()
       } catch {
         /* ignore */
+      }
+      if (!callId && !missedCallId && pending.eventType === 'chat_call_invite') {
+        callId = String(pending.chatCallId || '').trim()
       }
       if (pending.tab === 'chat' || roomId || missedCallId || callId) {
         setTab('chat')

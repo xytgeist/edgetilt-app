@@ -420,16 +420,29 @@ export function ChatCallProvider({
         if (cancelled) return
         const call = res?.call
         if (!call?.id) {
+          // Room-only push handoff: try open call for the stashed room.
+          const roomFallback = String(stashed?.roomId || '').trim()
+          if (roomFallback && intent !== 'callback') {
+            try {
+              const open = await chatFetchActiveRoomCall(supabaseClient, roomFallback)
+              if (!cancelled && open?.id && open.started_by !== viewerUserId) {
+                presentIncomingRef.current(open)
+                onOpenRoomRef.current?.(roomFallback)
+                shouldClear = true
+                return
+              }
+            } catch {
+              /* fall through */
+            }
+          }
           showCallStatusToast('That call is no longer available.')
           shouldClear = true
           return
         }
         const roomId = String(call.chat_room_id || stashed?.roomId || '')
-        const profile = await resolveCallerProfileAsyncRef.current(roomId, call.started_by)
-        const title = profile.title
-        if (cancelled) return
 
-        // Live invite → accept UI (unless this was an explicit missed-call tap).
+        // Live invite → accept UI ASAP (do NOT await profile first).
+        // Waiting on profiles was cancellable on PWA wake → DM opened, overlay never showed.
         if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
           if (call.started_by === viewerUserId) {
             shouldClear = true
@@ -449,10 +462,12 @@ export function ChatCallProvider({
         }
         onOpenRoomRef.current?.(roomId)
         const mediaMode = call.media_mode === 'video' ? 'video' : 'audio'
+        const profile = await resolveCallerProfileAsyncRef.current(roomId, call.started_by)
+        if (cancelled) return
         setCallbackPrompt({
           roomId,
           mediaMode,
-          title,
+          title: profile.title,
           avatarUrl: profile.avatarUrl,
           isVideo: call.kind === 'dm_av' && mediaMode === 'video',
         })

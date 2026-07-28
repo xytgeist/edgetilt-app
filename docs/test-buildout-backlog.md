@@ -939,6 +939,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Chat calling push tap → Accept UI:** deep link no longer awaits caller profile before `presentIncoming` (PWA wake cancel left DM open with no overlay). notificationclick also posts **`chat-call-invite-inapp`**. Force-close PWA to pick up **`push-sw.js`**.
 - 2026-07-27: **Chat calling UX batch → production:** merge `test` → `main` (WhatsApp in-call UI, leave_call / end-when-≤1, earpiece, speaking rings, late-join Join bar + avatars). Redeploy Edge **`chat-calls`** on **`jtjgtucumuoswnbauxry`**. No new SQL.
 - 2026-07-27: **Chat calling group late join:** classic group conversation queries open `chat_calls` + Realtime; Join bar above composer (status + participant avatars / `+N`, polled) + header Join → `joinCall` / Edge `join_call`. Start Voice on 409 joins the open call. Client only (RLS SELECT).
 - 2026-07-27: **Chat calling group avatar grid:** in-call group voice shows all LiveKit participants as avatars (profiles fetch); active speaker gets green ring (`useSpeakingParticipants`). Client only.

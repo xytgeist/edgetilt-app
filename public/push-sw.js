@@ -278,12 +278,16 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     extra.activityEventId || params.get('activityEvent') || null
   const activityBatchId =
     extra.activityBatchId || params.get('activityBatch') || null
+  const eventType = extra.eventType || null
+  const chatCallId = extra.chatCallId || null
   const missedCallId =
     params.get('missedCall') ||
-    (extra.eventType === 'chat_call_missed' ? extra.chatCallId || null : null)
+    (eventType === 'chat_call_missed' ? chatCallId || null : null)
+  // Invite taps must keep callId even when URL was truncated to room-only.
   const callId =
     params.get('call') ||
-    (!missedCallId && extra.chatCallId ? extra.chatCallId : null)
+    (!missedCallId && chatCallId ? chatCallId : null) ||
+    (eventType === 'chat_call_invite' && chatCallId ? chatCallId : null)
   const roomId = params.get('room') || null
   return {
     type: 'app-navigate',
@@ -294,8 +298,8 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     callId,
     missedCallId,
     roomId,
-    eventType: extra.eventType || null,
-    chatCallId: extra.chatCallId || null,
+    eventType,
+    chatCallId,
     markActivityRead: Boolean(activityEventId || activityBatchId),
   }
 }
@@ -322,6 +326,10 @@ self.addEventListener('notificationclick', (event) => {
       // Write before focus/openWindow... iOS often drops postMessage on wake.
       await stashPendingAppNavigate(navigateMessage)
 
+      const inviteCallId = String(navigateMessage.callId || navigateMessage.chatCallId || '').trim()
+      const missedId = String(navigateMessage.missedCallId || '').trim()
+      const roomId = String(navigateMessage.roomId || '').trim() || null
+
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       for (const client of clients) {
         if (!('focus' in client)) continue
@@ -329,6 +337,25 @@ self.addEventListener('notificationclick', (event) => {
           await client.focus()
           if (typeof client.postMessage === 'function') {
             client.postMessage(navigateMessage)
+            // Same ring/callback path as visible-tab push delivery. app-navigate alone
+            // can open the DM while the deep-link accept effect loses a wake race.
+            if (inviteCallId && data.eventType !== 'chat_call_missed' && !missedId) {
+              client.postMessage({
+                type: 'chat-call-invite-inapp',
+                chatCallId: inviteCallId,
+                roomId,
+                eventType: 'chat_call_invite',
+                url: relative,
+              })
+            } else if (missedId || data.eventType === 'chat_call_missed') {
+              client.postMessage({
+                type: 'chat-call-missed-inapp',
+                chatCallId: missedId || inviteCallId || null,
+                roomId,
+                eventType: 'chat_call_missed',
+                url: relative,
+              })
+            }
           }
           // Call invite + missed callback: do NOT client.navigate after postMessage.
           // On iOS/Android PWA that reload wipes React state (DM opens, prompt never shows).

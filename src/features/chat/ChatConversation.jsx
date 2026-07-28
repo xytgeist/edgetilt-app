@@ -35,6 +35,7 @@ import {
 import { uploadChatVideoToR2, uploadChatPosterToR2 } from '../../utils/chatVideoR2Upload.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { useChatCallOptional } from './calls/ChatCallProvider.jsx'
+import { chatFetchActiveRoomCall } from '../../utils/chatCallsApi.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
@@ -311,10 +312,49 @@ export default function ChatConversation({
   const isClassicGroupRoom = activeRoom.kind === 'group'
   const isDmRoom = activeRoom.kind === 'dm'
   const chatCall = useChatCallOptional()
+  /** @type {[{ id: string, kind?: string, status?: string } | null, Function]} */
+  const [roomOpenCall, setRoomOpenCall] = useState(/** @type {{ id: string, kind?: string, status?: string } | null} */ (null))
   useEffect(() => {
     if (!chatCall || !activeRoom?.id) return undefined
     return chatCall.watchRoom(activeRoom.id)
   }, [chatCall, activeRoom?.id])
+
+  // Classic group: surface ringing/active call so late joiners can enter.
+  useEffect(() => {
+    if (!isClassicGroupRoom || !supabaseClient || !activeRoom?.id) {
+      setRoomOpenCall(null)
+      return undefined
+    }
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const row = await chatFetchActiveRoomCall(supabaseClient, activeRoom.id)
+        if (!cancelled) setRoomOpenCall(row)
+      } catch {
+        if (!cancelled) setRoomOpenCall(null)
+      }
+    }
+    void refresh()
+    const channel = supabaseClient
+      .channel(`chat-room-open-call-${activeRoom.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_calls',
+          filter: `chat_room_id=eq.${activeRoom.id}`,
+        },
+        () => {
+          void refresh()
+        },
+      )
+      .subscribe()
+    return () => {
+      cancelled = true
+      supabaseClient.removeChannel(channel)
+    }
+  }, [isClassicGroupRoom, supabaseClient, activeRoom?.id])
   const isGroupOwner = chatIsGroupOwner(activeRoom, viewerUserId)
   const canPinMessages = chatCanPinMessages(activeRoom, viewerUserId)
   const showStarPinActions = isGroupRoom || isDmRoom
@@ -2062,9 +2102,20 @@ export default function ChatConversation({
     }
   }, [contentExtendsBelowComposer, listContentFitsInView])
 
+  const alreadyInRoomCall = Boolean(
+    roomOpenCall?.id && chatCall?.activeCall?.callId === roomOpenCall.id,
+  )
+  const showGroupCallJoinBanner = Boolean(
+    isClassicGroupRoom && roomOpenCall?.id && chatCall && !alreadyInRoomCall && !chatCall.activeCall,
+  )
+
   const listPaddingTop = useRichHeader
-    ? 'calc(env(safe-area-inset-top, 0px) + 11rem)'
-    : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
+    ? showGroupCallJoinBanner
+      ? 'calc(env(safe-area-inset-top, 0px) + 14.5rem)'
+      : 'calc(env(safe-area-inset-top, 0px) + 11rem)'
+    : showGroupCallJoinBanner
+      ? 'calc(env(safe-area-inset-top, 0px) + 8rem)'
+      : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
 
   return (
@@ -2202,6 +2253,24 @@ export default function ChatConversation({
                   </svg>
                 </button>
               </>
+            ) : roomOpenCall?.id && !alreadyInRoomCall ? (
+              <button
+                type="button"
+                disabled={chatCall.busy || Boolean(chatCall.activeCall)}
+                onClick={() => {
+                  void chatCall.joinCall(roomOpenCall.id, {
+                    title: headerDisplayName,
+                    avatarUrl: activeRoom.avatar_url || null,
+                    viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                    openRoom: false,
+                  })
+                }}
+                aria-label="Join group voice call"
+                title="Join call"
+                className="flex h-10 items-center justify-center rounded-full bg-[#25d366] px-3 text-[13px] font-bold text-white touch-manipulation active:opacity-80 transition-opacity disabled:opacity-40"
+              >
+                Join
+              </button>
             ) : (
               <button
                 type="button"
@@ -2224,6 +2293,35 @@ export default function ChatConversation({
           </div>
         ) : null}
       </div>
+
+      {showGroupCallJoinBanner ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-[19] px-3"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7.75rem)' }}
+        >
+          <div className="chat-header-glass pointer-events-auto mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl px-3 py-2.5 shadow-lg">
+            <div className="min-w-0 text-left">
+              <p className="truncate text-[13px] font-semibold text-zinc-50">Voice call in progress</p>
+              <p className="truncate text-[12px] text-zinc-400">Join anytime from this group</p>
+            </div>
+            <button
+              type="button"
+              disabled={chatCall.busy}
+              onClick={() => {
+                void chatCall.joinCall(roomOpenCall.id, {
+                  title: headerDisplayName,
+                  avatarUrl: activeRoom.avatar_url || null,
+                  viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                  openRoom: false,
+                })
+              }}
+              className="shrink-0 rounded-full bg-[#25d366] px-4 py-2 text-[13px] font-bold text-white touch-manipulation active:opacity-80 disabled:opacity-40"
+            >
+              Join
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* ── Body + composer (post-detail flex column - footer host owns kb overlap) ── */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -12,6 +12,7 @@ import {
 import {
   chatAcceptCall,
   chatDeclineCall,
+  chatFetchActiveRoomCall,
   chatGetCall,
   chatJoinCall,
   chatLeaveCall,
@@ -474,6 +475,84 @@ export function ChatCallProvider({
   }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId, deepLinkRetry, showCallStatusToast])
 
   /**
+   * Join an existing ringing/active call by id (group late-join + accept path).
+   * @param {string} callId
+   * @param {{
+   *   title?: string,
+   *   avatarUrl?: string | null,
+   *   viewerAvatarUrl?: string | null,
+   *   peerUserId?: string | null,
+   *   openRoom?: boolean,
+   *   preferAccept?: boolean,
+   * }} [opts]
+   */
+  const joinCall = useCallback(
+    async (callId, opts = {}) => {
+      if (!supabaseClient || !viewerUserId) throw new Error('Sign in to call.')
+      if (activeCallRef.current) throw new Error('Already in a call.')
+      const id = String(callId || '').trim()
+      if (!id) throw new Error('Missing call.')
+      unlockChatCallAudio()
+      setBusy(true)
+      setError('')
+      try {
+        const action = opts.preferAccept ? chatAcceptCall : chatJoinCall
+        const res = await action(supabaseClient, id)
+        const call = res.call
+        const roomId = String(call.chat_room_id || '')
+        ensureBroadcast(roomId)?.emit('accept', { callId: call.id })
+        if (opts.openRoom !== false) onOpenRoom?.(roomId)
+        let viewerAvatarUrl =
+          typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
+            ? opts.viewerAvatarUrl.trim()
+            : null
+        if (!viewerAvatarUrl) {
+          try {
+            const viewerSnap = await resolveCallerProfileAsync(roomId, viewerUserId)
+            viewerAvatarUrl = viewerSnap.avatarUrl
+          } catch {
+            /* optional */
+          }
+        }
+        const avatarUrl =
+          typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim() ? opts.avatarUrl.trim() : null
+        endingRef.current = false
+        setIncoming(null)
+        setActiveCall({
+          callId: call.id,
+          roomId,
+          kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
+          mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
+          token: res.token,
+          livekitUrl: res.livekit_url,
+          title: opts.title || 'Chat call',
+          isOutgoing: false,
+          avatarUrl,
+          viewerAvatarUrl,
+          peerUserId:
+            typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
+              ? opts.peerUserId.trim()
+              : null,
+        })
+        return call
+      } catch (err) {
+        showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
+        return null
+      } finally {
+        setBusy(false)
+      }
+    },
+    [
+      supabaseClient,
+      viewerUserId,
+      ensureBroadcast,
+      onOpenRoom,
+      showCallStatusToast,
+      resolveCallerProfileAsync,
+    ],
+  )
+
+  /**
    * @param {string} roomId
    * @param {'audio' | 'video'} [mediaMode]
    * @param {string} [title]
@@ -535,62 +614,52 @@ export function ChatCallProvider({
         return call
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not start call'
+        // Group: call already open → join instead of dead-end 409 toast.
+        if (/already in progress|in progress/i.test(msg)) {
+          try {
+            const open = await chatFetchActiveRoomCall(supabaseClient, roomId)
+            if (open?.id) {
+              setBusy(false)
+              return await joinCall(open.id, {
+                title,
+                avatarUrl: avatarFromOpts,
+                viewerAvatarUrl: viewerAvatarFromOpts,
+                openRoom: false,
+              })
+            }
+          } catch {
+            /* fall through to toast */
+          }
+        }
         showCallStatusToast(msg)
         return null
       } finally {
         setBusy(false)
       }
     },
-    [supabaseClient, viewerUserId, ensureBroadcast, showCallStatusToast, resolveCallerProfileAsync],
+    [
+      supabaseClient,
+      viewerUserId,
+      ensureBroadcast,
+      showCallStatusToast,
+      resolveCallerProfileAsync,
+      joinCall,
+    ],
   )
 
   const acceptIncoming = useCallback(async () => {
-    if (!supabaseClient || !incoming) return
+    if (!incoming) return
     const snap = incoming
-    // Clear overlay (stops ringtone) before unlocking audio for LiveKit.
+    // Clear overlay (stops ringtone) before join unlocks LiveKit audio.
     setIncoming(null)
-    unlockChatCallAudio()
-    setBusy(true)
-    setError('')
-    try {
-      const action = snap.kind === 'group_audio' ? chatJoinCall : chatAcceptCall
-      const res = await action(supabaseClient, snap.callId)
-      ensureBroadcast(snap.roomId)?.emit('accept', { callId: snap.callId })
-      onOpenRoom?.(snap.roomId)
-      let viewerAvatarUrl = null
-      try {
-        const viewerSnap = await resolveCallerProfileAsync(snap.roomId, viewerUserId)
-        viewerAvatarUrl = viewerSnap.avatarUrl
-      } catch {
-        /* optional */
-      }
-      setActiveCall({
-        callId: res.call.id,
-        roomId: res.call.chat_room_id,
-        kind: res.call.kind,
-        mediaMode: res.call.media_mode,
-        token: res.token,
-        livekitUrl: res.livekit_url,
-        title: snap.title,
-        isOutgoing: false,
-        avatarUrl: snap.avatarUrl || null,
-        viewerAvatarUrl,
-        peerUserId: snap.fromUserId || null,
-      })
-    } catch (err) {
-      showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
-    } finally {
-      setBusy(false)
-    }
-  }, [
-    supabaseClient,
-    incoming,
-    ensureBroadcast,
-    onOpenRoom,
-    showCallStatusToast,
-    resolveCallerProfileAsync,
-    viewerUserId,
-  ])
+    await joinCall(snap.callId, {
+      title: snap.title,
+      avatarUrl: snap.avatarUrl || null,
+      peerUserId: snap.fromUserId || null,
+      preferAccept: snap.kind === 'dm_av',
+      openRoom: true,
+    })
+  }, [incoming, joinCall])
 
   /**
    * @param {{ message?: string }} [opts]
@@ -673,6 +742,7 @@ export function ChatCallProvider({
       error,
       clearError: () => setError(''),
       startCall,
+      joinCall,
       acceptIncoming,
       declineIncoming,
       hangup,
@@ -685,6 +755,7 @@ export function ChatCallProvider({
       busy,
       error,
       startCall,
+      joinCall,
       acceptIncoming,
       declineIncoming,
       hangup,

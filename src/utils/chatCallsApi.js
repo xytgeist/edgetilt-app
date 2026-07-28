@@ -86,3 +86,21 @@ export function chatEndCall(supabase, callId) {
 export function chatGetCall(supabase, callId) {
   return chatCallsInvoke(supabase, { action: 'get_call', call_id: callId })
 }
+
+/**
+ * Open ringing/active call for a room (member RLS on `chat_calls`).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} roomId
+ */
+export async function chatFetchActiveRoomCall(supabase, roomId) {
+  const id = String(roomId || '').trim()
+  if (!id) return null
+  const { data, error } = await supabase
+    .from('chat_calls')
+    .select('id, chat_room_id, kind, status, started_by, started_at, media_mode')
+    .eq('chat_room_id', id)
+    .in('status', ['ringing', 'active'])
+    .maybeSingle()
+  if (error) throw new Error(error.message || 'Could not load active call.')
+  return data || null
+}

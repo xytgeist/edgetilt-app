@@ -34,7 +34,23 @@ const START_CALL_RATE_MAX = 8
 const MAX_RECORDING_SECONDS = 600
 
 const CALL_SELECT_BASE =
-  'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name, recording_status, recording_started_by, recording_started_at, recording_egress_id, recording_r2_key'
+  'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name, recording_status, recording_started_by, recording_started_at, recording_egress_id, recording_r2_key, recording_featured_identity'
+
+function readEgressTemplateBaseUrl(): string {
+  const explicit = String(Deno.env.get('CHAT_CALL_EGRESS_TEMPLATE_BASE_URL') || '')
+    .trim()
+    .replace(/\/+$/, '')
+  if (explicit) return explicit
+  // Sensible defaults when secret is unset (test sandbox vs production).
+  const supabaseUrl = String(Deno.env.get('SUPABASE_URL') || '')
+  if (supabaseUrl.includes('kcosfvmreeiosdjdzycb')) {
+    return 'https://lvslotpro.com/call-egress.html'
+  }
+  if (supabaseUrl.includes('jtjgtucumuoswnbauxry')) {
+    return 'https://edgetilt.com/call-egress.html'
+  }
+  return ''
+}
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -446,6 +462,7 @@ function recordingPublicFields(call: Record<string, unknown>) {
     recording_status: call.recording_status || 'idle',
     recording_started_by: call.recording_started_by || null,
     recording_started_at: call.recording_started_at || null,
+    recording_featured_identity: call.recording_featured_identity || null,
     recording_max_seconds: MAX_RECORDING_SECONDS,
   }
 }
@@ -903,6 +920,13 @@ Deno.serve(async (req) => {
       if (!r2) {
         return json(500, { error: 'R2 is not configured for call recordings.' })
       }
+      const templateBaseUrl = readEgressTemplateBaseUrl()
+      if (!templateBaseUrl) {
+        return json(500, {
+          error:
+            'CHAT_CALL_EGRESS_TEMPLATE_BASE_URL is not set (e.g. https://lvslotpro.com/call-egress.html).',
+        })
+      }
 
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
@@ -923,19 +947,28 @@ Deno.serve(async (req) => {
         return json(409, { error: 'A recording is already in progress.', ...recordingPublicFields(call) })
       }
 
-      const { data: part } = await admin
+      const { data: liveParts, error: liveErr } = await admin
         .from('chat_call_participants')
         .select('user_id')
         .eq('call_id', callId)
-        .eq('user_id', user.id)
         .is('left_at', null)
-        .maybeSingle()
-      if (!part?.user_id) {
+      if (liveErr) throw new Error(liveErr.message)
+      const liveIds = new Set((liveParts || []).map((p) => String(p.user_id || '').trim()).filter(Boolean))
+      if (!liveIds.has(user.id)) {
         return json(403, { error: 'Join the call before starting a recording.' })
+      }
+
+      const requestedFeatured = String(body.featured_identity || '').trim()
+      const featuredIdentity = requestedFeatured || user.id
+      if (!liveIds.has(featuredIdentity)) {
+        return json(400, {
+          error: 'Featured participant must be on the call. Pin someone in the call, then Record.',
+        })
       }
 
       const startedAt = new Date().toISOString()
       const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
+      const focusLayout = `focus:${featuredIdentity}`
 
       const { data: claimed, error: claimErr } = await admin
         .from('chat_calls')
@@ -945,6 +978,7 @@ Deno.serve(async (req) => {
           recording_started_at: startedAt,
           recording_r2_key: r2Key,
           recording_egress_id: null,
+          recording_featured_identity: featuredIdentity,
         })
         .eq('id', callId)
         .in('recording_status', ['idle', 'ready', 'failed'])
@@ -983,7 +1017,11 @@ Deno.serve(async (req) => {
         const info = await egressClientFor(lk).startRoomCompositeEgress(
           call.livekit_room_name,
           { file: fileOutput },
-          { layout: 'grid', audioOnly: false },
+          {
+            layout: focusLayout,
+            audioOnly: false,
+            customBaseUrl: templateBaseUrl,
+          },
         )
         const egressId = String(info?.egressId || '').trim()
         if (!egressId) throw new Error('LiveKit did not return an egress id.')
@@ -1001,6 +1039,7 @@ Deno.serve(async (req) => {
           ok: true,
           call: withEgress,
           ...recordingPublicFields(withEgress),
+          featured_identity: featuredIdentity,
           public_url_preview: loungeCfR2PublicUrl(r2, r2Key),
         })
       } catch (err) {
@@ -1010,6 +1049,7 @@ Deno.serve(async (req) => {
             recording_status: 'failed',
             recording_egress_id: null,
             recording_r2_key: null,
+            recording_featured_identity: null,
             recording_started_by: null,
             recording_started_at: null,
           })
@@ -1035,12 +1075,19 @@ Deno.serve(async (req) => {
         return json(200, { ok: true, already_stopped: true, ...recordingPublicFields(call) })
       }
 
-      // Cap enforcement: anyone in the call may stop; auto-stop also uses this action.
+      // Stop: recording starter, or call initiator (host kill switch). Cap path via get_call.
+      const isRecStarter = String(call.recording_started_by || '') === user.id
+      const isCallHost = String(call.started_by || '') === user.id
+      let pastCap = false
       if (call.recording_started_at) {
         const elapsedSec = (Date.now() - new Date(call.recording_started_at).getTime()) / 1000
-        if (elapsedSec > MAX_RECORDING_SECONDS + 30) {
-          // Stale row; force stop path anyway.
-        }
+        pastCap = elapsedSec >= MAX_RECORDING_SECONDS
+      }
+      if (!isRecStarter && !isCallHost && !pastCap) {
+        return json(403, {
+          error: 'Only the person recording or the call host can stop this recording.',
+          ...recordingPublicFields(call),
+        })
       }
 
       await stopActiveRecordingEgress(admin, lk, call, { throwOnError: true })

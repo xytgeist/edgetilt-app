@@ -36,6 +36,7 @@ export default defineConfig({
       input: {
         main: path.resolve('index.html'),
         slotGuideForm: path.resolve('slot-guide-form.html'),
+        callEgress: path.resolve('call-egress.html'),
       },
     },
   },

@@ -87,9 +87,18 @@ export function chatGetCall(supabase, callId) {
   return chatCallsInvoke(supabase, { action: 'get_call', call_id: callId })
 }
 
-/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
-export function chatStartRecording(supabase, callId) {
-  return chatCallsInvoke(supabase, { action: 'start_recording', call_id: callId })
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} callId
+ * @param {{ featuredIdentity?: string | null }} [opts]
+ */
+export function chatStartRecording(supabase, callId, opts = {}) {
+  const featured = String(opts.featuredIdentity || '').trim()
+  return chatCallsInvoke(supabase, {
+    action: 'start_recording',
+    call_id: callId,
+    ...(featured ? { featured_identity: featured } : {}),
+  })
 }
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabase */

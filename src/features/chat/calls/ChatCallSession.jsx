@@ -223,6 +223,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   viewerAvatarUrl?: string | null,
  *   peerUserId?: string | null,
  *   viewerUserId?: string | null,
+ *   callStartedBy?: string | null,
  *   recordingStatus?: 'idle' | 'recording' | 'stopping' | 'ready' | 'failed',
  *   recordingStartedBy?: string | null,
  *   recordingStartedAt?: string | null,
@@ -230,7 +231,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onDisconnected: () => void,
  *   onHangup: () => void,
- *   onStartRecording?: () => void,
+ *   onStartRecording?: (featuredIdentity?: string | null) => void,
  *   onStopRecording?: () => void,
  *   onError?: (msg: string) => void,
  * }} props
@@ -246,6 +247,7 @@ export default function ChatCallSession({
   viewerAvatarUrl = null,
   peerUserId = null,
   viewerUserId = null,
+  callStartedBy = null,
   recordingStatus = 'idle',
   recordingStartedBy = null,
   recordingStartedAt = null,
@@ -327,6 +329,7 @@ export default function ChatCallSession({
               viewerAvatarUrl={viewerAvatarUrl}
               peerUserId={peerUserId}
               viewerUserId={viewerUserId}
+              callStartedBy={callStartedBy}
               recordingStatus={recordingStatus}
               recordingStartedBy={recordingStartedBy}
               recordingStartedAt={recordingStartedAt}
@@ -372,6 +375,7 @@ function CallChrome({
   viewerAvatarUrl,
   peerUserId,
   viewerUserId,
+  callStartedBy = null,
   recordingStatus = 'idle',
   recordingStartedBy = null,
   recordingStartedAt = null,
@@ -405,6 +409,10 @@ function CallChrome({
   const recordingSaving = recordingStatus === 'stopping'
   const isRecordingStarter =
     Boolean(viewerUserId) && Boolean(recordingStartedBy) && viewerUserId === recordingStartedBy
+  const isCallInitiator =
+    Boolean(viewerUserId) && Boolean(callStartedBy) && viewerUserId === callStartedBy
+  /** Recording starter can stop their segment; call initiator can always kill recording. */
+  const canStopRecording = isRecordingStarter || isCallInitiator
 
   const remoteCount = participants.filter((p) => !p.isLocal).length
   const hadRemoteRef = useRef(false)
@@ -465,7 +473,7 @@ function CallChrome({
         }
       } else if (left <= 0) {
         setRecCountdownLabel('Stopping recording…')
-        if (!recAutoStopRef.current) {
+        if (!recAutoStopRef.current && canStopRecording) {
           recAutoStopRef.current = true
           onStopRecording?.()
         }
@@ -476,7 +484,7 @@ function CallChrome({
     tick()
     const id = window.setInterval(tick, 500)
     return () => window.clearInterval(id)
-  }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording])
+  }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording, canStopRecording])
 
   useEffect(() => {
     if (!awaitingAnswer) return undefined
@@ -707,12 +715,12 @@ function CallChrome({
 
       {videoEnabled && !awaitingAnswer ? (
         recordingActive ? (
-          isRecordingStarter ? (
+          canStopRecording ? (
             <button
               type="button"
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
               aria-label="Stop recording"
-              title="Stop recording"
+              title={isCallInitiator && !isRecordingStarter ? 'Stop recording (host)' : 'Stop recording'}
               onClick={() => onStopRecording?.()}
             >
               <RecordStopIcon />
@@ -740,7 +748,14 @@ function CallChrome({
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942] text-[#f4f4f5] touch-manipulation active:opacity-80"
             aria-label="Start recording"
             title="Record call"
-            onClick={() => onStartRecording?.()}
+            onClick={() => {
+              const featured =
+                pinnedIdentity ||
+                localParticipant?.identity ||
+                viewerUserId ||
+                null
+              onStartRecording?.(featured)
+            }}
           >
             <RecordDotIcon />
           </button>

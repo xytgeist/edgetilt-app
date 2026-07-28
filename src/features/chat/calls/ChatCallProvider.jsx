@@ -50,6 +50,7 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
  *   avatarUrl?: string | null,
  *   viewerAvatarUrl?: string | null,
  *   peerUserId?: string | null,
+ *   callStartedBy?: string | null,
  *   recordingStatus?: 'idle' | 'recording' | 'stopping' | 'ready' | 'failed',
  *   recordingStartedBy?: string | null,
  *   recordingStartedAt?: string | null,
@@ -610,6 +611,7 @@ export function ChatCallProvider({
             typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
               ? opts.peerUserId.trim()
               : null,
+          callStartedBy: call.started_by ? String(call.started_by) : null,
           ...recordingFieldsFromCall(call),
         })
         setIncoming(null)
@@ -690,6 +692,7 @@ export function ChatCallProvider({
           avatarUrl,
           viewerAvatarUrl,
           peerUserId,
+          callStartedBy: call.started_by ? String(call.started_by) : viewerUserId,
           ...recordingFieldsFromCall(call),
         })
         return call
@@ -804,15 +807,18 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, ensureBroadcast])
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (featuredIdentity = null) => {
     const current = activeCallRef.current
     if (!supabaseClient || !current) return null
     if (current.mediaMode !== 'video') {
       showCallStatusToast('Recording is only available on video calls.')
       return null
     }
+    const featured = String(featuredIdentity || '').trim() || null
     try {
-      const res = await chatStartRecording(supabaseClient, current.callId)
+      const res = await chatStartRecording(supabaseClient, current.callId, {
+        featuredIdentity: featured,
+      })
       const call = res?.call || res
       const fields = recordingFieldsFromCall(call)
       setActiveCall((prev) => patchActiveRecording(prev, fields))
@@ -821,8 +827,15 @@ export function ChatCallProvider({
         startedBy: fields.recordingStartedBy || viewerUserId,
         startedAt: fields.recordingStartedAt,
         maxSeconds: fields.recordingMaxSeconds,
+        featuredIdentity: res?.featured_identity || featured,
       })
       playChatCallRecordingCue('started')
+      const featuredLabel = String(res?.featured_identity || featured || '').trim()
+      if (featuredLabel && featuredLabel === viewerUserId) {
+        showCallStatusToast('Recording featuring your camera')
+      } else if (featuredLabel) {
+        showCallStatusToast('Recording featuring pinned camera')
+      }
       return res
     } catch (err) {
       showCallStatusToast(err instanceof Error ? err.message : 'Could not start recording')
@@ -1018,6 +1031,7 @@ export function ChatCallProvider({
             viewerAvatarUrl={activeCall.viewerAvatarUrl || null}
             peerUserId={activeCall.peerUserId || null}
             viewerUserId={viewerUserId}
+            callStartedBy={activeCall.callStartedBy || null}
             recordingStatus={activeCall.recordingStatus || 'idle'}
             recordingStartedBy={activeCall.recordingStartedBy || null}
             recordingStartedAt={activeCall.recordingStartedAt || null}
@@ -1029,7 +1043,7 @@ export function ChatCallProvider({
               void hangup()
             }}
             onHangup={() => void hangup()}
-            onStartRecording={() => void startRecording()}
+            onStartRecording={(featuredIdentity) => void startRecording(featuredIdentity)}
             onStopRecording={() => void stopRecording()}
           />
         </Suspense>

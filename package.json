@@ -60,6 +60,7 @@
     "@ffmpeg/util": "^0.12.1",
     "@livekit/components-react": "^2.9.23",
     "@livekit/components-styles": "^1.2.0",
+    "@livekit/egress-sdk": "^0.2.1",
     "@lottiefiles/dotlottie-web": "^0.74.0",
     "@sentry/react": "^10.53.1",
     "@supabase/supabase-js": "^2.100.0",

@@ -14,11 +14,13 @@ DM **audio/video**, classic group **audio/video**, and manual **call recording**
 
 | Rule | Behavior |
 | --- | --- |
-| Start | Manual; **any** participant; **first starter wins** (others’ Record control blanks) |
+| Start | Manual; **any** participant; **first starter wins** (others’ Record blanks while live) |
+| Stop | Recording starter **or** call initiator (host kill switch) |
+| Featured layout | Recorder’s **pin** at Record start → custom RoomComposite `focus:<identity>`; **no pin** → recorder’s own camera. Locked for that segment (no live pin follow). |
 | Cap | **10 minutes** (`CHAT_CALL_RECORDING_MAX_SECONDS = 600`) |
 | Warnings | Visual + audible at **1:00** and **0:15** left |
 | Stop | Stop Egress + post chat card; **call stays live** |
-| Pipeline | LiveKit **RoomComposite** (`grid`) → R2 → `content_encoding = call_recording` + `video_url` |
+| Pipeline | LiveKit **RoomComposite** (custom template [`call-egress.html`](../call-egress.html)) → R2 → `content_encoding = call_recording` + `video_url` |
 | Hangup while recording | Edge stops active egress so the file can finalize |
 
 **Vendor:** LiveKit Cloud (managed SFU). Do not peer-mesh WebRTC.
@@ -26,9 +28,10 @@ DM **audio/video**, classic group **audio/video**, and manual **call recording**
 ## Architecture
 
 - **Membership:** `chat_room_members` (Edge rejects non-members).
-- **Call state:** `chat_calls` + `chat_call_participants` (migrations `20260728000000` + group video `20260728050000` + recording columns `20260728060000`).
+- **Call state:** `chat_calls` + `chat_call_participants` (migrations through **`20260728090000`** including `recording_featured_identity`).
 - **Media:** LiveKit room name `edge-call:{call_id}` (never client-chosen). Publish sources follow **`media_mode`** (camera allowed when video).
-- **Tokens / recording control:** Edge Function **`chat-calls`** (`LIVEKIT_*` + Lounge R2 secrets).
+- **Tokens / recording control:** Edge Function **`chat-calls`** (`LIVEKIT_*` + Lounge R2 secrets + **`CHAT_CALL_EGRESS_TEMPLATE_BASE_URL`**).
+- **Egress template:** auth-free Vite page **`/call-egress.html`** (`src/call-egress/`)... LiveKit headless Chrome loads it with `url` / `token` / `layout=focus:<id>`. Test host `https://lvslotpro.com/call-egress.html`; prod `https://edgetilt.com/call-egress.html`.
 - **Egress finalize:** Edge Function **`livekit-egress-webhook`** (`verify_jwt = false`; LiveKit signature). On `egress_ended` success → insert `call_recording` message; set `recording_status = ready`.
 - **In-app ring (any screen):** `ChatCallProvider` mounts in **`AppShell`** while signed in (not only inside `ChatTab`), so Lounge/Guides/etc. still get the overlay. Realtime `postgres_changes` on `chat_calls` + broadcast `chat-call-{roomId}` (includes `recording_*` events). Accept/deep link opens Chat via `pendingChatRoomId`.
 - **Offline ring:** `activity_events.event_type = chat_call_invite` → immediate Edge push (not DM 60s batch). Payload includes `eventType` + `chatCallId`. Service worker suppresses OS call push only after a **visibility probe** (`document.visibilityState === 'visible'`)... never trust `client.focused` alone on iPhone PWA. Probe listener installs from **`main.jsx`** (`chatCallPushProbeListener.js`) so it answers before AppShell mounts; SW wait **800ms**. Deep link `/?tab=chat&room={uuid}&call={callId}`; notificationclick **postMessage** includes `callId`/`roomId` and **skips** `client.navigate` for call invites **and** missed callbacks (PWA reload was wiping accept / Call back UI). Tap also posts **`chat-call-invite-inapp`** (same path as visible-tab delivery) so Accept UI is not stuck behind a deep-link profile-fetch race. Durable handoff: SW also writes Cache **`edge-pending-app-navigate-v1`** (iOS often drops postMessage on wake); AppShell drains on `pageshow` / visibility / provider mount. Session stash: `edge_pending_chat_call_v1`. Pref: `push_messages`.
@@ -46,7 +49,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 - `src/features/chat/calls/` — session UI, incoming overlay (caller avatar + name), API, controller, recording cues (`chatCallRecordingTone.js`).
 - Header: DM Phone + Video; group Voice + Video (absolute right). Avatar/title stay screen-centered; room options live in the name › sheet (no ⋯ menu).
 - **In-call / ringing chrome:** WhatsApp-style dark stage, large peer avatar while ringing/audio, bottom control pill (mute / video / flip camera / **Record** on video / speaker / hangup). Flip camera (video calls, cam on) toggles front/back via LiveKit `restartTrack({ facingMode })`, with device-cycle fallback. **Speaker:** defaults to **earpiece**; button toggles **speakerphone**. Chrome Android has no `setSinkId`... we switch LiveKit **`audioinput`** between phantom devices labeled `Headset earpiece` / `Speakerphone` (that also routes playback). iOS / browsers without those devices often cannot switch from the web. Minimize (top-left) collapses to a **draggable** floating pill (app-wide via `ChatCallProvider` in AppShell; left control = peer avatar, tap to expand). **Video:** remote/active-speaker fullscreen + round PiP for the other person in 1:1 (swaps when you pin local so you can switch back); round PiP/strip uses `object-fit: cover` (no letterbox bars); camera-off / muted camera shows avatar (not black); multi-remote strip with tap-to-pin.
-- **Recording UX:** REC badge + elapsed status; starter sees Stop; non-starters see blank/disabled Record; countdown banners + cues at 1:00 / 0:15; auto `stop_recording` at 10:00 without hanging up.
+- **Recording UX:** REC badge + elapsed status; any participant can Record; **Stop** for recording starter **or** call host; others see dimmed Record while live; countdown banners + cues at 1:00 / 0:15; auto `stop_recording` at 10:00 without hanging up. **Pin before Record** to feature the slot camera in the MP4 (toast confirms featuring pinned vs own camera).
 - **Call recording card:** `ChatCallRecordingCard` for `content_encoding === 'call_recording'`... durable poster via first successful client frame capture → R2 → Edge `attach_recording_poster` writes `stream_poster_url` (iOS primes with muted `play()` so canvas works; later opens use the stored `<img>`). Meta lives in `link_preview` (`kind: call_recording`). Inbox preview `[call recording] · m:ss`.
 - **Call summary card (historical):** on call end, Edge inserts a durable `content_encoding = call_summary` message (`ChatCallSummaryCard`) with `link_preview.kind = call_summary` (status, media_mode, duration, participant avatars). Stays in the thread after leave/reopen. Live late-join Join bar is separate and only while the call is open. Unique index on `link_preview->>'call_id'` for call_summary.
 - **DM decline quick replies** (`chatCallDeclineQuickReplies.js`): incoming overlay dropdown + **Decline & send** (decline call, then `chatSendMessage`). Circle decline still ends the call with no message. Group invites do not show this UI.
@@ -73,13 +76,13 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 1. Create LiveKit Cloud project; copy URL + API key/secret.
 2. Apply SQL `20260728000000`–`20260728080000` on test (then prod when promoting).
-3. Set Edge secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` on the project (**both** test + prod). Reuse Lounge R2 secrets for egress output (`LOUNGE_CF_R2_*` / Cloudflare account).
-4. Deploy `chat-calls` + `livekit-egress-webhook` + redeploy `lounge-send-activity-push` when invite push changes.
+3. Set Edge secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` on the project (**both** test + prod). Reuse Lounge R2 secrets for egress output (`LOUNGE_CF_R2_*` / Cloudflare account). Optional override **`CHAT_CALL_EGRESS_TEMPLATE_BASE_URL`** (defaults: test → `https://lvslotpro.com/call-egress.html`, prod → `https://edgetilt.com/call-egress.html`).
+4. Deploy `chat-calls` + `livekit-egress-webhook` + redeploy `lounge-send-activity-push` when invite push changes. Apply SQL through **`20260728090000`**.
 5. LiveKit Cloud → Webhooks → `https://<project-ref>.supabase.co/functions/v1/livekit-egress-webhook` (at least **egress_ended**). Ensure the LiveKit project can write to the R2 bucket (S3-compatible).
-6. Smoke: DM video unchanged; group video 3+ (strip/pin/cam off); Record by A blanks B; cues; stop early → card; hit 10 min → auto-stop + card, **call still live**; hangup while recording finalizes file.
+6. Smoke: DM video unchanged; group video 3+ (strip/pin/cam off); **pin remote → Record → Stop → playback features pinned cam**; no pin → features recorder; Record by A blanks B; cues; stop early → card; hangup while recording finalizes file.
 
 **Prod promote (2026-07-27):** SQL through **`20260728030000`** (+ **`20260728040000`** replica identity) + Edge **`chat-calls`** / **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`**. Frontend via **`main`**.
 
 **Prod promote (2026-07-27, UX batch):** WhatsApp in-call polish, group leave semantics, earpiece/speaker, late-join Join bar + avatars → **`main`**; redeploy **`chat-calls`** on prod for **`leave_call`** / end-when-≤1-remains. No new SQL.
 
-**Group video + recording (test first):** SQL **`20260728050000`**, **`20260728060000`**, **`20260728070000`**, **`20260728080000`**; redeploy **`chat-calls`**; deploy **`livekit-egress-webhook`**; configure LiveKit webhook. Promote prod only after Ryan sign-off.
+**Group video + recording (test first):** SQL through **`20260728090000`**; redeploy **`chat-calls`** with egress template secret; deploy **`livekit-egress-webhook`**; configure LiveKit webhook; ship frontend **`call-egress.html`**. Promote prod only after Ryan sign-off.

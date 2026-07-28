@@ -401,6 +401,8 @@ function CallChrome({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  /** Last pinned participant object so active-speaker cannot steal if the pin blips out of the roster. */
+  const pinnedParticipantRef = useRef(/** @type {any | null} */ (null))
   const recWarn60Ref = useRef(false)
   const recWarn15Ref = useRef(false)
   const recAutoStopRef = useRef(false)
@@ -549,10 +551,25 @@ function CallChrome({
   const remotes = participants.filter((p) => !p.isLocal)
   const speakingRemote = remotes.find((p) => p.isSpeaking) || null
 
+  if (!pinnedIdentity) {
+    pinnedParticipantRef.current = null
+  }
+
   const fullscreenParticipant = useMemo(() => {
     if (pinnedIdentity) {
       const pinned = participants.find((p) => p.identity === pinnedIdentity)
-      if (pinned) return pinned
+      if (pinned) {
+        pinnedParticipantRef.current = pinned
+        return pinned
+      }
+      // Pin is locked... never fall through to active speaker.
+      if (
+        pinnedParticipantRef.current &&
+        pinnedParticipantRef.current.identity === pinnedIdentity
+      ) {
+        return pinnedParticipantRef.current
+      }
+      return null
     }
     if (speakingRemote) return speakingRemote
     if (remotes[0]) return remotes[0]

@@ -92,16 +92,23 @@ function render(room, featuredId) {
   const want = String(featuredId || '').trim()
   let featured = null
   if (want) {
+    // Pin/focus is locked for the segment... never steal main for another speaker.
     featured =
       pubs.find((x) => x.identity === want && x.source === Track.Source.ScreenShare) ||
       pubs.find((x) => x.identity === want && x.source === Track.Source.Camera) ||
       null
-  }
-  if (!featured) {
+  } else {
     featured =
       pubs.find((x) => x.source === Track.Source.ScreenShare) || pubs[0] || null
   }
-  const others = pubs.filter((x) => x !== featured).slice(0, 6)
+  const others = pubs
+    .filter((x) => {
+      if (x === featured) return false
+      // Keep pinned identity out of PiPs even if their main track is briefly missing.
+      if (want && x.identity === want) return false
+      return true
+    })
+    .slice(0, 6)
 
   if (featured) {
     featured.track.attach(mainEl)
@@ -205,9 +212,13 @@ async function main() {
   })
 
   try {
+    // LiveKit may push layout=speaker via recorder metadata. Keep focus:<id> locked.
     EgressHelper.onLayoutChanged((next) => {
-      featuredId = parseFeatured(next)
-      refresh()
+      const nextId = parseFeatured(next)
+      if (nextId) {
+        featuredId = nextId
+        refresh()
+      }
     })
   } catch (err) {
     console.warn('onLayoutChanged', err)

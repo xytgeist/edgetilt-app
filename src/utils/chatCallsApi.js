@@ -66,7 +66,8 @@ export function chatDeclineCall(supabase, callId) {
 }
 
 /**
- * Leave the call. Group: only this participant. DM (or last group member): ends the call.
+ * Leave the call. Group: only this participant if 2+ remain after leave.
+ * DM or when ≤1 would remain: ends the call for everyone.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  */
 export function chatLeaveCall(supabase, callId) {

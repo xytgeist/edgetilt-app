@@ -677,8 +677,8 @@ Deno.serve(async (req) => {
         .eq('call_id', callId)
         .is('left_at', null)
 
-      // DM hangup ends for both. Group hangup only ends when nobody remains.
-      const shouldEndCall = call.kind === 'dm_av' || (remaining ?? 0) === 0
+      // DM hangup ends for both. Group: end when ≤1 would remain (no solo leftover call).
+      const shouldEndCall = call.kind === 'dm_av' || (remaining ?? 0) <= 1
       if (!shouldEndCall) {
         return json(200, { ok: true, left: true, call_ended: false, status: call.status })
       }

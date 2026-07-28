@@ -27,7 +27,7 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 
 See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls/README.md).
 
-Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, removes them from LiveKit. **Group** stays up if anyone remains. **DM** (or the last group member) runs the full end path (summary chip + delete LiveKit room). **`end_call`** still force-ends for everyone.
+Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, removes them from LiveKit. **Group** stays up only if **2+** participants remain after leave (if two are left and one hangs up, the call ends for the last person too). **DM** always ends. **`end_call`** still force-ends for everyone.
 
 ## Client
 
